@@ -22,6 +22,7 @@ import { dateVar } from "../../../graphql/variables/dateVar";
 import useQuery from "../../../hooks/useQuery";
 import { schemaState } from "../../../state/atoms/schema.atom";
 import { stringifyWithoutQuotes } from "../../../utils/string";
+import { DiffContext } from "./data-diff";
 
 type tDataDiffComments = {
   path: string;
@@ -37,6 +38,7 @@ export const DataDiffComments = (props: tDataDiffComments) => {
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
   const [isLoading, setIsLoading] = useState(false);
+  const diffContext = useContext(DiffContext);
 
   const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_OBJECT_THREAD)[0];
 
@@ -63,6 +65,10 @@ export const DataDiffComments = (props: tDataDiffComments) => {
 
     if (parentRefetch) {
       parentRefetch();
+    }
+
+    if (diffContext?.refetch) {
+      diffContext?.refetch();
     }
   };
 

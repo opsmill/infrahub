@@ -19,6 +19,10 @@ import { fetchUrl } from "../../../utils/fetch";
 import LoadingScreen from "../../loading-screen/loading-screen";
 import { DataDiffNode } from "./data-diff-node";
 
+export const DiffContext = createContext({
+  refetch: () => {},
+});
+
 export const DataDiff = () => {
   const { branchname, proposedchange } = useParams();
 
@@ -104,8 +108,6 @@ export const DataDiff = () => {
   }, [fetchDiffDetails]);
 
   const renderNode = (node: any, index: number) => {
-    const NodeContext = createContext({});
-
     // Provide threads and comments counts to display in the top level node
     const commentsCount = objectComments && objectComments[node?.path];
 
@@ -115,9 +117,9 @@ export const DataDiff = () => {
     };
 
     return (
-      <NodeContext.Provider key={index} value={context}>
+      <DiffContext.Provider key={index} value={context}>
         <DataDiffNode node={node} commentsCount={commentsCount} />
-      </NodeContext.Provider>
+      </DiffContext.Provider>
     );
   };
 

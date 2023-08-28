@@ -19,6 +19,7 @@ export type tDataDiffNodePropertyValue = {
 };
 
 export type tDataDiffNodePropertyChange = {
+  path: string;
   type?: string;
   changed_at?: number;
   action: string;

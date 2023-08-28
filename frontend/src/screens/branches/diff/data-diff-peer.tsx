@@ -1,7 +1,7 @@
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import Accordion from "../../../components/accordion";
 import { Badge } from "../../../components/badge";
@@ -19,6 +19,7 @@ import {
 } from "./data-diff-node";
 import { DataDiffProperty } from "./data-diff-property";
 import { DiffPill } from "./diff-pill";
+import { DataDiffThread } from "./diff-thread";
 
 export type tDataDiffNodePeerProps = {
   peerChanges: tDataDiffNodePeerChange;
@@ -46,6 +47,7 @@ export const getPeerRedirection = (
 export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
   const { peerChanges } = props;
 
+  const { branchname } = useParams();
   const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
   const [schemaKindName] = useAtom(schemaKindNameState);
   const navigate = useNavigate();
@@ -53,6 +55,7 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
   // Relationship mayny: action, changed_at, branches, branches, peer, properties, summary
   // Relationship one: changes > branch, new, previous
   const {
+    path,
     action,
     changed_at,
     branches,
@@ -84,6 +87,9 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
 
               <span className="mr-2 font-semibold">{peerChange?.display_label}</span>
             </div>
+
+            {/* Do not display comment button if we are on the branch details view */}
+            {!branchname && <DataDiffThread path={path} />}
 
             <div className="flex">
               <span className="font-semibold">{renderDiffDisplay(peerChange, branch)}</span>
@@ -135,7 +141,7 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
   const propertiesChanges: ReactNode[] = Object.values(properties ?? {}).map(
     (property, index: number) =>
       property.changes?.map((change: any, index2: number) => (
-        <DataDiffProperty key={`${index}-${index2}`} property={change} />
+        <DataDiffProperty key={`${index}-${index2}`} property={change} path={property.path} />
       ))
   );
 
