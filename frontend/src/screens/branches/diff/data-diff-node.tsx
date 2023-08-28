@@ -4,6 +4,7 @@ import { StringParam, useQueryParam } from "use-query-params";
 import Accordion from "../../../components/accordion";
 import { BADGE_TYPES, Badge } from "../../../components/badge";
 import { DateDisplay } from "../../../components/date-display";
+import { Pill } from "../../../components/pill";
 import { QSP } from "../../../config/qsp";
 import { proposedChangedState } from "../../../state/atoms/proposedChanges.atom";
 import { classNames } from "../../../utils/common";
@@ -119,6 +120,7 @@ export type tDataDiffNode = {
 
 export type tDataDiffNodeProps = {
   node: tDataDiffNode;
+  commentsCount: number;
   branch?: string;
 };
 
@@ -156,7 +158,7 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
   const [proposedChangesDetails] = useAtom(proposedChangedState);
 
   // Branch from props is used to filter the changes to a specific branch
-  const { node, branch } = props;
+  const { node, branch, commentsCount } = props;
 
   const {
     display_label: nodeDisplayLabels,
@@ -192,6 +194,8 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
         {/* Do not display comment button if we are on the branch details view */}
         {!branchname && <DataDiffThread path={path} />}
       </div>
+
+      {commentsCount && <Pill className="mr-2">{commentsCount}</Pill>}
 
       <DiffPill {...summary} />
 

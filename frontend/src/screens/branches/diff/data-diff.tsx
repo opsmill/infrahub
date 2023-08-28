@@ -1,27 +1,74 @@
+import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
-import { useCallback, useEffect, useState } from "react";
+import { createContext, useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
 import { ALERT_TYPES, Alert } from "../../../components/alert";
 import { CONFIG } from "../../../config/config";
+import {
+  PROPOSED_CHANGES_OBJECT_THREAD,
+  PROPOSED_CHANGES_OBJECT_THREAD_OBJECT,
+} from "../../../config/constants";
 import { QSP } from "../../../config/qsp";
+import { getProposedChangesObjectGlobalThreads } from "../../../graphql/queries/proposed-changes/getProposedChangesObjectGlobalThreads";
+import useQuery from "../../../hooks/useQuery";
 import { proposedChangedState } from "../../../state/atoms/proposedChanges.atom";
+import { schemaState } from "../../../state/atoms/schema.atom";
 import { fetchUrl } from "../../../utils/fetch";
 import LoadingScreen from "../../loading-screen/loading-screen";
 import { DataDiffNode } from "./data-diff-node";
 
 export const DataDiff = () => {
-  const { branchname } = useParams();
+  const { branchname, proposedchange } = useParams();
 
-  const [diff, setDiff] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
   const [timeFrom] = useQueryParam(QSP.BRANCH_FILTER_TIME_FROM, StringParam);
   const [timeTo] = useQueryParam(QSP.BRANCH_FILTER_TIME_TO, StringParam);
   const [proposedChangesDetails] = useAtom(proposedChangedState);
+  const [schemaList] = useAtom(schemaState);
+  const [diff, setDiff] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const branch = branchname || proposedChangesDetails?.source_branch?.value;
+
+  const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_OBJECT_THREAD)[0];
+
+  const queryString = schemaData
+    ? getProposedChangesObjectGlobalThreads({
+        id: proposedchange,
+        kind: schemaData.kind,
+      })
+    : // Empty query to make the gql parsing work
+      // TODO: Find another solution for queries while loading schemaData
+      "query { ok }";
+
+  const query = gql`
+    ${queryString}
+  `;
+
+  const { data, refetch } = useQuery(query, { skip: !schemaData });
+
+  // Get the comments count per object path like { [path]: [count] }, and include all sub path for each object
+  const objectComments =
+    data &&
+    data[PROPOSED_CHANGES_OBJECT_THREAD_OBJECT]?.edges
+      .map((edge: any) => edge.node)
+      .reduce((acc: any, node: any) => {
+        const objectPathResult = node?.object_path?.value?.match(/^\w+\/(\w|-)+/g);
+
+        const objectPath = objectPathResult && objectPathResult[0];
+
+        if (!objectPath) {
+          return;
+        }
+
+        return {
+          ...acc,
+          // Count all comments for this object (will include comments on sub nodes)
+          [objectPath]: (acc[objectPath] ?? 0) + (node?.comments?.count ?? 0),
+        };
+      }, {});
 
   const fetchDiffDetails = useCallback(async () => {
     if (!branch) return;
@@ -56,6 +103,24 @@ export const DataDiff = () => {
     fetchDiffDetails();
   }, [fetchDiffDetails]);
 
+  const renderNode = (node: any, index: number) => {
+    const NodeContext = createContext({});
+
+    // Provide threads and comments counts to display in the top level node
+    const commentsCount = objectComments[node?.path];
+
+    const context = {
+      // Provide refetch function to update count on comment
+      refetch,
+    };
+
+    return (
+      <NodeContext.Provider key={index} value={context}>
+        <DataDiffNode node={node} commentsCount={commentsCount} />
+      </NodeContext.Provider>
+    );
+  };
+
   return (
     <>
       {(!branchOnly || branchOnly === "false") && (
@@ -68,13 +133,7 @@ export const DataDiff = () => {
 
       {isLoading && <LoadingScreen />}
 
-      {!isLoading && (
-        <div>
-          {diff?.map((node: any, index: number) => (
-            <DataDiffNode key={index} node={node} />
-          ))}
-        </div>
-      )}
+      {!isLoading && <div>{diff?.map(renderNode)}</div>}
     </>
   );
 };
