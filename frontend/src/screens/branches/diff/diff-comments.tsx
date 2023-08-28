@@ -1,5 +1,4 @@
 import { gql, useReactiveVar } from "@apollo/client";
-import { PlusIcon } from "@heroicons/react/24/outline";
 import { formatISO } from "date-fns";
 import { useAtom } from "jotai";
 import { useContext, useState } from "react";
@@ -8,9 +7,6 @@ import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../../components/alert";
 import { AddComment } from "../../../components/conversations/add-comment";
 import { Thread } from "../../../components/conversations/thread";
-import { BUTTON_TYPES, RoundedButton } from "../../../components/rounded-button";
-import SlideOver from "../../../components/slide-over";
-import { Tooltip } from "../../../components/tooltip";
 import {
   PROPOSED_CHANGES_OBJECT_THREAD,
   PROPOSED_CHANGES_OBJECT_THREAD_OBJECT,
@@ -20,7 +16,7 @@ import { AuthContext } from "../../../decorators/withAuth";
 import graphqlClient from "../../../graphql/graphqlClientApollo";
 import { createObject } from "../../../graphql/mutations/objects/createObject";
 import { deleteObject } from "../../../graphql/mutations/objects/deleteObject";
-import { getProposedChangesObjectThreads } from "../../../graphql/queries/proposed-changes/getProposedChangesObjectThreads";
+import { getProposedChangesObjectThreadComments } from "../../../graphql/queries/proposed-changes/getProposedChangesObjectThreadComments";
 import { branchVar } from "../../../graphql/variables/branchVar";
 import { dateVar } from "../../../graphql/variables/dateVar";
 import useQuery from "../../../hooks/useQuery";
@@ -29,17 +25,17 @@ import { stringifyWithoutQuotes } from "../../../utils/string";
 
 type tDataDiffComments = {
   path: string;
+  refetch?: Function;
 };
 
 export const DataDiffComments = (props: tDataDiffComments) => {
-  const { path } = props;
+  const { path, refetch: parentRefetch } = props;
 
   const { proposedchange } = useParams();
   const [schemaList] = useAtom(schemaState);
   const auth = useContext(AuthContext);
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
-  const [showThread, setShowThread] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_OBJECT_THREAD)[0];
@@ -47,7 +43,7 @@ export const DataDiffComments = (props: tDataDiffComments) => {
   const approverId = auth?.data?.sub;
 
   const queryString = schemaData
-    ? getProposedChangesObjectThreads({
+    ? getProposedChangesObjectThreadComments({
         id: proposedchange,
         path,
         kind: schemaData.kind,
@@ -62,7 +58,16 @@ export const DataDiffComments = (props: tDataDiffComments) => {
 
   const { loading, error, data, refetch } = useQuery(query, { skip: !schemaData });
 
+  const handleRefetch = () => {
+    refetch();
+
+    if (parentRefetch) {
+      parentRefetch();
+    }
+  };
+
   const handleSubmit = async (data: any, event: any) => {
+    console.log("data: ", data);
     let threadId;
 
     try {
@@ -89,14 +94,11 @@ export const DataDiffComments = (props: tDataDiffComments) => {
         },
       };
 
-      console.log("newThread: ", newThread);
-
       const threadMutationString = createObject({
         kind: PROPOSED_CHANGES_OBJECT_THREAD_OBJECT,
         data: stringifyWithoutQuotes(newThread),
       });
 
-      console.log("threadMutationString: ", threadMutationString);
       const threadMutation = gql`
         ${threadMutationString}
       `;
@@ -109,7 +111,6 @@ export const DataDiffComments = (props: tDataDiffComments) => {
         },
       });
 
-      console.log("result: ", result);
       threadId = result?.data[`${PROPOSED_CHANGES_OBJECT_THREAD_OBJECT}Create`]?.object?.id;
 
       const newComment = {
@@ -146,7 +147,7 @@ export const DataDiffComments = (props: tDataDiffComments) => {
 
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Comment added"} />);
 
-      refetch();
+      handleRefetch();
 
       setIsLoading(false);
     } catch (error: any) {
@@ -190,36 +191,16 @@ export const DataDiffComments = (props: tDataDiffComments) => {
   }
 
   return (
-    <div>
-      <div className="hidden group-hover:block">
-        <Tooltip message={"Add comment"}>
-          <RoundedButton
-            disabled={!auth?.permissions?.write}
-            onClick={() => {
-              console.log("CLICK");
-              setShowThread(true);
-            }}
-            className="p-1"
-            type={BUTTON_TYPES.DEFAULT}>
-            {/* Display either a pill with the number of comments, or a plus icon to add a comment */}
-            <PlusIcon className="h-4 w-4 " aria-hidden="true" />
-          </RoundedButton>
-        </Tooltip>
-      </div>
+    <div className="flex-1 p-4 overflow-auto">
+      {thread?.id && <Thread thread={thread} refetch={handleRefetch} />}
 
-      <SlideOver title={"Conversation"} open={showThread} setOpen={setShowThread}>
-        <div className="flex-1 p-4 overflow-auto">
-          {thread?.id && <Thread thread={thread} refetch={refetch} />}
-
-          {!thread?.id && (
-            <AddComment
-              onSubmit={handleSubmit}
-              isLoading={isLoading}
-              disabled={!auth?.permissions?.write}
-            />
-          )}
-        </div>
-      </SlideOver>
+      {!thread?.id && (
+        <AddComment
+          onSubmit={handleSubmit}
+          isLoading={isLoading}
+          disabled={!auth?.permissions?.write}
+        />
+      )}
     </div>
   );
 };

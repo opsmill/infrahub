@@ -11,34 +11,8 @@ query {
       node {
         __typename
         id
-        display_label
-        resolved {
-          value
-        }
-        created_by {
-          node {
-            display_label
-          }
-        }
         comments {
           count
-          edges {
-            node {
-              id
-              display_label
-              created_by {
-                node {
-                  display_label
-                }
-              }
-              created_at {
-                value
-              }
-              text {
-                value
-              }
-            }
-          }
         }
       }
     }

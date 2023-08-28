@@ -8,8 +8,8 @@ import { QSP } from "../../../config/qsp";
 import { proposedChangedState } from "../../../state/atoms/proposedChanges.atom";
 import { classNames } from "../../../utils/common";
 import { DataDiffElement } from "./data-diff-element";
-import { DataDiffComments } from "./diff-comments";
 import { DiffPill } from "./diff-pill";
+import { DataDiffThread } from "./diff-thread";
 
 export type tDataDiffNodePropertyValue = {
   new: string;
@@ -157,7 +157,6 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
 
   // Branch from props is used to filter the changes to a specific branch
   const { node, branch } = props;
-  console.log("node: ", node);
 
   const {
     display_label: nodeDisplayLabels,
@@ -181,7 +180,7 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
 
   const renderTitle = () => (
     <div className={"p-1 pr-0 flex flex-1 group"}>
-      <div className="flex flex-1">
+      <div className="flex flex-1 items-center">
         <Badge className="mr-2" type={getBadgeType(action)}>
           {action?.toUpperCase()}
         </Badge>
@@ -191,7 +190,7 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
         <span className="mr-2">{display_label}</span>
 
         {/* Do not display comment button if we are on the branch details view */}
-        {!branchname && <DataDiffComments path={path} />}
+        {!branchname && <DataDiffThread path={path} />}
       </div>
 
       <DiffPill {...summary} />
