@@ -345,6 +345,13 @@ jobs:
         with:
           name: screenshots
           path: docs/media/*
+      - name: Display server logs
+        if: failure()
+        run: docker logs infrahub-server-1
+      - name: Display server status
+        if: failure()
+        run: invoke demo.status
+
 
   coverall-report:
     needs: ["frontend-tests", "ctl-tests", "backend-tests-default", "python-sdk-tests"]
