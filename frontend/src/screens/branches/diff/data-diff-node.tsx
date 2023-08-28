@@ -1,3 +1,4 @@
+import { ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
@@ -195,7 +196,12 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
         {!branchname && <DataDiffThread path={path} />}
       </div>
 
-      {commentsCount && <Pill className="mr-2">{commentsCount}</Pill>}
+      {commentsCount && (
+        <div className="flex items-center">
+          <ChatBubbleLeftRightIcon className="h-5 w-5 mr-2" />
+          <Pill className="mr-2">{JSON.stringify(commentsCount)}</Pill>
+        </div>
+      )}
 
       <DiffPill {...summary} />
 

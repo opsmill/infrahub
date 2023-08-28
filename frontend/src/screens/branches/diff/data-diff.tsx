@@ -107,7 +107,7 @@ export const DataDiff = () => {
     const NodeContext = createContext({});
 
     // Provide threads and comments counts to display in the top level node
-    const commentsCount = objectComments[node?.path];
+    const commentsCount = objectComments && objectComments[node?.path];
 
     const context = {
       // Provide refetch function to update count on comment

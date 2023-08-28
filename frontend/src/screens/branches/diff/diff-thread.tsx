@@ -1,5 +1,5 @@
 import { gql } from "@apollo/client";
-import { PlusIcon } from "@heroicons/react/24/outline";
+import { ChatBubbleLeftIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useContext, useState } from "react";
 import { useParams } from "react-router-dom";
@@ -53,9 +53,10 @@ export const DataDiffThread = (props: tDataDiffThread) => {
   }
 
   return (
-    <div>
+    <div className="ml-2">
       {thread?.comments?.count && (
-        <div className="cursor-pointer">
+        <div className="flex items-center cursor-pointer">
+          <ChatBubbleLeftIcon className="h-5 w-5 mr-1" />
           <Tooltip message={"Add comment"}>
             <RoundedButton
               disabled={!auth?.permissions?.write}
