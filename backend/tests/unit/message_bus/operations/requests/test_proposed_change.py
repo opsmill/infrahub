@@ -1,7 +1,7 @@
 import os
 from typing import Dict, List
 
-from infrahub.message_bus import InfrahubBaseMessage, messages
+from infrahub.message_bus import InfrahubBaseMessage, Meta, messages
 from infrahub.message_bus.operations.requests.proposed_change import repository_checks
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
@@ -45,7 +45,7 @@ async def test_repository_checks():
     assert ["request.repository.checks"] == bus_recorder.seen_routing_keys
     assert (
         messages.RequestRepositoryChecks(
-            meta=None,
+            meta=Meta(request_id=""),
             proposed_change="13a49493-b186-4f7e-a1bb-cd015ed0bdb0",
             repository="b002c0e6-78e6-4a8b-812f-8aa41d89d386",
             branch="test-pc-1",
@@ -54,7 +54,7 @@ async def test_repository_checks():
     )
     assert (
         messages.RequestRepositoryChecks(
-            meta=None,
+            meta=Meta(request_id=""),
             proposed_change="13a49493-b186-4f7e-a1bb-cd015ed0bdb0",
             repository="0af9707a-9c53-450d-96db-d721bfd0350b",
             branch="test-pc-1",
