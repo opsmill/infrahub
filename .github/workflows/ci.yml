@@ -339,6 +339,28 @@ jobs:
       - name: Run End to End Tests
         working-directory: ./frontend
         run: npm run cypress:run:e2e
+      - name: Upload cypress screenshots
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: screenshots
+          path: docs/media/*
+      - name: Display server logs
+        if: failure()
+        run: docker logs infrahub-infrahub-server-1
+      - name: Display git 1 logs
+        if: failure()
+        run: docker logs infrahub-infrahub-git-1
+      - name: Display git 2 logs
+        if: failure()
+        run: docker logs infrahub-infrahub-git-2
+      - name: Display database logs
+        if: failure()
+        run: docker logs infrahub-database-1
+      - name: Display server status
+        if: failure()
+        run: invoke demo.status
+
 
   coverall-report:
     needs: ["frontend-tests", "ctl-tests", "backend-tests-default", "python-sdk-tests"]

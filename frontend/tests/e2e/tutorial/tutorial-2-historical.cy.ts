@@ -1,6 +1,6 @@
 /// <reference types="cypress" />
 
-import { NEW_ADMIN_ACCOUNT_LABEL, NEW_BRANCH_NAME } from "../../mocks/e2e/accounts";
+import { NEW_ADMIN_ACCOUNT_LABEL } from "../../mocks/e2e/accounts";
 import { ADMIN_CREDENTIALS, SCREENSHOT_ENV_VARIABLE, screenshotConfig } from "../../utils";
 
 describe("Tutorial - Part 2", () => {
@@ -11,10 +11,10 @@ describe("Tutorial - Part 2", () => {
   });
 
   it("should check the historical data", function () {
-    cy.visit(`/?branch=${NEW_BRANCH_NAME}`);
+    cy.visit("/");
 
     // Access the accounts list
-    cy.get(`[href='/objects/Account?branch=${NEW_BRANCH_NAME}'] > .group`).click();
+    cy.get("[href='/objects/Account'] > .group").click();
 
     // Access admin account
     cy.contains(NEW_ADMIN_ACCOUNT_LABEL).should("exist");
