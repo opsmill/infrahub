@@ -7,7 +7,7 @@ log = get_logger()
 
 async def generate(message: messages.RequestArtifactDefinitionGenerate, service: InfrahubServices) -> None:
     log.info(
-        f"Recieved request to generate artifacts for artifact_definition={message.artifact_definition} on branch={message.branch}"
+        f"Received request to generate artifacts for artifact_definition={message.artifact_definition} on branch={message.branch}"
     )
     await service.client._post(
         f"{service.client.address}/api/artifact/generate/{message.artifact_definition}?branch={message.branch}",
