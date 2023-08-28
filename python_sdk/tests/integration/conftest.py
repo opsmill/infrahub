@@ -1,7 +1,11 @@
 import asyncio
+import json
 import os
+from typing import Any, Dict, Optional
 
+import httpx
 import pytest
+from fastapi.testclient import TestClient
 
 import infrahub.config as config
 from infrahub.core.initialization import first_time_initialization, initialization
@@ -10,12 +14,33 @@ from infrahub.core.utils import delete_all_nodes
 from infrahub.database import AsyncSession, get_db
 from infrahub.lock import initialize_lock
 from infrahub_client.schema import NodeSchema
+from infrahub_client.types import HTTPMethod
 from infrahub_client.utils import str_to_bool
 
 BUILD_NAME = os.environ.get("INFRAHUB_BUILD_NAME", "infrahub")
 TEST_IN_DOCKER = str_to_bool(os.environ.get("INFRAHUB_TEST_IN_DOCKER", "false"))
 
+
 # pylint: disable=redefined-outer-name
+class InfrahubTestClient(TestClient):
+    def _request(
+        self, url: str, method: HTTPMethod, headers: Dict[str, Any], timeout: int, payload: Optional[Dict] = None
+    ) -> httpx.Response:
+        content = None
+        if payload:
+            content = str(json.dumps(payload)).encode("UTF-8")
+        with self as client:
+            return client.request(method=method.value, url=url, headers=headers, timeout=timeout, content=content)
+
+    async def async_request(
+        self, url: str, method: HTTPMethod, headers: Dict[str, Any], timeout: int, payload: Optional[Dict] = None
+    ) -> httpx.Response:
+        return self._request(url=url, method=method, headers=headers, timeout=timeout, payload=payload)
+
+    def sync_request(
+        self, url: str, method: HTTPMethod, headers: Dict[str, Any], timeout: int, payload: Optional[Dict] = None
+    ) -> httpx.Response:
+        return self._request(url=url, method=method, headers=headers, timeout=timeout, payload=payload)
 
 
 @pytest.fixture(scope="session")
