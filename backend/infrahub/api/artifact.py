@@ -60,7 +60,6 @@ async def generate_artifact(
     branch_params: BranchParams = Depends(get_branch_params),
     _: str = Depends(get_current_user),
 ) -> ArtifactGenerateResponse:
-    print(payload.nodes)
     artifact_definition: CoreArtifactDefinition = await registry.manager.get_one_by_id_or_default_filter(
         session=session,
         id=artifact_definition_id,

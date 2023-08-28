@@ -56,7 +56,7 @@ class CoreArtifactDefinition(Node):
         self,
         session: AsyncSession,
         rpc_client: InfrahubRpcClient,
-        nodes: List[str],
+        nodes: Optional[List[str]] = None,
         # max_concurrent_execution: int = 5,
     ) -> List[str]:
         # pylint: disable=no-member
