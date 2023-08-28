@@ -3,13 +3,13 @@ from typing import TYPE_CHECKING, Dict
 from graphene import Boolean, InputField, InputObjectType, List, Mutation, String
 from graphql import GraphQLResolveInfo
 
+from infrahub.core.constants import RelationshipCardinality
 from infrahub.core.manager import NodeManager
 from infrahub.core.query.relationship import (
     RelationshipGetPeerQuery,
     RelationshipPeerData,
 )
 from infrahub.core.relationship import Relationship
-from infrahub.core.schema import RelationshipCardinality
 from infrahub.exceptions import NodeNotFound, ValidationError
 from infrahub_client.utils import compare_lists
 

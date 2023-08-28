@@ -44,6 +44,12 @@ class BaseEnum(Enum, metaclass=MetaEnum):
     pass
 
 
+class InfrahubNumberEnum(int, BaseEnum):
+    @classmethod
+    def available_types(cls) -> List[int]:
+        return [cls.__members__[member].value for member in list(cls.__members__)]
+
+
 class InfrahubStringEnum(str, BaseEnum):
     @classmethod
     def available_types(cls) -> List[str]:
