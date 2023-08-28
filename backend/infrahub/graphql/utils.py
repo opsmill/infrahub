@@ -32,6 +32,22 @@ if TYPE_CHECKING:
 #     return at, branch, account
 
 
+def dict_depth(dic, level=1):
+    if not isinstance(dic, dict) or not dic:
+        return level
+    return max(dict_depth(dic[key], level + 1) for key in dic)
+
+
+def dict_height(dic, cnt=0):
+    for key in dic:
+        if isinstance(dic[key], dict):
+            # calls repeatedly
+            cnt = dict_height(dic=dic[key], cnt=cnt + 1)
+        else:
+            cnt += 1
+    return cnt
+
+
 async def extract_fields(selection_set: SelectionSetNode) -> Dict[str, Dict]:
     """This function extract all the requested fields in a tree of Dict from a SelectionSetNode
 

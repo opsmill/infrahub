@@ -1859,6 +1859,31 @@ core_models = {
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "description", "kind": "Text", "optional": True},
                 {"name": "query", "kind": "TextArea"},
+                {"name": "variables", "kind": "JSON", "description": "variables in use in the query", "optional": True},
+                {
+                    "name": "operations",
+                    "kind": "List",
+                    "description": "Operations in use in the query, valid operations: 'query', 'mutation' or 'subscription'",
+                    "optional": True,
+                },
+                {
+                    "name": "models",
+                    "kind": "List",
+                    "description": "List of models associated with this query",
+                    "optional": True,
+                },
+                {
+                    "name": "depth",
+                    "kind": "Number",
+                    "description": "number of nested levels in the query",
+                    "optional": True,
+                },
+                {
+                    "name": "height",
+                    "kind": "Number",
+                    "description": "total number of fields requested in the query",
+                    "optional": True,
+                },
             ],
             "relationships": [
                 {

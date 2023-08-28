@@ -1,4 +1,4 @@
-from typing import List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from graphql import (
     DocumentNode,
@@ -8,10 +8,23 @@ from graphql import (
     parse,
     validate,
 )
+from pydantic import BaseModel
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.graphql.utils import extract_fields, extract_schema_models
+from infrahub.graphql.utils import (
+    dict_depth,
+    dict_height,
+    extract_fields,
+    extract_schema_models,
+)
+
+
+class GraphQLQueryVariable(BaseModel):
+    name: str
+    type: str
+    required: bool = False
+    default_value: Optional[Any] = None
 
 
 class GraphQLQueryAnalyzer:
@@ -20,11 +33,12 @@ class GraphQLQueryAnalyzer:
         self.schema: Optional[GraphQLSchema] = schema
         self.branch: Optional[Branch] = branch
         self.document: DocumentNode = parse(self.query)
+        self._fields: Dict = None
 
     @property
     def is_valid(self) -> Tuple[bool, Optional[List[GraphQLError]]]:
         errors = validate(schema=self.schema, document_ast=self.document)
-        if len(errors):
+        if errors:
             return False, errors
 
         return True, None
@@ -34,17 +48,54 @@ class GraphQLQueryAnalyzer:
         return len(self.document.definitions)
 
     @property
-    def query_types(self) -> Set[str]:
+    def operations(self) -> Set[OperationType]:
         return {definition.operation for definition in self.document.definitions}
 
-    async def get_fields(self) -> dict:
-        fields = {}
+    @property
+    def variables(self) -> List[GraphQLQueryVariable]:
+        response = []
         for definition in self.document.definitions:
-            fields.update(await extract_fields(definition.selection_set))
+            for variable in definition.variable_definitions:
+                data = {"name": variable.variable.name.value}
+                non_null = False
+                if variable.type.kind == "non_null_type":
+                    data["type"] = variable.type.type.name.value
+                    non_null = True
+                else:
+                    data["type"] = variable.type.name.value
 
-        return fields
+                if variable.default_value:
+                    if data["type"] == "Int":
+                        data["default_value"] = int(variable.default_value.value)
+                    else:
+                        data["default_value"] = variable.default_value.value
 
-    async def get_models_in_use(self):
+                if not data.get("default_value", None) and non_null:
+                    data["required"] = True
+
+                response.append(GraphQLQueryVariable(**data))
+
+        return response
+
+    async def calculate_depth(self) -> int:
+        """Number of nested levels in the query"""
+        fields = await self.get_fields()
+        return dict_depth(fields)
+
+    async def calculate_height(self) -> int:
+        """Total number of fields requested in the query"""
+        fields = await self.get_fields()
+        return dict_height(dic=fields)
+
+    async def get_fields(self) -> Dict[str, Any]:
+        if not self._fields:
+            fields = {}
+            for definition in self.document.definitions:
+                fields.update(await extract_fields(definition.selection_set))
+            self._fields = fields
+        return self._fields
+
+    async def get_models_in_use(self) -> Set[str]:
         graphql_types = set()
         models = set()
         # TODO Check if schema AND branch are present

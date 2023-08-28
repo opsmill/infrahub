@@ -1,9 +1,11 @@
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from graphene import InputObjectType, Mutation
 from graphql import GraphQLResolveInfo
 
+from infrahub.core.branch import Branch
 from infrahub.core.schema import NodeSchema
+from infrahub.graphql.analyzer import GraphQLQueryAnalyzer
 from infrahub.graphql.mutations.main import InfrahubMutationMixin
 
 from .main import InfrahubMutationOptions
@@ -25,6 +27,32 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
         super().__init_subclass_with_meta__(_meta=_meta, **options)
 
     @classmethod
+    async def extract_query_info(
+        cls,
+        info: GraphQLResolveInfo,
+        data: InputObjectType,
+        branch: Branch,
+    ) -> Dict[str, Any]:
+        query_value = data.get("query", {}).get("value", None)
+        if not query_value:
+            return {}
+
+        query_info = {}
+        analyzer = GraphQLQueryAnalyzer(query=query_value, schema=info.schema, branch=branch)
+
+        valid, errors = analyzer.is_valid
+        if not valid:
+            raise ValueError(f"Query is not valid, {str(errors)}")
+
+        query_info["models"] = {"value": sorted(list(await analyzer.get_models_in_use()))}
+        query_info["depth"] = {"value": await analyzer.calculate_depth()}
+        query_info["height"] = {"value": await analyzer.calculate_height()}
+        query_info["operations"] = {"value": sorted([operation.value for operation in analyzer.operations])}
+        query_info["variables"] = {"value": [variable.dict() for variable in analyzer.variables]}
+
+        return query_info
+
+    @classmethod
     async def mutate_create(
         cls,
         root: dict,
@@ -33,27 +61,27 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
         branch: Optional[str] = None,
         at: Optional[str] = None,
     ):
-        # session: AsyncSession = info.context.get("infrahub_session")
+        branch_obj: Branch = info.context.get("infrahub_branch")
 
-        # if query_value := data.get("query", {}).get("value", None):
-        #     document: DocumentNode = parse(query_value)
-        #     len(document.definitions)
-        #     {definition.operation for definition in document.definitions}
-
-        #     result = await extract_schema_models(document.definitions[0].selection_set)
-
-        # operation = get_operation_ast(document, None)
-
-        # errors = validate(self.schema.graphql_schema, document)  # pylint: disable=no-member
-        # Validate content of GraphQL Query
-
-        # try:
-        #     document: DocumentNode = parse(query)
-        #     operation = get_operation_ast(document, operation_name)
-        #     errors = validate(self.schema.graphql_schema, document)  # pylint: disable=no-member
-        # except GraphQLError as e:
-        #     errors = [e]
+        data.update(await cls.extract_query_info(info=info, data=data, branch=branch_obj))
 
         obj, result = await super().mutate_create(root=root, info=info, data=data, branch=branch, at=at)
+
+        return obj, result
+
+    @classmethod
+    async def mutate_update(
+        cls,
+        root: dict,
+        info: GraphQLResolveInfo,
+        data: InputObjectType,
+        branch: Optional[str] = None,
+        at: Optional[str] = None,
+    ):
+        branch_obj: Branch = info.context.get("infrahub_branch")
+
+        data.update(await cls.extract_query_info(info=info, data=data, branch=branch_obj))
+
+        obj, result = await super().mutate_update(root=root, info=info, data=data, branch=branch, at=at)
 
         return obj, result
