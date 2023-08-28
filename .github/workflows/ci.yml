@@ -339,6 +339,12 @@ jobs:
       - name: Run End to End Tests
         working-directory: ./frontend
         run: npm run cypress:run:e2e
+      - name: Upload cypress screenshots
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: screenshots
+          path: docs/media/*
 
   coverall-report:
     needs: ["frontend-tests", "ctl-tests", "backend-tests-default", "python-sdk-tests"]
