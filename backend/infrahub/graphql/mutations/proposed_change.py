@@ -10,7 +10,6 @@ from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema, ValidatorConclusion, ValidatorState
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import NodeNotFound
 from infrahub.graphql.mutations.main import InfrahubMutationMixin
 from infrahub.message_bus import messages
 
@@ -170,6 +169,34 @@ class ProposedChangeRequestRunCheckInput(InputObjectType):
     check_type = CheckType(required=True)
 
 
+class ProposedChangeRequestRefreshArtifactsInput(InputObjectType):
+    id = String(required=True)
+
+
+class ProposedChangeRequestRefreshArtifacts(Mutation):
+    class Arguments:
+        data = ProposedChangeRequestRefreshArtifactsInput(required=True)
+
+    ok = Boolean()
+
+    @classmethod
+    async def mutate(
+        cls,
+        root: dict,  # pylint: disable=unused-argument
+        info: GraphQLResolveInfo,
+        data: Dict[str, Any],
+    ) -> Dict[str, bool]:
+        session: AsyncSession = info.context.get("infrahub_session")
+        rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
+
+        identifier = data.get("id", "")
+        proposed_change = await NodeManager.get_one_by_id_or_default_filter(
+            id=identifier, schema_name="CoreProposedChange", session=session
+        )
+        await rpc_client.send(messages.RequestProposedChangeRefreshArtifacts(proposed_change=proposed_change.id))
+        return {"ok": True}
+
+
 class ProposedChangeRequestRunCheck(Mutation):
     class Arguments:
         data = ProposedChangeRequestRunCheckInput(required=True)
@@ -192,13 +219,6 @@ class ProposedChangeRequestRunCheck(Mutation):
         proposed_change = await NodeManager.get_one_by_id_or_default_filter(
             id=identifier, schema_name="CoreProposedChange", session=session
         )
-        if not proposed_change:
-            raise NodeNotFound(
-                branch_name="-global-",
-                node_type="CoreProposedChange",
-                identifier=identifier,
-                message="The requested proposed change wasn't found",
-            )
         if check_type == CheckType.DATA:
             await rpc_client.send(messages.RequestProposedChangeDataIntegrity(proposed_change=proposed_change.id))
             # Once the data integrity check is handled in the worker nodes the below call will be removed
@@ -212,6 +232,7 @@ class ProposedChangeRequestRunCheck(Mutation):
                 messages.RequestProposedChangeDataIntegrity(proposed_change=proposed_change.id),
                 messages.RequestProposedChangeRepositoryChecks(proposed_change=proposed_change.id),
                 messages.RequestProposedChangeSchemaIntegrity(proposed_change=proposed_change.id),
+                messages.RequestProposedChangeRefreshArtifacts(proposed_change=proposed_change.id),
             ]
             for event in events:
                 await rpc_client.send(event)
