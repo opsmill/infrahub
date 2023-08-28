@@ -347,7 +347,16 @@ jobs:
           path: docs/media/*
       - name: Display server logs
         if: failure()
-        run: docker logs infrahub-server-1
+        run: docker logs infrahub-infrahub-server-1
+      - name: Display git 1 logs
+        if: failure()
+        run: docker logs infrahub-infrahub-git-1
+      - name: Display git 2 logs
+        if: failure()
+        run: docker logs infrahub-infrahub-git-2
+      - name: Display database logs
+        if: failure()
+        run: docker logs infrahub-database-1
       - name: Display server status
         if: failure()
         run: invoke demo.status
