@@ -201,7 +201,8 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         schema = await self.schema.get(kind=kind)
 
         branch = branch or self.default_branch
-        at = Timestamp(at)
+        if at:
+            at = Timestamp(at)
 
         node = InfrahubNode(client=self, schema=schema, branch=branch)
         filters = kwargs
@@ -686,7 +687,8 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         schema = self.schema.get(kind=kind)
 
         branch = branch or self.default_branch
-        at = Timestamp(at)
+        if at:
+            at = Timestamp(at)
 
         node = InfrahubNodeSync(client=self, schema=schema, branch=branch)
         filters = kwargs

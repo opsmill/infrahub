@@ -22,6 +22,7 @@ from infrahub.message_bus.events import (
 )
 from infrahub.message_bus.operations import execute_message
 from infrahub.services import InfrahubServices
+from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
 from infrahub_client import InfrahubClient
 
 if TYPE_CHECKING:
@@ -58,7 +59,7 @@ async def subscribe_rpcs_queue(client: InfrahubClient):
     channel = await connection.channel()
     queue = await channel.declare_queue(f"{config.SETTINGS.broker.namespace}.rpcs")
     exchange = await channel.declare_exchange(f"{config.SETTINGS.broker.namespace}.events", type="topic")
-    service = InfrahubServices(client=client, exchange=exchange)
+    service = InfrahubServices(client=client, message_bus=RabbitMQMessageBus(exchange=exchange))
     log.info("Waiting for RPC instructions to execute .. ")
     async with queue.iterator() as qiterator:
         message: IncomingMessage
