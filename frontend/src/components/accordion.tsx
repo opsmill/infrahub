@@ -14,7 +14,7 @@ export default function Accordion(props: AccordionProps) {
       {({ open }) => (
         <>
           <div className="flex">
-            <Disclosure.Button className="flex flex-1 w-full items-center">
+            <Disclosure.Button className="flex flex-1 w-full items-center" as="div">
               <span className="flex h-7 items-center mr-2 relative">
                 {open ? (
                   <ChevronDownIcon className="h-5 w-5" aria-hidden="true" />

@@ -1,5 +1,6 @@
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { ReactNode } from "react";
+import { useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import Accordion from "../../../components/accordion";
 import { DateDisplay } from "../../../components/date-display";
@@ -15,6 +16,7 @@ import {
 import { DataDiffPeer } from "./data-diff-peer";
 import { DataDiffProperty } from "./data-diff-property";
 import { DiffPill } from "./diff-pill";
+import { DataDiffThread } from "./diff-thread";
 
 export type tDataDiffNodeElementProps = {
   element: tDataDiffNodeElement;
@@ -23,9 +25,10 @@ export type tDataDiffNodeElementProps = {
 export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
   const { element } = props;
 
+  const { branchname } = useParams();
   const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
 
-  const { name, change } = element;
+  const { name, change, path } = element;
 
   // value AND properties || peer || peers
   const { value, changed_at, properties, summary, peer, peers } = change ?? {};
@@ -41,8 +44,11 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
   const renderTitleDisplay = (diffValue: tDataDiffNodeValueChange) => {
     return (
       <div className="p-1 pr-0 grid grid-cols-3 gap-4">
-        <div className="flex">
+        <div className="flex items-center group">
           <span className="mr-2 font-semibold">{name}</span>
+
+          {/* Do not display comment button if we are on the branch details view */}
+          {!branchname && <DataDiffThread path={path} />}
         </div>
 
         <div className="flex">
@@ -61,9 +67,9 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
   };
 
   const propertiesChanges: ReactNode[] = Object.values(properties ?? {}).map(
-    ({ changes }, index: number) =>
+    ({ changes, path }, index: number) =>
       changes?.map((change: any, index2: number) => (
-        <DataDiffProperty key={`${index}-${index2}`} property={change} />
+        <DataDiffProperty key={`${index}-${index2}`} property={change} path={path} />
       ))
   );
 

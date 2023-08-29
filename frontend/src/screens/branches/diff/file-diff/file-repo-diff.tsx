@@ -14,6 +14,7 @@ export const FileRepoDiff = (props: any) => {
           <FileContentDiff
             key={index}
             repositoryId={diff.id}
+            repositoryDisplayName={diff.display_name}
             file={file}
             commitFrom={diff.commmit_from}
             commitTo={diff.commit_to}

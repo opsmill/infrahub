@@ -33,11 +33,13 @@ export const Tabs = (props: TabsProps) => {
                   (qspTab && qspTab === tab.name) || (!qspTab && index === 0) // First item is active without QSP
                     ? "border-custom-blue-500 text-custom-blue-600"
                     : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700",
-                  "whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium cursor-pointer"
+                  "flex whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium cursor-pointer"
                 )}>
                 {tab.label}
 
-                {tab.count !== undefined && <Pill className="ml-2">{tab.count}</Pill>}
+                {tab.count !== undefined && (
+                  <Pill className="ml-2">{JSON.stringify(tab.count)}</Pill>
+                )}
               </div>
             ))}
           </nav>

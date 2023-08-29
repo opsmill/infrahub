@@ -1,14 +1,17 @@
+import { ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import Accordion from "../../../components/accordion";
 import { BADGE_TYPES, Badge } from "../../../components/badge";
 import { DateDisplay } from "../../../components/date-display";
+import { Pill } from "../../../components/pill";
 import { QSP } from "../../../config/qsp";
 import { proposedChangedState } from "../../../state/atoms/proposedChanges.atom";
 import { classNames } from "../../../utils/common";
 import { DataDiffElement } from "./data-diff-element";
 import { DiffPill } from "./diff-pill";
+import { DataDiffThread } from "./diff-thread";
 
 export type tDataDiffNodePropertyValue = {
   new: string;
@@ -16,6 +19,7 @@ export type tDataDiffNodePropertyValue = {
 };
 
 export type tDataDiffNodePropertyChange = {
+  path: string;
   type?: string;
   changed_at?: number;
   action: string;
@@ -113,10 +117,12 @@ export type tDataDiffNode = {
   changed_at?: number;
   summary: tDataDiffNodeSummary;
   elements: Map<string, tDataDiffNodeElement>;
+  path: string;
 };
 
 export type tDataDiffNodeProps = {
   node: tDataDiffNode;
+  commentsCount: number;
   branch?: string;
 };
 
@@ -154,7 +160,7 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
   const [proposedChangesDetails] = useAtom(proposedChangedState);
 
   // Branch from props is used to filter the changes to a specific branch
-  const { node, branch } = props;
+  const { node, branch, commentsCount } = props;
 
   const {
     display_label: nodeDisplayLabels,
@@ -163,6 +169,7 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
     changed_at,
     summary,
     elements,
+    path,
   } = node;
 
   // Get all the related branches for this node
@@ -176,8 +183,8 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
   const display_label = nodeDisplayLabels[currentBranch] ?? nodeDisplayLabels?.main;
 
   const renderTitle = () => (
-    <div className="p-1 pr-0 flex flex-1">
-      <div className="flex flex-1">
+    <div className={"p-1 pr-0 flex flex-1 group"}>
+      <div className="flex flex-1 items-center">
         <Badge className="mr-2" type={getBadgeType(action)}>
           {action?.toUpperCase()}
         </Badge>
@@ -185,7 +192,17 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
         <Badge className="mr-2">{kind}</Badge>
 
         <span className="mr-2">{display_label}</span>
+
+        {/* Do not display comment button if we are on the branch details view */}
+        {!branchname && <DataDiffThread path={path} />}
       </div>
+
+      {commentsCount && (
+        <div className="flex items-center">
+          <ChatBubbleLeftRightIcon className="h-5 w-5 mr-2" />
+          <Pill className="mr-2">{JSON.stringify(commentsCount)}</Pill>
+        </div>
+      )}
 
       <DiffPill {...summary} />
 

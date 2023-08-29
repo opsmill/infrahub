@@ -91,11 +91,17 @@ export const ACCOUNT_TOKEN_OBJECT = "AccountToken";
 
 export const PROPOSED_CHANGES_OBJECT = "ProposedChange";
 
+export const PROPOSED_CHANGES_THREAD = "Thread";
+export const PROPOSED_CHANGES_THREAD_OBJECT = "CoreThread";
+
 export const PROPOSED_CHANGES_CHANGE_THREAD = "ChangeThread";
 export const PROPOSED_CHANGES_CHANGE_THREAD_OBJECT = "CoreChangeThread";
 
 export const PROPOSED_CHANGES_FILE_THREAD = "FileThread";
 export const PROPOSED_CHANGES_FILE_THREAD_OBJECT = "CoreFileThread";
+
+export const PROPOSED_CHANGES_OBJECT_THREAD = "ObjectThread";
+export const PROPOSED_CHANGES_OBJECT_THREAD_OBJECT = "CoreObjectThread";
 
 export const ARTIFACT_OBJECT = "Artifact";
 export const PROPOSED_CHANGES_ARTIFACT_THREAD = "ArtifactThread";
@@ -127,3 +133,5 @@ export const MENU_BLACKLIST = [
 export const ATTRIBUTES_BLACKLIST = ["HashedPassword"];
 
 export const COLUMNS_BLACKLIST = ["TextArea", "JSON"];
+
+export const NODE_PATH_BLACKLIST = ["property"];

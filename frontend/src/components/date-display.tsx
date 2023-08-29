@@ -17,7 +17,7 @@ export const DateDisplay = (props: DateDisplayProps) => {
   }
 
   return (
-    <span>
+    <span className="flex items-center flex-wrap">
       <Pill className="text-sm font-normal">{getDateDisplay(date)}</Pill>
 
       <i className="text-xs font-normal ml-2">
