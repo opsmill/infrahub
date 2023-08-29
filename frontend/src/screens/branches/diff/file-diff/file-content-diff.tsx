@@ -100,7 +100,7 @@ const getThread = (threads: any[], change: any, commitFrom?: string, commitTo?: 
 };
 
 export const FileContentDiff = (props: any) => {
-  const { repositoryId, file, commitFrom, commitTo } = props;
+  const { repositoryId, repositoryDisplayName, file, commitFrom, commitTo } = props;
 
   const { proposedchange } = useParams();
   const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
@@ -192,7 +192,7 @@ export const FileContentDiff = (props: any) => {
         displayAddComment.newLineNumber ||
         displayAddComment.oldLineNumber;
 
-      const label = `[${displayAddComment.side}] - ${file.location}:${lineNumber}`;
+      const label = `${repositoryDisplayName} - ${file.location}:${lineNumber}`;
 
       const newThread = {
         change: {
