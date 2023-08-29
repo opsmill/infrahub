@@ -1184,16 +1184,8 @@ core_models = {
             "label": "Check",
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
-                {
-                    "name": "name",
-                    "kind": "Text",
-                    "optional": True
-                },
-                {
-                    "name": "origin",
-                    "kind": "Text",
-                    "optional": False
-                },
+                {"name": "name", "kind": "Text", "optional": True},
+                {"name": "origin", "kind": "Text", "optional": False},
                 {
                     "name": "kind",
                     "kind": "Text",
@@ -1202,17 +1194,13 @@ core_models = {
                     "min_length": DEFAULT_KIND_MIN_LENGTH,
                     "max_length": DEFAULT_KIND_MAX_LENGTH,
                 },
-                {
-                    "name": "message",
-                    "kind": "TextArea",
-                    "optional": True
-                },
+                {"name": "message", "kind": "TextArea", "optional": True},
                 {
                     "name": "conclusion",
                     "kind": "Text",
                     "enum": ValidatorConclusion.available_types(),
                     "default_value": ValidatorConclusion.UNKNOWN.value,
-                    "optional": True
+                    "optional": True,
                 },
                 {
                     "name": "severity",
