@@ -17,10 +17,10 @@ import { Tooltip } from "../../components/tooltip";
 import {
   ACCOUNT_OBJECT,
   DEFAULT_BRANCH_NAME,
-  PROPOSED_CHANGES_CHANGE_THREAD,
   PROPOSED_CHANGES_CHANGE_THREAD_OBJECT,
   PROPOSED_CHANGES_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
+  PROPOSED_CHANGES_THREAD_OBJECT,
 } from "../../config/constants";
 import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
@@ -103,26 +103,21 @@ export const Conversations = () => {
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const navigate = useNavigate();
 
-  const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_CHANGE_THREAD)[0];
   const accountSchemaData = schemaList.filter((s) => s.name === ACCOUNT_OBJECT)[0];
 
-  const queryString = schemaData
-    ? getProposedChangesThreads({
-        id: proposedchange,
-        kind: schemaData.kind,
-        accountKind: accountSchemaData.kind,
-      })
-    : // Empty query to make the gql parsing work
-      // TODO: Find another solution for queries while loading schemaData
-      "query { ok }";
+  const queryString = getProposedChangesThreads({
+    id: proposedchange,
+    kind: PROPOSED_CHANGES_THREAD_OBJECT,
+    accountKind: accountSchemaData.kind,
+  });
 
   const query = gql`
     ${queryString}
   `;
 
-  const { loading, error, data, refetch } = useQuery(query, { skip: !schemaData });
+  const { loading, error, data, refetch } = useQuery(query);
 
-  if (!schemaData || loading) {
+  if (loading) {
     return <LoadingScreen />;
   }
 
@@ -130,7 +125,9 @@ export const Conversations = () => {
     return <ErrorScreen />;
   }
 
-  const threads = data ? data[schemaData.kind]?.edges?.map((edge: any) => edge.node) : [];
+  const threads = data
+    ? data[PROPOSED_CHANGES_THREAD_OBJECT]?.edges?.map((edge: any) => edge.node)
+    : [];
   const reviewers = proposedChangesDetails?.reviewers?.edges.map((edge: any) => edge.node) ?? [];
   const approvers = proposedChangesDetails?.approved_by?.edges.map((edge: any) => edge.node) ?? [];
   const approverId = auth?.data?.sub;
@@ -152,6 +149,9 @@ export const Conversations = () => {
       const newThread = {
         change: {
           id: proposedchange,
+        },
+        label: {
+          value: "Conversation",
         },
         created_at: {
           value: newDate,
@@ -269,7 +269,7 @@ export const Conversations = () => {
 
     try {
       const mutationString = updateObjectWithId({
-        kind: schemaData.kind,
+        kind: PROPOSED_CHANGES_THREAD_OBJECT,
         data: stringifyWithoutQuotes({
           id: proposedchange,
           ...data,
@@ -355,7 +355,7 @@ export const Conversations = () => {
       <div className="flex-1 p-4 overflow-auto">
         <div>
           {threads.map((item: any, index: number) => (
-            <Thread key={index} thread={item} refetch={refetch} />
+            <Thread key={index} thread={item} refetch={refetch} displayContext />
           ))}
         </div>
 
@@ -516,7 +516,7 @@ export const Conversations = () => {
                 aria-hidden="true">
                 <circle cx={3} cy={3} r={3} />
               </svg>
-              {schemaData.kind}
+              {PROPOSED_CHANGES_THREAD_OBJECT}
             </span>
             <div className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-custom-blue-500 ring-1 ring-inset ring-custom-blue-500/10 ml-3">
               <svg

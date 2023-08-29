@@ -92,6 +92,7 @@ export const ACCOUNT_TOKEN_OBJECT = "AccountToken";
 export const PROPOSED_CHANGES_OBJECT = "ProposedChange";
 
 export const PROPOSED_CHANGES_THREAD = "Thread";
+export const PROPOSED_CHANGES_THREAD_OBJECT = "CoreThread";
 
 export const PROPOSED_CHANGES_CHANGE_THREAD = "ChangeThread";
 export const PROPOSED_CHANGES_CHANGE_THREAD_OBJECT = "CoreChangeThread";
@@ -132,3 +133,5 @@ export const MENU_BLACKLIST = [
 export const ATTRIBUTES_BLACKLIST = ["HashedPassword"];
 
 export const COLUMNS_BLACKLIST = ["TextArea", "JSON"];
+
+export const NODE_PATH_BLACKLIST = ["property"];

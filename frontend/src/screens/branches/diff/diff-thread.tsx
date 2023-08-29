@@ -15,7 +15,7 @@ import { AuthContext } from "../../../decorators/withAuth";
 import { getProposedChangesObjectThreads } from "../../../graphql/queries/proposed-changes/getProposedChangesObjectThreads";
 import useQuery from "../../../hooks/useQuery";
 import { schemaState } from "../../../state/atoms/schema.atom";
-import { getThreadTitle } from "../../../utils/diff";
+import { getThreadLabel, getThreadTitle } from "../../../utils/diff";
 import { DiffContext } from "./data-diff";
 import { DataDiffComments } from "./diff-comments";
 
@@ -58,7 +58,7 @@ export const DataDiffThread = (props: tDataDiffThread) => {
 
   const title = (
     <SidePanelTitle title="Conversation">
-      {getThreadTitle(thread, node, currentBranch)}
+      {getThreadTitle(thread, getThreadLabel(node, currentBranch, path))}
     </SidePanelTitle>
   );
 

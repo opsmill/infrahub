@@ -21,6 +21,7 @@ import { branchVar } from "../../../graphql/variables/branchVar";
 import { dateVar } from "../../../graphql/variables/dateVar";
 import useQuery from "../../../hooks/useQuery";
 import { schemaState } from "../../../state/atoms/schema.atom";
+import { getThreadLabel } from "../../../utils/diff";
 import { stringifyWithoutQuotes } from "../../../utils/string";
 import { DiffContext } from "./data-diff";
 
@@ -38,7 +39,7 @@ export const DataDiffComments = (props: tDataDiffComments) => {
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
   const [isLoading, setIsLoading] = useState(false);
-  const diffContext = useContext(DiffContext);
+  const { refetch: contextRefetch, node, currentBranch } = useContext(DiffContext);
 
   const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_OBJECT_THREAD)[0];
 
@@ -67,8 +68,8 @@ export const DataDiffComments = (props: tDataDiffComments) => {
       parentRefetch();
     }
 
-    if (diffContext?.refetch) {
-      diffContext?.refetch();
+    if (contextRefetch) {
+      contextRefetch();
     }
   };
 
@@ -83,11 +84,16 @@ export const DataDiffComments = (props: tDataDiffComments) => {
         return;
       }
 
+      const label = getThreadLabel(node, currentBranch, path);
+
       const newDate = formatISO(new Date());
 
       const newThread = {
         change: {
           id: proposedchange,
+        },
+        label: {
+          value: label,
         },
         object_path: {
           value: path,

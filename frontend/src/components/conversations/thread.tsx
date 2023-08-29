@@ -14,6 +14,7 @@ import { updateObjectWithId } from "../../graphql/mutations/objects/updateObject
 import { branchVar } from "../../graphql/variables/branchVar";
 import { dateVar } from "../../graphql/variables/dateVar";
 import { classNames } from "../../utils/common";
+import { getThreadTitle } from "../../utils/diff";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import { ALERT_TYPES, Alert } from "../alert";
 import { Button } from "../button";
@@ -26,6 +27,7 @@ import { Comment } from "./comment";
 type tThread = {
   thread: any;
   refetch: Function;
+  displayContext?: boolean;
 };
 
 // Sort by date desc
@@ -36,7 +38,7 @@ export const sortByDate = R.sort((a: any, b: any) =>
 );
 
 export const Thread = (props: tThread) => {
-  const { thread, refetch } = props;
+  const { thread, refetch, displayContext } = props;
 
   const auth = useContext(AuthContext);
 
@@ -182,6 +184,8 @@ export const Thread = (props: tThread) => {
         isResolved ? "bg-gray-200" : "bg-custom-white",
         "p-4 m-4 rounded-lg relative"
       )}>
+      {displayContext && getThreadTitle(thread)}
+
       <div className="">
         {sortedComments.map((comment: any, index: number) => (
           <Comment key={index} comment={comment} className={"border border-gray-200"} />
