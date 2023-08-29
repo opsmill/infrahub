@@ -1,5 +1,3 @@
-import uuid
-
 from neo4j import AsyncSession
 
 from infrahub.core import registry
@@ -10,6 +8,7 @@ from infrahub.core.node import Node
 from infrahub.core.query.node import NodeToProcess
 from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
+from infrahub_client import UUIDT
 
 
 async def test_get_one_attribute(session: AsyncSession, default_branch: Branch, criticality_schema):
@@ -313,7 +312,7 @@ async def test_identify_node_class(session, car_schema, default_branch):
     node = NodeToProcess(
         schema=car_schema,
         node_id=33,
-        node_uuid=str(uuid.uuid4()),
+        node_uuid=str(UUIDT()),
         updated_at=Timestamp().to_string(),
         branch=default_branch,
     )

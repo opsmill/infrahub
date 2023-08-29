@@ -1,10 +1,11 @@
 import pytest
-from fastapi.testclient import TestClient
 
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
-from infrahub_client import InfrahubClientSync
+from infrahub_client import Config, InfrahubClientSync
 from infrahub_client.node import InfrahubNodeSync
+
+from .conftest import InfrahubTestClient
 
 # pylint: disable=unused-argument
 
@@ -15,11 +16,12 @@ class TestInfrahubClientSync:
         # pylint: disable=import-outside-toplevel
         from infrahub.server import app
 
-        return TestClient(app)
+        return InfrahubTestClient(app)
 
     @pytest.fixture
     def client(self, test_client):
-        return InfrahubClientSync.init(test_client=test_client)
+        config = Config(sync_requester=test_client.sync_request)
+        return InfrahubClientSync.init(config=config)
 
     @pytest.fixture(scope="class")
     async def base_dataset(self, session):

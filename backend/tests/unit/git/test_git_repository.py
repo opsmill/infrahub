@@ -1,5 +1,4 @@
 import os
-import uuid
 
 import pytest
 from git import Repo
@@ -16,7 +15,7 @@ from infrahub.git import (
     COMMITS_DIRECTORY_NAME,
     TEMPORARY_DIRECTORY_NAME,
     ArtifactGenerateResult,
-    CheckInformation,
+    CheckDefinitionInformation,
     GraphQLQueryInformation,
     InfrahubRepository,
     RepoFileInformation,
@@ -24,12 +23,12 @@ from infrahub.git import (
     extract_repo_file_information,
 )
 from infrahub.utils import find_first_file_in_directory
-from infrahub_client import InfrahubNode
+from infrahub_client import UUIDT, InfrahubNode
 
 
 async def test_directories_props(git_upstream_repo_01, git_repos_dir):
     repo = await InfrahubRepository.new(
-        id=uuid.uuid4(), name=git_upstream_repo_01["name"], location=git_upstream_repo_01["path"]
+        id=UUIDT.new(), name=git_upstream_repo_01["name"], location=git_upstream_repo_01["path"]
     )
 
     assert repo.directory_root == os.path.join(git_repos_dir, git_upstream_repo_01["name"])
@@ -40,7 +39,7 @@ async def test_directories_props(git_upstream_repo_01, git_repos_dir):
 
 async def test_new_empty_dir(git_upstream_repo_01, git_repos_dir):
     repo = await InfrahubRepository.new(
-        id=uuid.uuid4(), name=git_upstream_repo_01["name"], location=git_upstream_repo_01["path"]
+        id=UUIDT.new(), name=git_upstream_repo_01["name"], location=git_upstream_repo_01["path"]
     )
 
     # Check if all the directories are present
@@ -56,7 +55,7 @@ async def test_new_existing_directory(git_upstream_repo_01, git_repos_dir):
     open(os.path.join(git_repos_dir, git_upstream_repo_01["name"], "file1.txt"), mode="w").close()
 
     repo = await InfrahubRepository.new(
-        id=uuid.uuid4(), name=git_upstream_repo_01["name"], location=git_upstream_repo_01["path"]
+        id=UUIDT.new(), name=git_upstream_repo_01["name"], location=git_upstream_repo_01["path"]
     )
 
     # Check if all the directories are present
@@ -71,7 +70,7 @@ async def test_new_existing_file(git_upstream_repo_01, git_repos_dir):
     open(os.path.join(git_repos_dir, git_upstream_repo_01["name"]), mode="w").close()
 
     repo = await InfrahubRepository.new(
-        id=uuid.uuid4(), name=git_upstream_repo_01["name"], location=git_upstream_repo_01["path"]
+        id=UUIDT.new(), name=git_upstream_repo_01["name"], location=git_upstream_repo_01["path"]
     )
 
     # Check if all the directories are present
@@ -83,7 +82,7 @@ async def test_new_existing_file(git_upstream_repo_01, git_repos_dir):
 
 async def test_new_wrong_location(git_upstream_repo_01, git_repos_dir, tmp_path):
     with pytest.raises(RepositoryError) as exc:
-        await InfrahubRepository.new(id=uuid.uuid4(), name=git_upstream_repo_01["name"], location=str(tmp_path))
+        await InfrahubRepository.new(id=UUIDT.new(), name=git_upstream_repo_01["name"], location=str(tmp_path))
 
     assert "An error occured with GitRepository" in str(exc.value)
 
@@ -91,7 +90,7 @@ async def test_new_wrong_location(git_upstream_repo_01, git_repos_dir, tmp_path)
 async def test_new_wrong_branch(git_upstream_repo_01, git_repos_dir, tmp_path):
     with pytest.raises(RepositoryError) as exc:
         await InfrahubRepository.new(
-            id=uuid.uuid4(),
+            id=UUIDT.new(),
             name=git_upstream_repo_01["name"],
             location=git_upstream_repo_01["path"],
             default_branch_name="notvalid",
@@ -763,7 +762,7 @@ def test_extract_repo_file_information():
     assert file_info.module_name == "dir2.dir3.myfile"
 
 
-async def test_create_python_check(
+async def test_create_python_check_definition(
     helper, git_repo_03_w_client: InfrahubRepository, mock_schema_query_01, gql_query_data_01, mock_check_create
 ):
     repo = git_repo_03_w_client
@@ -775,7 +774,7 @@ async def test_create_python_check(
 
     query = InfrahubNode(client=repo.client, schema=gql_schema, data=gql_query_data_01)
 
-    check = CheckInformation(
+    check = CheckDefinitionInformation(
         name=check_class.__name__,
         class_name=check_class.__name__,
         check_class=check_class,
@@ -785,7 +784,7 @@ async def test_create_python_check(
         timeout=check_class.timeout,
         rebase=check_class.rebase,
     )
-    obj = await repo.create_python_check(branch_name="main", check=check)
+    obj = await repo.create_python_check_definition(branch_name="main", check=check)
 
     assert isinstance(obj, InfrahubNode)
 
@@ -796,7 +795,7 @@ async def test_compare_python_check(
     mock_schema_query_01,
     gql_query_data_01,
     gql_query_data_02,
-    check_data_01,
+    check_definition_data_01,
 ):
     repo = git_repo_03_w_client
 
@@ -804,13 +803,13 @@ async def test_compare_python_check(
     check_class = getattr(module, "Check01")
 
     gql_schema = await repo.client.schema.get(kind="CoreGraphQLQuery")
-    check_schema = await repo.client.schema.get(kind="CoreCheck")
+    check_schema = await repo.client.schema.get(kind="CoreCheckDefinition")
 
     query_01 = InfrahubNode(client=repo.client, schema=gql_schema, data=gql_query_data_01)
     query_02 = InfrahubNode(client=repo.client, schema=gql_schema, data=gql_query_data_02)
-    existing_check = InfrahubNode(client=repo.client, schema=check_schema, data=check_data_01)
+    existing_check = InfrahubNode(client=repo.client, schema=check_schema, data=check_definition_data_01)
 
-    check01 = CheckInformation(
+    check01 = CheckDefinitionInformation(
         name=check_class.__name__,
         class_name=check_class.__name__,
         check_class=check_class,
@@ -821,9 +820,9 @@ async def test_compare_python_check(
         rebase=check_class.rebase,
     )
 
-    assert await repo.compare_python_check(existing_check=existing_check, check=check01) is True
+    assert await repo.compare_python_check_definition(existing_check=existing_check, check=check01) is True
 
-    check02 = CheckInformation(
+    check02 = CheckDefinitionInformation(
         name=check_class.__name__,
         class_name=check_class.__name__,
         check_class=check_class,
@@ -835,14 +834,14 @@ async def test_compare_python_check(
     )
 
     assert (
-        await repo.compare_python_check(
+        await repo.compare_python_check_definition(
             existing_check=existing_check,
             check=check02,
         )
         is False
     )
 
-    check03 = CheckInformation(
+    check03 = CheckDefinitionInformation(
         name=check_class.__name__,
         class_name=check_class.__name__,
         check_class=check_class,
@@ -853,4 +852,4 @@ async def test_compare_python_check(
         rebase=check_class.rebase,
     )
 
-    assert await repo.compare_python_check(check=check03, existing_check=existing_check) is False
+    assert await repo.compare_python_check_definition(check=check03, existing_check=existing_check) is False

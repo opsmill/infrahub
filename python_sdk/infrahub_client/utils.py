@@ -30,6 +30,28 @@ def base36decode(data: str) -> int:
     return int(data, 36)
 
 
+def base16decode(data: str) -> int:
+    return int(data, 16)
+
+
+def base16encode(number: int) -> str:
+    if not isinstance(number, (int)):
+        raise TypeError("number must be an integer")
+    is_negative = number < 0
+    number = abs(number)
+
+    alphabet = "0123456789abcdef"
+    base16 = ""
+
+    while number:
+        number, i = divmod(number, 16)
+        base16 = alphabet[i] + base16
+    if is_negative:
+        base16 = "-" + base16
+
+    return base16 or alphabet[0]
+
+
 def get_fixtures_dir() -> Path:
     """Get the directory which stores fixtures that are common to multiple unit/integration tests."""
     here = os.path.abspath(os.path.dirname(__file__))

@@ -58,7 +58,7 @@ class CoreArtifactDefinition(Node):
         rpc_client: InfrahubRpcClient,
         nodes: Optional[List[str]] = None,
         # max_concurrent_execution: int = 5,
-    ) -> List[Node]:
+    ) -> List[str]:
         # pylint: disable=no-member
         transformation: Node = await self.transformation.get_peer(session=session)  # type: ignore[attr-defined]
         query: Node = await transformation.query.get_peer(session=session)  # type: ignore[attr-defined]

@@ -5158,7 +5158,7 @@
                 },
                 {
                     "name": "checks",
-                    "peer": "CoreCheck",
+                    "peer": "CoreCheckDefinition",
                     "kind": "Generic",
                     "label": null,
                     "description": null,
@@ -5893,7 +5893,7 @@
             "kind": "CoreRFile"
         },
         {
-            "name": "Check",
+            "name": "CheckDefinition",
             "namespace": "Core",
             "description": null,
             "default_filter": "name__value",
@@ -6005,6 +6005,11 @@
                     "branch": "aware",
                     "optional": false,
                     "order_weight": 6000
+                },
+                {
+                    "name": "parameters",
+                    "kind": "JSON",
+                    "optional": true
                 }
             ],
             "relationships": [
@@ -6121,7 +6126,7 @@
                     "kind": "Attribute",
                     "label": null,
                     "description": null,
-                    "identifier": "builtintag__corecheck",
+                    "identifier": "builtintag__corecheckdefinition",
                     "inherited": false,
                     "cardinality": "many",
                     "branch": "aware",
@@ -6238,7 +6243,7 @@
                     "order_weight": 11000
                 }
             ],
-            "label": "Check",
+            "label": "Check Definition",
             "inherit_from": [],
             "groups": [],
             "branch": "aware",
@@ -6314,7 +6319,7 @@
                     "description": null
                 }
             ],
-            "kind": "CoreCheck"
+            "kind": "CoreCheckDefinition"
         },
         {
             "name": "TransformPython",

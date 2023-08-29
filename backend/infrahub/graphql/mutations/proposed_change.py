@@ -10,7 +10,6 @@ from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema, ValidatorConclusion, ValidatorState
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import NodeNotFound
 from infrahub.graphql.mutations.main import InfrahubMutationMixin
 from infrahub.message_bus import messages
 
@@ -36,7 +35,7 @@ async def _get_conflicts(session: AsyncSession, proposed_change: Node) -> List[O
 async def create_data_check(session: AsyncSession, proposed_change: Node) -> None:
     conflicts = await _get_conflicts(session=session, proposed_change=proposed_change)
 
-    validator_obj = await Node.init(session=session, schema="InternalDataIntegrityValidator")
+    validator_obj = await Node.init(session=session, schema="CoreDataValidator")
 
     initial_state = ValidatorState.COMPLETED
     initial_conclusion = ValidatorConclusion.SUCCESS
@@ -58,10 +57,14 @@ async def create_data_check(session: AsyncSession, proposed_change: Node) -> Non
     await validator_obj.save(session=session)
 
     for conflict in conflicts:
-        conflict_obj = await Node.init(session=session, schema="InternalDataConflict")
+        conflict_obj = await Node.init(session=session, schema="CoreDataCheck")
         await conflict_obj.new(
             session=session,
+            origin="internal",
+            kind="DataIntegrity",
             validator=validator_obj.id,
+            conclusion="failure",
+            severity="critical",
             paths=[str(conflict)],
             **params,
         )
@@ -69,7 +72,7 @@ async def create_data_check(session: AsyncSession, proposed_change: Node) -> Non
 
     if conflicts:
         updated_validator_obj = await NodeManager.get_one_by_id_or_default_filter(
-            id=validator_obj.id, schema_name="InternalDataIntegrityValidator", session=session
+            id=validator_obj.id, schema_name="CoreDataValidator", session=session
         )
         updated_validator_obj.state.value = ValidatorState.COMPLETED.value
         updated_validator_obj.conclusion.value = ValidatorConclusion.FAILURE.value
@@ -81,7 +84,7 @@ async def update_data_check(session: AsyncSession, proposed_change: Node) -> Non
     validations = await proposed_change.validations.get_peers(session=session)
     data_check = None
     for validation in validations.values():
-        if validation._schema.kind == "InternalDataIntegrityValidator":
+        if validation._schema.kind == "CoreDataValidator":
             data_check = validation
             break
 
@@ -102,22 +105,26 @@ async def update_data_check(session: AsyncSession, proposed_change: Node) -> Non
 
     conflict_objects = []
     for conflict in conflicts:
-        conflict_obj = await Node.init(session=session, schema="InternalDataConflict")
+        conflict_obj = await Node.init(session=session, schema="CoreDataCheck")
         await conflict_obj.new(
             session=session,
+            origin="internal",
+            kind="DataIntegrity",
             validator=data_check.id,
+            conclusion="failure",
+            severity="critical",
             paths=[str(conflict)],
         )
         await conflict_obj.save(session=session)
         conflict_objects.append(conflict_obj.id)
 
-    previous_relationships = await data_check.conflicts.get_relationships(session=session)
+    previous_relationships = await data_check.checks.get_relationships(session=session)
     for rel in previous_relationships:
         await rel.delete(session=session)
 
     data_check.state_value = state.value
     data_check.conclusion.value = conclusion.value
-    data_check.conflicts.update = conflict_objects
+    data_check.checks.update = conflict_objects
     data_check.started_at.value = started_at
     data_check.completed_at.value = completed_at
     await data_check.save(session=session)
@@ -170,6 +177,34 @@ class ProposedChangeRequestRunCheckInput(InputObjectType):
     check_type = CheckType(required=True)
 
 
+class ProposedChangeRequestRefreshArtifactsInput(InputObjectType):
+    id = String(required=True)
+
+
+class ProposedChangeRequestRefreshArtifacts(Mutation):
+    class Arguments:
+        data = ProposedChangeRequestRefreshArtifactsInput(required=True)
+
+    ok = Boolean()
+
+    @classmethod
+    async def mutate(
+        cls,
+        root: dict,  # pylint: disable=unused-argument
+        info: GraphQLResolveInfo,
+        data: Dict[str, Any],
+    ) -> Dict[str, bool]:
+        session: AsyncSession = info.context.get("infrahub_session")
+        rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
+
+        identifier = data.get("id", "")
+        proposed_change = await NodeManager.get_one_by_id_or_default_filter(
+            id=identifier, schema_name="CoreProposedChange", session=session
+        )
+        await rpc_client.send(messages.RequestProposedChangeRefreshArtifacts(proposed_change=proposed_change.id))
+        return {"ok": True}
+
+
 class ProposedChangeRequestRunCheck(Mutation):
     class Arguments:
         data = ProposedChangeRequestRunCheckInput(required=True)
@@ -192,13 +227,6 @@ class ProposedChangeRequestRunCheck(Mutation):
         proposed_change = await NodeManager.get_one_by_id_or_default_filter(
             id=identifier, schema_name="CoreProposedChange", session=session
         )
-        if not proposed_change:
-            raise NodeNotFound(
-                branch_name="-global-",
-                node_type="CoreProposedChange",
-                identifier=identifier,
-                message="The requested proposed change wasn't found",
-            )
         if check_type == CheckType.DATA:
             await rpc_client.send(messages.RequestProposedChangeDataIntegrity(proposed_change=proposed_change.id))
             # Once the data integrity check is handled in the worker nodes the below call will be removed
@@ -212,6 +240,7 @@ class ProposedChangeRequestRunCheck(Mutation):
                 messages.RequestProposedChangeDataIntegrity(proposed_change=proposed_change.id),
                 messages.RequestProposedChangeRepositoryChecks(proposed_change=proposed_change.id),
                 messages.RequestProposedChangeSchemaIntegrity(proposed_change=proposed_change.id),
+                messages.RequestProposedChangeRefreshArtifacts(proposed_change=proposed_change.id),
             ]
             for event in events:
                 await rpc_client.send(event)

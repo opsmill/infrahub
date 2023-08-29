@@ -1,5 +1,3 @@
-import uuid
-
 import pytest
 
 from infrahub.core.attribute import Integer, String
@@ -9,6 +7,7 @@ from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import ValidationError
+from infrahub_client import UUIDT
 
 
 async def test_init(
@@ -215,7 +214,7 @@ async def test_to_graphql(session, default_branch: Branch, criticality_schema, f
     schema = criticality_schema.get_attribute("name")
 
     attr1 = String(
-        id=str(uuid.uuid4()),
+        id=str(UUIDT()),
         name="test",
         schema=schema,
         branch=default_branch,
@@ -236,7 +235,7 @@ async def test_to_graphql(session, default_branch: Branch, criticality_schema, f
     assert await attr1.to_graphql(session=session, fields={"id": None, "is_visible": None}) == expected_data
 
     attr2 = String(
-        id=str(uuid.uuid4()),
+        id=str(UUIDT()),
         name="test",
         schema=schema,
         branch=default_branch,
@@ -264,7 +263,7 @@ async def test_to_graphql_no_fields(session, default_branch: Branch, criticality
     schema = criticality_schema.get_attribute("name")
 
     attr1 = String(
-        id=str(uuid.uuid4()),
+        id=str(UUIDT()),
         name="test",
         schema=schema,
         branch=default_branch,
@@ -284,7 +283,7 @@ async def test_to_graphql_no_fields(session, default_branch: Branch, criticality
     assert await attr1.to_graphql(session=session) == expected_data
 
     attr2 = String(
-        id=str(uuid.uuid4()),
+        id=str(UUIDT()),
         name="test",
         schema=schema,
         branch=default_branch,

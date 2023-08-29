@@ -1,6 +1,5 @@
 import copy
 import logging
-import uuid
 from collections import defaultdict
 from ipaddress import IPv4Network
 
@@ -8,6 +7,7 @@ from neo4j import AsyncSession
 
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub_client import UUIDT
 
 # flake8: noqa
 # pylint: skip-file
@@ -353,7 +353,7 @@ async def load_data(session: AsyncSession):
                     await circuit.new(
                         session=session,
                         circuit_id=circuit_id,
-                        vendor_id=f"{provider_name.upper()}-{str(uuid.uuid4())[:8]}",
+                        vendor_id=f"{provider_name.upper()}-{UUIDT().short()}",
                         provider=provider.id,
                         # type=intf_role.upper(),
                         status=active_status.id,
@@ -480,7 +480,7 @@ async def load_data(session: AsyncSession):
         await obj.new(
             session=session,
             circuit_id=BACKBONE_CIRCUIT_IDS[idx],
-            vendor_id=f"{provider_name.upper()}-{str(uuid.uuid4())[:8]}",
+            vendor_id=f"{provider_name.upper()}-{UUIDT().short()}",
             provider=provider,
             # type="DARK FIBER",
             status=active_status,

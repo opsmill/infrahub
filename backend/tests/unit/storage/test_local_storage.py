@@ -1,8 +1,8 @@
 import os
-import uuid
 from pathlib import Path
 
 from infrahub.storage.local import InfrahubLocalStorage, LocalStorageSettings
+from infrahub_client import UUIDT
 
 
 class set_directory(object):
@@ -57,7 +57,7 @@ async def test_store_file(
     filenames = [item.name for item in os.scandir(files_dir) if item.is_file()]
 
     content_file1 = Path(os.path.join(files_dir, filenames[0])).read_bytes()
-    identifier = str(uuid.uuid4())
+    identifier = str(UUIDT())
     await storage.store(identifier=identifier, content=content_file1)
 
     file1 = Path(os.path.join(local_storage_dir, identifier))

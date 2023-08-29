@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import uuid
 from typing import TYPE_CHECKING, Optional, Tuple, Union
 
 from infrahub.core.query import Query, QueryType
 from infrahub.core.timestamp import Timestamp
+from infrahub_client import UUIDT
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
@@ -65,7 +65,7 @@ class AttributeCreateQuery(AttributeQuery):
             self.query_add_create_owner()
 
         self.params["at"] = self.at.to_string()
-        self.params["uuid"] = str(uuid.uuid4())
+        self.params["uuid"] = str(UUIDT())
         self.params["name"] = self.attr.name
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level

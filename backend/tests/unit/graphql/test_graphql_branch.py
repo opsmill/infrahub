@@ -32,8 +32,8 @@ async def repos_and_checks_in_main(session, register_core_models_schema):
     await query01.new(session=session, name="my_query", query="query { check { id } }")
     await query01.save(session=session)
 
-    check01 = await Node.init(session=session, schema="CoreCheck")
-    await check01.new(
+    checkdef01 = await Node.init(session=session, schema="CoreCheckDefinition")
+    await checkdef01.new(
         session=session,
         name="check01",
         query=query01,
@@ -42,10 +42,10 @@ async def repos_and_checks_in_main(session, register_core_models_schema):
         class_name="Check01",
         rebase=True,
     )
-    await check01.save(session=session)
+    await checkdef01.save(session=session)
 
-    check02 = await Node.init(session=session, schema="CoreCheck")
-    await check02.new(
+    checkdef02 = await Node.init(session=session, schema="CoreCheckDefinition")
+    await checkdef02.new(
         session=session,
         name="check02",
         query=query01,
@@ -54,7 +54,7 @@ async def repos_and_checks_in_main(session, register_core_models_schema):
         class_name="Check02",
         rebase=True,
     )
-    await check02.save(session=session)
+    await checkdef02.save(session=session)
 
 
 async def test_branch_create(db, session, default_branch: Branch, car_person_schema, register_core_models_schema):
@@ -368,85 +368,6 @@ async def test_branch_validate(db, session, base_dataset_02, register_core_model
     assert result.data["BranchValidate"]["object"]["id"] == str(branch1.uuid)
 
 
-async def test_branch_validate_with_repositories_success(
-    db, session, rpc_client, base_dataset_02, repos_and_checks_in_main, register_core_models_schema
-):
-    mock_response = InfrahubRPCResponse(status=RPCStatusCode.OK.value, response={"passed": True, "errors": []})
-    await rpc_client.add_response(
-        response=mock_response, message_type=MessageType.CHECK, action=CheckMessageAction.PYTHON
-    )
-    await rpc_client.add_response(
-        response=mock_response, message_type=MessageType.CHECK, action=CheckMessageAction.PYTHON
-    )
-
-    branch2 = await create_branch(branch_name="branch2", session=session)
-
-    query = """
-    mutation {
-        BranchValidate(data: { name: "branch2" }) {
-            ok
-            object {
-                id
-            }
-        }
-    }
-    """
-    result = await graphql(
-        await generate_graphql_schema(branch=branch2, session=session, include_subscription=False),
-        source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_rpc_client": rpc_client},
-        root_value=None,
-        variable_values={},
-    )
-
-    assert result.errors is None
-    assert result.data["BranchValidate"]["ok"] is True
-    assert result.data["BranchValidate"]["object"]["id"] == str(branch2.uuid)
-
-    assert await rpc_client.ensure_all_responses_have_been_delivered()
-
-
-async def test_branch_validate_with_repositories_failed(
-    db, session, rpc_client, base_dataset_02, repos_and_checks_in_main, register_core_models_schema
-):
-    mock_response = InfrahubRPCResponse(
-        status=RPCStatusCode.OK.value,
-        response={"passed": False, "errors": [{"branch": "main", "level": "ERROR", "message": "Not Valid"}]},
-    )
-    await rpc_client.add_response(
-        response=mock_response, message_type=MessageType.CHECK, action=CheckMessageAction.PYTHON
-    )
-    await rpc_client.add_response(
-        response=mock_response, message_type=MessageType.CHECK, action=CheckMessageAction.PYTHON
-    )
-
-    branch2 = await create_branch(branch_name="branch2", session=session)
-
-    query = """
-    mutation {
-        BranchValidate(data: { name: "branch2" }) {
-            ok
-            object {
-                id
-            }
-        }
-    }
-    """
-    result = await graphql(
-        await generate_graphql_schema(branch=branch2, session=session, include_subscription=False),
-        source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_rpc_client": rpc_client},
-        root_value=None,
-        variable_values={},
-    )
-
-    assert result.errors is None
-    assert result.data["BranchValidate"]["ok"] is False
-    assert result.data["BranchValidate"]["object"]["id"] == str(branch2.uuid)
-
-    assert await rpc_client.ensure_all_responses_have_been_delivered()
-
-
 async def test_branch_merge(db, session, base_dataset_02, register_core_models_schema):
     branch1 = await Branch.get_by_name(session=session, name="branch1")
 
@@ -471,50 +392,6 @@ async def test_branch_merge(db, session, base_dataset_02, register_core_models_s
     assert result.errors is None
     assert result.data["BranchMerge"]["ok"] is True
     assert result.data["BranchMerge"]["object"]["id"] == str(branch1.uuid)
-
-
-async def test_branch_merge_with_repositories(db, session, rpc_client, base_dataset_02, repos_and_checks_in_main):
-    branch2 = await create_branch(branch_name="branch2", session=session)
-
-    p1 = await Node.init(session=session, schema="TestPerson", branch=branch2)
-    await p1.new(session=session, name="bob", height=155)
-    await p1.save(session=session)
-
-    mock_response = InfrahubRPCResponse(status=RPCStatusCode.OK.value)
-    await rpc_client.add_response(response=mock_response, message_type=MessageType.GIT, action=GitMessageAction.MERGE)
-    await rpc_client.add_response(response=mock_response, message_type=MessageType.GIT, action=GitMessageAction.MERGE)
-
-    mock_response = InfrahubRPCResponse(status=RPCStatusCode.OK.value, response={"passed": True, "errors": []})
-    await rpc_client.add_response(
-        response=mock_response, message_type=MessageType.CHECK, action=CheckMessageAction.PYTHON
-    )
-    await rpc_client.add_response(
-        response=mock_response, message_type=MessageType.CHECK, action=CheckMessageAction.PYTHON
-    )
-
-    query = """
-    mutation {
-        BranchMerge(data: { name: "branch2" }) {
-            ok
-            object {
-                id
-            }
-        }
-    }
-    """
-    result = await graphql(
-        await generate_graphql_schema(branch=branch2, session=session, include_subscription=False),
-        source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_rpc_client": rpc_client},
-        root_value=None,
-        variable_values={},
-    )
-
-    assert result.errors is None
-    assert result.data["BranchMerge"]["ok"] is True
-    assert result.data["BranchMerge"]["object"]["id"] == str(branch2.uuid)
-
-    assert await rpc_client.ensure_all_responses_have_been_delivered()
 
 
 @pytest.mark.xfail(reason="FIXME: Not working right now, we should probably deprecate the diff in GraphQL anyway")
