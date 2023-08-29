@@ -105,8 +105,6 @@ export const BadgeCircle = (props: any) => {
     return;
   };
 
-  console.log("children: ", children);
-
   return (
     <span
       className={classNames(
