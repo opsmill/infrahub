@@ -1182,14 +1182,25 @@ core_models = {
             "namespace": "Core",
             "description": "",
             "label": "Check",
-            # "display_labels": ["created_at__value"],
-            # "order_by": ["created_at__value"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
                 {
                     "name": "name",
                     "kind": "Text",
                     "optional": True
+                },
+                {
+                    "name": "origin",
+                    "kind": "Text",
+                    "optional": False
+                },
+                {
+                    "name": "kind",
+                    "kind": "Text",
+                    "regex": "^[A-Z][a-zA-Z0-9]+$",
+                    "optional": False,
+                    "min_length": DEFAULT_KIND_MIN_LENGTH,
+                    "max_length": DEFAULT_KIND_MAX_LENGTH,
                 },
                 {
                     "name": "message",
@@ -1218,7 +1229,7 @@ core_models = {
                     "peer": "CoreValidator",
                     "identifier": "validator__check",
                     "kind": "Parent",
-                    "optional": True,
+                    "optional": False,
                     "cardinality": "one",
                 },
             ],
@@ -1717,7 +1728,6 @@ core_models = {
             "inherit": ["CoreCheck"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
-                {"name": "name", "kind": "Text", "optional": True},
                 {"name": "files", "kind": "List", "optional": True},
                 {"name": "commit", "kind": "Text", "optional": True},
             ],
@@ -1786,14 +1796,6 @@ core_models = {
                     "branch": BranchSupportType.AGNOSTIC.value,
                 },
             ],
-        },
-        {
-            "name": "StandardValidator",
-            "namespace": "Core",
-            "description": "A Standard Validator",
-            "label": "Standard Validator",
-            "inherit_from": ["CoreValidator"],
-            "branch": BranchSupportType.AGNOSTIC.value,
         },
         {
             "name": "CheckDefinition",
