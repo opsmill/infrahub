@@ -139,7 +139,7 @@ async def test_create_query_with_vars(db, session, default_branch, register_core
     assert query2.height.value == 11
     assert query2.operations.value == ["mutation", "query"]
     assert query2.variables.value == [{"default_value": None, "name": "myvar", "required": False, "type": "String"}]
-    assert query2.models.value == ["CoreRepository"]
+    assert query2.models.value == ["BuiltinTag", "CoreRepository"]
 
 
 async def test_update_query(db, session, default_branch, register_core_models_schema):

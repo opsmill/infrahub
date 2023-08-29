@@ -19,30 +19,18 @@ if TYPE_CHECKING:
     import abc
 
 
-# async def extract_global_kwargs(kwargs: dict) -> Tuple[Timestamp, Branch, Node]:
-#     """Extract the timestamp, the branch and the account from the kwargs from GraphQL"""
-#     at = Timestamp(kwargs.get("at", None))
-
-#     branch = get_branch(branch=kwargs.get("branch"))
-#     rebase = kwargs.get("rebase", False)s
-#     branch.ephemeral_rebase = rebase
-
-#     account = kwargs.get("account", None)
-
-#     return at, branch, account
-
-
-def dict_depth(dic, level=1):
-    if not isinstance(dic, dict) or not dic:
+def calculate_dict_depth(data: dict, level: int = 1) -> int:
+    """Calculate the depth of a nested dictionnary recursively."""
+    if not isinstance(data, dict) or not data:
         return level
-    return max(dict_depth(dic[key], level + 1) for key in dic)
+    return max(calculate_dict_depth(data=data[key], level=level + 1) for key in data)
 
 
-def dict_height(dic, cnt=0):
-    for key in dic:
-        if isinstance(dic[key], dict):
-            # calls repeatedly
-            cnt = dict_height(dic=dic[key], cnt=cnt + 1)
+def calculate_dict_height(data: dict, cnt: int = 0) -> int:
+    """Calculate the number of fields (height) in a nested dictionnary recursively."""
+    for key in data:
+        if isinstance(data[key], dict):
+            cnt = calculate_dict_height(data=data[key], cnt=cnt + 1)
         else:
             cnt += 1
     return cnt

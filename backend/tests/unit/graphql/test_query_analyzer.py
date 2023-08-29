@@ -196,7 +196,7 @@ async def test_get_variables(
 
     gqa = GraphQLQueryAnalyzer(query=query_05)
     assert [var.dict() for var in gqa.variables] == [
-        {"default_value": None, "name": "person", "required": True, "type": "String"}
+        {"default_value": None, "name": "myvar", "required": False, "type": "String"}
     ]
 
     gqa = GraphQLQueryAnalyzer(query=query_06)

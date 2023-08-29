@@ -194,7 +194,7 @@ async def gqlquery02(session: AsyncSession, repo01: Node, tag_blue: Node, tag_re
     await obj.new(
         session=session,
         name="query02",
-        query="query { device { name { value }}}",
+        query="query { CoreRepository { edges { node { name { value }}}}}",
         repository=repo01,
         tags=[tag_blue, tag_red],
     )

@@ -34,7 +34,7 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
         branch: Branch,
     ) -> Dict[str, Any]:
         query_value = data.get("query", {}).get("value", None)
-        if not query_value:
+        if query_value is None:
             return {}
 
         query_info = {}

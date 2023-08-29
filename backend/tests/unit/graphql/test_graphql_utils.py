@@ -60,6 +60,8 @@ async def test_schema_models(session: AsyncSession, default_branch: Branch, car_
         "NestedPaginatedTestCar",
         "PaginatedTestPerson",
         "TestCar",
+        "TestElectricCar",
+        "TestGazCar",
         "TestPerson",
     }
     assert await extract_schema_models(fields=fields, schema=schema.query_type, root_schema=schema) == expected_response

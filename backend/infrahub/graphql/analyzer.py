@@ -13,8 +13,8 @@ from pydantic import BaseModel
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.graphql.utils import (
-    dict_depth,
-    dict_height,
+    calculate_dict_depth,
+    calculate_dict_height,
     extract_fields,
     extract_schema_models,
 )
@@ -80,12 +80,12 @@ class GraphQLQueryAnalyzer:
     async def calculate_depth(self) -> int:
         """Number of nested levels in the query"""
         fields = await self.get_fields()
-        return dict_depth(fields)
+        return calculate_dict_depth(data=fields)
 
     async def calculate_height(self) -> int:
         """Total number of fields requested in the query"""
         fields = await self.get_fields()
-        return dict_height(dic=fields)
+        return calculate_dict_height(data=fields)
 
     async def get_fields(self) -> Dict[str, Any]:
         if not self._fields:
@@ -96,9 +96,12 @@ class GraphQLQueryAnalyzer:
         return self._fields
 
     async def get_models_in_use(self) -> Set[str]:
+        """List of Infrahub models that are referenced in the query."""
         graphql_types = set()
         models = set()
-        # TODO Check if schema AND branch are present
+
+        if not self.schema and not self.branch:
+            raise ValueError("Schema and Branch msut be provided to extract the models in use.")
 
         for definition in self.document.definitions:
             fields = await extract_fields(definition.selection_set)
