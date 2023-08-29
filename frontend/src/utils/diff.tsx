@@ -1,7 +1,9 @@
 import { ChevronRightIcon } from "@heroicons/react/24/outline";
 import { BADGE_TYPES, Badge } from "../components/badge";
+import { BadgeCircle, CIRCLE_BADGE_TYPES } from "../components/badge-circle";
 import { Tooltip } from "../components/tooltip";
 import {
+  tDataDiffNode,
   tDataDiffNodePeerValue,
   tDataDiffNodePropertyChange,
 } from "../screens/branches/diff/data-diff-node";
@@ -135,4 +137,30 @@ export const diffPeerContent = (
       </div>
     );
   }
+};
+
+export const getThreadTitle = (thread?: any, node?: tDataDiffNode, currentBranch?: string) => {
+  if (thread?.label) {
+    return (
+      <div className="flex">
+        {thread?.label && (
+          <BadgeCircle type={CIRCLE_BADGE_TYPES.VALIDATE}>{thread?.label}</BadgeCircle>
+        )}
+      </div>
+    );
+  }
+
+  if (node?.display_label && currentBranch && node?.display_label[currentBranch]) {
+    return (
+      <div className="flex">
+        {node?.display_label && currentBranch && node?.display_label[currentBranch] && (
+          <BadgeCircle type={CIRCLE_BADGE_TYPES.VALIDATE}>
+            {node?.display_label[currentBranch]}
+          </BadgeCircle>
+        )}
+      </div>
+    );
+  }
+
+  return null;
 };

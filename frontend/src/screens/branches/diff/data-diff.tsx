@@ -17,11 +17,15 @@ import { proposedChangedState } from "../../../state/atoms/proposedChanges.atom"
 import { schemaState } from "../../../state/atoms/schema.atom";
 import { fetchUrl } from "../../../utils/fetch";
 import LoadingScreen from "../../loading-screen/loading-screen";
-import { DataDiffNode } from "./data-diff-node";
+import { DataDiffNode, tDataDiffNode } from "./data-diff-node";
 
-export const DiffContext = createContext({
-  refetch: () => {},
-});
+type tDiffContext = {
+  refetch?: Function;
+  node?: tDataDiffNode;
+  currentBranch?: string;
+};
+
+export const DiffContext = createContext<tDiffContext>({});
 
 export const DataDiff = () => {
   const { branchname, proposedchange } = useParams();
@@ -111,9 +115,14 @@ export const DataDiff = () => {
     // Provide threads and comments counts to display in the top level node
     const commentsCount = objectComments && objectComments[node?.path];
 
+    const currentBranch =
+      branch ?? branchname ?? proposedChangesDetails?.source_branch?.value ?? "main";
+
     const context = {
       // Provide refetch function to update count on comment
       refetch,
+      node,
+      currentBranch,
     };
 
     return (

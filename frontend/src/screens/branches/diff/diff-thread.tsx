@@ -4,6 +4,7 @@ import { useAtom } from "jotai";
 import { useContext, useState } from "react";
 import { useParams } from "react-router-dom";
 import { BUTTON_TYPES, RoundedButton } from "../../../components/rounded-button";
+import { SidePanelTitle } from "../../../components/sidepanel-title";
 import SlideOver from "../../../components/slide-over";
 import { Tooltip } from "../../../components/tooltip";
 import {
@@ -14,6 +15,8 @@ import { AuthContext } from "../../../decorators/withAuth";
 import { getProposedChangesObjectThreads } from "../../../graphql/queries/proposed-changes/getProposedChangesObjectThreads";
 import useQuery from "../../../hooks/useQuery";
 import { schemaState } from "../../../state/atoms/schema.atom";
+import { getThreadTitle } from "../../../utils/diff";
+import { DiffContext } from "./data-diff";
 import { DataDiffComments } from "./diff-comments";
 
 type tDataDiffThread = {
@@ -26,6 +29,7 @@ export const DataDiffThread = (props: tDataDiffThread) => {
   const { proposedchange } = useParams();
   const [schemaList] = useAtom(schemaState);
   const auth = useContext(AuthContext);
+  const { node, currentBranch } = useContext(DiffContext);
   const [showThread, setShowThread] = useState(false);
 
   const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_OBJECT_THREAD)[0];
@@ -51,6 +55,12 @@ export const DataDiffThread = (props: tDataDiffThread) => {
   if (loading || error) {
     return null;
   }
+
+  const title = (
+    <SidePanelTitle title="Conversation">
+      {getThreadTitle(thread, node, currentBranch)}
+    </SidePanelTitle>
+  );
 
   return (
     <div className="ml-2">
@@ -89,7 +99,7 @@ export const DataDiffThread = (props: tDataDiffThread) => {
         </div>
       )}
 
-      <SlideOver title={"Conversation"} open={showThread} setOpen={setShowThread}>
+      <SlideOver title={title} open={showThread} setOpen={setShowThread}>
         <DataDiffComments path={path} refetch={refetch} />
       </SlideOver>
     </div>
