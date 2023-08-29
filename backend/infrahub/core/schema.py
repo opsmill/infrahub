@@ -1070,10 +1070,10 @@ core_models = {
             "namespace": "Core",
             "description": "A thread on a Proposed Change",
             "label": "Thread",
-            "display_labels": ["created_at__value"],
             "order_by": ["created_at__value"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
+                {"name": "label", "kind": "Text", "optional": True},
                 {"name": "resolved", "kind": "Boolean", "default_value": False},
                 {"name": "created_at", "kind": "DateTime", "optional": True},
             ],
