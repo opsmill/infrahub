@@ -1683,7 +1683,7 @@ core_models = {
             "namespace": "Core",
             "description": "A check related to some Data",
             "label": "Data Check",
-            "inherit": ["CoreCheck"],
+            "inherit_from": ["CoreCheck"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
                 {"name": "paths", "kind": "List"},
@@ -1694,7 +1694,7 @@ core_models = {
             "namespace": "Core",
             "description": "A standard check",
             "label": "Standard Check",
-            "inherit": ["CoreCheck"],
+            "inherit_from": ["CoreCheck"],
             "branch": BranchSupportType.AGNOSTIC.value,
         },
         {
@@ -1702,7 +1702,7 @@ core_models = {
             "namespace": "Core",
             "description": "A check related to the schema",
             "label": "Schema Check",
-            "inherit": ["CoreCheck"],
+            "inherit_from": ["CoreCheck"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
                 {"name": "paths", "kind": "List"},
@@ -1713,7 +1713,7 @@ core_models = {
             "namespace": "Core",
             "description": "A check related to a file in a Git Repository",
             "label": "File Check",
-            "inherit": ["CoreCheck"],
+            "inherit_from": ["CoreCheck"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
                 {"name": "files", "kind": "List", "optional": True},
@@ -1725,7 +1725,7 @@ core_models = {
             "namespace": "Core",
             "description": "A check related to an artifact",
             "label": "Artifact Check",
-            "inherit": ["CoreCheck"],
+            "inherit_from": ["CoreCheck"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
                 {"name": "artifact_id", "kind": "Text", "optional": True},
