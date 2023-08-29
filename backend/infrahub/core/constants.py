@@ -92,6 +92,14 @@ class RelationshipStatus(InfrahubStringEnum):
     DELETED = "deleted"
 
 
+class Severity(InfrahubStringEnum):
+    SUCCESS = "success"
+    INFO = "info"
+    WARNING = "warning"
+    ERROR = "error"
+    CRITICAL = "critical"
+
+
 class ValidatorConclusion(InfrahubStringEnum):
     UNKNOWN = "unknown"
     FAILURE = "failure"

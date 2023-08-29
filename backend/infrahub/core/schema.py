@@ -7,7 +7,20 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
 from pydantic import BaseModel, Extra, Field, root_validator, validator
 
-from infrahub.core import constants as c
+from infrahub.core.constants import (
+    AccountRole,
+    AccountType,
+    ArtifactStatus,
+    BranchSupportType,
+    ContentType,
+    CriticalityLevel,
+    FilterSchemaKind,
+    RelationshipCardinality,
+    RelationshipKind,
+    Severity,
+    ValidatorConclusion,
+    ValidatorState,
+)
 from infrahub.core import registry
 from infrahub.core.query import QueryNode, QueryRel
 from infrahub.core.relationship import Relationship
@@ -204,7 +217,7 @@ class BaseSchemaModel(BaseModel):
 
 class FilterSchema(BaseSchemaModel):
     name: str
-    kind: c.FilterSchemaKind
+    kind: FilterSchemaKind
     enum: Optional[List] = None
     object_kind: Optional[str] = None
     description: Optional[str] = None
@@ -226,7 +239,7 @@ class AttributeSchema(BaseSchemaModel):
     min_length: Optional[int]
     inherited: bool = False
     unique: bool = False
-    branch: Optional[c.BranchSupportType]
+    branch: Optional[BranchSupportType]
     optional: bool = False
     order_weight: Optional[int]
 
@@ -255,13 +268,13 @@ class RelationshipSchema(BaseSchemaModel):
     id: Optional[str]
     name: str = Field(regex=NODE_NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
     peer: str = Field(regex=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH)
-    kind: c.RelationshipKind = c.RelationshipKind.GENERIC
+    kind: RelationshipKind = RelationshipKind.GENERIC
     label: Optional[str]
     description: Optional[str] = Field(max_length=DEFAULT_DESCRIPTION_LENGTH)
     identifier: Optional[str] = Field(max_length=DEFAULT_REL_IDENTIFIER_LENGTH)
     inherited: bool = False
-    cardinality: c.RelationshipCardinality = c.RelationshipCardinality.MANY
-    branch: Optional[c.BranchSupportType]
+    cardinality: RelationshipCardinality = RelationshipCardinality.MANY
+    branch: Optional[BranchSupportType]
     optional: bool = True
     filters: List[FilterSchema] = Field(default_factory=list)
     order_weight: Optional[int]
@@ -383,7 +396,7 @@ class BaseNodeSchema(BaseSchemaModel):
     )
     description: Optional[str] = Field(max_length=DEFAULT_DESCRIPTION_LENGTH)
     default_filter: Optional[str]
-    branch: c.BranchSupportType = c.BranchSupportType.AWARE
+    branch: BranchSupportType = BranchSupportType.AWARE
     order_by: Optional[List[str]]
     display_labels: Optional[List[str]]
     attributes: List[AttributeSchema] = Field(default_factory=list)
@@ -642,7 +655,7 @@ internal_schema = {
         {
             "name": "Node",
             "namespace": "Schema",
-            "branch": c.BranchSupportType.AWARE.value,
+            "branch": BranchSupportType.AWARE.value,
             "default_filter": "name__value",
             "display_labels": ["name__value"],
             "attributes": [
@@ -679,8 +692,8 @@ internal_schema = {
                 {
                     "name": "branch",
                     "kind": "Text",
-                    "enum": c.BranchSupportType.available_types(),
-                    "default_value": c.BranchSupportType.AWARE.value,
+                    "enum": BranchSupportType.available_types(),
+                    "default_value": BranchSupportType.AWARE.value,
                     "optional": True,
                 },
                 {
@@ -721,7 +734,7 @@ internal_schema = {
                     "kind": "Component",
                     "identifier": "schema__node__attributes",
                     "cardinality": "many",
-                    "branch": c.BranchSupportType.AWARE.value,
+                    "branch": BranchSupportType.AWARE.value,
                     "optional": True,
                 },
                 {
@@ -730,7 +743,7 @@ internal_schema = {
                     "kind": "Component",
                     "identifier": "schema__node__relationships",
                     "cardinality": "many",
-                    "branch": c.BranchSupportType.AWARE.value,
+                    "branch": BranchSupportType.AWARE.value,
                     "optional": True,
                 },
             ],
@@ -738,7 +751,7 @@ internal_schema = {
         {
             "name": "Attribute",
             "namespace": "Schema",
-            "branch": c.BranchSupportType.AWARE.value,
+            "branch": BranchSupportType.AWARE.value,
             "default_filter": None,
             "display_labels": ["name__value"],
             "attributes": [
@@ -775,7 +788,7 @@ internal_schema = {
                 {
                     "name": "branch",
                     "kind": "Text",
-                    "enum": c.BranchSupportType.available_types(),
+                    "enum": BranchSupportType.available_types(),
                     "optional": True,
                 },
                 {"name": "order_weight", "kind": "Number", "optional": True},
@@ -793,7 +806,7 @@ internal_schema = {
                     "kind": "Parent",
                     "identifier": "schema__node__attributes",
                     "cardinality": "one",
-                    "branch": c.BranchSupportType.AWARE.value,
+                    "branch": BranchSupportType.AWARE.value,
                     "optional": False,
                 }
             ],
@@ -801,7 +814,7 @@ internal_schema = {
         {
             "name": "Relationship",
             "namespace": "Schema",
-            "branch": c.BranchSupportType.AWARE.value,
+            "branch": BranchSupportType.AWARE.value,
             "default_filter": None,
             "display_labels": ["name__value"],
             "attributes": [
@@ -822,13 +835,13 @@ internal_schema = {
                 {
                     "name": "kind",
                     "kind": "Text",
-                    "enum": c.RelationshipKind.available_types(),
+                    "enum": RelationshipKind.available_types(),
                     "default_value": "Generic",
                 },
                 {"name": "label", "kind": "Text", "optional": True, "max_length": DEFAULT_NAME_MAX_LENGTH},
                 {"name": "description", "kind": "Text", "optional": True, "max_length": DEFAULT_DESCRIPTION_LENGTH},
                 {"name": "identifier", "kind": "Text", "max_length": DEFAULT_REL_IDENTIFIER_LENGTH, "optional": True},
-                {"name": "cardinality", "kind": "Text", "enum": c.RelationshipCardinality.available_types()},
+                {"name": "cardinality", "kind": "Text", "enum": RelationshipCardinality.available_types()},
                 {"name": "order_weight", "kind": "Number", "optional": True},
                 {
                     "name": "optional",
@@ -839,7 +852,7 @@ internal_schema = {
                 {
                     "name": "branch",
                     "kind": "Text",
-                    "enum": c.BranchSupportType.available_types(),
+                    "enum": BranchSupportType.available_types(),
                     "optional": True,
                 },
                 {
@@ -856,7 +869,7 @@ internal_schema = {
                     "kind": "Parent",
                     "identifier": "schema__node__relationships",
                     "cardinality": "one",
-                    "branch": c.BranchSupportType.AWARE.value,
+                    "branch": BranchSupportType.AWARE.value,
                     "optional": False,
                 }
             ],
@@ -864,7 +877,7 @@ internal_schema = {
         {
             "name": "Generic",
             "namespace": "Schema",
-            "branch": c.BranchSupportType.AWARE.value,
+            "branch": BranchSupportType.AWARE.value,
             "default_filter": "name__value",
             "display_labels": ["label__value"],
             "attributes": [
@@ -892,8 +905,8 @@ internal_schema = {
                 {
                     "name": "branch",
                     "kind": "Text",
-                    "enum": c.BranchSupportType.available_types(),
-                    "default_value": c.BranchSupportType.AWARE.value,
+                    "enum": BranchSupportType.available_types(),
+                    "default_value": BranchSupportType.AWARE.value,
                     "optional": True,
                 },
                 {
@@ -928,7 +941,7 @@ internal_schema = {
                     "peer": "SchemaAttribute",
                     "identifier": "schema__node__attributes",
                     "cardinality": "many",
-                    "branch": c.BranchSupportType.AWARE.value,
+                    "branch": BranchSupportType.AWARE.value,
                     "optional": True,
                 },
                 {
@@ -936,7 +949,7 @@ internal_schema = {
                     "peer": "SchemaRelationship",
                     "identifier": "schema__node__relationships",
                     "cardinality": "many",
-                    "branch": c.BranchSupportType.AWARE.value,
+                    "branch": BranchSupportType.AWARE.value,
                     "optional": True,
                 },
             ],
@@ -944,7 +957,7 @@ internal_schema = {
         {
             "name": "Group",
             "namespace": "Schema",
-            "branch": c.BranchSupportType.AWARE.value,
+            "branch": BranchSupportType.AWARE.value,
             "default_filter": "name__value",
             "display_labels": ["name__value"],
             "attributes": [
@@ -1007,7 +1020,7 @@ core_models = {
             "label": "Comment",
             "display_labels": ["text__value"],
             "order_by": ["created_at__value"],
-            "branch": c.BranchSupportType.AGNOSTIC.value,
+            "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
                 {"name": "text", "kind": "TextArea", "unique": False, "optional": False},
                 {"name": "created_at", "kind": "DateTime", "optional": True},
@@ -1017,7 +1030,7 @@ core_models = {
                     "name": "created_by",
                     "peer": "CoreAccount",
                     "optional": True,
-                    "branch": c.BranchSupportType.AGNOSTIC.value,
+                    "branch": BranchSupportType.AGNOSTIC.value,
                     "cardinality": "one",
                 },
             ],
@@ -1028,7 +1041,7 @@ core_models = {
             "description": "A thread on a Proposed Change",
             "label": "Thread",
             "order_by": ["created_at__value"],
-            "branch": c.BranchSupportType.AGNOSTIC.value,
+            "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
                 {"name": "label", "kind": "Text", "optional": True},
                 {"name": "resolved", "kind": "Boolean", "default_value": False},
@@ -1055,7 +1068,7 @@ core_models = {
                     "name": "created_by",
                     "peer": "CoreAccount",
                     "optional": True,
-                    "branch": c.BranchSupportType.AGNOSTIC.value,
+                    "branch": BranchSupportType.AGNOSTIC.value,
                     "cardinality": "one",
                 },
             ],
@@ -1068,7 +1081,7 @@ core_models = {
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["label__value"],
-            "branch": c.BranchSupportType.AWARE.value,
+            "branch": BranchSupportType.AWARE.value,
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "label", "kind": "Text", "optional": True},
@@ -1098,19 +1111,19 @@ core_models = {
             "label": "Validator",
             "order_by": ["started_at__value"],
             "display_labels": ["state__value", "conclusion__value", "started_at__value"],
-            "branch": c.BranchSupportType.AGNOSTIC.value,
+            "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
                 {
                     "name": "state",
                     "kind": "Text",
-                    "enum": c.ValidatorState.available_types(),
-                    "default_value": c.ValidatorState.QUEUED.value,
+                    "enum": ValidatorState.available_types(),
+                    "default_value": ValidatorState.QUEUED.value,
                 },
                 {
                     "name": "conclusion",
                     "kind": "Text",
-                    "enum": c.ValidatorConclusion.available_types(),
-                    "default_value": c.ValidatorConclusion.UNKNOWN.value,
+                    "enum": ValidatorConclusion.available_types(),
+                    "default_value": ValidatorConclusion.UNKNOWN.value,
                 },
                 {"name": "completed_at", "kind": "DateTime", "optional": True},
                 {"name": "started_at", "kind": "DateTime", "optional": True},
@@ -1162,8 +1175,8 @@ core_models = {
                 {
                     "name": "severity",
                     "kind": "Text",
-                    "enum": ["success", "info", "warning", "error", "critical"],
-                    "default_value": "info",
+                    "enum": Severity.available_types(),
+                    "default_value": Severity.INFO.value,
                     "optional": True,
                 },
                 {"name": "created_at", "kind": "DateTime", "optional": True},
@@ -1187,7 +1200,7 @@ core_models = {
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["label__value"],
-            "branch": c.BranchSupportType.AWARE.value,
+            "branch": BranchSupportType.AWARE.value,
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "label", "kind": "Text", "optional": True},
@@ -1241,7 +1254,7 @@ core_models = {
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
-            "branch": c.BranchSupportType.AWARE.value,
+            "branch": BranchSupportType.AWARE.value,
             "inherit_from": ["CoreGroup"],
         },
         {
@@ -1252,10 +1265,10 @@ core_models = {
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
-            "branch": c.BranchSupportType.AWARE.value,
+            "branch": BranchSupportType.AWARE.value,
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
-                {"name": "level", "kind": "Number", "enum": c.CriticalityLevel.available_types()},
+                {"name": "level", "kind": "Number", "enum": CriticalityLevel.available_types()},
                 {"name": "description", "kind": "Text", "optional": True},
             ],
         },
@@ -1267,7 +1280,7 @@ core_models = {
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
-            "branch": c.BranchSupportType.AWARE.value,
+            "branch": BranchSupportType.AWARE.value,
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "description", "kind": "Text", "optional": True},
@@ -1281,7 +1294,7 @@ core_models = {
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["label__value"],
-            "branch": c.BranchSupportType.AWARE.value,
+            "branch": BranchSupportType.AWARE.value,
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "label", "kind": "Text", "optional": True},
@@ -1299,7 +1312,7 @@ core_models = {
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["label__value"],
-            "branch": c.BranchSupportType.AWARE.value,
+            "branch": BranchSupportType.AWARE.value,
             "inherit_from": ["LineageOwner", "LineageSource"],
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
@@ -1309,14 +1322,14 @@ core_models = {
                 {
                     "name": "type",
                     "kind": "Text",
-                    "default_value": c.AccountType.USER.value,
-                    "enum": c.AccountType.available_types(),
+                    "default_value": AccountType.USER.value,
+                    "enum": AccountType.available_types(),
                 },
                 {
                     "name": "role",
                     "kind": "Text",
-                    "default_value": c.AccountRole.READ_ONLY.value,
-                    "enum": c.AccountRole.available_types(),
+                    "default_value": AccountRole.READ_ONLY.value,
+                    "enum": AccountRole.available_types(),
                 },
             ],
             "relationships": [
@@ -1330,7 +1343,7 @@ core_models = {
             "label": "Account Token",
             "default_filter": "token__value",
             "display_labels": ["token__value"],
-            "branch": c.BranchSupportType.AGNOSTIC.value,
+            "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
                 {"name": "name", "kind": "Text", "optional": True},
                 {"name": "token", "kind": "Text", "unique": True},
@@ -1342,7 +1355,7 @@ core_models = {
                     "peer": "CoreAccount",
                     "optional": False,
                     "cardinality": "one",
-                    "branch": c.BranchSupportType.AGNOSTIC.value,
+                    "branch": BranchSupportType.AGNOSTIC.value,
                 },
             ],
         },
@@ -1352,7 +1365,7 @@ core_models = {
             "description": "Refresh Token",
             "label": "Refresh Token",
             "display_labels": [],
-            "branch": c.BranchSupportType.AGNOSTIC.value,
+            "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
                 {"name": "expiration", "kind": "DateTime", "optional": False},
             ],
@@ -1362,7 +1375,7 @@ core_models = {
                     "peer": "CoreAccount",
                     "optional": False,
                     "cardinality": "one",
-                    "branch": c.BranchSupportType.AGNOSTIC.value,
+                    "branch": BranchSupportType.AGNOSTIC.value,
                 },
             ],
         },
@@ -1373,7 +1386,7 @@ core_models = {
             "label": "Proposed Change",
             "default_filter": "name__value",
             "display_labels": ["name__value"],
-            "branch": c.BranchSupportType.AGNOSTIC.value,
+            "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
                 {"name": "name", "kind": "Text", "optional": False},
                 {"name": "source_branch", "kind": "Text", "optional": False},
@@ -1386,7 +1399,7 @@ core_models = {
                     "optional": True,
                     "cardinality": "many",
                     "kind": "Attribute",
-                    "branch": c.BranchSupportType.AGNOSTIC.value,
+                    "branch": BranchSupportType.AGNOSTIC.value,
                     "identifier": "coreaccount__proposedchange_approved_by",
                 },
                 {
@@ -1395,7 +1408,7 @@ core_models = {
                     "optional": True,
                     "kind": "Attribute",
                     "cardinality": "many",
-                    "branch": c.BranchSupportType.AGNOSTIC.value,
+                    "branch": BranchSupportType.AGNOSTIC.value,
                     "identifier": "coreaccount__proposedchange_reviewed_by",
                 },
                 {
@@ -1403,7 +1416,7 @@ core_models = {
                     "peer": "CoreAccount",
                     "optional": True,
                     "cardinality": "one",
-                    "branch": c.BranchSupportType.AGNOSTIC.value,
+                    "branch": BranchSupportType.AGNOSTIC.value,
                     "identifier": "coreaccount__proposedchange_created_by",
                 },
                 {
@@ -1436,7 +1449,7 @@ core_models = {
             "namespace": "Core",
             "description": "A thread on proposed change",
             "label": "Change Thread",
-            "branch": c.BranchSupportType.AGNOSTIC.value,
+            "branch": BranchSupportType.AGNOSTIC.value,
             "inherit_from": ["CoreThread"],
             "attributes": [],
             "relationships": [],
@@ -1446,7 +1459,7 @@ core_models = {
             "namespace": "Core",
             "description": "A thread related to a file on a proposed change",
             "label": "Thread - File",
-            "branch": c.BranchSupportType.AGNOSTIC.value,
+            "branch": BranchSupportType.AGNOSTIC.value,
             "inherit_from": ["CoreThread"],
             "attributes": [
                 {"name": "file", "kind": "Text", "optional": True},
@@ -1459,7 +1472,7 @@ core_models = {
                     "peer": "CoreRepository",
                     "optional": False,
                     "cardinality": "one",
-                    "branch": c.BranchSupportType.AGNOSTIC.value,
+                    "branch": BranchSupportType.AGNOSTIC.value,
                 },
             ],
         },
@@ -1468,7 +1481,7 @@ core_models = {
             "namespace": "Core",
             "description": "A thread related to an artifact on a proposed change",
             "label": "Thread - Artifact",
-            "branch": c.BranchSupportType.AGNOSTIC.value,
+            "branch": BranchSupportType.AGNOSTIC.value,
             "inherit_from": ["CoreThread"],
             "attributes": [
                 {"name": "artifact_id", "kind": "Text", "optional": True},
@@ -1482,7 +1495,7 @@ core_models = {
             "namespace": "Core",
             "description": "A thread related to an object on a proposed change",
             "label": "Thread - Object",
-            "branch": c.BranchSupportType.AGNOSTIC.value,
+            "branch": BranchSupportType.AGNOSTIC.value,
             "inherit_from": ["CoreThread"],
             "attributes": [
                 {"name": "object_path", "kind": "Text", "optional": False},
@@ -1496,7 +1509,7 @@ core_models = {
             "label": "Change Comment",
             "default_filter": "text__value",
             "display_labels": ["text__value"],
-            "branch": c.BranchSupportType.AGNOSTIC.value,
+            "branch": BranchSupportType.AGNOSTIC.value,
             "inherit_from": ["CoreComment"],
             "relationships": [
                 {
@@ -1515,7 +1528,7 @@ core_models = {
             "label": "Thread Comment",
             "default_filter": "text__value",
             "display_labels": ["text__value"],
-            "branch": c.BranchSupportType.AGNOSTIC.value,
+            "branch": BranchSupportType.AGNOSTIC.value,
             "inherit_from": ["CoreComment"],
             "attributes": [],
             "relationships": [
@@ -1537,7 +1550,7 @@ core_models = {
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["label__value"],
-            "branch": c.BranchSupportType.AWARE.value,
+            "branch": BranchSupportType.AWARE.value,
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "label", "kind": "Text", "optional": True},
@@ -1552,7 +1565,7 @@ core_models = {
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["label__value"],
-            "branch": c.BranchSupportType.AWARE.value,
+            "branch": BranchSupportType.AWARE.value,
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "label", "kind": "Text", "optional": True},
@@ -1584,7 +1597,7 @@ core_models = {
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
-            "branch": c.BranchSupportType.AWARE.value,
+            "branch": BranchSupportType.AWARE.value,
             "inherit_from": ["LineageOwner", "LineageSource"],
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
@@ -1630,7 +1643,7 @@ core_models = {
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "inherit_from": ["CoreTransformation"],
-            "branch": c.BranchSupportType.AWARE.value,
+            "branch": BranchSupportType.AWARE.value,
             "attributes": [
                 {"name": "template_path", "kind": "Text"},
             ],
@@ -1749,7 +1762,7 @@ core_models = {
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
-            "branch": c.BranchSupportType.AWARE.value,
+            "branch": BranchSupportType.AWARE.value,
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "description", "kind": "Text", "optional": True},
@@ -1796,7 +1809,7 @@ core_models = {
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "inherit_from": ["CoreTransformation"],
-            "branch": c.BranchSupportType.AWARE.value,
+            "branch": BranchSupportType.AWARE.value,
             "attributes": [
                 {"name": "file_path", "kind": "Text"},
                 {"name": "class_name", "kind": "Text"},
@@ -1811,7 +1824,7 @@ core_models = {
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
-            "branch": c.BranchSupportType.AWARE.value,
+            "branch": BranchSupportType.AWARE.value,
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "description", "kind": "Text", "optional": True},
@@ -1836,18 +1849,18 @@ core_models = {
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
-            "branch": c.BranchSupportType.AWARE.value,
+            "branch": BranchSupportType.AWARE.value,
             "attributes": [
                 {"name": "name", "kind": "Text"},
                 {
                     "name": "status",
                     "kind": "Text",
-                    "enum": c.ArtifactStatus.available_types(),
+                    "enum": ArtifactStatus.available_types(),
                 },
                 {
                     "name": "content_type",
                     "kind": "Text",
-                    "enum": c.ContentType.available_types(),
+                    "enum": ContentType.available_types(),
                 },
                 {"name": "checksum", "kind": "Text", "optional": True},
                 {
@@ -1885,7 +1898,7 @@ core_models = {
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
-            "branch": c.BranchSupportType.AWARE.value,
+            "branch": BranchSupportType.AWARE.value,
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "artifact_name", "kind": "Text"},
@@ -1894,7 +1907,7 @@ core_models = {
                 {
                     "name": "content_type",
                     "kind": "Text",
-                    "enum": c.ContentType.available_types(),
+                    "enum": ContentType.available_types(),
                 },
             ],
             "relationships": [
