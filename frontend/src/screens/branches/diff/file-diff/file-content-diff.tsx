@@ -187,9 +187,19 @@ export const FileContentDiff = (props: any) => {
 
       const newDate = formatISO(new Date());
 
+      const lineNumber =
+        displayAddComment.lineNumber ||
+        displayAddComment.newLineNumber ||
+        displayAddComment.oldLineNumber;
+
+      const label = `[${displayAddComment.side}] - ${file.location}:${lineNumber}`;
+
       const newThread = {
         change: {
           id: proposedchange,
+        },
+        label: {
+          value: label,
         },
         created_at: {
           value: newDate,
@@ -204,10 +214,7 @@ export const FileContentDiff = (props: any) => {
           value: displayAddComment.side === "new" ? commitTo : commitFrom,
         },
         line_number: {
-          value:
-            displayAddComment.lineNumber ||
-            displayAddComment.newLineNumber ||
-            displayAddComment.oldLineNumber,
+          value: lineNumber,
         },
         file: {
           value: file.location,
@@ -270,7 +277,9 @@ export const FileContentDiff = (props: any) => {
 
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Comment added"} />);
 
-      refetch();
+      if (refetch) {
+        refetch();
+      }
 
       setIsLoading(false);
 

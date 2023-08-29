@@ -26,7 +26,7 @@ import { Comment } from "./comment";
 
 type tThread = {
   thread: any;
-  refetch: Function;
+  refetch?: Function;
   displayContext?: boolean;
 };
 
