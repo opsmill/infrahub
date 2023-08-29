@@ -163,7 +163,7 @@ export const getThreadLabel = (node?: tDataDiffNode, currentBranch?: string, pat
 
 // Get thread title from the thread or a defined label
 export const getThreadTitle = (thread?: any, label?: string) => {
-  const string = thread?.label ?? thread?.display_label ?? label;
+  const string = thread?.label?.value ?? thread?.display_label ?? label;
 
   if (!string) {
     return "";
