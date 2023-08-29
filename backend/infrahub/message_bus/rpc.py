@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, MutableMapping
 
@@ -8,7 +9,7 @@ from infrahub import config
 from infrahub.log import get_log_data
 from infrahub_client import UUIDT
 
-from . import InfrahubBaseMessage, Meta, get_broker
+from . import InfrahubBaseMessage, InfrahubResponse, Meta, get_broker
 from .events import InfrahubMessage, InfrahubRPC, InfrahubRPCResponse, MessageType
 from .messages import ROUTING_KEY_MAP
 
@@ -47,6 +48,7 @@ class InfrahubRpcClientBase:
         queue = await self.channel.declare_queue(f"{config.SETTINGS.broker.namespace}.rpcs")
         await queue.bind(self.exchange, routing_key="check.*.*")
         await queue.bind(self.exchange, routing_key="request.*.*")
+        await queue.bind(self.exchange, routing_key="transform.*.*")
 
         return self
 
@@ -58,7 +60,7 @@ class InfrahubRpcClientBase:
         future: asyncio.Future = self.futures.pop(message.correlation_id)
 
         if future:
-            future.set_result(InfrahubMessage.convert(message))
+            future.set_result(message)
 
     async def call(self, message: InfrahubRPC, wait_for_response: bool = True) -> Any:
         correlation_id = str(UUIDT())
@@ -71,7 +73,24 @@ class InfrahubRpcClientBase:
         await message.send(channel=self.channel, correlation_id=correlation_id, reply_to=self.callback_queue.name)
 
         if wait_for_response:
-            return await future
+            reply = await future
+            return InfrahubMessage.convert(reply)
+
+    async def rpc(self, message: InfrahubBaseMessage) -> InfrahubResponse:
+        correlation_id = str(UUIDT())
+
+        future = self.loop.create_future()
+        self.futures[correlation_id] = future
+
+        log_data = get_log_data()
+        request_id = log_data.get("request_id", "")
+        message.meta = Meta(request_id=request_id, correlation_id=correlation_id, reply_to=self.callback_queue.name)
+
+        await self.send(message=message)
+
+        response = await future
+        data = json.loads(response.body)
+        return InfrahubResponse(**data)
 
     async def send(self, message: InfrahubBaseMessage) -> None:
         routing_key = ROUTING_KEY_MAP.get(type(message))

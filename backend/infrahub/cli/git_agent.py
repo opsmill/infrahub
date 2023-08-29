@@ -64,7 +64,9 @@ async def subscribe_rpcs_queue(client: InfrahubClient):
     exchange = await channel.declare_exchange(f"{config.SETTINGS.broker.namespace}.events", type="topic")
     driver = await get_db()
     database = GraphDatabase(driver=driver)
-    service = InfrahubServices(client=client, database=database, message_bus=RabbitMQMessageBus(exchange=exchange))
+    service = InfrahubServices(
+        client=client, database=database, message_bus=RabbitMQMessageBus(channel=channel, exchange=exchange)
+    )
     async with service.database.session as session:
         await initialization(session=session)
     log.info("Waiting for RPC instructions to execute .. ")
