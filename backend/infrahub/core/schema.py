@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
 from pydantic import BaseModel, Extra, Field, root_validator, validator
 
+from infrahub.core import registry
 from infrahub.core.constants import (
     AccountRole,
     AccountType,
@@ -21,7 +22,6 @@ from infrahub.core.constants import (
     ValidatorConclusion,
     ValidatorState,
 )
-from infrahub.core import registry
 from infrahub.core.query import QueryNode, QueryRel
 from infrahub.core.relationship import Relationship
 from infrahub.types import ATTRIBUTE_TYPES
