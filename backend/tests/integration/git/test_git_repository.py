@@ -38,7 +38,7 @@ class TestInfrahubClient:
         await obj.new(
             session=session,
             name="query99",
-            query="query query99 { repository { edges { id }}}",
+            query="query query99 { CoreRepository { edges { node { id }}}}",
         )
         await obj.save(session=session)
         return obj
@@ -81,14 +81,14 @@ class TestInfrahubClient:
         # 1. Modify an object to validate if its being properly updated
         # 2. Add an object that doesn't exist in GIt and validate that it's been deleted
         value_before_change = queries[0].query.value
-        queries[0].query.value = "query myquery { location { edges { id }}}"
+        queries[0].query.value = "query myquery { BuiltinLocation { edges { node { id }}}}"
         await queries[0].save()
 
         obj = await Node.init(schema="CoreGraphQLQuery", session=session)
         await obj.new(
             session=session,
             name="soontobedeletedquery",
-            query="query soontobedeletedquery { location { edges { id }}}",
+            query="query soontobedeletedquery { BuiltinLocation { edges { node { id }}}}",
             repository=str(repo.id),
         )
         await obj.save(session=session)
