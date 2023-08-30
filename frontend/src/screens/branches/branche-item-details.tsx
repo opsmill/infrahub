@@ -4,8 +4,8 @@ import { StringParam, useQueryParam } from "use-query-params";
 import { TabsButtons } from "../../components/tabs-buttons";
 import { QSP } from "../../config/qsp";
 import { constructPath } from "../../utils/fetch";
+import { Diff } from "../diff/diff";
 import { BranchDetails } from "./branch-details";
-import { Diff } from "./diff/diff";
 
 export const BRANCH_TABS = {
   DETAILS: "details",

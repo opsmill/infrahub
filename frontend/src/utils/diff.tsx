@@ -7,7 +7,7 @@ import {
   tDataDiffNode,
   tDataDiffNodePeerValue,
   tDataDiffNodePropertyChange,
-} from "../screens/branches/diff/data-diff-node";
+} from "../screens/diff/data-diff-node";
 
 export const displayValue = (value: any) => {
   if (typeof value === "boolean") {

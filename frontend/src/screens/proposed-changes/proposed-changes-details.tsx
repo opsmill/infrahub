@@ -10,11 +10,11 @@ import useQuery from "../../hooks/useQuery";
 import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { getSchemaRelationshipColumns } from "../../utils/getSchemaObjectColumns";
-import { ArtifactsDiff } from "../branches/diff/artifact-diff/artifacts-diff";
-import { DataDiff } from "../branches/diff/data-diff";
-import { DIFF_TABS } from "../branches/diff/diff";
-import { FilesDiff } from "../branches/diff/file-diff/files-diff";
-import { SchemaDiff } from "../branches/diff/schema-diff";
+import { ArtifactsDiff } from "../diff/artifact-diff/artifacts-diff";
+import { DataDiff } from "../diff/data-diff";
+import { DIFF_TABS } from "../diff/diff";
+import { FilesDiff } from "../diff/file-diff/files-diff";
+import { SchemaDiff } from "../diff/schema-diff";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { Conversations } from "./conversations";
@@ -44,6 +44,10 @@ const tabs = [
     label: "Schema",
     name: DIFF_TABS.SCHEMA,
   },
+  {
+    label: "Checks",
+    name: DIFF_TABS.CHECKS,
+  },
 ];
 
 const renderContent = (tab: string | null | undefined) => {
@@ -55,6 +59,8 @@ const renderContent = (tab: string | null | undefined) => {
     case DIFF_TABS.SCHEMA:
       return <SchemaDiff />;
     case DIFF_TABS.DATA:
+      return <DataDiff />;
+    case DIFF_TABS.CHECKS:
       return <DataDiff />;
     default: {
       return <Conversations />;
