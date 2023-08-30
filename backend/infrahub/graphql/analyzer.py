@@ -117,9 +117,12 @@ class GraphQLQueryAnalyzer:
             graphql_types.update(await extract_schema_models(fields=fields, schema=schema, root_schema=self.schema))
 
         for graphql_type_name in graphql_types:
-            graphql_type = registry.get_graphql_type(name=graphql_type_name, branch=self.branch)
-            if not hasattr(graphql_type._meta, "schema"):
+            try:
+                graphql_type = registry.get_graphql_type(name=graphql_type_name, branch=self.branch)
+                if not hasattr(graphql_type._meta, "schema"):
+                    continue
+                models.add(graphql_type._meta.schema.kind)
+            except ValueError:
                 continue
-            models.add(graphql_type._meta.schema.kind)
 
         return models
