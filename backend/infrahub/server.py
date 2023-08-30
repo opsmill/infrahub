@@ -14,6 +14,8 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette.responses import PlainTextResponse
 from starlette_exporter import PrometheusMiddleware, handle_metrics
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.instrumentation.requests import RequestsInstrumentor
 
 import infrahub.config as config
 from infrahub import __version__
@@ -26,6 +28,7 @@ from infrahub.exceptions import Error
 from infrahub.graphql.app import InfrahubGraphQLApp
 from infrahub.lock import initialize_lock
 from infrahub.log import clear_log_context, get_logger, set_log_data
+from infrahub.trace import get_tracer, set_span_status, set_span_data, add_span_exception, get_traceid
 from infrahub.message_bus import close_broker_connection, connect_to_broker
 from infrahub.message_bus.rpc import InfrahubRpcClient
 from infrahub.middleware import InfrahubCORSMiddleware
@@ -44,9 +47,13 @@ app = FastAPI(
     redoc_url="/api/redoc",
 )
 
+FastAPIInstrumentor().instrument_app(app)
+RequestsInstrumentor().instrument()
+
 FRONTEND_DIRECTORY = os.environ.get("INFRAHUB_FRONTEND_DIRECTORY", os.path.abspath("frontend"))
 FRONTEND_ASSET_DIRECTORY = f"{FRONTEND_DIRECTORY}/dist/assets"
 
+tracer = get_tracer()
 log = get_logger()
 gunicorn_logger = logging.getLogger("gunicorn.error")
 logger.handlers = gunicorn_logger.handlers
@@ -96,10 +103,13 @@ async def shutdown():
 @app.middleware("http")
 async def logging_middleware(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
     clear_log_context()
-    request_id = correlation_id.get()
-    set_log_data(key="request_id", value=request_id)
-    set_log_data(key="app", value="infrahub.api")
-    response = await call_next(request)
+    with tracer.start_as_current_span("process_request"):
+        request_id = correlation_id.get()
+        trace_id = get_traceid()
+        set_log_data(key="request_id", value=request_id)
+        set_log_data(key="app", value="infrahub.api")
+        set_log_data(key="trace_id", value=trace_id)
+        response = await call_next(request)
     return response
 
 
@@ -120,6 +130,8 @@ async def api_exception_handler_base_infrahub_error(_: Request, exc: Error) -> J
     """Generic API Exception handler."""
 
     error = exc.api_response()
+    set_span_status(2)
+    add_span_exception(exc)
     return JSONResponse(status_code=exc.HTTP_CODE, content=error)
 
 
