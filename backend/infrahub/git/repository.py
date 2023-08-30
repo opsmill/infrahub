@@ -943,6 +943,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         try:
             repo.git.merge(commit)
         except GitCommandError as exc:
+            repo.git.merge("--abort")
             raise RepositoryError(identifier=self.name, message=exc.stderr) from exc
 
         commit_after = str(repo.head.commit)
