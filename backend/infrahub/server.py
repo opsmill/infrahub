@@ -28,7 +28,7 @@ from infrahub.exceptions import Error
 from infrahub.graphql.app import InfrahubGraphQLApp
 from infrahub.lock import initialize_lock
 from infrahub.log import clear_log_context, get_logger, set_log_data
-from infrahub.trace import get_tracer, set_span_status, set_span_data, add_span_exception, get_traceid
+from infrahub.trace import get_tracer, set_span_status, add_span_exception, get_traceid
 from infrahub.message_bus import close_broker_connection, connect_to_broker
 from infrahub.message_bus.rpc import InfrahubRpcClient
 from infrahub.middleware import InfrahubCORSMiddleware
