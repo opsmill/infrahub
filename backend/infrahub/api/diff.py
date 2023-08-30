@@ -11,9 +11,8 @@ from pydantic import BaseModel, Extra, Field
 from infrahub.api.dependencies import get_branch_dep, get_current_user, get_session
 from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch, Diff, NodeDiffElement, RelationshipDiffElement
-from infrahub.core.constants import DiffAction
+from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.manager import NodeManager
-from infrahub.core.schema import RelationshipCardinality
 from infrahub.core.schema_manager import INTERNAL_SCHEMA_NODE_KINDS
 
 if TYPE_CHECKING:

@@ -9,18 +9,20 @@ from pydantic import BaseModel, Field
 import infrahub.config as config
 from infrahub import lock
 from infrahub.core import get_branch, get_branch_from_registry
-from infrahub.core.constants import BranchSupportType
+from infrahub.core.constants import (
+    BranchSupportType,
+    FilterSchemaKind,
+    RelationshipCardinality,
+    RelationshipKind,
+)
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import (
     AttributeSchema,
     FilterSchema,
-    FilterSchemaKind,
     GenericSchema,
     GroupSchema,
     NodeSchema,
-    RelationshipCardinality,
-    RelationshipKind,
     RelationshipSchema,
     SchemaRoot,
     internal_schema,
