@@ -44,6 +44,12 @@ pyjwt = "2.7.0"
 email-validator = "2.0.0"
 python-multipart = "^0.0.6"
 redis = { version = "^5.0.0", extras = ["hiredis"]}
+opentelemetry-api = "^1.16.0"
+opentelemetry-sdk = "^1.16.0"
+opentelemetry-instrumentation-fastapi = "^0.37b0"
+opentelemetry-instrumentation-requests = "^0.37b0"
+opentelemetry-exporter-otlp-proto-http = "^1.16.0"
+opentelemetry-exporter-otlp-proto-grpc = "^1.16.0"
 
 [tool.poetry.group.perf.dependencies]
 locust = "^2.13.1"
