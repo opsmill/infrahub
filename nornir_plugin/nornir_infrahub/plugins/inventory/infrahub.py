@@ -19,7 +19,7 @@ from nornir.core.inventory import (
 )
 from pydantic import BaseModel
 
-from infrahub_client import InfrahubClientSync, InfrahubNodeSync, NodeSchema
+from infrahub_client import Config, InfrahubClientSync, InfrahubNodeSync, NodeSchema
 
 logger = logging.getLogger(__name__)
 
@@ -125,6 +125,7 @@ class InfrahubInventory:
     def __init__(
         self,
         address: str = "http://localhost:8000",
+        token: Optional[str] = None,
         branch: str = "main",
         host_node: str = "Device",
         schema_mappings: Optional[List[Dict[str, str]]] = None,
@@ -137,7 +138,7 @@ class InfrahubInventory:
         self.host_node = host_node
         self.defaults_file = Path(defaults_file).expanduser()
         self.group_file = Path(group_file).expanduser()
-        self.client = InfrahubClientSync.init(address=self.address)
+        self.client = InfrahubClientSync.init(config=Config(api_token=token), address=self.address)
 
         schema_mappings = schema_mappings or []
         self.schema_mappings = [SchemaMappingNode(**mapping) for mapping in schema_mappings]
