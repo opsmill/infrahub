@@ -13,7 +13,6 @@ export const Checks = () => {
   const { proposedchange } = useParams();
 
   const [qspTab] = useQueryParam(QSP.VALIDATOR_DETAILS, StringParam);
-  console.log("qspTab: ", qspTab);
 
   const queryString = getValidators({
     id: proposedchange,

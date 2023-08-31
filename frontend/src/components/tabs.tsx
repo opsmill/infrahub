@@ -7,6 +7,7 @@ type Tab = {
   name?: string;
   label?: string;
   count?: number;
+  onClick?: Function;
 };
 
 type TabsProps = {
@@ -20,6 +21,14 @@ export const Tabs = (props: TabsProps) => {
 
   const [qspTab, setQspTab] = useQueryParam(qsp ?? QSP.TAB, StringParam);
 
+  const handleClick = (tab: Tab, index: number) => {
+    if (tab.onClick) {
+      tab.onClick();
+    }
+
+    setQspTab(index === 0 ? undefined : tab.name);
+  };
+
   return (
     <div className="bg-custom-white flex items-center border-b border-gray-200">
       <div className="flex-1">
@@ -28,7 +37,7 @@ export const Tabs = (props: TabsProps) => {
             {tabs.map((tab: Tab, index: number) => (
               <div
                 key={tab.name}
-                onClick={() => setQspTab(index === 0 ? undefined : tab.name)}
+                onClick={() => handleClick(tab, index)}
                 className={classNames(
                   (qspTab && qspTab === tab.name) || (!qspTab && index === 0) // First item is active without QSP
                     ? "border-custom-blue-500 text-custom-blue-600"

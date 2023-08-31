@@ -1,6 +1,7 @@
 import { gql } from "@apollo/client";
 import { ChevronRightIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
+import { useEffect } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "../../../config/qsp";
 import { getValidatorDetails } from "../../../graphql/queries/diff/getValidatorDetails";
@@ -12,7 +13,6 @@ import LoadingScreen from "../../loading-screen/loading-screen";
 
 const getValidatorAttributes = (typename: string, schemaList: iNodeSchema[]) => {
   const schema = schemaList.find((schema: iNodeSchema) => schema.kind === typename);
-  console.log("schema: ", schema);
 
   if (!schema) return [];
 
@@ -32,6 +32,13 @@ export const ValidatorDetails = () => {
   `;
 
   const { loading, error, data } = useQuery(query);
+
+  useEffect(() => {
+    return () => {
+      // When unmounting, remove validator details view QSP
+      setQsp(undefined);
+    };
+  }, []);
 
   if (loading) {
     return <LoadingScreen />;

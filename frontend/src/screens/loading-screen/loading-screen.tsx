@@ -13,7 +13,6 @@ export default function LoadingScreen(props: Props) {
   const { hideText, size, className, colorClass, type } = props;
 
   const color = colorClass ?? "!fill-custom-blue-500";
-  console.log("color: ", color);
 
   return (
     <div

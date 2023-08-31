@@ -24,33 +24,6 @@ export const PROPOSED_CHANGES_TABS = {
   CONVERSATIONS: "conversations",
 };
 
-const tabs = [
-  {
-    label: "Conversations",
-    name: PROPOSED_CHANGES_TABS.CONVERSATIONS,
-  },
-  {
-    label: "Data",
-    name: DIFF_TABS.DATA,
-  },
-  {
-    label: "Files",
-    name: DIFF_TABS.FILES,
-  },
-  {
-    label: "Artifacts",
-    name: DIFF_TABS.ARTIFACTS,
-  },
-  {
-    label: "Schema",
-    name: DIFF_TABS.SCHEMA,
-  },
-  {
-    label: "Checks",
-    name: DIFF_TABS.CHECKS,
-  },
-];
-
 const renderContent = (tab: string | null | undefined) => {
   switch (tab) {
     case DIFF_TABS.FILES:
@@ -72,6 +45,7 @@ const renderContent = (tab: string | null | undefined) => {
 export const ProposedChangesDetails = () => {
   const { proposedchange } = useParams();
   const [qspTab] = useQueryParam(QSP.PROPOSED_CHANGES_TAB, StringParam);
+  const [, setValidatorQsp] = useQueryParam(QSP.VALIDATOR_DETAILS, StringParam);
   const [schemaList] = useAtom(schemaState);
   const [, setProposedChange] = useAtom(proposedChangedState);
 
@@ -105,6 +79,35 @@ export const ProposedChangesDetails = () => {
   const result = data ? data[schemaData?.kind]?.edges[0]?.node : {};
 
   setProposedChange(result);
+
+  const tabs = [
+    {
+      label: "Conversations",
+      name: PROPOSED_CHANGES_TABS.CONVERSATIONS,
+    },
+    {
+      label: "Data",
+      name: DIFF_TABS.DATA,
+    },
+    {
+      label: "Files",
+      name: DIFF_TABS.FILES,
+    },
+    {
+      label: "Artifacts",
+      name: DIFF_TABS.ARTIFACTS,
+    },
+    {
+      label: "Schema",
+      name: DIFF_TABS.SCHEMA,
+    },
+    {
+      label: "Checks",
+      name: DIFF_TABS.CHECKS,
+      // Go back to the validators list when clicking on the tab if we are on the validator details view
+      onClick: () => setValidatorQsp(undefined),
+    },
+  ];
 
   return (
     <div>
