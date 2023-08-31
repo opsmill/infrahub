@@ -2,7 +2,7 @@ import { ChevronRightIcon } from "@heroicons/react/24/outline";
 import { BADGE_TYPES, Badge } from "../components/badge";
 import { BadgeCircle, CIRCLE_BADGE_TYPES } from "../components/badge-circle";
 import { Tooltip } from "../components/tooltip";
-import { NODE_PATH_BLACKLIST } from "../config/constants";
+import { NODE_PATH_EXCLUDELIST } from "../config/constants";
 import {
   tDataDiffNode,
   tDataDiffNodePeerValue,
@@ -149,7 +149,7 @@ export const getThreadLabel = (node?: tDataDiffNode, currentBranch?: string, pat
     // Get the path without the beginning "data/xxxx-xxxx-xxxx-xxxx"
     .slice(2)
     // Do not include some values from the path
-    .filter((item) => !NODE_PATH_BLACKLIST.includes(item));
+    .filter((item) => !NODE_PATH_EXCLUDELIST.includes(item));
 
   // Construct path like "item1 > item2 > item3"
   const nodeLabel = nodePath?.reduce((acc, item) => (acc ? `${acc} > ${item}` : item), "").trim();

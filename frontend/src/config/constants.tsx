@@ -143,4 +143,4 @@ export const ATTRIBUTES_EXCLUDELIST = ["HashedPassword"];
 
 export const COLUMNS_EXCLUDELIST = ["TextArea", "JSON"];
 
-export const NODE_PATH_BLACKLIST = ["property"];
+export const NODE_PATH_EXCLUDELIST = ["property"];
