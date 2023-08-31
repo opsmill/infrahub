@@ -17,7 +17,7 @@ import MetaDetailsTooltip from "../../components/meta-details-tooltips";
 import SlideOver from "../../components/slide-over";
 import { Tabs } from "../../components/tabs";
 import { CONFIG } from "../../config/config";
-import { ARTIFACT_OBJECT, DEFAULT_BRANCH_NAME, MENU_BLACKLIST } from "../../config/constants";
+import { ARTIFACT_OBJECT, DEFAULT_BRANCH_NAME, MENU_EXCLUDELIST } from "../../config/constants";
 import { QSP } from "../../config/qsp";
 import { AuthContext } from "../../decorators/withAuth";
 import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
@@ -69,7 +69,7 @@ export default function ObjectItemDetails() {
     navigate("/");
   }
 
-  if (schemaData && MENU_BLACKLIST.includes(schemaData.kind)) {
+  if (schemaData && MENU_EXCLUDELIST.includes(schemaData.kind)) {
     navigate("/");
   }
 

@@ -15,7 +15,7 @@ import { BUTTON_TYPES, Button } from "../../components/button";
 import MetaDetailsTooltip from "../../components/meta-details-tooltips";
 import SlideOver from "../../components/slide-over";
 import { Tabs } from "../../components/tabs";
-import { DEFAULT_BRANCH_NAME, MENU_BLACKLIST } from "../../config/constants";
+import { DEFAULT_BRANCH_NAME, MENU_EXCLUDELIST } from "../../config/constants";
 import { QSP } from "../../config/qsp";
 import { AuthContext } from "../../decorators/withAuth";
 import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
@@ -73,7 +73,7 @@ export default function ObjectItemDetails(props: any) {
     navigate("/");
   }
 
-  if (schemaData && MENU_BLACKLIST.includes(schemaData.kind)) {
+  if (schemaData && MENU_EXCLUDELIST.includes(schemaData.kind)) {
     navigate("/");
   }
 
