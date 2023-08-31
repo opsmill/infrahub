@@ -1,5 +1,12 @@
-import { CheckCircleIcon, ClockIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
+import {
+  ArrowPathIcon,
+  CheckCircleIcon,
+  ClockIcon,
+  ExclamationCircleIcon,
+  ExclamationTriangleIcon,
+} from "@heroicons/react/24/outline";
 import { StringParam, useQueryParam } from "use-query-params";
+import { Button } from "../../../components/button";
 import { DateDisplay } from "../../../components/date-display";
 import { QSP } from "../../../config/qsp";
 import LoadingScreen from "../../loading-screen/loading-screen";
@@ -21,6 +28,10 @@ const getValidatorState = (state?: string, conclusion?: string) => {
         return <CheckCircleIcon className="h-6 w-6 text-green-500" />;
       }
 
+      if (conclusion === "failure") {
+        return <ExclamationCircleIcon className="h-6 w-6 text-red-500" />;
+      }
+
       return <ExclamationTriangleIcon className="h-6 w-6 text-yellow-500" />;
     }
     default: {
@@ -35,6 +46,8 @@ export const Validator = (props: tValidatorProps) => {
   const [, setQsp] = useQueryParam(QSP.VALIDATOR_DETAILS, StringParam);
 
   const { display_label, started_at, completed_at, conclusion, checks, state } = validator;
+
+  const handleRetry = () => {};
 
   return (
     <div
@@ -66,7 +79,13 @@ export const Validator = (props: tValidatorProps) => {
         )}
       </div>
 
-      <div className="mr-2">Checks: {checks?.edges?.length ?? 0}</div>
+      <div className="mr-2">Checks: {checks?.count ?? 0}</div>
+
+      <div>
+        <Button onClick={handleRetry}>
+          <ArrowPathIcon className="h-4 w-4" /> Retry
+        </Button>
+      </div>
     </div>
   );
 };

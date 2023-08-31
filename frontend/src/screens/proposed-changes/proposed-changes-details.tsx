@@ -1,4 +1,5 @@
 import { gql } from "@apollo/client";
+import { ChevronRightIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
@@ -77,6 +78,7 @@ export const ProposedChangesDetails = () => {
   }
 
   const result = data ? data[schemaData?.kind]?.edges[0]?.node : {};
+  console.log("result: ", result);
 
   setProposedChange(result);
 
@@ -111,6 +113,19 @@ export const ProposedChangesDetails = () => {
 
   return (
     <div>
+      <div className="bg-custom-white px-4 py-5 pb-0 sm:px-6 flex items-center">
+        <div className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline">
+          Proposed changes
+        </div>
+
+        <ChevronRightIcon
+          className="h-5 w-5 mt-1 mx-2 flex-shrink-0 text-gray-400"
+          aria-hidden="true"
+        />
+
+        <p className="mt-1 mr-2 max-w-2xl text-sm text-gray-500">{result?.display_label}</p>
+      </div>
+
       <Tabs tabs={tabs} qsp={QSP.PROPOSED_CHANGES_TAB} />
 
       {renderContent(qspTab)}

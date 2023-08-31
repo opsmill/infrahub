@@ -1,8 +1,9 @@
 import { gql } from "@apollo/client";
-import { ChevronRightIcon } from "@heroicons/react/24/outline";
+import { ArrowPathIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useEffect } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
+import { Button } from "../../../components/button";
 import { QSP } from "../../../config/qsp";
 import { getValidatorDetails } from "../../../graphql/queries/diff/getValidatorDetails";
 import useQuery from "../../../hooks/useQuery";
@@ -10,6 +11,7 @@ import { iNodeSchema, schemaState } from "../../../state/atoms/schema.atom";
 import { getObjectItemDisplayValue } from "../../../utils/getObjectItemDisplayValue";
 import ErrorScreen from "../../error-screen/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
+import { Check } from "./check";
 
 const getValidatorAttributes = (typename: string, schemaList: iNodeSchema[]) => {
   const schema = schemaList.find((schema: iNodeSchema) => schema.kind === typename);
@@ -32,6 +34,7 @@ export const ValidatorDetails = () => {
   `;
 
   const { loading, error, data } = useQuery(query);
+  console.log("data: ", data);
 
   useEffect(() => {
     return () => {
@@ -52,27 +55,23 @@ export const ValidatorDetails = () => {
 
   const attributes = getValidatorAttributes(validator?.__typename, schemaList);
 
+  const handleRetry = () => {};
+
   return (
     <div className="flex-1 overflow-auto flex flex-col">
-      <div className="bg-custom-white px-4 py-5 pb-0 sm:px-6 flex items-center">
-        <div
-          onClick={() => setQsp(undefined)}
-          className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline">
-          Checks
-        </div>
-        <ChevronRightIcon
-          className="h-5 w-5 mt-1 mx-2 flex-shrink-0 text-gray-400"
-          aria-hidden="true"
-        />
-        <p className="mt-1 max-w-2xl text-sm text-gray-500">{validator?.display_label}</p>
-      </div>
-
       <div className="flex flex-col">
-        <div className="bg-custom-white p-4 overflow-auto">
+        <div className="bg-custom-white overflow-auto">
           <dl className="sm:divide-y sm:divide-gray-200">
             <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-3 sm:px-6">
               <dt className="text-sm font-medium text-gray-500 flex items-center">ID</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">{validator.id}</dd>
+              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">{validator.id} </dd>
+            </div>
+
+            <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-3 sm:px-6">
+              <dt className="text-sm font-medium text-gray-500 flex items-center">Name</dt>
+              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
+                {validator?.display_label}
+              </dd>
             </div>
 
             {attributes?.map((attribute) => {
@@ -92,8 +91,23 @@ export const ValidatorDetails = () => {
                 </div>
               );
             })}
+
+            <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-3 sm:px-6">
+              <dt className="text-sm font-medium text-gray-500 flex items-center">Actions</dt>
+              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
+                <Button onClick={handleRetry}>
+                  <ArrowPathIcon className="h-4 w-4" /> Retry
+                </Button>
+              </dd>
+            </div>
           </dl>
         </div>
+      </div>
+
+      <div>
+        {validator?.checks?.edges?.map((check: any, index: number) => (
+          <Check key={index} check={check?.node} />
+        ))}
       </div>
     </div>
   );
