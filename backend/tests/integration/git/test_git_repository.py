@@ -1,11 +1,14 @@
+import json
 import os
 from pathlib import Path
+from typing import Any, Dict, Optional
 
+import httpx
 import pytest
 import yaml
 from fastapi.testclient import TestClient
 
-import infrahub.config as config
+from infrahub import config
 from infrahub.core import registry
 from infrahub.core.initialization import first_time_initialization, initialization
 from infrahub.core.node import Node
@@ -14,6 +17,7 @@ from infrahub.core.utils import count_relationships, delete_all_nodes
 from infrahub.git import InfrahubRepository
 from infrahub.utils import get_models_dir
 from infrahub_client import Config, InfrahubClient, NodeNotFound
+from infrahub_client.types import HTTPMethod
 
 # pylint: disable=unused-argument
 
@@ -35,6 +39,22 @@ async def load_infrastructure_schema(session):
     )
 
 
+class InfrahubTestClient(TestClient):
+    def _request(
+        self, url: str, method: HTTPMethod, headers: Dict[str, Any], timeout: int, payload: Optional[Dict] = None
+    ) -> httpx.Response:
+        content = None
+        if payload:
+            content = str(json.dumps(payload)).encode("UTF-8")
+        with self as client:
+            return client.request(method=method.value, url=url, headers=headers, timeout=timeout, content=content)
+
+    async def async_request(
+        self, url: str, method: HTTPMethod, headers: Dict[str, Any], timeout: int, payload: Optional[Dict] = None
+    ) -> httpx.Response:
+        return self._request(url=url, method=method, headers=headers, timeout=timeout, payload=payload)
+
+
 class TestInfrahubClient:
     @pytest.fixture(scope="class")
     async def base_dataset(self, session):
@@ -51,13 +71,14 @@ class TestInfrahubClient:
         # pylint: disable=import-outside-toplevel
         from infrahub.server import app
 
-        return TestClient(app)
+        return InfrahubTestClient(app)
 
     @pytest.fixture
     async def client(self, test_client, integration_helper):
         admin_token = await integration_helper.create_token()
-        config = Config(api_token=admin_token)
-        return await InfrahubClient.init(test_client=test_client, config=config)
+        config = Config(api_token=admin_token, requester=test_client.async_request)
+
+        return await InfrahubClient.init(config=config)
 
     @pytest.fixture(scope="class")
     async def query_99(self, session, test_client):
