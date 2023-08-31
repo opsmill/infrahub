@@ -1,5 +1,5 @@
 import * as R from "ramda";
-import { ATTRIBUTES_BLACKLIST, COLUMNS_BLACKLIST } from "../config/constants";
+import { ATTRIBUTES_EXCLUDELIST, COLUMNS_BLACKLIST } from "../config/constants";
 import { iGenericSchema, iNodeSchema } from "../state/atoms/schema.atom";
 
 interface iColumn {
@@ -64,7 +64,7 @@ export const getSchemaAttributeColumns = (
   }
 
   const attributes: iColumn[] = (schema.attributes || [])
-    .filter((row) => !ATTRIBUTES_BLACKLIST.includes(row.kind))
+    .filter((row) => !ATTRIBUTES_EXCLUDELIST.includes(row.kind))
     .filter((row) => (disableBlackList ? true : !COLUMNS_BLACKLIST.includes(row.kind)))
     .map((row) => ({
       label: row.label ?? "",

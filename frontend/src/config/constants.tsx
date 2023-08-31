@@ -139,7 +139,7 @@ export const MENU_EXCLUDELIST = [
   "CoreArtifactValidator",
 ];
 
-export const ATTRIBUTES_BLACKLIST = ["HashedPassword"];
+export const ATTRIBUTES_EXCLUDELIST = ["HashedPassword"];
 
 export const COLUMNS_BLACKLIST = ["TextArea", "JSON"];
 
