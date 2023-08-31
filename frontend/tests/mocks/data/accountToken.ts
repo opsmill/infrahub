@@ -247,7 +247,7 @@ export const accountTokenDetailsMocksSchema: iNodeSchema[] = [
   },
 ];
 
-// Same schema but with a different name to be allowed to test it even if in the MENU_BLACKLIST constant
+// Same schema but with a different name to be allowed to test it even if in the MENU_EXCLUDELIST constant
 export const accountTokenDetailsMocksSchemaBIS: iNodeSchema[] = [
   {
     id: accountTokenId,

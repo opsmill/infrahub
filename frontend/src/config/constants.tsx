@@ -117,7 +117,7 @@ export const WRITE_ROLES = ["admin", "read-write"];
 
 export const ADMIN_ROLES = ["admin"];
 
-export const MENU_BLACKLIST = [
+export const MENU_EXCLUDELIST = [
   "InternalAccountToken",
   "CoreChangeComment",
   "CoreChangeThread",
@@ -128,10 +128,19 @@ export const MENU_BLACKLIST = [
   "InternalRefreshToken",
   "CoreStandardGroup",
   "CoreThreadComment",
+  "CoreArtifactCheck",
+  "CoreStandardCheck",
+  "CoreDataCheck",
+  "CoreFileCheck",
+  "CoreSchemaCheck",
+  "CoreSchemaValidator",
+  "CoreDataValidator",
+  "CoreRepositoryValidator",
+  "CoreArtifactValidator",
 ];
 
-export const ATTRIBUTES_BLACKLIST = ["HashedPassword"];
+export const ATTRIBUTES_EXCLUDELIST = ["HashedPassword"];
 
-export const COLUMNS_BLACKLIST = ["TextArea", "JSON"];
+export const COLUMNS_EXCLUDELIST = ["TextArea", "JSON"];
 
-export const NODE_PATH_BLACKLIST = ["property"];
+export const NODE_PATH_EXCLUDELIST = ["property"];
