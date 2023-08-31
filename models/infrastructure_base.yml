@@ -92,7 +92,6 @@ nodes:
         peer: InfraDevice
         optional: true
         cardinality: many
-        kind: Attribute
   - name: Device
     namespace: Infra
     description: "Generic Device object."
