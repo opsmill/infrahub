@@ -141,6 +141,6 @@ export const MENU_EXCLUDELIST = [
 
 export const ATTRIBUTES_EXCLUDELIST = ["HashedPassword"];
 
-export const COLUMNS_BLACKLIST = ["TextArea", "JSON"];
+export const COLUMNS_EXCLUDELIST = ["TextArea", "JSON"];
 
 export const NODE_PATH_BLACKLIST = ["property"];
