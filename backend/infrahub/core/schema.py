@@ -8,11 +8,23 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 from pydantic import BaseModel, Extra, Field, root_validator, validator
 
 from infrahub.core import registry
-from infrahub.core.constants import BranchSupportType
+from infrahub.core.constants import (
+    AccountRole,
+    AccountType,
+    ArtifactStatus,
+    BranchSupportType,
+    ContentType,
+    CriticalityLevel,
+    FilterSchemaKind,
+    RelationshipCardinality,
+    RelationshipKind,
+    Severity,
+    ValidatorConclusion,
+    ValidatorState,
+)
 from infrahub.core.query import QueryNode, QueryRel
 from infrahub.core.relationship import Relationship
 from infrahub.types import ATTRIBUTE_TYPES
-from infrahub.utils import InfrahubStringEnum
 from infrahub_client.utils import duplicates, intersection
 
 if TYPE_CHECKING:
@@ -41,48 +53,6 @@ DEFAULT_KIND_MIN_LENGTH = 3
 DEFAULT_KIND_MAX_LENGTH = 32
 DEFAULT_DESCRIPTION_LENGTH = 128
 DEFAULT_REL_IDENTIFIER_LENGTH = 128
-
-
-class FilterSchemaKind(InfrahubStringEnum):
-    TEXT = "Text"
-    LIST = "Text"
-    NUMBER = "Number"
-    BOOLEAN = "Boolean"
-    OBJECT = "Object"
-    MULTIOBJECT = "MultiObject"
-    ENUM = "Enum"
-
-
-class RelationshipCardinality(InfrahubStringEnum):
-    ONE = "one"
-    MANY = "many"
-
-
-class RelationshipKind(InfrahubStringEnum):
-    GENERIC = "Generic"
-    ATTRIBUTE = "Attribute"
-    COMPONENT = "Component"
-    PARENT = "Parent"
-    GROUP = "Group"
-
-
-class ArtifactStatus(InfrahubStringEnum):
-    ERROR = "Error"
-    PENDING = "Pending"
-    PROCESSING = "Processing"
-    READY = "Ready"
-
-
-class ValidatorState(InfrahubStringEnum):
-    QUEUED = "queued"
-    IN_PROGRESS = "in_progress"
-    COMPLETED = "completed"
-
-
-class ValidatorConclusion(InfrahubStringEnum):
-    UNKNOWN = "unknown"
-    FAILURE = "failure"
-    SUCCESS = "success"
 
 
 class BaseSchemaModel(BaseModel):
@@ -1205,8 +1175,8 @@ core_models = {
                 {
                     "name": "severity",
                     "kind": "Text",
-                    "enum": ["success", "info", "warning", "error", "critical"],
-                    "default_value": "info",
+                    "enum": Severity.available_types(),
+                    "default_value": Severity.INFO.value,
                     "optional": True,
                 },
                 {"name": "created_at", "kind": "DateTime", "optional": True},
@@ -1298,7 +1268,7 @@ core_models = {
             "branch": BranchSupportType.AWARE.value,
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
-                {"name": "level", "kind": "Number", "enum": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]},
+                {"name": "level", "kind": "Number", "enum": CriticalityLevel.available_types()},
                 {"name": "description", "kind": "Text", "optional": True},
             ],
         },
@@ -1352,14 +1322,14 @@ core_models = {
                 {
                     "name": "type",
                     "kind": "Text",
-                    "default_value": "User",
-                    "enum": ["User", "Script", "Bot", "Git"],
+                    "default_value": AccountType.USER.value,
+                    "enum": AccountType.available_types(),
                 },
                 {
                     "name": "role",
                     "kind": "Text",
-                    "default_value": "read-only",
-                    "enum": ["admin", "read-only", "read-write"],
+                    "default_value": AccountRole.READ_ONLY.value,
+                    "enum": AccountRole.available_types(),
                 },
             ],
             "relationships": [
@@ -1859,6 +1829,31 @@ core_models = {
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "description", "kind": "Text", "optional": True},
                 {"name": "query", "kind": "TextArea"},
+                {"name": "variables", "kind": "JSON", "description": "variables in use in the query", "optional": True},
+                {
+                    "name": "operations",
+                    "kind": "List",
+                    "description": "Operations in use in the query, valid operations: 'query', 'mutation' or 'subscription'",
+                    "optional": True,
+                },
+                {
+                    "name": "models",
+                    "kind": "List",
+                    "description": "List of models associated with this query",
+                    "optional": True,
+                },
+                {
+                    "name": "depth",
+                    "kind": "Number",
+                    "description": "number of nested levels in the query",
+                    "optional": True,
+                },
+                {
+                    "name": "height",
+                    "kind": "Number",
+                    "description": "total number of fields requested in the query",
+                    "optional": True,
+                },
             ],
             "relationships": [
                 {
@@ -1890,7 +1885,7 @@ core_models = {
                 {
                     "name": "content_type",
                     "kind": "Text",
-                    "enum": ["application/json", "text/plain"],
+                    "enum": ContentType.available_types(),
                 },
                 {"name": "checksum", "kind": "Text", "optional": True},
                 {
@@ -1937,7 +1932,7 @@ core_models = {
                 {
                     "name": "content_type",
                     "kind": "Text",
-                    "enum": ["application/json", "text/plain"],
+                    "enum": ContentType.available_types(),
                 },
             ],
             "relationships": [

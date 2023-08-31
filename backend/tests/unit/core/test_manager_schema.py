@@ -6,9 +6,8 @@ from neo4j import AsyncSession
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import BranchSupportType
+from infrahub.core.constants import BranchSupportType, FilterSchemaKind
 from infrahub.core.schema import (
-    FilterSchemaKind,
     GenericSchema,
     GroupSchema,
     NodeSchema,

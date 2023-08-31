@@ -155,7 +155,7 @@ ACCOUNTS = (
     ("CRM Synchronization", "Script", "Password123", "read-write"),
     ("Jack Bauer", "User", "Password123", "read-only"),
     ("Chloe O'Brian", "User", "Password123", "read-write"),
-    ("David Palmer", "User", "Password123", "read-only"),
+    ("David Palmer", "User", "Password123", "read-write"),
     ("Operation Team", "User", "Password123", "read-only"),
     ("Engineering Team", "User", "Password123", "read-write"),
     ("Architecture Team", "User", "Password123", "read-only"),
@@ -759,6 +759,82 @@ async def branch_scenario_remove_colt(client: InfrahubClient, log: logging.Logge
         await circuit.delete()
 
 
+async def branch_scenario_conflict_device(client: InfrahubClient, log: logging.Logger, site_name: str):
+    """
+    Create a new Branch and introduce some conflicts
+    """
+    device1_name = f"{site_name}-edge1"
+    f"{site_name}-edge2"
+
+    new_branch_name = f"{site_name}-maintenance-conflict"
+    new_branch = await client.branch.create(
+        branch_name=new_branch_name,
+        data_only=True,
+        description=f"Put {device1_name} in maintenance mode",
+    )
+    log.info(f"Created branch: {new_branch_name!r}")
+
+    maintenance_status = store.get(key="maintenance")
+    provisionning_status = store.get(key="provisionning")
+    drained_status = store.get(key="drained")
+
+    # Update Device 1 Status both in the Branch and in Main
+    device1_branch = await client.get(branch=new_branch_name, kind="InfraDevice", name__value=device1_name)
+
+    device1_branch.status = maintenance_status
+    await device1_branch.save()
+
+    intf1_branch = await client.get(
+        branch=new_branch_name, kind="InfraInterfaceL3", device__ids=[device1_branch.id], name__value="Ethernet1"
+    )
+    intf1_branch.enabled.value = False
+    intf1_branch.status = drained_status
+    await intf1_branch.save()
+
+    device1_main = await client.get(kind="InfraDevice", name__value=device1_name)
+
+    device1_main.status = provisionning_status
+    await device1_main.save()
+
+    intf1_main = await client.get(kind="InfraInterfaceL3", device__ids=[device1_branch.id], name__value="Ethernet1")
+    intf1_main.enabled.value = False
+    await intf1_main.save()
+
+
+async def branch_scenario_conflict_platform(client: InfrahubClient, log: logging.Logger):
+    """
+    Create a new Branch and introduce some conflicts on the platforms for node ADD and DELETE
+    """
+    new_branch_name = f"platform-conflict"
+    new_branch = await client.branch.create(
+        branch_name=new_branch_name,
+        data_only=True,
+        description=f"Add new platform",
+    )
+    log.info(f"Created branch: {new_branch_name!r}")
+
+    # Create a new Platform object with the same name, both in the branch and in main
+    platform1_branch = await client.create(
+        branch=new_branch_name, kind="InfraPlatform", name="Cisco IOS XR", netmiko_device_type="cisco_xr"
+    )
+    await platform1_branch.save()
+    platform1_main = await client.create(kind="InfraPlatform", name="Cisco IOS XR", netmiko_device_type="cisco_xr")
+    await platform1_main.save()
+
+    # Delete an existing Platform object on both in the Branch and in Main
+    platform2_branch = await client.get(branch=new_branch_name, kind="InfraPlatform", name__value="Cisco NXOS SSH")
+    await platform2_branch.delete()
+    platform2_main = await client.get(kind="InfraPlatform", name__value="Cisco NXOS SSH")
+    await platform2_main.delete()
+
+    # Delete an existing Platform object in the branch and update it in main
+    platform3_branch = await client.get(branch=new_branch_name, kind="InfraPlatform", name__value="Juniper JunOS")
+    await platform3_branch.delete()
+    platform3_main = await client.get(kind="InfraPlatform", name__value="Juniper JunOS")
+    platform3_main.nornir_platform.value = "juniper_junos"
+    await platform3_main.save()
+
+
 # ---------------------------------------------------------------
 # Use the `infrahubctl run` command line to execute this script
 #
@@ -1007,8 +1083,8 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     #  Scenario 1 - Add a Peering
     #  Scenario 2 - Change the IP Address between 2 edges
     #  Scenario 3 - Delete a Circuit + Peering
-    #  TODO branch4 - Create some conflicts
-    #  TODO branch5 - Drain Site
+    #  Scenario 4 - Create some Relatioinship One and Attribute conflicts on a device
+    #  Scenario 5 - Create some Node ADD and DELETE conflicts on some platform objects
     # --------------------------------------------------
     if branch == "main":
         await branch_scenario_add_transit(
@@ -1018,3 +1094,5 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         )
         await branch_scenario_replace_ip_addresses(site_name=SITE_NAMES[2], client=client, log=log)
         await branch_scenario_remove_colt(site_name=SITE_NAMES[0], client=client, log=log)
+        await branch_scenario_conflict_device(site_name=SITE_NAMES[3], client=client, log=log)
+        await branch_scenario_conflict_platform(client=client, log=log)

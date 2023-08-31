@@ -1,13 +1,58 @@
+import json
+import os
+from pathlib import Path
+from typing import Any, Dict, Optional
+
+import httpx
 import pytest
+import yaml
 from fastapi.testclient import TestClient
 
-from infrahub.core.initialization import first_time_initialization
+from infrahub import config
+from infrahub.core import registry
+from infrahub.core.initialization import first_time_initialization, initialization
 from infrahub.core.node import Node
+from infrahub.core.schema import SchemaRoot
 from infrahub.core.utils import count_relationships, delete_all_nodes
 from infrahub.git import InfrahubRepository
+from infrahub.utils import get_models_dir
 from infrahub_client import Config, InfrahubClient, NodeNotFound
+from infrahub_client.types import HTTPMethod
 
 # pylint: disable=unused-argument
+
+
+async def load_infrastructure_schema(session):
+    models_dir = get_models_dir()
+
+    schema_txt = Path(os.path.join(models_dir, "infrastructure_base.yml")).read_text()
+    infra_schema = yaml.safe_load(schema_txt)
+
+    default_branch_name = config.SETTINGS.main.default_branch
+    branch_schema = registry.schema.get_schema_branch(name=default_branch_name)
+    tmp_schema = branch_schema.duplicate()
+    tmp_schema.load_schema(schema=SchemaRoot(**infra_schema))
+    tmp_schema.process()
+
+    await registry.schema.update_schema_branch(
+        schema=tmp_schema, session=session, branch=default_branch_name, update_db=True
+    )
+
+
+class InfrahubTestClient(TestClient):
+    def _request(
+        self, url: str, method: HTTPMethod, headers: Dict[str, Any], timeout: int, payload: Optional[Dict] = None
+    ) -> httpx.Response:
+        content = None
+        if payload:
+            content = str(json.dumps(payload)).encode("UTF-8")
+        with self as client:
+            return client.request(method=method.value, url=url, headers=headers, timeout=timeout, content=content)
+
+    async def async_request(
+        self, url: str, method: HTTPMethod, headers: Dict[str, Any], timeout: int, payload: Optional[Dict] = None
+    ) -> httpx.Response:
+        return self._request(url=url, method=method, headers=headers, timeout=timeout, payload=payload)
 
 
 class TestInfrahubClient:
@@ -15,6 +60,8 @@ class TestInfrahubClient:
     async def base_dataset(self, session):
         await delete_all_nodes(session=session)
         await first_time_initialization(session=session)
+        await load_infrastructure_schema(session=session)
+        await initialization(session=session)
 
     @pytest.fixture(scope="class")
     async def test_client(
@@ -24,13 +71,14 @@ class TestInfrahubClient:
         # pylint: disable=import-outside-toplevel
         from infrahub.server import app
 
-        return TestClient(app)
+        return InfrahubTestClient(app)
 
     @pytest.fixture
     async def client(self, test_client, integration_helper):
         admin_token = await integration_helper.create_token()
-        config = Config(api_token=admin_token)
-        return await InfrahubClient.init(test_client=test_client, config=config)
+        config = Config(api_token=admin_token, requester=test_client.async_request)
+
+        return await InfrahubClient.init(config=config)
 
     @pytest.fixture(scope="class")
     async def query_99(self, session, test_client):
@@ -38,7 +86,7 @@ class TestInfrahubClient:
         await obj.new(
             session=session,
             name="query99",
-            query="query query99 { repository { edges { id }}}",
+            query="query query99 { CoreRepository { edges { node { id }}}}",
         )
         await obj.save(session=session)
         return obj
@@ -81,14 +129,14 @@ class TestInfrahubClient:
         # 1. Modify an object to validate if its being properly updated
         # 2. Add an object that doesn't exist in GIt and validate that it's been deleted
         value_before_change = queries[0].query.value
-        queries[0].query.value = "query myquery { location { edges { id }}}"
+        queries[0].query.value = "query myquery { BuiltinLocation { edges { node { id }}}}"
         await queries[0].save()
 
         obj = await Node.init(schema="CoreGraphQLQuery", session=session)
         await obj.new(
             session=session,
             name="soontobedeletedquery",
-            query="query soontobedeletedquery { location { edges { id }}}",
+            query="query soontobedeletedquery { BuiltinLocation { edges { node { id }}}}",
             repository=str(repo.id),
         )
         await obj.save(session=session)

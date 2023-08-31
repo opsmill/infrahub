@@ -27,7 +27,8 @@ class TestInfrahubSchema:
         assert isinstance(schema_nodes["BuiltinLocation"], NodeSchema)
 
     async def test_schema_get(self, client, init_db_base):
-        ifc = await InfrahubClient.init(test_client=client)
+        config = Config(requester=client.async_request)
+        ifc = await InfrahubClient.init(config=config)
         schema_node = await ifc.schema.get(kind="BuiltinLocation")
 
         assert isinstance(schema_node, NodeSchema)
