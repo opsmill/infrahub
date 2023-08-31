@@ -1,4 +1,4 @@
-import ReactLoading from "react-loading";
+import ReactLoading, { LoadingType } from "react-loading";
 import { classNames } from "../../utils/common";
 
 interface Props {
@@ -6,12 +6,14 @@ interface Props {
   hideText?: boolean;
   className?: string;
   colorClass?: string;
+  type?: LoadingType;
 }
 
 export default function LoadingScreen(props: Props) {
-  const { hideText, size, className, colorClass } = props;
+  const { hideText, size, className, colorClass, type } = props;
 
   const color = colorClass ?? "!fill-custom-blue-500";
+  console.log("color: ", color);
 
   return (
     <div
@@ -19,7 +21,12 @@ export default function LoadingScreen(props: Props) {
         "flex-1 flex flex-col items-center justify-center h-auto w-auto",
         className ?? ""
       )}>
-      <ReactLoading className={color} type={"bars"} height={size ?? 70} width={size ?? 70} />
+      <ReactLoading
+        className={color}
+        type={type ?? "bars"}
+        height={size ?? 70}
+        width={size ?? 70}
+      />
       {!hideText && <div className="text-xl mt-2">Just a moment</div>}
     </div>
   );

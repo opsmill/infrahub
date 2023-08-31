@@ -11,6 +11,7 @@ import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { getSchemaRelationshipColumns } from "../../utils/getSchemaObjectColumns";
 import { ArtifactsDiff } from "../diff/artifact-diff/artifacts-diff";
+import { Checks } from "../diff/checks/checks";
 import { DataDiff } from "../diff/data-diff";
 import { DIFF_TABS } from "../diff/diff";
 import { FilesDiff } from "../diff/file-diff/files-diff";
@@ -61,7 +62,7 @@ const renderContent = (tab: string | null | undefined) => {
     case DIFF_TABS.DATA:
       return <DataDiff />;
     case DIFF_TABS.CHECKS:
-      return <DataDiff />;
+      return <Checks />;
     default: {
       return <Conversations />;
     }
