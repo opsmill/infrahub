@@ -45,6 +45,7 @@ query {
           count
           edges {
             node {
+              display_label
               name {
                 value
               }
@@ -57,7 +58,21 @@ query {
               conclusion {
                 value
               }
+              kind {
+                value
+              }
+              origin{
+                value
+              }
+              created_at {
+                value
+              }
               ... on CoreDataCheck {
+                paths {
+                  value
+                }
+              }
+              ... on CoreSchemaCheck {
                 paths {
                   value
                 }
@@ -78,6 +93,7 @@ query {
                   value
                 }
               }
+              __typename
             }
           }
         }

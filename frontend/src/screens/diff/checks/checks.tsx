@@ -22,7 +22,10 @@ export const Checks = () => {
     ${queryString}
   `;
 
-  const { loading, error, data } = useQuery(query);
+  const { loading, error, data } = useQuery(
+    query
+    // { pollInterval: 1000 }
+  );
 
   const validators = data?.CoreValidator?.edges;
 
@@ -39,7 +42,7 @@ export const Checks = () => {
   }
 
   return (
-    <div>
+    <div className="grid grid-cols-2 3xl:grid-cols-3 gap-4 p-4">
       {validators.map((item: any, index: number) => (
         <Validator key={index} validator={item.node} />
       ))}

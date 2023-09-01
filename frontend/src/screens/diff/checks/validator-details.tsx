@@ -1,9 +1,7 @@
 import { gql } from "@apollo/client";
-import { ArrowPathIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useEffect } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
-import { Button } from "../../../components/button";
 import { QSP } from "../../../config/qsp";
 import { getValidatorDetails } from "../../../graphql/queries/diff/getValidatorDetails";
 import useQuery from "../../../hooks/useQuery";
@@ -55,8 +53,6 @@ export const ValidatorDetails = () => {
 
   const attributes = getValidatorAttributes(validator?.__typename, schemaList);
 
-  const handleRetry = () => {};
-
   return (
     <div className="flex-1 overflow-auto flex flex-col">
       <div className="flex flex-col">
@@ -91,20 +87,11 @@ export const ValidatorDetails = () => {
                 </div>
               );
             })}
-
-            <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-3 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500 flex items-center">Actions</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-                <Button onClick={handleRetry}>
-                  <ArrowPathIcon className="h-4 w-4" /> Retry
-                </Button>
-              </dd>
-            </div>
           </dl>
         </div>
       </div>
 
-      <div>
+      <div className="grid grid-cols-2 3xl:grid-cols-3 gap-4 p-4">
         {validator?.checks?.edges?.map((check: any, index: number) => (
           <Check key={index} check={check?.node} />
         ))}

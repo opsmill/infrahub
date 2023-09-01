@@ -1,12 +1,10 @@
 import {
-  ArrowPathIcon,
   CheckCircleIcon,
   ClockIcon,
   ExclamationCircleIcon,
   ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
 import { StringParam, useQueryParam } from "use-query-params";
-import { Button } from "../../../components/button";
 import { DateDisplay } from "../../../components/date-display";
 import { QSP } from "../../../config/qsp";
 import LoadingScreen from "../../loading-screen/loading-screen";
@@ -47,44 +45,37 @@ export const Validator = (props: tValidatorProps) => {
 
   const { display_label, started_at, completed_at, conclusion, checks, state } = validator;
 
-  const handleRetry = () => {};
-
   return (
     <div
       onClick={() => setQsp(validator.id)}
-      className={
-        "flex justify-between items-center rounded-lg shadow p-2 m-4 cursor-pointer bg-custom-white"
-      }>
-      <div className="flex mr-2">
+      className={"flex flex-col rounded-lg shadow p-2 cursor-pointer bg-custom-white"}>
+      <div className="flex items-center mt-2">
         <div className="mr-2">{getValidatorState(state?.value, conclusion?.value)}</div>
 
         <span>{display_label}</span>
       </div>
 
-      <div className="mr-2">
+      <div className="mt-2 flex-1 flex justify-between">
         {started_at?.value && (
-          <div className="flex">
-            <span className="mr-1">Started at:</span>
+          <>
+            <span className="mr-1 font-semibold">Started at:</span>
             <DateDisplay date={started_at.value} hideDefault />
-          </div>
+          </>
         )}
       </div>
 
-      <div className="mr-2">
+      <div className="mt-2 flex-1 flex justify-between">
         {completed_at?.value && (
-          <div className="flex">
-            <span className="mr-1">Completed at:</span>
+          <>
+            <span className="mr-1 font-semibold">Completed at:</span>
             <DateDisplay date={completed_at.value} hideDefault />
-          </div>
+          </>
         )}
       </div>
 
-      <div className="mr-2">Checks: {checks?.count ?? 0}</div>
-
-      <div>
-        <Button onClick={handleRetry}>
-          <ArrowPathIcon className="h-4 w-4" /> Retry
-        </Button>
+      <div className="mt-2 flex-1 flex justify-between">
+        <span className="font-semibold">Checks: </span>
+        {checks?.count ?? 0}
       </div>
     </div>
   );
