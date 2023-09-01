@@ -8,9 +8,6 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExport
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter as GRPCSpanExporter
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter as HTTPSpanExporter
 
-from infrahub import __version__
-import infrahub.config as config
-
 
 def get_tracer(name: str = "infrahub") -> trace.Tracer:
     return trace.get_tracer(name)
