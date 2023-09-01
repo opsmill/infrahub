@@ -11,10 +11,10 @@ from fastapi.logger import logger
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette.responses import PlainTextResponse
 from starlette_exporter import PrometheusMiddleware, handle_metrics
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
 import infrahub.config as config
 from infrahub import __version__
@@ -27,10 +27,16 @@ from infrahub.exceptions import Error
 from infrahub.graphql.app import InfrahubGraphQLApp
 from infrahub.lock import initialize_lock
 from infrahub.log import clear_log_context, get_logger, set_log_data
-from infrahub.trace import add_span_exception, configure_trace, get_traceid, get_tracer, set_span_status
 from infrahub.message_bus import close_broker_connection, connect_to_broker
 from infrahub.message_bus.rpc import InfrahubRpcClient
 from infrahub.middleware import InfrahubCORSMiddleware
+from infrahub.trace import (
+    add_span_exception,
+    configure_trace,
+    get_traceid,
+    get_tracer,
+    set_span_status,
+)
 
 # pylint: disable=too-many-locals
 
