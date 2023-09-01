@@ -216,9 +216,7 @@ class TraceSettings(BaseSettings):
     exporter_protocol: TraceTransportProtocol = Field(
         default=TraceTransportProtocol.GRPC, description="Protocol to be used for exporting traces"
     )
-    exporter_endpoint: str = Field(
-        default=None, description="OTLP endpoint for exporting traces"
-    )
+    exporter_endpoint: str = Field(default=None, description="OTLP endpoint for exporting traces")
     exporter_port: Optional[int] = Field(
         default=None, min=1, max=65535, description="Specified if running on a non default port (4317)"
     )
