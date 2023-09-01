@@ -27,6 +27,19 @@ class StorageDriver(str, Enum):
     LOCAL = "local"
 
 
+class TraceExporterType(str, Enum):
+    CONSOLE = "console"
+    OTLP = "otlp"
+    # JAEGER = "jaeger"
+    # ZIPKIN = "zipkin"
+
+
+class TraceTransportType(str, Enum):
+    GRPC = "grpc"
+    HTTP_PROTO = "http/protobuf"
+    # HTTP_JSON = "http/json"
+
+
 class MainSettings(BaseSettings):
     default_branch: str = "main"
     # default_account: str = "default"
@@ -192,6 +205,51 @@ class SecuritySettings(BaseSettings):
         case_sensitive = False
 
 
+class TraceSettings(BaseSettings):
+    enable: bool = True
+    insecure: bool = Field(
+        default=True, description="Use insecure connection (HTTP) if True, otherwise use secure connection (HTTPS)"
+    )
+    exporter_type: ExporterType = Field(
+        default=ExporterType.console, description="Type of exporter to be used for tracing"
+    )
+    exporter_protocol: ExporterProtocol = Field(
+        default=ExporterProtocol.grpc, description="Protocol to be used for exporting traces"
+    )
+    exporter_endpoint: str = Field(default=None, description="OTLP endpoint for exporting traces")
+    exporter_port: Optional[int] = Field(
+        default=None, min=1, max=65535, description="Specified if running on a non default port (4317)"
+    )
+
+    @property
+    def service_port(self) -> int:
+        if self.exporter_protocol == ExporterProtocol.grpc:
+            default_port = 4317
+        elif self.exporter_protocol == ExporterProtocol.http_protobuf:
+            default_port = 4318
+        else:
+            default_port = 4317
+
+        return self.exporter_port or default_port
+
+    @property
+    def exporter_endpoint(self) -> str:
+        if self.insecure:
+            scheme = "http://"
+        else:
+            scheme = "https://"
+        endpoint = self.exporter_endpoint
+
+        if self.exporter_protocol == ExporterProtocol.http_protobuf:
+            endpoint += "/v1/traces"
+
+        return scheme + endpoint
+
+    class Config:
+        env_prefix = "INFRAHUB_TRACE_"
+        case_sensitive = False
+
+
 class Settings(BaseSettings):
     """Main Settings Class for the project."""
 
@@ -206,6 +264,7 @@ class Settings(BaseSettings):
     analytics: AnalyticsSettings = AnalyticsSettings()
     security: SecuritySettings = SecuritySettings()
     storage: StorageSettings = StorageSettings()
+    trace: TraceSettings = TraceSettings()
     experimental_features: ExperimentalFeaturesSettings = ExperimentalFeaturesSettings()
 
 

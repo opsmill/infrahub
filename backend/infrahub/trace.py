@@ -9,10 +9,7 @@ from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExport
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter as HTTPSpanExporter
 
 from infrahub import __version__
-
-INFRAHUB_OTLP_EXPORTER = os.environ.get("INFRAHUB_OTLP_EXPORTER", "otlp")
-INFRAHUB_OTLP_ENDPOINT = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "http://tempo:4317")
-INFRAHUB_OTLP_PROTOCOL = os.environ.get("OTEL_EXPORTER_OTLP_TRACES_PROTOCOL", "grpc")
+import infrahub.config as config
 
 
 def get_tracer(name: str = "infrahub") -> trace.Tracer:
@@ -64,11 +61,10 @@ def create_tracer_provider(
         exporter = ConsoleSpanExporter()
     elif exporter_type == "otlp":
         if protocol == "http/protobuf":
-            exporter = HTTPSpanExporter(endpoint=endpoint + "/v1/traces")
+            exporter = HTTPSpanExporter(endpoint=endpoint)
         elif protocol == "grpc":
             exporter = GRPCSpanExporter(endpoint=endpoint)
     else:
-        ## TODO zipkin and none
         raise ValueError("Exporter type unsupported by Infrahub")
 
     # Resource can be required for some backends, e.g. Jaeger
@@ -83,9 +79,9 @@ def create_tracer_provider(
 # Create a trace provider with the exporter
 tracer_provider = create_tracer_provider(
     version=__version__,
-    exporter_type=INFRAHUB_OTLP_EXPORTER,
-    endpoint=INFRAHUB_OTLP_ENDPOINT,
-    protocol=INFRAHUB_OTLP_PROTOCOL,
+    type=config.SETTINGS.trace.exporter_type,
+    endpoint=config.SETTINGS.trace.trace_endpoint,
+    protocol=config.SETTINGS.trace.exporter_protocol,
 )
 tracer_provider.get_tracer(__name__)
 
