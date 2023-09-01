@@ -77,7 +77,9 @@ def create_tracer_provider(
     return tracer_provider
 
 
-def configure_trace(version: str, exporter_type: str, exporter_endpoint: str = None, exporter_protocol: str = None) -> None:
+def configure_trace(
+    version: str, exporter_type: str, exporter_endpoint: str = None, exporter_protocol: str = None
+) -> None:
     # Create a trace provider with the exporter
     tracer_provider = create_tracer_provider(
         version=version,
