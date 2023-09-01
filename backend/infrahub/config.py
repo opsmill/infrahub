@@ -36,7 +36,7 @@ class TraceExporterType(str, Enum):
 
 class TraceTransportProtocol(str, Enum):
     GRPC = "grpc"
-    HTTP_PROTO = "http/protobuf"
+    HTTP_PROTOBUF = "http/protobuf"
     # HTTP_JSON = "http/json"
 
 
@@ -211,10 +211,10 @@ class TraceSettings(BaseSettings):
         default=True, description="Use insecure connection (HTTP) if True, otherwise use secure connection (HTTPS)"
     )
     exporter_type: TraceExporterType = Field(
-        default=TraceExporterType.console, description="Type of exporter to be used for tracing"
+        default=TraceExporterType.CONSOLE, description="Type of exporter to be used for tracing"
     )
     exporter_protocol: TraceTransportProtocol = Field(
-        default=TraceTransportProtocol.grpc, description="Protocol to be used for exporting traces"
+        default=TraceTransportProtocol.GRPC, description="Protocol to be used for exporting traces"
     )
     exporter_endpoint: str = Field(
         default=None, description="OTLP endpoint for exporting traces"
@@ -225,9 +225,9 @@ class TraceSettings(BaseSettings):
 
     @property
     def service_port(self) -> int:
-        if self.exporter_protocol == TraceTransportProtocol.grpc:
+        if self.exporter_protocol == TraceTransportProtocol.GRPC:
             default_port = 4317
-        elif self.exporter_protocol == TraceTransportProtocol.http_protobuf:
+        elif self.exporter_protocol == TraceTransportProtocol.HTTP_PROTOBUF:
             default_port = 4318
         else:
             default_port = 4317
@@ -242,7 +242,7 @@ class TraceSettings(BaseSettings):
             scheme = "https://"
         endpoint = self.exporter_endpoint + self.service_port
 
-        if self.exporter_protocol == ExporterProtocol.http_protobuf:
+        if self.exporter_protocol == ExporterProtocol.HTTP_PROTOBUF:
             endpoint += "/v1/traces"
 
         return scheme + endpoint
