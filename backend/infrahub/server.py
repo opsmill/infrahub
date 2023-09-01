@@ -15,7 +15,6 @@ from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette.responses import PlainTextResponse
 from starlette_exporter import PrometheusMiddleware, handle_metrics
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from opentelemetry.instrumentation.requests import RequestsInstrumentor
 
 import infrahub.config as config
 from infrahub import __version__
@@ -48,7 +47,6 @@ app = FastAPI(
 )
 
 FastAPIInstrumentor().instrument_app(app)
-RequestsInstrumentor().instrument()
 
 FRONTEND_DIRECTORY = os.environ.get("INFRAHUB_FRONTEND_DIRECTORY", os.path.abspath("frontend"))
 FRONTEND_ASSET_DIRECTORY = f"{FRONTEND_DIRECTORY}/dist/assets"

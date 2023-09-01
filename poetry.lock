@@ -32,13 +32,13 @@ yarl = "*"
 
 [[package]]
 name = "alembic"
-version = "1.11.3"
+version = "1.12.0"
 description = "A database migration tool for SQLAlchemy."
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "alembic-1.11.3-py3-none-any.whl", hash = "sha256:d6c96c2482740592777c400550a523bc7a9aada4e210cae2e733354ddae6f6f8"},
-    {file = "alembic-1.11.3.tar.gz", hash = "sha256:3db4ce81a9072e1b5aa44c2d202add24553182672a12daf21608d6f62a8f9cf9"},
+    {file = "alembic-1.12.0-py3-none-any.whl", hash = "sha256:03226222f1cf943deee6c85d9464261a6c710cd19b4fe867a3ad1f25afda610f"},
+    {file = "alembic-1.12.0.tar.gz", hash = "sha256:8e7645c32e4f200675e69f0745415335eb59a3663f5feb487abfa0b30c45888b"},
 ]
 
 [package.dependencies]
@@ -67,24 +67,24 @@ dev = ["black", "coverage", "isort", "pre-commit", "pyenchant", "pylint"]
 
 [[package]]
 name = "anyio"
-version = "3.7.1"
+version = "4.0.0"
 description = "High level compatibility layer for multiple asynchronous event loop implementations"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 files = [
-    {file = "anyio-3.7.1-py3-none-any.whl", hash = "sha256:91dee416e570e92c64041bd18b900d1d6fa78dff7048769ce5ac5ddad004fbb5"},
-    {file = "anyio-3.7.1.tar.gz", hash = "sha256:44a3c9aba0f5defa43261a8b3efb97891f2bd7d804e0e1f56419befa1adfc780"},
+    {file = "anyio-4.0.0-py3-none-any.whl", hash = "sha256:cfdb2b588b9fc25ede96d8db56ed50848b0b649dca3dd1df0b11f683bb9e0b5f"},
+    {file = "anyio-4.0.0.tar.gz", hash = "sha256:f7ed51751b2c2add651e5747c891b47e26d2a21be5d32d9311dfe9692f3e5d7a"},
 ]
 
 [package.dependencies]
-exceptiongroup = {version = "*", markers = "python_version < \"3.11\""}
+exceptiongroup = {version = ">=1.0.2", markers = "python_version < \"3.11\""}
 idna = ">=2.8"
 sniffio = ">=1.1"
 
 [package.extras]
-doc = ["Sphinx", "packaging", "sphinx-autodoc-typehints (>=1.2.0)", "sphinx-rtd-theme (>=1.2.2)", "sphinxcontrib-jquery"]
-test = ["anyio[trio]", "coverage[toml] (>=4.5)", "hypothesis (>=4.0)", "mock (>=4)", "psutil (>=5.9)", "pytest (>=7.0)", "pytest-mock (>=3.6.1)", "trustme", "uvloop (>=0.17)"]
-trio = ["trio (<0.22)"]
+doc = ["Sphinx (>=7)", "packaging", "sphinx-autodoc-typehints (>=1.2.0)"]
+test = ["anyio[trio]", "coverage[toml] (>=7)", "hypothesis (>=4.0)", "psutil (>=5.9)", "pytest (>=7.0)", "pytest-mock (>=3.6.1)", "trustme", "uvloop (>=0.17)"]
+trio = ["trio (>=0.22)"]
 
 [[package]]
 name = "appnope"
@@ -198,13 +198,13 @@ tests-no-zope = ["cloudpickle", "hypothesis", "mypy (>=1.1.1)", "pympler", "pyte
 
 [[package]]
 name = "autoflake"
-version = "2.2.0"
+version = "2.2.1"
 description = "Removes unused imports and unused variables"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "autoflake-2.2.0-py3-none-any.whl", hash = "sha256:de409b009a34c1c2a7cc2aae84c4c05047f9773594317c6a6968bd497600d4a0"},
-    {file = "autoflake-2.2.0.tar.gz", hash = "sha256:62e1f74a0fdad898a96fee6f99fe8241af90ad99c7110c884b35855778412251"},
+    {file = "autoflake-2.2.1-py3-none-any.whl", hash = "sha256:265cde0a43c1f44ecfb4f30d95b0437796759d07be7706a2f70e4719234c0f79"},
+    {file = "autoflake-2.2.1.tar.gz", hash = "sha256:62b7b6449a692c3c9b0c916919bbc21648da7281e8506bcf8d3f8280e431ebc1"},
 ]
 
 [package.dependencies]
@@ -737,31 +737,31 @@ python-dateutil = "*"
 
 [[package]]
 name = "dagit"
-version = "1.4.10"
+version = "1.4.11"
 description = "Web UI for dagster."
 optional = false
 python-versions = "*"
 files = [
-    {file = "dagit-1.4.10-py3-none-any.whl", hash = "sha256:8d12821aa3f76f892cc61ce64b2d8ddff571d52af9d05b497f53de4a95bc75e4"},
-    {file = "dagit-1.4.10.tar.gz", hash = "sha256:dd36946682b2737f57635803baa59553fb223c01ed4ccd1db227ab85671895d6"},
+    {file = "dagit-1.4.11-py3-none-any.whl", hash = "sha256:4a7771478abce20e82a6fcdb2360b7d4a4c8e956dbcfe14cec4fb94ed3ccc4f1"},
+    {file = "dagit-1.4.11.tar.gz", hash = "sha256:825947310171584519f487a67d46dc41a160d46efef2e564bd1cd4166e7cbac0"},
 ]
 
 [package.dependencies]
-dagster-webserver = "1.4.10"
+dagster-webserver = "1.4.11"
 
 [package.extras]
-notebook = ["dagster-webserver[notebook] (==1.4.10)"]
-test = ["dagster-webserver[test] (==1.4.10)"]
+notebook = ["dagster-webserver[notebook] (==1.4.11)"]
+test = ["dagster-webserver[test] (==1.4.11)"]
 
 [[package]]
 name = "dagster"
-version = "1.4.10"
+version = "1.4.11"
 description = "Dagster is an orchestration platform for the development, production, and observation of data assets."
 optional = false
 python-versions = "*"
 files = [
-    {file = "dagster-1.4.10-py3-none-any.whl", hash = "sha256:342a0e15fd2b23357957a1cca2f56c66f18f9a2211bd843d8c47ac0415a54a83"},
-    {file = "dagster-1.4.10.tar.gz", hash = "sha256:026705e7d235ca4a8774d3e5f2da09b112bb6827e09a002efd299d9009cc940f"},
+    {file = "dagster-1.4.11-py3-none-any.whl", hash = "sha256:3bbe7eff9b5ff23aa854cd0e5847b6bd5d44220e4938a0c99ed0884ee44e421a"},
+    {file = "dagster-1.4.11.tar.gz", hash = "sha256:dbdfbe263105aa45bb6b2b74226610be138401aa560c0a80ee25ca8b8fb72dad"},
 ]
 
 [package.dependencies]
@@ -804,17 +804,17 @@ test = ["buildkite-test-collector", "docker", "grpcio-tools (>=1.44.0)", "mock (
 
 [[package]]
 name = "dagster-graphql"
-version = "1.4.10"
+version = "1.4.11"
 description = "The GraphQL frontend to python dagster."
 optional = false
 python-versions = "*"
 files = [
-    {file = "dagster-graphql-1.4.10.tar.gz", hash = "sha256:ea216e2e5bf1d1e5934b3bd5fde4b731dab9963fbd3dc0f89a0063347efa7426"},
-    {file = "dagster_graphql-1.4.10-py3-none-any.whl", hash = "sha256:ed4478d0cf626c52262776b9a6b5f4188d5eba746a2d90caea00f3492ead3781"},
+    {file = "dagster-graphql-1.4.11.tar.gz", hash = "sha256:7dbc0340b765c454e9e61d877aec3bd7f0470ebca3f1f358f7b930977347c0b0"},
+    {file = "dagster_graphql-1.4.11-py3-none-any.whl", hash = "sha256:b96af8389d1c60fc6612f439e4c106c85b80a0d070ce2855d1cf81c2fa3c0e76"},
 ]
 
 [package.dependencies]
-dagster = "1.4.10"
+dagster = "1.4.11"
 gql = {version = ">=3.0.0", extras = ["requests"]}
 graphene = ">=3"
 requests = "*"
@@ -823,19 +823,19 @@ urllib3 = "<2.0.0"
 
 [[package]]
 name = "dagster-webserver"
-version = "1.4.10"
+version = "1.4.11"
 description = "Web UI for dagster."
 optional = false
 python-versions = "*"
 files = [
-    {file = "dagster_webserver-1.4.10-py3-none-any.whl", hash = "sha256:be30e464c86bc2dec4e525291c253c917c89b1eba46be54fd988a7b1b0ba2422"},
-    {file = "dagster_webserver-1.4.10.tar.gz", hash = "sha256:0eaf2f954199b1480a92b99f6829f6dd50fc8df8454ca4d881289a430984d994"},
+    {file = "dagster_webserver-1.4.11-py3-none-any.whl", hash = "sha256:7128dfe02122abb7b557ea37a603684cfeee36ca8918bd80603b945c09122652"},
+    {file = "dagster_webserver-1.4.11.tar.gz", hash = "sha256:7c06a6c2978cc5e6e2f4e39c87e95e61378679efe05a3579fb85ca88d2ce7ff4"},
 ]
 
 [package.dependencies]
 click = ">=7.0,<9.0"
-dagster = "1.4.10"
-dagster-graphql = "1.4.10"
+dagster = "1.4.11"
+dagster-graphql = "1.4.11"
 starlette = "*"
 uvicorn = {version = "*", extras = ["standard"]}
 
@@ -856,20 +856,20 @@ files = [
 
 [[package]]
 name = "deepdiff"
-version = "6.3.1"
+version = "6.4.0"
 description = "Deep Difference and Search of any Python object/data. Recreate objects by adding adding deltas to each other."
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "deepdiff-6.3.1-py3-none-any.whl", hash = "sha256:eae2825b2e1ea83df5fc32683d9aec5a56e38b756eb2b280e00863ce4def9d33"},
-    {file = "deepdiff-6.3.1.tar.gz", hash = "sha256:e8c1bb409a2caf1d757799add53b3a490f707dd792ada0eca7cac1328055097a"},
+    {file = "deepdiff-6.4.0-py3-none-any.whl", hash = "sha256:a3118ae1b2072aa87b7ec080d24a71b2d855609c209794e018c01299e4c96277"},
+    {file = "deepdiff-6.4.0.tar.gz", hash = "sha256:a42a95176b949e9d6f0dd0248f05e8ed0cc4806472372129c38b3f3a5d219da9"},
 ]
 
 [package.dependencies]
 ordered-set = ">=4.0.2,<4.2.0"
 
 [package.extras]
-cli = ["click (==8.1.3)", "pyyaml (==6.0)"]
+cli = ["click (==8.1.3)", "pyyaml (==6.0.1)"]
 optimize = ["orjson"]
 
 [[package]]
@@ -1337,13 +1337,13 @@ smmap = ">=3.0.1,<6"
 
 [[package]]
 name = "gitpython"
-version = "3.1.32"
+version = "3.1.33"
 description = "GitPython is a Python library used to interact with Git repositories"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "GitPython-3.1.32-py3-none-any.whl", hash = "sha256:e3d59b1c2c6ebb9dfa7a184daf3b6dd4914237e7488a1730a6d8f6f5d0b4187f"},
-    {file = "GitPython-3.1.32.tar.gz", hash = "sha256:8d9b8cb1e80b9735e8717c9362079d3ce4c6e5ddeebedd0361b228c3a67a62f6"},
+    {file = "GitPython-3.1.33-py3-none-any.whl", hash = "sha256:11f22466f982211ad8f3bdb456c03be8466c71d4da8774f3a9f68344e89559cb"},
+    {file = "GitPython-3.1.33.tar.gz", hash = "sha256:13aaa3dff88a23afec2d00eb3da3f2e040e2282e41de484c5791669b31146084"},
 ]
 
 [package.dependencies]
@@ -2599,27 +2599,6 @@ opentelemetry-util-http = "0.37b0"
 [package.extras]
 instruments = ["fastapi (<=0.90.1)"]
 test = ["httpx (>=0.22,<1.0)", "opentelemetry-instrumentation-fastapi[instruments]", "opentelemetry-test-utils (==0.37b0)", "requests (>=2.23,<3.0)"]
-
-[[package]]
-name = "opentelemetry-instrumentation-requests"
-version = "0.37b0"
-description = "OpenTelemetry requests instrumentation"
-optional = false
-python-versions = ">=3.7"
-files = [
-    {file = "opentelemetry_instrumentation_requests-0.37b0-py3-none-any.whl", hash = "sha256:2276032d9f01af744c57d02cb396286338896141e879f9590b21541cd8330cbd"},
-    {file = "opentelemetry_instrumentation_requests-0.37b0.tar.gz", hash = "sha256:180d48cc3b2c4542378ff0d6d6a2f09af982ac9c60ec70056f8f36385e84ea47"},
-]
-
-[package.dependencies]
-opentelemetry-api = ">=1.12,<2.0"
-opentelemetry-instrumentation = "0.37b0"
-opentelemetry-semantic-conventions = "0.37b0"
-opentelemetry-util-http = "0.37b0"
-
-[package.extras]
-instruments = ["requests (>=2.0,<3.0)"]
-test = ["httpretty (>=1.0,<2.0)", "opentelemetry-instrumentation-requests[instruments]", "opentelemetry-test-utils (==0.37b0)"]
 
 [[package]]
 name = "opentelemetry-proto"
@@ -4111,13 +4090,13 @@ files = [
 
 [[package]]
 name = "universal-pathlib"
-version = "0.1.2"
+version = "0.1.3"
 description = "pathlib api extended to use fsspec backends"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "universal_pathlib-0.1.2-py3-none-any.whl", hash = "sha256:ab8f5da05b46669fda0bca0be1de13f0bc85107fc19039ae2646efb5fe9abe2a"},
-    {file = "universal_pathlib-0.1.2.tar.gz", hash = "sha256:689e2701fef5ed4ed19888d0aca0b3542fe248e09b10adc431f5f747f868052a"},
+    {file = "universal_pathlib-0.1.3-py3-none-any.whl", hash = "sha256:9c6a78cd75dad2988eb1d5db52f4e85a8a3092cbe5eb2cf18882c1ef06470d43"},
+    {file = "universal_pathlib-0.1.3.tar.gz", hash = "sha256:1a052ab5e0517301df66be6517e9fe63cd9fc00813e5ce71a73701441ac2b5c8"},
 ]
 
 [package.dependencies]
@@ -4684,4 +4663,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8, < 3.12"
-content-hash = "f0eedba5846600faa128709e8b3e5f1d03b3b039fde0188f860936672aaf90df"
+content-hash = "4de44efdfb2c07c04073526b35e2c3284d7592dd089e9fa8c8bac039af4cf16a"
