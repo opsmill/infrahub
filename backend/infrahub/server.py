@@ -28,7 +28,7 @@ from infrahub.exceptions import Error
 from infrahub.graphql.app import InfrahubGraphQLApp
 from infrahub.lock import initialize_lock
 from infrahub.log import clear_log_context, get_logger, set_log_data
-from infrahub.trace import get_tracer, set_span_status, add_span_exception, get_traceid
+from infrahub.trace import add_span_exception, configure_trace, get_traceid, get_tracer, set_span_status
 from infrahub.message_bus import close_broker_connection, connect_to_broker
 from infrahub.message_bus.rpc import InfrahubRpcClient
 from infrahub.middleware import InfrahubCORSMiddleware
@@ -70,6 +70,15 @@ async def app_initialization():
         config_file_path = os.path.abspath(config_file_name)
         log.info("application_init", config_file=config_file_path)
         config.load_and_exit(config_file_path)
+
+    # Initialize trace
+    if config.SETTINGS.trace.enable:
+        configure_trace(
+            version=__version__,
+            type=config.SETTINGS.trace.exporter_type,
+            endpoint=config.SETTINGS.trace.trace_endpoint,
+            protocol=config.SETTINGS.trace.exporter_protocol,
+        )
 
     # Initialize database Driver and load local registry
     app.state.db = await get_db()

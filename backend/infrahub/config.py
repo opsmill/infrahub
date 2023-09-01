@@ -236,13 +236,15 @@ class TraceSettings(BaseSettings):
 
     @property
     def trace_endpoint(self) -> str:
+        if not self.exporter_endpoint:
+            return None
         if self.insecure:
             scheme = "http://"
         else:
             scheme = "https://"
-        endpoint = self.exporter_endpoint + self.service_port
+        endpoint = str(self.exporter_endpoint) + ":" + str(self.service_port)
 
-        if self.exporter_protocol == ExporterProtocol.HTTP_PROTOBUF:
+        if self.exporter_protocol == TraceTransportProtocol.HTTP_PROTOBUF:
             endpoint += "/v1/traces"
 
         return scheme + endpoint

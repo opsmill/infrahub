@@ -60,6 +60,8 @@ def create_tracer_provider(
     if exporter_type == "console":
         exporter = ConsoleSpanExporter()
     elif exporter_type == "otlp":
+        if not endpoint:
+            raise ValueError("Exporter type is set to otlp but endpoint is not set")
         if protocol == "http/protobuf":
             exporter = HTTPSpanExporter(endpoint=endpoint)
         elif protocol == "grpc":
@@ -76,14 +78,16 @@ def create_tracer_provider(
     return tracer_provider
 
 
-# Create a trace provider with the exporter
-tracer_provider = create_tracer_provider(
-    version=__version__,
-    type=config.SETTINGS.trace.exporter_type,
-    endpoint=config.SETTINGS.trace.trace_endpoint,
-    protocol=config.SETTINGS.trace.exporter_protocol,
-)
-tracer_provider.get_tracer(__name__)
+def configure_trace(version: str, type: str, endpoint: str = None, protocol: str = None
+) -> None:
+    # Create a trace provider with the exporter
+    tracer_provider = create_tracer_provider(
+        version=version,
+        exporter_type=type,
+        endpoint=endpoint,
+        protocol=protocol,
+    )
+    tracer_provider.get_tracer(__name__)
 
-# Register the trace provider
-trace.set_tracer_provider(tracer_provider)
+    # Register the trace provider
+    trace.set_tracer_provider(tracer_provider)
