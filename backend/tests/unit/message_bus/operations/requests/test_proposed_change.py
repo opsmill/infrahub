@@ -48,7 +48,8 @@ async def test_repository_checks():
             meta=Meta(request_id=""),
             proposed_change="13a49493-b186-4f7e-a1bb-cd015ed0bdb0",
             repository="b002c0e6-78e6-4a8b-812f-8aa41d89d386",
-            branch="test-pc-1",
+            source_branch="test-pc-1",
+            target_branch="main",
         )
         in bus_recorder.messages
     )
@@ -57,7 +58,8 @@ async def test_repository_checks():
             meta=Meta(request_id=""),
             proposed_change="13a49493-b186-4f7e-a1bb-cd015ed0bdb0",
             repository="0af9707a-9c53-450d-96db-d721bfd0350b",
-            branch="test-pc-1",
+            source_branch="test-pc-1",
+            target_branch="main",
         )
         in bus_recorder.messages
     )
