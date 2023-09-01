@@ -1,7 +1,7 @@
 import { gql } from "@apollo/client";
 import { ChevronRightIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { Tabs } from "../../components/tabs";
 import { PROPOSED_CHANGES_OBJECT } from "../../config/constants";
@@ -10,6 +10,7 @@ import { getProposedChanges } from "../../graphql/queries/proposed-changes/getPr
 import useQuery from "../../hooks/useQuery";
 import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
+import { constructPath } from "../../utils/fetch";
 import { getSchemaRelationshipColumns } from "../../utils/getSchemaObjectColumns";
 import { ArtifactsDiff } from "../diff/artifact-diff/artifacts-diff";
 import { Checks } from "../diff/checks/checks";
@@ -49,6 +50,7 @@ export const ProposedChangesDetails = () => {
   const [, setValidatorQsp] = useQueryParam(QSP.VALIDATOR_DETAILS, StringParam);
   const [schemaList] = useAtom(schemaState);
   const [, setProposedChange] = useAtom(proposedChangedState);
+  const navigate = useNavigate();
 
   const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_OBJECT)[0];
 
@@ -114,7 +116,9 @@ export const ProposedChangesDetails = () => {
   return (
     <div>
       <div className="bg-custom-white px-4 py-5 pb-0 sm:px-6 flex items-center">
-        <div className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline">
+        <div
+          className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline"
+          onClick={() => navigate(constructPath("/proposed-changes"))}>
           Proposed changes
         </div>
 

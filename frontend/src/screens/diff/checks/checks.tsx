@@ -22,10 +22,7 @@ export const Checks = () => {
     ${queryString}
   `;
 
-  const { loading, error, data } = useQuery(
-    query
-    // { pollInterval: 1000 }
-  );
+  const { loading, error, data } = useQuery(query, { pollInterval: 1000 });
 
   const validators = data?.CoreValidator?.edges;
 
