@@ -53,18 +53,18 @@ def add_span_exception(exception: Exception) -> None:
 
 
 def create_tracer_provider(
-    version: str, exporter_type: str, endpoint: str = None, protocol: str = None
+    version: str, exporter_type: str, exporter_endpoint: str = None, exporter_protocol: str = None
 ) -> TracerProvider:
     # Create a BatchSpanProcessor exporter based on the type
     if exporter_type == "console":
         exporter = ConsoleSpanExporter()
     elif exporter_type == "otlp":
-        if not endpoint:
+        if not exporter_endpoint:
             raise ValueError("Exporter type is set to otlp but endpoint is not set")
-        if protocol == "http/protobuf":
-            exporter = HTTPSpanExporter(endpoint=endpoint)
-        elif protocol == "grpc":
-            exporter = GRPCSpanExporter(endpoint=endpoint)
+        if exporter_protocol == "http/protobuf":
+            exporter = HTTPSpanExporter(endpoint=exporter_endpoint)
+        elif exporter_protocol == "grpc":
+            exporter = GRPCSpanExporter(endpoint=exporter_endpoint)
     else:
         raise ValueError("Exporter type unsupported by Infrahub")
 
@@ -77,13 +77,13 @@ def create_tracer_provider(
     return tracer_provider
 
 
-def configure_trace(version: str, type: str, endpoint: str = None, protocol: str = None) -> None:
+def configure_trace(version: str, exporter_type: str, exporter_endpoint: str = None, exporter_protocol: str = None) -> None:
     # Create a trace provider with the exporter
     tracer_provider = create_tracer_provider(
         version=version,
-        exporter_type=type,
-        endpoint=endpoint,
-        protocol=protocol,
+        exporter_type=exporter_type,
+        exporter_endpoint=exporter_endpoint,
+        exporter_protocol=exporter_protocol,
     )
     tracer_provider.get_tracer(__name__)
 

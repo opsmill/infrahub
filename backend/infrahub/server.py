@@ -79,9 +79,9 @@ async def app_initialization():
     if config.SETTINGS.trace.enable:
         configure_trace(
             version=__version__,
-            type=config.SETTINGS.trace.exporter_type,
-            endpoint=config.SETTINGS.trace.trace_endpoint,
-            protocol=config.SETTINGS.trace.exporter_protocol,
+            exporter_type=config.SETTINGS.trace.exporter_type,
+            exporter_endpoint=config.SETTINGS.trace.trace_endpoint,
+            exporter_protocol=config.SETTINGS.trace.exporter_protocol,
         )
 
     # Initialize database Driver and load local registry
