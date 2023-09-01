@@ -1,4 +1,3 @@
-
 from opentelemetry import trace
 from opentelemetry.trace import StatusCode
 from opentelemetry.sdk.resources import Resource
