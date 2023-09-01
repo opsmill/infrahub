@@ -1,4 +1,3 @@
-import os
 
 from opentelemetry import trace
 from opentelemetry.trace import StatusCode
