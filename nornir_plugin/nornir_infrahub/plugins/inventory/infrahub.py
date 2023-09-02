@@ -18,6 +18,7 @@ from nornir.core.inventory import (
     ParentGroups,
 )
 from pydantic import BaseModel
+from pydantic.dataclasses import dataclass
 
 from infrahub_client import Config, InfrahubClientSync, InfrahubNodeSync, NodeSchema
 
@@ -91,7 +92,8 @@ def _get_inventory_element(typ: Type[HostOrGroup], data: Dict[str, Any], name: s
     )
 
 
-class SchemaMappingNode(BaseModel):
+@dataclass
+class SchemaMappingNode:
     name: str
     mapping: str
 
