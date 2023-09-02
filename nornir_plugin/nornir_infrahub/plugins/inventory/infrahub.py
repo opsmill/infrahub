@@ -18,6 +18,8 @@ from nornir.core.inventory import (
     ParentGroups,
 )
 from pydantic import BaseModel
+from pydantic import Field
+from pydantic import validator
 from pydantic.dataclasses import dataclass
 
 from infrahub_client import Config, InfrahubClientSync, InfrahubNodeSync, NodeSchema
@@ -98,6 +100,26 @@ class SchemaMappingNode:
     mapping: str
 
 
+class HostNode(BaseModel):
+    kind: str
+    include: List[str] = Field(default_factory=list)
+    exclude: List[str] = Field(default_factory=list)
+    filters: Dict[str, Any] = Field(default_factory=dict)
+
+    @validator("include", always=True)
+    def validate_include(cls, v: List[str]):
+        # add member_of_groups to include property
+        # this relation needs to be pre fetched to be able to determine the group membership of a HostNode
+        include = ["member_of_groups"]
+        if not isinstance(v, list):
+            raise ValueError("include must be of type List[str]")
+        for item in v:
+            if not isinstance(item, str):
+                raise ValueError("include must be of type List[str]")
+            include.append(item)
+        return include
+
+
 def get_related_nodes(node_schema: NodeSchema, attrs: Set[str]) -> Set[str]:
     nodes = set()
     relationship_schemas = {schema.name: schema.peer for schema in node_schema.relationships}
@@ -123,10 +145,10 @@ class InfrahubInventory:
 
     def __init__(
         self,
+        host_node: Dict[str, any],
         address: str = "http://localhost:8000",
         token: Optional[str] = None,
         branch: str = "main",
-        host_node: str = "Device",
         schema_mappings: Optional[List[Dict[str, str]]] = None,
         group_mappings: Optional[List[str]] = None,
         defaults_file: str = "defaults.yaml",
@@ -134,9 +156,12 @@ class InfrahubInventory:
     ):
         self.address = address
         self.branch = branch
-        self.host_node = host_node
+
+        self.host_node = HostNode(**host_node)
+
         self.defaults_file = Path(defaults_file).expanduser()
         self.group_file = Path(group_file).expanduser()
+
         self.client = InfrahubClientSync.init(config=Config(api_token=token), address=self.address)
 
         schema_mappings = schema_mappings or []
@@ -145,7 +170,7 @@ class InfrahubInventory:
         group_mappings = group_mappings or []
         self.group_mappings = group_mappings
 
-        host_node_schema = self.client.schema.get(kind=host_node)
+        host_node_schema = self.client.schema.get(kind=self.host_node.kind)
 
         attrs = set(
             itertools.chain(
@@ -186,7 +211,7 @@ class InfrahubInventory:
         for extra_node in self.extra_nodes:
             self.get_resources(kind=extra_node)
 
-        host_nodes = self.get_resources(kind=self.host_node)
+        host_nodes = self.get_resources(**dict(self.host_node))
 
         for host_node in host_nodes:
             name = host_node.name.value
@@ -221,6 +246,10 @@ class InfrahubInventory:
 
         return Inventory(hosts=hosts, groups=groups, defaults=defaults)
 
-    def get_resources(self, kind: str) -> List[InfrahubNodeSync]:
-        resources = self.client.all(kind=kind, branch=self.branch, populate_store=True)
+    def get_resources(self, kind: str, **kwargs) -> List[InfrahubNodeSync]:
+        filters = {}
+        if "filters" in kwargs:
+            filters = kwargs.pop("filters")
+
+        resources = self.client.all(kind=kind, branch=self.branch, populate_store=True, **kwargs, **filters)
         return resources
