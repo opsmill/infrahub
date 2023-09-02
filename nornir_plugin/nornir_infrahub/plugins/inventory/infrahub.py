@@ -121,7 +121,7 @@ class HostNode(BaseModel):
 
 
 def get_related_nodes(node_schema: NodeSchema, attrs: Set[str]) -> Set[str]:
-    nodes = set()
+    nodes = {"CoreStandardGroup"}
     relationship_schemas = {schema.name: schema.peer for schema in node_schema.relationships}
     for attr in attrs:
         if attr in relationship_schemas:
@@ -215,7 +215,6 @@ class InfrahubInventory:
 
         for host_node in host_nodes:
             name = host_node.name.value
-            extracted_groups = []
 
             for schema_mapping in self.schema_mappings:
                 attrs = schema_mapping.mapping.split(".")
@@ -228,6 +227,8 @@ class InfrahubInventory:
 
             host["data"] = {"InfrahubNode": host_node}
             hosts[name] = _get_inventory_element(Host, host, name, defaults)
+
+            extracted_groups = [related_node.peer.name.value for related_node in host_node.member_of_groups.peers]
 
             for group_mapping in self.group_mappings:
                 attrs = group_mapping.split(".")
