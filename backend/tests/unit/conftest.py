@@ -1239,7 +1239,7 @@ async def car_person_data_generic(session, register_core_models_schema, car_pers
 
 
 @pytest.fixture
-async def car_person_manufacturer_schema(session: AsyncSession, data_schema) -> None:
+async def car_person_manufacturer_schema(session: AsyncSession, default_branch: Branch, data_schema) -> None:
     SCHEMA = {
         "nodes": [
             {
@@ -1287,8 +1287,7 @@ async def car_person_manufacturer_schema(session: AsyncSession, data_schema) -> 
     }
 
     schema = SchemaRoot(**SCHEMA)
-    for node in schema.nodes:
-        registry.set_schema(name=node.kind, schema=node)
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
 
 @pytest.fixture
@@ -1725,7 +1724,7 @@ async def all_attribute_types_schema(
 
     node_schema = NodeSchema(**SCHEMA)
     registry.schema.set(name=node_schema.kind, schema=node_schema, branch=default_branch.name)
-
+    registry.schema.process_schema_branch(name=default_branch.name)
     return node_schema
 
 
@@ -1753,7 +1752,7 @@ async def criticality_schema(session: AsyncSession, default_branch: Branch, grou
 
     node = NodeSchema(**SCHEMA)
     registry.schema.set(name=node.kind, schema=node, branch=default_branch.name)
-
+    registry.schema.process_schema_branch(name=default_branch.name)
     return registry.schema.get(name=node.kind, branch=default_branch.name)
 
 
@@ -1795,7 +1794,7 @@ async def generic_vehicule_schema(session: AsyncSession, default_branch: Branch)
 
     node = GenericSchema(**SCHEMA)
     registry.schema.set(name=node.kind, schema=node, branch=default_branch.name)
-
+    registry.schema.process_schema_branch(name=default_branch.name)
     return node
 
 
@@ -1829,7 +1828,7 @@ async def car_schema(
     node = NodeSchema(**SCHEMA)
     node.inherit_from_interface(interface=generic_vehicule_schema)
     registry.schema.set(name=node.kind, schema=node)
-
+    registry.schema.process_schema_branch(name=default_branch.name)
     return node
 
 
@@ -1850,7 +1849,7 @@ async def motorcycle_schema(
 
     node = NodeSchema(**SCHEMA)
     registry.schema.set(name=node.kind, schema=node)
-
+    registry.schema.process_schema_branch(name=default_branch.name)
     return node
 
 
@@ -1869,7 +1868,7 @@ async def truck_schema(session: AsyncSession, generic_vehicule_schema, group_on_
 
     node = NodeSchema(**SCHEMA)
     registry.schema.set(name=node.kind, schema=node)
-
+    registry.schema.process_schema_branch(name=default_branch.name)
     return node
 
 
@@ -1890,7 +1889,7 @@ async def boat_schema(session: AsyncSession, generic_vehicule_schema, person_sch
     node = NodeSchema(**SCHEMA)
     node.inherit_from_interface(interface=generic_vehicule_schema)
     registry.schema.set(name=node.kind, schema=node)
-
+    registry.schema.process_schema_branch(name=default_branch.name)
     return node
 
 
@@ -1911,6 +1910,7 @@ async def person_schema(session: AsyncSession, generic_vehicule_schema) -> NodeS
 
     node = NodeSchema(**SCHEMA)
     registry.schema.set(name=node.kind, schema=node)
+    registry.schema.process_schema_branch(name=default_branch.name)
 
 
 @pytest.fixture

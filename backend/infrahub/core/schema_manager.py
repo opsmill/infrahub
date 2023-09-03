@@ -385,6 +385,7 @@ class SchemaBranch:
         return filters
 
 
+# pylint: disable=too-many-public-methods
 class SchemaManager(NodeManager):
     def __init__(self):
         self._cache: Dict[int, Any] = {}
@@ -402,7 +403,6 @@ class SchemaManager(NodeManager):
             self._branches[branch] = SchemaBranch(cache=self._cache, name=branch)
 
         self._branches[branch].set(name=name, schema=schema)
-        self._branches[branch].process()
 
         return hash(self._branches[branch])
 
@@ -457,6 +457,10 @@ class SchemaManager(NodeManager):
 
     def set_schema_branch(self, name: str, schema: SchemaBranch) -> None:
         self._branches[name] = schema
+
+    def process_schema_branch(self, name: str):
+        schema_branch = self.get_schema_branch(name=name)
+        schema_branch.process()
 
     async def update_schema_branch(
         self,
