@@ -612,8 +612,7 @@ async def test_update_related_node(db, session, default_branch, data_schema):
     }
 
     schema = SchemaRoot(**SCHEMA)
-    for node in schema.nodes:
-        registry.set_schema(name=node.kind, schema=node)
+    registry.schema.register_schema(schema=schema)
 
     # ----------------------------------------------------------------
     # Create objects
