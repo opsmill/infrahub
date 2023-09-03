@@ -250,10 +250,10 @@ async def base_dataset_02(session: AsyncSession, default_branch: Branch, car_per
     CREATE (atvt:AttributeValue { value: true })
     CREATE (atv44:AttributeValue { value: "#444444" })
 
-    CREATE (c1at1:Attribute:AttributeLocal { uuid: "c1at1", type: "Str", name: "name"})
-    CREATE (c1at2:Attribute:AttributeLocal { uuid: "c1at2", type: "Int", name: "nbr_seats"})
-    CREATE (c1at3:Attribute:AttributeLocal { uuid: "c1at3", type: "Bool", name: "is_electric"})
-    CREATE (c1at4:Attribute:AttributeLocal { uuid: "c1at4", type: "Str", name: "color"})
+    CREATE (c1at1:Attribute:AttributeLocal { uuid: "c1at1", type: "Str", name: "name", branch_support: "aware"})
+    CREATE (c1at2:Attribute:AttributeLocal { uuid: "c1at2", type: "Int", name: "nbr_seats", branch_support: "aware"})
+    CREATE (c1at3:Attribute:AttributeLocal { uuid: "c1at3", type: "Bool", name: "is_electric", branch_support: "aware"})
+    CREATE (c1at4:Attribute:AttributeLocal { uuid: "c1at4", type: "Str", name: "color", branch_support: "aware"})
     CREATE (c1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(c1at1)
     CREATE (c1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(c1at2)
     CREATE (c1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(c1at3)
@@ -286,10 +286,10 @@ async def base_dataset_02(session: AsyncSession, default_branch: Branch, car_per
     CREATE (c2:Node:TestCar { uuid: "c2", kind: "TestCar" })
     CREATE (c2)-[:IS_PART_OF {branch: $main_branch, branch_level: 1, from: $time_m20, status: "active"}]->(root)
 
-    CREATE (c2at1:Attribute:AttributeLocal { uuid: "c2at1", type: "Str", name: "name"})
-    CREATE (c2at2:Attribute:AttributeLocal { uuid: "c2at2", type: "Int", name: "nbr_seats"})
-    CREATE (c2at3:Attribute:AttributeLocal { uuid: "c2at3", type: "Bool", name: "is_electric"})
-    CREATE (c2at4:Attribute:AttributeLocal { uuid: "c2at4", type: "Str", name: "color"})
+    CREATE (c2at1:Attribute:AttributeLocal { uuid: "c2at1", type: "Str", name: "name", branch_support: "aware"})
+    CREATE (c2at2:Attribute:AttributeLocal { uuid: "c2at2", type: "Int", name: "nbr_seats", branch_support: "aware"})
+    CREATE (c2at3:Attribute:AttributeLocal { uuid: "c2at3", type: "Bool", name: "is_electric", branch_support: "aware"})
+    CREATE (c2at4:Attribute:AttributeLocal { uuid: "c2at4", type: "Str", name: "color", branch_support: "aware"})
     CREATE (c2)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20}]->(c2at1)
     CREATE (c2)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20}]->(c2at2)
     CREATE (c2)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20}]->(c2at3)
@@ -317,10 +317,10 @@ async def base_dataset_02(session: AsyncSession, default_branch: Branch, car_per
     CREATE (c3:Node:TestCar { uuid: "c3", kind: "TestCar" })
     CREATE (c3)-[:IS_PART_OF {branch: $branch1, branch_level: 2, from: $time_m40, status: "active"}]->(root)
 
-    CREATE (c3at1:Attribute:AttributeLocal { uuid: "c3at1", type: "Str", name: "name"})
-    CREATE (c3at2:Attribute:AttributeLocal { uuid: "c3at2", type: "Int", name: "nbr_seats"})
-    CREATE (c3at3:Attribute:AttributeLocal { uuid: "c3at3", type: "Bool", name: "is_electric"})
-    CREATE (c3at4:Attribute:AttributeLocal { uuid: "c3at4", type: "Str", name: "color"})
+    CREATE (c3at1:Attribute:AttributeLocal { uuid: "c3at1", type: "Str", name: "name", branch_support: "aware"})
+    CREATE (c3at2:Attribute:AttributeLocal { uuid: "c3at2", type: "Int", name: "nbr_seats", branch_support: "aware"})
+    CREATE (c3at3:Attribute:AttributeLocal { uuid: "c3at3", type: "Bool", name: "is_electric", branch_support: "aware"})
+    CREATE (c3at4:Attribute:AttributeLocal { uuid: "c3at4", type: "Str", name: "color", branch_support: "aware"})
     CREATE (c3)-[:HAS_ATTRIBUTE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40}]->(c3at1)
     CREATE (c3)-[:HAS_ATTRIBUTE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40}]->(c3at2)
     CREATE (c3)-[:HAS_ATTRIBUTE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40}]->(c3at3)
@@ -347,7 +347,7 @@ async def base_dataset_02(session: AsyncSession, default_branch: Branch, car_per
 
     CREATE (p1:Node:TestPerson { uuid: "p1", kind: "TestPerson" })
     CREATE (p1)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m60, status: "active"}]->(root)
-    CREATE (p1at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "name"})
+    CREATE (p1at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "name", branch_support: "aware"})
     CREATE (p1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(p1at1)
     CREATE (p1av11:AttributeValue { uuid: "p1av11", value: "John Doe"})
     CREATE (p1at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(p1av11)
@@ -356,7 +356,7 @@ async def base_dataset_02(session: AsyncSession, default_branch: Branch, car_per
 
     CREATE (p2:Node:TestPerson { uuid: "p2", kind: "TestPerson" })
     CREATE (p2)-[:IS_PART_OF {branch: $main_branch, branch_level: 1, from: $time_m60, status: "active"}]->(root)
-    CREATE (p2at1:Attribute:AttributeLocal { uuid: "p2at1", type: "Str", name: "name"})
+    CREATE (p2at1:Attribute:AttributeLocal { uuid: "p2at1", type: "Str", name: "name", branch_support: "aware"})
     CREATE (p2)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(p2at1)
     CREATE (p2av11:AttributeValue { uuid: "p2av11", value: "Jane Doe"})
     CREATE (p2at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(p2av11)
@@ -365,7 +365,7 @@ async def base_dataset_02(session: AsyncSession, default_branch: Branch, car_per
 
     CREATE (p3:Node:TestPerson { uuid: "p3", kind: "TestPerson" })
     CREATE (p3)-[:IS_PART_OF {branch: $main_branch, branch_level: 1, from: $time_m60, status: "active"}]->(root)
-    CREATE (p3at1:Attribute:AttributeLocal { uuid: "p3at1", type: "Str", name: "name"})
+    CREATE (p3at1:Attribute:AttributeLocal { uuid: "p3at1", type: "Str", name: "name", branch_support: "aware"})
     CREATE (p3)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(p3at1)
     CREATE (p3av11:AttributeValue { uuid: "p3av11", value: "Bill"})
     CREATE (p3at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(p3av11)
@@ -764,7 +764,7 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
     CREATE (t1:Node:Tag { uuid: "t1", kind: "Tag" })
     CREATE (t1)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m120, status: "active" }]->(root)
 
-    CREATE (t1at1:Attribute:AttributeLocal { uuid: "t1at1", type: "Str", name: "name"})
+    CREATE (t1at1:Attribute:AttributeLocal { uuid: "t1at1", type: "Str", name: "name", branch_support: "aware"})
     CREATE (t1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120}]->(t1at1)
 
     CREATE (t1at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120, to: $time_m20}]->(blue)
@@ -775,7 +775,7 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
     CREATE (t2:Node:Tag { uuid: "t2", kind: "Tag" })
     CREATE (t2)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m120, status: "active" }]->(root)
 
-    CREATE (t2at1:Attribute:AttributeLocal { uuid: "t2at1", type: "Str", name: "name"})
+    CREATE (t2at1:Attribute:AttributeLocal { uuid: "t2at1", type: "Str", name: "name", branch_support: "aware"})
     CREATE (t2)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120}]->(t2at1)
 
     CREATE (t2at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120, to: $time_m20}]->(red)
@@ -786,7 +786,7 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
     CREATE (t3:Node:Tag { uuid: "t3", kind: "Tag" })
     CREATE (t3)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m120, status: "active" }]->(root)
 
-    CREATE (t3at1:Attribute:AttributeLocal { uuid: "t3at1", type: "Str", name: "name"})
+    CREATE (t3at1:Attribute:AttributeLocal { uuid: "t3at1", type: "Str", name: "name", branch_support: "aware"})
     CREATE (t3)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120}]->(t3at1)
 
     CREATE (t3at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120, to: $time_m20}]->(green)
@@ -846,8 +846,8 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
     CREATE (p1:Node:Person { uuid: "p1", kind: "Person" })
     CREATE (p1)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m120, status: "active" }]->(root)
 
-    CREATE (p1at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "firstname"})
-    CREATE (p1at2:Attribute:AttributeLocal { uuid: "p1at2", type: "Str", name: "lastname"})
+    CREATE (p1at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "firstname", branch_support: "aware"})
+    CREATE (p1at2:Attribute:AttributeLocal { uuid: "p1at2", type: "Str", name: "lastname", branch_support: "aware"})
     CREATE (p1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120}]->(p1at1)
     CREATE (p1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120}]->(p1at2)
 
@@ -899,8 +899,8 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
     CREATE (p2:Node:Person { uuid: "p2", kind: "Person" })
     CREATE (p2)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m120, status: "active" }]->(root)
 
-    CREATE (p2at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "firstname"})
-    CREATE (p2at2:Attribute:AttributeLocal { uuid: "p1at2", type: "Str", name: "lastname"})
+    CREATE (p2at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "firstname", branch_support: "aware"})
+    CREATE (p2at2:Attribute:AttributeLocal { uuid: "p1at2", type: "Str", name: "lastname", branch_support: "aware"})
     CREATE (p2)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120}]->(p2at1)
     CREATE (p2)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120}]->(p2at2)
 
@@ -934,8 +934,8 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
     CREATE (p3:Node:Person { uuid: "p3", kind: "Person" })
     CREATE (p3)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m120, status: "active" }]->(root)
 
-    CREATE (p3at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "firstname"})
-    CREATE (p3at2:Attribute:AttributeLocal { uuid: "p1at2", type: "Str", name: "lastname"})
+    CREATE (p3at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "firstname", branch_support: "aware"})
+    CREATE (p3at2:Attribute:AttributeLocal { uuid: "p1at2", type: "Str", name: "lastname", branch_support: "aware"})
     CREATE (p3)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120}]->(p3at1)
     CREATE (p3)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120}]->(p3at2)
 

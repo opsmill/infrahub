@@ -89,7 +89,7 @@ class DiffAttributeQuery(DiffQuery):
 
         query = """
         MATCH (n)-[r1:HAS_ATTRIBUTE]-(a:Attribute)-[r2:HAS_VALUE|IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER]->(ap)
-        WHERE %s
+        WHERE a.branch_support IN ["aware"] AND %s
         """ % (
             "\n AND ".join(rels_filters),
         )

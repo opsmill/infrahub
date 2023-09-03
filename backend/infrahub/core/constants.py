@@ -39,6 +39,12 @@ class BranchSupportType(InfrahubStringEnum):
     AGNOSTIC = "agnostic"
 
 
+class AttributeBranchSupportType(InfrahubStringEnum):
+    AWARE = "aware"
+    AGNOSTIC = "agnostic"
+    LOCAL = "local"
+
+
 class ContentType(InfrahubStringEnum):
     APPLICATION_JSON = "application/json"
     TEXT_PLAIN = "text/plain"

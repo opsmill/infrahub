@@ -12,6 +12,7 @@ from infrahub.core.constants import (
     AccountRole,
     AccountType,
     ArtifactStatus,
+    AttributeBranchSupportType,
     BranchSupportType,
     ContentType,
     CriticalityLevel,
@@ -239,7 +240,7 @@ class AttributeSchema(BaseSchemaModel):
     min_length: Optional[int]
     inherited: bool = False
     unique: bool = False
-    branch: Optional[BranchSupportType]
+    branch: Optional[AttributeBranchSupportType]
     optional: bool = False
     order_weight: Optional[int]
 
@@ -751,7 +752,7 @@ internal_schema = {
         {
             "name": "Attribute",
             "namespace": "Schema",
-            "branch": BranchSupportType.AWARE.value,
+            "branch": AttributeBranchSupportType.AWARE.value,
             "default_filter": None,
             "display_labels": ["name__value"],
             "attributes": [
@@ -788,7 +789,7 @@ internal_schema = {
                 {
                     "name": "branch",
                     "kind": "Text",
-                    "enum": BranchSupportType.available_types(),
+                    "enum": AttributeBranchSupportType.available_types(),
                     "optional": True,
                 },
                 {"name": "order_weight", "kind": "Number", "optional": True},
@@ -1604,7 +1605,7 @@ core_models = {
                 {"name": "description", "kind": "Text", "optional": True},
                 {"name": "location", "kind": "Text", "unique": True},
                 {"name": "default_branch", "kind": "Text", "default_value": "main"},
-                {"name": "commit", "kind": "Text", "optional": True},
+                {"name": "commit", "kind": "Text", "optional": True, "branch": AttributeBranchSupportType.LOCAL.value},
                 {"name": "username", "kind": "Text", "optional": True},
                 {"name": "password", "kind": "Text", "optional": True},
             ],
