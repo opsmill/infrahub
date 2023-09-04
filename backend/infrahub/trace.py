@@ -27,17 +27,18 @@ def get_traceid() -> str:
     return hex(trace_id)
 
 
-def set_span_status(status_code: int) -> None:
+def set_span_status(status_code: StatusCode) -> None:
     current_span = get_current_span_with_context()
     if current_span.is_recording():
         status = StatusCode(status_code)
-        current_span().set_attribute("status_code", status)
+        current_span.set_status(status)
+        # current_span.set_attribute("status_code", status)
 
 
 def set_span_data(key: str, value: str) -> None:
     current_span = get_current_span_with_context()
     if current_span.is_recording():
-        current_span().set_attribute(key, value)
+        current_span.set_attribute(key, value)
 
 
 def add_span_event(event_name: str, event_attributes: dict) -> None:
@@ -47,6 +48,7 @@ def add_span_event(event_name: str, event_attributes: dict) -> None:
 
 
 def add_span_exception(exception: Exception) -> None:
+    set_span_status(StatusCode.ERROR)
     current_span = get_current_span_with_context()
     if current_span.is_recording():
         current_span.record_exception(exception)
