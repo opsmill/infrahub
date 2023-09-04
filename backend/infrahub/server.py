@@ -35,7 +35,6 @@ from infrahub.trace import (
     configure_trace,
     get_traceid,
     get_tracer,
-    set_span_status,
 )
 
 # pylint: disable=too-many-locals
@@ -52,12 +51,13 @@ app = FastAPI(
     redoc_url="/api/redoc",
 )
 
-FastAPIInstrumentor().instrument_app(app)
+FastAPIInstrumentor().instrument_app(app, excluded_urls=".*/metrics")
+tracer = get_tracer()
 
 FRONTEND_DIRECTORY = os.environ.get("INFRAHUB_FRONTEND_DIRECTORY", os.path.abspath("frontend"))
 FRONTEND_ASSET_DIRECTORY = f"{FRONTEND_DIRECTORY}/dist/assets"
 
-tracer = get_tracer()
+
 log = get_logger()
 gunicorn_logger = logging.getLogger("gunicorn.error")
 logger.handlers = gunicorn_logger.handlers
@@ -116,14 +116,15 @@ async def shutdown():
 @app.middleware("http")
 async def logging_middleware(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
     clear_log_context()
-    with tracer.start_as_current_span("process_request"):
-        request_id = correlation_id.get()
+    request_id = correlation_id.get()
+    with tracer.start_as_current_span("processing request " + request_id):
         trace_id = get_traceid()
         set_log_data(key="request_id", value=request_id)
         set_log_data(key="app", value="infrahub.api")
-        set_log_data(key="trace_id", value=trace_id)
+        if trace_id:
+            set_log_data(key="trace_id", value=trace_id)
         response = await call_next(request)
-    return response
+        return response
 
 
 @app.middleware("http")
@@ -143,7 +144,6 @@ async def api_exception_handler_base_infrahub_error(_: Request, exc: Error) -> J
     """Generic API Exception handler."""
 
     error = exc.api_response()
-    set_span_status(2)
     add_span_exception(exc)
     return JSONResponse(status_code=exc.HTTP_CODE, content=error)
 
