@@ -12,7 +12,13 @@ import infrahub.config as config
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, DiffAction, RelationshipStatus
 from infrahub.core.manager import NodeManager
 from infrahub.core.node.standard import StandardNode
-from infrahub.core.query import Query, QueryType
+from infrahub.core.query.branch import (
+    AddNodeToBranch,
+    DeleteBranchRelationshipsQuery,
+    GetAllBranchInternalRelationshipQuery,
+    RebaseBranchDeleteRelationshipQuery,
+    RebaseBranchUpdateRelationshipQuery,
+)
 from infrahub.core.query.diff import (
     DiffAttributeQuery,
     DiffNodePropertiesByIDSQuery,
@@ -24,11 +30,7 @@ from infrahub.core.query.diff import (
 from infrahub.core.query.node import NodeDeleteQuery, NodeListGetInfoQuery
 from infrahub.core.registry import get_branch, registry
 from infrahub.core.timestamp import Timestamp
-from infrahub.core.utils import (
-    add_relationship,
-    element_id_to_id,
-    update_relationships_to,
-)
+from infrahub.core.utils import add_relationship, update_relationships_to
 from infrahub.database import execute_read_query_async
 from infrahub.exceptions import BranchNotFound, ValidationError
 from infrahub.message_bus.events import (
@@ -104,66 +106,6 @@ class ModifiedPath(BaseModel):
             return "element"
 
         return "node"
-
-
-class AddNodeToBranch(Query):
-    name: str = "node_add_to_branch"
-    insert_return: bool = False
-
-    type: QueryType = QueryType.WRITE
-
-    def __init__(self, node_id: int, *args, **kwargs):
-        self.node_id = node_id
-        super().__init__(*args, **kwargs)
-
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
-        query = """
-        MATCH (root:Root)
-        MATCH (d) WHERE ID(d) = $node_id
-        WITH root,d
-        CREATE (d)-[r:IS_PART_OF { branch: $branch, branch_level: $branch_level, from: $now, to: null, status: $status }]->(root)
-        RETURN ID(r)
-        """
-
-        self.params["node_id"] = element_id_to_id(self.node_id)
-        self.params["now"] = self.at.to_string()
-        self.params["branch"] = self.branch.name
-        self.params["branch_level"] = self.branch.hierarchy_level
-        self.params["status"] = RelationshipStatus.ACTIVE.value
-
-        self.add_to_query(query)
-
-
-class DeleteBranchRelationshipsQuery(Query):
-    name: str = "delete_branch_relationships"
-    insert_return: bool = False
-
-    type: QueryType = QueryType.WRITE
-
-    def __init__(self, branch_name: str, *args, **kwargs):
-        self.branch_name = branch_name
-        super().__init__(*args, **kwargs)
-
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
-        if config.SETTINGS.database.db_type == config.DatabaseType.MEMGRAPH:
-            query = """
-            MATCH p = (s)-[r]-(d)
-            WHERE r.branch = $branch_name
-            DELETE r
-            """
-        else:
-            query = """
-            MATCH p = (s)-[r]-(d)
-            WHERE r.branch = $branch_name
-            DELETE r
-            WITH *
-            UNWIND nodes(p) AS n
-            MATCH (n)
-            WHERE NOT exists((n)--())
-            DELETE n
-            """
-        self.params["branch_name"] = self.branch_name
-        self.add_to_query(query)
 
 
 class Branch(StandardNode):
@@ -509,16 +451,24 @@ class Branch(StandardNode):
 
         return filters, params
 
-    async def rebase(self, session: AsyncSession):
+    async def rebase(self, session: AsyncSession, at: Optional[Union[str, Timestamp]] = None):
         """Rebase the current Branch with its origin branch"""
+
+        at = Timestamp(at)
+
+        # Find all relationships with the name of the branch
+        # Delete all relationship that have a to date defined in the past
+        # Update the from time on all other relationships
+        # If conflict is set, ignore the one with Drop
+
+        await self.rebase_graph(session=session, at=at)
 
         # FIXME, we must ensure that there is no conflict before rebasing a branch
         #   Otherwise we could endup with a complicated situation
-        self.branched_from = Timestamp().to_string()
+        self.branched_from = at.to_string()
         await self.save(session=session)
 
         # Update the branch in the registry after the rebase
-
         registry.branch[self.name] = self
 
     async def validate_branch(self, rpc_client: InfrahubRpcClient, session: AsyncSession) -> Tuple[bool, List[str]]:
@@ -763,6 +713,47 @@ class Branch(StandardNode):
             )
 
         await asyncio.gather(*tasks)
+
+    async def rebase_graph(self, session: AsyncSession, at: Optional[Timestamp] = None):
+        at = Timestamp(at)
+
+        query = await GetAllBranchInternalRelationshipQuery.init(session=session, branch_name=self.name)
+        await query.execute(session=session)
+
+        rels_to_delete = []
+        rels_to_update = []
+        for result in query.get_results():
+            element_id = result.get("r").element_id
+
+            conflict_status = result.get("r").get("conflict", None)
+            if conflict_status and conflict_status == "drop":
+                rels_to_delete.append(element_id)
+                continue
+
+            time_to_str = result.get("r").get("to", None)
+            time_from_str = result.get("r").get("from")
+            time_from = Timestamp(time_from_str)
+
+            if not time_to_str and time_from_str and time_from <= at:
+                rels_to_update.append(element_id)
+                continue
+
+            if not time_to_str and time_from_str and time_from > at:
+                rels_to_delete.append(element_id)
+                continue
+
+            time_to = Timestamp(time_to_str)
+            if time_to < at:
+                rels_to_delete.append(element_id)
+                continue
+
+            rels_to_update.append(element_id)
+
+        update_query = await RebaseBranchUpdateRelationshipQuery.init(session=session, ids=rels_to_update, at=at)
+        await update_query.execute(session=session)
+
+        delete_query = await RebaseBranchDeleteRelationshipQuery.init(session=session, ids=rels_to_update, at=at)
+        await delete_query.execute(session=session)
 
 
 class BaseDiffElement(BaseModel):
