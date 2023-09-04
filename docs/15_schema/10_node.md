@@ -55,7 +55,7 @@ Below is the list of all available options to define a node in the schema
 | **Kind** | `Text` |
 | **Description** |  |
 | **Constraints** |  |
-| **Accepted Values** | `aware` `agnostic`  |
+| **Accepted Values** | `aware` `agnostic` `local`  |
 
 ## default_filter
 

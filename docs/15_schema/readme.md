@@ -173,10 +173,22 @@ nodes:
 
 ## Branch Support
 
-By default, all models defined in the schema will be **branch aware** which means that any changes to an object based on a **branch aware** model will be local to the branch and it will not affect the other branches.
+By default, all models defined in the schema will be **branch aware** which means that any changes to an object based on a **branch aware** model will be local to the branch and will not affect the other branches.
 
-A model can also be configured as **branch agnostic**. All changes to an object based on a **branch agnostic** model will automatically be available in all branches.
+A model can also be configured as :
+- **branch agnostic**: All changes to an object based on a **branch agnostic** model will automatically be available in all branches.
+- **branch local**:  All changes will stay local to the branch. A model in **branch local** mode will not be affected by the Diff and the Merge.
 
+### Summary
+
+| Branch Support | Description                                                                        | Diff | Merge | Rebase |
+|--------------|--------------------------------------------------------------------------------------|------|-------|--------|
+| **Aware**    | All changes will be local to the branch and can be merged back into the main branch. | Yes  | Yes   | Yes    |
+| **Agnostic** | All changes will automatically be available in all branches                          | No   | No    | No     |
+| **Local**    | All changes will be local to the branch and will not be merged to other branches.    | No   | No    | Yes    |
+
+
+### Branch Agnostic
 In the frontend, the API or the GraphQL endpoint, **branch agnostic** objects can be modified on any branch, no restrictions apply.
 
 To configure a model as **branch agnostic** you need to set the option `branch` to `agnostic` in the schema
@@ -193,7 +205,7 @@ nodes:
 
 ### Attribute and Relationship
 
-Attributes and Relationships can be configured as **branch aware** or **branch agnostic** too, independently of the configuration of the model itself using the parameter: `branch`
+Attributes and Relationships can be configured as **branch aware**, **branch agnostic** or **branch local** too, independently of the configuration of the model itself using the parameter: `branch`
 
 ```yaml
 nodes:
@@ -208,7 +220,9 @@ nodes:
 
 By default, if a specific value is not defined:
 - **attributes** will inherit the configuration of their parent model.
-- **relationships** will become **branch agnostic** only if both models, on each end of the relationship, are **branch agnostic**. If either model is **branch aware** the relationship will be set as **branch aware**.
+- **relationships** will become:
+  - **branch agnostic** only if both models, on each end of the relationship, are **branch agnostic**. If either model is **branch aware** the relationship will be set as **branch aware**.
+  - **branch local** if either model, on each end of the relationship, is **branch local**.
 
 ## Schema File
 
