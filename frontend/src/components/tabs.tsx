@@ -8,6 +8,7 @@ type Tab = {
   label?: string;
   count?: number;
   onClick?: Function;
+  component?: Function | null;
 };
 
 type TabsProps = {
@@ -34,23 +35,29 @@ export const Tabs = (props: TabsProps) => {
       <div className="flex-1">
         <div className="">
           <nav className="-mb-px flex space-x-8 px-4" aria-label="Tabs">
-            {tabs.map((tab: Tab, index: number) => (
-              <div
-                key={tab.name}
-                onClick={() => handleClick(tab, index)}
-                className={classNames(
-                  (qspTab && qspTab === tab.name) || (!qspTab && index === 0) // First item is active without QSP
-                    ? "border-custom-blue-500 text-custom-blue-600"
-                    : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700",
-                  "flex whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium cursor-pointer"
-                )}>
-                {tab.label}
+            {tabs.map((tab: Tab, index: number) => {
+              const Component = tab.component ? tab.component : () => null;
 
-                {tab.count !== undefined && (
-                  <Pill className="ml-2">{JSON.stringify(tab.count)}</Pill>
-                )}
-              </div>
-            ))}
+              return (
+                <div
+                  key={tab.name}
+                  onClick={() => handleClick(tab, index)}
+                  className={classNames(
+                    "flex items-center whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium cursor-pointer",
+                    (qspTab && qspTab === tab.name) || (!qspTab && index === 0) // First item is active without QSP
+                      ? "border-custom-blue-500 text-custom-blue-600"
+                      : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                  )}>
+                  {tab.label}
+
+                  {tab.count !== undefined && (
+                    <Pill className="ml-2">{JSON.stringify(tab.count)}</Pill>
+                  )}
+
+                  <Component />
+                </div>
+              );
+            })}
           </nav>
         </div>
       </div>

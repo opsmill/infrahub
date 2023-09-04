@@ -1,4 +1,5 @@
 import {
+  ArrowPathIcon,
   CheckCircleIcon,
   ClockIcon,
   ExclamationCircleIcon,
@@ -7,7 +8,7 @@ import {
 import { StringParam, useQueryParam } from "use-query-params";
 import { DateDisplay } from "../../../components/date-display";
 import { QSP } from "../../../config/qsp";
-import LoadingScreen from "../../loading-screen/loading-screen";
+import { ValidatorChecksProgress } from "./validator-checks-progres";
 
 type tValidatorProps = {
   validator: any;
@@ -19,7 +20,7 @@ const getValidatorState = (state?: string, conclusion?: string) => {
       return <ClockIcon className="h-6 w-6" />;
     }
     case "in_progress": {
-      return <LoadingScreen type="spin" colorClass={"!fill-orange-500"} size={16} hideText />;
+      return <ArrowPathIcon className="h-6 w-6 text-orange-500 animate-spin" />;
     }
     case "completed": {
       if (conclusion === "success") {
@@ -45,6 +46,8 @@ export const Validator = (props: tValidatorProps) => {
 
   const { display_label, started_at, completed_at, conclusion, checks, state } = validator;
 
+  const checksData = checks?.edges?.map((edge: any) => edge?.node);
+
   return (
     <div
       onClick={() => setQsp(validator.id)}
@@ -65,9 +68,9 @@ export const Validator = (props: tValidatorProps) => {
         <DateDisplay date={completed_at.value} hideDefault />
       </div>
 
-      <div className="mt-2 flex-1 flex justify-between">
-        <span className="font-semibold">Checks: </span>
-        {checks?.count ?? 0}
+      <div className="mt-2 flex-1 flex justify-between items-center">
+        <span className="flex-1 font-semibold">Checks: </span>
+        <ValidatorChecksProgress checks={checksData} />
       </div>
     </div>
   );

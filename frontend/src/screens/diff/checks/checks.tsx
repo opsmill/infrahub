@@ -6,12 +6,12 @@ import { getValidators } from "../../../graphql/queries/diff/getValidators";
 import useQuery from "../../../hooks/useQuery";
 import ErrorScreen from "../../error-screen/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
+import { ChecksSummary } from "./checks-summary";
 import { Validator } from "./validator";
 import { ValidatorDetails } from "./validator-details";
 
 export const Checks = () => {
   const { proposedchange } = useParams();
-
   const [qspTab] = useQueryParam(QSP.VALIDATOR_DETAILS, StringParam);
 
   const queryString = getValidators({
@@ -24,7 +24,7 @@ export const Checks = () => {
 
   const { loading, error, data } = useQuery(query, { pollInterval: 1000 });
 
-  const validators = data?.CoreValidator?.edges;
+  const validators = data?.CoreValidator?.edges?.map((edge: any) => edge.node);
 
   if (loading) {
     return <LoadingScreen />;
@@ -39,10 +39,16 @@ export const Checks = () => {
   }
 
   return (
-    <div className="grid grid-cols-2 3xl:grid-cols-3 gap-4 p-4">
-      {validators.map((item: any, index: number) => (
-        <Validator key={index} validator={item.node} />
-      ))}
+    <div>
+      <div className="">
+        <ChecksSummary validators={validators} />
+      </div>
+
+      <div className="grid grid-cols-2 3xl:grid-cols-3 gap-4 p-4">
+        {validators.map((item: any, index: number) => (
+          <Validator key={index} validator={item} />
+        ))}
+      </div>
     </div>
   );
 };

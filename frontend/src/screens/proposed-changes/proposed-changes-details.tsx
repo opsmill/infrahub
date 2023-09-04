@@ -21,6 +21,7 @@ import { SchemaDiff } from "../diff/schema-diff";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { Conversations } from "./conversations";
+import { ProposedChangesChecksTab } from "./proposed-changes-checks-tab";
 
 export const PROPOSED_CHANGES_TABS = {
   CONVERSATIONS: "conversations",
@@ -80,13 +81,16 @@ export const ProposedChangesDetails = () => {
   }
 
   const result = data ? data[schemaData?.kind]?.edges[0]?.node : {};
-  console.log("result: ", result);
+
+  if (!result) {
+    navigate(constructPath("/proposed-changes"));
+  }
 
   setProposedChange(result);
 
   const tabs = [
     {
-      label: "Conversations",
+      label: "Overview",
       name: PROPOSED_CHANGES_TABS.CONVERSATIONS,
     },
     {
@@ -110,6 +114,7 @@ export const ProposedChangesDetails = () => {
       name: DIFF_TABS.CHECKS,
       // Go back to the validators list when clicking on the tab if we are on the validator details view
       onClick: () => setValidatorQsp(undefined),
+      component: ProposedChangesChecksTab,
     },
   ];
 

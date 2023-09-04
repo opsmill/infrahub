@@ -22,11 +22,20 @@ query {
           value
         }
         checks {
-          count
+          edges {
+            node {
+              conclusion {
+                value
+              }
+              severity {
+                value
+              }
+            }
+          }
         }
+        __typename
       }
     }
   }
 }
-
 `);
