@@ -334,6 +334,8 @@ jobs:
         run: "invoke demo.init demo.start demo.load-infra-schema"
       - name: Check Demo Status
         run: "invoke demo.status"
+      - name: Check Docker stats
+        run: "docker stats --no-stream"
       - name: Load Data
         run: "invoke demo.load-infra-data"
       - name: Run End to End Tests
