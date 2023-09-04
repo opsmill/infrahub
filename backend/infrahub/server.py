@@ -30,12 +30,7 @@ from infrahub.log import clear_log_context, get_logger, set_log_data
 from infrahub.message_bus import close_broker_connection, connect_to_broker
 from infrahub.message_bus.rpc import InfrahubRpcClient
 from infrahub.middleware import InfrahubCORSMiddleware
-from infrahub.trace import (
-    add_span_exception,
-    configure_trace,
-    get_traceid,
-    get_tracer,
-)
+from infrahub.trace import add_span_exception, configure_trace, get_traceid, get_tracer
 
 # pylint: disable=too-many-locals
 
