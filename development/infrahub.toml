@@ -26,6 +26,7 @@ cors_allow_origins = ["*"]
 directory = "/opt/infrahub/storage"
 
 [trace]
+enable = false
 insecure = "True"
 exporter_type = "otlp"
 exporter_protocol = "grpc"

@@ -206,7 +206,7 @@ class SecuritySettings(BaseSettings):
 
 
 class TraceSettings(BaseSettings):
-    enable: bool = True
+    enable: bool = Field(default=False)
     insecure: bool = Field(
         default=True, description="Use insecure connection (HTTP) if True, otherwise use secure connection (HTTPS)"
     )
