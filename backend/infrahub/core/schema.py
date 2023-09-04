@@ -9,6 +9,7 @@ from pydantic import BaseModel, Extra, Field, root_validator, validator
 
 from infrahub.core import registry
 from infrahub.core.constants import (
+    RESTRICTED_NAMESPACES,
     AccountRole,
     AccountType,
     ArtifactStatus,
@@ -24,6 +25,7 @@ from infrahub.core.constants import (
 )
 from infrahub.core.query import QueryNode, QueryRel
 from infrahub.core.relationship import Relationship
+from infrahub.exceptions import PermissionDeniedError
 from infrahub.types import ATTRIBUTE_TYPES
 from infrahub_client.utils import duplicates, intersection
 
@@ -646,6 +648,16 @@ class SchemaRoot(BaseModel):
             return False
 
         return True
+
+    def validate_namespaces(self) -> None:
+        models = self.nodes + self.generics
+        errors: List[str] = []
+        for model in models:
+            if model.namespace in RESTRICTED_NAMESPACES:
+                errors.append(f"Restricted namespace '{model.namespace}' used on '{model.name}'")
+
+        if errors:
+            raise PermissionDeniedError(", ".join(errors))
 
 
 # TODO need to investigate how we could generate the internal schema
