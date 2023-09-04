@@ -997,6 +997,7 @@ async def test_union(
 
     node = NodeSchema(**SCHEMA)
     registry.schema.set(name=node.kind, schema=node, branch=default_branch.name)
+    registry.schema.process_schema_branch(name=default_branch.name)
 
     d1 = await Node.init(session=session, schema="TestCar")
     await d1.new(session=session, name="Porsche 911", nbr_doors=2)

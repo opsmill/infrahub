@@ -179,6 +179,7 @@ async def car_person_data_generic_diff(session, default_branch, car_person_data_
     time12 = pendulum.now(tz="UTC")
     repo01 = repos["repo01"]
     repo01.commit.value = "bbbbbbbbbbbbbbb"
+    repo01.description.value = "First change in branch"
     await repo01.save(session=session, at=time12)
 
     # Update P1 height in main
@@ -194,6 +195,7 @@ async def car_person_data_generic_diff(session, default_branch, car_person_data_
     time21 = pendulum.now(tz="UTC")
     repo01 = repos["repo01"]
     repo01.commit.value = "dddddddddd"
+    repo01.description.value = "Second change in branch"
     await repo01.save(session=session, at=time21)
 
     # Delete C4 in Branch2
@@ -352,6 +354,7 @@ async def data_diff_attribute(session, default_branch, car_person_data_generic, 
     time12 = pendulum.now(tz="UTC")
     repo01 = repos["repo01"]
     repo01.commit.value = "bbbbbbbbbbbbbbb"
+    repo01.description.value = "First update in Branch"
     await repo01.save(session=session, at=time12)
 
     # Update P1 height in main
@@ -367,6 +370,7 @@ async def data_diff_attribute(session, default_branch, car_person_data_generic, 
     time21 = pendulum.now(tz="UTC")
     repo01 = repos["repo01"]
     repo01.commit.value = "dddddddddd"
+    repo01.description.value = "Second update in Branch"
     await repo01.save(session=session, at=time21)
 
     # Update C2 main
@@ -421,6 +425,7 @@ async def data_conflict_attribute(session, default_branch, car_person_data_gener
     # Update Repo 01 in Branch2 a first time
     time12 = pendulum.now(tz="UTC")
     repos_branch["repo01"].commit.value = "bbbbbbbbbbbbbbb"
+    repos_branch["repo01"].description.value = "First update in Branch"
     await repos_branch["repo01"].save(session=session, at=time12)
 
     # Update P1 height in branch2
@@ -438,11 +443,13 @@ async def data_conflict_attribute(session, default_branch, car_person_data_gener
     # Update Repo 01 in Branch2 a second time
     time21 = pendulum.now(tz="UTC")
     repos_branch["repo01"].commit.value = "dddddddddd"
+    repos_branch["repo01"].description.value = "Second update in Branch"
     await repos_branch["repo01"].save(session=session, at=time21)
 
     # Update Repo 01 in main
     time22 = pendulum.now(tz="UTC")
     repos_main["repo01"].commit.value = "mmmmmmmmmmmmm"
+    repos_main["repo01"].description.value = "update in main"
     await repos_main["repo01"].save(session=session, at=time12)
 
     # Time After the changes
