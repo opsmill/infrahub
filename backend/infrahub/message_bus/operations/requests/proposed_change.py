@@ -31,6 +31,7 @@ async def _create_data_check(session: AsyncSession, proposed_change: Node) -> No
 
     await validator_obj.new(
         session=session,
+        name="Data Integrity",
         proposed_change=proposed_change.id,
         state=initial_state.value,
         conclusion=initial_conclusion.value,
@@ -140,7 +141,8 @@ async def repository_checks(message: messages.RequestProposedChangeRepositoryChe
         msg = messages.RequestRepositoryChecks(
             proposed_change=message.proposed_change,
             repository=repository.id,
-            branch=change_proposal.source_branch.value,
+            source_branch=change_proposal.source_branch.value,
+            target_branch=change_proposal.destination_branch.value,
         )
         msg.assign_meta(parent=message)
         await service.send(message=msg)

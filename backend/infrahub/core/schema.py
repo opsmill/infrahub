@@ -1110,9 +1110,13 @@ core_models = {
             "description": "",
             "label": "Validator",
             "order_by": ["started_at__value"],
-            "display_labels": ["state__value", "conclusion__value", "started_at__value"],
+            "display_labels": ["name__value", "state__value", "conclusion__value", "started_at__value"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
+                {
+                    "name": "name",
+                    "kind": "Text",
+                },
                 {
                     "name": "state",
                     "kind": "Text",

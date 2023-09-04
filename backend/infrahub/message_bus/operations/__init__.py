@@ -1,10 +1,11 @@
 import json
 
 from infrahub.message_bus import messages
-from infrahub.message_bus.operations import requests
+from infrahub.message_bus.operations import check, requests
 from infrahub.services import InfrahubServices
 
 COMMAND_MAP = {
+    "check.repository.merge_conflicts": check.repository.merge_conflicts,
     "request.artifact_definition.generate": requests.artifact_definition.generate,
     "request.proposed_change.data_integrity": requests.proposed_change.data_integrity,
     "request.proposed_change.refresh_artifacts": requests.proposed_change.refresh_artifacts,
@@ -17,5 +18,5 @@ COMMAND_MAP = {
 async def execute_message(routing_key: str, message_body: bytes, service: InfrahubServices):
     message_data = json.loads(message_body)
     message = messages.MESSAGE_MAP[routing_key](**message_data)
-    message.set_log_data()
+    message.set_log_data(routing_key=routing_key)
     await COMMAND_MAP[routing_key](message=message, service=service)
