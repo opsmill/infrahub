@@ -21,7 +21,12 @@ datasources:
         - name: TraceID
           matcherRegex: TraceID=0x(\w+)
           url: '$${__value.raw}'
-          urlDisplayLabel: "View Trace (in Tempo)"
+          urlDisplayLabel: "View Trace via TraceID (in Tempo)"
+          datasourceUid: 'localtempo'
+        - name: RequestID
+          matchedRegex: RequestID=(\w+)
+          url: '{name=~".*$${__value.raw}"}'
+          urldisplayLabel: "View Trace via RequestID (in Tempo)"
           datasourceUid: 'localtempo'
 
   - name: Tempo (Local)
