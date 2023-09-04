@@ -17,9 +17,12 @@ class ServerNotReacheableError(Error):
 
 
 class ServerNotResponsiveError(Error):
-    def __init__(self, url: str, message: Optional[str] = None):
+    def __init__(self, url: str, timeout: Optional[int] = None, message: Optional[str] = None):
         self.url = url
+        self.timeout = timeout
         self.message = message or f"Unable to read from '{url}'."
+        if timeout:
+            self.message += f" (timeout: {timeout} sec)"
         super().__init__(self.message)
 
 
