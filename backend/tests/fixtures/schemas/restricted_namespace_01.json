@@ -1,0 +1,25 @@
+{
+    "version": "1.0",
+    "generics": [],
+    "nodes":
+      [
+        {
+          "name": "Timestamp",
+          "namespace": "Internal",
+          "label": "Timestamp",
+          "display_labels": ["name__value"],
+          "attributes": [
+             {
+               "name": "name",
+               "kind": "Text",
+               "optional": false
+             },
+             {
+              "name": "timestamp",
+              "kind": "DateTime",
+              "optional": false
+            }
+          ]
+        }
+      ]
+  }
