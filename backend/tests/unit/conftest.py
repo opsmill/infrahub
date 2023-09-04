@@ -1813,7 +1813,7 @@ async def group_on_road_vehicule_schema(session: AsyncSession, default_branch: B
 
 @pytest.fixture
 async def car_schema(
-    session: AsyncSession, generic_vehicule_schema, group_on_road_vehicule_schema, data_schema
+    session: AsyncSession, default_branch: Branch, generic_vehicule_schema, group_on_road_vehicule_schema, data_schema
 ) -> NodeSchema:
     SCHEMA = {
         "name": "Car",
@@ -1834,7 +1834,7 @@ async def car_schema(
 
 @pytest.fixture
 async def motorcycle_schema(
-    session: AsyncSession, generic_vehicule_schema, group_on_road_vehicule_schema
+    session: AsyncSession, default_branch: Branch, generic_vehicule_schema, group_on_road_vehicule_schema
 ) -> NodeSchema:
     SCHEMA = {
         "name": "Motorcycle",
@@ -1854,7 +1854,9 @@ async def motorcycle_schema(
 
 
 @pytest.fixture
-async def truck_schema(session: AsyncSession, generic_vehicule_schema, group_on_road_vehicule_schema) -> NodeSchema:
+async def truck_schema(
+    session: AsyncSession, default_branch: Branch, generic_vehicule_schema, group_on_road_vehicule_schema
+) -> NodeSchema:
     SCHEMA = {
         "name": "Truck",
         "namespace": "Test",
@@ -1873,7 +1875,9 @@ async def truck_schema(session: AsyncSession, generic_vehicule_schema, group_on_
 
 
 @pytest.fixture
-async def boat_schema(session: AsyncSession, generic_vehicule_schema, person_schema) -> NodeSchema:
+async def boat_schema(
+    session: AsyncSession, default_branch: Branch, generic_vehicule_schema, person_schema
+) -> NodeSchema:
     SCHEMA = {
         "name": "Boat",
         "namespace": "Test",
@@ -1894,7 +1898,7 @@ async def boat_schema(session: AsyncSession, generic_vehicule_schema, person_sch
 
 
 @pytest.fixture
-async def person_schema(session: AsyncSession, generic_vehicule_schema) -> NodeSchema:
+async def person_schema(session: AsyncSession, default_branch: Branch, generic_vehicule_schema) -> NodeSchema:
     SCHEMA = {
         "name": "Person",
         "namespace": "Test",
