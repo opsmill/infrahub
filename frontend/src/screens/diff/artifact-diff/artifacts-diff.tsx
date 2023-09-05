@@ -32,7 +32,6 @@ export const ArtifactsDiff = () => {
     const url = CONFIG.ARTIFACTS_DIFF_URL(branch);
 
     const options: string[][] = [
-      ["branch", branch ?? ""],
       ["branch_only", branchOnly ?? ""],
       ["time_from", timeFrom ?? ""],
       ["time_to", timeTo ?? ""],
