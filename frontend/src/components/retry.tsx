@@ -23,10 +23,10 @@ export const Retry = (props: tRetryProps) => {
     <div
       className={classNames(
         "ml-2 p-1 rounded-full",
-        isInProgress ? "animate-spin cursor-not-allowed " : " cursor-pointer hover:bg-gray-200"
+        isInProgress ? "cursor-not-allowed " : " cursor-pointer hover:bg-gray-200"
       )}
       onClick={handleClick}>
-      <ArrowPathIcon className="h-4 w-4 " />
+      <ArrowPathIcon className={classNames("h-4 w-4", isInProgress ? "text-gray-400" : "")} />
     </div>
   );
 };
