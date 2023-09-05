@@ -4,11 +4,7 @@ import { useAtom } from "jotai";
 import { useContext, useState } from "react";
 import { RoundedButton } from "../../components/rounded-button";
 import SlideOver from "../../components/slide-over";
-import {
-  ACCOUNT_OBJECT,
-  DEFAULT_BRANCH_NAME,
-  PROPOSED_CHANGES_OBJECT,
-} from "../../config/constants";
+import { ACCOUNT_OBJECT, DEFAULT_BRANCH_NAME, PROPOSED_CHANGES } from "../../config/constants";
 import { AuthContext } from "../../decorators/withAuth";
 import { getProposedChanges } from "../../graphql/queries/proposed-changes/getProposedChanges";
 import { branchVar } from "../../graphql/variables/branchVar";
@@ -32,7 +28,7 @@ export const ProposedChanges = () => {
 
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
 
-  const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_OBJECT)[0];
+  const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES)[0];
   const accountSchemaData = schemaList.filter((s) => s.name === ACCOUNT_OBJECT)[0];
 
   const queryString = schemaData
@@ -116,7 +112,7 @@ export const ProposedChanges = () => {
         title={
           <div className="space-y-2">
             <div className="flex items-center w-full">
-              <span className="text-lg font-semibold mr-3">Create {PROPOSED_CHANGES_OBJECT}</span>
+              <span className="text-lg font-semibold mr-3">Create {PROPOSED_CHANGES}</span>
               <div className="flex-1"></div>
               <div className="flex items-center">
                 <Square3Stack3DIcon className="w-5 h-5" />
@@ -141,7 +137,7 @@ export const ProposedChanges = () => {
         <ObjectItemCreate
           onCreate={() => setShowCreateDrawer(false)}
           onCancel={() => setShowCreateDrawer(false)}
-          objectname={PROPOSED_CHANGES_OBJECT!}
+          objectname={PROPOSED_CHANGES!}
           refetch={refetch}
           formStructure={formStructure}
           customObject={customObject}

@@ -10,7 +10,7 @@ import { BUTTON_TYPES, Button } from "../../components/button";
 import { DateDisplay } from "../../components/date-display";
 import ModalDelete from "../../components/modal-delete";
 import { Tooltip } from "../../components/tooltip";
-import { PROPOSED_CHANGES_OBJECT } from "../../config/constants";
+import { PROPOSED_CHANGES } from "../../config/constants";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
 import { branchVar } from "../../graphql/variables/branchVar";
@@ -40,7 +40,7 @@ export const ProposedChange = (props: any) => {
     setIsLoading(true);
 
     const mutationString = deleteObject({
-      kind: `Core${PROPOSED_CHANGES_OBJECT}`,
+      kind: `Core${PROPOSED_CHANGES}`,
       data: stringifyWithoutQuotes({
         id: row.id,
       }),

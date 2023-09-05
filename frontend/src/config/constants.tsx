@@ -30,7 +30,8 @@ export const ACCOUNT_OBJECT = "Account";
 
 export const ACCOUNT_TOKEN_OBJECT = "AccountToken";
 
-export const PROPOSED_CHANGES_OBJECT = "ProposedChange";
+export const PROPOSED_CHANGES = "ProposedChange";
+export const PROPOSED_CHANGES_OBJECT = "CoreProposedChange";
 
 export const PROPOSED_CHANGES_THREAD = "Thread";
 export const PROPOSED_CHANGES_THREAD_OBJECT = "CoreThread";
