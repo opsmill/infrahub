@@ -11,6 +11,7 @@ import { branchVar } from "../../graphql/variables/branchVar";
 import { dateVar } from "../../graphql/variables/dateVar";
 import useQuery from "../../hooks/useQuery";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
+import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdit";
 import getMutationDetailsFromFormData from "../../utils/getMutationDetailsFromFormData";
 import { getSchemaRelationshipColumns } from "../../utils/getSchemaObjectColumns";
@@ -41,6 +42,7 @@ export default function ObjectItemEditComponent(props: Props) {
   const user = useContext(AuthContext);
 
   const [schemaList] = useAtom(schemaState);
+  const [schemaKindName] = useAtom(schemaKindNameState);
   const [genericsList] = useAtom(genericsState);
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
@@ -137,7 +139,9 @@ export default function ObjectItemEditComponent(props: Props) {
           context: { branch: branch?.name, date },
         });
 
-        toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema.name} updated`} />);
+        toast(
+          <Alert type={ALERT_TYPES.SUCCESS} message={`${schemaKindName[schema.kind]} updated`} />
+        );
 
         closeDrawer();
 

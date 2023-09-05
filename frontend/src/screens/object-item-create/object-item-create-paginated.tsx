@@ -10,6 +10,7 @@ import { branchVar } from "../../graphql/variables/branchVar";
 import { dateVar } from "../../graphql/variables/dateVar";
 import useQuery from "../../hooks/useQuery";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
+import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdit";
 import getMutationDetailsFromFormData from "../../utils/getMutationDetailsFromFormData";
 import { stringifyWithoutQuotes } from "../../utils/string";
@@ -32,6 +33,7 @@ export default function ObjectItemCreate(props: iProps) {
   const { objectname, onCreate, onCancel, refetch, formStructure, customObject = {} } = props;
 
   const [schemaList] = useAtom(schemaState);
+  const [schemaKindName] = useAtom(schemaKindNameState);
   const [genericsList] = useAtom(genericsState);
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
@@ -116,7 +118,9 @@ export default function ObjectItemCreate(props: iProps) {
         },
       });
 
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema.kind} created`} />);
+      toast(
+        <Alert type={ALERT_TYPES.SUCCESS} message={`${schemaKindName[schema.kind]} created`} />
+      );
 
       if (onCreate) {
         onCreate();
