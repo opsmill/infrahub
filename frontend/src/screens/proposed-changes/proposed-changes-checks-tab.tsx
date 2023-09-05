@@ -3,7 +3,7 @@ import { useAtom } from "jotai";
 import { useParams } from "react-router-dom";
 import { Pill } from "../../components/pill";
 import { Retry } from "../../components/retry";
-import { PROPOSED_CHANGES_OBJECT, VALIDATION_STATES } from "../../config/constants";
+import { PROPOSED_CHANGES, VALIDATION_STATES } from "../../config/constants";
 import { getProposedChangesChecks } from "../../graphql/queries/proposed-changes/getProposedChangesChecks";
 import useQuery from "../../hooks/useQuery";
 import { schemaState } from "../../state/atoms/schema.atom";
@@ -13,7 +13,7 @@ import LoadingScreen from "../loading-screen/loading-screen";
 export const ProposedChangesChecksTab = () => {
   const { proposedchange } = useParams();
   const [schemaList] = useAtom(schemaState);
-  const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_OBJECT)[0];
+  const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES)[0];
 
   const queryString = getProposedChangesChecks({
     id: proposedchange,

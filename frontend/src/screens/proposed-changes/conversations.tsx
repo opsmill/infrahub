@@ -17,6 +17,7 @@ import { Tooltip } from "../../components/tooltip";
 import {
   ACCOUNT_OBJECT,
   DEFAULT_BRANCH_NAME,
+  PROPOSED_CHANGES,
   PROPOSED_CHANGES_CHANGE_THREAD_OBJECT,
   PROPOSED_CHANGES_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
@@ -269,7 +270,7 @@ export const Conversations = () => {
 
     try {
       const mutationString = updateObjectWithId({
-        kind: PROPOSED_CHANGES_THREAD_OBJECT,
+        kind: PROPOSED_CHANGES_OBJECT,
         data: stringifyWithoutQuotes({
           id: proposedchange,
           ...data,
@@ -535,7 +536,7 @@ export const Conversations = () => {
           closeDrawer={() => setShowEditDrawer(false)}
           onUpdateComplete={() => refetch()}
           objectid={proposedchange!}
-          objectname={PROPOSED_CHANGES_OBJECT!}
+          objectname={PROPOSED_CHANGES!}
           formStructure={formStructure}
         />
       </SlideOver>
