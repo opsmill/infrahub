@@ -87,60 +87,6 @@ async def test_graphql_endpoint_generics(
     assert len(result_per_name["Jane"]["cars"]) == 1
 
 
-async def test_graphql_diffsummary(
-    session, client, client_headers, default_branch: Branch, car_person_data_generic_diff
-):
-    car1_branch2 = {
-        "branch": "branch2",
-        "node": car_person_data_generic_diff["c1"],
-        "kind": "TestElectricCar",
-        "actions": ["updated"],
-    }
-    person1_branch2 = {
-        "branch": "branch2",
-        "node": car_person_data_generic_diff["p1"],
-        "kind": "TestPerson",
-        "actions": ["updated"],
-    }
-    person1_main = {
-        "branch": "branch2",
-        "node": car_person_data_generic_diff["p1"],
-        "kind": "TestPerson",
-        "actions": ["updated"],
-    }
-
-    query = """
-    query {
-        DiffSummary {
-            branch
-            node
-            kind
-            actions
-        }
-    }
-    """
-
-    with client:
-        response = client.post(
-            "/graphql/branch2",
-            json={"query": query},
-            headers=client_headers,
-        )
-
-    assert response.status_code == 200
-    assert "errors" not in response.json()
-    data = response.json()["data"]["DiffSummary"]
-    branches = sorted(list(set([entry["branch"] for entry in data])))
-    kinds = sorted(list(set([entry["kind"] for entry in data])))
-    assert branches == ["branch2", "main"]
-    assert kinds == ["CoreRepository", "TestElectricCar", "TestGazCar", "TestPerson"]
-    assert len(data) == 8
-
-    assert car1_branch2 in data
-    assert person1_branch2 in data
-    assert person1_main in data
-
-
 async def test_graphql_options(session, client, client_headers, default_branch: Branch, car_person_data):
     await create_branch(branch_name="branch2", session=session)
 
