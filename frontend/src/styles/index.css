@@ -14,6 +14,12 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+:root {
+  --base-font-size: 14px;
+  --heading-font-size: 2rem;
+  --body-font-size: 1rem;
+}
+
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
 }

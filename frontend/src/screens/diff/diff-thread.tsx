@@ -3,19 +3,19 @@ import { ChatBubbleLeftIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useContext, useState } from "react";
 import { useParams } from "react-router-dom";
-import { BUTTON_TYPES, RoundedButton } from "../../../components/rounded-button";
-import { SidePanelTitle } from "../../../components/sidepanel-title";
-import SlideOver from "../../../components/slide-over";
-import { Tooltip } from "../../../components/tooltip";
+import { BUTTON_TYPES, RoundedButton } from "../../components/rounded-button";
+import { SidePanelTitle } from "../../components/sidepanel-title";
+import SlideOver from "../../components/slide-over";
+import { Tooltip } from "../../components/tooltip";
 import {
   PROPOSED_CHANGES_OBJECT_THREAD,
   PROPOSED_CHANGES_OBJECT_THREAD_OBJECT,
-} from "../../../config/constants";
-import { AuthContext } from "../../../decorators/withAuth";
-import { getProposedChangesObjectThreads } from "../../../graphql/queries/proposed-changes/getProposedChangesObjectThreads";
-import useQuery from "../../../hooks/useQuery";
-import { schemaState } from "../../../state/atoms/schema.atom";
-import { getThreadLabel, getThreadTitle } from "../../../utils/diff";
+} from "../../config/constants";
+import { AuthContext } from "../../decorators/withAuth";
+import { getProposedChangesObjectThreads } from "../../graphql/queries/proposed-changes/getProposedChangesObjectThreads";
+import useQuery from "../../hooks/useQuery";
+import { schemaState } from "../../state/atoms/schema.atom";
+import { getThreadLabel, getThreadTitle } from "../../utils/diff";
 import { DiffContext } from "./data-diff";
 import { DataDiffComments } from "./diff-comments";
 

@@ -2,11 +2,11 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
-import { ALERT_TYPES, Alert } from "../../../components/alert";
-import { CONFIG } from "../../../config/config";
-import { QSP } from "../../../config/qsp";
-import { fetchUrl } from "../../../utils/fetch";
-import LoadingScreen from "../../loading-screen/loading-screen";
+import { ALERT_TYPES, Alert } from "../../components/alert";
+import { CONFIG } from "../../config/config";
+import { QSP } from "../../config/qsp";
+import { fetchUrl } from "../../utils/fetch";
+import LoadingScreen from "../loading-screen/loading-screen";
 import { DataDiffNode } from "./data-diff-node";
 
 export const SchemaDiff = () => {

@@ -3,15 +3,15 @@ import { useAtom } from "jotai";
 import { ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import Accordion from "../../../components/accordion";
-import { Badge } from "../../../components/badge";
-import { DateDisplay } from "../../../components/date-display";
-import { QSP } from "../../../config/qsp";
-import { iSchemaKindNameMap, schemaKindNameState } from "../../../state/atoms/schemaKindName.atom";
-import { classNames } from "../../../utils/common";
-import { diffPeerContent } from "../../../utils/diff";
-import { constructPath } from "../../../utils/fetch";
-import { getObjectDetailsUrl } from "../../../utils/objects";
+import Accordion from "../../components/accordion";
+import { Badge } from "../../components/badge";
+import { DateDisplay } from "../../components/date-display";
+import { QSP } from "../../config/qsp";
+import { iSchemaKindNameMap, schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
+import { classNames } from "../../utils/common";
+import { diffPeerContent } from "../../utils/diff";
+import { constructPath } from "../../utils/fetch";
+import { getObjectDetailsUrl } from "../../utils/objects";
 import {
   getNodeClassName,
   tDataDiffNodePeerChange,
