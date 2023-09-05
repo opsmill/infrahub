@@ -110,7 +110,7 @@ async def test_node_init_invalid_value(session, default_branch: Branch, critical
     assert "not of type Text" in str(exc.value)
 
 
-async def test_node_default_value(session, default_branch):
+async def test_node_default_value(session, default_branch: Branch):
     SCHEMA = {
         "name": "OneOfEachKind",
         "namespace": "Test",
@@ -142,6 +142,44 @@ async def test_node_default_value(session, default_branch):
     assert obj.mybool.value is False
     assert obj.mybool_default.value is True
     assert obj.mybool_default_false.value is False
+
+
+async def test_render_display_label(session, default_branch: Branch, car_person_schema):
+    schema_01 = {
+        "name": "Display",
+        "namespace": "Test",
+        "display_labels": ["firstname__value"],
+        "attributes": [
+            {"name": "firstname", "kind": "Text"},
+            {"name": "lastname", "kind": "Text"},
+            {"name": "age", "kind": "Number"},
+        ],
+    }
+
+    node_schema = NodeSchema(**schema_01)
+    registry.schema.set(name=node_schema.kind, schema=node_schema)
+
+    obj = await Node.init(session=session, schema=node_schema)
+    await obj.new(session=session, firstname="John", lastname="Doe", age=99)
+    assert await obj.render_display_label(session=session) == "John"
+
+    # Display Labels with 2 attributes
+    schema_01["display_labels"] = ["firstname__value", "age__value"]
+    node_schema = NodeSchema(**schema_01)
+    registry.schema.set(name=node_schema.kind, schema=node_schema)
+
+    obj = await Node.init(session=session, schema=node_schema)
+    await obj.new(session=session, firstname="John", lastname="Doe", age=99)
+    assert await obj.render_display_label(session=session) == "John 99"
+
+    # Empty Display Label
+    schema_01["display_labels"] = []
+    node_schema = NodeSchema(**schema_01)
+    registry.schema.set(name=node_schema.kind, schema=node_schema)
+
+    obj = await Node.init(session=session, schema=node_schema)
+    await obj.new(session=session, firstname="John", lastname="Doe", age=99)
+    assert await obj.render_display_label(session=session) == "TestDisplay(ID: None)"
 
 
 async def test_node_init_with_single_relationship(session, default_branch: Branch, car_person_schema):
