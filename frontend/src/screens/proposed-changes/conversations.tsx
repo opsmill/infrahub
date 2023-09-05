@@ -8,7 +8,7 @@ import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/alert";
 import { AVATAR_SIZE, Avatar } from "../../components/avatar";
 import { Badge } from "../../components/badge";
-import { Button } from "../../components/button";
+import { BUTTON_TYPES, Button } from "../../components/button";
 import { AddComment } from "../../components/conversations/add-comment";
 import { Thread } from "../../components/conversations/thread";
 import { DateDisplay } from "../../components/date-display";
@@ -25,6 +25,7 @@ import {
 } from "../../config/constants";
 import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
+import { mergeBranch } from "../../graphql/mutations/branches/mergeBranch";
 import { createObject } from "../../graphql/mutations/objects/createObject";
 import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
@@ -35,6 +36,7 @@ import useQuery from "../../hooks/useQuery";
 import { branchesState } from "../../state/atoms/branches.atom";
 import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
+import { objectToString } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
@@ -101,6 +103,7 @@ export const Conversations = () => {
   const auth = useContext(AuthContext);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingApprove, setIsLoadingApprove] = useState(false);
+  const [isLoadingMerge, setIsLoadingMerge] = useState(false);
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const navigate = useNavigate();
 
@@ -303,40 +306,40 @@ export const Conversations = () => {
     }
   };
 
-  // const handleMerge = async () => {
-  //   if (!proposedChangesDetails?.source_branch?.value) return;
+  const handleMerge = async () => {
+    if (!proposedChangesDetails?.source_branch?.value) return;
 
-  //   try {
-  //     setIsLoadingMerge(true);
+    try {
+      setIsLoadingMerge(true);
 
-  //     const data = {
-  //       name: proposedChangesDetails?.source_branch?.value,
-  //     };
+      const data = {
+        name: proposedChangesDetails?.source_branch?.value,
+      };
 
-  //     const mutationString = mergeBranch({ data: objectToString(data) });
+      const mutationString = mergeBranch({ data: objectToString(data) });
 
-  //     const mutation = gql`
-  //       ${mutationString}
-  //     `;
+      const mutation = gql`
+        ${mutationString}
+      `;
 
-  //     await graphqlClient.mutate({
-  //       mutation,
-  //       context: {
-  //         date,
-  //       },
-  //     });
+      await graphqlClient.mutate({
+        mutation,
+        context: {
+          date,
+        },
+      });
 
-  //     toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Branch merged successfully!"} />);
-  //   } catch (error: any) {
-  //     console.log("error: ", error);
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Branch merged successfully!"} />);
+    } catch (error: any) {
+      console.log("error: ", error);
 
-  //     toast(
-  //       <Alert type={ALERT_TYPES.SUCCESS} message={"An error occured while merging the branch"} />
-  //     );
-  //   }
+      toast(
+        <Alert type={ALERT_TYPES.SUCCESS} message={"An error occured while merging the branch"} />
+      );
+    }
 
-  //   setIsLoadingMerge(false);
-  // };
+    setIsLoadingMerge(false);
+  };
 
   const branchesOptions: any[] = branches
     .filter((branch) => branch.name !== "main")
@@ -476,20 +479,19 @@ export const Conversations = () => {
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
                   <Button
                     onClick={handleApprove}
-                    // buttonType={BUTTON_TYPES.VALIDATE}
                     isLoading={isLoadingApprove}
                     disabled={!auth?.permissions?.write || !approverId || !canApprove}
                     className="mr-2">
                     Approve
                   </Button>
 
-                  {/* <Button
+                  <Button
                     onClick={handleMerge}
                     buttonType={BUTTON_TYPES.VALIDATE}
                     isLoading={isLoadingMerge}
                     disabled={!auth?.permissions?.write}>
                     Merge
-                  </Button> */}
+                  </Button>
                 </dd>
               </div>
             </dl>
