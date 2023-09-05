@@ -168,10 +168,10 @@ class DeleteBranchRelationshipsQuery(Query):
 
 class Branch(StandardNode):
     name: str = Field(
-        regex=rf"^[a-z][a-z0-9\-]+$|^{re.escape(GLOBAL_BRANCH_NAME)}$",
+        regex=rf"^[a-zA-Z0-9][a-zA-Z0-9_\-]*$|^{re.escape(GLOBAL_BRANCH_NAME)}$",
         max_length=32,
         min_length=3,
-        description="Name of the branch (only lowercase, dash & alphanumeric characters are allowed)",
+        description="Name of the branch (only alphanumeric, dash, underscore characters are allowed)",
     )
     status: str = "OPEN"  # OPEN, CLOSED
     description: str = ""
