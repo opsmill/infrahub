@@ -81,7 +81,7 @@ class AttributeCreateQuery(AttributeQuery):
 
     def query_add_create(self):
         query = """
-        CREATE (a:Attribute:AttributeLocal { uuid: $uuid, name: $name, type: $attribute_type })
+        CREATE (a:Attribute:AttributeLocal { uuid: $uuid, name: $name, type: $attribute_type, branch_support: $branch_support })
         CREATE (n)-[r1:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(a)
         MERGE (av:AttributeValue { type: $attribute_type, value: $value })
         CREATE (a)-[r2:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(av)
@@ -99,6 +99,7 @@ class AttributeCreateQuery(AttributeQuery):
         self.params["is_protected"] = self.attr.is_protected
         self.params["is_visible"] = self.attr.is_visible
         self.params["attribute_type"] = self.attr.get_kind()
+        self.params["branch_support"] = self.attr.schema.branch.value
 
         self.return_labels = ["a", "av", "r1", "r2"]
 

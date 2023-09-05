@@ -108,7 +108,7 @@ Below is the list of all available options to define a Relationship in the schem
 | **Kind** | `Text` |
 | **Description** |  |
 | **Constraints** |  |
-| **Accepted Values** | `aware` `agnostic`  |
+| **Accepted Values** | `aware` `agnostic` `local`  |
 
 ## inherited
 

@@ -127,7 +127,7 @@ Below is the list of all available options to define an Attribute in the schema
 | **Kind** | `Text` |
 | **Description** |  |
 | **Constraints** |  |
-| **Accepted Values** | `aware` `agnostic`  |
+| **Accepted Values** | `aware` `agnostic` `local`  |
 
 ## order_weight
 

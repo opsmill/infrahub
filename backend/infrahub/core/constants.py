@@ -38,6 +38,7 @@ class ArtifactStatus(InfrahubStringEnum):
 class BranchSupportType(InfrahubStringEnum):
     AWARE = "aware"
     AGNOSTIC = "agnostic"
+    LOCAL = "local"
 
 
 class ContentType(InfrahubStringEnum):

@@ -1620,7 +1620,7 @@ core_models = {
                 {"name": "description", "kind": "Text", "optional": True},
                 {"name": "location", "kind": "Text", "unique": True},
                 {"name": "default_branch", "kind": "Text", "default_value": "main"},
-                {"name": "commit", "kind": "Text", "optional": True},
+                {"name": "commit", "kind": "Text", "optional": True, "branch": BranchSupportType.LOCAL.value},
                 {"name": "username", "kind": "Text", "optional": True},
                 {"name": "password", "kind": "Text", "optional": True},
             ],

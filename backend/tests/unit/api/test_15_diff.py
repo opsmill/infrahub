@@ -108,10 +108,10 @@ async def r1_update_01(data_diff_attribute):
         "id": r1,
         "path": f"data/{r1}",
         "elements": {
-            "commit": {
+            "description": {
                 "type": "Attribute",
-                "name": "commit",
-                "path": f"data/{r1}/commit",
+                "name": "description",
+                "path": f"data/{r1}/description",
                 "change": {
                     "type": "Attribute",
                     "branches": ["branch2"],
@@ -119,14 +119,14 @@ async def r1_update_01(data_diff_attribute):
                     "summary": {"added": 0, "removed": 0, "updated": 1},
                     "action": "updated",
                     "value": {
-                        "path": f"data/{r1}/commit/value",
+                        "path": f"data/{r1}/description/value",
                         "changes": [
                             {
                                 "branch": "branch2",
                                 "type": "HAS_VALUE",
                                 "changed_at": "2023-08-01T11:07:25.255688Z",
                                 "action": "updated",
-                                "value": {"new": "dddddddddd", "previous": "aaaaaaaaa"},
+                                "value": {"new": "Second update in Branch", "previous": "NULL"},
                             }
                         ],
                     },
@@ -156,8 +156,8 @@ async def test_diff_data_attribute_branch_only_default(
     assert len(data["diffs"]) == 1
 
     paths_to_exclude = [
-        r"root\['elements'\]\['commit'\]\['change'\]\['id'\]",
-        r"root\['elements'\]\['commit'\]\['change'\]\['value'\]\['changes'\]\[0\]\['changed_at'\]",
+        r"root\['elements'\]\['description'\]\['change'\]\['id'\]",
+        r"root\['elements'\]\['description'\]\['change'\]\['value'\]\['changes'\]\[0\]\['changed_at'\]",
     ]
 
     assert (
@@ -337,7 +337,7 @@ async def test_diff_data_attribute_conflict(session, client, client_headers, dat
                 "main": "repo01",
             },
             "elements": {
-                "commit": {
+                "description": {
                     "change": {
                         "action": "updated",
                         "branches": ["branch2", "main"],
@@ -353,8 +353,8 @@ async def test_diff_data_attribute_conflict(session, client, client_headers, dat
                                     "changed_at": "2023-08-03T04:51:30.074662Z",
                                     "type": "HAS_VALUE",
                                     "value": {
-                                        "new": "dddddddddd",
-                                        "previous": "aaaaaaaaa",
+                                        "new": "Second update in Branch",
+                                        "previous": "NULL",
                                     },
                                 },
                                 {
@@ -362,17 +362,14 @@ async def test_diff_data_attribute_conflict(session, client, client_headers, dat
                                     "branch": "main",
                                     "changed_at": "2023-08-03T04:51:29.959427Z",
                                     "type": "HAS_VALUE",
-                                    "value": {
-                                        "new": "mmmmmmmmmmmmm",
-                                        "previous": "aaaaaaaaa",
-                                    },
+                                    "value": {"new": "update in main", "previous": "NULL"},
                                 },
                             ],
-                            "path": f"data/{r1}/commit/value",
+                            "path": f"data/{r1}/description/value",
                         },
                     },
-                    "name": "commit",
-                    "path": f"data/{r1}/commit",
+                    "name": "description",
+                    "path": f"data/{r1}/description",
                     "type": "Attribute",
                 },
             },
@@ -1112,6 +1109,8 @@ async def test_diff_data_relationship_many_conflict(session, client, client_head
 # ----------------------------------------------------------------------
 # Deprecated API
 # ----------------------------------------------------------------------
+
+
 async def test_diff_data_deprecated_endpoint_branch_only_default(
     session, client, client_headers, car_person_data_generic_diff
 ):
@@ -1170,10 +1169,10 @@ async def test_diff_data_deprecated_endpoint_branch_only_default(
     assert branch2[r1]["kind"] == "CoreRepository"
     assert branch2[r1]["action"] == "updated"
     assert branch2[r1]["summary"] == {"added": 0, "removed": 0, "updated": 1}
-    assert branch2[r1]["elements"]["commit"]["value"]["value"]["new"] == "dddddddddd"
+    assert branch2[r1]["elements"]["description"]["value"]["value"]["new"] == "Second change in branch"
     # assert branch2[r1]["elements"]["commit"]["value"]["value"]['previous'] == "aaaaaaaaa" FIXME
     assert (
-        branch2[r1]["elements"]["commit"]["value"]["changed_at"]
+        branch2[r1]["elements"]["description"]["value"]["changed_at"]
         == car_person_data_generic_diff["time21"].to_iso8601_string()
     )
 
@@ -1217,8 +1216,8 @@ async def test_diff_data_deprecated_endpoint_branch_time_from(
     assert branch2[r1]["kind"] == "CoreRepository"
     assert branch2[r1]["action"] == "updated"
     assert branch2[r1]["summary"] == {"added": 0, "removed": 0, "updated": 1}
-    assert branch2[r1]["elements"]["commit"]["value"]["value"]["new"] == "dddddddddd"
-    assert branch2[r1]["elements"]["commit"]["value"]["value"]["previous"] == "bbbbbbbbbbbbbbb"  # FIXME
+    assert branch2[r1]["elements"]["description"]["value"]["value"]["new"] == "dddddddddd"
+    assert branch2[r1]["elements"]["description"]["value"]["value"]["previous"] == "bbbbbbbbbbbbbbb"  # FIXME
     assert (
         branch2[r1]["elements"]["commit"]["value"]["changed_at"]
         == car_person_data_generic_diff["time21"].to_iso8601_string()
@@ -1271,10 +1270,10 @@ async def test_diff_data_deprecated_endpoint_branch_time_from_to(
     assert branch2[r1]["kind"] == "CoreRepository"
     assert branch2[r1]["action"] == "updated"
     assert branch2[r1]["summary"] == {"added": 0, "removed": 0, "updated": 1}
-    assert branch2[r1]["elements"]["commit"]["value"]["value"]["new"] == "bbbbbbbbbbbbbbb"
+    assert branch2[r1]["elements"]["description"]["value"]["value"]["new"] == "First change in branch"
     # assert branch2[r1]["elements"]["commit"]["value"]["value"]['previous'] == "aaaaaaaaa" FIXME
     assert (
-        branch2[r1]["elements"]["commit"]["value"]["changed_at"]
+        branch2[r1]["elements"]["description"]["value"]["changed_at"]
         == car_person_data_generic_diff["time12"].to_iso8601_string()
     )
 
@@ -1359,10 +1358,10 @@ async def test_diff_data_deprecated_endpoint_with_main_time_from(
     assert branch2[r1]["kind"] == "CoreRepository"
     assert branch2[r1]["action"] == "updated"
     assert branch2[r1]["summary"] == {"added": 0, "removed": 0, "updated": 1}
-    assert branch2[r1]["elements"]["commit"]["value"]["value"]["new"] == "dddddddddd"
+    assert branch2[r1]["elements"]["description"]["value"]["value"]["new"] == "Second change in branch"
     # assert branch2[r1]["elements"]["commit"]["value"]["value"]['previous'] == "bbbbbbbbbbbbbbb" FIXME
     assert (
-        branch2[r1]["elements"]["commit"]["value"]["changed_at"]
+        branch2[r1]["elements"]["description"]["value"]["changed_at"]
         == car_person_data_generic_diff["time21"].to_iso8601_string()
     )
 
@@ -1414,10 +1413,10 @@ async def test_diff_data_deprecated_endpoint_with_main_time_from_to(
     assert branch2[r1]["kind"] == "CoreRepository"
     assert branch2[r1]["action"] == "updated"
     assert branch2[r1]["summary"] == {"added": 0, "removed": 0, "updated": 1}
-    assert branch2[r1]["elements"]["commit"]["value"]["value"]["new"] == "bbbbbbbbbbbbbbb"
+    assert branch2[r1]["elements"]["description"]["value"]["value"]["new"] == "First change in branch"
     # assert branch2[r1]["elements"]["commit"]["value"]["value"]['previous'] == "aaaaaaaaa" FIXME
     assert (
-        branch2[r1]["elements"]["commit"]["value"]["changed_at"]
+        branch2[r1]["elements"]["description"]["value"]["changed_at"]
         == car_person_data_generic_diff["time12"].to_iso8601_string()
     )
 
