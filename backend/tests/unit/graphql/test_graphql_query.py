@@ -102,10 +102,10 @@ async def test_display_label_one_item(db, session, default_branch: Branch, data_
             {"name": "label", "kind": "Text", "optional": True},
         ],
     }
-
-    schema = NodeSchema(**SCHEMA)
-    registry.set_schema(name=schema.kind, schema=schema)
-
+    tmp_schema = NodeSchema(**SCHEMA)
+    registry.schema.set(name=tmp_schema.kind, schema=tmp_schema)
+    registry.schema.process_schema_branch(name=default_branch.name)
+    schema = registry.schema.get(tmp_schema.kind, branch=default_branch)
     obj1 = await Node.init(session=session, schema=schema)
     await obj1.new(session=session, name="low")
     await obj1.save(session=session)
@@ -149,8 +149,10 @@ async def test_display_label_multiple_items(db, session, default_branch: Branch,
         ],
     }
 
-    schema = NodeSchema(**SCHEMA)
-    registry.set_schema(name=schema.kind, schema=schema)
+    tmp_schema = NodeSchema(**SCHEMA)
+    registry.schema.set(name=tmp_schema.kind, schema=tmp_schema)
+    registry.schema.process_schema_branch(name=default_branch.name)
+    schema = registry.schema.get(tmp_schema.kind, branch=default_branch)
 
     obj1 = await Node.init(session=session, schema=schema)
     await obj1.new(session=session, name="low", level=4)
@@ -200,8 +202,10 @@ async def test_display_label_default_value(db, session, default_branch: Branch, 
         ],
     }
 
-    schema = NodeSchema(**SCHEMA)
-    registry.set_schema(name=schema.kind, schema=schema)
+    tmp_schema = NodeSchema(**SCHEMA)
+    registry.schema.set(name=tmp_schema.kind, schema=tmp_schema)
+    registry.schema.process_schema_branch(name=default_branch.name)
+    schema = registry.schema.get(tmp_schema.kind, branch=default_branch)
 
     obj1 = await Node.init(session=session, schema=schema)
     await obj1.new(session=session, name="low")

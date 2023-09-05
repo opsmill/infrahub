@@ -89,7 +89,7 @@ class DiffAttributeQuery(DiffQuery):
 
         query = """
         MATCH (n)-[r1:HAS_ATTRIBUTE]-(a:Attribute)-[r2:HAS_VALUE|IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER]->(ap)
-        WHERE %s
+        WHERE a.branch_support IN ["aware"] AND %s
         """ % (
             "\n AND ".join(rels_filters),
         )
@@ -107,7 +107,7 @@ class DiffRelationshipQuery(DiffQuery):
         query = """
         CALL {
             MATCH p = ((:Node)-[r1:IS_RELATED]->(rel:Relationship)<-[r2:IS_RELATED]-(:Node))
-            WHERE (r1.branch = r2.branch AND
+            WHERE (rel.branch_support IN ["aware"] AND r1.branch = r2.branch AND
                 (r1.to = r2.to OR (r1.to is NULL AND r2.to is NULL)) AND r1.from = r2.from AND r1.status = r2.status
                 AND all(r IN relationships(p) WHERE (r.branch IN $branch_names AND r.from >= $diff_from AND r.from <= $diff_to
                     AND ((r.to >= $diff_from AND r.to <= $diff_to) OR r.to is NULL))
@@ -118,7 +118,7 @@ class DiffRelationshipQuery(DiffQuery):
         CALL {
             WITH rel, branch_name
             MATCH p = ((sn:Node)-[r1:IS_RELATED]->(rel:Relationship)<-[r2:IS_RELATED]-(dn:Node))
-            WHERE (r1.branch = r2.branch AND
+            WHERE (rel.branch_support IN ["aware"] AND r1.branch = r2.branch AND
                 (r1.to = r2.to OR (r1.to is NULL AND r2.to is NULL)) AND r1.from = r2.from AND r1.status = r2.status
                 AND all(r IN relationships(p) WHERE (r.branch = branch_name AND r.from >= $diff_from AND r.from <= $diff_to
                     AND ((r.to >= $diff_from AND r.to <= $diff_to) OR r.to is NULL))

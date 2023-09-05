@@ -46,6 +46,7 @@ class RelationshipCardinality(str, Enum):
 class BranchSupportType(str, Enum):
     AWARE = "aware"
     AGNOSTIC = "agnostic"
+    LOCAL = "local"
 
 
 class RelationshipKind(str, Enum):

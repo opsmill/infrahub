@@ -1,4 +1,5 @@
 import enum
+from typing import List
 
 from infrahub.utils import InfrahubNumberEnum, InfrahubStringEnum
 
@@ -37,6 +38,7 @@ class ArtifactStatus(InfrahubStringEnum):
 class BranchSupportType(InfrahubStringEnum):
     AWARE = "aware"
     AGNOSTIC = "agnostic"
+    LOCAL = "local"
 
 
 class ContentType(InfrahubStringEnum):
@@ -110,3 +112,16 @@ class ValidatorState(InfrahubStringEnum):
     QUEUED = "queued"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
+
+
+RESTRICTED_NAMESPACES: List[str] = [
+    "Account",
+    "Branch",
+    "Builtin",
+    # "Core",
+    "Deprecated",
+    "Diff",
+    "Infrahub",
+    "Internal",
+    "Lineage",
+]

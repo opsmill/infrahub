@@ -112,6 +112,23 @@ async def test_schema_load_endpoint_valid_simple(
     assert relationships["tags"] == 5000
 
 
+async def test_schema_load_restricted_namespace(
+    session,
+    client: TestClient,
+    admin_headers,
+    default_branch: Branch,
+    authentication_base,
+    helper,
+):
+    with client:
+        response = client.post(
+            "/api/schema/load", headers=admin_headers, json=helper.schema_file("restricted_namespace_01.json")
+        )
+
+    assert response.status_code == 403
+    assert response.json()["errors"][0]["message"] == "Restricted namespace 'Internal' used on 'Timestamp'"
+
+
 async def test_schema_load_endpoint_idempotent_simple(
     session,
     client: TestClient,

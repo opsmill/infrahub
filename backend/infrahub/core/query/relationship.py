@@ -164,6 +164,7 @@ class RelationshipCreateQuery(RelationshipQuery):
         self.params["source_id"] = self.source_id
         self.params["destination_id"] = self.destination_id
         self.params["name"] = self.schema.identifier
+        self.params["branch_support"] = self.schema.branch.value
 
         self.params["uuid"] = str(UUIDT())
 
@@ -183,7 +184,7 @@ class RelationshipCreateQuery(RelationshipQuery):
         self.query_add_all_node_property_match()
 
         query_create = """
-        CREATE (rl:Relationship { uuid: $uuid, name: $name})
+        CREATE (rl:Relationship { uuid: $uuid, name: $name, branch_support: $branch_support })
         CREATE (s)-[r1:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(rl)
         CREATE (d)-[r2:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null  }]->(rl)
         MERGE (ip:Boolean { value: $is_protected })

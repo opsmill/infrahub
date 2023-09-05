@@ -67,6 +67,14 @@ def schema_all_in_one():
                 ],
             },
             {
+                "name": "Badge",
+                "namespace": "Builtin",
+                "branch": BranchSupportType.LOCAL.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                ],
+            },
+            {
                 "name": "StandardGroup",
                 "namespace": "Core",
                 "inherit_from": ["CoreGroup"],
@@ -82,6 +90,7 @@ def schema_all_in_one():
                 "attributes": [
                     {"name": "my_generic_name", "kind": "Text"},
                     {"name": "mybool", "kind": "Boolean", "default_value": False},
+                    {"name": "local_attr", "kind": "Number", "branch": BranchSupportType.LOCAL.value},
                 ],
                 "relationships": [
                     {
@@ -98,6 +107,12 @@ def schema_all_in_one():
                         "peer": "BuiltinStatus",
                         "optional": True,
                         "cardinality": "one",
+                    },
+                    {
+                        "name": "badges",
+                        "peer": "BuiltinBadge",
+                        "optional": True,
+                        "cardinality": "many",
                     },
                 ],
             },
@@ -231,8 +246,10 @@ async def test_schema_branch_process_branch_support(schema_all_in_one):
     criticality = schema.get(name="BuiltinCriticality")
     assert criticality.get_attribute(name="name").branch == BranchSupportType.AGNOSTIC
     assert criticality.get_attribute(name="level").branch == BranchSupportType.AWARE
+    assert criticality.get_attribute(name="local_attr").branch == BranchSupportType.LOCAL
     assert criticality.get_relationship(name="tags").branch == BranchSupportType.AWARE
     assert criticality.get_relationship(name="status").branch == BranchSupportType.AGNOSTIC
+    assert criticality.get_relationship(name="badges").branch == BranchSupportType.LOCAL
 
     criticality = schema.get(name="BuiltinTag")
     assert criticality.get_attribute(name="name").branch == BranchSupportType.AWARE
@@ -553,11 +570,11 @@ async def test_schema_manager_set():
     manager = SchemaManager()
 
     manager.set(name="schema1", schema=schema)
-    assert hash(schema) in manager._cache
-    assert len(manager._cache) == 1
+    assert len(manager._cache) > 0
+    cache_size = len(manager._cache)
 
     manager.set(name="schema2", schema=schema)
-    assert len(manager._cache) == 1
+    assert len(manager._cache) == cache_size
 
 
 async def test_schema_manager_get(default_branch: Branch):
@@ -575,10 +592,10 @@ async def test_schema_manager_get(default_branch: Branch):
     manager = SchemaManager()
 
     manager.set(name="schema1", schema=schema)
-    assert len(manager._cache) == 1
+    assert len(manager._cache) > 0
 
     schema11 = manager.get(name="schema1")
-    assert schema11 == schema
+    assert schema11.namespace == schema.namespace
 
 
 # -----------------------------------------------------------------

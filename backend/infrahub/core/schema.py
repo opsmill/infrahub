@@ -9,6 +9,7 @@ from pydantic import BaseModel, Extra, Field, root_validator, validator
 
 from infrahub.core import registry
 from infrahub.core.constants import (
+    RESTRICTED_NAMESPACES,
     AccountRole,
     AccountType,
     ArtifactStatus,
@@ -24,6 +25,7 @@ from infrahub.core.constants import (
 )
 from infrahub.core.query import QueryNode, QueryRel
 from infrahub.core.relationship import Relationship
+from infrahub.exceptions import PermissionDeniedError
 from infrahub.types import ATTRIBUTE_TYPES
 from infrahub_client.utils import duplicates, intersection
 
@@ -647,6 +649,16 @@ class SchemaRoot(BaseModel):
 
         return True
 
+    def validate_namespaces(self) -> None:
+        models = self.nodes + self.generics
+        errors: List[str] = []
+        for model in models:
+            if model.namespace in RESTRICTED_NAMESPACES:
+                errors.append(f"Restricted namespace '{model.namespace}' used on '{model.name}'")
+
+        if errors:
+            raise PermissionDeniedError(", ".join(errors))
+
 
 # TODO need to investigate how we could generate the internal schema
 # directly from the Pydantic Models to avoid the duplication of effort
@@ -1110,9 +1122,13 @@ core_models = {
             "description": "",
             "label": "Validator",
             "order_by": ["started_at__value"],
-            "display_labels": ["state__value", "conclusion__value", "started_at__value"],
+            "display_labels": ["name__value", "state__value", "conclusion__value", "started_at__value"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
+                {
+                    "name": "name",
+                    "kind": "Text",
+                },
                 {
                     "name": "state",
                     "kind": "Text",
@@ -1604,7 +1620,7 @@ core_models = {
                 {"name": "description", "kind": "Text", "optional": True},
                 {"name": "location", "kind": "Text", "unique": True},
                 {"name": "default_branch", "kind": "Text", "default_value": "main"},
-                {"name": "commit", "kind": "Text", "optional": True},
+                {"name": "commit", "kind": "Text", "optional": True, "branch": BranchSupportType.LOCAL.value},
                 {"name": "username", "kind": "Text", "optional": True},
                 {"name": "password", "kind": "Text", "optional": True},
             ],

@@ -262,8 +262,10 @@ class SchemaBranch:
                     continue
 
                 peer_node = self.get(name=rel.peer)
-                if node.branch == peer_node.branch == BranchSupportType.AGNOSTIC:
-                    rel.branch = BranchSupportType.AGNOSTIC
+                if isinstance(peer_node, GroupSchema) or node.branch == peer_node.branch:
+                    rel.branch = node.branch
+                elif BranchSupportType.LOCAL in (node.branch, peer_node.branch):
+                    rel.branch = BranchSupportType.LOCAL
                 else:
                     rel.branch = BranchSupportType.AWARE
 
@@ -292,7 +294,7 @@ class SchemaBranch:
 
             for rel in new_node.relationships:
                 peer_schema = self.get(name=rel.peer)
-                if not peer_schema:
+                if not peer_schema or isinstance(peer_schema, GroupSchema):
                     continue
 
                 rel.filters = self.generate_filters(schema=peer_schema, include_relationships=False)
@@ -383,6 +385,7 @@ class SchemaBranch:
         return filters
 
 
+# pylint: disable=too-many-public-methods
 class SchemaManager(NodeManager):
     def __init__(self):
         self._cache: Dict[int, Any] = {}
@@ -399,7 +402,9 @@ class SchemaManager(NodeManager):
         if branch not in self._branches:
             self._branches[branch] = SchemaBranch(cache=self._cache, name=branch)
 
-        return self._branches[branch].set(name=name, schema=schema)
+        self._branches[branch].set(name=name, schema=schema)
+
+        return hash(self._branches[branch])
 
     def has(self, name: str, branch: Optional[Union[Branch, str]] = None) -> bool:
         try:
@@ -452,6 +457,10 @@ class SchemaManager(NodeManager):
 
     def set_schema_branch(self, name: str, schema: SchemaBranch) -> None:
         self._branches[name] = schema
+
+    def process_schema_branch(self, name: str):
+        schema_branch = self.get_schema_branch(name=name)
+        schema_branch.process()
 
     async def update_schema_branch(
         self,
