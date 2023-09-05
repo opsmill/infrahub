@@ -24,7 +24,7 @@ export const ProposedChangesChecksTab = () => {
     ${queryString}
   `;
 
-  const { loading, error, data } = useQuery(query, { pollInterval: 1000 });
+  const { loading, error, data } = useQuery(query, { pollInterval: 15000 });
 
   if (!schemaData || loading) {
     return <LoadingScreen />;

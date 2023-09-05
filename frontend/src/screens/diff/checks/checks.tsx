@@ -22,7 +22,7 @@ export const Checks = () => {
     ${queryString}
   `;
 
-  const { loading, error, data, refetch } = useQuery(query, { pollInterval: 100 });
+  const { loading, error, data, refetch } = useQuery(query, { pollInterval: 15000 });
 
   const validators = data?.CoreValidator?.edges?.map((edge: any) => edge.node);
 
