@@ -21,5 +21,5 @@ During this tutorial we'll mainly use the Frontend, the `infrahubctl` CLI and Gr
 | **Git Agent** | Infrahub Agent that manages all content hosted in Git.  |  -- |
 | **Git Server** | External Git Server like Github or Gitlab that can host some Git repositories  |  |
 | **GraphDB** | Main database where all information in the graph are stored. Neo4j 5.x | -- |
-| **Cache** | Cache based on Redis, mainly used to support the reservation of shared resources across all comoponents. | -- |
+| **Cache** | Cache based on Redis, mainly used to support the reservation of shared resources across all components. | -- |
 | **Message Bus** | Message bus based on RabbitMQ to allow all components to interact |-- |

@@ -51,22 +51,22 @@ mutation {
 > You'll need to provide a header to execute this operation > `{"X-INFRAHUB-KEY":"06438eb2-8019-4776-878c-0941b1f1d1ec"}`
 ==-
 
-### Modify the Admin Account via the UI
+### Modify the Backbone Role via the UI
 
 > The name of the active branch in the top right corner should now be `cr1234`
 
-1. Select Account under Object in the left menu (near the top)
-2. Select the `admin` account
+1. Select Role under Object in the left menu (near the top)
+2. Select the `backbone` role
 3. Select the `edit` button on the top right corner
-4. Update the label attribute of the Admin account, for example with `Administrator`
+4. Update the description attribute of the Backbone role, for example with `The spine`
 5. Save your change with the button `save`
 
-![Access the accounts](../media/tutorial/tutorial-1-branch-and-version-control.cy.ts/tutorial_1_accounts.png)
-![Select the admin account](../media/tutorial/tutorial-1-branch-and-version-control.cy.ts/tutorial_1_account_details.png)
-![Select the `edit` button](../media/tutorial/tutorial-1-branch-and-version-control.cy.ts/tutorial_1_account_edit.png)
+![Access the roles](../media/tutorial/tutorial-1-branch-and-version-control.cy.ts/tutorial_1_roles.png)
+![Select the backbone role](../media/tutorial/tutorial-1-branch-and-version-control.cy.ts/tutorial_1_role_details.png)
+![Select the `edit` button](../media/tutorial/tutorial-1-branch-and-version-control.cy.ts/tutorial_1_role_edit.png)
 
 !!!success Validate that everything is correct
-Go back to the detailed page for the Account `Admin` and try to switch branches with the branch selection menu at the top. <br>
+Go back to the detailed page for the Role `Backbone` and try to switch branches with the branch selection menu at the top. <br>
 **You should be able to see the value of the label change when you change the branch.**
 !!!
 
