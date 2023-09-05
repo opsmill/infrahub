@@ -54,6 +54,7 @@ RUN git config --global credential.helper /usr/local/bin/infrahub-git-credential
 
 RUN mkdir -p /opt/infrahub/git
 RUN mkdir -p /opt/infrahub/storage
+RUN mkdir -p /opt/infrahub/source
 
 WORKDIR /source
 
