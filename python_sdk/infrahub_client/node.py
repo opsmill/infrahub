@@ -2,7 +2,18 @@ from __future__ import annotations
 
 import ipaddress
 import re
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union, get_args
+from copy import copy
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Tuple,
+    Union,
+    get_args,
+)
 
 from infrahub_client.exceptions import Error, FilterNotFound, NodeNotFound
 from infrahub_client.graphql import Mutation
@@ -158,6 +169,12 @@ class RelatedNodeBase:
                     setattr(self, prop, prop_data)
                 else:
                     setattr(self, prop, None)
+
+    @property
+    def initialized(self) -> bool:
+        if self.id:
+            return True
+        return False
 
     @property
     def id(self) -> Optional[str]:
@@ -358,6 +375,7 @@ class RelationshipManager(RelationshipManagerBase):
             )
             rm = getattr(node, self.schema.name)
             self.peers = rm.peers
+            self.initialized = True
 
         for peer in self.peers:
             await peer.fetch()  # type: ignore[misc]
@@ -427,6 +445,7 @@ class RelationshipManagerSync(RelationshipManagerBase):
             )
             rm = getattr(node, self.schema.name)
             self.peers = rm.peers
+            self.initialized = True
 
         for peer in self.peers:
             peer.fetch()
@@ -482,7 +501,7 @@ class InfrahubNodeBase:
 
         return f"{self._schema.kind} ({self.id})"
 
-    def _generate_input_data(self) -> Dict[str, Dict]:
+    def _generate_input_data(self, update: bool = False) -> Dict[str, Dict]:
         """Generate a dictionnary that represent the input data required by a mutation.
 
         Returns:
@@ -544,9 +563,57 @@ class InfrahubNodeBase:
             elif rel_schema.cardinality == RelationshipCardinality.MANY:
                 data[item_name] = []
 
+        if update:
+            data, variables = self._strip_unmodified(data=data, variables=variables)
+
         mutation_variables = {key: type(value) for key, value in variables.items()}
 
         return {"data": {"data": data}, "variables": variables, "mutation_variables": mutation_variables}
+
+    @staticmethod
+    def _strip_unmodified_dict(data: dict, original_data: dict, variables: dict, attribute: str) -> None:
+        for attribute_key in original_data[attribute].keys():
+            if isinstance(data[attribute], dict):
+                if attribute_key in data[attribute].keys():
+                    variable_key = None
+                    if isinstance(data[attribute][attribute_key], str):
+                        variable_key = data[attribute][attribute_key][1:]
+
+                    if original_data[attribute][attribute_key] == data[attribute][attribute_key]:
+                        data[attribute].pop(attribute_key)
+                    elif variable_key in variables:
+                        data[attribute].pop(attribute_key)
+                        variables.pop(variable_key)
+
+        if not data[attribute]:
+            data.pop(attribute)
+
+    def _strip_unmodified(self, data: dict, variables: dict) -> Tuple[dict, dict]:
+        original_data = self._data or {}
+        for relationship in self._relationships:
+            relationship_property = getattr(self, relationship)
+            if not relationship_property.initialized and relationship in data:
+                data.pop(relationship)
+        for attribute in original_data.keys():
+            if attribute in data.keys():
+                if data[attribute] == original_data[attribute]:
+                    data.pop(attribute)
+                    continue
+                if isinstance(original_data[attribute], dict):
+                    self._strip_unmodified_dict(
+                        data=data, original_data=original_data, variables=variables, attribute=attribute
+                    )
+                    if attribute in self._relationships and original_data[attribute].get("node"):
+                        relationship_data_cardinality_one = copy(original_data)
+                        relationship_data_cardinality_one[attribute] = original_data[attribute]["node"]
+                        self._strip_unmodified_dict(
+                            data=data,
+                            original_data=relationship_data_cardinality_one,
+                            variables=variables,
+                            attribute=attribute,
+                        )
+
+        return data, variables
 
     def generate_query_data(
         self,
@@ -707,7 +774,7 @@ class InfrahubNode(InfrahubNodeBase):
         self.id = response[mutation_name]["object"]["id"]
 
     async def _update(self, at: Timestamp) -> None:
-        input_data = self._generate_input_data()
+        input_data = self._generate_input_data(update=True)
         input_data["data"]["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
         query = Mutation(
@@ -804,7 +871,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
         self.id = response[mutation_name]["object"]["id"]
 
     def _update(self, at: Timestamp) -> None:
-        input_data = self._generate_input_data()
+        input_data = self._generate_input_data(update=True)
         input_data["data"]["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
         query = Mutation(
