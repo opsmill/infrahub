@@ -19,14 +19,14 @@ datasources:
     jsonData:
       derivedFields:
         - name: TraceID
-          matcherRegex: TraceID=0x(\w+)
+          matcherRegex: 'TraceID=0x(\w+)'
           url: '$${__value.raw}'
           urlDisplayLabel: "View Trace via TraceID (in Tempo)"
           datasourceUid: 'localtempo'
         - name: RequestID
-          matchedRegex: RequestID=(\w+)
-          url: '{name=~".*$${__value.raw}"}'
-          urldisplayLabel: "View Trace via RequestID (in Tempo)"
+          matcherRegex: 'RequestID=(\w+)'
+          url: '{name=~".*$${__value.raw}.*"}'
+          urlDisplayLabel: "View Trace via RequestID (in Tempo)"
           datasourceUid: 'localtempo'
 
   - name: Tempo (Local)
