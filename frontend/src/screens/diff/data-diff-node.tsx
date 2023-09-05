@@ -183,7 +183,7 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
   const display_label = nodeDisplayLabels[currentBranch] ?? nodeDisplayLabels?.main;
 
   const renderTitle = () => (
-    <div className={"p-1 pr-0 flex flex-1 group"}>
+    <div className={"p-1 pr-0 flex flex-col lg:flex-row"}>
       <div className="flex flex-1 items-center">
         <Badge className="mr-2" type={getBadgeType(action)}>
           {action?.toUpperCase()}
@@ -204,10 +204,13 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
         </div>
       )}
 
-      <DiffPill {...summary} />
+      <div className="flex items-center mt-2 lg:mt-0">
+        <DiffPill {...summary} />
 
-      <div className="w-[380px] flex justify-end">
-        {changed_at && <DateDisplay date={changed_at} hideDefault />}
+        <div className="flex lg:w-[380px]">
+          {/* {changed_at && <DateDisplay date={changed_at} hideDefault />} */}
+          <DateDisplay date={changed_at} />
+        </div>
       </div>
     </div>
   );

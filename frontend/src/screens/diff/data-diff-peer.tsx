@@ -81,8 +81,8 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
     if (branches?.length) {
       return branches.map((branch: string, index: number) => {
         return (
-          <div className="p-1 pr-0 grid grid-cols-3 gap-4 mr-2 last:mr-0" key={index}>
-            <div className="flex">
+          <div className="p-1 pr-0 flex flex-col lg:flex-row last:mr-0" key={index}>
+            <div className="flex flex-1 items-center">
               {peerChange?.kind && <Badge>{peerChange?.kind}</Badge>}
 
               <span className="mr-2 font-semibold">{peerChange?.display_label}</span>
@@ -91,11 +91,11 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
             {/* Do not display comment button if we are on the branch details view */}
             {!branchname && <DataDiffThread path={path} />}
 
-            <div className="flex">
+            <div className="flex flex-1 items-center">
               <span className="font-semibold">{renderDiffDisplay(peerChange, branch)}</span>
             </div>
 
-            <div className="flex justify-end font-normal">
+            <div className="flex flex-1 lg:justify-end mt-2 lg:mt-0">
               <DiffPill {...summary} />
 
               <div className="w-[380px] flex justify-end">
@@ -109,22 +109,24 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
 
     if (peerBranch) {
       return (
-        <div className="p-1 pr-0 grid grid-cols-3 gap-4 mr-2 last:mr-0">
-          <div className="flex">
-            {newPeer?.kind && <Badge>{newPeer?.kind}</Badge>}
-            {previousPeer?.kind && <Badge>{previousPeer?.kind}</Badge>}
+        <div className="p-1 pr-0 flex flex-col lg:flex-row last:mr-0">
+          <div className="flex flex-1 items-center">
+            <div className="flex flex-1 items-center">
+              {newPeer?.kind && <Badge>{newPeer?.kind}</Badge>}
+              {previousPeer?.kind && <Badge>{previousPeer?.kind}</Badge>}
 
-            <span className="mr-2 font-semibold">{newPeer?.display_label}</span>
-            <span className="mr-2 font-semibold">{previousPeer?.display_label}</span>
+              <span className="mr-2 font-semibold">{newPeer?.display_label}</span>
+              <span className="mr-2 font-semibold">{previousPeer?.display_label}</span>
+            </div>
+
+            <div className="flex flex-1 items-center">
+              <span className="font-semibold">
+                {renderDiffDisplay({ new: newPeer, previous: previousPeer }, peerBranch)}
+              </span>
+            </div>
           </div>
 
-          <div className="flex">
-            <span className="font-semibold">
-              {renderDiffDisplay({ new: newPeer, previous: previousPeer }, peerBranch)}
-            </span>
-          </div>
-
-          <div className="flex justify-end font-normal">
+          <div className="flex flex-1 lg:justify-end items-center mt-2 lg:mt-0">
             <DiffPill {...summary} />
 
             <div className="w-[380px] flex justify-end">
