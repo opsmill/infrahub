@@ -8,7 +8,7 @@ import {
 import { StringParam, useQueryParam } from "use-query-params";
 import { DateDisplay } from "../../../components/date-display";
 import { QSP } from "../../../config/qsp";
-import { ValidatorChecksProgress } from "./validator-checks-progres";
+import { ValidatorChecksProgress } from "./validator-checks-progress";
 
 type tValidatorProps = {
   validator: any;

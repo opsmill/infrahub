@@ -1,19 +1,31 @@
+import { gql } from "@apollo/client";
 import { ArrowPathIcon, CheckCircleIcon, ExclamationCircleIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
+import { useParams } from "react-router-dom";
+import { toast } from "react-toastify";
+import { ALERT_TYPES, Alert } from "../../../components/alert";
 import { Badge } from "../../../components/badge";
 import { Retry } from "../../../components/retry";
-import { PROPOSED_CHANGES_VALIDATOR_OBJECT } from "../../../config/constants";
+import {
+  PROPOSED_CHANGES_VALIDATOR_OBJECT,
+  VALIDATIONS_ENUM_MAP,
+  VALIDATION_STATES,
+} from "../../../config/constants";
+import graphqlClient from "../../../graphql/graphqlClientApollo";
+import { runCheck } from "../../../graphql/mutations/diff/runCheck";
 import { genericsState } from "../../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../../state/atoms/schemaKindName.atom";
 import { getValidatorsStats } from "../../../utils/checks";
 
 type tChecksSummaryProps = {
   validators: any[];
+  refetch: Function;
 };
 
 export const ChecksSummary = (props: tChecksSummaryProps) => {
-  const { validators } = props;
+  const { validators, refetch } = props;
 
+  const { proposedchange } = useParams();
   const [schemaKindName] = useAtom(schemaKindNameState);
   const [schemaList] = useAtom(genericsState);
 
@@ -24,13 +36,43 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
   const validatorsCount = validatorKinds.reduce((acc, kind) => {
     const relatedValidators = validators.filter((validator: any) => validator.__typename === kind);
 
-    return { ...acc, [schemaKindName[kind]]: getValidatorsStats(relatedValidators) };
+    return { ...acc, [kind]: getValidatorsStats(relatedValidators) };
   }, {});
+
+  const validatorsInProgress = validators.filter(
+    (validator: any) => validator?.state?.value === VALIDATION_STATES.IN_PROGRESS
+  );
+
+  const handleRetry = async (validator: string) => {
+    const runParams = {
+      id: proposedchange,
+      check_type: VALIDATIONS_ENUM_MAP[validator],
+    };
+
+    const mustationString = runCheck(runParams);
+
+    const mutation = gql`
+      ${mustationString}
+    `;
+
+    const result = await graphqlClient.mutate({ mutation });
+
+    refetch();
+
+    if (result?.data?.CoreProposedChangeRunCheck?.ok) {
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message="Checks are running" />);
+    } else {
+      toast(
+        <Alert type={ALERT_TYPES.ERROR} message="Something went wrong while running the checks" />
+      );
+    }
+  };
 
   return (
     <div className="flex p-4 pb-0">
       <div className="flex items-center justify-between p-2 mr-2 rounded-md bg-custom-white">
-        Retry all: <Retry />
+        Retry all:{" "}
+        <Retry onClick={() => handleRetry("all")} isInProgress={!!validatorsInProgress.length} />
       </div>
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-4 gap-2 items-center justify-between">
@@ -38,7 +80,7 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
           <div
             key={kind}
             className="flex flex-1 items-center justify-between p-2 rounded-md bg-custom-white">
-            <Badge>{kind}</Badge>
+            <Badge>{schemaKindName[kind]}</Badge>
 
             <div className="flex items-center mr-2">
               <div className="flex items-center mr-2">
@@ -58,7 +100,7 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
               </div>
             </div>
 
-            <Retry />
+            <Retry onClick={() => handleRetry(kind)} isInProgress={!!stats.inProgress} />
           </div>
         ))}
       </div>

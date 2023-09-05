@@ -2,7 +2,7 @@ import { ArrowPathIcon } from "@heroicons/react/24/outline";
 import { classNames } from "../utils/common";
 
 type tRetryProps = {
-  isInProgress?: BooleanConstructor;
+  isInProgress?: boolean;
   onClick?: Function;
 };
 
@@ -10,6 +10,10 @@ export const Retry = (props: tRetryProps) => {
   const { isInProgress, onClick } = props;
 
   const handleClick = (event: any) => {
+    if (isInProgress) {
+      return;
+    }
+
     if (onClick) {
       onClick(event);
     }

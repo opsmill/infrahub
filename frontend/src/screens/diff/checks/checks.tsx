@@ -22,7 +22,7 @@ export const Checks = () => {
     ${queryString}
   `;
 
-  const { loading, error, data } = useQuery(query, { pollInterval: 1000 });
+  const { loading, error, data, refetch } = useQuery(query, { pollInterval: 100 });
 
   const validators = data?.CoreValidator?.edges?.map((edge: any) => edge.node);
 
@@ -41,7 +41,7 @@ export const Checks = () => {
   return (
     <div>
       <div className="">
-        <ChecksSummary validators={validators} />
+        <ChecksSummary validators={validators} refetch={refetch} />
       </div>
 
       <div className="grid grid-cols-2 3xl:grid-cols-3 gap-4 p-4">

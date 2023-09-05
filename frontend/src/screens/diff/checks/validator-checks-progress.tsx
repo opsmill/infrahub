@@ -4,7 +4,7 @@ type tValidatorChecksProgressProps = {
   checks: any[];
 };
 
-const getCheckBar = (type: string, amount: number, total: number) => {
+const getCheckBar = (type: string, amount: number, total: number, index: number) => {
   const precentage = Math.floor((amount / total) * 100);
 
   switch (type) {
@@ -14,6 +14,7 @@ const getCheckBar = (type: string, amount: number, total: number) => {
     case "success": {
       return (
         <div
+          key={index}
           className="text-xs text-center text-custom-white flex-initial bg-green-500"
           style={{ width: `${precentage}%` }}>
           {amount}
@@ -23,6 +24,7 @@ const getCheckBar = (type: string, amount: number, total: number) => {
     case "info": {
       return (
         <div
+          key={index}
           className="text-xs text-center text-custom-white flex-initial bg-yellow-500"
           style={{ width: `${precentage}%` }}>
           {amount}
@@ -32,6 +34,7 @@ const getCheckBar = (type: string, amount: number, total: number) => {
     case "warning": {
       return (
         <div
+          key={index}
           className="text-xs text-center text-custom-white flex-initial bg-orange-500"
           style={{ width: `${precentage}%` }}>
           {amount}
@@ -41,6 +44,7 @@ const getCheckBar = (type: string, amount: number, total: number) => {
     case "error": {
       return (
         <div
+          key={index}
           className="text-xs text-center text-custom-white flex-initial bg-red-300"
           style={{ width: `${precentage}%` }}>
           {amount}
@@ -50,6 +54,7 @@ const getCheckBar = (type: string, amount: number, total: number) => {
     case "critical": {
       return (
         <div
+          key={index}
           className="text-xs text-center text-custom-white flex-initial bg-red-500"
           style={{ width: `${precentage}%` }}>
           {amount}
@@ -59,6 +64,7 @@ const getCheckBar = (type: string, amount: number, total: number) => {
     default: {
       return (
         <div
+          key={index}
           className="text-xs text-center text-custom-white flex-initial bg-gray-200"
           style={{ width: `${precentage}%` }}>
           {amount}
@@ -75,8 +81,8 @@ export const ValidatorChecksProgress = (props: tValidatorChecksProgressProps) =>
 
   return (
     <div className="flex flex-1 items-center">
-      {Object.entries(checksStats).map(([type, amount]) =>
-        getCheckBar(type, amount, checksStats.total)
+      {Object.entries(checksStats).map(([type, amount], index) =>
+        getCheckBar(type, amount, checksStats.total, index)
       )}
     </div>
   );
