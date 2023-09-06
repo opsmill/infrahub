@@ -57,7 +57,8 @@ class InfrahubBaseMessage(BaseModel, aio_pika.abc.AbstractMessage):
         if parent.meta:
             self.meta.request_id = parent.meta.request_id
 
-    def set_log_data(self) -> None:
+    def set_log_data(self, routing_key: str) -> None:
+        set_log_data(key="routing_key", value=routing_key)
         if self.meta:
             if self.meta.request_id:
                 set_log_data(key="request_id", value=self.meta.request_id)

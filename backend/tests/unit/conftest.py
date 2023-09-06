@@ -240,7 +240,7 @@ async def base_dataset_02(session: AsyncSession, default_branch: Branch, car_per
     query = """
     MATCH (root:Root)
 
-    CREATE (c1:Node:TestCar { uuid: "c1", kind: "TestCar" })
+    CREATE (c1:Node:TestCar { uuid: "c1", kind: "TestCar", branch_support: "aware" })
     CREATE (c1)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m60, status: "active" }]->(root)
 
     CREATE (bool_true:Boolean { value: true })
@@ -250,10 +250,10 @@ async def base_dataset_02(session: AsyncSession, default_branch: Branch, car_per
     CREATE (atvt:AttributeValue { value: true })
     CREATE (atv44:AttributeValue { value: "#444444" })
 
-    CREATE (c1at1:Attribute:AttributeLocal { uuid: "c1at1", type: "Str", name: "name"})
-    CREATE (c1at2:Attribute:AttributeLocal { uuid: "c1at2", type: "Int", name: "nbr_seats"})
-    CREATE (c1at3:Attribute:AttributeLocal { uuid: "c1at3", type: "Bool", name: "is_electric"})
-    CREATE (c1at4:Attribute:AttributeLocal { uuid: "c1at4", type: "Str", name: "color"})
+    CREATE (c1at1:Attribute:AttributeLocal { uuid: "c1at1", type: "Str", name: "name", branch_support: "aware"})
+    CREATE (c1at2:Attribute:AttributeLocal { uuid: "c1at2", type: "Int", name: "nbr_seats", branch_support: "aware"})
+    CREATE (c1at3:Attribute:AttributeLocal { uuid: "c1at3", type: "Bool", name: "is_electric", branch_support: "aware"})
+    CREATE (c1at4:Attribute:AttributeLocal { uuid: "c1at4", type: "Str", name: "color", branch_support: "aware"})
     CREATE (c1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(c1at1)
     CREATE (c1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(c1at2)
     CREATE (c1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(c1at3)
@@ -283,13 +283,13 @@ async def base_dataset_02(session: AsyncSession, default_branch: Branch, car_per
     CREATE (c1at4)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
     CREATE (c1at4)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
-    CREATE (c2:Node:TestCar { uuid: "c2", kind: "TestCar" })
+    CREATE (c2:Node:TestCar { uuid: "c2", kind: "TestCar", branch_support: "aware" })
     CREATE (c2)-[:IS_PART_OF {branch: $main_branch, branch_level: 1, from: $time_m20, status: "active"}]->(root)
 
-    CREATE (c2at1:Attribute:AttributeLocal { uuid: "c2at1", type: "Str", name: "name"})
-    CREATE (c2at2:Attribute:AttributeLocal { uuid: "c2at2", type: "Int", name: "nbr_seats"})
-    CREATE (c2at3:Attribute:AttributeLocal { uuid: "c2at3", type: "Bool", name: "is_electric"})
-    CREATE (c2at4:Attribute:AttributeLocal { uuid: "c2at4", type: "Str", name: "color"})
+    CREATE (c2at1:Attribute:AttributeLocal { uuid: "c2at1", type: "Str", name: "name", branch_support: "aware"})
+    CREATE (c2at2:Attribute:AttributeLocal { uuid: "c2at2", type: "Int", name: "nbr_seats", branch_support: "aware"})
+    CREATE (c2at3:Attribute:AttributeLocal { uuid: "c2at3", type: "Bool", name: "is_electric", branch_support: "aware"})
+    CREATE (c2at4:Attribute:AttributeLocal { uuid: "c2at4", type: "Str", name: "color", branch_support: "aware"})
     CREATE (c2)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20}]->(c2at1)
     CREATE (c2)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20}]->(c2at2)
     CREATE (c2)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20}]->(c2at3)
@@ -314,13 +314,13 @@ async def base_dataset_02(session: AsyncSession, default_branch: Branch, car_per
     CREATE (c2at4)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_false)
     CREATE (c2at4)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_true)
 
-    CREATE (c3:Node:TestCar { uuid: "c3", kind: "TestCar" })
+    CREATE (c3:Node:TestCar { uuid: "c3", kind: "TestCar", branch_support: "aware" })
     CREATE (c3)-[:IS_PART_OF {branch: $branch1, branch_level: 2, from: $time_m40, status: "active"}]->(root)
 
-    CREATE (c3at1:Attribute:AttributeLocal { uuid: "c3at1", type: "Str", name: "name"})
-    CREATE (c3at2:Attribute:AttributeLocal { uuid: "c3at2", type: "Int", name: "nbr_seats"})
-    CREATE (c3at3:Attribute:AttributeLocal { uuid: "c3at3", type: "Bool", name: "is_electric"})
-    CREATE (c3at4:Attribute:AttributeLocal { uuid: "c3at4", type: "Str", name: "color"})
+    CREATE (c3at1:Attribute:AttributeLocal { uuid: "c3at1", type: "Str", name: "name", branch_support: "aware"})
+    CREATE (c3at2:Attribute:AttributeLocal { uuid: "c3at2", type: "Int", name: "nbr_seats", branch_support: "aware"})
+    CREATE (c3at3:Attribute:AttributeLocal { uuid: "c3at3", type: "Bool", name: "is_electric", branch_support: "aware"})
+    CREATE (c3at4:Attribute:AttributeLocal { uuid: "c3at4", type: "Str", name: "color", branch_support: "aware"})
     CREATE (c3)-[:HAS_ATTRIBUTE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40}]->(c3at1)
     CREATE (c3)-[:HAS_ATTRIBUTE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40}]->(c3at2)
     CREATE (c3)-[:HAS_ATTRIBUTE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40}]->(c3at3)
@@ -345,34 +345,34 @@ async def base_dataset_02(session: AsyncSession, default_branch: Branch, car_per
     CREATE (c3at4)-[:IS_PROTECTED {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(bool_false)
     CREATE (c3at4)-[:IS_VISIBLE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(bool_true)
 
-    CREATE (p1:Node:TestPerson { uuid: "p1", kind: "TestPerson" })
+    CREATE (p1:Node:TestPerson { uuid: "p1", kind: "TestPerson", branch_support: "aware" })
     CREATE (p1)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m60, status: "active"}]->(root)
-    CREATE (p1at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "name"})
+    CREATE (p1at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "name", branch_support: "aware"})
     CREATE (p1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(p1at1)
     CREATE (p1av11:AttributeValue { uuid: "p1av11", value: "John Doe"})
     CREATE (p1at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(p1av11)
     CREATE (p1at1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
     CREATE (p1at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
-    CREATE (p2:Node:TestPerson { uuid: "p2", kind: "TestPerson" })
+    CREATE (p2:Node:TestPerson { uuid: "p2", kind: "TestPerson", branch_support: "aware" })
     CREATE (p2)-[:IS_PART_OF {branch: $main_branch, branch_level: 1, from: $time_m60, status: "active"}]->(root)
-    CREATE (p2at1:Attribute:AttributeLocal { uuid: "p2at1", type: "Str", name: "name"})
+    CREATE (p2at1:Attribute:AttributeLocal { uuid: "p2at1", type: "Str", name: "name", branch_support: "aware"})
     CREATE (p2)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(p2at1)
     CREATE (p2av11:AttributeValue { uuid: "p2av11", value: "Jane Doe"})
     CREATE (p2at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(p2av11)
     CREATE (p2at1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
     CREATE (p2at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
-    CREATE (p3:Node:TestPerson { uuid: "p3", kind: "TestPerson" })
+    CREATE (p3:Node:TestPerson { uuid: "p3", kind: "TestPerson", branch_support: "aware" })
     CREATE (p3)-[:IS_PART_OF {branch: $main_branch, branch_level: 1, from: $time_m60, status: "active"}]->(root)
-    CREATE (p3at1:Attribute:AttributeLocal { uuid: "p3at1", type: "Str", name: "name"})
+    CREATE (p3at1:Attribute:AttributeLocal { uuid: "p3at1", type: "Str", name: "name", branch_support: "aware"})
     CREATE (p3)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(p3at1)
     CREATE (p3av11:AttributeValue { uuid: "p3av11", value: "Bill"})
     CREATE (p3at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(p3av11)
     CREATE (p3at1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
     CREATE (p3at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
-    CREATE (r1:Relationship { uuid: "r1", name: "testcar__testperson"})
+    CREATE (r1:Relationship { uuid: "r1", name: "testcar__testperson", branch_support: "aware"})
     CREATE (p1)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(r1)
     CREATE (c1)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(r1)
     CREATE (r1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60, to: $time_m30 }]->(bool_false)
@@ -380,7 +380,7 @@ async def base_dataset_02(session: AsyncSession, default_branch: Branch, car_per
     CREATE (r1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
     CREATE (r1)-[:IS_VISIBLE {branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(bool_false)
 
-    CREATE (r2:Relationship { uuid: "r2", name: "testcar__testperson"})
+    CREATE (r2:Relationship { uuid: "r2", name: "testcar__testperson", branch_support: "aware"})
     CREATE (p1)-[:IS_RELATED { branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(r2)
     CREATE (c2)-[:IS_RELATED { branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(r2)
     CREATE (r2)-[:IS_PROTECTED {branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(bool_false)
@@ -460,7 +460,7 @@ async def base_dataset_12(session: AsyncSession, default_branch: Branch, car_per
     query = """
     MATCH (root:Root)
 
-    CREATE (c1:Node:TestCar { uuid: "c1", kind: "TestCar" })
+    CREATE (c1:Node:TestCar { uuid: "c1", kind: "TestCar", branch_support: "aware" })
     CREATE (c1)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m60, status: "active" }]->(root)
 
     CREATE (bool_true:Boolean { value: true })
@@ -470,10 +470,10 @@ async def base_dataset_12(session: AsyncSession, default_branch: Branch, car_per
     CREATE (atvt:AttributeValue { value: true })
     CREATE (atv44:AttributeValue { value: "#444444" })
 
-    CREATE (c1at1:Attribute:AttributeLocal { uuid: "c1at1", type: "Str", name: "name"})
-    CREATE (c1at2:Attribute:AttributeLocal { uuid: "c1at2", type: "Int", name: "nbr_seats"})
-    CREATE (c1at3:Attribute:AttributeLocal { uuid: "c1at3", type: "Bool", name: "is_electric"})
-    CREATE (c1at4:Attribute:AttributeLocal { uuid: "c1at4", type: "Str", name: "color"})
+    CREATE (c1at1:Attribute:AttributeLocal { uuid: "c1at1", type: "Str", name: "name", branch_support: "aware"})
+    CREATE (c1at2:Attribute:AttributeLocal { uuid: "c1at2", type: "Int", name: "nbr_seats", branch_support: "agnostic"})
+    CREATE (c1at3:Attribute:AttributeLocal { uuid: "c1at3", type: "Bool", name: "is_electric", branch_support: "aware"})
+    CREATE (c1at4:Attribute:AttributeLocal { uuid: "c1at4", type: "Str", name: "color", branch_support: "aware"})
     CREATE (c1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(c1at1)
     CREATE (c1)-[:HAS_ATTRIBUTE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60}]->(c1at2)
     CREATE (c1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(c1at3)
@@ -503,13 +503,13 @@ async def base_dataset_12(session: AsyncSession, default_branch: Branch, car_per
     CREATE (c1at4)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
     CREATE (c1at4)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
-    CREATE (c2:Node:TestCar { uuid: "c2", kind: "TestCar" })
+    CREATE (c2:Node:TestCar { uuid: "c2", kind: "TestCar", branch_support: "aware" })
     CREATE (c2)-[:IS_PART_OF {branch: $main_branch, branch_level: 1, from: $time_m20, status: "active"}]->(root)
 
-    CREATE (c2at1:Attribute:AttributeLocal { uuid: "c2at1", type: "Str", name: "name"})
-    CREATE (c2at2:Attribute:AttributeLocal { uuid: "c2at2", type: "Int", name: "nbr_seats"})
-    CREATE (c2at3:Attribute:AttributeLocal { uuid: "c2at3", type: "Bool", name: "is_electric"})
-    CREATE (c2at4:Attribute:AttributeLocal { uuid: "c2at4", type: "Str", name: "color"})
+    CREATE (c2at1:Attribute:AttributeLocal { uuid: "c2at1", type: "Str", name: "name", branch_support: "aware"})
+    CREATE (c2at2:Attribute:AttributeLocal { uuid: "c2at2", type: "Int", name: "nbr_seats", branch_support: "agnostic"})
+    CREATE (c2at3:Attribute:AttributeLocal { uuid: "c2at3", type: "Bool", name: "is_electric", branch_support: "aware"})
+    CREATE (c2at4:Attribute:AttributeLocal { uuid: "c2at4", type: "Str", name: "color", branch_support: "aware"})
     CREATE (c2)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20}]->(c2at1)
     CREATE (c2)-[:HAS_ATTRIBUTE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m20}]->(c2at2)
     CREATE (c2)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20}]->(c2at3)
@@ -534,13 +534,13 @@ async def base_dataset_12(session: AsyncSession, default_branch: Branch, car_per
     CREATE (c2at4)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_false)
     CREATE (c2at4)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_true)
 
-    CREATE (c3:Node:TestCar { uuid: "c3", kind: "TestCar" })
+    CREATE (c3:Node:TestCar { uuid: "c3", kind: "TestCar", branch_support: "aware" })
     CREATE (c3)-[:IS_PART_OF {branch: $branch1, branch_level: 2, from: $time_m40, status: "active"}]->(root)
 
-    CREATE (c3at1:Attribute:AttributeLocal { uuid: "c3at1", type: "Str", name: "name"})
-    CREATE (c3at2:Attribute:AttributeLocal { uuid: "c3at2", type: "Int", name: "nbr_seats"})
-    CREATE (c3at3:Attribute:AttributeLocal { uuid: "c3at3", type: "Bool", name: "is_electric"})
-    CREATE (c3at4:Attribute:AttributeLocal { uuid: "c3at4", type: "Str", name: "color"})
+    CREATE (c3at1:Attribute:AttributeLocal { uuid: "c3at1", type: "Str", name: "name", branch_support: "aware"})
+    CREATE (c3at2:Attribute:AttributeLocal { uuid: "c3at2", type: "Int", name: "nbr_seats", branch_support: "agnostic"})
+    CREATE (c3at3:Attribute:AttributeLocal { uuid: "c3at3", type: "Bool", name: "is_electric", branch_support: "aware"})
+    CREATE (c3at4:Attribute:AttributeLocal { uuid: "c3at4", type: "Str", name: "color", branch_support: "aware"})
     CREATE (c3)-[:HAS_ATTRIBUTE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40}]->(c3at1)
     CREATE (c3)-[:HAS_ATTRIBUTE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m40}]->(c3at2)
     CREATE (c3)-[:HAS_ATTRIBUTE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40}]->(c3at3)
@@ -565,34 +565,34 @@ async def base_dataset_12(session: AsyncSession, default_branch: Branch, car_per
     CREATE (c3at4)-[:IS_PROTECTED {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(bool_false)
     CREATE (c3at4)-[:IS_VISIBLE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(bool_true)
 
-    CREATE (p1:Node:TestPerson { uuid: "p1", kind: "TestPerson" })
+    CREATE (p1:Node:TestPerson { uuid: "p1", kind: "TestPerson", branch_support: "agnostic" })
     CREATE (p1)-[:IS_PART_OF { branch: $global_branch, branch_level: 1, from: $time_m60, status: "active"}]->(root)
-    CREATE (p1at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "name"})
+    CREATE (p1at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "name", branch_support: "agnostic"})
     CREATE (p1)-[:HAS_ATTRIBUTE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60}]->(p1at1)
     CREATE (p1av11:AttributeValue { uuid: "p1av11", value: "John Doe"})
     CREATE (p1at1)-[:HAS_VALUE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60 }]->(p1av11)
     CREATE (p1at1)-[:IS_PROTECTED {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
     CREATE (p1at1)-[:IS_VISIBLE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
-    CREATE (p2:Node:TestPerson { uuid: "p2", kind: "TestPerson" })
+    CREATE (p2:Node:TestPerson { uuid: "p2", kind: "TestPerson", branch_support: "agnostic" })
     CREATE (p2)-[:IS_PART_OF {branch: $global_branch, branch_level: 1, from: $time_m60, status: "active"}]->(root)
-    CREATE (p2at1:Attribute:AttributeLocal { uuid: "p2at1", type: "Str", name: "name"})
+    CREATE (p2at1:Attribute:AttributeLocal { uuid: "p2at1", type: "Str", name: "name", branch_support: "agnostic"})
     CREATE (p2)-[:HAS_ATTRIBUTE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60}]->(p2at1)
     CREATE (p2av11:AttributeValue { uuid: "p2av11", value: "Jane Doe"})
     CREATE (p2at1)-[:HAS_VALUE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60 }]->(p2av11)
     CREATE (p2at1)-[:IS_PROTECTED {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
     CREATE (p2at1)-[:IS_VISIBLE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
-    CREATE (p3:Node:TestPerson { uuid: "p3", kind: "TestPerson" })
+    CREATE (p3:Node:TestPerson { uuid: "p3", kind: "TestPerson", branch_support: "agnostic" })
     CREATE (p3)-[:IS_PART_OF {branch: $global_branch, branch_level: 1, from: $time_m60, status: "active"}]->(root)
-    CREATE (p3at1:Attribute:AttributeLocal { uuid: "p3at1", type: "Str", name: "name"})
+    CREATE (p3at1:Attribute:AttributeLocal { uuid: "p3at1", type: "Str", name: "name", branch_support: "agnostic"})
     CREATE (p3)-[:HAS_ATTRIBUTE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60}]->(p3at1)
     CREATE (p3av11:AttributeValue { uuid: "p3av11", value: "Bill"})
     CREATE (p3at1)-[:HAS_VALUE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60 }]->(p3av11)
     CREATE (p3at1)-[:IS_PROTECTED {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
     CREATE (p3at1)-[:IS_VISIBLE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
-    CREATE (r1:Relationship { uuid: "r1", name: "testcar__testperson"})
+    CREATE (r1:Relationship { uuid: "r1", name: "testcar__testperson", branch_support: "agnostic"})
     CREATE (p1)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(r1)
     CREATE (c1)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(r1)
     CREATE (r1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60, to: $time_m30 }]->(bool_false)
@@ -600,7 +600,7 @@ async def base_dataset_12(session: AsyncSession, default_branch: Branch, car_per
     CREATE (r1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
     CREATE (r1)-[:IS_VISIBLE {branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(bool_false)
 
-    CREATE (r2:Relationship { uuid: "r2", name: "testcar__testperson"})
+    CREATE (r2:Relationship { uuid: "r2", name: "testcar__testperson", branch_support: "agnostic"})
     CREATE (p1)-[:IS_RELATED { branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(r2)
     CREATE (c2)-[:IS_RELATED { branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(r2)
     CREATE (r2)-[:IS_PROTECTED {branch: $branch1, branch_level: 2, status: "active", from: $time_m20 }]->(bool_false)
@@ -761,10 +761,10 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
     CREATE (green:AttributeValue { value: "green"})
 
     // TAG 1 - BLUE
-    CREATE (t1:Node:Tag { uuid: "t1", kind: "Tag" })
+    CREATE (t1:Node:Tag { uuid: "t1", kind: "Tag", branch_support: "aware"})
     CREATE (t1)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m120, status: "active" }]->(root)
 
-    CREATE (t1at1:Attribute:AttributeLocal { uuid: "t1at1", type: "Str", name: "name"})
+    CREATE (t1at1:Attribute:AttributeLocal { uuid: "t1at1", type: "Str", name: "name", branch_support: "aware"})
     CREATE (t1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120}]->(t1at1)
 
     CREATE (t1at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120, to: $time_m20}]->(blue)
@@ -772,10 +772,10 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
     CREATE (t1at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
 
     // TAG 2 - RED
-    CREATE (t2:Node:Tag { uuid: "t2", kind: "Tag" })
+    CREATE (t2:Node:Tag { uuid: "t2", kind: "Tag", branch_support: "aware" })
     CREATE (t2)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m120, status: "active" }]->(root)
 
-    CREATE (t2at1:Attribute:AttributeLocal { uuid: "t2at1", type: "Str", name: "name"})
+    CREATE (t2at1:Attribute:AttributeLocal { uuid: "t2at1", type: "Str", name: "name", branch_support: "aware"})
     CREATE (t2)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120}]->(t2at1)
 
     CREATE (t2at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120, to: $time_m20}]->(red)
@@ -783,10 +783,10 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
     CREATE (t2at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
 
     // TAG 3 - GREEN
-    CREATE (t3:Node:Tag { uuid: "t3", kind: "Tag" })
+    CREATE (t3:Node:Tag { uuid: "t3", kind: "Tag", branch_support: "aware" })
     CREATE (t3)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m120, status: "active" }]->(root)
 
-    CREATE (t3at1:Attribute:AttributeLocal { uuid: "t3at1", type: "Str", name: "name"})
+    CREATE (t3at1:Attribute:AttributeLocal { uuid: "t3at1", type: "Str", name: "name", branch_support: "aware"})
     CREATE (t3)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120}]->(t3at1)
 
     CREATE (t3at1)-[:HAS_VALUE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120, to: $time_m20}]->(green)
@@ -843,11 +843,11 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
     //    primary Tag: Blue
     //  firstname value in main keeps changing every 20s using the day of the week
 
-    CREATE (p1:Node:Person { uuid: "p1", kind: "Person" })
+    CREATE (p1:Node:Person { uuid: "p1", kind: "Person", branch_support: "aware" })
     CREATE (p1)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m120, status: "active" }]->(root)
 
-    CREATE (p1at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "firstname"})
-    CREATE (p1at2:Attribute:AttributeLocal { uuid: "p1at2", type: "Str", name: "lastname"})
+    CREATE (p1at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "firstname", branch_support: "aware"})
+    CREATE (p1at2:Attribute:AttributeLocal { uuid: "p1at2", type: "Str", name: "lastname", branch_support: "aware"})
     CREATE (p1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120}]->(p1at1)
     CREATE (p1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120}]->(p1at2)
 
@@ -864,7 +864,7 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
     CREATE (p1at2)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
 
     // Relationship for "tags" between Person1 (p1) and Tag Blue (t1) >> relp1t1
-    CREATE (relp1t1:Relationship { uuid: "relp1t1", name: "person__tag"})
+    CREATE (relp1t1:Relationship { uuid: "relp1t1", name: "person__tag", branch_support: "aware"})
     CREATE (p1)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(relp1t1)
     CREATE (t1)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(relp1t1)
 
@@ -872,7 +872,7 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
     CREATE (relp1t1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
 
     // Relationship for "tags" between Person1 (p1) and Tag Green (t3) >> relp1t3
-    CREATE (relp1t3:Relationship { uuid: "relp1t3", name: "person__tag"})
+    CREATE (relp1t3:Relationship { uuid: "relp1t3", name: "person__tag", branch_support: "aware"})
     CREATE (p1)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(relp1t3)
     CREATE (t3)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(relp1t3)
 
@@ -880,7 +880,7 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
     CREATE (relp1t3)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
 
     // Relationship for "primary_tag" between Person1 (p1) and Tag Blue (t1) >> relp1pri
-    CREATE (relp1pri:Relationship { uuid: "relp1pri", name: "person_primary_tag"})
+    CREATE (relp1pri:Relationship { uuid: "relp1pri", name: "person_primary_tag", branch_support: "aware"})
     CREATE (p1)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(relp1pri)
     CREATE (t1)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(relp1pri)
 
@@ -896,11 +896,11 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
     //  firstname and lastname values in branch2 changes at m80 before the branch is rebase at m30
     //  firstname value in branch2 changes again at m20 after the branch has been rebased
 
-    CREATE (p2:Node:Person { uuid: "p2", kind: "Person" })
+    CREATE (p2:Node:Person { uuid: "p2", kind: "Person", branch_support: "aware" })
     CREATE (p2)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m120, status: "active" }]->(root)
 
-    CREATE (p2at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "firstname"})
-    CREATE (p2at2:Attribute:AttributeLocal { uuid: "p1at2", type: "Str", name: "lastname"})
+    CREATE (p2at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "firstname", branch_support: "aware"})
+    CREATE (p2at2:Attribute:AttributeLocal { uuid: "p1at2", type: "Str", name: "lastname", branch_support: "aware"})
     CREATE (p2)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120}]->(p2at1)
     CREATE (p2)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120}]->(p2at2)
 
@@ -917,7 +917,7 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
     CREATE (p2at2)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
 
     // Relationship for "tags" between Person2 (p2) and Tag Green (t3) >> relp2t3
-    CREATE (relp2t3:Relationship { uuid: "relp2t3", name: "person__tag"})
+    CREATE (relp2t3:Relationship { uuid: "relp2t3", name: "person__tag", branch_support: "aware"})
     CREATE (p2)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(relp2t3)
     CREATE (t3)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(relp2t3)
 
@@ -931,11 +931,11 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
     //    tags: None
     //    primary Tag: Red
 
-    CREATE (p3:Node:Person { uuid: "p3", kind: "Person" })
+    CREATE (p3:Node:Person { uuid: "p3", kind: "Person", branch_support: "aware" })
     CREATE (p3)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m120, status: "active" }]->(root)
 
-    CREATE (p3at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "firstname"})
-    CREATE (p3at2:Attribute:AttributeLocal { uuid: "p1at2", type: "Str", name: "lastname"})
+    CREATE (p3at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "firstname", branch_support: "aware"})
+    CREATE (p3at2:Attribute:AttributeLocal { uuid: "p1at2", type: "Str", name: "lastname", branch_support: "aware"})
     CREATE (p3)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120}]->(p3at1)
     CREATE (p3)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120}]->(p3at2)
 
@@ -948,7 +948,7 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
     CREATE (p3at2)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(bool_true)
 
     // Relationship for "primary_tag" between Person3 (p3) and Tag Red (t2) >> relp3pri
-    CREATE (relp3pri:Relationship { uuid: "relp3pri", name: "person_primary_tag"})
+    CREATE (relp3pri:Relationship { uuid: "relp3pri", name: "person_primary_tag", branch_support: "aware"})
     CREATE (p1)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(relp3pri)
     CREATE (t1)-[:IS_RELATED { branch: $main_branch, branch_level: 1, status: "active", from: $time_m120 }]->(relp3pri)
 
@@ -1239,7 +1239,7 @@ async def car_person_data_generic(session, register_core_models_schema, car_pers
 
 
 @pytest.fixture
-async def car_person_manufacturer_schema(session: AsyncSession, data_schema) -> None:
+async def car_person_manufacturer_schema(session: AsyncSession, default_branch: Branch, data_schema) -> None:
     SCHEMA = {
         "nodes": [
             {
@@ -1287,8 +1287,7 @@ async def car_person_manufacturer_schema(session: AsyncSession, data_schema) -> 
     }
 
     schema = SchemaRoot(**SCHEMA)
-    for node in schema.nodes:
-        registry.set_schema(name=node.kind, schema=node)
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
 
 @pytest.fixture
@@ -1725,7 +1724,7 @@ async def all_attribute_types_schema(
 
     node_schema = NodeSchema(**SCHEMA)
     registry.schema.set(name=node_schema.kind, schema=node_schema, branch=default_branch.name)
-
+    registry.schema.process_schema_branch(name=default_branch.name)
     return node_schema
 
 
@@ -1753,8 +1752,8 @@ async def criticality_schema(session: AsyncSession, default_branch: Branch, grou
 
     node = NodeSchema(**SCHEMA)
     registry.schema.set(name=node.kind, schema=node, branch=default_branch.name)
-
-    return node
+    registry.schema.process_schema_branch(name=default_branch.name)
+    return registry.schema.get(name=node.kind, branch=default_branch.name)
 
 
 @pytest.fixture
@@ -1795,7 +1794,7 @@ async def generic_vehicule_schema(session: AsyncSession, default_branch: Branch)
 
     node = GenericSchema(**SCHEMA)
     registry.schema.set(name=node.kind, schema=node, branch=default_branch.name)
-
+    registry.schema.process_schema_branch(name=default_branch.name)
     return node
 
 
@@ -1814,7 +1813,7 @@ async def group_on_road_vehicule_schema(session: AsyncSession, default_branch: B
 
 @pytest.fixture
 async def car_schema(
-    session: AsyncSession, generic_vehicule_schema, group_on_road_vehicule_schema, data_schema
+    session: AsyncSession, default_branch: Branch, generic_vehicule_schema, group_on_road_vehicule_schema, data_schema
 ) -> NodeSchema:
     SCHEMA = {
         "name": "Car",
@@ -1828,14 +1827,14 @@ async def car_schema(
 
     node = NodeSchema(**SCHEMA)
     node.inherit_from_interface(interface=generic_vehicule_schema)
-    registry.set_schema(name=node.kind, schema=node)
-
+    registry.schema.set(name=node.kind, schema=node)
+    registry.schema.process_schema_branch(name=default_branch.name)
     return node
 
 
 @pytest.fixture
 async def motorcycle_schema(
-    session: AsyncSession, generic_vehicule_schema, group_on_road_vehicule_schema
+    session: AsyncSession, default_branch: Branch, generic_vehicule_schema, group_on_road_vehicule_schema
 ) -> NodeSchema:
     SCHEMA = {
         "name": "Motorcycle",
@@ -1849,13 +1848,15 @@ async def motorcycle_schema(
     }
 
     node = NodeSchema(**SCHEMA)
-    registry.set_schema(name=node.kind, schema=node)
-
+    registry.schema.set(name=node.kind, schema=node)
+    registry.schema.process_schema_branch(name=default_branch.name)
     return node
 
 
 @pytest.fixture
-async def truck_schema(session: AsyncSession, generic_vehicule_schema, group_on_road_vehicule_schema) -> NodeSchema:
+async def truck_schema(
+    session: AsyncSession, default_branch: Branch, generic_vehicule_schema, group_on_road_vehicule_schema
+) -> NodeSchema:
     SCHEMA = {
         "name": "Truck",
         "namespace": "Test",
@@ -1868,13 +1869,15 @@ async def truck_schema(session: AsyncSession, generic_vehicule_schema, group_on_
     }
 
     node = NodeSchema(**SCHEMA)
-    registry.set_schema(name=node.kind, schema=node)
-
+    registry.schema.set(name=node.kind, schema=node)
+    registry.schema.process_schema_branch(name=default_branch.name)
     return node
 
 
 @pytest.fixture
-async def boat_schema(session: AsyncSession, generic_vehicule_schema) -> NodeSchema:
+async def boat_schema(
+    session: AsyncSession, default_branch: Branch, generic_vehicule_schema, person_schema
+) -> NodeSchema:
     SCHEMA = {
         "name": "Boat",
         "namespace": "Test",
@@ -1889,15 +1892,13 @@ async def boat_schema(session: AsyncSession, generic_vehicule_schema) -> NodeSch
 
     node = NodeSchema(**SCHEMA)
     node.inherit_from_interface(interface=generic_vehicule_schema)
-    registry.set_schema(name=node.kind, schema=node)
-
+    registry.schema.set(name=node.kind, schema=node)
+    registry.schema.process_schema_branch(name=default_branch.name)
     return node
 
 
 @pytest.fixture
-async def vehicule_person_schema(
-    session: AsyncSession, generic_vehicule_schema, car_schema, boat_schema, motorcycle_schema
-) -> NodeSchema:
+async def person_schema(session: AsyncSession, default_branch: Branch, generic_vehicule_schema) -> NodeSchema:
     SCHEMA = {
         "name": "Person",
         "namespace": "Test",
@@ -1912,9 +1913,15 @@ async def vehicule_person_schema(
     }
 
     node = NodeSchema(**SCHEMA)
-    registry.set_schema(name=node.kind, schema=node)
+    registry.schema.set(name=node.kind, schema=node)
+    registry.schema.process_schema_branch(name=default_branch.name)
 
-    return node
+
+@pytest.fixture
+async def vehicule_person_schema(
+    session: AsyncSession, generic_vehicule_schema, car_schema, boat_schema, motorcycle_schema
+) -> None:
+    return None
 
 
 @pytest.fixture
@@ -2135,11 +2142,23 @@ async def second_account(session: AsyncSession, data_schema, node_group_schema, 
 @pytest.fixture
 async def repos_in_main(session, register_core_models_schema):
     repo01 = await Node.init(session=session, schema="CoreRepository")
-    await repo01.new(session=session, name="repo01", location="git@github.com:user/repo01.git", commit="aaaaaaaaaaa")
+    await repo01.new(
+        session=session,
+        name="repo01",
+        description="Repo 01 initial value",
+        location="git@github.com:user/repo01.git",
+        commit="aaaaaaaaaaa",
+    )
     await repo01.save(session=session)
 
     repo02 = await Node.init(session=session, schema="CoreRepository")
-    await repo02.new(session=session, name="repo02", location="git@github.com:user/repo02.git", commit="bbbbbbbbbbb")
+    await repo02.new(
+        session=session,
+        name="repo02",
+        description="Repo 02 initial value",
+        location="git@github.com:user/repo02.git",
+        commit="bbbbbbbbbbb",
+    )
     await repo02.save(session=session)
 
     return {"repo01": repo01, "repo02": repo02}

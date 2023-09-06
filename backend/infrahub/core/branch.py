@@ -863,6 +863,21 @@ class FileDiffElement(BaseDiffElement):
         return hash((type(self),) + tuple(self.__dict__.values()))
 
 
+class DiffSummaryElement(BaseModel):
+    branch: str = Field(..., description="The branch where the change occured")
+    node: str = Field(..., description="The unique ID of the node")
+    kind: str = Field(..., description="The kind of the node as defined by its namespace and name")
+    actions: List[DiffAction] = Field(..., description="A list of actions on this node.")
+
+    def to_graphql(self) -> Dict[str, Union[str, List[str]]]:
+        return {
+            "branch": self.branch,
+            "node": self.node,
+            "kind": self.kind,
+            "actions": [action.value for action in self.actions],
+        }
+
+
 class Diff:
     diff_from: Timestamp
     diff_to: Timestamp
@@ -973,6 +988,44 @@ class Diff:
                 return True
 
         return False
+
+    async def get_summary(self, session: AsyncSession) -> List[DiffSummaryElement]:
+        """Return a list of changed nodes and associated actions
+
+        If only a relationship is modified for a given node it will have the updated action.
+        """
+        nodes = await self.get_nodes(session=session)
+        relationships = await self.get_relationships(session=session)
+        changes: Dict[str, Dict[str, DiffSummaryElement]] = {}
+
+        for branch, branch_nodes in nodes.items():
+            if branch not in changes:
+                changes[branch] = {}
+            for node_id, node in branch_nodes.items():
+                if node_id not in changes[branch]:
+                    changes[branch][node_id] = DiffSummaryElement(
+                        branch=branch, node=node_id, kind=node.kind, actions=[node.action]
+                    )
+                if node.action not in changes[branch][node_id].actions:
+                    changes[branch][node_id].actions.append(node.action)
+
+        for branch, branch_relationships in relationships.items():
+            if branch not in changes:
+                changes[branch] = {}
+            for relationship_type in branch_relationships.values():
+                for relationship in relationship_type.values():
+                    for node in relationship.nodes.values():
+                        if node.id not in changes[branch]:
+                            changes[branch][node.id] = DiffSummaryElement(
+                                branch=branch, node=node.id, kind=node.kind, actions=[DiffAction.UPDATED]
+                            )
+
+        summary = []
+        for branch in changes.values():
+            for entry in branch.values():
+                summary.append(entry)
+
+        return summary
 
     async def get_conflicts(self, session: AsyncSession) -> List[ObjectConflict]:
         """Return the list of conflicts identified by the diff as Path (tuple).

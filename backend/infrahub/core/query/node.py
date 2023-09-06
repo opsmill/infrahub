@@ -106,10 +106,11 @@ class NodeCreateQuery(NodeQuery):
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
         self.params["kind"] = self.node.get_kind()
+        self.params["branch_support"] = self.node._schema.branch
 
         query = """
         MATCH (root:Root)
-        CREATE (n:Node:%s { uuid: $uuid, kind: $kind })
+        CREATE (n:Node:%s { uuid: $uuid, kind: $kind, branch_support: $branch_support })
         CREATE (n)-[r:IS_PART_OF { branch: $branch, branch_level: $branch_level, status: "active", from: $at }]->(root)
         """ % ":".join(
             self.node.get_labels()

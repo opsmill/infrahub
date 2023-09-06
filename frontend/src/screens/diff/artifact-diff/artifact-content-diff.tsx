@@ -9,30 +9,30 @@ import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import sha from "sha1";
 import { diffLines, formatLines } from "unidiff";
-import { ALERT_TYPES, Alert } from "../../../../components/alert";
-import { Button } from "../../../../components/button";
-import { AddComment } from "../../../../components/conversations/add-comment";
-import { Thread } from "../../../../components/conversations/thread";
-import { CONFIG } from "../../../../config/config";
+import { ALERT_TYPES, Alert } from "../../../components/alert";
+import { Button } from "../../../components/button";
+import { AddComment } from "../../../components/conversations/add-comment";
+import { Thread } from "../../../components/conversations/thread";
+import { CONFIG } from "../../../config/config";
 import {
   PROPOSED_CHANGES_ARTIFACT_THREAD,
   PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT,
   PROPOSED_CHANGES_FILE_THREAD_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
-} from "../../../../config/constants";
-import { AuthContext } from "../../../../decorators/withAuth";
-import graphqlClient from "../../../../graphql/graphqlClientApollo";
-import { createObject } from "../../../../graphql/mutations/objects/createObject";
-import { deleteObject } from "../../../../graphql/mutations/objects/deleteObject";
-import { getProposedChangesArtifactsThreads } from "../../../../graphql/queries/proposed-changes/getProposedChangesArtifactsThreads";
-import { branchVar } from "../../../../graphql/variables/branchVar";
-import { dateVar } from "../../../../graphql/variables/dateVar";
-import useQuery from "../../../../hooks/useQuery";
-import { schemaState } from "../../../../state/atoms/schema.atom";
-import { fetchStream } from "../../../../utils/fetch";
-import { stringifyWithoutQuotes } from "../../../../utils/string";
-import ErrorScreen from "../../../error-screen/error-screen";
-import LoadingScreen from "../../../loading-screen/loading-screen";
+} from "../../../config/constants";
+import { AuthContext } from "../../../decorators/withAuth";
+import graphqlClient from "../../../graphql/graphqlClientApollo";
+import { createObject } from "../../../graphql/mutations/objects/createObject";
+import { deleteObject } from "../../../graphql/mutations/objects/deleteObject";
+import { getProposedChangesArtifactsThreads } from "../../../graphql/queries/proposed-changes/getProposedChangesArtifactsThreads";
+import { branchVar } from "../../../graphql/variables/branchVar";
+import { dateVar } from "../../../graphql/variables/dateVar";
+import useQuery from "../../../hooks/useQuery";
+import { schemaState } from "../../../state/atoms/schema.atom";
+import { fetchStream } from "../../../utils/fetch";
+import { stringifyWithoutQuotes } from "../../../utils/string";
+import ErrorScreen from "../../error-screen/error-screen";
+import LoadingScreen from "../../loading-screen/loading-screen";
 
 const fakeIndex = () => {
   return sha(Math.random() * 100000).slice(0, 9);

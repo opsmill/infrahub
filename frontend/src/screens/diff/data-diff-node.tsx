@@ -2,13 +2,13 @@ import { ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import Accordion from "../../../components/accordion";
-import { BADGE_TYPES, Badge } from "../../../components/badge";
-import { DateDisplay } from "../../../components/date-display";
-import { Pill } from "../../../components/pill";
-import { QSP } from "../../../config/qsp";
-import { proposedChangedState } from "../../../state/atoms/proposedChanges.atom";
-import { classNames } from "../../../utils/common";
+import Accordion from "../../components/accordion";
+import { BADGE_TYPES, Badge } from "../../components/badge";
+import { DateDisplay } from "../../components/date-display";
+import { Pill } from "../../components/pill";
+import { QSP } from "../../config/qsp";
+import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
+import { classNames } from "../../utils/common";
 import { DataDiffElement } from "./data-diff-element";
 import { DiffPill } from "./diff-pill";
 import { DataDiffThread } from "./diff-thread";
@@ -183,7 +183,7 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
   const display_label = nodeDisplayLabels[currentBranch] ?? nodeDisplayLabels?.main;
 
   const renderTitle = () => (
-    <div className={"p-1 pr-0 flex flex-1 group"}>
+    <div className={"p-1 pr-0 flex flex-col lg:flex-row"}>
       <div className="flex flex-1 items-center">
         <Badge className="mr-2" type={getBadgeType(action)}>
           {action?.toUpperCase()}
@@ -204,10 +204,13 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
         </div>
       )}
 
-      <DiffPill {...summary} />
+      <div className="flex items-center mt-2 lg:mt-0">
+        <DiffPill {...summary} />
 
-      <div className="w-[380px] flex justify-end">
-        {changed_at && <DateDisplay date={changed_at} hideDefault />}
+        <div className="flex lg:w-[380px]">
+          {/* {changed_at && <DateDisplay date={changed_at} hideDefault />} */}
+          <DateDisplay date={changed_at} />
+        </div>
       </div>
     </div>
   );

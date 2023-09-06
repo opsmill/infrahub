@@ -77,6 +77,8 @@ async def load_schema(
 ) -> JSONResponse:
     log.info("load_request", branch=branch.name)
 
+    schema.validate_namespaces()
+
     async with lock.registry.global_schema_lock():
         branch_schema = registry.schema.get_schema_branch(name=branch.name)
 

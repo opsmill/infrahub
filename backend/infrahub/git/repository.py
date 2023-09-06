@@ -928,6 +928,26 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         return commit_after
 
+    async def get_conflicts(self, source_branch: str, dest_branch: str) -> List[str]:
+        repo = self.get_git_repo_worktree(identifier=dest_branch)
+        if not repo:
+            raise ValueError(f"Unable to identify the worktree for the branch : {dest_branch}")
+
+        commit = self.get_commit_value(branch_name=source_branch, remote=False)
+        git_status = ""
+        try:
+            repo.git.merge(["--no-commit", "--no-ff", commit])
+            repo.git.merge("--abort")
+        except GitCommandError:
+            git_status = repo.git.status("-s")
+            if git_status:
+                repo.git.merge("--abort")
+
+        changed_files = git_status.splitlines()
+        conflict_files = [filename[3:] for filename in changed_files if filename.startswith("UU ")]
+
+        return conflict_files
+
     async def merge(self, source_branch: str, dest_branch: str, push_remote: bool = True) -> bool:
         """Merge the source branch into the destination branch.
 
@@ -943,6 +963,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         try:
             repo.git.merge(commit)
         except GitCommandError as exc:
+            repo.git.merge("--abort")
             raise RepositoryError(identifier=self.name, message=exc.stderr) from exc
 
         commit_after = str(repo.head.commit)

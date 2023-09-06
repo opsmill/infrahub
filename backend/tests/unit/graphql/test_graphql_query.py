@@ -5,6 +5,7 @@ from graphql import graphql
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
@@ -102,10 +103,10 @@ async def test_display_label_one_item(db, session, default_branch: Branch, data_
             {"name": "label", "kind": "Text", "optional": True},
         ],
     }
-
-    schema = NodeSchema(**SCHEMA)
-    registry.set_schema(name=schema.kind, schema=schema)
-
+    tmp_schema = NodeSchema(**SCHEMA)
+    registry.schema.set(name=tmp_schema.kind, schema=tmp_schema)
+    registry.schema.process_schema_branch(name=default_branch.name)
+    schema = registry.schema.get(tmp_schema.kind, branch=default_branch)
     obj1 = await Node.init(session=session, schema=schema)
     await obj1.new(session=session, name="low")
     await obj1.save(session=session)
@@ -149,8 +150,10 @@ async def test_display_label_multiple_items(db, session, default_branch: Branch,
         ],
     }
 
-    schema = NodeSchema(**SCHEMA)
-    registry.set_schema(name=schema.kind, schema=schema)
+    tmp_schema = NodeSchema(**SCHEMA)
+    registry.schema.set(name=tmp_schema.kind, schema=tmp_schema)
+    registry.schema.process_schema_branch(name=default_branch.name)
+    schema = registry.schema.get(tmp_schema.kind, branch=default_branch)
 
     obj1 = await Node.init(session=session, schema=schema)
     await obj1.new(session=session, name="low", level=4)
@@ -200,8 +203,10 @@ async def test_display_label_default_value(db, session, default_branch: Branch, 
         ],
     }
 
-    schema = NodeSchema(**SCHEMA)
-    registry.set_schema(name=schema.kind, schema=schema)
+    tmp_schema = NodeSchema(**SCHEMA)
+    registry.schema.set(name=tmp_schema.kind, schema=tmp_schema)
+    registry.schema.process_schema_branch(name=default_branch.name)
+    schema = registry.schema.get(tmp_schema.kind, branch=default_branch)
 
     obj1 = await Node.init(session=session, schema=schema)
     await obj1.new(session=session, name="low")
@@ -521,6 +526,76 @@ async def test_display_label_nested_query(db, session, default_branch: Branch, c
     }
 
     assert DeepDiff(result.data["TestPerson"]["edges"][0]["node"], expected_result, ignore_order=True).to_dict() == {}
+
+
+async def test_query_diffsummary(db, session, default_branch: Branch, car_person_schema):
+    car = registry.get_schema(name="TestCar")
+    person = registry.get_schema(name="TestPerson")
+
+    p1_main = await Node.init(session=session, schema=person)
+    await p1_main.new(session=session, name="John", height=180)
+    await p1_main.save(session=session)
+    p2_main = await Node.init(session=session, schema=person)
+    await p2_main.new(session=session, name="Jane", height=170)
+    await p2_main.save(session=session)
+
+    c1_main = await Node.init(session=session, schema=car)
+    await c1_main.new(session=session, name="volt", nbr_seats=4, is_electric=True, owner=p1_main)
+    await c1_main.save(session=session)
+    c2_main = await Node.init(session=session, schema=car)
+    await c2_main.new(session=session, name="bolt", nbr_seats=4, is_electric=True, owner=p1_main)
+    await c2_main.save(session=session)
+    c3_main = await Node.init(session=session, schema=car)
+    await c3_main.new(session=session, name="nolt", nbr_seats=4, is_electric=True, owner=p2_main)
+    await c3_main.save(session=session)
+
+    branch2 = await create_branch(branch_name="branch2", session=session)
+    await c1_main.delete(session=session)
+    p1_branch2 = await NodeManager.get_one_by_id_or_default_filter(
+        id=p1_main.id, session=session, schema_name="TestPerson", branch=branch2
+    )
+    p1_branch2.name.value = "Jonathan"
+    await p1_branch2.save(session=session)
+    p2_main.name.value = "Jeanette"
+    await p2_main.save(session=session)
+    c2_main.name.value = "bolting"
+    await c2_main.save(session=session)
+    c3_branch2 = await NodeManager.get_one_by_id_or_default_filter(
+        id=c3_main.id, session=session, schema_name="TestCar", branch=branch2
+    )
+    await c3_branch2.owner.update(data=p1_branch2.id, session=session)
+    await c3_branch2.save(session=session)
+
+    query = """
+    query {
+        DiffSummary {
+            branch
+            node
+            kind
+            actions
+        }
+    }
+    """
+
+    result = await graphql(
+        await generate_graphql_schema(
+            session=session, branch=branch2, include_mutation=False, include_subscription=False
+        ),
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": branch2},
+        root_value=None,
+        variable_values={},
+    )
+    assert result.errors is None
+    assert result.data
+    diff_summary = result.data["DiffSummary"]
+    assert len(diff_summary) == 7
+
+    assert {"branch": "main", "node": c1_main.id, "kind": "TestCar", "actions": ["removed"]} in diff_summary
+    assert {"branch": "main", "node": c2_main.id, "kind": "TestCar", "actions": ["updated"]} in diff_summary
+    assert {"branch": "branch2", "node": c3_branch2.id, "kind": "TestCar", "actions": ["updated"]} in diff_summary
+    assert {"branch": "main", "node": p2_main.id, "kind": "TestPerson", "actions": ["updated"]} in diff_summary
+    assert {"branch": "branch2", "node": p1_branch2.id, "kind": "TestPerson", "actions": ["updated"]} in diff_summary
 
 
 async def test_query_typename(db, session, default_branch: Branch, car_person_schema):

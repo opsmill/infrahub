@@ -39,7 +39,7 @@ class InfrahubTransform:
             raise ValueError("A url must be provided")
 
     @classmethod
-    async def init(cls, client=None, test_client=None, *args, **kwargs):
+    async def init(cls, client=None, *args, **kwargs):
         """Async init method, If an existing InfrahubClient client hasn't been provided, one will be created automatically."""
 
         item = cls(*args, **kwargs)
@@ -47,7 +47,7 @@ class InfrahubTransform:
         if client:
             item.client = client
         else:
-            item.client = await InfrahubClient.init(address=item.server_url, test_client=test_client)
+            item.client = await InfrahubClient.init(address=item.server_url)
 
         return item
 

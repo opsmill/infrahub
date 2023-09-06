@@ -1,13 +1,20 @@
-import { Pill } from "../../../components/pill";
+import { Pill } from "../../components/pill";
 
 type DiffPillProps = {
   added?: number;
   updated?: number;
   removed?: number;
+  hidden?: boolean;
 };
 
 export const DiffPill = (props: DiffPillProps) => {
-  const { added, updated, removed } = props;
+  const { added, updated, removed, hidden } = props;
+
+  if (hidden) {
+    return (
+      <div className="lg:flex items-center text-gray-300 mr-2 w-[85px] text-sm font-normal hidden lg:visible" />
+    );
+  }
 
   return (
     <Pill className="flex items-center text-gray-300 mr-2 w-[85px] text-sm font-normal">

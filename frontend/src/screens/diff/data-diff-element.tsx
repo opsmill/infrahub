@@ -2,11 +2,11 @@ import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { ReactNode } from "react";
 import { useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import Accordion from "../../../components/accordion";
-import { DateDisplay } from "../../../components/date-display";
-import { QSP } from "../../../config/qsp";
-import { classNames } from "../../../utils/common";
-import { diffContent } from "../../../utils/diff";
+import Accordion from "../../components/accordion";
+import { DateDisplay } from "../../components/date-display";
+import { QSP } from "../../config/qsp";
+import { classNames } from "../../utils/common";
+import { diffContent } from "../../utils/diff";
 import {
   getNodeClassName,
   tDataDiffNodeElement,
@@ -43,23 +43,26 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
 
   const renderTitleDisplay = (diffValue: tDataDiffNodeValueChange) => {
     return (
-      <div className="p-1 pr-0 grid grid-cols-3 gap-4">
-        <div className="flex items-center group">
-          <span className="mr-2 font-semibold">{name}</span>
+      <div className="p-1 pr-0 flex flex-col lg:flex-row">
+        <div className="flex flex-1 items-center">
+          <div className="flex flex-1 items-center group">
+            <span className="mr-2 font-semibold">{name}</span>
 
-          {/* Do not display comment button if we are on the branch details view */}
-          {!branchname && <DataDiffThread path={path} />}
+            {/* Do not display comment button if we are on the branch details view */}
+            {!branchname && <DataDiffThread path={path} />}
+          </div>
+
+          <div className="flex flex-1">
+            <span className="font-semibold">{renderDiffDisplay(diffValue)}</span>
+          </div>
         </div>
 
-        <div className="flex">
-          <span className="font-semibold">{renderDiffDisplay(diffValue)}</span>
-        </div>
-
-        <div className="flex justify-end font-normal">
+        <div className="flex flex-1 lg:justify-end items-center mt-2 lg:mt-0">
           <DiffPill {...summary} />
 
-          <div className="w-[380px] flex justify-end">
-            {changed_at && <DateDisplay date={changed_at} hideDefault />}
+          <div className="lg:w-[380px] flex">
+            {/* {changed_at && <DateDisplay date={changed_at} hideDefault />} */}
+            <DateDisplay date={changed_at} />
           </div>
         </div>
       </div>

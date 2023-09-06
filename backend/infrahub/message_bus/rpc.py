@@ -45,11 +45,12 @@ class InfrahubRpcClientBase:
         await self.callback_queue.consume(self.on_response, no_ack=True)
         self.exchange = await self.channel.declare_exchange(f"{config.SETTINGS.broker.namespace}.events", type="topic")
         queue = await self.channel.declare_queue(f"{config.SETTINGS.broker.namespace}.rpcs")
+        await queue.bind(self.exchange, routing_key="check.*.*")
         await queue.bind(self.exchange, routing_key="request.*.*")
 
         return self
 
-    def on_response(self, message: AbstractIncomingMessage) -> None:
+    async def on_response(self, message: AbstractIncomingMessage) -> None:
         if message.correlation_id is None:
             print(f"Bad message {message!r}")
             return

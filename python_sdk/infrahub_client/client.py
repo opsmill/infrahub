@@ -5,7 +5,7 @@ import copy
 import logging
 from logging import Logger
 from time import sleep
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import httpx
 
@@ -30,9 +30,6 @@ from infrahub_client.timestamp import Timestamp
 from infrahub_client.types import AsyncRequester, HTTPMethod, SyncRequester
 from infrahub_client.utils import is_valid_uuid
 
-if TYPE_CHECKING:
-    from fastapi.testclient import TestClient
-
 # pylint: disable=redefined-builtin
 
 
@@ -46,7 +43,6 @@ class BaseClient:
         retry_on_failure: bool = False,
         retry_delay: int = 5,
         log: Optional[Logger] = None,
-        test_client: Optional[TestClient] = None,
         default_branch: str = "main",
         insert_tracker: bool = False,
         pagination_size: int = 50,
@@ -55,7 +51,6 @@ class BaseClient:
     ):
         self.client = None
         self.default_timeout = default_timeout
-        self.test_client = test_client
         self.retry_on_failure = retry_on_failure
         self.retry_delay = retry_delay
         self.default_branch = default_branch
@@ -316,36 +311,31 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
 
         # self.log.error(payload)
 
-        if not self.test_client:
-            retry = True
-            while retry:
-                retry = self.retry_on_failure
-                try:
-                    resp = await self._post(url=url, payload=payload, headers=headers, timeout=timeout)
+        retry = True
+        while retry:
+            retry = self.retry_on_failure
+            try:
+                resp = await self._post(url=url, payload=payload, headers=headers, timeout=timeout)
 
-                    if raise_for_error:
-                        resp.raise_for_status()
+                if raise_for_error:
+                    resp.raise_for_status()
 
-                    retry = False
-                except ServerNotReacheableError:
-                    if retry:
-                        self.log.warning(
-                            f"Unable to connect to {self.address}, will retry in {self.retry_delay} seconds .."
-                        )
-                        await asyncio.sleep(delay=self.retry_delay)
-                    else:
-                        self.log.error(f"Unable to connect to {self.address} .. ")
-                        raise
-                except httpx.HTTPStatusError as exc:
-                    if exc.response.status_code in [401, 403]:
-                        response = exc.response.json()
-                        errors = response.get("errors")
-                        messages = [error.get("message") for error in errors]
-                        raise AuthenticationError(" | ".join(messages)) from exc
-
-        else:
-            with self.test_client as client:
-                resp = client.post(url=url, json=payload, headers=headers)
+                retry = False
+            except ServerNotReacheableError:
+                if retry:
+                    self.log.warning(
+                        f"Unable to connect to {self.address}, will retry in {self.retry_delay} seconds .."
+                    )
+                    await asyncio.sleep(delay=self.retry_delay)
+                else:
+                    self.log.error(f"Unable to connect to {self.address} .. ")
+                    raise
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code in [401, 403]:
+                    response = exc.response.json()
+                    errors = response.get("errors")
+                    messages = [error.get("message") for error in errors]
+                    raise AuthenticationError(" | ".join(messages)) from exc
 
         response = resp.json()
 
@@ -384,13 +374,9 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         headers = headers or {}
         base_headers = copy.copy(self.headers or {})
         headers.update(base_headers)
-        if not self.test_client:
-            return await self._request(
-                url=url, method=HTTPMethod.GET, headers=headers, timeout=timeout or self.default_timeout
-            )
-
-        with self.test_client as client:
-            return client.get(url=url, headers=headers)
+        return await self._request(
+            url=url, method=HTTPMethod.GET, headers=headers, timeout=timeout or self.default_timeout
+        )
 
     async def _default_request_method(
         self, url: str, method: HTTPMethod, headers: Dict[str, Any], timeout: int, payload: Optional[Dict] = None
@@ -406,7 +392,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
             except httpx.ConnectError as exc:
                 raise ServerNotReacheableError(address=self.address) from exc
             except httpx.ReadTimeout as exc:
-                raise ServerNotResponsiveError(url=url) from exc
+                raise ServerNotResponsiveError(url=url, timeout=timeout) from exc
         self._record(response)
         return response
 
@@ -455,14 +441,9 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         if url_params:
             url += "?" + "&".join([f"{key}={value}" for key, value in url_params.items()])
 
-        if not self.test_client:
-            resp = await self._request(
-                url=url, method=HTTPMethod.GET, headers=headers, timeout=timeout or self.default_timeout
-            )
-
-        else:
-            with self.test_client as client:
-                resp = client.get(url=url)
+        resp = await self._request(
+            url=url, method=HTTPMethod.GET, headers=headers, timeout=timeout or self.default_timeout
+        )
 
         if raise_for_error:
             resp.raise_for_status()
@@ -599,36 +580,31 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         if self.insert_tracker and tracker:
             headers["X-Infrahub-Tracker"] = tracker
 
-        if not self.test_client:
-            retry = True
-            while retry:
-                retry = self.retry_on_failure
-                try:
-                    resp = self._post(url=url, payload=payload, headers=headers, timeout=timeout)
+        retry = True
+        while retry:
+            retry = self.retry_on_failure
+            try:
+                resp = self._post(url=url, payload=payload, headers=headers, timeout=timeout)
 
-                    if raise_for_error:
-                        resp.raise_for_status()
+                if raise_for_error:
+                    resp.raise_for_status()
 
-                    retry = False
-                except ServerNotReacheableError:
-                    if retry:
-                        self.log.warning(
-                            f"Unable to connect to {self.address}, will retry in {self.retry_delay} seconds .."
-                        )
-                        sleep(self.retry_delay)
-                    else:
-                        self.log.error(f"Unable to connect to {self.address} .. ")
-                        raise
-                except httpx.HTTPStatusError as exc:
-                    if exc.response.status_code in [401, 403]:
-                        response = exc.response.json()
-                        errors = response.get("errors")
-                        messages = [error.get("message") for error in errors]
-                        raise AuthenticationError(" | ".join(messages)) from exc
-
-        else:
-            with self.test_client as client:
-                resp = client.post(url=url, json=payload, headers=headers)
+                retry = False
+            except ServerNotReacheableError:
+                if retry:
+                    self.log.warning(
+                        f"Unable to connect to {self.address}, will retry in {self.retry_delay} seconds .."
+                    )
+                    sleep(self.retry_delay)
+                else:
+                    self.log.error(f"Unable to connect to {self.address} .. ")
+                    raise
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code in [401, 403]:
+                    response = exc.response.json()
+                    errors = response.get("errors")
+                    messages = [error.get("message") for error in errors]
+                    raise AuthenticationError(" | ".join(messages)) from exc
 
         response = resp.json()
 
@@ -816,17 +792,11 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             ServerNotReacheableError if we are not able to connect to the server
             ServerNotResponsiveError if the server didnd't respond before the timeout expired
         """
-        if not self.test_client:
-            self.login()
-            headers = headers or {}
-            base_headers = copy.copy(self.headers or {})
-            headers.update(base_headers)
-            return self._request(
-                url=url, method=HTTPMethod.GET, headers=headers, timeout=timeout or self.default_timeout
-            )
-
-        with self.test_client as client:
-            return client.get(url=url, headers=headers)
+        self.login()
+        headers = headers or {}
+        base_headers = copy.copy(self.headers or {})
+        headers.update(base_headers)
+        return self._request(url=url, method=HTTPMethod.GET, headers=headers, timeout=timeout or self.default_timeout)
 
     def _post(
         self, url: str, payload: dict, headers: Optional[dict] = None, timeout: Optional[int] = None
@@ -862,7 +832,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             except httpx.ConnectError as exc:
                 raise ServerNotReacheableError(address=self.address) from exc
             except httpx.ReadTimeout as exc:
-                raise ServerNotResponsiveError(url=url) from exc
+                raise ServerNotResponsiveError(url=url, timeout=timeout) from exc
         self._record(response)
         return response
 

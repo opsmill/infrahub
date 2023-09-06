@@ -4,19 +4,19 @@ import { createContext, useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
-import { ALERT_TYPES, Alert } from "../../../components/alert";
-import { CONFIG } from "../../../config/config";
+import { ALERT_TYPES, Alert } from "../../components/alert";
+import { CONFIG } from "../../config/config";
 import {
   PROPOSED_CHANGES_OBJECT_THREAD,
   PROPOSED_CHANGES_OBJECT_THREAD_OBJECT,
-} from "../../../config/constants";
-import { QSP } from "../../../config/qsp";
-import { getProposedChangesObjectGlobalThreads } from "../../../graphql/queries/proposed-changes/getProposedChangesObjectGlobalThreads";
-import useQuery from "../../../hooks/useQuery";
-import { proposedChangedState } from "../../../state/atoms/proposedChanges.atom";
-import { schemaState } from "../../../state/atoms/schema.atom";
-import { fetchUrl } from "../../../utils/fetch";
-import LoadingScreen from "../../loading-screen/loading-screen";
+} from "../../config/constants";
+import { QSP } from "../../config/qsp";
+import { getProposedChangesObjectGlobalThreads } from "../../graphql/queries/proposed-changes/getProposedChangesObjectGlobalThreads";
+import useQuery from "../../hooks/useQuery";
+import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
+import { schemaState } from "../../state/atoms/schema.atom";
+import { fetchUrl } from "../../utils/fetch";
+import LoadingScreen from "../loading-screen/loading-screen";
 import { DataDiffNode, tDataDiffNode } from "./data-diff-node";
 
 type tDiffContext = {

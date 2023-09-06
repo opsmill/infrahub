@@ -274,6 +274,7 @@ async def test_diff_get_nodes_entire_branch(session: AsyncSession, default_branc
 
     repo01b2 = await NodeManager.get_one(id=repos_in_main["repo01"].id, branch=branch2, session=session)
     repo01b2.commit.value = "1234567890"
+    repo01b2.description.value = "Repo 01 first change in branch"
 
     time01 = Timestamp()
     await repo01b2.save(session=session, at=time01)
@@ -282,6 +283,7 @@ async def test_diff_get_nodes_entire_branch(session: AsyncSession, default_branc
 
     repo01b2 = await NodeManager.get_one(id=repos_in_main["repo01"].id, branch=branch2, session=session)
     repo01b2.commit.value = "0987654321"
+    repo01b2.description.value = "Repo 01 second change in branch"
     time03 = Timestamp()
     await repo01b2.save(session=session, at=time03)
 
@@ -298,8 +300,8 @@ async def test_diff_get_nodes_entire_branch(session: AsyncSession, default_branc
         "changed_at": None,
         "attributes": [
             {
-                "id": repo01b2.commit.id,
-                "name": "commit",
+                "id": repo01b2.description.id,
+                "name": "description",
                 "action": "updated",
                 "changed_at": None,
                 "properties": [
@@ -308,8 +310,8 @@ async def test_diff_get_nodes_entire_branch(session: AsyncSession, default_branc
                         "type": "HAS_VALUE",
                         "action": "updated",
                         "value": {
-                            "new": "0987654321",
-                            "previous": "aaaaaaaaaaa",
+                            "new": "Repo 01 second change in branch",
+                            "previous": "Repo 01 initial value",
                         },
                         "changed_at": time03.to_string(),
                     }
@@ -333,8 +335,8 @@ async def test_diff_get_nodes_entire_branch(session: AsyncSession, default_branc
         "changed_at": None,
         "attributes": [
             {
-                "id": repo01b2.commit.id,
-                "name": "commit",
+                "id": repo01b2.description.id,
+                "name": "description",
                 "action": "updated",
                 "changed_at": None,
                 "properties": [
@@ -343,8 +345,8 @@ async def test_diff_get_nodes_entire_branch(session: AsyncSession, default_branc
                         "type": "HAS_VALUE",
                         "action": "updated",
                         "value": {
-                            "new": "1234567890",
-                            "previous": "aaaaaaaaaaa",
+                            "new": "Repo 01 first change in branch",
+                            "previous": "Repo 01 initial value",
                         },
                         "changed_at": time01.to_string(),
                     }

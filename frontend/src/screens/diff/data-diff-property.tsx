@@ -1,11 +1,12 @@
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { DateDisplay } from "../../../components/date-display";
-import { QSP } from "../../../config/qsp";
-import { classNames } from "../../../utils/common";
-import { diffContent } from "../../../utils/diff";
+import { DateDisplay } from "../../components/date-display";
+import { QSP } from "../../config/qsp";
+import { classNames } from "../../utils/common";
+import { diffContent } from "../../utils/diff";
 import { getNodeClassName, tDataDiffNodePropertyChange } from "./data-diff-node";
+import { DiffPill } from "./diff-pill";
 import { DataDiffThread } from "./diff-thread";
 
 export type tDataDiffNodePropertyProps = {
@@ -28,21 +29,26 @@ export const DataDiffProperty = (props: tDataDiffNodePropertyProps) => {
 
       <div
         className={classNames(
-          "flex-1 p-1 pr-0 grid grid-cols-3 gap-4",
+          "flex-1 p-1 pr-0 flex flex-col lg:flex-row",
           getNodeClassName([], branch, branchOnly)
         )}>
-        <div className="flex items-center group">
-          <span className="mr-4">{type}</span>
+        <div className="flex flex-1 items-center">
+          <div className="flex flex-1 items-center group">
+            <span className="">{type}</span>
 
-          {/* Do not display comment button if we are on the branch details view */}
-          {!branchname && <DataDiffThread path={path} />}
+            {/* Do not display comment button if we are on the branch details view */}
+            {!branchname && <DataDiffThread path={path} />}
+          </div>
+
+          <div className="flex flex-1 items-center">{diffContent[action](property)}</div>
         </div>
 
-        <div className="flex items-center">{diffContent[action](property)}</div>
+        <div className="flex flex-1 lg:justify-end items-center mt-2 lg:mt-0">
+          <DiffPill hidden />
 
-        <div className="flex items-center justify-end">
-          <div className="min-w-[330px]">
-            {changed_at && <DateDisplay date={changed_at} hideDefault />}
+          <div className="lg:w-[380px] flex">
+            {/* {changed_at && <DateDisplay date={changed_at} hideDefault />} */}
+            <DateDisplay date={changed_at} />
           </div>
         </div>
       </div>
