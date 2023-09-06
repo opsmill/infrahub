@@ -33,7 +33,7 @@ generics:
         kind: Attribute
       - name: role
         peer: BuiltinRole
-        optional: false
+        optional: true
         cardinality: one
         kind: Attribute
       - name: device
@@ -83,7 +83,7 @@ generics:
         kind: Attribute
       - name: role
         peer: BuiltinRole
-        optional: false
+        optional: true
         cardinality: one
         kind: Attribute
       - name: device
@@ -92,6 +92,36 @@ generics:
         optional: false
         cardinality: one
         kind: Parent
+      - name: tags
+        peer: BuiltinTag
+        optional: true
+        cardinality: many
+        kind: Attribute
+      - name: connected_endpoint
+        peer: InfraPower
+        optional: true
+        cardinality: one
+        kind: Attribute
+        identifier: connected__power
+  - name: Choice
+    namespace: Template
+    description: "Generic Choice"
+    label: "Choice"
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: description
+        kind: Text
+        optional: true
+      - name: Color
+        kind: Text
+        optional: true
+    relationships:
       - name: tags
         peer: BuiltinTag
         optional: true
@@ -188,7 +218,7 @@ nodes:
         kind: Attribute
       - name: role
         peer: BuiltinRole
-        optional: false
+        optional: true
         cardinality: one
         kind: Attribute
       - name: local_as
@@ -256,10 +286,11 @@ nodes:
         kind: Attribute
       - name: role
         peer: BuiltinRole
-        optional: false
+        optional: true
         cardinality: one
         kind: Attribute
       - name: provider
+        label: Provider
         peer: CoreOrganization
         optional: false
         cardinality: one
@@ -311,15 +342,30 @@ nodes:
     attributes:
       - name: name
         kind: Text
-        unique: true
+        # unique: true
+        optional: true
       - name: description
         kind: Text
         optional: true
-      - name: type
+      - name: serial_number
+        label: Serial Number
         kind: Text
+        optional: true
+        # unique: true
+      - name: asset_tag
+        label: Asset Tag
+        kind: Text
+        optional: true
+        # unique: true
     relationships:
       - name: site
         peer: BuiltinLocation
+        optional: false
+        cardinality: one
+        kind: Attribute
+      - name: model
+        label: Model
+        peer: TemplateDeviceType
         optional: false
         cardinality: one
         kind: Attribute
@@ -335,7 +381,7 @@ nodes:
         kind: Attribute
       - name: role
         peer: BuiltinRole
-        optional: false
+        optional: true
         cardinality: one
         kind: Attribute
       - name: interfaces
@@ -346,13 +392,14 @@ nodes:
         cardinality: many
         kind: Component
       - name: Powers
-        label: Powers
+        label: Power
         peer: InfraPower
         identifier: "device__power"
         optional: true
         cardinality: many
         kind: Component
       - name: asn
+        label: ASN
         peer: InfraAutonomousSystem
         optional: true
         cardinality: one
@@ -373,6 +420,32 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
+  - name: DeviceType
+    namespace: Template
+    description: "A model of a device"
+    label: "Device Type"
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    inherit_from:
+      - "TemplateChoice"
+    attributes:
+      - name: part_number
+        label: Part Number
+        optional: true
+        kind: Text
+    relationships:
+      - cardinality: many
+        identifier: device__type
+        name: Device
+        optional: true
+        peer: InfraDevice
+      - cardinality: one
+        name: manufacturer
+        optional: false
+        peer: OrgaManufacturer
+        kind: Parent
   - name: InterfaceL3
     namespace: Infra
     description: "Network Layer 3 Interface"
@@ -480,6 +553,40 @@ nodes:
         optional: true
         cardinality: many
         kind: Attribute
+  - name: Manufacturer
+    namespace: Orga
+    description: "A device manufactuer"
+    label: "Manufacturer"
+    default_filter: name__value
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: description
+        kind: Text
+        optional: true
+      - name: contract
+        label: Contract
+        kind: Text
+        optional: true
+    relationships:
+      - name: role
+        peer: BuiltinRole
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: tags
+        peer: BuiltinTag
+        optional: true
+        cardinality: many
+        kind: Attribute
+      - name: DeviceType
+        label: "Device Models"
+        peer: TemplateDeviceType
+        optional: true
+        cardinality: many
   - name: Platform
     namespace: Infra
     description: "A Platform represent the type of software running on a device."
@@ -523,16 +630,18 @@ nodes:
       - name__value
     inherit_from:
       - "InfraPower"
-      - "InfraEndpoint"
     attributes:
-      - name: port_type
-        label: Type
-        kind: Text
-        enum: ["iec-60320-c5", "iec-60320-c7", "iec-60320-c13", "iec-60320-c15", "iec-60320-c19", "iec-60320-c21", "iec-60309-p-n-e-4h", "iec-60309-p-n-e-6h", "iec-60309-p-n-e-9h", "iec-60309-2p-e-4h", "iec-60309-2p-e-6h", "iec-60309-2p-e-9h", "iec-60309-3p-e-4h", "iec-60309-3p-e-6h", "iec-60309-3p-e-9h", "iec-60309-3p-n-e-4h", "iec-60309-3p-n-e-6h", "iec-60309-3p-n-e-9h", "iec-60906-1", "nbr-14136-10a", "nbr-14136-20a"]
       - name: feed
         label: Feed
         optional: true
         kind: Text
+    relationships:
+      - name: port_type
+        label: Type
+        identifier: poweroutlet__type
+        peer: TemplatePowerOutletType
+        optional: false
+        cardinality: one
   - name: PowerPort
     namespace: Infra
     description: "Power Port"
@@ -543,18 +652,20 @@ nodes:
       - name__value
     inherit_from:
       - "InfraPower"
-      - "InfraEndpoint"
     attributes:
-      - name: port_type
-        label: Type
-        kind: Text
-        enum: ["iec-60320-c6", "iec-60320-c8", "iec-60320-c14", "iec-60320-c16", "iec-60320-c20", "iec-60320-c22", "iec-60309-p-n-e-4h", "iec-60309-p-n-e-6h", "iec-60309-p-n-e-9h", "iec-60309-2p-e-4h", "iec-60309-2p-e-6h", "iec-60309-2p-e-9h", "iec-60309-3p-e-4h", "iec-60309-3p-e-6h", "iec-60309-3p-e-9h", "iec-60309-3p-n-e-4h", "iec-60309-3p-n-e-6h", "iec-60309-3p-n-e-9h", "iec-60906-1", "nbr-14136-10a", "nbr-14136-20a"]
       - name: alloc_draw
         label: Allocated Draw
         kind: Number
       - name: max_draw
         label: Maximun Draw
         kind: Number
+    relationships:
+      - name: port_type
+        label: Type
+        identifier: powerport__type
+        peer: TemplatePowerPortType
+        optional: false
+        cardinality: one
   - name: Prefix
     namespace: Infra
     description: "IPv4 or IPv6 network (with mask)"
@@ -585,7 +696,7 @@ nodes:
         kind: Attribute
       - name: role
         peer: BuiltinRole
-        optional: false
+        optional: true
         cardinality: one
         kind: Attribute
       - name: gateway
@@ -595,6 +706,7 @@ nodes:
         cardinality: one
         kind: Attribute
       - name: vrf
+        identifier: "vrf__prefix"
         peer: InfraVRF
         optional: true
         cardinality: one
@@ -658,6 +770,34 @@ nodes:
         optional: true
         cardinality: many
         kind: Attribute
+  - name: RouteTarget
+    namespace: Infra
+    description: "Route Target (RFC 4360)"
+    label: "Route Target"
+    default_filter: name__value
+    order_by:
+      - name__value
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: description
+        kind: Text
+        optional: true
+    relationships:
+      - name: organization
+        peer: CoreOrganization
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: vrf
+        identifier: "vrf__rt"
+        peer: InfraVRF
+        optional: true
+        cardinality: many
+        kind: Parent
   - name: VLAN
     namespace: Infra
     description: "A VLAN is isolated layer two domain"
@@ -688,7 +828,7 @@ nodes:
         kind: Attribute
       - name: role
         peer: BuiltinRole
-        optional: false
+        optional: true
         cardinality: one
         kind: Attribute
       - name: prefix
@@ -716,13 +856,9 @@ nodes:
         label: Route Distinguisher
         kind: Text
         unique: true
-      - name: vrf_rt
-        label: Route Target
-        kind: Text
-        optional: true
     relationships:
-      - name: site
-        peer: BuiltinLocation
+      - name: organization
+        peer: CoreOrganization
         optional: true
         cardinality: one
         kind: Attribute
@@ -733,22 +869,111 @@ nodes:
         kind: Attribute
       - name: role
         peer: BuiltinRole
-        optional: false
-        cardinality: one
-        kind: Attribute
-      - name: prefix
-        label: Prefix
-        peer: InfraPrefix
         optional: true
         cardinality: one
         kind: Attribute
-
+      - name: prefix
+        identifier: "vrf__prefix"
+        label: Prefix
+        peer: InfraPrefix
+        optional: true
+        cardinality: many
+        kind: Attribute
+      - name: importRT
+        identifier: "vrf__import"
+        label: "Import Targets"
+        peer: InfraRouteTarget
+        optional: true
+        cardinality: many
+        kind: Attribute
+      - name: exportRT
+        identifier: "vrf__export"
+        label: "Export Targets"
+        peer: InfraRouteTarget
+        optional: true
+        cardinality: many
+        kind: Attribute
+  - name: PowerOutletType
+    namespace: Template
+    description: "Power Outlet Type"
+    label: "Power Outlet Type"
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    inherit_from:
+      - "TemplateChoice"
+    relationships:
+      - cardinality: many
+        identifier: poweroutlet__type
+        name: PowerOutlet
+        optional: true
+        peer: InfraPowerOutlet
+  - name: PowerPortType
+    namespace: Template
+    description: "Power Port Type"
+    label: "Power Port Type"
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    inherit_from:
+      - "TemplateChoice"
+    relationships:
+      - cardinality: many
+        identifier: powerport__type
+        name: PowerPort
+        optional: true
+        peer: InfraPowerPort
+  - name: Provider
+    namespace: Orga
+    description: "Service provider"
+    label: "Provider"
+    default_filter: name__value
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: description
+        kind: Text
+        optional: true
+      - name: contract
+        label: Contract
+        kind: Text
+        optional: true
+    relationships:
+      - name: role
+        peer: BuiltinRole
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: tags
+        peer: BuiltinTag
+        optional: true
+        cardinality: many
+        kind: Attribute
 extensions:
   nodes:
     - kind: BuiltinLocation
       relationships:
         - name: racks
           peer: InfraRack
+          optional: true
+          cardinality: many
+          kind: Generic
+    - kind: CoreOrganization
+      relationships:
+        - name: Provider
+          peer: OrgaProvider
+          optional: true
+          cardinality: many
+          kind: Generic
+    - kind: CoreOrganization
+      relationships:
+        - name: Manufacturer
+          peer: OrgaManufacturer
           optional: true
           cardinality: many
           kind: Generic

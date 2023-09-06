@@ -10,7 +10,15 @@ destination:
   settings:
     url: "http://localhost:8000"
 
-order: ["BuiltinTag", "BuiltinLocation", "BuiltinRole", "InfraRack"]
+order: [
+  "BuiltinTag",
+  "BuiltinRole",
+  "OrgaManufacturer",
+  "OrgaProvider",
+  "BuiltinLocation",
+  "InfraRack",
+  "TemplateDeviceType"
+]
 
 schema_mapping:
   - name: BuiltinTag
@@ -49,10 +57,12 @@ schema_mapping:
         reference: tag
       - name: serial_number
         mapping: serial
-      - name: role
-        mapping: role.name
+      - name: asset_tag
+        mapping: asset_tag
       - name: facility_id
         mapping: facility_id
+      - name: role
+        mapping: role.name
 
   - name: BuiltinRole
     mapping: dcim.device_roles
@@ -77,3 +87,67 @@ schema_mapping:
         mapping: name
       - name: description
         mapping: description
+
+  - name: OrgaManufacturer
+    mapping: dcim.manufacturers
+    fields:
+      - name: name
+        mapping: name
+        identifier: true
+      - name: description
+        mapping: description
+      - name: tags
+        mapping: tags
+        reference: tag
+
+  - name: OrgaProvider
+    mapping: circuits.providers
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
+      - name: tags
+        mapping: tags
+        reference: tag
+
+  - name: TemplateDeviceType
+    mapping: dcim.device-types
+    fields:
+      - name: name
+        mapping: model
+        identifier: true
+      - name: part_number
+        mapping: part_number
+      - name: description
+        mapping: description
+      - name: tags
+        mapping: tags
+        reference: tag
+      - name: manufacturer
+        mapping: manufacturer.name
+
+  # TODO -> if the device in netbox have no name, no serial and no asset, which identifiers could we use ?
+  # - name: InfraDevice
+  #   mapping: dcim.devices
+  #   identifiers: ["name", "serial_number", "asset_tag"]
+  #   fields:
+  #     - name: name
+  #       mapping: name
+  #     - name: serial_number
+  #       mapping: serial
+  #     - name: asset_tag
+  #       mapping: asset_tag
+  #     - name: description
+  #       mapping: description
+  #     - name: tags
+  #       mapping: tags
+  #       reference: tag
+  #     - name: model
+  #       mapping: device_type.model
+  #     - name: role
+  #       mapping: role.name
+  #     - name: site
+  #       mapping: site.name
+  #     - name: rack
+  #       mapping: rack.name

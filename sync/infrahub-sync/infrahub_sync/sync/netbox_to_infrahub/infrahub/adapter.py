@@ -1,6 +1,14 @@
 from infrahub_sync.adapters.infrahub import InfrahubAdapter
 
-from .models import BuiltinLocation, BuiltinRole, BuiltinTag, InfraRack
+from .models import (
+    BuiltinLocation,
+    BuiltinRole,
+    BuiltinTag,
+    InfraRack,
+    OrgaManufacturer,
+    OrgaProvider,
+    TemplateDeviceType,
+)
 
 
 # -------------------------------------------------------
@@ -9,7 +17,10 @@ from .models import BuiltinLocation, BuiltinRole, BuiltinTag, InfraRack
 #  All modifications will be lost the next time you reexecute this command
 # -------------------------------------------------------
 class InfrahubSync(InfrahubAdapter):
-    InfraRack = InfraRack
+    BuiltinTag = BuiltinTag
     BuiltinRole = BuiltinRole
     BuiltinLocation = BuiltinLocation
-    BuiltinTag = BuiltinTag
+    TemplateDeviceType = TemplateDeviceType
+    OrgaManufacturer = OrgaManufacturer
+    InfraRack = InfraRack
+    OrgaProvider = OrgaProvider

@@ -9,19 +9,13 @@ from infrahub_sync.adapters.infrahub import InfrahubModel
 # -------------------------------------------------------
 
 
-class InfraRack(InfrahubModel):
-    _modelname = "InfraRack"
-    _identifiers = ("location", "name")
-    _attributes = ("role", "tags", "description", "height", "facility_id", "serial_number")
+class BuiltinTag(InfrahubModel):
+    _modelname = "BuiltinTag"
+    _identifiers = ("name",)
+    _attributes = ("description",)
 
     name: str
     description: Optional[str]
-    height: str
-    facility_id: Optional[str]
-    serial_number: Optional[str]
-    location: str
-    role: Optional[str]
-    tags: List[str] = []
 
     local_id: Optional[str]
     local_data: Optional[Any]
@@ -52,13 +46,61 @@ class BuiltinLocation(InfrahubModel):
     local_data: Optional[Any]
 
 
-class BuiltinTag(InfrahubModel):
-    _modelname = "BuiltinTag"
+class TemplateDeviceType(InfrahubModel):
+    _modelname = "TemplateDeviceType"
     _identifiers = ("name",)
-    _attributes = ("description",)
+    _attributes = ("manufacturer", "tags", "part_number", "description")
+
+    part_number: Optional[str]
+    name: str
+    description: Optional[str]
+    manufacturer: str
+    tags: List[str] = []
+
+    local_id: Optional[str]
+    local_data: Optional[Any]
+
+
+class OrgaManufacturer(InfrahubModel):
+    _modelname = "OrgaManufacturer"
+    _identifiers = ("name",)
+    _attributes = ("tags", "description")
 
     name: str
     description: Optional[str]
+    tags: List[str] = []
+
+    local_id: Optional[str]
+    local_data: Optional[Any]
+
+
+class InfraRack(InfrahubModel):
+    _modelname = "InfraRack"
+    _identifiers = ("location", "name")
+    _attributes = ("role", "tags", "description", "height", "facility_id", "serial_number", "asset_tag")
+
+    name: str
+    description: Optional[str]
+    height: str
+    facility_id: Optional[str]
+    serial_number: Optional[str]
+    asset_tag: Optional[str]
+    location: str
+    role: Optional[str]
+    tags: List[str] = []
+
+    local_id: Optional[str]
+    local_data: Optional[Any]
+
+
+class OrgaProvider(InfrahubModel):
+    _modelname = "OrgaProvider"
+    _identifiers = ("name",)
+    _attributes = ("tags", "description")
+
+    name: str
+    description: Optional[str]
+    tags: List[str] = []
 
     local_id: Optional[str]
     local_data: Optional[Any]
