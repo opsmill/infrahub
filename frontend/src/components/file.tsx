@@ -47,7 +47,7 @@ export const File = (props: tFile) => {
 
   return (
     <div className="p-4">
-      <CodeEditor value={fileContent} disabled />;
+      <CodeEditor value={fileContent} disabled />
     </div>
   );
 };
