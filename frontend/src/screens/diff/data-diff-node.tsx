@@ -184,7 +184,7 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
 
   const renderTitle = () => (
     <div className={"p-1 pr-0 flex flex-col lg:flex-row"}>
-      <div className="flex flex-1 items-center">
+      <div className="flex flex-1 items-center group">
         <Badge className="mr-2" type={getBadgeType(action)}>
           {action?.toUpperCase()}
         </Badge>
