@@ -562,7 +562,7 @@ _GRAPHIQL_HTML = """
       type="application/javascript"
     ></script>
     <link rel="stylesheet" href="https://unpkg.com/graphiql/graphiql.min.css" />
-    <!-- 
+    <!--
       These are imports for the GraphIQL Explorer plugin.
      -->
     <script
