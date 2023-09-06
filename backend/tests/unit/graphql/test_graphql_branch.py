@@ -376,7 +376,7 @@ async def test_branch_update(db, session):
     BranchUpdate(
         data: {
         name: "branch1",
-        description: "testing" 
+        description: "testing"
         }
     ) {
         ok
