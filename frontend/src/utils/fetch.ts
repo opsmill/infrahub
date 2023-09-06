@@ -99,6 +99,5 @@ export const updateQsp = (qsp: string, newValue: string, setSearchParams: Functi
     {}
   );
 
-  console.log("newParams: ", newParams);
   return setSearchParams(newParams);
 };

@@ -30,6 +30,8 @@ export const ACCOUNT_OBJECT = "Account";
 
 export const ACCOUNT_TOKEN_OBJECT = "AccountToken";
 
+export const ARTIFACT_DEFINITION_OBJECT = "CoreArtifactDefinition";
+
 export const PROPOSED_CHANGES = "ProposedChange";
 export const PROPOSED_CHANGES_OBJECT = "CoreProposedChange";
 
