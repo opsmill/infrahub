@@ -120,6 +120,11 @@ class BranchNameInput(InputObjectType):
     name = String(required=False)
 
 
+class BranchUpdateInput(InputObjectType):
+    name = String(required=True)
+    description = String(required=True)
+
+
 class BranchDelete(Mutation):
     class Arguments:
         data = BranchNameInput(required=True)
@@ -132,6 +137,23 @@ class BranchDelete(Mutation):
 
         obj = await Branch.get_by_name(session=session, name=data["name"])
         await obj.delete(session=session)
+        return cls(ok=True)
+
+
+class BranchUpdate(Mutation):
+    class Arguments:
+        data = BranchUpdateInput(required=True)
+
+    ok = Boolean()
+
+    @classmethod
+    async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput):
+        session: AsyncSession = info.context.get("infrahub_session")
+
+        obj = await Branch.get_by_name(session=session, name=data["name"])
+        obj.description = data["description"]
+
+        await obj.save(session=session)
         return cls(ok=True)
 
 
