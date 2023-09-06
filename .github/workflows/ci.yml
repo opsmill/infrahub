@@ -336,6 +336,8 @@ jobs:
         run: "invoke demo.status"
       - name: Load Data
         run: "invoke demo.load-infra-data"
+      - name: Git Repository
+        run: "invoke demo.infra-git-import demo.infra-git-create"
       - name: Run End to End Tests
         working-directory: ./frontend
         run: npm run cypress:run:e2e
