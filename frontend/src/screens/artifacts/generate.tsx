@@ -13,10 +13,12 @@ import { fetchUrl } from "../../utils/fetch";
 
 type tGenerateProps = {
   label?: string;
+  artifactid?: string;
+  definitionid?: string;
 };
 
 export const Generate = (props: tGenerateProps) => {
-  const { label } = props;
+  const { label, artifactid, definitionid } = props;
 
   const { objectid } = useParams();
 
@@ -30,7 +32,7 @@ export const Generate = (props: tGenerateProps) => {
     try {
       setIsLoading(true);
 
-      const url = CONFIG.ARTIFACTS_GENERATE_URL(objectid);
+      const url = CONFIG.ARTIFACTS_GENERATE_URL(definitionid || objectid);
 
       const options: string[][] = [
         ["branch", branch ?? ""],
@@ -46,9 +48,14 @@ export const Generate = (props: tGenerateProps) => {
         headers: {
           authorization: `Bearer ${auth.accessToken}`,
         },
+        ...(artifactid ? { body: JSON.stringify({ nodes: [artifactid] }) } : {}),
       });
 
-      toast(<Alert message="Artifacts generated" type={ALERT_TYPES.SUCCESS} />);
+      if (artifactid) {
+        toast(<Alert message="Artifact re-generated" type={ALERT_TYPES.SUCCESS} />);
+      } else {
+        toast(<Alert message="Artifacts generated" type={ALERT_TYPES.SUCCESS} />);
+      }
 
       setIsLoading(false);
     } catch (error) {

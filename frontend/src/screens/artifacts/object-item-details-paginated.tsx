@@ -44,6 +44,7 @@ import RelationshipDetails from "../object-item-details/relationship-details-pag
 import RelationshipsDetails from "../object-item-details/relationships-details-paginated";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
+import { Generate } from "./generate";
 
 export default function ObjectItemDetails() {
   const { objectid } = useParams();
@@ -151,6 +152,12 @@ export default function ObjectItemDetails() {
         tabs={tabs}
         rightItems={
           <>
+            <Generate
+              label="Re-generate"
+              artifactid={objectid}
+              definitionid={objectDetailsData?.definition?.node?.id}
+            />
+
             <Button
               disabled={!auth?.permissions?.write}
               onClick={() => setShowEditDrawer(true)}
