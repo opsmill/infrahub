@@ -512,6 +512,7 @@ def _inject_file_to_operations(ops_tree: Any, _file: UploadFile, path: Sequence[
     else:
         _inject_file_to_operations(ops_tree[key], _file, path[1:])
 
+
 _GRAPHIQL_HTML = """
 <!--
  *  Copyright (c) 2021 GraphQL Contributors
