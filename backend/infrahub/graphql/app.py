@@ -581,7 +581,7 @@ _GRAPHIQL_HTML = """
     <script>
       const root = ReactDOM.createRoot(document.getElementById('graphiql'));
       const fetcher = GraphiQL.createFetcher({
-        url: 'http://localhost:8000/graphql',
+        url: window.location,
       });
       const explorerPlugin = GraphiQLPluginExplorer.explorerPlugin();
       root.render(
