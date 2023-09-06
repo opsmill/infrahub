@@ -592,7 +592,7 @@ class InfrahubNodeBase:
         original_data = self._data or {}
         for relationship in self._relationships:
             relationship_property = getattr(self, relationship)
-            if not relationship_property.initialized and relationship in data:
+            if relationship_property and not relationship_property.initialized and relationship in data:
                 data.pop(relationship)
         for attribute in original_data.keys():
             if attribute in data.keys():
