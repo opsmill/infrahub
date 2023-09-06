@@ -21,7 +21,7 @@ export const CodeEditor = (props: any) => {
         fontSize: 12,
         resize: "vertical",
       }}
-      className="rounded-md shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 border-gray-300 bg-custom-white sm:text-sm sm:leading-6 focus:ring-2 focus:ring-inset disabled:cursor-not-allowed disabled:bg-gray-100 focus:ring-2 focus:ring-inset focus:ring-custom-blue-600 focus:border-custom-blue-600 focus:outline-none"
+      className="rounded-md shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 border-gray-300 bg-custom-white sm:text-sm sm:leading-6 disabled:cursor-not-allowed disabled:bg-gray-100 focus:ring-2 focus:ring-inset focus:ring-custom-blue-600 focus:border-custom-blue-600 focus:outline-none"
     />
   );
 };
