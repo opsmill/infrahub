@@ -1,15 +1,16 @@
 from infrahub_sync.adapters.infrahub import InfrahubAdapter
 
 from .models import (
-    BuiltinLocation,
-    BuiltinRole,
-    BuiltinTag,
-    InfraRack,
-    OrgaManufacturer,
-    OrgaProvider,
-    TemplateDeviceType,
+   BuiltinTag,
+   BuiltinRole,
+   BuiltinLocation,
+   InfraCircuit,
+   TemplateCircuitType,
+   TemplateDeviceType,
+   OrgaManufacturer,
+   InfraRack,
+   OrgaProvider,
 )
-
 
 # -------------------------------------------------------
 # AUTO-GENERATED FILE, DO NOT MODIFY
@@ -20,6 +21,8 @@ class InfrahubSync(InfrahubAdapter):
     BuiltinTag = BuiltinTag
     BuiltinRole = BuiltinRole
     BuiltinLocation = BuiltinLocation
+    InfraCircuit = InfraCircuit
+    TemplateCircuitType = TemplateCircuitType
     TemplateDeviceType = TemplateDeviceType
     OrgaManufacturer = OrgaManufacturer
     InfraRack = InfraRack

@@ -17,7 +17,10 @@ order: [
   "OrgaProvider",
   "BuiltinLocation",
   "InfraRack",
-  "TemplateDeviceType"
+  "TemplateDeviceType",
+  # "InfraDevice",
+  "TemplateCircuitType",
+  "InfraCircuit"
 ]
 
 schema_mapping:
@@ -130,7 +133,6 @@ schema_mapping:
   # TODO -> if the device in netbox have no name, no serial and no asset, which identifiers could we use ?
   # - name: InfraDevice
   #   mapping: dcim.devices
-  #   identifiers: ["name", "serial_number", "asset_tag"]
   #   fields:
   #     - name: name
   #       mapping: name
@@ -151,3 +153,35 @@ schema_mapping:
   #       mapping: site.name
   #     - name: rack
   #       mapping: rack.name
+
+  - name: TemplateCircuitType
+    mapping: circuits.circuit-types
+    fields:
+      - name: name
+        mapping: name
+        identifier: true
+      - name: description
+        mapping: description
+      - name: tags
+        mapping: tags
+        reference: tag
+
+  - name: InfraCircuit
+    mapping: circuits.circuits
+    fields:
+      - name: circuit_id
+        mapping: cid
+        identifier: true
+      - name: provider
+        mapping: provider.name
+      - name: description
+        mapping: description
+      - name: status
+        mapping: status.value
+      - name: type
+        mapping: type.name
+      - name: tags
+        mapping: tags
+        reference: tag
+      - name: provider
+        mapping: provider.name

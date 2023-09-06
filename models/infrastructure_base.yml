@@ -281,7 +281,7 @@ nodes:
     relationships:
       - name: status
         peer: BuiltinStatus
-        optional: false
+        optional: true
         cardinality: one
         kind: Attribute
       - name: role
@@ -291,7 +291,7 @@ nodes:
         kind: Attribute
       - name: provider
         label: Provider
-        peer: CoreOrganization
+        peer: OrgaProvider
         optional: false
         cardinality: one
         kind: Attribute
@@ -304,6 +304,17 @@ nodes:
         label: Maintenances
         peer: InfraMaintenance
         identifier: "circuit__maintenance"
+        optional: true
+        cardinality: many
+        kind: Attribute
+      - name: type
+        label: type
+        peer: TemplateCircuitType
+        optional: false
+        cardinality: one
+        kind: Attribute
+      - name: tags
+        peer: BuiltinTag
         optional: true
         cardinality: many
         kind: Attribute
@@ -328,6 +339,22 @@ nodes:
         optional: false
         cardinality: one
         kind: Parent
+  - name: CircuitType
+    namespace: Template
+    description: "A typoe of Circuit"
+    label: "Circuit Type"
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    inherit_from:
+      - "TemplateChoice"
+    relationships:
+      - cardinality: many
+        identifier: circuit__type
+        name: Circuit
+        optional: true
+        peer: InfraCircuit
   - name: Device
     namespace: Infra
     description: "Generic Device object."
@@ -422,7 +449,7 @@ nodes:
         kind: Attribute
   - name: DeviceType
     namespace: Template
-    description: "A model of a device"
+    description: "A model of device"
     label: "Device Type"
     display_labels:
       - name__value

@@ -46,6 +46,35 @@ class BuiltinLocation(InfrahubModel):
     local_data: Optional[Any]
 
 
+class InfraCircuit(InfrahubModel):
+    _modelname = "InfraCircuit"
+    _identifiers = ("circuit_id",)
+    _attributes = ("status", "provider", "type", "tags", "description")
+
+    circuit_id: str
+    description: Optional[str]
+    status: Optional[str]
+    provider: str
+    type: str
+    tags: List[str] = []
+
+    local_id: Optional[str]
+    local_data: Optional[Any]
+
+
+class TemplateCircuitType(InfrahubModel):
+    _modelname = "TemplateCircuitType"
+    _identifiers = ("name",)
+    _attributes = ("tags", "description")
+
+    name: str
+    description: Optional[str]
+    tags: List[str] = []
+
+    local_id: Optional[str]
+    local_data: Optional[Any]
+
+
 class TemplateDeviceType(InfrahubModel):
     _modelname = "TemplateDeviceType"
     _identifiers = ("name",)
