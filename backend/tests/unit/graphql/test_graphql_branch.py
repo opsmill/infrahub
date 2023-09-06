@@ -367,6 +367,7 @@ async def test_branch_validate(db, session, base_dataset_02, register_core_model
     assert result.data["BranchValidate"]["ok"] is True
     assert result.data["BranchValidate"]["object"]["id"] == str(branch1.uuid)
 
+
 async def test_branch_update(db, session):
     branch1 = await Branch.get_by_name(session=session, name="branch1")
 
