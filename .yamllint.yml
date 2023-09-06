@@ -6,6 +6,7 @@ ignore: |
   /examples
   /repositories
   /frontend/node_modules
+  /node_modules
 
 rules:
   new-lines: disable
