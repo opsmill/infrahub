@@ -7,6 +7,7 @@ script.py
 .retype/*
 node_modules/*
 development/docker-compose.override.yml
+development/docker-compose.dev-override.yml
 .DS_Store
 .python-version
 
