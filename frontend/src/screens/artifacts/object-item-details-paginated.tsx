@@ -44,6 +44,7 @@ import RelationshipDetails from "../object-item-details/relationship-details-pag
 import RelationshipsDetails from "../object-item-details/relationships-details-paginated";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
+import { Generate } from "./generate";
 
 export default function ObjectItemDetails() {
   const { objectid } = useParams();
@@ -151,6 +152,12 @@ export default function ObjectItemDetails() {
         tabs={tabs}
         rightItems={
           <>
+            <Generate
+              label="Re-generate"
+              artifactid={objectid}
+              definitionid={objectDetailsData?.definition?.node?.id}
+            />
+
             <Button
               disabled={!auth?.permissions?.write}
               onClick={() => setShowEditDrawer(true)}
@@ -171,12 +178,12 @@ export default function ObjectItemDetails() {
       />
 
       {!qspTab && (
-        <div className="flex items-start">
+        <div className="flex flex-col-reverse xl:flex-row">
           <div className="flex-1">
             <File url={fileUrl} />
           </div>
 
-          <div className="bg-custom-white p-4 overflow-auto max-w-xl">
+          <div className="flex-1 bg-custom-white p-4">
             <dl className="sm:divide-y sm:divide-gray-200">
               <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-3 sm:px-6">
                 <dt className="text-sm font-medium text-gray-500 flex items-center">ID</dt>
