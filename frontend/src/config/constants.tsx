@@ -85,6 +85,8 @@ export const MENU_EXCLUDELIST = [
   "CoreArtifactValidator",
 ];
 
+export const ATTRIBUTES_NAME_EXCLUDELIST = ["checksum", "storage_id"];
+
 export const ATTRIBUTES_EXCLUDELIST = ["HashedPassword"];
 
 export const COLUMNS_EXCLUDELIST = ["TextArea", "JSON"];

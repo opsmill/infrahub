@@ -8,10 +8,11 @@ import { CodeEditor } from "./code-editor";
 
 type tFile = {
   url: string;
+  enableCopy?: boolean;
 };
 
 export const File = (props: tFile) => {
-  const { url } = props;
+  const { url, enableCopy } = props;
 
   const [isLoading, setIsLoading] = useState(false);
   const [fileContent, setFileContent] = useState("");
@@ -47,7 +48,7 @@ export const File = (props: tFile) => {
 
   return (
     <div className="p-4">
-      <CodeEditor value={fileContent} disabled />
+      <CodeEditor value={fileContent} disabled enableCopy={enableCopy} />
     </div>
   );
 };

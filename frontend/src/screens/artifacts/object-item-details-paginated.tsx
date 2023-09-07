@@ -2,7 +2,6 @@ import { gql, useReactiveVar } from "@apollo/client";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import {
   LockClosedIcon,
-  PencilIcon,
   PencilSquareIcon,
   RectangleGroupIcon,
   Square3Stack3DIcon,
@@ -160,14 +159,6 @@ export default function ObjectItemDetails() {
 
             <Button
               disabled={!auth?.permissions?.write}
-              onClick={() => setShowEditDrawer(true)}
-              className="mr-4">
-              Edit
-              <PencilIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
-            </Button>
-
-            <Button
-              disabled={!auth?.permissions?.write}
               onClick={() => setShowAddToGroupDrawer(true)}
               className="mr-4">
               Manage groups
@@ -180,7 +171,7 @@ export default function ObjectItemDetails() {
       {!qspTab && (
         <div className="flex flex-col-reverse xl:flex-row">
           <div className="flex-1">
-            <File url={fileUrl} />
+            <File url={fileUrl} enableCopy />
           </div>
 
           <div className="flex-1 bg-custom-white p-4">
@@ -188,9 +179,16 @@ export default function ObjectItemDetails() {
               <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-3 sm:px-6">
                 <dt className="text-sm font-medium text-gray-500 flex items-center">ID</dt>
                 <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-                  {objectDetailsData.id}
+                  <a
+                    href={CONFIG.ARTIFACT_DETAILS_URL(objectDetailsData.id)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="cursor-pointer underline">
+                    {objectDetailsData.id}
+                  </a>
                 </dd>
               </div>
+
               {attributes?.map((attribute) => {
                 if (
                   !objectDetailsData[attribute.name] ||
@@ -213,7 +211,21 @@ export default function ObjectItemDetails() {
                           "mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0"
                           // attribute.kind === "TextArea" ? "whitespace-pre-wrap mr-2" : ""
                         )}>
-                        {getObjectItemDisplayValue(objectDetailsData, attribute, schemaKindName)}
+                        {attribute.name === "storage_id" &&
+                          objectDetailsData[attribute.name]?.value && (
+                            <a
+                              href={CONFIG.STORAGE_DETAILS_URL(
+                                objectDetailsData[attribute.name].value
+                              )}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="cursor-pointer underline">
+                              {objectDetailsData[attribute.name].value}
+                            </a>
+                          )}
+
+                        {attribute.name !== "storage_id" &&
+                          getObjectItemDisplayValue(objectDetailsData, attribute, schemaKindName)}
                       </dd>
 
                       {objectDetailsData[attribute.name] && (
