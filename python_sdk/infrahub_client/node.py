@@ -574,9 +574,10 @@ class InfrahubNodeBase:
     def _strip_unmodified_dict(data: dict, original_data: dict, variables: dict, attribute: str) -> None:
         for attribute_key in original_data[attribute].keys():
             if isinstance(data[attribute], dict):
-                if attribute_key == "source" and isinstance(original_data[attribute]["source"], dict):
-                    if original_data[attribute]["source"].get("id"):
-                        original_data[attribute]["source"] = original_data[attribute]["source"]["id"]
+                for property_name in PROPERTIES_OBJECT:
+                    if attribute_key == property_name and isinstance(original_data[attribute][property_name], dict):
+                        if original_data[attribute][property_name].get("id"):
+                            original_data[attribute][property_name] = original_data[attribute][property_name]["id"]
                 if attribute_key in data[attribute].keys():
                     if attribute_key == "id" and len(data[attribute].keys()) > 1:
                         # Related nodes typically require an ID. So the ID is only
