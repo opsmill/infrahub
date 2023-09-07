@@ -394,9 +394,9 @@ async def test_branch_update(db, session):
     assert result.errors is None
     assert result.data["BranchUpdate"]["ok"] is True
 
-    branch1 = await Branch.get_by_name(session=session, name="branch1")
+    branch1_updated = await Branch.get_by_name(session=session, name="branch1")
 
-    assert branch1.description == "testing"
+    assert branch1_updated.description == "testing"
 
 
 async def test_branch_merge(db, session, base_dataset_02, register_core_models_schema):
