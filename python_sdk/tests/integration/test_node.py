@@ -189,6 +189,41 @@ class TestInfrahubNode:
         tags = await nodedb.tags.get(session=session)
         assert sorted([tag.peer_id for tag in tags]) == sorted([tag_green.id, tag_blue.id])
 
+    async def test_node_update_3_idempotency(
+        self,
+        session,
+        client: InfrahubClient,
+        init_db_base,
+        tag_green: Node,
+        tag_red: Node,
+        tag_blue: Node,
+        gqlquery03: Node,
+        repo99: Node,
+    ):
+        node = await client.get(kind="CoreGraphQLQuery", name__value="query03")
+        assert node.id is not None
+
+        updated_query = f"\n\n{node.query.value}"  # type: ignore[attr-defined]
+        node.name.value = "query031"  # type: ignore[attr-defined]
+        node.query.value = updated_query  # type: ignore[attr-defined]
+        first_update = node._generate_input_data(update=True)
+        await node.save()
+        nodedb = await NodeManager.get_one(id=node.id, session=session, include_owner=True, include_source=True)
+
+        node = await client.get(kind="CoreGraphQLQuery", name__value="query031")
+
+        node.name.value = "query031"  # type: ignore[attr-defined]
+        node.query.value = updated_query  # type: ignore[attr-defined]
+
+        second_update = node._generate_input_data(update=True)
+
+        assert nodedb.query.value == updated_query  # type: ignore[attr-defined]
+        assert "query" in first_update["data"]["data"]
+        assert "value" in first_update["data"]["data"]["query"]
+        assert first_update["variables"]
+        assert "query" not in second_update["data"]["data"]
+        assert not second_update["variables"]
+
     async def test_convert_node(
         self,
         session,
