@@ -95,7 +95,7 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
               )}>
               {propertiesChanges?.length > 0 && (
                 <Accordion title={renderTitleDisplay(change)}>
-                  <div className="rounded-md overflow-hidden">{propertiesChanges}</div>
+                  <div className="rounded-md">{propertiesChanges}</div>
                 </Accordion>
               )}
 
@@ -116,7 +116,7 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
   if (peersChanges?.length) {
     return (
       <div className={"p-1 pr-0 flex flex-col rounded-md mb-1 last:mb-0"}>
-        <div className="rounded-md overflow-hidden">{peersChanges}</div>
+        <div className="rounded-md">{peersChanges}</div>
       </div>
     );
   }
