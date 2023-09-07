@@ -571,32 +571,30 @@ class InfrahubNodeBase:
         return {"data": {"data": data}, "variables": variables, "mutation_variables": mutation_variables}
 
     @staticmethod
-    def _strip_unmodified_dict(data: dict, original_data: dict, variables: dict, attribute: str) -> None:
-        for attribute_key in original_data[attribute].keys():
-            if isinstance(data[attribute], dict):
+    def _strip_unmodified_dict(data: dict, original_data: dict, variables: dict, item: str) -> None:
+        for item_key in original_data[item].keys():
+            if isinstance(data[item], dict):
                 for property_name in PROPERTIES_OBJECT:
-                    if attribute_key == property_name and isinstance(original_data[attribute][property_name], dict):
-                        if original_data[attribute][property_name].get("id"):
-                            original_data[attribute][property_name] = original_data[attribute][property_name]["id"]
-                if attribute_key in data[attribute].keys():
-                    if attribute_key == "id" and len(data[attribute].keys()) > 1:
+                    if item_key == property_name and isinstance(original_data[item][property_name], dict):
+                        if original_data[item][property_name].get("id"):
+                            original_data[item][property_name] = original_data[item][property_name]["id"]
+                if item_key in data[item].keys():
+                    if item_key == "id" and len(data[item].keys()) > 1:
                         # Related nodes typically require an ID. So the ID is only
                         # removed if it's the last key in the current context
                         continue
                     variable_key = None
-                    if isinstance(data[attribute][attribute_key], str):
-                        variable_key = data[attribute][attribute_key][1:]
+                    if isinstance(data[item][item_key], str):
+                        variable_key = data[item][item_key][1:]
 
-                    if original_data[attribute][attribute_key] == data[attribute][attribute_key]:
-                        data[attribute].pop(attribute_key)
-                    elif (
-                        variable_key in variables and original_data[attribute][attribute_key] == variables[variable_key]
-                    ):
-                        data[attribute].pop(attribute_key)
+                    if original_data[item][item_key] == data[item][item_key]:
+                        data[item].pop(item_key)
+                    elif variable_key in variables and original_data[item][item_key] == variables[variable_key]:
+                        data[item].pop(item_key)
                         variables.pop(variable_key)
 
-        if not data[attribute]:
-            data.pop(attribute)
+        if not data[item]:
+            data.pop(item)
 
     def _strip_unmodified(self, data: dict, variables: dict) -> Tuple[dict, dict]:
         original_data = self._data or {}
@@ -604,30 +602,28 @@ class InfrahubNodeBase:
             relationship_property = getattr(self, relationship)
             if relationship_property and not relationship_property.initialized and relationship in data:
                 data.pop(relationship)
-        for attribute in original_data.keys():
-            if attribute in data.keys():
-                if data[attribute] == original_data[attribute]:
-                    data.pop(attribute)
+        for item in original_data.keys():
+            if item in data.keys():
+                if data[item] == original_data[item]:
+                    data.pop(item)
                     continue
-                if isinstance(original_data[attribute], dict):
-                    self._strip_unmodified_dict(
-                        data=data, original_data=original_data, variables=variables, attribute=attribute
-                    )
-                    if attribute in self._relationships and original_data[attribute].get("node"):
+                if isinstance(original_data[item], dict):
+                    self._strip_unmodified_dict(data=data, original_data=original_data, variables=variables, item=item)
+                    if item in self._relationships and original_data[item].get("node"):
                         relationship_data_cardinality_one = copy(original_data)
-                        relationship_data_cardinality_one[attribute] = original_data[attribute]["node"]
+                        relationship_data_cardinality_one[item] = original_data[item]["node"]
                         self._strip_unmodified_dict(
                             data=data,
                             original_data=relationship_data_cardinality_one,
                             variables=variables,
-                            attribute=attribute,
+                            item=item,
                         )
                         # Run again to remove the "id" key if it's the last one remaining
                         self._strip_unmodified_dict(
                             data=data,
                             original_data=relationship_data_cardinality_one,
                             variables=variables,
-                            attribute=attribute,
+                            item=item,
                         )
 
         return data, variables
