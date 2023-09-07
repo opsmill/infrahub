@@ -31,7 +31,7 @@ async def _create_data_check(session: AsyncSession, proposed_change: Node) -> No
 
     await validator_obj.new(
         session=session,
-        name="Data Integrity",
+        label="Data Integrity",
         proposed_change=proposed_change.id,
         state=initial_state.value,
         conclusion=initial_conclusion.value,
@@ -44,6 +44,7 @@ async def _create_data_check(session: AsyncSession, proposed_change: Node) -> No
         conflict_obj = await Node.init(session=session, schema="CoreDataCheck")
         await conflict_obj.new(
             session=session,
+            label="Data Conflict",
             origin="internal",
             kind="DataIntegrity",
             validator=validator_obj.id,
@@ -104,6 +105,7 @@ async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, s
             conflict_obj = await Node.init(session=session, schema="CoreDataCheck")
             await conflict_obj.new(
                 session=session,
+                label="Data Conflict",
                 origin="internal",
                 kind="DataIntegrity",
                 validator=data_check.id,

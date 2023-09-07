@@ -1127,10 +1127,6 @@ core_models = {
             "attributes": [
                 {"name": "label", "kind": "Text", "optional": True},
                 {
-                    "name": "name",
-                    "kind": "Text",
-                },
-                {
                     "name": "state",
                     "kind": "Text",
                     "enum": ValidatorState.available_types(),

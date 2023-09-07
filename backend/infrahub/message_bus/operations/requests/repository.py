@@ -32,7 +32,11 @@ async def check(message: messages.RequestRepositoryChecks, service: InfrahubServ
     else:
         validator = await service.client.create(
             kind="CoreRepositoryValidator",
-            data={"name": validator_name, "proposed_change": message.proposed_change, "repository": message.repository},
+            data={
+                "label": validator_name,
+                "proposed_change": message.proposed_change,
+                "repository": message.repository,
+            },
         )
         await validator.save()
 
