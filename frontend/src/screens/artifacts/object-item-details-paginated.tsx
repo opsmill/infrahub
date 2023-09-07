@@ -2,7 +2,6 @@ import { gql, useReactiveVar } from "@apollo/client";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import {
   LockClosedIcon,
-  PencilIcon,
   PencilSquareIcon,
   RectangleGroupIcon,
   Square3Stack3DIcon,
@@ -157,14 +156,6 @@ export default function ObjectItemDetails() {
               artifactid={objectid}
               definitionid={objectDetailsData?.definition?.node?.id}
             />
-
-            <Button
-              disabled={!auth?.permissions?.write}
-              onClick={() => setShowEditDrawer(true)}
-              className="mr-4">
-              Edit
-              <PencilIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
-            </Button>
 
             <Button
               disabled={!auth?.permissions?.write}
