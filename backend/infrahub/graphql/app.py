@@ -589,6 +589,16 @@ _GRAPHIQL_HTML = """
           fetcher,
           defaultEditorToolsVisibility: true,
           plugins: [explorerPlugin],
+          query: `query GetTags {
+BuiltinTag {
+    edges {
+    node {
+        id
+        display_label
+      }
+    }
+  }
+}`
         }),
       );
     </script>
