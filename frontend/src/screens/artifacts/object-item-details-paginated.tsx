@@ -171,7 +171,7 @@ export default function ObjectItemDetails() {
       {!qspTab && (
         <div className="flex flex-col-reverse xl:flex-row">
           <div className="flex-1">
-            <File url={fileUrl} />
+            <File url={fileUrl} enableCopy />
           </div>
 
           <div className="flex-1 bg-custom-white p-4">
