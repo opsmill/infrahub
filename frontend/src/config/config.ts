@@ -31,6 +31,7 @@ export const CONFIG = {
   ARTIFACTS_GENERATE_URL: (id?: string) => `${INFRAHUB_API_SERVER_URL}/api/artifact/generate/${id}`,
   ARTIFACTS_CONTENT_URL: (storageId: string) =>
     `${INFRAHUB_API_SERVER_URL}/api/storage/object/${storageId}`,
+  ARTIFACT_DETAILS_URL: (id: string) => `${INFRAHUB_API_SERVER_URL}/api/artifact/${id}`,
   FILES_CONTENT_URL: (repositoryId: string, location: string) =>
     `${INFRAHUB_API_SERVER_URL}/api/file/${repositoryId}/${encodeURIComponent(location)}`,
   STORAGE_DETAILS_URL: (id: string) => `${INFRAHUB_API_SERVER_URL}/api/storage/object/${id}`,
