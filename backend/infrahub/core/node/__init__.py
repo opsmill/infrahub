@@ -460,7 +460,10 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             attr = getattr(self, item_elements[0])
             display_elements.append(str(getattr(attr, item_elements[1])))
 
-        return " ".join(display_elements)
+        display_label = " ".join(display_elements)
+        if display_label.strip() == "":
+            return repr(self)
+        return display_label.strip()
 
     def _query_bulk_get(self):
         short_id = "a" + str(self.id)[:8]
