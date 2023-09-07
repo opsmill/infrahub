@@ -1,6 +1,5 @@
 # Knowledge Base
 
-- [Architecture](architecture.md)
-- [Demo Environment](local_demo_environment.md)
-- [Branch](branch.md)
-- [Repository](repository.md)
+- [Architecture](./10_architecture.md)
+- [Demo Environment](./80_local_demo_environment.md)
+
