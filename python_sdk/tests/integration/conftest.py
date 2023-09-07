@@ -200,3 +200,17 @@ async def gqlquery02(session: AsyncSession, repo01: Node, tag_blue: Node, tag_re
     )
     await obj.save(session=session)
     return obj
+
+
+@pytest.fixture
+async def gqlquery03(session: AsyncSession, repo01: Node, tag_blue: Node, tag_red: Node) -> Node:
+    obj = await Node.init(session=session, schema="CoreGraphQLQuery")
+    await obj.new(
+        session=session,
+        name="query03",
+        query="query { CoreRepository { edges { node { name { value }}}}}",
+        repository=repo01,
+        tags=[tag_blue, tag_red],
+    )
+    await obj.save(session=session)
+    return obj
