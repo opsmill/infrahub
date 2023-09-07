@@ -2,6 +2,7 @@
 version: "3.4"
 services:
   database:
+#   image: "memgraph/memgraph-platform:2.10.1-memgraph2.10.1-lab2.8.1"
     ports:
       - "7687:7687"
       - "7474:3000"
