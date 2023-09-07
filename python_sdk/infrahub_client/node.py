@@ -575,6 +575,10 @@ class InfrahubNodeBase:
         for attribute_key in original_data[attribute].keys():
             if isinstance(data[attribute], dict):
                 if attribute_key in data[attribute].keys():
+                    if attribute_key == "id" and len(data[attribute].keys()) > 1:
+                        # Related nodes typically require an ID. So the ID is only
+                        # removed if it's the last key in the current context
+                        continue
                     variable_key = None
                     if isinstance(data[attribute][attribute_key], str):
                         variable_key = data[attribute][attribute_key][1:]
@@ -606,6 +610,13 @@ class InfrahubNodeBase:
                     if attribute in self._relationships and original_data[attribute].get("node"):
                         relationship_data_cardinality_one = copy(original_data)
                         relationship_data_cardinality_one[attribute] = original_data[attribute]["node"]
+                        self._strip_unmodified_dict(
+                            data=data,
+                            original_data=relationship_data_cardinality_one,
+                            variables=variables,
+                            attribute=attribute,
+                        )
+                        # Run again to remove the "id" key if it's the last one remaining
                         self._strip_unmodified_dict(
                             data=data,
                             original_data=relationship_data_cardinality_one,

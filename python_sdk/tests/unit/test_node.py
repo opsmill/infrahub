@@ -496,6 +496,7 @@ async def test_create_input_data_with_relationships_03_for_update(clients, rfile
     assert node._generate_input_data(update=True)["data"] == {
         "data": {
             "query": {
+                "id": "qqqqqqqq",
                 "_relation__is_protected": True,
                 "_relation__owner": "ffffffff",
                 "_relation__source": "ffffffff",
@@ -503,6 +504,7 @@ async def test_create_input_data_with_relationships_03_for_update(clients, rfile
             "tags": [{"id": "t1t1t1t1"}, {"id": "t2t2t2t2"}],
             "template_path": {"value": "my-changed-template.j2"},
             "repository": {
+                "id": "rrrrrrrr",
                 "_relation__owner": "ffffffff",
                 "_relation__source": "ffffffff",
             },
