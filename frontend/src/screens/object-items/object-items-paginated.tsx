@@ -162,9 +162,6 @@ export default function ObjectItems(props: any) {
             <h1 className="text-xl font-semibold text-gray-900">
               {schemaData.name} ({count})
             </h1>
-            <p className="mt-2 text-sm text-gray-700 m-0 pl-2 mb-1">
-              A list of all the {schemaData.kind} in your infrastructure.
-            </p>
           </div>
         )}
 
