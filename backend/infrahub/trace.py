@@ -1,0 +1,95 @@
+from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
+    OTLPSpanExporter as GRPCSpanExporter,
+)
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
+    OTLPSpanExporter as HTTPSpanExporter,
+)
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
+from opentelemetry.trace import StatusCode
+
+
+def get_tracer(name: str = "infrahub") -> trace.Tracer:
+    return trace.get_tracer(name)
+
+
+def get_current_span_with_context() -> trace.Span:
+    return trace.get_current_span()
+
+
+def get_traceid() -> str:
+    current_span = get_current_span_with_context()
+    trace_id = current_span.get_span_context().trace_id
+    if trace_id == 0:
+        return None
+    return hex(trace_id)
+
+
+def set_span_status(status_code: StatusCode) -> None:
+    current_span = get_current_span_with_context()
+    if current_span.is_recording():
+        status = StatusCode(status_code)
+        current_span.set_status(status)
+        # current_span.set_attribute("status_code", status)
+
+
+def set_span_data(key: str, value: str) -> None:
+    current_span = get_current_span_with_context()
+    if current_span.is_recording():
+        current_span.set_attribute(key, value)
+
+
+def add_span_event(event_name: str, event_attributes: dict) -> None:
+    current_span = get_current_span_with_context()
+    if current_span.is_recording():
+        current_span.add_event(event_name, event_attributes)
+
+
+def add_span_exception(exception: Exception) -> None:
+    set_span_status(StatusCode.ERROR)
+    current_span = get_current_span_with_context()
+    if current_span.is_recording():
+        current_span.record_exception(exception)
+
+
+def create_tracer_provider(
+    version: str, exporter_type: str, exporter_endpoint: str = None, exporter_protocol: str = None
+) -> TracerProvider:
+    # Create a BatchSpanProcessor exporter based on the type
+    if exporter_type == "console":
+        exporter = ConsoleSpanExporter()
+    elif exporter_type == "otlp":
+        if not exporter_endpoint:
+            raise ValueError("Exporter type is set to otlp but endpoint is not set")
+        if exporter_protocol == "http/protobuf":
+            exporter = HTTPSpanExporter(endpoint=exporter_endpoint)
+        elif exporter_protocol == "grpc":
+            exporter = GRPCSpanExporter(endpoint=exporter_endpoint)
+    else:
+        raise ValueError("Exporter type unsupported by Infrahub")
+
+    # Resource can be required for some backends, e.g. Jaeger
+    resource = Resource(attributes={"service.name": "infrahub", "service.version": version})
+    span_processor = BatchSpanProcessor(exporter)
+    tracer_provider = TracerProvider(resource=resource)
+    tracer_provider.add_span_processor(span_processor)
+
+    return tracer_provider
+
+
+def configure_trace(
+    version: str, exporter_type: str, exporter_endpoint: str = None, exporter_protocol: str = None
+) -> None:
+    # Create a trace provider with the exporter
+    tracer_provider = create_tracer_provider(
+        version=version,
+        exporter_type=exporter_type,
+        exporter_endpoint=exporter_endpoint,
+        exporter_protocol=exporter_protocol,
+    )
+    tracer_provider.get_tracer(__name__)
+
+    # Register the trace provider
+    trace.set_tracer_provider(tracer_provider)
