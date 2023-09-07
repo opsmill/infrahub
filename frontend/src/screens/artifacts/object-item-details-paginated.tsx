@@ -204,7 +204,21 @@ export default function ObjectItemDetails() {
                           "mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0"
                           // attribute.kind === "TextArea" ? "whitespace-pre-wrap mr-2" : ""
                         )}>
-                        {getObjectItemDisplayValue(objectDetailsData, attribute, schemaKindName)}
+                        {attribute.name === "storage_id" &&
+                          objectDetailsData[attribute.name]?.value && (
+                            <a
+                              href={CONFIG.STORAGE_DETAILS_URL(
+                                objectDetailsData[attribute.name].value
+                              )}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="cursor-pointer underline">
+                              {objectDetailsData[attribute.name].value}
+                            </a>
+                          )}
+
+                        {attribute.name !== "storage_id" &&
+                          getObjectItemDisplayValue(objectDetailsData, attribute, schemaKindName)}
                       </dd>
 
                       {objectDetailsData[attribute.name] && (
