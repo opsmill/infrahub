@@ -33,7 +33,7 @@ It's designed to be controlled by `invoke` using a list of predefined commands
 | **infrahub-git**    | Dockerfile               | Instance of the Git Agent, managing the Git Repository |
 | **frontend**        | Dockerfile               | Instance of the Frontend                               |
 
-[!ref Check the architecture diagram to have more information about each component](architecture.md)
+[!ref Check the architecture diagram to have more information about each component](./10_architecture.md)
 
 ## Getting Started
 
