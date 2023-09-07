@@ -368,14 +368,14 @@ async def test_branch_validate(db, session, base_dataset_02, register_core_model
     assert result.data["BranchValidate"]["object"]["id"] == str(branch1.uuid)
 
 
-async def test_branch_update(db, session):
-    branch1 = await Branch.get_by_name(session=session, name="branch1")
+async def test_branch_update(db, session, base_dataset_02):
+    branch4 = await create_branch("branch4", session)
 
     query = """
     mutation {
     BranchUpdate(
         data: {
-        name: "branch1",
+        name: "branch4",
         description: "testing"
         }
     ) {
@@ -383,8 +383,9 @@ async def test_branch_update(db, session):
     }
     }
     """
+
     result = await graphql(
-        await generate_graphql_schema(branch=branch1, session=session, include_subscription=False),
+        await generate_graphql_schema(branch=branch4, session=session, include_subscription=False),
         source=query,
         context_value={"infrahub_session": session, "infrahub_database": db},
         root_value=None,
@@ -394,9 +395,9 @@ async def test_branch_update(db, session):
     assert result.errors is None
     assert result.data["BranchUpdate"]["ok"] is True
 
-    branch1_updated = await Branch.get_by_name(session=session, name="branch1")
+    branch4_updated = await Branch.get_by_name(session=session, name="branch4")
 
-    assert branch1_updated.description == "testing"
+    assert branch4_updated.description == "testing"
 
 
 async def test_branch_merge(db, session, base_dataset_02, register_core_models_schema):
