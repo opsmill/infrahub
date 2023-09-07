@@ -38,6 +38,7 @@ class DiffSyncMixin:
     def load(self):
         """Load all the models, one by one based on the order defined in top_level."""
         for item in self.top_level:
+            print(f"load model [{item}]")
             if hasattr(self, f"load_{item}"):
                 method = getattr(self, f"load_{item}")
                 method()

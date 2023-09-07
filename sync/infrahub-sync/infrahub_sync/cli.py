@@ -20,6 +20,11 @@ app = typer.Typer()
 logging.basicConfig(level=logging.WARNING)
 
 
+def print_error_and_abort(message: str):
+    error_message = typer.style(f"Error: {message}", fg=typer.colors.RED, bold=True)
+    typer.echo(error_message)
+    raise typer.Abort()
+
 def import_adapter(adapter: SyncAdapter, directory: str):
     here = os.path.abspath(os.path.dirname(__file__))
     relative_directory = directory.replace(here, "")[1:]
@@ -58,12 +63,12 @@ def list():
 @app.command()
 def diff(
     name: str = typer.Argument(..., help="Name of the sync to use"),
-    branch: str = typer.Option("main", help="Branch to use for the sync."),
+    branch: str = typer.Option(default="main", help="Branch to use for the sync."),
 ):
     """Calculate and print the differences between the source and the destination systems for a given project."""
     sync_instance = get_instance(name=name)
     if not sync_instance:
-        raise typer.Abort(f"Unable to find the sync {name}")
+        print_error_and_abort(f"Unable to find the sync {name}. Use the list command to see the sync available")
 
     source = import_adapter(adapter=sync_instance.source, directory=sync_instance.directory)
     destination = import_adapter(adapter=sync_instance.destination, directory=sync_instance.directory)
@@ -74,7 +79,7 @@ def diff(
     ptd = Potenda(destination=dst, source=src, config=sync_instance, top_level=sync_instance.order)
     ptd.load()
 
-    mydiff = ptd.diff()
+    mydiff = ptd.diff(branch=branch)
 
     print(mydiff.str())
 
@@ -82,12 +87,13 @@ def diff(
 @app.command()
 def sync(
     name: str = typer.Argument(..., help="Name of the sync to use"),
-    branch: str = typer.Option("main", help="Branch to use for the sync."),
+    branch: str = typer.Option(default="main", help="Branch to use for the sync."),
+    diff: bool = typer.Option(default="true", help="Print the differences between the source and the destinatio before syncing"),
 ):
     """Synchronize the data between source and the destination systems for a given project."""
     sync_instance = get_instance(name=name)
     if not sync_instance:
-        raise typer.Abort(f"Unable to find the sync {name}")
+        print_error_and_abort(f"Unable to find the sync {name}. Use the list command to see the sync available")
 
     source = import_adapter(adapter=sync_instance.source, directory=sync_instance.directory)
     destination = import_adapter(adapter=sync_instance.destination, directory=sync_instance.directory)
@@ -100,9 +106,11 @@ def sync(
 
     mydiff = ptd.diff()
 
-    print(mydiff.str())
-
-    ptd.sync(diff=mydiff)
+    if mydiff.has_diffs():
+        print(mydiff.str())
+        ptd.sync(diff=mydiff)
+    else:
+        typer.echo("No diffence found. Nothing to sync")
 
 
 @app.command()
@@ -115,7 +123,7 @@ def generate(
 
     sync_instance = get_instance(name=name)
     if not sync_instance:
-        raise typer.Abort(f"Unable to find the sync {name}")
+        print_error_and_abort(f"Unable to find the sync {name}. Use the list command to see the sync available")
 
     files_to_render = (
         ("diffsync_models.j2", "models.py"),

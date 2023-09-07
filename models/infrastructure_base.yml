@@ -127,7 +127,38 @@ generics:
         optional: true
         cardinality: many
         kind: Attribute
-
+  - name: Contract
+    namespace: Procurement
+    description: "Generic Contract"
+    label: "Contract"
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: description
+        kind: Text
+        optional: true
+      - name: start_time
+        label: Start of Contract
+        kind: DateTime
+      - name: end_time
+        label: End of Contract
+        kind: DateTime
+    relationships:
+      - name: organization
+        peer: CoreOrganization
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: tags
+        peer: BuiltinTag
+        optional: true
+        cardinality: many
+        kind: Attribute
 nodes:
   - name: AutonomousSystem
     namespace: Infra
@@ -293,6 +324,12 @@ nodes:
         label: Provider
         peer: OrgaProvider
         optional: false
+        cardinality: one
+        kind: Attribute
+      - name: contract
+        label: Contract
+        peer: ProcurementProviderContract
+        optional: true
         cardinality: one
         kind: Attribute
       - name: endpoints
@@ -471,7 +508,7 @@ nodes:
       - cardinality: one
         name: manufacturer
         optional: false
-        peer: OrgaManufacturer
+        peer: OrgaProvider
         kind: Parent
   - name: InterfaceL3
     namespace: Infra
@@ -580,40 +617,6 @@ nodes:
         optional: true
         cardinality: many
         kind: Attribute
-  - name: Manufacturer
-    namespace: Orga
-    description: "A device manufactuer"
-    label: "Manufacturer"
-    default_filter: name__value
-    display_labels:
-      - name__value
-    attributes:
-      - name: name
-        kind: Text
-        unique: true
-      - name: description
-        kind: Text
-        optional: true
-      - name: contract
-        label: Contract
-        kind: Text
-        optional: true
-    relationships:
-      - name: role
-        peer: BuiltinRole
-        optional: true
-        cardinality: one
-        kind: Attribute
-      - name: tags
-        peer: BuiltinTag
-        optional: true
-        cardinality: many
-        kind: Attribute
-      - name: DeviceType
-        label: "Device Models"
-        peer: TemplateDeviceType
-        optional: true
-        cardinality: many
   - name: Platform
     namespace: Infra
     description: "A Platform represent the type of software running on a device."
@@ -646,7 +649,79 @@ nodes:
       - name: devices
         peer: InfraDevice
         optional: true
+        cardinality: many  
+  - name: ProviderContract
+    namespace: Procurement
+    description: "Provider Contract"
+    label: "Provider Contract"
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    inherit_from:
+      - "ProcurementContract"
+    relationships:
+      - name: provider
+        peer: OrgaProvider
+        optional: false
+        cardinality: one
+        kind: Parent
+      - name: circuit
+        peer: InfraCircuit
+        identifier: "contract__circuit"
+        optional: true
         cardinality: many
+        kind: Component
+      - name: networks
+        peer: InfraProviderNetwork
+        identifier: "contract__networks"
+        optional: true
+        cardinality: many
+        kind: Component
+  - name: ProviderNetwork
+    namespace: Infra
+    description: "A Provider Netowrk represent the boundary of a provider network, the details of which are unknown or unimportant."
+    label: "Provider Network"
+    default_filter: name__value
+    order_by:
+      - name__value
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: description
+        kind: Text
+        optional: true
+      - name: vendor_id
+        kind: Text
+        optional: true
+    inherit_from:
+      - "InfraEndpoint"
+    relationships:
+      - name: status
+        peer: BuiltinStatus
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: provider
+        label: Provider
+        peer: OrgaProvider
+        optional: false
+        cardinality: one
+        kind: Attribute
+      - name: contract
+        label: Contract
+        peer: ProcurementProviderContract
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: tags
+        peer: BuiltinTag
+        optional: true
+        cardinality: many
+        kind: Attribute
   - name: PowerOutlet
     namespace: Infra
     description: "Power Outlet"
@@ -954,7 +1029,7 @@ nodes:
         peer: InfraPowerPort
   - name: Provider
     namespace: Orga
-    description: "Service provider"
+    description: "Service provider or Manufacturer"
     label: "Provider"
     default_filter: name__value
     display_labels:
@@ -966,13 +1041,14 @@ nodes:
       - name: description
         kind: Text
         optional: true
-      - name: contract
-        label: Contract
-        kind: Text
-        optional: true
     relationships:
       - name: role
         peer: BuiltinRole
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: contract
+        peer: ProcurementContract
         optional: true
         cardinality: one
         kind: Attribute
@@ -994,13 +1070,6 @@ extensions:
       relationships:
         - name: Provider
           peer: OrgaProvider
-          optional: true
-          cardinality: many
-          kind: Generic
-    - kind: CoreOrganization
-      relationships:
-        - name: Manufacturer
-          peer: OrgaManufacturer
           optional: true
           cardinality: many
           kind: Generic
