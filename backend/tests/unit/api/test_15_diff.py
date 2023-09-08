@@ -250,7 +250,7 @@ async def test_diff_data_attribute_all_branches(session, client, client_headers,
         },
         "summary": {"added": 0, "removed": 0, "updated": 1},
         "action": {"main": "updated"},
-        "display_label": {"main": f"TestElectricCar(ID: {c2})"},
+        "display_label": {"main": "bolt #444444"},
     }
 
     paths_to_exclude = [
@@ -465,7 +465,7 @@ async def test_diff_data_relationship_one(session, client, client_headers, data_
         },
         "summary": {"added": 0, "removed": 0, "updated": 1},
         "action": {"branch2": "updated"},
-        "display_label": {"branch2": f"TestElectricCar(ID: {c1})"},
+        "display_label": {"branch2": "volt #444444"},
     }
 
     expected_c2 = {
@@ -526,7 +526,7 @@ async def test_diff_data_relationship_one(session, client, client_headers, data_
         },
         "summary": {"added": 1, "removed": 0, "updated": 0},
         "action": {"branch2": "updated"},
-        "display_label": {"branch2": f"TestElectricCar(ID: {c2})"},
+        "display_label": {"branch2": "bolt #444444"},
     }
 
     paths_to_exclude = [
@@ -634,7 +634,7 @@ async def test_diff_data_relationship_one_conflict(session, client, client_heade
         },
         "summary": {"added": 0, "removed": 0, "updated": 1},
         "action": {"branch2": "updated", "main": "updated"},
-        "display_label": {"branch2": f"TestElectricCar(ID: {c1})", "main": f"TestElectricCar(ID: {c1})"},
+        "display_label": {"branch2": "volt #444444", "main": "volt #444444"},
     }
 
     extracted_c1_response = [diff for diff in data["diffs"] if diff["id"] == c1]
@@ -745,8 +745,8 @@ async def test_diff_data_relationship_one_conflict(session, client, client_heade
             "main": "updated",
         },
         "display_label": {
-            "branch2": f"TestElectricCar(ID: {c2})",
-            "main": f"TestElectricCar(ID: {c2})",
+            "branch2": "bolt #444444",
+            "main": "bolt #444444",
         },
     }
     extracted_c2_response = [diff for diff in data["diffs"] if diff["id"] == c2]
