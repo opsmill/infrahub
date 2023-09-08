@@ -170,11 +170,11 @@ export default function ObjectItemDetails() {
 
       {!qspTab && (
         <div className="flex flex-col-reverse xl:flex-row">
-          <div className="flex-1">
+          <div className="flex-2">
             <File url={fileUrl} enableCopy />
           </div>
 
-          <div className="flex-1 bg-custom-white p-4">
+          <div className="flex-1 bg-custom-white p-4 min-w-[500px]">
             <dl className="sm:divide-y sm:divide-gray-200">
               <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-3 sm:px-6">
                 <dt className="text-sm font-medium text-gray-500 flex items-center">ID</dt>
