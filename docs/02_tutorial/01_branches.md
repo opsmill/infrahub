@@ -51,22 +51,22 @@ mutation {
 > You'll need to provide a header to execute this operation > `{"X-INFRAHUB-KEY":"06438eb2-8019-4776-878c-0941b1f1d1ec"}`
 ==-
 
-### Modify the Admin Account via the UI
+### Modify an Organization via the UI
 
 > The name of the active branch in the top right corner should now be `cr1234`
 
-1. Select Account under Object in the left menu (near the top)
-2. Select the `admin` account
+1. Select Organization under Object in the left menu (near the top)
+2. Select the `my-first-org` organization (created in the [previous step](./creating-an-object.md))
 3. Select the `edit` button on the top right corner
-4. Update the label attribute of the Admin account, for example with `Administrator`
+4. Update the description attribute of the organization, for example with `Changes from branch cr1234`
 5. Save your change with the button `save`
 
-![Access the accounts](../media/tutorial/tutorial-1-branch-and-version-control.cy.ts/tutorial_1_accounts.png)
-![Select the admin account](../media/tutorial/tutorial-1-branch-and-version-control.cy.ts/tutorial_1_account_details.png)
-![Select the `edit` button](../media/tutorial/tutorial-1-branch-and-version-control.cy.ts/tutorial_1_account_edit.png)
+![Access the organizations](../media/tutorial/tutorial-1-branch-and-version-control.cy.ts/tutorial_1_organizations.png)
+![Select the my-first-org organization](../media/tutorial/tutorial-1-branch-and-version-control.cy.ts/tutorial_1_organization_details.png)
+![Select the `edit` button](../media/tutorial/tutorial-1-branch-and-version-control.cy.ts/tutorial_1_organization_edit.png)
 
 !!!success Validate that everything is correct
-Go back to the detailed page for the Account `Admin` and try to switch branches with the branch selection menu at the top. <br>
+Go back to the detailed page for the Organization `my-first-org` and try to switch branches with the branch selection menu at the top. <br>
 **You should be able to see the value of the label change when you change the branch.**
 !!!
 
@@ -122,7 +122,7 @@ mutation {
 ==-
 
 !!!success Validate that everything is correct
-Go back to the detailed page for the Account `Admin`.<br>
+Go back to the detailed page for the Organization `my-first-org`.<br>
 **The object should now have the value previously defined in the branch. Try switching between the 'main' branch and 'cr1234'.**
 !!!
 
