@@ -1427,9 +1427,7 @@ async def test_diff_data_deprecated_endpoint_with_main_time_from_to(
     assert main[p1]["elements"]["height"]["value"]["value"]["previous"] == 180
 
 
-async def test_diff_artifact(
-    session, client, client_headers, register_core_models_schema, car_person_data_artifact_diff
-):
+async def test_diff_artifact(session, client, client_headers, car_person_data_artifact_diff):
     with client:
         response = client.get(
             "/api/diff/artifacts?branch=branch3",
@@ -1443,8 +1441,13 @@ async def test_diff_artifact(
         car_person_data_artifact_diff["art2"]: {
             "action": "added",
             "branch": "branch3",
-            "display_label": "myyartifact",
+            "display_label": "bolt #444444 - myyartifact",
             "id": car_person_data_artifact_diff["art2"],
+            "target": {
+                "id": car_person_data_artifact_diff["c2"],
+                "kind": "TestElectricCar",
+                "display_label": "bolt #444444",
+            },
             "item_new": {
                 "checksum": "zxcv9063c26263353de24e1b913e1e1c",
                 "storage_id": "qwertyui-073f-4173-aa4b-f50e1309f03c",
@@ -1454,8 +1457,13 @@ async def test_diff_artifact(
         car_person_data_artifact_diff["art1"]: {
             "action": "updated",
             "branch": "branch3",
-            "display_label": "myyartifact",
+            "display_label": "volt #444444 - myyartifact",
             "id": car_person_data_artifact_diff["art1"],
+            "target": {
+                "id": car_person_data_artifact_diff["c1"],
+                "kind": "TestElectricCar",
+                "display_label": "volt #444444",
+            },
             "item_new": {
                 "checksum": "zxcv9063c26263353de24e1b911z1x2c3v",
                 "storage_id": "azertyui-073f-4173-aa4b-f50e1309f03c",

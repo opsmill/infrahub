@@ -1291,7 +1291,9 @@ async def car_person_manufacturer_schema(session: AsyncSession, default_branch: 
 
 
 @pytest.fixture
-async def car_person_schema_generics(session: AsyncSession, default_branch: Branch, data_schema) -> SchemaRoot:
+async def car_person_schema_generics(
+    session: AsyncSession, default_branch: Branch, register_core_models_schema, data_schema
+) -> SchemaRoot:
     SCHEMA = {
         "generics": [
             {
@@ -1372,7 +1374,8 @@ async def car_person_schema_generics(session: AsyncSession, default_branch: Bran
             {
                 "name": "ElectricCar",
                 "namespace": "Test",
-                "inherit_from": ["TestCar"],
+                "display_labels": ["name__value", "color__value"],
+                "inherit_from": ["TestCar", "CoreArtifactTarget"],
                 "default_filter": "name__value",
                 "attributes": [
                     {"name": "nbr_engine", "kind": "Number"},
@@ -1381,7 +1384,8 @@ async def car_person_schema_generics(session: AsyncSession, default_branch: Bran
             {
                 "name": "GazCar",
                 "namespace": "Test",
-                "inherit_from": ["TestCar"],
+                "display_labels": ["name__value", "color__value"],
+                "inherit_from": ["TestCar", "CoreArtifactTarget"],
                 "default_filter": "name__value",
                 "attributes": [
                     {"name": "mpg", "kind": "Number"},
@@ -1393,6 +1397,7 @@ async def car_person_schema_generics(session: AsyncSession, default_branch: Bran
                 "default_filter": "name__value",
                 "display_labels": ["name__value"],
                 "branch": BranchSupportType.AWARE.value,
+                "inherit_from": ["CoreArtifactTarget"],
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "height", "kind": "Number", "optional": True},
