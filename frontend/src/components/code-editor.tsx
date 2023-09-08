@@ -29,7 +29,7 @@ export const CodeEditor = (props: any) => {
   };
 
   return (
-    <div className="relative w-auto">
+    <div className="relative">
       {enableCopy && (
         <Button
           className="absolute z-10 top-0 right-0"
