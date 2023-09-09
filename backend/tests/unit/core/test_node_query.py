@@ -1,3 +1,5 @@
+import time
+
 from neo4j import AsyncSession
 
 from infrahub.core import get_branch, registry
@@ -5,6 +7,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.query.node import (
+    NodeCreateAllQuery,
     NodeCreateQuery,
     NodeGetListQuery,
     NodeListGetAttributeQuery,
@@ -23,6 +26,34 @@ async def test_query_NodeCreateQuery_with_generic(session: AsyncSession, group_s
     node = query.get_result().get("n")
 
     assert sorted(list(node.labels)) == sorted(["CoreGroup", "Node", "CoreStandardGroup"])
+
+
+async def test_query_NodeCreateAllQuery(
+    session: AsyncSession, default_branch: Branch, car_person_schema, first_account
+):
+    obj = await Node.init(session=session, schema="TestPerson", branch=default_branch)
+    await obj.new(session=session, name="John", height=180)
+
+    original_start_time = time.time_ns()
+    await obj.save(session=session)
+    time.time_ns() - original_start_time
+
+    car = await Node.init(session=session, schema="TestCar", branch=default_branch)
+    await car.new(
+        session=session,
+        _owner=first_account,
+        name="camry",
+        nbr_seats=5,
+        is_electric=False,
+        owner={"id": obj.id, "_relation__source": first_account},
+    )
+
+    new_start_time = time.time_ns()
+    query = await NodeCreateAllQuery.init(session=session, node=car)
+    await query.execute(session=session)
+    time.time_ns() - new_start_time
+
+    assert query.get_self_ids()
 
 
 async def test_query_NodeGetListQuery(

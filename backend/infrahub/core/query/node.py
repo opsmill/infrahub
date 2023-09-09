@@ -14,8 +14,10 @@ from infrahub_client import UUIDT
 if TYPE_CHECKING:
     from neo4j import AsyncSession
 
+    from infrahub.core.attribute import AttributeCreateData, BaseAttribute
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
+    from infrahub.core.relationship import RelationshipCreateData, RelationshipManager
     from infrahub.core.schema import NodeSchema
 
 # pylint: disable=consider-using-f-string,redefined-builtin
@@ -130,6 +132,122 @@ class NodeCreateQuery(NodeQuery):
             raise QueryError(self.get_query(), self.params)
 
         return node["uuid"], node.element_id
+
+
+class NodeCreateAllQuery(NodeQuery):
+    name = "node_create_all"
+
+    type: QueryType = QueryType.WRITE
+
+    raise_error_if_empty: bool = True
+
+    async def query_init(self, session: AsyncSession, *args, **kwargs):
+        uuid = UUIDT()
+        at = self.at or self.node._at
+        self.params["uuid"] = str(uuid)
+        self.params["branch"] = self.branch.name
+        self.params["branch_level"] = self.branch.hierarchy_level
+        self.params["kind"] = self.node.get_kind()
+        self.params["branch_support"] = self.node._schema.branch
+
+        attributes: List[AttributeCreateData] = []
+        for attr_name in self.node._attributes:
+            attr: BaseAttribute = getattr(self.node, attr_name)
+            attributes.append(attr.get_create_data())
+
+        relationships: List[RelationshipCreateData] = []
+        for rel_name in self.node._relationships:
+            rel_manager: RelationshipManager = getattr(self.node, rel_name)
+            for rel in rel_manager._relationships:
+                relationships.append(rel.get_create_data())
+
+        self.params["attrs"] = [attr.dict() for attr in attributes]
+        self.params["rels"] = [rel.dict() for rel in relationships]
+
+        self.params["node_prop"] = {
+            "uuid": str(uuid),
+            "kind": self.node.get_kind(),
+            "branch_support": self.node._schema.branch,
+        }
+        self.params["node_branch_prop"] = {
+            "branch": self.branch.name,
+            "branch_level": self.branch.hierarchy_level,
+            "status": "active",
+            "from": at.to_string(),
+        }
+        query = """
+        MATCH (root:Root)
+        CREATE (n:Node:%s $node_prop )
+        CREATE (n)-[r:IS_PART_OF $node_branch_prop ]->(root)
+        WITH distinct n
+        FOREACH ( attr IN $attrs |
+            CREATE (a:Attribute:AttributeLocal { uuid: attr.uuid, name: attr.name, type: attr.type, branch_support: attr.branch_support })
+            CREATE (n)-[:HAS_ATTRIBUTE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(a)
+            MERGE (av:AttributeValue { type: attr.type, value: attr.value })
+            CREATE (a)-[:HAS_VALUE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(av)
+            MERGE (ip:Boolean { value: attr.is_protected })
+            MERGE (iv:Boolean { value: attr.is_visible })
+            CREATE (a)-[:IS_PROTECTED { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(ip)
+            CREATE (a)-[:IS_VISIBLE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(iv)
+            FOREACH ( prop IN attr.source_prop |
+                MERGE (peer:Node { uuid: prop.peer_id })
+                CREATE (a)-[:HAS_SOURCE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(peer)
+            )
+            FOREACH ( prop IN attr.owner_prop |
+                MERGE (peer:Node { uuid: prop.peer_id })
+                CREATE (a)-[:HAS_OWNER { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(peer)
+            )
+        )
+        FOREACH ( rel IN $rels |
+            MERGE (d:Node { uuid: rel.destination_id })
+            CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
+            CREATE (n)-[:IS_RELATED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(rl)
+            CREATE (d)-[:IS_RELATED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null  }]->(rl)
+            MERGE (ip:Boolean { value: rel.is_protected })
+            MERGE (iv:Boolean { value: rel.is_visible })
+            CREATE (rl)-[:IS_PROTECTED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(ip)
+            CREATE (rl)-[:IS_VISIBLE { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(iv)
+            FOREACH ( prop IN rel.source_prop |
+                MERGE (peer:Node { uuid: prop.peer_id })
+                CREATE (rl)-[:HAS_SOURCE { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(peer)
+            )
+            FOREACH ( prop IN rel.owner_prop |
+                MERGE (peer:Node { uuid: prop.peer_id })
+                CREATE (rl)-[:HAS_OWNER { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(peer)
+            )
+        )
+        WITH distinct n
+        MATCH (n)-[:HAS_ATTRIBUTE|IS_RELATED]-(rn)-[:HAS_VALUE|IS_RELATED]-(rv)
+        """ % ":".join(
+            self.node.get_labels()
+        )
+
+        self.params["at"] = at.to_string()
+
+        self.add_to_query(query)
+        self.return_labels = ["n", "rn", "rv"]
+
+    def get_self_ids(self) -> Tuple[str, str]:
+        result = self.get_result()
+        node = result.get("n")
+
+        if node is None:
+            raise QueryError(self.get_query(), self.params)
+
+        return node["uuid"], node.element_id
+
+    def get_ids(self) -> Dict[str, Tuple[str, str]]:
+        data = {}
+        for result in self.get_results():
+            node = result.get("rn")
+            if "Relationship" in node.labels:
+                peer = result.get("rv")
+                name = f"{node.get('name')}::{peer.get('uuid')}"
+            elif "Attribute" in node.labels:
+                name = node.get("name")
+            data[name] = (node["uuid"], node.element_id)
+
+        return data
 
 
 class NodeDeleteQuery(NodeQuery):

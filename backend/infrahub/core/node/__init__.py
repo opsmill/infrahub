@@ -4,14 +4,17 @@ from typing import TYPE_CHECKING, Any, List, Optional, Union
 
 from infrahub.core import registry
 from infrahub.core.constants import BranchSupportType
-from infrahub.core.query.node import NodeCreateQuery, NodeDeleteQuery, NodeGetListQuery
+from infrahub.core.query.node import (
+    NodeCreateAllQuery,
+    NodeDeleteQuery,
+    NodeGetListQuery,
+)
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import ValidationError
 from infrahub.types import ATTRIBUTE_TYPES
 from infrahub_client import UUIDT
 
-from ..attribute import BaseAttribute
 from ..relationship import RelationshipManager
 from ..utils import update_relationships_to
 from .base import BaseNode, BaseNodeMeta, BaseNodeOptions
@@ -23,6 +26,8 @@ if TYPE_CHECKING:
     from typing_extensions import Self
 
     from infrahub.core.branch import Branch
+
+    from ..attribute import BaseAttribute
 
 # ---------------------------------------------------------------------------------------
 # Type of Nodes
@@ -277,23 +282,27 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     async def _create(self, session: AsyncSession, at: Optional[Timestamp] = None):
         create_at = Timestamp(at)
 
-        query = await NodeCreateQuery.init(session=session, node=self, at=create_at)
+        query = await NodeCreateAllQuery.init(session=session, node=self, at=create_at)
         await query.execute(session=session)
-        self.id, self.db_id = query.get_new_ids()
+
+        self.id, self.db_id = query.get_self_ids()
         self._at = create_at
         self._updated_at = create_at
+
+        new_ids = query.get_ids()
 
         # Go over the list of Attribute and create them one by one
         for name in self._attributes:
             attr: BaseAttribute = getattr(self, name)
-            # Handle LocalAttribute attributes
-            if issubclass(attr.__class__, BaseAttribute):
-                await attr.save(at=create_at, session=session)
+            attr.id, attr.db_id = new_ids[name]
+            attr.at = create_at
 
         # Go over the list of relationships and create them one by one
         for name in self._relationships:
-            rel: RelationshipManager = getattr(self, name)
-            await rel.save(at=create_at, session=session)
+            relm: RelationshipManager = getattr(self, name)
+            for rel in relm._relationships:
+                identifier = f"{rel.schema.identifier}::{rel.peer_id}"
+                rel.id, rel.db_id = new_ids[identifier]
 
         return True
 

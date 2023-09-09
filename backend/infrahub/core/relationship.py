@@ -2,9 +2,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
+from pydantic import BaseModel, Field
+
 from infrahub.core import registry
 from infrahub.core.constants import BranchSupportType
-from infrahub.core.property import FlagPropertyMixin, NodePropertyMixin
+from infrahub.core.property import (
+    FlagPropertyMixin,
+    NodePropertyData,
+    NodePropertyMixin,
+    ValuePropertyData,
+)
 from infrahub.core.query.relationship import (
     RelationshipCreateQuery,
     RelationshipDataDeleteQuery,
@@ -17,6 +24,7 @@ from infrahub.core.query.relationship import (
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import update_relationships_to
 from infrahub.exceptions import ValidationError
+from infrahub_client import UUIDT
 from infrahub_client.utils import intersection
 
 if TYPE_CHECKING:
@@ -33,6 +41,20 @@ if TYPE_CHECKING:
 
 
 PREFIX_PROPERTY = "_relation__"
+
+
+class RelationshipCreateData(BaseModel):
+    uuid: str
+    name: str
+    destination_id: str
+    branch: str
+    branch_level: int
+    branch_support: str
+    status: str
+    is_protected: bool
+    is_visible: bool
+    source_prop: List[ValuePropertyData] = Field(default_factory=list)
+    owner_prop: List[NodePropertyData] = Field(default_factory=list)
 
 
 class Relationship(FlagPropertyMixin, NodePropertyMixin):
@@ -390,6 +412,27 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             response["__typename"] = f"Related{peer.get_kind()}"
 
         return response
+
+    def get_create_data(self):
+        branch = self.get_branch_based_on_support_type()
+        data = RelationshipCreateData(
+            uuid=str(UUIDT()),
+            name=self.schema.identifier,
+            branch=branch.name,
+            destination_id=self.peer_id,
+            status="active",
+            branch_level=self.branch.hierarchy_level,
+            branch_support=self.schema.branch.value,
+            is_protected=self.is_protected,
+            is_visible=self.is_visible,
+        )
+        if self.source_id:
+            data.source_prop.append(NodePropertyData(name="source", peer_id=self.source_id))
+
+        if self.owner_id:
+            data.owner_prop.append(NodePropertyData(name="owner", peer_id=self.owner_id))
+
+        return data
 
 
 class RelationshipManager:
