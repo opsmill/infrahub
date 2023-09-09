@@ -107,7 +107,7 @@ async def transform_python(
 
 
 @router.get("/rfile/{rfile_id}", response_class=PlainTextResponse)
-async def render_rfile(
+async def generate_rfile(
     request: Request,
     rfile_id: str = Path(description="ID or Name of the RFile to render"),
     session: AsyncSession = Depends(get_session),
