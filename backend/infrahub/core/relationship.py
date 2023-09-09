@@ -414,6 +414,8 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         return response
 
     def get_create_data(self):
+        # pylint: disable=no-member
+
         branch = self.get_branch_based_on_support_type()
         data = RelationshipCreateData(
             uuid=str(UUIDT()),
