@@ -26,6 +26,7 @@ IMAGE_VER = os.getenv("IMAGE_VER", project_ver())
 PWD = os.getcwd()
 
 NBR_WORKERS = os.getenv("PYTEST_XDIST_WORKER_COUNT", 1)
+GITHUB_ACTION = os.getenv("GITHUB_ACTION", False)
 
 AVAILABLE_SERVICES = ["infrahub-git", "infrahub-server", "database", "message-queue"]
 SUPPORTED_DATABASES = [DatabaseType.MEMGRAPH.value, DatabaseType.NEO4J.value]
@@ -81,6 +82,16 @@ PLATFORMS_PTY_ENABLE = ["Linux", "Darwin"]
 PLATFORMS_SUDO_DETECT = ["Linux"]
 
 VOLUME_NAMES = ["database_data", "database_logs", "git_data", "git_remote_data", "storage_data"]
+
+GITHUB_ENVS_TO_PASS = [
+    "GITHUB_ACTION",
+    "GITHUB_REF_NAME",
+    "GITHUB_REPOSITORY",
+    "GITHUB_RUN_ATTEMPT",
+    "GITHUB_SHA",
+    "GITHUB_RUN_ID",
+    "GITHUB_RUN_NUMBER",
+]
 
 
 def check_environment(context: Context) -> dict:
@@ -189,3 +200,10 @@ def build_test_compose_files_cmd(
     #     DEV_COMPOSE_FILES.append(DEV_OVERRIDE_FILE_NAME)
 
     return f"-f {' -f '.join(DEV_COMPOSE_FILES)}"
+
+
+def build_test_envs():
+    if GITHUB_ACTION:
+        return f"-e {' -e '.join(GITHUB_ENVS_TO_PASS)}"
+
+    return ""
