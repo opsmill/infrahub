@@ -159,7 +159,7 @@ class NodeCreateAllQuery(NodeQuery):
         for rel_name in self.node._relationships:
             rel_manager: RelationshipManager = getattr(self.node, rel_name)
             for rel in rel_manager._relationships:
-                relationships.append(rel.get_create_data())
+                relationships.append(await rel.get_create_data(session=session))
 
         self.params["attrs"] = [attr.dict() for attr in attributes]
         self.params["rels"] = [rel.dict() for rel in relationships]

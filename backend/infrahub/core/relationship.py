@@ -23,7 +23,7 @@ from infrahub.core.query.relationship import (
 )
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import update_relationships_to
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import NodeNotFound, ValidationError
 from infrahub_client import UUIDT
 from infrahub_client.utils import intersection
 
@@ -178,7 +178,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         """Return the kind of the relationship."""
         return self.schema.kind
 
-    async def get_node(self, session: AsyncSession):
+    async def get_node(self, session: AsyncSession) -> Node:
         """Return the node of the relationship."""
         if self._node is None:
             await self._get_node(session=session)
@@ -186,36 +186,25 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         return self._node
 
     async def _get_node(self, session: AsyncSession) -> bool:
-        self._node = await registry.manager.get_one(
-            session=session, id=self.node_id, branch=self.branch, at=self.at, include_owner=True, include_source=True
-        )
-
-        if self._node:
-            return True
-
-        if not self.schema.default_filter:
+        try:
+            node = await registry.manager.get_one_by_id_or_default_filter(
+                session=session,
+                id=self.node_id,
+                schema_name=self.schema.kind,
+                branch=self.branch,
+                at=self.at,
+                include_owner=True,
+                include_source=True,
+            )
+        except NodeNotFound:
             return False
 
-        # if a default_filter is defined, try to query the node by its default filter
-        results = await registry.manager.query(
-            session=session,
-            schema=self.schema,
-            filters={self.schema.default_filterr: self.node_id},
-            branch=self.branch,
-            at=self.at,
-            include_owner=True,
-            include_source=True,
-        )
-
-        if not results:
-            return False
-
-        self._node = results[0]
+        self._node = node
         self.node_id = self._node.id
 
         return True
 
-    async def set_peer(self, value: Union[Node, str]):
+    async def set_peer(self, value: Union[Node, str]) -> bool:
         if hasattr(value, "_schema"):
             if (
                 self.schema.peer not in [value.get_kind(), "CoreNode"]
@@ -239,35 +228,32 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
 
         raise ValidationError({self.name: f"Unsupported type ({type(value)}) must be a string or a node object"})
 
-    async def get_peer(self, session: AsyncSession):
+    async def get_peer(self, session: AsyncSession) -> Node:
         """Return the peer of the relationship."""
         if self._peer is None:
             await self._get_peer(session=session)
 
-        return self._peer if self._peer else None
+        if not self._peer:
+            raise NodeNotFound(branch_name=self.branch.name, node_type=self.schema.peer, identifier=self.peer_id)
 
-    async def _get_peer(self, session: AsyncSession):
-        self._peer = await registry.manager.get_one(
-            session=session, id=self.peer_id, branch=self.branch, at=self.at, include_owner=True, include_source=True
-        )
+        return self._peer
 
-        peer_schema = await self.get_peer_schema()
-        results = None
-        if not self._peer and peer_schema.default_filter:
-            results = await registry.manager.query(
+    async def _get_peer(self, session: AsyncSession) -> None:
+        try:
+            peer = await registry.manager.get_one_by_id_or_default_filter(
                 session=session,
-                schema=peer_schema,
-                filters={peer_schema.default_filter: self.peer_id},
+                id=self.peer_id,
+                schema_name=self.schema.peer,
                 branch=self.branch,
                 at=self.at,
                 include_owner=True,
                 include_source=True,
             )
+        except NodeNotFound:
+            self._peer = None
+            return
 
-        if not results:
-            return None
-
-        self._peer = results[0]
+        self._peer = peer
         self.peer_id = self._peer.id
 
     async def get_peer_schema(self) -> NodeSchema:
@@ -413,15 +399,17 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
 
         return response
 
-    def get_create_data(self):
+    async def get_create_data(self, session: AsyncSession):
         # pylint: disable=no-member
 
         branch = self.get_branch_based_on_support_type()
+
+        peer = await self.get_peer(session=session)
         data = RelationshipCreateData(
             uuid=str(UUIDT()),
             name=self.schema.identifier,
             branch=branch.name,
-            destination_id=self.peer_id,
+            destination_id=peer.id,
             status="active",
             branch_level=self.branch.hierarchy_level,
             branch_support=self.schema.branch.value,
