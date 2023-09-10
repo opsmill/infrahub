@@ -1,7 +1,7 @@
 ---
 label: Architecture
 layout: default
-order: 900
+order: 1000
 ---
 # Architecture Diagram
 
