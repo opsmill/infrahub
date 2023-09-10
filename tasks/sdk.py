@@ -2,7 +2,6 @@ from invoke import Context, task
 
 from .shared import (
     BUILD_NAME,
-    NBR_WORKERS,
     build_test_compose_files_cmd,
     build_test_envs,
     execute_command,
