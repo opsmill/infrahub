@@ -75,9 +75,7 @@ describe("Main application", () => {
     cy.contains("Proposed changes").click();
 
     // Access the new PC details
-    cy.get(".grid").within(() => {
-      cy.contains(PROPOSED_CHANGES_NAME).click();
-    });
+    cy.contains(PROPOSED_CHANGES_NAME).click();
 
     if (this.screenshots) {
       cy.screenshot("proposed-changes-2-details", screenshotConfig);
