@@ -129,6 +129,7 @@ jobs:
     needs: ["files-changed", "yaml-lint", "python-lint"]
     runs-on: "ubuntu-20.04"
     timeout-minutes: 30
+    environment: testing
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
