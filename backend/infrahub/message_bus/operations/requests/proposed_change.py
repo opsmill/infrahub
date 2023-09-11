@@ -15,54 +15,17 @@ from infrahub.services import InfrahubServices
 log = get_logger()
 
 
-async def _create_data_check(session: AsyncSession, proposed_change: Node) -> None:
-    conflicts = await _get_conflicts(session=session, proposed_change=proposed_change)
-
+async def _create_data_check(session: AsyncSession, proposed_change: Node) -> Node:
     validator_obj = await Node.init(session=session, schema="CoreDataValidator")
-
-    initial_state = ValidatorState.COMPLETED
-    initial_conclusion = ValidatorConclusion.SUCCESS
-    started_at = Timestamp().to_string()
-    params = {"completed_at": Timestamp().to_string()}
-    if conflicts:
-        initial_state = ValidatorState.IN_PROGRESS
-        initial_conclusion = ValidatorConclusion.UNKNOWN
-        params.pop("completed_at")
-
     await validator_obj.new(
         session=session,
         label="Data Integrity",
+        state=ValidatorState.QUEUED.value,
+        conclusion=ValidatorConclusion.UNKNOWN.value,
         proposed_change=proposed_change.id,
-        state=initial_state.value,
-        conclusion=initial_conclusion.value,
-        started_at=started_at,
-        **params,
     )
     await validator_obj.save(session=session)
-
-    for conflict in conflicts:
-        conflict_obj = await Node.init(session=session, schema="CoreDataCheck")
-        await conflict_obj.new(
-            session=session,
-            label="Data Conflict",
-            origin="internal",
-            kind="DataIntegrity",
-            validator=validator_obj.id,
-            conclusion="failure",
-            severity="critical",
-            paths=[str(conflict)],
-            **params,
-        )
-        await conflict_obj.save(session=session)
-
-    if conflicts:
-        updated_validator_obj = await NodeManager.get_one_by_id_or_default_filter(
-            id=validator_obj.id, schema_name="CoreDataValidator", session=session
-        )
-        updated_validator_obj.state.value = ValidatorState.COMPLETED.value
-        updated_validator_obj.conclusion.value = ValidatorConclusion.FAILURE.value
-        updated_validator_obj.completed_at.value = Timestamp().to_string()
-        await updated_validator_obj.save(session=session)
+    return validator_obj
 
 
 async def _get_conflicts(session: AsyncSession, proposed_change: Node) -> List[ObjectConflict]:
@@ -86,21 +49,40 @@ async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, s
                 break
 
         if not data_check:
-            await _create_data_check(session=session, proposed_change=proposed_change)
-            return
+            data_check = await _create_data_check(session=session, proposed_change=proposed_change)
+
+        data_check.state.value = ValidatorState.IN_PROGRESS.value
+        data_check.conclusion.value = ValidatorConclusion.UNKNOWN.value
+        data_check.started_at.value = Timestamp().to_string()
+        data_check.completed_at.value = ""
+        await data_check.save(session=session)
+
+        previous_relationships = await data_check.checks.get_relationships(session=session)
+        for rel in previous_relationships:
+            await rel.delete(session=session)
 
         conflicts = await _get_conflicts(session=session, proposed_change=proposed_change)
 
-        state = ValidatorState.COMPLETED
         conclusion = ValidatorConclusion.SUCCESS
 
-        started_at = Timestamp().to_string()
-        completed_at = Timestamp().to_string()
+        check_objects = []
         if conflicts:
-            state = ValidatorState.COMPLETED
             conclusion = ValidatorConclusion.FAILURE
+        else:
+            check = await Node.init(session=session, schema="CoreDataCheck")
+            await check.new(
+                session=session,
+                label="Data Conflict",
+                origin="internal",
+                kind="DataIntegrity",
+                validator=data_check.id,
+                conclusion="success",
+                severity="info",
+                paths=[],
+            )
+            await check.save(session=session)
+            check_objects.append(check.id)
 
-        conflict_objects = []
         for conflict in conflicts:
             conflict_obj = await Node.init(session=session, schema="CoreDataCheck")
             await conflict_obj.new(
@@ -114,17 +96,12 @@ async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, s
                 paths=[str(conflict)],
             )
             await conflict_obj.save(session=session)
-            conflict_objects.append(conflict_obj.id)
+            check_objects.append(conflict_obj.id)
 
-        previous_relationships = await data_check.checks.get_relationships(session=session)
-        for rel in previous_relationships:
-            await rel.delete(session=session)
-
-        data_check.state_value = state.value
+        data_check.state.value = ValidatorState.COMPLETED.value
         data_check.conclusion.value = conclusion.value
-        data_check.checks.update = conflict_objects
-        data_check.started_at.value = started_at
-        data_check.completed_at.value = completed_at
+        data_check.checks.update = check_objects
+        data_check.completed_at.value = Timestamp().to_string()
         await data_check.save(session=session)
 
 

@@ -287,11 +287,18 @@ class BranchDiffArtifactStorage(BaseModel):
     checksum: str
 
 
+class ArtifactTarget(BaseModel):
+    id: str
+    kind: str
+    display_label: Optional[str]
+
+
 class BranchDiffArtifact(BaseModel):
     branch: str
     id: str
     display_label: Optional[str] = None
     action: DiffAction
+    target: Optional[ArtifactTarget] = None
     item_new: Optional[BranchDiffArtifactStorage] = None
     item_previous: Optional[BranchDiffArtifactStorage] = None
 
@@ -1008,13 +1015,44 @@ async def get_diff_artifacts(
     diff = await branch.diff(session=session, diff_from=time_from, diff_to=time_to, branch_only=branch_only)
     payload = await generate_diff_payload(diff=diff, session=session, kinds_to_include=["CoreArtifact"])
 
+    # Extract the ids of all the targets associated with these artifacts and query the display label for all of them
+    artifact_ids = [node.id for _, data in payload.items() for node in data]
+    targets = await registry.manager.query(
+        session=session,
+        schema="CoreArtifactTarget",
+        filters={"artifacts__ids": artifact_ids},
+        # fields={"id": None},
+        prefetch_relationships=True,
+        branch=branch,
+    )
+
+    target_per_kinds = defaultdict(list)
+    target_per_artifact: Dict[str, ArtifactTarget] = {}
+    for target in targets:
+        for artifact_id in await target.artifacts.get_peers(session=session):
+            target_per_artifact[artifact_id] = ArtifactTarget(id=target.id, kind=target.get_kind())
+            target_per_kinds[target.get_kind()].append(target.id)
+
+    display_labels = {}
+    for kind, ids in target_per_kinds.items():
+        display_labels.update(
+            await get_display_labels_per_kind(kind=kind, ids=ids, branch_name=branch.name, session=session)
+        )
+
     for branch_name, data in payload.items():
         for node in data:
             if "storage_id" not in node.elements or "checksum" not in node.elements:
                 continue
 
+            display_label = node.display_label
+            target = target_per_artifact.get(node.id, None)
+            if target:
+                target.display_label = display_labels.get(target.id, None)
+                if target.display_label:
+                    display_label = f"{target.display_label} - {node.display_label}"
+
             diff_artifact = BranchDiffArtifact(
-                id=node.id, action=node.action, branch=branch_name, display_label=node.display_label
+                id=node.id, action=node.action, branch=branch_name, display_label=display_label, target=target
             )
 
             if node.action in [DiffAction.UPDATED, DiffAction.ADDED]:
