@@ -2,8 +2,7 @@ import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import { useParams } from "react-router-dom";
 import { Pill } from "../../components/pill";
-import { Retry } from "../../components/retry";
-import { PROPOSED_CHANGES, VALIDATION_STATES } from "../../config/constants";
+import { PROPOSED_CHANGES } from "../../config/constants";
 import { getProposedChangesChecks } from "../../graphql/queries/proposed-changes/getProposedChangesChecks";
 import useQuery from "../../hooks/useQuery";
 import { schemaState } from "../../state/atoms/schema.atom";
@@ -38,16 +37,16 @@ export const ProposedChangesChecksTab = () => {
 
   const validationsCount = result?.validations?.count ?? 0;
 
-  const validationsState =
-    result?.validations?.edges?.map((edge: any) => edge?.node?.state?.value) ?? [];
+  // const validationsState =
+  //   result?.validations?.edges?.map((edge: any) => edge?.node?.state?.value) ?? [];
 
-  const isInProgress = validationsState.includes(VALIDATION_STATES.IN_PROGRESS);
+  // const isInProgress = validationsState.includes(VALIDATION_STATES.IN_PROGRESS);
 
   return (
     <div className="flex ml-2">
       <Pill>{validationsCount}</Pill>
 
-      {isInProgress && <Retry isInProgress={isInProgress} />}
+      {/* {isInProgress && <Retry isInProgress={isInProgress} />} */}
     </div>
   );
 };
