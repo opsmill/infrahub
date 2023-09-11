@@ -124,6 +124,9 @@ async def test_fail_to_refresh_access_token_with_access_token(session, default_b
     assert login_response.status_code == 200
     access_token = login_response.json()["access_token"]
 
+    # Remove cookies
+    client.cookies = None
+
     with client:
         refresh_response = client.post("/api/auth/refresh", headers={"Authorization": f"Bearer {access_token}"})
 

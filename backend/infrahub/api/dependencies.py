@@ -48,12 +48,22 @@ async def get_access_token(
 
 
 async def get_refresh_token(
-    jwt_header: HTTPAuthorizationCredentials = Depends(jwt_scheme),
+    request: Request,
+    jwt_header: Optional[HTTPAuthorizationCredentials] = Depends(jwt_scheme)
 ) -> RefreshTokenData:
-    if not jwt_header:
-        raise AuthorizationError("A JWT refresh token is required to perform this operation.")
-    return validate_jwt_refresh_token(token=jwt_header.credentials)
+    
+    # First, try to get the token from the cookie
+    token = request.cookies.get("refresh_token", None)
+    
+    # If it's not in the cookie, try to get it from the Authorization header
+    if not token and jwt_header:
+        token = jwt_header.credentials
 
+    # If still no token, raise an error
+    if not token:
+        raise AuthorizationError("A JWT refresh token is required to perform this operation.")
+    
+    return validate_jwt_refresh_token(token=token)
 
 async def get_branch_params(
     session: AsyncSession = Depends(get_session),
