@@ -9,7 +9,6 @@ import infrahub.config as config
 from infrahub.core import registry
 from infrahub.core.node import Node
 from infrahub.database import execute_write_query_async, get_db
-from infrahub_client.batch import InfrahubBatch
 
 # flake8: noqa
 # pylint: skip-file
@@ -86,7 +85,7 @@ async def load_data(
     """
     default_branch = await registry.get_branch(session=session)
 
-    db = await get_db()
+    await get_db()
 
     start_time = time.time()
 
@@ -94,69 +93,47 @@ async def load_data(
     repository = {}
     gqlquery = {}
 
-    tag_schema = registry.schema.get(name="Tag", branch=default_branch)
-    repository_schema = registry.schema.get(name="Repository", branch=default_branch)
-    gqlquery_schema = registry.schema.get(name="GraphQLQuery", branch=default_branch)
+    tag_schema = registry.schema.get(name="BuiltinTag", branch=default_branch)
+    repository_schema = registry.schema.get(name="CoreRepository", branch=default_branch)
+    gqlquery_schema = registry.schema.get(name="CoreGraphQLQuery", branch=default_branch)
 
     # -------------------------------------------------------------------------------------
     # TAG
     # -------------------------------------------------------------------------------------
-    query = []
     for tag in TAGS:
         obj = await Node.init(session=session, schema=tag_schema, branch=default_branch)
         await obj.new(session=session, name=tag)
-        query.extend(obj._query_bulk_create())
+        await obj.save(session=session)
         tags[tag] = obj
-
-    LOGGER.info("Start Tag creation")
-    await execute_query(db=db, query=query)
 
     # -------------------------------------------------------------------------------------
     # REPOSITORY
     # -------------------------------------------------------------------------------------
-    query = []
     for idx in range(1, nbr_repository + 1):
         repo_name = f"repository-{idx:03}"
         obj = await Node.init(session=session, schema=repository_schema, branch=default_branch)
         random_tags = [tags[tag] for tag in random.choices(TAGS, k=3)]
         await obj.new(session=session, name=repo_name, location=f"git://{repo_name}", tags=random_tags)
-        query.extend(obj._query_bulk_create())
+        await obj.save(session=session)
         repository[repo_name] = obj
-
-    LOGGER.info("Start Repository creation")
-    await execute_query(db=db, query=query, deps=list(tags.values()))
 
     # -------------------------------------------------------------------------------------
     # GRAPHQL_QUERY
     # -------------------------------------------------------------------------------------
-    batch = InfrahubBatch(max_concurrent_execution=concurrent_execution)
-
     nbr_tasks = int(nbr_query / batch_size)
     if nbr_query % batch_size:
         nbr_tasks += 1
 
-    for batch_id in range(0, nbr_tasks):
-        query = []
-        ids = [
-            idx + batch_id * batch_size for idx in range(1, batch_size + 1) if idx + batch_id * batch_size <= nbr_query
-        ]
-
+    for idx in range(0, nbr_query):
         random_tags = [tags[tag] for tag in random.choices(TAGS, k=3)]
         random_repo = repository[random.choice(list(repository.keys()))]
 
-        for id in ids:
-            name = f"query-{id:04}"
-            query_str = "query Query%s { tag { name { value }}}" % f"{id:04}"
-            obj = await Node.init(session=session, schema=gqlquery_schema, branch=default_branch)
-            await obj.new(session=session, name=name, query=query_str, tags=random_tags, repository=random_repo)
-            query.extend(obj._query_bulk_create())
-            gqlquery[name] = obj
-
-        LOGGER.info(f"Prepared batch {batch_id} IDS {ids[0]} - {ids[-1]} with {len(query)} lines of CYPHER")
-        batch.add(task=execute_query, db=db, query=query, deps=random_tags + [random_repo])
-
-    async for _, result in batch.execute():
-        pass
+        name = f"query-{nbr_query:04}"
+        query_str = "query CoreQuery%s { tag { name { value }}}" % f"{nbr_query:04}"
+        obj = await Node.init(session=session, schema=gqlquery_schema, branch=default_branch)
+        await obj.new(session=session, name=name, query=query_str, tags=random_tags, repository=random_repo)
+        await obj.save(session=session)
+        gqlquery[name] = obj
 
     duration = time.time() - start_time
     LOGGER.info(f"Total Execution time script in {duration:.3f} sec")
