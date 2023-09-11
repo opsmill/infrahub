@@ -37,4 +37,4 @@ invoke demo.load-infra-data
 To explore further, [a tutorial](../02_tutorial/readme.md) is available to guide you through the application and the GraphQL interface.
 
 
-[!ref Check the documentation of the demo environment for more information](../20_knowledge_base/80_local_demo_environment.md)
+[!ref Check the documentation of the demo environment for more information](../20_knowledge_base/local_demo_environment.md)
