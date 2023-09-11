@@ -96,44 +96,6 @@ class NodeQuery(Query):
         super().__init__(*args, **kwargs)
 
 
-class NodeCreateQuery(NodeQuery):
-    name = "node_create"
-
-    type: QueryType = QueryType.WRITE
-
-    raise_error_if_empty: bool = True
-
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
-        self.params["uuid"] = str(UUIDT())
-        self.params["branch"] = self.branch.name
-        self.params["branch_level"] = self.branch.hierarchy_level
-        self.params["kind"] = self.node.get_kind()
-        self.params["branch_support"] = self.node._schema.branch
-
-        query = """
-        MATCH (root:Root)
-        CREATE (n:Node:%s { uuid: $uuid, kind: $kind, branch_support: $branch_support })
-        CREATE (n)-[r:IS_PART_OF { branch: $branch, branch_level: $branch_level, status: "active", from: $at }]->(root)
-        """ % ":".join(
-            self.node.get_labels()
-        )
-
-        at = self.at or self.node._at
-        self.params["at"] = at.to_string()
-
-        self.add_to_query(query)
-        self.return_labels = ["n"]
-
-    def get_new_ids(self) -> Tuple[str, str]:
-        result = self.get_result()
-        node = result.get("n")
-
-        if node is None:
-            raise QueryError(self.get_query(), self.params)
-
-        return node["uuid"], node.element_id
-
-
 class NodeCreateAllQuery(NodeQuery):
     name = "node_create_all"
 

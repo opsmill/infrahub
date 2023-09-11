@@ -8,7 +8,6 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.query.node import (
     NodeCreateAllQuery,
-    NodeCreateQuery,
     NodeGetListQuery,
     NodeListGetAttributeQuery,
     NodeListGetInfoQuery,
@@ -16,16 +15,6 @@ from infrahub.core.query.node import (
     NodeListGetRelationshipsQuery,
 )
 from infrahub.core.timestamp import Timestamp
-
-
-async def test_query_NodeCreateQuery_with_generic(session: AsyncSession, group_schema, branch: Branch):
-    obj = await Node.init(session=session, schema="CoreStandardGroup", branch=branch)
-
-    query = await NodeCreateQuery.init(session=session, node=obj)
-    await query.execute(session=session)
-    node = query.get_result().get("n")
-
-    assert sorted(list(node.labels)) == sorted(["CoreGroup", "Node", "CoreStandardGroup"])
 
 
 async def test_query_NodeCreateAllQuery(

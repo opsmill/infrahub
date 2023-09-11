@@ -17,7 +17,6 @@ from infrahub.core.property import (
 )
 from infrahub.core.query import QueryElement, QueryNode, QueryRel
 from infrahub.core.query.attribute import (
-    AttributeCreateQuery,
     AttributeGetQuery,
     AttributeUpdateFlagQuery,
     AttributeUpdateNodePropertyQuery,
@@ -227,10 +226,10 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         save_at = Timestamp(at)
 
-        if self.id:
-            return await self._update(at=save_at, session=session)
+        if not self.id:
+            raise ValidationError(f"Unable to update the attribute {self.name}, id is not defined")
 
-        return await self._create(at=save_at, session=session)
+        return await self._update(at=save_at, session=session)
 
     async def delete(self, session: AsyncSession, at: Optional[Timestamp] = None) -> bool:
         if not self.db_id:
@@ -281,17 +280,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             status=RelationshipStatus.DELETED,
             session=session,
         )
-
-        return True
-
-    async def _create(self, session: AsyncSession, at: Optional[Timestamp] = None) -> bool:
-        create_at = Timestamp(at)
-
-        query = await AttributeCreateQuery.init(session=session, attr=self, at=create_at)
-        await query.execute(session=session)
-
-        self.id, self.db_id = query.get_new_ids()
-        self.at = create_at
 
         return True
 
