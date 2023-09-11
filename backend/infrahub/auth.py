@@ -298,10 +298,10 @@ class _BaseSchemeAuth(AuthBackend):
     verify: Callable[..., Awaitable[Optional[auth.BaseUser]]]
 
     def get_token_from_cookie(self, conn: HTTPConnection) -> Optional[str]:
-        cookies = SimpleCookie(conn.headers.get('Cookie', ''))
-        
-        if 'auth_token' in cookies and cookies['auth_token'].value:
-            return cookies['auth_token'].value
+        cookies = SimpleCookie(conn.headers.get("Cookie", ""))
+
+        if "auth_token" in cookies and cookies["auth_token"].value:
+            return cookies["auth_token"].value
         return None
 
     async def authenticate(self, conn: HTTPConnection):

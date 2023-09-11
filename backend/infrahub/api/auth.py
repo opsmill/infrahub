@@ -36,6 +36,7 @@ async def refresh_jwt_token(
 
     return token
 
+
 @router.post("/logout")
 async def logout(
     response: Response,

@@ -28,11 +28,10 @@ async def test_password_based_login(session, default_branch, client, first_accou
     # Check for cookies
     assert "access_token" in response.cookies
     assert "refresh_token" in response.cookies
-    
+
     access_token = response.json()["access_token"]
     decoded = jwt.decode(access_token, key=config.SETTINGS.security.secret_key, algorithms=["HS256"])
     assert first_account.id == decoded["sub"]
-
 
 
 async def test_refresh_with_invalidated_token(session, default_branch, client, first_account):
@@ -85,6 +84,7 @@ async def test_refresh_access_token(session, default_branch, client, first_accou
     assert decoded_access["session_id"]
     assert decoded_access["session_id"] == decoded_refresh["session_id"]
 
+
 async def test_refresh_access_token_with_cookies(session, default_branch, client, first_account):
     """Validate that it's possible to refresh an access token using a refresh token stored in cookies"""
     with client:
@@ -93,7 +93,7 @@ async def test_refresh_access_token_with_cookies(session, default_branch, client
         )
 
     assert login_response.status_code == 200
-    
+
     # Get tokens from cookies
     refresh_token = login_response.cookies.get("refresh_token")
     assert refresh_token is not None
@@ -113,6 +113,7 @@ async def test_refresh_access_token_with_cookies(session, default_branch, client
     assert first_account.id == decoded_refresh["sub"]
     assert decoded_access["session_id"]
     assert decoded_access["session_id"] == decoded_refresh["session_id"]
+
 
 async def test_fail_to_refresh_access_token_with_access_token(session, default_branch, client, first_account):
     """Validate that it's not possible to refresh an access token using an access token"""
