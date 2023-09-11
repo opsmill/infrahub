@@ -221,13 +221,13 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         """Deserialize the value coming from the database."""
         return value
 
-    async def save(self, session: AsyncSession, at: Optional[Timestamp] = None):
+    async def save(self, session: AsyncSession, at: Optional[Timestamp] = None) -> bool:
         """Create or Update the Attribute in the database."""
 
         save_at = Timestamp(at)
 
         if not self.id:
-            raise ValidationError(f"Unable to update the attribute {self.name}, id is not defined")
+            return False
 
         return await self._update(at=save_at, session=session)
 
