@@ -1,5 +1,9 @@
 # Knowledge Base
 
-- [Architecture](./10_architecture.md)
-- [Demo Environment](./80_local_demo_environment.md)
+- [Architecture](./architecture.md)
+- [Transformation](./transformation.md)
+- [Authentication](./auth.md)
+- [Artifact](./artifact.md)
+- [Object Storage](./object_storage.md)
+- [Demo Environment](./local_demo_environment.md)
 
