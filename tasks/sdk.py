@@ -170,6 +170,7 @@ def test_unit(context: Context):
         # exec_cmd = f"pytest -n {NBR_WORKERS} -v --cov=infrahub_client {MAIN_DIRECTORY}/tests/unit"
         exec_cmd = f"pytest -v --cov=infrahub_client {MAIN_DIRECTORY}/tests/unit"
         print(f"{base_cmd} {exec_cmd}")
+        execute_command(context=context, command=f"{base_cmd} env")
         return execute_command(context=context, command=f"{base_cmd} {exec_cmd}")
 
 
@@ -181,6 +182,7 @@ def test_integration(context: Context, database: str = "memgraph"):
         # exec_cmd = f"pytest -n {NBR_WORKERS} -v --cov=infrahub_client {MAIN_DIRECTORY}/tests/integration"
         exec_cmd = f"pytest -v --cov=infrahub_client {MAIN_DIRECTORY}/tests/integration"
         print(f"{base_cmd} {exec_cmd}")
+        execute_command(context=context, command=f"{base_cmd} env")
         return execute_command(context=context, command=f"{base_cmd} {exec_cmd}")
 
 
