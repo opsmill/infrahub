@@ -5,7 +5,7 @@ order: 800
 ---
 # GraphQL
 
-The GraphQL interface is the main interface to interact with Infrahub, the schema is automatically generated based on the active schema.
+The GraphQL interface is the main interface to interact with Infrahub, the GraphQL Schema is automatically generated based on the core models and the user-defined schema models.
 
 The endpoint to interact with the main branch is accessible at `https://<host>/graphql`.  
 To interact with a branch the url must include the name of the branch. `https://<host>/graphql/<branch_name>`

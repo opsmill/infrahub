@@ -6,20 +6,7 @@ order: 900
 
 # Transformation
 
-<style>
-    .sample {
-        text-align: center;
-        color: #1956AF;
-        border-radius: 10px;
-        background-color: #E1EDFF;
-        border: 1px solid #1956AF;
-        padding-top: 20px;
-        margin-bottom: 20px;
-    }
-</style>
-:::sample
 A `Transformation` is a generic plugin to transform a dataset into a different format to simplify it's ingestion by a third party systems.
-:::
 
 The output of a transformation can be either in JSON format or in plain text.
 *Currently transformation must be written in Python but in the future more languages could be supported.*
@@ -82,7 +69,6 @@ rfiles:
   - name: my-rfile                   # Unique name for your rfile
     description: "short description" # (optional)
     query: "my-gql-query"            # Name or ID of the GraphQLQuery
-    repository: "self"               # Always Self
     template_path: "templates/config.tpl.j2" # path to the main Jinja2 template
 ```
 
