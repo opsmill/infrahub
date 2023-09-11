@@ -24,16 +24,16 @@ A `Transformation` is a generic plugin to transform a dataset into a different f
 The output of a transformation can be either in JSON format or in plain text.
 *Currently transformation must be written in Python but in the future more languages could be supported.*
 
-!!!info Examples
+!!!success Examples
 - With the `Jinja Plugin` it's possible to generate any configuration files, in plain text format.
 - With the `Python Plugin` its's possible to generate the payload expected by CloudFormation to configure a resource in AWS.
 !!!
 
-# High level design
+## High level design
 
 A Transformation is composed of 2 main components:
-- A GraphQL Query that will define what is the input data
-- A Transformation logic that will process the data and transform it.
+- A **GraphQL Query** that will define what is the input data
+- A **Transformation logic** that will process the data and transform it.
 
 ![](../media/transformation.excalidraw.svg)
 
@@ -66,7 +66,7 @@ The Transformation will automatically inherit the parameters (variables) defined
 
 ### RFile (Jinja2 Plugin)
 
-An RFile an is Transformation plugin for Jinja2, it can generate any file in plain text format and must be composed of 1 main Jinja2 template and 1 GraphQL Query.
+An RFile is a Transformation plugin for Jinja2, it can generate any file in plain text format and must be composed of 1 main Jinja2 template and 1 GraphQL Query.
 
 #### Create an RFile
 
@@ -74,7 +74,7 @@ The recommended way to create an RFile is to import it from a Git Repository.
 - The main Jinja2 template can be in any directory in the repository
 - The GraphQL Query can be imported as well from the Git Repository or can be already existing in the database.
 
-For Infrahub to automatically import an RFile from a Repository, you must declare it the `.infrahub.yml` file at the root of the repository under the key `rfiles`.
+For Infrahub to automatically import an RFile from a Repository, it must be declare in the `.infrahub.yml` file at the root of the repository under the key `rfiles`.
 
 ```yaml
 ---
@@ -90,22 +90,24 @@ rfiles:
 
 #### Render an RFile
 
-An RFile can be rendered :
+An RFile can be rendered with 3 different methods:
 - On demand via the REST API
-- As an Artifact
+- As part of an [Artifact](./artifact.md)
 - In CLI for development and troubleshooting
 
 ##### From the REST API
 
 A RFile can be rendered on demand via the REST API with the endpoint : `https://<host>/api/rfile/<rfile name or ID>`
 
-This endpoint is branch aware and you can specific the name of the branch and/or the time in as a URL parameters
+This endpoint is branch aware and it accept the name of the branch and/or the time in as a URL parameters
 - `https://<host>/api/rfile/<rfile name or ID>?branch=branch33`
 - `https://<host>/api/rfile/<rfile name or ID>?branch=branch33&at=<time of your choice>`
 
+!!!info
 The name of the branch used in the query will be used to retrieve the right Jinja Template and to execute the GraphQL Query
+!!!
 
-If the GraphQL Query accept some parameters, you can pass them as URL parameters
+If the GraphQL Query accept some parameters, they can be passed directly as URL parameters
 - `https://<host>/api/rfile/<rfile name or ID>?branch=branch33&my-param=XXXXX&my-other-param=YYYYY`
 
 ##### From the CLI for development and troubleshooting
@@ -140,21 +142,16 @@ infrahubctl render <rfile name or ID> my-param=XXXXX my-other-param=YYYYY
 If `--branch` is not provided it will automatically use the name of the local branch
 !!!
 
-#### Unit testing
-
-Coming Soon
-
 ### TransformPython (Python Plugin)
 
-A `TransformaPython`` is a Transformation Plugin written in Python, it can generate any dataset in JSON format and must be composed of 1 main Python Class and 1 GraphQL Query.
+A `TransformaPython` is a Transformation Plugin written in Python, it can generate any dataset in JSON format and must be composed of 1 main Python Class and 1 GraphQL Query.
 
 #### Create a TransformPython
 
-A TransformPython must be written as a Python Class that inherit from `InfrahubTransform` and it must implement one `transform` method.
-The transform method must accept a dict and return one.
+A TransformPython must be written as a Python Class that inherit from `InfrahubTransform` and it must implement one `transform` method. The transform method must accept a dict and return one.
 
 Each TransformPython must also define as Class level variables:
-- `query` : The Id or the name of the query to use
+- `query` : The ID or the name of the query to use
 - `url` : The URL where this TransformPython will be exposed via the REST API
 
 ```python
@@ -174,19 +171,27 @@ The Git Agent will automatically locate and import all `PythonTransform` in a Gi
 
 #### Render a TransformPython
 
-An TransformPython can be rendered :
+An TransformPython can be rendered with 2 different methods:
 - On demand via the REST API
-- As an Artifact
+- As part of an [Artifact](./artifact.md)
 
 ##### From the REST API
 
 A TransformPython can be rendered on demand via the REST API with the endpoint : `https://<host>/api/transform/<url defined by the TransformPython>`
 
-This endpoint is branch aware and you can specific the name of the branch and/or the time in as a URL parameters
+This endpoint is branch aware and it accept the name of the branch and/or the time in as a URL parameters
 - `https://<host>/api/transform/my/custom/url?branch=branch33`
 - `https://<host>/api/transform/my/custom/url?branch=branch33&at=<time of your choice>`
 
+!!!info
 The name of the branch used in the query will be used to retrieve the right Jinja Template and to execute the GraphQL Query
+!!!
 
-If the GraphQL Query accept some parameters, you can pass them as URL parameters
+If the GraphQL Query accept some parameters, they can be passed directly as URL parameters
 - `https://<host>/api/transform/my/custom/url?branch=branch33&my-param=XXXXX&my-other-param=YYYYY`
+
+## Unit testing for Transformation
+
+!!!warning
+Coming Soon
+!!!

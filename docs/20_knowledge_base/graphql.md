@@ -5,15 +5,16 @@ order: 800
 ---
 # GraphQL
 
-The GraphQL interface is the main interface to interact with Infrahub, the schema is automatically generated based on the schema.
+The GraphQL interface is the main interface to interact with Infrahub, the schema is automatically generated based on the active schema.
 
-The main endpoint is `https://<host>/graphql` to interact with the main branch. To interact with a branch the url must include the name of the branch. `https://<host>/graphql/<branch_name>`
+The endpoint to interact with the main branch is accessible at `https://<host>/graphql`.  
+To interact with a branch the url must include the name of the branch. `https://<host>/graphql/<branch_name>`
 
 ## Query & Mutations
 
-For each model in the schema, a GraphQL Query and 3 Mutations will be generated based on the namespace and the name of the model
+For each model in the schema, a GraphQL Query and 3 Mutations will be generated based on the namespace and the name of the model.
 
-For example, for the model `CoreRepository` the following Query and Mutation have been generated:
+For example, for the model `CoreRepository` the following Query and Mutations have been generated:
 - `Query` : **CoreRepository**
 - `Mutation` : **CoreRepositoryCreate**
 - `Mutation` : **CoreRepositoryUpdate**
@@ -38,15 +39,17 @@ query {
 }
 ```
 
+!!!info
 All list of objects will be nested under `edges` & `node` to make it possible to control the pagination and access the attribute `count`.
+!!!
 
+##### `ID` and `display_label`
 For all nodes, the attribute `id` and `display_label` are automatically available. The value used to generate the `display_label` can be defined for each model in the schema. If no value has been provided a generic display label with the kind and the ID of the Node will be generated.
 
-At the object level, there are mainly 3 types of resources that can be accessed
-
+At the object level, there are mainly 3 types of resources that can be accessed, each with a different format:
 - `Attribute`
-- Relationship of `Cardinality One`
-- Relationship of `Cardinality Many`
+- `Relationship` of `Cardinality One`
+- `Relationship` of `Cardinality Many`
 
 #### Attribute
 
@@ -55,8 +58,7 @@ Each Attribute is its own object in GraphQL to expose the value and all the meta
 In the query below, to access the attribute **name** of the object the query must be `CoreRepository` > `edges` > `node` > `name` > `value`. 
 At the same level all the metadata of the attribute are also available example : `is_protected`, `is_visible`, `source` & `owner`
 
-```graphql
-# Example query to access the value and the properties of the Attribute 'name'
+```graphql #6-14 Example query to access the value and the properties of the Attribute 'name'
 query {
     CoreRepository {
         count
@@ -81,8 +83,7 @@ query {
 
 A Relationship to another model with a cardinality of `One` will be represented with a `NestedEdged` object composed of a `node` and a `properties` objects. The `node` gives access to the remote `node` (the peer of the relationship) while `properties` gives access to the properties of the relationship itself.
 
-```graphql
-# Example query to access the peer and the properties of the relationship 'account', with a cardinality of one.
+```graphql #6-19 Example query to access the peer and the properties of the relationship 'account', with a cardinality of one.
 query {
     CoreRepository {
         count
@@ -112,7 +113,7 @@ query {
 
 A Relationship with a cardinality of `Many` will be represented with a `NestedPaginated` object composed. It was the same format as the top level `PaginatedObject` with `count` and `edges` but the child element will expose both `node` and `properties`. The `node` gives access to the remote `node` (the peer of the relationship) while `properties` gives access to the properties of the relationship itself.
 
-```graphql
+```graphql #6-20 Example query to access the relationship 'tags', with a cardinality of Many.
 query {
     CoreRepository {
         count
@@ -149,9 +150,9 @@ The format of the Mutation to Create & Update an object have some similarities w
 #### Create & Update
 
 To `Create` or `Update` an object, the mutations will have the following properties
-- The Input for the mutatiion must be provided inside `data`
+- The Input for the mutation must be provided inside `data`
 - All mutations will return `ok` and `object` to access some information after the mutation has been executed.
-- For `Update`, it will be mandatory to provide an `id`
+- For `Update`, it is mandatory to provide an `id`
 
 ```graphql
 mutation {
@@ -174,18 +175,18 @@ mutation {
 
 In addition to the Query and the Mutations automatically generated based on the schema, there are some Query and Mutations to interact with the Branches.
 
-- `Query`: **branch**, Query a list of all branches
-- `Mutation`: **BranchCreate**, Create a new branch
-- `Mutation`: **BranchUpdate**, Update the descrition of a branch
-- `Mutation`: **BranchDelete**, Delete an existing Branch
-- `Mutation`: **BranchRebase**, Rebase an existing Branch with the main Branch
-- `Mutation`: **BranchMerge**, Merge a Branch into main
-- `Mutation`: **BranchValidate**, Validate if a branch has some conflicts
+- **Query**: `branch`, Query a list of all branches
+- **Mutation**: `BranchCreate`, Create a new branch
+- **Mutation**: `BranchUpdate`, Update the descrition of a branch
+- **Mutation**: `BranchDelete`, Delete an existing Branch
+- **Mutation**: `BranchRebase`, Rebase an existing Branch with the main Branch
+- **Mutation**: `BranchMerge`, Merge a Branch into main
+- **Mutation**: `BranchValidate`, Validate if a branch has some conflicts
 
 
 ## GraphQLQuery
 
-The GraphQLQuery Model has been designed to store a GraphQL Query in order to simplify it's execution and to associate it with other internal objects like `Transformation`.
+The GraphQLQuery Model has been designed to store a GraphQL Query in order to simplify its execution and to associate it with other internal objects like `Transformation`.
 
 A GraphQLQuery object can be created directly from the API or it can be imported from a Git Repository.
 
