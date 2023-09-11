@@ -148,6 +148,8 @@ jobs:
         run: "invoke sdk.mypy --docker"
       - name: "Unit Tests"
         run: "invoke sdk.test-unit"
+        env:
+          BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_SDK_UNIT }}
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2.0.0
         env:
@@ -158,6 +160,8 @@ jobs:
 
       - name: "Integration Tests"
         run: "invoke sdk.test-integration"
+        env:
+          BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_SDK_INTEGRATION }}
       - name: "Coveralls : Integration Tests"
         uses: coverallsapp/github-action@v2.0.0
         env:
@@ -192,6 +196,8 @@ jobs:
         run: "invoke backend.pylint --docker"
       - name: "Unit Tests"
         run: "invoke backend.test-unit"
+        env:
+          BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_BACKEND_UNIT_DEFAULT }}
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2.0.0
         env:
@@ -201,6 +207,8 @@ jobs:
           parallel: true
       - name: "Integration Tests"
         run: "invoke backend.test-integration"
+        env:
+          BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_BACKEND_INTEGRATION }}
       - name: "Coveralls : Integration Tests"
         uses: coverallsapp/github-action@v2.0.0
         env:
@@ -233,6 +241,8 @@ jobs:
         run: "invoke test.pull --database=neo4j"
       - name: "Unit Tests"
         run: "invoke backend.test-core --database=neo4j"
+        env:
+          BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_BACKEND_UNIT_NEO4J }}
 
   ctl-tests:
     if: |
@@ -259,6 +269,8 @@ jobs:
         run: "invoke ctl.mypy --docker"
       - name: "Unit Tests"
         run: "invoke ctl.test-unit"
+        env:
+          BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_CTL_UNIT }}
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2.0.0
         env:
