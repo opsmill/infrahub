@@ -6,8 +6,8 @@
 A Proposed Change provides a single workflow to integrate the changes from a given branch into the main branch.
 It is the equivalent of a Pull Request or a Merge Request for Infrahub.
 
-When a user is ready to integrate its change into the main branch, it can create a Proposed Change.
-The Proposed Change panel will be regroup all information related to the change and it will allow other members of the team to review and comments the changes as needed.
+When a user is ready to integrate their change into the main branch, they can create a Proposed Change.
+The Proposed Change panel groups all information related to the change and it will allow other members of the team to review and comment the changes as needed.
 Information related to a change:
 - Data changes (diff)
 - Files changes (diff)
@@ -21,18 +21,18 @@ Information related to a change:
 
 An artifact is the result of a Transformation for a specific context and/or object, it can have different format either in plain text or JSON.
 
-Artifact improve the Transformation by providing the following additional features:
-- **Caching** : Generated Artifact are stored in the internal object storage. For resource intensive Transformation, it will significantly reduce the load of the system if an artifact can be serve from the cache instead of regenerating each time.
+An artifact improve the Transformation by providing the following additional features:
+- **Caching** : Generated Artifact are stored in the internal object storage. For a resource intensive Transformation, it will significantly reduce the load of the system if an artifact can be serve from the cache instead of regenerating each time.
 - **Traceability** : Past values of an artifact remains available. In a future release, it will be possible to compare the value of an artifact over time.
-- **Peer Review** : Artifact are automatically part of the Proposed Change review process
+- **Peer Review** : Artifacts are automatically part of the Proposed Change review process
 
-While the content of an artifact can change, it's identifier will remain the same over time.
+While the content of an artifact can change, its identifier will remain the same over time.
 
 ### Support for branch agnostic and branch local models
 
 It's now possible to define in the schema how a given model, attribute or relationship should behave regarding the branches.
 
-By default, all models defined in the schema will be **branch aware** which means that any changes to an object based on a **branch aware** model will be local to the branch and will not affect the other branches.
+By default, all models defined in the schema will be **branch aware** which means that any changes to an object based on a **branch aware** model will be applied only to the branch and can be integrated into the main branch via a Propose Change.
 It's now possible to also configure a model, an attribute or a relationship as :
 - **branch agnostic**: All changes to an object based on a **branch agnostic** model will automatically be available in all branches.
 - **branch local**:  All changes will stay local to the branch. A model in **branch local** mode will not be affected by the Diff and the Merge.
@@ -61,7 +61,6 @@ Several changes to the Architecture have been introduced to prepare the deployme
 - Add OpenTelemetry
 - Add GraphQL Query Analyzer @dgarros (#966)
 - Replace graphql playground with Graphiql @morganpartee (#1024)
-- Upgrade memgraph to 2.10.1 @ogenstad (#1028)
 - Add Links in the footer
 - Convert all UUID to Temporal UUID @dgarros (#936)
 
