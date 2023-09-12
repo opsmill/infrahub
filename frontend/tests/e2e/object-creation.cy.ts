@@ -36,17 +36,20 @@ describe("Object creation and deletion", () => {
     // Intercept mutation
     cy.intercept("/graphql/main").as("AddRequest");
 
-    // Intercept refetch
-    cy.intercept("/graphql/main").as("RefetchRequest");
-
     // Click save
     cy.get(".justify-end > .bg-custom-blue-700").click();
+
+    // Intercept refetch
+    cy.intercept("/graphql/main").as("RefetchRequest");
 
     // Wait for the mutation to succeed
     cy.wait("@AddRequest");
 
     // Wait refetch
     cy.wait("@RefetchRequest", { timeout: 10000 });
+
+    // eslint-disable-next-line cypress/no-unnecessary-waiting
+    cy.wait(5000);
 
     // Get the previous number from the previous request
     cy.get("@itemsNumber").then((itemsNumber) => {
@@ -81,17 +84,20 @@ describe("Object creation and deletion", () => {
     // Intercept mutation
     cy.intercept("/graphql/main").as("DeleteRequest");
 
-    // Intercept refetch
-    cy.intercept("/graphql/main").as("RefetchRequest");
-
     // Delete the object
     cy.get(".bg-red-600").click();
+
+    // Intercept refetch
+    cy.intercept("/graphql/main").as("RefetchRequest");
 
     // Wait for the mutation to succeed
     cy.wait("@DeleteRequest");
 
     // Wait refetch
     cy.wait("@RefetchRequest", { timeout: 10000 });
+
+    // eslint-disable-next-line cypress/no-unnecessary-waiting
+    cy.wait(5000);
 
     // Get the previous number from the previous request
     cy.get("@itemsNumber").then((itemsNumber) => {
