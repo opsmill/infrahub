@@ -15,7 +15,7 @@ An artifact can also represent the configuration of a DNS server or the configur
 !!!
 
 While it's always possible to generate [Transformations](./transformation.md) on demand via the API, having an Artifact provide some additional benefits:
-- **Caching** : Generated Artifact are stored in the internal [object storage](./object_storage.md). For resource intensive Transformation, it will significantly reduce the load of the system if an artifact can be serve from the cache instead of regenerating each time.
+- **Caching** : Generated Artifact are stored in the internal [object storage](./object-storage.md). For resource intensive Transformation, it will significantly reduce the load of the system if an artifact can be serve from the cache instead of regenerating each time.
 - **Traceability** : Past values of an artifact remains available. In a future release, it will be possible to compare the value of an artifact over time.
 - **Peer Review** : Artifact are automatically part of the Proposed Change review process
 
