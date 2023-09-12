@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Response
 from neo4j import AsyncSession
 
-from infrahub import models, config
+from infrahub import config, models
 from infrahub.api.dependencies import get_access_token, get_refresh_token, get_session
 from infrahub.auth import (
     AccountSession,
