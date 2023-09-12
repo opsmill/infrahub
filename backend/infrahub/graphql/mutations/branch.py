@@ -20,6 +20,7 @@ from infrahub.message_bus.events import (
     InfrahubGitRPC,
     send_event,
 )
+from infrahub.services import services
 
 from ..types import BranchType
 from ..utils import extract_fields
@@ -80,12 +81,6 @@ class BranchCreate(Mutation):
 
         log.info("created_branch", name=obj.name)
 
-        message = messages.EventSchemaUpdate(
-            branch=data["name"],
-            meta=Meta(initiator_id=WORKER_IDENTITY),
-        )
-        await rpc_client.send(message=message)
-
         if not obj.is_data_only:
             # Query all repositories and add a branch on each one of them too
             repositories = await NodeManager.query(session=session, schema="CoreRepository")
@@ -116,9 +111,11 @@ class BranchCreate(Mutation):
 
         # Generate Event in message bus
         if config.SETTINGS.broker.enable and info.context.get("background"):
-            info.context.get("background").add_task(
-                send_event, InfrahubBranchMessage(action=BranchMessageAction.CREATE, branch=obj.name)
+            message = messages.EventBranchCreate(
+                branch=obj.name,
+                meta=Meta(initiator_id=WORKER_IDENTITY),
             )
+            info.context.get("background").add_task(services.send, message)
 
         return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok)
 
