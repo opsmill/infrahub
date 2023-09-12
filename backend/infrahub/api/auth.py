@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Response
 from neo4j import AsyncSession
 
-from infrahub import models
+from infrahub import models, config
 from infrahub.api.dependencies import get_access_token, get_refresh_token, get_session
 from infrahub.auth import (
     AccountSession,
@@ -20,8 +20,8 @@ async def login_user(
     session: AsyncSession = Depends(get_session),
 ) -> models.UserToken:
     token = await authenticate_with_password(session=session, credentials=credentials)
-    response.set_cookie("access_token", token.access_token, httponly=True)
-    response.set_cookie("refresh_token", token.refresh_token, httponly=True)
+    response.set_cookie("access_token", token.access_token, httponly=True, max_age=config.SETTINGS.security.access_token_lifetime)
+    response.set_cookie("refresh_token", token.refresh_token, httponly=True, max_age=config.SETTINGS.security.refresh_token_lifetime)
     return token
 
 
