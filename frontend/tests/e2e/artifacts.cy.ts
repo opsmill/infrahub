@@ -23,6 +23,9 @@ describe("Main application", () => {
     // Access the artifact definition
     cy.contains(ARTIFACT_DEFINITION_NAME).click();
 
+    // Loader should not exist
+    cy.contains("Just a moment").should("not.exist");
+
     if (this.screenshots) {
       cy.screenshot("artifacts-1-definition-details", screenshotConfig);
     }
@@ -48,6 +51,9 @@ describe("Main application", () => {
 
     // Click to access artifact details
     cy.contains(ARTIFACT_DEFINITION_NAME).first().click();
+
+    // Loader should not exist
+    cy.contains("Just a moment").should("not.exist");
 
     if (this.screenshots) {
       cy.screenshot("artifacts-2-artifact-details", screenshotConfig);

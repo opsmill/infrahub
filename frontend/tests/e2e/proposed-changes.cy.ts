@@ -60,6 +60,9 @@ describe("Main application", () => {
       cy.contains(PROPOSED_CHANGES_NAME).click();
     });
 
+    // Loader should not exist
+    cy.contains("Just a moment").should("not.exist");
+
     if (this.screenshots) {
       cy.screenshot("proposed-changes-2-details", screenshotConfig);
     }
@@ -76,6 +79,9 @@ describe("Main application", () => {
 
     // Access the new PC details
     cy.contains(PROPOSED_CHANGES_NAME).click();
+
+    // Loader should not exist
+    cy.contains("Just a moment").should("not.exist");
 
     if (this.screenshots) {
       cy.screenshot("proposed-changes-2-details", screenshotConfig);
