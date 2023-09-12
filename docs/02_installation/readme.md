@@ -78,7 +78,7 @@ Once docker desktop and invoke are properly installed you can build start Infrah
 invoke demo.build demo.init demo.start demo.load-infra-schema demo.load-infra-data
 ```
 
-[!ref Check the documentation of the demo environment for more information](../20_knowledge_base/80_local_demo_environment.md)
+[!ref Check the documentation of the demo environment for more information](../20_knowledge_base/local_demo_environment.md)
 
 ## GitPod
 
