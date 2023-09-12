@@ -6,7 +6,13 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Any, MutableMapping
 
 from infrahub import config
-from infrahub.log import get_log_data
+from infrahub.database import get_db
+from infrahub.log import clear_log_context, get_log_data, get_logger
+from infrahub.message_bus import messages
+from infrahub.message_bus.operations import execute_message
+from infrahub.services import InfrahubServices
+from infrahub.services.adapters.database.graph_database import GraphDatabase
+from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
 from infrahub_client import UUIDT
 
 from . import InfrahubBaseMessage, InfrahubResponse, Meta, get_broker
@@ -22,6 +28,8 @@ if TYPE_CHECKING:
         AbstractRobustConnection,
     )
 
+log = get_logger()
+
 
 class InfrahubRpcClientBase:
     connection: AbstractRobustConnection
@@ -33,6 +41,7 @@ class InfrahubRpcClientBase:
     def __init__(self) -> None:
         self.futures: MutableMapping[str, asyncio.Future] = {}
         self.loop = asyncio.get_running_loop()
+        self.service: InfrahubServices
 
     async def connect(self) -> InfrahubRpcClient:
         self.connection = await get_broker()
@@ -47,20 +56,30 @@ class InfrahubRpcClientBase:
         self.exchange = await self.channel.declare_exchange(f"{config.SETTINGS.broker.namespace}.events", type="topic")
         queue = await self.channel.declare_queue(f"{config.SETTINGS.broker.namespace}.rpcs")
         await queue.bind(self.exchange, routing_key="check.*.*")
+        await queue.bind(self.exchange, routing_key="event.*.*")
         await queue.bind(self.exchange, routing_key="request.*.*")
         await queue.bind(self.exchange, routing_key="transform.*.*")
+        await self.callback_queue.bind(self.exchange, routing_key="refresh.registry.*")
+        driver = await get_db()
+        database = GraphDatabase(driver=driver)
+        self.service = InfrahubServices(
+            database=database, message_bus=RabbitMQMessageBus(channel=self.channel, exchange=self.exchange)
+        )
 
         return self
 
     async def on_response(self, message: AbstractIncomingMessage) -> None:
-        if message.correlation_id is None:
-            print(f"Bad message {message!r}")
-            return
+        if message.correlation_id:
+            future: asyncio.Future = self.futures.pop(message.correlation_id)
 
-        future: asyncio.Future = self.futures.pop(message.correlation_id)
+            if future:
+                future.set_result(message)
 
-        if future:
-            future.set_result(message)
+        clear_log_context()
+        if message.routing_key in messages.MESSAGE_MAP:
+            await execute_message(routing_key=message.routing_key, message_body=message.body, service=self.service)
+        else:
+            log.error("Invalid message received", message=f"{message!r}")
 
     async def call(self, message: InfrahubRPC, wait_for_response: bool = True) -> Any:
         correlation_id = str(UUIDT())
@@ -134,8 +153,8 @@ class InfrahubRpcClientTesting(InfrahubRpcClientBase):
         self.responses[(message_type.value, action.value)].append(response)
 
     async def ensure_all_responses_have_been_delivered(self) -> bool:
-        for key, messages in self.responses.items():
-            if len(messages) != 0:
+        for key, events in self.responses.items():
+            if len(events) != 0:
                 raise Exception(  # pylint: disable=broad-exception-raised
                     f"Some responses for {key}, haven't been delivered."
                 )

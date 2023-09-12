@@ -6,12 +6,13 @@ from graphene import Boolean, Field, InputObjectType, List, Mutation, String
 from graphql import GraphQLResolveInfo
 
 import infrahub.config as config
-from infrahub import lock
+from infrahub import WORKER_IDENTITY, lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.exceptions import BranchNotFound
 from infrahub.log import get_log_data, get_logger
+from infrahub.message_bus import Meta, messages
 from infrahub.message_bus.events import (
     BranchMessageAction,
     GitMessageAction,
@@ -78,6 +79,12 @@ class BranchCreate(Mutation):
             await obj.save(session=session)
 
         log.info("created_branch", name=obj.name)
+
+        message = messages.EventSchemaUpdate(
+            branch=data["name"],
+            meta=Meta(initiator_id=WORKER_IDENTITY),
+        )
+        await rpc_client.send(message=message)
 
         if not obj.is_data_only:
             # Query all repositories and add a branch on each one of them too
@@ -197,11 +204,11 @@ class BranchValidate(Mutation):
         rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
 
         obj = await Branch.get_by_name(session=session, name=data["name"])
-        ok, messages = await obj.validate_branch(rpc_client=rpc_client, session=session)
+        ok, validation_messages = await obj.validate_branch(rpc_client=rpc_client, session=session)
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
 
-        return cls(object=await obj.to_graphql(fields=fields.get("object", {})), messages=messages, ok=ok)
+        return cls(object=await obj.to_graphql(fields=fields.get("object", {})), messages=validation_messages, ok=ok)
 
 
 class BranchMerge(Mutation):

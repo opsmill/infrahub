@@ -2,7 +2,7 @@ from typing import Iterator, Optional
 
 import aio_pika
 import aiormq
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from infrahub import config
 from infrahub.exceptions import Error
@@ -47,6 +47,7 @@ class Meta(BaseModel):
     request_id: str = ""
     correlation_id: Optional[str] = None
     reply_to: Optional[str] = None
+    initiator_id: Optional[str] = Field(None, description="The worker identity of the initial sender of this message")
 
 
 class InfrahubBaseMessage(BaseModel, aio_pika.abc.AbstractMessage):
@@ -59,6 +60,7 @@ class InfrahubBaseMessage(BaseModel, aio_pika.abc.AbstractMessage):
         self.meta = self.meta or Meta()
         if parent.meta:
             self.meta.request_id = parent.meta.request_id
+            self.meta.initiator_id = parent.meta.initiator_id
 
     def set_log_data(self, routing_key: str) -> None:
         set_log_data(key="routing_key", value=routing_key)
