@@ -4,13 +4,13 @@ import logging
 import os
 from pathlib import Path
 from typing import List, Optional
+from diffsync.diff import Diff
 
 import typer
 import yaml
 from infrahub_sync import SyncAdapter, SyncConfig, SyncInstance
 from infrahub_sync.generator import render_template
 from potenda import Potenda
-from rich.console import Console
 
 from infrahub_client import InfrahubClientSync
 
@@ -52,6 +52,23 @@ def get_instance(name: str) -> Optional[SyncInstance]:
 
     return None
 
+def get_potenda_from_instance(sync_instance: SyncInstance, branch: Optional[str] = None) -> Potenda:
+    source = import_adapter(adapter=sync_instance.source, directory=sync_instance.directory)
+    destination = import_adapter(adapter=sync_instance.destination, directory=sync_instance.directory)
+
+    if sync_instance.source.name == "infrahub" and branch:
+        src = source(config=sync_instance, target="source", adapter=sync_instance.source, branch=branch)
+    else:
+        src = source(config=sync_instance, target="source", adapter=sync_instance.source)
+    if sync_instance.destination.name == "infrahub" and branch:
+        dst = destination(config=sync_instance, target="destination", adapter=sync_instance.destination, branch=branch)
+    else:
+        dst = destination(config=sync_instance, target="destination", adapter=sync_instance.destination)
+
+    ptd = Potenda(destination=dst, source=src, config=sync_instance, top_level=sync_instance.order)
+
+    return ptd
+
 
 @app.command()
 def list():
@@ -70,24 +87,11 @@ def diff(
     if not sync_instance:
         print_error_and_abort(f"Unable to find the sync {name}. Use the list command to see the sync available")
 
-    source = import_adapter(adapter=sync_instance.source, directory=sync_instance.directory)
-    destination = import_adapter(adapter=sync_instance.destination, directory=sync_instance.directory)
-
-    if sync_instance.source.name == "infrahub" and branch:
-        src = source(config=sync_instance, target="source", adapter=sync_instance.source, branch=branch)
-    else:
-        src = source(config=sync_instance, target="source", adapter=sync_instance.source)
-    if sync_instance.destination.name == "infrahub" and branch:
-        dst = destination(config=sync_instance, target="destination", adapter=sync_instance.destination, branch=branch)
-    else:
-        dst = destination(config=sync_instance, target="destination", adapter=sync_instance.destination)
-
-    ptd = Potenda(destination=dst, source=src, config=sync_instance, top_level=sync_instance.order)
-
+    ptd = get_potenda_from_instance(sync_instance, branch)
     ptd.load()
-
+    
     mydiff = ptd.diff()
-
+    
     print(mydiff.str())
 
 
@@ -102,22 +106,9 @@ def sync(
     if not sync_instance:
         print_error_and_abort(f"Unable to find the sync {name}. Use the list command to see the sync available")
 
-    source = import_adapter(adapter=sync_instance.source, directory=sync_instance.directory)
-    destination = import_adapter(adapter=sync_instance.destination, directory=sync_instance.directory)
-
-    if sync_instance.source.name == "infrahub" and branch:
-        src = source(config=sync_instance, target="source", adapter=sync_instance.source, branch=branch)
-    else:
-        src = source(config=sync_instance, target="source", adapter=sync_instance.source)
-    if sync_instance.destination.name == "infrahub" and branch:
-        dst = destination(config=sync_instance, target="destination", adapter=sync_instance.destination, branch=branch)
-    else:
-        dst = destination(config=sync_instance, target="destination", adapter=sync_instance.destination)
-
-    ptd = Potenda(destination=dst, source=src, config=sync_instance, top_level=sync_instance.order)
-
+    ptd = get_potenda_from_instance(sync_instance, branch)
     ptd.load()
-
+    
     mydiff = ptd.diff()
     
     if mydiff.has_diffs():
@@ -133,8 +124,6 @@ def generate(
     name: str = typer.Argument(..., help="Name of the sync to use"),
 ):
     """Generate all the python files for a given sync based on the configuration."""
-
-    console = Console()
 
     sync_instance = get_instance(name=name)
     if not sync_instance:
@@ -170,4 +159,4 @@ def generate(
                 context={"schema": schema, "adapter": adapter, "config": sync_instance},
             )
 
-            console.print(f"Saved {item[0]} in {item[1]}")
+            typer.echo(f"Saved {item[0]} in {item[1]}")

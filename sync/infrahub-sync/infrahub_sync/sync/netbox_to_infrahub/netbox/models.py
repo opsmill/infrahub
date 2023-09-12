@@ -36,12 +36,11 @@ class BuiltinRole(NetboxModel):
 class BuiltinLocation(NetboxModel):
     _modelname = "BuiltinLocation"
     _identifiers = ("name",)
-    _attributes = ("tags", "description", "type")
+    _attributes = ("description", "type")
 
     name: str
     description: Optional[str]
     type: str
-    tags: List[str] = []
 
     local_id: Optional[str]
     local_data: Optional[Any]

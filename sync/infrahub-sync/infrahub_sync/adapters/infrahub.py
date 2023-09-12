@@ -57,11 +57,11 @@ class InfrahubAdapter(DiffSyncMixin, DiffSync):
         if not isinstance(adapter.settings, dict) or "url" not in adapter.settings:
             raise ValueError("url must be specified!")
 
-        if branch:
-            print(f"Syncing with branch '{branch}'")
+        if self.branch:
+            print(f"Using '{branch}' branch ")
             self.client = InfrahubClientSync(address=adapter.settings["url"], default_timeout=60, default_branch=self.branch)
         else:
-            print(f"Syncing with (default) branch 'main'")
+            print(f"Using 'main' branch (default)")
             self.client = InfrahubClientSync(address=adapter.settings["url"], default_timeout=60)
 
         # We need to identify with an account until we have some auth in place
@@ -148,14 +148,12 @@ class InfrahubModel(DiffSyncModelMixin, DiffSyncModel):
         schema = diffsync.client.schema.get(kind=cls.__name__)
 
         data = diffsync_to_infrahub(ids=ids, attrs=attrs, schema=schema, store=diffsync.client.store)
-        print(f"Data InfrahubModel create =  {data}")
         unique_id = cls(**ids, **attrs).get_unique_id()
 
         source = diffsync.account
         create_data = diffsync.client.schema.generate_payload_create(
             schema=schema, data=data, source=source.id, is_protected=True
         )
-        print(f"Create_data InfrahubModel create =  {create_data}")
         node = diffsync.client.create(kind=cls.__name__, data=create_data)
         node.save()
         diffsync.client.store.set(key=unique_id, node=node)
