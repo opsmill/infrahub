@@ -40,7 +40,6 @@ export default function ObjectItemMetaEdit(props: Props) {
 
   const formStructure = getFormStructureForMetaEditPaginated(
     attributeOrRelationshipToEdit,
-    type,
     schemaList
   );
 
