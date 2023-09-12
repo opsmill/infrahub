@@ -36,7 +36,9 @@ async def refresh_jwt_token(
     refresh_token: models.RefreshTokenData = Depends(get_refresh_token),
 ) -> models.AccessTokenResponse:
     token = await create_fresh_access_token(session=session, refresh_data=refresh_token)
-    response.set_cookie("access_token", token.access_token, httponly=True, max_age=config.SETTINGS.security.access_token_lifetime)
+    response.set_cookie(
+        "access_token", token.access_token, httponly=True, max_age=config.SETTINGS.security.access_token_lifetime
+    )
 
     return token
 
