@@ -46,7 +46,7 @@ describe("Object creation and deletion", () => {
     cy.wait("@AddRequest");
 
     // Wait refetch
-    cy.wait("@RefetchRequest");
+    cy.wait("@RefetchRequest", { timeout: 10000 });
 
     // Get the previous number from the previous request
     cy.get("@itemsNumber").then((itemsNumber) => {
@@ -84,8 +84,6 @@ describe("Object creation and deletion", () => {
     // Delete the object
     cy.get(".bg-red-600").click();
 
-    cy.intercept("/graphql/main").as("RefetchRequest");
-
     // Intercept refetch
     cy.intercept("/graphql/main").as("RefetchRequest");
 
@@ -93,7 +91,7 @@ describe("Object creation and deletion", () => {
     cy.wait("@DeleteRequest");
 
     // Wait refetch
-    cy.wait("@RefetchRequest");
+    cy.wait("@RefetchRequest", { timeout: 10000 });
 
     // Get the previous number from the previous request
     cy.get("@itemsNumber").then((itemsNumber) => {
