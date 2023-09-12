@@ -36,11 +36,11 @@ describe("Object creation and deletion", () => {
     // Intercept mutation
     cy.intercept("/graphql/main").as("AddRequest");
 
-    // Click save
-    cy.get(".justify-end > .bg-custom-blue-700").click();
-
     // Intercept refetch
     cy.intercept("/graphql/main").as("RefetchRequest");
+
+    // Click save
+    cy.get(".justify-end > .bg-custom-blue-700").click();
 
     // Wait for the mutation to succeed
     cy.wait("@AddRequest");
@@ -81,11 +81,11 @@ describe("Object creation and deletion", () => {
     // Intercept mutation
     cy.intercept("/graphql/main").as("DeleteRequest");
 
-    // Delete the object
-    cy.get(".bg-red-600").click();
-
     // Intercept refetch
     cy.intercept("/graphql/main").as("RefetchRequest");
+
+    // Delete the object
+    cy.get(".bg-red-600").click();
 
     // Wait for the mutation to succeed
     cy.wait("@DeleteRequest");
