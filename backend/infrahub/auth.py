@@ -300,8 +300,8 @@ class _BaseSchemeAuth(AuthBackend):
     def get_token_from_cookie(self, conn: HTTPConnection) -> Optional[str]:
         cookies = SimpleCookie(conn.headers.get("Cookie", ""))
 
-        if "auth_token" in cookies and cookies["auth_token"].value:
-            return cookies["auth_token"].value
+        if "access_token" in cookies and cookies["access_token"].value:
+            return cookies["access_token"].value
         return None
 
     async def authenticate(self, conn: HTTPConnection):

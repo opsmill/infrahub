@@ -45,5 +45,6 @@ async def logout(
 ) -> None:
     if user_session.session_id:
         await invalidate_refresh_token(session=session, token_id=user_session.session_id)
-        response.delete_cookie("access_token")
-        response.delete_cookie("refresh_token")
+
+    response.delete_cookie("access_token")
+    response.delete_cookie("refresh_token")
