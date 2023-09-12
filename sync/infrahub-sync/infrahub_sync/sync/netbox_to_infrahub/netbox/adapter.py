@@ -1,16 +1,17 @@
 from infrahub_sync.adapters.netbox import NetboxAdapter
 
 from .models import (
-   BuiltinTag,
-   BuiltinRole,
-   BuiltinLocation,
-   InfraCircuit,
-   TemplateCircuitType,
-   TemplateDeviceType,
-   InfraProviderNetwork,
-   InfraRack,
-   OrgaProvider,
+    BuiltinLocation,
+    BuiltinRole,
+    BuiltinTag,
+    InfraCircuit,
+    InfraProviderNetwork,
+    InfraRack,
+    OrgaProvider,
+    TemplateCircuitType,
+    TemplateDeviceType,
 )
+
 
 # -------------------------------------------------------
 # AUTO-GENERATED FILE, DO NOT MODIFY

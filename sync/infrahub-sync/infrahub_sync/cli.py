@@ -4,7 +4,6 @@ import logging
 import os
 from pathlib import Path
 from typing import List, Optional
-from diffsync.diff import Diff
 
 import typer
 import yaml
@@ -24,6 +23,7 @@ def print_error_and_abort(message: str):
     error_message = typer.style(f"Error: {message}", fg=typer.colors.RED, bold=True)
     typer.echo(error_message)
     raise typer.Abort()
+
 
 def import_adapter(adapter: SyncAdapter, directory: str):
     here = os.path.abspath(os.path.dirname(__file__))
@@ -51,6 +51,7 @@ def get_instance(name: str) -> Optional[SyncInstance]:
             return item
 
     return None
+
 
 def get_potenda_from_instance(sync_instance: SyncInstance, branch: Optional[str] = None) -> Potenda:
     source = import_adapter(adapter=sync_instance.source, directory=sync_instance.directory)
@@ -89,9 +90,9 @@ def diff(
 
     ptd = get_potenda_from_instance(sync_instance, branch)
     ptd.load()
-    
+
     mydiff = ptd.diff()
-    
+
     print(mydiff.str())
 
 
@@ -99,7 +100,9 @@ def diff(
 def sync(
     name: str = typer.Argument(..., help="Name of the sync to use"),
     branch: str = typer.Option(default=None, help="Branch to use for the sync."),
-    diff: bool = typer.Option(default=True, help="Print the differences between the source and the destinatio before syncing"),
+    diff: bool = typer.Option(
+        default=True, help="Print the differences between the source and the destinatio before syncing"
+    ),
 ):
     """Synchronize the data between source and the destination systems for a given project."""
     sync_instance = get_instance(name=name)
@@ -108,9 +111,9 @@ def sync(
 
     ptd = get_potenda_from_instance(sync_instance, branch)
     ptd.load()
-    
+
     mydiff = ptd.diff()
-    
+
     if mydiff.has_diffs():
         if diff:
             mydiff.str()

@@ -46,10 +46,10 @@ class InfrahubAdapter(DiffSyncMixin, DiffSync):
     type = "Infrahub"
 
     def __init__(self, *args, target: str, adapter: SyncAdapter, config: SyncConfig, **kwargs):
-        branch = kwargs.get('branch', None)
+        branch = kwargs.get("branch", None)
         if branch:
             self.branch = branch
-            kwargs.pop('branch', None)
+            kwargs.pop("branch", None)
         super().__init__(*args, **kwargs)
         self.target = target
         self.config = config
@@ -59,9 +59,11 @@ class InfrahubAdapter(DiffSyncMixin, DiffSync):
 
         if self.branch:
             print(f"Using '{branch}' branch ")
-            self.client = InfrahubClientSync(address=adapter.settings["url"], default_timeout=60, default_branch=self.branch)
+            self.client = InfrahubClientSync(
+                address=adapter.settings["url"], default_timeout=60, default_branch=self.branch
+            )
         else:
-            print(f"Using 'main' branch (default)")
+            print("Using 'main' branch (default)")
             self.client = InfrahubClientSync(address=adapter.settings["url"], default_timeout=60)
 
         # We need to identify with an account until we have some auth in place

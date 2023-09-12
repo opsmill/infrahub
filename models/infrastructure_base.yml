@@ -649,7 +649,7 @@ nodes:
       - name: devices
         peer: InfraDevice
         optional: true
-        cardinality: many  
+        cardinality: many
   - name: ProviderContract
     namespace: Procurement
     description: "Provider Contract"
@@ -680,7 +680,7 @@ nodes:
         kind: Component
   - name: ProviderNetwork
     namespace: Infra
-    description: "A Provider Netowrk represent the boundary of a provider network, the details of which are unknown or unimportant."
+    description: "Represent the boundary of a provider network, the details of which are unknown or unimportant."
     label: "Provider Network"
     default_filter: name__value
     order_by:
