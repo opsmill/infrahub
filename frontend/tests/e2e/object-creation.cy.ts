@@ -33,11 +33,20 @@ describe("Object creation and deletion", () => {
     // Type the password
     cy.get(":nth-child(2) > .relative > .block").type(NEW_ACCOUNT.password);
 
+    // Intercept mutation
+    cy.intercept("/graphql/main").as("AddRequest");
+
     // Click save
     cy.get(".justify-end > .bg-custom-blue-700").click();
 
-    // Wait for the object to be created (the save button should not exist)
-    cy.get(".justify-end > .bg-custom-blue-700").should("not.exist");
+    // Intercept refetch
+    cy.intercept("/graphql/main").as("RefetchRequest");
+
+    // Wait for the mutation to succeed
+    cy.wait("@AddRequest");
+
+    // Wait refetch
+    cy.wait("@RefetchRequest");
 
     // Get the previous number from the previous request
     cy.get("@itemsNumber").then((itemsNumber) => {
@@ -69,11 +78,22 @@ describe("Object creation and deletion", () => {
     // The account name should be displayed in the delete modal
     cy.get("b").should("include.text", NEW_ACCOUNT.name);
 
+    // Intercept mutation
+    cy.intercept("/graphql/main").as("DeleteRequest");
+
     // Delete the object
     cy.get(".bg-red-600").click();
 
-    // Wait the request
-    cy.contains("Delete").should("not.exist");
+    cy.intercept("/graphql/main").as("RefetchRequest");
+
+    // Intercept refetch
+    cy.intercept("/graphql/main").as("RefetchRequest");
+
+    // Wait for the mutation to succeed
+    cy.wait("@DeleteRequest");
+
+    // Wait refetch
+    cy.wait("@RefetchRequest");
 
     // Get the previous number from the previous request
     cy.get("@itemsNumber").then((itemsNumber) => {
