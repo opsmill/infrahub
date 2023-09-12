@@ -34,7 +34,7 @@ const validate = (value: any, defaultValue?: any, optional?: boolean) => {
   }
 
   // The value is defined, then we can validate
-  if (value) {
+  if (Array.isArray(value) ? value.length : value) {
     return true;
   }
 
