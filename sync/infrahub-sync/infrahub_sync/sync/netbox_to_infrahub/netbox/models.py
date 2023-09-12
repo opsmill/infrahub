@@ -36,11 +36,12 @@ class BuiltinRole(NetboxModel):
 class BuiltinLocation(NetboxModel):
     _modelname = "BuiltinLocation"
     _identifiers = ("name",)
-    _attributes = ("description", "type")
+    _attributes = ("tags", "description", "type")
 
     name: str
     description: Optional[str]
     type: str
+    tags: List[str] = []
 
     local_id: Optional[str]
     local_data: Optional[Any]
@@ -49,11 +50,11 @@ class BuiltinLocation(NetboxModel):
 class InfraCircuit(NetboxModel):
     _modelname = "InfraCircuit"
     _identifiers = ("circuit_id",)
-    _attributes = ("status", "provider", "type", "tags", "description")
+    _attributes = ("provider", "type", "tags", "description", "vendor_id")
 
     circuit_id: str
     description: Optional[str]
-    status: Optional[str]
+    vendor_id: Optional[str]
     provider: str
     type: str
     tags: List[str] = []
@@ -90,13 +91,15 @@ class TemplateDeviceType(NetboxModel):
     local_data: Optional[Any]
 
 
-class OrgaManufacturer(NetboxModel):
-    _modelname = "OrgaManufacturer"
+class InfraProviderNetwork(NetboxModel):
+    _modelname = "InfraProviderNetwork"
     _identifiers = ("name",)
-    _attributes = ("tags", "description")
+    _attributes = ("provider", "tags", "description", "vendor_id")
 
     name: str
     description: Optional[str]
+    vendor_id: Optional[str]
+    provider: str
     tags: List[str] = []
 
     local_id: Optional[str]

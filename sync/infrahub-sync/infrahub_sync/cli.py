@@ -57,13 +57,13 @@ def get_instance(name: str) -> Optional[SyncInstance]:
 def list():
     """List all available SYNC projects."""
     for item in get_all_sync():
-        print(f"{item.name} | {item.source.name} >> {item.destination.name} | {item.directory}")
+        typer.echo(f"{item.name} | {item.source.name} >> {item.destination.name} | {item.directory}")
 
 
 @app.command()
 def diff(
     name: str = typer.Argument(..., help="Name of the sync to use"),
-    branch: str = typer.Option(default="main", help="Branch to use for the sync."),
+    branch: str = typer.Option(default=None, help="Branch to use for the sync."),
 ):
     """Calculate and print the differences between the source and the destination systems for a given project."""
     sync_instance = get_instance(name=name)
@@ -73,13 +73,20 @@ def diff(
     source = import_adapter(adapter=sync_instance.source, directory=sync_instance.directory)
     destination = import_adapter(adapter=sync_instance.destination, directory=sync_instance.directory)
 
-    src = source(config=sync_instance, target="source", adapter=sync_instance.source)
-    dst = destination(config=sync_instance, target="destination", adapter=sync_instance.destination)
+    if sync_instance.source.name == "infrahub" and branch:
+        src = source(config=sync_instance, target="source", adapter=sync_instance.source, branch=branch)
+    else:
+        src = source(config=sync_instance, target="source", adapter=sync_instance.source)
+    if sync_instance.destination.name == "infrahub" and branch:
+        dst = destination(config=sync_instance, target="destination", adapter=sync_instance.destination, branch=branch)
+    else:
+        dst = destination(config=sync_instance, target="destination", adapter=sync_instance.destination)
 
     ptd = Potenda(destination=dst, source=src, config=sync_instance, top_level=sync_instance.order)
+
     ptd.load()
 
-    mydiff = ptd.diff(branch=branch)
+    mydiff = ptd.diff()
 
     print(mydiff.str())
 
@@ -87,8 +94,8 @@ def diff(
 @app.command()
 def sync(
     name: str = typer.Argument(..., help="Name of the sync to use"),
-    branch: str = typer.Option(default="main", help="Branch to use for the sync."),
-    diff: bool = typer.Option(default="true", help="Print the differences between the source and the destinatio before syncing"),
+    branch: str = typer.Option(default=None, help="Branch to use for the sync."),
+    diff: bool = typer.Option(default=True, help="Print the differences between the source and the destinatio before syncing"),
 ):
     """Synchronize the data between source and the destination systems for a given project."""
     sync_instance = get_instance(name=name)
@@ -98,16 +105,24 @@ def sync(
     source = import_adapter(adapter=sync_instance.source, directory=sync_instance.directory)
     destination = import_adapter(adapter=sync_instance.destination, directory=sync_instance.directory)
 
-    src = source(config=sync_instance, target="source", adapter=sync_instance.source)
-    dst = destination(config=sync_instance, target="destination", adapter=sync_instance.destination)
+    if sync_instance.source.name == "infrahub" and branch:
+        src = source(config=sync_instance, target="source", adapter=sync_instance.source, branch=branch)
+    else:
+        src = source(config=sync_instance, target="source", adapter=sync_instance.source)
+    if sync_instance.destination.name == "infrahub" and branch:
+        dst = destination(config=sync_instance, target="destination", adapter=sync_instance.destination, branch=branch)
+    else:
+        dst = destination(config=sync_instance, target="destination", adapter=sync_instance.destination)
 
     ptd = Potenda(destination=dst, source=src, config=sync_instance, top_level=sync_instance.order)
+
     ptd.load()
 
     mydiff = ptd.diff()
-
+    
     if mydiff.has_diffs():
-        print(mydiff.str())
+        if diff:
+            mydiff.str()
         ptd.sync(diff=mydiff)
     else:
         typer.echo("No diffence found. Nothing to sync")

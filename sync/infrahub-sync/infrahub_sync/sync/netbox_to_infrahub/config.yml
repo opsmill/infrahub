@@ -13,12 +13,12 @@ destination:
 order: [
   "BuiltinTag",
   "BuiltinRole",
-  "OrgaManufacturer",
   "OrgaProvider",
   "BuiltinLocation",
   "InfraRack",
   "TemplateDeviceType",
   # "InfraDevice",
+  "InfraProviderNetwork",
   "TemplateCircuitType",
   "InfraCircuit"
 ]
@@ -42,6 +42,9 @@ schema_mapping:
         mapping: description
       - name: type
         static: "SITE"
+      # - name: tags
+      #   mapping: tags
+      #   reference: tag
 
   - name: InfraRack
     mapping: dcim.racks
@@ -55,9 +58,6 @@ schema_mapping:
         mapping: site.slug
       - name: height
         mapping: u_height
-      - name: tags
-        mapping: tags
-        reference: tag
       - name: serial_number
         mapping: serial
       - name: asset_tag
@@ -66,6 +66,9 @@ schema_mapping:
         mapping: facility_id
       - name: role
         mapping: role.name
+      - name: tags
+        mapping: tags
+        reference: tag
 
   - name: BuiltinRole
     mapping: dcim.device_roles
@@ -91,7 +94,7 @@ schema_mapping:
       - name: description
         mapping: description
 
-  - name: OrgaManufacturer
+  - name: OrgaProvider
     mapping: dcim.manufacturers
     fields:
       - name: name
@@ -150,9 +153,29 @@ schema_mapping:
   #     - name: role
   #       mapping: role.name
   #     - name: site
-  #       mapping: site.name
+  #       mapping: site.slug
   #     - name: rack
   #       mapping: rack.name
+
+  - name: InfraProviderNetwork
+    mapping: circuits.provider-networks
+    fields:
+      - name: name
+        mapping: name
+        identifier: true
+      - name: vendor_id
+        mapping: service_id
+      - name: provider
+        mapping: provider.name
+      - name: description
+        mapping: description
+      # - name: status
+      #   mapping: status.value
+      - name: tags
+        mapping: tags
+        reference: tag
+      - name: provider
+        mapping: provider.name
 
   - name: TemplateCircuitType
     mapping: circuits.circuit-types
@@ -172,16 +195,18 @@ schema_mapping:
       - name: circuit_id
         mapping: cid
         identifier: true
+      - name: vendor_id
+        mapping: cid
       - name: provider
         mapping: provider.name
       - name: description
         mapping: description
-      - name: status
-        mapping: status.value
+      # - name: status
+      #   mapping: status.value
       - name: type
         mapping: type.name
+      - name: provider
+        mapping: provider.name
       - name: tags
         mapping: tags
         reference: tag
-      - name: provider
-        mapping: provider.name

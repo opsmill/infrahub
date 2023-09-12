@@ -7,7 +7,7 @@ from .models import (
    InfraCircuit,
    TemplateCircuitType,
    TemplateDeviceType,
-   OrgaManufacturer,
+   InfraProviderNetwork,
    InfraRack,
    OrgaProvider,
 )
@@ -24,6 +24,6 @@ class NetboxSync(NetboxAdapter):
     InfraCircuit = InfraCircuit
     TemplateCircuitType = TemplateCircuitType
     TemplateDeviceType = TemplateDeviceType
-    OrgaManufacturer = OrgaManufacturer
+    InfraProviderNetwork = InfraProviderNetwork
     InfraRack = InfraRack
     OrgaProvider = OrgaProvider
