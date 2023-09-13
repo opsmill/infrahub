@@ -4,6 +4,6 @@
 - [Transformation](./transformation.md)
 - [Authentication](./auth.md)
 - [Artifact](./artifact.md)
-- [Object Storage](./object_storage.md)
-- [Demo Environment](./local_demo_environment.md)
+- [Object Storage](./object-storage.md)
+- [Demo Environment](./local-demo-environment.md)
 

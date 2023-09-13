@@ -1,10 +1,8 @@
 import os
-from typing import Dict, List
 
-from infrahub.message_bus import InfrahubBaseMessage, Meta, messages
+from infrahub.message_bus import Meta, messages
 from infrahub.message_bus.operations.requests.proposed_change import repository_checks
 from infrahub.services import InfrahubServices
-from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub_client import Config, InfrahubClient
 from infrahub_client.playback import JSONPlayback
 
@@ -12,23 +10,7 @@ CURRENT_DIRECTORY = os.path.abspath(os.path.dirname(__file__))
 TEST_DATA = f"{CURRENT_DIRECTORY}/test_data"
 
 
-class BusRecorder(InfrahubMessageBus):
-    def __init__(self):
-        self.messages: List[InfrahubBaseMessage] = []
-        self.messages_per_routing_key: Dict[str, List[InfrahubBaseMessage]] = {}
-
-    async def publish(self, message: InfrahubBaseMessage, routing_key: str) -> None:
-        self.messages.append(message)
-        if routing_key not in self.messages_per_routing_key:
-            self.messages_per_routing_key[routing_key] = []
-        self.messages_per_routing_key[routing_key].append(message)
-
-    @property
-    def seen_routing_keys(self) -> List[str]:
-        return list(self.messages_per_routing_key.keys())
-
-
-async def test_repository_checks():
+async def test_repository_checks(helper):
     """Validate that a request to trigger respository checks dispatches checks
 
     Should send one additional message for each branch tied to that repository
@@ -37,7 +19,7 @@ async def test_repository_checks():
     config = Config(address="http://infrahub-testing:8000", requester=playback.async_request)
     client = InfrahubClient(config=config)
 
-    bus_recorder = BusRecorder()
+    bus_recorder = helper.get_message_bus_recorder()
     service = InfrahubServices(client=client, message_bus=bus_recorder)
     message = messages.RequestProposedChangeRepositoryChecks(proposed_change="13a49493-b186-4f7e-a1bb-cd015ed0bdb0")
     await repository_checks(message=message, service=service)

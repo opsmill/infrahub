@@ -13,12 +13,14 @@ from infrahub.api.dependencies import (
 )
 from infrahub.core import registry
 from infrahub.core.manager import NodeManager
+from infrahub.message_bus import messages
 from infrahub.message_bus.events import (
     InfrahubRPCResponse,
     InfrahubTransformRPC,
     RPCStatusCode,
     TransformMessageAction,
 )
+from infrahub.message_bus.responses import TemplateResponse
 
 if TYPE_CHECKING:
     from infrahub.message_bus.rpc import InfrahubRpcClient
@@ -153,20 +155,16 @@ async def generate_rfile(
 
     rpc_client: InfrahubRpcClient = request.app.state.rpc_client
 
-    response: InfrahubRPCResponse = await rpc_client.call(
-        message=InfrahubTransformRPC(
-            action=TransformMessageAction.JINJA2,
-            repository=repository,
-            data=result.data,  # type: ignore[arg-type]
-            branch_name=branch_params.branch.name,
-            transform_location=rfile.template_path.value,  # type: ignore[attr-defined]
-        )
+    message = messages.TransformJinjaTemplate(
+        repository_id=repository.id,  # type: ignore[attr-defined]
+        repository_name=repository.name.value,  # type: ignore[attr-defined]
+        commit=repository.commit.value,  # type: ignore[attr-defined]
+        branch=branch_params.branch.name,
+        template_location=rfile.template_path.value,  # type: ignore[attr-defined]
+        data=result.data,
     )
 
-    if not isinstance(response.response, dict):
-        return JSONResponse(status_code=500, content={"errors": ["No content received from InfrahubTransformRPC."]})
-
-    if response.status == RPCStatusCode.OK.value:
-        return PlainTextResponse(content=response.response.get("rendered_template"))
-
-    return JSONResponse(status_code=response.status, content={"errors": response.errors or []})
+    response = await rpc_client.rpc(message=message)
+    response.raise_for_status()
+    template = TemplateResponse(**response.response_data)
+    return PlainTextResponse(content=template.rendered_template)

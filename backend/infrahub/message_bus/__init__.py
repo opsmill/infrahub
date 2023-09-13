@@ -4,7 +4,8 @@ import aio_pika
 import aiormq
 from pydantic import BaseModel
 
-import infrahub.config as config
+from infrahub import config
+from infrahub.exceptions import Error
 from infrahub.log import set_log_data
 
 
@@ -44,6 +45,8 @@ async def get_broker() -> aio_pika.abc.AbstractRobustConnection:
 
 class Meta(BaseModel):
     request_id: str = ""
+    correlation_id: Optional[str] = None
+    reply_to: Optional[str] = None
 
 
 class InfrahubBaseMessage(BaseModel, aio_pika.abc.AbstractMessage):
@@ -67,6 +70,12 @@ class InfrahubBaseMessage(BaseModel, aio_pika.abc.AbstractMessage):
         raise NotImplementedError
 
     @property
+    def reply_requested(self) -> bool:
+        if self.meta and self.meta.reply_to:
+            return True
+        return False
+
+    @property
     def body(self) -> bytes:
         return self.json(exclude_none=True).encode("UTF-8")
 
@@ -76,7 +85,12 @@ class InfrahubBaseMessage(BaseModel, aio_pika.abc.AbstractMessage):
 
     @property
     def properties(self) -> aiormq.spec.Basic.Properties:
-        return aiormq.spec.Basic.Properties(content_type="application/json", content_encoding="utf-8")
+        correlation_id = None
+        if self.meta:
+            correlation_id = self.meta.correlation_id
+        return aiormq.spec.Basic.Properties(
+            content_type="application/json", content_encoding="utf-8", correlation_id=correlation_id
+        )
 
     def __iter__(self) -> Iterator[int]:
         raise NotImplementedError
@@ -85,4 +99,24 @@ class InfrahubBaseMessage(BaseModel, aio_pika.abc.AbstractMessage):
         raise NotImplementedError
 
     def __copy__(self) -> aio_pika.Message:
-        return aio_pika.Message(body=self.body, content_type="application/json", content_encoding="utf-8")
+        correlation_id = None
+        if self.meta:
+            correlation_id = self.meta.correlation_id
+        return aio_pika.Message(
+            body=self.body, content_type="application/json", content_encoding="utf-8", correlation_id=correlation_id
+        )
+
+
+class InfrahubResponse(InfrahubBaseMessage):
+    """A response to an RPC request"""
+
+    passed: bool = True
+    response_class: str
+    response_data: dict
+
+    def raise_for_status(self) -> None:
+        if self.passed:
+            return
+
+        # Later we would load information about the error based on the response_class and response_data
+        raise Error(f"An error occured during the request: {self.response_data}")
