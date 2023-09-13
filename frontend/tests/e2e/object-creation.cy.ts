@@ -40,25 +40,38 @@ describe("Object creation and deletion", () => {
     cy.get(".justify-end > .bg-custom-blue-700").click();
 
     // Wait after creation, the body data should contain an object
-    waitFor(
-      "@Request",
-      (interception) => !!interception?.response?.body?.data?.CoreAccountCreate
-    ).then(() => {
-      // Wait after refetch, the body data should contain an object
-      waitFor("@Request", (interception) => !!interception?.response?.body?.data?.CoreAccount).then(
-        () => {
-          // Get the previous number from the previous request
-          cy.get("@itemsNumber").then((itemsNumber) => {
-            // Get the new number
-            cy.get("div.flex > .text-sm > :nth-child(3)").then((element) => {
-              const newItemsNumber = parseInt(element.text());
-
-              // The new number should be old number + 1
-              expect(newItemsNumber).to.be.eq(itemsNumber + 1);
-            });
-          });
-        }
+    waitFor("@Request", (interception) => {
+      console.log(
+        "### !!interception?.response?.body?.data?.CoreAccountCreate: ",
+        !!interception?.response?.body?.data?.CoreAccountCreate
       );
+      return !!interception?.response?.body?.data?.CoreAccountCreate;
+    }).then(() => {
+      console.log("### THEN 1");
+
+      // Wait after refetch, the body data should contain an object
+      waitFor("@Request", (interception) => {
+        console.log(
+          "### !!interception?.response?.body?.data?.CoreAccount: ",
+          !!interception?.response?.body?.data?.CoreAccount
+        );
+        return !!interception?.response?.body?.data?.CoreAccount;
+      }).then(() => {
+        console.log("### THEN 2");
+
+        // Get the previous number from the previous request
+        cy.get("@itemsNumber").then((itemsNumber) => {
+          console.log("### itemsNumber: ", itemsNumber);
+          // Get the new number
+          cy.get("div.flex > .text-sm > :nth-child(3)").then((element) => {
+            const newItemsNumber = parseInt(element.text());
+            console.log("### newItemsNumber: ", newItemsNumber);
+
+            // The new number should be old number + 1
+            expect(newItemsNumber).to.be.eq(itemsNumber + 1);
+          });
+        });
+      });
     });
   });
 
@@ -84,24 +97,38 @@ describe("Object creation and deletion", () => {
     cy.get(".bg-red-600").click();
 
     // Wait after deletion, the body data should contain an object
-    waitFor(
-      "@Request",
-      (interception) => !!interception?.response?.body?.data?.CoreAccountDelete
-    ).then(() => {
-      // Wait after refetch, the body data should contain an object
-      waitFor("@Request", (interception) => !!interception?.response?.body?.data?.CoreAccount).then(
-        () => {
-          // Get the previous number from the previous request
-          cy.get("@itemsNumber").then((itemsNumber) => {
-            // Get the new number
-            cy.get("div.flex > .text-sm > :nth-child(3)").then((element) => {
-              const newItemsNumber = parseInt(element.text());
-              // The new number should be old number + 1
-              expect(newItemsNumber).to.be.eq(itemsNumber - 1);
-            });
-          });
-        }
+    waitFor("@Request", (interception) => {
+      console.log(
+        "### !!interception?.response?.body?.data?.CoreAccountDelete: ",
+        !!interception?.response?.body?.data?.CoreAccountDelete
       );
+      return !!interception?.response?.body?.data?.CoreAccountDelete;
+    }).then(() => {
+      console.log("### THEN 1");
+
+      // Wait after refetch, the body data should contain an object
+      waitFor("@Request", (interception) => {
+        console.log(
+          "### !!interception?.response?.body?.data?.CoreAccount: ",
+          !!interception?.response?.body?.data?.CoreAccount
+        );
+        return !!interception?.response?.body?.data?.CoreAccount;
+      }).then(() => {
+        console.log("### THEN 2");
+
+        // Get the previous number from the previous request
+        cy.get("@itemsNumber").then((itemsNumber) => {
+          console.log("### itemsNumber: ", itemsNumber);
+          // Get the new number
+          cy.get("div.flex > .text-sm > :nth-child(3)").then((element) => {
+            const newItemsNumber = parseInt(element.text());
+            console.log("### newItemsNumber: ", newItemsNumber);
+
+            // The new number should be old number + 1
+            expect(newItemsNumber).to.be.eq(itemsNumber - 1);
+          });
+        });
+      });
     });
   });
 });
