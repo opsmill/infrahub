@@ -11,7 +11,9 @@ describe("Object creation and deletion", () => {
     cy.visit("/");
 
     // Intercept mutation
-    cy.intercept("POST", "/graphql/main").as("Request");
+    cy.intercept("POST", "/graphql/main", (req) => {
+      console.log("INTERCEPT req?.body?.query: ", req?.body?.query);
+    }).as("Request");
   });
 
   it("should create an object", function () {
@@ -39,12 +41,24 @@ describe("Object creation and deletion", () => {
     // Click save
     cy.get(".justify-end > .bg-custom-blue-700").click();
 
-    waitFor("@Request", (interception) => interception?.request?.body?.query?.includes("Create"));
+    waitFor("@Request", (interception) => {
+      console.log("### INTERCEPTION body: ", JSON.stringify(interception?.request?.body));
+      console.log(
+        "### INTERCEPTION includes('Create'): ",
+        interception?.request?.body?.query?.includes("Create")
+      );
+      return interception?.request?.body?.query?.includes("Create");
+    });
 
     // Wait refetch
-    waitFor("@Request", (interception) =>
-      interception?.request?.body?.query?.includes("CoreAccount")
-    );
+    waitFor("@Request", (interception) => {
+      console.log("### INTERCEPTION body: ", JSON.stringify(interception?.request?.body));
+      console.log(
+        "### INTERCEPTION includes('CoreAccount'): ",
+        interception?.request?.body?.query?.includes("CoreAccount")
+      );
+      return interception?.request?.body?.query?.includes("CoreAccount");
+    });
 
     // Get the previous number from the previous request
     cy.get("@itemsNumber").then((itemsNumber) => {
@@ -79,14 +93,24 @@ describe("Object creation and deletion", () => {
     // Delete the object
     cy.get(".bg-red-600").click();
 
-    waitFor("@Request", (interception) =>
-      interception?.request?.body?.query?.includes("CoreAccountDelete")
-    );
+    waitFor("@Request", (interception) => {
+      console.log("### INTERCEPTION body: ", JSON.stringify(interception?.request?.body));
+      console.log(
+        "### INTERCEPTION includes('CoreAccountDelete'): ",
+        interception?.request?.body?.query?.includes("CoreAccountDelete")
+      );
+      return interception?.request?.body?.query?.includes("CoreAccountDelete");
+    });
 
     // Wait refetch
-    waitFor("@Request", (interception) =>
-      interception?.request?.body?.query?.includes("CoreAccount")
-    );
+    waitFor("@Request", (interception) => {
+      console.log("### INTERCEPTION body: ", JSON.stringify(interception?.request?.body));
+      console.log(
+        "### INTERCEPTION includes('CoreAccount'): ",
+        interception?.request?.body?.query?.includes("CoreAccount")
+      );
+      return interception?.request?.body?.query?.includes("CoreAccount");
+    });
 
     // Get the previous number from the previous request
     cy.get("@itemsNumber").then((itemsNumber) => {
