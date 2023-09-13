@@ -5,7 +5,7 @@ import json
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, MutableMapping
 
-from infrahub import WORKER_IDENTITY, config
+from infrahub import config
 from infrahub.database import get_db
 from infrahub.log import clear_log_context, get_log_data, get_logger
 from infrahub.message_bus import messages
@@ -13,6 +13,7 @@ from infrahub.message_bus.operations import execute_message
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.database.graph_database import GraphDatabase
 from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
+from infrahub.worker import WORKER_IDENTITY
 from infrahub_client import UUIDT
 
 from . import InfrahubBaseMessage, InfrahubResponse, Meta, get_broker

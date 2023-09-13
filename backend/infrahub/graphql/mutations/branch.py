@@ -6,7 +6,7 @@ from graphene import Boolean, Field, InputObjectType, List, Mutation, String
 from graphql import GraphQLResolveInfo
 
 import infrahub.config as config
-from infrahub import WORKER_IDENTITY, lock
+from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
@@ -21,6 +21,7 @@ from infrahub.message_bus.events import (
     send_event,
 )
 from infrahub.services import services
+from infrahub.worker import WORKER_IDENTITY
 
 from ..types import BranchType
 from ..utils import extract_fields

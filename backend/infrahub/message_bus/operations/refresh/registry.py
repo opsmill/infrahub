@@ -1,8 +1,8 @@
-from infrahub import WORKER_IDENTITY
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
 from infrahub.services import InfrahubServices
 from infrahub.tasks.registry import refresh_branches
+from infrahub.worker import WORKER_IDENTITY
 
 log = get_logger()
 

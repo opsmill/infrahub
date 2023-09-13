@@ -9,7 +9,7 @@ import typer
 from prometheus_client import start_http_server
 from rich.logging import RichHandler
 
-from infrahub import WORKER_IDENTITY, config
+from infrahub import config
 from infrahub.core.initialization import initialization
 from infrahub.database import get_db
 from infrahub.git import handle_message, initialize_repositories_directory
@@ -27,6 +27,7 @@ from infrahub.message_bus.worker import WorkerCallback
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.database.graph_database import GraphDatabase
 from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
+from infrahub.worker import WORKER_IDENTITY
 from infrahub_client import InfrahubClient
 
 if TYPE_CHECKING:

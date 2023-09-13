@@ -6,7 +6,7 @@ from neo4j import AsyncSession
 from pydantic import BaseModel, Field, root_validator
 from starlette.responses import JSONResponse
 
-from infrahub import WORKER_IDENTITY, config, lock
+from infrahub import config, lock
 from infrahub.api.dependencies import get_branch_dep, get_current_user, get_session
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -15,6 +15,7 @@ from infrahub.exceptions import SchemaNotFound
 from infrahub.log import get_logger
 from infrahub.message_bus import Meta, messages
 from infrahub.services import services
+from infrahub.worker import WORKER_IDENTITY
 
 log = get_logger()
 router = APIRouter(prefix="/schema")
