@@ -39,45 +39,27 @@ describe("Object creation and deletion", () => {
     // Click save
     cy.get(".justify-end > .bg-custom-blue-700").click();
 
-    console.log("### WAIT CREATION");
-    waitFor("@Request", (interception) => {
-      console.log(
-        "interception?.request?.body?.query?.includes('Create'): ",
-        interception?.request?.body?.query?.includes("Create")
-      );
-      return interception?.request?.body?.query?.includes("Create");
-    });
+    // Wait after creation, the body data should contain an object
+    waitFor(
+      "@Request",
+      (interception) => !!interception?.response?.body?.data?.CoreAccountCreate
+    ).then(() => {
+      // Wait after refetch, the body data should contain an object
+      waitFor("@Request", (interception) => !!interception?.response?.body?.data?.CoreAccount).then(
+        () => {
+          // Get the previous number from the previous request
+          cy.get("@itemsNumber").then((itemsNumber) => {
+            // Get the new number
+            cy.get("div.flex > .text-sm > :nth-child(3)").then((element) => {
+              const newItemsNumber = parseInt(element.text());
 
-    cy.get("@Request").then(() => {
-      // Wait refetch
-      console.log("### WAIT REFETCH");
-      waitFor("@Request", (interception) => {
-        console.log(
-          "interception?.request?.body?.query?.includes('CoreAccount'): ",
-          interception?.request?.body?.query?.includes("CoreAccount")
-        );
-        return interception?.request?.body?.query?.includes("CoreAccount");
-      });
-
-      cy.get("@Request").then(() => {
-        console.log("### GET LAST");
-
-        // Get the previous number from the previous request
-        cy.get("@itemsNumber").then((itemsNumber) => {
-          console.log("itemsNumber: ", itemsNumber);
-          // Get the new number
-          cy.get("div.flex > .text-sm > :nth-child(3)").then((element) => {
-            const itemsNewNumber = parseInt(element.text());
-            console.log("itemsNewNumber: ", itemsNewNumber);
-
-            // The new number should be old number + 1
-            expect(itemsNewNumber).to.be.eq(itemsNumber + 1);
+              // The new number should be old number + 1
+              expect(newItemsNumber).to.be.eq(itemsNumber + 1);
+            });
           });
-        });
-      });
+        }
+      );
     });
-
-    console.log("### DONE");
   });
 
   it("should delete an object", function () {
@@ -101,47 +83,25 @@ describe("Object creation and deletion", () => {
     // Delete the object
     cy.get(".bg-red-600").click();
 
-    console.log("### WAIT DELETION");
-
-    waitFor("@Request", (interception) => {
-      console.log(
-        "interception?.request?.body?.query?.includes('CoreAccountDelete'): ",
-        interception?.request?.body?.query?.includes("CoreAccountDelete")
-      );
-      return interception?.request?.body?.query?.includes("CoreAccountDelete");
-    });
-
-    cy.get("@Request").then(() => {
-      console.log("### WAIT REFETCH");
-
-      // Wait refetch
-      waitFor("@Request", (interception) => {
-        console.log(
-          "interception?.request?.body?.query?.includes('CoreAccount'): ",
-          interception?.request?.body?.query?.includes("CoreAccount")
-        );
-        return interception?.request?.body?.query?.includes("CoreAccount");
-      });
-
-      console.log("### DONE");
-
-      cy.get("@Request").then(() => {
-        console.log("### GET LAST");
-        // Get the previous number from the previous request
-        cy.get("@itemsNumber").then((itemsNumber) => {
-          console.log("itemsNumber: ", itemsNumber);
-          // Get the new number
-          cy.get("div.flex > .text-sm > :nth-child(3)").then((element) => {
-            const itemsNewNumber = parseInt(element.text());
-            console.log("itemsNewNumber: ", itemsNewNumber);
-
-            // The new number should be old number - 1
-            expect(itemsNewNumber).to.be.eq(itemsNumber - 1);
+    // Wait after deletion, the body data should contain an object
+    waitFor(
+      "@Request",
+      (interception) => !!interception?.response?.body?.data?.CoreAccountDelete
+    ).then(() => {
+      // Wait after refetch, the body data should contain an object
+      waitFor("@Request", (interception) => !!interception?.response?.body?.data?.CoreAccount).then(
+        () => {
+          // Get the previous number from the previous request
+          cy.get("@itemsNumber").then((itemsNumber) => {
+            // Get the new number
+            cy.get("div.flex > .text-sm > :nth-child(3)").then((element) => {
+              const newItemsNumber = parseInt(element.text());
+              // The new number should be old number + 1
+              expect(newItemsNumber).to.be.eq(itemsNumber - 1);
+            });
           });
-        });
-      });
+        }
+      );
     });
-
-    console.log("### DONE");
   });
 });
