@@ -50,6 +50,8 @@ async def get_access_token(
 async def get_refresh_token(
     request: Request, jwt_header: Optional[HTTPAuthorizationCredentials] = Depends(jwt_scheme)
 ) -> RefreshTokenData:
+    token = None
+
     # Check for token in header
     if jwt_header:
         token = jwt_header.credentials
