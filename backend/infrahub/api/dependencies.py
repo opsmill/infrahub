@@ -51,7 +51,7 @@ async def get_refresh_token(
     request: Request, jwt_header: Optional[HTTPAuthorizationCredentials] = Depends(jwt_scheme)
 ) -> RefreshTokenData:
     # Check for token in header
-    if not token and jwt_header:
+    if jwt_header:
         token = jwt_header.credentials
 
     # If no auth header, try to get the token from the cookie
