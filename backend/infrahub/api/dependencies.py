@@ -21,8 +21,10 @@ from infrahub.models import RefreshTokenData
 jwt_scheme = HTTPBearer(auto_error=False)
 api_key_scheme = APIKeyHeader(name="X-INFRAHUB-KEY", auto_error=False)
 
+
 async def cookie_auth_scheme(request: Request) -> Optional[str]:
-    return request.cookies.get('access_token')  # Replace with the actual name of your JWT cookie
+    return request.cookies.get("access_token")  # Replace with the actual name of your JWT cookie
+
 
 class BranchParams(BaseModel):
     branch: Branch
