@@ -48,32 +48,36 @@ describe("Object creation and deletion", () => {
       return interception?.request?.body?.query?.includes("Create");
     });
 
-    // Wait refetch
-    console.log("### WAIT REFETCH");
-    waitFor("@Request", (interception) => {
-      console.log(
-        "interception?.request?.body?.query?.includes('CoreAccount'): ",
-        interception?.request?.body?.query?.includes("CoreAccount")
-      );
-      return interception?.request?.body?.query?.includes("CoreAccount");
-    });
-
-    console.log("### DONE");
-
     cy.get("@Request").then(() => {
-      console.log("### GET LAST");
+      // Wait refetch
+      console.log("### WAIT REFETCH");
+      waitFor("@Request", (interception) => {
+        console.log(
+          "interception?.request?.body?.query?.includes('CoreAccount'): ",
+          interception?.request?.body?.query?.includes("CoreAccount")
+        );
+        return interception?.request?.body?.query?.includes("CoreAccount");
+      });
 
-      // Get the previous number from the previous request
-      cy.get("@itemsNumber").then((itemsNumber) => {
-        // Get the new number
-        cy.get("div.flex > .text-sm > :nth-child(3)").then((element) => {
-          const itemsNewNumber = parseInt(element.text());
+      cy.get("@Request").then(() => {
+        console.log("### GET LAST");
 
-          // The new number should be old number + 1
-          expect(itemsNewNumber).to.be.eq(itemsNumber + 1);
+        // Get the previous number from the previous request
+        cy.get("@itemsNumber").then((itemsNumber) => {
+          console.log("itemsNumber: ", itemsNumber);
+          // Get the new number
+          cy.get("div.flex > .text-sm > :nth-child(3)").then((element) => {
+            const itemsNewNumber = parseInt(element.text());
+            console.log("itemsNewNumber: ", itemsNewNumber);
+
+            // The new number should be old number + 1
+            expect(itemsNewNumber).to.be.eq(itemsNumber + 1);
+          });
         });
       });
     });
+
+    console.log("### DONE");
   });
 
   it("should delete an object", function () {
@@ -107,31 +111,37 @@ describe("Object creation and deletion", () => {
       return interception?.request?.body?.query?.includes("CoreAccountDelete");
     });
 
-    console.log("### WAIT REFETCH");
-
-    // Wait refetch
-    waitFor("@Request", (interception) => {
-      console.log(
-        "interception?.request?.body?.query?.includes('CoreAccount'): ",
-        interception?.request?.body?.query?.includes("CoreAccount")
-      );
-      return interception?.request?.body?.query?.includes("CoreAccount");
-    });
-
-    console.log("### DONE");
-
     cy.get("@Request").then(() => {
-      console.log("### GET LAST");
-      // Get the previous number from the previous request
-      cy.get("@itemsNumber").then((itemsNumber) => {
-        // Get the new number
-        cy.get("div.flex > .text-sm > :nth-child(3)").then((element) => {
-          const itemsNewNumber = parseInt(element.text());
+      console.log("### WAIT REFETCH");
 
-          // The new number should be old number - 1
-          expect(itemsNewNumber).to.be.eq(itemsNumber - 1);
+      // Wait refetch
+      waitFor("@Request", (interception) => {
+        console.log(
+          "interception?.request?.body?.query?.includes('CoreAccount'): ",
+          interception?.request?.body?.query?.includes("CoreAccount")
+        );
+        return interception?.request?.body?.query?.includes("CoreAccount");
+      });
+
+      console.log("### DONE");
+
+      cy.get("@Request").then(() => {
+        console.log("### GET LAST");
+        // Get the previous number from the previous request
+        cy.get("@itemsNumber").then((itemsNumber) => {
+          console.log("itemsNumber: ", itemsNumber);
+          // Get the new number
+          cy.get("div.flex > .text-sm > :nth-child(3)").then((element) => {
+            const itemsNewNumber = parseInt(element.text());
+            console.log("itemsNewNumber: ", itemsNewNumber);
+
+            // The new number should be old number - 1
+            expect(itemsNewNumber).to.be.eq(itemsNumber - 1);
+          });
         });
       });
     });
+
+    console.log("### DONE");
   });
 });
