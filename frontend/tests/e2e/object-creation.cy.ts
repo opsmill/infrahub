@@ -11,9 +11,7 @@ describe("Object creation and deletion", () => {
     cy.visit("/");
 
     // Intercept mutation
-    cy.intercept("POST", "/graphql/main", (req) => {
-      console.log("INTERCEPT req?.body?.query: ", req?.body?.query);
-    }).as("Request");
+    cy.intercept("POST", "/graphql/main").as("Request");
   });
 
   it("should create an object", function () {
@@ -41,33 +39,39 @@ describe("Object creation and deletion", () => {
     // Click save
     cy.get(".justify-end > .bg-custom-blue-700").click();
 
+    console.log("### WAIT CREATION");
     waitFor("@Request", (interception) => {
-      console.log("### INTERCEPTION body: ", JSON.stringify(interception?.request?.body));
       console.log(
-        "### INTERCEPTION includes('Create'): ",
+        "interception?.request?.body?.query?.includes('Create'): ",
         interception?.request?.body?.query?.includes("Create")
       );
       return interception?.request?.body?.query?.includes("Create");
     });
 
     // Wait refetch
+    console.log("### WAIT REFETCH");
     waitFor("@Request", (interception) => {
-      console.log("### INTERCEPTION body: ", JSON.stringify(interception?.request?.body));
       console.log(
-        "### INTERCEPTION includes('CoreAccount'): ",
+        "interception?.request?.body?.query?.includes('CoreAccount'): ",
         interception?.request?.body?.query?.includes("CoreAccount")
       );
       return interception?.request?.body?.query?.includes("CoreAccount");
     });
 
-    // Get the previous number from the previous request
-    cy.get("@itemsNumber").then((itemsNumber) => {
-      // Get the new number
-      cy.get("div.flex > .text-sm > :nth-child(3)").then((element) => {
-        const itemsNewNumber = parseInt(element.text());
+    console.log("### DONE");
 
-        // The new number should be old number + 1
-        expect(itemsNewNumber).to.be.eq(itemsNumber + 1);
+    cy.get("@Request").then(() => {
+      console.log("### GET LAST");
+
+      // Get the previous number from the previous request
+      cy.get("@itemsNumber").then((itemsNumber) => {
+        // Get the new number
+        cy.get("div.flex > .text-sm > :nth-child(3)").then((element) => {
+          const itemsNewNumber = parseInt(element.text());
+
+          // The new number should be old number + 1
+          expect(itemsNewNumber).to.be.eq(itemsNumber + 1);
+        });
       });
     });
   });
@@ -93,33 +97,40 @@ describe("Object creation and deletion", () => {
     // Delete the object
     cy.get(".bg-red-600").click();
 
+    console.log("### WAIT DELETION");
+
     waitFor("@Request", (interception) => {
-      console.log("### INTERCEPTION body: ", JSON.stringify(interception?.request?.body));
       console.log(
-        "### INTERCEPTION includes('CoreAccountDelete'): ",
+        "interception?.request?.body?.query?.includes('CoreAccountDelete'): ",
         interception?.request?.body?.query?.includes("CoreAccountDelete")
       );
       return interception?.request?.body?.query?.includes("CoreAccountDelete");
     });
 
+    console.log("### WAIT REFETCH");
+
     // Wait refetch
     waitFor("@Request", (interception) => {
-      console.log("### INTERCEPTION body: ", JSON.stringify(interception?.request?.body));
       console.log(
-        "### INTERCEPTION includes('CoreAccount'): ",
+        "interception?.request?.body?.query?.includes('CoreAccount'): ",
         interception?.request?.body?.query?.includes("CoreAccount")
       );
       return interception?.request?.body?.query?.includes("CoreAccount");
     });
 
-    // Get the previous number from the previous request
-    cy.get("@itemsNumber").then((itemsNumber) => {
-      // Get the new number
-      cy.get("div.flex > .text-sm > :nth-child(3)").then((element) => {
-        const itemsNewNumber = parseInt(element.text());
+    console.log("### DONE");
 
-        // The new number should be old number - 1
-        expect(itemsNewNumber).to.be.eq(itemsNumber - 1);
+    cy.get("@Request").then(() => {
+      console.log("### GET LAST");
+      // Get the previous number from the previous request
+      cy.get("@itemsNumber").then((itemsNumber) => {
+        // Get the new number
+        cy.get("div.flex > .text-sm > :nth-child(3)").then((element) => {
+          const itemsNewNumber = parseInt(element.text());
+
+          // The new number should be old number - 1
+          expect(itemsNewNumber).to.be.eq(itemsNumber - 1);
+        });
       });
     });
   });
