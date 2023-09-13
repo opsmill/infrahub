@@ -44,7 +44,7 @@ from starlette.requests import HTTPConnection, Request
 from starlette.responses import HTMLResponse, JSONResponse, Response
 from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 
-from infrahub.api.dependencies import api_key_scheme, jwt_scheme
+from infrahub.api.dependencies import api_key_scheme, jwt_scheme, cookie_auth_scheme
 from infrahub.auth import AccountSession, authentication_token
 from infrahub.exceptions import AuthorizationError, PermissionDeniedError
 
@@ -129,11 +129,15 @@ class InfrahubGraphQLApp:
             response: Optional[Response] = None
             jwt_auth = await jwt_scheme(request)
             api_key = await api_key_scheme(request)
+            cookie_auth = await cookie_auth_scheme(request)
+
 
             async with request.app.state.db.session(database=config.SETTINGS.database.database) as session:
                 jwt_token = None
                 if jwt_auth:
                     jwt_token = jwt_auth.credentials
+                elif cookie_auth:
+                    jwt_token = cookie_auth
                 account_session = await authentication_token(jwt_token=jwt_token, api_key=api_key, session=session)
 
                 # Retrieve the branch name from the request and validate that it exist in the database
