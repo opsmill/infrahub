@@ -41,7 +41,7 @@ class InfrahubRpcClientBase:
     def __init__(self) -> None:
         self.futures: MutableMapping[str, asyncio.Future] = {}
         self.loop = asyncio.get_running_loop()
-        self.service: InfrahubServices
+        self.service: InfrahubServices = InfrahubServices()
 
     async def connect(self) -> InfrahubRpcClient:
         self.connection = await get_broker()
