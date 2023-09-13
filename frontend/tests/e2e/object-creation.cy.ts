@@ -2,13 +2,16 @@
 
 import { expect } from "chai";
 import { NEW_ACCOUNT } from "../mocks/e2e/accounts";
-import { ADMIN_CREDENTIALS } from "../utils";
+import { ADMIN_CREDENTIALS, waitFor } from "../utils";
 
 describe("Object creation and deletion", () => {
   beforeEach(function () {
     cy.login(ADMIN_CREDENTIALS.username, ADMIN_CREDENTIALS.password);
 
     cy.visit("/");
+
+    // Intercept mutation
+    cy.intercept("POST", "/graphql/main").as("Request");
   });
 
   it("should create an object", function () {
@@ -33,23 +36,15 @@ describe("Object creation and deletion", () => {
     // Type the password
     cy.get(":nth-child(2) > .relative > .block").type(NEW_ACCOUNT.password);
 
-    // Intercept mutation
-    cy.intercept("/graphql/main").as("AddRequest");
-
     // Click save
     cy.get(".justify-end > .bg-custom-blue-700").click();
 
-    // Intercept refetch
-    cy.intercept("/graphql/main").as("RefetchRequest");
-
-    // Wait for the mutation to succeed
-    cy.wait("@AddRequest");
+    waitFor("@Request", (interception) => interception?.request?.body?.query?.includes("Create"));
 
     // Wait refetch
-    cy.wait("@RefetchRequest", { timeout: 10000 });
-
-    // eslint-disable-next-line cypress/no-unnecessary-waiting
-    cy.wait(5000);
+    waitFor("@Request", (interception) =>
+      interception?.request?.body?.query?.includes("CoreAccount")
+    );
 
     // Get the previous number from the previous request
     cy.get("@itemsNumber").then((itemsNumber) => {
@@ -81,23 +76,17 @@ describe("Object creation and deletion", () => {
     // The account name should be displayed in the delete modal
     cy.get("b").should("include.text", NEW_ACCOUNT.name);
 
-    // Intercept mutation
-    cy.intercept("/graphql/main").as("DeleteRequest");
-
     // Delete the object
     cy.get(".bg-red-600").click();
 
-    // Intercept refetch
-    cy.intercept("/graphql/main").as("RefetchRequest");
-
-    // Wait for the mutation to succeed
-    cy.wait("@DeleteRequest");
+    waitFor("@Request", (interception) =>
+      interception?.request?.body?.query?.includes("CoreAccountDelete")
+    );
 
     // Wait refetch
-    cy.wait("@RefetchRequest", { timeout: 10000 });
-
-    // eslint-disable-next-line cypress/no-unnecessary-waiting
-    cy.wait(5000);
+    waitFor("@Request", (interception) =>
+      interception?.request?.body?.query?.includes("CoreAccount")
+    );
 
     // Get the previous number from the previous request
     cy.get("@itemsNumber").then((itemsNumber) => {
