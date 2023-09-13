@@ -5,7 +5,7 @@ import json
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, MutableMapping
 
-from infrahub import config
+from infrahub import WORKER_IDENTITY, config
 from infrahub.database import get_db
 from infrahub.log import clear_log_context, get_log_data, get_logger
 from infrahub.message_bus import messages
@@ -35,6 +35,7 @@ class InfrahubRpcClientBase:
     connection: AbstractRobustConnection
     channel: AbstractChannel
     callback_queue: AbstractQueue
+    events_queue: AbstractQueue
     loop: asyncio.AbstractEventLoop
     exchange: AbstractExchange
 
@@ -50,16 +51,18 @@ class InfrahubRpcClientBase:
             return self
 
         self.channel = await self.connection.channel()
-        self.callback_queue = await self.channel.declare_queue(exclusive=True)
+        self.callback_queue = await self.channel.declare_queue(name=f"api-callback-{WORKER_IDENTITY}", exclusive=True)
+        self.events_queue = await self.channel.declare_queue(name=f"api-events-{WORKER_IDENTITY}", exclusive=True)
 
         await self.callback_queue.consume(self.on_response, no_ack=True)
+        await self.events_queue.consume(self.on_response, no_ack=True)
         self.exchange = await self.channel.declare_exchange(f"{config.SETTINGS.broker.namespace}.events", type="topic")
         queue = await self.channel.declare_queue(f"{config.SETTINGS.broker.namespace}.rpcs")
         await queue.bind(self.exchange, routing_key="check.*.*")
         await queue.bind(self.exchange, routing_key="event.*.*")
         await queue.bind(self.exchange, routing_key="request.*.*")
         await queue.bind(self.exchange, routing_key="transform.*.*")
-        await self.callback_queue.bind(self.exchange, routing_key="refresh.registry.*")
+        await self.events_queue.bind(self.exchange, routing_key="refresh.registry.*")
         driver = await get_db()
         database = GraphDatabase(driver=driver)
         self.service = InfrahubServices(

@@ -9,7 +9,7 @@ import typer
 from prometheus_client import start_http_server
 from rich.logging import RichHandler
 
-from infrahub import config
+from infrahub import WORKER_IDENTITY, config
 from infrahub.core.initialization import initialization
 from infrahub.database import get_db
 from infrahub.git import handle_message, initialize_repositories_directory
@@ -62,10 +62,10 @@ async def subscribe_rpcs_queue(client: InfrahubClient):
     # Create a channel and subscribe to the incoming RPC queue
     channel = await connection.channel()
     queue = await channel.declare_queue(f"{config.SETTINGS.broker.namespace}.rpcs")
-    callback_queue = await channel.declare_queue(exclusive=True)
+    events_queue = await channel.declare_queue(name=f"worker-events-{WORKER_IDENTITY}", exclusive=True)
 
     exchange = await channel.declare_exchange(f"{config.SETTINGS.broker.namespace}.events", type="topic")
-    await callback_queue.bind(exchange, routing_key="refresh.registry.*")
+    await events_queue.bind(exchange, routing_key="refresh.registry.*")
 
     driver = await get_db()
     database = GraphDatabase(driver=driver)
@@ -76,7 +76,7 @@ async def subscribe_rpcs_queue(client: InfrahubClient):
         await initialization(session=session)
 
     worker_callback = WorkerCallback(service=service)
-    await callback_queue.consume(worker_callback.run_command, no_ack=True)
+    await events_queue.consume(worker_callback.run_command, no_ack=True)
     log.info("Waiting for RPC instructions to execute .. ")
     async with queue.iterator() as qiterator:
         message: IncomingMessage
