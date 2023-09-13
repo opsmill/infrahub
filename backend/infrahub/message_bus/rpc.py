@@ -74,6 +74,7 @@ class InfrahubRpcClientBase:
 
             if future:
                 future.set_result(message)
+                return
 
         clear_log_context()
         if message.routing_key in messages.MESSAGE_MAP:
