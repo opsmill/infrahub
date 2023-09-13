@@ -11,8 +11,8 @@ import { classNames } from "../utils/common";
 import { OpsSelect } from "./select";
 
 export interface iTwoStepDropdownData {
-  parent: string;
-  child: string;
+  parent: string | number;
+  child: string | number;
 }
 
 interface Props {

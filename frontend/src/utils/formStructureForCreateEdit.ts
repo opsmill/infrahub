@@ -34,7 +34,7 @@ const validate = (value: any, defaultValue?: any, optional?: boolean) => {
   }
 
   // The value is defined, then we can validate
-  if (value) {
+  if (Array.isArray(value) ? value.length : value) {
     return true;
   }
 
@@ -252,7 +252,6 @@ export const getFormStructureForMetaEdit = (
 
 export const getFormStructureForMetaEditPaginated = (
   row: any,
-  type: "attribute" | "relationship",
   schemaList: iNodeSchema[]
 ): DynamicFieldData[] => {
   const sourceOwnerFields = ["owner", "source"];
@@ -260,10 +259,10 @@ export const getFormStructureForMetaEditPaginated = (
   const booleanFields = ["is_visible", "is_protected"];
 
   const relatedObjects: { [key: string]: string } = {
-    source: "DataSource",
-    owner: "DataOwner",
-    _relation__source: "DataSource",
-    _relation__owner: "DataOwner",
+    source: "LineageSource",
+    owner: "LineageOwner",
+    _relation__source: "LineageSource",
+    _relation__owner: "LineageOwner",
   };
 
   const sourceOwnerFormFields: DynamicFieldData[] = sourceOwnerFields.map((field) => {
@@ -277,8 +276,8 @@ export const getFormStructureForMetaEditPaginated = (
           }
         })
         .map((schema) => ({
-          name: schema.kind,
-          id: schema.name,
+          name: schema.name,
+          id: schema.kind,
         })),
     ];
 
@@ -289,7 +288,7 @@ export const getFormStructureForMetaEditPaginated = (
       isRelationship: false,
       type: "select2step",
       label: field.split("_").filter(Boolean).join(" "),
-      value: row?.properties?.[field],
+      value: row?.[field],
       options: {
         values: schemaOptions,
       },
@@ -305,7 +304,7 @@ export const getFormStructureForMetaEditPaginated = (
       isRelationship: false,
       type: "checkbox",
       label: field.split("_").filter(Boolean).join(" "),
-      value: row?.properties?.[field],
+      value: row?.[field],
       options: {
         values: [],
       },

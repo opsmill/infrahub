@@ -1,18 +1,21 @@
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 from fastapi.logger import logger
 from neo4j import AsyncSession
 from pydantic import BaseModel, Field, root_validator
 from starlette.responses import JSONResponse
 
-from infrahub import lock
+from infrahub import config, lock
 from infrahub.api.dependencies import get_branch_dep, get_current_user, get_session
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
 from infrahub.exceptions import SchemaNotFound
 from infrahub.log import get_logger
+from infrahub.message_bus import Meta, messages
+from infrahub.services import services
+from infrahub.worker import WORKER_IDENTITY
 
 log = get_logger()
 router = APIRouter(prefix="/schema")
@@ -71,6 +74,7 @@ async def get_schema(
 @router.post("/load")
 async def load_schema(
     schema: SchemaLoadAPI,
+    background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_session),
     branch: Branch = Depends(get_branch_dep),
     _: str = Depends(get_current_user),
@@ -102,4 +106,11 @@ async def load_schema(
             logger.info(f"{branch.name}: Schema has been updated, new hash {branch.schema_hash}")
             await branch.save(session=session)
 
-        return JSONResponse(status_code=202, content={})
+            if config.SETTINGS.broker.enable:
+                message = messages.EventSchemaUpdate(
+                    branch=branch.name,
+                    meta=Meta(initiator_id=WORKER_IDENTITY),
+                )
+                background_tasks.add_task(services.send, message)
+
+    return JSONResponse(status_code=202, content={})

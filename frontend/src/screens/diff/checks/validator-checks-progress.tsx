@@ -79,6 +79,16 @@ export const ValidatorChecksProgress = (props: tValidatorChecksProgressProps) =>
 
   const checksStats = getChecksStats(checks);
 
+  const isEmpty = !Object.values(checksStats).filter(Boolean).length;
+
+  if (isEmpty) {
+    return (
+      <div className="flex flex-1 items-center">
+        <div className="flex-1 text-xs text-center text-custom-white bg-gray-200">0</div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-1 items-center">
       {Object.entries(checksStats).map(([type, amount], index) =>

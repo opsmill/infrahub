@@ -4,7 +4,7 @@ import { FormFieldError } from "../screens/edit-form-hook/form";
 
 type SelectProps = {
   label: string;
-  value?: string;
+  value?: string | number;
   options: Array<SelectOption>;
   disabled: boolean;
   onChange: (value: SelectOption) => void;

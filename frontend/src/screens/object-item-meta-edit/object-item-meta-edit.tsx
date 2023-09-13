@@ -40,7 +40,6 @@ export default function ObjectItemMetaEdit(props: Props) {
 
   const formStructure = getFormStructureForMetaEditPaginated(
     attributeOrRelationshipToEdit,
-    type,
     schemaList
   );
 
@@ -59,7 +58,7 @@ export default function ObjectItemMetaEdit(props: Props) {
     if (Object.keys(updatedObject).length) {
       try {
         const mutationString = updateObjectWithId({
-          name: schema.name,
+          kind: schema.kind,
           data: stringifyWithoutQuotes({
             id: row.id,
             ...updatedObject,

@@ -686,7 +686,7 @@ async def test_diff_relationship_one_conflict(session: AsyncSession, default_bra
             "nodes": {
                 c1_main.id: {
                     "id": c1_main.id,
-                    "labels": ["Node", "TestCar", "TestElectricCar"],
+                    "labels": ["CoreArtifactTarget", "Node", "TestCar", "TestElectricCar"],
                     "kind": "TestElectricCar",
                 },
                 p1_main.id: {"id": p1_main.id, "labels": ["Node", "TestPerson"], "kind": "TestPerson"},
@@ -717,7 +717,7 @@ async def test_diff_relationship_one_conflict(session: AsyncSession, default_bra
             "nodes": {
                 c1_main.id: {
                     "id": c1_main.id,
-                    "labels": ["Node", "TestCar", "TestElectricCar"],
+                    "labels": ["CoreArtifactTarget", "Node", "TestCar", "TestElectricCar"],
                     "kind": "TestElectricCar",
                 },
                 p2_main.id: {"id": p2_main.id, "labels": ["Node", "TestPerson"], "kind": "TestPerson"},
@@ -770,7 +770,7 @@ async def test_diff_relationship_one_conflict(session: AsyncSession, default_bra
             "nodes": {
                 c1_main.id: {
                     "id": c1_main.id,
-                    "labels": ["Node", "TestCar", "TestElectricCar"],
+                    "labels": ["CoreArtifactTarget", "Node", "TestCar", "TestElectricCar"],
                     "kind": "TestElectricCar",
                 },
                 p2_main.id: {"id": p2_main.id, "labels": ["Node", "TestPerson"], "kind": "TestPerson"},

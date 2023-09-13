@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 from infrahub.core.query import Query, QueryType
 from infrahub.core.timestamp import Timestamp
-from infrahub_client import UUIDT
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
@@ -39,118 +38,6 @@ class AttributeQuery(Query):
         self.branch = branch or self.attr.get_branch_based_on_support_type()
 
         super().__init__(*args, **kwargs)
-
-
-class AttributeCreateQuery(AttributeQuery):
-    raise_error_if_empty: bool = True
-
-    name = "attribute_create"
-    type: QueryType = QueryType.WRITE
-
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
-        self.query_add_match()
-
-        if self.attr.source_id:
-            self.query_add_match_source()
-
-        if self.attr.owner_id:
-            self.query_add_match_owner()
-
-        self.query_add_create()
-
-        if self.attr.source_id:
-            self.query_add_create_source()
-
-        if self.attr.owner_id:
-            self.query_add_create_owner()
-
-        self.params["at"] = self.at.to_string()
-        self.params["uuid"] = str(UUIDT())
-        self.params["name"] = self.attr.name
-        self.params["branch"] = self.branch.name
-        self.params["branch_level"] = self.branch.hierarchy_level
-
-    def query_add_match(self):
-        query = """
-        MATCH (n { uuid: $node_id})
-        """
-
-        self.params["node_id"] = self.attr.node.id
-
-        self.add_to_query(query)
-
-    def query_add_create(self):
-        query = """
-        CREATE (a:Attribute:AttributeLocal { uuid: $uuid, name: $name, type: $attribute_type, branch_support: $branch_support })
-        CREATE (n)-[r1:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(a)
-        MERGE (av:AttributeValue { type: $attribute_type, value: $value })
-        CREATE (a)-[r2:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(av)
-        MERGE (ip:Boolean { value: $is_protected })
-        MERGE (iv:Boolean { value: $is_visible })
-        CREATE (a)-[:IS_PROTECTED { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(ip)
-        CREATE (a)-[:IS_VISIBLE { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(iv)
-        """ % (
-            self.attr._rel_to_node_label,
-            self.attr._rel_to_value_label,
-        )
-        self.add_to_query(query)
-
-        self.params["value"] = self.attr.to_db()
-        self.params["is_protected"] = self.attr.is_protected
-        self.params["is_visible"] = self.attr.is_visible
-        self.params["attribute_type"] = self.attr.get_kind()
-        self.params["branch_support"] = self.attr.schema.branch.value
-
-        self.return_labels = ["a", "av", "r1", "r2"]
-
-    def get_new_ids(self) -> Tuple[str, int]:
-        result = self.get_result()
-        attr = result.get("a")
-
-        return attr.get("uuid"), attr.element_id
-
-    def query_add_match_source(self):
-        self.add_to_query("MATCH (src { uuid: $source_id })")
-
-        self.params["source_id"] = self.attr.source_id
-
-    def query_add_create_source(self):
-        query = """
-        CREATE (a)-[:HAS_SOURCE { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(src)
-        """
-
-        self.add_to_query(query)
-
-    def query_add_match_owner(self):
-        self.add_to_query("MATCH (owner { uuid: $owner_id })")
-
-        self.params["owner_id"] = self.attr.owner_id
-
-    def query_add_create_owner(self):
-        query = """
-        CREATE (a)-[:HAS_OWNER { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(owner)
-        """
-
-        self.add_to_query(query)
-
-    # def query_add_match_permission(self):
-
-    #     from infrahub.core import registry
-
-    #     group_name = f"{self.attr.node.get_type().lower()}.{self.attr.name}.all"
-    #     attr_group = registry.attr_group[group_name]
-
-    #     self.add_to_query("MATCH (ag) WHERE ID(ag) = $attr_group_id")
-
-    #     self.params["attr_group_id"] = attr_group.id
-
-    # def query_add_create_permission(self):
-
-    #     query = """
-    #     CREATE (a)-[r3:IS_MEMBER_OF { branch: $branch, from: $at, to: null }]->(ag)
-    #     """
-
-    #     self.add_to_query(query)
 
 
 class AttributeGetValueQuery(AttributeQuery):
