@@ -52,6 +52,10 @@ describe("Object creation and deletion", () => {
       // Wait after refetch, the body data should contain an object
       waitFor("@Request", (interception) => {
         console.log(
+          "### interception?.response?.body: ",
+          JSON.stringify(interception?.response?.body, null, 2)
+        );
+        console.log(
           "### !!interception?.response?.body?.data?.CoreAccount: ",
           !!interception?.response?.body?.data?.CoreAccount
         );
