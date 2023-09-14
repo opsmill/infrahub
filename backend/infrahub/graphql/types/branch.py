@@ -7,8 +7,8 @@ import infrahub.config as config
 from infrahub.core import get_branch
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
-from .standard_node import InfrahubObjectType
 
+from .standard_node import InfrahubObjectType
 
 
 class BranchType(InfrahubObjectType):
@@ -25,7 +25,6 @@ class BranchType(InfrahubObjectType):
         description = "Branch"
         name = "Branch"
         model = Branch
-
 
     @classmethod
     async def get_list(cls, fields: dict, context: dict, *args, **kwargs):  # pylint: disable=unused-argument

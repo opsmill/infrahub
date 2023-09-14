@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional
 
-from graphene import ID, Boolean, Field, List, ObjectType, String
+from graphene import Boolean, Field, ObjectType, String
 
 from infrahub import config
 from infrahub.core.manager import NodeManager
@@ -21,8 +21,8 @@ from .mutations import (
     RelationshipAdd,
     RelationshipRemove,
 )
-from .queries import DiffSummary
-from .types import BranchDiffType, BranchType
+from .queries import BranchQueryList, DiffSummary
+from .types import BranchDiffType
 from .utils import extract_fields
 
 if TYPE_CHECKING:
@@ -62,7 +62,8 @@ async def account_resolver(root, info: GraphQLResolveInfo):
 
 
 class InfrahubBaseQuery(ObjectType):
-    branch = List(BranchType, ids=List(ID), name=String())
+    branch = BranchQueryList  # Remove this line once #1015 has been fixed
+    Branch = BranchQueryList
 
     diff = Field(
         BranchDiffType,
@@ -72,11 +73,6 @@ class InfrahubBaseQuery(ObjectType):
         branch_only=Boolean(required=False, default_value=False),
     )
     DiffSummary = DiffSummary
-
-    @staticmethod
-    async def resolve_branch(root: dict, info: GraphQLResolveInfo, **kwargs):
-        fields = await extract_fields(info.field_nodes[0].selection_set)
-        return await BranchType.get_list(fields=fields, context=info.context, **kwargs)
 
     @staticmethod
     async def resolve_diff(
