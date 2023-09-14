@@ -129,10 +129,10 @@ export default function ObjectItemCreate(props: iProps) {
 
       console.log("DONE");
 
-      setTimeout(() => {
-        console.log("REFETCH");
-        if (refetch) refetch();
-      }, 3000);
+      // setTimeout(() => {
+      console.log("REFETCH");
+      if (refetch) refetch();
+      // }, 3000);
 
       setIsLoading(false);
     } catch (error: any) {

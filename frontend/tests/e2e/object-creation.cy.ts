@@ -85,16 +85,25 @@ describe("Object creation and deletion", () => {
     // Delete the object
     cy.get(".bg-red-600").click();
 
+    console.log("### itemsNumber: ", itemsNumber);
+
     // Wait after refetch, the body data should contain an object
-    waitFor(
-      "@Request",
-      (interception) => interception?.response?.body?.data?.CoreAccount?.count === itemsNumber
-    ).then(() => {
-      console.log("OK");
+    waitFor("@Request", (interception) => {
+      console.log(
+        "### interception?.response?.body?.data?.CoreAccount?.count: ",
+        interception?.response?.body?.data?.CoreAccount?.count
+      );
+      console.log(
+        "### interception?.response?.body?.data?.CoreAccount?.count === itemsNumber: ",
+        interception?.response?.body?.data?.CoreAccount?.count === itemsNumber
+      );
+      return interception?.response?.body?.data?.CoreAccount?.count === itemsNumber;
+    }).then(() => {
+      console.log("### OK");
       // Get the new number
       cy.get("div.flex > .text-sm > :nth-child(3)").then((element) => {
         const newItemsNumber = parseInt(element.text());
-        console.log("newItemsNumber: ", newItemsNumber);
+        console.log("### newItemsNumber: ", newItemsNumber);
         // The new number should be old number + 1
         expect(newItemsNumber).to.be.eq(itemsNumber);
       });
