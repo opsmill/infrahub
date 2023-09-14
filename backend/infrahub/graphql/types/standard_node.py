@@ -16,8 +16,6 @@ class InfrahubObjectType(ObjectType):
         cls,
         model=None,
         interfaces=(),
-        # possible_types=(),
-        # default_resolver=None,
         _meta=None,
         **options,
     ):
