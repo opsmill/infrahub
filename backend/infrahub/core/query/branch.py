@@ -75,19 +75,17 @@ class GetAllBranchInternalRelationshipQuery(Query):
     name: str = "get_internal_relationship"
 
     type: QueryType = QueryType.READ
-
-    def __init__(self, branch_name: str, *args, **kwargs):
-        self.branch_name = branch_name
-        super().__init__(*args, **kwargs)
+    insert_return: bool = False
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
         query = """
-        MATCH p = (s)-[r]-(d)
+        MATCH p = ()-[r]-()
         WHERE r.branch = $branch_name
+        RETURN DISTINCT r
         """
         self.add_to_query(query=query)
-
-        self.return_labels = ["s", "r", "d"]
+        self.params["branch_name"] = self.branch.name
+        self.return_labels = ["r"]
 
 
 class RebaseBranchUpdateRelationshipQuery(Query):

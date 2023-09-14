@@ -66,7 +66,7 @@ class ModifiedPath(BaseModel):
 
     def __eq__(self, other) -> bool:
         if not isinstance(other, ModifiedPath):
-            return NotImplemented
+            raise NotImplementedError
 
         if self.modification_type != other.modification_type:
             return False
@@ -79,7 +79,7 @@ class ModifiedPath(BaseModel):
 
     def __lt__(self, other: object) -> bool:
         if not isinstance(other, ModifiedPath):
-            return NotImplemented
+            raise NotImplementedError
         return str(self) < str(other)
 
     def __hash__(self):
@@ -717,7 +717,7 @@ class Branch(StandardNode):
     async def rebase_graph(self, session: AsyncSession, at: Optional[Timestamp] = None):
         at = Timestamp(at)
 
-        query = await GetAllBranchInternalRelationshipQuery.init(session=session, branch_name=self.name)
+        query = await GetAllBranchInternalRelationshipQuery.init(session=session, branch=self)
         await query.execute(session=session)
 
         rels_to_delete = []
@@ -752,7 +752,7 @@ class Branch(StandardNode):
         update_query = await RebaseBranchUpdateRelationshipQuery.init(session=session, ids=rels_to_update, at=at)
         await update_query.execute(session=session)
 
-        delete_query = await RebaseBranchDeleteRelationshipQuery.init(session=session, ids=rels_to_update, at=at)
+        delete_query = await RebaseBranchDeleteRelationshipQuery.init(session=session, ids=rels_to_delete, at=at)
         await delete_query.execute(session=session)
 
 
