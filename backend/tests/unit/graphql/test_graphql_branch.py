@@ -250,7 +250,7 @@ async def test_branch_create_invalid_names(
     assert len(result.errors) == 1
     assert (
         result.errors[0].message
-        == "invalid field name: string does not match regex"
+        == "invalid field name: string does not match regex "
         + r'"^(?!.*/\.)(?!.*\.\.)(?!/)(?!.*//)(?!.*@\{)(?!.*\\)[^\000-\037\177 ~^:?*[]+[^/\000-\037\177 ~^:?*[]+(?<!\.lock)(?<!/)(?<!\.)$|^\-global\-$"'
     )
 
