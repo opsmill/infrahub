@@ -23,6 +23,7 @@ env:
   INFRAHUB_IMAGE_VER: "testing"
   PYTEST_XDIST_WORKER_COUNT: 2
   INFRAHUB_TEST_IN_DOCKER: 1
+  BUILDKITE_ANALYTICS_BRANCH: ${{ github.ref }}
 
 jobs:
   files-changed:
