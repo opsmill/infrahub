@@ -39,13 +39,11 @@ describe("Object creation and deletion", () => {
     cy.get(".justify-end > .bg-custom-blue-700").click();
 
     // Wait after refetch, the body data should contain an object
-    console.log("### itemsNumber: ", itemsNumber);
-    waitFor("@Request", (interception) => {
-      console.log("### count: ", interception?.response?.body?.data?.CoreAccount?.count);
-      return interception?.response?.body?.data?.CoreAccount?.count > itemsNumber;
-    }).then(() => {
+    waitFor(
+      "@Request",
+      (interception) => interception?.response?.body?.data?.CoreAccount?.count > itemsNumber
+    ).then(() => {
       const newText = itemsNumber + 1;
-      console.log("### newText: ", newText);
 
       // Get the new number
       cy.get("div.flex > .text-sm > :nth-child(3)").should("have.text", newText);
@@ -71,16 +69,12 @@ describe("Object creation and deletion", () => {
     // Delete the object
     cy.get(".bg-red-600").click();
 
-    console.log("### itemsNumber: ", itemsNumber);
-
     // Wait after refetch, the body data should contain an object
-    console.log("### itemsNumber: ", itemsNumber);
-    waitFor("@Request", (interception) => {
-      console.log("### count: ", interception?.response?.body?.data?.CoreAccount?.count);
-      return interception?.response?.body?.data?.CoreAccount?.count === itemsNumber;
-    }).then(() => {
+    waitFor(
+      "@Request",
+      (interception) => interception?.response?.body?.data?.CoreAccount?.count === itemsNumber
+    ).then(() => {
       const newText = itemsNumber - 1;
-      console.log("### newText: ", newText);
 
       // Get the new number
       cy.get("div.flex > .text-sm > :nth-child(3)").should("have.text", newText);
