@@ -556,7 +556,7 @@ class IPHost(BaseAttribute):
     def serialize(cls, value: Any) -> Any:
         """Serialize the value before storing it in the database."""
 
-        return ipaddress.ip_network(value).with_prefixlen
+        return ipaddress.ip_interface(value).with_prefixlen
 
 
 class ListAttribute(BaseAttribute):
