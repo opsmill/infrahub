@@ -24,6 +24,7 @@ order: [
 ]
 
 schema_mapping:
+  # Tags
   - name: BuiltinTag
     mapping: extras.tags
     fields:
@@ -33,6 +34,43 @@ schema_mapping:
       - name: description
         mapping: description
 
+  # Roles (DCIM, IPAM, Devices)
+  - name: BuiltinRole
+    mapping: dcim.device_roles
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
+  - name: BuiltinRole
+    mapping: dcim.rack_roles
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
+  - name: BuiltinRole
+    mapping: ipam.roles
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
+
+
+  # Sites (Region, Sites, Location)
+  - name: BuiltinLocation
+    mapping: dcim.regions
+    fields:
+      - name: name
+        mapping: slug
+      - name: description
+        mapping: description
+      - name: type
+        static: "Region"
+      - name: tags
+        mapping: tags
+        reference: tag
   - name: BuiltinLocation
     mapping: dcim.sites
     fields:
@@ -41,11 +79,24 @@ schema_mapping:
       - name: description
         mapping: description
       - name: type
-        static: "SITE"
-      # - name: tags
-      #   mapping: tags
-      #   reference: tag
+        static: "Site"
+      - name: tags
+        mapping: tags
+        reference: tag
+  - name: BuiltinLocation
+    mapping: dcim.locations
+    fields:
+      - name: name
+        mapping: slug
+      - name: description
+        mapping: description
+      - name: type
+        static: "Location"
+      - name: tags
+        mapping: tags
+        reference: tag
 
+  # Racks
   - name: InfraRack
     mapping: dcim.racks
     identifiers: ["location", "name"]
@@ -70,30 +121,7 @@ schema_mapping:
         mapping: tags
         reference: tag
 
-  - name: BuiltinRole
-    mapping: dcim.device_roles
-    fields:
-      - name: name
-        mapping: name
-      - name: description
-        mapping: description
-
-  - name: BuiltinRole
-    mapping: dcim.rack_roles
-    fields:
-      - name: name
-        mapping: name
-      - name: description
-        mapping: description
-
-  - name: BuiltinRole
-    mapping: ipam.roles
-    fields:
-      - name: name
-        mapping: name
-      - name: description
-        mapping: description
-
+  # Device Type
   - name: OrgaProvider
     mapping: dcim.manufacturers
     fields:
@@ -105,18 +133,6 @@ schema_mapping:
       - name: tags
         mapping: tags
         reference: tag
-
-  - name: OrgaProvider
-    mapping: circuits.providers
-    fields:
-      - name: name
-        mapping: name
-      - name: description
-        mapping: description
-      - name: tags
-        mapping: tags
-        reference: tag
-
   - name: TemplateDeviceType
     mapping: dcim.device-types
     fields:
@@ -133,7 +149,8 @@ schema_mapping:
       - name: manufacturer
         mapping: manufacturer.name
 
-  # TODO -> if the device in netbox have no name, no serial and no asset, which identifiers could we use ?
+  # Device
+  # -> if the device in netbox have no name, no serial and no asset, which identifiers could we use ?
   # - name: InfraDevice
   #   mapping: dcim.devices
   #   fields:
@@ -157,6 +174,17 @@ schema_mapping:
   #     - name: rack
   #       mapping: rack.name
 
+  # Circuits
+  - name: OrgaProvider
+    mapping: circuits.providers
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
+      - name: tags
+        mapping: tags
+        reference: tag
   - name: InfraProviderNetwork
     mapping: circuits.provider-networks
     fields:
@@ -176,7 +204,6 @@ schema_mapping:
         reference: tag
       - name: provider
         mapping: provider.name
-
   - name: TemplateCircuitType
     mapping: circuits.circuit-types
     fields:
@@ -188,7 +215,6 @@ schema_mapping:
       - name: tags
         mapping: tags
         reference: tag
-
   - name: InfraCircuit
     mapping: circuits.circuits
     fields:
