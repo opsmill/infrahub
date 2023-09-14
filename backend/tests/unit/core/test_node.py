@@ -1068,7 +1068,6 @@ async def test_union(
 
 async def test_node_serialize_prefix(session, default_branch: Branch, prefix_schema):
     prefix = registry.get_schema(name="TestPrefix")
-    ip = registry.get_schema(name="TestIp")
 
     p1 = await Node.init(session=session, schema=prefix)
     await p1.new(session=session, prefix="192.0.2.1", name="prefix1")
@@ -1100,11 +1099,11 @@ async def test_node_serialize_address(session, default_branch: Branch, prefix_sc
     await i1.save(session=session)
 
     retrieve_i1 = await NodeManager.get_one(id=i1.id, session=session)
-    assert retrieve_i1.prefix.value == "192.0.2.1/32"
+    assert retrieve_i1.address.value == "192.0.2.1/32"
 
     i2 = await Node.init(session=session, schema=ip)
     await i2.new(session=session, address="2001:db8::", name="ip2")
     await i2.save(session=session)
 
     retrieve_i2 = await NodeManager.get_one(id=i1.id, session=session)
-    assert retrieve_i2.prefix.value == "2001:db8::/128"
+    assert retrieve_i2.address.value == "2001:db8::/128"
