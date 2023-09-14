@@ -1,6 +1,5 @@
 /// <reference types="cypress" />
 
-import { expect } from "chai";
 import { NEW_ACCOUNT } from "../mocks/e2e/accounts";
 import { ADMIN_CREDENTIALS, waitFor } from "../utils";
 
@@ -40,27 +39,16 @@ describe("Object creation and deletion", () => {
     cy.get(".justify-end > .bg-custom-blue-700").click();
 
     // Wait after refetch, the body data should contain an object
+    console.log("### itemsNumber: ", itemsNumber);
     waitFor("@Request", (interception) => {
-      console.log("### itemsNumber: ", itemsNumber);
-      console.log(
-        "### interception?.response?.body?.data?.CoreAccount?.count: ",
-        interception?.response?.body?.data?.CoreAccount?.count
-      );
-      console.log(
-        "### interception?.response?.body?.data?.CoreAccount?.count > itemsNumber: ",
-        interception?.response?.body?.data?.CoreAccount?.count > itemsNumber
-      );
+      console.log("### count: ", interception?.response?.body?.data?.CoreAccount?.count);
       return interception?.response?.body?.data?.CoreAccount?.count > itemsNumber;
     }).then(() => {
-      console.log("### OK");
-      // Get the new number
-      cy.get("div.flex > .text-sm > :nth-child(3)").then((element) => {
-        const newItemsNumber = parseInt(element.text());
-        console.log("### newItemsNumber: ", newItemsNumber);
+      const newText = itemsNumber + 1;
+      console.log("### newText: ", newText);
 
-        // The new number should be old number + 1
-        expect(newItemsNumber).to.be.eq(itemsNumber + 1);
-      });
+      // Get the new number
+      cy.get("div.flex > .text-sm > :nth-child(3)").should("have.text", newText);
     });
   });
 
@@ -88,25 +76,16 @@ describe("Object creation and deletion", () => {
     console.log("### itemsNumber: ", itemsNumber);
 
     // Wait after refetch, the body data should contain an object
+    console.log("### itemsNumber: ", itemsNumber);
     waitFor("@Request", (interception) => {
-      console.log(
-        "### interception?.response?.body?.data?.CoreAccount?.count: ",
-        interception?.response?.body?.data?.CoreAccount?.count
-      );
-      console.log(
-        "### interception?.response?.body?.data?.CoreAccount?.count === itemsNumber: ",
-        interception?.response?.body?.data?.CoreAccount?.count === itemsNumber
-      );
+      console.log("### count: ", interception?.response?.body?.data?.CoreAccount?.count);
       return interception?.response?.body?.data?.CoreAccount?.count === itemsNumber;
     }).then(() => {
-      console.log("### OK");
+      const newText = itemsNumber - 1;
+      console.log("### newText: ", newText);
+
       // Get the new number
-      cy.get("div.flex > .text-sm > :nth-child(3)").then((element) => {
-        const newItemsNumber = parseInt(element.text());
-        console.log("### newItemsNumber: ", newItemsNumber);
-        // The new number should be old number + 1
-        expect(newItemsNumber).to.be.eq(itemsNumber);
-      });
+      cy.get("div.flex > .text-sm > :nth-child(3)").should("have.text", newText);
     });
   });
 });
