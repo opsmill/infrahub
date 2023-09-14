@@ -308,6 +308,20 @@ async def test_to_graphql_no_fields(session, default_branch: Branch, car_person_
     assert await c1.to_graphql(session=session) == expected_data
 
 
+async def test_node_init_prefix(session, default_branch: Branch, prefix_schema):
+    obj1 = await Node.init(session=session, schema=prefix_schema)
+    await obj1.new(session=session, prefix="1.1.1.1", name="prefix1")
+
+    assert obj1.prefix.value == "1.1.1.1/32"
+    assert obj1.name.value == "prefix1"
+
+    obj2 = await Node.init(session=session, schema=prefix_schema)
+    await obj2.new(session=session, prefix="1.1.1.1/32", name="prefix2")
+
+    assert obj2.prefix.value == "1.1.1.1/32"
+    assert obj2.name.value == "prefix2"
+
+
 # --------------------------------------------------------------------------
 # Create
 # --------------------------------------------------------------------------
