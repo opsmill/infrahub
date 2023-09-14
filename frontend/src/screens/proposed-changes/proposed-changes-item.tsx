@@ -133,8 +133,9 @@ export const ProposedChange = (props: any) => {
           </div>
 
           <div className="flex flex-col items-end">
-            <div>
-              Updated at: <DateDisplay date={row._updated_at} />
+            <div className="flex items-center">
+              <div className="mr-2">Updated:</div>
+              <DateDisplay date={row._updated_at} />
             </div>
           </div>
         </div>
