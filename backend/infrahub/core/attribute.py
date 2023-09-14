@@ -551,7 +551,7 @@ class IPHost(BaseAttribute):
             ipaddress.ip_interface(value)
         except ValueError as exc:
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"}) from exc
-    
+
     @classmethod
     def serialize(cls, value: Any) -> Any:
         """Serialize the value before storing it in the database."""
