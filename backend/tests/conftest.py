@@ -3,13 +3,17 @@ import importlib
 import os
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, List
 
 import pytest
 import ujson
 
 from infrahub import config
 from infrahub.lock import initialize_lock
+from infrahub.message_bus import InfrahubBaseMessage
+from infrahub.message_bus.operations import execute_message
+from infrahub.services import InfrahubServices
+from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub_client.utils import str_to_bool
 
 BUILD_NAME = os.environ.get("INFRAHUB_BUILD_NAME", "infrahub")
@@ -56,6 +60,44 @@ def execute_before_any_test(worker_id):
     config.SETTINGS.main.internal_address = "http://mock"
 
 
+class BusRecorder(InfrahubMessageBus):
+    def __init__(self):
+        self.messages: List[InfrahubBaseMessage] = []
+        self.messages_per_routing_key: Dict[str, List[InfrahubBaseMessage]] = {}
+
+    async def publish(self, message: InfrahubBaseMessage, routing_key: str) -> None:
+        self.messages.append(message)
+        if routing_key not in self.messages_per_routing_key:
+            self.messages_per_routing_key[routing_key] = []
+        self.messages_per_routing_key[routing_key].append(message)
+
+    @property
+    def seen_routing_keys(self) -> List[str]:
+        return list(self.messages_per_routing_key.keys())
+
+
+class BusSimulator(InfrahubMessageBus):
+    def __init__(self):
+        self.messages: List[InfrahubBaseMessage] = []
+        self.messages_per_routing_key: Dict[str, List[InfrahubBaseMessage]] = {}
+        self.service: InfrahubServices = InfrahubServices()
+        self.replies: List[InfrahubBaseMessage] = []
+
+    async def publish(self, message: InfrahubBaseMessage, routing_key: str) -> None:
+        self.messages.append(message)
+        if routing_key not in self.messages_per_routing_key:
+            self.messages_per_routing_key[routing_key] = []
+        self.messages_per_routing_key[routing_key].append(message)
+        await execute_message(routing_key=routing_key, message_body=message.body, service=self.service)
+
+    async def reply(self, message: InfrahubBaseMessage, routing_key: str) -> None:
+        self.replies.append(message)
+
+    @property
+    def seen_routing_keys(self) -> List[str]:
+        return list(self.messages_per_routing_key.keys())
+
+
 class TestHelper:
     """TestHelper profiles functions that can be used as a fixture throughout the test framework"""
 
@@ -81,6 +123,14 @@ class TestHelper:
         sys.path.append(TestHelper.get_fixtures_dir())
         module_name = module.replace("/", ".")
         return importlib.import_module(module_name)
+
+    @staticmethod
+    def get_message_bus_recorder() -> BusRecorder:
+        return BusRecorder()
+
+    @staticmethod
+    def get_message_bus_simulator() -> BusSimulator:
+        return BusSimulator()
 
 
 @pytest.fixture()

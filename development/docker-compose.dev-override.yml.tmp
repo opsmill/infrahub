@@ -2,6 +2,8 @@
 version: "3.4"
 services:
   database:
+#   image: "memgraph/memgraph-platform:2.8.0-memgraph2.8.0-lab2.6.0"
+#   entrypoint: ["/usr/bin/supervisord"]
     ports:
       - "7687:7687"
       - "7474:3000"

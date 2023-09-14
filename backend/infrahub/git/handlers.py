@@ -130,21 +130,6 @@ async def handle_git_message_action_repo_add(message: InfrahubGitRPC, client: In
         return InfrahubRPCResponse(status=RPCStatusCode.CREATED)
 
 
-async def handle_transform_message_action_jinja2(
-    message: InfrahubTransformRPC, client: InfrahubClient
-) -> InfrahubRPCResponse:
-    repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
-
-    try:
-        rendered_template = await repo.render_jinja2_template(
-            commit=message.commit, location=message.transform_location, data={"data": message.data} or {}
-        )
-        return InfrahubRPCResponse(status=RPCStatusCode.OK, response={"rendered_template": rendered_template})
-
-    except (TransformError, FileNotFound) as exc:
-        return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR, errors=[exc.message])
-
-
 async def handle_transform_message_action_python(
     message: InfrahubTransformRPC, client: InfrahubClient
 ) -> InfrahubRPCResponse:
@@ -235,7 +220,6 @@ async def handle_git_transform_message(message: InfrahubTransformRPC, client: In
     )
 
     handler_map = {
-        TransformMessageAction.JINJA2: handle_transform_message_action_jinja2,
         TransformMessageAction.PYTHON: handle_transform_message_action_python,
     }
     handler = handler_map.get(message.action) or handle_bad_request

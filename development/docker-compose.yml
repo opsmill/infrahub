@@ -60,7 +60,9 @@ services:
     volumes:
       - ../:/source
       - "git_data:/opt/infrahub/git"
+      - "git_remote_data:/remote"
     tty: true
 volumes:
   git_data:
+  git_remote_data:
   storage_data:

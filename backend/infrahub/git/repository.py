@@ -1494,7 +1494,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             return False
         return True
 
-    async def import_all_yaml_files(self, branch_name: str, commit: str):
+    async def import_all_yaml_files(self, branch_name: str, commit: str, exclude: Optional[List[str]] = None):
         yaml_files = await self.find_files(extension=["yml", "yaml"], commit=commit)
 
         for yaml_file in yaml_files:
@@ -1520,6 +1520,8 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             # Search for Valid object types
             # ------------------------------------------------------
             for key, data in data.items():
+                if exclude and key in exclude:
+                    continue
                 if not hasattr(self, f"import_objects_{key}"):
                     continue
 

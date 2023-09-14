@@ -10,16 +10,19 @@ type OpsInputProps = {
   className?: string;
   error?: FormFieldError;
   isProtected?: boolean;
+  isOptionnal?: boolean;
   disabled?: boolean;
 };
 
 export const OpsTextarea = (props: OpsInputProps) => {
-  const { className, onChange, value, label, error, isProtected, disabled } = props;
+  const { className, onChange, value, label, error, isProtected, isOptionnal, disabled } = props;
 
   return (
     <>
       <div className="flex items-center">
-        <label className="block text-sm font-medium leading-6 text-gray-900"> {label} </label>
+        <label className="block text-sm font-medium leading-6 text-gray-900">
+          {label} {isOptionnal ? "" : "*"}
+        </label>
         <div className="ml-2"> {isProtected ? <LockClosedIcon className="w-4 h-4" /> : null} </div>
       </div>
       <Textarea

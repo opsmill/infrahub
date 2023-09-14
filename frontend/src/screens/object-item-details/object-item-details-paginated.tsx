@@ -15,7 +15,11 @@ import { BUTTON_TYPES, Button } from "../../components/button";
 import MetaDetailsTooltip from "../../components/meta-details-tooltips";
 import SlideOver from "../../components/slide-over";
 import { Tabs } from "../../components/tabs";
-import { DEFAULT_BRANCH_NAME, MENU_EXCLUDELIST } from "../../config/constants";
+import {
+  ARTIFACT_DEFINITION_OBJECT,
+  DEFAULT_BRANCH_NAME,
+  MENU_EXCLUDELIST,
+} from "../../config/constants";
 import { QSP } from "../../config/qsp";
 import { AuthContext } from "../../decorators/withAuth";
 import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
@@ -34,6 +38,7 @@ import {
   getSchemaRelationshipColumns,
   getSchemaRelationshipsTabs,
 } from "../../utils/getSchemaObjectColumns";
+import { Generate } from "../artifacts/generate";
 import ErrorScreen from "../error-screen/error-screen";
 import AddObjectToGroup from "../groups/add-object-to-group";
 import LoadingScreen from "../loading-screen/loading-screen";
@@ -157,6 +162,8 @@ export default function ObjectItemDetails(props: any) {
             tabs={tabs}
             rightItems={
               <>
+                {schemaData.kind === ARTIFACT_DEFINITION_OBJECT && <Generate />}
+
                 <Button
                   disabled={!auth?.permissions?.write}
                   onClick={() => setShowEditDrawer(true)}

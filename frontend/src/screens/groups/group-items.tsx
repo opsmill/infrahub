@@ -127,9 +127,6 @@ export default function GroupItems() {
             <div className="text-xl font-semibold text-gray-900">
               {schemaData.name} ({count})
             </div>
-            <p className="mt-2 text-sm text-gray-700 m-0 pl-2 mb-1">
-              A list of all the {schemaData.kind} in your infrastructure.
-            </p>
           </div>
         )}
       </div>

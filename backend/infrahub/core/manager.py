@@ -51,7 +51,7 @@ class NodeManager:
     @classmethod
     async def query(
         cls,
-        schema: Union[NodeSchema, str],
+        schema: Union[NodeSchema, GenericSchema, str],
         filters: Optional[dict] = None,
         fields: Optional[dict] = None,
         offset: Optional[int] = None,

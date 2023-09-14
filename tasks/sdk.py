@@ -4,6 +4,7 @@ from .shared import (
     BUILD_NAME,
     NBR_WORKERS,
     build_test_compose_files_cmd,
+    build_test_envs,
     execute_command,
     get_env_vars,
 )
@@ -166,8 +167,9 @@ def lint(context: Context, docker: bool = False):
 def test_unit(context: Context):
     with context.cd(REPO_BASE):
         compose_files_cmd = build_test_compose_files_cmd(database=False)
-        base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test"
+        base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run {build_test_envs()} infrahub-test"
         exec_cmd = f"pytest -n {NBR_WORKERS} -v --cov=infrahub_client {MAIN_DIRECTORY}/tests/unit"
+        print(f"{base_cmd} {exec_cmd}")
         return execute_command(context=context, command=f"{base_cmd} {exec_cmd}")
 
 
@@ -175,8 +177,9 @@ def test_unit(context: Context):
 def test_integration(context: Context, database: str = "memgraph"):
     with context.cd(REPO_BASE):
         compose_files_cmd = build_test_compose_files_cmd(database=database)
-        base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run"
-        exec_cmd = f"infrahub-test pytest -n {NBR_WORKERS} -v --cov=infrahub_client {MAIN_DIRECTORY}/tests/integration"
+        base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run {build_test_envs()} infrahub-test"
+        exec_cmd = f"pytest -n {NBR_WORKERS} -v --cov=infrahub_client {MAIN_DIRECTORY}/tests/integration"
+        print(f"{base_cmd} {exec_cmd}")
         return execute_command(context=context, command=f"{base_cmd} {exec_cmd}")
 
 

@@ -3,6 +3,7 @@ import { ChatBubbleLeftIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useContext, useState } from "react";
 import { useParams } from "react-router-dom";
+import { Button } from "../../components/button";
 import { BUTTON_TYPES, RoundedButton } from "../../components/rounded-button";
 import { SidePanelTitle } from "../../components/sidepanel-title";
 import SlideOver from "../../components/slide-over";
@@ -57,7 +58,7 @@ export const DataDiffThread = (props: tDataDiffThread) => {
   }
 
   const title = (
-    <SidePanelTitle title="Conversation">
+    <SidePanelTitle title="Conversation" hideBranch>
       {getThreadTitle(thread, getThreadLabel(node, currentBranch, path))}
     </SidePanelTitle>
   );
@@ -101,6 +102,10 @@ export const DataDiffThread = (props: tDataDiffThread) => {
 
       <SlideOver title={title} open={showThread} setOpen={setShowThread}>
         <DataDiffComments path={path} refetch={refetch} />
+
+        <div className="flex items-center justify-end gap-x-6 py-3 pr-3 border-t">
+          <Button onClick={() => setShowThread(false)}>Close</Button>
+        </div>
       </SlideOver>
     </div>
   );

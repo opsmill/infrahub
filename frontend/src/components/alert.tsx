@@ -123,8 +123,8 @@ export const Alert = (props: AlertProps) => {
 
   return (
     <div className={classNames("rounded-m p-4", alertClasses.container)}>
-      <div className="flex">
-        <div className="flex-shrink-0 flex items-start pt-1">{getIcon()}</div>
+      <div className="flex items-center">
+        <div className="flex-shrink-0 flex items-start">{getIcon()}</div>
         <div className="ml-3">
           {details ? <Accordion title={alertMessage}>{alertDetails}</Accordion> : alertMessage}
         </div>

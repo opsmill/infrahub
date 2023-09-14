@@ -1,5 +1,6 @@
 import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { Badge } from "../components/badge";
+import { CodeEditor } from "../components/code-editor";
 import { DateDisplay } from "../components/date-display";
 
 export const getObjectItemDisplayValue = (row: any, attribute: any, schemaKindName?: any) => {
@@ -21,7 +22,7 @@ export const getObjectItemDisplayValue = (row: any, attribute: any, schemaKindNa
   //
 
   if (row[attribute?.name]?.__typename === "JSONAttribute") {
-    return <pre>{JSON.stringify(row[attribute?.name]?.value)}</pre>;
+    return <CodeEditor value={JSON.stringify(row[attribute?.name]?.value)} disabled />;
   }
 
   if (row[attribute?.name]?.edges) {

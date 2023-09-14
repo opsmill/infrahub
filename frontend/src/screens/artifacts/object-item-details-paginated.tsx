@@ -2,7 +2,6 @@ import { gql, useReactiveVar } from "@apollo/client";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import {
   LockClosedIcon,
-  PencilIcon,
   PencilSquareIcon,
   RectangleGroupIcon,
   Square3Stack3DIcon,
@@ -44,6 +43,7 @@ import RelationshipDetails from "../object-item-details/relationship-details-pag
 import RelationshipsDetails from "../object-item-details/relationships-details-paginated";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
+import { Generate } from "./generate";
 
 export default function ObjectItemDetails() {
   const { objectid } = useParams();
@@ -151,13 +151,11 @@ export default function ObjectItemDetails() {
         tabs={tabs}
         rightItems={
           <>
-            <Button
-              disabled={!auth?.permissions?.write}
-              onClick={() => setShowEditDrawer(true)}
-              className="mr-4">
-              Edit
-              <PencilIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
-            </Button>
+            <Generate
+              label="Re-generate"
+              artifactid={objectid}
+              definitionid={objectDetailsData?.definition?.node?.id}
+            />
 
             <Button
               disabled={!auth?.permissions?.write}
@@ -171,19 +169,26 @@ export default function ObjectItemDetails() {
       />
 
       {!qspTab && (
-        <div className="flex items-start">
-          <div className="flex-1">
-            <File url={fileUrl} />
+        <div className="flex flex-col-reverse xl:flex-row">
+          <div className="flex-2">
+            <File url={fileUrl} enableCopy />
           </div>
 
-          <div className="bg-custom-white p-4 overflow-auto max-w-xl">
+          <div className="flex-1 bg-custom-white p-4 min-w-[500px]">
             <dl className="sm:divide-y sm:divide-gray-200">
               <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-3 sm:px-6">
                 <dt className="text-sm font-medium text-gray-500 flex items-center">ID</dt>
                 <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-                  {objectDetailsData.id}
+                  <a
+                    href={CONFIG.ARTIFACT_DETAILS_URL(objectDetailsData.id)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="cursor-pointer underline">
+                    {objectDetailsData.id}
+                  </a>
                 </dd>
               </div>
+
               {attributes?.map((attribute) => {
                 if (
                   !objectDetailsData[attribute.name] ||
@@ -206,7 +211,21 @@ export default function ObjectItemDetails() {
                           "mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0"
                           // attribute.kind === "TextArea" ? "whitespace-pre-wrap mr-2" : ""
                         )}>
-                        {getObjectItemDisplayValue(objectDetailsData, attribute, schemaKindName)}
+                        {attribute.name === "storage_id" &&
+                          objectDetailsData[attribute.name]?.value && (
+                            <a
+                              href={CONFIG.STORAGE_DETAILS_URL(
+                                objectDetailsData[attribute.name].value
+                              )}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="cursor-pointer underline">
+                              {objectDetailsData[attribute.name].value}
+                            </a>
+                          )}
+
+                        {attribute.name !== "storage_id" &&
+                          getObjectItemDisplayValue(objectDetailsData, attribute, schemaKindName)}
                       </dd>
 
                       {objectDetailsData[attribute.name] && (

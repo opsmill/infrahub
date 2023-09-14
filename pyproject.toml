@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "infrahub"
-version = "0.6.1"
+version = "0.7.0"
 description = ""
 authors = ["OpsMill <info@opsmill.com>"]
 
@@ -35,7 +35,7 @@ gunicorn = "^20.1"
 graphene = "~3.2"
 neo4j = "~5.7"
 starlette-exporter = "^0.12.0"
-GitPython = "^3.1"
+GitPython = "3.1.34"
 aio-pika = "^9"
 structlog = "^22.3.0"
 asgi-correlation-id = "4.2.0"
@@ -44,6 +44,11 @@ pyjwt = "2.7.0"
 email-validator = "2.0.0"
 python-multipart = "^0.0.6"
 redis = { version = "^5.0.0", extras = ["hiredis"]}
+opentelemetry-api = "^1.16.0"
+opentelemetry-sdk = "^1.16.0"
+opentelemetry-instrumentation-fastapi = "^0.37b0"
+opentelemetry-exporter-otlp-proto-http = "^1.16.0"
+opentelemetry-exporter-otlp-proto-grpc = "^1.16.0"
 
 [tool.poetry.group.perf.dependencies]
 locust = "^2.13.1"
@@ -69,6 +74,7 @@ typer-cli = "*"
 pytest-cov = "^4.0.0"
 ruff = "0.0.265"
 pytest-xdist = "^3.3.1"
+buildkite-test-collector = "^0.1.7"
 
 
 [tool.poetry.group.sync.dependencies]

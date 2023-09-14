@@ -65,6 +65,7 @@ def execute_before_any_test(worker_id):
         config.SETTINGS.database.address = f"{BUILD_NAME}-database-{db_id}"
         config.SETTINGS.storage.settings = {"directory": "/opt/infrahub/storage"}
 
+    config.SETTINGS.experimental_features.ignore_authentication_requirements = False
     config.SETTINGS.broker.enable = False
     config.SETTINGS.cache.enable = False
     config.SETTINGS.miscellaneous.start_background_runner = False
@@ -194,6 +195,20 @@ async def gqlquery02(session: AsyncSession, repo01: Node, tag_blue: Node, tag_re
     await obj.new(
         session=session,
         name="query02",
+        query="query { CoreRepository { edges { node { name { value }}}}}",
+        repository=repo01,
+        tags=[tag_blue, tag_red],
+    )
+    await obj.save(session=session)
+    return obj
+
+
+@pytest.fixture
+async def gqlquery03(session: AsyncSession, repo01: Node, tag_blue: Node, tag_red: Node) -> Node:
+    obj = await Node.init(session=session, schema="CoreGraphQLQuery")
+    await obj.new(
+        session=session,
+        name="query03",
         query="query { CoreRepository { edges { node { name { value }}}}}",
         repository=repo01,
         tags=[tag_blue, tag_red],

@@ -1122,13 +1122,10 @@ core_models = {
             "description": "",
             "label": "Validator",
             "order_by": ["started_at__value"],
-            "display_labels": ["name__value", "state__value", "conclusion__value", "started_at__value"],
+            "display_labels": ["label__value"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
-                {
-                    "name": "name",
-                    "kind": "Text",
-                },
+                {"name": "label", "kind": "Text", "optional": True},
                 {
                     "name": "state",
                     "kind": "Text",
@@ -1167,10 +1164,12 @@ core_models = {
             "name": "Check",
             "namespace": "Core",
             "description": "",
+            "display_labels": ["label__value"],
             "label": "Check",
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
                 {"name": "name", "kind": "Text", "optional": True},
+                {"name": "label", "kind": "Text", "optional": True},
                 {"name": "origin", "kind": "Text", "optional": False},
                 {
                     "name": "kind",

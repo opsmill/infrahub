@@ -4,13 +4,15 @@ import LoadingScreen from "../screens/loading-screen/loading-screen";
 import NoDataFound from "../screens/no-data-found/no-data-found";
 import { fetchStream } from "../utils/fetch";
 import { ALERT_TYPES, Alert } from "./alert";
+import { CodeEditor } from "./code-editor";
 
 type tFile = {
   url: string;
+  enableCopy?: boolean;
 };
 
 export const File = (props: tFile) => {
-  const { url } = props;
+  const { url, enableCopy } = props;
 
   const [isLoading, setIsLoading] = useState(false);
   const [fileContent, setFileContent] = useState("");
@@ -45,6 +47,8 @@ export const File = (props: tFile) => {
   }
 
   return (
-    <pre className="m-4 p-4 bg-custom-white rounded-md whitespace-pre-wrap">{fileContent}</pre>
+    <div className="p-4">
+      <CodeEditor value={fileContent} disabled enableCopy={enableCopy} />
+    </div>
   );
 };

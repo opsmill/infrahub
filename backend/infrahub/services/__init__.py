@@ -1,7 +1,7 @@
 from typing import Optional
 
 from infrahub.exceptions import InitializationError
-from infrahub.message_bus import InfrahubBaseMessage
+from infrahub.message_bus import InfrahubBaseMessage, InfrahubResponse, Meta
 from infrahub.message_bus.messages import ROUTING_KEY_MAP
 from infrahub_client import InfrahubClient
 
@@ -32,3 +32,23 @@ class InfrahubServices:
         if not routing_key:
             raise ValueError("Unable to determine routing key")
         await self.message_bus.publish(message, routing_key=routing_key)
+
+    async def reply(self, message: InfrahubResponse, initiator: InfrahubBaseMessage) -> None:
+        message.meta = message.meta or Meta()
+        if initiator.meta:
+            message.meta.correlation_id = initiator.meta.correlation_id
+            routing_key = initiator.meta.reply_to or ""
+            await self.message_bus.reply(message, routing_key=routing_key)
+
+
+class ServiceManager:
+    def __init__(self) -> None:
+        self.service = InfrahubServices()
+        self.send = self.service.send
+
+    def prepare(self, service: InfrahubServices) -> None:
+        self.service = service
+        self.send = self.service.send
+
+
+services = ServiceManager()
