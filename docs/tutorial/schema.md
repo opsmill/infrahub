@@ -18,7 +18,7 @@ You can explore the current schema by visiting the schema page at the bottom of 
 
 ![](../media/tutorial/tutorial-3-schema.cy.ts/tutorial_3_schema.png)
 
-[!ref Check the schema documentation for more information](../15_schema/readme.md)
+[!ref Check the schema documentation for more information](../schema/readme.md)
 
 ## Extend the schema with some network related models
 
