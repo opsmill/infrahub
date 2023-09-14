@@ -88,7 +88,7 @@ export const Root = () => {
         query: GET_BRANCHES,
       });
 
-      return data.branch ?? [];
+      return data.Branch ?? [];
     } catch (err: any) {
       console.log("err.message: ", err.message);
 

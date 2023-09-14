@@ -128,7 +128,7 @@ class InfrahubBranchManager(InfraHubBranchManagerBase):
     async def all(self) -> Dict[str, BranchData]:
         data = await self.client.execute_graphql(query=QUERY_ALL_BRANCHES, tracker="query-branch-all")
 
-        branches = {branch["name"]: BranchData(**branch) for branch in data["branch"]}
+        branches = {branch["name"]: BranchData(**branch) for branch in data["Branch"]}
 
         return branches
 
@@ -153,7 +153,7 @@ class InfrahubBranchManagerSync(InfraHubBranchManagerBase):
     def all(self) -> Dict[str, BranchData]:
         data = self.client.execute_graphql(query=QUERY_ALL_BRANCHES, tracker="query-branch-all")
 
-        branches = {branch["name"]: BranchData(**branch) for branch in data["branch"]}
+        branches = {branch["name"]: BranchData(**branch) for branch in data["Branch"]}
 
         return branches
 

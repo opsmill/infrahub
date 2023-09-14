@@ -6,7 +6,7 @@ from pytest_httpx import HTTPXMock
 async def mock_branches_list_query(httpx_mock: HTTPXMock) -> HTTPXMock:
     response = {
         "data": {
-            "branch": [
+            "Branch": [
                 {
                     "id": "eca306cf-662e-4e03-8180-2b788b191d3c",
                     "name": "main",

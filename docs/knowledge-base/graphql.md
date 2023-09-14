@@ -175,7 +175,7 @@ mutation {
 
 In addition to the Query and the Mutations automatically generated based on the schema, there are some Query and Mutations to interact with the Branches.
 
-- **Query**: `branch`, Query a list of all branches
+- **Query**: `Branch`, Query a list of all branches
 - **Mutation**: `BranchCreate`, Create a new branch
 - **Mutation**: `BranchUpdate`, Update the descrition of a branch
 - **Mutation**: `BranchDelete`, Delete an existing Branch
