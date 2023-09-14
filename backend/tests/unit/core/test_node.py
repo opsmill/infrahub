@@ -1105,5 +1105,5 @@ async def test_node_serialize_address(session, default_branch: Branch, prefix_sc
     await i2.new(session=session, address="2001:db8::", name="ip2")
     await i2.save(session=session)
 
-    retrieve_i2 = await NodeManager.get_one(id=i1.id, session=session)
+    retrieve_i2 = await NodeManager.get_one(id=i2.id, session=session)
     assert retrieve_i2.address.value == "2001:db8::/128"
