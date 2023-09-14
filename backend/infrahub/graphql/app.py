@@ -135,7 +135,7 @@ class InfrahubGraphQLApp:
                 jwt_token = None
                 if jwt_auth:
                     jwt_token = jwt_auth.credentials
-                elif cookie_auth:
+                elif cookie_auth and not api_key:
                     jwt_token = cookie_auth
                 account_session = await authentication_token(jwt_token=jwt_token, api_key=api_key, session=session)
 

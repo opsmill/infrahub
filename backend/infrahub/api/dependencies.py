@@ -44,11 +44,15 @@ async def get_session(request: Request) -> AsyncIterator[AsyncSession]:
 
 
 async def get_access_token(
+    request: Request,
     jwt_header: HTTPAuthorizationCredentials = Depends(jwt_scheme),
 ) -> AccountSession:
-    if not jwt_header:
-        raise AuthorizationError("A JWT access token is required to perform this operation.")
-    return await validate_jwt_access_token(token=jwt_header.credentials)
+    if jwt_header:
+        return await validate_jwt_access_token(token=jwt_header.credentials)
+    if token := request.cookies.get("access_token"):
+        return await validate_jwt_access_token(token=token)
+
+    raise AuthorizationError("A JWT access token is required to perform this operation.")
 
 
 async def get_refresh_token(
@@ -62,7 +66,7 @@ async def get_refresh_token(
 
     # If no auth header, try to get the token from the cookie
     if not token:
-        token = request.cookies.get("refresh_token", None)
+        token = request.cookies.get("refresh_token")
 
     # If still no token, raise an error
     if not token:
@@ -103,6 +107,9 @@ async def get_current_user(
     jwt_token = None
     if jwt_header:
         jwt_token = jwt_header.credentials
+
+    if not jwt_token:
+        jwt_token = request.cookies.get("access_token")
 
     account_session = await authentication_token(session=session, jwt_token=jwt_token, api_key=api_key)
 
