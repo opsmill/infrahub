@@ -23,7 +23,6 @@ describe("Object creation and deletion", () => {
     // Get the actual number of items
     cy.get("div.flex > .text-sm > :nth-child(3)").then((element) => {
       itemsNumber = parseInt(element.text());
-      console.log("### 1 itemsNumber: ", itemsNumber);
     });
 
     // Open the create form
@@ -41,10 +40,18 @@ describe("Object creation and deletion", () => {
     cy.get(".justify-end > .bg-custom-blue-700").click();
 
     // Wait after refetch, the body data should contain an object
-    waitFor(
-      "@Request",
-      (interception) => interception?.response?.body?.data?.CoreAccount?.count > itemsNumber
-    ).then(() => {
+    waitFor("@Request", (interception) => {
+      console.log("### itemsNumber: ", itemsNumber);
+      console.log(
+        "### interception?.response?.body?.data?.CoreAccount?.count: ",
+        interception?.response?.body?.data?.CoreAccount?.count
+      );
+      console.log(
+        "### interception?.response?.body?.data?.CoreAccount?.count > itemsNumber: ",
+        interception?.response?.body?.data?.CoreAccount?.count > itemsNumber
+      );
+      return interception?.response?.body?.data?.CoreAccount?.count > itemsNumber;
+    }).then(() => {
       // Get the new number
       cy.get("div.flex > .text-sm > :nth-child(3)").then((element) => {
         const newItemsNumber = parseInt(element.text());

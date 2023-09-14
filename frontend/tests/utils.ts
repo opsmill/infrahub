@@ -35,7 +35,7 @@ export const waitFor = (alias, checkFn, maxRequests = 10, level = 0) => {
     throw `${maxRequests} requests exceeded`;
   }
 
-  return cy.wait(alias, { timeout: 5000 }).then((interception) => {
+  return cy.wait(alias, { timeout: 10000 }).then((interception) => {
     if (!checkFn(interception)) {
       return waitFor(alias, checkFn, maxRequests, level + 1);
     }

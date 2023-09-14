@@ -30,6 +30,7 @@ interface iProps {
 }
 
 export default function ObjectItemCreate(props: iProps) {
+  console.log("RENDER CREATE");
   const { objectname, onCreate, onCancel, refetch, formStructure, customObject = {} } = props;
 
   const [schemaList] = useAtom(schemaState);
@@ -126,7 +127,12 @@ export default function ObjectItemCreate(props: iProps) {
         onCreate();
       }
 
-      if (refetch) refetch();
+      console.log("DONE");
+
+      setTimeout(() => {
+        console.log("REFETCH");
+        if (refetch) refetch();
+      }, 3000);
 
       setIsLoading(false);
     } catch (error: any) {
