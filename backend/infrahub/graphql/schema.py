@@ -62,7 +62,6 @@ async def account_resolver(root, info: GraphQLResolveInfo):
 
 
 class InfrahubBaseQuery(ObjectType):
-    branch = BranchQueryList  # Remove this line once #1015 has been fixed
     Branch = BranchQueryList
 
     diff = Field(
