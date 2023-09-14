@@ -21,7 +21,7 @@ class TestObjectStore:
 
     @pytest.fixture
     async def client(self, test_client):
-        config = Config(requester=test_client.async_request)
+        config = Config(username="admin", password="infrahub", requester=test_client.async_request)
         return await InfrahubClient.init(config=config)
 
     async def test_upload_and_get(self, client: InfrahubClient):

@@ -59,12 +59,12 @@ export const Validator = (props: tValidatorProps) => {
       </div>
 
       <div className="mt-2 flex-1 flex justify-between">
-        <span className="mr-1 font-semibold">Started at:</span>
+        <span className="mr-1 font-semibold">Started:</span>
         <DateDisplay date={started_at.value} hideDefault />
       </div>
 
       <div className="mt-2 flex-1 flex justify-between">
-        <span className="mr-1 font-semibold">Completed at:</span>
+        <span className="mr-1 font-semibold">Completed:</span>
         <DateDisplay date={completed_at.value} hideDefault />
       </div>
 

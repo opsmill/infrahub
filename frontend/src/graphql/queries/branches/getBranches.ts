@@ -7,7 +7,7 @@ export interface iBranchData {
 
 const GET_BRANCHES = gql`
   query Branch {
-    branch {
+    Branch {
       id
       name
       description

@@ -30,6 +30,7 @@ from infrahub.log import clear_log_context, get_logger, set_log_data
 from infrahub.message_bus import close_broker_connection, connect_to_broker
 from infrahub.message_bus.rpc import InfrahubRpcClient
 from infrahub.middleware import InfrahubCORSMiddleware
+from infrahub.services import services
 from infrahub.trace import add_span_exception, configure_trace, get_traceid, get_tracer
 
 # pylint: disable=too-many-locals
@@ -90,7 +91,7 @@ async def app_initialization():
 
     # Initialize RPC Client
     app.state.rpc_client = await InfrahubRpcClient().connect()
-
+    services.prepare(service=app.state.rpc_client.service)
     # Initialize the client for the cache
     initialize_lock()
 

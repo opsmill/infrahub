@@ -1743,7 +1743,7 @@ async def test_query_attribute_flag_property(
 async def test_query_branches(db, session, default_branch: Branch, register_core_models_schema):
     query = """
     query {
-        branch {
+        Branch {
             id
             name
             branched_from
@@ -1762,19 +1762,19 @@ async def test_query_branches(db, session, default_branch: Branch, register_core
     )
 
     assert result1.errors is None
-    assert result1.data["branch"][0]["name"] == "main"
+    assert result1.data["Branch"][0]["name"] == "main"
 
 
 async def test_query_multiple_branches(db, session, default_branch: Branch, register_core_models_schema):
     query = """
     query {
-        branch1: branch {
+        branch1: Branch {
             id
             name
             branched_from
             is_data_only
         }
-        branch2: branch {
+        branch2: Branch {
             id
             name
             branched_from

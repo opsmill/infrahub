@@ -23,7 +23,7 @@ class TestInfrahubClient:
 
     @pytest.fixture
     async def client(self, test_client):
-        config = Config(requester=test_client.async_request)
+        config = Config(username="admin", password="infrahub", requester=test_client.async_request)
         return await InfrahubClient.init(config=config)
 
     @pytest.fixture(scope="class")

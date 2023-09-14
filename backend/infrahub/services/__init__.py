@@ -39,3 +39,16 @@ class InfrahubServices:
             message.meta.correlation_id = initiator.meta.correlation_id
             routing_key = initiator.meta.reply_to or ""
             await self.message_bus.reply(message, routing_key=routing_key)
+
+
+class ServiceManager:
+    def __init__(self) -> None:
+        self.service = InfrahubServices()
+        self.send = self.service.send
+
+    def prepare(self, service: InfrahubServices) -> None:
+        self.service = service
+        self.send = self.service.send
+
+
+services = ServiceManager()

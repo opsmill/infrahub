@@ -23,9 +23,11 @@ from infrahub.message_bus.events import (
     RPCStatusCode,
 )
 from infrahub.message_bus.operations import execute_message
+from infrahub.message_bus.worker import WorkerCallback
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.database.graph_database import GraphDatabase
 from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
+from infrahub.worker import WORKER_IDENTITY
 from infrahub_client import InfrahubClient
 
 if TYPE_CHECKING:
@@ -61,7 +63,11 @@ async def subscribe_rpcs_queue(client: InfrahubClient):
     # Create a channel and subscribe to the incoming RPC queue
     channel = await connection.channel()
     queue = await channel.declare_queue(f"{config.SETTINGS.broker.namespace}.rpcs")
+    events_queue = await channel.declare_queue(name=f"worker-events-{WORKER_IDENTITY}", exclusive=True)
+
     exchange = await channel.declare_exchange(f"{config.SETTINGS.broker.namespace}.events", type="topic")
+    await events_queue.bind(exchange, routing_key="refresh.registry.*")
+
     driver = await get_db()
     database = GraphDatabase(driver=driver)
     service = InfrahubServices(
@@ -69,6 +75,9 @@ async def subscribe_rpcs_queue(client: InfrahubClient):
     )
     async with service.database.session as session:
         await initialization(session=session)
+
+    worker_callback = WorkerCallback(service=service)
+    await events_queue.consume(worker_callback.run_command, no_ack=True)
     log.info("Waiting for RPC instructions to execute .. ")
     async with queue.iterator() as qiterator:
         message: IncomingMessage

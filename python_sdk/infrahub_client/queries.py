@@ -23,7 +23,7 @@ query {
 
 QUERY_ALL_BRANCHES = """
 query {
-    branch {
+    Branch {
         id
         name
         description

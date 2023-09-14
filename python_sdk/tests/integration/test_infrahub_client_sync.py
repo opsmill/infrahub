@@ -20,7 +20,7 @@ class TestInfrahubClientSync:
 
     @pytest.fixture
     def client(self, test_client):
-        config = Config(sync_requester=test_client.sync_request)
+        config = Config(username="admin", password="infrahub", sync_requester=test_client.sync_request)
         return InfrahubClientSync.init(config=config)
 
     @pytest.fixture(scope="class")
