@@ -85,6 +85,7 @@ const getFormStructureForCreateEdit = (
       config: {
         validate: (value: any) => validate(value, attribute.default_value, attribute.optional),
       },
+      isOptionnal: attribute.optional,
       isProtected: getIsDisabled(
         row && row[attribute.name]?.owner,
         user,

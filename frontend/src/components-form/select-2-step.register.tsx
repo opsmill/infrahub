@@ -13,23 +13,21 @@ interface Props {
   setValue: UseFormSetValue<FieldValues>;
   error?: FormFieldError;
   isProtected?: boolean;
+  isOptionnal?: boolean;
   disabled?: boolean;
 }
 
 export const OpsSelect2StepRegister = (props: Props) => {
-  const { name, value, register, setValue, config, options, label, error, isProtected, disabled } =
-    props;
+  const { name, register, setValue, config, isProtected, disabled, ...propsToPass } = props;
+
   const inputRegister = register(name, {
-    value: value ?? "",
+    value: props.value ?? "",
     ...config,
   });
 
   return (
     <OpsSelect2Step
-      error={error}
-      label={label}
-      value={value}
-      options={options}
+      {...propsToPass}
       onChange={(option) => {
         setValue(inputRegister.name, option.child);
       }}

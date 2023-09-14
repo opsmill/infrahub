@@ -14,7 +14,7 @@ interface Props {
 }
 
 export const CodeEditorRegister = (props: Props) => {
-  const { name, value, register, setValue, config, label, error } = props;
+  const { name, value, register, setValue, config, ...propsToPass } = props;
   const [currentValue, setCurrentValue] = useState(value);
 
   const inputRegister = register(name, {
@@ -24,7 +24,7 @@ export const CodeEditorRegister = (props: Props) => {
 
   return (
     <OpsCodeEditor
-      label={label}
+      {...propsToPass}
       value={currentValue}
       onChange={(value?: string) => {
         // Set the JSON as string in state
@@ -37,7 +37,6 @@ export const CodeEditorRegister = (props: Props) => {
           console.log("e: ", e);
         }
       }}
-      error={error}
     />
   );
 };
