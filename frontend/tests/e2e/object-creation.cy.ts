@@ -52,9 +52,11 @@ describe("Object creation and deletion", () => {
       );
       return interception?.response?.body?.data?.CoreAccount?.count > itemsNumber;
     }).then(() => {
+      console.log("### OK");
       // Get the new number
       cy.get("div.flex > .text-sm > :nth-child(3)").then((element) => {
         const newItemsNumber = parseInt(element.text());
+        console.log("### newItemsNumber: ", newItemsNumber);
 
         // The new number should be old number + 1
         expect(newItemsNumber).to.be.eq(itemsNumber + 1);
@@ -88,9 +90,11 @@ describe("Object creation and deletion", () => {
       "@Request",
       (interception) => interception?.response?.body?.data?.CoreAccount?.count === itemsNumber
     ).then(() => {
+      console.log("OK");
       // Get the new number
       cy.get("div.flex > .text-sm > :nth-child(3)").then((element) => {
         const newItemsNumber = parseInt(element.text());
+        console.log("newItemsNumber: ", newItemsNumber);
         // The new number should be old number + 1
         expect(newItemsNumber).to.be.eq(itemsNumber);
       });
