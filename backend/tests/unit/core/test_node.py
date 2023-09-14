@@ -1091,6 +1091,10 @@ async def test_node_serialize_prefix(session, default_branch: Branch, prefix_sch
     retrieve_p3 = await NodeManager.get_one(id=p3.id, session=session)
     assert retrieve_p3.prefix.value == "2001:db8::/128"
 
+
+async def test_node_serialize_address(session, default_branch: Branch, prefix_schema):
+    ip = registry.get_schema(name="TestIp")
+
     i1 = await Node.init(session=session, schema=ip)
     await i1.new(session=session, address="192.0.2.1", name="ip1")
     await i1.save(session=session)
@@ -1099,7 +1103,7 @@ async def test_node_serialize_prefix(session, default_branch: Branch, prefix_sch
     assert retrieve_i1.prefix.value == "192.0.2.1/32"
 
     i2 = await Node.init(session=session, schema=ip)
-    await i2.new(session=session, address="2001:db8::", name="ip1")
+    await i2.new(session=session, address="2001:db8::", name="ip2")
     await i2.save(session=session)
 
     retrieve_i2 = await NodeManager.get_one(id=i1.id, session=session)
