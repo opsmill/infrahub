@@ -16,7 +16,7 @@ import Handlebars from "handlebars";
 // `);
 
 export const getBranchDetails = Handlebars.compile(`query {
-  branch {
+  Branch {
       id
       name
       description

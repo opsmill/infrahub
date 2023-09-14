@@ -98,7 +98,7 @@ export const BranchDetails = () => {
 
   const { loading, error, data } = useQuery(query, { skip: !accountSchemaData });
 
-  const branch = data?.branch?.filter((branch: any) => branch.name === branchname)[0];
+  const branch = data?.Branch?.filter((branch: any) => branch.name === branchname)[0];
 
   const customObject = {
     created_by: {
