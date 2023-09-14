@@ -165,7 +165,7 @@ async def test_branch_query(db, session, default_branch: Branch, car_person_sche
     branch3 = branch3_result.data["BranchCreate"]["object"]
     query = """
     query {
-        branch {
+        Branch {
             id
             name
         }
@@ -181,7 +181,7 @@ async def test_branch_query(db, session, default_branch: Branch, car_person_sche
     name_query = (
         """
     query {
-        branch(name: "%s" ) {
+        Branch(name: "%s" ) {
             id
             name
         }
@@ -198,7 +198,7 @@ async def test_branch_query(db, session, default_branch: Branch, car_person_sche
     )
     id_query = """
     query {
-        branch(ids: %s ) {
+        Branch(ids: %s ) {
             id
             name
         }
@@ -216,11 +216,11 @@ async def test_branch_query(db, session, default_branch: Branch, car_person_sche
         variable_values={},
     )
 
-    assert len(all_branches.data["branch"]) == 2
-    assert len(name_response.data["branch"]) == 1
-    assert len(id_response.data["branch"]) == 1
-    assert name_response.data["branch"][0]["name"] == "branch3"
-    assert id_response.data["branch"][0]["name"] == "branch3"
+    assert len(all_branches.data["Branch"]) == 2
+    assert len(name_response.data["Branch"]) == 1
+    assert len(id_response.data["Branch"]) == 1
+    assert name_response.data["Branch"][0]["name"] == "branch3"
+    assert id_response.data["Branch"][0]["name"] == "branch3"
 
 
 async def test_branch_create_invalid_names(
