@@ -168,10 +168,11 @@ class DeleteBranchRelationshipsQuery(Query):
 
 class Branch(StandardNode):
     name: str = Field(
-        regex=rf"^[a-zA-Z0-9][a-zA-Z0-9_\-]*$|^{re.escape(GLOBAL_BRANCH_NAME)}$",
+        regex=r"^(?!.*/\.)(?!.*\.\.)(?!/)(?!.*//)(?!.*@\{)(?!.*\\)[^\000-\037\177 ~^:?*[]+[^/\000-\037\177 ~^:?*[]+(?<!\.lock)(?<!/)(?<!\.)$|"
+        + f"^{re.escape(GLOBAL_BRANCH_NAME)}$",
         max_length=32,
         min_length=3,
-        description="Name of the branch (only alphanumeric, dash, underscore characters are allowed)",
+        description="Name of the branch (git ref standard)",
     )
     status: str = "OPEN"  # OPEN, CLOSED
     description: str = ""

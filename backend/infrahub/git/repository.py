@@ -268,11 +268,11 @@ class Worktree(BaseModel):
         if len(relative_paths) == 3:
             # this is the main worktree for the main branch
             identifier = relative_paths[2]
-        elif len(relative_paths) == 4:
+        elif len(relative_paths) > 3:
             # this is the either a commit or a branch worktree
-            identifier = relative_paths[3]
+            identifier = "/".join(relative_paths[3:])
         else:
-            raise Error("Unexpected directory path for a worktree.")
+            raise Error("Unexpected path for a worktree.")
 
         item = cls(
             identifier=identifier,
