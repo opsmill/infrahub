@@ -58,9 +58,7 @@ describe("Object creation and deletion", () => {
 
     // Get the actual number of items
     cy.get("div.flex > .text-sm > :nth-child(3)").then((element) => {
-      const itemsNumber = parseInt(element.text());
-
-      cy.wrap(itemsNumber).as("itemsNumber");
+      itemsNumber = parseInt(element.text());
     });
 
     // Get the delete button for the new account
