@@ -2,9 +2,9 @@
 
 import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
+import { formatDistanceToNow } from "date-fns";
 import React from "react";
 import { Route, Routes } from "react-router-dom";
-import { getDateDisplay } from "../../../src/components/date-display";
 import { withAuth } from "../../../src/decorators/withAuth";
 import ObjectDetails from "../../../src/screens/object-item-details/object-item-details-paginated";
 import { configState } from "../../../src/state/atoms/config.atom";
@@ -257,9 +257,9 @@ describe("Object details", () => {
     cy.wait("@mutate");
 
     // The date should be defined
-    cy.get(".mt-1 > :nth-child(1) > .flex-shrink-0").should(
+    cy.get(".text-xs").should(
       "have.text",
-      getDateDisplay(accountTokenNewDate)
+      formatDistanceToNow(new Date(accountTokenNewDate), { addSuffix: true })
     );
   });
 });
