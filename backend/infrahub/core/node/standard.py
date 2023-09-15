@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional
+import inspect
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from uuid import UUID  # noqa: TCH003
 
+import ujson
 from pydantic import BaseModel
 
 from infrahub.core.query.standard_node import (
@@ -13,6 +15,7 @@ from infrahub.core.query.standard_node import (
     StandardNodeUpdateQuery,
 )
 from infrahub.exceptions import Error
+from infrahub_client import UUIDT
 
 # pylint: disable=redefined-builtin
 
@@ -112,7 +115,7 @@ class StandardNode(BaseModel):
 
         node = await cls._get_item_raw(id=id, session=session)
         if node:
-            return cls._convert_node_to_obj(node)
+            return cls.from_db(node)
 
         return None
 
@@ -128,7 +131,7 @@ class StandardNode(BaseModel):
         return result.get("n")
 
     @classmethod
-    def _convert_node_to_obj(cls, node: Neo4jNode) -> Self:
+    def from_db(cls, node: Neo4jNode) -> Self:
         """Convert a Neo4j Node to a Infrahub StandardNode
 
         Args:
@@ -138,13 +141,55 @@ class StandardNode(BaseModel):
             StandardNode: Proper StandardNode object
         """
 
-        attrs = dict(node)
+        attrs = {}
+        node_data = dict(node)
         attrs["id"] = node.element_id
-        for key, value in attrs.items():
-            if value == "None":
+        for key, value in node_data.items():
+            if key not in cls.__fields__:
+                continue
+
+            field_type = cls.__fields__[key].type_
+
+            if value == "NULL":
                 attrs[key] = None
+            elif field_type in [int, float, bool, str, UUID]:
+                attrs[key] = value
+            elif isinstance(value, (str, bytes)):
+                attrs[key] = ujson.loads(value)
 
         return cls(**attrs)
+
+    def to_db(self) -> Dict[str, Any]:
+        data = {}
+
+        if not self.uuid:
+            data["uuid"] = str(UUIDT())
+        else:
+            data["uuid"] = self.uuid
+
+        for attr_name, field in self.__fields__.items():
+            if attr_name in self._exclude_attrs:
+                continue
+
+            attr_value = getattr(self, attr_name)
+            field_type = field.type_
+
+            if attr_value is None:
+                data[attr_name] = "NULL"
+            elif inspect.isclass(field_type) and issubclass(field_type, BaseModel):
+                if isinstance(attr_value, list):
+                    clean_value = [item.dict() for item in attr_value]
+                    # breakpoint()
+                    data[attr_name] = ujson.dumps(clean_value)
+                else:
+                    data[attr_name] = attr_value.json()
+
+            elif field_type in [int, float, bool, str]:
+                data[attr_name] = attr_value
+            else:
+                data[attr_name] = ujson.dumps(attr_value)
+
+        return data
 
     @classmethod
     async def get_list(
@@ -160,4 +205,4 @@ class StandardNode(BaseModel):
         )
         await query.execute(session=session)
 
-        return [cls._convert_node_to_obj(result.get("n")) for result in query.get_results()]
+        return [cls.from_db(result.get("n")) for result in query.get_results()]

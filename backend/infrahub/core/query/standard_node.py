@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, List, Optional
 
 from infrahub.core.query import Query, QueryType
-from infrahub_client import UUIDT
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
@@ -40,12 +39,7 @@ class StandardNodeCreateQuery(StandardNodeQuery):
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
         node_type = self.node.get_type()
-        self.params["node_prop"] = {
-            attr_name: getattr(self.node, attr_name)
-            for attr_name in self.node.__fields__
-            if attr_name not in self.node._exclude_attrs
-        }
-        self.params["node_prop"]["uuid"] = str(UUIDT())
+        self.params["node_prop"] = self.node.to_db()
 
         query = """
         CREATE (n:%s $node_prop)
@@ -64,11 +58,7 @@ class StandardNodeUpdateQuery(StandardNodeQuery):
 
     async def query_init(self, session: AsyncSession, *args, **kwargs):
         self.node.get_type()
-        self.params["node_prop"] = {
-            attr_name: getattr(self.node, attr_name)
-            for attr_name in self.node.__fields__
-            if attr_name not in self.node._exclude_attrs
-        }
+        self.params["node_prop"] = self.node.to_db()
         self.params["node_prop"]["uuid"] = str(self.node.uuid)
         self.params["uuid"] = str(self.node.uuid)
 
@@ -97,7 +87,7 @@ class StandardNodeDeleteQuery(StandardNodeQuery):
             self.node.get_type()
         )
 
-        self.params["uuid"] = self.node_id
+        self.params["uuid"] = str(self.node_id)
         self.add_to_query(query)
 
 

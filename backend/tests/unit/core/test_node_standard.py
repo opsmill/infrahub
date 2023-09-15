@@ -1,6 +1,7 @@
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 from neo4j import AsyncSession
+from pydantic import BaseModel
 
 from infrahub.core.node.standard import StandardNode
 
@@ -17,6 +18,18 @@ class OtherStdNode(StandardNode):
     name: str
 
 
+class MyModel(BaseModel):
+    key1: int
+    key2: str
+
+
+class PadanticStdNode(StandardNode):
+    name: str
+    mymodel: MyModel
+    mydict: Dict[str, Any]
+    mylistofmodel: List[MyModel]
+
+
 async def test_node_standard_create(session: AsyncSession, empty_database):
     obj1 = MyStdNode(
         attr1_str="obj1", attr2_int=1, attr4_bool=True, attr5_dict={"key1": "value2", "key2": {"key21": "Value21"}}
@@ -24,6 +37,20 @@ async def test_node_standard_create(session: AsyncSession, empty_database):
     await obj1.save(session=session)
 
     assert obj1.id is not None
+
+
+async def test_node_standard_delete(session: AsyncSession, empty_database):
+    obj1 = OtherStdNode(name="obj1")
+    await obj1.save(session=session)
+    obj2 = OtherStdNode(name="obj2")
+    await obj2.save(session=session)
+
+    objs = await OtherStdNode.get_list(session=session)
+    assert len(objs) == 2
+    await objs[1].delete(session=session)
+
+    objs = await OtherStdNode.get_list(session=session)
+    assert len(objs) == 1
 
 
 async def test_node_standard_get(session: AsyncSession, empty_database):
@@ -76,3 +103,16 @@ async def test_node_standard_list(session: AsyncSession, empty_database):
     objs = await OtherStdNode.get_list(session=session, name=obj2.name)
     assert len(objs) == 1
     assert objs[0].dict(exclude={"uuid"}) == obj2.dict(exclude={"uuid"})
+
+
+async def test_node_standard_pydantic(session: AsyncSession, empty_database):
+    obj1 = PadanticStdNode(
+        name="obj1",
+        mymodel={"key1": 1, "key2": "value2"},
+        mydict={"key1": 1, "key2": "value2"},
+        mylistofmodel=[{"key1": 1, "key2": "value2"}],
+    )
+    await obj1.save(session=session)
+
+    obj11 = await PadanticStdNode.get(id=obj1.uuid, session=session)
+    assert obj11.dict(exclude={"uuid"}) == obj1.dict(exclude={"uuid"})
