@@ -98,7 +98,7 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
             <div className="flex flex-1 lg:justify-end mt-2 lg:mt-0">
               <DiffPill {...summary} />
 
-              <div className="w-[380px] flex justify-end">
+              <div className="flex w-[200px] justify-end">
                 {changed_at && <DateDisplay date={changed_at} hideDefault />}
               </div>
             </div>
@@ -129,7 +129,7 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
           <div className="flex flex-1 lg:justify-end items-center mt-2 lg:mt-0">
             <DiffPill {...summary} />
 
-            <div className="w-[380px] flex justify-end">
+            <div className="flex w-[200px] justify-end">
               {changed_at && <DateDisplay date={changed_at} hideDefault />}
             </div>
           </div>

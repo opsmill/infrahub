@@ -29,7 +29,7 @@ export const DataDiffProperty = (props: tDataDiffNodePropertyProps) => {
 
       <div
         className={classNames(
-          "flex-1 p-1 pr-0 flex flex-col lg:flex-row",
+          "p-1 pr-0 flex-1 flex flex-col lg:flex-row rounded-md mb-1 last:mb-0",
           getNodeClassName([], branch, branchOnly)
         )}>
         <div className="flex flex-1 items-center">
@@ -46,7 +46,7 @@ export const DataDiffProperty = (props: tDataDiffNodePropertyProps) => {
         <div className="flex flex-1 lg:justify-end items-center mt-2 lg:mt-0">
           <DiffPill hidden />
 
-          <div className="lg:w-[380px] flex">
+          <div className="flex lg:w-[200px]">
             {/* {changed_at && <DateDisplay date={changed_at} hideDefault />} */}
             <DateDisplay date={changed_at} />
           </div>

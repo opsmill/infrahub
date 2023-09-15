@@ -60,9 +60,8 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
         <div className="flex flex-1 lg:justify-end items-center mt-2 lg:mt-0">
           <DiffPill {...summary} />
 
-          <div className="lg:w-[380px] flex">
-            {/* {changed_at && <DateDisplay date={changed_at} hideDefault />} */}
-            <DateDisplay date={changed_at} />
+          <div className="flex lg:w-[200px]">
+            {changed_at && <DateDisplay date={changed_at} hideDefault />}
           </div>
         </div>
       </div>
@@ -114,11 +113,7 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
   }
 
   if (peersChanges?.length) {
-    return (
-      <div className={"p-1 pr-0 flex flex-col rounded-md mb-1 last:mb-0"}>
-        <div className="rounded-md">{peersChanges}</div>
-      </div>
-    );
+    return <>{peersChanges}</>;
   }
 
   if (peer && peer?.changes?.length) {
