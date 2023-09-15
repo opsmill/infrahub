@@ -2043,6 +2043,36 @@ async def data_schema(session, default_branch: Branch) -> None:
 
 
 @pytest.fixture
+async def prefix_schema(session: AsyncSession, default_branch: Branch) -> SchemaRoot:
+    SCHEMA = {
+        "nodes": [
+            {
+                "name": "Prefix",
+                "namespace": "Test",
+                "attributes": [
+                    {"name": "prefix", "kind": "IPNetwork", "unique": True},
+                    {"name": "name", "kind": "Text"},
+                    {"name": "description", "kind": "Text", "optional": True},
+                ],
+            },
+            {
+                "name": "Ip",
+                "namespace": "Test",
+                "attributes": [
+                    {"name": "address", "kind": "IPHost", "unique": True},
+                    {"name": "name", "kind": "Text"},
+                    {"name": "description", "kind": "Text", "optional": True},
+                ],
+            },
+        ],
+    }
+
+    schema = SchemaRoot(**SCHEMA)
+    registry.schema.register_schema(schema=schema)
+    return schema
+
+
+@pytest.fixture
 async def reset_registry(session) -> None:
     registry.delete_all()
 
