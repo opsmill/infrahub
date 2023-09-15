@@ -167,7 +167,7 @@ def start(
     config_file: str = typer.Option(
         "infrahub.toml", envvar="INFRAHUB_CONFIG", help="Location of the configuration file to use for Infrahub"
     ),
-    port: int = typer.Argument(8000, help="Port used to expose a metrics endpoint"),
+    port: int = typer.Argument(8000, envvar="INFRAHUB_METRICS_PORT", help="Port used to expose a metrics endpoint"),
 ):
     """Start Infrahub Git Agent."""
     logging.getLogger("httpx").setLevel(logging.ERROR)
