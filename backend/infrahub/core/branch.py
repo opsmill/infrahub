@@ -683,7 +683,10 @@ class Branch(StandardNode):
 
         await update_relationships_to(ids=rel_ids_to_update, to=at, session=session)
 
-        await self.rebase(session=session)
+        # Update the branched_from time and update the registry
+        self.branched_from = Timestamp().to_string()
+        await self.save(session=session)
+        registry.branch[self.name] = self
 
     async def merge_repositories(self, rpc_client: InfrahubRpcClient, session: AsyncSession):
         # Collect all Repositories in Main because we'll need the commit in Main for each one.
