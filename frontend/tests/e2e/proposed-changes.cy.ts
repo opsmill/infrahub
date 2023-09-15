@@ -46,9 +46,7 @@ describe("Main application", () => {
     cy.contains("Create ProposedChange").should("not.exist");
 
     // The new PC should exist
-    cy.get(".flex-1 > div > .grid").within(() => {
-      cy.contains(PROPOSED_CHANGES_NAME).should("exist");
-    });
+    cy.contains(PROPOSED_CHANGES_NAME).should("exist");
   });
 
   it("should access the Proposed Changes details", function () {

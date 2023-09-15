@@ -2,6 +2,7 @@ import { gql, useReactiveVar } from "@apollo/client";
 import { PlusIcon, Square3Stack3DIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useContext, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { RoundedButton } from "../../components/rounded-button";
 import SlideOver from "../../components/slide-over";
 import { ACCOUNT_OBJECT, DEFAULT_BRANCH_NAME, PROPOSED_CHANGES } from "../../config/constants";
@@ -11,6 +12,7 @@ import { branchVar } from "../../graphql/variables/branchVar";
 import useQuery from "../../hooks/useQuery";
 import { branchesState } from "../../state/atoms/branches.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
+import { constructPath } from "../../utils/fetch";
 import { getSchemaRelationshipColumns } from "../../utils/getSchemaObjectColumns";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
@@ -21,11 +23,9 @@ import { ProposedChange } from "./proposed-changes-item";
 export const ProposedChanges = () => {
   const [schemaList] = useAtom(schemaState);
   const [branches] = useAtom(branchesState);
-
   const auth = useContext(AuthContext);
-
   const branch = useReactiveVar(branchVar);
-
+  const navigate = useNavigate();
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
 
   const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES)[0];
@@ -132,7 +132,13 @@ export const ProposedChanges = () => {
         // title={`Create ${objectname}`}
       >
         <ObjectItemCreate
-          onCreate={() => setShowCreateDrawer(false)}
+          onCreate={(response: any) => {
+            setShowCreateDrawer(false);
+            if (response?.object?.id) {
+              const url = constructPath(`/proposed-changes/${response?.object?.id}`);
+              navigate(url);
+            }
+          }}
           onCancel={() => setShowCreateDrawer(false)}
           objectname={PROPOSED_CHANGES!}
           refetch={refetch}

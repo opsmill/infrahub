@@ -111,7 +111,7 @@ export default function ObjectItemCreate(props: iProps) {
         ${mutationString}
       `;
 
-      await graphqlClient.mutate({
+      const result = await graphqlClient.mutate({
         mutation,
         context: {
           branch: branch?.name,
@@ -124,7 +124,7 @@ export default function ObjectItemCreate(props: iProps) {
       );
 
       if (onCreate) {
-        onCreate();
+        onCreate(result?.data?.[`${schema.kind}Create`]);
       }
 
       console.log("DONE");
