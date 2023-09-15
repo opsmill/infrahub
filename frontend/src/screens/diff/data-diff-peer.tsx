@@ -155,7 +155,7 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
   return (
     <div
       className={classNames(
-        "p-1 pr-0 flex flex-col rounded-md mb-1 last:mb-0",
+        "flex flex-col rounded-md mb-1 last:mb-0",
         getNodeClassName(branches, peerBranch, branchOnly)
       )}>
       <div className="flex">
