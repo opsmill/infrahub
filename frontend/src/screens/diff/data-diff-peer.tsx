@@ -95,7 +95,7 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
               <span className="font-semibold">{renderDiffDisplay(peerChange, branch)}</span>
             </div>
 
-            <div className="flex flex-1 lg:justify-end mt-2 lg:mt-0">
+            <div className="flex flex-1 items-center lg:justify-end mt-2 lg:mt-0">
               <DiffPill {...summary} />
 
               <div className="flex w-[200px] justify-end">
