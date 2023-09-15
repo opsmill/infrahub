@@ -35,7 +35,7 @@ async def test_node_standard_get(session: AsyncSession, empty_database):
     obj11 = await MyStdNode.get(id=obj1.uuid, session=session)
     assert obj11.dict(exclude={"uuid"}) == obj1.dict(exclude={"uuid"})
     assert str(obj11.uuid) == str(obj1.uuid)
-    assert obj11.attr3_int == None
+    assert obj11.attr3_int is None
 
 
 async def test_node_standard_update(session: AsyncSession, empty_database):
@@ -46,7 +46,7 @@ async def test_node_standard_update(session: AsyncSession, empty_database):
     obj11 = await MyStdNode.get(id=obj1.uuid, session=session)
     assert obj11.dict(exclude={"uuid"}) == obj1.dict(exclude={"uuid"})
     assert str(obj11.uuid) == str(obj1.uuid)
-    assert obj11.attr3_int == None
+    assert obj11.attr3_int is None
     assert obj11.attr5_dict == attr5_value
 
     obj11.attr1_str = "obj11"

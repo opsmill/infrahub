@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, List, Optional
-from uuid import UUID
+from uuid import UUID  # noqa: TCH003
 
 from pydantic import BaseModel
 
@@ -118,7 +118,7 @@ class StandardNode(BaseModel):
 
     @classmethod
     async def _get_item_raw(cls, id: str, session: AsyncSession) -> Neo4jNode:
-        query: Query = await StandardNodeGetItemQuery.init(session=session, id=id, node_type=cls.get_type())
+        query: Query = await StandardNodeGetItemQuery.init(session=session, node_id=id, node_type=cls.get_type())
         await query.execute(session=session)
 
         result = query.get_result()
@@ -156,7 +156,7 @@ class StandardNode(BaseModel):
         **kwargs,
     ) -> List[Self]:
         query: Query = await StandardNodeGetListQuery.init(
-            session=session, node_class=cls, ids=ids, name=name, limit=limit
+            session=session, node_class=cls, ids=ids, name=name, limit=limit, **kwargs
         )
         await query.execute(session=session)
 

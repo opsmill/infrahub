@@ -17,13 +17,11 @@ class StandardNodeQuery(Query):
         node: StandardNode = None,
         node_id: Optional[str] = None,
         node_db_id: Optional[int] = None,
-        id: Optional[str] = None,
         *args,
         **kwargs,
     ):
-        # TODO Validate that Node is a valid Standard
         self.node = node
-        self.node_id = node_id or id
+        self.node_id = node_id
         self.node_db_id = node_db_id
 
         if not self.node_id and self.node:
@@ -110,12 +108,12 @@ class StandardNodeGetItemQuery(Query):
 
     def __init__(
         self,
-        id: str,
+        node_id: str,
         node_type: str,
         *args,
         **kwargs,
     ):
-        self.node_id = id
+        self.node_id = node_id
         self.node_type = node_type
 
         super().__init__(*args, **kwargs)
@@ -133,36 +131,6 @@ class StandardNodeGetItemQuery(Query):
         self.add_to_query(query)
 
         self.return_labels = ["n"]
-
-        # results = await execute_read_query_async(session=session, query=query, params=params, name="standard_get")
-        # if len(results):
-        #     return results[0].values()[0]
-
-    # async def get_list(cls, session: AsyncSession, limit: int = 1000, **kwargs) -> List[Self]:
-    #     params = {"limit": limit}
-
-    #     filters = []
-    #     if ids := kwargs.get("ids"):
-    #         filters.append("n.uuid in $ids_value")
-    #         params["ids_value"] = ids
-    #     if name_filter := kwargs.get("name"):
-    #         filters.append("n.name = $name")
-    #         params["name"] = name_filter
-
-    #     where = ""
-    #     if filters:
-    #         where = f"WHERE {' AND '.join(filters)}"
-
-    #     query = f"""
-    #     MATCH (n:{cls.get_type()})
-    #     {where}
-    #     RETURN n
-    #     ORDER BY ID(n)
-    #     LIMIT $limit
-    #     """
-
-    #     results = await execute_read_query_async(session=session, query=query, params=params, name="standard_get_list")
-    #     return [cls._convert_node_to_obj(node.values()[0]) for node in results]
 
 
 class StandardNodeGetListQuery(Query):
