@@ -22,14 +22,14 @@ def generate_doc(context: Context):
     """Generate the documentation for infrahubctl using typer-cli."""
 
     CLI_COMMANDS = (
-        ("infrahub_ctl.branch", "infrahubctl branch", "10_infrahubctl_branch"),
-        ("infrahub_ctl.schema", "infrahubctl schema", "20_infrahubctl_schema"),
-        ("infrahub_ctl.validate", "infrahubctl validate", "30_infrahubctl_validate"),
-        ("infrahub_ctl.check", "infrahubctl check", "40_infrahubctl_check"),
+        ("infrahub_ctl.branch", "infrahubctl branch", "infrahubctl-branch"),
+        ("infrahub_ctl.schema", "infrahubctl schema", "infrahubctl-schema"),
+        ("infrahub_ctl.validate", "infrahubctl validate", "infrahubctl-validate"),
+        ("infrahub_ctl.check", "infrahubctl check", "infrahubctl-check"),
     )
     print(f" - [{NAMESPACE}] Generate CLI documentation")
     for command in CLI_COMMANDS:
-        exec_cmd = f'typer  {command[0]} utils docs --name "{command[1]}" --output docs/25_infrahubctl/{command[2]}.md'
+        exec_cmd = f'typer  {command[0]} utils docs --name "{command[1]}" --output docs/infrahubctl/{command[2]}.md'
         with context.cd(REPO_BASE):
             context.run(exec_cmd)
 
