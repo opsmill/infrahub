@@ -2,7 +2,11 @@ from pydantic import BaseModel, Field
 
 
 class TemplateResponse(BaseModel):
-    rendered_template: str = Field(..., description="The unique ID of the Artifact Definition")
+    rendered_template: str = Field(..., description="The rendered template")
 
 
-RESPONSE_MAP = {"template_response": TemplateResponse}
+class TransformResponse(BaseModel):
+    transformed_data: dict = Field(..., description="The data output of the transformation")
+
+
+RESPONSE_MAP = {"template_response": TemplateResponse, "transform_response": TransformResponse}

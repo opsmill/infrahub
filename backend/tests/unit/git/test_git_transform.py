@@ -26,7 +26,7 @@ async def test_git_transform_jinja2_success(git_repo_jinja: InfrahubRepository, 
     reply = bus_simulator.replies[0]
     assert reply.passed
     assert reply.meta.correlation_id == correlation_id
-    assert reply.response_class == "rendered_template"
+    assert reply.response_class == "template_response"
     assert reply.response_data["rendered_template"] == "\n"
 
 

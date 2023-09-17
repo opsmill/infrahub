@@ -16,6 +16,7 @@ COMMAND_MAP = {
     "request.proposed_change.schema_integrity": requests.proposed_change.schema_integrity,
     "request.repository.checks": requests.repository.check,
     "transform.jinja.template": transform.jinja.template,
+    "transform.python.data": transform.python.data,
 }
 
 

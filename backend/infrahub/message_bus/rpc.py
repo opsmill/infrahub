@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, MutableMapping
+from typing import TYPE_CHECKING, Any, List, MutableMapping
 
 from infrahub import config
 from infrahub.database import get_db
@@ -139,6 +139,7 @@ class InfrahubRpcClientTesting(InfrahubRpcClientBase):
         super().__init__(*args, **kwargs)
 
         self.responses = defaultdict(list)
+        self.replies: List[InfrahubResponse] = []
 
     async def connect(self) -> InfrahubRpcClient:
         return self
@@ -151,6 +152,12 @@ class InfrahubRpcClientTesting(InfrahubRpcClientBase):
             return self.responses[(message.type, message.action)].pop(0)
 
         raise NotImplementedError(f"Unable to find an RPC message for '{message.type}::{message.action}'")
+
+    async def rpc(self, message: InfrahubBaseMessage) -> InfrahubResponse:
+        return self.replies.pop()
+
+    async def add_mock_reply(self, response: InfrahubResponse) -> None:
+        self.replies.append(response)
 
     async def add_response(self, response: InfrahubRPCResponse, message_type: MessageType, action: Any):
         """Register a predefined response for a given message_type and action."""

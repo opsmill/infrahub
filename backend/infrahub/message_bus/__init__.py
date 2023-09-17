@@ -1,4 +1,4 @@
-from typing import Iterator, Optional
+from typing import Iterator, Optional, TypeVar
 
 import aio_pika
 import aiormq
@@ -7,6 +7,9 @@ from pydantic import BaseModel, Field
 from infrahub import config
 from infrahub.exceptions import Error
 from infrahub.log import set_log_data
+from infrahub.message_bus.responses import RESPONSE_MAP
+
+ResponseClass = TypeVar("ResponseClass")
 
 
 class Broker:
@@ -122,3 +125,13 @@ class InfrahubResponse(InfrahubBaseMessage):
 
         # Later we would load information about the error based on the response_class and response_data
         raise Error(f"An error occured during the request: {self.response_data}")
+
+    def parse(self, response_class: type[ResponseClass]) -> ResponseClass:
+        self.raise_for_status()
+        if self.response_class not in RESPONSE_MAP:
+            raise Error(f"Unable to find response_class: {self.response_class}")
+
+        if not isinstance(response_class, type(RESPONSE_MAP[self.response_class])):
+            raise Error(f"Invalid response class for response message: {self.response_class}")
+
+        return RESPONSE_MAP[self.response_class](**self.response_data)
