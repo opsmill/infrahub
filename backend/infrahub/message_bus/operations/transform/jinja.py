@@ -16,6 +16,6 @@ async def template(message: messages.TransformJinjaTemplate, service: InfrahubSe
     )
     if message.reply_requested:
         response = InfrahubResponse(
-            response_class="rendered_template", response_data={"rendered_template": rendered_template}
+            response_class="template_response", response_data={"rendered_template": rendered_template}
         )
         await service.reply(message=response, initiator=message)

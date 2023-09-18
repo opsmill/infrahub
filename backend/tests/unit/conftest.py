@@ -5,6 +5,7 @@ from typing import Dict
 
 import pendulum
 import pytest
+from git.repo import Repo
 from neo4j import AsyncDriver, AsyncSession
 from neo4j._codec.hydration.v1 import HydrationHandler
 from pytest_httpx import HTTPXMock
@@ -33,6 +34,7 @@ from infrahub.core.schema import (
 from infrahub.core.schema_manager import SchemaBranch, SchemaManager
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import execute_write_query_async, get_db
+from infrahub.git import InfrahubRepository
 from infrahub.graphql.generator import (
     load_attribute_types_in_registry,
     load_node_interface,
@@ -113,6 +115,26 @@ def git_repos_dir(tmp_path) -> str:
     config.SETTINGS.git.repositories_directory = repos_dir
 
     return repos_dir
+
+
+@pytest.fixture
+async def git_fixture_repo(git_sources_dir, git_repos_dir, helper) -> InfrahubRepository:
+    fixtures_dir = helper.get_fixtures_dir()
+    test_base = os.path.join(fixtures_dir, "repos/test_base")
+    shutil.copytree(test_base, f"{git_sources_dir}/test_base")
+    origin = Repo.init(f"{git_sources_dir}/test_base", initial_branch="main")
+    for untracked in origin.untracked_files:
+        origin.index.add(untracked)
+    origin.index.commit("First commit")
+
+    repo = await InfrahubRepository.new(
+        id=UUIDT.new(),
+        name="test_basename",
+        location=f"{git_sources_dir}/test_base",
+    )
+    await repo.create_branch_in_git(branch_name="main")
+
+    return repo
 
 
 @pytest.fixture

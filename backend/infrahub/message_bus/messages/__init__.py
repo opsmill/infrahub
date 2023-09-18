@@ -17,6 +17,7 @@ from .request_proposedchange_repositorychecks import (
 from .request_proposedchange_schemaintegrity import RequestProposedChangeSchemaIntegrity
 from .request_repository_checks import RequestRepositoryChecks
 from .transform_jinja_template import TransformJinjaTemplate
+from .transform_python_data import TransformPythonData
 
 MESSAGE_MAP: Dict[str, Type[InfrahubBaseMessage]] = {
     "check.repository.merge_conflicts": CheckRepositoryMergeConflicts,
@@ -30,6 +31,7 @@ MESSAGE_MAP: Dict[str, Type[InfrahubBaseMessage]] = {
     "request.proposed_change.schema_integrity": RequestProposedChangeSchemaIntegrity,
     "request.repository.checks": RequestRepositoryChecks,
     "transform.jinja.template": TransformJinjaTemplate,
+    "transform.python.data": TransformPythonData,
 }
 
 
