@@ -95,10 +95,10 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
               <span className="font-semibold">{renderDiffDisplay(peerChange, branch)}</span>
             </div>
 
-            <div className="flex flex-1 lg:justify-end mt-2 lg:mt-0">
+            <div className="flex flex-1 items-center lg:justify-end mt-2 lg:mt-0">
               <DiffPill {...summary} />
 
-              <div className="w-[380px] flex justify-end">
+              <div className="flex w-[200px] justify-end">
                 {changed_at && <DateDisplay date={changed_at} hideDefault />}
               </div>
             </div>
@@ -129,7 +129,7 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
           <div className="flex flex-1 lg:justify-end items-center mt-2 lg:mt-0">
             <DiffPill {...summary} />
 
-            <div className="w-[380px] flex justify-end">
+            <div className="flex w-[200px] justify-end">
               {changed_at && <DateDisplay date={changed_at} hideDefault />}
             </div>
           </div>
@@ -155,7 +155,7 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
   return (
     <div
       className={classNames(
-        "p-1 pr-0 flex flex-col rounded-md mb-1 last:mb-0",
+        "flex flex-col rounded-md mb-1 last:mb-0",
         getNodeClassName(branches, peerBranch, branchOnly)
       )}>
       <div className="flex">

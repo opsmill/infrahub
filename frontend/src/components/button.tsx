@@ -87,7 +87,7 @@ const getClasseName = (type?: BUTTON_TYPES) => {
 };
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
-export const Button = forwardRef((props: ButtonProps) => {
+export const Button = forwardRef((props: ButtonProps, ref: any) => {
   const { buttonType, type, className = "", onClick, isLoading, children, ...propsToPass } = props;
 
   const customClassName = getClasseName(buttonType);

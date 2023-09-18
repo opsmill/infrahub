@@ -11,7 +11,7 @@ export enum BADGE_TYPES {
 // type BadgeProps = {}
 
 const DEFAULT_CLASS = `
-  flex text-sm font-medium mr-2 px-2.5 py-0.5 rounded
+  flex font-medium mr-2 px-2.5 py-0.5 rounded
 `;
 
 const getClasseName = (type: BADGE_TYPES, onClick: Function) => {
