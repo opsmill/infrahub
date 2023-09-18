@@ -1,8 +1,8 @@
 import { FormProvider, useForm } from "react-hook-form";
-import { resolve } from "../utils/objects";
 import { DynamicControl } from "../screens/edit-form-hook/dynamic-control";
-import { Button } from "./button";
 import { FormProps } from "../screens/edit-form-hook/form";
+import { resolve } from "../utils/objects";
+import { Button } from "./button";
 
 export const Filters = ({ fields, onSubmit }: FormProps) => {
   const formMethods = useForm();
@@ -25,20 +25,15 @@ export const Filters = ({ fields, onSubmit }: FormProps) => {
     <div>
       <form className="flex-1" onSubmit={handleSubmit(onSubmit)}>
         <FormProvider {...formMethods}>
-          <div className="flex mb-4">
+          <div className="flex items-center">
             {fields.map((field: any, index: number) => (
               <FilterField key={index} field={field} error={resolve(field.name, errors)} />
             ))}
           </div>
 
-          {/* <Button
-            disabled
-            className="mr-2"
-          >
-            Clear all
-          </Button> */}
-
-          <Button type="submit">Validate</Button>
+          <div className="p-2">
+            <Button type="submit">Validate</Button>
+          </div>
         </FormProvider>
       </form>
     </div>
