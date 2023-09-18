@@ -85,14 +85,14 @@ export const withAuth = (AppComponent: any) => (props: any) => {
   const navigate = useNavigate();
 
   const signOut = async () => {
-    removeTokens();
-    setAccessToken("");
     await fetchUrl(CONFIG.LOGOUT_URL, {
       method: "POST",
       headers: {
         authorization: `Bearer ${accessToken}`,
       },
     });
+    removeTokens();
+    setAccessToken("");
   };
 
   const signIn = async (data: any) => {
