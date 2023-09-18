@@ -152,7 +152,7 @@ class StandardNode(BaseModel):
 
             if value == "NULL":
                 attrs[key] = None
-            elif field_type in [int, float, bool, str, UUID]:
+            elif issubclass(field_type, (int, float, bool, str, UUID)):
                 attrs[key] = value
             elif isinstance(value, (str, bytes)):
                 attrs[key] = ujson.loads(value)
@@ -179,12 +179,11 @@ class StandardNode(BaseModel):
             elif inspect.isclass(field_type) and issubclass(field_type, BaseModel):
                 if isinstance(attr_value, list):
                     clean_value = [item.dict() for item in attr_value]
-                    # breakpoint()
                     data[attr_name] = ujson.dumps(clean_value)
                 else:
                     data[attr_name] = attr_value.json()
 
-            elif field_type in [int, float, bool, str]:
+            elif issubclass(field_type, (int, float, bool, str, UUID)):
                 data[attr_name] = attr_value
             else:
                 data[attr_name] = ujson.dumps(attr_value)
