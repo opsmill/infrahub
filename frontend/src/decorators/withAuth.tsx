@@ -84,10 +84,15 @@ export const withAuth = (AppComponent: any) => (props: any) => {
   const [accessToken, setAccessToken] = useState(localToken);
   const navigate = useNavigate();
 
-  const signOut = () => {
+  const signOut = async () => {
+    await fetchUrl(CONFIG.LOGOUT_URL, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+      },
+    });
     removeTokens();
     setAccessToken("");
-    // setDisplaySignin(true);
   };
 
   const signIn = async (data: any) => {
