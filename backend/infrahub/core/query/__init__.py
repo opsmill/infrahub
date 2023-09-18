@@ -215,6 +215,7 @@ class Query(ABC):
         limit: Optional[int] = None,
         offset: Optional[int] = None,
         order_by: Optional[List[str]] = None,
+        imposed_limit: int = 100,
     ):
         if branch:
             self.branch = branch
@@ -226,6 +227,7 @@ class Query(ABC):
             self.at = Timestamp(at)
 
         self.limit = limit
+        self.imposed_limit = imposed_limit
         self.offset = offset
         self.order_by = order_by
 
@@ -346,9 +348,12 @@ class Query(ABC):
             self.print(include_var=True)
 
         if self.type == QueryType.READ:
-            results = await execute_read_query_async(
-                query=self.get_query(), params=self.params, session=session, name=self.name
-            )
+            if self.limit:
+                results = await execute_read_query_async(
+                    query=self.get_query(), params=self.params, session=session, name=self.name
+                )
+            else:
+                results = await self.query_with_imposed_limit(session=session)
         elif self.type == QueryType.WRITE:
             results = await execute_write_query_async(
                 query=self.get_query(), params=self.params, session=session, name=self.name
@@ -363,6 +368,32 @@ class Query(ABC):
         self.has_been_executed = True
 
         return self
+
+    async def query_with_imposed_limit(self, session: AsyncSession):
+        self.offset = 0
+        self.limit = self.imposed_limit
+        results = await execute_read_query_async(
+            query=self.get_query(), params=self.params, session=session, name=self.name
+        )
+
+        if len(results) < self.imposed_limit:
+            return results
+
+        result = await execute_read_query_async(query=self.get_count_query(), params=self.params, session=session)
+        count = result[0][0]
+        print(f"Count: {count}")
+        remaining = count - self.imposed_limit
+        while remaining > 0:
+            self.offset += self.imposed_limit
+            offset_results = await execute_read_query_async(
+                query=self.get_query(), params=self.params, session=session, name=self.name
+            )
+            results.extend(offset_results)
+            remaining -= self.imposed_limit
+            print(f"Remaining: {remaining}")
+
+        print(f"Final: {len(results)}")
+        return results
 
     async def count(self, session: AsyncSession) -> int:
         """Count the number of results matching a READ query.
