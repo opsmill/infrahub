@@ -17,6 +17,7 @@ async def test_branch_name_validator(session):
     assert Branch(name="new-branch")
     assert Branch(name="cr1234")
     assert Branch(name="new.branch")
+    assert Branch(name="new/branch")
 
     # Test path segment that ends with a period
     with pytest.raises(ValidationError):

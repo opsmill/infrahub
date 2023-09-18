@@ -142,7 +142,7 @@ app.add_middleware(InfrahubCORSMiddleware)
 app.add_route(path="/metrics", route=handle_metrics)
 app.add_route(path="/graphql", route=InfrahubGraphQLApp(playground=True), methods=["GET", "POST", "OPTIONS"])
 app.add_route(
-    path="/graphql/{branch_name:str}", route=InfrahubGraphQLApp(playground=True), methods=["GET", "POST", "OPTIONS"]
+    path="/graphql/{branch_name:path}", route=InfrahubGraphQLApp(playground=True), methods=["GET", "POST", "OPTIONS"]
 )
 # app.add_websocket_route(path="/graphql", route=InfrahubGraphQLApp())
 # app.add_websocket_route(path="/graphql/{branch_name:str}", route=InfrahubGraphQLApp())
