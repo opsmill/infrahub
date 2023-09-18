@@ -24,6 +24,11 @@ async def test_password_based_login(session, default_branch, client, first_accou
         response = client.post("/api/auth/login", json={"username": "First Account", "password": "FirstPassword123"})
 
     assert response.status_code == 200
+
+    # Check for cookies
+    assert "access_token" in response.cookies
+    assert "refresh_token" in response.cookies
+
     access_token = response.json()["access_token"]
     decoded = jwt.decode(access_token, key=config.SETTINGS.security.secret_key, algorithms=["HS256"])
     assert first_account.id == decoded["sub"]
@@ -80,6 +85,36 @@ async def test_refresh_access_token(session, default_branch, client, first_accou
     assert decoded_access["session_id"] == decoded_refresh["session_id"]
 
 
+async def test_refresh_access_token_with_cookies(session, default_branch, client, first_account):
+    """Validate that it's possible to refresh an access token using a refresh token stored in cookies"""
+    with client:
+        login_response = client.post(
+            "/api/auth/login", json={"username": "First Account", "password": "FirstPassword123"}
+        )
+
+    assert login_response.status_code == 200
+
+    # Get tokens from cookies
+    refresh_token = login_response.cookies.get("refresh_token")
+    assert refresh_token is not None
+
+    decoded_refresh = jwt.decode(refresh_token, key=config.SETTINGS.security.secret_key, algorithms=["HS256"])
+
+    # Send refresh token as a cookie
+    cookies = {"refresh_token": refresh_token}
+    with client:
+        refresh_response = client.post("/api/auth/refresh", cookies=cookies)
+
+    assert refresh_response.status_code == 200
+    new_access_token = refresh_response.json()["access_token"]
+    decoded_access = jwt.decode(new_access_token, key=config.SETTINGS.security.secret_key, algorithms=["HS256"])
+
+    assert first_account.id == decoded_access["sub"]
+    assert first_account.id == decoded_refresh["sub"]
+    assert decoded_access["session_id"]
+    assert decoded_access["session_id"] == decoded_refresh["session_id"]
+
+
 async def test_fail_to_refresh_access_token_with_access_token(session, default_branch, client, first_account):
     """Validate that it's not possible to refresh an access token using an access token"""
     with client:
@@ -89,6 +124,9 @@ async def test_fail_to_refresh_access_token_with_access_token(session, default_b
 
     assert login_response.status_code == 200
     access_token = login_response.json()["access_token"]
+
+    # Remove cookies
+    client.cookies = None
 
     with client:
         refresh_response = client.post("/api/auth/refresh", headers={"Authorization": f"Bearer {access_token}"})

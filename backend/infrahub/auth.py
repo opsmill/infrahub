@@ -3,6 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timedelta, timezone
 from enum import Enum
+from http.cookies import SimpleCookie
 from typing import TYPE_CHECKING, Awaitable, Callable, Dict, List, Optional
 
 import bcrypt
@@ -282,7 +283,7 @@ class _BaseSchemeAuth(AuthBackend):
 
     def get_credentials(self, conn: HTTPConnection) -> Optional[str]:
         if "Authorization" not in conn.headers:
-            return None
+            return self.get_token_from_cookie(conn)
 
         authorization = conn.headers.get("Authorization")
         scheme, _, credentials = authorization.partition(" ")
@@ -295,6 +296,13 @@ class _BaseSchemeAuth(AuthBackend):
         return [credentials]
 
     verify: Callable[..., Awaitable[Optional[auth.BaseUser]]]
+
+    def get_token_from_cookie(self, conn: HTTPConnection) -> Optional[str]:
+        cookies = SimpleCookie(conn.headers.get("Cookie", ""))
+
+        if "access_token" in cookies and cookies["access_token"].value:
+            return cookies["access_token"].value
+        return None
 
     async def authenticate(self, conn: HTTPConnection):
         credentials = self.get_credentials(conn)
