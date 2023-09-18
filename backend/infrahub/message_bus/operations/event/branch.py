@@ -1,5 +1,7 @@
+from typing import List
+
 from infrahub.log import get_logger
-from infrahub.message_bus import messages
+from infrahub.message_bus import InfrahubBaseMessage, messages
 from infrahub.services import InfrahubServices
 
 log = get_logger()
@@ -8,7 +10,10 @@ log = get_logger()
 async def create(message: messages.EventBranchCreate, service: InfrahubServices) -> None:
     log.info("run_message", branch=message.branch)
 
-    msg = messages.RefreshRegistryBranches()
+    events: List[InfrahubBaseMessage] = [messages.RefreshRegistryBranches()]
+    if not message.data_only:
+        events.append(messages.RequestGitCreateBranch(branch=message.branch))
 
-    msg.assign_meta(parent=message)
-    await service.send(message=msg)
+    for event in events:
+        event.assign_meta(parent=message)
+        await service.send(message=event)

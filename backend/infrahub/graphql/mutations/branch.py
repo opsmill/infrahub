@@ -1,4 +1,3 @@
-import asyncio
 from typing import TYPE_CHECKING
 
 import pydantic
@@ -9,15 +8,12 @@ import infrahub.config as config
 from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.manager import NodeManager
 from infrahub.exceptions import BranchNotFound
 from infrahub.log import get_log_data, get_logger
 from infrahub.message_bus import Meta, messages
 from infrahub.message_bus.events import (
     BranchMessageAction,
-    GitMessageAction,
     InfrahubBranchMessage,
-    InfrahubGitRPC,
     send_event,
 )
 from infrahub.services import services
@@ -57,7 +53,6 @@ class BranchCreate(Mutation):
     @classmethod
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchCreateInput, background_execution=False):
         session: AsyncSession = info.context.get("infrahub_session")
-        rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
 
         # Check if the branch already exist
         try:
@@ -81,30 +76,8 @@ class BranchCreate(Mutation):
             await obj.save(session=session)
 
         log.info("created_branch", name=obj.name)
-
-        if not obj.is_data_only:
-            # Query all repositories and add a branch on each one of them too
-            repositories = await NodeManager.query(session=session, schema="CoreRepository")
-
-            tasks = []
-            log_data = get_log_data()
-            request_id = log_data.get("request_id", "")
-
-            for repo in repositories:
-                tasks.append(
-                    rpc_client.call(
-                        message=InfrahubGitRPC(
-                            action=GitMessageAction.BRANCH_ADD,
-                            repository=repo,
-                            params={"branch_name": obj.name},
-                            request_id=request_id,
-                        ),
-                        wait_for_response=not background_execution,
-                    )
-                )
-
-            await asyncio.gather(*tasks)
-            # TODO need to validate that everything goes as expected
+        log_data = get_log_data()
+        request_id = log_data.get("request_id", "")
 
         ok = True
 
@@ -114,7 +87,8 @@ class BranchCreate(Mutation):
         if config.SETTINGS.broker.enable and info.context.get("background"):
             message = messages.EventBranchCreate(
                 branch=obj.name,
-                meta=Meta(initiator_id=WORKER_IDENTITY),
+                data_only=obj.is_data_only,
+                meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
             )
             info.context.get("background").add_task(services.send, message)
 

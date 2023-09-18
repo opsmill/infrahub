@@ -61,6 +61,7 @@ class InfrahubRpcClientBase:
         queue = await self.channel.declare_queue(f"{config.SETTINGS.broker.namespace}.rpcs")
         await queue.bind(self.exchange, routing_key="check.*.*")
         await queue.bind(self.exchange, routing_key="event.*.*")
+        await queue.bind(self.exchange, routing_key="git.*.*")
         await queue.bind(self.exchange, routing_key="request.*.*")
         await queue.bind(self.exchange, routing_key="transform.*.*")
         await self.events_queue.bind(self.exchange, routing_key="refresh.registry.*")
