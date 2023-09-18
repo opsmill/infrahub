@@ -6,8 +6,7 @@ from collections import defaultdict
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
-from pydantic import BaseModel, Field
-from pydantic import validator
+from pydantic import BaseModel, Field, validator
 
 import infrahub.config as config
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, DiffAction, RelationshipStatus
