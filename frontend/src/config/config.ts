@@ -7,6 +7,7 @@ export const INFRAHUB_API_SERVER_URL = import.meta.env.DEV
   : window.location.origin.toString();
 
 export const CONFIG = {
+  LOGOUT_URL: `${INFRAHUB_API_SERVER_URL}/api/auth/logout`,
   GRAPHQL_URL: (branch: string | null | undefined, date?: Date | null | undefined) => {
     if (!date) {
       return `${INFRAHUB_API_SERVER_URL}/graphql/${branch ?? "main"}`;
