@@ -74,7 +74,7 @@ class DatabaseSettings(BaseSettings):
     address: str = "localhost"
     port: int = 7687
     database: Optional[str] = Field(regex=VALID_DATABASE_NAME_REGEX, description="Name of the database")
-    imposed_query_limit: int = Field(
+    query_size_limit: int = Field(
         1000,
         description="The max number of records to fetch in a single query before performing internal pagination.",
         min=1,
@@ -92,7 +92,7 @@ class DatabaseSettings(BaseSettings):
             "address": {"env": "NEO4J_ADDRESS"},
             "port": {"env": "NEO4J_PORT"},
             "database": {"env": "NEO4J_DATABASE"},
-            "imposed_query_limit": {"env": "INFRAHUB_DB_IMPOSED_QUERY_LIMIT"},
+            "query_size_limit": {"env": "INFRAHUB_DB_QUERY_SIZE_LIMIT"},
         }
 
     @root_validator(pre=False)
