@@ -165,7 +165,7 @@ class Branch(StandardNode):
         if len(results) == 0:
             raise BranchNotFound(identifier=name)
 
-        return cls._convert_node_to_obj(results[0].values()[0])
+        return cls.from_db(results[0].values()[0])
 
     @classmethod
     def isinstance(cls, obj: Any) -> bool:
