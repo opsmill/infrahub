@@ -7,7 +7,6 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
 from pydantic import BaseModel, Field
-from pydantic import ValidationError as PydanticValidationError
 from pydantic import validator
 
 import infrahub.config as config
@@ -195,43 +194,43 @@ class Branch(StandardNode):
     def validate_branch_name(cls, value):  # pylint: disable=no-self-argument
         # 1. Check for the pattern /.
         if re.search(r".*/\.", value):
-            raise PydanticValidationError("Branch name contains the pattern '/.' which is not allowed.")
+            raise ValidationError("Branch name contains the pattern '/.' which is not allowed.")
 
         # 2. Check for the pattern ..
         if ".." in value:
-            raise PydanticValidationError("Branch name contains the pattern '..' which is not allowed.")
+            raise ValidationError("Branch name contains the pattern '..' which is not allowed.")
 
         # 3. Check if string starts with /
         if value.startswith("/"):
-            raise PydanticValidationError("Branch name starts with a '/' which is not allowed.")
+            raise ValidationError("Branch name starts with a '/' which is not allowed.")
 
         # 4. Check for the pattern //
         if "//" in value:
-            raise PydanticValidationError("Branch name contains the pattern '//' which is not allowed.")
+            raise ValidationError("Branch name contains the pattern '//' which is not allowed.")
 
         # 5. Check for the pattern @{
         if "@{" in value:
-            raise PydanticValidationError("Branch name contains the pattern '@{' which is not allowed.")
+            raise ValidationError("Branch name contains the pattern '@{' which is not allowed.")
 
         # 6. Check for backslashes
         if "\\" in value:
-            raise PydanticValidationError("Branch name contains a backslash which is not allowed.")
+            raise ValidationError("Branch name contains a backslash which is not allowed.")
 
         # 7. & 8. Check for disallowed ASCII characters and patterns
         if re.search(r"[\000-\037\177 ~^:?*[]", value):
-            raise PydanticValidationError("Branch name contains disallowed ASCII characters or patterns.")
+            raise ValidationError("Branch name contains disallowed ASCII characters or patterns.")
 
         # 9. Check if string ends with .lock
         if value.endswith(".lock"):
-            raise PydanticValidationError("Branch name ends with '.lock' which is not allowed.")
+            raise ValidationError("Branch name ends with '.lock' which is not allowed.")
 
         # 10. Check if string ends with /
         if value.endswith("/"):
-            raise PydanticValidationError("Branch name ends with a '/' which is not allowed.")
+            raise ValidationError("Branch name ends with a '/' which is not allowed.")
 
         # 11. Check if string ends with .
         if value.endswith("."):
-            raise PydanticValidationError("Branch name ends with a '.' which is not allowed.")
+            raise ValidationError("Branch name ends with a '.' which is not allowed.")
 
         # 12. Check if string equals GLOBAL_BRANCH_NAME
         if value == GLOBAL_BRANCH_NAME:

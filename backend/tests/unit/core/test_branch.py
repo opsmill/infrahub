@@ -1,5 +1,5 @@
 import pytest
-from pydantic.error_wrappers import ValidationError
+from pydantic.error_wrappers import ValidationError as PydanticValidationError
 
 from infrahub.core import get_branch
 from infrahub.core.branch import Branch
@@ -9,7 +9,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import execute_read_query_async
-from infrahub.exceptions import BranchNotFound
+from infrahub.exceptions import BranchNotFound, ValidationError
 from infrahub.message_bus.rpc import InfrahubRpcClientTesting
 
 
@@ -93,11 +93,11 @@ async def test_branch_name_validator(session):
 
     # Need at least 3 characters
     assert Branch(name="cr1")
-    with pytest.raises(ValidationError):
+    with pytest.raises(PydanticValidationError):
         Branch(name="cr")
 
     # No more than 32 characters
-    with pytest.raises(ValidationError):
+    with pytest.raises(PydanticValidationError):
         Branch(name="qwertyuiopqwertyuiopqwertyuiopqwe")
 
     assert Branch(name="new-branch")
@@ -110,7 +110,7 @@ async def test_branch_branched_form_format_validator(session):
     time1 = Timestamp().to_string()
     assert Branch(name="cr1234", branched_from=time1).branched_from == time1
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(PydanticValidationError):
         Branch(name="cr1234", branched_from="not a date")
 
 
