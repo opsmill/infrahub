@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Generator, List, Optional, Union
 from neo4j.graph import Node as Neo4jNode
 from neo4j.graph import Relationship as Neo4jRelationship
 
-import infrahub.config as config
+from infrahub import config
 from infrahub.core.constants import PermissionLevel
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import execute_read_query_async, execute_write_query_async
@@ -215,7 +215,6 @@ class Query(ABC):
         limit: Optional[int] = None,
         offset: Optional[int] = None,
         order_by: Optional[List[str]] = None,
-        imposed_limit: int = 100,
     ):
         if branch:
             self.branch = branch
@@ -227,7 +226,6 @@ class Query(ABC):
             self.at = Timestamp(at)
 
         self.limit = limit
-        self.imposed_limit = imposed_limit
         self.offset = offset
         self.order_by = order_by
 
@@ -348,7 +346,7 @@ class Query(ABC):
             self.print(include_var=True)
 
         if self.type == QueryType.READ:
-            if self.limit:
+            if self.limit or self.offset:
                 results = await execute_read_query_async(
                     query=self.get_query(), params=self.params, session=session, name=self.name
                 )
@@ -370,29 +368,27 @@ class Query(ABC):
         return self
 
     async def query_with_imposed_limit(self, session: AsyncSession):
+        imposed_limit = config.SETTINGS.database.imposed_query_limit
         self.offset = 0
-        self.limit = self.imposed_limit
+        self.limit = imposed_limit
         results = await execute_read_query_async(
             query=self.get_query(), params=self.params, session=session, name=self.name
         )
 
-        if len(results) < self.imposed_limit:
+        if len(results) < imposed_limit:
             return results
 
-        result = await execute_read_query_async(query=self.get_count_query(), params=self.params, session=session)
-        count = result[0][0]
-        print(f"Count: {count}")
-        remaining = count - self.imposed_limit
-        while remaining > 0:
-            self.offset += self.imposed_limit
+        remaining = True
+        while remaining:
+            self.offset += imposed_limit
             offset_results = await execute_read_query_async(
                 query=self.get_query(), params=self.params, session=session, name=self.name
             )
             results.extend(offset_results)
-            remaining -= self.imposed_limit
-            print(f"Remaining: {remaining}")
 
-        print(f"Final: {len(results)}")
+            if len(offset_results) < imposed_limit:
+                remaining = False
+
         return results
 
     async def count(self, session: AsyncSession) -> int:

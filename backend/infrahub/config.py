@@ -74,6 +74,9 @@ class DatabaseSettings(BaseSettings):
     address: str = "localhost"
     port: int = 7687
     database: Optional[str] = Field(regex=VALID_DATABASE_NAME_REGEX, description="Name of the database")
+    imposed_query_limit: int = Field(
+        1000, description="The max number of records to fetch in a single query before performing internal pagination."
+    )
 
     class Config:
         """Additional parameters to automatically map environment variables to some settings."""
