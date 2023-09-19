@@ -189,29 +189,38 @@ class Branch(StandardNode):
 
     _exclude_attrs: List[str] = ["id", "uuid", "owner", "ephemeral_rebase"]
 
+
     @validator("name", pre=True, always=True)
     def validate_branch_name(cls, value):  # pylint: disable=no-self-argument
+
         checks = [
-            (r".*/\.", "Branch name contains the pattern '/.' which is not allowed."),
-            (r"\.\.", "Branch name contains the pattern '..' which is not allowed."),
-            (r"^/", "Branch name starts with a '/' which is not allowed."),
-            (r"//", "Branch name contains the pattern '//' which is not allowed."),
-            (r"@{", "Branch name contains the pattern '@{' which is not allowed."),
-            (r"\\", "Branch name contains a backslash which is not allowed."),
-            (r"[\000-\037\177 ~^:?*[]", "Branch name contains disallowed ASCII characters or patterns."),
-            (r"\.lock$", "Branch name ends with '.lock' which is not allowed."),
-            (r"/$", "Branch name ends with a '/' which is not allowed."),
-            (r"\.$", "Branch name ends with a '.' which is not allowed."),
+            (r".*/\.", "/."),
+            (r"\.\.", ".."),
+            (r"^/", "starts with /"),
+            (r"//", "//"),
+            (r"@{", "@{"),
+            (r"\\", "backslash (\\)"),
+            (r"[\000-\037\177 ~^:?*[]", "disallowed ASCII characters/patterns"),
+            (r"\.lock$", "ends with .lock"),
+            (r"/$", "ends with /"),
+            (r"\.$", "ends with ."),
         ]
+
+        offending_patterns = []
+
+        for pattern, description in checks:
+            if re.search(pattern, value):
+                offending_patterns.append(description)
 
         if value == GLOBAL_BRANCH_NAME:
             return value  # this is the only allowed exception
 
-        for pattern, error in checks:
-            if re.search(pattern, value):
-                raise ValidationError(error)
+        if offending_patterns:
+            error_text = ", ".join(offending_patterns)
+            raise ValidationError(f"Branch name contains invalid patterns or characters: {error_text}")
 
         return value
+
 
     @validator("branched_from", pre=True, always=True)
     def set_branched_from(cls, value):  # pylint: disable=no-self-argument
