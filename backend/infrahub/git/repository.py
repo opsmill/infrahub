@@ -8,7 +8,7 @@ import shutil
 import sys
 import types
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 from uuid import UUID
 
 import git
@@ -35,6 +35,9 @@ from infrahub.log import get_logger
 from infrahub.transforms import INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT
 from infrahub_client import GraphQLError, InfrahubClient, InfrahubNode, ValidationError
 from infrahub_client.utils import compare_lists
+
+if TYPE_CHECKING:
+    from infrahub_client.branch import BranchData
 
 # pylint: disable=too-few-public-methods,too-many-lines
 
@@ -268,9 +271,12 @@ class Worktree(BaseModel):
         if len(relative_paths) == 3:
             # this is the main worktree for the main branch
             identifier = relative_paths[2]
-        elif len(relative_paths) == 4:
+        elif len(relative_paths) == 4 and relative_paths[2] == COMMITS_DIRECTORY_NAME:
             # this is the either a commit or a branch worktree
             identifier = relative_paths[3]
+        elif len(relative_paths) == 4 and relative_paths[2] == BRANCHES_DIRECTORY_NAME and lines[2] != "detached":
+            identifier = lines[2].replace("branch refs/heads/", "")
+
         else:
             raise Error("Unexpected directory path for a worktree.")
 
@@ -281,7 +287,7 @@ class Worktree(BaseModel):
         )
 
         if lines[2] != "detached":
-            item.branch = lines[1].replace("branch refs/heads", "")
+            item.branch = lines[2].replace("branch refs/heads/", "")
 
         return item
 
@@ -656,46 +662,46 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         return True
 
-    async def create_branch_in_git(self, branch_name: str, push_origin: bool = True) -> bool:
+    async def create_branch_in_git(self, branch: BranchData, push_origin: bool = True) -> bool:
         """Create new branch in the repository, assuming the branch has been created in the graph already."""
 
         repo = self.get_git_repo_main()
 
         # Check if the branch already exist locally, if it does do nothing
         local_branches = self.get_branches_from_local(include_worktree=False)
-        if branch_name in local_branches:
+        if branch.name in local_branches:
             return False
 
         # TODO Catch potential exceptions coming from repo.git.branch & repo.git.worktree
-        repo.git.branch(branch_name)
-        self.create_branch_worktree(branch_name=branch_name)
+        repo.git.branch(branch.name)
+        self.create_branch_worktree(branch=branch)
 
         # If there is not remote configured, we are done
         #  Since the branch is a match for the main branch we don't need to create a commit worktree
         # If there is a remote, Check if there is an existing remote branch with the same name and if so track it.
         if not self.has_origin:
-            LOGGER.debug("%s | Branch %s created in Git without tracking a remote branch.", self.name, branch_name)
+            LOGGER.debug("%s | Branch %s created in Git without tracking a remote branch.", self.name, branch.name)
             return True
 
-        remote_branch = [br for br in repo.remotes.origin.refs if br.name == f"origin/{branch_name}"]
+        remote_branch = [br for br in repo.remotes.origin.refs if br.name == f"origin/{branch.name}"]
 
         if remote_branch:
-            br_repo = self.get_git_repo_worktree(identifier=branch_name)
+            br_repo = self.get_git_repo_worktree(identifier=branch.name)
             br_repo.head.reference.set_tracking_branch(remote_branch[0])
-            br_repo.remotes.origin.pull(branch_name)
+            br_repo.remotes.origin.pull(branch.name)
             self.create_commit_worktree(str(br_repo.head.reference.commit))
             LOGGER.debug(
-                "%s | Branch %s  created in Git, tracking remote branch %s.", self.name, branch_name, remote_branch[0]
+                "%s | Branch %s  created in Git, tracking remote branch %s.", self.name, branch.name, remote_branch[0]
             )
         else:
-            LOGGER.debug(f"{self.name} | Branch {branch_name} created in Git without tracking a remote branch.")
+            LOGGER.debug(f"{self.name} | Branch {branch.name} created in Git without tracking a remote branch.")
 
         if push_origin:
-            await self.push(branch_name)
+            await self.push(branch.name)
 
         return True
 
-    async def create_branch_in_graph(self, branch_name: str):
+    async def create_branch_in_graph(self, branch_name: str) -> BranchData:
         """Create a new branch in the graph.
 
         NOTE We need to validate that we are not gonna end up with a race condition
@@ -703,10 +709,10 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         """
 
         # TODO need to handle the exception properly
-        await self.client.branch.create(branch_name=branch_name, background_execution=True)
+        branch = await self.client.branch.create(branch_name=branch_name, background_execution=True)
 
         LOGGER.debug(f"{self.name} | Branch {branch_name} created in the Graph")
-        return True
+        return branch
 
     def create_commit_worktree(self, commit: str) -> Union[bool, Worktree]:
         """Create a new worktree for a given commit."""
@@ -731,20 +737,20 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 ) from exc
             raise RepositoryError(identifier=self.name, message=exc.stderr) from exc
 
-    def create_branch_worktree(self, branch_name: str) -> bool:
+    def create_branch_worktree(self, branch: BranchData) -> bool:
         """Create a new worktree for a given branch."""
 
         # Check if the worktree already exist
-        if self.has_worktree(identifier=branch_name):
+        if self.has_worktree(identifier=branch.name):
             return False
 
         try:
             repo = self.get_git_repo_main()
-            repo.git.worktree("add", os.path.join(self.directory_branches, branch_name), branch_name)
+            repo.git.worktree("add", os.path.join(self.directory_branches, branch.id), branch.name)
         except GitCommandError as exc:
             raise RepositoryError(identifier=self.name, message=exc.stderr) from exc
 
-        LOGGER.debug(f"{self.name} | Branch worktree created {branch_name}")
+        LOGGER.debug(f"{self.name} | Branch worktree created {branch.name}")
         return True
 
     async def calculate_diff_between_commits(
@@ -825,12 +831,12 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 continue
 
             try:
-                await self.create_branch_in_graph(branch_name=branch_name)
+                branch = await self.create_branch_in_graph(branch_name=branch_name)
             except GraphQLError as exc:
                 if "already exist" not in exc.errors[0]["message"]:
                     raise
 
-            await self.create_branch_in_git(branch_name=branch_name)
+            await self.create_branch_in_git(branch=branch)
 
             commit = self.get_commit_value(branch_name=branch_name, remote=False)
             self.create_commit_worktree(commit=commit)
