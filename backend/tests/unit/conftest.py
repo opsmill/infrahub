@@ -2100,13 +2100,16 @@ async def default_branch(reset_registry, local_storage_dir, empty_database, sess
 @pytest.fixture
 async def register_internal_models_schema(default_branch: Branch) -> SchemaBranch:
     schema = SchemaRoot(**internal_schema)
-    return registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    default_branch.update_schema_hash()
+    return schema_branch
 
 
 @pytest.fixture
 async def register_core_models_schema(default_branch: Branch, register_internal_models_schema) -> SchemaBranch:
     schema = SchemaRoot(**core_models)
     schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    default_branch.update_schema_hash()
     return schema_branch
 
 
