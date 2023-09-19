@@ -15,8 +15,8 @@ describe("Tutorial - Part 3", () => {
     // Click on the schema link
     cy.get("[href='/schema'] > .group").click();
 
-    // The loader should not exist
-    cy.get(".space-y-4").should("not.exist");
+    // The list should exist
+    cy.get(".space-y-4").should("exist");
 
     if (this.screenshots) {
       cy.screenshot("tutorial_3_schema", screenshotConfig);
