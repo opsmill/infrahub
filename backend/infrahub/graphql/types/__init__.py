@@ -16,17 +16,7 @@ from .attribute import (
     StrAttributeType,
     TextAttributeType,
 )
-from .branch import (
-    BranchDiffAttributeType,
-    BranchDiffFileType,
-    BranchDiffNodeType,
-    BranchDiffPropertyType,
-    BranchDiffPropertyValueType,
-    BranchDiffRelationshipEdgeNodeType,
-    BranchDiffRelationshipType,
-    BranchDiffType,
-    BranchType,
-)
+from .branch import BranchType
 from .interface import InfrahubInterface
 from .mixin import GetListMixin
 from .node import InfrahubObject
@@ -47,14 +37,6 @@ __all__ = [
     "JSONAttributeType",
     "AnyAttributeType",
     "BranchType",
-    "BranchDiffPropertyValueType",
-    "BranchDiffPropertyType",
-    "BranchDiffAttributeType",
-    "BranchDiffNodeType",
-    "BranchDiffRelationshipEdgeNodeType",
-    "BranchDiffRelationshipType",
-    "BranchDiffFileType",
-    "BranchDiffType",
     "InfrahubInterface",
     "GetListMixin",
     "InfrahubObject",
