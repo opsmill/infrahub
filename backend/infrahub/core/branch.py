@@ -189,10 +189,8 @@ class Branch(StandardNode):
 
     _exclude_attrs: List[str] = ["id", "uuid", "owner", "ephemeral_rebase"]
 
-
     @validator("name", pre=True, always=True)
     def validate_branch_name(cls, value):  # pylint: disable=no-self-argument
-
         checks = [
             (r".*/\.", "/."),
             (r"\.\.", ".."),
@@ -220,7 +218,6 @@ class Branch(StandardNode):
             raise ValidationError(f"Branch name contains invalid patterns or characters: {error_text}")
 
         return value
-
 
     @validator("branched_from", pre=True, always=True)
     def set_branched_from(cls, value):  # pylint: disable=no-self-argument

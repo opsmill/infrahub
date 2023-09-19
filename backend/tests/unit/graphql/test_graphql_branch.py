@@ -248,7 +248,10 @@ async def test_branch_create_invalid_names(
     )
 
     assert len(result.errors) == 1
-    assert result.errors[0].message == "Branch name contains invalid patterns or characters: disallowed ASCII characters/patterns"
+    assert (
+        result.errors[0].message
+        == "Branch name contains invalid patterns or characters: disallowed ASCII characters/patterns"
+    )
 
 
 async def test_branch_create_with_repositories(
