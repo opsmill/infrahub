@@ -191,49 +191,25 @@ class Branch(StandardNode):
 
     @validator("name", pre=True, always=True)
     def validate_branch_name(cls, value):  # pylint: disable=no-self-argument
-        # 1. Check for the pattern /.
-        if re.search(r".*/\.", value):
-            raise ValidationError("Branch name contains the pattern '/.' which is not allowed.")
+        checks = [
+            (r".*/\.", "Branch name contains the pattern '/.' which is not allowed."),
+            (r"\.\.", "Branch name contains the pattern '..' which is not allowed."),
+            (r"^/", "Branch name starts with a '/' which is not allowed."),
+            (r"//", "Branch name contains the pattern '//' which is not allowed."),
+            (r"@{", "Branch name contains the pattern '@{' which is not allowed."),
+            (r"\\", "Branch name contains a backslash which is not allowed."),
+            (r"[\000-\037\177 ~^:?*[]", "Branch name contains disallowed ASCII characters or patterns."),
+            (r"\.lock$", "Branch name ends with '.lock' which is not allowed."),
+            (r"/$", "Branch name ends with a '/' which is not allowed."),
+            (r"\.$", "Branch name ends with a '.' which is not allowed."),
+        ]
 
-        # 2. Check for the pattern ..
-        if ".." in value:
-            raise ValidationError("Branch name contains the pattern '..' which is not allowed.")
-
-        # 3. Check if string starts with /
-        if value.startswith("/"):
-            raise ValidationError("Branch name starts with a '/' which is not allowed.")
-
-        # 4. Check for the pattern //
-        if "//" in value:
-            raise ValidationError("Branch name contains the pattern '//' which is not allowed.")
-
-        # 5. Check for the pattern @{
-        if "@{" in value:
-            raise ValidationError("Branch name contains the pattern '@{' which is not allowed.")
-
-        # 6. Check for backslashes
-        if "\\" in value:
-            raise ValidationError("Branch name contains a backslash which is not allowed.")
-
-        # 7. & 8. Check for disallowed ASCII characters and patterns
-        if re.search(r"[\000-\037\177 ~^:?*[]", value):
-            raise ValidationError("Branch name contains disallowed ASCII characters or patterns.")
-
-        # 9. Check if string ends with .lock
-        if value.endswith(".lock"):
-            raise ValidationError("Branch name ends with '.lock' which is not allowed.")
-
-        # 10. Check if string ends with /
-        if value.endswith("/"):
-            raise ValidationError("Branch name ends with a '/' which is not allowed.")
-
-        # 11. Check if string ends with .
-        if value.endswith("."):
-            raise ValidationError("Branch name ends with a '.' which is not allowed.")
-
-        # 12. Check if string equals GLOBAL_BRANCH_NAME
         if value == GLOBAL_BRANCH_NAME:
             return value  # this is the only allowed exception
+
+        for pattern, error in checks:
+            if re.search(pattern, value):
+                raise ValidationError(error)
 
         return value
 
