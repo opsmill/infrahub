@@ -21,20 +21,35 @@ async def refresh_branches(session: AsyncSession):
         branches: List[Branch] = await Branch.get_list(session=session)
         active_branches = [branch.name for branch in branches]
         for new_branch in branches:
-            branch_already_present = new_branch.name in registry.branch
-
-            if branch_already_present:
-                if registry.branch[new_branch.name].schema_hash != new_branch.schema_hash:
+            if new_branch.name in registry.branch:
+                branch_registry: Branch = registry.branch[new_branch.name]
+                if branch_registry.schema_hash and branch_registry.schema_hash.main != new_branch.schema_hash.main:
                     log.info(
-                        f"{new_branch.name}: New hash detected OLD {registry.branch[new_branch.name].schema_hash} >> {new_branch.schema_hash} NEW"
+                        f"{new_branch.name}: New hash detected OLD {branch_registry.schema_hash.main} >> {new_branch.schema_hash.main} NEW"
                     )
                     registry.branch[new_branch.name] = new_branch
-                    await registry.schema.load_schema_from_db(session=session, branch=new_branch)
+                    schema_diff = branch_registry.schema_hash.compare(new_branch.schema_hash)
+                    await registry.schema.load_schema_from_db(
+                        session=session, branch=new_branch, schema_diff=schema_diff
+                    )
 
             else:
-                log.info(f"{new_branch.name}: New branch detected")
                 registry.branch[new_branch.name] = new_branch
-                await registry.schema.load_schema_from_db(session=session, branch=new_branch)
+
+                # Check if the Origin Branch is present in the registry and if the main hash is the same
+                if (
+                    new_branch.origin_branch in registry.branch
+                    and registry.branch[new_branch.origin_branch].schema_hash.main == new_branch.schema_hash.main
+                ):
+                    log.info(f"{new_branch.name}: New branch detected, pulling schema from cache")
+                    origin_branch: Branch = registry.branch[new_branch.origin_branch]
+                    origin_schema = registry.schema.get_schema_branch(name=origin_branch.name)
+                    new_branch_schema = origin_schema.duplicate()
+                    registry.schema.set_schema_branch(name=new_branch.name, schema=new_branch_schema)
+
+                else:
+                    log.info(f"{new_branch.name}: New branch detected, pulling schema from db")
+                    await registry.schema.load_schema_from_db(session=session, branch=new_branch)
 
         for branch_name in list(registry.branch.keys()):
             if branch_name not in active_branches:
