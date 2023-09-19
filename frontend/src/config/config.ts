@@ -26,7 +26,7 @@ export const CONFIG = {
     `${INFRAHUB_API_SERVER_URL}/api/diff/data-new?branch=${branch}`,
   FILES_DIFF_URL: (branch?: string) => `${INFRAHUB_API_SERVER_URL}/api/diff/files?branch=${branch}`,
   SCHEMA_DIFF_URL: (branch?: string) =>
-    `${INFRAHUB_API_SERVER_URL}/api/diff/schema?branch=${branch}`,
+    `${INFRAHUB_API_SERVER_URL}/api/diff/schema-new?branch=${branch}`,
   ARTIFACTS_DIFF_URL: (branch?: string) =>
     `${INFRAHUB_API_SERVER_URL}/api/diff/artifacts?branch=${branch}`,
   ARTIFACTS_GENERATE_URL: (id?: string) => `${INFRAHUB_API_SERVER_URL}/api/artifact/generate/${id}`,

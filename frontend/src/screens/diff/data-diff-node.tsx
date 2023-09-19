@@ -123,7 +123,7 @@ export type tDataDiffNode = {
 
 export type tDataDiffNodeProps = {
   node: tDataDiffNode;
-  commentsCount: number;
+  commentsCount?: number;
   branch?: string;
 };
 

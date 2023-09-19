@@ -37,7 +37,7 @@ export const SchemaDiff = () => {
     try {
       const diffDetails = await fetchUrl(urlWithQsp);
 
-      setDiff(diffDetails[branchname] ?? []);
+      setDiff(diffDetails?.diffs ?? []);
     } catch (err) {
       console.error("err: ", err);
       toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading branch diff" />);
