@@ -1,5 +1,6 @@
 from nornir import InitNornir
 
+
 def main():
     nr = InitNornir(
         inventory={

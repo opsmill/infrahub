@@ -17,9 +17,7 @@ from nornir.core.inventory import (
     Inventory,
     ParentGroups,
 )
-from pydantic import BaseModel
-from pydantic import Field
-from pydantic import validator
+from pydantic import BaseModel, Field, validator
 from pydantic.dataclasses import dataclass
 
 from infrahub_client import Config, InfrahubClientSync, InfrahubNodeSync, NodeSchema
@@ -100,6 +98,7 @@ class SchemaMappingNode:
     mapping: str
 
 
+# pylint: disable=E0213
 class HostNode(BaseModel):
     kind: str
     include: List[str] = Field(default_factory=list)
@@ -145,7 +144,7 @@ class InfrahubInventory:
 
     def __init__(
         self,
-        host_node: Dict[str, any],
+        host_node: Dict[str, Any],
         address: str = "http://localhost:8000",
         token: Optional[str] = None,
         branch: str = "main",

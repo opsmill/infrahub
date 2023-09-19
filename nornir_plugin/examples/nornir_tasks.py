@@ -1,6 +1,10 @@
 from nornir import InitNornir
+from nornir_infrahub.plugins.tasks import (
+    generate_artifact,
+    get_artifact,
+    regenerate_host_artifact,
+)
 
-from nornir_infrahub.plugins.tasks import get_artifact, generate_artifact, regenerate_host_artifact
 # from nornir_napalm.plugin.tasks import napalm_configure
 from nornir_utils.plugins.functions import print_result
 

@@ -1,6 +1,5 @@
 import httpx
-
-from nornir.core.task import Task, Result
+from nornir.core.task import Result, Task
 
 
 def regenerate_host_artifact(task: Task, artifact: str) -> Result:
@@ -42,7 +41,7 @@ def generate_artifact(task: Task, artifact: str, timeout: int = 10) -> Result:
     headers = node._client.headers
     headers["X-INFRAHUB-KEY"] = f"{node._client.config.api_token}"
 
-    with httpx.Client(timeout=httpx.Timeout(10)) as client:
+    with httpx.Client(timeout=httpx.Timeout(timeout)) as client:
         resp = client.post(url=f"{node._client.address}/api/artifact/generate/{artifact_node.id}", headers=headers)
     resp.raise_for_status()
 

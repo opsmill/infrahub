@@ -1,4 +1,4 @@
-from .artifact import get_artifact, generate_artifact, regenerate_host_artifact
+from .artifact import generate_artifact, get_artifact, regenerate_host_artifact
 
 __all__ = (
     "get_artifact",
