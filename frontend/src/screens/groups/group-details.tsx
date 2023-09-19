@@ -86,7 +86,7 @@ export default function GroupItemDetails() {
   }
 
   if (!data || (data && !data[schemaData.kind]?.edges?.length)) {
-    return <NoDataFound />;
+    return <NoDataFound message="No group found." />;
   }
 
   const objectDetailsData = data[schemaData.kind]?.edges[0]?.node;

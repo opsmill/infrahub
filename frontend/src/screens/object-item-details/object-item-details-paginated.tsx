@@ -119,7 +119,7 @@ export default function ObjectItemDetails(props: any) {
 
     return (
       <div className="flex column justify-center">
-        <NoDataFound message="Sorry, no item found for that id" />
+        <NoDataFound message="No item found for that id." />
       </div>
     );
   }

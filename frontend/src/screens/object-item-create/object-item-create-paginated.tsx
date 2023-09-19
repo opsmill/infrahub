@@ -66,7 +66,7 @@ export default function ObjectItemCreate(props: iProps) {
   }
 
   if (peers.length && !data) {
-    return <NoDataFound />;
+    return <NoDataFound message="No dropdown options found." />;
   }
 
   const objectDetailsData = data && data[schema.kind];

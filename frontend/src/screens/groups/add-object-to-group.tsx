@@ -78,7 +78,7 @@ export default function AddObjectToGroup(props: Props) {
   }
 
   if (!data || (data && !data[schemaData.kind])) {
-    return <NoDataFound />;
+    return <NoDataFound message="No group found." />;
   }
 
   const groups = data[schemaData.kind]?.edges.map((edge: any) => edge.node);

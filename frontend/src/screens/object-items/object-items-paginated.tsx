@@ -241,7 +241,7 @@ export default function ObjectItems(props: any) {
                   </tbody>
                 </table>
 
-                {!rows?.length && <NoDataFound />}
+                {!rows?.length && <NoDataFound message="No items found." />}
 
                 <Pagination count={count} />
               </div>

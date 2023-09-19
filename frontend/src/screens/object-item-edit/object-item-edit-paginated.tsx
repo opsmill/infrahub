@@ -80,7 +80,7 @@ export default function ObjectItemEditComponent(props: Props) {
   }
 
   if (!data || (data && !data[schema.kind])) {
-    return <NoDataFound />;
+    return <NoDataFound message="No details found." />;
   }
 
   const objectDetailsData = data[schema.kind]?.edges[0]?.node;

@@ -43,7 +43,7 @@ export const File = (props: tFile) => {
   }
 
   if (!fileContent) {
-    return <NoDataFound />;
+    return <NoDataFound message="No file found." />;
   }
 
   return (

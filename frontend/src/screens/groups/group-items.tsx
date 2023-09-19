@@ -196,7 +196,7 @@ export default function GroupItems() {
                   </tbody>
                 </table>
 
-                {!rows?.length && <NoDataFound />}
+                {!rows?.length && <NoDataFound message="No group items found." />}
 
                 <Pagination count={count} />
               </div>

@@ -156,7 +156,7 @@ export default function DeviceFilterBarContent(props: any) {
   }
 
   if (!data) {
-    return <NoDataFound />;
+    return <NoDataFound message="No filters found." />;
   }
 
   return (
