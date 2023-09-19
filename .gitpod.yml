@@ -14,11 +14,11 @@ tasks:
       source $HOME/.bashrc
       poetry config virtualenvs.create false
       poetry install
-      poetry run invoke demo.build demo.init demo.start
+      poetry run invoke demo.build
     command: |
       cd /workspace/infrahub
       source $HOME/.bashrc
-      poetry run invoke demo.start demo.load-infra-schema demo.load-infra-data
+      poetry run invoke demo.destroy demo.init demo.start demo.load-infra-schema demo.load-infra-data
 
 # Ports to expose on workspace startup
 ports:
@@ -50,7 +50,7 @@ github:
     # enable for the default branch (defaults to true)
     master: true
     # enable for all branches in this repo (defaults to false)
-    branches: false
+    branches: true
     # enable for pull requests coming from this repo (defaults to true)
     pullRequests: true
     # enable for pull requests coming from forks (defaults to false)
