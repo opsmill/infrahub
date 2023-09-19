@@ -152,8 +152,7 @@ export default function ObjectItems(props: any) {
   };
 
   if (error) {
-    console.log("Error while loading objects list: ", error);
-    return <ErrorScreen />;
+    return <ErrorScreen message="Something went wrong when fetching list." />;
   }
 
   return (

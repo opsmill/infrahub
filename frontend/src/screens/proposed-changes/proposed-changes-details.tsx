@@ -77,7 +77,9 @@ export const ProposedChangesDetails = () => {
   }
 
   if (error) {
-    return <ErrorScreen />;
+    return (
+      <ErrorScreen message="Something went wrong when fetching the proposed changes details." />
+    );
   }
 
   const result = data ? data[schemaData?.kind]?.edges[0]?.node : {};

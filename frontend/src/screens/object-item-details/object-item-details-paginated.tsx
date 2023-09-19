@@ -106,8 +106,7 @@ export default function ObjectItemDetails(props: any) {
   const { loading, error, data, refetch } = useQuery(query, { skip: !schemaData });
 
   if (error) {
-    console.error("Error while loading the object details: ", error);
-    return <ErrorScreen />;
+    return <ErrorScreen message="Something went wrong when fetching the object details." />;
   }
 
   if (loading || !schemaData) {

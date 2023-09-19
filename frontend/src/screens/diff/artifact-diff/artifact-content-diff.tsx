@@ -366,7 +366,7 @@ export const ArtifactContentDiff = (props: any) => {
   }
 
   if (error) {
-    return <ErrorScreen />;
+    return <ErrorScreen message="Something went wrong when fetching the artifact content." />;
   }
 
   if (!previousFile && !newFile) {

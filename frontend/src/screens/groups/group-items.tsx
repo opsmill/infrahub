@@ -115,8 +115,7 @@ export default function GroupItems() {
   };
 
   if (error) {
-    console.log("Error while loading objects list: ", error);
-    return <ErrorScreen />;
+    return <ErrorScreen message="Something went wrong when fetching the group items." />;
   }
 
   return (

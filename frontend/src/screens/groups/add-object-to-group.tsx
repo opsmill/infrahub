@@ -70,16 +70,7 @@ export default function AddObjectToGroup(props: Props) {
   const { loading, error, data } = useQuery(query, { skip: !schemaData });
 
   if (error) {
-    console.error("An error occured while retrieving the object details: ", error);
-
-    toast(
-      <Alert
-        message="An error occured while retrieving the object details"
-        type={ALERT_TYPES.ERROR}
-      />
-    );
-
-    return <ErrorScreen />;
+    return <ErrorScreen message="Something went wrong when fetching the groups." />;
   }
 
   if (loading || !schemaData) {

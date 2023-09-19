@@ -30,7 +30,6 @@ interface iProps {
 }
 
 export default function ObjectItemCreate(props: iProps) {
-  console.log("RENDER CREATE");
   const { objectname, onCreate, onCancel, refetch, formStructure, customObject = {} } = props;
 
   const [schemaList] = useAtom(schemaState);
@@ -59,7 +58,7 @@ export default function ObjectItemCreate(props: iProps) {
   const { loading, error, data } = useQuery(query, { skip: !schema || !peers.length });
 
   if (error) {
-    return <ErrorScreen />;
+    return <ErrorScreen message="Something went wrong when fetching dropdown options." />;
   }
 
   if (loading || !schema) {

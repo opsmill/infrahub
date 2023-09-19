@@ -65,7 +65,7 @@ export const ProposedChanges = () => {
   }
 
   if (error) {
-    return <ErrorScreen />;
+    return <ErrorScreen message="Something went wrong when fetching the proposed changes list." />;
   }
 
   const branchesOptions: any[] = branches
