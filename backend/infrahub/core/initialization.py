@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from typing import List, Optional
 
 from neo4j import AsyncSession
 
@@ -8,8 +8,6 @@ from infrahub.core import registry
 from infrahub.core.artifact import CoreArtifactDefinition
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
-from infrahub.core.models import NodeSchema as NodeSchemaModel
-from infrahub.core.models import RelationshipSchema as RelationshipSchemaModel
 from infrahub.core.node import Node
 from infrahub.core.root import Root
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
@@ -43,7 +41,7 @@ async def initialization(session: AsyncSession):
     # ---------------------------------------------------
     # Load all existing branches into the registry
     # ---------------------------------------------------
-    branches = await Branch.get_list(session=session)
+    branches: List[Branch] = await Branch.get_list(session=session)
     for branch in branches:
         registry.branch[branch.name] = branch
 
@@ -57,7 +55,15 @@ async def initialization(session: AsyncSession):
         registry.schema.register_schema(schema=schema)
 
         for branch in branches:
+            if branch.name == GLOBAL_BRANCH_NAME:
+                continue
+
+            hash_in_db = branch.schema_hash.main
+            LOGGER.info(f"{branch.name} | importing schema from db")
             await registry.schema.load_schema_from_db(session=session, branch=branch)
+
+            if branch.update_schema_hash():
+                LOGGER.info(f"{branch.name} | New schema detected {hash_in_db!r} >> {branch.schema_hash.main!r}")
 
     # ---------------------------------------------------
     # Load internal models into the registry
@@ -65,8 +71,6 @@ async def initialization(session: AsyncSession):
 
     registry.node["Node"] = Node
     registry.node["CoreArtifactDefinition"] = CoreArtifactDefinition
-    registry.node["NodeSchema"] = NodeSchemaModel
-    registry.node["RelationshipSchema"] = RelationshipSchemaModel
 
     # ---------------------------------------------------
     # Load all existing Groups into the registry

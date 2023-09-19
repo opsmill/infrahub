@@ -141,6 +141,44 @@ async def test_branch_create(db, session, default_branch: Branch, car_person_sch
     assert result.data["BranchCreate"]["object"]["is_data_only"] is False
 
 
+async def test_branch_create_registry(
+    db, session, default_branch: Branch, car_person_schema, register_core_models_schema
+):
+    schema = await generate_graphql_schema(branch=default_branch, session=session, include_subscription=False)
+
+    query = """
+    mutation {
+        BranchCreate(data: { name: "branch2", is_data_only: true }) {
+            ok
+            object {
+                id
+                name
+                description
+                is_data_only
+                is_default
+                branched_from
+            }
+        }
+    }
+    """
+    result = await graphql(
+        schema,
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["BranchCreate"]["ok"] is True
+
+    branch2 = await Branch.get_by_name(session=session, name="branch2")
+    # branch2_schema = registry.schema.get_schema_branch(name=branch2.name)
+
+    # default_branch_schema = registry.schema.get_schema_branch(name=default_branch.name)
+    assert branch2.schema_hash.main == default_branch.schema_hash.main
+
+
 async def test_branch_query(db, session, default_branch: Branch, car_person_schema, register_core_models_schema):
     schema = await generate_graphql_schema(branch=default_branch, session=session, include_subscription=False)
 

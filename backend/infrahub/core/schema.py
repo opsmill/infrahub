@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import enum
+import hashlib
 import keyword
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
@@ -66,6 +67,9 @@ class BaseSchemaModel(BaseModel):
         underscore_attrs_are_private = True
 
     def __hash__(self):
+        return hash(self.get_hash())
+
+    def get_hash(self, display_values: bool = False) -> str:
         """Generate a hash for the object.
 
         Calculating a hash can be very complicated if the data that we are storing is dynamic
@@ -73,21 +77,42 @@ class BaseSchemaModel(BaseModel):
         List of hashable elements are fine and they will be converted automatically to Tuple.
         """
 
-        values = []
+        def prep_for_hash(v) -> bytes:
+            if hasattr(v, "get_hash"):
+                return v.get_hash().encode()
 
+            return str(v).encode()
+
+        values = []
+        md5hash = hashlib.md5()
         for field_name in sorted(self.__fields__.keys()):
             if field_name.startswith("_") or field_name in self._exclude_from_hash:
                 continue
 
             value = getattr(self, field_name)
             if isinstance(value, list):
-                values.append(tuple(sorted(tuple(value))))
+                for item in sorted(value):
+                    values.append(prep_for_hash(item))
+                    md5hash.update(prep_for_hash(item))
+            elif hasattr(value, "get_hash"):
+                values.append(value.get_hash().encode())
+                md5hash.update(value.get_hash().encode())
             elif isinstance(value, dict):
-                values.append(frozenset(value.items()))
+                for key, value in frozenset(sorted(value.items())):
+                    values.append(prep_for_hash(key))
+                    values.append(prep_for_hash(value))
+                    md5hash.update(prep_for_hash(key))
+                    md5hash.update(prep_for_hash(value))
             else:
-                values.append(value)
+                md5hash.update(prep_for_hash(value))
+                values.append(prep_for_hash(value))
 
-        return hash(tuple(values))
+        if display_values:
+            from rich import print as rprint  # pylint: disable=import-outside-toplevel
+
+            rprint(tuple(values))
+
+        return md5hash.hexdigest()
 
     @property
     def _sorting_id(self) -> Set[Any]:
@@ -245,7 +270,6 @@ class AttributeSchema(BaseSchemaModel):
     optional: bool = False
     order_weight: Optional[int]
 
-    _exclude_from_hash: List[str] = ["id"]
     _sort_by: List[str] = ["name"]
 
     @validator("kind")
@@ -281,7 +305,7 @@ class RelationshipSchema(BaseSchemaModel):
     filters: List[FilterSchema] = Field(default_factory=list)
     order_weight: Optional[int]
 
-    _exclude_from_hash: List[str] = ["id", "filters"]
+    _exclude_from_hash: List[str] = ["filters"]
     _sort_by: List[str] = ["name"]
 
     def get_class(self):
@@ -396,6 +420,7 @@ class BaseNodeSchema(BaseSchemaModel):
     namespace: str = Field(
         regex=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH
     )
+    kind: str = Field(regex=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH)
     description: Optional[str] = Field(max_length=DEFAULT_DESCRIPTION_LENGTH)
     default_filter: Optional[str]
     branch: BranchSupportType = BranchSupportType.AWARE
@@ -404,23 +429,38 @@ class BaseNodeSchema(BaseSchemaModel):
     attributes: List[AttributeSchema] = Field(default_factory=list)
     relationships: List[RelationshipSchema] = Field(default_factory=list)
 
-    _exclude_from_hash: List[str] = ["id", "attributes", "relationships"]
+    _exclude_from_hash: List[str] = ["attributes", "relationships"]
     _sort_by: List[str] = ["name"]
 
-    @property
-    def kind(self) -> str:
-        if self.namespace == "Attribute":
-            return self.name
-        return self.namespace + self.name
+    @root_validator(pre=True)
+    @classmethod
+    def set_kind(
+        cls,
+        values,
+    ):
+        if values["namespace"] == "Attribute":
+            values["kind"] = values["name"]
+        values["kind"] = f'{values["namespace"]}{values["name"]}'
+        return values
 
     def __hash__(self):
+        """Return a hash of the object.
+        Be careful hash generated from hash() have a salt by default and they will not be the same across run"""
+        return hash(self.get_hash())
+
+    def get_hash(self, display_values: bool = False):
         """Extend the Hash Calculation to account for attributes and relationships."""
-        super_hash = [super().__hash__()]
 
-        for item in self.attributes + self.relationships:
-            super_hash.append(hash(item))
+        md5hash = hashlib.md5()
+        md5hash.update(super().get_hash(display_values=display_values).encode())
 
-        return hash(tuple(super_hash))
+        for attr_name in sorted(self.attribute_names):
+            md5hash.update(self.get_attribute(name=attr_name).get_hash(display_values=display_values).encode())
+
+        for rel_name in sorted(self.relationship_names):
+            md5hash.update(self.get_relationship(name=rel_name).get_hash(display_values=display_values).encode())
+
+        return md5hash.hexdigest()
 
     def get_field(self, name, raise_on_error=True) -> Union[AttributeSchema, RelationshipSchema]:
         if field := self.get_attribute(name, raise_on_error=False):
@@ -668,8 +708,8 @@ internal_schema = {
             "name": "Node",
             "namespace": "Schema",
             "branch": BranchSupportType.AWARE.value,
-            "default_filter": "name__value",
-            "display_labels": ["name__value"],
+            "default_filter": "kind__value",
+            "display_labels": ["kind__value"],
             "attributes": [
                 {
                     "name": "name",
@@ -682,6 +722,13 @@ internal_schema = {
                 },
                 {
                     "name": "namespace",
+                    "kind": "Text",
+                    "regex": str(NODE_KIND_REGEX),
+                    "min_length": DEFAULT_KIND_MIN_LENGTH,
+                    "max_length": DEFAULT_KIND_MAX_LENGTH,
+                },
+                {
+                    "name": "kind",
                     "kind": "Text",
                     "regex": str(NODE_KIND_REGEX),
                     "min_length": DEFAULT_KIND_MIN_LENGTH,
@@ -903,6 +950,13 @@ internal_schema = {
                 },
                 {
                     "name": "namespace",
+                    "kind": "Text",
+                    "regex": str(NODE_KIND_REGEX),
+                    "min_length": DEFAULT_KIND_MIN_LENGTH,
+                    "max_length": DEFAULT_KIND_MAX_LENGTH,
+                },
+                {
+                    "name": "kind",
                     "kind": "Text",
                     "regex": str(NODE_KIND_REGEX),
                     "min_length": DEFAULT_KIND_MIN_LENGTH,

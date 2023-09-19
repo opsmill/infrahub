@@ -180,7 +180,7 @@ async def test_schema_branch_set():
     schema_branch = SchemaBranch(cache={}, name="test")
 
     schema_branch.set(name="schema1", schema=schema)
-    assert hash(schema) in schema_branch._cache
+    assert schema.get_hash() in schema_branch._cache
     assert len(schema_branch._cache) == 1
 
     schema_branch.set(name="schema2", schema=schema)
@@ -494,10 +494,10 @@ async def test_schema_branch_copy(
     new_schema = schema_branch.duplicate()
 
     assert id(new_schema.nodes) != id(schema_branch.nodes)
-    assert hash(new_schema) == hash(schema_branch)
+    assert new_schema.get_hash() == schema_branch.get_hash()
 
     new_schema.process()
-    assert hash(new_schema) != hash(schema_branch)
+    assert new_schema.get_hash() != schema_branch.get_hash()
 
 
 async def test_schema_branch_diff(
