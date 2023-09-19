@@ -21,7 +21,7 @@ export const FilesDiff = () => {
   const [timeFrom] = useQueryParam(QSP.BRANCH_FILTER_TIME_FROM, StringParam);
   const [timeTo] = useQueryParam(QSP.BRANCH_FILTER_TIME_TO, StringParam);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(true);
+  const [error, setError] = useState(false);
   const [proposedChangesDetails] = useAtom(proposedChangedState);
 
   const fetchFiles = useCallback(async () => {
