@@ -15,6 +15,21 @@ async def check(message: messages.RequestRepositoryChecks, service: InfrahubServ
     proposed_change = await service.client.get(kind="CoreProposedChange", id=message.proposed_change)
     source_branch = await service.client.branch.get(branch_name=message.source_branch)
     await proposed_change.validations.fetch()
+    await repository.checks.fetch()
+
+    for relationship in repository.checks.peers:
+        check_definition = relationship.peer
+        events.append(
+            messages.CheckRepositoryCheckDefinition(
+                repository_id=repository.id,
+                repository_name=repository.name.value,
+                commit=repository.commit.value,
+                file_path=check_definition.file_path.value,
+                class_name=check_definition.class_name.value,
+                branch_name=message.source_branch,
+            )
+        )
+
     validator_name = f"Repository Validator: {repository.name.value}"
     validator = None
     for relationship in proposed_change.validations.peers:

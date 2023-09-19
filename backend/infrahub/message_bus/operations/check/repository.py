@@ -1,11 +1,33 @@
 from infrahub import lock
 from infrahub.core.timestamp import Timestamp
+from infrahub.exceptions import CheckError
 from infrahub.git.repository import InfrahubRepository
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
 from infrahub.services import InfrahubServices
 
 log = get_logger()
+
+
+async def check_definition(message: messages.CheckRepositoryCheckDefinition, service: InfrahubServices):
+    repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name)
+
+    try:
+        check = await repo.execute_python_check(
+            branch_name=message.branch_name,
+            location=message.file_path,
+            class_name=message.class_name,
+            client=service.client,
+            commit=message.commit,
+        )
+    except CheckError:
+        log.warning("The check failed")
+        return
+
+    if check.passed:
+        log.info("The check passed")
+    else:
+        log.warning("The check failed")
 
 
 async def merge_conflicts(message: messages.CheckRepositoryMergeConflicts, service: InfrahubServices):

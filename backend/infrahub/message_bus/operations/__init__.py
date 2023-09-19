@@ -12,6 +12,7 @@ from infrahub.message_bus.operations import (
 from infrahub.services import InfrahubServices
 
 COMMAND_MAP = {
+    "check.repository.check_definition": check.repository.check_definition,
     "check.repository.merge_conflicts": check.repository.merge_conflicts,
     "event.branch.create": event.branch.create,
     "event.schema.update": event.schema.update,

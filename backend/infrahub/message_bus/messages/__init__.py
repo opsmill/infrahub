@@ -2,6 +2,7 @@ from typing import Dict, Type
 
 from infrahub.message_bus import InfrahubBaseMessage
 
+from .check_repository_checkdefinition import CheckRepositoryCheckDefinition
 from .check_repository_mergeconflicts import CheckRepositoryMergeConflicts
 from .event_branch_create import EventBranchCreate
 from .event_schema_update import EventSchemaUpdate
@@ -23,6 +24,7 @@ from .transform_jinja_template import TransformJinjaTemplate
 from .transform_python_data import TransformPythonData
 
 MESSAGE_MAP: Dict[str, Type[InfrahubBaseMessage]] = {
+    "check.repository.check_definition": CheckRepositoryCheckDefinition,
     "check.repository.merge_conflicts": CheckRepositoryMergeConflicts,
     "git.branch.create": GitBranchCreate,
     "git.file.get": GitFileGet,

@@ -17,7 +17,7 @@ class InfrahubCheck:
     timeout: int = 10
     rebase: bool = True
 
-    def __init__(self, branch=None, root_directory=None, output=None, server_url=None):
+    def __init__(self, branch=None, root_directory=None, output=None):
         self.data = None
         self.git = None
 
@@ -28,10 +28,9 @@ class InfrahubCheck:
 
         self.branch = branch
 
-        self.server_url = server_url or os.environ.get("INFRAHUB_URL", "http://127.0.0.1:8000")
         self.root_directory = root_directory or os.getcwd()
 
-        self.client: InfrahubClient = None
+        self.client: InfrahubClient
 
         if not self.name:
             self.name = self.__class__.__name__
@@ -40,17 +39,13 @@ class InfrahubCheck:
             raise ValueError("A query must be provided")
 
     @classmethod
-    async def init(cls, client=None, *args, **kwargs):
+    async def init(cls, client: Optional[InfrahubClient] = None, *args, **kwargs):
         """Async init method, If an existing InfrahubClient client hasn't been provided, one will be created automatically."""
 
-        item = cls(*args, **kwargs)
+        instance = cls(*args, **kwargs)
+        instance.client = client or InfrahubClient()
 
-        if client:
-            item.client = client
-        else:
-            item.client = await InfrahubClient.init(address=item.server_url)
-
-        return item
+        return instance
 
     @property
     def errors(self):
@@ -105,10 +100,11 @@ class InfrahubCheck:
 
         await self.collect_data()
 
-        if asyncio.iscoroutinefunction(self.validate):
-            await self.validate()
+        validate_method = getattr(self, "validate")
+        if asyncio.iscoroutinefunction(validate_method):
+            await validate_method()
         else:
-            self.validate()
+            validate_method()
 
         nbr_errors = len([log for log in self.logs if log["level"] == "ERROR"])
 
