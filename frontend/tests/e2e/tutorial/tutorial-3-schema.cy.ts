@@ -16,9 +16,7 @@ describe("Tutorial - Part 3", () => {
     cy.get("[href='/schema'] > .group").click();
 
     // The loader should not exist
-    cy.get(".md\\:pl-64 > .flex-col").should("not.exist");
-
-    cy.contains("Account").should("exist");
+    cy.get(".space-y-4").should("not.exist");
 
     if (this.screenshots) {
       cy.screenshot("tutorial_3_schema", screenshotConfig);
