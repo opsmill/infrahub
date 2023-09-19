@@ -119,7 +119,7 @@ export const ProposedChangesDetails = () => {
   ];
 
   return (
-    <div>
+    <>
       <div className="bg-custom-white px-4 py-5 pb-0 sm:px-6 flex items-center">
         <div
           className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline"
@@ -138,6 +138,6 @@ export const ProposedChangesDetails = () => {
       <Tabs tabs={tabs} qsp={QSP.PROPOSED_CHANGES_TAB} />
 
       {renderContent(qspTab)}
-    </div>
+    </>
   );
 };
