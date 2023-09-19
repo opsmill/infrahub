@@ -236,6 +236,7 @@ class InfrahubInventory:
                 try:
                     extracted_groups.append(f"{attrs[0]}__{slugify(resolve_node_mapping(host_node, attrs))}")
                 except RuntimeError:
+                    print(f"Unable to extract group for {attrs}")
                     # TODO: what do we do in this case?
                     continue
 
