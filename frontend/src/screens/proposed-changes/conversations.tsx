@@ -126,7 +126,7 @@ export const Conversations = () => {
   }
 
   if (error) {
-    return <ErrorScreen />;
+    return <ErrorScreen message="Something went wrong when fetching the conversations." />;
   }
 
   const threads = data

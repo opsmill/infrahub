@@ -66,7 +66,7 @@ export const ArtifactsDiff = () => {
   }
 
   if (!Object.values(artifactsDiff).length) {
-    return <NoDataFound />;
+    return <NoDataFound message="No artifact found." />;
   }
 
   // const result = data ? data[schemaData?.kind]?.edges[0]?.node : {};

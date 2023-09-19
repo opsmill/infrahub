@@ -66,7 +66,6 @@ export default function FilterCombobox(props: Props) {
         {filter.name} {schema.name}
       </div>
     );
-    // return <ErrorScreen />;
   }
 
   if (isLoading) {

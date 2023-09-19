@@ -115,8 +115,7 @@ export default function GroupItems() {
   };
 
   if (error) {
-    console.log("Error while loading objects list: ", error);
-    return <ErrorScreen />;
+    return <ErrorScreen message="Something went wrong when fetching the group items." />;
   }
 
   return (
@@ -197,7 +196,7 @@ export default function GroupItems() {
                   </tbody>
                 </table>
 
-                {!rows?.length && <NoDataFound />}
+                {!rows?.length && <NoDataFound message="No group items found." />}
 
                 <Pagination count={count} />
               </div>

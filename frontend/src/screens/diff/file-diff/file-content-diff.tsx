@@ -395,7 +395,7 @@ export const FileContentDiff = (props: any) => {
   }
 
   if (error) {
-    return <ErrorScreen />;
+    return <ErrorScreen message="Something went wrong when fetching the file differences." />;
   }
 
   if (!previousFile && !newFile) {
