@@ -2,9 +2,7 @@ import { useAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import "react-diff-view/style/index.css";
 import { useParams } from "react-router-dom";
-import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
-import { ALERT_TYPES, Alert } from "../../../components/alert";
 import { CONFIG } from "../../../config/config";
 import { QSP } from "../../../config/qsp";
 import { proposedChangedState } from "../../../state/atoms/proposedChanges.atom";
@@ -50,8 +48,6 @@ export const FilesDiff = () => {
         setFilesDiff(filesResult[branch]);
       }
     } catch (err) {
-      console.error("err: ", err);
-      toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading filesDiff diff" />);
       setError(true);
     }
 
