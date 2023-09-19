@@ -1,14 +1,23 @@
 import json
 
 from infrahub.message_bus import InfrahubResponse, messages
-from infrahub.message_bus.operations import check, event, refresh, requests, transform
+from infrahub.message_bus.operations import (
+    check,
+    event,
+    git,
+    refresh,
+    requests,
+    transform,
+)
 from infrahub.services import InfrahubServices
 
 COMMAND_MAP = {
     "check.repository.merge_conflicts": check.repository.merge_conflicts,
     "event.branch.create": event.branch.create,
     "event.schema.update": event.schema.update,
+    "git.branch.create": git.branch.create,
     "refresh.registry.branches": refresh.registry.branches,
+    "request.git.create_branch": requests.git.create_branch,
     "request.artifact_definition.generate": requests.artifact_definition.generate,
     "request.proposed_change.data_integrity": requests.proposed_change.data_integrity,
     "request.proposed_change.refresh_artifacts": requests.proposed_change.refresh_artifacts,

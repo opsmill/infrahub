@@ -7,7 +7,6 @@ import infrahub.config as config
 from infrahub import lock
 from infrahub.exceptions import CheckError, Error, FileNotFound, RepositoryError
 from infrahub.git.repository import InfrahubRepository
-from infrahub.log import set_log_data
 from infrahub.message_bus.events import (
     ArtifactMessageAction,
     CheckMessageAction,
@@ -65,18 +64,6 @@ async def handle_check_message_action_python(message: InfrahubCheckRPC, client: 
 
     except (CheckError, FileNotFound) as exc:
         return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR, errors=[exc.message])
-
-
-async def handle_git_message_action_branch_add(message: InfrahubGitRPC, client: InfrahubClient) -> InfrahubRPCResponse:
-    repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
-    async with lock.registry.get(name=message.repository_name, namespace="repository"):
-        try:
-            await repo.create_branch_in_git(branch_name=message.params["branch_name"])
-        except RepositoryError as exc:
-            return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR, errors=[exc.message])
-        set_log_data(key="branch_name", value=message.params["branch_name"])
-
-        return InfrahubRPCResponse(status=RPCStatusCode.OK)
 
 
 async def handle_git_message_action_diff(message: InfrahubGitRPC, client: InfrahubClient) -> InfrahubRPCResponse:
@@ -171,7 +158,6 @@ async def handle_git_rpc_message(  # pylint: disable=too-many-return-statements
 
     handler_map = {
         GitMessageAction.REPO_ADD: handle_git_message_action_repo_add,
-        GitMessageAction.BRANCH_ADD: handle_git_message_action_branch_add,
         GitMessageAction.DIFF: handle_git_message_action_diff,
         GitMessageAction.MERGE: handle_git_message_action_merge,
         GitMessageAction.GET_FILE: handle_git_message_action_get_file,
