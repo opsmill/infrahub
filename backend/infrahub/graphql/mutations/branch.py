@@ -80,6 +80,9 @@ class BranchCreate(Mutation):
             obj.update_schema_hash()
             await obj.save(session=session)
 
+            # Add Branch to registry
+            registry.branch[obj.name] = obj
+
         log.info("created_branch", name=obj.name)
 
         if not obj.is_data_only:
