@@ -628,9 +628,7 @@ async def test_load_node_to_db_node_schema(session: AsyncSession, default_branch
     assert node2.relationships[0].id
     assert node2.attributes[0].id
 
-    results = await SchemaManager.query(
-        schema="SchemaNode", filters={"kind__value": "TestCriticality"}, branch=default_branch, session=session
-    )
+    results = await SchemaManager.query(schema="SchemaNode", branch=default_branch, session=session)
     assert len(results) == 1
 
 

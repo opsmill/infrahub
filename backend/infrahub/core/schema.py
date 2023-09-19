@@ -420,7 +420,6 @@ class BaseNodeSchema(BaseSchemaModel):
     namespace: str = Field(
         regex=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH
     )
-    kind: str = Field(regex=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH)
     description: Optional[str] = Field(max_length=DEFAULT_DESCRIPTION_LENGTH)
     default_filter: Optional[str]
     branch: BranchSupportType = BranchSupportType.AWARE
@@ -432,16 +431,11 @@ class BaseNodeSchema(BaseSchemaModel):
     _exclude_from_hash: List[str] = ["attributes", "relationships"]
     _sort_by: List[str] = ["name"]
 
-    @root_validator(pre=True)
-    @classmethod
-    def set_kind(
-        cls,
-        values,
-    ):
-        if values["namespace"] == "Attribute":
-            values["kind"] = values["name"]
-        values["kind"] = f'{values["namespace"]}{values["name"]}'
-        return values
+    @property
+    def kind(self) -> str:
+        if self.namespace == "Attribute":
+            return self.name
+        return self.namespace + self.name
 
     def __hash__(self):
         """Return a hash of the object.
@@ -708,8 +702,8 @@ internal_schema = {
             "name": "Node",
             "namespace": "Schema",
             "branch": BranchSupportType.AWARE.value,
-            "default_filter": "kind__value",
-            "display_labels": ["kind__value"],
+            "default_filter": "name__value",
+            "display_labels": ["label__value"],
             "attributes": [
                 {
                     "name": "name",
@@ -722,13 +716,6 @@ internal_schema = {
                 },
                 {
                     "name": "namespace",
-                    "kind": "Text",
-                    "regex": str(NODE_KIND_REGEX),
-                    "min_length": DEFAULT_KIND_MIN_LENGTH,
-                    "max_length": DEFAULT_KIND_MAX_LENGTH,
-                },
-                {
-                    "name": "kind",
                     "kind": "Text",
                     "regex": str(NODE_KIND_REGEX),
                     "min_length": DEFAULT_KIND_MIN_LENGTH,
@@ -950,13 +937,6 @@ internal_schema = {
                 },
                 {
                     "name": "namespace",
-                    "kind": "Text",
-                    "regex": str(NODE_KIND_REGEX),
-                    "min_length": DEFAULT_KIND_MIN_LENGTH,
-                    "max_length": DEFAULT_KIND_MAX_LENGTH,
-                },
-                {
-                    "name": "kind",
                     "kind": "Text",
                     "regex": str(NODE_KIND_REGEX),
                     "min_length": DEFAULT_KIND_MIN_LENGTH,

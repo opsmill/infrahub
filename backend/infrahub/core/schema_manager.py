@@ -746,8 +746,9 @@ class SchemaManager(NodeManager):
         for schema_node in await self.query(
             schema=generic_schema, branch=branch, filters=filters, prefetch_relationships=True, session=session
         ):
+            kind = f"{schema_node.namespace.value}{schema_node.name.value}"
             schema.set(
-                name=schema_node.kind.value,
+                name=kind,
                 schema=await self.convert_generic_schema_to_schema(schema_node=schema_node, session=session),
             )
 
@@ -756,8 +757,9 @@ class SchemaManager(NodeManager):
         for schema_node in await self.query(
             schema=node_schema, branch=branch, filters=filters, prefetch_relationships=True, session=session
         ):
+            kind = f"{schema_node.namespace.value}{schema_node.name.value}"
             schema.set(
-                name=schema_node.kind.value,
+                name=kind,
                 schema=await self.convert_node_schema_to_schema(schema_node=schema_node, session=session),
             )
 
