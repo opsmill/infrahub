@@ -126,12 +126,7 @@ export default function ObjectItemCreate(props: iProps) {
         onCreate(result?.data?.[`${schema.kind}Create`]);
       }
 
-      console.log("DONE");
-
-      // setTimeout(() => {
-      console.log("REFETCH");
       if (refetch) refetch();
-      // }, 3000);
 
       setIsLoading(false);
     } catch (error: any) {
