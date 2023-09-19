@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Generator, List, Optional, Union
 from neo4j.graph import Node as Neo4jNode
 from neo4j.graph import Relationship as Neo4jRelationship
 
-import infrahub.config as config
+from infrahub import config
 from infrahub.core.constants import PermissionLevel
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import execute_read_query_async, execute_write_query_async
@@ -274,9 +274,12 @@ class Query(ABC):
         Trailing and leading spaces per line will be removed."""
         self.query_lines.extend([line.strip() for line in query.split("\n") if line.strip()])
 
-    def get_query(self, var: bool = False, inline: bool = False) -> str:
+    def get_query(
+        self, var: bool = False, inline: bool = False, limit: Optional[int] = None, offset: Optional[int] = None
+    ) -> str:
         # Make a local copy of the _query_lines
-
+        limit = limit or self.limit
+        offset = offset or self.offset
         tmp_query_lines = self.query_lines.copy()
 
         if self.insert_return:
@@ -285,11 +288,11 @@ class Query(ABC):
         if self.order_by:
             tmp_query_lines.append("ORDER BY " + ",".join(self.order_by))
 
-        if self.offset:
-            tmp_query_lines.append(f"SKIP {self.offset}")
+        if offset:
+            tmp_query_lines.append(f"SKIP {offset}")
 
-        if self.limit:
-            tmp_query_lines.append(f"LIMIT {self.limit}")
+        if limit:
+            tmp_query_lines.append(f"LIMIT {limit}")
 
         query_str = "\n".join(tmp_query_lines)
 
@@ -346,9 +349,12 @@ class Query(ABC):
             self.print(include_var=True)
 
         if self.type == QueryType.READ:
-            results = await execute_read_query_async(
-                query=self.get_query(), params=self.params, session=session, name=self.name
-            )
+            if self.limit or self.offset:
+                results = await execute_read_query_async(
+                    query=self.get_query(), params=self.params, session=session, name=self.name
+                )
+            else:
+                results = await self.query_with_size_limit(session=session)
         elif self.type == QueryType.WRITE:
             results = await execute_write_query_async(
                 query=self.get_query(), params=self.params, session=session, name=self.name
@@ -363,6 +369,26 @@ class Query(ABC):
         self.has_been_executed = True
 
         return self
+
+    async def query_with_size_limit(self, session: AsyncSession):
+        query_limit = config.SETTINGS.database.query_size_limit
+        offset = 0
+        results = []
+        remaining = True
+        while remaining:
+            offset_results = await execute_read_query_async(
+                query=self.get_query(limit=query_limit, offset=offset),
+                params=self.params,
+                session=session,
+                name=self.name,
+            )
+            results.extend(offset_results)
+            offset += query_limit
+
+            if len(offset_results) < query_limit:
+                remaining = False
+
+        return results
 
     async def count(self, session: AsyncSession) -> int:
         """Count the number of results matching a READ query.
