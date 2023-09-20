@@ -96,6 +96,9 @@ infrahub-git-credential = "infrahub.git_credential.helper:app"
 infrahub-git-askpass = "infrahub.git_credential.askpass:app"
 infrahub-sync = "infrahub_sync.cli:app"
 
+[tool.poetry.plugins."nornir.plugins.inventory"]
+"InfrahubInventory" = "nornir_infrahub.plugins.inventory.infrahub:InfrahubInventory"
+
 [tool.black]
 line-length = 120
 include = '\.pyi?$'
