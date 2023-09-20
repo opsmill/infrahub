@@ -17,6 +17,7 @@ from infrahub.core.constants import (
     ContentType,
     CriticalityLevel,
     FilterSchemaKind,
+    ProposedChangeState,
     RelationshipCardinality,
     RelationshipKind,
     Severity,
@@ -1406,6 +1407,13 @@ core_models = {
                 {"name": "name", "kind": "Text", "optional": False},
                 {"name": "source_branch", "kind": "Text", "optional": False},
                 {"name": "destination_branch", "kind": "Text", "optional": False},
+                {
+                    "name": "state",
+                    "kind": "Text",
+                    "enum": ProposedChangeState.available_types(),
+                    "default_value": ProposedChangeState.OPEN.value,
+                    "optional": True,
+                },
             ],
             "relationships": [
                 {

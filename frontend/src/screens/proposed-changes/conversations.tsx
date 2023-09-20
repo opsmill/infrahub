@@ -38,11 +38,16 @@ import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { objectToString } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
+import { getProposedChangesStateBadgeType } from "../../utils/proposed-changes";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
+
+type tConversations = {
+  refetch?: Function;
+};
 
 export const getFormStructure = (
   branches: any[] = [],
@@ -93,7 +98,8 @@ export const getFormStructure = (
   },
 ];
 
-export const Conversations = () => {
+export const Conversations = (props: tConversations) => {
+  const { refetch: detailsRefetch } = props;
   const { proposedchange } = useParams();
   const [branches] = useAtom(branchesState);
   const [schemaList] = useAtom(schemaState);
@@ -104,6 +110,7 @@ export const Conversations = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingApprove, setIsLoadingApprove] = useState(false);
   const [isLoadingMerge, setIsLoadingMerge] = useState(false);
+  const [isLoadingClose, setIsLoadingClose] = useState(false);
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const navigate = useNavigate();
 
@@ -137,6 +144,7 @@ export const Conversations = () => {
   const approverId = auth?.data?.sub;
   const canApprove = !approvers?.map((a: any) => a.id).includes(approverId);
   const path = constructPath("/proposed-changes");
+  const state = proposedChangesDetails?.state?.value;
 
   const handleSubmit = async (data: any, event: any) => {
     let threadId;
@@ -312,11 +320,84 @@ export const Conversations = () => {
     try {
       setIsLoadingMerge(true);
 
-      const data = {
+      const mergeData = {
         name: proposedChangesDetails?.source_branch?.value,
       };
 
-      const mutationString = mergeBranch({ data: objectToString(data) });
+      const mergeMutationString = mergeBranch({ data: objectToString(mergeData) });
+
+      const mergeMutation = gql`
+        ${mergeMutationString}
+      `;
+
+      await graphqlClient.mutate({
+        mutation: mergeMutation,
+        context: {
+          date,
+        },
+      });
+
+      const stateData = {
+        state: {
+          value: "merged",
+        },
+      };
+
+      const stateMutationString = updateObjectWithId({
+        kind: PROPOSED_CHANGES_OBJECT,
+        data: stringifyWithoutQuotes({
+          id: proposedchange,
+          ...stateData,
+        }),
+      });
+
+      const stateMutation = gql`
+        ${stateMutationString}
+      `;
+
+      await graphqlClient.mutate({
+        mutation: stateMutation,
+        context: { branch: branch?.name, date },
+      });
+
+      if (detailsRefetch) {
+        detailsRefetch();
+      }
+
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Proposed changes merged successfully!"} />);
+    } catch (error: any) {
+      console.log("error: ", error);
+
+      toast(
+        <Alert
+          type={ALERT_TYPES.SUCCESS}
+          message={"An error occured while merging the proposed changes"}
+        />
+      );
+    }
+
+    setIsLoadingMerge(false);
+  };
+
+  const handleClose = async () => {
+    setIsLoadingClose(true);
+
+    const newState = state === "closed" ? "open" : "closed";
+
+    const data = {
+      state: {
+        value: newState,
+      },
+    };
+
+    try {
+      const mutationString = updateObjectWithId({
+        kind: PROPOSED_CHANGES_OBJECT,
+        data: stringifyWithoutQuotes({
+          id: proposedchange,
+          ...data,
+        }),
+      });
 
       const mutation = gql`
         ${mutationString}
@@ -324,21 +405,31 @@ export const Conversations = () => {
 
       await graphqlClient.mutate({
         mutation,
-        context: {
-          date,
-        },
+        context: { branch: branch?.name, date },
       });
 
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Branch merged successfully!"} />);
-    } catch (error: any) {
-      console.log("error: ", error);
-
       toast(
-        <Alert type={ALERT_TYPES.SUCCESS} message={"An error occured while merging the branch"} />
+        <Alert
+          type={ALERT_TYPES.SUCCESS}
+          message={`Proposed change ${state === "closed" ? "opened" : "closed"}`}
+        />
       );
-    }
 
-    setIsLoadingMerge(false);
+      if (detailsRefetch) {
+        detailsRefetch();
+      }
+
+      setIsLoadingClose(false);
+
+      return;
+    } catch (e) {
+      setIsLoadingClose(false);
+      toast(
+        <Alert message="Something went wrong while updating the object" type={ALERT_TYPES.ERROR} />
+      );
+      console.error("Something went wrong while updating the object:", e);
+      return;
+    }
   };
 
   const branchesOptions: any[] = branches
@@ -407,6 +498,13 @@ export const Conversations = () => {
                 <dt className="text-sm font-medium text-gray-500">Name</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
                   {proposedChangesDetails?.name.value}
+                </dd>
+              </div>
+
+              <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
+                <dt className="text-sm font-medium text-gray-500">State</dt>
+                <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
+                  <Badge type={getProposedChangesStateBadgeType(state)}>{state}</Badge>
                 </dd>
               </div>
 
@@ -489,8 +587,17 @@ export const Conversations = () => {
                     onClick={handleMerge}
                     buttonType={BUTTON_TYPES.VALIDATE}
                     isLoading={isLoadingMerge}
-                    disabled={!auth?.permissions?.write}>
+                    disabled={!auth?.permissions?.write || state === "closed" || state === "merged"}
+                    className="mr-2">
                     Merge
+                  </Button>
+
+                  <Button
+                    onClick={handleClose}
+                    buttonType={BUTTON_TYPES.CANCEL}
+                    isLoading={isLoadingClose}
+                    disabled={!auth?.permissions?.write || state === "merged"}>
+                    {state === "closed" ? "Re-open" : "Close"}
                   </Button>
                 </dd>
               </div>
