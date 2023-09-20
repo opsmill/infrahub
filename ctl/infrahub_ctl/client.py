@@ -5,14 +5,17 @@ from infrahub_client import InfrahubClient, InfrahubClientSync
 from infrahub_client.config import Config
 
 
-async def initialize_client(**kwargs: Any) -> InfrahubClient:
+async def initialize_client(timeout: int, **kwargs: Any) -> InfrahubClient:
     client_config = {}
 
     if config.SETTINGS.api_token:
         client_config["api_token"] = config.SETTINGS.api_token
 
     client = await InfrahubClient.init(
-        address=config.SETTINGS.server_address, config=Config(**client_config), insert_tracker=True, **kwargs
+        address=config.SETTINGS.server_address,
+        config=Config(timeout=timeout, **client_config),
+        insert_tracker=True,
+        **kwargs
     )
 
     return client
