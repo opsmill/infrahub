@@ -262,7 +262,7 @@ class Registry:
             registry.branch[branch] = obj
 
             # Pull the schema for this branch
-            await registry.schema.load_schema_from_db(session=session, branch=obj)
+            await registry.schema.load_schema(session=session, branch=obj)
 
         return obj
 

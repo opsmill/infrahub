@@ -60,7 +60,7 @@ async def initialization(session: AsyncSession):
 
             hash_in_db = branch.schema_hash.main
             LOGGER.info(f"{branch.name} | importing schema from db")
-            await registry.schema.load_schema_from_db(session=session, branch=branch)
+            await registry.schema.load_schema(session=session, branch=branch)
 
             if branch.update_schema_hash():
                 LOGGER.info(f"{branch.name} | New schema detected {hash_in_db!r} >> {branch.schema_hash.main!r}")

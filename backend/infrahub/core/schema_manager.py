@@ -719,6 +719,27 @@ class SchemaManager(NodeManager):
             getattr(rel, key).value = value
         await rel.save(session=session)
 
+    async def load_schema(
+        self,
+        session: AsyncSession,
+        branch: Optional[Union[str, Branch]] = None,
+    ) -> SchemaBranch:
+        """Load the schema either from the cache or from the database"""
+        branch = await get_branch(branch=branch, session=session)
+
+        if branch.origin_branch:
+            origin_branch: Branch = get_branch(branch=branch.origin_branch, session=session)
+
+            if origin_branch.schema_hash.main == branch.schema_hash.main:
+                origin_schema = self.get_schema_branch(name=origin_branch.name)
+                new_branch_schema = origin_schema.duplicate()
+                self.set_schema_branch(name=branch.name, schema=new_branch_schema)
+                return new_branch_schema
+
+        current_schema = self.get_schema_branch(name=branch.name)
+        schema_diff = branch.schema_hash.compare(current_schema.get_hash_full())
+        return self.load_schema_from_db(session=session, branch=branch, schema_diff=schema_diff)
+
     async def load_schema_from_db(
         self,
         session: AsyncSession,
@@ -731,7 +752,7 @@ class SchemaManager(NodeManager):
         schema = SchemaBranch(cache=self._cache, name=branch.name)
 
         if schema_diff:
-            log.info(f"Loading schema from DB with diff : {schema_diff.dict()}")
+            log.info(f"Loading schema from DB to update : {schema_diff.to_string()}")
 
         group_schema = self.get(name="SchemaGroup", branch=branch)
         for schema_node in await self.query(
@@ -742,9 +763,8 @@ class SchemaManager(NodeManager):
             )
 
         generic_schema = self.get(name="SchemaGeneric", branch=branch)
-        filters = None  # {"kind__value": schema_diff.generics } if schema_diff and schema_diff.generics else None
         for schema_node in await self.query(
-            schema=generic_schema, branch=branch, filters=filters, prefetch_relationships=True, session=session
+            schema=generic_schema, branch=branch, prefetch_relationships=True, session=session
         ):
             kind = f"{schema_node.namespace.value}{schema_node.name.value}"
             schema.set(
@@ -753,9 +773,8 @@ class SchemaManager(NodeManager):
             )
 
         node_schema = self.get(name="SchemaNode", branch=branch)
-        filters = None  # {"kind__value": schema_diff.nodes } if schema_diff and schema_diff.nodes else None
         for schema_node in await self.query(
-            schema=node_schema, branch=branch, filters=filters, prefetch_relationships=True, session=session
+            schema=node_schema, branch=branch, prefetch_relationships=True, session=session
         ):
             kind = f"{schema_node.namespace.value}{schema_node.name.value}"
             schema.set(

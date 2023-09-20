@@ -12,6 +12,9 @@ class SchemaBranchDiff(BaseModel):
     generics: List[str] = Field(default_factory=list)
     groups: List[str] = Field(default_factory=list)
 
+    def to_string(self):
+        return ", ".join(self.nodes + self.generics + self.groups)
+
 
 class SchemaBranchHash(BaseModel):
     main: str
