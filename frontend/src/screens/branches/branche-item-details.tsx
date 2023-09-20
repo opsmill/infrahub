@@ -61,7 +61,7 @@ export const BrancheItemDetails = () => {
 
       <TabsButtons tabs={tabs} qsp={QSP.BRANCH_TAB} />
 
-      {renderContent(qspTab)}
+      <div className="flex flex-col flex-1">{renderContent(qspTab)}</div>
     </>
   );
 };

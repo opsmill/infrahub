@@ -31,7 +31,7 @@ export const Checks = () => {
   }
 
   if (error) {
-    return <ErrorScreen />;
+    return <ErrorScreen message="Something went wrong when fetching the checks list." />;
   }
 
   if (qspTab) {

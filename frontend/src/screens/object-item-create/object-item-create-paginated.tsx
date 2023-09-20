@@ -30,7 +30,6 @@ interface iProps {
 }
 
 export default function ObjectItemCreate(props: iProps) {
-  console.log("RENDER CREATE");
   const { objectname, onCreate, onCancel, refetch, formStructure, customObject = {} } = props;
 
   const [schemaList] = useAtom(schemaState);
@@ -59,7 +58,7 @@ export default function ObjectItemCreate(props: iProps) {
   const { loading, error, data } = useQuery(query, { skip: !schema || !peers.length });
 
   if (error) {
-    return <ErrorScreen />;
+    return <ErrorScreen message="Something went wrong when fetching dropdown options." />;
   }
 
   if (loading || !schema) {
@@ -67,7 +66,7 @@ export default function ObjectItemCreate(props: iProps) {
   }
 
   if (peers.length && !data) {
-    return <NoDataFound />;
+    return <NoDataFound message="No dropdown options found." />;
   }
 
   const objectDetailsData = data && data[schema.kind];
@@ -127,12 +126,7 @@ export default function ObjectItemCreate(props: iProps) {
         onCreate(result?.data?.[`${schema.kind}Create`]);
       }
 
-      console.log("DONE");
-
-      // setTimeout(() => {
-      console.log("REFETCH");
       if (refetch) refetch();
-      // }, 3000);
 
       setIsLoading(false);
     } catch (error: any) {

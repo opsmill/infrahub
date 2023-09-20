@@ -183,7 +183,9 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                     </tbody>
                   </table>
 
-                  {relationshipsData && !relationshipsData.length && <NoDataFound />}
+                  {relationshipsData && !relationshipsData.length && (
+                    <NoDataFound message="No relationship found." />
+                  )}
                 </div>
               </div>
             </div>

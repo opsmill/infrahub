@@ -46,7 +46,7 @@ export const ValidatorDetails = () => {
   }
 
   if (error) {
-    return <ErrorScreen />;
+    return <ErrorScreen message="Something went wrong when fetching the validator details." />;
   }
 
   const validator = data?.CoreValidator?.edges[0]?.node;
