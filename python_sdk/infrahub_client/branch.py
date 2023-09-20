@@ -4,8 +4,9 @@ from typing import TYPE_CHECKING, Any, Dict, Optional, Union
 
 from pydantic import BaseModel
 
+from infrahub_client.exceptions import BranchNotFound
 from infrahub_client.graphql import Mutation
-from infrahub_client.queries import QUERY_ALL_BRANCHES
+from infrahub_client.queries import QUERY_ALL_BRANCHES, QUERY_BRANCH
 
 if TYPE_CHECKING:
     from infrahub_client.client import InfrahubClient, InfrahubClientSync
@@ -132,6 +133,15 @@ class InfrahubBranchManager(InfraHubBranchManagerBase):
 
         return branches
 
+    async def get(self, branch_name: str) -> BranchData:
+        data = await self.client.execute_graphql(
+            query=QUERY_BRANCH, variables={"branch_name": branch_name}, tracker="query-branch"
+        )
+
+        if not data["Branch"]:
+            raise BranchNotFound(identifier=branch_name)
+        return BranchData(**data["Branch"][0])
+
     async def diff_data(
         self,
         branch_name: str,
@@ -156,6 +166,15 @@ class InfrahubBranchManagerSync(InfraHubBranchManagerBase):
         branches = {branch["name"]: BranchData(**branch) for branch in data["Branch"]}
 
         return branches
+
+    def get(self, branch_name: str) -> BranchData:
+        data = self.client.execute_graphql(
+            query=QUERY_BRANCH, variables={"branch_name": branch_name}, tracker="query-branch"
+        )
+
+        if not data["Branch"]:
+            raise BranchNotFound(identifier=branch_name)
+        return BranchData(**data["Branch"][0])
 
     def create(
         self, branch_name: str, data_only: bool = False, description: str = "", background_execution: bool = False

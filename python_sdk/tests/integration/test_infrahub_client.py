@@ -4,6 +4,7 @@ from infrahub.core import registry
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub_client import Config, InfrahubClient
+from infrahub_client.exceptions import BranchNotFound
 from infrahub_client.node import InfrahubNode
 
 from .conftest import InfrahubTestClient
@@ -75,7 +76,12 @@ class TestInfrahubClient:
 
     async def test_query_branches(self, client: InfrahubClient, init_db_base, base_dataset):
         branches = await client.branch.all()
+        main = await client.branch.get(branch_name="main")
 
+        with pytest.raises(BranchNotFound):
+            await client.branch.get(branch_name="not-found")
+
+        assert main.name == "main"
         assert "main" in branches
         assert "branch01" in branches
 
