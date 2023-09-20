@@ -59,7 +59,9 @@ async def initialization(session: AsyncSession):
         hash_in_db = default_branch.schema_hash.main
         await registry.schema.load_schema_from_db(session=session, branch=default_branch)
         if default_branch.update_schema_hash():
-            LOGGER.warning(f"{default_branch.name} | New schema detected after pulling the schema from the db : {hash_in_db!r} >> {default_branch.schema_hash.main!r}")
+            LOGGER.warning(
+                f"{default_branch.name} | New schema detected after pulling the schema from the db : {hash_in_db!r} >> {default_branch.schema_hash.main!r}"
+            )
 
         for branch in branches:
             if branch.name in [default_branch.name, GLOBAL_BRANCH_NAME]:
@@ -70,7 +72,9 @@ async def initialization(session: AsyncSession):
             await registry.schema.load_schema(session=session, branch=branch)
 
             if branch.update_schema_hash():
-                LOGGER.warning(f"{branch.name} | New schema detected after pulling the schema from the db {hash_in_db!r} >> {branch.schema_hash.main!r}")
+                LOGGER.warning(
+                    f"{branch.name} | New schema detected after pulling the schema from the db {hash_in_db!r} >> {branch.schema_hash.main!r}"
+                )
 
     # ---------------------------------------------------
     # Load internal models into the registry
