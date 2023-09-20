@@ -727,18 +727,19 @@ class SchemaManager(NodeManager):
         """Load the schema either from the cache or from the database"""
         branch = await get_branch(branch=branch, session=session)
 
-        if branch.origin_branch:
-            origin_branch: Branch = get_branch(branch=branch.origin_branch, session=session)
+        if not branch.is_default and branch.origin_branch:
+            origin_branch: Branch = await get_branch(branch=branch.origin_branch, session=session)
 
             if origin_branch.schema_hash.main == branch.schema_hash.main:
                 origin_schema = self.get_schema_branch(name=origin_branch.name)
                 new_branch_schema = origin_schema.duplicate()
                 self.set_schema_branch(name=branch.name, schema=new_branch_schema)
+                log.info("Loading schema from cache")
                 return new_branch_schema
 
         current_schema = self.get_schema_branch(name=branch.name)
         schema_diff = branch.schema_hash.compare(current_schema.get_hash_full())
-        return self.load_schema_from_db(session=session, branch=branch, schema_diff=schema_diff)
+        return await self.load_schema_from_db(session=session, branch=branch, schema_diff=schema_diff)
 
     async def load_schema_from_db(
         self,

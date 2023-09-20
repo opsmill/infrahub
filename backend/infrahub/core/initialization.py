@@ -54,16 +54,23 @@ async def initialization(session: AsyncSession):
         schema = SchemaRoot(**internal_schema)
         registry.schema.register_schema(schema=schema)
 
+        # Import the default branch
+        default_branch: Branch = registry.branch[config.SETTINGS.main.default_branch]
+        hash_in_db = default_branch.schema_hash.main
+        await registry.schema.load_schema_from_db(session=session, branch=default_branch)
+        if default_branch.update_schema_hash():
+            LOGGER.warning(f"{default_branch.name} | New schema detected after pulling the schema from the db : {hash_in_db!r} >> {default_branch.schema_hash.main!r}")
+
         for branch in branches:
-            if branch.name == GLOBAL_BRANCH_NAME:
+            if branch.name in [default_branch.name, GLOBAL_BRANCH_NAME]:
                 continue
 
             hash_in_db = branch.schema_hash.main
-            LOGGER.info(f"{branch.name} | importing schema from db")
+            LOGGER.info(f"{branch.name} | importing schema")
             await registry.schema.load_schema(session=session, branch=branch)
 
             if branch.update_schema_hash():
-                LOGGER.info(f"{branch.name} | New schema detected {hash_in_db!r} >> {branch.schema_hash.main!r}")
+                LOGGER.warning(f"{branch.name} | New schema detected after pulling the schema from the db {hash_in_db!r} >> {branch.schema_hash.main!r}")
 
     # ---------------------------------------------------
     # Load internal models into the registry
@@ -176,9 +183,8 @@ async def first_time_initialization(session: AsyncSession):
     schema_branch.load_schema(schema=SchemaRoot(**core_models))
     schema_branch.process()
     await registry.schema.load_schema_to_db(schema=schema_branch, branch=default_branch, session=session)
-
-    if default_branch.update_schema_hash():
-        await default_branch.save(session=session)
+    default_branch.update_schema_hash()
+    await default_branch.save(session=session)
 
     LOGGER.info("Created the Schema in the database")
 
