@@ -39,7 +39,6 @@ class BaseClient:
     def __init__(
         self,
         address: str = "",
-        default_timeout: int = 10,
         retry_on_failure: bool = False,
         retry_delay: int = 5,
         log: Optional[Logger] = None,
@@ -50,7 +49,6 @@ class BaseClient:
         config: Optional[Config] = None,
     ):
         self.client = None
-        self.default_timeout = default_timeout
         self.retry_on_failure = retry_on_failure
         self.retry_delay = retry_delay
         self.default_branch = default_branch
@@ -67,6 +65,7 @@ class BaseClient:
         else:
             self.config = Config()
 
+        self.default_timeout = self.config.timeout
         self.config.address = address or self.config.address
         self.address = self.config.address
 
