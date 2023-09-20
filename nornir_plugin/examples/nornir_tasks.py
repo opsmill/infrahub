@@ -1,6 +1,6 @@
 from nornir import InitNornir
 from nornir_infrahub.plugins.tasks import (
-    generate_artifact,
+    generate_artifacts,
     get_artifact,
     regenerate_host_artifact,
 )
@@ -39,10 +39,10 @@ def main():
         }
     )
 
-    # generate_artifact, generates the artifact for all the targets in the Artifact definition
+    # generate_artifacts, generates the artifact for all the targets in the Artifact definition
     # we only need to run this task once, per artifact definition
     run_once = nr.filter(name="jfk1-edge1")
-    result = run_once.run(task=generate_artifact, artifact="startup-config", timeout=20)
+    result = run_once.run(task=generate_artifacts, artifact="startup-config", timeout=20)
 
     for _, v in result.items():
         if v[0].failed:
