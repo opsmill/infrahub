@@ -190,7 +190,7 @@ async def git_repo_04(client, git_upstream_repo_03, git_repos_dir, branch01: Bra
         name=git_upstream_repo_03["name"],
         location=git_upstream_repo_03["path"],
     )
-    await repo.create_branch_in_git(branch=branch01)
+    await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
 
     # Checkout branch01 in the upstream repo after the repo has been cloned
     # Update the first file at the top level and commit the change in the branch
@@ -250,7 +250,7 @@ async def git_repo_06(client, git_upstream_repo_01, git_repos_dir, branch01: Bra
         name=git_upstream_repo_01["name"],
         location=git_upstream_repo_01["path"],
     )
-    await repo.create_branch_in_git(branch=branch01)
+    await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
 
     # Checkout branch01 in the upstream repo after the repo has been cloned
     # Update the first file at the top level and commit the change in the branch
@@ -342,7 +342,7 @@ async def git_repo_jinja(client, git_upstream_repo_02, git_repos_dir, branch01: 
         name=git_upstream_repo_02["name"],
         location=git_upstream_repo_02["path"],
     )
-    await repo.create_branch_in_git(branch=branch01)
+    await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
 
     return repo
 
