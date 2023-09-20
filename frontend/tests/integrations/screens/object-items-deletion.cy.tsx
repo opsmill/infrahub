@@ -9,6 +9,7 @@ import { withAuth } from "../../../src/decorators/withAuth";
 import ObjectItems from "../../../src/screens/object-items/object-items-paginated";
 import { configState } from "../../../src/state/atoms/config.atom";
 import { schemaState } from "../../../src/state/atoms/schema.atom";
+import { mockedToken } from "../../fixtures/auth";
 import { configMocks } from "../../mocks/data/config";
 import {
   graphqlQueriesMocksData,
@@ -18,9 +19,6 @@ import {
 } from "../../mocks/data/graphqlQueries";
 import { schemaMocks } from "../../mocks/data/schema";
 import { TestProvider } from "../../mocks/jotai/atom";
-
-const mockedToken =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxNzg2ODg2NS1lMTQ4LTk1YjUtMmVjNC1kOGVhZGI5MGViZDgiLCJpYXQiOjE2OTUyMTU3NDMsIm5iZiI6MTY5NTIxNTc0MywiZXhwIjoxNjk1MjE5MzQzLCJmcmVzaCI6ZmFsc2UsInR5cGUiOiJhY2Nlc3MiLCJzZXNzaW9uX2lkIjoiMTc4NjhlYjctZTZmNi1kYjQyLTM5YWQtZDhlNWVlYjA4YmViIiwidXNlcl9jbGFpbXMiOnsicm9sZSI6ImFkbWluIn19.yubBRx2kqDpH6piZPj_gjlGpbCeTy1RfGG_v7FRFoHg";
 
 // URL for the current view
 const mockedUrl = "/objects/GraphQLQuery";

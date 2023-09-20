@@ -5,10 +5,12 @@ import { MockedProvider } from "@apollo/client/testing";
 import { formatDistanceToNow } from "date-fns";
 import React from "react";
 import { Route, Routes } from "react-router-dom";
+import { ACCESS_TOKEN_KEY } from "../../../src/config/constants";
 import { withAuth } from "../../../src/decorators/withAuth";
 import ObjectDetails from "../../../src/screens/object-item-details/object-item-details-paginated";
 import { configState } from "../../../src/state/atoms/config.atom";
 import { schemaState } from "../../../src/state/atoms/schema.atom";
+import { mockedToken } from "../../fixtures/auth";
 import {
   accountTokenDetailsMocksDataBis,
   accountTokenDetailsMocksDataWithDateBis,
@@ -164,6 +166,7 @@ describe("Object details", () => {
   beforeEach(function () {
     cy.fixture("device-detail-update-name").as("mutation");
     cy.fixture("account-token-update-date").as("mutationToken");
+    localStorage.setItem(ACCESS_TOKEN_KEY, mockedToken);
   });
 
   it("should fetch the object details, open the edit form and update the object name", function () {
