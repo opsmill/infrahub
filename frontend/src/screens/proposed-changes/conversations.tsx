@@ -7,7 +7,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/alert";
 import { AVATAR_SIZE, Avatar } from "../../components/avatar";
-import { Badge } from "../../components/badge";
+import { BADGE_TYPES, Badge } from "../../components/badge";
 import { BUTTON_TYPES, Button } from "../../components/button";
 import { AddComment } from "../../components/conversations/add-comment";
 import { Thread } from "../../components/conversations/thread";
@@ -92,6 +92,26 @@ export const getFormStructure = (
     isProtected: false,
   },
 ];
+
+const getBadgeType = (state: string) => {
+  switch (state) {
+    case "open": {
+      return BADGE_TYPES.VALIDATE;
+    }
+    case "closed": {
+      return BADGE_TYPES.CANCEL;
+    }
+    case "merged": {
+      return BADGE_TYPES.WARNING;
+    }
+    case "canceled": {
+      return BADGE_TYPES.DISABLED;
+    }
+    default: {
+      return "";
+    }
+  }
+};
 
 export const Conversations = () => {
   const { proposedchange } = useParams();
@@ -407,6 +427,15 @@ export const Conversations = () => {
                 <dt className="text-sm font-medium text-gray-500">Name</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
                   {proposedChangesDetails?.name.value}
+                </dd>
+              </div>
+
+              <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
+                <dt className="text-sm font-medium text-gray-500">State</dt>
+                <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
+                  <Badge type={getBadgeType(proposedChangesDetails?.state.value)}>
+                    {proposedChangesDetails?.state.value}
+                  </Badge>
                 </dd>
               </div>
 

@@ -6,6 +6,7 @@ export enum BADGE_TYPES {
   CANCEL,
   WARNING,
   LIGHT,
+  DISABLED,
 }
 
 // type BadgeProps = {}
@@ -37,6 +38,12 @@ const getClasseName = (type: BADGE_TYPES, onClick: Function) => {
     case BADGE_TYPES.LIGHT: {
       return `
         bg-custom-white text-gray-800
+        ${onClick ? "cursor-pointer hover:bg-gray-50" : ""}
+      `;
+    }
+    case BADGE_TYPES.DISABLED: {
+      return `
+        bg-gray-300 text-gray-800
         ${onClick ? "cursor-pointer hover:bg-gray-50" : ""}
       `;
     }
