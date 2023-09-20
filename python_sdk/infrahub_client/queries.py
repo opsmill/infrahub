@@ -34,62 +34,21 @@ query {
     }
 }
 """
-QUERY_BRANCH_DIFF = """
-            query($branch_name: String!, $branch_only: Boolean!, $diff_from: String!, $diff_to: String! ) {
-                diff(branch: $branch_name, branch_only: $branch_only, time_from: $diff_from, time_to: $diff_to ) {
-                    nodes {
-                        branch
-                        kind
-                        id
-                        changed_at
-                        action
-                        attributes {
-                            name
-                            id
-                            changed_at
-                            action
-                            properties {
-                                action
-                                type
-                                changed_at
-                                branch
-                                value {
-                                    previous
-                                    new
-                                }
-                            }
-                        }
-                    }
-                    relationships {
-                        branch
-                        id
-                        name
-                        properties {
-                            branch
-                            type
-                            changed_at
-                            action
-                            value {
-                                previous
-                                new
-                            }
-                        }
-                        nodes {
-                            id
-                            kind
-                        }
-                        changed_at
-                        action
-                    }
-                    files {
-                        action
-                        repository
-                        branch
-                        location
-                    }
-                }
-            }
-            """
+
+QUERY_BRANCH = """
+query GetBranch($branch_name: String!) {
+    Branch(name: $branch_name) {
+        id
+        name
+        description
+        origin_branch
+        branched_from
+        is_default
+        is_data_only
+    }
+}
+"""
+
 
 MUTATION_COMMIT_UPDATE = """
 mutation ($repository_id: String!, $commit: String!) {
