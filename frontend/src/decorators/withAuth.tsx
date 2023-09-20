@@ -122,20 +122,6 @@ export const withAuth = (AppComponent: any) => (props: any) => {
     }
   };
 
-  if (!displaySignIn && config?.experimental_features?.ignore_authentication_requirements) {
-    const auth = {
-      permissions: {
-        write: true,
-      },
-    } as tAuthContext;
-
-    return (
-      <AuthContext.Provider value={auth}>
-        <AppComponent {...props} />
-      </AuthContext.Provider>
-    );
-  }
-
   if (!displaySignIn && accessToken) {
     const data = parseJwt(accessToken);
 

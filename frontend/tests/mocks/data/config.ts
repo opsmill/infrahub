@@ -19,6 +19,5 @@ export const configMocks = {
   experimental_features: {
     pull_request: false,
     paginated: true,
-    ignore_authentication_requirements: true,
   },
 };
