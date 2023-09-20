@@ -7,7 +7,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/alert";
 import { AVATAR_SIZE, Avatar } from "../../components/avatar";
-import { BADGE_TYPES, Badge } from "../../components/badge";
+import { Badge } from "../../components/badge";
 import { BUTTON_TYPES, Button } from "../../components/button";
 import { AddComment } from "../../components/conversations/add-comment";
 import { Thread } from "../../components/conversations/thread";
@@ -38,6 +38,7 @@ import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { objectToString } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
+import { getProposedChangesStateBadgeType } from "../../utils/proposed-changes";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import ErrorScreen from "../error-screen/error-screen";
@@ -96,23 +97,6 @@ export const getFormStructure = (
     isProtected: false,
   },
 ];
-
-const getBadgeType = (state: string) => {
-  switch (state) {
-    case "closed": {
-      return BADGE_TYPES.CANCEL;
-    }
-    case "merged": {
-      return BADGE_TYPES.VALIDATE;
-    }
-    case "canceled": {
-      return BADGE_TYPES.DISABLED;
-    }
-    default: {
-      return BADGE_TYPES.VALIDATE;
-    }
-  }
-};
 
 export const Conversations = (props: tConversations) => {
   const { refetch: detailsRefetch } = props;
@@ -520,7 +504,7 @@ export const Conversations = (props: tConversations) => {
               <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
                 <dt className="text-sm font-medium text-gray-500">State</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
-                  <Badge type={getBadgeType(state)}>{state}</Badge>
+                  <Badge type={getProposedChangesStateBadgeType(state)}>{state}</Badge>
                 </dd>
               </div>
 
