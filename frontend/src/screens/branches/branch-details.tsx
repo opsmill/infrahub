@@ -125,7 +125,7 @@ export const BranchDetails = () => {
     <div className="bg-custom-white p-6">
       {loading && <LoadingScreen />}
 
-      {error && <ErrorScreen />}
+      {error && <ErrorScreen message="Something went wrong when fetching the branch details." />}
 
       {displayModal && (
         <ModalDelete

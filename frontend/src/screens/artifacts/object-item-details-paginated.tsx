@@ -97,8 +97,7 @@ export default function ObjectItemDetails() {
   const { loading, error, data, refetch } = useQuery(query, { skip: !schemaData });
 
   if (error) {
-    console.error("Error while loading the object details: ", error);
-    return <ErrorScreen />;
+    return <ErrorScreen message="Something went wrong when fetching object details." />;
   }
 
   if (loading || !schemaData) {
@@ -109,11 +108,7 @@ export default function ObjectItemDetails() {
     // Redirect to the main list if there is no item for this is
     // navigate(`/objects/${objectname}`);
 
-    return (
-      <div className="flex column justify-center">
-        <NoDataFound message="Sorry, no item found for that id" />
-      </div>
-    );
+    return <NoDataFound message="No item found for that id." />;
   }
 
   const objectDetailsData = data[schemaData.kind]?.edges[0]?.node;

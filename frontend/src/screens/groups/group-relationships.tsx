@@ -1,9 +1,7 @@
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import { useParams } from "react-router-dom";
-import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
-import { ALERT_TYPES, Alert } from "../../components/alert";
 import { Pagination } from "../../components/pagination";
 import { QSP } from "../../config/qsp";
 import { getObjectRelationshipsDetailsPaginated } from "../../graphql/queries/objects/getObjectRelationshipDetails";
@@ -69,13 +67,7 @@ export default function GroupRelationships(props: RelationshipsDetailsProps) {
   }
 
   if (error) {
-    console.error(`Error while loading the ${relationshipTab}:`, error);
-
-    toast(
-      <Alert type={ALERT_TYPES.ERROR} message={`Error while loading the ${relationshipTab}`} />
-    );
-
-    return <ErrorScreen />;
+    return <ErrorScreen message="Something went wrong when fetching the group relationships." />;
   }
 
   if (!data || !relationshipTab) {

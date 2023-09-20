@@ -91,9 +91,7 @@ describe("Main application", () => {
     });
 
     // Check if there are some items in the data diff view
-    cy.get(":nth-child(2) > :nth-child(1) > :nth-child(4)")
-      .find("div")
-      .should("have.length.above", 1);
+    cy.get("div.text-xs").find("div").should("have.length.above", 1);
 
     cy.contains("203.0.113.242/29").click();
 

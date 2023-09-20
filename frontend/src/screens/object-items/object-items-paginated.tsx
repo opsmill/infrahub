@@ -152,8 +152,7 @@ export default function ObjectItems(props: any) {
   };
 
   if (error) {
-    console.log("Error while loading objects list: ", error);
-    return <ErrorScreen />;
+    return <ErrorScreen message="Something went wrong when fetching list." />;
   }
 
   return (
@@ -242,7 +241,7 @@ export default function ObjectItems(props: any) {
                   </tbody>
                 </table>
 
-                {!rows?.length && <NoDataFound />}
+                {!rows?.length && <NoDataFound message="No items found." />}
 
                 <Pagination count={count} />
               </div>

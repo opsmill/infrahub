@@ -133,7 +133,7 @@ export const Conversations = (props: tConversations) => {
   }
 
   if (error) {
-    return <ErrorScreen />;
+    return <ErrorScreen message="Something went wrong when fetching the conversations." />;
   }
 
   const threads = data

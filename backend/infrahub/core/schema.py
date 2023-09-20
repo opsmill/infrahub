@@ -1676,6 +1676,7 @@ core_models = {
             "namespace": "Core",
             "description": "A check related to some Data",
             "label": "Data Check",
+            "display_labels": ["label__value"],
             "inherit_from": ["CoreCheck"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
@@ -1687,6 +1688,7 @@ core_models = {
             "namespace": "Core",
             "description": "A standard check",
             "label": "Standard Check",
+            "display_labels": ["label__value"],
             "inherit_from": ["CoreCheck"],
             "branch": BranchSupportType.AGNOSTIC.value,
         },
@@ -1695,6 +1697,7 @@ core_models = {
             "namespace": "Core",
             "description": "A check related to the schema",
             "label": "Schema Check",
+            "display_labels": ["label__value"],
             "inherit_from": ["CoreCheck"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
@@ -1706,6 +1709,7 @@ core_models = {
             "namespace": "Core",
             "description": "A check related to a file in a Git Repository",
             "label": "File Check",
+            "display_labels": ["label__value"],
             "inherit_from": ["CoreCheck"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
@@ -1718,6 +1722,7 @@ core_models = {
             "namespace": "Core",
             "description": "A check related to an artifact",
             "label": "Artifact Check",
+            "display_labels": ["label__value"],
             "inherit_from": ["CoreCheck"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
@@ -1731,6 +1736,7 @@ core_models = {
             "namespace": "Core",
             "description": "A check to validate the data integrity between two branches",
             "label": "Data Validator",
+            "display_labels": ["label__value"],
             "inherit_from": ["CoreValidator"],
             "branch": BranchSupportType.AGNOSTIC.value,
         },
@@ -1739,6 +1745,7 @@ core_models = {
             "namespace": "Core",
             "description": "A Validator related to a specific repository",
             "label": "Repository Validator",
+            "display_labels": ["label__value"],
             "inherit_from": ["CoreValidator"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "relationships": [
@@ -1757,6 +1764,7 @@ core_models = {
             "namespace": "Core",
             "description": "A validator related to the schema",
             "label": "Schema Validator",
+            "display_labels": ["label__value"],
             "inherit_from": ["CoreValidator"],
             "branch": BranchSupportType.AGNOSTIC.value,
         },
@@ -1765,6 +1773,7 @@ core_models = {
             "namespace": "Core",
             "description": "A validator related to the artifacts",
             "label": "Artifact Validator",
+            "display_labels": ["label__value"],
             "inherit_from": ["CoreValidator"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "relationships": [

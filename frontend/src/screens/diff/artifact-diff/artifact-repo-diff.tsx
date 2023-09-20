@@ -36,7 +36,7 @@ export const ArtifactRepoDiff = (props: any) => {
   }
 
   if (error) {
-    return <ErrorScreen />;
+    return <ErrorScreen message="Something went wrong when artifact differences." />;
   }
 
   const artifact = data?.CoreArtifact?.edges[0]?.node?.object?.node?.display_label;

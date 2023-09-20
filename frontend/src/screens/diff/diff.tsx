@@ -80,7 +80,7 @@ export const Diff = () => {
   };
 
   return (
-    <div>
+    <div className="flex flex-col flex-1">
       <div className="bg-custom-white p-2 flex">
         <Filters fields={fields} onSubmit={handleSubmit} />
       </div>
@@ -89,7 +89,7 @@ export const Diff = () => {
         <Tabs tabs={tabs} qsp={QSP.BRANCH_DIFF_TAB} />
       </div>
 
-      <div>{renderContent(qspTab)}</div>
+      <div className="flex flex-col flex-1">{renderContent(qspTab)}</div>
     </div>
   );
 };

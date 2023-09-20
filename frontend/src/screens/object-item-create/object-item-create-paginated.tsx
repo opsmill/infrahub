@@ -59,7 +59,7 @@ export default function ObjectItemCreate(props: iProps) {
   const { loading, error, data } = useQuery(query, { skip: !schema || !peers.length });
 
   if (error) {
-    return <ErrorScreen />;
+    return <ErrorScreen message="Something went wrong when fetching dropdown options." />;
   }
 
   if (loading || !schema) {
@@ -67,7 +67,7 @@ export default function ObjectItemCreate(props: iProps) {
   }
 
   if (peers.length && !data) {
-    return <NoDataFound />;
+    return <NoDataFound message="No dropdown options found." />;
   }
 
   const objectDetailsData = data && data[schema.kind];

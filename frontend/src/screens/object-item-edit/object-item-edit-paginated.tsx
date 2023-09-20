@@ -72,16 +72,7 @@ export default function ObjectItemEditComponent(props: Props) {
   const { loading, error, data } = useQuery(query, { skip: !schema });
 
   if (error) {
-    console.error("An error occured while retrieving the object details: ", error);
-
-    toast(
-      <Alert
-        message="An error occured while retrieving the object details"
-        type={ALERT_TYPES.ERROR}
-      />
-    );
-
-    return <ErrorScreen />;
+    return <ErrorScreen message="Something went wrong when fetching the object details." />;
   }
 
   if (loading || !schema) {
@@ -89,7 +80,7 @@ export default function ObjectItemEditComponent(props: Props) {
   }
 
   if (!data || (data && !data[schema.kind])) {
-    return <NoDataFound />;
+    return <NoDataFound message="No details found." />;
   }
 
   const objectDetailsData = data[schema.kind]?.edges[0]?.node;
