@@ -84,10 +84,15 @@ export const withAuth = (AppComponent: any) => (props: any) => {
   const [accessToken, setAccessToken] = useState(localToken);
   const navigate = useNavigate();
 
-  const signOut = () => {
+  const signOut = async () => {
+    await fetchUrl(CONFIG.LOGOUT_URL, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+      },
+    });
     removeTokens();
     setAccessToken("");
-    // setDisplaySignin(true);
   };
 
   const signIn = async (data: any) => {
@@ -116,20 +121,6 @@ export const withAuth = (AppComponent: any) => (props: any) => {
       navigate("/");
     }
   };
-
-  if (!displaySignIn && config?.experimental_features?.ignore_authentication_requirements) {
-    const auth = {
-      permissions: {
-        write: true,
-      },
-    } as tAuthContext;
-
-    return (
-      <AuthContext.Provider value={auth}>
-        <AppComponent {...props} />
-      </AuthContext.Provider>
-    );
-  }
 
   if (!displaySignIn && accessToken) {
     const data = parseJwt(accessToken);

@@ -27,7 +27,7 @@ export const PROPOSED_CHANGES_TABS = {
   CONVERSATIONS: "conversations",
 };
 
-const renderContent = (tab: string | null | undefined) => {
+const renderContent = (tab: string | null | undefined, refetch: any) => {
   switch (tab) {
     case DIFF_TABS.FILES:
       return <FilesDiff />;
@@ -40,7 +40,7 @@ const renderContent = (tab: string | null | undefined) => {
     case DIFF_TABS.CHECKS:
       return <Checks />;
     default: {
-      return <Conversations />;
+      return <Conversations refetch={refetch} />;
     }
   }
 };
@@ -70,14 +70,16 @@ export const ProposedChangesDetails = () => {
     ${queryString}
   `;
 
-  const { loading, error, data } = useQuery(query, { skip: !schemaData });
+  const { loading, error, data, refetch } = useQuery(query, { skip: !schemaData });
 
   if (!schemaData || loading) {
     return <LoadingScreen />;
   }
 
   if (error) {
-    return <ErrorScreen />;
+    return (
+      <ErrorScreen message="Something went wrong when fetching the proposed changes details." />
+    );
   }
 
   const result = data ? data[schemaData?.kind]?.edges[0]?.node : {};
@@ -119,7 +121,7 @@ export const ProposedChangesDetails = () => {
   ];
 
   return (
-    <div>
+    <>
       <div className="bg-custom-white px-4 py-5 pb-0 sm:px-6 flex items-center">
         <div
           className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline"
@@ -137,7 +139,7 @@ export const ProposedChangesDetails = () => {
 
       <Tabs tabs={tabs} qsp={QSP.PROPOSED_CHANGES_TAB} />
 
-      {renderContent(qspTab)}
-    </div>
+      {renderContent(qspTab, refetch)}
+    </>
   );
 };

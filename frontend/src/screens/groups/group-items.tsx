@@ -115,8 +115,7 @@ export default function GroupItems() {
   };
 
   if (error) {
-    console.log("Error while loading objects list: ", error);
-    return <ErrorScreen />;
+    return <ErrorScreen message="Something went wrong when fetching the group items." />;
   }
 
   return (
@@ -127,9 +126,6 @@ export default function GroupItems() {
             <div className="text-xl font-semibold text-gray-900">
               {schemaData.name} ({count})
             </div>
-            <p className="mt-2 text-sm text-gray-700 m-0 pl-2 mb-1">
-              A list of all the {schemaData.kind} in your infrastructure.
-            </p>
           </div>
         )}
       </div>
@@ -200,7 +196,7 @@ export default function GroupItems() {
                   </tbody>
                 </table>
 
-                {!rows?.length && <NoDataFound />}
+                {!rows?.length && <NoDataFound message="No group items found." />}
 
                 <Pagination count={count} />
               </div>

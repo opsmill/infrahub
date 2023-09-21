@@ -22,7 +22,7 @@ export const Checks = () => {
     ${queryString}
   `;
 
-  const { loading, error, data, refetch } = useQuery(query, { pollInterval: 15000 });
+  const { loading, error, data, refetch } = useQuery(query, { pollInterval: 10000 });
 
   const validators = data?.CoreValidator?.edges?.map((edge: any) => edge.node);
 
@@ -31,7 +31,7 @@ export const Checks = () => {
   }
 
   if (error) {
-    return <ErrorScreen />;
+    return <ErrorScreen message="Something went wrong when fetching the checks list." />;
   }
 
   if (qspTab) {

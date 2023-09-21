@@ -39,6 +39,8 @@ import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
 
 export default function ObjectItems(props: any) {
+  console.log("RENDER LIST");
+
   const { objectname: objectnameFromParams } = useParams();
 
   const { objectname: objectnameFromProps = "", filters: filtersFromProps = [] } = props;
@@ -150,8 +152,7 @@ export default function ObjectItems(props: any) {
   };
 
   if (error) {
-    console.log("Error while loading objects list: ", error);
-    return <ErrorScreen />;
+    return <ErrorScreen message="Something went wrong when fetching list." />;
   }
 
   return (
@@ -162,9 +163,6 @@ export default function ObjectItems(props: any) {
             <h1 className="text-xl font-semibold text-gray-900">
               {schemaData.name} ({count})
             </h1>
-            <p className="mt-2 text-sm text-gray-700 m-0 pl-2 mb-1">
-              A list of all the {schemaData.kind} in your infrastructure.
-            </p>
           </div>
         )}
 
@@ -243,7 +241,7 @@ export default function ObjectItems(props: any) {
                   </tbody>
                 </table>
 
-                {!rows?.length && <NoDataFound />}
+                {!rows?.length && <NoDataFound message="No items found." />}
 
                 <Pagination count={count} />
               </div>

@@ -32,6 +32,7 @@ scrape_configs:
                     app:
                     request_id:
                     branch:
+                    trace_id:
                 source: tmp_msg
           # Parsing Infrahub logs when INFRAHUB_PRODUCTION=true
           - json:
@@ -44,6 +45,7 @@ scrape_configs:
                     event: event
                     stream: stream
                     request_id: request_id
+                    trace_id: trace_id
                     app: app
                     logger: logger
                     branch: branch
@@ -62,7 +64,8 @@ scrape_configs:
                 source: message
                 template: "\
                 {{ if .msg }}{{ .msg }}{{ else if .event }}{{ .event }}\
-                {{ if .request_id }}request[{{ .request_id }}] {{ end }}\
+                {{ if .request_id }}RequestID={{ .request_id }} {{ end }}\
+                {{ if .trace_id }}TraceID={{ .trace_id }} {{ end }}\
                 {{ if .branch }}branch ({{ .branch }}){{ end }}{{ end }}"
           - template:
                 source: timestamp

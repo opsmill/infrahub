@@ -225,14 +225,14 @@ class TestInfrahubClient:
 
     async def test_import_all_yaml_files(self, session, client: InfrahubClient, repo: InfrahubRepository, query_99):
         commit = repo.get_commit_value(branch_name="main")
-        await repo.import_all_yaml_files(branch_name="main", commit=commit)
+        await repo.import_all_yaml_files(branch_name="main", commit=commit, exclude=["artifact_definitions"])
 
         rfiles = await client.all(kind="CoreRFile")
         assert len(rfiles) == 2
 
         # Validate if the function is idempotent, another import just after the first one shouldn't change anything
         nbr_relationships_before = await count_relationships(session=session)
-        await repo.import_all_yaml_files(branch_name="main", commit=commit)
+        await repo.import_all_yaml_files(branch_name="main", commit=commit, exclude=["artifact_definitions"])
         assert await count_relationships(session=session) == nbr_relationships_before
 
         # 1. Modify an object to validate if its being properly updated
@@ -253,7 +253,7 @@ class TestInfrahubClient:
         )
         await obj.save(session=session)
 
-        await repo.import_all_yaml_files(branch_name="main", commit=commit)
+        await repo.import_all_yaml_files(branch_name="main", commit=commit, exclude=["artifact_definitions"])
 
         modified_rfile = await client.get(kind="CoreRFile", id=rfiles[0].id)
         assert modified_rfile.template_path.value == rfile_template_path_value_before_change

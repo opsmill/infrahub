@@ -5,13 +5,18 @@ import re
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 import ujson
+from pydantic import BaseModel, Field
 
 from infrahub.core import registry
 from infrahub.core.constants import BranchSupportType, RelationshipStatus
-from infrahub.core.property import FlagPropertyMixin, NodePropertyMixin
+from infrahub.core.property import (
+    FlagPropertyMixin,
+    NodePropertyData,
+    NodePropertyMixin,
+    ValuePropertyData,
+)
 from infrahub.core.query import QueryElement, QueryNode, QueryRel
 from infrahub.core.query.attribute import (
-    AttributeCreateQuery,
     AttributeGetQuery,
     AttributeUpdateFlagQuery,
     AttributeUpdateNodePropertyQuery,
@@ -22,6 +27,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import add_relationship, update_relationships_to
 from infrahub.exceptions import ValidationError
 from infrahub.helpers import hash_password
+from infrahub_client import UUIDT
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -33,6 +39,21 @@ if TYPE_CHECKING:
     from infrahub.core.schema import AttributeSchema
 
 # pylint: disable=redefined-builtin,c-extension-no-member
+
+
+class AttributeCreateData(BaseModel):
+    uuid: str
+    name: str
+    type: str
+    branch: str
+    branch_level: int
+    branch_support: str
+    status: str
+    value: Any
+    is_protected: bool
+    is_visible: bool
+    source_prop: List[ValuePropertyData] = Field(default_factory=list)
+    owner_prop: List[NodePropertyData] = Field(default_factory=list)
 
 
 class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
@@ -200,15 +221,15 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         """Deserialize the value coming from the database."""
         return value
 
-    async def save(self, session: AsyncSession, at: Optional[Timestamp] = None):
+    async def save(self, session: AsyncSession, at: Optional[Timestamp] = None) -> bool:
         """Create or Update the Attribute in the database."""
 
         save_at = Timestamp(at)
 
-        if self.id:
-            return await self._update(at=save_at, session=session)
+        if not self.id:
+            return False
 
-        return await self._create(at=save_at, session=session)
+        return await self._update(at=save_at, session=session)
 
     async def delete(self, session: AsyncSession, at: Optional[Timestamp] = None) -> bool:
         if not self.db_id:
@@ -259,17 +280,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             status=RelationshipStatus.DELETED,
             session=session,
         )
-
-        return True
-
-    async def _create(self, session: AsyncSession, at: Optional[Timestamp] = None) -> bool:
-        create_at = Timestamp(at)
-
-        query = await AttributeCreateQuery.init(session=session, attr=self, at=create_at)
-        await query.execute(session=session)
-
-        self.id, self.db_id = query.get_new_ids()
-        self.at = create_at
 
         return True
 
@@ -437,6 +447,29 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         return response
 
+    def get_create_data(self) -> AttributeCreateData:
+        # pylint: disable=no-member
+        branch = self.get_branch_based_on_support_type()
+        data = AttributeCreateData(
+            uuid=str(UUIDT()),
+            name=self.name,
+            type=self.get_kind(),
+            branch=branch.name,
+            status="active",
+            branch_level=self.branch.hierarchy_level,
+            branch_support=self.schema.branch.value,
+            value=self.to_db(),
+            is_protected=self.is_protected,
+            is_visible=self.is_visible,
+        )
+        if self.source_id:
+            data.source_prop.append(NodePropertyData(name="source", peer_id=self.source_id))
+
+        if self.owner_id:
+            data.owner_prop.append(NodePropertyData(name="owner", peer_id=self.owner_id))
+
+        return data
+
 
 class AnyAttribute(BaseAttribute):
     type = Any
@@ -490,6 +523,12 @@ class IPNetwork(BaseAttribute):
         except ValueError as exc:
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"}) from exc
 
+    @classmethod
+    def serialize(cls, value: Any) -> Any:
+        """Serialize the value before storing it in the database."""
+
+        return ipaddress.ip_network(value).with_prefixlen
+
 
 class IPHost(BaseAttribute):
     type = str
@@ -512,6 +551,12 @@ class IPHost(BaseAttribute):
             ipaddress.ip_interface(value)
         except ValueError as exc:
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"}) from exc
+
+    @classmethod
+    def serialize(cls, value: Any) -> Any:
+        """Serialize the value before storing it in the database."""
+
+        return ipaddress.ip_interface(value).with_prefixlen
 
 
 class ListAttribute(BaseAttribute):

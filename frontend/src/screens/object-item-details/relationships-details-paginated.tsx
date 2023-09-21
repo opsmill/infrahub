@@ -70,13 +70,7 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
   }
 
   if (error) {
-    console.error(`Error while loading the ${relationshipTab}:`, error);
-
-    toast(
-      <Alert type={ALERT_TYPES.ERROR} message={`Error while loading the ${relationshipTab}`} />
-    );
-
-    return <ErrorScreen />;
+    return <ErrorScreen message="Something went wrong when fetching the relationships." />;
   }
 
   if (!data || !relationshipTab) {

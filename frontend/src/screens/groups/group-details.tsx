@@ -78,8 +78,7 @@ export default function GroupItemDetails() {
   const { loading, error, data, refetch } = useQuery(query, { skip: !schemaData });
 
   if (error) {
-    console.error("Error while loading the object details: ", error);
-    return <ErrorScreen />;
+    return <ErrorScreen message="Something went wrong when fetching the group details." />;
   }
 
   if (loading || !schemaData) {
@@ -87,7 +86,7 @@ export default function GroupItemDetails() {
   }
 
   if (!data || (data && !data[schemaData.kind]?.edges?.length)) {
-    return <NoDataFound />;
+    return <NoDataFound message="No group found." />;
   }
 
   const objectDetailsData = data[schemaData.kind]?.edges[0]?.node;

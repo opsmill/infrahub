@@ -16,6 +16,7 @@ import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
 import { branchVar } from "../../graphql/variables/branchVar";
 import { dateVar } from "../../graphql/variables/dateVar";
 import { constructPath } from "../../utils/fetch";
+import { getProposedChangesStateBadgeType } from "../../utils/proposed-changes";
 import { stringifyWithoutQuotes } from "../../utils/string";
 
 export const ProposedChange = (props: any) => {
@@ -79,6 +80,12 @@ export const ProposedChange = (props: any) => {
         <div className="flex flex-1">
           <div className="flex flex-1 flex-col">
             <div className="flex flex-1 items-center space-x-3 mb-4">
+              <div>
+                <Badge type={getProposedChangesStateBadgeType(row?.state?.value)}>
+                  {row?.state?.value}
+                </Badge>
+              </div>
+
               <div className="text-base font-semibold leading-6 text-gray-900">
                 {row.name.value}
               </div>
@@ -133,8 +140,9 @@ export const ProposedChange = (props: any) => {
           </div>
 
           <div className="flex flex-col items-end">
-            <div>
-              Updated at: <DateDisplay date={row._updated_at} />
+            <div className="flex items-center">
+              <div className="mr-2">Updated:</div>
+              <DateDisplay date={row._updated_at} />
             </div>
           </div>
         </div>

@@ -2,7 +2,18 @@ from __future__ import annotations
 
 import ipaddress
 import re
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union, get_args
+from copy import copy
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Tuple,
+    Union,
+    get_args,
+)
 
 from infrahub_client.exceptions import Error, FilterNotFound, NodeNotFound
 from infrahub_client.graphql import Mutation
@@ -158,6 +169,12 @@ class RelatedNodeBase:
                     setattr(self, prop, prop_data)
                 else:
                     setattr(self, prop, None)
+
+    @property
+    def initialized(self) -> bool:
+        if self.id:
+            return True
+        return False
 
     @property
     def id(self) -> Optional[str]:
@@ -358,6 +375,7 @@ class RelationshipManager(RelationshipManagerBase):
             )
             rm = getattr(node, self.schema.name)
             self.peers = rm.peers
+            self.initialized = True
 
         for peer in self.peers:
             await peer.fetch()  # type: ignore[misc]
@@ -427,6 +445,7 @@ class RelationshipManagerSync(RelationshipManagerBase):
             )
             rm = getattr(node, self.schema.name)
             self.peers = rm.peers
+            self.initialized = True
 
         for peer in self.peers:
             peer.fetch()
@@ -482,7 +501,7 @@ class InfrahubNodeBase:
 
         return f"{self._schema.kind} ({self.id})"
 
-    def _generate_input_data(self) -> Dict[str, Dict]:
+    def _generate_input_data(self, update: bool = False) -> Dict[str, Dict]:
         """Generate a dictionnary that represent the input data required by a mutation.
 
         Returns:
@@ -544,9 +563,70 @@ class InfrahubNodeBase:
             elif rel_schema.cardinality == RelationshipCardinality.MANY:
                 data[item_name] = []
 
+        if update:
+            data, variables = self._strip_unmodified(data=data, variables=variables)
+
         mutation_variables = {key: type(value) for key, value in variables.items()}
 
         return {"data": {"data": data}, "variables": variables, "mutation_variables": mutation_variables}
+
+    @staticmethod
+    def _strip_unmodified_dict(data: dict, original_data: dict, variables: dict, item: str) -> None:
+        for item_key in original_data[item].keys():
+            if isinstance(data[item], dict):
+                for property_name in PROPERTIES_OBJECT:
+                    if item_key == property_name and isinstance(original_data[item][property_name], dict):
+                        if original_data[item][property_name].get("id"):
+                            original_data[item][property_name] = original_data[item][property_name]["id"]
+                if item_key in data[item].keys():
+                    if item_key == "id" and len(data[item].keys()) > 1:
+                        # Related nodes typically require an ID. So the ID is only
+                        # removed if it's the last key in the current context
+                        continue
+                    variable_key = None
+                    if isinstance(data[item][item_key], str):
+                        variable_key = data[item][item_key][1:]
+
+                    if original_data[item][item_key] == data[item][item_key]:
+                        data[item].pop(item_key)
+                    elif variable_key in variables and original_data[item][item_key] == variables[variable_key]:
+                        data[item].pop(item_key)
+                        variables.pop(variable_key)
+
+        if not data[item]:
+            data.pop(item)
+
+    def _strip_unmodified(self, data: dict, variables: dict) -> Tuple[dict, dict]:
+        original_data = self._data or {}
+        for relationship in self._relationships:
+            relationship_property = getattr(self, relationship)
+            if relationship_property and not relationship_property.initialized and relationship in data:
+                data.pop(relationship)
+        for item in original_data.keys():
+            if item in data.keys():
+                if data[item] == original_data[item]:
+                    data.pop(item)
+                    continue
+                if isinstance(original_data[item], dict):
+                    self._strip_unmodified_dict(data=data, original_data=original_data, variables=variables, item=item)
+                    if item in self._relationships and original_data[item].get("node"):
+                        relationship_data_cardinality_one = copy(original_data)
+                        relationship_data_cardinality_one[item] = original_data[item]["node"]
+                        self._strip_unmodified_dict(
+                            data=data,
+                            original_data=relationship_data_cardinality_one,
+                            variables=variables,
+                            item=item,
+                        )
+                        # Run again to remove the "id" key if it's the last one remaining
+                        self._strip_unmodified_dict(
+                            data=data,
+                            original_data=relationship_data_cardinality_one,
+                            variables=variables,
+                            item=item,
+                        )
+
+        return data, variables
 
     def generate_query_data(
         self,
@@ -707,7 +787,7 @@ class InfrahubNode(InfrahubNodeBase):
         self.id = response[mutation_name]["object"]["id"]
 
     async def _update(self, at: Timestamp) -> None:
-        input_data = self._generate_input_data()
+        input_data = self._generate_input_data(update=True)
         input_data["data"]["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
         query = Mutation(
@@ -804,7 +884,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
         self.id = response[mutation_name]["object"]["id"]
 
     def _update(self, at: Timestamp) -> None:
-        input_data = self._generate_input_data()
+        input_data = self._generate_input_data(update=True)
         input_data["data"]["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
         query = Mutation(

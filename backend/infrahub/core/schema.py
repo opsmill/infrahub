@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import enum
+import hashlib
 import keyword
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
@@ -17,6 +18,7 @@ from infrahub.core.constants import (
     ContentType,
     CriticalityLevel,
     FilterSchemaKind,
+    ProposedChangeState,
     RelationshipCardinality,
     RelationshipKind,
     Severity,
@@ -66,6 +68,9 @@ class BaseSchemaModel(BaseModel):
         underscore_attrs_are_private = True
 
     def __hash__(self):
+        return hash(self.get_hash())
+
+    def get_hash(self, display_values: bool = False) -> str:
         """Generate a hash for the object.
 
         Calculating a hash can be very complicated if the data that we are storing is dynamic
@@ -73,21 +78,42 @@ class BaseSchemaModel(BaseModel):
         List of hashable elements are fine and they will be converted automatically to Tuple.
         """
 
-        values = []
+        def prep_for_hash(v) -> bytes:
+            if hasattr(v, "get_hash"):
+                return v.get_hash().encode()
 
+            return str(v).encode()
+
+        values = []
+        md5hash = hashlib.md5()
         for field_name in sorted(self.__fields__.keys()):
             if field_name.startswith("_") or field_name in self._exclude_from_hash:
                 continue
 
             value = getattr(self, field_name)
             if isinstance(value, list):
-                values.append(tuple(sorted(tuple(value))))
+                for item in sorted(value):
+                    values.append(prep_for_hash(item))
+                    md5hash.update(prep_for_hash(item))
+            elif hasattr(value, "get_hash"):
+                values.append(value.get_hash().encode())
+                md5hash.update(value.get_hash().encode())
             elif isinstance(value, dict):
-                values.append(frozenset(value.items()))
+                for key, value in frozenset(sorted(value.items())):
+                    values.append(prep_for_hash(key))
+                    values.append(prep_for_hash(value))
+                    md5hash.update(prep_for_hash(key))
+                    md5hash.update(prep_for_hash(value))
             else:
-                values.append(value)
+                md5hash.update(prep_for_hash(value))
+                values.append(prep_for_hash(value))
 
-        return hash(tuple(values))
+        if display_values:
+            from rich import print as rprint  # pylint: disable=import-outside-toplevel
+
+            rprint(tuple(values))
+
+        return md5hash.hexdigest()
 
     @property
     def _sorting_id(self) -> Set[Any]:
@@ -245,7 +271,6 @@ class AttributeSchema(BaseSchemaModel):
     optional: bool = False
     order_weight: Optional[int]
 
-    _exclude_from_hash: List[str] = ["id"]
     _sort_by: List[str] = ["name"]
 
     @validator("kind")
@@ -281,7 +306,7 @@ class RelationshipSchema(BaseSchemaModel):
     filters: List[FilterSchema] = Field(default_factory=list)
     order_weight: Optional[int]
 
-    _exclude_from_hash: List[str] = ["id", "filters"]
+    _exclude_from_hash: List[str] = ["filters"]
     _sort_by: List[str] = ["name"]
 
     def get_class(self):
@@ -404,7 +429,7 @@ class BaseNodeSchema(BaseSchemaModel):
     attributes: List[AttributeSchema] = Field(default_factory=list)
     relationships: List[RelationshipSchema] = Field(default_factory=list)
 
-    _exclude_from_hash: List[str] = ["id", "attributes", "relationships"]
+    _exclude_from_hash: List[str] = ["attributes", "relationships"]
     _sort_by: List[str] = ["name"]
 
     @property
@@ -414,13 +439,23 @@ class BaseNodeSchema(BaseSchemaModel):
         return self.namespace + self.name
 
     def __hash__(self):
+        """Return a hash of the object.
+        Be careful hash generated from hash() have a salt by default and they will not be the same across run"""
+        return hash(self.get_hash())
+
+    def get_hash(self, display_values: bool = False):
         """Extend the Hash Calculation to account for attributes and relationships."""
-        super_hash = [super().__hash__()]
 
-        for item in self.attributes + self.relationships:
-            super_hash.append(hash(item))
+        md5hash = hashlib.md5()
+        md5hash.update(super().get_hash(display_values=display_values).encode())
 
-        return hash(tuple(super_hash))
+        for attr_name in sorted(self.attribute_names):
+            md5hash.update(self.get_attribute(name=attr_name).get_hash(display_values=display_values).encode())
+
+        for rel_name in sorted(self.relationship_names):
+            md5hash.update(self.get_relationship(name=rel_name).get_hash(display_values=display_values).encode())
+
+        return md5hash.hexdigest()
 
     def get_field(self, name, raise_on_error=True) -> Union[AttributeSchema, RelationshipSchema]:
         if field := self.get_attribute(name, raise_on_error=False):
@@ -669,7 +704,7 @@ internal_schema = {
             "namespace": "Schema",
             "branch": BranchSupportType.AWARE.value,
             "default_filter": "name__value",
-            "display_labels": ["name__value"],
+            "display_labels": ["label__value"],
             "attributes": [
                 {
                     "name": "name",
@@ -1122,13 +1157,10 @@ core_models = {
             "description": "",
             "label": "Validator",
             "order_by": ["started_at__value"],
-            "display_labels": ["name__value", "state__value", "conclusion__value", "started_at__value"],
+            "display_labels": ["label__value"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
-                {
-                    "name": "name",
-                    "kind": "Text",
-                },
+                {"name": "label", "kind": "Text", "optional": True},
                 {
                     "name": "state",
                     "kind": "Text",
@@ -1167,10 +1199,12 @@ core_models = {
             "name": "Check",
             "namespace": "Core",
             "description": "",
+            "display_labels": ["label__value"],
             "label": "Check",
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
                 {"name": "name", "kind": "Text", "optional": True},
+                {"name": "label", "kind": "Text", "optional": True},
                 {"name": "origin", "kind": "Text", "optional": False},
                 {
                     "name": "kind",
@@ -1407,6 +1441,13 @@ core_models = {
                 {"name": "name", "kind": "Text", "optional": False},
                 {"name": "source_branch", "kind": "Text", "optional": False},
                 {"name": "destination_branch", "kind": "Text", "optional": False},
+                {
+                    "name": "state",
+                    "kind": "Text",
+                    "enum": ProposedChangeState.available_types(),
+                    "default_value": ProposedChangeState.OPEN.value,
+                    "optional": True,
+                },
             ],
             "relationships": [
                 {
@@ -1669,6 +1710,7 @@ core_models = {
             "namespace": "Core",
             "description": "A check related to some Data",
             "label": "Data Check",
+            "display_labels": ["label__value"],
             "inherit_from": ["CoreCheck"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
@@ -1680,6 +1722,7 @@ core_models = {
             "namespace": "Core",
             "description": "A standard check",
             "label": "Standard Check",
+            "display_labels": ["label__value"],
             "inherit_from": ["CoreCheck"],
             "branch": BranchSupportType.AGNOSTIC.value,
         },
@@ -1688,6 +1731,7 @@ core_models = {
             "namespace": "Core",
             "description": "A check related to the schema",
             "label": "Schema Check",
+            "display_labels": ["label__value"],
             "inherit_from": ["CoreCheck"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
@@ -1699,6 +1743,7 @@ core_models = {
             "namespace": "Core",
             "description": "A check related to a file in a Git Repository",
             "label": "File Check",
+            "display_labels": ["label__value"],
             "inherit_from": ["CoreCheck"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
@@ -1711,6 +1756,7 @@ core_models = {
             "namespace": "Core",
             "description": "A check related to an artifact",
             "label": "Artifact Check",
+            "display_labels": ["label__value"],
             "inherit_from": ["CoreCheck"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
@@ -1724,6 +1770,7 @@ core_models = {
             "namespace": "Core",
             "description": "A check to validate the data integrity between two branches",
             "label": "Data Validator",
+            "display_labels": ["label__value"],
             "inherit_from": ["CoreValidator"],
             "branch": BranchSupportType.AGNOSTIC.value,
         },
@@ -1732,6 +1779,7 @@ core_models = {
             "namespace": "Core",
             "description": "A Validator related to a specific repository",
             "label": "Repository Validator",
+            "display_labels": ["label__value"],
             "inherit_from": ["CoreValidator"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "relationships": [
@@ -1750,6 +1798,7 @@ core_models = {
             "namespace": "Core",
             "description": "A validator related to the schema",
             "label": "Schema Validator",
+            "display_labels": ["label__value"],
             "inherit_from": ["CoreValidator"],
             "branch": BranchSupportType.AGNOSTIC.value,
         },
@@ -1758,6 +1807,7 @@ core_models = {
             "namespace": "Core",
             "description": "A validator related to the artifacts",
             "label": "Artifact Validator",
+            "display_labels": ["label__value"],
             "inherit_from": ["CoreValidator"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "relationships": [

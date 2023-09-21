@@ -1,7 +1,7 @@
+import { useState } from "react";
 import { FieldValues, RegisterOptions, UseFormRegister, UseFormSetValue } from "react-hook-form";
 import { FormFieldError } from "../screens/edit-form-hook/form";
 import { OpsDatePicker } from "./date-picker";
-import { useState } from "react";
 
 interface Props {
   name: string;
@@ -14,7 +14,7 @@ interface Props {
 }
 
 export const OpsDatePickerRegister = (props: Props) => {
-  const { name, value, register, setValue, config, label, error } = props;
+  const { name, value, register, setValue, config, ...propsToPass } = props;
   const [currentValue, setCurrentValue] = useState(value);
 
   const inputRegister = register(name, {
@@ -24,13 +24,12 @@ export const OpsDatePickerRegister = (props: Props) => {
 
   return (
     <OpsDatePicker
-      label={label}
+      {...propsToPass}
       value={currentValue}
       onChange={(value?: Date) => {
         setCurrentValue(value);
         setValue(inputRegister.name, value);
       }}
-      error={error}
     />
   );
 };

@@ -73,7 +73,12 @@ async def car_person_data(session, register_core_models_schema, car_person_schem
     await q1.save(session=session)
 
     r1 = await Node.init(session=session, schema="CoreRepository")
-    await r1.new(session=session, name="repo01", location="git@github.com:user/repo01.git")
+    await r1.new(
+        session=session,
+        name="repo01",
+        location="git@github.com:user/repo01.git",
+        commit="36be6d233059b70d572a5bdb1a85bde531691ece",
+    )
     await r1.save(session=session)
 
     return {

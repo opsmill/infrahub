@@ -5,6 +5,8 @@ import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
 import { ALERT_TYPES, Alert } from "../../components/alert";
+import { Button } from "../../components/button";
+import { Checkbox } from "../../components/checkbox";
 import { CONFIG } from "../../config/config";
 import {
   PROPOSED_CHANGES_OBJECT_THREAD,
@@ -30,7 +32,7 @@ export const DiffContext = createContext<tDiffContext>({});
 export const DataDiff = () => {
   const { branchname, proposedchange } = useParams();
 
-  const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
+  const [branchOnly, setBranchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
   const [timeFrom] = useQueryParam(QSP.BRANCH_FILTER_TIME_FROM, StringParam);
   const [timeTo] = useQueryParam(QSP.BRANCH_FILTER_TIME_TO, StringParam);
   const [proposedChangesDetails] = useAtom(proposedChangedState);
@@ -86,7 +88,7 @@ export const DataDiff = () => {
     const url = CONFIG.DATA_DIFF_URL(branch);
 
     const options: string[][] = [
-      ["branch_only", branchOnly ?? "false"],
+      ["branch_only", branchOnly ?? "true"], // default will be branch only
       ["time_from", timeFrom ?? ""],
       ["time_to", timeTo ?? ""],
     ].filter(([, v]) => v !== undefined && v !== "");
@@ -134,17 +136,26 @@ export const DataDiff = () => {
 
   return (
     <>
-      {(!branchOnly || branchOnly === "false") && (
-        <div className="flex items-center m-4">
-          <span className="mr-2">Branches colours:</span>
-          <div className={"rounded-lg shadow p-2 mr-2 bg-custom-blue-10"}>main</div>
-          <div className={"rounded-lg shadow p-2 bg-green-200"}>{branch}</div>
+      <div className="flex items-center p-4 bg-custom-white">
+        <div className="mr-2">
+          <Button onClick={() => setBranchOnly(branchOnly !== "false" ? "false" : "true")}>
+            Display main
+            <Checkbox enabled={branchOnly === "false"} />
+          </Button>
         </div>
-      )}
+
+        {branchOnly === "false" && (
+          <div className="flex items-center">
+            <span className="mr-2">Branches colours:</span>
+            <div className={"rounded-lg shadow px-2 mr-2 bg-custom-blue-10"}>main</div>
+            <div className={"rounded-lg shadow px-2 bg-green-200"}>{branch}</div>
+          </div>
+        )}
+      </div>
 
       {isLoading && <LoadingScreen />}
 
-      {!isLoading && <div>{diff?.map(renderNode)}</div>}
+      {!isLoading && <div className="text-xs">{diff?.map(renderNode)}</div>}
     </>
   );
 };

@@ -27,6 +27,19 @@ class StorageDriver(str, Enum):
     LOCAL = "local"
 
 
+class TraceExporterType(str, Enum):
+    CONSOLE = "console"
+    OTLP = "otlp"
+    # JAEGER = "jaeger"
+    # ZIPKIN = "zipkin"
+
+
+class TraceTransportProtocol(str, Enum):
+    GRPC = "grpc"
+    HTTP_PROTOBUF = "http/protobuf"
+    # HTTP_JSON = "http/json"
+
+
 class MainSettings(BaseSettings):
     default_branch: str = "main"
     # default_account: str = "default"
@@ -61,6 +74,12 @@ class DatabaseSettings(BaseSettings):
     address: str = "localhost"
     port: int = 7687
     database: Optional[str] = Field(regex=VALID_DATABASE_NAME_REGEX, description="Name of the database")
+    query_size_limit: int = Field(
+        1000,
+        description="The max number of records to fetch in a single query before performing internal pagination.",
+        min=1,
+        max=5000,
+    )
 
     class Config:
         """Additional parameters to automatically map environment variables to some settings."""
@@ -73,6 +92,7 @@ class DatabaseSettings(BaseSettings):
             "address": {"env": "NEO4J_ADDRESS"},
             "port": {"env": "NEO4J_PORT"},
             "database": {"env": "NEO4J_DATABASE"},
+            "query_size_limit": {"env": "INFRAHUB_DB_QUERY_SIZE_LIMIT"},
         }
 
     @root_validator(pre=False)
@@ -192,6 +212,53 @@ class SecuritySettings(BaseSettings):
         case_sensitive = False
 
 
+class TraceSettings(BaseSettings):
+    enable: bool = Field(default=False)
+    insecure: bool = Field(
+        default=True, description="Use insecure connection (HTTP) if True, otherwise use secure connection (HTTPS)"
+    )
+    exporter_type: TraceExporterType = Field(
+        default=TraceExporterType.CONSOLE, description="Type of exporter to be used for tracing"
+    )
+    exporter_protocol: TraceTransportProtocol = Field(
+        default=TraceTransportProtocol.GRPC, description="Protocol to be used for exporting traces"
+    )
+    exporter_endpoint: str = Field(default=None, description="OTLP endpoint for exporting traces")
+    exporter_port: Optional[int] = Field(
+        default=None, min=1, max=65535, description="Specified if running on a non default port (4317)"
+    )
+
+    @property
+    def service_port(self) -> int:
+        if self.exporter_protocol == TraceTransportProtocol.GRPC:
+            default_port = 4317
+        elif self.exporter_protocol == TraceTransportProtocol.HTTP_PROTOBUF:
+            default_port = 4318
+        else:
+            default_port = 4317
+
+        return self.exporter_port or default_port
+
+    @property
+    def trace_endpoint(self) -> str:
+        if not self.exporter_endpoint:
+            return None
+        if self.insecure:
+            scheme = "http://"
+        else:
+            scheme = "https://"
+        endpoint = str(self.exporter_endpoint) + ":" + str(self.service_port)
+
+        if self.exporter_protocol == TraceTransportProtocol.HTTP_PROTOBUF:
+            endpoint += "/v1/traces"
+
+        return scheme + endpoint
+
+    class Config:
+        env_prefix = "INFRAHUB_TRACE_"
+        case_sensitive = False
+
+
 class Settings(BaseSettings):
     """Main Settings Class for the project."""
 
@@ -206,6 +273,7 @@ class Settings(BaseSettings):
     analytics: AnalyticsSettings = AnalyticsSettings()
     security: SecuritySettings = SecuritySettings()
     storage: StorageSettings = StorageSettings()
+    trace: TraceSettings = TraceSettings()
     experimental_features: ExperimentalFeaturesSettings = ExperimentalFeaturesSettings()
 
 

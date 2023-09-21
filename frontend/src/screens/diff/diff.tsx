@@ -20,14 +20,6 @@ export const DIFF_TABS = {
 };
 
 const tabs = [
-  // {
-  //   label: "Conversation",
-  //   name: DIFF_TABS.CONVERSATIONS
-  // },
-  // {
-  //   label: "Status",
-  //   name: DIFF_TABS.STATUS
-  // },
   {
     label: "Data",
     name: DIFF_TABS.DATA,
@@ -36,10 +28,6 @@ const tabs = [
     label: "Files",
     name: DIFF_TABS.FILES,
   },
-  // {
-  //   label: "Checks",
-  //   name: DIFF_TABS.CHECKS
-  // },
   {
     label: "Artifacts",
     name: DIFF_TABS.ARTIFACTS,
@@ -65,17 +53,10 @@ const renderContent = (tab: string | null | undefined) => {
 
 export const Diff = () => {
   const [qspTab] = useQueryParam(QSP.BRANCH_DIFF_TAB, StringParam);
-  const [branchOnly, setBranchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
   const [timeFrom, setTimeFrom] = useQueryParam(QSP.BRANCH_FILTER_TIME_FROM, StringParam);
   const [timeTo, setTimeTo] = useQueryParam(QSP.BRANCH_FILTER_TIME_TO, StringParam);
 
   const fields: DynamicFieldData[] = [
-    {
-      name: "branch_only",
-      label: "Branch only",
-      type: "switch",
-      value: branchOnly === "true",
-    },
     {
       name: "time_from",
       label: "Time from",
@@ -91,11 +72,7 @@ export const Diff = () => {
   ];
 
   const handleSubmit = (data: any) => {
-    const { branch_only, time_from, time_to } = data;
-
-    if (branch_only !== undefined) {
-      setBranchOnly(branch_only);
-    }
+    const { time_from, time_to } = data;
 
     setTimeFrom(time_from ? formatISO(time_from) : undefined);
 
@@ -103,8 +80,8 @@ export const Diff = () => {
   };
 
   return (
-    <div>
-      <div className="bg-custom-white p-6 flex">
+    <div className="flex flex-col flex-1">
+      <div className="bg-custom-white p-2 flex">
         <Filters fields={fields} onSubmit={handleSubmit} />
       </div>
 
@@ -112,7 +89,7 @@ export const Diff = () => {
         <Tabs tabs={tabs} qsp={QSP.BRANCH_DIFF_TAB} />
       </div>
 
-      <div>{renderContent(qspTab)}</div>
+      <div className="flex flex-col flex-1">{renderContent(qspTab)}</div>
     </div>
   );
 };

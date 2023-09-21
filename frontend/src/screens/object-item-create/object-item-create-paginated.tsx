@@ -1,5 +1,6 @@
 import { gql, useReactiveVar } from "@apollo/client";
 import { useAtom } from "jotai";
+import * as R from "ramda";
 import { useState } from "react";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/alert";
@@ -41,7 +42,7 @@ export default function ObjectItemCreate(props: iProps) {
 
   const schema = schemaList.filter((s) => s.name === objectname)[0];
 
-  const peers = (schema.relationships || []).map((r) => r.peer).filter(Boolean);
+  const peers = R.uniq((schema.relationships || []).map((r) => r.peer).filter(Boolean));
 
   const queryString = peers.length
     ? getDropdownOptionsForRelatedPeersPaginated({
@@ -58,7 +59,7 @@ export default function ObjectItemCreate(props: iProps) {
   const { loading, error, data } = useQuery(query, { skip: !schema || !peers.length });
 
   if (error) {
-    return <ErrorScreen />;
+    return <ErrorScreen message="Something went wrong when fetching dropdown options." />;
   }
 
   if (loading || !schema) {
@@ -66,7 +67,7 @@ export default function ObjectItemCreate(props: iProps) {
   }
 
   if (peers.length && !data) {
-    return <NoDataFound />;
+    return <NoDataFound message="No dropdown options found." />;
   }
 
   const objectDetailsData = data && data[schema.kind];
@@ -93,14 +94,13 @@ export default function ObjectItemCreate(props: iProps) {
 
   async function onSubmit(data: any) {
     setIsLoading(true);
-
-    const newObject = getMutationDetailsFromFormData(schema, data, "create");
-
-    if (!Object.keys(newObject).length) {
-      return;
-    }
-
     try {
+      const newObject = getMutationDetailsFromFormData(schema, data, "create");
+
+      if (!Object.keys(newObject).length) {
+        return;
+      }
+
       const mutationString = createObject({
         kind: schema.kind,
         data: stringifyWithoutQuotes({ ...newObject, ...customObject }),
@@ -110,7 +110,7 @@ export default function ObjectItemCreate(props: iProps) {
         ${mutationString}
       `;
 
-      await graphqlClient.mutate({
+      const result = await graphqlClient.mutate({
         mutation,
         context: {
           branch: branch?.name,
@@ -123,7 +123,7 @@ export default function ObjectItemCreate(props: iProps) {
       );
 
       if (onCreate) {
-        onCreate();
+        onCreate(result?.data?.[`${schema.kind}Create`]);
       }
 
       if (refetch) refetch();
@@ -139,6 +139,7 @@ export default function ObjectItemCreate(props: iProps) {
           details={error.message}
         />
       );
+
       setIsLoading(false);
     }
   }

@@ -1,5 +1,9 @@
 import * as R from "ramda";
-import { ATTRIBUTES_EXCLUDELIST, COLUMNS_EXCLUDELIST } from "../config/constants";
+import {
+  ATTRIBUTES_EXCLUDELIST,
+  ATTRIBUTES_NAME_EXCLUDELIST,
+  COLUMNS_EXCLUDELIST,
+} from "../config/constants";
 import { iGenericSchema, iNodeSchema } from "../state/atoms/schema.atom";
 
 interface iColumn {
@@ -57,7 +61,7 @@ export const getSchemaRelationshipsTabs = (schema: iNodeSchema | iGenericSchema)
 
 export const getSchemaAttributeColumns = (
   schema: iNodeSchema | iGenericSchema,
-  disableBlackList?: boolean
+  disableExcludeLists?: boolean
 ): iColumn[] => {
   if (!schema) {
     return [];
@@ -65,7 +69,8 @@ export const getSchemaAttributeColumns = (
 
   const attributes: iColumn[] = (schema.attributes || [])
     .filter((row) => !ATTRIBUTES_EXCLUDELIST.includes(row.kind))
-    .filter((row) => (disableBlackList ? true : !COLUMNS_EXCLUDELIST.includes(row.kind)))
+    .filter((row) => (disableExcludeLists ? true : !ATTRIBUTES_NAME_EXCLUDELIST.includes(row.kind)))
+    .filter((row) => (disableExcludeLists ? true : !COLUMNS_EXCLUDELIST.includes(row.kind)))
     .map((row) => ({
       label: row.label ?? "",
       name: row.name,
@@ -77,13 +82,13 @@ export const getSchemaAttributeColumns = (
 
 export const getSchemaObjectColumns = (
   schema: iNodeSchema | iGenericSchema,
-  disableBlackList?: boolean
+  disableExcludeLists?: boolean
 ): iColumn[] => {
   if (!schema) {
     return [];
   }
 
-  const attributes = getSchemaAttributeColumns(schema, disableBlackList);
+  const attributes = getSchemaAttributeColumns(schema, disableExcludeLists);
   const relationships = getSchemaRelationshipColumns(schema);
 
   const columns = R.concat(attributes, relationships);

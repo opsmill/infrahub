@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
-from graphene import ID, Boolean, Field, List, ObjectType, String
+from graphene import ObjectType
 
 from infrahub import config
 from infrahub.core.manager import NodeManager
@@ -13,6 +13,7 @@ from .mutations import (
     BranchDelete,
     BranchMerge,
     BranchRebase,
+    BranchUpdate,
     BranchValidate,
     CoreAccountTokenCreate,
     ProposedChangeRequestRefreshArtifacts,
@@ -20,7 +21,7 @@ from .mutations import (
     RelationshipAdd,
     RelationshipRemove,
 )
-from .types import BranchDiffType, BranchType
+from .queries import BranchQueryList, DiffSummary
 from .utils import extract_fields
 
 if TYPE_CHECKING:
@@ -60,40 +61,9 @@ async def account_resolver(root, info: GraphQLResolveInfo):
 
 
 class InfrahubBaseQuery(ObjectType):
-    branch = List(BranchType, ids=List(ID), name=String())
+    Branch = BranchQueryList
 
-    diff = Field(
-        BranchDiffType,
-        branch=String(required=True, description="Name of the branch to use to calculate the diff."),
-        time_from=String(required=False),
-        time_to=String(required=False),
-        branch_only=Boolean(required=False, default_value=False),
-    )
-
-    @staticmethod
-    async def resolve_branch(root: dict, info: GraphQLResolveInfo, **kwargs):
-        fields = await extract_fields(info.field_nodes[0].selection_set)
-        return await BranchType.get_list(fields=fields, context=info.context, **kwargs)
-
-    @staticmethod
-    async def resolve_diff(
-        root: dict,
-        info: GraphQLResolveInfo,
-        branch: str,
-        branch_only: bool,
-        time_from: Optional[str] = None,
-        time_to: Optional[str] = None,
-        **kwargs,
-    ):
-        fields = await extract_fields(info.field_nodes[0].selection_set)
-        return await BranchDiffType.get_diff(
-            fields=fields,
-            context=info.context,
-            branch_only=branch_only,
-            diff_from=time_from or None,
-            diff_to=time_to or None,
-            branch=branch,
-        )
+    DiffSummary = DiffSummary
 
 
 class InfrahubBaseMutation(ObjectType):
@@ -105,6 +75,7 @@ class InfrahubBaseMutation(ObjectType):
     BranchDelete = BranchDelete.Field()
     BranchRebase = BranchRebase.Field()
     BranchMerge = BranchMerge.Field()
+    BranchUpdate = BranchUpdate.Field()
     BranchValidate = BranchValidate.Field()
 
     RelationshipAdd = RelationshipAdd.Field()

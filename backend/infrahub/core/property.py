@@ -3,12 +3,25 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, List, Union
 from uuid import UUID
 
+from pydantic import BaseModel
+
 from infrahub.core.registry import registry
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
 
     from infrahub.core.node import Node
+
+
+class ValuePropertyData(BaseModel):
+    name: str
+    type: str
+    value: str
+
+
+class NodePropertyData(BaseModel):
+    name: str
+    peer_id: str
 
 
 class FlagPropertyMixin:

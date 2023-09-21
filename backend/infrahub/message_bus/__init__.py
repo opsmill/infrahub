@@ -1,11 +1,15 @@
-from typing import Iterator, Optional
+from typing import Iterator, Optional, TypeVar
 
 import aio_pika
 import aiormq
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-import infrahub.config as config
+from infrahub import config
+from infrahub.exceptions import Error
 from infrahub.log import set_log_data
+from infrahub.message_bus.responses import RESPONSE_MAP
+
+ResponseClass = TypeVar("ResponseClass")
 
 
 class Broker:
@@ -44,6 +48,9 @@ async def get_broker() -> aio_pika.abc.AbstractRobustConnection:
 
 class Meta(BaseModel):
     request_id: str = ""
+    correlation_id: Optional[str] = None
+    reply_to: Optional[str] = None
+    initiator_id: Optional[str] = Field(None, description="The worker identity of the initial sender of this message")
 
 
 class InfrahubBaseMessage(BaseModel, aio_pika.abc.AbstractMessage):
@@ -56,6 +63,7 @@ class InfrahubBaseMessage(BaseModel, aio_pika.abc.AbstractMessage):
         self.meta = self.meta or Meta()
         if parent.meta:
             self.meta.request_id = parent.meta.request_id
+            self.meta.initiator_id = parent.meta.initiator_id
 
     def set_log_data(self, routing_key: str) -> None:
         set_log_data(key="routing_key", value=routing_key)
@@ -67,6 +75,12 @@ class InfrahubBaseMessage(BaseModel, aio_pika.abc.AbstractMessage):
         raise NotImplementedError
 
     @property
+    def reply_requested(self) -> bool:
+        if self.meta and self.meta.reply_to:
+            return True
+        return False
+
+    @property
     def body(self) -> bytes:
         return self.json(exclude_none=True).encode("UTF-8")
 
@@ -76,7 +90,12 @@ class InfrahubBaseMessage(BaseModel, aio_pika.abc.AbstractMessage):
 
     @property
     def properties(self) -> aiormq.spec.Basic.Properties:
-        return aiormq.spec.Basic.Properties(content_type="application/json", content_encoding="utf-8")
+        correlation_id = None
+        if self.meta:
+            correlation_id = self.meta.correlation_id
+        return aiormq.spec.Basic.Properties(
+            content_type="application/json", content_encoding="utf-8", correlation_id=correlation_id
+        )
 
     def __iter__(self) -> Iterator[int]:
         raise NotImplementedError
@@ -85,4 +104,34 @@ class InfrahubBaseMessage(BaseModel, aio_pika.abc.AbstractMessage):
         raise NotImplementedError
 
     def __copy__(self) -> aio_pika.Message:
-        return aio_pika.Message(body=self.body, content_type="application/json", content_encoding="utf-8")
+        correlation_id = None
+        if self.meta:
+            correlation_id = self.meta.correlation_id
+        return aio_pika.Message(
+            body=self.body, content_type="application/json", content_encoding="utf-8", correlation_id=correlation_id
+        )
+
+
+class InfrahubResponse(InfrahubBaseMessage):
+    """A response to an RPC request"""
+
+    passed: bool = True
+    response_class: str
+    response_data: dict
+
+    def raise_for_status(self) -> None:
+        if self.passed:
+            return
+
+        # Later we would load information about the error based on the response_class and response_data
+        raise Error(f"An error occured during the request: {self.response_data}")
+
+    def parse(self, response_class: type[ResponseClass]) -> ResponseClass:
+        self.raise_for_status()
+        if self.response_class not in RESPONSE_MAP:
+            raise Error(f"Unable to find response_class: {self.response_class}")
+
+        if not isinstance(response_class, type(RESPONSE_MAP[self.response_class])):
+            raise Error(f"Invalid response class for response message: {self.response_class}")
+
+        return RESPONSE_MAP[self.response_class](**self.response_data)

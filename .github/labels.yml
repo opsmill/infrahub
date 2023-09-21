@@ -63,6 +63,22 @@
   description: "Body of work related to an epic"
   color: "0b8e92"
 
+- name: "type/ecosystem"
+  description: "Effort related to the community, usually not part of the core project"
+  color: "0b5aa9"
+
+- name: "type/brainstorming"
+  description: "Topic for brainstorming, discussions"
+  color: "e19e0f"
+
+- name: "type/user-centric"
+  description: "Issue that would improve the overall experience of our users"
+  color: "ff8c00"
+
+- name: "type/newcomers"
+  description: "Good for newcomers"
+  color: "309c56"
+
 # ----------------------------------
 # EFFORT
 # ----------------------------------
@@ -77,6 +93,17 @@
 - name: "effort/low"
   description: "This issue should be completed in a couple of hours"
   color: "eafee4"
+
+# ----------------------------------
+# STATUS
+# ----------------------------------
+- name: "state/blocked"
+  description: "The issue is currently blocked and cannot be resolved."
+  color: "e34918"
+
+- name: "state/draft"
+  description: "The redaction of the issue is still a work in progress"
+  color: "dcb518"
 
 # ----------------------------------
 # CI

@@ -110,7 +110,7 @@ async def test_node_init_invalid_value(session, default_branch: Branch, critical
     assert "not of type Text" in str(exc.value)
 
 
-async def test_node_default_value(session, default_branch):
+async def test_node_default_value(session, default_branch: Branch):
     SCHEMA = {
         "name": "OneOfEachKind",
         "namespace": "Test",
@@ -142,6 +142,44 @@ async def test_node_default_value(session, default_branch):
     assert obj.mybool.value is False
     assert obj.mybool_default.value is True
     assert obj.mybool_default_false.value is False
+
+
+async def test_render_display_label(session, default_branch: Branch, car_person_schema):
+    schema_01 = {
+        "name": "Display",
+        "namespace": "Test",
+        "display_labels": ["firstname__value"],
+        "attributes": [
+            {"name": "firstname", "kind": "Text"},
+            {"name": "lastname", "kind": "Text"},
+            {"name": "age", "kind": "Number"},
+        ],
+    }
+
+    node_schema = NodeSchema(**schema_01)
+    registry.schema.set(name=node_schema.kind, schema=node_schema)
+
+    obj = await Node.init(session=session, schema=node_schema)
+    await obj.new(session=session, firstname="John", lastname="Doe", age=99)
+    assert await obj.render_display_label(session=session) == "John"
+
+    # Display Labels with 2 attributes
+    schema_01["display_labels"] = ["firstname__value", "age__value"]
+    node_schema = NodeSchema(**schema_01)
+    registry.schema.set(name=node_schema.kind, schema=node_schema)
+
+    obj = await Node.init(session=session, schema=node_schema)
+    await obj.new(session=session, firstname="John", lastname="Doe", age=99)
+    assert await obj.render_display_label(session=session) == "John 99"
+
+    # Empty Display Label
+    schema_01["display_labels"] = []
+    node_schema = NodeSchema(**schema_01)
+    registry.schema.set(name=node_schema.kind, schema=node_schema)
+
+    obj = await Node.init(session=session, schema=node_schema)
+    await obj.new(session=session, firstname="John", lastname="Doe", age=99)
+    assert await obj.render_display_label(session=session) == "TestDisplay(ID: None)"
 
 
 async def test_node_init_with_single_relationship(session, default_branch: Branch, car_person_schema):
@@ -1021,3 +1059,51 @@ async def test_union(
 
     kinds = sorted([peer.get_kind() for peer in peers])
     assert kinds == ["TestCar", "TestMotorcycle", "TestTruck"]
+
+
+# --------------------------------------------------------------------------
+# Serialize
+# --------------------------------------------------------------------------
+
+
+async def test_node_serialize_prefix(session, default_branch: Branch, prefix_schema):
+    prefix = registry.get_schema(name="TestPrefix")
+
+    p1 = await Node.init(session=session, schema=prefix)
+    await p1.new(session=session, prefix="192.0.2.1", name="prefix1")
+    await p1.save(session=session)
+
+    retrieve_p1 = await NodeManager.get_one(id=p1.id, session=session)
+    assert retrieve_p1.prefix.value == "192.0.2.1/32"
+
+    p2 = await Node.init(session=session, schema=prefix)
+    await p2.new(session=session, prefix="192.0.2.1/255.255.255.255", name="prefix2")
+    await p2.save(session=session)
+
+    retrieve_p2 = await NodeManager.get_one(id=p1.id, session=session)
+    assert retrieve_p2.prefix.value == "192.0.2.1/32"
+
+    p3 = await Node.init(session=session, schema=prefix)
+    await p3.new(session=session, prefix="2001:db8::/128", name="prefix3")
+    await p3.save(session=session)
+
+    retrieve_p3 = await NodeManager.get_one(id=p3.id, session=session)
+    assert retrieve_p3.prefix.value == "2001:db8::/128"
+
+
+async def test_node_serialize_address(session, default_branch: Branch, prefix_schema):
+    ip = registry.get_schema(name="TestIp")
+
+    i1 = await Node.init(session=session, schema=ip)
+    await i1.new(session=session, address="192.0.2.1", name="ip1")
+    await i1.save(session=session)
+
+    retrieve_i1 = await NodeManager.get_one(id=i1.id, session=session)
+    assert retrieve_i1.address.value == "192.0.2.1/32"
+
+    i2 = await Node.init(session=session, schema=ip)
+    await i2.new(session=session, address="2001:db8::", name="ip2")
+    await i2.save(session=session)
+
+    retrieve_i2 = await NodeManager.get_one(id=i2.id, session=session)
+    assert retrieve_i2.address.value == "2001:db8::/128"

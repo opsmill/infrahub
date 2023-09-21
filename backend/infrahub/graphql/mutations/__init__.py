@@ -16,6 +16,7 @@ from .branch import (
     BranchMerge,
     BranchNameInput,
     BranchRebase,
+    BranchUpdate,
     BranchValidate,
 )
 from .main import InfrahubMutation, InfrahubMutationMixin, InfrahubMutationOptions
@@ -36,6 +37,7 @@ __all__ = [
     "BranchDelete",
     "BranchMerge",
     "BranchNameInput",
+    "BranchUpdate",
     "CheckboxAttributeInput",
     "CoreAccountTokenCreate",
     "InfrahubRepositoryMutation",

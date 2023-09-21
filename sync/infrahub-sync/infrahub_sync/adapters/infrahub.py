@@ -6,6 +6,7 @@ from infrahub_sync import DiffSyncMixin, DiffSyncModelMixin, SyncAdapter, SyncCo
 from infrahub_sync.generator import has_field
 
 from infrahub_client import (
+    Config,
     InfrahubClientSync,
     InfrahubNodeSync,
     NodeNotFound,
@@ -53,8 +54,8 @@ class InfrahubAdapter(DiffSyncMixin, DiffSync):
 
         if not isinstance(adapter.settings, dict) or "url" not in adapter.settings:
             raise ValueError("url must be specified!")
-
-        self.client = InfrahubClientSync(address=adapter.settings["url"], default_timeout=60)
+        sdk_config = Config(timeout=60)
+        self.client = InfrahubClientSync(address=adapter.settings["url"], config=sdk_config)
 
         # We need to identify with an account until we have some auth in place
         remote_account = "Netbox"

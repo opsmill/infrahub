@@ -76,6 +76,13 @@ class FilterSchemaKind(InfrahubStringEnum):
     ENUM = "Enum"
 
 
+class ProposedChangeState(InfrahubStringEnum):
+    OPEN = "open"
+    MERGED = "merged"
+    CLOSED = "closed"
+    CANCELED = "canceled"
+
+
 class RelationshipCardinality(InfrahubStringEnum):
     ONE = "one"
     MANY = "many"

@@ -1,10 +1,22 @@
-import errorimage from "./images/error.webp";
+import { ExclamationCircleIcon } from "@heroicons/react/24/outline";
+import { ReactElement } from "react";
 
-export default function ErrorScreen() {
+type tNoData = {
+  message?: string;
+  icon?: ReactElement;
+};
+
+const DEFAULT_MESSAGE = "Sorry, something went wrong.";
+
+export default function ErrorScreen(props: tNoData) {
+  const { message, icon } = props;
+
   return (
-    <div className="flex-1 flex flex-col items-center justify-center">
-      <img alt="Page error" className="w-56 h-56 object-cover" src={errorimage} />
-      <div className="text-xl mt-2">Something went wrong. We are looking into it</div>
+    <div className="flex flex-col flex-1 items-center justify-center p-8">
+      <div className="bg-custom-white rounded-full p-4 text-red-300">
+        {icon || <ExclamationCircleIcon className="h-8 w-8" />}
+      </div>
+      <div className="mt-4">{message ?? DEFAULT_MESSAGE}</div>
     </div>
   );
 }

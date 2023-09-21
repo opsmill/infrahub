@@ -150,15 +150,6 @@ def cli_git(context: Context, database: str = "memgraph"):
         execute_command(context=context, command=command)
 
 
-@task(optional=["database"])
-def cli_frontend(context: Context, database: str = "memgraph"):
-    """Launch a bash shell inside the running Infrahub container."""
-    with context.cd(REPO_BASE):
-        compose_files_cmd = build_compose_files_cmd(database=database)
-        command = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run frontend bash"
-        execute_command(context=context, command=command)
-
-
 @task
 def init(context: Context, database: str = "memgraph"):
     """Initialize Infrahub database before using it the first time."""
@@ -203,7 +194,7 @@ def load_infra_data(context: Context, database: str = "memgraph"):
 @task(optional=["database"])
 def infra_git_import(context: Context, database: str = "memgraph"):
     """Load some demo data."""
-    PACKAGE_NAME = "infrahub-demo-edge-ef0bb75.tar.gz"
+    PACKAGE_NAME = "infrahub-demo-edge-b635811.tar.gz"
     with context.cd(REPO_BASE):
         compose_files_cmd = build_compose_files_cmd(database=database)
         base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME}"

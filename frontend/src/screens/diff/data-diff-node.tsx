@@ -6,6 +6,7 @@ import Accordion from "../../components/accordion";
 import { BADGE_TYPES, Badge } from "../../components/badge";
 import { DateDisplay } from "../../components/date-display";
 import { Pill } from "../../components/pill";
+import { Tooltip } from "../../components/tooltip";
 import { QSP } from "../../config/qsp";
 import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
 import { classNames } from "../../utils/common";
@@ -122,7 +123,7 @@ export type tDataDiffNode = {
 
 export type tDataDiffNodeProps = {
   node: tDataDiffNode;
-  commentsCount: number;
+  commentsCount?: number;
   branch?: string;
 };
 
@@ -147,8 +148,12 @@ export const getNodeClassName = (
   branchOnly?: string | null | undefined
 ) => {
   // Do not display a color if the node is related to mulitple branches or if we are on the branch details diff
-  if (branches?.length > 1 || branchOnly === "true") {
+  if (branches?.length > 1 || branchOnly === "true" || !branchOnly) {
     return "bg-custom-white";
+  }
+
+  if (branches?.length === 1) {
+    return branches[0] === "main" ? "bg-custom-blue-10" : "bg-green-200";
   }
 
   return branch === "main" ? "bg-custom-blue-10" : "bg-green-200";
@@ -184,7 +189,7 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
 
   const renderTitle = () => (
     <div className={"p-1 pr-0 flex flex-col lg:flex-row"}>
-      <div className="flex flex-1 items-center">
+      <div className="flex flex-1 items-center group">
         <Badge className="mr-2" type={getBadgeType(action)}>
           {action?.toUpperCase()}
         </Badge>
@@ -199,17 +204,18 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
 
       {commentsCount && (
         <div className="flex items-center">
-          <ChatBubbleLeftRightIcon className="h-5 w-5 mr-2" />
-          <Pill className="mr-2">{JSON.stringify(commentsCount)}</Pill>
+          <Tooltip message={"Total number of comments"}>
+            <ChatBubbleLeftRightIcon className="h-5 w-5 mr-2" />
+            <Pill className="mr-2">{JSON.stringify(commentsCount)}</Pill>
+          </Tooltip>
         </div>
       )}
 
       <div className="flex items-center mt-2 lg:mt-0">
         <DiffPill {...summary} />
 
-        <div className="flex lg:w-[380px]">
-          {/* {changed_at && <DateDisplay date={changed_at} hideDefault />} */}
-          <DateDisplay date={changed_at} />
+        <div className="flex lg:w-[200px]">
+          {changed_at && <DateDisplay date={changed_at} hideDefault />}
         </div>
       </div>
     </div>
@@ -218,7 +224,7 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
   return (
     <div
       className={classNames(
-        "rounded-lg shadow p-2 m-4 bg-custom-white",
+        "rounded-lg shadow p-2 m-4",
         getNodeClassName(branches, currentBranch, branchOnly)
       )}>
       <Accordion title={renderTitle()}>
