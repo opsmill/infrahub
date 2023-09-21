@@ -156,7 +156,7 @@ export default function ObjectItems(props: any) {
   }
 
   return (
-    <div className="bg-custom-white flex-1 overflow-x-auto flex flex-col">
+    <div className="bg-custom-white flex-1 flex flex-col">
       <div className="sm:flex sm:items-center py-4 px-4 sm:px-6 lg:px-8 w-full">
         {schemaData && (
           <div className="sm:flex-auto flex items-center">
@@ -178,7 +178,7 @@ export default function ObjectItems(props: any) {
       {loading && !rows && <LoadingScreen />}
 
       {!loading && rows && (
-        <div className="mt-0 flex flex-col px-4 sm:px-6 lg:px-8 w-full overflow-x-auto flex-1">
+        <div className="mt-0 flex flex-col px-4 sm:px-6 lg:px-8 w-full flex-1">
           <div className="-my-2 -mx-4 sm:-mx-6 lg:-mx-8">
             <div className="inline-block min-w-full pt-2 align-middle">
               <div className="shadow-sm ring-1 ring-custom-black ring-opacity-5">
