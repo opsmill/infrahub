@@ -1,7 +1,6 @@
 from typing import List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends
-from fastapi.logger import logger
 from neo4j import AsyncSession
 from pydantic import BaseModel, Field, root_validator
 from starlette.responses import JSONResponse
@@ -103,7 +102,7 @@ async def load_schema(
                 schema=tmp_schema, session=session, branch=branch.name, limit=diff.all, update_db=True
             )
             branch.update_schema_hash()
-            logger.info(f"{branch.name}: Schema has been updated, new hash {branch.schema_hash.main}")
+            log.info(f"Schema has been updated", branch=branch.name, hash=branch.schema_hash.main)
             await branch.save(session=session)
 
             if config.SETTINGS.broker.enable:
