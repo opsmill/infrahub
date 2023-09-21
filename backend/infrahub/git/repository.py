@@ -663,7 +663,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         return True
 
     async def create_branch_in_git(
-        self, branch_name: str, branch_id: Optional[str], push_origin: Optional[bool] = True
+        self, branch_name: str, branch_id: Optional[str] = None, push_origin: bool = True
     ) -> bool:
         """Create new branch in the repository, assuming the branch has been created in the graph already."""
 
