@@ -2,12 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from infrahub.core.node import Node
-from infrahub.message_bus.events import (
-    GitMessageAction,
-    InfrahubRPCResponse,
-    MessageType,
-    RPCStatusCode,
-)
+from infrahub.message_bus import InfrahubResponse
 from infrahub.message_bus.rpc import InfrahubRpcClientTesting
 
 
@@ -35,8 +30,10 @@ async def test_get_file(
 
     # Must execute in a with block to execute the startup/shutdown events
     with client:
-        mock_response = InfrahubRPCResponse(status=RPCStatusCode.OK, response={"content": "file content"})
-
+        mock_response = InfrahubResponse(
+            response_class="content_response",
+            response_data={"content": "file content"},
+        )
         # No commit yet
         response = client.get(
             f"/api/file/{r1.id}/myfile.text",
@@ -45,9 +42,7 @@ async def test_get_file(
         assert response.status_code == 400
 
         # With Manual Commit
-        await client.app.state.rpc_client.add_response(
-            response=mock_response, message_type=MessageType.GIT, action=GitMessageAction.GET_FILE
-        )
+        await client.app.state.rpc_client.add_mock_reply(response=mock_response)
 
         response = client.get(
             f"/api/file/{r1.id}/myfile.text?commit=12345678iuytrewqwertyu",
@@ -61,9 +56,7 @@ async def test_get_file(
         r1.commit.value = "1345754212345678iuytrewqwertyu"
         await r1.save(session=session)
 
-        await client.app.state.rpc_client.add_response(
-            response=mock_response, message_type=MessageType.GIT, action=GitMessageAction.GET_FILE
-        )
+        await client.app.state.rpc_client.add_mock_reply(response=mock_response)
 
         response = client.get(
             f"/api/file/{r1.id}/myfile.text",
@@ -74,9 +67,7 @@ async def test_get_file(
         assert response.text == "file content"
 
         # Access Repo by name
-        await client.app.state.rpc_client.add_response(
-            response=mock_response, message_type=MessageType.GIT, action=GitMessageAction.GET_FILE
-        )
+        await client.app.state.rpc_client.add_mock_reply(response=mock_response)
 
         response = client.get(
             "/api/file/repo01/myfile.text",

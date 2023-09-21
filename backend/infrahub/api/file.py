@@ -12,11 +12,8 @@ from infrahub.api.dependencies import (
 )
 from infrahub.core.manager import NodeManager
 from infrahub.exceptions import CommitNotFoundError
-from infrahub.message_bus.events import (
-    GitMessageAction,
-    InfrahubGitRPC,
-    InfrahubRPCResponse,
-)
+from infrahub.message_bus import messages
+from infrahub.message_bus.responses import ContentResponse
 
 if TYPE_CHECKING:
     from infrahub.message_bus.rpc import InfrahubRpcClient
@@ -46,16 +43,18 @@ async def get_file(
         at=branch_params.at,
     )
 
-    if not commit and repo.commit.value is None:
+    commit = commit or repo.commit.value  # type: ignore[attr-defined]
+
+    if not commit:
         raise CommitNotFoundError(identifier=repository_id, commit="", message="No commits found on this repository")
 
-    commit = commit or repo.commit.value
-
-    response: InfrahubRPCResponse = await rpc_client.call(
-        message=InfrahubGitRPC(
-            action=GitMessageAction.GET_FILE, repository=repo, location=file_path, params={"commit": commit}
-        )
+    message = messages.GitFileGet(
+        repository_id=repo.id,
+        repository_name=repo.name.value,  # type: ignore[attr-defined]
+        commit=commit,
+        file=file_path,
     )
-    response.raise_for_status()
 
-    return PlainTextResponse(content=response.response["content"])
+    response = await rpc_client.rpc(message=message)
+    content = response.parse(response_class=ContentResponse)
+    return PlainTextResponse(content=content.content)
