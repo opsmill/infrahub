@@ -82,7 +82,6 @@ class GitMessageAction(str, BaseEnum):
     DIFF = "diff"
     REPO_ADD = "repo-add"
     BRANCH_ADD = "branch-add"
-    GET_FILE = "get-file"
 
 
 class ArtifactMessageAction(str, BaseEnum):

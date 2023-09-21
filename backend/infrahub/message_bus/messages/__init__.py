@@ -6,6 +6,7 @@ from .check_repository_mergeconflicts import CheckRepositoryMergeConflicts
 from .event_branch_create import EventBranchCreate
 from .event_schema_update import EventSchemaUpdate
 from .git_branch_create import GitBranchCreate
+from .git_file_get import GitFileGet
 from .refresh_registry_branches import RefreshRegistryBranches
 from .request_artifactdefinition_generate import RequestArtifactDefinitionGenerate
 from .request_git_createbranch import RequestGitCreateBranch
@@ -24,6 +25,7 @@ from .transform_python_data import TransformPythonData
 MESSAGE_MAP: Dict[str, Type[InfrahubBaseMessage]] = {
     "check.repository.merge_conflicts": CheckRepositoryMergeConflicts,
     "git.branch.create": GitBranchCreate,
+    "git.file.get": GitFileGet,
     "event.branch.create": EventBranchCreate,
     "event.schema.update": EventSchemaUpdate,
     "request.git.create_branch": RequestGitCreateBranch,

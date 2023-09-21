@@ -77,16 +77,6 @@ async def handle_git_message_action_diff(message: InfrahubGitRPC, client: Infrah
     )
 
 
-async def handle_git_message_action_get_file(message: InfrahubGitRPC, client: InfrahubClient) -> InfrahubRPCResponse:
-    repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
-    content = await repo.get_file(commit=message.params["commit"], location=message.location)
-
-    return InfrahubRPCResponse(
-        status=RPCStatusCode.OK,
-        response={"content": content},
-    )
-
-
 async def handle_git_message_action_merge(message: InfrahubGitRPC, client: InfrahubClient) -> InfrahubRPCResponse:
     repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
     async with lock.registry.get(name=message.repository_name, namespace="repository"):
@@ -160,7 +150,6 @@ async def handle_git_rpc_message(  # pylint: disable=too-many-return-statements
         GitMessageAction.REPO_ADD: handle_git_message_action_repo_add,
         GitMessageAction.DIFF: handle_git_message_action_diff,
         GitMessageAction.MERGE: handle_git_message_action_merge,
-        GitMessageAction.GET_FILE: handle_git_message_action_get_file,
         GitMessageAction.REBASE: handle_not_implemented,
         GitMessageAction.PUSH: handle_not_implemented,
         GitMessageAction.PULL: handle_not_implemented,

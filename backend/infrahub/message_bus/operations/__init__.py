@@ -16,6 +16,7 @@ COMMAND_MAP = {
     "event.branch.create": event.branch.create,
     "event.schema.update": event.schema.update,
     "git.branch.create": git.branch.create,
+    "git.file.get": git.file.get,
     "refresh.registry.branches": refresh.registry.branches,
     "request.git.create_branch": requests.git.create_branch,
     "request.artifact_definition.generate": requests.artifact_definition.generate,
