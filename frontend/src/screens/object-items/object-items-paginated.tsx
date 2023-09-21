@@ -39,8 +39,6 @@ import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
 
 export default function ObjectItems(props: any) {
-  console.log("RENDER LIST");
-
   const { objectname: objectnameFromParams } = useParams();
 
   const { objectname: objectnameFromProps = "", filters: filtersFromProps = [] } = props;
