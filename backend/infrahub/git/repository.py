@@ -271,14 +271,14 @@ class Worktree(BaseModel):
         if len(relative_paths) == 3:
             # this is the main worktree for the main branch
             identifier = relative_paths[2]
+
         elif len(relative_paths) == 4 and relative_paths[2] == COMMITS_DIRECTORY_NAME:
             # this is the either a commit or a branch worktree
             identifier = relative_paths[3]
         elif len(relative_paths) == 4 and relative_paths[2] == BRANCHES_DIRECTORY_NAME and lines[2] != "detached":
             identifier = lines[2].replace("branch refs/heads/", "")
-
         else:
-            raise Error("Unexpected directory path for a worktree.")
+            raise Error("Unexpected path for a worktree.")
 
         item = cls(
             identifier=identifier,

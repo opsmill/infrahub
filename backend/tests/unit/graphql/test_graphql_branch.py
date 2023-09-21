@@ -274,7 +274,8 @@ async def test_branch_create_invalid_names(
 
     assert len(result.errors) == 1
     assert (
-        result.errors[0].message == r'invalid field name: string does not match regex "^[a-z][a-z0-9\-]+$|^\-global\-$"'
+        result.errors[0].message
+        == "Branch name contains invalid patterns or characters: disallowed ASCII characters/patterns"
     )
 
 
