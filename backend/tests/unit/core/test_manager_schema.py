@@ -763,17 +763,14 @@ async def test_load_schema_to_db_w_generics_01(
     assert len(results) == 1
 
 
-@pytest.mark.xfail(
-    reason="FIXME: Hash before and after should match, it's working if Criticality only has 2 attributes but not more"
-)
 async def test_load_schema_from_db(
     session: AsyncSession, reset_registry, default_branch: Branch, register_internal_models_schema
 ):
     FULL_SCHEMA = {
         "nodes": [
             {
-                "name": "criticality",
-                "kind": "Criticality",
+                "namespace": "Test",
+                "name": "Criticality",
                 "default_filter": "name__value",
                 "label": "Criticality",
                 "attributes": [
@@ -783,10 +780,10 @@ async def test_load_schema_from_db(
                     {"name": "description", "kind": "Text", "label": "Description", "optional": True},
                 ],
                 "relationships": [
-                    {"name": "tags", "peer": "Tag", "label": "Tags", "optional": True, "cardinality": "many"},
+                    {"name": "tags", "peer": "BuiltinTag", "label": "Tags", "optional": True, "cardinality": "many"},
                     {
                         "name": "primary_tag",
-                        "peer": "Tag",
+                        "peer": "BuiltinTag",
                         "label": "Primary Tag",
                         "identifier": "primary_tag__criticality",
                         "optional": True,
@@ -795,8 +792,8 @@ async def test_load_schema_from_db(
                 ],
             },
             {
-                "name": "tag",
-                "kind": "Tag",
+                "namespace": "Builtin",
+                "name": "Tag",
                 "label": "Tag",
                 "default_filter": "name__value",
                 "attributes": [
@@ -807,8 +804,8 @@ async def test_load_schema_from_db(
         ],
         "generics": [
             {
-                "name": "generic_interface",
-                "kind": "GenericInterface",
+                "namespace": "Test",
+                "name": "GenericInterface",
                 "label": "Generic Interface",
                 "attributes": [
                     {"name": "my_generic_name", "kind": "Text", "label": "My Generic String"},
@@ -832,7 +829,79 @@ async def test_load_schema_from_db(
     assert len(schema2.generics) == 1
     assert len(schema2.groups) == 1
 
-    assert hash(schema11.get(name="Criticality")) == hash(schema2.get(name="Criticality"))
-    assert hash(schema11.get(name="Tag")) == hash(schema2.get(name="Tag"))
-    assert hash(schema11.get(name="GenericInterface")) == hash(schema2.get(name="GenericInterface"))
-    assert hash(schema11.get(name="GenericGroup")) == hash(schema2.get(name="GenericGroup"))
+    assert schema11.get(name="TestCriticality").get_hash() == schema2.get(name="TestCriticality").get_hash()
+    assert schema11.get(name="BuiltinTag").get_hash() == schema2.get(name="BuiltinTag").get_hash()
+    assert schema11.get(name="TestGenericInterface").get_hash() == schema2.get(name="TestGenericInterface").get_hash()
+    assert schema11.get(name="GenericGroup").get_hash() == schema2.get(name="GenericGroup").get_hash()
+
+
+async def test_load_schema(
+    session: AsyncSession, reset_registry, default_branch: Branch, register_internal_models_schema
+):
+    FULL_SCHEMA = {
+        "nodes": [
+            {
+                "namespace": "Test",
+                "name": "Criticality",
+                "default_filter": "name__value",
+                "label": "Criticality",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                    {"name": "level", "kind": "Number", "label": "Level"},
+                    {"name": "color", "kind": "Text", "label": "Color", "default_value": "#444444"},
+                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
+                ],
+                "relationships": [
+                    {"name": "tags", "peer": "BuiltinTag", "label": "Tags", "optional": True, "cardinality": "many"},
+                    {
+                        "name": "primary_tag",
+                        "peer": "BuiltinTag",
+                        "label": "Primary Tag",
+                        "identifier": "primary_tag__criticality",
+                        "optional": True,
+                        "cardinality": "one",
+                    },
+                ],
+            },
+            {
+                "namespace": "Builtin",
+                "name": "Tag",
+                "label": "Tag",
+                "default_filter": "name__value",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
+                ],
+            },
+        ],
+        "generics": [
+            {
+                "namespace": "Test",
+                "name": "GenericInterface",
+                "label": "Generic Interface",
+                "attributes": [
+                    {"name": "my_generic_name", "kind": "Text", "label": "My Generic String"},
+                ],
+            },
+        ],
+        "groups": [
+            {
+                "name": "generic_group",
+                "kind": "GenericGroup",
+            },
+        ],
+    }
+
+    schema1 = registry.schema.register_schema(schema=SchemaRoot(**FULL_SCHEMA), branch=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema1, session=session, branch=default_branch.name)
+    schema11 = registry.schema.get_schema_branch(name=default_branch.name)
+    schema2 = await registry.schema.load_schema(session=session, branch=default_branch.name)
+
+    assert len(schema2.nodes) == 7
+    assert len(schema2.generics) == 1
+    assert len(schema2.groups) == 1
+
+    assert schema11.get(name="TestCriticality").get_hash() == schema2.get(name="TestCriticality").get_hash()
+    assert schema11.get(name="BuiltinTag").get_hash() == schema2.get(name="BuiltinTag").get_hash()
+    assert schema11.get(name="TestGenericInterface").get_hash() == schema2.get(name="TestGenericInterface").get_hash()
+    assert schema11.get(name="GenericGroup").get_hash() == schema2.get(name="GenericGroup").get_hash()
