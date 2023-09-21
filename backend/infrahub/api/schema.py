@@ -102,7 +102,7 @@ async def load_schema(
                 schema=tmp_schema, session=session, branch=branch.name, limit=diff.all, update_db=True
             )
             branch.update_schema_hash()
-            log.info(f"Schema has been updated", branch=branch.name, hash=branch.schema_hash.main)
+            log.info("Schema has been updated", branch=branch.name, hash=branch.schema_hash.main)
             await branch.save(session=session)
 
             if config.SETTINGS.broker.enable:
