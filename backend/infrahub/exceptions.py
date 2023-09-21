@@ -14,6 +14,13 @@ class Error(Exception):
         }
 
 
+class RPCError(Error):
+    HTTP_CODE: int = 502
+
+    def __init__(self, message: str):
+        self.message = message
+
+
 class InitializationError(Error):
     DESCRIPTION: str = "The application hasn't been initialized properly"
 
