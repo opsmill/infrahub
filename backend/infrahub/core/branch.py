@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field, validator
 import infrahub.config as config
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, DiffAction, RelationshipStatus
 from infrahub.core.manager import NodeManager
+from infrahub.core.models import SchemaBranchHash  # noqa: TCH001
 from infrahub.core.node.standard import StandardNode
 from infrahub.core.query.branch import (
     AddNodeToBranch,
@@ -126,7 +127,7 @@ class Branch(StandardNode):
     is_protected: bool = False
     is_data_only: bool = False
     schema_changed_at: Optional[str] = None
-    schema_hash: Optional[int] = None
+    schema_hash: Optional[SchemaBranchHash] = None
 
     ephemeral_rebase: bool = False
 
@@ -140,14 +141,14 @@ class Branch(StandardNode):
     def set_created_at(cls, value):  # pylint: disable=no-self-argument
         return Timestamp(value).to_string()
 
-    def update_schema_hash(self, at: Optional[Union[Timestamp, str]] = None) -> None:
+    def update_schema_hash(self, at: Optional[Union[Timestamp, str]] = None) -> bool:
         latest_schema = registry.schema.get_schema_branch(name=self.name)
         self.schema_changed_at = Timestamp(at).to_string()
-        new_hash = hash(latest_schema)
-        if new_hash == self.schema_hash:
+        new_hash = latest_schema.get_hash_full()
+        if self.schema_hash and new_hash.main == self.schema_hash.main:
             return False
 
-        self.schema_hash = hash(latest_schema)
+        self.schema_hash = new_hash
         return True
 
     @classmethod

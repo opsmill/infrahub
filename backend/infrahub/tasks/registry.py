@@ -21,20 +21,20 @@ async def refresh_branches(session: AsyncSession):
         branches: List[Branch] = await Branch.get_list(session=session)
         active_branches = [branch.name for branch in branches]
         for new_branch in branches:
-            branch_already_present = new_branch.name in registry.branch
-
-            if branch_already_present:
-                if registry.branch[new_branch.name].schema_hash != new_branch.schema_hash:
+            if new_branch.name in registry.branch:
+                branch_registry: Branch = registry.branch[new_branch.name]
+                if branch_registry.schema_hash and branch_registry.schema_hash.main != new_branch.schema_hash.main:
                     log.info(
-                        f"{new_branch.name}: New hash detected OLD {registry.branch[new_branch.name].schema_hash} >> {new_branch.schema_hash} NEW"
+                        f"{new_branch.name}: New hash detected OLD {branch_registry.schema_hash.main} >> {new_branch.schema_hash.main} NEW"
                     )
                     registry.branch[new_branch.name] = new_branch
-                    await registry.schema.load_schema_from_db(session=session, branch=new_branch)
+
+                    await registry.schema.load_schema(session=session, branch=new_branch)
 
             else:
-                log.info(f"{new_branch.name}: New branch detected")
                 registry.branch[new_branch.name] = new_branch
-                await registry.schema.load_schema_from_db(session=session, branch=new_branch)
+                log.info(f"{new_branch.name}: New branch detected, pulling schema")
+                await registry.schema.load_schema(session=session, branch=new_branch)
 
         for branch_name in list(registry.branch.keys()):
             if branch_name not in active_branches:

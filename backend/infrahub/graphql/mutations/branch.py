@@ -75,6 +75,9 @@ class BranchCreate(Mutation):
             obj.update_schema_hash()
             await obj.save(session=session)
 
+            # Add Branch to registry
+            registry.branch[obj.name] = obj
+
         log.info("created_branch", name=obj.name)
         log_data = get_log_data()
         request_id = log_data.get("request_id", "")

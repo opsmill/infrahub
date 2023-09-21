@@ -88,7 +88,7 @@ async def test_branch_create(db, session, default_branch: Branch, car_person_sch
     assert branch2
     assert branch2_schema
 
-    assert branch2.schema_hash == hash(branch2_schema)
+    assert branch2.schema_hash == branch2_schema.get_hash_full()
 
     # Validate that we can't create a branch with a name that already exist
     result = await graphql(
@@ -129,6 +129,41 @@ async def test_branch_create(db, session, default_branch: Branch, car_person_sch
     assert result.data["BranchCreate"]["object"]["name"] == "branch3"
     assert result.data["BranchCreate"]["object"]["description"] == "my description"
     assert result.data["BranchCreate"]["object"]["is_data_only"] is False
+
+
+async def test_branch_create_registry(
+    db, session, default_branch: Branch, car_person_schema, register_core_models_schema
+):
+    schema = await generate_graphql_schema(branch=default_branch, session=session, include_subscription=False)
+
+    query = """
+    mutation {
+        BranchCreate(data: { name: "branch2", is_data_only: true }) {
+            ok
+            object {
+                id
+                name
+                description
+                is_data_only
+                is_default
+                branched_from
+            }
+        }
+    }
+    """
+    result = await graphql(
+        schema,
+        source=query,
+        context_value={"infrahub_session": session, "infrahub_database": db},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["BranchCreate"]["ok"] is True
+
+    branch2 = await Branch.get_by_name(session=session, name="branch2")
+    assert branch2.schema_hash.main == default_branch.schema_hash.main
 
 
 async def test_branch_query(db, session, default_branch: Branch, car_person_schema, register_core_models_schema):
