@@ -132,7 +132,8 @@ async def git_fixture_repo(git_sources_dir, git_repos_dir, helper) -> InfrahubRe
         name="test_basename",
         location=f"{git_sources_dir}/test_base",
     )
-    await repo.create_branch_in_git(branch_name="main")
+
+    await repo.create_branch_in_git(branch_name="main", branch_id="8808dcea-f7b4-4f5a-b5e9-a0605d4c11ba")
 
     return repo
 

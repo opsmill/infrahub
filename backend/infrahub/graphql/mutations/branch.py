@@ -87,6 +87,7 @@ class BranchCreate(Mutation):
         if config.SETTINGS.broker.enable and info.context.get("background"):
             message = messages.EventBranchCreate(
                 branch=obj.name,
+                branch_id=obj.id,
                 data_only=obj.is_data_only,
                 meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
             )
