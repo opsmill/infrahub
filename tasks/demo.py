@@ -187,7 +187,7 @@ def load_infra_data(context: Context, database: str = "memgraph"):
     with context.cd(REPO_BASE):
         compose_files_cmd = build_compose_files_cmd(database=database)
         base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
-        command = f"{base_cmd} run infrahub-git infrahubctl run models/infrastructure_edge.py"
+        command = f"{base_cmd} run infrahub-git infrahubctl run models/infrastructure_edge.py --concurrent 1"
         execute_command(context=context, command=command)
 
 
