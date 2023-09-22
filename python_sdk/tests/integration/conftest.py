@@ -65,7 +65,6 @@ def execute_before_any_test(worker_id):
         config.SETTINGS.database.address = f"{BUILD_NAME}-database-{db_id}"
         config.SETTINGS.storage.settings = {"directory": "/opt/infrahub/storage"}
 
-    config.SETTINGS.experimental_features.ignore_authentication_requirements = False
     config.SETTINGS.broker.enable = False
     config.SETTINGS.cache.enable = False
     config.SETTINGS.miscellaneous.start_background_runner = False

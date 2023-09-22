@@ -184,10 +184,6 @@ class AnalyticsSettings(BaseSettings):
 
 class ExperimentalFeaturesSettings(BaseSettings):
     pull_request: bool = False
-    ignore_authentication_requirements: bool = Field(
-        default=True,
-        description="If set to true operations that would have been denied due to lack of authentication still works.",
-    )
 
     class Config:
         env_prefix = "INFRAHUB_EXPERIMENTAL_"
