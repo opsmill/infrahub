@@ -11,6 +11,10 @@ async def initialize_client(**kwargs: Any) -> InfrahubClient:
     if config.SETTINGS.api_token:
         client_config["api_token"] = config.SETTINGS.api_token
 
+    timeout = kwargs.pop("timeout", None)
+    if timeout:
+        client_config["timeout"] = timeout
+
     client = await InfrahubClient.init(
         address=config.SETTINGS.server_address, config=Config(**client_config), insert_tracker=True, **kwargs
     )

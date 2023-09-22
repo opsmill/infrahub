@@ -1,14 +1,18 @@
 /// <reference types="cypress" />
 
-import { expect } from "chai";
 import { NEW_ACCOUNT } from "../mocks/e2e/accounts";
-import { ADMIN_CREDENTIALS } from "../utils";
+import { ADMIN_CREDENTIALS, waitFor } from "../utils";
 
 describe("Object creation and deletion", () => {
+  let itemsNumber = 0;
+
   beforeEach(function () {
     cy.login(ADMIN_CREDENTIALS.username, ADMIN_CREDENTIALS.password);
 
     cy.visit("/");
+
+    // Intercept mutation
+    cy.intercept("POST", "/graphql/main").as("Request");
   });
 
   it("should create an object", function () {
@@ -17,9 +21,7 @@ describe("Object creation and deletion", () => {
 
     // Get the actual number of items
     cy.get("div.flex > .text-sm > :nth-child(3)").then((element) => {
-      const itemsNumber = parseInt(element.text());
-
-      cy.wrap(itemsNumber).as("itemsNumber");
+      itemsNumber = parseInt(element.text());
     });
 
     // Open the create form
@@ -36,18 +38,15 @@ describe("Object creation and deletion", () => {
     // Click save
     cy.get(".justify-end > .bg-custom-blue-700").click();
 
-    // Wait for the object to be created (the save button should not exist)
-    cy.get(".justify-end > .bg-custom-blue-700").should("not.exist");
+    // Wait after refetch, the body data should contain an object
+    waitFor(
+      "@Request",
+      (interception) => interception?.response?.body?.data?.CoreAccount?.count > itemsNumber
+    ).then(() => {
+      const newText = itemsNumber + 1;
 
-    // Get the previous number from the previous request
-    cy.get("@itemsNumber").then((itemsNumber) => {
       // Get the new number
-      cy.get("div.flex > .text-sm > :nth-child(3)").then((element) => {
-        const itemsNewNumber = parseInt(element.text());
-
-        // The new number should be old number + 1
-        expect(itemsNewNumber).to.be.eq(itemsNumber + 1);
-      });
+      cy.get("div.flex > .text-sm > :nth-child(3)").should("have.text", newText);
     });
   });
 
@@ -57,9 +56,7 @@ describe("Object creation and deletion", () => {
 
     // Get the actual number of items
     cy.get("div.flex > .text-sm > :nth-child(3)").then((element) => {
-      const itemsNumber = parseInt(element.text());
-
-      cy.wrap(itemsNumber).as("itemsNumber");
+      itemsNumber = parseInt(element.text());
     });
 
     // Get the delete button for the new account
@@ -72,18 +69,15 @@ describe("Object creation and deletion", () => {
     // Delete the object
     cy.get(".bg-red-600").click();
 
-    // Wait the request
-    cy.contains("Delete").should("not.exist");
+    // Wait after refetch, the body data should contain an object
+    waitFor(
+      "@Request",
+      (interception) => interception?.response?.body?.data?.CoreAccount?.count === itemsNumber
+    ).then(() => {
+      const newText = itemsNumber - 1;
 
-    // Get the previous number from the previous request
-    cy.get("@itemsNumber").then((itemsNumber) => {
       // Get the new number
-      cy.get("div.flex > .text-sm > :nth-child(3)").then((element) => {
-        const itemsNewNumber = parseInt(element.text());
-
-        // The new number should be old number - 1
-        expect(itemsNewNumber).to.be.eq(itemsNumber - 1);
-      });
+      cy.get("div.flex > .text-sm > :nth-child(3)").should("have.text", newText);
     });
   });
 });

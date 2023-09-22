@@ -22,6 +22,10 @@ jwt_scheme = HTTPBearer(auto_error=False)
 api_key_scheme = APIKeyHeader(name="X-INFRAHUB-KEY", auto_error=False)
 
 
+async def cookie_auth_scheme(request: Request) -> Optional[str]:
+    return request.cookies.get("access_token")  # Replace with the actual name of your JWT cookie
+
+
 class BranchParams(BaseModel):
     branch: Branch
     at: Timestamp
@@ -40,19 +44,35 @@ async def get_session(request: Request) -> AsyncIterator[AsyncSession]:
 
 
 async def get_access_token(
+    request: Request,
     jwt_header: HTTPAuthorizationCredentials = Depends(jwt_scheme),
 ) -> AccountSession:
-    if not jwt_header:
-        raise AuthorizationError("A JWT access token is required to perform this operation.")
-    return await validate_jwt_access_token(token=jwt_header.credentials)
+    if jwt_header:
+        return await validate_jwt_access_token(token=jwt_header.credentials)
+    if token := request.cookies.get("access_token"):
+        return await validate_jwt_access_token(token=token)
+
+    raise AuthorizationError("A JWT access token is required to perform this operation.")
 
 
 async def get_refresh_token(
-    jwt_header: HTTPAuthorizationCredentials = Depends(jwt_scheme),
+    request: Request, jwt_header: Optional[HTTPAuthorizationCredentials] = Depends(jwt_scheme)
 ) -> RefreshTokenData:
-    if not jwt_header:
+    token = None
+
+    # Check for token in header
+    if jwt_header:
+        token = jwt_header.credentials
+
+    # If no auth header, try to get the token from the cookie
+    if not token:
+        token = request.cookies.get("refresh_token")
+
+    # If still no token, raise an error
+    if not token:
         raise AuthorizationError("A JWT refresh token is required to perform this operation.")
-    return validate_jwt_refresh_token(token=jwt_header.credentials)
+
+    return validate_jwt_refresh_token(token=token)
 
 
 async def get_branch_params(
@@ -87,6 +107,9 @@ async def get_current_user(
     jwt_token = None
     if jwt_header:
         jwt_token = jwt_header.credentials
+
+    if not jwt_token:
+        jwt_token = request.cookies.get("access_token")
 
     account_session = await authentication_token(session=session, jwt_token=jwt_token, api_key=api_key)
 

@@ -1,5 +1,5 @@
 import pytest
-from pydantic.error_wrappers import ValidationError
+from pydantic.error_wrappers import ValidationError as PydanticValidationError
 
 from infrahub.core import get_branch
 from infrahub.core.branch import Branch
@@ -9,46 +9,95 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import execute_read_query_async
-from infrahub.exceptions import BranchNotFound
+from infrahub.exceptions import BranchNotFound, ValidationError
 from infrahub.message_bus.rpc import InfrahubRpcClientTesting
 
 
 async def test_branch_name_validator(session):
     assert Branch(name="new-branch")
     assert Branch(name="cr1234")
-    assert Branch(name="cr1234")
+    assert Branch(name="new.branch")
+    assert Branch(name="new/branch")
 
-    # No space
+    # Test path segment that ends with a period
+    with pytest.raises(ValidationError):
+        Branch(name="new/.")
+
+    # Test two consecutive periods
+    with pytest.raises(ValidationError):
+        Branch(name="new..branch")
+
+    # Test string starting with a forward slash
+    with pytest.raises(ValidationError):
+        Branch(name="/newbranch")
+
+    # Test two consecutive forward slashes
+    with pytest.raises(ValidationError):
+        Branch(name="new//branch")
+
+    # Test "@{"
+    with pytest.raises(ValidationError):
+        Branch(name="new@{branch")
+
+    # Test backslash
+    with pytest.raises(ValidationError):
+        Branch(name="new\\branch")
+
+    # Test ASCII control characters
+    with pytest.raises(ValidationError):
+        Branch(name="new\x01branch")
+
+    # Test DEL character
+    with pytest.raises(ValidationError):
+        Branch(name="new\x7Fbranch")
+
+    # Test space character
     with pytest.raises(ValidationError):
         Branch(name="new branch")
 
-    # No comma
+    # Test tilde character
     with pytest.raises(ValidationError):
-        Branch(name="new,branch")
+        Branch(name="new~branch")
 
-    # No dot
+    # Test caret character
     with pytest.raises(ValidationError):
-        Branch(name="new.branch")
+        Branch(name="new^branch")
 
-    # No exclamation point
+    # Test colon character
     with pytest.raises(ValidationError):
-        Branch(name="new!branch")
+        Branch(name="new:branch")
 
-    # No uppercase
+    # Test question mark
     with pytest.raises(ValidationError):
-        Branch(name="New-Branch")
+        Branch(name="new?branch")
 
-    # Must start with a letter
+    # Test asterisk
     with pytest.raises(ValidationError):
-        Branch(name="1branch")
+        Branch(name="new*branch")
+
+    # Test square bracket
+    with pytest.raises(ValidationError):
+        Branch(name="new[branch")
+
+    # Test string ending with ".lock"
+    with pytest.raises(ValidationError):
+        Branch(name="newbranch.lock")
+
+    # Test string ending with a forward slash
+    with pytest.raises(ValidationError):
+        Branch(name="newbranch/")
+
+    # Test string ending with a period
+    with pytest.raises(ValidationError):
+        Branch(name="newbranch.")
 
     # Need at least 3 characters
     assert Branch(name="cr1")
-    with pytest.raises(ValidationError):
+    with pytest.raises(PydanticValidationError):
         Branch(name="cr")
 
     # No more than 32 characters
-    with pytest.raises(ValidationError):
+    with pytest.raises(PydanticValidationError):
         Branch(name="qwertyuiopqwertyuiopqwertyuiopqwe")
 
     assert Branch(name="new-branch")
@@ -61,7 +110,7 @@ async def test_branch_branched_form_format_validator(session):
     time1 = Timestamp().to_string()
     assert Branch(name="cr1234", branched_from=time1).branched_from == time1
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(PydanticValidationError):
         Branch(name="cr1234", branched_from="not a date")
 
 

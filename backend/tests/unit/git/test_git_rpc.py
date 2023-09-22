@@ -6,6 +6,7 @@ from infrahub.message_bus.events import (
     RPCStatusCode,
 )
 from infrahub_client import UUIDT
+from infrahub_client.branch import BranchData
 
 # pylint: disable=redefined-outer-name
 
@@ -38,10 +39,10 @@ async def test_git_rpc_create_error(git_upstream_repo_01, tmp_path):
     assert response.status == RPCStatusCode.BAD_REQUEST
 
 
-async def test_git_rpc_merge(git_upstream_repo_01, git_repo_01: InfrahubRepository, tmp_path):
+async def test_git_rpc_merge(git_upstream_repo_01, git_repo_01: InfrahubRepository, branch01: BranchData, tmp_path):
     repo = git_repo_01
 
-    await repo.create_branch_in_git(branch_name="branch01")
+    await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
 
     commit_main_before = repo.get_commit_value(branch_name="main")
 
@@ -62,15 +63,17 @@ async def test_git_rpc_merge(git_upstream_repo_01, git_repo_01: InfrahubReposito
     assert commit_main_before != commit_main_after
 
 
-async def test_git_rpc_diff(git_upstream_repo_01, git_repo_01: InfrahubRepository, tmp_path):
+async def test_git_rpc_diff(
+    git_upstream_repo_01, git_repo_01: InfrahubRepository, branch01: BranchData, branch02: BranchData, tmp_path
+):
     repo = git_repo_01
 
-    await repo.create_branch_in_git(branch_name="branch01")
-    await repo.create_branch_in_git(branch_name="branch02")
+    await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
+    await repo.create_branch_in_git(branch_name=branch02.name, branch_id=branch02.id)
 
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
-    commit_branch01 = repo.get_commit_value(branch_name="branch01", remote=False)
-    commit_branch02 = repo.get_commit_value(branch_name="branch02", remote=False)
+    commit_branch01 = repo.get_commit_value(branch_name=branch01.name, remote=False)
+    commit_branch02 = repo.get_commit_value(branch_name=branch02.name, remote=False)
 
     # Diff Between Branch01 and Branch02
     message = InfrahubGitRPC(

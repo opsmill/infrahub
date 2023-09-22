@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "infrahub"
-version = "0.7.0"
+version = "0.7.1"
 description = ""
 authors = ["OpsMill <info@opsmill.com>"]
 
@@ -95,6 +95,9 @@ infrahubctl = "infrahub_ctl.cli:app"
 infrahub-git-credential = "infrahub.git_credential.helper:app"
 infrahub-git-askpass = "infrahub.git_credential.askpass:app"
 infrahub-sync = "infrahub_sync.cli:app"
+
+[tool.poetry.plugins."nornir.plugins.inventory"]
+"InfrahubInventory" = "nornir_infrahub.plugins.inventory.infrahub:InfrahubInventory"
 
 [tool.black]
 line-length = 120

@@ -56,7 +56,7 @@ async def _run(script: Path, method: str, log: logging.Logger, branch: str, conc
     if not hasattr(module, method):
         raise typer.Abort(f"Unable to Load the method {method} in the Python script at {script}")
 
-    client = await initialize_client(max_concurrent_execution=concurrent, default_timeout=timeout)
+    client = await initialize_client(timeout=timeout, max_concurrent_execution=concurrent)
 
     func = getattr(module, method)
     await func(client=client, log=log, branch=branch)

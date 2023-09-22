@@ -3,7 +3,7 @@ import useQuery from "../../hooks/useQuery";
 
 export const QUERY = gql`
   query {
-    branch {
+    Branch {
       name
       origin_branch
       branched_from

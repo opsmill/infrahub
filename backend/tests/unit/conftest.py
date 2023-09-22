@@ -5,6 +5,7 @@ from typing import Dict
 
 import pendulum
 import pytest
+from git.repo import Repo
 from neo4j import AsyncDriver, AsyncSession
 from neo4j._codec.hydration.v1 import HydrationHandler
 from pytest_httpx import HTTPXMock
@@ -33,6 +34,7 @@ from infrahub.core.schema import (
 from infrahub.core.schema_manager import SchemaBranch, SchemaManager
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import execute_write_query_async, get_db
+from infrahub.git import InfrahubRepository
 from infrahub.graphql.generator import (
     load_attribute_types_in_registry,
     load_node_interface,
@@ -113,6 +115,27 @@ def git_repos_dir(tmp_path) -> str:
     config.SETTINGS.git.repositories_directory = repos_dir
 
     return repos_dir
+
+
+@pytest.fixture
+async def git_fixture_repo(git_sources_dir, git_repos_dir, helper) -> InfrahubRepository:
+    fixtures_dir = helper.get_fixtures_dir()
+    test_base = os.path.join(fixtures_dir, "repos/test_base")
+    shutil.copytree(test_base, f"{git_sources_dir}/test_base")
+    origin = Repo.init(f"{git_sources_dir}/test_base", initial_branch="main")
+    for untracked in origin.untracked_files:
+        origin.index.add(untracked)
+    origin.index.commit("First commit")
+
+    repo = await InfrahubRepository.new(
+        id=UUIDT.new(),
+        name="test_basename",
+        location=f"{git_sources_dir}/test_base",
+    )
+
+    await repo.create_branch_in_git(branch_name="main", branch_id="8808dcea-f7b4-4f5a-b5e9-a0605d4c11ba")
+
+    return repo
 
 
 @pytest.fixture
@@ -2043,6 +2066,36 @@ async def data_schema(session, default_branch: Branch) -> None:
 
 
 @pytest.fixture
+async def prefix_schema(session: AsyncSession, default_branch: Branch) -> SchemaRoot:
+    SCHEMA = {
+        "nodes": [
+            {
+                "name": "Prefix",
+                "namespace": "Test",
+                "attributes": [
+                    {"name": "prefix", "kind": "IPNetwork", "unique": True},
+                    {"name": "name", "kind": "Text"},
+                    {"name": "description", "kind": "Text", "optional": True},
+                ],
+            },
+            {
+                "name": "Ip",
+                "namespace": "Test",
+                "attributes": [
+                    {"name": "address", "kind": "IPHost", "unique": True},
+                    {"name": "name", "kind": "Text"},
+                    {"name": "description", "kind": "Text", "optional": True},
+                ],
+            },
+        ],
+    }
+
+    schema = SchemaRoot(**SCHEMA)
+    registry.schema.register_schema(schema=schema)
+    return schema
+
+
+@pytest.fixture
 async def reset_registry(session) -> None:
     registry.delete_all()
 
@@ -2070,13 +2123,16 @@ async def default_branch(reset_registry, local_storage_dir, empty_database, sess
 @pytest.fixture
 async def register_internal_models_schema(default_branch: Branch) -> SchemaBranch:
     schema = SchemaRoot(**internal_schema)
-    return registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    default_branch.update_schema_hash()
+    return schema_branch
 
 
 @pytest.fixture
 async def register_core_models_schema(default_branch: Branch, register_internal_models_schema) -> SchemaBranch:
     schema = SchemaRoot(**core_models)
     schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    default_branch.update_schema_hash()
     return schema_branch
 
 

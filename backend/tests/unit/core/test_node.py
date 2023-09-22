@@ -1059,3 +1059,51 @@ async def test_union(
 
     kinds = sorted([peer.get_kind() for peer in peers])
     assert kinds == ["TestCar", "TestMotorcycle", "TestTruck"]
+
+
+# --------------------------------------------------------------------------
+# Serialize
+# --------------------------------------------------------------------------
+
+
+async def test_node_serialize_prefix(session, default_branch: Branch, prefix_schema):
+    prefix = registry.get_schema(name="TestPrefix")
+
+    p1 = await Node.init(session=session, schema=prefix)
+    await p1.new(session=session, prefix="192.0.2.1", name="prefix1")
+    await p1.save(session=session)
+
+    retrieve_p1 = await NodeManager.get_one(id=p1.id, session=session)
+    assert retrieve_p1.prefix.value == "192.0.2.1/32"
+
+    p2 = await Node.init(session=session, schema=prefix)
+    await p2.new(session=session, prefix="192.0.2.1/255.255.255.255", name="prefix2")
+    await p2.save(session=session)
+
+    retrieve_p2 = await NodeManager.get_one(id=p1.id, session=session)
+    assert retrieve_p2.prefix.value == "192.0.2.1/32"
+
+    p3 = await Node.init(session=session, schema=prefix)
+    await p3.new(session=session, prefix="2001:db8::/128", name="prefix3")
+    await p3.save(session=session)
+
+    retrieve_p3 = await NodeManager.get_one(id=p3.id, session=session)
+    assert retrieve_p3.prefix.value == "2001:db8::/128"
+
+
+async def test_node_serialize_address(session, default_branch: Branch, prefix_schema):
+    ip = registry.get_schema(name="TestIp")
+
+    i1 = await Node.init(session=session, schema=ip)
+    await i1.new(session=session, address="192.0.2.1", name="ip1")
+    await i1.save(session=session)
+
+    retrieve_i1 = await NodeManager.get_one(id=i1.id, session=session)
+    assert retrieve_i1.address.value == "192.0.2.1/32"
+
+    i2 = await Node.init(session=session, schema=ip)
+    await i2.new(session=session, address="2001:db8::", name="ip2")
+    await i2.save(session=session)
+
+    retrieve_i2 = await NodeManager.get_one(id=i2.id, session=session)
+    assert retrieve_i2.address.value == "2001:db8::/128"

@@ -51,7 +51,7 @@ def test_base_schema_model_hashing():
         name="node1", subs=[MySubElement(name="apple"), MySubElement(name="orange"), MySubElement(name="coconut")]
     )
 
-    assert hash(node1) == hash(node2)
+    assert node1.get_hash() == node2.get_hash()
 
 
 def test_base_schema_model_hashing_dict():
@@ -72,7 +72,7 @@ def test_base_schema_model_hashing_dict():
         name="node1", subs=[MySubElement(name="orange", value1={"bob": "Alice"}), MySubElement(name="coconut")]
     )
 
-    assert hash(node1) == hash(node2)
+    assert node1.get_hash() == node2.get_hash()
 
 
 def test_base_schema_update():
@@ -246,7 +246,7 @@ async def test_node_schema_hashable():
     schema = NodeSchema(**SCHEMA)
 
     assert isinstance(schema, Hashable)
-    assert hash(schema)
+    assert schema.get_hash()
 
 
 async def test_attribute_schema_hashable():
@@ -255,7 +255,7 @@ async def test_attribute_schema_hashable():
     schema = AttributeSchema(**SCHEMA)
 
     assert isinstance(schema, Hashable)
-    assert hash(schema)
+    assert schema.get_hash()
 
 
 async def test_relationship_schema_hashable():
@@ -264,7 +264,7 @@ async def test_relationship_schema_hashable():
     schema = RelationshipSchema(**SCHEMA)
 
     assert isinstance(schema, Hashable)
-    assert hash(schema)
+    assert schema.get_hash()
 
 
 async def test_node_schema_generate_fields_for_display_label():

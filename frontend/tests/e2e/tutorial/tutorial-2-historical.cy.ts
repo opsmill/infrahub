@@ -1,6 +1,6 @@
 /// <reference types="cypress" />
 
-import { NEW_ADMIN_ACCOUNT_LABEL } from "../../mocks/e2e/accounts";
+import { ORGANIZATION_NAME } from "../../mocks/e2e/organizations";
 import { ADMIN_CREDENTIALS, SCREENSHOT_ENV_VARIABLE, screenshotConfig } from "../../utils";
 
 describe("Tutorial - Part 2", () => {
@@ -14,16 +14,15 @@ describe("Tutorial - Part 2", () => {
     cy.visit("/");
 
     // Access the accounts list
-    cy.get("[href='/objects/Account'] > .group").click();
+    cy.get("[href='/objects/Organization'] > .group").click();
 
     // Access admin account
-    cy.contains(NEW_ADMIN_ACCOUNT_LABEL).should("exist");
-    cy.contains(NEW_ADMIN_ACCOUNT_LABEL).click();
+    cy.contains(ORGANIZATION_NAME).click();
 
     // Toggle the data-only field
     cy.get(".sm\\:p-0").within(() => {
       // The label should be the new one
-      cy.contains("Label").siblings(".flex").should("have.text", NEW_ADMIN_ACCOUNT_LABEL);
+      cy.contains("Name").siblings(".flex").should("have.text", ORGANIZATION_NAME);
     });
 
     cy.get(".react-datepicker__input-container > .relative > .block").click();

@@ -1,6 +1,6 @@
 import pytest
 
-from infrahub.core.attribute import Integer, String
+from infrahub.core.attribute import Integer, IPHost, IPNetwork, String
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -35,6 +35,46 @@ async def test_init(
     )
     assert attr.value == "mystring"
     assert attr.source_id == second_account.id
+
+
+async def test_validate_format_ipnetwork_and_iphost(session, default_branch: Branch, criticality_schema: NodeSchema):
+    schema = criticality_schema.get_attribute("name")
+
+    # 1/ test with prefixlen
+    IPHost(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="192.0.2.0/32")
+    IPHost(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="2001:db8::/32")
+    IPNetwork(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="192.0.2.0/32")
+    IPNetwork(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="2001:db8::/32")
+
+    # 2/ test with netmask
+    IPHost(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="192.0.2.1/255.255.255.0")
+    IPNetwork(
+        name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="192.0.2.0/255.255.255.0"
+    )
+
+    # 3/ test without prefix or mask
+    IPHost(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="192.0.2.1")
+    IPHost(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="2001:db8::")
+    IPNetwork(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="192.0.2.1")
+    IPNetwork(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="2001:db8::")
+
+    with pytest.raises(ValidationError):
+        IPHost(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="192.0.2.0/33")
+
+    with pytest.raises(ValidationError):
+        IPHost(
+            name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="2001:db8::/ffff:ff00::"
+        )
+
+    with pytest.raises(ValidationError):
+        IPNetwork(
+            name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="192.0.2.1/255.255.255.0"
+        )
+
+    with pytest.raises(ValidationError):
+        IPNetwork(
+            name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="2001:db8::/ffff:ff00::"
+        )
 
 
 async def test_validate_format_string(session, default_branch: Branch, criticality_schema: NodeSchema):

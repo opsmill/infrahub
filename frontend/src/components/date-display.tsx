@@ -1,5 +1,5 @@
 import { format, formatDistanceToNow } from "date-fns";
-import { Pill } from "./pill";
+import { Tooltip } from "./tooltip";
 
 type DateDisplayProps = {
   date?: number | string | Date;
@@ -18,11 +18,11 @@ export const DateDisplay = (props: DateDisplayProps) => {
 
   return (
     <span className="flex items-center flex-wrap">
-      <Pill className="text-sm font-normal">{getDateDisplay(date)}</Pill>
-
-      <i className="text-xs font-normal ml-2">
-        ({formatDistanceToNow(date ? new Date(date) : new Date(), { addSuffix: true })})
-      </i>
+      <Tooltip message={getDateDisplay(date)}>
+        <span className="text-xs font-normal">
+          {formatDistanceToNow(date ? new Date(date) : new Date(), { addSuffix: true })}
+        </span>
+      </Tooltip>
     </span>
   );
 };

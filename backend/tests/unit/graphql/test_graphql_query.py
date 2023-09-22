@@ -1743,7 +1743,7 @@ async def test_query_attribute_flag_property(
 async def test_query_branches(db, session, default_branch: Branch, register_core_models_schema):
     query = """
     query {
-        branch {
+        Branch {
             id
             name
             branched_from
@@ -1762,19 +1762,19 @@ async def test_query_branches(db, session, default_branch: Branch, register_core
     )
 
     assert result1.errors is None
-    assert result1.data["branch"][0]["name"] == "main"
+    assert result1.data["Branch"][0]["name"] == "main"
 
 
 async def test_query_multiple_branches(db, session, default_branch: Branch, register_core_models_schema):
     query = """
     query {
-        branch1: branch {
+        branch1: Branch {
             id
             name
             branched_from
             is_data_only
         }
-        branch2: branch {
+        branch2: Branch {
             id
             name
             branched_from
@@ -2345,154 +2345,3 @@ async def test_union_root(
 
     assert result.errors is None
     assert len(result.data["on_road"]) == 3
-
-
-async def test_query_diff_graphs(db, session, default_branch, base_dataset_02):
-    query = """
-    query {
-        diff(branch: "branch1") {
-            nodes {
-                id
-                branch
-                kind
-                action
-                changed_at
-                attributes {
-                    name
-                    action
-                }
-            }
-            relationships {
-                id
-                branch
-                name
-                properties {
-                    branch
-                    type
-                    changed_at
-                    action
-                }
-                changed_at
-                action
-            }
-        }
-    }
-    """
-    main_branch = await Branch.get_by_name(name="main", session=session)
-
-    schema = await generate_graphql_schema(
-        branch=default_branch, session=session, include_mutation=False, include_subscription=False
-    )
-
-    result = await graphql(
-        schema=schema,
-        source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": main_branch},
-        root_value=None,
-        variable_values={},
-    )
-
-    assert result.errors is None
-    expected_nodes = [
-        {
-            "action": "updated",
-            "branch": "main",
-            "attributes": [{"action": "updated", "name": "name"}],
-            "changed_at": None,
-            "id": "c1",
-            "kind": "TestCar",
-        },
-        {
-            "action": "updated",
-            "branch": "branch1",
-            "attributes": [{"action": "updated", "name": "nbr_seats"}],
-            "changed_at": None,
-            "id": "c1",
-            "kind": "TestCar",
-        },
-        {
-            "action": "added",
-            "branch": "main",
-            "attributes": [
-                {"action": "added", "name": "name"},
-                {"action": "added", "name": "nbr_seats"},
-                {"action": "added", "name": "is_electric"},
-                {"action": "added", "name": "color"},
-            ],
-            "changed_at": base_dataset_02["time_m20"],
-            "id": "c2",
-            "kind": "TestCar",
-        },
-        {
-            "action": "added",
-            "branch": "branch1",
-            "attributes": [
-                {"action": "added", "name": "name"},
-                {"action": "added", "name": "nbr_seats"},
-                {"action": "added", "name": "is_electric"},
-                {"action": "added", "name": "color"},
-            ],
-            "changed_at": base_dataset_02["time_m40"],
-            "id": "c3",
-            "kind": "TestCar",
-        },
-    ]
-
-    expected_rels = [
-        {
-            "action": "updated",
-            "branch": "main",
-            "changed_at": None,
-            "id": "r1",
-            "name": "testcar__testperson",
-            "properties": [
-                {
-                    "action": "updated",
-                    "branch": "main",
-                    "changed_at": base_dataset_02["time_m30"],
-                    "type": "IS_PROTECTED",
-                },
-            ],
-        },
-        {
-            "action": "updated",
-            "branch": "branch1",
-            "changed_at": None,
-            "id": "r1",
-            "name": "testcar__testperson",
-            "properties": [
-                {
-                    "action": "updated",
-                    "branch": "branch1",
-                    "changed_at": base_dataset_02["time_m20"],
-                    "type": "IS_VISIBLE",
-                },
-            ],
-        },
-        {
-            "action": "added",
-            "branch": "branch1",
-            "changed_at": base_dataset_02["time_m20"],
-            "id": "r2",
-            "name": "testcar__testperson",
-            "properties": [
-                {
-                    "action": "added",
-                    "branch": "branch1",
-                    "changed_at": base_dataset_02["time_m20"],
-                    "type": "IS_PROTECTED",
-                },
-                {
-                    "action": "added",
-                    "branch": "branch1",
-                    "changed_at": base_dataset_02["time_m20"],
-                    "type": "IS_VISIBLE",
-                },
-            ],
-        },
-    ]
-
-    assert len(result.data["diff"]["nodes"]) == 4
-    assert len(result.data["diff"]["relationships"]) == 3
-    assert DeepDiff(result.data["diff"]["nodes"], expected_nodes, ignore_order=True).to_dict() == {}
-    assert DeepDiff(result.data["diff"]["relationships"], expected_rels, ignore_order=True).to_dict() == {}

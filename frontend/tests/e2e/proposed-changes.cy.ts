@@ -46,9 +46,7 @@ describe("Main application", () => {
     cy.contains("Create ProposedChange").should("not.exist");
 
     // The new PC should exist
-    cy.get(".flex-1 > div > .grid").within(() => {
-      cy.contains(PROPOSED_CHANGES_NAME).should("exist");
-    });
+    cy.contains(PROPOSED_CHANGES_NAME).should("exist");
   });
 
   it("should access the Proposed Changes details", function () {
@@ -93,9 +91,7 @@ describe("Main application", () => {
     });
 
     // Check if there are some items in the data diff view
-    cy.get(":nth-child(2) > :nth-child(1) > :nth-child(4)")
-      .find("div")
-      .should("have.length.above", 1);
+    cy.get("div.text-xs").find("div").should("have.length.above", 1);
 
     cy.contains("203.0.113.242/29").click();
 

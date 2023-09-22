@@ -22,15 +22,15 @@ def generate_doc(context: Context):
     """Generate the documentation for infrahub cli using typer-cli."""
 
     CLI_COMMANDS = (
-        ("infrahub.cli.db", "infrahub db", "10_infrahub_db"),
-        ("infrahub.cli.server", "infrahub server", "20_infrahub_server"),
-        ("infrahub.cli.git_agent", "infrahub git-agent", "30_infrahub_git_agent"),
+        ("infrahub.cli.db", "infrahub db", "infrahub-db"),
+        ("infrahub.cli.server", "infrahub server", "infrahub-server"),
+        ("infrahub.cli.git_agent", "infrahub git-agent", "infrahub-git-agent"),
     )
 
     print(f" - [{NAMESPACE}] Generate CLI documentation")
     with context.cd(REPO_BASE):
         for command in CLI_COMMANDS:
-            exec_cmd = f'typer {command[0]} utils docs --name "{command[1]}" --output docs/20_components/30_infrahub_cli/{command[2]}.md'
+            exec_cmd = f'typer {command[0]} utils docs --name "{command[1]}" --output docs/components/infrahub-cli/{command[2]}.md'
             context.run(exec_cmd)
 
 

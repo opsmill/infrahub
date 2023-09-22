@@ -18,8 +18,8 @@ interface Props {
 }
 
 export const OpsMultiSelectRegister = (props: Props) => {
-  const { name, value, register, setValue, config, options, label, error, isProtected, disabled } =
-    props;
+  const { name, value, register, setValue, config, isProtected, ...propsToPass } = props;
+
   const multiSelectRegister = register(name, {
     value: value ?? "",
     ...config,
@@ -29,15 +29,13 @@ export const OpsMultiSelectRegister = (props: Props) => {
 
   return (
     <OpsMultiSelect
-      error={error}
-      label={label}
-      options={options}
+      {...propsToPass}
       value={selectedOptions}
       onChange={(newValue) => {
         setSelectedOptions(newValue as SelectOption[]);
         setValue(multiSelectRegister.name, newValue);
       }}
-      isProtected={isProtected || disabled}
+      isProtected={isProtected || props.disabled}
     />
   );
 };

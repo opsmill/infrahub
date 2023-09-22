@@ -1,7 +1,6 @@
 from infrahub.git.handlers import (
     handle_git_check_message,
     handle_git_rpc_message,
-    handle_git_transform_message,
     handle_message,
 )
 from infrahub.git.repository import (
@@ -36,6 +35,5 @@ __all__ = [
     "initialize_repositories_directory",
     "handle_git_check_message",
     "handle_git_rpc_message",
-    "handle_git_transform_message",
     "handle_message",
 ]

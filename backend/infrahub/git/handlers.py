@@ -5,15 +5,8 @@ from typing import TYPE_CHECKING
 
 import infrahub.config as config
 from infrahub import lock
-from infrahub.exceptions import (
-    CheckError,
-    Error,
-    FileNotFound,
-    RepositoryError,
-    TransformError,
-)
+from infrahub.exceptions import CheckError, Error, FileNotFound, RepositoryError
 from infrahub.git.repository import InfrahubRepository
-from infrahub.log import set_log_data
 from infrahub.message_bus.events import (
     ArtifactMessageAction,
     CheckMessageAction,
@@ -23,10 +16,8 @@ from infrahub.message_bus.events import (
     InfrahubGitRPC,
     InfrahubRPC,
     InfrahubRPCResponse,
-    InfrahubTransformRPC,
     MessageType,
     RPCStatusCode,
-    TransformMessageAction,
 )
 from infrahub_client import InfrahubNode
 
@@ -75,18 +66,6 @@ async def handle_check_message_action_python(message: InfrahubCheckRPC, client: 
         return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR, errors=[exc.message])
 
 
-async def handle_git_message_action_branch_add(message: InfrahubGitRPC, client: InfrahubClient) -> InfrahubRPCResponse:
-    repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
-    async with lock.registry.get(name=message.repository_name, namespace="repository"):
-        try:
-            await repo.create_branch_in_git(branch_name=message.params["branch_name"])
-        except RepositoryError as exc:
-            return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR, errors=[exc.message])
-        set_log_data(key="branch_name", value=message.params["branch_name"])
-
-        return InfrahubRPCResponse(status=RPCStatusCode.OK)
-
-
 async def handle_git_message_action_diff(message: InfrahubGitRPC, client: InfrahubClient) -> InfrahubRPCResponse:
     repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
     files_changed, files_added, files_removed = await repo.calculate_diff_between_commits(
@@ -95,16 +74,6 @@ async def handle_git_message_action_diff(message: InfrahubGitRPC, client: Infrah
     return InfrahubRPCResponse(
         status=RPCStatusCode.OK,
         response={"files_changed": files_changed, "files_added": files_added, "files_removed": files_removed},
-    )
-
-
-async def handle_git_message_action_get_file(message: InfrahubGitRPC, client: InfrahubClient) -> InfrahubRPCResponse:
-    repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
-    content = await repo.get_file(commit=message.params["commit"], location=message.location)
-
-    return InfrahubRPCResponse(
-        status=RPCStatusCode.OK,
-        response={"content": content},
     )
 
 
@@ -130,46 +99,8 @@ async def handle_git_message_action_repo_add(message: InfrahubGitRPC, client: In
         return InfrahubRPCResponse(status=RPCStatusCode.CREATED)
 
 
-async def handle_transform_message_action_jinja2(
-    message: InfrahubTransformRPC, client: InfrahubClient
-) -> InfrahubRPCResponse:
-    repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
-
-    try:
-        rendered_template = await repo.render_jinja2_template(
-            commit=message.commit, location=message.transform_location, data={"data": message.data} or {}
-        )
-        return InfrahubRPCResponse(status=RPCStatusCode.OK, response={"rendered_template": rendered_template})
-
-    except (TransformError, FileNotFound) as exc:
-        return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR, errors=[exc.message])
-
-
-async def handle_transform_message_action_python(
-    message: InfrahubTransformRPC, client: InfrahubClient
-) -> InfrahubRPCResponse:
-    repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
-
-    try:
-        data = None
-        if message.data:
-            data = message.data
-
-        transformed_data = await repo.execute_python_transform(
-            branch_name=message.branch_name,
-            commit=message.commit,
-            location=message.transform_location,
-            data=data,
-            client=client,
-        )
-        return InfrahubRPCResponse(status=RPCStatusCode.OK, response={"transformed_data": transformed_data})
-
-    except (TransformError, FileNotFound) as exc:
-        return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR, errors=[exc.message])
-
-
 async def handle_artifact_message_action_generate(
-    message: InfrahubTransformRPC, client: InfrahubClient
+    message: InfrahubArtifactRPC, client: InfrahubClient
 ) -> InfrahubRPCResponse:
     repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
 
@@ -217,26 +148,11 @@ async def handle_git_rpc_message(  # pylint: disable=too-many-return-statements
 
     handler_map = {
         GitMessageAction.REPO_ADD: handle_git_message_action_repo_add,
-        GitMessageAction.BRANCH_ADD: handle_git_message_action_branch_add,
         GitMessageAction.DIFF: handle_git_message_action_diff,
         GitMessageAction.MERGE: handle_git_message_action_merge,
-        GitMessageAction.GET_FILE: handle_git_message_action_get_file,
         GitMessageAction.REBASE: handle_not_implemented,
         GitMessageAction.PUSH: handle_not_implemented,
         GitMessageAction.PULL: handle_not_implemented,
-    }
-    handler = handler_map.get(message.action) or handle_bad_request
-    return await handler(message=message, client=client)
-
-
-async def handle_git_transform_message(message: InfrahubTransformRPC, client: InfrahubClient) -> InfrahubRPCResponse:
-    LOGGER.debug(
-        f"Will process Transform RPC message : {message.action}, {message.repository_name} : {message.transform_location}"
-    )
-
-    handler_map = {
-        TransformMessageAction.JINJA2: handle_transform_message_action_jinja2,
-        TransformMessageAction.PYTHON: handle_transform_message_action_python,
     }
     handler = handler_map.get(message.action) or handle_bad_request
     return await handler(message=message, client=client)
@@ -269,7 +185,6 @@ async def handle_message(message: InfrahubRPC, client: InfrahubClient) -> Infrah
     message_type_map = {
         MessageType.CHECK: handle_git_check_message,
         MessageType.GIT: handle_git_rpc_message,
-        MessageType.TRANSFORMATION: handle_git_transform_message,
         MessageType.ARTIFACT: handle_artifact_message,
     }
     handler = message_type_map.get(message.type) or handle_not_found

@@ -148,7 +148,7 @@ export default function DeviceFilterBarContent(props: any) {
   };
 
   if (error) {
-    return <ErrorScreen />;
+    return <ErrorScreen message="Something went wrong when fetching the filters." />;
   }
 
   if (loading || !schemaData) {
@@ -156,7 +156,7 @@ export default function DeviceFilterBarContent(props: any) {
   }
 
   if (!data) {
-    return <NoDataFound />;
+    return <NoDataFound message="No filters found." />;
   }
 
   return (

@@ -1,3 +1,4 @@
+import hashlib
 import os
 from enum import Enum, EnumMeta
 from typing import List, Optional
@@ -49,8 +50,14 @@ class InfrahubNumberEnum(int, BaseEnum):
     def available_types(cls) -> List[int]:
         return [cls.__members__[member].value for member in list(cls.__members__)]
 
+    def get_hash(self) -> str:
+        return hashlib.md5(str(self.value).encode()).hexdigest()
+
 
 class InfrahubStringEnum(str, BaseEnum):
     @classmethod
     def available_types(cls) -> List[str]:
         return [cls.__members__[member].value for member in list(cls.__members__)]
+
+    def get_hash(self) -> str:
+        return hashlib.md5(self.value.encode()).hexdigest()

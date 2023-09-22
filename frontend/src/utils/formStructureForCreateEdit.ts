@@ -34,7 +34,7 @@ const validate = (value: any, defaultValue?: any, optional?: boolean) => {
   }
 
   // The value is defined, then we can validate
-  if (value) {
+  if (Array.isArray(value) ? value.length : value) {
     return true;
   }
 
@@ -85,6 +85,7 @@ const getFormStructureForCreateEdit = (
       config: {
         validate: (value: any) => validate(value, attribute.default_value, attribute.optional),
       },
+      isOptionnal: attribute.optional,
       isProtected: getIsDisabled(
         row && row[attribute.name]?.owner,
         user,

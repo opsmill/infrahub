@@ -1,16 +1,30 @@
-from typing import List, Optional
-from uuid import UUID
+from __future__ import annotations
 
-from neo4j import AsyncSession
+import inspect
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from uuid import UUID  # noqa: TCH003
+
+import ujson
 from pydantic import BaseModel
-from typing_extensions import Self
 
-from infrahub.core.query import Query, QueryType
-from infrahub.database import execute_read_query_async, execute_write_query_async
-from infrahub.exceptions import QueryError
+from infrahub.core.query.standard_node import (
+    StandardNodeCreateQuery,
+    StandardNodeDeleteQuery,
+    StandardNodeGetItemQuery,
+    StandardNodeGetListQuery,
+    StandardNodeUpdateQuery,
+)
+from infrahub.exceptions import Error
 from infrahub_client import UUIDT
 
 # pylint: disable=redefined-builtin
+
+if TYPE_CHECKING:
+    from neo4j import AsyncSession
+    from neo4j.graph import Node as Neo4jNode
+    from typing_extensions import Self
+
+    from infrahub.core.query import Query
 
 
 class StandardNode(BaseModel):
@@ -42,7 +56,7 @@ class StandardNode(BaseModel):
 
         return response
 
-    async def save(self, session: AsyncSession):
+    async def save(self, session: AsyncSession) -> bool:
         """Create or Update the Node in the database."""
 
         if self.id:
@@ -50,15 +64,13 @@ class StandardNode(BaseModel):
 
         return await self._create(session=session)
 
-    async def delete(self, session: AsyncSession):
+    async def delete(self, session: AsyncSession) -> None:
         """Delete the Node in the database."""
 
-        query = await StandardNodeDeleteQuery.init(
-            session=session, node_type=self.get_type(), identifier=str(self.uuid)
-        )
+        query: Query = await StandardNodeDeleteQuery.init(session=session, node=self)
         await query.execute(session=session)
 
-    async def refresh(self, session: AsyncSession):
+    async def refresh(self, session: AsyncSession) -> bool:
         """Pull the latest state of the object from the database."""
 
         # Might need ot check how to manage the default value
@@ -69,106 +81,57 @@ class StandardNode(BaseModel):
 
         return True
 
-    async def _create(self, session: AsyncSession):
+    async def _create(self, session: AsyncSession) -> bool:
         """Create a new node in the database."""
 
-        node_type = self.get_type()
+        query: Query = await StandardNodeCreateQuery.init(session=session, node=self)
+        await query.execute(session=session)
 
-        attrs = []
-        params = {"uuid": str(UUIDT())}
-        for attr_name in self.__fields__:
-            if attr_name in self._exclude_attrs:
-                continue
-            attrs.append(f"{attr_name}: ${attr_name}")
-            params[attr_name] = getattr(self, attr_name)
-
-        if attrs:
-            query = """
-            CREATE (n:%s { uuid: $uuid, %s })
-            RETURN n
-            """ % (
-                node_type,
-                ", ".join(attrs),
-            )
-        else:
-            query = (
-                """
-            CREATE (n:%s { uuid: $uuid })
-            RETURN n
-            """
-                % node_type
-            )
-
-        results = await execute_write_query_async(session=session, query=query, params=params)
-        if not results:
-            raise QueryError(query=query, params=params, message="Unexpected error, unable to create the new node.")
-
-        node = results[0][0]
+        result = query.get_result()
+        if not result:
+            raise Error(f"Unable to create the node {self.get_type()}")
+        node = result.get("n")
 
         self.id = node.element_id
         self.uuid = node["uuid"]
 
         return True
 
-    async def _update(self, session: AsyncSession):
+    async def _update(self, session: AsyncSession) -> bool:
         """Update the node in the database if needed."""
 
-        attrs = []
-        for attr_name in self.__fields__:
-            if attr_name in self._exclude_attrs and attr_name != "uuid":
-                continue
-            attrs.append(f"{attr_name}: '{getattr(self, attr_name)}'")
+        query: Query = await StandardNodeUpdateQuery.init(session=session, node=self)
+        await query.execute(session=session)
+        result = query.get_result()
 
-        query = """
-        MATCH (n:%s { uuid: $uuid })
-        SET n = { %s }
-        RETURN n
-        """ % (
-            self.get_type(),
-            ",".join(attrs),
-        )
+        if not result:
+            raise Error(f"Unexpected error, unable to update the node {self.id} / {self.uuid}.")
 
-        params = {"uuid": str(self.uuid)}
-
-        results = await execute_write_query_async(session=session, query=query, params=params)
-
-        if not results:
-            raise QueryError(
-                query=query,
-                params=params,
-                message=f"Unexpected error, unable to update the node {self.id} / {self.uuid}.",
-            )
         return True
 
     @classmethod
-    async def get(cls, id: str, session: AsyncSession):
-        """Get a node from the database identied by its ID."""
+    async def get(cls, id: str, session: AsyncSession) -> Self:
+        """Get a node from the database identified by its ID."""
 
         node = await cls._get_item_raw(id=id, session=session)
         if node:
-            return cls._convert_node_to_obj(node)
+            return cls.from_db(node)
 
         return None
 
     @classmethod
-    async def _get_item_raw(cls, id: str, session: AsyncSession):
-        query = (
-            """
-        MATCH (n:%s)
-        WHERE ID(n) = $node_id OR n.uuid = $node_id
-        RETURN n
-        """
-            % cls.get_type()
-        )
+    async def _get_item_raw(cls, id: str, session: AsyncSession) -> Neo4jNode:
+        query: Query = await StandardNodeGetItemQuery.init(session=session, node_id=id, node_type=cls.get_type())
+        await query.execute(session=session)
 
-        params = {"node_id": id}
+        result = query.get_result()
+        if not result:
+            return None
 
-        results = await execute_read_query_async(session=session, query=query, params=params, name="standard_get")
-        if len(results):
-            return results[0].values()[0]
+        return result.get("n")
 
     @classmethod
-    def _convert_node_to_obj(cls, node):
+    def from_db(cls, node: Neo4jNode) -> Self:
         """Convert a Neo4j Node to a Infrahub StandardNode
 
         Args:
@@ -178,60 +141,67 @@ class StandardNode(BaseModel):
             StandardNode: Proper StandardNode object
         """
 
-        attrs = dict(node)
+        attrs = {}
+        node_data = dict(node)
         attrs["id"] = node.element_id
-        for key, value in attrs.items():
-            if value == "None":
+        for key, value in node_data.items():
+            if key not in cls.__fields__:
+                continue
+
+            field_type = cls.__fields__[key].type_
+
+            if value == "NULL":
                 attrs[key] = None
+            elif issubclass(field_type, (int, float, bool, str, UUID)):
+                attrs[key] = value
+            elif isinstance(value, (str, bytes)):
+                attrs[key] = ujson.loads(value)
 
         return cls(**attrs)
 
+    def to_db(self) -> Dict[str, Any]:
+        data = {}
+
+        if not self.uuid:
+            data["uuid"] = str(UUIDT())
+        else:
+            data["uuid"] = self.uuid
+
+        for attr_name, field in self.__fields__.items():
+            if attr_name in self._exclude_attrs:
+                continue
+
+            attr_value = getattr(self, attr_name)
+            field_type = field.type_
+
+            if attr_value is None:
+                data[attr_name] = "NULL"
+            elif inspect.isclass(field_type) and issubclass(field_type, BaseModel):
+                if isinstance(attr_value, list):
+                    clean_value = [item.dict() for item in attr_value]
+                    data[attr_name] = ujson.dumps(clean_value)
+                else:
+                    data[attr_name] = attr_value.json()
+
+            elif issubclass(field_type, (int, float, bool, str, UUID)):
+                data[attr_name] = attr_value
+            else:
+                data[attr_name] = ujson.dumps(attr_value)
+
+        return data
+
     @classmethod
-    async def get_list(cls, session: AsyncSession, limit: int = 1000, **kwargs) -> List[Self]:
-        params = {"limit": limit}
-
-        filters = []
-        if ids := kwargs.get("ids"):
-            filters.append("n.uuid in $ids_value")
-            params["ids_value"] = ids
-        if name_filter := kwargs.get("name"):
-            filters.append("n.name = $name")
-            params["name"] = name_filter
-
-        where = ""
-        if filters:
-            where = f"WHERE {' AND '.join(filters)}"
-
-        query = f"""
-        MATCH (n:{cls.get_type()})
-        {where}
-        RETURN n
-        ORDER BY ID(n)
-        LIMIT $limit
-        """
-
-        results = await execute_read_query_async(session=session, query=query, params=params, name="standard_get_list")
-        return [cls._convert_node_to_obj(node.values()[0]) for node in results]
-
-
-class StandardNodeDeleteQuery(Query):
-    name: str = "standard_node_delete"
-    insert_return: bool = False
-
-    type: QueryType = QueryType.WRITE
-
-    def __init__(self, node_type: str, identifier: str, *args, **kwargs):
-        self.node_type = node_type
-        self.uuid = identifier
-        super().__init__(*args, **kwargs)
-
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
-        query = """
-        MATCH (n:%s {uuid: $uuid})
-        DETACH DELETE (n)
-        """ % (
-            self.node_type
+    async def get_list(
+        cls,
+        session: AsyncSession,
+        limit: int = 1000,
+        ids: Optional[List[str]] = None,
+        name: Optional[str] = None,
+        **kwargs,
+    ) -> List[Self]:
+        query: Query = await StandardNodeGetListQuery.init(
+            session=session, node_class=cls, ids=ids, name=name, limit=limit, **kwargs
         )
+        await query.execute(session=session)
 
-        self.params["uuid"] = self.uuid
-        self.add_to_query(query)
+        return [cls.from_db(result.get("n")) for result in query.get_results()]

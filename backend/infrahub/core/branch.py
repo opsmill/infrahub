@@ -11,8 +11,15 @@ from pydantic import BaseModel, Field, validator
 import infrahub.config as config
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, DiffAction, RelationshipStatus
 from infrahub.core.manager import NodeManager
+from infrahub.core.models import SchemaBranchHash  # noqa: TCH001
 from infrahub.core.node.standard import StandardNode
-from infrahub.core.query import Query, QueryType
+from infrahub.core.query.branch import (
+    AddNodeToBranch,
+    DeleteBranchRelationshipsQuery,
+    GetAllBranchInternalRelationshipQuery,
+    RebaseBranchDeleteRelationshipQuery,
+    RebaseBranchUpdateRelationshipQuery,
+)
 from infrahub.core.query.diff import (
     DiffAttributeQuery,
     DiffNodePropertiesByIDSQuery,
@@ -24,11 +31,7 @@ from infrahub.core.query.diff import (
 from infrahub.core.query.node import NodeDeleteQuery, NodeListGetInfoQuery
 from infrahub.core.registry import get_branch, registry
 from infrahub.core.timestamp import Timestamp
-from infrahub.core.utils import (
-    add_relationship,
-    element_id_to_id,
-    update_relationships_to,
-)
+from infrahub.core.utils import add_relationship, update_relationships_to
 from infrahub.database import execute_read_query_async
 from infrahub.exceptions import BranchNotFound, ValidationError
 from infrahub.message_bus.events import (
@@ -64,7 +67,7 @@ class ModifiedPath(BaseModel):
 
     def __eq__(self, other) -> bool:
         if not isinstance(other, ModifiedPath):
-            return NotImplemented
+            raise NotImplementedError
 
         if self.modification_type != other.modification_type:
             return False
@@ -77,7 +80,7 @@ class ModifiedPath(BaseModel):
 
     def __lt__(self, other: object) -> bool:
         if not isinstance(other, ModifiedPath):
-            return NotImplemented
+            raise NotImplementedError
         return str(self) < str(other)
 
     def __hash__(self):
@@ -106,72 +109,11 @@ class ModifiedPath(BaseModel):
         return "node"
 
 
-class AddNodeToBranch(Query):
-    name: str = "node_add_to_branch"
-    insert_return: bool = False
-
-    type: QueryType = QueryType.WRITE
-
-    def __init__(self, node_id: int, *args, **kwargs):
-        self.node_id = node_id
-        super().__init__(*args, **kwargs)
-
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
-        query = """
-        MATCH (root:Root)
-        MATCH (d) WHERE ID(d) = $node_id
-        WITH root,d
-        CREATE (d)-[r:IS_PART_OF { branch: $branch, branch_level: $branch_level, from: $now, to: null, status: $status }]->(root)
-        RETURN ID(r)
-        """
-
-        self.params["node_id"] = element_id_to_id(self.node_id)
-        self.params["now"] = self.at.to_string()
-        self.params["branch"] = self.branch.name
-        self.params["branch_level"] = self.branch.hierarchy_level
-        self.params["status"] = RelationshipStatus.ACTIVE.value
-
-        self.add_to_query(query)
-
-
-class DeleteBranchRelationshipsQuery(Query):
-    name: str = "delete_branch_relationships"
-    insert_return: bool = False
-
-    type: QueryType = QueryType.WRITE
-
-    def __init__(self, branch_name: str, *args, **kwargs):
-        self.branch_name = branch_name
-        super().__init__(*args, **kwargs)
-
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
-        if config.SETTINGS.database.db_type == config.DatabaseType.MEMGRAPH:
-            query = """
-            MATCH p = (s)-[r]-(d)
-            WHERE r.branch = $branch_name
-            DELETE r
-            """
-        else:
-            query = """
-            MATCH p = (s)-[r]-(d)
-            WHERE r.branch = $branch_name
-            DELETE r
-            WITH *
-            UNWIND nodes(p) AS n
-            MATCH (n)
-            WHERE NOT exists((n)--())
-            DELETE n
-            """
-        self.params["branch_name"] = self.branch_name
-        self.add_to_query(query)
-
-
 class Branch(StandardNode):
     name: str = Field(
-        regex=rf"^[a-z][a-z0-9\-]+$|^{re.escape(GLOBAL_BRANCH_NAME)}$",
         max_length=32,
         min_length=3,
-        description="Name of the branch (only lowercase, dash & alphanumeric characters are allowed)",
+        description="Name of the branch (git ref standard)",
     )
     status: str = "OPEN"  # OPEN, CLOSED
     description: str = ""
@@ -184,11 +126,41 @@ class Branch(StandardNode):
     is_protected: bool = False
     is_data_only: bool = False
     schema_changed_at: Optional[str] = None
-    schema_hash: Optional[int] = None
+    schema_hash: Optional[SchemaBranchHash] = None
 
     ephemeral_rebase: bool = False
 
     _exclude_attrs: List[str] = ["id", "uuid", "owner", "ephemeral_rebase"]
+
+    @validator("name", pre=True, always=True)
+    def validate_branch_name(cls, value):  # pylint: disable=no-self-argument
+        checks = [
+            (r".*/\.", "/."),
+            (r"\.\.", ".."),
+            (r"^/", "starts with /"),
+            (r"//", "//"),
+            (r"@{", "@{"),
+            (r"\\", "backslash (\\)"),
+            (r"[\000-\037\177 ~^:?*[]", "disallowed ASCII characters/patterns"),
+            (r"\.lock$", "ends with .lock"),
+            (r"/$", "ends with /"),
+            (r"\.$", "ends with ."),
+        ]
+
+        offending_patterns = []
+
+        for pattern, description in checks:
+            if re.search(pattern, value):
+                offending_patterns.append(description)
+
+        if value == GLOBAL_BRANCH_NAME:
+            return value  # this is the only allowed exception
+
+        if offending_patterns:
+            error_text = ", ".join(offending_patterns)
+            raise ValidationError(f"Branch name contains invalid patterns or characters: {error_text}")
+
+        return value
 
     @validator("branched_from", pre=True, always=True)
     def set_branched_from(cls, value):  # pylint: disable=no-self-argument
@@ -198,14 +170,14 @@ class Branch(StandardNode):
     def set_created_at(cls, value):  # pylint: disable=no-self-argument
         return Timestamp(value).to_string()
 
-    def update_schema_hash(self, at: Optional[Union[Timestamp, str]] = None) -> None:
+    def update_schema_hash(self, at: Optional[Union[Timestamp, str]] = None) -> bool:
         latest_schema = registry.schema.get_schema_branch(name=self.name)
         self.schema_changed_at = Timestamp(at).to_string()
-        new_hash = hash(latest_schema)
-        if new_hash == self.schema_hash:
+        new_hash = latest_schema.get_hash_full()
+        if self.schema_hash and new_hash.main == self.schema_hash.main:
             return False
 
-        self.schema_hash = hash(latest_schema)
+        self.schema_hash = new_hash
         return True
 
     @classmethod
@@ -223,7 +195,7 @@ class Branch(StandardNode):
         if len(results) == 0:
             raise BranchNotFound(identifier=name)
 
-        return cls._convert_node_to_obj(results[0].values()[0])
+        return cls.from_db(results[0].values()[0])
 
     @classmethod
     def isinstance(cls, obj: Any) -> bool:
@@ -509,16 +481,24 @@ class Branch(StandardNode):
 
         return filters, params
 
-    async def rebase(self, session: AsyncSession):
+    async def rebase(self, session: AsyncSession, at: Optional[Union[str, Timestamp]] = None):
         """Rebase the current Branch with its origin branch"""
+
+        at = Timestamp(at)
+
+        # Find all relationships with the name of the branch
+        # Delete all relationship that have a to date defined in the past
+        # Update the from time on all other relationships
+        # If conflict is set, ignore the one with Drop
+
+        await self.rebase_graph(session=session, at=at)
 
         # FIXME, we must ensure that there is no conflict before rebasing a branch
         #   Otherwise we could endup with a complicated situation
-        self.branched_from = Timestamp().to_string()
+        self.branched_from = at.to_string()
         await self.save(session=session)
 
         # Update the branch in the registry after the rebase
-
         registry.branch[self.name] = self
 
     async def validate_branch(self, rpc_client: InfrahubRpcClient, session: AsyncSession) -> Tuple[bool, List[str]]:
@@ -733,7 +713,10 @@ class Branch(StandardNode):
 
         await update_relationships_to(ids=rel_ids_to_update, to=at, session=session)
 
-        await self.rebase(session=session)
+        # Update the branched_from time and update the registry
+        self.branched_from = Timestamp().to_string()
+        await self.save(session=session)
+        registry.branch[self.name] = self
 
     async def merge_repositories(self, rpc_client: InfrahubRpcClient, session: AsyncSession):
         # Collect all Repositories in Main because we'll need the commit in Main for each one.
@@ -763,6 +746,47 @@ class Branch(StandardNode):
             )
 
         await asyncio.gather(*tasks)
+
+    async def rebase_graph(self, session: AsyncSession, at: Optional[Timestamp] = None):
+        at = Timestamp(at)
+
+        query = await GetAllBranchInternalRelationshipQuery.init(session=session, branch=self)
+        await query.execute(session=session)
+
+        rels_to_delete = []
+        rels_to_update = []
+        for result in query.get_results():
+            element_id = result.get("r").element_id
+
+            conflict_status = result.get("r").get("conflict", None)
+            if conflict_status and conflict_status == "drop":
+                rels_to_delete.append(element_id)
+                continue
+
+            time_to_str = result.get("r").get("to", None)
+            time_from_str = result.get("r").get("from")
+            time_from = Timestamp(time_from_str)
+
+            if not time_to_str and time_from_str and time_from <= at:
+                rels_to_update.append(element_id)
+                continue
+
+            if not time_to_str and time_from_str and time_from > at:
+                rels_to_delete.append(element_id)
+                continue
+
+            time_to = Timestamp(time_to_str)
+            if time_to < at:
+                rels_to_delete.append(element_id)
+                continue
+
+            rels_to_update.append(element_id)
+
+        update_query = await RebaseBranchUpdateRelationshipQuery.init(session=session, ids=rels_to_update, at=at)
+        await update_query.execute(session=session)
+
+        delete_query = await RebaseBranchDeleteRelationshipQuery.init(session=session, ids=rels_to_delete, at=at)
+        await delete_query.execute(session=session)
 
 
 class BaseDiffElement(BaseModel):

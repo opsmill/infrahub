@@ -15,11 +15,45 @@ from infrahub.git import InfrahubRepository
 from infrahub.utils import find_first_file_in_directory, get_fixtures_dir
 from infrahub_client import UUIDT, InfrahubClient, InfrahubNode
 from infrahub_client import SchemaRoot as ClientSchemaRoot
+from infrahub_client.branch import BranchData
 
 
 @pytest.fixture
 async def client() -> InfrahubClient:
     return await InfrahubClient.init(address="http://mock", insert_tracker=True)
+
+
+@pytest.fixture
+def branch01():
+    return BranchData(
+        id="6c915158-d8ef-4169-9b00-59f94716b8c3 ",
+        name="branch01",
+        is_data_only=True,
+        is_default=False,
+        branched_from="main",
+    )
+
+
+@pytest.fixture
+def branch02():
+    return BranchData(
+        id="7708dcea-f7b4-4f5a-b5e9-a0605d4c11ba",
+        name="branch02",
+        is_data_only=True,
+        is_default=False,
+        branched_from="main",
+    )
+
+
+@pytest.fixture
+def branch99():
+    return BranchData(
+        id="2e933717-086c-47cf-8242-21421dd3c2bb",
+        name="branch99",
+        is_data_only=True,
+        is_default=False,
+        branched_from="main",
+    )
 
 
 @pytest.fixture
@@ -144,7 +178,7 @@ async def git_repo_03_w_client(git_repo_03, client) -> InfrahubRepository:
 
 
 @pytest.fixture
-async def git_repo_04(client, git_upstream_repo_03, git_repos_dir) -> InfrahubRepository:
+async def git_repo_04(client, git_upstream_repo_03, git_repos_dir, branch01: BranchData) -> InfrahubRepository:
     """Git Repository with git_upstream_repo_01 as remote
     The repo has 2 local branches : main and branch01
     The content of the branch branch01 has been  updated after the repo has been initialized
@@ -156,7 +190,7 @@ async def git_repo_04(client, git_upstream_repo_03, git_repos_dir) -> InfrahubRe
         name=git_upstream_repo_03["name"],
         location=git_upstream_repo_03["path"],
     )
-    await repo.create_branch_in_git(branch_name="branch01")
+    await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
 
     # Checkout branch01 in the upstream repo after the repo has been cloned
     # Update the first file at the top level and commit the change in the branch
@@ -204,7 +238,7 @@ async def git_repo_05(client, git_upstream_repo_01, git_repos_dir) -> InfrahubRe
 
 
 @pytest.fixture
-async def git_repo_06(client, git_upstream_repo_01, git_repos_dir) -> InfrahubRepository:
+async def git_repo_06(client, git_upstream_repo_01, git_repos_dir, branch01: BranchData) -> InfrahubRepository:
     """Git Repository with git_upstream_repo_01 as remote
     The repo has 2 local branches : main and branch01
     The content of the branch branch01 has been  updated both locally and in the remote after the repo has been initialized
@@ -216,12 +250,12 @@ async def git_repo_06(client, git_upstream_repo_01, git_repos_dir) -> InfrahubRe
         name=git_upstream_repo_01["name"],
         location=git_upstream_repo_01["path"],
     )
-    await repo.create_branch_in_git(branch_name="branch01")
+    await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
 
     # Checkout branch01 in the upstream repo after the repo has been cloned
     # Update the first file at the top level and commit the change in the branch
     upstream = Repo(git_upstream_repo_01["path"])
-    upstream.git.checkout("branch01")
+    upstream.git.checkout(branch01.name)
 
     first_file = find_first_file_in_directory(git_upstream_repo_01["path"])
     with open(os.path.join(git_upstream_repo_01["path"], first_file), "a") as file:
@@ -232,7 +266,7 @@ async def git_repo_06(client, git_upstream_repo_01, git_repos_dir) -> InfrahubRe
     upstream.git.checkout("main")
 
     # Update the local branch branch01 to create a conflict.
-    branch_wt = repo.get_worktree(identifier="branch01")
+    branch_wt = repo.get_worktree(identifier=branch01.name)
     branch_repo = Repo(branch_wt.directory)
     first_file_in_repo = os.path.join(branch_wt.directory, first_file)
     with open(first_file_in_repo, "a") as file:
@@ -246,7 +280,7 @@ async def git_repo_06(client, git_upstream_repo_01, git_repos_dir) -> InfrahubRe
 
 
 @pytest.fixture
-async def git_repo_jinja(client, git_upstream_repo_02, git_repos_dir) -> InfrahubRepository:
+async def git_repo_jinja(client, git_upstream_repo_02, git_repos_dir, branch01: BranchData) -> InfrahubRepository:
     """Git Repository with git_upstream_repo_02 as remote
     The repo has 2 local branches : main and branch01
     The main branch contains 2 jinja templates, 1 valid and 1 not valid.
@@ -286,8 +320,8 @@ async def git_repo_jinja(client, git_upstream_repo_02, git_repos_dir) -> Infrahu
 
     # Create a new branch branch01
     #  Update the first jinja template in the branch
-    upstream.git.branch("branch01")
-    upstream.git.checkout("branch01")
+    upstream.git.branch(branch01.name)
+    upstream.git.checkout(branch01.name)
 
     file_to_add = files_to_add[0]
     file_path = os.path.join(git_upstream_repo_02["path"], file_to_add["name"])
@@ -308,7 +342,7 @@ async def git_repo_jinja(client, git_upstream_repo_02, git_repos_dir) -> Infrahu
         name=git_upstream_repo_02["name"],
         location=git_upstream_repo_02["path"],
     )
-    await repo.create_branch_in_git(branch_name="branch01")
+    await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
 
     return repo
 
@@ -402,7 +436,7 @@ async def git_repo_10(client, git_upstream_repo_10, git_repos_dir) -> InfrahubRe
 async def mock_branches_list_query(httpx_mock: HTTPXMock) -> HTTPXMock:
     response = {
         "data": {
-            "branch": [
+            "Branch": [
                 {
                     "id": "eca306cf-662e-4e03-8180-2b788b191d3c",
                     "name": "main",

@@ -523,6 +523,12 @@ class IPNetwork(BaseAttribute):
         except ValueError as exc:
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"}) from exc
 
+    @classmethod
+    def serialize(cls, value: Any) -> Any:
+        """Serialize the value before storing it in the database."""
+
+        return ipaddress.ip_network(value).with_prefixlen
+
 
 class IPHost(BaseAttribute):
     type = str
@@ -545,6 +551,12 @@ class IPHost(BaseAttribute):
             ipaddress.ip_interface(value)
         except ValueError as exc:
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"}) from exc
+
+    @classmethod
+    def serialize(cls, value: Any) -> Any:
+        """Serialize the value before storing it in the database."""
+
+        return ipaddress.ip_interface(value).with_prefixlen
 
 
 class ListAttribute(BaseAttribute):

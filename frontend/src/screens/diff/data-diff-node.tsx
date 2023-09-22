@@ -123,7 +123,7 @@ export type tDataDiffNode = {
 
 export type tDataDiffNodeProps = {
   node: tDataDiffNode;
-  commentsCount: number;
+  commentsCount?: number;
   branch?: string;
 };
 
@@ -148,8 +148,12 @@ export const getNodeClassName = (
   branchOnly?: string | null | undefined
 ) => {
   // Do not display a color if the node is related to mulitple branches or if we are on the branch details diff
-  if (branches?.length > 1 || branchOnly === "true") {
+  if (branches?.length > 1 || branchOnly === "true" || !branchOnly) {
     return "bg-custom-white";
+  }
+
+  if (branches?.length === 1) {
+    return branches[0] === "main" ? "bg-custom-blue-10" : "bg-green-200";
   }
 
   return branch === "main" ? "bg-custom-blue-10" : "bg-green-200";
@@ -210,9 +214,8 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
       <div className="flex items-center mt-2 lg:mt-0">
         <DiffPill {...summary} />
 
-        <div className="flex lg:w-[380px]">
-          {/* {changed_at && <DateDisplay date={changed_at} hideDefault />} */}
-          <DateDisplay date={changed_at} />
+        <div className="flex lg:w-[200px]">
+          {changed_at && <DateDisplay date={changed_at} hideDefault />}
         </div>
       </div>
     </div>
@@ -221,7 +224,7 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
   return (
     <div
       className={classNames(
-        "rounded-lg shadow p-2 m-4 bg-custom-white",
+        "rounded-lg shadow p-2 m-4",
         getNodeClassName(branches, currentBranch, branchOnly)
       )}>
       <Accordion title={renderTitle()}>

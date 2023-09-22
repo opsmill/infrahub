@@ -4,10 +4,12 @@ import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
 import React from "react";
 import { Route, Routes } from "react-router-dom";
+import { ACCESS_TOKEN_KEY } from "../../../src/config/constants";
 import { withAuth } from "../../../src/decorators/withAuth";
 import ObjectItems from "../../../src/screens/object-items/object-items-paginated";
 import { configState } from "../../../src/state/atoms/config.atom";
 import { schemaState } from "../../../src/state/atoms/schema.atom";
+import { mockedToken } from "../../fixtures/auth";
 import { configMocks } from "../../mocks/data/config";
 import {
   graphqlQueriesMocksData,
@@ -68,6 +70,8 @@ const ObjectItemsProvider = () => {
 describe("List screen", () => {
   beforeEach(function () {
     cy.fixture("device-items-delete").as("delete");
+
+    localStorage.setItem(ACCESS_TOKEN_KEY, mockedToken);
   });
 
   it("should fetch items and render list", function () {

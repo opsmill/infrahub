@@ -18,6 +18,7 @@ class Config(BaseSettings):
         default=None, description="Provides a way to record responses from the Infrahub API"
     )
     requester: Optional[AsyncRequester] = None
+    timeout: int = Field(10, description="Default connection timeout in seconds")
     transport: RequesterTransport = Field(
         default=RequesterTransport.HTTPX, description="Set an alternate transport using a predefined option"
     )
