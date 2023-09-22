@@ -5,7 +5,7 @@ import aiormq
 from pydantic import BaseModel, Field
 
 from infrahub import config
-from infrahub.exceptions import Error
+from infrahub.exceptions import Error, RPCError
 from infrahub.log import set_log_data
 from infrahub.message_bus.responses import RESPONSE_MAP
 
@@ -124,7 +124,7 @@ class InfrahubResponse(InfrahubBaseMessage):
             return
 
         # Later we would load information about the error based on the response_class and response_data
-        raise Error(f"An error occured during the request: {self.response_data}")
+        raise RPCError(message=self.response_data.get("error", "Unknown Error"))
 
     def parse(self, response_class: type[ResponseClass]) -> ResponseClass:
         self.raise_for_status()
