@@ -226,10 +226,6 @@ def _validate_update_account(account_session: AccountSession, node_id: str, fiel
 
 
 def validate_mutation_permissions(operation: str, account_session: AccountSession) -> None:
-    if config.SETTINGS.experimental_features.ignore_authentication_requirements:
-        # This feature will later be removed.
-        return
-
     validation_map: Dict[str, Callable[[AccountSession], None]] = {
         "AccountCreate": _validate_is_admin,
         "AccountDelete": _validate_is_admin,
@@ -241,10 +237,6 @@ def validate_mutation_permissions(operation: str, account_session: AccountSessio
 def validate_mutation_permissions_update_node(
     operation: str, node_id: str, account_session: AccountSession, fields: List[str]
 ) -> None:
-    if config.SETTINGS.experimental_features.ignore_authentication_requirements:
-        # This feature will later be removed.
-        return
-
     validation_map: Dict[str, Callable[[AccountSession, str, List[str]], None]] = {
         "AccountUpdate": _validate_update_account,
     }

@@ -432,9 +432,6 @@ class InfrahubGraphQLApp:
 
     @staticmethod
     def _validate_authentication(account_session: AccountSession, query: str) -> None:
-        if config.SETTINGS.experimental_features.ignore_authentication_requirements:
-            # This feature will later be removed
-            return
         document = parse(query)
         query_type = document.definitions[0].operation.value
 

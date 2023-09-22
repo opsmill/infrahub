@@ -116,10 +116,6 @@ async def get_current_user(
     if account_session.authenticated or request.url.path.startswith("/graphql"):
         return account_session
 
-    if config.SETTINGS.experimental_features.ignore_authentication_requirements:
-        # This feature will later be removed.
-        return account_session
-
     if config.SETTINGS.main.allow_anonymous_access and request.method.lower() in ["get", "options"]:
         return account_session
 
