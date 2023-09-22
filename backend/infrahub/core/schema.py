@@ -1362,7 +1362,7 @@ core_models = {
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["label__value"],
-            "branch": BranchSupportType.AWARE.value,
+            "branch": BranchSupportType.AGNOSTIC.value,
             "inherit_from": ["LineageOwner", "LineageSource"],
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
@@ -1405,7 +1405,6 @@ core_models = {
                     "peer": "CoreAccount",
                     "optional": False,
                     "cardinality": "one",
-                    "branch": BranchSupportType.AGNOSTIC.value,
                 },
             ],
         },
@@ -1425,7 +1424,6 @@ core_models = {
                     "peer": "CoreAccount",
                     "optional": False,
                     "cardinality": "one",
-                    "branch": BranchSupportType.AGNOSTIC.value,
                 },
             ],
         },
@@ -1666,7 +1664,14 @@ core_models = {
                 {"name": "password", "kind": "Text", "optional": True},
             ],
             "relationships": [
-                {"name": "account", "peer": "CoreAccount", "kind": "Attribute", "optional": True, "cardinality": "one"},
+                {
+                    "name": "account",
+                    "peer": "CoreAccount",
+                    "branch": BranchSupportType.AGNOSTIC.value,
+                    "kind": "Attribute",
+                    "optional": True,
+                    "cardinality": "one",
+                },
                 {"name": "tags", "peer": "BuiltinTag", "kind": "Attribute", "optional": True, "cardinality": "many"},
                 {
                     "name": "transformations",
