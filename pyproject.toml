@@ -88,6 +88,7 @@ diffsync = "^1.8.0"
 
 [tool.poetry.group.nornir.dependencies]
 nornir = "^3.3.0"
+nornir-utils = "^0.2.0"
 
 [tool.poetry.scripts]
 infrahub = "infrahub.cli:app"
