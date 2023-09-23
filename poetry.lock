@@ -2479,6 +2479,21 @@ typing_extensions = ">=4.1,<5.0"
 docs = ["jupyter (>=1,<2)", "nbsphinx (>=0.8,<0.9)", "pygments (>=2,<3)", "sphinx (>=4,<5)", "sphinx-issues (>=3.0,<4.0)", "sphinx_rtd_theme (>=1.0,<2.0)", "sphinxcontrib-napoleon (>=0.7,<0.8)"]
 
 [[package]]
+name = "nornir-utils"
+version = "0.2.0"
+description = "Collection of plugins and functions for nornir that don't require external dependencies"
+optional = false
+python-versions = ">=3.6.2,<4.0.0"
+files = [
+    {file = "nornir_utils-0.2.0-py3-none-any.whl", hash = "sha256:b4c430793a74f03affd5ff2d90abc8c67a28c7ff325f48e3a01a9a44ec71b844"},
+    {file = "nornir_utils-0.2.0.tar.gz", hash = "sha256:4de6aaa35e5c1a98e1c84db84a008b0b1e974dc65d88484f2dcea3e30c95fbc2"},
+]
+
+[package.dependencies]
+colorama = ">=0.4.3,<0.5.0"
+nornir = ">=3,<4"
+
+[[package]]
 name = "opentelemetry-api"
 version = "1.16.0"
 description = "OpenTelemetry Python API"
@@ -4658,4 +4673,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8, < 3.12"
-content-hash = "a7f1a5007c47cebf3e50edb8ed879bc882e694b02d83ed2eb3d465bf638321a2"
+content-hash = "f3836c6080c77663a1e171bc33916b13284e24a82df7f128868161be8e4d390d"
