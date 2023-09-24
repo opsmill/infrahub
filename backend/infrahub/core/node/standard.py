@@ -20,11 +20,11 @@ from infrahub_client import UUIDT
 # pylint: disable=redefined-builtin
 
 if TYPE_CHECKING:
-    from neo4j import AsyncSession
     from neo4j.graph import Node as Neo4jNode
     from typing_extensions import Self
 
     from infrahub.core.query import Query
+    from infrahub.database import InfrahubDatabase
 
 
 class StandardNode(BaseModel):
@@ -56,36 +56,36 @@ class StandardNode(BaseModel):
 
         return response
 
-    async def save(self, session: AsyncSession) -> bool:
+    async def save(self, db: InfrahubDatabase) -> bool:
         """Create or Update the Node in the database."""
 
         if self.id:
-            return await self._update(session=session)
+            return await self._update(db=db)
 
-        return await self._create(session=session)
+        return await self._create(db=db)
 
-    async def delete(self, session: AsyncSession) -> None:
+    async def delete(self, db: InfrahubDatabase) -> None:
         """Delete the Node in the database."""
 
-        query: Query = await StandardNodeDeleteQuery.init(session=session, node=self)
-        await query.execute(session=session)
+        query: Query = await StandardNodeDeleteQuery.init(db=db, node=self)
+        await query.execute(db=db)
 
-    async def refresh(self, session: AsyncSession) -> bool:
+    async def refresh(self, db: InfrahubDatabase) -> bool:
         """Pull the latest state of the object from the database."""
 
         # Might need ot check how to manage the default value
-        raw_attrs = self._get_item_raw(self.id, session=session)
+        raw_attrs = self._get_item_raw(self.id, db=db)
         for item in raw_attrs:
             if item[1] != getattr(self, item[0]):
                 setattr(self, item[0], item[1])
 
         return True
 
-    async def _create(self, session: AsyncSession) -> bool:
+    async def _create(self, db: InfrahubDatabase) -> bool:
         """Create a new node in the database."""
 
-        query: Query = await StandardNodeCreateQuery.init(session=session, node=self)
-        await query.execute(session=session)
+        query: Query = await StandardNodeCreateQuery.init(db=db, node=self)
+        await query.execute(db=db)
 
         result = query.get_result()
         if not result:
@@ -97,11 +97,11 @@ class StandardNode(BaseModel):
 
         return True
 
-    async def _update(self, session: AsyncSession) -> bool:
+    async def _update(self, db: InfrahubDatabase) -> bool:
         """Update the node in the database if needed."""
 
-        query: Query = await StandardNodeUpdateQuery.init(session=session, node=self)
-        await query.execute(session=session)
+        query: Query = await StandardNodeUpdateQuery.init(db=db, node=self)
+        await query.execute(db=db)
         result = query.get_result()
 
         if not result:
@@ -110,19 +110,19 @@ class StandardNode(BaseModel):
         return True
 
     @classmethod
-    async def get(cls, id: str, session: AsyncSession) -> Self:
+    async def get(cls, id: str, db: InfrahubDatabase) -> Self:
         """Get a node from the database identified by its ID."""
 
-        node = await cls._get_item_raw(id=id, session=session)
+        node = await cls._get_item_raw(id=id, db=db)
         if node:
             return cls.from_db(node)
 
         return None
 
     @classmethod
-    async def _get_item_raw(cls, id: str, session: AsyncSession) -> Neo4jNode:
-        query: Query = await StandardNodeGetItemQuery.init(session=session, node_id=id, node_type=cls.get_type())
-        await query.execute(session=session)
+    async def _get_item_raw(cls, id: str, db: InfrahubDatabase) -> Neo4jNode:
+        query: Query = await StandardNodeGetItemQuery.init(db=db, node_id=id, node_type=cls.get_type())
+        await query.execute(db=db)
 
         result = query.get_result()
         if not result:
@@ -193,15 +193,15 @@ class StandardNode(BaseModel):
     @classmethod
     async def get_list(
         cls,
-        session: AsyncSession,
+        db: InfrahubDatabase,
         limit: int = 1000,
         ids: Optional[List[str]] = None,
         name: Optional[str] = None,
         **kwargs,
     ) -> List[Self]:
         query: Query = await StandardNodeGetListQuery.init(
-            session=session, node_class=cls, ids=ids, name=name, limit=limit, **kwargs
+            db=db, node_class=cls, ids=ids, name=name, limit=limit, **kwargs
         )
-        await query.execute(session=session)
+        await query.execute(db=db)
 
         return [cls.from_db(result.get("n")) for result in query.get_results()]

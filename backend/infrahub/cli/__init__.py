@@ -10,7 +10,7 @@ from infrahub.cli.generate_schema import app as generate_schema_app
 from infrahub.cli.git_agent import app as git_app
 from infrahub.cli.server import app as server_app
 from infrahub.core.initialization import initialization
-from infrahub.database import get_db
+from infrahub.database import InfrahubDatabase, get_db
 
 # pylint: disable=import-outside-toplevel
 
@@ -28,10 +28,8 @@ async def _init_shell(config_file: str):
     """Launch a Python Interactive shell."""
     config.load_and_exit(config_file_name=config_file)
 
-    db = await get_db()
-
-    async with db.session(database=config.SETTINGS.database.database) as session:
-        await initialization(session=session)
+    db = InfrahubDatabase(driver=await get_db(retry=1))
+    await initialization(db=db)
 
 
 @app.command()

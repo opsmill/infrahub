@@ -1,18 +1,20 @@
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Request
 from graphql import graphql
-from neo4j import AsyncSession
 from starlette.responses import JSONResponse, PlainTextResponse
 
 from infrahub.api.dependencies import (
     BranchParams,
     get_branch_params,
     get_current_user,
-    get_session,
+    get_db,
 )
 from infrahub.core import registry
 from infrahub.core.manager import NodeManager
+from infrahub.database import InfrahubDatabase  # noqa: TCH001
 from infrahub.message_bus import messages
 from infrahub.message_bus.responses import TemplateResponse, TransformResponse
 
@@ -26,7 +28,7 @@ router = APIRouter()
 async def transform_python(
     request: Request,
     transform_url: str,
-    session: AsyncSession = Depends(get_session),
+    db: InfrahubDatabase = Depends(get_db),
     branch_params: BranchParams = Depends(get_branch_params),
     _: str = Depends(get_current_user),
 ) -> JSONResponse:
@@ -34,7 +36,7 @@ async def transform_python(
 
     transform_schema = registry.get_node_schema(name="CoreTransformPython", branch=branch_params.branch)
     transforms = await NodeManager.query(
-        session=session,
+        db=db,
         schema=transform_schema,
         filters={"url__value": transform_url},
         branch=branch_params.branch,
@@ -46,11 +48,11 @@ async def transform_python(
 
     transform = transforms[0]
 
-    query = await transform.query.get_peer(session=session)  # type: ignore[attr-defined]
-    repository = await transform.repository.get_peer(session=session)  # type: ignore[attr-defined]
+    query = await transform.query.get_peer(db=db)  # type: ignore[attr-defined]
+    repository = await transform.repository.get_peer(db=db)  # type: ignore[attr-defined]
 
     schema = registry.schema.get_schema_branch(name=branch_params.branch.name)
-    gql_schema = await schema.get_graphql_schema(session=session)
+    gql_schema = await schema.get_graphql_schema(db=db)
 
     result = await graphql(
         gql_schema,
@@ -59,7 +61,6 @@ async def transform_python(
             "infrahub_branch": branch_params.branch,
             "infrahub_at": branch_params.at,
             "infrahub_database": request.app.state.db,
-            "infrahub_session": session,
         },
         root_value=None,
         variable_values=params,
@@ -100,21 +101,21 @@ async def transform_python(
 async def generate_rfile(
     request: Request,
     rfile_id: str = Path(description="ID or Name of the RFile to render"),
-    session: AsyncSession = Depends(get_session),
+    db: InfrahubDatabase = Depends(get_db),
     branch_params: BranchParams = Depends(get_branch_params),
     _: str = Depends(get_current_user),
 ) -> PlainTextResponse:
     params = {key: value for key, value in request.query_params.items() if key not in ["branch", "rebase", "at"]}
 
     rfile = await NodeManager.get_one_by_id_or_default_filter(
-        session=session, id=rfile_id, schema_name="CoreRFile", branch=branch_params.branch, at=branch_params.at
+        db=db, id=rfile_id, schema_name="CoreRFile", branch=branch_params.branch, at=branch_params.at
     )
 
-    query = await rfile.query.get_peer(session=session)  # type: ignore[attr-defined]
-    repository = await rfile.repository.get_peer(session=session)  # type: ignore[attr-defined]
+    query = await rfile.query.get_peer(db=db)  # type: ignore[attr-defined]
+    repository = await rfile.repository.get_peer(db=db)  # type: ignore[attr-defined]
 
     schema = registry.schema.get_schema_branch(name=branch_params.branch.name)
-    gql_schema = await schema.get_graphql_schema(session=session)
+    gql_schema = await schema.get_graphql_schema(db=db)
 
     result = await graphql(
         gql_schema,
@@ -123,7 +124,6 @@ async def generate_rfile(
             "infrahub_branch": branch_params.branch,
             "infrahub_at": branch_params.at,
             "infrahub_database": request.app.state.db,
-            "infrahub_session": session,
         },
         root_value=None,
         variable_values=params,

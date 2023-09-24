@@ -8,9 +8,8 @@ from pydantic import BaseModel
 from infrahub.core.registry import registry
 
 if TYPE_CHECKING:
-    from neo4j import AsyncSession
-
     from infrahub.core.node import Node
+    from infrahub.database import InfrahubDatabase
 
 
 class ValuePropertyData(BaseModel):
@@ -72,14 +71,14 @@ class NodePropertyMixin:
     def owner(self, value):
         self._set_node_property(name="owner", value=value)
 
-    async def get_source(self, session: AsyncSession):
-        return await self._get_node_property(name="source", session=session)
+    async def get_source(self, db: InfrahubDatabase):
+        return await self._get_node_property(name="source", db=db)
 
     def set_source(self, value) -> None:
         self._set_node_property(name="source", value=value)
 
-    async def get_owner(self, session: AsyncSession):
-        return await self._get_node_property(name="owner", session=session)
+    async def get_owner(self, db: InfrahubDatabase):
+        return await self._get_node_property(name="owner", db=db)
 
     def set_owner(self, value):
         self._set_node_property(name="owner", value=value)
@@ -96,13 +95,13 @@ class NodePropertyMixin:
 
         return item
 
-    async def _get_node_property(self, session: AsyncSession, name: str) -> Node:
+    async def _get_node_property(self, db: InfrahubDatabase, name: str) -> Node:
         """Return the node attribute.
         If the node is already present in cache, serve from the cache
         If the node is not present, query it on the fly using the node_id
         """
         if getattr(self, f"_{name}") is None:
-            await self._retrieve_node_property(session=session, name=name)
+            await self._retrieve_node_property(db=db, name=name)
 
         return getattr(self, f"_{name}", None)
 
@@ -127,12 +126,10 @@ class NodePropertyMixin:
         else:
             raise ValueError("Unable to process the node property")
 
-    async def _retrieve_node_property(self, session: AsyncSession, name: str) -> None:
+    async def _retrieve_node_property(self, db: InfrahubDatabase, name: str) -> None:
         """Query the node associated with this node_property from the database."""
 
-        node = await registry.manager.get_one(
-            session=session, id=getattr(self, f"{name}_id"), branch=self.branch, at=self.at
-        )
+        node = await registry.manager.get_one(db=db, id=getattr(self, f"{name}_id"), branch=self.branch, at=self.at)
         setattr(self, f"_{name}", node)
         if node:
             setattr(self, f"{name}_id", node.id)

@@ -8,7 +8,7 @@ from infrahub.core.query import Query, QueryType
 from infrahub.core.utils import element_id_to_id
 
 if TYPE_CHECKING:
-    from neo4j import AsyncSession
+    from infrahub.database import InfrahubDatabase
 
 
 class AddNodeToBranch(Query):
@@ -21,7 +21,7 @@ class AddNodeToBranch(Query):
         self.node_id = node_id
         super().__init__(*args, **kwargs)
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         query = """
         MATCH (root:Root)
         MATCH (d) WHERE ID(d) = $node_id
@@ -49,7 +49,7 @@ class DeleteBranchRelationshipsQuery(Query):
         self.branch_name = branch_name
         super().__init__(*args, **kwargs)
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         if config.SETTINGS.database.db_type == config.DatabaseType.MEMGRAPH:
             query = """
             MATCH p = (s)-[r]-(d)
@@ -77,7 +77,7 @@ class GetAllBranchInternalRelationshipQuery(Query):
     type: QueryType = QueryType.READ
     insert_return: bool = False
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         query = """
         MATCH p = ()-[r]-()
         WHERE r.branch = $branch_name
@@ -97,7 +97,7 @@ class RebaseBranchUpdateRelationshipQuery(Query):
         self.ids = ids
         super().__init__(*args, **kwargs)
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         query = """
         MATCH ()-[r]->()
         WHERE ID(r) IN $ids
@@ -122,7 +122,7 @@ class RebaseBranchDeleteRelationshipQuery(Query):
         self.ids = ids
         super().__init__(*args, **kwargs)
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         if config.SETTINGS.database.db_type == config.DatabaseType.MEMGRAPH:
             query = """
             MATCH p = (s)-[r]-(d)

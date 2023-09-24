@@ -32,11 +32,11 @@ from infrahub.types import ATTRIBUTE_TYPES
 from infrahub_client.utils import duplicates, intersection
 
 if TYPE_CHECKING:
-    from neo4j import AsyncSession
     from typing_extensions import Self
 
     from infrahub.core.branch import Branch
     from infrahub.core.query import QueryElement
+    from infrahub.database import InfrahubDatabase
 
 # pylint: disable=no-self-argument,redefined-builtin,too-many-lines
 
@@ -286,7 +286,7 @@ class AttributeSchema(BaseSchemaModel):
         return ATTRIBUTE_TYPES[self.kind].get_infrahub_class()
 
     async def get_query_filter(
-        self, session: AsyncSession, *args, **kwargs  # pylint: disable=unused-argument
+        self, db: InfrahubDatabase, *args, **kwargs  # pylint: disable=unused-argument
     ) -> Tuple[List[QueryElement], Dict[str, Any], List[str]]:
         return self.get_class().get_query_filter(*args, **kwargs)
 
@@ -317,7 +317,7 @@ class RelationshipSchema(BaseSchemaModel):
 
     async def get_query_filter(
         self,
-        session: AsyncSession,
+        db: InfrahubDatabase,
         filter_name: str,
         filter_value: Optional[Union[str, int, bool]] = None,
         name: Optional[str] = None,  # pylint: disable=unused-argument
@@ -396,7 +396,7 @@ class RelationshipSchema(BaseSchemaModel):
         field = peer_schema.get_field(filter_field_name)
 
         field_filter, field_params, field_where = await field.get_query_filter(
-            session=session,
+            db=db,
             name=filter_field_name,
             filter_name=filter_next_name,
             filter_value=filter_value,

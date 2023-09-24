@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
-import infrahub.config as config
 from infrahub.core.manager import NodeManager
 
 from .types import RELATIONS_PROPERTY_MAP, RELATIONS_PROPERTY_MAP_REVERSED
@@ -68,25 +67,25 @@ async def default_resolver(*args, **kwargs):
         if "__" in key and value or key in ["id", "ids"]
     }
 
-    async with db.session(database=config.SETTINGS.database.database) as new_session:
-        objs = await NodeManager.query_peers(
-            session=new_session,
-            id=parent["id"],
-            schema=node_rel,
-            filters=filters,
-            fields=fields,
-            at=at,
-            branch=branch,
-        )
+    # async with db.session(database=config.SETTINGS.database.database) as new_session:
+    objs = await NodeManager.query_peers(
+        db=db,
+        id=parent["id"],
+        schema=node_rel,
+        filters=filters,
+        fields=fields,
+        at=at,
+        branch=branch,
+    )
 
-        if node_rel.cardinality == "many":
-            return [await obj.to_graphql(session=new_session, fields=fields) for obj in objs]
+    if node_rel.cardinality == "many":
+        return [await obj.to_graphql(db=db, fields=fields) for obj in objs]
 
-        # If cardinality is one
-        if not objs:
-            return None
+    # If cardinality is one
+    if not objs:
+        return None
 
-        return await objs[0].to_graphql(session=new_session, fields=fields)
+    return await objs[0].to_graphql(db=db, fields=fields)
 
 
 async def relationship_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> Optional[Union[Dict, List]]:
@@ -111,25 +110,24 @@ async def relationship_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs
         if "__" in key and value or key in ["id", "ids"]
     }
 
-    async with db.session(database=config.SETTINGS.database.database) as new_session:
-        objs = await NodeManager.query_peers(
-            session=new_session,
-            id=parent["id"],
-            schema=node_rel,
-            filters=filters,
-            fields=fields,
-            at=at,
-            branch=branch,
-        )
+    objs = await NodeManager.query_peers(
+        db=db,
+        id=parent["id"],
+        schema=node_rel,
+        filters=filters,
+        fields=fields,
+        at=at,
+        branch=branch,
+    )
 
-        if node_rel.cardinality == "many":
-            return [await obj.to_graphql(session=new_session, fields=fields) for obj in objs]
+    if node_rel.cardinality == "many":
+        return [await obj.to_graphql(db=db, fields=fields) for obj in objs]
 
-        # If cardinality is one
-        if not objs:
-            return None
+    # If cardinality is one
+    if not objs:
+        return None
 
-        return await objs[0].to_graphql(session=new_session, fields=fields)
+    return await objs[0].to_graphql(db=db, fields=fields)
 
 
 async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> Dict[str, Any]:
@@ -164,27 +162,27 @@ async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, *
         if "__" in key and value or key in ["id", "ids"]
     }
     response: Dict[str, Any] = {"node": None, "properties": {}}
-    async with db.session(database=config.SETTINGS.database.database) as new_session:
-        objs = await NodeManager.query_peers(
-            session=new_session,
-            id=parent["id"],
-            schema=node_rel,
-            filters=filters,
-            fields=node_fields,
-            at=at,
-            branch=branch,
-        )
 
-        if not objs:
-            return response
+    objs = await NodeManager.query_peers(
+        db=db,
+        id=parent["id"],
+        schema=node_rel,
+        filters=filters,
+        fields=node_fields,
+        at=at,
+        branch=branch,
+    )
 
-        node_graph = await objs[0].to_graphql(session=new_session, fields=node_fields)
-        for key, mapped in RELATIONS_PROPERTY_MAP_REVERSED.items():
-            value = node_graph.pop(key, None)
-            if value:
-                response["properties"][mapped] = value
-        response["node"] = node_graph
+    if not objs:
         return response
+
+    node_graph = await objs[0].to_graphql(db=db, fields=node_fields)
+    for key, mapped in RELATIONS_PROPERTY_MAP_REVERSED.items():
+        value = node_graph.pop(key, None)
+        if value:
+            response["properties"][mapped] = value
+    response["node"] = node_graph
+    return response
 
 
 async def many_relationship_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> Dict[str, Any]:
@@ -223,41 +221,41 @@ async def many_relationship_resolver(parent: dict, info: GraphQLResolveInfo, **k
     }
 
     response: Dict[str, Any] = {"edges": [], "count": None}
-    async with db.session(database=config.SETTINGS.database.database) as new_session:
-        if "count" in fields:
-            response["count"] = await NodeManager.count_peers(
-                session=new_session,
-                id=parent["id"],
-                schema=node_rel,
-                filters=filters,
-                at=at,
-                branch=branch,
-            )
-        objs = await NodeManager.query_peers(
-            session=new_session,
+
+    if "count" in fields:
+        response["count"] = await NodeManager.count_peers(
+            db=db,
             id=parent["id"],
             schema=node_rel,
             filters=filters,
-            fields=node_fields,
-            offset=offset,
-            limit=limit,
             at=at,
             branch=branch,
         )
+    objs = await NodeManager.query_peers(
+        db=db,
+        id=parent["id"],
+        schema=node_rel,
+        filters=filters,
+        fields=node_fields,
+        offset=offset,
+        limit=limit,
+        at=at,
+        branch=branch,
+    )
 
-        if not objs:
-            return response
-        node_graph = [await obj.to_graphql(session=new_session, fields=node_fields) for obj in objs]
-
-        entries = []
-        for node in node_graph:
-            entry = {"node": {}, "properties": {}}
-            for key, mapped in RELATIONS_PROPERTY_MAP_REVERSED.items():
-                value = node.pop(key, None)
-                if value:
-                    entry["properties"][mapped] = value
-            entry["node"] = node
-            entries.append(entry)
-        response["edges"] = entries
-
+    if not objs:
         return response
+    node_graph = [await obj.to_graphql(db=db, fields=node_fields) for obj in objs]
+
+    entries = []
+    for node in node_graph:
+        entry = {"node": {}, "properties": {}}
+        for key, mapped in RELATIONS_PROPERTY_MAP_REVERSED.items():
+            value = node.pop(key, None)
+            if value:
+                entry["properties"][mapped] = value
+        entry["node"] = node
+        entries.append(entry)
+    response["edges"] = entries
+
+    return response

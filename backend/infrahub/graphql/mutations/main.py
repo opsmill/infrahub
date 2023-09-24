@@ -1,9 +1,9 @@
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Optional
 
 from graphene import InputObjectType, Mutation
 from graphene.types.mutation import MutationOptions
-from graphql import GraphQLResolveInfo
-from neo4j import AsyncSession
 
 import infrahub.config as config
 from infrahub.auth import (
@@ -25,7 +25,10 @@ from infrahub.message_bus.events import (
 from ..utils import extract_fields
 
 if TYPE_CHECKING:
+    from graphql import GraphQLResolveInfo
+
     from infrahub.auth import AccountSession
+    from infrahub.database import InfrahubDatabase
 
 # pylint: disable=unused-argument
 
@@ -79,18 +82,18 @@ class InfrahubMutationMixin:
         branch: Optional[str] = None,
         at: Optional[str] = None,
     ):
-        session: AsyncSession = info.context.get("infrahub_session")
+        db: InfrahubDatabase = info.context.get("infrahub_session")
 
         node_class = Node
         if cls._meta.schema.kind in registry.node:
             node_class = registry.node[cls._meta.schema.kind]
 
         try:
-            obj = await node_class.init(session=session, schema=cls._meta.schema, branch=branch, at=at)
-            await obj.new(session=session, **data)
-            await cls.validate_constraints(session=session, node=obj)
+            obj = await node_class.init(db=db, schema=cls._meta.schema, branch=branch, at=at)
+            await obj.new(db=db, **data)
+            await cls.validate_constraints(db=db, node=obj)
 
-            await obj.save(session=session)
+            await obj.save(db=db)
 
         except ValidationError as exc:
             raise ValueError(str(exc)) from exc
@@ -98,7 +101,7 @@ class InfrahubMutationMixin:
         fields = await extract_fields(info.field_nodes[0].selection_set)
         ok = True
 
-        return obj, cls(object=await obj.to_graphql(session=session, fields=fields.get("object", {})), ok=ok)
+        return obj, cls(object=await obj.to_graphql(db=db, fields=fields.get("object", {})), ok=ok)
 
     @classmethod
     async def mutate_update(
@@ -109,24 +112,24 @@ class InfrahubMutationMixin:
         branch: Optional[str] = None,
         at: Optional[str] = None,
     ):
-        session: AsyncSession = info.context.get("infrahub_session")
+        db: InfrahubDatabase = info.context.get("infrahub_session")
         account_session: AccountSession = info.context.get("account_session", None)
 
         if not (
             obj := await NodeManager.get_one(
-                session=session, id=data.get("id"), branch=branch, at=at, include_owner=True, include_source=True
+                db=db, id=data.get("id"), branch=branch, at=at, include_owner=True, include_source=True
             )
         ):
             raise NodeNotFound(branch, cls._meta.schema.kind, data.get("id"))
 
         try:
-            await obj.from_graphql(session=session, data=data)
+            await obj.from_graphql(db=db, data=data)
 
             # Check if the new object is conform with the uniqueness constraints
             for unique_attr in cls._meta.schema.unique_attributes:
                 attr = getattr(obj, unique_attr.name)
                 nodes = await NodeManager.query(
-                    cls._meta.schema, filters={f"{unique_attr.name}__value": attr.value}, fields={}, session=session
+                    schema=cls._meta.schema, filters={f"{unique_attr.name}__value": attr.value}, fields={}, db=db
                 )
                 if [node for node in nodes if node.id != obj.id]:
                     raise ValidationError(
@@ -138,7 +141,7 @@ class InfrahubMutationMixin:
                 operation=cls.__name__, node_id=node_id, account_session=account_session, fields=fields
             )
 
-            await obj.save(session=session)
+            await obj.save(db=db)
         except ValidationError as exc:
             raise ValueError(str(exc)) from exc
 
@@ -146,7 +149,7 @@ class InfrahubMutationMixin:
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
 
-        return obj, cls(object=await obj.to_graphql(session=session, fields=fields.get("object", {})), ok=ok)
+        return obj, cls(object=await obj.to_graphql(db=db, fields=fields.get("object", {})), ok=ok)
 
     @classmethod
     async def mutate_delete(
@@ -157,23 +160,23 @@ class InfrahubMutationMixin:
         branch: Optional[str] = None,
         at: Optional[str] = None,
     ):
-        session: AsyncSession = info.context.get("infrahub_session")
+        db: InfrahubDatabase = info.context.get("infrahub_session")
 
-        if not (obj := await NodeManager.get_one(session=session, id=data.get("id"), branch=branch, at=at)):
+        if not (obj := await NodeManager.get_one(db=db, id=data.get("id"), branch=branch, at=at)):
             raise NodeNotFound(branch, cls._meta.schema.kind, data.get("id"))
 
-        await obj.delete(session=session, at=at)
+        await obj.delete(db=db, at=at)
         ok = True
 
         return obj, cls(ok=ok)
 
     @classmethod
-    async def validate_constraints(cls, session: AsyncSession, node: Node) -> None:
+    async def validate_constraints(cls, db: InfrahubDatabase, node: Node) -> None:
         """Check if the new object is conform with the uniqueness constraints."""
         for unique_attr in cls._meta.schema.unique_attributes:
             attr = getattr(node, unique_attr.name)
             nodes = await NodeManager.query(
-                cls._meta.schema, filters={f"{unique_attr.name}__value": attr.value}, fields={}, session=session
+                schema=cls._meta.schema, filters={f"{unique_attr.name}__value": attr.value}, fields={}, db=db
             )
             if nodes:
                 raise ValidationError(

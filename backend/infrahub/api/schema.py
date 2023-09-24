@@ -1,15 +1,17 @@
+from __future__ import annotations
+
 from typing import List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends
-from neo4j import AsyncSession
 from pydantic import BaseModel, Field, root_validator
 from starlette.responses import JSONResponse
 
 from infrahub import config, lock
-from infrahub.api.dependencies import get_branch_dep, get_current_user, get_session
+from infrahub.api.dependencies import get_branch_dep, get_current_user, get_db
 from infrahub.core import registry
-from infrahub.core.branch import Branch
+from infrahub.core.branch import Branch  # noqa: TCH001
 from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
+from infrahub.database import InfrahubDatabase  # noqa: TCH001
 from infrahub.exceptions import SchemaNotFound
 from infrahub.log import get_logger
 from infrahub.message_bus import Meta, messages
@@ -74,7 +76,7 @@ async def get_schema(
 async def load_schema(
     schema: SchemaLoadAPI,
     background_tasks: BackgroundTasks,
-    session: AsyncSession = Depends(get_session),
+    db: InfrahubDatabase = Depends(get_db),
     branch: Branch = Depends(get_branch_dep),
     _: str = Depends(get_current_user),
 ) -> JSONResponse:
@@ -99,11 +101,11 @@ async def load_schema(
 
         if diff.all:
             await registry.schema.update_schema_branch(
-                schema=tmp_schema, session=session, branch=branch.name, limit=diff.all, update_db=True
+                schema=tmp_schema, db=db, branch=branch.name, limit=diff.all, update_db=True
             )
             branch.update_schema_hash()
             log.info("Schema has been updated", branch=branch.name, hash=branch.schema_hash.main)
-            await branch.save(session=session)
+            await branch.save(db=db)
 
             if config.SETTINGS.broker.enable:
                 message = messages.EventSchemaUpdate(

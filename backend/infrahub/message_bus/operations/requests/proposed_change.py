@@ -1,13 +1,12 @@
 from typing import List
 
-from neo4j import AsyncSession
-
 from infrahub.core.branch import ObjectConflict
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.core.schema import ValidatorConclusion, ValidatorState
 from infrahub.core.timestamp import Timestamp
+from infrahub.database import InfrahubDatabase
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
 from infrahub.services import InfrahubServices
@@ -15,33 +14,33 @@ from infrahub.services import InfrahubServices
 log = get_logger()
 
 
-async def _create_data_check(session: AsyncSession, proposed_change: Node) -> Node:
-    validator_obj = await Node.init(session=session, schema="CoreDataValidator")
+async def _create_data_check(db: InfrahubDatabase, proposed_change: Node) -> Node:
+    validator_obj = await Node.init(db=db, schema="CoreDataValidator")
     await validator_obj.new(
-        session=session,
+        db=db,
         label="Data Integrity",
         state=ValidatorState.QUEUED.value,
         conclusion=ValidatorConclusion.UNKNOWN.value,
         proposed_change=proposed_change.id,
     )
-    await validator_obj.save(session=session)
+    await validator_obj.save(db=db)
     return validator_obj
 
 
-async def _get_conflicts(session: AsyncSession, proposed_change: Node) -> List[ObjectConflict]:
-    source_branch = await registry.get_branch(session=session, branch=proposed_change.source_branch.value)
-    diff = await source_branch.diff(session=session, branch_only=False)
-    return await diff.get_conflicts_graph(session=session)
+async def _get_conflicts(db: InfrahubDatabase, proposed_change: Node) -> List[ObjectConflict]:
+    source_branch = await registry.get_branch(db=db, branch=proposed_change.source_branch.value)
+    diff = await source_branch.diff(db=db, branch_only=False)
+    return await diff.get_conflicts_graph(db=db)
 
 
 async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, service: InfrahubServices) -> None:
     """Triggers a data integrity validation check on the provided proposed change to start."""
     log.info(f"Got a request to process data integrity defined in proposed_change: {message.proposed_change}")
-    async with service.database.session as session:
+    async with service.database.start_transaction() as db:
         proposed_change = await NodeManager.get_one_by_id_or_default_filter(
-            id=message.proposed_change, schema_name="CoreProposedChange", session=session
+            id=message.proposed_change, schema_name="CoreProposedChange", db=service.database
         )
-        validations = await proposed_change.validations.get_peers(session=session)
+        validations = await proposed_change.validations.get_peers(db=service.database)
         data_check = None
         for validation in validations.values():
             if validation._schema.kind == "CoreDataValidator":
@@ -49,19 +48,19 @@ async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, s
                 break
 
         if not data_check:
-            data_check = await _create_data_check(session=session, proposed_change=proposed_change)
+            data_check = await _create_data_check(db=db, proposed_change=proposed_change)
 
         data_check.state.value = ValidatorState.IN_PROGRESS.value
         data_check.conclusion.value = ValidatorConclusion.UNKNOWN.value
         data_check.started_at.value = Timestamp().to_string()
         data_check.completed_at.value = ""
-        await data_check.save(session=session)
+        await data_check.save(db=db)
 
-        previous_relationships = await data_check.checks.get_relationships(session=session)
+        previous_relationships = await data_check.checks.get_relationships(db=db)
         for rel in previous_relationships:
-            await rel.delete(session=session)
+            await rel.delete(db=db)
 
-        conflicts = await _get_conflicts(session=session, proposed_change=proposed_change)
+        conflicts = await _get_conflicts(db=db, proposed_change=proposed_change)
 
         conclusion = ValidatorConclusion.SUCCESS
 
@@ -69,9 +68,9 @@ async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, s
         if conflicts:
             conclusion = ValidatorConclusion.FAILURE
         else:
-            check = await Node.init(session=session, schema="CoreDataCheck")
+            check = await Node.init(db=db, schema="CoreDataCheck")
             await check.new(
-                session=session,
+                db=db,
                 label="Data Conflict",
                 origin="internal",
                 kind="DataIntegrity",
@@ -80,13 +79,13 @@ async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, s
                 severity="info",
                 paths=[],
             )
-            await check.save(session=session)
+            await check.save(db=db)
             check_objects.append(check.id)
 
         for conflict in conflicts:
-            conflict_obj = await Node.init(session=session, schema="CoreDataCheck")
+            conflict_obj = await Node.init(db=db, schema="CoreDataCheck")
             await conflict_obj.new(
-                session=session,
+                db=db,
                 label="Data Conflict",
                 origin="internal",
                 kind="DataIntegrity",
@@ -95,14 +94,14 @@ async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, s
                 severity="critical",
                 paths=[str(conflict)],
             )
-            await conflict_obj.save(session=session)
+            await conflict_obj.save(db=db)
             check_objects.append(conflict_obj.id)
 
         data_check.state.value = ValidatorState.COMPLETED.value
         data_check.conclusion.value = conclusion.value
         data_check.checks.update = check_objects
         data_check.completed_at.value = Timestamp().to_string()
-        await data_check.save(session=session)
+        await data_check.save(db=db)
 
 
 async def schema_integrity(

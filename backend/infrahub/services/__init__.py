@@ -1,11 +1,11 @@
 from typing import Optional
 
+from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import InitializationError
 from infrahub.message_bus import InfrahubBaseMessage, InfrahubResponse, Meta
 from infrahub.message_bus.messages import ROUTING_KEY_MAP
 from infrahub_client import InfrahubClient
 
-from .adapters.database import InfrahubDatabase
 from .adapters.message_bus import InfrahubMessageBus
 
 
@@ -17,7 +17,7 @@ class InfrahubServices:
         message_bus: Optional[InfrahubMessageBus] = None,
     ):
         self._client = client
-        self.database = database or InfrahubDatabase()
+        self.database = database
         self.message_bus = message_bus or InfrahubMessageBus()
 
     @property

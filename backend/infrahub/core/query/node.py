@@ -12,13 +12,12 @@ from infrahub.exceptions import QueryError
 from infrahub_client import UUIDT
 
 if TYPE_CHECKING:
-    from neo4j import AsyncSession
-
     from infrahub.core.attribute import AttributeCreateData, BaseAttribute
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
     from infrahub.core.relationship import RelationshipCreateData, RelationshipManager
     from infrahub.core.schema import NodeSchema
+    from infrahub.database import InfrahubDatabase
 
 # pylint: disable=consider-using-f-string,redefined-builtin
 
@@ -103,7 +102,7 @@ class NodeCreateAllQuery(NodeQuery):
 
     raise_error_if_empty: bool = True
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         uuid = UUIDT()
         at = self.at or self.node._at
         self.params["uuid"] = str(uuid)
@@ -121,7 +120,7 @@ class NodeCreateAllQuery(NodeQuery):
         for rel_name in self.node._relationships:
             rel_manager: RelationshipManager = getattr(self.node, rel_name)
             for rel in rel_manager._relationships:
-                relationships.append(await rel.get_create_data(session=session))
+                relationships.append(await rel.get_create_data(db=db))
 
         self.params["attrs"] = [attr.dict() for attr in attributes]
         self.params["rels"] = [rel.dict() for rel in relationships]
@@ -219,7 +218,7 @@ class NodeDeleteQuery(NodeQuery):
 
     raise_error_if_empty: bool = True
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         self.params["uuid"] = self.node_id
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
@@ -243,7 +242,7 @@ class NodeListGetLocalAttributeValueQuery(Query):
         self.ids = ids
         super().__init__(*args, **kwargs)
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         self.params["attrs_ids"] = self.ids
 
         rel_filter, rel_params = self.branch.get_query_filter_relationships(
@@ -297,7 +296,7 @@ class NodeListGetAttributeQuery(Query):
 
         super().__init__(order_by=["a.name"], *args, **kwargs)
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         self.params["ids"] = self.ids
 
         rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at)
@@ -440,7 +439,7 @@ class NodeListGetRelationshipsQuery(Query):
 
         super().__init__(*args, **kwargs)
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         self.params["ids"] = self.ids
 
         rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at)
@@ -480,7 +479,7 @@ class NodeListGetInfoQuery(Query):
         self.ids = ids
         super().__init__(*args, **kwargs)
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
@@ -521,7 +520,7 @@ class NodeGetListQuery(Query):
 
         super().__init__(*args, **kwargs)
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         filter_has_single_id = False
         self.order_by = []
 
@@ -587,7 +586,7 @@ class NodeGetListQuery(Query):
 
                 for field_attr_name, field_attr_value in attr_filters.items():
                     subquery, subquery_params, subquery_result_name = await build_subquery_filter(
-                        session=session,
+                        db=db,
                         field=field,
                         name=field_name,
                         filter_name=field_attr_name,
@@ -619,7 +618,7 @@ class NodeGetListQuery(Query):
                 field = self.schema.get_field(order_by_field_name)
 
                 subquery, subquery_params, subquery_result_name = await build_subquery_order(
-                    session=session,
+                    db=db,
                     field=field,
                     name=order_by_field_name,
                     order_by=order_by_next_name,

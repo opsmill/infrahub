@@ -5,14 +5,13 @@ from typing import TYPE_CHECKING, Any, Optional, Tuple, Union
 from infrahub.core.query import QueryNode, QueryRel
 
 if TYPE_CHECKING:
-    from neo4j import AsyncSession
-
     from infrahub.core.branch import Branch
     from infrahub.core.schema import AttributeSchema, RelationshipSchema
+    from infrahub.database import InfrahubDatabase
 
 
 async def build_subquery_filter(
-    session: AsyncSession,
+    db: InfrahubDatabase,
     field: Union[AttributeSchema, RelationshipSchema],
     filter_name: str,
     filter_value: Any,
@@ -26,7 +25,7 @@ async def build_subquery_filter(
     prefix = f"filter{subquery_idx}"
 
     field_filter, field_params, field_where = await field.get_query_filter(
-        session=session,
+        db=db,
         name=name,
         include_match=False,
         filter_name=filter_name,
@@ -65,7 +64,7 @@ async def build_subquery_filter(
 
 
 async def build_subquery_order(
-    session: AsyncSession,
+    db: InfrahubDatabase,
     field: Union[AttributeSchema, RelationshipSchema],
     order_by: str,
     branch_filter: str,
@@ -78,7 +77,7 @@ async def build_subquery_order(
     prefix = f"order{subquery_idx}"
 
     field_filter, field_params, field_where = await field.get_query_filter(
-        session=session,
+        db=db,
         name=name,
         include_match=False,
         filter_name=order_by,

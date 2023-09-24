@@ -6,9 +6,8 @@ from infrahub.core.query import Query, QueryResult, QueryType, sort_results_by_t
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
-    from neo4j import AsyncSession
-
     from infrahub.core.branch import Branch
+    from infrahub.database import InfrahubDatabase
 
 
 class DiffQuery(Query):
@@ -50,7 +49,7 @@ class DiffQuery(Query):
 class DiffNodeQuery(DiffQuery):
     name: str = "diff_node"
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         # TODO need to improve the query to capture an object that has been deleted into the branch
         # TODO probably also need to consider a node what was merged already
 
@@ -78,7 +77,7 @@ class DiffNodeQuery(DiffQuery):
 class DiffAttributeQuery(DiffQuery):
     name: str = "diff_attribute"
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         # TODO need to improve the query to capture an object that has been deleted into the branch
 
         rels_filters, rels_params = self.branch.get_query_filter_relationships_diff(
@@ -103,7 +102,7 @@ class DiffRelationshipQuery(DiffQuery):
     name: str = "diff_relationship"
     type: QueryType = QueryType.READ
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         query = """
         CALL {
             MATCH p = ((:Node)-[r1:IS_RELATED]->(rel:Relationship)<-[r2:IS_RELATED]-(:Node))
@@ -143,7 +142,7 @@ class DiffRelationshipPropertyQuery(DiffQuery):
     name: str = "diff_relationship_property"
     type: QueryType = QueryType.READ
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         rels_filter, rels_params = self.branch.get_query_filter_relationships_range(
             rel_labels=["r"], start_time=self.diff_from, end_time=self.diff_to
         )
@@ -202,7 +201,7 @@ class DiffNodePropertiesByIDSRangeQuery(Query):
 
         super().__init__(order_by=["a.name"], *args, **kwargs)
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         self.params["ids"] = self.ids
 
         rels_filter, rels_params = self.branch.get_query_filter_relationships_range(
@@ -256,7 +255,7 @@ class DiffNodePropertiesByIDSQuery(Query):
 
         super().__init__(*args, **kwargs)
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         self.params["ids"] = self.ids
 
         rels_filter, rels_params = self.branch.get_query_filter_relationships(
@@ -313,7 +312,7 @@ class DiffRelationshipPropertiesByIDSRangeQuery(Query):
 
         super().__init__(*args, **kwargs)
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         self.params["ids"] = self.ids
 
         rels_filter, rels_params = self.branch.get_query_filter_relationships_range(

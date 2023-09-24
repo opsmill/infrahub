@@ -1,16 +1,18 @@
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Optional
 
 from fastapi import APIRouter, Depends, Request
-from neo4j import AsyncSession
 from starlette.responses import PlainTextResponse
 
 from infrahub.api.dependencies import (
     BranchParams,
     get_branch_params,
     get_current_user,
-    get_session,
+    get_db,
 )
 from infrahub.core.manager import NodeManager
+from infrahub.database import InfrahubDatabase  # noqa: TCH001
 from infrahub.exceptions import CommitNotFoundError
 from infrahub.message_bus import messages
 from infrahub.message_bus.responses import ContentResponse
@@ -28,7 +30,7 @@ async def get_file(
     repository_id: str,
     file_path: str,
     branch_params: BranchParams = Depends(get_branch_params),
-    session: AsyncSession = Depends(get_session),
+    db: InfrahubDatabase = Depends(get_db),
     commit: Optional[str] = None,
     _: str = Depends(get_current_user),
 ) -> PlainTextResponse:
@@ -36,7 +38,7 @@ async def get_file(
     rpc_client: InfrahubRpcClient = request.app.state.rpc_client
 
     repo = await NodeManager.get_one_by_id_or_default_filter(
-        session=session,
+        db=db,
         id=repository_id,
         schema_name="CoreRepository",
         branch=branch_params.branch,

@@ -41,8 +41,7 @@ from infrahub.message_bus.events import (
 )
 
 if TYPE_CHECKING:
-    from neo4j import AsyncSession
-
+    from infrahub.database import InfrahubDatabase
     from infrahub.message_bus.rpc import InfrahubRpcClient
 
 # pylint: disable=redefined-builtin,too-many-statements,too-many-lines,too-many-branches,too-many-public-methods
@@ -181,7 +180,7 @@ class Branch(StandardNode):
         return True
 
     @classmethod
-    async def get_by_name(cls, name: str, session: AsyncSession) -> Branch:
+    async def get_by_name(cls, name: str, db: InfrahubDatabase) -> Branch:
         query = """
         MATCH (n:Branch)
         WHERE n.name = $name
@@ -190,7 +189,7 @@ class Branch(StandardNode):
 
         params = {"name": name}
 
-        results = await execute_read_query_async(session=session, query=query, params=params, name="branch_get_by_name")
+        results = await execute_read_query_async(db=db, query=query, params=params, name="branch_get_by_name")
 
         if len(results) == 0:
             raise BranchNotFound(identifier=name)
@@ -201,12 +200,12 @@ class Branch(StandardNode):
     def isinstance(cls, obj: Any) -> bool:
         return isinstance(obj, cls)
 
-    async def get_origin_branch(self, session: AsyncSession) -> Optional[Branch]:
+    async def get_origin_branch(self, db: InfrahubDatabase) -> Optional[Branch]:
         """Return the branch Object of the origin_branch."""
         if not self.origin_branch or self.origin_branch == self.name:
             return None
 
-        return await get_branch(branch=self.origin_branch, session=session)
+        return await get_branch(branch=self.origin_branch, db=db)
 
     def get_branches_in_scope(self) -> List[str]:
         """Return the list of all the branches that are constituing this branch.
@@ -293,14 +292,14 @@ class Branch(StandardNode):
 
         return start, end
 
-    async def delete(self, session: AsyncSession) -> None:
+    async def delete(self, db: InfrahubDatabase) -> None:
         if self.is_default:
             raise ValidationError(f"Unable to delete {self.name} it is the default branch.")
         if self.is_global:
             raise ValidationError(f"Unable to delete {self.name} this is an internal branch.")
-        await super().delete(session=session)
-        query = await DeleteBranchRelationshipsQuery.init(session=session, branch_name=self.name)
-        await query.execute(session=session)
+        await super().delete(db=db)
+        query = await DeleteBranchRelationshipsQuery.init(db=db, branch_name=self.name)
+        await query.execute(db=db)
 
     def get_query_filter_relationships(
         self, rel_labels: list, at: Optional[Union[Timestamp, str]] = None, include_outside_parentheses: bool = False
@@ -481,7 +480,7 @@ class Branch(StandardNode):
 
         return filters, params
 
-    async def rebase(self, session: AsyncSession, at: Optional[Union[str, Timestamp]] = None):
+    async def rebase(self, db: InfrahubDatabase, at: Optional[Union[str, Timestamp]] = None):
         """Rebase the current Branch with its origin branch"""
 
         at = Timestamp(at)
@@ -491,17 +490,17 @@ class Branch(StandardNode):
         # Update the from time on all other relationships
         # If conflict is set, ignore the one with Drop
 
-        await self.rebase_graph(session=session, at=at)
+        await self.rebase_graph(db=db, at=at)
 
         # FIXME, we must ensure that there is no conflict before rebasing a branch
         #   Otherwise we could endup with a complicated situation
         self.branched_from = at.to_string()
-        await self.save(session=session)
+        await self.save(db=db)
 
         # Update the branch in the registry after the rebase
         registry.branch[self.name] = self
 
-    async def validate_branch(self, rpc_client: InfrahubRpcClient, session: AsyncSession) -> Tuple[bool, List[str]]:
+    async def validate_branch(self, rpc_client: InfrahubRpcClient, db: InfrahubDatabase) -> Tuple[bool, List[str]]:
         """Validate if a branch is eligible to be merged.
         - Must be conflict free both for data and repository
         - All checks must pass
@@ -512,21 +511,21 @@ class Branch(StandardNode):
         Need to return a list of violations, must be multiple
         """
 
-        graph_passed, graph_messages = await self.validate_graph(session=session)
-        repo_passed, repo_messages = await self.validate_repositories(rpc_client=rpc_client, session=session)
+        graph_passed, graph_messages = await self.validate_graph(db=db)
+        repo_passed, repo_messages = await self.validate_repositories(rpc_client=rpc_client, db=db)
 
         messages = graph_messages + repo_messages
         passed = graph_passed & repo_passed
 
         return passed, messages
 
-    async def validate_graph(self, session: AsyncSession) -> Tuple[bool, List[str]]:
+    async def validate_graph(self, db: InfrahubDatabase) -> Tuple[bool, List[str]]:
         passed = True
         messages = []
 
         # Check the diff and ensure the branch doesn't have some conflict
-        diff = await self.diff(session=session)
-        if conflicts := await diff.get_conflicts(session=session):
+        diff = await self.diff(db=db)
+        if conflicts := await diff.get_conflicts(db=db):
             passed = False
             for conflict in conflicts:
                 messages.append(f"Conflict detected at {conflict}")
@@ -534,7 +533,7 @@ class Branch(StandardNode):
         return passed, messages
 
     async def validate_repositories(
-        self, rpc_client: InfrahubRpcClient, session: AsyncSession  # pylint: disable=unused-argument
+        self, rpc_client: InfrahubRpcClient, db: InfrahubDatabase  # pylint: disable=unused-argument
     ) -> Tuple[bool, List[str]]:
         passed = True
         messages = []
@@ -543,21 +542,17 @@ class Branch(StandardNode):
 
     async def diff(
         self,
+        db: InfrahubDatabase,
         branch_only: bool = False,
         diff_from: Optional[Union[str, Timestamp]] = None,
         diff_to: Optional[Union[str, Timestamp]] = None,
-        session: Optional[AsyncSession] = None,
     ) -> Diff:
-        return await Diff.init(
-            branch=self, diff_from=diff_from, diff_to=diff_to, branch_only=branch_only, session=session
-        )
+        return await Diff.init(branch=self, diff_from=diff_from, diff_to=diff_to, branch_only=branch_only, db=db)
 
-    async def merge(
-        self, rpc_client: InfrahubRpcClient, at: Union[str, Timestamp] = None, session: Optional[AsyncSession] = None
-    ):
+    async def merge(self, db: InfrahubDatabase, rpc_client: InfrahubRpcClient, at: Union[str, Timestamp] = None):
         """Merge the current branch into main."""
 
-        passed, _ = await self.validate_branch(rpc_client=rpc_client, session=session)
+        passed, _ = await self.validate_branch(rpc_client=rpc_client, db=db)
         if not passed:
             raise ValidationError(f"Unable to merge the branch '{self.name}', validation failed")
 
@@ -566,25 +561,25 @@ class Branch(StandardNode):
 
         # TODO need to find a way to properly communicate back to the user any issue that could come up during the merge
         # From the Graph or From the repositories
-        await self.merge_graph(session=session, at=at)
+        await self.merge_graph(db=db, at=at)
 
-        await self.merge_repositories(rpc_client=rpc_client, session=session)
+        await self.merge_repositories(rpc_client=rpc_client, db=db)
 
-    async def merge_graph(self, session: AsyncSession, at: Optional[Union[str, Timestamp]] = None):
+    async def merge_graph(self, db: InfrahubDatabase, at: Optional[Union[str, Timestamp]] = None):
         rel_ids_to_update = []
 
         default_branch: Branch = registry.branch[config.SETTINGS.main.default_branch]
 
         at = Timestamp(at)
 
-        diff = await Diff.init(branch=self, session=session)
-        nodes = await diff.get_nodes(session=session)
+        diff = await Diff.init(branch=self, db=db)
+        nodes = await diff.get_nodes(db=db)
 
         if self.name in nodes:
             origin_nodes_query = await NodeListGetInfoQuery.init(
-                session=session, ids=list(nodes[self.name].keys()), branch=default_branch
+                db=db, ids=list(nodes[self.name].keys()), branch=default_branch
             )
-            await origin_nodes_query.execute(session=session)
+            await origin_nodes_query.execute(db=db)
             origin_nodes = {
                 node.get("n").get("uuid"): node for node in origin_nodes_query.get_results_group_by(("n", "uuid"))
             }
@@ -594,13 +589,13 @@ class Branch(StandardNode):
             # ---------------------------------------------
             for node_id, node in nodes[self.name].items():
                 if node.action == DiffAction.ADDED:
-                    query = await AddNodeToBranch.init(session=session, node_id=node.db_id, branch=default_branch)
-                    await query.execute(session=session)
+                    query = await AddNodeToBranch.init(db=db, node_id=node.db_id, branch=default_branch)
+                    await query.execute(db=db)
                     rel_ids_to_update.append(node.rel_id)
 
                 elif node.action == DiffAction.REMOVED:
-                    query = await NodeDeleteQuery.init(session=session, branch=default_branch, node_id=node_id, at=at)
-                    await query.execute(session=session)
+                    query = await NodeDeleteQuery.init(db=db, branch=default_branch, node_id=node_id, at=at)
+                    await query.execute(db=db)
                     rel_ids_to_update.extend([node.rel_id, origin_nodes[node_id].get("rb").element_id])
 
                 for _, attr in node.attributes.items():
@@ -612,7 +607,7 @@ class Branch(StandardNode):
                             at=at,
                             branch_name=default_branch.name,
                             branch_level=default_branch.hierarchy_level,
-                            session=session,
+                            db=db,
                         )
                         rel_ids_to_update.append(attr.rel_id)
 
@@ -625,7 +620,7 @@ class Branch(StandardNode):
                             branch_level=default_branch.hierarchy_level,
                             at=at,
                             status=RelationshipStatus.DELETED,
-                            session=session,
+                            db=db,
                         )
                         rel_ids_to_update.extend([attr.rel_id, attr.origin_rel_id])
 
@@ -638,7 +633,7 @@ class Branch(StandardNode):
                                 at=at,
                                 branch_name=default_branch.name,
                                 branch_level=default_branch.hierarchy_level,
-                                session=session,
+                                db=db,
                             )
                             rel_ids_to_update.append(prop.rel_id)
 
@@ -650,7 +645,7 @@ class Branch(StandardNode):
                                 at=at,
                                 branch_name=default_branch.name,
                                 branch_level=default_branch.hierarchy_level,
-                                session=session,
+                                db=db,
                             )
                             rel_ids_to_update.extend([prop.rel_id, prop.origin_rel_id])
 
@@ -663,14 +658,14 @@ class Branch(StandardNode):
                                 branch_name=default_branch.name,
                                 branch_level=default_branch.hierarchy_level,
                                 status=RelationshipStatus.DELETED,
-                                session=session,
+                                db=db,
                             )
                             rel_ids_to_update.extend([prop.rel_id, prop.origin_rel_id])
 
         # ---------------------------------------------
         # RELATIONSHIPS
         # ---------------------------------------------
-        rels = await diff.get_relationships(session=session)
+        rels = await diff.get_relationships(db=db)
 
         for rel_name in rels[self.name].keys():
             for _, rel in rels[self.name][rel_name].items():
@@ -688,7 +683,7 @@ class Branch(StandardNode):
                             branch_name=default_branch.name,
                             branch_level=default_branch.hierarchy_level,
                             status=rel_status,
-                            session=session,
+                            db=db,
                         )
                         rel_ids_to_update.append(node.rel_id)
 
@@ -704,27 +699,27 @@ class Branch(StandardNode):
                         at=at,
                         branch_name=default_branch.name,
                         branch_level=default_branch.hierarchy_level,
-                        session=session,
+                        db=db,
                     )
                     rel_ids_to_update.append(prop.rel_id)
 
                     if rel.action in [DiffAction.UPDATED, DiffAction.REMOVED]:
                         rel_ids_to_update.append(prop.origin_rel_id)
 
-        await update_relationships_to(ids=rel_ids_to_update, to=at, session=session)
+        await update_relationships_to(ids=rel_ids_to_update, to=at, db=db)
 
         # Update the branched_from time and update the registry
         self.branched_from = Timestamp().to_string()
-        await self.save(session=session)
+        await self.save(db=db)
         registry.branch[self.name] = self
 
-    async def merge_repositories(self, rpc_client: InfrahubRpcClient, session: AsyncSession):
+    async def merge_repositories(self, rpc_client: InfrahubRpcClient, db: InfrahubDatabase):
         # Collect all Repositories in Main because we'll need the commit in Main for each one.
-        repos_in_main_list = await NodeManager.query(schema="CoreRepository", session=session)
+        repos_in_main_list = await NodeManager.query(schema="CoreRepository", db=db)
         repos_in_main = {repo.id: repo for repo in repos_in_main_list}
         tasks = []
 
-        repos_in_branch_list = await NodeManager.query(schema="CoreRepository", session=session, branch=self)
+        repos_in_branch_list = await NodeManager.query(schema="CoreRepository", db=db, branch=self)
 
         for repo in repos_in_branch_list:
             # Check if the repo, exist in main, if not ignore this repo
@@ -747,11 +742,11 @@ class Branch(StandardNode):
 
         await asyncio.gather(*tasks)
 
-    async def rebase_graph(self, session: AsyncSession, at: Optional[Timestamp] = None):
+    async def rebase_graph(self, db: InfrahubDatabase, at: Optional[Timestamp] = None):
         at = Timestamp(at)
 
-        query = await GetAllBranchInternalRelationshipQuery.init(session=session, branch=self)
-        await query.execute(session=session)
+        query = await GetAllBranchInternalRelationshipQuery.init(db=db, branch=self)
+        await query.execute(db=db)
 
         rels_to_delete = []
         rels_to_update = []
@@ -782,11 +777,11 @@ class Branch(StandardNode):
 
             rels_to_update.append(element_id)
 
-        update_query = await RebaseBranchUpdateRelationshipQuery.init(session=session, ids=rels_to_update, at=at)
-        await update_query.execute(session=session)
+        update_query = await RebaseBranchUpdateRelationshipQuery.init(db=db, ids=rels_to_update, at=at)
+        await update_query.execute(db=db)
 
-        delete_query = await RebaseBranchDeleteRelationshipQuery.init(session=session, ids=rels_to_delete, at=at)
-        await delete_query.execute(session=session)
+        delete_query = await RebaseBranchDeleteRelationshipQuery.init(db=db, ids=rels_to_delete, at=at)
+        await delete_query.execute(db=db)
 
 
 class BaseDiffElement(BaseModel):
@@ -958,68 +953,68 @@ class Diff:
     @classmethod
     async def init(
         cls,
+        db: InfrahubDatabase,
         branch: Branch,
         branch_only: bool = False,
         diff_from: Union[str, Timestamp] = None,
         diff_to: Union[str, Timestamp] = None,
-        session: Optional[AsyncSession] = None,
     ):
-        origin_branch = await branch.get_origin_branch(session=session)
+        origin_branch = await branch.get_origin_branch(db=db)
 
         return cls(
             branch=branch, origin_branch=origin_branch, branch_only=branch_only, diff_from=diff_from, diff_to=diff_to
         )
 
     async def has_conflict(
-        self, session: AsyncSession, rpc_client: InfrahubRpcClient  # pylint: disable=unused-argument
+        self, db: InfrahubDatabase, rpc_client: InfrahubRpcClient  # pylint: disable=unused-argument
     ) -> bool:
         """Return True if the same path has been modified on multiple branches. False otherwise"""
 
-        return await self.has_conflict_graph(session=session)
+        return await self.has_conflict_graph(db=db)
 
-    async def has_conflict_graph(self, session: AsyncSession) -> bool:
+    async def has_conflict_graph(self, db: InfrahubDatabase) -> bool:
         """Return True if the same path has been modified on multiple branches. False otherwise"""
 
-        if await self.get_conflicts_graph(session=session):
+        if await self.get_conflicts_graph(db=db):
             return True
 
         return False
 
-    async def has_changes(self, session: AsyncSession, rpc_client: InfrahubRpcClient) -> bool:
+    async def has_changes(self, db: InfrahubDatabase, rpc_client: InfrahubRpcClient) -> bool:
         """Return True if the diff has identified some changes, False otherwise."""
 
-        has_changes_graph = await self.has_changes_graph(session=session)
-        has_changes_repositories = await self.has_changes_repositories(session=session, rpc_client=rpc_client)
+        has_changes_graph = await self.has_changes_graph(db=db)
+        has_changes_repositories = await self.has_changes_repositories(db=db, rpc_client=rpc_client)
 
         return has_changes_graph | has_changes_repositories
 
-    async def has_changes_graph(self, session: AsyncSession) -> bool:
+    async def has_changes_graph(self, db: InfrahubDatabase) -> bool:
         """Return True if the diff has identified some changes in the Graph, False otherwise."""
 
-        mpaths = await self.get_modified_paths_graph(session=session)
+        mpaths = await self.get_modified_paths_graph(db=db)
         for _, paths in mpaths.items():
             if paths:
                 return True
 
         return False
 
-    async def has_changes_repositories(self, session: AsyncSession, rpc_client: InfrahubRpcClient) -> bool:
+    async def has_changes_repositories(self, db: InfrahubDatabase, rpc_client: InfrahubRpcClient) -> bool:
         """Return True if the diff has identified some changes in the repositories, False otherwise."""
 
-        mpaths = await self.get_modified_paths_repositories(session=session, rpc_client=rpc_client)
+        mpaths = await self.get_modified_paths_repositories(db=db, rpc_client=rpc_client)
         for _, paths in mpaths.items():
             if paths:
                 return True
 
         return False
 
-    async def get_summary(self, session: AsyncSession) -> List[DiffSummaryElement]:
+    async def get_summary(self, db: InfrahubDatabase) -> List[DiffSummaryElement]:
         """Return a list of changed nodes and associated actions
 
         If only a relationship is modified for a given node it will have the updated action.
         """
-        nodes = await self.get_nodes(session=session)
-        relationships = await self.get_relationships(session=session)
+        nodes = await self.get_nodes(db=db)
+        relationships = await self.get_relationships(db=db)
         changes: Dict[str, Dict[str, DiffSummaryElement]] = {}
 
         for branch, branch_nodes in nodes.items():
@@ -1051,18 +1046,18 @@ class Diff:
 
         return summary
 
-    async def get_conflicts(self, session: AsyncSession) -> List[ObjectConflict]:
+    async def get_conflicts(self, db: InfrahubDatabase) -> List[ObjectConflict]:
         """Return the list of conflicts identified by the diff as Path (tuple).
 
         For now we are not able to identify clearly enough the conflicts for the git repositories so this part is ignored.
         """
-        return await self.get_conflicts_graph(session=session)
+        return await self.get_conflicts_graph(db=db)
 
-    async def get_conflicts_graph(self, session: AsyncSession) -> List[ObjectConflict]:
+    async def get_conflicts_graph(self, db: InfrahubDatabase) -> List[ObjectConflict]:
         if self.branch_only:
             return []
 
-        paths = await self.get_modified_paths_graph(session=session)
+        paths = await self.get_modified_paths_graph(db=db)
 
         # For now we assume that we can only have 2 branches but in the future we might need to support more
         branches = list(paths.keys())
@@ -1076,7 +1071,7 @@ class Diff:
 
         return [ObjectConflict(type=conflict.type, id=conflict.node_id, path=str(conflict)) for conflict in conflicts]
 
-    async def get_modified_paths_graph(self, session: AsyncSession) -> Dict[str, Set[ModifiedPath]]:
+    async def get_modified_paths_graph(self, db: InfrahubDatabase) -> Dict[str, Set[ModifiedPath]]:
         """Return a list of all the modified paths in the graph per branch.
 
         Path for a node : ("node", node_id, attr_name, prop_type)
@@ -1088,7 +1083,7 @@ class Diff:
 
         paths = {}
 
-        nodes = await self.get_nodes(session=session)
+        nodes = await self.get_nodes(db=db)
         for branch_name, data in nodes.items():
             if self.branch_only and branch_name != self.branch.name:
                 continue
@@ -1110,7 +1105,7 @@ class Diff:
                         )
                         paths[branch_name].add(p)
 
-        relationships = await self.get_relationships(session=session)
+        relationships = await self.get_relationships(db=db)
         for branch_name, data in relationships.items():  # pylint: disable=too-many-nested-blocks
             if self.branch_only and branch_name != self.branch.name:
                 continue
@@ -1139,7 +1134,7 @@ class Diff:
         return paths
 
     async def get_modified_paths_repositories(
-        self, session: AsyncSession, rpc_client: InfrahubRpcClient
+        self, db: InfrahubDatabase, rpc_client: InfrahubRpcClient
     ) -> Dict[str, Set[Tuple]]:
         """Return a list of all the modified paths in the repositories.
 
@@ -1151,14 +1146,14 @@ class Diff:
         paths = defaultdict(set)
 
         for branch, items in await self.get_files_repositories_for_branch(
-            session=session, rpc_client=rpc_client, branch=self.branch
+            db=db, rpc_client=rpc_client, branch=self.branch
         ):
             for item in items:
                 paths[branch] = ("file", item.repository, item.location)
 
         if not self.branch_only:
             for branch, items in await self.get_modified_paths_repositories_for_branch(
-                session=session, rpc_client=rpc_client, branch=self.origin_branch
+                db=db, rpc_client=rpc_client, branch=self.origin_branch
             ):
                 for item in items:
                     paths[branch] = ("file", item.repository, item.location)
@@ -1166,18 +1161,18 @@ class Diff:
         return paths
 
     async def get_modified_paths_repositories_for_branch(
-        self, session: AsyncSession, rpc_client: InfrahubRpcClient, branch: Branch
+        self, db: InfrahubDatabase, rpc_client: InfrahubRpcClient, branch: Branch
     ) -> Set[Tuple]:
         tasks = []
         paths = set()
 
         repos_to = {
             repo.id: repo
-            for repo in await NodeManager.query(schema="Repository", session=session, branch=branch, at=self.diff_to)
+            for repo in await NodeManager.query(schema="Repository", db=db, branch=branch, at=self.diff_to)
         }
         repos_from = {
             repo.id: repo
-            for repo in await NodeManager.query(schema="Repository", session=session, branch=branch, at=self.diff_from)
+            for repo in await NodeManager.query(schema="Repository", db=db, branch=branch, at=self.diff_from)
         }
 
         # For now we are ignoring the repos that are either not present at to time or at from time.
@@ -1222,11 +1217,11 @@ class Diff:
 
         return {("file", repository.id, filename) for filename in response.response.get("files_changed", [])}
 
-    async def get_nodes(self, session: AsyncSession) -> Dict[str, Dict[str, NodeDiffElement]]:
+    async def get_nodes(self, db: InfrahubDatabase) -> Dict[str, Dict[str, NodeDiffElement]]:
         """Return all the nodes calculated by the diff, organized by branch."""
 
         if not self._calculated_diff_nodes_at:
-            await self._calculate_diff_nodes(session=session)
+            await self._calculate_diff_nodes(db=db)
 
         return {
             branch_name: data["nodes"]
@@ -1234,7 +1229,7 @@ class Diff:
             if not self.branch_only or branch_name == self.branch.name
         }
 
-    async def _calculate_diff_nodes(self, session: AsyncSession):
+    async def _calculate_diff_nodes(self, db: InfrahubDatabase):
         """Calculate the diff for all the nodes and attributes.
 
         The results will be stored in self._results organized by branch.
@@ -1243,9 +1238,9 @@ class Diff:
         # Process nodes that have been Added or Removed first
         # ------------------------------------------------------------
         query_nodes = await DiffNodeQuery.init(
-            session=session, branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to
+            db=db, branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to
         )
-        await query_nodes.execute(session=session)
+        await query_nodes.execute(db=db)
 
         for result in query_nodes.get_results():
             node_id = result.get("n").get("uuid")
@@ -1289,9 +1284,9 @@ class Diff:
         # ------------------------------------------------------------
         attrs_to_query = set()
         query_attrs = await DiffAttributeQuery.init(
-            session=session, branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to
+            db=db, branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to
         )
-        await query_attrs.execute(session=session)
+        await query_attrs.execute(db=db)
 
         for result in query_attrs.get_results():
             node_id = result.get("n").get("uuid")
@@ -1364,13 +1359,13 @@ class Diff:
         # Query the current value for all attributes that have been updated
         # ------------------------------------------------------------
         origin_attr_query = await DiffNodePropertiesByIDSQuery.init(
-            session=session,
+            db=db,
             ids=list(attrs_to_query),
             branch=self.branch,
             at=self.diff_from,
         )
 
-        await origin_attr_query.execute(session=session)
+        await origin_attr_query.execute(db=db)
 
         for result in query_attrs.get_results():
             node_id = result.get("n").get("uuid")
@@ -1426,11 +1421,9 @@ class Diff:
 
         self._calculated_diff_nodes_at = Timestamp()
 
-    async def get_relationships(
-        self, session: AsyncSession
-    ) -> Dict[str, Dict[str, Dict[str, RelationshipDiffElement]]]:
+    async def get_relationships(self, db: InfrahubDatabase) -> Dict[str, Dict[str, Dict[str, RelationshipDiffElement]]]:
         if not self._calculated_diff_rels_at:
-            await self._calculated_diff_rels(session=session)
+            await self._calculated_diff_rels(db=db)
 
         return {
             branch_name: data["rels"]
@@ -1439,9 +1432,9 @@ class Diff:
         }
 
     async def get_relationships_per_node(
-        self, session: AsyncSession
+        self, db: InfrahubDatabase
     ) -> Dict[str, Dict[str, Dict[str, List[RelationshipDiffElement]]]]:
-        rels = await self.get_relationships(session=session)
+        rels = await self.get_relationships(db=db)
 
         # Organize the Relationships data per node and per relationship name in order to simplify the association with the nodes Later on.
         rels_per_node: Dict[str, Dict[str, Dict[str, List[RelationshipDiffElement]]]] = defaultdict(
@@ -1455,10 +1448,10 @@ class Diff:
 
         return rels_per_node
 
-    async def get_node_id_per_kind(self, session: AsyncSession) -> Dict[str, Dict[str, List[str]]]:
+    async def get_node_id_per_kind(self, db: InfrahubDatabase) -> Dict[str, Dict[str, List[str]]]:
         # Node IDs organized per Branch and per Kind
-        rels = await self.get_relationships(session=session)
-        nodes = await self.get_nodes(session=session)
+        rels = await self.get_relationships(db=db)
+        nodes = await self.get_nodes(db=db)
 
         node_ids: Dict[str, Dict[str, List[str]]] = defaultdict(lambda: defaultdict(list))
 
@@ -1477,7 +1470,7 @@ class Diff:
 
         return node_ids
 
-    async def _calculated_diff_rels(self, session: AsyncSession):
+    async def _calculated_diff_rels(self, db: InfrahubDatabase):
         """Calculate the diff for all the relationships between Nodes.
 
         The results will be stored in self._results organized by branch.
@@ -1490,9 +1483,9 @@ class Diff:
         #   to identify the relationship that have been ADDED or DELETED
         # ------------------------------------------------------------
         query_rels = await DiffRelationshipQuery.init(
-            session=session, branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to
+            db=db, branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to
         )
-        await query_rels.execute(session=session)
+        await query_rels.execute(db=db)
 
         for result in query_rels.get_results():
             branch_name = result.get("r1").get("branch")
@@ -1549,9 +1542,9 @@ class Diff:
         #  Then we can process the properties themselves
         # ------------------------------------------------------------
         query_props = await DiffRelationshipPropertyQuery.init(
-            session=session, branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to
+            db=db, branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to
         )
-        await query_props.execute(session=session)
+        await query_props.execute(db=db)
 
         for result in query_props.get_results():
             branch_name = result.get("r3").get("branch")
@@ -1601,13 +1594,13 @@ class Diff:
         #  Usually we need more information to determine if the rel has been updated, added or removed
         # ------------------------------------------------------------
         origin_rel_properties_query = await DiffRelationshipPropertiesByIDSRangeQuery.init(
-            session=session,
+            db=db,
             ids=rel_ids_to_query,
             branch=self.branch,
             diff_from=self.diff_from,
             diff_to=self.diff_to,
         )
-        await origin_rel_properties_query.execute(session=session)
+        await origin_rel_properties_query.execute(db=db)
 
         for result in query_props.get_results():
             branch_name = result.get("r3").get("branch")
@@ -1649,9 +1642,9 @@ class Diff:
 
         self._calculated_diff_rels_at = Timestamp()
 
-    async def get_files(self, session: AsyncSession, rpc_client: InfrahubRpcClient) -> Dict[str, List[FileDiffElement]]:
+    async def get_files(self, db: InfrahubDatabase, rpc_client: InfrahubRpcClient) -> Dict[str, List[FileDiffElement]]:
         if not self._calculated_diff_files_at:
-            await self._calculated_diff_files(session=session, rpc_client=rpc_client)
+            await self._calculated_diff_files(db=db, rpc_client=rpc_client)
 
         return {
             branch_name: data["files"]
@@ -1659,14 +1652,14 @@ class Diff:
             if not self.branch_only or branch_name == self.branch.name
         }
 
-    async def _calculated_diff_files(self, session: AsyncSession, rpc_client: InfrahubRpcClient):
+    async def _calculated_diff_files(self, db: InfrahubDatabase, rpc_client: InfrahubRpcClient):
         self._results[self.branch.name]["files"] = await self.get_files_repositories_for_branch(
-            session=session, rpc_client=rpc_client, branch=self.branch
+            db=db, rpc_client=rpc_client, branch=self.branch
         )
 
         if self.origin_branch:
             self._results[self.origin_branch.name]["files"] = await self.get_files_repositories_for_branch(
-                session=session, rpc_client=rpc_client, branch=self.origin_branch
+                db=db, rpc_client=rpc_client, branch=self.origin_branch
             )
 
         self._calculated_diff_files_at = Timestamp()
@@ -1713,22 +1706,18 @@ class Diff:
         return files
 
     async def get_files_repositories_for_branch(
-        self, session: AsyncSession, rpc_client: InfrahubRpcClient, branch: Branch
+        self, db: InfrahubDatabase, rpc_client: InfrahubRpcClient, branch: Branch
     ) -> List[FileDiffElement]:
         tasks = []
         files = []
 
         repos_to = {
             repo.id: repo
-            for repo in await NodeManager.query(
-                schema="CoreRepository", session=session, branch=branch, at=self.diff_to
-            )
+            for repo in await NodeManager.query(schema="CoreRepository", db=db, branch=branch, at=self.diff_to)
         }
         repos_from = {
             repo.id: repo
-            for repo in await NodeManager.query(
-                schema="CoreRepository", session=session, branch=branch, at=self.diff_from
-            )
+            for repo in await NodeManager.query(schema="CoreRepository", db=db, branch=branch, at=self.diff_from)
         }
 
         # For now we are ignoring the repos that are either not present at to time or at from time.

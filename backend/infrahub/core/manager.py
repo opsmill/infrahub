@@ -21,9 +21,8 @@ from infrahub_client.utils import deep_merge_dict
 if TYPE_CHECKING:
     from uuid import UUID
 
-    from neo4j import AsyncSession
-
     from infrahub.core.branch import Branch
+    from infrahub.database import InfrahubDatabase
 
 
 # pylint: disable=redefined-builtin
@@ -51,6 +50,7 @@ class NodeManager:
     @classmethod
     async def query(
         cls,
+        db: InfrahubDatabase,
         schema: Union[NodeSchema, GenericSchema, str],
         filters: Optional[dict] = None,
         fields: Optional[dict] = None,
@@ -60,7 +60,6 @@ class NodeManager:
         branch: Union[Branch, str] = None,
         include_source: bool = False,
         include_owner: bool = False,
-        session: Optional[AsyncSession] = None,
         prefetch_relationships: bool = False,
         account=None,
     ) -> List[Node]:  # pylint: disable=unused-argument
@@ -78,7 +77,7 @@ class NodeManager:
             List[Node]: List of Node object
         """
 
-        branch = await get_branch(branch=branch, session=session)
+        branch = await get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
         if isinstance(schema, str):
@@ -88,9 +87,9 @@ class NodeManager:
 
         # Query the list of nodes matching this Query
         query = await NodeGetListQuery.init(
-            session=session, schema=schema, branch=branch, offset=offset, limit=limit, filters=filters, at=at
+            db=db, schema=schema, branch=branch, offset=offset, limit=limit, filters=filters, at=at
         )
-        await query.execute(session=session)
+        await query.execute(db=db)
         node_ids = query.get_node_ids()
 
         # if display_label has been requested we need to ensure we are querying the right fields
@@ -106,7 +105,7 @@ class NodeManager:
             at=at,
             include_source=include_source,
             include_owner=include_owner,
-            session=session,
+            db=db,
             prefetch_relationships=prefetch_relationships,
         )
 
@@ -115,7 +114,7 @@ class NodeManager:
     @classmethod
     async def count(
         cls,
-        session: AsyncSession,
+        db: InfrahubDatabase,
         schema: NodeSchema,
         filters: Optional[dict] = None,
         at: Optional[Union[Timestamp, str]] = None,
@@ -134,11 +133,11 @@ class NodeManager:
             int: The number of responses found
         """
 
-        branch = await get_branch(branch=branch, session=session)
+        branch = await get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
-        query = await NodeGetListQuery.init(session=session, schema=schema, branch=branch, filters=filters, at=at)
-        return await query.count(session=session)
+        query = await NodeGetListQuery.init(db=db, schema=schema, branch=branch, filters=filters, at=at)
+        return await query.count(db=db)
 
     @classmethod
     async def count_peers(
@@ -146,42 +145,47 @@ class NodeManager:
         id: str,
         schema: RelationshipSchema,
         filters: dict,
-        session: AsyncSession,
+        db: InfrahubDatabase,
         at: Optional[Union[Timestamp, str]] = None,
         branch: Optional[Union[Branch, str]] = None,
     ) -> int:
-        branch = await get_branch(branch=branch, session=session)
+        branch = await get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
         rel = Relationship(schema=schema, branch=branch, node_id=id)
 
-        query = await RelationshipGetPeerQuery.init(
-            session=session, source_id=id, schema=schema, filters=filters, rel=rel, at=at
-        )
-        return await query.count(session=session)
+        query = await RelationshipGetPeerQuery.init(db=db, source_id=id, schema=schema, filters=filters, rel=rel, at=at)
+        return await query.count(db=db)
 
     @classmethod
     async def query_peers(
         cls,
+        db: InfrahubDatabase,
         id: UUID,
         schema: RelationshipSchema,
         filters: dict,
-        session: AsyncSession,
         fields: Optional[dict] = None,
         offset: Optional[int] = None,
         limit: Optional[int] = None,
         at: Union[Timestamp, str] = None,
         branch: Union[Branch, str] = None,
     ) -> List[Relationship]:
-        branch = await get_branch(branch=branch, session=session)
+        branch = await get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
         rel = Relationship(schema=schema, branch=branch, node_id=id)
 
         query = await RelationshipGetPeerQuery.init(
-            session=session, source_id=id, schema=schema, filters=filters, rel=rel, offset=offset, limit=limit, at=at
+            db=db,
+            source_id=id,
+            schema=schema,
+            filters=filters,
+            rel=rel,
+            offset=offset,
+            limit=limit,
+            at=at,
         )
-        await query.execute(session=session)
+        await query.execute(db=db)
 
         peers_info = list(query.get_peers())
 
@@ -197,7 +201,7 @@ class NodeManager:
 
         return [
             await Relationship(schema=schema, branch=branch, at=at, node_id=id).load(
-                session=session,
+                db=db,
                 id=peer.rel_node_id,
                 db_id=peer.rel_node_db_id,
                 updated_at=peer.updated_at,
@@ -209,6 +213,7 @@ class NodeManager:
     @classmethod
     async def get_one_by_id_or_default_filter(
         cls,
+        db: InfrahubDatabase,
         id: str,
         schema_name: str,
         fields: Optional[dict] = None,
@@ -216,11 +221,10 @@ class NodeManager:
         branch: Union[Branch, str] = None,
         include_source: bool = False,
         include_owner: bool = False,
-        session: Optional[AsyncSession] = None,
         prefetch_relationships: bool = False,
         account=None,
     ) -> Node:
-        branch = await get_branch(branch=branch, session=session)
+        branch = await get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
         node = await cls.get_one(
@@ -230,7 +234,7 @@ class NodeManager:
             branch=branch,
             include_owner=include_owner,
             include_source=include_source,
-            session=session,
+            db=db,
             prefetch_relationships=prefetch_relationships,
             account=account,
         )
@@ -244,7 +248,7 @@ class NodeManager:
             raise NodeNotFound(branch_name=branch.name, node_type=schema_name, identifier=id)
 
         items = await NodeManager.query(
-            session=session,
+            db=db,
             schema=node_schema,
             fields=fields,
             limit=10,
@@ -272,13 +276,13 @@ class NodeManager:
     @classmethod
     async def get_one(
         cls,
+        db: InfrahubDatabase,
         id: str,
         fields: Optional[dict] = None,
         at: Union[Timestamp, str] = None,
         branch: Union[Branch, str] = None,
         include_source: bool = False,
         include_owner: bool = False,
-        session: Optional[AsyncSession] = None,
         prefetch_relationships: bool = False,
         account=None,
     ) -> Node:
@@ -292,7 +296,7 @@ class NodeManager:
             include_owner=include_owner,
             account=account,
             prefetch_relationships=prefetch_relationships,
-            session=session,
+            db=db,
         )
 
         if not result:
@@ -303,6 +307,7 @@ class NodeManager:
     @classmethod
     async def get_many(  # pylint: disable=too-many-branches
         cls,
+        db: InfrahubDatabase,
         ids: List[str],
         fields: Optional[dict] = None,
         at: Union[Timestamp, str] = None,
@@ -310,22 +315,21 @@ class NodeManager:
         include_source: bool = False,
         include_owner: bool = False,
         prefetch_relationships: bool = False,
-        session: Optional[AsyncSession] = None,
         account=None,
     ) -> Dict[str, Node]:
         """Return a list of nodes based on their IDs."""
 
-        branch = await get_branch(branch=branch, session=session)
+        branch = await get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
         # Query all nodes
-        query = await NodeListGetInfoQuery.init(session=session, ids=ids, branch=branch, account=account, at=at)
-        await query.execute(session=session)
+        query = await NodeListGetInfoQuery.init(db=db, ids=ids, branch=branch, account=account, at=at)
+        await query.execute(db=db)
         nodes_info_by_id: Dict[str, NodeToProcess] = {node.node_uuid: node async for node in query.get_nodes()}
 
         # Query list of all Attributes
         query = await NodeListGetAttributeQuery.init(
-            session=session,
+            db=db,
             ids=ids,
             fields=fields,
             branch=branch,
@@ -334,7 +338,7 @@ class NodeManager:
             account=account,
             at=at,
         )
-        await query.execute(session=session)
+        await query.execute(db=db)
         node_attributes = query.get_attributes_group_by_node()
 
         # if prefetch_relationships is enabled
@@ -342,8 +346,8 @@ class NodeManager:
         peers_per_node = None
         peers = None
         if prefetch_relationships:
-            query = await NodeListGetRelationshipsQuery.init(session=session, ids=ids, branch=branch, at=at)
-            await query.execute(session=session)
+            query = await NodeListGetRelationshipsQuery.init(db=db, ids=ids, branch=branch, at=at)
+            await query.execute(db=db)
             peers_per_node = query.get_peers_group_by_node()
             peer_ids = []
 
@@ -356,7 +360,7 @@ class NodeManager:
                 ids=peer_ids,
                 branch=branch,
                 at=at,
-                session=session,
+                db=db,
                 include_owner=include_owner,
                 include_source=include_source,
             )
@@ -416,8 +420,8 @@ class NodeManager:
                             attrs[rel_schema.name] = rel_peers
 
             node_class = identify_node_class(node=node)
-            item = await node_class.init(schema=node.schema, branch=branch, at=at, session=session)
-            await item.load(**attrs, session=session)
+            item = await node_class.init(schema=node.schema, branch=branch, at=at, db=db)
+            await item.load(**attrs, db=db)
 
             nodes[node_id] = item
 

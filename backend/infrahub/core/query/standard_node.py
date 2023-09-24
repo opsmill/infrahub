@@ -5,9 +5,8 @@ from typing import TYPE_CHECKING, List, Optional
 from infrahub.core.query import Query, QueryType
 
 if TYPE_CHECKING:
-    from neo4j import AsyncSession
-
     from infrahub.core.node.standard import StandardNode
+    from infrahub.database import InfrahubDatabase
 
 
 class StandardNodeQuery(Query):
@@ -37,7 +36,7 @@ class StandardNodeCreateQuery(StandardNodeQuery):
 
     type: QueryType = QueryType.WRITE
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         node_type = self.node.get_type()
         self.params["node_prop"] = self.node.to_db()
 
@@ -56,7 +55,7 @@ class StandardNodeUpdateQuery(StandardNodeQuery):
 
     type: QueryType = QueryType.WRITE
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         self.node.get_type()
         self.params["node_prop"] = self.node.to_db()
         self.params["node_prop"]["uuid"] = str(self.node.uuid)
@@ -79,7 +78,7 @@ class StandardNodeDeleteQuery(StandardNodeQuery):
 
     type: QueryType = QueryType.WRITE
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         query = """
         MATCH (n:%s { uuid: $uuid })
         DETACH DELETE (n)
@@ -108,7 +107,7 @@ class StandardNodeGetItemQuery(Query):
 
         super().__init__(*args, **kwargs)
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         query = (
             """
             MATCH (n:%s)
@@ -142,7 +141,7 @@ class StandardNodeGetListQuery(Query):
 
         super().__init__(*args, **kwargs)
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         filters = []
         if self.ids:
             filters.append("n.uuid in $ids_value")

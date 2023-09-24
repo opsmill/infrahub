@@ -11,7 +11,8 @@ from infrahub.log import clear_log_context, get_log_data, get_logger
 from infrahub.message_bus import messages
 from infrahub.message_bus.operations import execute_message
 from infrahub.services import InfrahubServices
-from infrahub.services.adapters.database.graph_database import GraphDatabase
+
+from infrahub.database import InfrahubDatabase
 from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
 from infrahub.worker import WORKER_IDENTITY
 from infrahub_client import UUIDT
@@ -96,10 +97,10 @@ class InfrahubRpcClientBase:
 
         await self.events_queue.bind(self.exchange, routing_key="refresh.registry.*")
 
-        driver = await get_db()
-        database = GraphDatabase(driver=driver)
+        db = InfrahubDatabase(driver=await get_db())
+        database = None
         self.service = InfrahubServices(
-            database=database, message_bus=RabbitMQMessageBus(channel=self.channel, exchange=self.exchange)
+            database=db, message_bus=RabbitMQMessageBus(channel=self.channel, exchange=self.exchange)
         )
 
         return self

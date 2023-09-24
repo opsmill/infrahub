@@ -2,14 +2,14 @@ import asyncio
 import random
 
 from fastapi.logger import logger
-from neo4j import AsyncDriver
 
+from infrahub.database import InfrahubDatabase
 from infrahub.tasks.registry import refresh_branches
 
 
 class BackgroundRunner:
-    def __init__(self, driver: AsyncDriver, database_name: str, interval: int = 10):
-        self.driver = driver
+    def __init__(self, db: InfrahubDatabase, database_name: str, interval: int = 10):
+        self.db = db
         self.database_name = database_name
         self.interval = interval
 
@@ -21,5 +21,4 @@ class BackgroundRunner:
             random_number = random.randint(1, 4)
             await asyncio.sleep(self.interval + random_number - 2)
 
-            async with self.driver.session(database=self.database_name) as session:
-                await refresh_branches(session=session)
+            await refresh_branches(db=self.db)
