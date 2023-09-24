@@ -5,10 +5,11 @@ from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.schema import SchemaRoot, core_models
 from infrahub.core.utils import count_relationships
+from infrahub.database import InfrahubDatabase
 
 
 async def test_schema_read_endpoint_default_branch(
-    session,
+    db: InfrahubDatabase,
     client,
     client_headers,
     default_branch: Branch,
@@ -41,14 +42,14 @@ async def test_schema_read_endpoint_default_branch(
 
 
 async def test_schema_read_endpoint_branch1(
-    session,
+    db: InfrahubDatabase,
     client: TestClient,
     client_headers,
     default_branch: Branch,
     car_person_schema_generics: SchemaRoot,
     car_person_data_generic,
 ):
-    await create_branch(branch_name="branch1", session=session)
+    await create_branch(branch_name="branch1", db=db)
 
     # Must execute in a with block to execute the startup/shutdown events
     with client:
@@ -68,7 +69,7 @@ async def test_schema_read_endpoint_branch1(
 
 
 async def test_schema_read_endpoint_wrong_branch(
-    session, client: TestClient, client_headers, default_branch: Branch, car_person_data_generic
+    db: InfrahubDatabase, client: TestClient, client_headers, default_branch: Branch, car_person_data_generic
 ):
     # Must execute in a with block to execute the startup/shutdown events
     with client:
@@ -82,7 +83,7 @@ async def test_schema_read_endpoint_wrong_branch(
 
 
 async def test_schema_load_endpoint_valid_simple(
-    session,
+    db: InfrahubDatabase,
     client: TestClient,
     admin_headers,
     default_branch: Branch,
@@ -113,7 +114,7 @@ async def test_schema_load_endpoint_valid_simple(
 
 
 async def test_schema_load_restricted_namespace(
-    session,
+    db: InfrahubDatabase,
     client: TestClient,
     admin_headers,
     default_branch: Branch,
@@ -130,7 +131,7 @@ async def test_schema_load_restricted_namespace(
 
 
 async def test_schema_load_endpoint_idempotent_simple(
-    session,
+    db: InfrahubDatabase,
     client: TestClient,
     admin_headers,
     default_branch: Branch,
@@ -145,7 +146,7 @@ async def test_schema_load_endpoint_idempotent_simple(
         )
         read = client.get("/api/schema", headers=admin_headers)
 
-        nbr_rels = await count_relationships(session=session)
+        nbr_rels = await count_relationships(db=db)
 
         assert creation.status_code == 202
         assert read.status_code == 200
@@ -169,11 +170,11 @@ async def test_schema_load_endpoint_idempotent_simple(
         assert creation.status_code == 202
         assert read.status_code == 200
 
-        assert nbr_rels == await count_relationships(session=session)
+        assert nbr_rels == await count_relationships(db=db)
 
 
 async def test_schema_load_endpoint_valid_with_generics(
-    session,
+    db: InfrahubDatabase,
     client: TestClient,
     admin_headers,
     default_branch: Branch,
@@ -195,7 +196,7 @@ async def test_schema_load_endpoint_valid_with_generics(
 
 
 async def test_schema_load_endpoint_idempotent_with_generics(
-    session,
+    db: InfrahubDatabase,
     client: TestClient,
     admin_headers,
     default_branch: Branch,
@@ -215,7 +216,7 @@ async def test_schema_load_endpoint_idempotent_with_generics(
         schema = response2.json()
         assert len(schema["generics"]) == len(core_models.get("generics")) + 1
 
-        nbr_rels = await count_relationships(session=session)
+        nbr_rels = await count_relationships(db=db)
 
         response3 = client.post(
             "/api/schema/load", headers=admin_headers, json=helper.schema_file("infra_w_generics_01.json")
@@ -225,11 +226,11 @@ async def test_schema_load_endpoint_idempotent_with_generics(
         response4 = client.get("/api/schema", headers=admin_headers)
         assert response4.status_code == 200
 
-        assert nbr_rels == await count_relationships(session=session)
+        assert nbr_rels == await count_relationships(db=db)
 
 
 async def test_schema_load_endpoint_valid_with_extensions(
-    session,
+    db: InfrahubDatabase,
     client: TestClient,
     admin_headers,
     default_branch: Branch,
@@ -252,7 +253,7 @@ async def test_schema_load_endpoint_valid_with_extensions(
 
 
 async def test_schema_load_endpoint_not_valid_simple_02(
-    session,
+    db: InfrahubDatabase,
     client: TestClient,
     admin_headers,
     default_branch: Branch,
@@ -269,7 +270,7 @@ async def test_schema_load_endpoint_not_valid_simple_02(
 
 
 async def test_schema_load_endpoint_not_valid_simple_03(
-    session,
+    db: InfrahubDatabase,
     client: TestClient,
     admin_headers,
     default_branch: Branch,
@@ -286,7 +287,7 @@ async def test_schema_load_endpoint_not_valid_simple_03(
 
 
 async def test_schema_load_endpoint_not_valid_simple_04(
-    session,
+    db: InfrahubDatabase,
     client: TestClient,
     admin_headers,
     default_branch: Branch,
@@ -303,7 +304,7 @@ async def test_schema_load_endpoint_not_valid_simple_04(
 
 
 async def test_schema_load_endpoint_not_valid_simple_05(
-    session,
+    db: InfrahubDatabase,
     client: TestClient,
     admin_headers,
     default_branch: Branch,
@@ -320,7 +321,7 @@ async def test_schema_load_endpoint_not_valid_simple_05(
 
 
 async def test_schema_load_endpoint_not_valid_with_generics_02(
-    session,
+    db: InfrahubDatabase,
     client: TestClient,
     admin_headers,
     default_branch: Branch,
