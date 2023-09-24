@@ -83,7 +83,7 @@ class ProposedChangeRequestRefreshArtifacts(Mutation):
         info: GraphQLResolveInfo,
         data: Dict[str, Any],
     ) -> Dict[str, bool]:
-        db: InfrahubDatabase = info.context.get("infrahub_session")
+        db: InfrahubDatabase = info.context.get("infrahub_database")
         rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
 
         identifier = data.get("id", "")
@@ -107,7 +107,7 @@ class ProposedChangeRequestRunCheck(Mutation):
         info: GraphQLResolveInfo,
         data: Dict[str, Any],
     ) -> Dict[str, bool]:
-        db: InfrahubDatabase = info.context.get("infrahub_session")
+        db: InfrahubDatabase = info.context.get("infrahub_database")
         rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
 
         check_type = data.get("check_type")

@@ -40,12 +40,10 @@ class InfrahubObjectType(ObjectType):
 
             if filters:
                 objs = await cls._meta.model.get_list(
-                    filters=filters, at=at, branch=branch, account=account, include_source=True, session=session
+                    filters=filters, at=at, branch=branch, account=account, include_source=True, db=db
                 )
             else:
-                objs = await cls._meta.model.get_list(
-                    at=at, branch=branch, account=account, include_source=True, session=session
-                )
+                objs = await cls._meta.model.get_list(at=at, branch=branch, account=account, include_source=True, db=db)
 
             if not objs:
                 return []

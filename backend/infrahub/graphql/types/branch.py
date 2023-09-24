@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from graphene import Boolean, String
 
-import infrahub.config as config
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 
@@ -28,12 +27,9 @@ class BranchType(InfrahubObjectType):
     async def get_list(cls, fields: dict, context: dict, *args, **kwargs):  # pylint: disable=unused-argument
         db = context.get("infrahub_database")
 
-        async with db.session(database=config.SETTINGS.database.database) as session:
-            context["infrahub_session"] = session
+        objs = await Branch.get_list(db=db, **kwargs)
 
-            objs = await Branch.get_list(session=session, **kwargs)
+        if not objs:
+            return []
 
-            if not objs:
-                return []
-
-            return [obj.to_graphql(fields=fields) for obj in objs if obj.name != GLOBAL_BRANCH_NAME]
+        return [obj.to_graphql(fields=fields) for obj in objs if obj.name != GLOBAL_BRANCH_NAME]

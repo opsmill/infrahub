@@ -42,7 +42,7 @@ class DiffSummaryEntry(ObjectType):
         time_from: Optional[str] = None,
         time_to: Optional[str] = None,
     ) -> TypingList[Dict[str, Union[str, TypingList[str]]]]:
-        db: InfrahubDatabase = context.get("infrahub_session")
+        db: InfrahubDatabase = context.get("infrahub_database")
         branch: Branch = context.get("infrahub_branch")
         diff = await branch.diff(db=db, diff_from=time_from, diff_to=time_to, branch_only=branch_only)
         summary = await diff.get_summary(db=db)

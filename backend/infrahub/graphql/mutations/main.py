@@ -82,7 +82,7 @@ class InfrahubMutationMixin:
         branch: Optional[str] = None,
         at: Optional[str] = None,
     ):
-        db: InfrahubDatabase = info.context.get("infrahub_session")
+        db: InfrahubDatabase = info.context.get("infrahub_database")
 
         node_class = Node
         if cls._meta.schema.kind in registry.node:
@@ -112,7 +112,7 @@ class InfrahubMutationMixin:
         branch: Optional[str] = None,
         at: Optional[str] = None,
     ):
-        db: InfrahubDatabase = info.context.get("infrahub_session")
+        db: InfrahubDatabase = info.context.get("infrahub_database")
         account_session: AccountSession = info.context.get("account_session", None)
 
         if not (
@@ -160,7 +160,7 @@ class InfrahubMutationMixin:
         branch: Optional[str] = None,
         at: Optional[str] = None,
     ):
-        db: InfrahubDatabase = info.context.get("infrahub_session")
+        db: InfrahubDatabase = info.context.get("infrahub_database")
 
         if not (obj := await NodeManager.get_one(db=db, id=data.get("id"), branch=branch, at=at)):
             raise NodeNotFound(branch, cls._meta.schema.kind, data.get("id"))

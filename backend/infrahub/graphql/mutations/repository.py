@@ -46,7 +46,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         branch: Optional[str] = None,
         at: Optional[str] = None,
     ):
-        db: InfrahubDatabase = info.context.get("infrahub_session")
+        db: InfrahubDatabase = info.context.get("infrahub_database")
         rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
 
         # Create the new repository in the database.

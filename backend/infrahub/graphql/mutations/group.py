@@ -34,7 +34,7 @@ class GroupAssociationMixin:
         info: GraphQLResolveInfo,
         data,
     ):
-        db: InfrahubDatabase = info.context.get("infrahub_session")
+        db: InfrahubDatabase = info.context.get("infrahub_database")
         at = info.context.get("infrahub_at")
         branch = info.context.get("infrahub_branch")
 

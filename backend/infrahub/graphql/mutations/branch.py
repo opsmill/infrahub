@@ -51,7 +51,7 @@ class BranchCreate(Mutation):
 
     @classmethod
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchCreateInput, background_execution=False):
-        db: InfrahubDatabase = info.context.get("infrahub_session")
+        db: InfrahubDatabase = info.context.get("infrahub_database")
 
         # Check if the branch already exist
         try:
@@ -115,7 +115,7 @@ class BranchDelete(Mutation):
 
     @classmethod
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput):
-        db: InfrahubDatabase = info.context.get("infrahub_session")
+        db: InfrahubDatabase = info.context.get("infrahub_database")
 
         obj = await Branch.get_by_name(db=db, name=data["name"])
         await obj.delete(db=db)
@@ -130,7 +130,7 @@ class BranchUpdate(Mutation):
 
     @classmethod
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput):
-        db: InfrahubDatabase = info.context.get("infrahub_session")
+        db: InfrahubDatabase = info.context.get("infrahub_database")
 
         obj = await Branch.get_by_name(db=db, name=data["name"])
         obj.description = data["description"]
@@ -148,7 +148,7 @@ class BranchRebase(Mutation):
 
     @classmethod
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput):
-        db: InfrahubDatabase = info.context.get("infrahub_session")
+        db: InfrahubDatabase = info.context.get("infrahub_database")
 
         obj = await Branch.get_by_name(db=db, name=data["name"])
         await obj.rebase(db=db)
@@ -175,7 +175,7 @@ class BranchValidate(Mutation):
 
     @classmethod
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput):
-        db: InfrahubDatabase = info.context.get("infrahub_session")
+        db: InfrahubDatabase = info.context.get("infrahub_database")
         rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
 
         obj = await Branch.get_by_name(db=db, name=data["name"])
@@ -195,7 +195,7 @@ class BranchMerge(Mutation):
 
     @classmethod
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput):
-        db: InfrahubDatabase = info.context.get("infrahub_session")
+        db: InfrahubDatabase = info.context.get("infrahub_database")
         rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
 
         obj = await Branch.get_by_name(db=db, name=data["name"])

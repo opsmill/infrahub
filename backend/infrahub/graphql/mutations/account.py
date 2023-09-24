@@ -41,7 +41,7 @@ class AccountMixin:
         info: GraphQLResolveInfo,
         data,
     ):
-        db: InfrahubDatabase = info.context.get("infrahub_session")
+        db: InfrahubDatabase = info.context.get("infrahub_database")
         account_session: AccountSession = info.context.get("account_session")
 
         if account_session.auth_type != AuthType.JWT:
