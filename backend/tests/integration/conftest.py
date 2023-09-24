@@ -58,24 +58,22 @@ async def load_infrastructure_schema(session):
     tmp_schema.load_schema(schema=SchemaRoot(**infra_schema))
     tmp_schema.process()
 
-    await registry.schema.update_schema_branch(
-        schema=tmp_schema, session=session, branch=default_branch_name, update_db=True
-    )
+    await registry.schema.update_schema_branch(schema=tmp_schema, db=db, branch=default_branch_name, update_db=True)
 
 
 @pytest.fixture(scope="module")
 async def init_db_infra(session):
-    await delete_all_nodes(session=session)
-    await first_time_initialization(session=session)
-    await load_infrastructure_schema(session=session)
-    await initialization(session=session)
+    await delete_all_nodes(db=db)
+    await first_time_initialization(db=db)
+    await load_infrastructure_schema(db=db)
+    await initialization(db=db)
 
 
 @pytest.fixture(scope="module")
 async def init_db_base(session):
-    await delete_all_nodes(session=session)
-    await first_time_initialization(session=session)
-    await initialization(session=session)
+    await delete_all_nodes(db=db)
+    await first_time_initialization(db=db)
+    await initialization(db=db)
 
 
 class IntegrationHelper:
@@ -110,4 +108,4 @@ class IntegrationHelper:
 
 @pytest.fixture(scope="class")
 def integration_helper(session) -> IntegrationHelper:
-    return IntegrationHelper(session=session)
+    return IntegrationHelper(db=db)

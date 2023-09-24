@@ -276,8 +276,8 @@ class NodeManager:
     @classmethod
     async def get_one(
         cls,
-        db: InfrahubDatabase,
         id: str,
+        db: InfrahubDatabase,
         fields: Optional[dict] = None,
         at: Union[Timestamp, str] = None,
         branch: Union[Branch, str] = None,

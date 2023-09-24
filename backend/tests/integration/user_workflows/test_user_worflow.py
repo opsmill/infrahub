@@ -3,6 +3,7 @@ import pytest
 from deepdiff import DeepDiff
 from fastapi.testclient import TestClient
 
+from infrahub.database import InfrahubDatabase
 from infrahub.server import app
 from infrahub.test_data import dataset01 as ds01
 
@@ -137,8 +138,8 @@ class TestUserWorkflow01:
         return client
 
     @pytest.fixture(scope="class")
-    async def dataset01(self, session, init_db_infra):
-        await ds01.load_data(session=session, nbr_devices=2)
+    async def dataset01(self, db: InfrahubDatabase, init_db_infra):
+        await ds01.load_data(db=db, nbr_devices=2)
 
     async def test_initialize_state(self):
         pytest.state = {

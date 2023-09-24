@@ -14,6 +14,7 @@ from infrahub.core.initialization import first_time_initialization, initializati
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.utils import count_relationships, delete_all_nodes
+from infrahub.database import InfrahubDatabase
 from infrahub.git import InfrahubRepository
 from infrahub.utils import get_models_dir
 from infrahub_client import Config, InfrahubClient, NodeNotFound
@@ -22,7 +23,7 @@ from infrahub_client.types import HTTPMethod
 # pylint: disable=unused-argument
 
 
-async def load_infrastructure_schema(session):
+async def load_infrastructure_schema(db: InfrahubDatabase):
     models_dir = get_models_dir()
 
     schema_txt = Path(os.path.join(models_dir, "infrastructure_base.yml")).read_text()
@@ -34,9 +35,7 @@ async def load_infrastructure_schema(session):
     tmp_schema.load_schema(schema=SchemaRoot(**infra_schema))
     tmp_schema.process()
 
-    await registry.schema.update_schema_branch(
-        schema=tmp_schema, session=session, branch=default_branch_name, update_db=True
-    )
+    await registry.schema.update_schema_branch(schema=tmp_schema, db=db, branch=default_branch_name, update_db=True)
 
 
 class InfrahubTestClient(TestClient):
@@ -57,11 +56,11 @@ class InfrahubTestClient(TestClient):
 
 class TestInfrahubClient:
     @pytest.fixture(scope="class")
-    async def base_dataset(self, session):
-        await delete_all_nodes(session=session)
-        await first_time_initialization(session=session)
-        await load_infrastructure_schema(session=session)
-        await initialization(session=session)
+    async def base_dataset(self, db: InfrahubDatabase):
+        await delete_all_nodes(db=db)
+        await first_time_initialization(db=db)
+        await load_infrastructure_schema(db=db)
+        await initialization(db=db)
 
     @pytest.fixture(scope="class")
     async def test_client(
@@ -81,27 +80,27 @@ class TestInfrahubClient:
         return await InfrahubClient.init(config=config)
 
     @pytest.fixture(scope="class")
-    async def query_99(self, session, test_client):
-        obj = await Node.init(schema="CoreGraphQLQuery", session=session)
+    async def query_99(self, db: InfrahubDatabase, test_client):
+        obj = await Node.init(schema="CoreGraphQLQuery", db=db)
         await obj.new(
-            session=session,
+            db=db,
             name="query99",
             query="query query99 { CoreRepository { edges { node { id }}}}",
         )
-        await obj.save(session=session)
+        await obj.save(db=db)
         return obj
 
     @pytest.fixture
-    async def repo(self, test_client, client, session, git_upstream_repo_10, git_repos_dir):
+    async def repo(self, test_client, client, db: InfrahubDatabase, git_upstream_repo_10, git_repos_dir):
         # Create the repository in the Graph
-        obj = await Node.init(schema="CoreRepository", session=session)
+        obj = await Node.init(schema="CoreRepository", db=db)
         await obj.new(
-            session=session,
+            db=db,
             name=git_upstream_repo_10["name"],
             description="test repository",
             location="git@github.com:mock/test.git",
         )
-        await obj.save(session=session)
+        await obj.save(db=db)
 
         # Initialize the repository on the file system
         repo = await InfrahubRepository.new(
@@ -114,7 +113,9 @@ class TestInfrahubClient:
 
         return repo
 
-    async def test_import_all_graphql_query(self, session, client: InfrahubClient, repo: InfrahubRepository):
+    async def test_import_all_graphql_query(
+        self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository
+    ):
         commit = repo.get_commit_value(branch_name="main")
         await repo.import_all_graphql_query(branch_name="main", commit=commit)
 
@@ -122,9 +123,9 @@ class TestInfrahubClient:
         assert len(queries) == 5
 
         # Validate if the function is idempotent, another import just after the first one shouldn't change anything
-        nbr_relationships_before = await count_relationships(session=session)
+        nbr_relationships_before = await count_relationships(db=db)
         await repo.import_all_graphql_query(branch_name="main", commit=commit)
-        assert await count_relationships(session=session) == nbr_relationships_before
+        assert await count_relationships(db=db) == nbr_relationships_before
 
         # 1. Modify an object to validate if its being properly updated
         # 2. Add an object that doesn't exist in GIt and validate that it's been deleted
@@ -132,14 +133,14 @@ class TestInfrahubClient:
         queries[0].query.value = "query myquery { BuiltinLocation { edges { node { id }}}}"
         await queries[0].save()
 
-        obj = await Node.init(schema="CoreGraphQLQuery", session=session)
+        obj = await Node.init(schema="CoreGraphQLQuery", db=db)
         await obj.new(
-            session=session,
+            db=db,
             name="soontobedeletedquery",
             query="query soontobedeletedquery { BuiltinLocation { edges { node { id }}}}",
             repository=str(repo.id),
         )
-        await obj.save(session=session)
+        await obj.save(db=db)
 
         await repo.import_all_graphql_query(branch_name="main", commit=commit)
 
@@ -149,7 +150,9 @@ class TestInfrahubClient:
         with pytest.raises(NodeNotFound):
             await client.get(kind="CoreGraphQLQuery", id=obj.id)
 
-    async def test_import_all_python_files(self, session, client: InfrahubClient, repo: InfrahubRepository, query_99):
+    async def test_import_all_python_files(
+        self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, query_99
+    ):
         commit = repo.get_commit_value(branch_name="main")
         await repo.import_all_python_files(branch_name="main", commit=commit)
 
@@ -160,9 +163,9 @@ class TestInfrahubClient:
         assert len(transforms) >= 2
 
         # Validate if the function is idempotent, another import just after the first one shouldn't change anything
-        nbr_relationships_before = await count_relationships(session=session)
+        nbr_relationships_before = await count_relationships(db=db)
         await repo.import_all_python_files(branch_name="main", commit=commit)
-        assert await count_relationships(session=session) == nbr_relationships_before
+        assert await count_relationships(db=db) == nbr_relationships_before
 
         # 1. Modify an object to validate if its being properly updated
         # 2. Add an object that doesn't exist in Git and validate that it's been deleted
@@ -181,20 +184,20 @@ class TestInfrahubClient:
         await transforms[1].save()
 
         # Create Object that will be deleted
-        obj1 = await Node.init(schema="CoreCheckDefinition", session=session)
+        obj1 = await Node.init(schema="CoreCheckDefinition", db=db)
         await obj1.new(
-            session=session,
+            db=db,
             name="soontobedeletedcheck",
             query=str(query_99.id),
             file_path="check.py",
             class_name="MyCheck",
             repository=str(repo.id),
         )
-        await obj1.save(session=session)
+        await obj1.save(db=db)
 
-        obj2 = await Node.init(schema="CoreTransformPython", session=session)
+        obj2 = await Node.init(schema="CoreTransformPython", db=db)
         await obj2.new(
-            session=session,
+            db=db,
             name="soontobedeletedtransform",
             query=str(query_99.id),
             file_path="mytransform.py",
@@ -202,7 +205,7 @@ class TestInfrahubClient:
             class_name="MyTransform",
             repository=str(repo.id),
         )
-        await obj2.save(session=session)
+        await obj2.save(db=db)
 
         await repo.import_all_python_files(branch_name="main", commit=commit)
 
@@ -223,7 +226,9 @@ class TestInfrahubClient:
         with pytest.raises(NodeNotFound):
             await client.get(kind="CoreTransformPython", id=obj2.id)
 
-    async def test_import_all_yaml_files(self, session, client: InfrahubClient, repo: InfrahubRepository, query_99):
+    async def test_import_all_yaml_files(
+        self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, query_99
+    ):
         commit = repo.get_commit_value(branch_name="main")
         await repo.import_all_yaml_files(branch_name="main", commit=commit, exclude=["artifact_definitions"])
 
@@ -231,9 +236,9 @@ class TestInfrahubClient:
         assert len(rfiles) == 2
 
         # Validate if the function is idempotent, another import just after the first one shouldn't change anything
-        nbr_relationships_before = await count_relationships(session=session)
+        nbr_relationships_before = await count_relationships(db=db)
         await repo.import_all_yaml_files(branch_name="main", commit=commit, exclude=["artifact_definitions"])
-        assert await count_relationships(session=session) == nbr_relationships_before
+        assert await count_relationships(db=db) == nbr_relationships_before
 
         # 1. Modify an object to validate if its being properly updated
         # 2. Add an object that doesn't exist in Git and validate that it's been deleted
@@ -243,15 +248,15 @@ class TestInfrahubClient:
         rfiles[0].query = query_99.id
         await rfiles[0].save()
 
-        obj = await Node.init(schema="CoreRFile", session=session)
+        obj = await Node.init(schema="CoreRFile", db=db)
         await obj.new(
-            session=session,
+            db=db,
             name="soontobedeletedrfile",
             query=str(query_99.id),
             repository=str(repo.id),
             template_path="mytmp.j2",
         )
-        await obj.save(session=session)
+        await obj.save(db=db)
 
         await repo.import_all_yaml_files(branch_name="main", commit=commit, exclude=["artifact_definitions"])
 

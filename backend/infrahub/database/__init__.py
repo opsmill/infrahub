@@ -210,12 +210,6 @@ async def execute_read_query_async(
         response = await session.run(query=query, parameters=params or {})
         return [item async for item in response]
 
-        # async def work(tx: AsyncManagedTransaction, params: Optional[Dict[str, Any]] = None) -> List[Record]:
-        #     response = await tx.run(query, params)
-        #     return [item async for item in response]
-
-        # return await session.execute_read(work, params)
-
 
 async def execute_write_query_async(
     query: str, db: InfrahubDatabase, params: Optional[Dict[str, Any]] = None, name: Optional[str] = "undefined"
@@ -229,9 +223,3 @@ async def execute_write_query_async(
         session = await db.session()
         response = await session.run(query=query, parameters=params or {})
         return [item async for item in response]
-
-        # async def work(tx: AsyncManagedTransaction, params: Optional[Dict[str, Any]] = None) -> List[Record]:
-        #     response = await tx.run(query, params or {})
-        #     return [item async for item in response]
-
-        # return await session.execute_write(work, params)
