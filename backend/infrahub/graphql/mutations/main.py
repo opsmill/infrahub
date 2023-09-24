@@ -93,7 +93,8 @@ class InfrahubMutationMixin:
             await obj.new(db=db, **data)
             await cls.validate_constraints(db=db, node=obj)
 
-            await obj.save(db=db)
+            async with db.start_transaction() as db:
+                await obj.save(db=db)
 
         except ValidationError as exc:
             raise ValueError(str(exc)) from exc
@@ -141,7 +142,9 @@ class InfrahubMutationMixin:
                 operation=cls.__name__, node_id=node_id, account_session=account_session, fields=fields
             )
 
-            await obj.save(db=db)
+            async with db.start_transaction() as dbt:
+                await obj.save(db=dbt)
+
         except ValidationError as exc:
             raise ValueError(str(exc)) from exc
 
@@ -165,7 +168,9 @@ class InfrahubMutationMixin:
         if not (obj := await NodeManager.get_one(db=db, id=data.get("id"), branch=branch, at=at)):
             raise NodeNotFound(branch, cls._meta.schema.kind, data.get("id"))
 
-        await obj.delete(db=db, at=at)
+        async with db.start_transaction() as db:
+            await obj.delete(db=db, at=at)
+
         ok = True
 
         return obj, cls(ok=ok)

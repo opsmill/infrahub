@@ -78,20 +78,8 @@ class InfrahubDatabase:
         self._mode = mode
         self._driver = driver
         self._session = session
+        self._is_session_local = False
         self._transaction = transaction
-
-    # @classmethod
-    # async def init(cls, driver: AsyncDriver, mode: InfrahubDatabaseMode = InfrahubDatabaseMode.DRIVER,  session: Optional[AsyncSession] = None) -> InfrahubDatabase:
-
-    #     if mode == InfrahubDatabaseMode.SESSION:
-    #         session = driver.session(database=config.SETTINGS.database.database)
-    #         return cls(type=type, driver=driver, session=session)
-
-    #     if mode == InfrahubDatabaseMode.TRANSACTION:
-    #         transaction = await session.begin_transaction()
-    #         return cls(type=type, driver=driver, session=session, transaction=transaction)
-
-    #     return cls(type=type, driver=driver)
 
     @property
     def is_session(self):
@@ -116,10 +104,8 @@ class InfrahubDatabase:
             return self._session
 
         self._session = self._driver.session(database=config.SETTINGS.database.database)
+        self._is_session_local = True
         return self._session
-
-    def new_session(self) -> AsyncSession:
-        return self._driver.session(database=config.SETTINGS.database.database)
 
     async def transaction(self) -> AsyncTransaction:
         if self._transaction:
@@ -145,7 +131,8 @@ class InfrahubDatabase:
 
         if self._mode == InfrahubDatabaseMode.TRANSACTION:
             await self._transaction.commit()
-            await self._session.close()
+            if self._is_session_local:
+                await self._session.close()
 
     async def close(self):
         await self._driver.close()
@@ -206,6 +193,11 @@ async def execute_read_query_async(
     name: Optional[str] = "undefined",
 ) -> List[Record]:
     with QUERY_EXECUTION_METRICS.labels("read", name).time():
+        if db.is_transaction:
+            tx = await db.transaction()
+            response = await tx.run(query=query, parameters=params or {})
+            return [item async for item in response]
+
         session = await db.session()
         response = await session.run(query=query, parameters=params or {})
         return [item async for item in response]

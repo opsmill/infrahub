@@ -135,7 +135,9 @@ class BranchUpdate(Mutation):
         obj = await Branch.get_by_name(db=db, name=data["name"])
         obj.description = data["description"]
 
-        await obj.save(db=db)
+        async with db.start_transaction() as db:
+            await obj.save(db=db)
+
         return cls(ok=True)
 
 
@@ -151,7 +153,8 @@ class BranchRebase(Mutation):
         db: InfrahubDatabase = info.context.get("infrahub_database")
 
         obj = await Branch.get_by_name(db=db, name=data["name"])
-        await obj.rebase(db=db)
+        async with db.start_transaction() as db:
+            await obj.rebase(db=db)
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
 
@@ -201,14 +204,15 @@ class BranchMerge(Mutation):
         obj = await Branch.get_by_name(db=db, name=data["name"])
 
         async with lock.registry.global_graph_lock():
-            await obj.merge(rpc_client=rpc_client, db=db)
+            async with db.start_transaction() as db:
+                await obj.merge(rpc_client=rpc_client, db=db)
 
-            # Copy the schema from the origin branch and set the hash and the schema_changed_at value
-            origin_branch = await obj.get_origin_branch(db=db)
-            updated_schema = await registry.schema.load_schema_from_db(db=db, branch=origin_branch)
-            registry.schema.set_schema_branch(name=origin_branch.name, schema=updated_schema)
-            origin_branch.update_schema_hash()
-            await origin_branch.save(db=db)
+                # Copy the schema from the origin branch and set the hash and the schema_changed_at value
+                origin_branch = await obj.get_origin_branch(db=db)
+                updated_schema = await registry.schema.load_schema_from_db(db=db, branch=origin_branch)
+                registry.schema.set_schema_branch(name=origin_branch.name, schema=updated_schema)
+                origin_branch.update_schema_hash()
+                await origin_branch.save(db=db)
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
 

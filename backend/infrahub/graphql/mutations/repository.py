@@ -53,7 +53,8 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         obj = await Node.init(db=db, schema=cls._meta.schema, branch=branch, at=at)
         await obj.new(db=db, **data)
         await cls.validate_constraints(db=db, node=obj)
-        await obj.save(db=db)
+        async with db.start_transaction() as db:
+            await obj.save(db=db)
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
 

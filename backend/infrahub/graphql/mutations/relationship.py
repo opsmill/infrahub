@@ -89,22 +89,23 @@ class RelationshipMixin:
         await query.execute(db=db)
         existing_peers: Dict[str, RelationshipPeerData] = {peer.peer_id: peer for peer in query.get_peers()}
 
-        if cls.__name__ == "RelationshipAdd":
-            for node_data in data.get("nodes"):
-                if node_data.get("id") not in existing_peers.keys():
-                    rel = Relationship(schema=rel_schema, branch=branch, at=at, node=source)
-                    await rel.new(db=db, data=node_data)
-                    await rel.save(db=db)
+        async with db.start_transaction() as db:
+            if cls.__name__ == "RelationshipAdd":
+                for node_data in data.get("nodes"):
+                    if node_data.get("id") not in existing_peers.keys():
+                        rel = Relationship(schema=rel_schema, branch=branch, at=at, node=source)
+                        await rel.new(db=db, data=node_data)
+                        await rel.save(db=db)
 
-        elif cls.__name__ == "RelationshipRemove":
-            for node_data in data.get("nodes"):
-                if node_data.get("id") in existing_peers.keys():
-                    # TODO once https://github.com/opsmill/infrahub/issues/792 has been fixed
-                    # we should use RelationshipDataDeleteQuery to delete the relationship
-                    # it would be more query efficient
-                    rel = Relationship(schema=rel_schema, branch=branch, at=at, node=source)
-                    await rel.load(db=db, data=existing_peers[node_data.get("id")])
-                    await rel.delete(db=db)
+            elif cls.__name__ == "RelationshipRemove":
+                for node_data in data.get("nodes"):
+                    if node_data.get("id") in existing_peers.keys():
+                        # TODO once https://github.com/opsmill/infrahub/issues/792 has been fixed
+                        # we should use RelationshipDataDeleteQuery to delete the relationship
+                        # it would be more query efficient
+                        rel = Relationship(schema=rel_schema, branch=branch, at=at, node=source)
+                        await rel.load(db=db, data=existing_peers[node_data.get("id")])
+                        await rel.delete(db=db)
 
         return cls(ok=True)
 

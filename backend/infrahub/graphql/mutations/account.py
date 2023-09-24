@@ -67,7 +67,9 @@ class AccountMixin:
             name=data.get("name"),
             expiration=data.get("expiration"),
         )
-        await obj.save(db=db)
+
+        async with db.start_transaction() as db:
+            await obj.save(db=db)
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
         return cls(object=await obj.to_graphql(db=db, fields=fields.get("object", {})), ok=True)
