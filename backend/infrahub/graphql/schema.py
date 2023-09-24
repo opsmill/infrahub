@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo  # pylint: disable=no-name-in-module
 
     from infrahub.auth import AccountSession
+    from infrahub.database import InfrahubDatabase
 
 # pylint: disable=unused-argument
 
@@ -46,17 +47,20 @@ async def account_resolver(root, info: GraphQLResolveInfo):
     account_session: AccountSession = info.context.get("account_session")
     fields = await extract_fields(info.field_nodes[0].selection_set)
 
-    db = info.context.get("infrahub_database")
-    results = await NodeManager.query(
-        schema="CoreAccount", filters={"ids": [account_session.account_id]}, fields=fields, db=db
-    )
-    if results:
-        account_profile = await results[0].to_graphql(db=db, fields=fields)
-        return account_profile
+    db: InfrahubDatabase = info.context.get("infrahub_database")
+    async with db.start_session() as db:
+        results = await NodeManager.query(
+            schema="CoreAccount", filters={"ids": [account_session.account_id]}, fields=fields, db=db
+        )
+        if results:
+            account_profile = await results[0].to_graphql(db=db, fields=fields)
+            return account_profile
 
-    raise NodeNotFound(
-        branch_name=config.SETTINGS.main.default_branch, node_type="CoreAccount", identifier=account_session.account_id
-    )
+        raise NodeNotFound(
+            branch_name=config.SETTINGS.main.default_branch,
+            node_type="CoreAccount",
+            identifier=account_session.account_id,
+        )
 
 
 class InfrahubBaseQuery(ObjectType):

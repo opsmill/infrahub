@@ -83,7 +83,8 @@ async def app_initialization():
     # Initialize database Driver and load local registry
     app.state.db = InfrahubDatabase(mode=InfrahubDatabaseMode.DRIVER, driver=await get_db())
 
-    await initialization(db=app.state.db)
+    async with app.state.db.start_session() as db:
+        await initialization(db=db)
 
     # Initialize connection to the RabbitMQ bus
     await connect_to_broker()

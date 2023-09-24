@@ -12,4 +12,5 @@ async def branches(message: messages.RefreshRegistryBranches, service: InfrahubS
         log.info("Ignoring refresh registry refresh request originating from self", worker=WORKER_IDENTITY)
         return
 
-    await refresh_branches(db=service.database)
+    async with service.database.start_session() as db:
+        await refresh_branches(db=db)

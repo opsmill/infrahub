@@ -131,36 +131,37 @@ class InfrahubGraphQLApp:
             api_key = await api_key_scheme(request)
             cookie_auth = await cookie_auth_scheme(request)
 
-            db = request.app.state.db
+            db: InfrahubDatabase = request.app.state.db
 
-            jwt_token = None
-            if jwt_auth:
-                jwt_token = jwt_auth.credentials
-            elif cookie_auth and not api_key:
-                jwt_token = cookie_auth
-            account_session = await authentication_token(jwt_token=jwt_token, api_key=api_key, db=db)
+            async with db.start_session() as db:
+                jwt_token = None
+                if jwt_auth:
+                    jwt_token = jwt_auth.credentials
+                elif cookie_auth and not api_key:
+                    jwt_token = cookie_auth
+                account_session = await authentication_token(jwt_token=jwt_token, api_key=api_key, db=db)
 
-            # Retrieve the branch name from the request and validate that it exist in the database
-            try:
-                branch_name = request.path_params.get("branch_name", config.SETTINGS.main.default_branch)
-                branch = await get_branch(db=db, branch=branch_name)
-                branch.ephemeral_rebase = str_to_bool(request.query_params.get("rebase", False))
-            except BranchNotFound as exc:
-                response = JSONResponse({"errors": [exc.message]}, status_code=404)
+                # Retrieve the branch name from the request and validate that it exist in the database
+                try:
+                    branch_name = request.path_params.get("branch_name", config.SETTINGS.main.default_branch)
+                    branch = await get_branch(db=db, branch=branch_name)
+                    branch.ephemeral_rebase = str_to_bool(request.query_params.get("rebase", False))
+                except BranchNotFound as exc:
+                    response = JSONResponse({"errors": [exc.message]}, status_code=404)
 
-            if request.method == "POST" and not response:
-                response = await self._handle_http_request(
-                    request=request, db=db, branch=branch, account_session=account_session
-                )
-            elif request.method == "GET" and not response:
-                response = await self._get_on_get(request)
-            elif request.method == "OPTIONS" and not response:
-                response = Response(status_code=200, headers={"Allow": "GET, POST, OPTIONS"})
+                if request.method == "POST" and not response:
+                    response = await self._handle_http_request(
+                        request=request, db=db, branch=branch, account_session=account_session
+                    )
+                elif request.method == "GET" and not response:
+                    response = await self._get_on_get(request)
+                elif request.method == "OPTIONS" and not response:
+                    response = Response(status_code=200, headers={"Allow": "GET, POST, OPTIONS"})
 
-            if not response:
-                response = Response(status_code=405)
+                if not response:
+                    response = Response(status_code=405)
 
-            await response(scope, receive, send)
+                await response(scope, receive, send)
 
         elif scope["type"] == "websocket":
             websocket = WebSocket(scope=scope, receive=receive, send=send)

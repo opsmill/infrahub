@@ -21,4 +21,5 @@ class BackgroundRunner:
             random_number = random.randint(1, 4)
             await asyncio.sleep(self.interval + random_number - 2)
 
-            await refresh_branches(db=self.db)
+            async with self.db.start_session() as db:
+                await refresh_branches(db=db)

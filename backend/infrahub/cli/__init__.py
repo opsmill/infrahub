@@ -29,7 +29,9 @@ async def _init_shell(config_file: str):
     config.load_and_exit(config_file_name=config_file)
 
     db = InfrahubDatabase(driver=await get_db(retry=1))
-    await initialization(db=db)
+
+    async with db.start_session() as db:
+        await initialization(db=db)
 
 
 @app.command()
