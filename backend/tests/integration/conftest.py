@@ -5,7 +5,6 @@ from typing import Any, Dict, Optional
 
 import pytest
 import yaml
-from neo4j import AsyncSession
 
 import infrahub.config as config
 from infrahub.core import registry
@@ -14,7 +13,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.utils import delete_all_nodes
-from infrahub.database import get_db
+from infrahub.database import InfrahubDatabase, get_db
 from infrahub.utils import get_models_dir
 from infrahub_client import UUIDT
 
@@ -29,24 +28,15 @@ def event_loop():
 
 
 @pytest.fixture(scope="module")
-async def db():
-    driver = await get_db(retry=1)
+async def db() -> InfrahubDatabase:
+    driver = InfrahubDatabase(driver=await get_db(retry=1))
 
     yield driver
 
     await driver.close()
 
 
-@pytest.fixture(scope="module")
-async def session(db):
-    session = db.session(database=config.SETTINGS.database.database)
-
-    yield session
-
-    await session.close()
-
-
-async def load_infrastructure_schema(session):
+async def load_infrastructure_schema(db: InfrahubDatabase):
     models_dir = get_models_dir()
 
     schema_txt = Path(os.path.join(models_dir, "infrastructure_base.yml")).read_text()
@@ -62,7 +52,7 @@ async def load_infrastructure_schema(session):
 
 
 @pytest.fixture(scope="module")
-async def init_db_infra(session):
+async def init_db_infra(db: InfrahubDatabase):
     await delete_all_nodes(db=db)
     await first_time_initialization(db=db)
     await load_infrastructure_schema(db=db)
@@ -70,15 +60,15 @@ async def init_db_infra(session):
 
 
 @pytest.fixture(scope="module")
-async def init_db_base(session):
+async def init_db_base(db: InfrahubDatabase):
     await delete_all_nodes(db=db)
     await first_time_initialization(db=db)
     await initialization(db=db)
 
 
 class IntegrationHelper:
-    def __init__(self, session: AsyncSession) -> None:
-        self.session = session
+    def __init__(self, db: InfrahubDatabase) -> None:
+        self.db = db
         self._admin_headers = {}
 
     async def admin_headers(self) -> Dict[str, Any]:
@@ -91,21 +81,21 @@ class IntegrationHelper:
         account_name = account_name or "admin"
         response = await NodeManager.query(
             schema="CoreAccount",
-            session=self.session,
+            db=self.db,
             filters={"name__value": account_name},
             limit=1,
         )
         account = response[0]
-        account_token = await Node.init(session=self.session, schema="InternalAccountToken")
+        account_token = await Node.init(db=self.db, schema="InternalAccountToken")
         await account_token.new(
-            session=self.session,
+            db=self.db,
             token=token,
             account=account,
         )
-        await account_token.save(session=self.session)
+        await account_token.save(db=self.db)
         return token
 
 
 @pytest.fixture(scope="class")
-def integration_helper(session) -> IntegrationHelper:
+def integration_helper(db: InfrahubDatabase) -> IntegrationHelper:
     return IntegrationHelper(db=db)
