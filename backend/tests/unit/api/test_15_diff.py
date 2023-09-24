@@ -141,7 +141,7 @@ async def r1_update_01(data_diff_attribute):
 
 
 async def test_diff_data_attribute_branch_only_default(
-    session, client, client_headers, data_diff_attribute, r1_update_01
+    db: InfrahubDatabase, client, client_headers, data_diff_attribute, r1_update_01
 ):
     with client:
         response = client.get(
@@ -1117,7 +1117,7 @@ async def test_diff_data_relationship_many_conflict(
 
 
 async def test_diff_data_deprecated_endpoint_branch_only_default(
-    session, client, client_headers, car_person_data_generic_diff
+    db: InfrahubDatabase, client, client_headers, car_person_data_generic_diff
 ):
     c1 = car_person_data_generic_diff["c1"]
     c4 = car_person_data_generic_diff["c4"]
@@ -1184,7 +1184,7 @@ async def test_diff_data_deprecated_endpoint_branch_only_default(
 
 @pytest.mark.xfail(reason="Need to investigate, occasionally fails")
 async def test_diff_data_deprecated_endpoint_branch_time_from(
-    session, client, client_headers, car_person_data_generic_diff
+    db: InfrahubDatabase, client, client_headers, car_person_data_generic_diff
 ):
     time20 = car_person_data_generic_diff["time20"]
 
@@ -1230,7 +1230,7 @@ async def test_diff_data_deprecated_endpoint_branch_time_from(
 
 
 async def test_diff_data_deprecated_endpoint_branch_time_from_to(
-    session, client, client_headers, car_person_data_generic_diff
+    db: InfrahubDatabase, client, client_headers, car_person_data_generic_diff
 ):
     time0 = car_person_data_generic_diff["time0"]
     time20 = car_person_data_generic_diff["time20"]
@@ -1284,7 +1284,7 @@ async def test_diff_data_deprecated_endpoint_branch_time_from_to(
 
 
 async def test_diff_data_deprecated_endpoint_with_main_default(
-    session, client, client_headers, car_person_data_generic_diff
+    db: InfrahubDatabase, client, client_headers, car_person_data_generic_diff
 ):
     c2 = car_person_data_generic_diff["c2"]
     p1 = car_person_data_generic_diff["p1"]
@@ -1319,7 +1319,7 @@ async def test_diff_data_deprecated_endpoint_with_main_default(
 
 
 async def test_diff_data_deprecated_endpoint_with_main_time_from(
-    session, client, client_headers, car_person_data_generic_diff
+    db: InfrahubDatabase, client, client_headers, car_person_data_generic_diff
 ):
     time20 = car_person_data_generic_diff["time20"]
 
@@ -1372,7 +1372,7 @@ async def test_diff_data_deprecated_endpoint_with_main_time_from(
 
 
 async def test_diff_data_deprecated_endpoint_with_main_time_from_to(
-    session, client, client_headers, car_person_data_generic_diff
+    db: InfrahubDatabase, client, client_headers, car_person_data_generic_diff
 ):
     time0 = car_person_data_generic_diff["time0"]
     time20 = car_person_data_generic_diff["time20"]
