@@ -8,12 +8,12 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
-from infrahub.database import execute_read_query_async
+from infrahub.database import InfrahubDatabase, execute_read_query_async
 from infrahub.exceptions import BranchNotFound, ValidationError
 from infrahub.message_bus.rpc import InfrahubRpcClientTesting
 
 
-async def test_branch_name_validator(session):
+async def test_branch_name_validator(db: InfrahubDatabase):
     assert Branch(name="new-branch")
     assert Branch(name="cr1234")
     assert Branch(name="new.branch")
@@ -104,7 +104,7 @@ async def test_branch_name_validator(session):
     assert Branch(name="cr1234-qwerty-qwerty")
 
 
-async def test_branch_branched_form_format_validator(session):
+async def test_branch_branched_form_format_validator(db: InfrahubDatabase):
     assert Branch(name="new-branch").branched_from is not None
 
     time1 = Timestamp().to_string()
@@ -114,8 +114,8 @@ async def test_branch_branched_form_format_validator(session):
         Branch(name="cr1234", branched_from="not a date")
 
 
-async def test_get_query_filter_relationships_main(session, base_dataset_02):
-    default_branch = await get_branch(branch="main", session=session)
+async def test_get_query_filter_relationships_main(db: InfrahubDatabase, base_dataset_02):
+    default_branch = await get_branch(branch="main", db=db)
 
     filters, params = default_branch.get_query_filter_relationships(
         rel_labels=["r1", "r2"], at=Timestamp().to_string(), include_outside_parentheses=False
@@ -133,8 +133,8 @@ async def test_get_query_filter_relationships_main(session, base_dataset_02):
     assert sorted(params.keys()) == ["branch0", "time0"]
 
 
-async def test_get_query_filter_relationships_branch1(session, base_dataset_02):
-    branch1 = await get_branch(branch="branch1", session=session)
+async def test_get_query_filter_relationships_branch1(db: InfrahubDatabase, base_dataset_02):
+    branch1 = await get_branch(branch="branch1", db=db)
 
     filters, params = branch1.get_query_filter_relationships(
         rel_labels=["r1", "r2"], at=Timestamp().to_string(), include_outside_parentheses=False
@@ -146,10 +146,10 @@ async def test_get_query_filter_relationships_branch1(session, base_dataset_02):
     assert sorted(params.keys()) == ["branch0", "branch1", "time0", "time1"]
 
 
-async def test_get_branches_and_times_to_query_main(session, base_dataset_02):
+async def test_get_branches_and_times_to_query_main(db: InfrahubDatabase, base_dataset_02):
     now = Timestamp("1s")
 
-    main_branch = await get_branch(branch="main", session=session)
+    main_branch = await get_branch(branch="main", db=db)
 
     results = main_branch.get_branches_and_times_to_query(at=Timestamp())
     assert Timestamp(results[frozenset(["main"])]) > now
@@ -159,10 +159,10 @@ async def test_get_branches_and_times_to_query_main(session, base_dataset_02):
     assert results[frozenset(["main"])] == t1.to_string()
 
 
-async def test_get_branches_and_times_to_query_branch1(session, base_dataset_02):
+async def test_get_branches_and_times_to_query_branch1(db: InfrahubDatabase, base_dataset_02):
     now = Timestamp("1s")
 
-    branch1 = await get_branch(branch="branch1", session=session)
+    branch1 = await get_branch(branch="branch1", db=db)
 
     results = branch1.get_branches_and_times_to_query(at=Timestamp())
     assert Timestamp(results[frozenset(["branch1"])]) > now
@@ -179,10 +179,10 @@ async def test_get_branches_and_times_to_query_branch1(session, base_dataset_02)
     assert results[frozenset(("main",))] == results[frozenset(["branch1"])]
 
 
-async def test_get_branches_and_times_to_query_global_main(session, base_dataset_02):
+async def test_get_branches_and_times_to_query_global_main(db: InfrahubDatabase, base_dataset_02):
     now = Timestamp("1s")
 
-    main_branch = await get_branch(branch="main", session=session)
+    main_branch = await get_branch(branch="main", db=db)
 
     results = main_branch.get_branches_and_times_to_query_global(at=Timestamp())
     assert Timestamp(results[frozenset((GLOBAL_BRANCH_NAME, "main"))]) > now
@@ -192,10 +192,10 @@ async def test_get_branches_and_times_to_query_global_main(session, base_dataset
     assert results[frozenset((GLOBAL_BRANCH_NAME, "main"))] == t1.to_string()
 
 
-async def test_get_branches_and_times_to_query_global_branch1(session, base_dataset_02):
+async def test_get_branches_and_times_to_query_global_branch1(db: InfrahubDatabase, base_dataset_02):
     now = Timestamp("1s")
 
-    branch1 = await get_branch(branch="branch1", session=session)
+    branch1 = await get_branch(branch="branch1", db=db)
 
     results = branch1.get_branches_and_times_to_query_global(at=Timestamp())
     assert Timestamp(results[frozenset((GLOBAL_BRANCH_NAME, "branch1"))]) > now
@@ -212,9 +212,9 @@ async def test_get_branches_and_times_to_query_global_branch1(session, base_data
     assert results[frozenset((GLOBAL_BRANCH_NAME, "main"))] == results[frozenset((GLOBAL_BRANCH_NAME, "branch1"))]
 
 
-async def test_get_branches_and_times_for_range_main(session, base_dataset_02):
+async def test_get_branches_and_times_for_range_main(db: InfrahubDatabase, base_dataset_02):
     now = Timestamp()
-    main_branch = await get_branch(branch="main", session=session)
+    main_branch = await get_branch(branch="main", db=db)
 
     start_times, end_times = main_branch.get_branches_and_times_for_range(start_time=Timestamp("1h"), end_time=now)
     assert list(start_times.keys()) == ["main"]
@@ -231,9 +231,9 @@ async def test_get_branches_and_times_for_range_main(session, base_dataset_02):
     assert end_times["main"] == t1.to_string()
 
 
-async def test_get_branches_and_times_for_range_branch1(session, base_dataset_02):
+async def test_get_branches_and_times_for_range_branch1(db: InfrahubDatabase, base_dataset_02):
     now = Timestamp()
-    branch1 = await get_branch(branch="branch1", session=session)
+    branch1 = await get_branch(branch="branch1", db=db)
 
     start_times, end_times = branch1.get_branches_and_times_for_range(start_time=Timestamp("1h"), end_time=now)
     assert sorted(list(start_times.keys())) == ["branch1", "main"]
@@ -254,9 +254,9 @@ async def test_get_branches_and_times_for_range_branch1(session, base_dataset_02
     assert start_times["main"] == t10.to_string()
 
 
-async def test_get_branches_and_times_for_range_branch2(session, base_dataset_03):
+async def test_get_branches_and_times_for_range_branch2(db: InfrahubDatabase, base_dataset_03):
     now = Timestamp()
-    branch2 = await get_branch(branch="branch2", session=session)
+    branch2 = await get_branch(branch="branch2", db=db)
 
     start_times, end_times = branch2.get_branches_and_times_for_range(start_time=Timestamp("1h"), end_time=now)
     assert sorted(list(start_times.keys())) == ["branch2", "main"]
@@ -277,58 +277,58 @@ async def test_get_branches_and_times_for_range_branch2(session, base_dataset_03
     assert start_times["main"] == t10.to_string()
 
 
-async def test_validate_graph(session, base_dataset_02, register_core_models_schema):
-    branch1 = await Branch.get_by_name(name="branch1", session=session)
-    passed, messages = await branch1.validate_graph(session=session)
+async def test_validate_graph(db: InfrahubDatabase, base_dataset_02, register_core_models_schema):
+    branch1 = await Branch.get_by_name(name="branch1", db=db)
+    passed, messages = await branch1.validate_graph(db=db)
 
     assert passed is True
     assert messages == []
 
     # Change the name of C1 in Branch1 to create a conflict
-    c1 = await NodeManager.get_one(id="c1", branch=branch1, session=session)
+    c1 = await NodeManager.get_one(id="c1", branch=branch1, db=db)
     c1.name.value = "new name"
-    await c1.save(session=session)
+    await c1.save(db=db)
 
-    passed, messages = await branch1.validate_graph(session=session)
+    passed, messages = await branch1.validate_graph(db=db)
     assert passed is False
     assert messages == ["Conflict detected at data/c1/name/value"]
 
 
-async def test_validate_empty_branch(session, base_dataset_02, register_core_models_schema):
-    branch2 = await create_branch(branch_name="branch2", session=session)
+async def test_validate_empty_branch(db: InfrahubDatabase, base_dataset_02, register_core_models_schema):
+    branch2 = await create_branch(branch_name="branch2", db=db)
 
-    passed, messages = await branch2.validate_graph(session=session)
+    passed, messages = await branch2.validate_graph(db=db)
 
     assert passed is True
     assert messages == []
 
 
-async def test_rebase_flag(session, base_dataset_02):
-    branch1 = await Branch.get_by_name(name="branch1", session=session)
+async def test_rebase_flag(db: InfrahubDatabase, base_dataset_02):
+    branch1 = await Branch.get_by_name(name="branch1", db=db)
 
-    cars = sorted(await NodeManager.query(schema="TestCar", branch=branch1, session=session), key=lambda c: c.id)
+    cars = sorted(await NodeManager.query(schema="TestCar", branch=branch1, db=db), key=lambda c: c.id)
     assert len(cars) == 2
     assert cars[0].id == "c1"
     assert cars[0].name.value == "accord"
 
     branch1.ephemeral_rebase = True
 
-    cars = sorted(await NodeManager.query(schema="TestCar", branch=branch1, session=session), key=lambda c: c.id)
+    cars = sorted(await NodeManager.query(schema="TestCar", branch=branch1, db=db), key=lambda c: c.id)
     assert len(cars) == 3
     assert cars[0].id == "c1"
     assert cars[0].name.value == "volt"
 
 
 async def test_delete_branch(
-    session, rpc_client: InfrahubRpcClientTesting, default_branch: Branch, repos_in_main, car_person_schema
+    db: InfrahubDatabase, rpc_client: InfrahubRpcClientTesting, default_branch: Branch, repos_in_main, car_person_schema
 ):
     branch_name = "delete-me"
-    branch = await create_branch(branch_name=branch_name, session=session)
-    found = await Branch.get_by_name(name=branch_name, session=session)
+    branch = await create_branch(branch_name=branch_name, db=db)
+    found = await Branch.get_by_name(name=branch_name, db=db)
 
-    p1 = await Node.init(schema="TestPerson", branch=branch_name, session=session)
-    await p1.new(name="Bobby", height=175, session=session)
-    await p1.save(session=session)
+    p1 = await Node.init(schema="TestPerson", branch=branch_name, db=db)
+    await p1.new(name="Bobby", height=175, db=db)
+    await p1.save(db=db)
 
     relationship_query = """
     MATCH ()-[r]-()
@@ -336,24 +336,24 @@ async def test_delete_branch(
     RETURN r
     """
     params = {"branch_name": branch_name}
-    pre_delete = await execute_read_query_async(session=session, query=relationship_query, params=params)
+    pre_delete = await execute_read_query_async(db=db, query=relationship_query, params=params)
 
-    await branch.delete(session=session)
-    post_delete = await execute_read_query_async(session=session, query=relationship_query, params=params)
+    await branch.delete(db=db)
+    post_delete = await execute_read_query_async(db=db, query=relationship_query, params=params)
 
     assert branch.id == found.id
     with pytest.raises(BranchNotFound):
-        await Branch.get_by_name(name=branch_name, session=session)
+        await Branch.get_by_name(name=branch_name, db=db)
 
     assert pre_delete
     assert not post_delete
 
 
-async def test_create_branch(session, empty_database):
+async def test_create_branch(db: InfrahubDatabase, empty_database):
     """Validate that creating a branch with quotes in descriptions work and are properly handled with params"""
     branch_name = "branching-out"
     description = "It's supported with quotes"
-    await create_branch(branch_name=branch_name, session=session, description=description)
-    branch = await Branch.get_by_name(name=branch_name, session=session)
+    await create_branch(branch_name=branch_name, db=db, description=description)
+    branch = await Branch.get_by_name(name=branch_name, db=db)
     assert branch.name == branch_name
     assert branch.description == description

@@ -15,6 +15,7 @@ from infrahub.core.schema import (
     core_models,
     internal_schema,
 )
+from infrahub.database import InfrahubDatabase
 
 
 def test_base_schema_model_sorting():
@@ -292,14 +293,12 @@ async def test_node_schema_generate_fields_for_display_label():
         schema.generate_fields_for_display_label()
 
 
-async def test_rel_schema_query_filter(session, default_branch, car_person_schema):
+async def test_rel_schema_query_filter(db: InfrahubDatabase, default_branch, car_person_schema):
     person = registry.get_schema(name="TestPerson")
     rel = person.relationships[0]
 
     # Filter relationships by NAME__VALUE
-    filters, params, matchs = await rel.get_query_filter(
-        session=session, filter_name="name__value", filter_value="alice"
-    )
+    filters, params, matchs = await rel.get_query_filter(db=db, filter_name="name__value", filter_value="alice")
     expected_response = [
         "(n)",
         "[r1:IS_RELATED]",
@@ -316,9 +315,7 @@ async def test_rel_schema_query_filter(session, default_branch, car_person_schem
     assert matchs == []
 
     # Filter relationship by ID
-    filters, params, matchs = await rel.get_query_filter(
-        session=session, name="bob", filter_name="id", filter_value="XXXX-YYYY"
-    )
+    filters, params, matchs = await rel.get_query_filter(db=db, name="bob", filter_name="id", filter_value="XXXX-YYYY")
     expected_response = [
         "(n)",
         "[r1:IS_RELATED]",
@@ -331,12 +328,12 @@ async def test_rel_schema_query_filter(session, default_branch, car_person_schem
     assert matchs == []
 
 
-async def test_rel_schema_query_filter_no_value(session, default_branch, car_person_schema):
+async def test_rel_schema_query_filter_no_value(db: InfrahubDatabase, default_branch, car_person_schema):
     person = registry.get_schema(name="TestPerson")
     rel = person.relationships[0]
 
     # Filter relationships by NAME__VALUE
-    filters, params, matchs = await rel.get_query_filter(session=session, filter_name="name__value")
+    filters, params, matchs = await rel.get_query_filter(db=db, filter_name="name__value")
     expected_response = [
         "(n)",
         "[r1:IS_RELATED]",
@@ -353,7 +350,7 @@ async def test_rel_schema_query_filter_no_value(session, default_branch, car_per
     assert matchs == []
 
     # Filter relationship by ID
-    filters, params, matchs = await rel.get_query_filter(session=session, name="bob", filter_name="id")
+    filters, params, matchs = await rel.get_query_filter(db=db, name="bob", filter_name="id")
     expected_response = [
         "(n)",
         "[r1:IS_RELATED]",
