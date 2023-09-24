@@ -1,9 +1,9 @@
 import pytest
 from graphql import DocumentNode, GraphQLSchema, OperationType
 from graphql.error import GraphQLSyntaxError
-from neo4j import AsyncSession
 
 from infrahub.core.branch import Branch
+from infrahub.database import InfrahubDatabase
 from infrahub.graphql import generate_graphql_schema
 from infrahub.graphql.analyzer import GraphQLQueryAnalyzer
 
@@ -17,9 +17,9 @@ async def test_analyzer_init_query_only(query_01, bad_query_01):
 
 
 async def test_analyzer_init_with_schema(
-    session: AsyncSession, default_branch: Branch, car_person_schema_generics, query_01: str, bad_query_01: str
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics, query_01: str, bad_query_01: str
 ):
-    schema = await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch)
+    schema = await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch)
 
     gqa = GraphQLQueryAnalyzer(query=query_01, schema=schema, branch=default_branch)
     assert isinstance(gqa.document, DocumentNode)
@@ -43,7 +43,7 @@ async def test_query_types(query_01: str, query_03: str):
 
 
 async def test_is_valid_simple_schema(
-    session: AsyncSession,
+    db: InfrahubDatabase,
     default_branch: Branch,
     query_01: str,
     query_02: str,
@@ -51,7 +51,7 @@ async def test_is_valid_simple_schema(
     query_04: str,
     car_person_schema_generics,
 ):
-    schema = await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch)
+    schema = await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch)
 
     gqa = GraphQLQueryAnalyzer(query=query_01, schema=schema, branch=default_branch)
     is_valid, errors = gqa.is_valid
@@ -75,12 +75,12 @@ async def test_is_valid_simple_schema(
 
 
 async def test_is_valid_core_schema(
-    session: AsyncSession,
+    db: InfrahubDatabase,
     default_branch: Branch,
     query_05: str,
     register_core_models_schema,
 ):
-    schema = await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch)
+    schema = await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch)
 
     gqa = GraphQLQueryAnalyzer(query=query_05, schema=schema, branch=default_branch)
     is_valid, errors = gqa.is_valid
@@ -116,14 +116,14 @@ async def test_get_fields(query_01: str, query_03: str):
 
 
 async def test_get_models_in_use(
-    session: AsyncSession,
+    db: InfrahubDatabase,
     default_branch: Branch,
     query_01: str,
     query_02: str,
     query_03: str,
     car_person_schema_generics,
 ):
-    schema = await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch)
+    schema = await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch)
 
     gqa = GraphQLQueryAnalyzer(query=query_01, schema=schema, branch=default_branch)
     assert await gqa.get_models_in_use() == {"TestCar", "TestElectricCar", "TestGazCar", "TestPerson"}
