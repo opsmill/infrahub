@@ -27,9 +27,16 @@ const getFieldValue = (row: any, attribute: any) => {
   return value;
 };
 
-const validate = (value: any, defaultValue?: any, optional?: boolean) => {
+const validate = (value: any, attribute: any = {}, optional?: boolean) => {
+  const { default_value: defaultValue } = attribute;
+
   // If optionnal, no validator is needed (we try to validate if the value is defined or not)
   if (optional) {
+    return true;
+  }
+
+  // If the attribute is of kind integer, then it should be a number
+  if (attribute.kind === "Integer" && Number.isInteger(value)) {
     return true;
   }
 
@@ -83,7 +90,7 @@ const getFormStructureForCreateEdit = (
         values: options,
       },
       config: {
-        validate: (value: any) => validate(value, attribute.default_value, attribute.optional),
+        validate: (value: any) => validate(value, attribute, attribute.optional),
       },
       isOptionnal: attribute.optional,
       isProtected: getIsDisabled(
