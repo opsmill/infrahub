@@ -50,7 +50,7 @@ async def get_session(request: Request) -> AsyncIterator[AsyncSession]:
 
 
 async def get_db(request: Request) -> InfrahubDatabase:
-    return request.app.state.db
+    return request.app.state.db.start_session()
 
 
 async def get_access_token(
