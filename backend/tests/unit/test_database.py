@@ -8,13 +8,13 @@ from infrahub.database import InfrahubDatabase, validate_database
 @pytest.fixture
 async def dbs_for_test(db: InfrahubDatabase):
     databases = ["test41735", "test850e5"]
-    default_db = db.session()
+    default_db = db._driver.session()
     await default_db.run(f"CREATE DATABASE {databases[0]} IF NOT EXISTS WAIT")
 
     yield databases
 
     # Delete both databases after the test
-    default_db = db.session()
+    default_db = db._driver.session()
     for database in databases:
         await default_db.run(f"DROP DATABASE {database} IF EXISTS")
 
