@@ -165,7 +165,11 @@ class InfrahubDatabase:
             return await self._session.close()
 
         if self._mode == InfrahubDatabaseMode.TRANSACTION:
-            await self._transaction.commit()
+            if exc_type is not None:
+                await self._transaction.rollback()
+            else:
+                await self._transaction.commit()
+
             if self._is_session_local:
                 await self._session.close()
 
