@@ -26,6 +26,7 @@ async def test_validate_database(db: InfrahubDatabase, dbs_for_test):
     with pytest.raises(ClientError):
         await validate_database(driver=db, database_name=dbs_for_test[1])
 
+
 @pytest.mark.xfail(reason="DISABLING FOR A TEMP TEST")
 async def test_database_transaction(empty_database, db: InfrahubDatabase):
     query1 = 'CREATE (b:Book {name: "book1"}) RETURN b'
