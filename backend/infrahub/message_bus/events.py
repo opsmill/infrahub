@@ -585,7 +585,7 @@ async def get_event_exchange(channel=None) -> Generator:
         channel = await broker.channel()
 
     exchange_name = f"{config.SETTINGS.broker.namespace}.events"
-    return await channel.declare_exchange(exchange_name, ExchangeType.TOPIC)
+    return await channel.declare_exchange(exchange_name, ExchangeType.TOPIC, durable=True)
 
 
 async def send_event(msg: Message):
