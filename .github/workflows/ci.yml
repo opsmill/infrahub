@@ -24,6 +24,8 @@ env:
   PYTEST_XDIST_WORKER_COUNT: 2
   INFRAHUB_TEST_IN_DOCKER: 1
   BUILDKITE_ANALYTICS_BRANCH: ${{ github.ref }}
+  BUILDKITE_BRANCH: ${{ github.ref }}
+  BUILDKITE_COMMIT: ${{ github.sha }}
 
 jobs:
   files-changed:
