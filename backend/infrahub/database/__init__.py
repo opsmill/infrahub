@@ -110,16 +110,16 @@ class InfrahubDatabase:
 
         return self.__class__(mode=InfrahubDatabaseMode.SESSION, driver=self._driver, session_mode=session_mode)
 
-    def start_transaction(self) -> InfrahubDatabase:
-        return self.start_session()
-
     # def start_transaction(self) -> InfrahubDatabase:
-    #     return self.__class__(
-    #         mode=InfrahubDatabaseMode.TRANSACTION,
-    #         driver=self._driver,
-    #         session=self._session,
-    #         session_mode=self._session_mode,
-    #     )
+    #     return self.start_session()
+
+    def start_transaction(self) -> InfrahubDatabase:
+        return self.__class__(
+            mode=InfrahubDatabaseMode.TRANSACTION,
+            driver=self._driver,
+            session=self._session,
+            session_mode=self._session_mode,
+        )
 
     async def session(self) -> AsyncSession:
         if self._session:
