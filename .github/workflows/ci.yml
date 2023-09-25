@@ -231,16 +231,12 @@ jobs:
         uses: "actions/checkout@v3"
       - name: "Setup Python environment"
         run: "pip install toml invoke"
-      # - name: Cache Docker images.
-      #   uses: ScribeMD/docker-cache@0.3.3
-      #   with:
-      #     key: "docker-${{ runner.os }}-backend-neo4j-${{ hashFiles('development/**') }}"
       - name: "Build Test Image"
         run: "invoke test.build"
       - name: "Pull External Docker Images"
         run: "invoke test.pull --database=neo4j"
       - name: "Unit Tests"
-        run: "invoke backend.test-core --database=neo4j"
+        run: "invoke backend.test-unit --database=neo4j"
         env:
           BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_BACKEND_UNIT_NEO4J }}
 
