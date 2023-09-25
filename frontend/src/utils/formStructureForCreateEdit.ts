@@ -167,7 +167,7 @@ const getFormStructureForCreateEdit = (
           values: options,
         },
         config: {
-          validate: (value: any) => validate(value, null, relationship.optional),
+          validate: (value: any) => validate(value, undefined, relationship.optional),
         },
         isProtected: getIsDisabled(
           row && row[relationship.name]?.properties?.owner,
