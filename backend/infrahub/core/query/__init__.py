@@ -12,17 +12,13 @@ from neo4j.graph import Relationship as Neo4jRelationship
 from infrahub import config
 from infrahub.core.constants import PermissionLevel
 from infrahub.core.timestamp import Timestamp
-from infrahub.database import (
-    InfrahubDatabase,
-    execute_read_query_async,
-    execute_write_query_async,
-)
 from infrahub.exceptions import QueryError
 
 if TYPE_CHECKING:
     from typing_extensions import Self
 
     from infrahub.core.branch import Branch
+    from infrahub.database import InfrahubDatabase
 
 
 def sort_results_by_time(results: List[QueryResult], rel_label: str) -> List[QueryResult]:
@@ -353,14 +349,12 @@ class Query(ABC):
 
         if self.type == QueryType.READ:
             if self.limit or self.offset:
-                results = await execute_read_query_async(
-                    query=self.get_query(), params=self.params, db=db, name=self.name
-                )
+                results = await db.execute_query(query=self.get_query(), params=self.params, name=self.name)
             else:
                 results = await self.query_with_size_limit(db=db)
 
         elif self.type == QueryType.WRITE:
-            results = await execute_write_query_async(query=self.get_query(), params=self.params, db=db, name=self.name)
+            results = await db.execute_query(query=self.get_query(), params=self.params, name=self.name)
         else:
             raise ValueError(f"unknown value for {self.type}")
 
@@ -378,10 +372,9 @@ class Query(ABC):
         results = []
         remaining = True
         while remaining:
-            offset_results = await execute_read_query_async(
+            offset_results = await db.execute_query(
                 query=self.get_query(limit=query_limit, offset=offset),
                 params=self.params,
-                db=db,
                 name=self.name,
             )
             results.extend(offset_results)
@@ -402,7 +395,7 @@ class Query(ABC):
         if self.type != QueryType.READ:
             raise ValueError(f"unknown value for {self.type}")
 
-        results = await execute_read_query_async(query=self.get_count_query(), params=self.params, db=db)
+        results = await db.execute_query(query=self.get_count_query(), params=self.params)
 
         if not results and self.raise_error_if_empty:
             raise QueryError(self.get_count_query(), self.params)

@@ -32,7 +32,6 @@ from infrahub.core.query.node import NodeDeleteQuery, NodeListGetInfoQuery
 from infrahub.core.registry import get_branch, registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import add_relationship, update_relationships_to
-from infrahub.database import execute_read_query_async
 from infrahub.exceptions import BranchNotFound, ValidationError
 from infrahub.message_bus.events import (
     GitMessageAction,
@@ -189,7 +188,7 @@ class Branch(StandardNode):
 
         params = {"name": name}
 
-        results = await execute_read_query_async(db=db, query=query, params=params, name="branch_get_by_name")
+        results = await db.execute_query(query=query, params=params, name="branch_get_by_name")
 
         if len(results) == 0:
             raise BranchNotFound(identifier=name)

@@ -8,7 +8,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
-from infrahub.database import InfrahubDatabase, execute_read_query_async
+from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import BranchNotFound, ValidationError
 from infrahub.message_bus.rpc import InfrahubRpcClientTesting
 
@@ -336,10 +336,10 @@ async def test_delete_branch(
     RETURN r
     """
     params = {"branch_name": branch_name}
-    pre_delete = await execute_read_query_async(db=db, query=relationship_query, params=params)
+    pre_delete = await db.execute_query(query=relationship_query, params=params)
 
     await branch.delete(db=db)
-    post_delete = await execute_read_query_async(db=db, query=relationship_query, params=params)
+    post_delete = await db.execute_query(query=relationship_query, params=params)
 
     assert branch.id == found.id
     with pytest.raises(BranchNotFound):

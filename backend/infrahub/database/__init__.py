@@ -4,6 +4,8 @@ import asyncio
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type
 
 from neo4j import (
+    READ_ACCESS,
+    WRITE_ACCESS,
     AsyncDriver,
     AsyncGraphDatabase,
     AsyncSession,
@@ -65,6 +67,11 @@ class InfrahubDatabaseMode(InfrahubStringEnum):
     TRANSACTION = "transaction"
 
 
+class InfrahubDatabaseSessionMode(InfrahubStringEnum):
+    READ = "read"
+    WRITE = "write"
+
+
 class InfrahubDatabase:
     """Base class for database access"""
 
@@ -73,11 +80,13 @@ class InfrahubDatabase:
         driver: AsyncDriver,
         mode: InfrahubDatabaseMode = InfrahubDatabaseMode.DRIVER,
         session: Optional[AsyncSession] = None,
+        session_mode: InfrahubDatabaseSessionMode = InfrahubDatabaseSessionMode.WRITE,
         transaction: Optional[AsyncTransaction] = None,
     ):
         self._mode = mode
         self._driver = driver
         self._session = session
+        self._session_mode = session_mode
         self._is_session_local = False
         self._transaction = transaction
 
@@ -93,17 +102,35 @@ class InfrahubDatabase:
             return True
         return False
 
-    def start_session(self) -> InfrahubDatabase:
-        return self.__class__(mode=InfrahubDatabaseMode.SESSION, driver=self._driver)
+    def start_session(self, read_only: bool = False) -> InfrahubDatabase:
+        """Create a new InfrahubDatabase object in Session mode."""
+        session_mode = InfrahubDatabaseSessionMode.WRITE
+        if read_only:
+            session_mode = InfrahubDatabaseSessionMode.READ
+
+        return self.__class__(mode=InfrahubDatabaseMode.SESSION, driver=self._driver, session_mode=session_mode)
 
     def start_transaction(self) -> InfrahubDatabase:
-        return self.__class__(mode=InfrahubDatabaseMode.TRANSACTION, driver=self._driver, session=self._session)
+        return self.__class__(
+            mode=InfrahubDatabaseMode.TRANSACTION,
+            driver=self._driver,
+            session=self._session,
+            session_mode=self._session_mode,
+        )
 
     async def session(self) -> AsyncSession:
         if self._session:
             return self._session
 
-        self._session = self._driver.session(database=config.SETTINGS.database.database)
+        if self._session_mode == InfrahubDatabaseSessionMode.READ:
+            self._session = self._driver.session(
+                database=config.SETTINGS.database.database, default_access_mode=READ_ACCESS
+            )
+        else:
+            self._session = self._driver.session(
+                database=config.SETTINGS.database.database, default_access_mode=WRITE_ACCESS
+            )
+
         self._is_session_local = True
         return self._session
 
@@ -117,7 +144,15 @@ class InfrahubDatabase:
 
     async def __aenter__(self) -> InfrahubDatabase:
         if self._mode == InfrahubDatabaseMode.SESSION:
-            self._session = self._driver.session(database=config.SETTINGS.database.database)
+            if self._session_mode == InfrahubDatabaseSessionMode.READ:
+                self._session = self._driver.session(
+                    database=config.SETTINGS.database.database, default_access_mode=READ_ACCESS
+                )
+            else:
+                self._session = self._driver.session(
+                    database=config.SETTINGS.database.database, default_access_mode=WRITE_ACCESS
+                )
+
             return self
 
         if self._mode == InfrahubDatabaseMode.TRANSACTION:
@@ -136,6 +171,19 @@ class InfrahubDatabase:
 
     async def close(self):
         await self._driver.close()
+
+    async def execute_query(
+        self, query: str, params: Optional[Dict[str, Any]] = None, name: Optional[str] = "undefined"
+    ) -> List[Record]:
+        with QUERY_EXECUTION_METRICS.labels(str(self._session_mode), name).time():
+            if self.is_transaction:
+                tx = await self.transaction()
+                response = await tx.run(query=query, parameters=params)
+                return [item async for item in response]
+
+            session = await self.session()
+            response = await session.run(query=query, parameters=params)
+            return [item async for item in response]
 
 
 async def create_database(driver: AsyncDriver, database_name: str) -> None:

@@ -32,7 +32,7 @@ from infrahub.core.schema import (
 )
 from infrahub.core.schema_manager import SchemaBranch, SchemaManager
 from infrahub.core.utils import delete_all_nodes
-from infrahub.database import InfrahubDatabase, execute_write_query_async, get_db
+from infrahub.database import InfrahubDatabase, get_db
 from infrahub.git import InfrahubRepository
 from infrahub.graphql.generator import (
     load_attribute_types_in_registry,
@@ -184,7 +184,7 @@ async def simple_dataset_01(db: InfrahubDatabase, empty_database) -> dict:
     RETURN c, at1, at2
     """
 
-    await execute_write_query_async(db=db, query=query, params=params)
+    await db.execute_query(query=query, params=params)
 
     return params
 
@@ -402,7 +402,7 @@ async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_pers
     RETURN c1, c2, c3
     """
 
-    await execute_write_query_async(db=db, query=query, params=params)
+    await db.execute_query(query=query, params=params)
 
     return params
 
@@ -622,7 +622,7 @@ async def base_dataset_12(db: InfrahubDatabase, default_branch: Branch, car_pers
     RETURN c1, c2, c3
     """
 
-    await execute_write_query_async(db=db, query=query, params=params)
+    await db.execute_query(query=query, params=params)
 
     return params
 
@@ -970,10 +970,10 @@ async def base_dataset_03(db: InfrahubDatabase, default_branch: Branch, person_t
 
     RETURN t1, t2, t3
     """
-    await execute_write_query_async(db=db, query=query1, params=params)
-    await execute_write_query_async(db=db, query=query_prefix + query2, params=params)
-    await execute_write_query_async(db=db, query=query_prefix + query3, params=params)
-    await execute_write_query_async(db=db, query=query_prefix + query4, params=params)
+    await db.execute_query(query=query1, params=params)
+    await db.execute_query(query=query_prefix + query2, params=params)
+    await db.execute_query(query=query_prefix + query3, params=params)
+    await db.execute_query(query=query_prefix + query4, params=params)
     return params
 
 

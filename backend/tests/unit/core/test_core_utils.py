@@ -4,7 +4,7 @@ from infrahub.core.utils import (
     element_id_to_id,
     get_paths_between_nodes,
 )
-from infrahub.database import InfrahubDatabase, execute_write_query_async
+from infrahub.database import InfrahubDatabase
 
 
 async def test_delete_all_nodes(db: InfrahubDatabase):
@@ -28,7 +28,7 @@ async def test_get_paths_between_nodes(db: InfrahubDatabase, empty_database):
     RETURN p1, p2, p3
     """
 
-    results = await execute_write_query_async(db=db, query=query)
+    results = await db.execute_query(query=query)
     nodes = results[0]
 
     paths = await get_paths_between_nodes(db=db, source_id=nodes[0].element_id, destination_id=nodes[1].element_id)
@@ -64,6 +64,6 @@ async def test_count_relationships(db: InfrahubDatabase, empty_database):
     RETURN p1, p2, p3
     """
 
-    await execute_write_query_async(db=db, query=query)
+    await db.execute_query(query=query)
 
     assert await count_relationships(db=db) == 3

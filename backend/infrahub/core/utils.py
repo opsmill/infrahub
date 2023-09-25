@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, List, Optional, Union
 import infrahub.config as config
 from infrahub.core.constants import RelationshipStatus
 from infrahub.core.timestamp import Timestamp
-from infrahub.database import execute_read_query_async, execute_write_query_async
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -44,8 +43,7 @@ async def add_relationship(
         "status": status.value,
     }
 
-    results = await execute_write_query_async(
-        db=db,
+    results = await db.execute_query(
         query=create_rel_query,
         params=params,
     )
@@ -60,7 +58,7 @@ async def delete_all_relationships_for_branch(branch_name: str, db: InfrahubData
     """
     params = {"branch_name": branch_name}
 
-    await execute_write_query_async(db=db, query=query, params=params)
+    await db.execute_query(query=query, params=params)
 
 
 async def update_relationships_to(
@@ -85,7 +83,7 @@ async def update_relationships_to(
 
     params = {"to": to.to_string()}
 
-    return await execute_write_query_async(db=db, query=query, params=params)
+    return await db.execute_query(query=query, params=params)
 
 
 async def get_paths_between_nodes(
@@ -121,7 +119,7 @@ async def get_paths_between_nodes(
         "destination_id": element_id_to_id(destination_id),
     }
 
-    return await execute_read_query_async(db=db, query=query, params=params, name="get_paths_between_nodes")
+    return await db.execute_query(query=query, params=params, name="get_paths_between_nodes")
 
 
 async def count_relationships(db: InfrahubDatabase) -> int:
@@ -133,7 +131,7 @@ async def count_relationships(db: InfrahubDatabase) -> int:
 
     params: dict = {}
 
-    result = await execute_write_query_async(db=db, query=query, params=params)
+    result = await db.execute_query(query=query, params=params)
     return result[0][0]
 
 
@@ -145,7 +143,7 @@ async def delete_all_nodes(db: InfrahubDatabase):
 
     params: dict = {}
 
-    return await execute_write_query_async(db=db, query=query, params=params)
+    return await db.execute_query(query=query, params=params)
 
 
 def element_id_to_id(element_id: Union[str, int]) -> int:

@@ -5,7 +5,7 @@ from typing import List
 
 from infrahub.core import registry
 from infrahub.core.node import Node
-from infrahub.database import InfrahubDatabase, execute_write_query_async, get_db
+from infrahub.database import InfrahubDatabase, get_db
 
 # flake8: noqa
 # pylint: skip-file
@@ -61,7 +61,7 @@ async def execute_query(db: InfrahubDatabase, query: List[str], deps: List[Node]
 
     start_time = time.time()
     query_str = "\n".join(QUERY_START + deps_query + QUERY_MERGE + query + QUERY_END)
-    result = await execute_write_query_async(db=db, query=query_str)
+    result = await db.execute_query(query=query_str)
     duration = time.time() - start_time
     LOGGER.info(f"Executed query in {duration:.3f} sec")
 
