@@ -8,7 +8,6 @@ from .shared import (
     AVAILABLE_SERVICES,
     BUILD_NAME,
     PYTHON_VER,
-    VOLUME_NAMES,
     build_compose_files_cmd,
     build_dev_compose_files_cmd,
     execute_command,
@@ -124,12 +123,8 @@ def destroy(context: Context, database: str = "memgraph"):
     with context.cd(REPO_BASE):
         compose_files_cmd = build_compose_files_cmd(database=database)
 
-        command = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} down --remove-orphans"
+        command = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} down --remove-orphans --volumes"
         execute_command(context=context, command=command)
-
-        for volume in VOLUME_NAMES:
-            command = f"{get_env_vars(context)} docker volume rm -f {BUILD_NAME}_{volume}"
-            execute_command(context=context, command=command)
 
 
 @task(optional=["database"])
