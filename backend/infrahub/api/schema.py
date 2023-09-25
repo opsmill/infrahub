@@ -100,12 +100,13 @@ async def load_schema(
         diff = tmp_schema.diff(branch_schema)
 
         if diff.all:
-            await registry.schema.update_schema_branch(
-                schema=tmp_schema, db=db, branch=branch.name, limit=diff.all, update_db=True
-            )
-            branch.update_schema_hash()
-            log.info("Schema has been updated", branch=branch.name, hash=branch.schema_hash.main)
-            await branch.save(db=db)
+            async with db.start_transaction() as db:
+                await registry.schema.update_schema_branch(
+                    schema=tmp_schema, db=db, branch=branch.name, limit=diff.all, update_db=True
+                )
+                branch.update_schema_hash()
+                log.info("Schema has been updated", branch=branch.name, hash=branch.schema_hash.main)
+                await branch.save(db=db)
 
             if config.SETTINGS.broker.enable:
                 message = messages.EventSchemaUpdate(
