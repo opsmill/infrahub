@@ -1,13 +1,16 @@
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 from graphene import Boolean, InputObjectType, List, Mutation, String
-from graphql import GraphQLResolveInfo
 
 from infrahub.core.manager import NodeManager
 from infrahub.exceptions import NodeNotFound
 
 if TYPE_CHECKING:
-    from neo4j import AsyncSession
+    from graphql import GraphQLResolveInfo
+
+    from infrahub.database import InfrahubDatabase
 
 
 # pylint: disable=unused-argument
@@ -31,25 +34,25 @@ class GroupAssociationMixin:
         info: GraphQLResolveInfo,
         data,
     ):
-        session: AsyncSession = info.context.get("infrahub_session")
+        db: InfrahubDatabase = info.context.get("infrahub_database")
         at = info.context.get("infrahub_at")
         branch = info.context.get("infrahub_branch")
 
         if not (
             group := await NodeManager.get_one(
-                session=session, id=data.get("id"), branch=branch, at=at, include_owner=True, include_source=True
+                db=db, id=data.get("id"), branch=branch, at=at, include_owner=True, include_source=True
             )
         ):
             raise NodeNotFound(branch, "Group", data.get("id"))
 
         if cls.__name__ == "GroupMemberAdd":
-            await group.members.add(session=session, nodes=data["members"])
+            await group.members.add(db=db, nodes=data["members"])
         elif cls.__name__ == "GroupMemberRemove":
-            await group.members.remove(session=session, nodes=data["members"])
+            await group.members.remove(db=db, nodes=data["members"])
         elif cls.__name__ == "GroupSubscriberAdd":
-            await group.subscribers.add(session=session, nodes=data["subscribers"])
+            await group.subscribers.add(db=db, nodes=data["subscribers"])
         elif cls.__name__ == "GroupSubscriberRemove":
-            await group.subscribers.remove(session=session, nodes=data["subscribers"])
+            await group.subscribers.remove(db=db, nodes=data["subscribers"])
 
 
 class GroupMemberAdd(GroupAssociationMixin, Mutation):

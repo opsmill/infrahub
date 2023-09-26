@@ -44,8 +44,8 @@ async def _listen(topic: str, config_file: str):
 #     db = await get_db()
 
 #     async with db.session(database=config.SETTINGS.database.database) as session:
-#         await initialization(session=session)
-#         nodes = await NodeManager.query(session=session, schema="Criticality")
+#         await initialization(db=db)
+#         nodes = await NodeManager.query(db=db, schema="Criticality")
 
 #     event = InfrahubDataMessage(action="create", node=nodes[0])
 #     await event.send()

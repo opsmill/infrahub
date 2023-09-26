@@ -6,10 +6,9 @@ from infrahub.core.query import Query, QueryType
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
-    from neo4j import AsyncSession
-
     from infrahub.core.attribute import BaseAttribute
     from infrahub.core.branch import Branch
+    from infrahub.database import InfrahubDatabase
 
 # flake8: noqa: F723
 
@@ -44,7 +43,7 @@ class AttributeGetValueQuery(AttributeQuery):
     name = "attribute_get_value"
     type: QueryType = QueryType.READ
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         self.params["attr_uuid"] = self.attr.id
         at = self.at or self.attr.at
         self.params["at"] = at.to_string()
@@ -87,7 +86,7 @@ class AttributeUpdateValueQuery(AttributeQuery):
 
     raise_error_if_empty: bool = True
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         at = self.at or self.attr.at
 
         self.params["attr_uuid"] = self.attr.id
@@ -131,7 +130,7 @@ class AttributeUpdateFlagQuery(AttributeQuery):
 
         super().__init__(*args, **kwargs)
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         at = self.at or self.attr.at
 
         self.params["attr_uuid"] = self.attr.id
@@ -172,7 +171,7 @@ class AttributeUpdateNodePropertyQuery(AttributeQuery):
 
         super().__init__(*args, **kwargs)
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         at = self.at or self.attr.at
 
         self.params["attr_uuid"] = self.attr.id
@@ -201,7 +200,7 @@ class AttributeGetQuery(AttributeQuery):
     name = "attribute_get"
     type: QueryType = QueryType.READ
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         self.params["attr_uuid"] = self.attr.id
         self.params["node_uuid"] = self.attr.node.id
 

@@ -6,17 +6,16 @@ from typing import TYPE_CHECKING, List, Optional, Union
 import infrahub.config as config
 from infrahub.core.constants import RelationshipStatus
 from infrahub.core.timestamp import Timestamp
-from infrahub.database import execute_read_query_async, execute_write_query_async
 
 if TYPE_CHECKING:
-    from neo4j import AsyncSession
+    from infrahub.database import InfrahubDatabase
 
 
 async def add_relationship(
     src_node_id: str,
     dst_node_id: str,
     rel_type: str,
-    session: AsyncSession,
+    db: InfrahubDatabase,
     branch_name: Optional[str] = None,
     branch_level: Optional[int] = None,
     at: Optional[Timestamp] = None,
@@ -44,8 +43,7 @@ async def add_relationship(
         "status": status.value,
     }
 
-    results = await execute_write_query_async(
-        session=session,
+    results = await db.execute_query(
         query=create_rel_query,
         params=params,
     )
@@ -54,18 +52,18 @@ async def add_relationship(
     return results[0][0]
 
 
-async def delete_all_relationships_for_branch(branch_name: str, session: AsyncSession):
+async def delete_all_relationships_for_branch(branch_name: str, db: InfrahubDatabase):
     query = """
     MATCH ()-[r { branch: $branch_name }]-() DELETE r
     """
     params = {"branch_name": branch_name}
 
-    await execute_write_query_async(session=session, query=query, params=params)
+    await db.execute_query(query=query, params=params)
 
 
 async def update_relationships_to(
     ids: List[str],
-    session: AsyncSession,
+    db: InfrahubDatabase,
     to: Timestamp = None,
 ):
     """Update the "to" field on one or multiple relationships."""
@@ -85,11 +83,11 @@ async def update_relationships_to(
 
     params = {"to": to.to_string()}
 
-    return await execute_write_query_async(session=session, query=query, params=params)
+    return await db.execute_query(query=query, params=params)
 
 
 async def get_paths_between_nodes(
-    session: AsyncSession,
+    db: InfrahubDatabase,
     source_id: str,
     destination_id: str,
     relationships: Optional[List[str]] = None,
@@ -121,10 +119,10 @@ async def get_paths_between_nodes(
         "destination_id": element_id_to_id(destination_id),
     }
 
-    return await execute_read_query_async(session=session, query=query, params=params, name="get_paths_between_nodes")
+    return await db.execute_query(query=query, params=params, name="get_paths_between_nodes")
 
 
-async def count_relationships(session: AsyncSession) -> int:
+async def count_relationships(db: InfrahubDatabase) -> int:
     """Return the total number of relationships in the database."""
     query = """
     MATCH ()-[r]->()
@@ -133,11 +131,11 @@ async def count_relationships(session: AsyncSession) -> int:
 
     params: dict = {}
 
-    result = await execute_write_query_async(session=session, query=query, params=params)
+    result = await db.execute_query(query=query, params=params)
     return result[0][0]
 
 
-async def delete_all_nodes(session: AsyncSession):
+async def delete_all_nodes(db: InfrahubDatabase):
     query = """
     MATCH (n)
     DETACH DELETE n
@@ -145,7 +143,7 @@ async def delete_all_nodes(session: AsyncSession):
 
     params: dict = {}
 
-    return await execute_write_query_async(session=session, query=query, params=params)
+    return await db.execute_query(query=query, params=params)
 
 
 def element_id_to_id(element_id: Union[str, int]) -> int:

@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from graphene import Boolean, String
 
-import infrahub.config as config
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 
 from .standard_node import InfrahubObjectType
+
+if TYPE_CHECKING:
+    from infrahub.database import InfrahubDatabase
 
 
 class BranchType(InfrahubObjectType):
@@ -26,12 +30,10 @@ class BranchType(InfrahubObjectType):
 
     @classmethod
     async def get_list(cls, fields: dict, context: dict, *args, **kwargs):  # pylint: disable=unused-argument
-        db = context.get("infrahub_database")
+        db: InfrahubDatabase = context.get("infrahub_database")
 
-        async with db.session(database=config.SETTINGS.database.database) as session:
-            context["infrahub_session"] = session
-
-            objs = await Branch.get_list(session=session, **kwargs)
+        async with db.start_session() as db:
+            objs = await Branch.get_list(db=db, **kwargs)
 
             if not objs:
                 return []

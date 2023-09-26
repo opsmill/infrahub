@@ -6,7 +6,6 @@ from typing import Dict
 import pendulum
 import pytest
 from git.repo import Repo
-from neo4j import AsyncDriver, AsyncSession
 from neo4j._codec.hydration.v1 import HydrationHandler
 from pytest_httpx import HTTPXMock
 
@@ -33,7 +32,7 @@ from infrahub.core.schema import (
 )
 from infrahub.core.schema_manager import SchemaBranch, SchemaManager
 from infrahub.core.utils import delete_all_nodes
-from infrahub.database import execute_write_query_async, get_db
+from infrahub.database import InfrahubDatabase, get_db
 from infrahub.git import InfrahubRepository
 from infrahub.graphql.generator import (
     load_attribute_types_in_registry,
@@ -54,21 +53,12 @@ def event_loop():
 
 
 @pytest.fixture(scope="module")
-async def db() -> AsyncDriver:
-    driver = await get_db(retry=1)
+async def db() -> InfrahubDatabase:
+    driver = InfrahubDatabase(driver=await get_db(retry=1))
 
     yield driver
 
     await driver.close()
-
-
-@pytest.fixture
-async def session(db: AsyncDriver) -> AsyncSession:
-    session = db.session(database=config.SETTINGS.database.database)
-
-    yield session
-
-    await session.close()
 
 
 @pytest.fixture
@@ -77,11 +67,11 @@ async def rpc_client() -> InfrahubRpcClientTesting:
 
 
 @pytest.fixture(params=["main", "branch2"])
-async def branch(request, session: AsyncSession, default_branch: Branch):
+async def branch(request, db: InfrahubDatabase, default_branch: Branch):
     if request.param == "main":
         return default_branch
     else:
-        return await create_branch(branch_name=str(request.param), session=session)
+        return await create_branch(branch_name=str(request.param), db=db)
 
 
 @pytest.fixture(scope="session")
@@ -163,9 +153,9 @@ def file1_in_storage(local_storage_dir, helper) -> str:
 
 
 @pytest.fixture
-async def simple_dataset_01(session: AsyncSession, empty_database) -> dict:
-    await create_root_node(session=session)
-    await create_default_branch(session=session)
+async def simple_dataset_01(db: InfrahubDatabase, empty_database) -> dict:
+    await create_root_node(db=db)
+    await create_default_branch(db=db)
 
     params = {
         "branch": "main",
@@ -194,13 +184,13 @@ async def simple_dataset_01(session: AsyncSession, empty_database) -> dict:
     RETURN c, at1, at2
     """
 
-    await execute_write_query_async(session=session, query=query, params=params)
+    await db.execute_query(query=query, params=params)
 
     return params
 
 
 @pytest.fixture
-async def base_dataset_02(session: AsyncSession, default_branch: Branch, car_person_schema) -> dict:
+async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_person_schema) -> dict:
     """Creates a Simple dataset with 2 branches and some changes that can be used for testing.
 
     To recreate a deterministic timeline, there are 10 timestamps that are being created ahead of time:
@@ -246,7 +236,7 @@ async def base_dataset_02(session: AsyncSession, default_branch: Branch, car_per
     # Update Main Branch and Create new Branch1
     default_branch.created_at = params["time_m60"]
     default_branch.branched_from = params["time_m60"]
-    await default_branch.save(session=session)
+    await default_branch.save(db=db)
 
     branch1 = Branch(
         name="branch1",
@@ -257,7 +247,7 @@ async def base_dataset_02(session: AsyncSession, default_branch: Branch, car_per
         branched_from=params["time_m45"],
         created_at=params["time_m45"],
     )
-    await branch1.save(session=session)
+    await branch1.save(db=db)
     registry.branch[branch1.name] = branch1
 
     query = """
@@ -412,13 +402,13 @@ async def base_dataset_02(session: AsyncSession, default_branch: Branch, car_per
     RETURN c1, c2, c3
     """
 
-    await execute_write_query_async(session=session, query=query, params=params)
+    await db.execute_query(query=query, params=params)
 
     return params
 
 
 @pytest.fixture
-async def base_dataset_12(session: AsyncSession, default_branch: Branch, car_person_schema_global) -> dict:
+async def base_dataset_12(db: InfrahubDatabase, default_branch: Branch, car_person_schema_global) -> dict:
     """Creates a Simple dataset with 2 branches and some changes that can be used for testing.
     This dataset is based on base_dataset_02 but it uses a different schema with person includes the global branch as well
 
@@ -466,7 +456,7 @@ async def base_dataset_12(session: AsyncSession, default_branch: Branch, car_per
     # Update Main Branch and Create new Branch1
     default_branch.created_at = params["time_m60"]
     default_branch.branched_from = params["time_m60"]
-    await default_branch.save(session=session)
+    await default_branch.save(db=db)
 
     branch1 = Branch(
         name="branch1",
@@ -477,7 +467,7 @@ async def base_dataset_12(session: AsyncSession, default_branch: Branch, car_per
         branched_from=params["time_m45"],
         created_at=params["time_m45"],
     )
-    await branch1.save(session=session)
+    await branch1.save(db=db)
     registry.branch[branch1.name] = branch1
 
     query = """
@@ -632,13 +622,13 @@ async def base_dataset_12(session: AsyncSession, default_branch: Branch, car_per
     RETURN c1, c2, c3
     """
 
-    await execute_write_query_async(session=session, query=query, params=params)
+    await db.execute_query(query=query, params=params)
 
     return params
 
 
 @pytest.fixture
-async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_tag_schema) -> dict:
+async def base_dataset_03(db: InfrahubDatabase, default_branch: Branch, person_tag_schema) -> dict:
     """Creates a Dataset with 4 branches, this dataset was initially created to test the diff of Nodes and relationships
 
     To recreate a deterministic timeline, there are 20 timestamps that are being created ahead of time:
@@ -685,7 +675,7 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
     # Update Main Branch
     default_branch.created_at = params["time_m120"]
     default_branch.branched_from = params["time_m120"]
-    await default_branch.save(session=session)
+    await default_branch.save(db=db)
 
     branches = (
         ("branch1", "First Branch", "time_m100", "time_m100"),
@@ -704,7 +694,7 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
             branched_from=params[branched_from],
             created_at=params[created_at],
         )
-        await obj.save(session=session)
+        await obj.save(db=db)
         registry.branch[obj.name] = obj
 
         params[branch_name] = branch_name
@@ -980,15 +970,15 @@ async def base_dataset_03(session: AsyncSession, default_branch: Branch, person_
 
     RETURN t1, t2, t3
     """
-    await execute_write_query_async(session=session, query=query1, params=params)
-    await execute_write_query_async(session=session, query=query_prefix + query2, params=params)
-    await execute_write_query_async(session=session, query=query_prefix + query3, params=params)
-    await execute_write_query_async(session=session, query=query_prefix + query4, params=params)
+    await db.execute_query(query=query1, params=params)
+    await db.execute_query(query=query_prefix + query2, params=params)
+    await db.execute_query(query=query_prefix + query3, params=params)
+    await db.execute_query(query=query_prefix + query4, params=params)
     return params
 
 
 @pytest.fixture
-async def base_dataset_04(session: AsyncSession, default_branch: Branch, register_core_models_schema) -> dict:
+async def base_dataset_04(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema) -> dict:
     time0 = pendulum.now(tz="UTC")
     params = {
         "main_branch": "main",
@@ -1001,31 +991,31 @@ async def base_dataset_04(session: AsyncSession, default_branch: Branch, registe
         "time_m35": time0.subtract(seconds=35).to_iso8601_string(),
     }
 
-    blue = await Node.init(session=session, schema="BuiltinTag", branch=default_branch)
-    await blue.new(session=session, name="Blue", description="The Blue tag")
-    await blue.save(session=session, at=params["time_m30"])
+    blue = await Node.init(db=db, schema="BuiltinTag", branch=default_branch)
+    await blue.new(db=db, name="Blue", description="The Blue tag")
+    await blue.save(db=db, at=params["time_m30"])
 
-    red = await Node.init(session=session, schema="BuiltinTag", branch=default_branch)
-    await red.new(session=session, name="red", description="The red tag")
-    await red.save(session=session, at=params["time_m30"])
+    red = await Node.init(db=db, schema="BuiltinTag", branch=default_branch)
+    await red.new(db=db, name="red", description="The red tag")
+    await red.save(db=db, at=params["time_m30"])
 
-    yellow = await Node.init(session=session, schema="BuiltinTag", branch=default_branch)
-    await yellow.new(session=session, name="yellow", description="The yellow tag")
-    await yellow.save(session=session, at=params["time_m30"])
+    yellow = await Node.init(db=db, schema="BuiltinTag", branch=default_branch)
+    await yellow.new(db=db, name="yellow", description="The yellow tag")
+    await yellow.save(db=db, at=params["time_m30"])
 
-    org1 = await Node.init(session=session, schema="CoreOrganization", branch=default_branch)
-    await org1.new(session=session, name="org1", tags=[blue])
-    await org1.save(session=session, at=params["time_m30"])
+    org1 = await Node.init(db=db, schema="CoreOrganization", branch=default_branch)
+    await org1.new(db=db, name="org1", tags=[blue])
+    await org1.save(db=db, at=params["time_m30"])
 
-    branch1 = await create_branch(branch_name="branch1", session=session, at=params["time_m20"])
+    branch1 = await create_branch(branch_name="branch1", db=db, at=params["time_m20"])
 
-    org1_branch = await registry.manager.get_one(id=org1.id, branch=branch1, session=session)
-    await org1_branch.tags.update(data=[blue, red], session=session)
-    await org1_branch.save(session=session, at=params["time_m5"])
+    org1_branch = await registry.manager.get_one(id=org1.id, branch=branch1, db=db)
+    await org1_branch.tags.update(data=[blue, red], db=db)
+    await org1_branch.save(db=db, at=params["time_m5"])
 
-    org1_main = await registry.manager.get_one(id=org1.id, session=session)
-    await org1_main.tags.update(data=[blue, yellow], session=session)
-    await org1_main.save(session=session, at=params["time_m10"])
+    org1_main = await registry.manager.get_one(id=org1.id, db=db)
+    await org1_main.tags.update(data=[blue, yellow], db=db)
+    await org1_main.save(db=db, at=params["time_m10"])
 
     params["blue"] = blue
     params["red"] = red
@@ -1036,7 +1026,7 @@ async def base_dataset_04(session: AsyncSession, default_branch: Branch, registe
 
 
 @pytest.fixture
-async def group_schema(session: AsyncSession, default_branch: Branch, data_schema) -> None:
+async def group_schema(db: InfrahubDatabase, default_branch: Branch, data_schema) -> None:
     SCHEMA = {
         "generics": [
             {
@@ -1073,7 +1063,7 @@ async def group_schema(session: AsyncSession, default_branch: Branch, data_schem
 
 
 @pytest.fixture
-async def node_group_schema(session: AsyncSession, default_branch: Branch, data_schema) -> None:
+async def node_group_schema(db: InfrahubDatabase, default_branch: Branch, data_schema) -> None:
     SCHEMA = {
         "generics": [
             {
@@ -1121,13 +1111,13 @@ async def node_group_schema(session: AsyncSession, default_branch: Branch, data_
 
 
 @pytest.fixture
-async def group_graphql(session: AsyncSession, default_branch: Branch, group_schema) -> None:
+async def group_graphql(db: InfrahubDatabase, default_branch: Branch, group_schema) -> None:
     load_node_interface(branch=default_branch)
     load_attribute_types_in_registry(branch=default_branch)
 
 
 @pytest.fixture
-async def car_person_schema(session: AsyncSession, default_branch: Branch, node_group_schema, data_schema) -> None:
+async def car_person_schema(db: InfrahubDatabase, default_branch: Branch, node_group_schema, data_schema) -> None:
     SCHEMA = {
         "nodes": [
             {
@@ -1167,7 +1157,7 @@ async def car_person_schema(session: AsyncSession, default_branch: Branch, node_
 
 @pytest.fixture
 async def car_person_schema_global(
-    session: AsyncSession, default_branch: Branch, node_group_schema, data_schema
+    db: InfrahubDatabase, default_branch: Branch, node_group_schema, data_schema
 ) -> None:
     SCHEMA = {
         "nodes": [
@@ -1207,25 +1197,25 @@ async def car_person_schema_global(
 
 
 @pytest.fixture
-async def car_person_data_generic(session, register_core_models_schema, car_person_schema_generics):
-    p1 = await Node.init(session=session, schema="TestPerson")
-    await p1.new(session=session, name="John", height=180)
-    await p1.save(session=session)
-    p2 = await Node.init(session=session, schema="TestPerson")
-    await p2.new(session=session, name="Jane", height=170)
-    await p2.save(session=session)
-    c1 = await Node.init(session=session, schema="TestElectricCar")
-    await c1.new(session=session, name="volt", nbr_seats=3, nbr_engine=4, owner=p1)
-    await c1.save(session=session)
-    c2 = await Node.init(session=session, schema="TestElectricCar")
-    await c2.new(session=session, name="bolt", nbr_seats=2, nbr_engine=2, owner=p1)
-    await c2.save(session=session)
-    c3 = await Node.init(session=session, schema="TestGazCar")
-    await c3.new(session=session, name="nolt", nbr_seats=4, mpg=25, owner=p2)
-    await c3.save(session=session)
-    c4 = await Node.init(session=session, schema="TestGazCar")
-    await c4.new(session=session, name="focus", nbr_seats=5, mpg=30, owner=p2)
-    await c4.save(session=session)
+async def car_person_data_generic(db: InfrahubDatabase, register_core_models_schema, car_person_schema_generics):
+    p1 = await Node.init(db=db, schema="TestPerson")
+    await p1.new(db=db, name="John", height=180)
+    await p1.save(db=db)
+    p2 = await Node.init(db=db, schema="TestPerson")
+    await p2.new(db=db, name="Jane", height=170)
+    await p2.save(db=db)
+    c1 = await Node.init(db=db, schema="TestElectricCar")
+    await c1.new(db=db, name="volt", nbr_seats=3, nbr_engine=4, owner=p1)
+    await c1.save(db=db)
+    c2 = await Node.init(db=db, schema="TestElectricCar")
+    await c2.new(db=db, name="bolt", nbr_seats=2, nbr_engine=2, owner=p1)
+    await c2.save(db=db)
+    c3 = await Node.init(db=db, schema="TestGazCar")
+    await c3.new(db=db, name="nolt", nbr_seats=4, mpg=25, owner=p2)
+    await c3.save(db=db)
+    c4 = await Node.init(db=db, schema="TestGazCar")
+    await c4.new(db=db, name="focus", nbr_seats=5, mpg=30, owner=p2)
+    await c4.save(db=db)
 
     query = """
     query {
@@ -1242,13 +1232,13 @@ async def car_person_data_generic(session, register_core_models_schema, car_pers
     }
     """
 
-    q1 = await Node.init(session=session, schema="CoreGraphQLQuery")
-    await q1.new(session=session, name="query01", query=query)
-    await q1.save(session=session)
+    q1 = await Node.init(db=db, schema="CoreGraphQLQuery")
+    await q1.new(db=db, name="query01", query=query)
+    await q1.save(db=db)
 
-    r1 = await Node.init(session=session, schema="CoreRepository")
-    await r1.new(session=session, name="repo01", location="git@github.com:user/repo01.git", commit="aaaaaaaaa")
-    await r1.save(session=session)
+    r1 = await Node.init(db=db, schema="CoreRepository")
+    await r1.new(db=db, name="repo01", location="git@github.com:user/repo01.git", commit="aaaaaaaaa")
+    await r1.save(db=db)
 
     return {
         "p1": p1,
@@ -1262,7 +1252,7 @@ async def car_person_data_generic(session, register_core_models_schema, car_pers
 
 
 @pytest.fixture
-async def car_person_manufacturer_schema(session: AsyncSession, default_branch: Branch, data_schema) -> None:
+async def car_person_manufacturer_schema(db: InfrahubDatabase, default_branch: Branch, data_schema) -> None:
     SCHEMA = {
         "nodes": [
             {
@@ -1315,7 +1305,7 @@ async def car_person_manufacturer_schema(session: AsyncSession, default_branch: 
 
 @pytest.fixture
 async def car_person_schema_generics(
-    session: AsyncSession, default_branch: Branch, register_core_models_schema, data_schema
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, data_schema
 ) -> SchemaRoot:
     SCHEMA = {
         "generics": [
@@ -1437,27 +1427,27 @@ async def car_person_schema_generics(
 
 
 @pytest.fixture
-async def car_person_generics_data(session: AsyncSession, car_person_schema_generics) -> Dict[str, Node]:
+async def car_person_generics_data(db: InfrahubDatabase, car_person_schema_generics) -> Dict[str, Node]:
     ecar = registry.get_schema(name="TestElectricCar")
     gcar = registry.get_schema(name="TestGazCar")
     person = registry.get_schema(name="TestPerson")
 
-    p1 = await Node.init(session=session, schema=person)
-    await p1.new(session=session, name="John", height=180)
-    await p1.save(session=session)
-    p2 = await Node.init(session=session, schema=person)
-    await p2.new(session=session, name="Jane", height=170)
-    await p2.save(session=session)
+    p1 = await Node.init(db=db, schema=person)
+    await p1.new(db=db, name="John", height=180)
+    await p1.save(db=db)
+    p2 = await Node.init(db=db, schema=person)
+    await p2.new(db=db, name="Jane", height=170)
+    await p2.save(db=db)
 
-    c1 = await Node.init(session=session, schema=ecar)
-    await c1.new(session=session, name="volt", nbr_seats=4, nbr_engine=4, owner=p1)
-    await c1.save(session=session)
-    c2 = await Node.init(session=session, schema=ecar)
-    await c2.new(session=session, name="bolt", nbr_seats=4, nbr_engine=2, owner=p1)
-    await c2.save(session=session)
-    c3 = await Node.init(session=session, schema=gcar)
-    await c3.new(session=session, name="nolt", nbr_seats=4, mpg=25, owner=p2)
-    await c3.save(session=session)
+    c1 = await Node.init(db=db, schema=ecar)
+    await c1.new(db=db, name="volt", nbr_seats=4, nbr_engine=4, owner=p1)
+    await c1.save(db=db)
+    c2 = await Node.init(db=db, schema=ecar)
+    await c2.new(db=db, name="bolt", nbr_seats=4, nbr_engine=2, owner=p1)
+    await c2.save(db=db)
+    c3 = await Node.init(db=db, schema=gcar)
+    await c3.new(db=db, name="nolt", nbr_seats=4, mpg=25, owner=p2)
+    await c3.save(db=db)
 
     nodes = {
         "p1": p1,
@@ -1471,7 +1461,7 @@ async def car_person_generics_data(session: AsyncSession, car_person_schema_gene
 
 
 @pytest.fixture
-async def person_tag_schema(session: AsyncSession, default_branch: Branch, data_schema) -> None:
+async def person_tag_schema(db: InfrahubDatabase, default_branch: Branch, data_schema) -> None:
     SCHEMA = {
         "nodes": [
             {
@@ -1511,210 +1501,210 @@ async def person_tag_schema(session: AsyncSession, default_branch: Branch, data_
 
 
 @pytest.fixture
-async def person_john_main(session: AsyncSession, default_branch: Branch, car_person_schema) -> Node:
-    person = await Node.init(session=session, schema="TestPerson", branch=default_branch)
-    await person.new(session=session, name="John", height=180)
-    await person.save(session=session)
+async def person_john_main(db: InfrahubDatabase, default_branch: Branch, car_person_schema) -> Node:
+    person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person.new(db=db, name="John", height=180)
+    await person.save(db=db)
 
     return person
 
 
 @pytest.fixture
-async def person_jane_main(session: AsyncSession, default_branch: Branch, car_person_schema) -> Node:
-    person = await Node.init(session=session, schema="TestPerson", branch=default_branch)
-    await person.new(session=session, name="Jane", height=180)
-    await person.save(session=session)
+async def person_jane_main(db: InfrahubDatabase, default_branch: Branch, car_person_schema) -> Node:
+    person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person.new(db=db, name="Jane", height=180)
+    await person.save(db=db)
 
     return person
 
 
 @pytest.fixture
-async def person_jim_main(session: AsyncSession, default_branch: Branch, car_person_schema) -> Node:
-    person = await Node.init(session=session, schema="TestPerson", branch=default_branch)
-    await person.new(session=session, name="Jim", height=170)
-    await person.save(session=session)
+async def person_jim_main(db: InfrahubDatabase, default_branch: Branch, car_person_schema) -> Node:
+    person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person.new(db=db, name="Jim", height=170)
+    await person.save(db=db)
 
     return person
 
 
 @pytest.fixture
-async def person_albert_main(session: AsyncSession, default_branch: Branch, car_person_schema) -> Node:
-    person = await Node.init(session=session, schema="TestPerson", branch=default_branch)
-    await person.new(session=session, name="Albert", height=160)
-    await person.save(session=session)
+async def person_albert_main(db: InfrahubDatabase, default_branch: Branch, car_person_schema) -> Node:
+    person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person.new(db=db, name="Albert", height=160)
+    await person.save(db=db)
 
     return person
 
 
 @pytest.fixture
-async def person_alfred_main(session: AsyncSession, default_branch: Branch, car_person_schema) -> Node:
-    person = await Node.init(session=session, schema="TestPerson", branch=default_branch)
-    await person.new(session=session, name="Alfred", height=160)
-    await person.save(session=session)
+async def person_alfred_main(db: InfrahubDatabase, default_branch: Branch, car_person_schema) -> Node:
+    person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person.new(db=db, name="Alfred", height=160)
+    await person.save(db=db)
 
     return person
 
 
 @pytest.fixture
-async def car_accord_main(session: AsyncSession, default_branch: Branch, person_john_main: Node) -> Node:
-    car = await Node.init(session=session, schema="TestCar", branch=default_branch)
-    await car.new(session=session, name="accord", nbr_seats=5, is_electric=False, owner=person_john_main.id)
-    await car.save(session=session)
+async def car_accord_main(db: InfrahubDatabase, default_branch: Branch, person_john_main: Node) -> Node:
+    car = await Node.init(db=db, schema="TestCar", branch=default_branch)
+    await car.new(db=db, name="accord", nbr_seats=5, is_electric=False, owner=person_john_main.id)
+    await car.save(db=db)
 
     return car
 
 
 @pytest.fixture
-async def car_volt_main(session: AsyncSession, default_branch: Branch, person_john_main: Node) -> Node:
-    car = await Node.init(session=session, schema="TestCar", branch=default_branch)
-    await car.new(session=session, name="volt", nbr_seats=4, is_electric=True, owner=person_john_main.id)
-    await car.save(session=session)
+async def car_volt_main(db: InfrahubDatabase, default_branch: Branch, person_john_main: Node) -> Node:
+    car = await Node.init(db=db, schema="TestCar", branch=default_branch)
+    await car.new(db=db, name="volt", nbr_seats=4, is_electric=True, owner=person_john_main.id)
+    await car.save(db=db)
 
     return car
 
 
 @pytest.fixture
-async def car_prius_main(session: AsyncSession, default_branch: Branch, person_john_main: Node) -> Node:
-    car = await Node.init(session=session, schema="TestCar", branch=default_branch)
-    await car.new(session=session, name="pruis", nbr_seats=5, is_electric=True, owner=person_john_main.id)
-    await car.save(session=session)
+async def car_prius_main(db: InfrahubDatabase, default_branch: Branch, person_john_main: Node) -> Node:
+    car = await Node.init(db=db, schema="TestCar", branch=default_branch)
+    await car.new(db=db, name="pruis", nbr_seats=5, is_electric=True, owner=person_john_main.id)
+    await car.save(db=db)
 
     return car
 
 
 @pytest.fixture
-async def car_camry_main(session: AsyncSession, default_branch: Branch, person_jane_main: Node) -> Node:
-    car = await Node.init(session=session, schema="TestCar", branch=default_branch)
-    await car.new(session=session, name="camry", nbr_seats=5, is_electric=False, owner=person_jane_main.id)
-    await car.save(session=session)
+async def car_camry_main(db: InfrahubDatabase, default_branch: Branch, person_jane_main: Node) -> Node:
+    car = await Node.init(db=db, schema="TestCar", branch=default_branch)
+    await car.new(db=db, name="camry", nbr_seats=5, is_electric=False, owner=person_jane_main.id)
+    await car.save(db=db)
 
     return car
 
 
 @pytest.fixture
-async def car_yaris_main(session: AsyncSession, default_branch: Branch, person_jane_main: Node) -> Node:
-    car = await Node.init(session=session, schema="TestCar", branch=default_branch)
-    await car.new(session=session, name="yaris", nbr_seats=4, is_electric=False, owner=person_jane_main.id)
-    await car.save(session=session)
+async def car_yaris_main(db: InfrahubDatabase, default_branch: Branch, person_jane_main: Node) -> Node:
+    car = await Node.init(db=db, schema="TestCar", branch=default_branch)
+    await car.new(db=db, name="yaris", nbr_seats=4, is_electric=False, owner=person_jane_main.id)
+    await car.save(db=db)
 
     return car
 
 
 @pytest.fixture
-async def tag_blue_main(session: AsyncSession, default_branch: Branch, person_tag_schema) -> Node:
-    tag = await Node.init(session=session, schema="BuiltinTag", branch=default_branch)
-    await tag.new(session=session, name="Blue", description="The Blue tag")
-    await tag.save(session=session)
+async def tag_blue_main(db: InfrahubDatabase, default_branch: Branch, person_tag_schema) -> Node:
+    tag = await Node.init(db=db, schema="BuiltinTag", branch=default_branch)
+    await tag.new(db=db, name="Blue", description="The Blue tag")
+    await tag.save(db=db)
 
     return tag
 
 
 @pytest.fixture
-async def tag_red_main(session: AsyncSession, default_branch: Branch, person_tag_schema) -> Node:
-    tag = await Node.init(session=session, schema="BuiltinTag", branch=default_branch)
-    await tag.new(session=session, name="Red", description="The Red tag")
-    await tag.save(session=session)
+async def tag_red_main(db: InfrahubDatabase, default_branch: Branch, person_tag_schema) -> Node:
+    tag = await Node.init(db=db, schema="BuiltinTag", branch=default_branch)
+    await tag.new(db=db, name="Red", description="The Red tag")
+    await tag.save(db=db)
 
     return tag
 
 
 @pytest.fixture
-async def tag_black_main(session: AsyncSession, default_branch: Branch, person_tag_schema) -> Node:
-    tag = await Node.init(session=session, schema="BuiltinTag", branch=default_branch)
-    await tag.new(session=session, name="Black", description="The Black tag")
-    await tag.save(session=session)
+async def tag_black_main(db: InfrahubDatabase, default_branch: Branch, person_tag_schema) -> Node:
+    tag = await Node.init(db=db, schema="BuiltinTag", branch=default_branch)
+    await tag.new(db=db, name="Black", description="The Black tag")
+    await tag.save(db=db)
 
     return tag
 
 
 @pytest.fixture
-async def person_jack_main(session: AsyncSession, default_branch: Branch, person_tag_schema) -> Node:
-    obj = await Node.init(session=session, schema="TestPerson", branch=default_branch)
-    await obj.new(session=session, firstname="Jack", lastname="Russell")
-    await obj.save(session=session)
+async def person_jack_main(db: InfrahubDatabase, default_branch: Branch, person_tag_schema) -> Node:
+    obj = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await obj.new(db=db, firstname="Jack", lastname="Russell")
+    await obj.save(db=db)
 
     return obj
 
 
 @pytest.fixture
-async def person_jack_primary_tag_main(session: AsyncSession, person_tag_schema, tag_blue_main: Node) -> Node:
-    obj = await Node.init(session=session, schema="TestPerson")
-    await obj.new(session=session, firstname="Jake", lastname="Russell", primary_tag=tag_blue_main)
-    await obj.save(session=session)
+async def person_jack_primary_tag_main(db: InfrahubDatabase, person_tag_schema, tag_blue_main: Node) -> Node:
+    obj = await Node.init(db=db, schema="TestPerson")
+    await obj.new(db=db, firstname="Jake", lastname="Russell", primary_tag=tag_blue_main)
+    await obj.save(db=db)
     return obj
 
 
 @pytest.fixture
 async def person_jack_tags_main(
-    session: AsyncSession, default_branch: Branch, person_tag_schema, tag_blue_main: Node, tag_red_main: Node
+    db: InfrahubDatabase, default_branch: Branch, person_tag_schema, tag_blue_main: Node, tag_red_main: Node
 ) -> Node:
-    obj = await Node.init(session=session, schema="TestPerson")
-    await obj.new(session=session, firstname="Jake", lastname="Russell", tags=[tag_blue_main, tag_red_main])
-    await obj.save(session=session)
+    obj = await Node.init(db=db, schema="TestPerson")
+    await obj.new(db=db, firstname="Jake", lastname="Russell", tags=[tag_blue_main, tag_red_main])
+    await obj.save(db=db)
     return obj
 
 
 @pytest.fixture
 async def group_group1_main(
-    session: AsyncSession,
+    db: InfrahubDatabase,
     default_branch: Branch,
     group_schema,
 ) -> Node:
-    obj = await Node.init(session=session, schema="CoreStandardGroup", branch=default_branch)
-    await obj.new(session=session, name="group1")
-    await obj.save(session=session)
+    obj = await Node.init(db=db, schema="CoreStandardGroup", branch=default_branch)
+    await obj.new(db=db, name="group1")
+    await obj.save(db=db)
     return obj
 
 
 @pytest.fixture
 async def group_group1_members_main(
-    session: AsyncSession,
+    db: InfrahubDatabase,
     default_branch: Branch,
     group_schema,
     person_john_main: Node,
     person_jim_main: Node,
 ) -> Node:
-    obj = await Node.init(session=session, schema="CoreStandardGroup", branch=default_branch)
-    await obj.new(session=session, name="group1", members=[person_john_main, person_jim_main])
-    await obj.save(session=session)
+    obj = await Node.init(db=db, schema="CoreStandardGroup", branch=default_branch)
+    await obj.new(db=db, name="group1", members=[person_john_main, person_jim_main])
+    await obj.save(db=db)
 
     return obj
 
 
 @pytest.fixture
 async def group_group2_members_main(
-    session: AsyncSession,
+    db: InfrahubDatabase,
     default_branch: Branch,
     group_schema,
     person_john_main: Node,
     person_albert_main: Node,
 ) -> Node:
-    obj = await Node.init(session=session, schema="CoreStandardGroup", branch=default_branch)
-    await obj.new(session=session, name="group2", members=[person_john_main, person_albert_main])
-    await obj.save(session=session)
+    obj = await Node.init(db=db, schema="CoreStandardGroup", branch=default_branch)
+    await obj.new(db=db, name="group2", members=[person_john_main, person_albert_main])
+    await obj.save(db=db)
 
     return obj
 
 
 @pytest.fixture
 async def group_group1_subscribers_main(
-    session: AsyncSession,
+    db: InfrahubDatabase,
     default_branch: Branch,
     group_schema,
     person_john_main: Node,
     person_jim_main: Node,
     person_albert_main: Node,
 ) -> Node:
-    obj = await Node.init(session=session, schema="CoreStandardGroup", branch=default_branch)
-    await obj.new(session=session, name="group1", subscribers=[person_john_main, person_jim_main, person_albert_main])
-    await obj.save(session=session)
+    obj = await Node.init(db=db, schema="CoreStandardGroup", branch=default_branch)
+    await obj.new(db=db, name="group1", subscribers=[person_john_main, person_jim_main, person_albert_main])
+    await obj.save(db=db)
 
     return obj
 
 
 @pytest.fixture
 async def group_group2_subscribers_main(
-    session: AsyncSession,
+    db: InfrahubDatabase,
     default_branch: Branch,
     group_schema,
     person_john_main: Node,
@@ -1722,18 +1712,16 @@ async def group_group2_subscribers_main(
     car_volt_main: Node,
     car_accord_main: Node,
 ) -> Node:
-    obj = await Node.init(session=session, schema="CoreStandardGroup", branch=default_branch)
-    await obj.new(
-        session=session, name="group2", subscribers=[person_john_main, person_jim_main, car_volt_main, car_accord_main]
-    )
-    await obj.save(session=session)
+    obj = await Node.init(db=db, schema="CoreStandardGroup", branch=default_branch)
+    await obj.new(db=db, name="group2", subscribers=[person_john_main, person_jim_main, car_volt_main, car_accord_main])
+    await obj.save(db=db)
 
     return obj
 
 
 @pytest.fixture
 async def all_attribute_types_schema(
-    session: AsyncSession, default_branch: Branch, group_schema, data_schema
+    db: InfrahubDatabase, default_branch: Branch, group_schema, data_schema
 ) -> NodeSchema:
     SCHEMA = {
         "name": "AllAttributeTypes",
@@ -1756,7 +1744,7 @@ async def all_attribute_types_schema(
 
 
 @pytest.fixture
-async def criticality_schema(session: AsyncSession, default_branch: Branch, group_schema, data_schema) -> NodeSchema:
+async def criticality_schema(db: InfrahubDatabase, default_branch: Branch, group_schema, data_schema) -> NodeSchema:
     SCHEMA = {
         "name": "Criticality",
         "namespace": "Test",
@@ -1784,32 +1772,32 @@ async def criticality_schema(session: AsyncSession, default_branch: Branch, grou
 
 
 @pytest.fixture
-async def criticality_low(session: AsyncSession, default_branch: Branch, criticality_schema: NodeSchema):
-    obj = await Node.init(session=session, schema=criticality_schema)
-    await obj.new(session=session, name="low", level=4)
-    await obj.save(session=session)
+async def criticality_low(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
+    obj = await Node.init(db=db, schema=criticality_schema)
+    await obj.new(db=db, name="low", level=4)
+    await obj.save(db=db)
 
     return obj
 
 
 @pytest.fixture
-async def criticality_medium(session: AsyncSession, default_branch: Branch, criticality_schema: NodeSchema):
-    obj = await Node.init(session=session, schema=criticality_schema)
-    await obj.new(session=session, name="medium", level=3, description="My desc", color="#333333")
-    await obj.save(session=session)
+async def criticality_medium(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
+    obj = await Node.init(db=db, schema=criticality_schema)
+    await obj.new(db=db, name="medium", level=3, description="My desc", color="#333333")
+    await obj.save(db=db)
     return obj
 
 
 @pytest.fixture
-async def criticality_high(session: AsyncSession, default_branch: Branch, criticality_schema: NodeSchema):
-    obj = await Node.init(session=session, schema=criticality_schema)
-    await obj.new(session=session, name="high", level=2, description="My other desc", color="#333333")
-    await obj.save(session=session)
+async def criticality_high(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
+    obj = await Node.init(db=db, schema=criticality_schema)
+    await obj.new(db=db, name="high", level=2, description="My other desc", color="#333333")
+    await obj.save(db=db)
     return obj
 
 
 @pytest.fixture
-async def generic_vehicule_schema(session: AsyncSession, default_branch: Branch) -> GenericSchema:
+async def generic_vehicule_schema(db: InfrahubDatabase, default_branch: Branch) -> GenericSchema:
     SCHEMA = {
         "name": "Vehicule",
         "namespace": "Test",
@@ -1826,7 +1814,7 @@ async def generic_vehicule_schema(session: AsyncSession, default_branch: Branch)
 
 
 @pytest.fixture
-async def group_on_road_vehicule_schema(session: AsyncSession, default_branch: Branch) -> GroupSchema:
+async def group_on_road_vehicule_schema(db: InfrahubDatabase, default_branch: Branch) -> GroupSchema:
     SCHEMA = {
         "name": "on_road",
         "kind": "OnRoad",
@@ -1840,7 +1828,7 @@ async def group_on_road_vehicule_schema(session: AsyncSession, default_branch: B
 
 @pytest.fixture
 async def car_schema(
-    session: AsyncSession, default_branch: Branch, generic_vehicule_schema, group_on_road_vehicule_schema, data_schema
+    db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema, group_on_road_vehicule_schema, data_schema
 ) -> NodeSchema:
     SCHEMA = {
         "name": "Car",
@@ -1861,7 +1849,7 @@ async def car_schema(
 
 @pytest.fixture
 async def motorcycle_schema(
-    session: AsyncSession, default_branch: Branch, generic_vehicule_schema, group_on_road_vehicule_schema
+    db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema, group_on_road_vehicule_schema
 ) -> NodeSchema:
     SCHEMA = {
         "name": "Motorcycle",
@@ -1882,7 +1870,7 @@ async def motorcycle_schema(
 
 @pytest.fixture
 async def truck_schema(
-    session: AsyncSession, default_branch: Branch, generic_vehicule_schema, group_on_road_vehicule_schema
+    db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema, group_on_road_vehicule_schema
 ) -> NodeSchema:
     SCHEMA = {
         "name": "Truck",
@@ -1903,7 +1891,7 @@ async def truck_schema(
 
 @pytest.fixture
 async def boat_schema(
-    session: AsyncSession, default_branch: Branch, generic_vehicule_schema, person_schema
+    db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema, person_schema
 ) -> NodeSchema:
     SCHEMA = {
         "name": "Boat",
@@ -1925,7 +1913,7 @@ async def boat_schema(
 
 
 @pytest.fixture
-async def person_schema(session: AsyncSession, default_branch: Branch, generic_vehicule_schema) -> NodeSchema:
+async def person_schema(db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema) -> NodeSchema:
     SCHEMA = {
         "name": "Person",
         "namespace": "Test",
@@ -1946,13 +1934,13 @@ async def person_schema(session: AsyncSession, default_branch: Branch, generic_v
 
 @pytest.fixture
 async def vehicule_person_schema(
-    session: AsyncSession, generic_vehicule_schema, car_schema, boat_schema, motorcycle_schema
+    db: InfrahubDatabase, generic_vehicule_schema, car_schema, boat_schema, motorcycle_schema
 ) -> None:
     return None
 
 
 @pytest.fixture
-async def fruit_tag_schema(session: AsyncSession, group_schema, data_schema) -> SchemaRoot:
+async def fruit_tag_schema(db: InfrahubDatabase, group_schema, data_schema) -> SchemaRoot:
     SCHEMA = {
         "nodes": [
             {
@@ -1986,7 +1974,7 @@ async def fruit_tag_schema(session: AsyncSession, group_schema, data_schema) -> 
 
 
 @pytest.fixture
-async def fruit_tag_schema_global(session: AsyncSession, group_schema, data_schema) -> SchemaRoot:
+async def fruit_tag_schema_global(db: InfrahubDatabase, group_schema, data_schema) -> SchemaRoot:
     SCHEMA = {
         "nodes": [
             {
@@ -2038,7 +2026,7 @@ async def fruit_tag_schema_global(session: AsyncSession, group_schema, data_sche
 
 
 @pytest.fixture
-async def data_schema(session, default_branch: Branch) -> None:
+async def data_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
     SCHEMA = {
         "generics": [
             {
@@ -2066,7 +2054,7 @@ async def data_schema(session, default_branch: Branch) -> None:
 
 
 @pytest.fixture
-async def prefix_schema(session: AsyncSession, default_branch: Branch) -> SchemaRoot:
+async def prefix_schema(db: InfrahubDatabase, default_branch: Branch) -> SchemaRoot:
     SCHEMA = {
         "nodes": [
             {
@@ -2096,26 +2084,26 @@ async def prefix_schema(session: AsyncSession, default_branch: Branch) -> Schema
 
 
 @pytest.fixture
-async def reset_registry(session) -> None:
+async def reset_registry(db: InfrahubDatabase) -> None:
     registry.delete_all()
 
 
 @pytest.fixture
-async def empty_database(session) -> None:
-    await delete_all_nodes(session=session)
+async def empty_database(db: InfrahubDatabase) -> None:
+    await delete_all_nodes(db=db)
 
 
 @pytest.fixture
-async def init_db(empty_database, session) -> None:
-    await first_time_initialization(session=session)
-    await initialization(session=session)
+async def init_db(empty_database, db: InfrahubDatabase) -> None:
+    await first_time_initialization(db=db)
+    await initialization(db=db)
 
 
 @pytest.fixture
-async def default_branch(reset_registry, local_storage_dir, empty_database, session) -> Branch:
-    await create_root_node(session=session)
-    branch = await create_default_branch(session=session)
-    await create_global_branch(session=session)
+async def default_branch(reset_registry, local_storage_dir, empty_database, db: InfrahubDatabase) -> Branch:
+    await create_root_node(db=db)
+    branch = await create_default_branch(db=db)
+    await create_global_branch(db=db)
     registry.schema = SchemaManager()
     return branch
 
@@ -2137,14 +2125,14 @@ async def register_core_models_schema(default_branch: Branch, register_internal_
 
 
 @pytest.fixture
-async def register_core_schema_db(session: AsyncSession, default_branch: Branch, register_core_models_schema) -> None:
-    await registry.schema.load_schema_to_db(schema=register_core_models_schema, branch=default_branch, session=session)
-    updated_schema = await registry.schema.load_schema_from_db(session=session, branch=default_branch)
+async def register_core_schema_db(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema) -> None:
+    await registry.schema.load_schema_to_db(schema=register_core_models_schema, branch=default_branch, db=db)
+    updated_schema = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
     registry.schema.set_schema_branch(name=default_branch.name, schema=updated_schema)
 
 
 @pytest.fixture
-async def register_account_schema(session) -> None:
+async def register_account_schema(db: InfrahubDatabase) -> None:
     SCHEMAS_TO_REGISTER = ["CoreAccount", "InternalAccountToken", "CoreGroup", "InternalRefreshToken"]
     nodes = [item for item in core_models["nodes"] if f'{item["namespace"]}{item["name"]}' in SCHEMAS_TO_REGISTER]
     generics = [item for item in core_models["generics"] if f'{item["namespace"]}{item["name"]}' in SCHEMAS_TO_REGISTER]
@@ -2152,30 +2140,30 @@ async def register_account_schema(session) -> None:
 
 
 @pytest.fixture
-async def create_test_admin(session: AsyncSession, register_core_schema_db, data_schema) -> Node:
-    account = await Node.init(session=session, schema="CoreAccount")
+async def create_test_admin(db: InfrahubDatabase, register_core_schema_db, data_schema) -> Node:
+    account = await Node.init(db=db, schema="CoreAccount")
     await account.new(
-        session=session,
+        db=db,
         name="test-admin",
         type="User",
         password=config.SETTINGS.security.initial_admin_password,
         role="admin",
     )
-    await account.save(session=session)
-    token = await Node.init(session=session, schema="InternalAccountToken")
+    await account.save(db=db)
+    token = await Node.init(db=db, schema="InternalAccountToken")
     await token.new(
-        session=session,
+        db=db,
         token="admin-security",
         account=account,
     )
-    await token.save(session=session)
+    await token.save(db=db)
 
     return account
 
 
 @pytest.fixture
 async def authentication_base(
-    session: AsyncSession,
+    db: InfrahubDatabase,
     default_branch: Branch,
     create_test_admin,
     register_core_models_schema,
@@ -2184,42 +2172,42 @@ async def authentication_base(
 
 
 @pytest.fixture
-async def first_account(session: AsyncSession, data_schema, node_group_schema, register_account_schema) -> Node:
-    obj = await Node.init(session=session, schema="CoreAccount")
-    await obj.new(session=session, name="First Account", type="Git", password="FirstPassword123", role="read-write")
-    await obj.save(session=session)
+async def first_account(db: InfrahubDatabase, data_schema, node_group_schema, register_account_schema) -> Node:
+    obj = await Node.init(db=db, schema="CoreAccount")
+    await obj.new(db=db, name="First Account", type="Git", password="FirstPassword123", role="read-write")
+    await obj.save(db=db)
     return obj
 
 
 @pytest.fixture
-async def second_account(session: AsyncSession, data_schema, node_group_schema, register_account_schema) -> Node:
-    obj = await Node.init(session=session, schema="CoreAccount")
-    await obj.new(session=session, name="Second Account", type="Git", password="SecondPassword123")
-    await obj.save(session=session)
+async def second_account(db: InfrahubDatabase, data_schema, node_group_schema, register_account_schema) -> Node:
+    obj = await Node.init(db=db, schema="CoreAccount")
+    await obj.new(db=db, name="Second Account", type="Git", password="SecondPassword123")
+    await obj.save(db=db)
     return obj
 
 
 @pytest.fixture
-async def repos_in_main(session, register_core_models_schema):
-    repo01 = await Node.init(session=session, schema="CoreRepository")
+async def repos_in_main(db: InfrahubDatabase, register_core_models_schema):
+    repo01 = await Node.init(db=db, schema="CoreRepository")
     await repo01.new(
-        session=session,
+        db=db,
         name="repo01",
         description="Repo 01 initial value",
         location="git@github.com:user/repo01.git",
         commit="aaaaaaaaaaa",
     )
-    await repo01.save(session=session)
+    await repo01.save(db=db)
 
-    repo02 = await Node.init(session=session, schema="CoreRepository")
+    repo02 = await Node.init(db=db, schema="CoreRepository")
     await repo02.new(
-        session=session,
+        db=db,
         name="repo02",
         description="Repo 02 initial value",
         location="git@github.com:user/repo02.git",
         commit="bbbbbbbbbbb",
     )
-    await repo02.save(session=session)
+    await repo02.save(db=db)
 
     return {"repo01": repo01, "repo02": repo02}
 

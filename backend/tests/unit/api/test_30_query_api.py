@@ -1,7 +1,10 @@
 from infrahub.core.initialization import create_branch
+from infrahub.database import InfrahubDatabase
 
 
-async def test_query_endpoint_default_branch(session, client, client_headers, default_branch, car_person_data):
+async def test_query_endpoint_default_branch(
+    db: InfrahubDatabase, client, client_headers, default_branch, car_person_data
+):
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         response = client.get(
@@ -20,8 +23,8 @@ async def test_query_endpoint_default_branch(session, client, client_headers, de
     assert len(result_per_name["Jane"]["node"]["cars"]["edges"]) == 1
 
 
-async def test_query_endpoint_branch1(session, client, client_headers, default_branch, car_person_data):
-    await create_branch(branch_name="branch1", session=session)
+async def test_query_endpoint_branch1(db: InfrahubDatabase, client, client_headers, default_branch, car_person_data):
+    await create_branch(branch_name="branch1", db=db)
 
     # Must execute in a with block to execute the startup/shutdown events
     with client:
@@ -42,7 +45,7 @@ async def test_query_endpoint_branch1(session, client, client_headers, default_b
 
 
 async def test_query_endpoint_wrong_query(
-    session, client, client_headers, default_branch, car_person_schema, register_core_models_schema
+    db: InfrahubDatabase, client, client_headers, default_branch, car_person_schema, register_core_models_schema
 ):
     # Must execute in a with block to execute the startup/shutdown events
     with client:
@@ -55,7 +58,7 @@ async def test_query_endpoint_wrong_query(
 
 
 async def test_query_endpoint_wrong_branch(
-    session, client, client_headers, default_branch, car_person_schema, register_core_models_schema
+    db: InfrahubDatabase, client, client_headers, default_branch, car_person_schema, register_core_models_schema
 ):
     # Must execute in a with block to execute the startup/shutdown events
     with client:

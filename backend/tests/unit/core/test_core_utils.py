@@ -1,16 +1,14 @@
-from neo4j import AsyncSession
-
 from infrahub.core.utils import (
     count_relationships,
     delete_all_nodes,
     element_id_to_id,
     get_paths_between_nodes,
 )
-from infrahub.database import execute_write_query_async
+from infrahub.database import InfrahubDatabase
 
 
-async def test_delete_all_nodes(session: AsyncSession):
-    assert await delete_all_nodes(session) == []
+async def test_delete_all_nodes(db: InfrahubDatabase):
+    assert await delete_all_nodes(db) == []
 
 
 def test_element_id_to_id():
@@ -19,7 +17,7 @@ def test_element_id_to_id():
     assert element_id_to_id(167) == 167
 
 
-async def test_get_paths_between_nodes(session: AsyncSession, empty_database):
+async def test_get_paths_between_nodes(db: InfrahubDatabase, empty_database):
     query = """
     CREATE (p1:Person { name: "Jim" })
     CREATE (p2:Person { name: "Jane" })
@@ -30,36 +28,32 @@ async def test_get_paths_between_nodes(session: AsyncSession, empty_database):
     RETURN p1, p2, p3
     """
 
-    results = await execute_write_query_async(session=session, query=query)
+    results = await db.execute_query(query=query)
     nodes = results[0]
 
-    paths = await get_paths_between_nodes(
-        session=session, source_id=nodes[0].element_id, destination_id=nodes[1].element_id
-    )
+    paths = await get_paths_between_nodes(db=db, source_id=nodes[0].element_id, destination_id=nodes[1].element_id)
     assert len(paths) == 2
 
     paths = await get_paths_between_nodes(
-        session=session, source_id=nodes[0].element_id, destination_id=nodes[1].element_id, relationships=["KNOWS"]
+        db=db, source_id=nodes[0].element_id, destination_id=nodes[1].element_id, relationships=["KNOWS"]
+    )
+    assert len(paths) == 1
+
+    paths = await get_paths_between_nodes(db=db, source_id=nodes[2].element_id, destination_id=nodes[1].element_id)
+    assert len(paths) == 2
+
+    paths = await get_paths_between_nodes(
+        db=db, source_id=nodes[2].element_id, destination_id=nodes[1].element_id, relationships=["KNOWS"]
     )
     assert len(paths) == 1
 
     paths = await get_paths_between_nodes(
-        session=session, source_id=nodes[2].element_id, destination_id=nodes[1].element_id
-    )
-    assert len(paths) == 2
-
-    paths = await get_paths_between_nodes(
-        session=session, source_id=nodes[2].element_id, destination_id=nodes[1].element_id, relationships=["KNOWS"]
-    )
-    assert len(paths) == 1
-
-    paths = await get_paths_between_nodes(
-        session=session, source_id=nodes[2].element_id, destination_id=nodes[1].element_id, max_length=1
+        db=db, source_id=nodes[2].element_id, destination_id=nodes[1].element_id, max_length=1
     )
     assert len(paths) == 0
 
 
-async def test_count_relationships(session: AsyncSession, empty_database):
+async def test_count_relationships(db: InfrahubDatabase, empty_database):
     query = """
     CREATE (p1:Person { name: "Jim" })
     CREATE (p2:Person { name: "Jane" })
@@ -70,6 +64,6 @@ async def test_count_relationships(session: AsyncSession, empty_database):
     RETURN p1, p2, p3
     """
 
-    await execute_write_query_async(session=session, query=query)
+    await db.execute_query(query=query)
 
-    assert await count_relationships(session=session) == 3
+    assert await count_relationships(db=db) == 3

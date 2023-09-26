@@ -1,6 +1,5 @@
 import pendulum
 import pytest
-from neo4j import AsyncSession
 
 from infrahub.core.query import (
     Query,
@@ -10,10 +9,11 @@ from infrahub.core.query import (
     cleanup_return_labels,
     sort_results_by_time,
 )
+from infrahub.database import InfrahubDatabase
 
 
 class Query01(Query):
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         self.order_by = ["at.name", "r2.from"]
 
         query = """
@@ -33,14 +33,14 @@ def test_cleanup_return_labels():
     assert cleanup_return_labels(["ID(r) as  myid", "n", "l"]) == ["myid", "n", "l"]
 
 
-async def test_query_base(session):
-    query = await Query01.init(session=session)
+async def test_query_base(db: InfrahubDatabase):
+    query = await Query01.init(db=db)
     expected_query = "MATCH (n) WHERE n.uuid = $uuid\nMATCH (n)-[r1]-(at:Attribute)-[r2]-(av)\nRETURN n,at,av,r1,r2\nORDER BY at.name,r2.from"
 
     assert query.get_query() == expected_query
 
 
-async def test_insert_variables_in_query(session, simple_dataset_01):
+async def test_insert_variables_in_query(db: InfrahubDatabase, simple_dataset_01):
     params = {
         "mystring": "5ffa45d4",
         "mylist1": ["1", "2", "3"],
@@ -66,11 +66,11 @@ async def test_insert_variables_in_query(session, simple_dataset_01):
     assert result == "\n".join(expected_query_lines)
 
 
-async def test_query_results(session, simple_dataset_01):
-    query = await Query01.init(session=session)
+async def test_query_results(db: InfrahubDatabase, simple_dataset_01):
+    query = await Query01.init(db=db)
 
     assert query.has_been_executed is False
-    await query.execute(session=session)
+    await query.execute(db=db)
 
     assert query.has_been_executed is True
 
@@ -78,31 +78,31 @@ async def test_query_results(session, simple_dataset_01):
     assert query.results[0].get("at") is not None
 
 
-async def test_query_results_limit_offset(session, simple_dataset_01):
-    query = await Query01.init(session=session, limit=2, offset=1)
-    await query.execute(session=session)
+async def test_query_results_limit_offset(db: InfrahubDatabase, simple_dataset_01):
+    query = await Query01.init(db=db, limit=2, offset=1)
+    await query.execute(db=db)
     assert query.num_of_results == 2
     expected_values = [result.get("av").get("value") for result in query.results]
     assert expected_values == ["accord", 5]
 
-    query = await Query01.init(session=session, limit=2)
-    await query.execute(session=session)
+    query = await Query01.init(db=db, limit=2)
+    await query.execute(db=db)
     assert query.num_of_results == 2
     expected_values = [result.get("av").get("value") for result in query.results]
     assert set(expected_values) == {"accord", "volt"}
 
-    query = await Query01.init(session=session, offset=2)
-    await query.execute(session=session)
+    query = await Query01.init(db=db, offset=2)
+    await query.execute(db=db)
     assert query.num_of_results == 1
     expected_values = [result.get("av").get("value") for result in query.results]
     assert expected_values == [5]
 
 
-async def test_query_async(session, simple_dataset_01):
-    query = await Query01.init(session=session)
+async def test_query_async(db: InfrahubDatabase, simple_dataset_01):
+    query = await Query01.init(db=db)
 
     assert query.has_been_executed is False
-    await query.execute(session=session)
+    await query.execute(db=db)
 
     assert query.has_been_executed is True
 
@@ -110,9 +110,9 @@ async def test_query_async(session, simple_dataset_01):
     assert query.results[0].get("at") is not None
 
 
-async def test_query_count(session, simple_dataset_01):
-    query = await Query01.init(session=session)
-    assert await query.count(session=session) == 3
+async def test_query_count(db: InfrahubDatabase, simple_dataset_01):
+    query = await Query01.init(db=db)
+    assert await query.count(db=db) == 3
 
 
 async def test_query_result_getters(neo4j_factory):

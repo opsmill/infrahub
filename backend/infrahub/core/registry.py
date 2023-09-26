@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from infrahub.core.manager import NodeManager
     from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema
     from infrahub.core.schema_manager import SchemaManager
+    from infrahub.database import InfrahubDatabase
     from infrahub.graphql.mutations import BaseAttributeInput
     from infrahub.graphql.types import InfrahubObject
     from infrahub.storage.main import InfrahubObjectStorage
@@ -218,7 +219,12 @@ class Registry:
 
         raise BranchNotFound(identifier=branch)
 
-    async def get_branch(self, session: Optional[AsyncSession], branch: Optional[Union[Branch, str]] = None) -> Branch:
+    async def get_branch(
+        self,
+        session: Optional[AsyncSession] = None,
+        db: Optional[InfrahubDatabase] = None,
+        branch: Optional[Union[Branch, str]] = None,
+    ) -> Branch:
         """Return a branch object based on its name.
 
         First the function will check in the registry
@@ -251,18 +257,18 @@ class Registry:
         try:
             return self.get_branch_from_registry(branch=branch)
         except BranchNotFound:
-            if not session:
+            if not session and not db:
                 raise
 
         if not self.branch_object:
             raise Error("Branch object not initialized")
 
         async with lock.registry.local_schema_lock():
-            obj = await self.branch_object.get_by_name(name=branch, session=session)
+            obj = await self.branch_object.get_by_name(name=branch, db=db)
             registry.branch[branch] = obj
 
             # Pull the schema for this branch
-            await registry.schema.load_schema(session=session, branch=obj)
+            await registry.schema.load_schema(db=db, branch=obj)
 
         return obj
 

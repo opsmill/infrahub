@@ -1,17 +1,19 @@
+from __future__ import annotations
+
 from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, Path, Request, Response
 from graphql import graphql
-from neo4j import AsyncSession
 
 from infrahub.api.dependencies import (
     BranchParams,
     get_branch_params,
     get_current_user,
-    get_session,
+    get_db,
 )
 from infrahub.core import registry
 from infrahub.core.manager import NodeManager
+from infrahub.database import InfrahubDatabase  # noqa: TCH001
 
 router = APIRouter(prefix="/query")
 
@@ -21,18 +23,18 @@ async def graphql_query(
     request: Request,
     response: Response,
     query_id: str = Path(description="ID or Name of the GraphQL query to execute"),
-    session: AsyncSession = Depends(get_session),
+    db: InfrahubDatabase = Depends(get_db),
     branch_params: BranchParams = Depends(get_branch_params),
     _: str = Depends(get_current_user),
 ):
     params = {key: value for key, value in request.query_params.items() if key not in ["branch", "rebase", "at"]}
 
     gql_query = await NodeManager.get_one_by_id_or_default_filter(
-        session=session, id=query_id, schema_name="CoreGraphQLQuery", branch=branch_params.branch, at=branch_params.at
+        db=db, id=query_id, schema_name="CoreGraphQLQuery", branch=branch_params.branch, at=branch_params.at
     )
 
     schema_branch = registry.schema.get_schema_branch(name=branch_params.branch.name)
-    gql_schema = await schema_branch.get_graphql_schema(session=session)
+    gql_schema = await schema_branch.get_graphql_schema(db=db)
 
     result = await graphql(
         gql_schema,
@@ -41,7 +43,6 @@ async def graphql_query(
             "infrahub_branch": branch_params.branch,
             "infrahub_at": branch_params.at,
             "infrahub_database": request.app.state.db,
-            "infrahub_session": session,
         },
         root_value=None,
         variable_values=params,

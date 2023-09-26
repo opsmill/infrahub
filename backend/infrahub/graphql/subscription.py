@@ -29,12 +29,12 @@ class InfrahubBaseSubscription(ObjectType):
     ):
         at = info.context.get("infrahub_at")
         branch = info.context.get("infrahub_branch")
-        session = info.context.get("infrahub_session")
+        db = info.context.get("infrahub_database")
 
         connection = await get_broker()
 
         # Return the result of the query the first time
-        result = await execute_query(session=session, name=name, params=params, branch=branch, at=at)
+        result = await execute_query(db=db, name=name, params=params, branch=branch, at=at)
         yield result.data
 
         async with connection:
@@ -58,7 +58,7 @@ class InfrahubBaseSubscription(ObjectType):
                 # Cancel consuming after __aexit__
                 async for message in queue_iter:
                     async with message.process():
-                        result = await execute_query(session=session, name=name, params=params, branch=branch, at=at)
+                        result = await execute_query(db=db, name=name, params=params, branch=branch, at=at)
                         yield result.data
 
     @staticmethod

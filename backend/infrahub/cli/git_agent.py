@@ -11,7 +11,7 @@ from rich.logging import RichHandler
 
 from infrahub import config
 from infrahub.core.initialization import initialization
-from infrahub.database import get_db
+from infrahub.database import InfrahubDatabase, get_db
 from infrahub.git import handle_message, initialize_repositories_directory
 from infrahub.git.actions import sync_remote_repositories
 from infrahub.lock import initialize_lock
@@ -25,7 +25,6 @@ from infrahub.message_bus.events import (
 from infrahub.message_bus.operations import execute_message
 from infrahub.message_bus.worker import WorkerCallback
 from infrahub.services import InfrahubServices
-from infrahub.services.adapters.database.graph_database import GraphDatabase
 from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
 from infrahub.worker import WORKER_IDENTITY
 from infrahub_client import InfrahubClient
@@ -71,12 +70,12 @@ async def subscribe_rpcs_queue(client: InfrahubClient):
     await events_queue.bind(exchange, routing_key="refresh.registry.*")
 
     driver = await get_db()
-    database = GraphDatabase(driver=driver)
+    database = InfrahubDatabase(driver=driver)
     service = InfrahubServices(
         client=client, database=database, message_bus=RabbitMQMessageBus(channel=channel, exchange=exchange)
     )
-    async with service.database.session as session:
-        await initialization(session=session)
+    async with service.database.start_session() as db:
+        await initialization(db=db)
 
     worker_callback = WorkerCallback(service=service)
     await events_queue.consume(worker_callback.run_command, no_ack=True)

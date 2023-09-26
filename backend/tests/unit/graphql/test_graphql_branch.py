@@ -5,26 +5,27 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
+from infrahub.database import InfrahubDatabase
 from infrahub.graphql import generate_graphql_schema
 
 
 @pytest.fixture
-async def repos_and_checks_in_main(session, register_core_models_schema):
-    repo01 = await Node.init(session=session, schema="CoreRepository")
-    await repo01.new(session=session, name="repo01", location="git@github.com:user/repo01.git")
-    await repo01.save(session=session)
+async def repos_and_checks_in_main(db: InfrahubDatabase, register_core_models_schema):
+    repo01 = await Node.init(db=db, schema="CoreRepository")
+    await repo01.new(db=db, name="repo01", location="git@github.com:user/repo01.git")
+    await repo01.save(db=db)
 
-    repo02 = await Node.init(session=session, schema="CoreRepository")
-    await repo02.new(session=session, name="repo02", location="git@github.com:user/repo02.git")
-    await repo02.save(session=session)
+    repo02 = await Node.init(db=db, schema="CoreRepository")
+    await repo02.new(db=db, name="repo02", location="git@github.com:user/repo02.git")
+    await repo02.save(db=db)
 
-    query01 = await Node.init(session=session, schema="CoreGraphQLQuery")
-    await query01.new(session=session, name="my_query", query="query { check { id } }")
-    await query01.save(session=session)
+    query01 = await Node.init(db=db, schema="CoreGraphQLQuery")
+    await query01.new(db=db, name="my_query", query="query { check { id } }")
+    await query01.save(db=db)
 
-    checkdef01 = await Node.init(session=session, schema="CoreCheckDefinition")
+    checkdef01 = await Node.init(db=db, schema="CoreCheckDefinition")
     await checkdef01.new(
-        session=session,
+        db=db,
         name="check01",
         query=query01,
         repository=repo01,
@@ -32,11 +33,11 @@ async def repos_and_checks_in_main(session, register_core_models_schema):
         class_name="Check01",
         rebase=True,
     )
-    await checkdef01.save(session=session)
+    await checkdef01.save(db=db)
 
-    checkdef02 = await Node.init(session=session, schema="CoreCheckDefinition")
+    checkdef02 = await Node.init(db=db, schema="CoreCheckDefinition")
     await checkdef02.new(
-        session=session,
+        db=db,
         name="check02",
         query=query01,
         repository=repo02,
@@ -44,11 +45,13 @@ async def repos_and_checks_in_main(session, register_core_models_schema):
         class_name="Check02",
         rebase=True,
     )
-    await checkdef02.save(session=session)
+    await checkdef02.save(db=db)
 
 
-async def test_branch_create(db, session, default_branch: Branch, car_person_schema, register_core_models_schema):
-    schema = await generate_graphql_schema(branch=default_branch, session=session, include_subscription=False)
+async def test_branch_create(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema, register_core_models_schema
+):
+    schema = await generate_graphql_schema(branch=default_branch, db=db, include_subscription=False)
 
     query = """
     mutation {
@@ -68,7 +71,7 @@ async def test_branch_create(db, session, default_branch: Branch, car_person_sch
     result = await graphql(
         schema,
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_database": db},
         root_value=None,
         variable_values={},
     )
@@ -82,7 +85,7 @@ async def test_branch_create(db, session, default_branch: Branch, car_person_sch
     assert result.data["BranchCreate"]["object"]["is_default"] is False
     assert result.data["BranchCreate"]["object"]["branched_from"] is not None
 
-    branch2 = await Branch.get_by_name(session=session, name="branch2")
+    branch2 = await Branch.get_by_name(db=db, name="branch2")
     branch2_schema = registry.schema.get_schema_branch(name=branch2.name)
 
     assert branch2
@@ -94,7 +97,7 @@ async def test_branch_create(db, session, default_branch: Branch, car_person_sch
     result = await graphql(
         schema,
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_database": db},
         root_value=None,
         variable_values={},
     )
@@ -118,7 +121,7 @@ async def test_branch_create(db, session, default_branch: Branch, car_person_sch
     result = await graphql(
         schema,
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_database": db},
         root_value=None,
         variable_values={},
     )
@@ -132,9 +135,9 @@ async def test_branch_create(db, session, default_branch: Branch, car_person_sch
 
 
 async def test_branch_create_registry(
-    db, session, default_branch: Branch, car_person_schema, register_core_models_schema
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema, register_core_models_schema
 ):
-    schema = await generate_graphql_schema(branch=default_branch, session=session, include_subscription=False)
+    schema = await generate_graphql_schema(branch=default_branch, db=db, include_subscription=False)
 
     query = """
     mutation {
@@ -154,7 +157,7 @@ async def test_branch_create_registry(
     result = await graphql(
         schema,
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_database": db},
         root_value=None,
         variable_values={},
     )
@@ -162,12 +165,14 @@ async def test_branch_create_registry(
     assert result.errors is None
     assert result.data["BranchCreate"]["ok"] is True
 
-    branch2 = await Branch.get_by_name(session=session, name="branch2")
+    branch2 = await Branch.get_by_name(db=db, name="branch2")
     assert branch2.schema_hash.main == default_branch.schema_hash.main
 
 
-async def test_branch_query(db, session, default_branch: Branch, car_person_schema, register_core_models_schema):
-    schema = await generate_graphql_schema(branch=default_branch, session=session, include_subscription=False)
+async def test_branch_query(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema, register_core_models_schema
+):
+    schema = await generate_graphql_schema(branch=default_branch, db=db, include_subscription=False)
 
     create_branch = """
     mutation {
@@ -183,7 +188,7 @@ async def test_branch_query(db, session, default_branch: Branch, car_person_sche
     branch3_result = await graphql(
         schema,
         source=create_branch,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_database": db},
         root_value=None,
         variable_values={},
     )
@@ -199,7 +204,7 @@ async def test_branch_query(db, session, default_branch: Branch, car_person_sche
     all_branches = await graphql(
         schema,
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_database": db},
         root_value=None,
         variable_values={},
     )
@@ -217,7 +222,7 @@ async def test_branch_query(db, session, default_branch: Branch, car_person_sche
     name_response = await graphql(
         schema,
         source=name_query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_database": db},
         root_value=None,
         variable_values={},
     )
@@ -236,7 +241,7 @@ async def test_branch_query(db, session, default_branch: Branch, car_person_sche
     id_response = await graphql(
         schema,
         source=id_query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_database": db},
         root_value=None,
         variable_values={},
     )
@@ -249,9 +254,9 @@ async def test_branch_query(db, session, default_branch: Branch, car_person_sche
 
 
 async def test_branch_create_invalid_names(
-    db, session, default_branch: Branch, car_person_schema, register_core_models_schema
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema, register_core_models_schema
 ):
-    schema = await generate_graphql_schema(branch=default_branch, session=session, include_subscription=False)
+    schema = await generate_graphql_schema(branch=default_branch, db=db, include_subscription=False)
 
     query = """
     mutation($branch_name: String!) {
@@ -267,7 +272,7 @@ async def test_branch_create_invalid_names(
     result = await graphql(
         schema,
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_database": db},
         root_value=None,
         variable_values={"branch_name": "not valid"},
     )
@@ -280,7 +285,12 @@ async def test_branch_create_invalid_names(
 
 
 async def test_branch_create_with_repositories(
-    db, session, default_branch: Branch, rpc_client, repos_and_checks_in_main, register_core_models_schema, data_schema
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    rpc_client,
+    repos_and_checks_in_main,
+    register_core_models_schema,
+    data_schema,
 ):
     query = """
     mutation {
@@ -294,9 +304,9 @@ async def test_branch_create_with_repositories(
     }
     """
     result = await graphql(
-        await generate_graphql_schema(branch=default_branch, session=session, include_subscription=False),
+        await generate_graphql_schema(branch=default_branch, db=db, include_subscription=False),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_rpc_client": rpc_client},
+        context_value={"infrahub_database": db, "infrahub_rpc_client": rpc_client},
         root_value=None,
         variable_values={},
     )
@@ -305,11 +315,11 @@ async def test_branch_create_with_repositories(
     assert result.data["BranchCreate"]["ok"] is True
     assert len(result.data["BranchCreate"]["object"]["id"]) == 36  # lenght of an UUID
 
-    assert await Branch.get_by_name(session=session, name="branch2")
+    assert await Branch.get_by_name(db=db, name="branch2")
 
 
-async def test_branch_rebase(db, session, default_branch: Branch, group_graphql, car_person_schema):
-    branch2 = await create_branch(session=session, branch_name="branch2")
+async def test_branch_rebase(db: InfrahubDatabase, default_branch: Branch, group_graphql, car_person_schema):
+    branch2 = await create_branch(db=db, branch_name="branch2")
 
     query = """
     mutation {
@@ -322,9 +332,9 @@ async def test_branch_rebase(db, session, default_branch: Branch, group_graphql,
     }
     """
     result = await graphql(
-        await generate_graphql_schema(branch=default_branch, session=session, include_subscription=False),
+        await generate_graphql_schema(branch=default_branch, db=db, include_subscription=False),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_database": db},
         root_value=None,
         variable_values={},
     )
@@ -333,11 +343,13 @@ async def test_branch_rebase(db, session, default_branch: Branch, group_graphql,
     assert result.data["BranchRebase"]["ok"] is True
     assert result.data["BranchRebase"]["object"]["id"] == str(branch2.uuid)
 
-    new_branch2 = await Branch.get_by_name(session=session, name="branch2")
+    new_branch2 = await Branch.get_by_name(db=db, name="branch2")
     assert new_branch2.branched_from != branch2.branched_from
 
 
-async def test_branch_rebase_wrong_branch(db, session, default_branch: Branch, group_graphql, car_person_schema):
+async def test_branch_rebase_wrong_branch(
+    db: InfrahubDatabase, default_branch: Branch, group_graphql, car_person_schema
+):
     query = """
     mutation {
         BranchRebase(data: { name: "branch2" }) {
@@ -349,9 +361,9 @@ async def test_branch_rebase_wrong_branch(db, session, default_branch: Branch, g
     }
     """
     result = await graphql(
-        await generate_graphql_schema(branch=default_branch, session=session, include_subscription=False),
+        await generate_graphql_schema(branch=default_branch, db=db, include_subscription=False),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_database": db},
         root_value=None,
         variable_values={},
     )
@@ -360,8 +372,8 @@ async def test_branch_rebase_wrong_branch(db, session, default_branch: Branch, g
     assert result.errors[0].message == "Branch: branch2 not found."
 
 
-async def test_branch_validate(db, session, base_dataset_02, register_core_models_schema):
-    branch1 = await Branch.get_by_name(session=session, name="branch1")
+async def test_branch_validate(db: InfrahubDatabase, base_dataset_02, register_core_models_schema):
+    branch1 = await Branch.get_by_name(db=db, name="branch1")
 
     query = """
     mutation {
@@ -374,9 +386,9 @@ async def test_branch_validate(db, session, base_dataset_02, register_core_model
     }
     """
     result = await graphql(
-        await generate_graphql_schema(branch=branch1, session=session, include_subscription=False),
+        await generate_graphql_schema(branch=branch1, db=db, include_subscription=False),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_database": db},
         root_value=None,
         variable_values={},
     )
@@ -386,8 +398,8 @@ async def test_branch_validate(db, session, base_dataset_02, register_core_model
     assert result.data["BranchValidate"]["object"]["id"] == str(branch1.uuid)
 
 
-async def test_branch_update(db, session, base_dataset_02):
-    branch4 = await create_branch("branch4", session)
+async def test_branch_update(db: InfrahubDatabase, base_dataset_02):
+    branch4 = await create_branch(branch_name="branch4", db=db)
 
     query = """
     mutation {
@@ -403,9 +415,9 @@ async def test_branch_update(db, session, base_dataset_02):
     """
 
     result = await graphql(
-        await generate_graphql_schema(branch=branch4, session=session, include_subscription=False),
+        await generate_graphql_schema(branch=branch4, db=db, include_subscription=False),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_database": db},
         root_value=None,
         variable_values={},
     )
@@ -413,13 +425,13 @@ async def test_branch_update(db, session, base_dataset_02):
     assert result.errors is None
     assert result.data["BranchUpdate"]["ok"] is True
 
-    branch4_updated = await Branch.get_by_name(session=session, name="branch4")
+    branch4_updated = await Branch.get_by_name(db=db, name="branch4")
 
     assert branch4_updated.description == "testing"
 
 
-async def test_branch_merge(db, session, base_dataset_02, register_core_models_schema):
-    branch1 = await Branch.get_by_name(session=session, name="branch1")
+async def test_branch_merge(db: InfrahubDatabase, base_dataset_02, register_core_models_schema):
+    branch1 = await Branch.get_by_name(db=db, name="branch1")
 
     query = """
     mutation {
@@ -432,9 +444,9 @@ async def test_branch_merge(db, session, base_dataset_02, register_core_models_s
     }
     """
     result = await graphql(
-        await generate_graphql_schema(branch=branch1, session=session, include_subscription=False),
+        await generate_graphql_schema(branch=branch1, db=db, include_subscription=False),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db},
+        context_value={"infrahub_database": db},
         root_value=None,
         variable_values={},
     )

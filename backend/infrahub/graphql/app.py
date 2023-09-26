@@ -72,10 +72,10 @@ if TYPE_CHECKING:
         DocumentNode,
         OperationDefinitionNode,
     )
-    from neo4j import AsyncSession
     from starlette.types import Receive, Scope, Send
 
     from infrahub.core.branch import Branch
+    from infrahub.database import InfrahubDatabase
 
 
 GQL_CONNECTION_ACK = "connection_ack"
@@ -131,25 +131,27 @@ class InfrahubGraphQLApp:
             api_key = await api_key_scheme(request)
             cookie_auth = await cookie_auth_scheme(request)
 
-            async with request.app.state.db.session(database=config.SETTINGS.database.database) as session:
+            db: InfrahubDatabase = request.app.state.db
+
+            async with db.start_session() as db:
                 jwt_token = None
                 if jwt_auth:
                     jwt_token = jwt_auth.credentials
                 elif cookie_auth and not api_key:
                     jwt_token = cookie_auth
-                account_session = await authentication_token(jwt_token=jwt_token, api_key=api_key, session=session)
+                account_session = await authentication_token(jwt_token=jwt_token, api_key=api_key, db=db)
 
                 # Retrieve the branch name from the request and validate that it exist in the database
                 try:
                     branch_name = request.path_params.get("branch_name", config.SETTINGS.main.default_branch)
-                    branch = await get_branch(session=session, branch=branch_name)
+                    branch = await get_branch(db=db, branch=branch_name)
                     branch.ephemeral_rebase = str_to_bool(request.query_params.get("rebase", False))
                 except BranchNotFound as exc:
                     response = JSONResponse({"errors": [exc.message]}, status_code=404)
 
                 if request.method == "POST" and not response:
                     response = await self._handle_http_request(
-                        request=request, session=session, branch=branch, account_session=account_session
+                        request=request, db=db, branch=branch, account_session=account_session
                     )
                 elif request.method == "GET" and not response:
                     response = await self._get_on_get(request)
@@ -181,25 +183,22 @@ class InfrahubGraphQLApp:
         return cast(Response, response)
 
     async def _get_context_value(
-        self, session: AsyncSession, request: HTTPConnection, branch: Branch, account_session: AccountSession
+        self, db: InfrahubDatabase, request: HTTPConnection, branch: Branch, account_session: AccountSession
     ) -> Dict:
-        # info.context["infrahub_account"] = account
-
         context_value = {
             "infrahub_branch": branch,
             "infrahub_at": Timestamp(request.query_params.get("at", None)),
             "request": request,
             "background": BackgroundTasks(),
-            "infrahub_database": request.app.state.db,
+            "infrahub_database": db,
             "infrahub_rpc_client": request.app.state.rpc_client,
-            "infrahub_session": session,
             "account_session": account_session,
         }
 
         return context_value
 
     async def _handle_http_request(
-        self, request: Request, session: AsyncSession, branch: Branch, account_session: AccountSession
+        self, request: Request, db: InfrahubDatabase, branch: Branch, account_session: AccountSession
     ) -> JSONResponse:
         try:
             operations = await _get_operation_from_request(request)
@@ -216,11 +215,11 @@ class InfrahubGraphQLApp:
         self._validate_authentication(account_session=account_session, query=query)
 
         context_value = await self._get_context_value(
-            session=session, request=request, branch=branch, account_session=account_session
+            request=request, db=db, branch=branch, account_session=account_session
         )
 
         schema_branch = registry.schema.get_schema_branch(name=branch.name)
-        graphql_schema = await schema_branch.get_graphql_schema(session=session)
+        graphql_schema = await schema_branch.get_graphql_schema(db=db)
 
         result = await graphql(
             schema=graphql_schema,

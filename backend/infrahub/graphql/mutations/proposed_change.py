@@ -11,8 +11,7 @@ from infrahub.message_bus import messages
 from .main import InfrahubMutationOptions
 
 if TYPE_CHECKING:
-    from neo4j import AsyncSession
-
+    from infrahub.database import InfrahubDatabase
     from infrahub.message_bus.rpc import InfrahubRpcClient
 
 
@@ -84,12 +83,12 @@ class ProposedChangeRequestRefreshArtifacts(Mutation):
         info: GraphQLResolveInfo,
         data: Dict[str, Any],
     ) -> Dict[str, bool]:
-        session: AsyncSession = info.context.get("infrahub_session")
+        db: InfrahubDatabase = info.context.get("infrahub_database")
         rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
 
         identifier = data.get("id", "")
         proposed_change = await NodeManager.get_one_by_id_or_default_filter(
-            id=identifier, schema_name="CoreProposedChange", session=session
+            id=identifier, schema_name="CoreProposedChange", db=db
         )
         await rpc_client.send(messages.RequestProposedChangeRefreshArtifacts(proposed_change=proposed_change.id))
         return {"ok": True}
@@ -108,14 +107,14 @@ class ProposedChangeRequestRunCheck(Mutation):
         info: GraphQLResolveInfo,
         data: Dict[str, Any],
     ) -> Dict[str, bool]:
-        session: AsyncSession = info.context.get("infrahub_session")
+        db: InfrahubDatabase = info.context.get("infrahub_database")
         rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
 
         check_type = data.get("check_type")
 
         identifier = data.get("id", "")
         proposed_change = await NodeManager.get_one_by_id_or_default_filter(
-            id=identifier, schema_name="CoreProposedChange", session=session
+            id=identifier, schema_name="CoreProposedChange", db=db
         )
         if check_type == CheckType.DATA:
             await rpc_client.send(messages.RequestProposedChangeDataIntegrity(proposed_change=proposed_change.id))

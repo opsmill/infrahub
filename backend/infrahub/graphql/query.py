@@ -14,31 +14,31 @@ from .schema import InfrahubBaseQuery
 
 if TYPE_CHECKING:
     from graphql.execution import ExecutionResult
-    from neo4j import AsyncSession
 
     from infrahub.core.branch import Branch
+    from infrahub.database import InfrahubDatabase
 
 
 async def execute_query(
     name: str,
-    session: AsyncSession,
+    db: InfrahubDatabase,
     params: Optional[dict] = None,
     branch: Union[Branch, str] = None,
     at: Union[Timestamp, str] = None,
 ) -> ExecutionResult:
     """Helper function to Execute a GraphQL Query."""
 
-    branch = branch or await get_branch(session=session, branch=branch)
+    branch = branch or await get_branch(db=db, branch=branch)
     at = Timestamp(at)
 
-    items = await NodeManager.query(session=session, schema="GraphQLQuery", filters={name: name}, branch=branch, at=at)
+    items = await NodeManager.query(db=db, schema="GraphQLQuery", filters={name: name}, branch=branch, at=at)
     if not items:
         raise ValueError(f"Unable to find the GraphQLQuery {name}")
 
     graphql_query = items[0]
 
     result = await graphql(
-        graphene.Schema(query=await get_gql_query(session=session, branch=branch), auto_camelcase=False).graphql_schema,
+        graphene.Schema(query=await get_gql_query(db=db, branch=branch), auto_camelcase=False).graphql_schema,
         source=graphql_query.query.value,
         context_value={
             "infrahub_branch": branch,
@@ -51,8 +51,8 @@ async def execute_query(
     return result
 
 
-async def get_gql_query(session: AsyncSession, branch: Union[Branch, str]) -> type[InfrahubBaseQuery]:
-    QueryMixin = await generate_query_mixin(session=session, branch=branch)
+async def get_gql_query(db: InfrahubDatabase, branch: Union[Branch, str]) -> type[InfrahubBaseQuery]:
+    QueryMixin = await generate_query_mixin(db=db, branch=branch)
 
     class Query(InfrahubBaseQuery, QueryMixin):
         pass

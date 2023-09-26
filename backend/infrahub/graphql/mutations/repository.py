@@ -1,7 +1,8 @@
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Optional
 
 from graphene import InputObjectType, Mutation
-from graphql import GraphQLResolveInfo
 
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
@@ -12,8 +13,9 @@ from ..utils import extract_fields
 from .main import InfrahubMutationMixin, InfrahubMutationOptions
 
 if TYPE_CHECKING:
-    from neo4j import AsyncSession
+    from graphql import GraphQLResolveInfo
 
+    from infrahub.database import InfrahubDatabase
     from infrahub.message_bus.rpc import InfrahubRpcClient
 
 log = get_logger()
@@ -44,14 +46,15 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         branch: Optional[str] = None,
         at: Optional[str] = None,
     ):
-        session: AsyncSession = info.context.get("infrahub_session")
+        db: InfrahubDatabase = info.context.get("infrahub_database")
         rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
 
         # Create the new repository in the database.
-        obj = await Node.init(session=session, schema=cls._meta.schema, branch=branch, at=at)
-        await obj.new(session=session, **data)
-        await cls.validate_constraints(session=session, node=obj)
-        await obj.save(session=session)
+        obj = await Node.init(db=db, schema=cls._meta.schema, branch=branch, at=at)
+        await obj.new(db=db, **data)
+        await cls.validate_constraints(db=db, node=obj)
+        async with db.start_transaction() as db:
+            await obj.save(db=db)
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
 
@@ -64,4 +67,4 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         # TODO Validate that the creation of the repository went as expected
         ok = True
 
-        return obj, cls(object=await obj.to_graphql(session=session, fields=fields.get("object", {})), ok=ok)
+        return obj, cls(object=await obj.to_graphql(db=db, fields=fields.get("object", {})), ok=ok)

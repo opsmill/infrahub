@@ -3,6 +3,7 @@ from graphql import graphql
 
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.database import InfrahubDatabase
 from infrahub.graphql import generate_graphql_schema
 
 
@@ -11,7 +12,7 @@ def load_graphql_requirements(group_graphql):
     pass
 
 
-async def test_create_simple_object(db, session, default_branch, car_person_schema):
+async def test_create_simple_object(db: InfrahubDatabase, default_branch, car_person_schema):
     query = """
     mutation {
         TestPersonCreate(data: {name: { value: "John"}, height: {value: 182}}) {
@@ -23,9 +24,9 @@ async def test_create_simple_object(db, session, default_branch, car_person_sche
     }
     """
     result = await graphql(
-        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -35,10 +36,10 @@ async def test_create_simple_object(db, session, default_branch, car_person_sche
     assert len(result.data["TestPersonCreate"]["object"]["id"]) == 36  # lenght of an UUID
 
 
-async def test_create_check_unique(db, session, default_branch, car_person_schema):
-    p1 = await Node.init(session=session, schema="TestPerson")
-    await p1.new(session=session, name="John", height=180)
-    await p1.save(session=session)
+async def test_create_check_unique(db: InfrahubDatabase, default_branch, car_person_schema):
+    p1 = await Node.init(db=db, schema="TestPerson")
+    await p1.new(db=db, name="John", height=180)
+    await p1.save(db=db)
 
     query = """
     mutation {
@@ -51,9 +52,9 @@ async def test_create_check_unique(db, session, default_branch, car_person_schem
     }
     """
     result = await graphql(
-        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -63,7 +64,7 @@ async def test_create_check_unique(db, session, default_branch, car_person_schem
     assert "An object already exist" in result.errors[0].message
 
 
-async def test_all_attributes(db, session, default_branch, all_attribute_types_schema):
+async def test_all_attributes(db: InfrahubDatabase, default_branch, all_attribute_types_schema):
     query = """
     mutation {
         TestAllAttributeTypesCreate(
@@ -84,9 +85,9 @@ async def test_all_attributes(db, session, default_branch, all_attribute_types_s
     """
 
     result = await graphql(
-        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -95,7 +96,7 @@ async def test_all_attributes(db, session, default_branch, all_attribute_types_s
     assert result.data["TestAllAttributeTypesCreate"]["ok"] is True
     assert len(result.data["TestAllAttributeTypesCreate"]["object"]["id"]) == 36  # lenght of an UUID
 
-    objs = await NodeManager.query(session=session, schema="TestAllAttributeTypes")
+    objs = await NodeManager.query(db=db, schema="TestAllAttributeTypes")
     obj1 = objs[0]
 
     assert obj1.mystring.value == "abc"
@@ -104,7 +105,7 @@ async def test_all_attributes(db, session, default_branch, all_attribute_types_s
     assert obj1.mylist.value == ["1", 2, False]
 
 
-async def test_create_object_with_flag_property(db, session, default_branch, car_person_schema):
+async def test_create_object_with_flag_property(db: InfrahubDatabase, default_branch, car_person_schema):
     query = """
     mutation {
         TestPersonCreate(
@@ -121,9 +122,9 @@ async def test_create_object_with_flag_property(db, session, default_branch, car
     }
     """
     result = await graphql(
-        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -152,9 +153,9 @@ async def test_create_object_with_flag_property(db, session, default_branch, car
         }
     """
     result1 = await graphql(
-        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -165,9 +166,9 @@ async def test_create_object_with_flag_property(db, session, default_branch, car
 
 
 async def test_create_object_with_node_property(
-    db, session, default_branch, car_person_schema, first_account, second_account
+    db: InfrahubDatabase, default_branch, car_person_schema, first_account, second_account
 ):
-    graphql_schema = await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch)
+    graphql_schema = await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch)
 
     query = """
     mutation {
@@ -191,7 +192,7 @@ async def test_create_object_with_node_property(
     result = await graphql(
         graphql_schema,
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -231,7 +232,7 @@ async def test_create_object_with_node_property(
     result1 = await graphql(
         graphql_schema,
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -241,10 +242,10 @@ async def test_create_object_with_node_property(
     assert result1.data["TestPerson"]["edges"][0]["node"]["height"]["owner"]["name"]["value"] == "Second Account"
 
 
-async def test_create_object_with_single_relationship(db, session, default_branch, car_person_schema):
-    p1 = await Node.init(session=session, schema="TestPerson")
-    await p1.new(session=session, name="John", height=180)
-    await p1.save(session=session)
+async def test_create_object_with_single_relationship(db: InfrahubDatabase, default_branch, car_person_schema):
+    p1 = await Node.init(db=db, schema="TestPerson")
+    await p1.new(db=db, name="John", height=180)
+    await p1.save(db=db)
 
     query = """
     mutation {
@@ -265,9 +266,9 @@ async def test_create_object_with_single_relationship(db, session, default_branc
     """
 
     result = await graphql(
-        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -277,10 +278,12 @@ async def test_create_object_with_single_relationship(db, session, default_branc
     assert len(result.data["TestCarCreate"]["object"]["id"]) == 36  # lenght of an UUID
 
 
-async def test_create_object_with_single_relationship_flag_property(db, session, default_branch, car_person_schema):
-    p1 = await Node.init(session=session, schema="TestPerson")
-    await p1.new(session=session, name="John", height=180)
-    await p1.save(session=session)
+async def test_create_object_with_single_relationship_flag_property(
+    db: InfrahubDatabase, default_branch, car_person_schema
+):
+    p1 = await Node.init(db=db, schema="TestPerson")
+    await p1.new(db=db, name="John", height=180)
+    await p1.save(db=db)
 
     query = """
     mutation {
@@ -299,9 +302,9 @@ async def test_create_object_with_single_relationship_flag_property(db, session,
     """
 
     result = await graphql(
-        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -310,17 +313,17 @@ async def test_create_object_with_single_relationship_flag_property(db, session,
     assert result.data["TestCarCreate"]["ok"] is True
     assert len(result.data["TestCarCreate"]["object"]["id"]) == 36
 
-    car = await NodeManager.get_one(session=session, id=result.data["TestCarCreate"]["object"]["id"])
-    rm = await car.owner.get(session=session)
+    car = await NodeManager.get_one(db=db, id=result.data["TestCarCreate"]["object"]["id"])
+    rm = await car.owner.get(db=db)
     assert rm.is_protected is True
 
 
 async def test_create_object_with_single_relationship_node_property(
-    db, session, default_branch, car_person_schema, first_account, second_account
+    db: InfrahubDatabase, default_branch, car_person_schema, first_account, second_account
 ):
-    p1 = await Node.init(session=session, schema="TestPerson")
-    await p1.new(session=session, name="John", height=180)
-    await p1.save(session=session)
+    p1 = await Node.init(db=db, schema="TestPerson")
+    await p1.new(db=db, name="John", height=180)
+    await p1.save(db=db)
 
     query = (
         """
@@ -344,9 +347,9 @@ async def test_create_object_with_single_relationship_node_property(
     )
 
     result = await graphql(
-        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -355,23 +358,23 @@ async def test_create_object_with_single_relationship_node_property(
     assert result.data["TestCarCreate"]["ok"] is True
     assert len(result.data["TestCarCreate"]["object"]["id"]) == 36
 
-    car = await NodeManager.get_one(session=session, id=result.data["TestCarCreate"]["object"]["id"])
-    rm = await car.owner.get(session=session)
-    owner = await rm.get_owner(session=session)
+    car = await NodeManager.get_one(db=db, id=result.data["TestCarCreate"]["object"]["id"])
+    rm = await car.owner.get(db=db)
+    owner = await rm.get_owner(db=db)
     assert isinstance(owner, Node)
     assert owner.id == first_account.id
 
 
-async def test_create_object_with_multiple_relationships(db, session, default_branch, fruit_tag_schema):
-    t1 = await Node.init(session=session, schema="BuiltinTag")
-    await t1.new(session=session, name="tag1")
-    await t1.save(session=session)
-    t2 = await Node.init(session=session, schema="BuiltinTag")
-    await t2.new(session=session, name="tag2")
-    await t2.save(session=session)
-    t3 = await Node.init(session=session, schema="BuiltinTag")
-    await t3.new(session=session, name="tag3")
-    await t3.save(session=session)
+async def test_create_object_with_multiple_relationships(db: InfrahubDatabase, default_branch, fruit_tag_schema):
+    t1 = await Node.init(db=db, schema="BuiltinTag")
+    await t1.new(db=db, name="tag1")
+    await t1.save(db=db)
+    t2 = await Node.init(db=db, schema="BuiltinTag")
+    await t2.new(db=db, name="tag2")
+    await t2.save(db=db)
+    t3 = await Node.init(db=db, schema="BuiltinTag")
+    await t3.new(db=db, name="tag3")
+    await t3.save(db=db)
 
     query = """
     mutation {
@@ -390,9 +393,9 @@ async def test_create_object_with_multiple_relationships(db, session, default_br
     """
 
     result = await graphql(
-        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -401,22 +404,22 @@ async def test_create_object_with_multiple_relationships(db, session, default_br
     assert result.data["GardenFruitCreate"]["ok"] is True
     assert len(result.data["GardenFruitCreate"]["object"]["id"]) == 36  # lenght of an UUID
 
-    fruit = await NodeManager.get_one(session=session, id=result.data["GardenFruitCreate"]["object"]["id"])
-    assert len(await fruit.tags.get(session=session)) == 3
+    fruit = await NodeManager.get_one(db=db, id=result.data["GardenFruitCreate"]["object"]["id"])
+    assert len(await fruit.tags.get(db=db)) == 3
 
 
 async def test_create_object_with_multiple_relationships_with_node_property(
-    db, session, default_branch, fruit_tag_schema, first_account, second_account
+    db: InfrahubDatabase, default_branch, fruit_tag_schema, first_account, second_account
 ):
-    t1 = await Node.init(session=session, schema="BuiltinTag")
-    await t1.new(session=session, name="tag1")
-    await t1.save(session=session)
-    t2 = await Node.init(session=session, schema="BuiltinTag")
-    await t2.new(session=session, name="tag2")
-    await t2.save(session=session)
-    t3 = await Node.init(session=session, schema="BuiltinTag")
-    await t3.new(session=session, name="tag3")
-    await t3.save(session=session)
+    t1 = await Node.init(db=db, schema="BuiltinTag")
+    await t1.new(db=db, name="tag1")
+    await t1.save(db=db)
+    t2 = await Node.init(db=db, schema="BuiltinTag")
+    await t2.new(db=db, name="tag2")
+    await t2.save(db=db)
+    t3 = await Node.init(db=db, schema="BuiltinTag")
+    await t3.new(db=db, name="tag3")
+    await t3.save(db=db)
 
     query = """
     mutation {
@@ -444,9 +447,9 @@ async def test_create_object_with_multiple_relationships_with_node_property(
     )
 
     result = await graphql(
-        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -456,17 +459,17 @@ async def test_create_object_with_multiple_relationships_with_node_property(
     assert len(result.data["GardenFruitCreate"]["object"]["id"]) == 36  # lenght of an UUID
 
     fruit = await NodeManager.get_one(
-        session=session, id=result.data["GardenFruitCreate"]["object"]["id"], include_owner=True, include_source=True
+        db=db, id=result.data["GardenFruitCreate"]["object"]["id"], include_owner=True, include_source=True
     )
-    tags = {tag.peer_id: tag for tag in await fruit.tags.get(session=session)}
+    tags = {tag.peer_id: tag for tag in await fruit.tags.get(db=db)}
     assert len(tags) == 3
 
-    t1_source = await tags[t1.id].get_source(session=session)
-    t1_owner = await tags[t1.id].get_owner(session=session)
-    t2_source = await tags[t2.id].get_source(session=session)
-    t2_owner = await tags[t2.id].get_owner(session=session)
-    t3_source = await tags[t3.id].get_source(session=session)
-    t3_owner = await tags[t3.id].get_owner(session=session)
+    t1_source = await tags[t1.id].get_source(db=db)
+    t1_owner = await tags[t1.id].get_owner(db=db)
+    t2_source = await tags[t2.id].get_source(db=db)
+    t2_owner = await tags[t2.id].get_owner(db=db)
+    t3_source = await tags[t3.id].get_source(db=db)
+    t3_owner = await tags[t3.id].get_owner(db=db)
 
     assert isinstance(t1_source, Node)
     assert t1_source.id == first_account.id
@@ -480,16 +483,18 @@ async def test_create_object_with_multiple_relationships_with_node_property(
     assert t3_owner.id == second_account.id
 
 
-async def test_create_object_with_multiple_relationships_flag_property(db, session, default_branch, fruit_tag_schema):
-    t1 = await Node.init(session=session, schema="BuiltinTag")
-    await t1.new(session=session, name="tag1")
-    await t1.save(session=session)
-    t2 = await Node.init(session=session, schema="BuiltinTag")
-    await t2.new(session=session, name="tag2")
-    await t2.save(session=session)
-    t3 = await Node.init(session=session, schema="BuiltinTag")
-    await t3.new(session=session, name="tag3")
-    await t3.save(session=session)
+async def test_create_object_with_multiple_relationships_flag_property(
+    db: InfrahubDatabase, default_branch, fruit_tag_schema
+):
+    t1 = await Node.init(db=db, schema="BuiltinTag")
+    await t1.new(db=db, name="tag1")
+    await t1.save(db=db)
+    t2 = await Node.init(db=db, schema="BuiltinTag")
+    await t2.new(db=db, name="tag2")
+    await t2.save(db=db)
+    t3 = await Node.init(db=db, schema="BuiltinTag")
+    await t3.new(db=db, name="tag3")
+    await t3.save(db=db)
 
     query = """
     mutation {
@@ -512,9 +517,9 @@ async def test_create_object_with_multiple_relationships_flag_property(db, sessi
     """
 
     result = await graphql(
-        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -523,15 +528,15 @@ async def test_create_object_with_multiple_relationships_flag_property(db, sessi
     assert result.data["GardenFruitCreate"]["ok"] is True
     assert len(result.data["GardenFruitCreate"]["object"]["id"]) == 36  # lenght of an UUID
 
-    fruit = await NodeManager.get_one(session=session, id=result.data["GardenFruitCreate"]["object"]["id"])
-    rels = await fruit.tags.get(session=session)
+    fruit = await NodeManager.get_one(db=db, id=result.data["GardenFruitCreate"]["object"]["id"])
+    rels = await fruit.tags.get(db=db)
     assert len(rels) == 3
     assert rels[0].is_protected is True
     assert rels[1].is_protected is True
     assert rels[2].is_protected is True
 
 
-async def test_create_person_not_valid(db, session, default_branch, car_person_schema):
+async def test_create_person_not_valid(db: InfrahubDatabase, default_branch, car_person_schema):
     query = """
     mutation {
         TestPersonCreate(data: {
@@ -546,9 +551,9 @@ async def test_create_person_not_valid(db, session, default_branch, car_person_s
     }
     """
     result = await graphql(
-        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -557,10 +562,10 @@ async def test_create_person_not_valid(db, session, default_branch, car_person_s
     assert "Int cannot represent non-integer value" in result.errors[0].message
 
 
-async def test_create_with_attribute_not_valid(db, session, default_branch, car_person_schema):
-    p1 = await Node.init(session=session, schema="TestPerson")
-    await p1.new(session=session, name="John", height=180)
-    await p1.save(session=session)
+async def test_create_with_attribute_not_valid(db: InfrahubDatabase, default_branch, car_person_schema):
+    p1 = await Node.init(db=db, schema="TestPerson")
+    await p1.new(db=db, name="John", height=180)
+    await p1.save(db=db)
 
     query = """
     mutation {
@@ -579,9 +584,9 @@ async def test_create_with_attribute_not_valid(db, session, default_branch, car_
     }
     """
     result = await graphql(
-        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )

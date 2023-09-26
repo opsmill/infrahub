@@ -2,11 +2,11 @@ from typing import TYPE_CHECKING, Dict
 
 from graphene import Boolean, Field, InputField, InputObjectType, Mutation, String
 from graphql import GraphQLResolveInfo
-from neo4j import AsyncSession
 
 from infrahub.auth import AuthType
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import NodeNotFound, PermissionDeniedError
 from infrahub_client import UUIDT
 
@@ -15,6 +15,7 @@ from ..utils import extract_fields
 
 if TYPE_CHECKING:
     from infrahub.auth import AccountSession
+
 
 # pylint: disable=unused-argument
 
@@ -40,38 +41,38 @@ class AccountMixin:
         info: GraphQLResolveInfo,
         data,
     ):
-        session: AsyncSession = info.context.get("infrahub_session")
+        db: InfrahubDatabase = info.context.get("infrahub_database")
         account_session: AccountSession = info.context.get("account_session")
 
         if account_session.auth_type != AuthType.JWT:
             raise PermissionDeniedError("This operation requires authentication with a JWT token")
 
-        results = await NodeManager.query(
-            schema="CoreAccount", filters={"ids": [account_session.account_id]}, session=session
-        )
+        results = await NodeManager.query(schema="CoreAccount", filters={"ids": [account_session.account_id]}, db=db)
         if not results:
             raise NodeNotFound(branch_name="main", node_type="CoreAccount", identifier=account_session.account_id)
 
         account = results[0]
 
         mutation_map = {"CoreAccountTokenCreate": cls.create_token}
-        return await mutation_map[cls.__name__](session=session, account=account, data=data, info=info)
+        return await mutation_map[cls.__name__](db=db, account=account, data=data, info=info)
 
     @classmethod
-    async def create_token(cls, session: AsyncSession, account: Node, data: Dict, info: GraphQLResolveInfo):
-        obj = await Node.init(session=session, schema="InternalAccountToken")
+    async def create_token(cls, db: InfrahubDatabase, account: Node, data: Dict, info: GraphQLResolveInfo):
+        obj = await Node.init(db=db, schema="InternalAccountToken")
         token = str(UUIDT())
         await obj.new(
-            session=session,
+            db=db,
             account=account,
             token=token,
             name=data.get("name"),
             expiration=data.get("expiration"),
         )
-        await obj.save(session=session)
+
+        async with db.start_transaction() as db:
+            await obj.save(db=db)
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
-        return cls(object=await obj.to_graphql(session=session, fields=fields.get("object", {})), ok=True)
+        return cls(object=await obj.to_graphql(db=db, fields=fields.get("object", {})), ok=True)
 
 
 class CoreAccountTokenCreate(AccountMixin, Mutation):

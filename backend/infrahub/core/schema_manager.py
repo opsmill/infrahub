@@ -39,9 +39,9 @@ log = get_logger()
 
 if TYPE_CHECKING:
     from graphql import GraphQLSchema
-    from neo4j import AsyncSession
 
     from infrahub.core.branch import Branch
+    from infrahub.database import InfrahubDatabase
 
 # pylint: disable=redefined-builtin,too-many-public-methods
 
@@ -99,9 +99,9 @@ class SchemaBranch:
         # TODO need to implement a flag to return the real objects if needed
         return {"nodes": self.nodes, "generics": self.generics, "groups": self.groups}
 
-    async def get_graphql_schema(self, session: AsyncSession) -> GraphQLSchema:
+    async def get_graphql_schema(self, db: InfrahubDatabase) -> GraphQLSchema:
         if not self._graphql_schema:
-            self._graphql_schema = await generate_graphql_schema(session=session, branch=self.name)
+            self._graphql_schema = await generate_graphql_schema(db=db, branch=self.name)
 
         return self._graphql_schema
 
@@ -507,18 +507,18 @@ class SchemaManager(NodeManager):
     async def update_schema_branch(
         self,
         schema: SchemaBranch,
-        session: AsyncSession,
+        db: InfrahubDatabase,
         branch: Optional[Union[Branch, str]] = None,
         limit: Optional[List[str]] = None,
         update_db: bool = True,
     ):
-        branch = await get_branch(branch=branch, session=session)
+        branch = await get_branch(branch=branch, db=db)
 
         if update_db:
-            await self.load_schema_to_db(schema=schema, session=session, branch=branch, limit=limit)
+            await self.load_schema_to_db(schema=schema, db=db, branch=branch, limit=limit)
             # After updating the schema into the db
             # we need to pull a fresh version because some default value are managed/generated within the node object
-            updated_schema = await self.load_schema_from_db(session=session, branch=branch)
+            updated_schema = await self.load_schema_from_db(db=db, branch=branch)
 
         self._branches[branch.name] = updated_schema
 
@@ -534,36 +534,36 @@ class SchemaManager(NodeManager):
     async def load_schema_to_db(
         self,
         schema: SchemaBranch,
-        session: AsyncSession,
+        db: InfrahubDatabase,
         branch: Union[str, Branch] = None,
         limit: Optional[List[str]] = None,
     ) -> None:
         """Load all nodes, generics and groups from a SchemaRoot object into the database."""
 
-        branch = await get_branch(branch=branch, session=session)
+        branch = await get_branch(branch=branch, db=db)
 
         for item_kind in list(schema.generics.keys()) + list(schema.nodes.keys()) + list(schema.groups.keys()):
             if limit and item_kind not in limit:
                 continue
             item = schema.get(name=item_kind)
             if not item.id:
-                node = await self.load_node_to_db(node=item, branch=branch, session=session)
+                node = await self.load_node_to_db(node=item, branch=branch, db=db)
                 schema.set(name=item_kind, schema=node)
             else:
-                node = await self.update_node_in_db(node=item, branch=branch, session=session)
+                node = await self.update_node_in_db(node=item, branch=branch, db=db)
                 schema.set(name=item_kind, schema=node)
 
     async def load_node_to_db(
         self,
-        session: AsyncSession,
         node: Union[NodeSchema, GenericSchema, GroupSchema],
+        db: InfrahubDatabase,
         branch: Union[str, Branch] = None,
     ) -> None:
         """Load a Node with its attributes and its relationships to the database.
 
         FIXME Currently this function only support adding new node, we need to update it to update existing nodes as well.
         """
-        branch = await get_branch(branch=branch, session=session)
+        branch = await get_branch(branch=branch, db=db)
 
         node_type = "SchemaGroup"
         if isinstance(node, GenericSchema):
@@ -583,9 +583,9 @@ class SchemaManager(NodeManager):
 
         # Create the node first
         schema_dict = node.dict(exclude={"id", "filters", "relationships", "attributes"})
-        obj = await Node.init(schema=node_schema, branch=branch, session=session)
-        await obj.new(**schema_dict, session=session)
-        await obj.save(session=session)
+        obj = await Node.init(schema=node_schema, branch=branch, db=db)
+        await obj.new(**schema_dict, db=db)
+        await obj.save(db=db)
         new_node.id = obj.id
 
         # Then create the Attributes and the relationships
@@ -595,13 +595,13 @@ class SchemaManager(NodeManager):
 
             for item in node.attributes:
                 new_attr = await self.create_attribute_in_db(
-                    schema=attribute_schema, item=item, parent=obj, branch=branch, session=session
+                    schema=attribute_schema, item=item, parent=obj, branch=branch, db=db
                 )
                 new_node.attributes.append(new_attr)
 
             for item in node.relationships:
                 new_rel = await self.create_relationship_in_db(
-                    schema=relationship_schema, item=item, parent=obj, branch=branch, session=session
+                    schema=relationship_schema, item=item, parent=obj, branch=branch, db=db
                 )
                 new_node.relationships.append(new_rel)
 
@@ -611,12 +611,12 @@ class SchemaManager(NodeManager):
 
     async def update_node_in_db(
         self,
-        session: AsyncSession,
+        db: InfrahubDatabase,
         node: Union[NodeSchema, GenericSchema, GroupSchema],
         branch: Union[str, Branch] = None,
     ) -> None:
         """Update a Node with its attributes and its relationships in the database."""
-        branch = await get_branch(branch=branch, session=session)
+        branch = await get_branch(branch=branch, db=db)
 
         if isinstance(node, GenericSchema):
             node_type = "SchemaGeneric"
@@ -628,7 +628,7 @@ class SchemaManager(NodeManager):
 
         # Update the node First
         schema_dict = node.dict(exclude={"id", "filters", "relationships", "attributes"})
-        obj = await self.get_one(id=node.id, branch=branch, session=session, include_owner=True, include_source=True)
+        obj = await self.get_one(id=node.id, branch=branch, db=db, include_owner=True, include_source=True)
 
         if not obj:
             raise SchemaNotFound(
@@ -647,15 +647,15 @@ class SchemaManager(NodeManager):
         new_node = node.duplicate()
 
         # Update the attributes and the relationships nodes as well
-        await obj.attributes.update(session=session, data=[item.id for item in node.local_attributes if item.id])
-        await obj.relationships.update(session=session, data=[item.id for item in node.local_relationships if item.id])
-        await obj.save(session=session)
+        await obj.attributes.update(db=db, data=[item.id for item in node.local_attributes if item.id])
+        await obj.relationships.update(db=db, data=[item.id for item in node.local_relationships if item.id])
+        await obj.save(db=db)
 
         # Then Update the Attributes and the relationships
         if isinstance(node, (NodeSchema, GenericSchema)):
             items = await self.get_many(
                 ids=[item.id for item in node.local_attributes + node.local_relationships if item.id],
-                session=session,
+                db=db,
                 branch=branch,
                 include_owner=True,
                 include_source=True,
@@ -663,19 +663,19 @@ class SchemaManager(NodeManager):
 
             for item in node.local_attributes:
                 if item.id and item.id in items:
-                    await self.update_attribute_in_db(item=item, attr=items[item.id], session=session)
+                    await self.update_attribute_in_db(item=item, attr=items[item.id], db=db)
                 elif not item.id:
                     new_attr = await self.create_attribute_in_db(
-                        schema=attribute_schema, item=item, branch=branch, session=session, parent=obj
+                        schema=attribute_schema, item=item, branch=branch, db=db, parent=obj
                     )
                     new_node.attributes.append(new_attr)
 
             for item in node.local_relationships:
                 if item.id and item.id in items:
-                    await self.update_relationship_in_db(item=item, rel=items[item.id], session=session)
+                    await self.update_relationship_in_db(item=item, rel=items[item.id], db=db)
                 elif not item.id:
                     new_rel = await self.create_relationship_in_db(
-                        schema=relationship_schema, item=item, branch=branch, session=session, parent=obj
+                        schema=relationship_schema, item=item, branch=branch, db=db, parent=obj
                     )
                     new_node.relationships.append(new_rel)
 
@@ -685,50 +685,50 @@ class SchemaManager(NodeManager):
 
     @staticmethod
     async def create_attribute_in_db(
-        schema: NodeSchema, item: AttributeSchema, branch: Branch, session: AsyncSession, parent: Node
+        schema: NodeSchema, item: AttributeSchema, branch: Branch, parent: Node, db: InfrahubDatabase
     ) -> AttributeSchema:
-        obj = await Node.init(schema=schema, branch=branch, session=session)
-        await obj.new(**item.dict(exclude={"id", "filters"}), node=parent, session=session)
-        await obj.save(session=session)
+        obj = await Node.init(schema=schema, branch=branch, db=db)
+        await obj.new(**item.dict(exclude={"id", "filters"}), node=parent, db=db)
+        await obj.save(db=db)
         new_item = item.duplicate()
         new_item.id = obj.id
         return new_item
 
     @staticmethod
     async def create_relationship_in_db(
-        schema: NodeSchema, item: RelationshipSchema, branch: Branch, session: AsyncSession, parent: Node
+        schema: NodeSchema, item: RelationshipSchema, branch: Branch, parent: Node, db: InfrahubDatabase
     ) -> RelationshipSchema:
-        obj = await Node.init(schema=schema, branch=branch, session=session)
-        await obj.new(**item.dict(exclude={"id", "filters"}), node=parent, session=session)
-        await obj.save(session=session)
+        obj = await Node.init(schema=schema, branch=branch, db=db)
+        await obj.new(**item.dict(exclude={"id", "filters"}), node=parent, db=db)
+        await obj.save(db=db)
         new_item = item.duplicate()
         new_item.id = obj.id
         return new_item
 
     @staticmethod
-    async def update_attribute_in_db(item: AttributeSchema, attr: Node, session: AsyncSession) -> None:
+    async def update_attribute_in_db(item: AttributeSchema, attr: Node, db: InfrahubDatabase) -> None:
         item_dict = item.dict(exclude={"id", "filters"})
         for key, value in item_dict.items():
             getattr(attr, key).value = value
-        await attr.save(session=session)
+        await attr.save(db=db)
 
     @staticmethod
-    async def update_relationship_in_db(item: RelationshipSchema, rel: Node, session: AsyncSession) -> None:
+    async def update_relationship_in_db(item: RelationshipSchema, rel: Node, db: InfrahubDatabase) -> None:
         item_dict = item.dict(exclude={"id", "filters"})
         for key, value in item_dict.items():
             getattr(rel, key).value = value
-        await rel.save(session=session)
+        await rel.save(db=db)
 
     async def load_schema(
         self,
-        session: AsyncSession,
+        db: InfrahubDatabase,
         branch: Optional[Union[str, Branch]] = None,
     ) -> SchemaBranch:
         """Load the schema either from the cache or from the database"""
-        branch = await get_branch(branch=branch, session=session)
+        branch = await get_branch(branch=branch, db=db)
 
         if not branch.is_default and branch.origin_branch:
-            origin_branch: Branch = await get_branch(branch=branch.origin_branch, session=session)
+            origin_branch: Branch = await get_branch(branch=branch.origin_branch, db=db)
 
             if origin_branch.schema_hash.main == branch.schema_hash.main:
                 origin_schema = self.get_schema_branch(name=origin_branch.name)
@@ -739,48 +739,42 @@ class SchemaManager(NodeManager):
 
         current_schema = self.get_schema_branch(name=branch.name)
         schema_diff = branch.schema_hash.compare(current_schema.get_hash_full())
-        return await self.load_schema_from_db(session=session, branch=branch, schema_diff=schema_diff)
+        return await self.load_schema_from_db(db=db, branch=branch, schema_diff=schema_diff)
 
     async def load_schema_from_db(
         self,
-        session: AsyncSession,
+        db: InfrahubDatabase,
         branch: Optional[Union[str, Branch]] = None,
         schema_diff: Optional[SchemaBranchDiff] = None,
     ) -> SchemaBranch:
         """Query all the node of type NodeSchema, GenericSchema and GroupSchema from the database and convert them to their respective type."""
 
-        branch = await get_branch(branch=branch, session=session)
+        branch = await get_branch(branch=branch, db=db)
         schema = SchemaBranch(cache=self._cache, name=branch.name)
 
         if schema_diff:
             log.info(f"Loading schema from DB to update : {schema_diff.to_string()}")
 
         group_schema = self.get(name="SchemaGroup", branch=branch)
-        for schema_node in await self.query(
-            schema=group_schema, branch=branch, prefetch_relationships=True, session=session
-        ):
+        for schema_node in await self.query(schema=group_schema, branch=branch, prefetch_relationships=True, db=db):
             schema.set(
                 name=schema_node.kind.value, schema=await self.convert_group_schema_to_schema(schema_node=schema_node)
             )
 
         generic_schema = self.get(name="SchemaGeneric", branch=branch)
-        for schema_node in await self.query(
-            schema=generic_schema, branch=branch, prefetch_relationships=True, session=session
-        ):
+        for schema_node in await self.query(schema=generic_schema, branch=branch, prefetch_relationships=True, db=db):
             kind = f"{schema_node.namespace.value}{schema_node.name.value}"
             schema.set(
                 name=kind,
-                schema=await self.convert_generic_schema_to_schema(schema_node=schema_node, session=session),
+                schema=await self.convert_generic_schema_to_schema(schema_node=schema_node, db=db),
             )
 
         node_schema = self.get(name="SchemaNode", branch=branch)
-        for schema_node in await self.query(
-            schema=node_schema, branch=branch, prefetch_relationships=True, session=session
-        ):
+        for schema_node in await self.query(schema=node_schema, branch=branch, prefetch_relationships=True, db=db):
             kind = f"{schema_node.namespace.value}{schema_node.name.value}"
             schema.set(
                 name=kind,
-                schema=await self.convert_node_schema_to_schema(schema_node=schema_node, session=session),
+                schema=await self.convert_node_schema_to_schema(schema_node=schema_node, db=db),
             )
 
         schema.process()
@@ -789,7 +783,7 @@ class SchemaManager(NodeManager):
         return schema
 
     @staticmethod
-    async def convert_node_schema_to_schema(schema_node: Node, session: AsyncSession) -> NodeSchema:
+    async def convert_node_schema_to_schema(schema_node: Node, db: InfrahubDatabase) -> NodeSchema:
         """Convert a schema_node object loaded from the database into NodeSchema object."""
 
         node_data = {"id": schema_node.id}
@@ -804,8 +798,8 @@ class SchemaManager(NodeManager):
                 node_data[rel_name] = []
 
             rm = getattr(schema_node, rel_name)
-            for rel in await rm.get(session=session):
-                item = await rel.get_peer(session=session)
+            for rel in await rm.get(db=db):
+                item = await rel.get_peer(db=db)
                 item_data = {"id": item.id}
                 for item_name in item._attributes:
                     item_data[item_name] = getattr(item, item_name).value
@@ -815,7 +809,7 @@ class SchemaManager(NodeManager):
         return NodeSchema(**node_data)
 
     @staticmethod
-    async def convert_generic_schema_to_schema(schema_node: Node, session: AsyncSession) -> GenericSchema:
+    async def convert_generic_schema_to_schema(schema_node: Node, db: InfrahubDatabase) -> GenericSchema:
         """Convert a schema_node object loaded from the database into GenericSchema object."""
 
         node_data = {"id": schema_node.id}
@@ -830,8 +824,8 @@ class SchemaManager(NodeManager):
                 node_data[rel_name] = []
 
             rm = getattr(schema_node, rel_name)
-            for rel in await rm.get(session=session):
-                item = await rel.get_peer(session=session)
+            for rel in await rm.get(db=db):
+                item = await rel.get_peer(db=db)
                 item_data = {"id": item.id}
                 for item_name in item._attributes:
                     item_data[item_name] = getattr(item, item_name).value

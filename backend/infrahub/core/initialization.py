@@ -1,8 +1,6 @@
 import logging
 from typing import List, Optional
 
-from neo4j import AsyncSession
-
 import infrahub.config as config
 from infrahub.core import registry
 from infrahub.core.artifact import CoreArtifactDefinition
@@ -12,14 +10,16 @@ from infrahub.core.node import Node
 from infrahub.core.root import Root
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema_manager import SchemaManager
+from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import DatabaseError
 from infrahub.storage.local import InfrahubLocalStorage
 
 LOGGER = logging.getLogger("infrahub")
 
 
-async def initialization(session: AsyncSession):
+async def initialization(db: InfrahubDatabase):
     if config.SETTINGS.database.db_type == config.DatabaseType.MEMGRAPH:
+        session = await db.session()
         await session.run(query="SET DATABASE SETTING 'log.level' TO 'DEBUG'")
         await session.run(query="SET DATABASE SETTING 'log.to_stderr' TO 'true'")
         await session.run(query="STORAGE MODE IN_MEMORY_ANALYTICAL")
@@ -27,7 +27,7 @@ async def initialization(session: AsyncSession):
     # ---------------------------------------------------
     # Load the Root node
     # ---------------------------------------------------
-    roots = await Root.get_list(session=session)
+    roots = await Root.get_list(db=db)
     if len(roots) == 0:
         raise DatabaseError("Database hasn't been initialized yet. please run 'infrahub db init'")
     if len(roots) > 1:
@@ -43,7 +43,7 @@ async def initialization(session: AsyncSession):
     # ---------------------------------------------------
     # Load all existing branches into the registry
     # ---------------------------------------------------
-    branches: List[Branch] = await Branch.get_list(session=session)
+    branches: List[Branch] = await Branch.get_list(db=db)
     for branch in branches:
         registry.branch[branch.name] = branch
 
@@ -59,7 +59,7 @@ async def initialization(session: AsyncSession):
         # Import the default branch
         default_branch: Branch = registry.branch[config.SETTINGS.main.default_branch]
         hash_in_db = default_branch.schema_hash.main
-        await registry.schema.load_schema_from_db(session=session, branch=default_branch)
+        await registry.schema.load_schema_from_db(db=db, branch=default_branch)
         if default_branch.update_schema_hash():
             LOGGER.warning(
                 f"{default_branch.name} | New schema detected after pulling the schema from the db : {hash_in_db!r} >> {default_branch.schema_hash.main!r}"
@@ -71,7 +71,7 @@ async def initialization(session: AsyncSession):
 
             hash_in_db = branch.schema_hash.main
             LOGGER.info(f"{branch.name} | importing schema")
-            await registry.schema.load_schema(session=session, branch=branch)
+            await registry.schema.load_schema(db=db, branch=branch)
 
             if branch.update_schema_hash():
                 LOGGER.warning(
@@ -88,8 +88,8 @@ async def initialization(session: AsyncSession):
     # ---------------------------------------------------
     # Load all existing Groups into the registry
     # ---------------------------------------------------
-    # group_schema = await registry.get_schema(session=session, name="Group")
-    # groups = await NodeManager.query(group_schema, session=session)
+    # group_schema = await registry.get_schema(db=db, name="Group")
+    # groups = await NodeManager.query(group_schema, db=db)
     # for group in groups:
     #     registry.node_group[group.name.value] = group
 
@@ -98,9 +98,9 @@ async def initialization(session: AsyncSession):
     #     registry.attr_group[group.name.value] = group
 
 
-async def create_root_node(session: AsyncSession) -> Root:
+async def create_root_node(db: InfrahubDatabase) -> Root:
     root = Root()
-    await root.save(session=session)
+    await root.save(db=db)
     LOGGER.info(f"Generated instance ID : {root.uuid}")
 
     registry.id = root.id
@@ -108,7 +108,7 @@ async def create_root_node(session: AsyncSession) -> Root:
     return root
 
 
-async def create_default_branch(session: AsyncSession) -> Branch:
+async def create_default_branch(db: InfrahubDatabase) -> Branch:
     branch = Branch(
         name=config.SETTINGS.main.default_branch,
         status="OPEN",
@@ -117,7 +117,7 @@ async def create_default_branch(session: AsyncSession) -> Branch:
         is_default=True,
         is_data_only=False,
     )
-    await branch.save(session=session)
+    await branch.save(db=db)
     registry.branch[branch.name] = branch
 
     LOGGER.info(f"Created default branch : {branch.name}")
@@ -125,7 +125,7 @@ async def create_default_branch(session: AsyncSession) -> Branch:
     return branch
 
 
-async def create_global_branch(session: AsyncSession) -> Branch:
+async def create_global_branch(db: InfrahubDatabase) -> Branch:
     branch = Branch(
         name=GLOBAL_BRANCH_NAME,
         status="OPEN",
@@ -134,7 +134,7 @@ async def create_global_branch(session: AsyncSession) -> Branch:
         is_global=True,
         is_data_only=False,
     )
-    await branch.save(session=session)
+    await branch.save(db=db)
     registry.branch[branch.name] = branch
 
     LOGGER.info(f"Created global branch : {branch.name}")
@@ -143,7 +143,7 @@ async def create_global_branch(session: AsyncSession) -> Branch:
 
 
 async def create_branch(
-    branch_name: str, session: AsyncSession, description: str = "", at: Optional[str] = None
+    branch_name: str, db: InfrahubDatabase, description: str = "", at: Optional[str] = None
 ) -> Branch:
     """Create a new Branch, currently all the branches are based on Main
 
@@ -164,7 +164,7 @@ async def create_branch(
     registry.schema.set_schema_branch(name=branch.name, schema=new_schema)
 
     branch.update_schema_hash()
-    await branch.save(session=session)
+    await branch.save(db=db)
     registry.branch[branch.name] = branch
 
     LOGGER.info(f"Created branch : {branch.name}")
@@ -172,13 +172,13 @@ async def create_branch(
     return branch
 
 
-async def first_time_initialization(session: AsyncSession):
+async def first_time_initialization(db: InfrahubDatabase):
     # --------------------------------------------------
     # Create the default Branch
     # --------------------------------------------------
-    await create_root_node(session=session)
-    default_branch = await create_default_branch(session=session)
-    await create_global_branch(session=session)
+    await create_root_node(db=db)
+    default_branch = await create_default_branch(db=db)
+    await create_global_branch(db=db)
 
     # --------------------------------------------------
     # Load the internal and core schema in the database
@@ -188,9 +188,9 @@ async def first_time_initialization(session: AsyncSession):
     schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
     schema_branch.load_schema(schema=SchemaRoot(**core_models))
     schema_branch.process()
-    await registry.schema.load_schema_to_db(schema=schema_branch, branch=default_branch, session=session)
+    await registry.schema.load_schema_to_db(schema=schema_branch, branch=default_branch, db=db)
     default_branch.update_schema_hash()
-    await default_branch.save(session=session)
+    await default_branch.save(db=db)
 
     LOGGER.info("Created the Schema in the database")
 
@@ -209,39 +209,39 @@ async def first_time_initialization(session: AsyncSession):
 
     criticality_schema = registry.get_schema(name="BuiltinCriticality")
     for level in CRITICALITY_LEVELS:
-        obj = await Node.init(session=session, schema=criticality_schema)
-        await obj.new(session=session, name=level[0], level=level[1])
-        await obj.save(session=session)
+        obj = await Node.init(db=db, schema=criticality_schema)
+        await obj.new(db=db, name=level[0], level=level[1])
+        await obj.save(db=db)
 
     token_schema = registry.get_schema(name="InternalAccountToken")
-    # admin_grp = await Node.init(session=session, schema=group_schema)
-    # await admin_grp.new(session=session, name="admin")
-    # await admin_grp.save(session=session)
+    # admin_grp = await Node.init(db=db, schema=group_schema)
+    # await admin_grp.new(db=db, name="admin")
+    # await admin_grp.save(db=db)
     # ----
     # group_schema = registry.get_schema(name="Group")
 
-    # admin_grp = await Node.init(session=session, schema=group_schema)
-    # await admin_grp.new(session=session, name="admin")
-    # await admin_grp.save(session=session)
+    # admin_grp = await Node.init(db=db, schema=group_schema)
+    # await admin_grp.new(db=db, name="admin")
+    # await admin_grp.save(db=db)
     # default_grp = obj = Node(group_schema).new(name="default").save()
     # account_schema = registry.get_schema(name="Account")
-    obj = await Node.init(session=session, schema="CoreAccount")
+    obj = await Node.init(db=db, schema="CoreAccount")
     await obj.new(
-        session=session,
+        db=db,
         name="admin",
         type="User",
         role="admin",
         password=config.SETTINGS.security.initial_admin_password,
         # groups=[admin_grp],
     )
-    await obj.save(session=session)
+    await obj.save(db=db)
     LOGGER.info(f"Created Account: {obj.name.value}")
 
     if config.SETTINGS.security.initial_admin_token:
-        token = await Node.init(session=session, schema=token_schema)
+        token = await Node.init(db=db, schema=token_schema)
         await token.new(
-            session=session,
+            db=db,
             token=config.SETTINGS.security.initial_admin_token,
             account=obj,
         )
-        await token.save(session=session)
+        await token.save(db=db)

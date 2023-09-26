@@ -32,11 +32,10 @@ from infrahub_client import UUIDT
 if TYPE_CHECKING:
     from uuid import UUID
 
-    from neo4j import AsyncSession
-
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
     from infrahub.core.schema import AttributeSchema
+    from infrahub.database import InfrahubDatabase
 
 # pylint: disable=redefined-builtin,c-extension-no-member
 
@@ -221,7 +220,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         """Deserialize the value coming from the database."""
         return value
 
-    async def save(self, session: AsyncSession, at: Optional[Timestamp] = None) -> bool:
+    async def save(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> bool:
         """Create or Update the Attribute in the database."""
 
         save_at = Timestamp(at)
@@ -229,16 +228,16 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         if not self.id:
             return False
 
-        return await self._update(at=save_at, session=session)
+        return await self._update(at=save_at, db=db)
 
-    async def delete(self, session: AsyncSession, at: Optional[Timestamp] = None) -> bool:
+    async def delete(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> bool:
         if not self.db_id:
             return False
 
         delete_at = Timestamp(at)
 
-        query = await AttributeGetQuery.init(session=session, attr=self)
-        await query.execute(session=session)
+        query = await AttributeGetQuery.init(db=db, attr=self)
+        await query.execute(db=db)
         results = query.get_results()
 
         if not results:
@@ -260,7 +259,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 branch_level=branch.hierarchy_level,
                 at=delete_at,
                 status=RelationshipStatus.DELETED,
-                session=session,
+                db=db,
             )
 
             for rel in result.get_rels():
@@ -268,7 +267,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                     rel_ids_to_update.add(rel.element_id)
 
         if rel_ids_to_update:
-            await update_relationships_to(ids=list(rel_ids_to_update), to=delete_at, session=session)
+            await update_relationships_to(ids=list(rel_ids_to_update), to=delete_at, db=db)
 
         await add_relationship(
             src_node_id=self.node.db_id,
@@ -278,12 +277,12 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             branch_level=branch.hierarchy_level,
             at=delete_at,
             status=RelationshipStatus.DELETED,
-            session=session,
+            db=db,
         )
 
         return True
 
-    async def _update(self, session: AsyncSession, at: Optional[Timestamp] = None) -> bool:
+    async def _update(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> bool:
         """Update the attribute in the database.
 
         Get the current value
@@ -299,7 +298,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         self.validate(value=self.value, name=self.name, schema=self.schema)
 
         query = await NodeListGetAttributeQuery.init(
-            session=session,
+            db=db,
             ids=[self.node.id],
             fields={self.name: True},
             branch=self.branch,
@@ -307,7 +306,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             include_source=True,
             include_owner=True,
         )
-        await query.execute(session=session)
+        await query.execute(db=db)
         current_attr = query.get_result_by_id_and_name(self.node.id, self.name)
 
         branch = self.get_branch_based_on_support_type()
@@ -317,13 +316,13 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         if current_value != self.value:
             # Create the new AttributeValue and update the existing relationship
-            query = await AttributeUpdateValueQuery.init(session=session, attr=self, at=update_at)
-            await query.execute(session=session)
+            query = await AttributeUpdateValueQuery.init(db=db, attr=self, at=update_at)
+            await query.execute(db=db)
 
             # TODO check that everything went well
             rel = current_attr.get("r2")
             if rel.get("branch") == branch.name:
-                await update_relationships_to([rel.element_id], to=update_at, session=session)
+                await update_relationships_to([rel.element_id], to=update_at, db=db)
 
         # ---------- Update the Flags ----------
         SUPPORTED_FLAGS = (
@@ -333,14 +332,12 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         for flag_name, node_name, rel_name in SUPPORTED_FLAGS:
             if current_attr.get(node_name).get("value") != getattr(self, flag_name):
-                query = await AttributeUpdateFlagQuery.init(
-                    session=session, attr=self, at=update_at, flag_name=flag_name
-                )
-                await query.execute(session=session)
+                query = await AttributeUpdateFlagQuery.init(db=db, attr=self, at=update_at, flag_name=flag_name)
+                await query.execute(db=db)
 
                 rel = current_attr.get(rel_name)
                 if rel.get("branch") == branch.name:
-                    await update_relationships_to([rel.element_id], to=update_at, session=session)
+                    await update_relationships_to([rel.element_id], to=update_at, db=db)
 
         # ---------- Update the Node Properties ----------
         for prop in self._node_properties:
@@ -348,13 +345,13 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 current_attr.get(prop) and current_attr.get(prop).get("uuid") == getattr(self, f"{prop}_id")
             ):
                 query = await AttributeUpdateNodePropertyQuery.init(
-                    session=session, attr=self, at=update_at, prop_name=prop, prop_id=getattr(self, f"{prop}_id")
+                    db=db, attr=self, at=update_at, prop_name=prop, prop_id=getattr(self, f"{prop}_id")
                 )
-                await query.execute(session=session)
+                await query.execute(db=db)
 
                 rel = current_attr.get(f"rel_{prop}")
                 if rel and rel.get("branch") == branch.name:
-                    await update_relationships_to([rel.element_id], to=update_at, session=session)
+                    await update_relationships_to([rel.element_id], to=update_at, db=db)
 
         return True
 
@@ -398,7 +395,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         return query_filter, query_params, query_where
 
-    async def to_graphql(self, session: AsyncSession, fields: Optional[dict] = None) -> dict:
+    async def to_graphql(self, db: InfrahubDatabase, fields: Optional[dict] = None) -> dict:
         """Generate GraphQL Payload for this attribute."""
         # pylint: disable=too-many-branches
 
@@ -426,14 +423,14 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
             if field_name in ["source", "owner"]:
                 node_attr_getter = getattr(self, f"get_{field_name}")
-                node_attr = await node_attr_getter(session=session)
+                node_attr = await node_attr_getter(db=db)
                 if not node_attr:
                     response[field_name] = None
                 elif fields and isinstance(fields, dict):
-                    response[field_name] = await node_attr.to_graphql(session=session, fields=fields[field_name])
+                    response[field_name] = await node_attr.to_graphql(db=db, fields=fields[field_name])
                 else:
                     response[field_name] = await node_attr.to_graphql(
-                        session=session, fields={"id": None, "display_label": None, "__typename": None}
+                        db=db, fields={"id": None, "display_label": None, "__typename": None}
                     )
                 continue
 

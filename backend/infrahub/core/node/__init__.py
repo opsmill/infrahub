@@ -21,10 +21,10 @@ from .base import BaseNode, BaseNodeMeta, BaseNodeOptions
 if TYPE_CHECKING:
     from uuid import UUID
 
-    from neo4j import AsyncSession
     from typing_extensions import Self
 
     from infrahub.core.branch import Branch
+    from infrahub.database import InfrahubDatabase
 
     from ..attribute import BaseAttribute
 
@@ -105,14 +105,14 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     @classmethod
     async def init(
         cls,
-        session: AsyncSession,
         schema: Union[NodeSchema, str],
+        db: InfrahubDatabase,
         branch: Optional[Union[Branch, str]] = None,
         at: Optional[Union[Timestamp, str]] = None,
     ) -> Self:
         attrs = {}
 
-        branch = await registry.get_branch(branch=branch, session=session)
+        branch = await registry.get_branch(branch=branch, db=db)
 
         if isinstance(schema, NodeSchema):
             attrs["schema"] = schema
@@ -127,7 +127,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         return cls(**attrs)
 
-    async def _process_fields(self, fields: dict, session: AsyncSession):
+    async def _process_fields(self, fields: dict, db: InfrahubDatabase):
         errors = []
 
         if "_source" in fields.keys():
@@ -177,7 +177,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                     self,
                     attr_schema.name,
                     await generator_method(
-                        session=session,
+                        db=db,
                         name=attr_schema.name,
                         schema=attr_schema,
                         data=fields.get(attr_schema.name, None),
@@ -204,7 +204,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                     self,
                     rel_schema.name,
                     await generator_method(
-                        session=session, name=rel_schema.name, schema=rel_schema, data=fields.get(rel_schema.name, None)
+                        db=db, name=rel_schema.name, schema=rel_schema, data=fields.get(rel_schema.name, None)
                     ),
                 )
             except ValidationError as exc:
@@ -217,13 +217,17 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         # A processor can be used for example to assigne a default value
         for name in self._attributes + self._relationships:
             if hasattr(self, f"process_{name}"):
-                await getattr(self, f"process_{name}")(session=session)
+                await getattr(self, f"process_{name}")(db=db)
 
     async def _generate_relationship_default(
-        self, session: AsyncSession, name: str, schema: RelationshipSchema, data: Any  # pylint: disable=unused-argument
+        self,
+        name: str,  # pylint: disable=unused-argument
+        schema: RelationshipSchema,
+        data: Any,
+        db: InfrahubDatabase,
     ) -> RelationshipManager:
         rm = await RelationshipManager.init(
-            session=session,
+            db=db,
             data=data,
             schema=schema,
             branch=self._branch,
@@ -234,7 +238,11 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         return rm
 
     async def _generate_attribute_default(
-        self, session: AsyncSession, name: str, schema: AttributeSchema, data: Any  # pylint: disable=unused-argument
+        self,
+        name: str,
+        schema: AttributeSchema,
+        data: Any,
+        db: InfrahubDatabase,  # pylint: disable=unused-argument
     ) -> BaseAttribute:
         attr_class = ATTRIBUTE_TYPES[schema.kind].get_infrahub_class()
         attr = attr_class(
@@ -249,7 +257,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         )
         return attr
 
-    async def process_label(self, session: AsyncSession):  # pylint: disable=unused-argument
+    async def process_label(self, db: Optional[InfrahubDatabase] = None):  # pylint: disable=unused-argument
         # If there label and name are both defined for this node
         #  if label is not define, we'll automatically populate it with a human friendy vesion of name
         # pylint: disable=no-member
@@ -257,13 +265,13 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             if self.label.value is None and self.name.value:
                 self.label.value = " ".join([word.title() for word in self.name.value.split("_")])
 
-    async def new(self, session: AsyncSession, **kwargs) -> Self:
-        await self._process_fields(session=session, fields=kwargs)
+    async def new(self, db: InfrahubDatabase, **kwargs) -> Self:
+        await self._process_fields(db=db, fields=kwargs)
         return self
 
     async def load(
         self,
-        session: AsyncSession,
+        db: InfrahubDatabase,
         id: UUID = None,
         db_id: Optional[int] = None,
         updated_at: Union[Timestamp, str] = None,
@@ -275,14 +283,14 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         if updated_at:
             self._updated_at = Timestamp(updated_at)
 
-        await self._process_fields(session=session, fields=kwargs)
+        await self._process_fields(db=db, fields=kwargs)
         return self
 
-    async def _create(self, session: AsyncSession, at: Optional[Timestamp] = None):
+    async def _create(self, db: InfrahubDatabase, at: Optional[Timestamp] = None):
         create_at = Timestamp(at)
 
-        query = await NodeCreateAllQuery.init(session=session, node=self, at=create_at)
-        await query.execute(session=session)
+        query = await NodeCreateAllQuery.init(db=db, node=self, at=create_at)
+        await query.execute(db=db)
 
         self.id, self.db_id = query.get_self_ids()
         self._at = create_at
@@ -307,7 +315,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
     async def _update(
         self,
-        session: AsyncSession,
+        db: InfrahubDatabase,
         at: Optional[Timestamp] = None,
     ):
         """Update the node in the database if needed."""
@@ -317,16 +325,16 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         # Go over the list of Attribute and update them one by one
         for name in self._attributes:
             attr: BaseAttribute = getattr(self, name)
-            await attr.save(at=update_at, session=session)
+            await attr.save(at=update_at, db=db)
 
         # Go over the list of relationships and update them one by one
         for name in self._relationships:
             rel: RelationshipManager = getattr(self, name)
-            await rel.save(at=update_at, session=session)
+            await rel.save(at=update_at, db=db)
 
     async def save(
         self,
-        session: AsyncSession,
+        db: InfrahubDatabase,
         at: Optional[Timestamp] = None,
     ) -> Self:
         """Create or Update the Node in the database."""
@@ -334,13 +342,13 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         save_at = Timestamp(at)
 
         if self.id:
-            await self._update(at=save_at, session=session)
+            await self._update(at=save_at, db=db)
             return self
 
-        await self._create(at=save_at, session=session)
+        await self._create(at=save_at, db=db)
         return self
 
-    async def delete(self, session: AsyncSession, at: Optional[Timestamp] = None):
+    async def delete(self, db: InfrahubDatabase, at: Optional[Timestamp] = None):
         """Delete the Node in the database."""
 
         delete_at = Timestamp(at)
@@ -352,12 +360,12 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         # Go over the list of Attribute and update them one by one
         for name in self._attributes:
             attr: BaseAttribute = getattr(self, name)
-            await attr.delete(at=delete_at, session=session)
+            await attr.delete(at=delete_at, db=db)
 
         # Go over the list of relationships and update them one by one
         for name in self._relationships:
             rel: RelationshipManager = getattr(self, name)
-            await rel.delete(at=delete_at, session=session)
+            await rel.delete(at=delete_at, db=db)
 
         # Need to check if there are some unidirectional relationship as well
         # For example, if we delete a tag, we must check the permissions and update all the relationships pointing at it
@@ -365,18 +373,18 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         # Update the relationship to the branch itself
         query = await NodeGetListQuery.init(
-            session=session, schema=self._schema, filters={"id": self.id}, branch=self._branch, at=delete_at
+            db=db, schema=self._schema, filters={"id": self.id}, branch=self._branch, at=delete_at
         )
-        await query.execute(session=session)
+        await query.execute(db=db)
         result = query.get_result()
 
         if result.get("rb.branch") == branch.name:
-            await update_relationships_to([result.get("rb_id")], to=delete_at, session=session)
+            await update_relationships_to([result.get("rb_id")], to=delete_at, db=db)
 
-        query = await NodeDeleteQuery.init(session=session, node=self, at=delete_at)
-        await query.execute(session=session)
+        query = await NodeDeleteQuery.init(db=db, node=self, at=delete_at)
+        await query.execute(db=db)
 
-    async def to_graphql(self, session: AsyncSession, fields: Optional[dict] = None) -> dict:
+    async def to_graphql(self, db: InfrahubDatabase, fields: Optional[dict] = None) -> dict:
         """Generate GraphQL Payload for all attributes
 
         Returns:
@@ -398,7 +406,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 continue
 
             if field_name == "display_label":
-                response[field_name] = await self.render_display_label(session=session)
+                response[field_name] = await self.render_display_label(db=db)
                 continue
 
             if field_name == "_updated_at":
@@ -415,13 +423,13 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 continue
 
             if fields and isinstance(fields, dict):
-                response[field_name] = await field.to_graphql(session=session, fields=fields.get(field_name))
+                response[field_name] = await field.to_graphql(db=db, fields=fields.get(field_name))
             else:
-                response[field_name] = await field.to_graphql(session=session)
+                response[field_name] = await field.to_graphql(db=db)
 
         return response
 
-    async def from_graphql(self, session: AsyncSession, data: dict) -> bool:
+    async def from_graphql(self, data: dict, db: InfrahubDatabase) -> bool:
         """Update object from a GraphQL payload."""
 
         changed = False
@@ -448,11 +456,11 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
             if key in self._relationships:
                 rel: RelationshipManager = getattr(self, key)
-                changed |= await rel.update(session=session, data=value)
+                changed |= await rel.update(db=db, data=value)
 
         return changed
 
-    async def render_display_label(self, session: AsyncSession):  # pylint: disable=unused-argument
+    async def render_display_label(self, db: InfrahubDatabase):  # pylint: disable=unused-argument
         if not self._schema.display_labels:
             return repr(self)
 

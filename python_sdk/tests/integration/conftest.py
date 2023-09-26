@@ -11,7 +11,7 @@ import infrahub.config as config
 from infrahub.core.initialization import first_time_initialization, initialization
 from infrahub.core.node import Node
 from infrahub.core.utils import delete_all_nodes
-from infrahub.database import AsyncSession, get_db
+from infrahub.database import InfrahubDatabase, get_db
 from infrahub.lock import initialize_lock
 from infrahub_client.schema import NodeSchema
 from infrahub_client.types import HTTPMethod
@@ -73,8 +73,8 @@ def execute_before_any_test(worker_id):
 
 
 @pytest.fixture(scope="module")
-async def db():
-    driver = await get_db(retry=1)
+async def db() -> InfrahubDatabase:
+    driver = InfrahubDatabase(driver=await get_db(retry=1))
 
     yield driver
 
@@ -82,19 +82,10 @@ async def db():
 
 
 @pytest.fixture(scope="module")
-async def session(db):
-    session = db.session(database=config.SETTINGS.database.database)
-
-    yield session
-
-    await session.close()
-
-
-@pytest.fixture(scope="module")
-async def init_db_base(session: AsyncSession):
-    await delete_all_nodes(session=session)
-    await first_time_initialization(session=session)
-    await initialization(session=session)
+async def init_db_base(db: InfrahubDatabase):
+    await delete_all_nodes(db=db)
+    await first_time_initialization(db=db)
+    await initialization(db=db)
 
 
 @pytest.fixture
@@ -117,100 +108,100 @@ async def location_schema() -> NodeSchema:
 
 
 @pytest.fixture
-async def location_cdg(session: AsyncSession, tag_blue: Node, tag_red: Node) -> Node:
-    obj = await Node.init(schema="BuiltinLocation", session=session)
-    await obj.new(session=session, name="cdg01", type="SITE", tags=[tag_blue, tag_red])
-    await obj.save(session=session)
+async def location_cdg(db: InfrahubDatabase, tag_blue: Node, tag_red: Node) -> Node:
+    obj = await Node.init(schema="BuiltinLocation", db=db)
+    await obj.new(db=db, name="cdg01", type="SITE", tags=[tag_blue, tag_red])
+    await obj.save(db=db)
     return obj
 
 
 @pytest.fixture
-async def tag_blue(session: AsyncSession) -> Node:
-    obj = await Node.init(schema="BuiltinTag", session=session)
-    await obj.new(session=session, name="Blue")
-    await obj.save(session=session)
+async def tag_blue(db: InfrahubDatabase) -> Node:
+    obj = await Node.init(schema="BuiltinTag", db=db)
+    await obj.new(db=db, name="Blue")
+    await obj.save(db=db)
     return obj
 
 
 @pytest.fixture
-async def tag_red(session: AsyncSession) -> Node:
-    obj = await Node.init(schema="BuiltinTag", session=session)
-    await obj.new(session=session, name="Red")
-    await obj.save(session=session)
+async def tag_red(db: InfrahubDatabase) -> Node:
+    obj = await Node.init(schema="BuiltinTag", db=db)
+    await obj.new(db=db, name="Red")
+    await obj.save(db=db)
     return obj
 
 
 @pytest.fixture
-async def tag_green(session: AsyncSession) -> Node:
-    obj = await Node.init(schema="BuiltinTag", session=session)
-    await obj.new(session=session, name="Green")
-    await obj.save(session=session)
+async def tag_green(db: InfrahubDatabase) -> Node:
+    obj = await Node.init(schema="BuiltinTag", db=db)
+    await obj.new(db=db, name="Green")
+    await obj.save(db=db)
     return obj
 
 
 @pytest.fixture
-async def first_account(session: AsyncSession) -> Node:
-    obj = await Node.init(session=session, schema="CoreAccount")
-    await obj.new(session=session, name="First Account", type="Git", password="TestPassword123")
-    await obj.save(session=session)
+async def first_account(db: InfrahubDatabase) -> Node:
+    obj = await Node.init(db=db, schema="CoreAccount")
+    await obj.new(db=db, name="First Account", type="Git", password="TestPassword123")
+    await obj.save(db=db)
     return obj
 
 
 @pytest.fixture
-async def second_account(session: AsyncSession) -> Node:
-    obj = await Node.init(session=session, schema="CoreAccount")
-    await obj.new(session=session, name="Second Account", type="Git", password="TestPassword123")
-    await obj.save(session=session)
+async def second_account(db: InfrahubDatabase) -> Node:
+    obj = await Node.init(db=db, schema="CoreAccount")
+    await obj.new(db=db, name="Second Account", type="Git", password="TestPassword123")
+    await obj.save(db=db)
     return obj
 
 
 @pytest.fixture
-async def repo01(session: AsyncSession) -> Node:
-    obj = await Node.init(session=session, schema="CoreRepository")
-    await obj.new(session=session, name="repo01", location="https://github.com/my/repo.git")
-    await obj.save(session=session)
+async def repo01(db: InfrahubDatabase) -> Node:
+    obj = await Node.init(db=db, schema="CoreRepository")
+    await obj.new(db=db, name="repo01", location="https://github.com/my/repo.git")
+    await obj.save(db=db)
     return obj
 
 
 @pytest.fixture
-async def repo99(session: AsyncSession) -> Node:
-    obj = await Node.init(session=session, schema="CoreRepository")
-    await obj.new(session=session, name="repo99", location="https://github.com/my/repo99.git")
-    await obj.save(session=session)
+async def repo99(db: InfrahubDatabase) -> Node:
+    obj = await Node.init(db=db, schema="CoreRepository")
+    await obj.new(db=db, name="repo99", location="https://github.com/my/repo99.git")
+    await obj.save(db=db)
     return obj
 
 
 @pytest.fixture
-async def gqlquery01(session: AsyncSession) -> Node:
-    obj = await Node.init(session=session, schema="CoreGraphQLQuery")
-    await obj.new(session=session, name="query01", query="query { device { name { value }}}")
-    await obj.save(session=session)
+async def gqlquery01(db: InfrahubDatabase) -> Node:
+    obj = await Node.init(db=db, schema="CoreGraphQLQuery")
+    await obj.new(db=db, name="query01", query="query { device { name { value }}}")
+    await obj.save(db=db)
     return obj
 
 
 @pytest.fixture
-async def gqlquery02(session: AsyncSession, repo01: Node, tag_blue: Node, tag_red: Node) -> Node:
-    obj = await Node.init(session=session, schema="CoreGraphQLQuery")
+async def gqlquery02(db: InfrahubDatabase, repo01: Node, tag_blue: Node, tag_red: Node) -> Node:
+    obj = await Node.init(db=db, schema="CoreGraphQLQuery")
     await obj.new(
-        session=session,
+        db=db,
         name="query02",
         query="query { CoreRepository { edges { node { name { value }}}}}",
         repository=repo01,
         tags=[tag_blue, tag_red],
     )
-    await obj.save(session=session)
+    await obj.save(db=db)
     return obj
 
 
 @pytest.fixture
-async def gqlquery03(session: AsyncSession, repo01: Node, tag_blue: Node, tag_red: Node) -> Node:
-    obj = await Node.init(session=session, schema="CoreGraphQLQuery")
+async def gqlquery03(db: InfrahubDatabase, repo01: Node, tag_blue: Node, tag_red: Node) -> Node:
+    obj = await Node.init(db=db, schema="CoreGraphQLQuery")
     await obj.new(
-        session=session,
+        db=db,
         name="query03",
         query="query { CoreRepository { edges { node { name { value }}}}}",
         repository=repo01,
         tags=[tag_blue, tag_red],
     )
-    await obj.save(session=session)
+    await obj.save(db=db)
     return obj

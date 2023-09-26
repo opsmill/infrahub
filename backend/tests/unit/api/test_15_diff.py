@@ -5,6 +5,7 @@ from infrahub.api.diff import get_display_labels, get_display_labels_per_kind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.database import InfrahubDatabase
 from infrahub.message_bus.rpc import InfrahubRpcClientTesting
 
 
@@ -15,81 +16,79 @@ def patch_rpc_client():
     infrahub.message_bus.rpc.InfrahubRpcClient = InfrahubRpcClientTesting
 
 
-async def test_get_display_labels_per_kind(session, default_branch, car_person_data):
-    persons_list = await NodeManager.query(session=session, schema="TestPerson", branch=default_branch)
+async def test_get_display_labels_per_kind(db: InfrahubDatabase, default_branch, car_person_data):
+    persons_list = await NodeManager.query(db=db, schema="TestPerson", branch=default_branch)
     person_ids = [item.id for item in persons_list]
     display_labels = await get_display_labels_per_kind(
-        kind="TestPerson", ids=person_ids, branch_name=default_branch.name, session=session
+        kind="TestPerson", ids=person_ids, branch_name=default_branch.name, db=db
     )
     assert len(display_labels) == len(person_ids)
 
 
-async def test_get_display_labels_per_kind_with_branch(session, default_branch, car_person_data):
-    branch2 = await create_branch(branch_name="branch2", session=session)
+async def test_get_display_labels_per_kind_with_branch(db: InfrahubDatabase, default_branch, car_person_data):
+    branch2 = await create_branch(branch_name="branch2", db=db)
 
     # Add a new Person
-    p3 = await Node.init(session=session, schema="TestPerson", branch=branch2)
-    await p3.new(session=session, name="Bill", height=160)
-    await p3.save(session=session)
+    p3 = await Node.init(db=db, schema="TestPerson", branch=branch2)
+    await p3.new(db=db, name="Bill", height=160)
+    await p3.save(db=db)
 
-    persons_list = await NodeManager.query(session=session, schema="TestPerson", branch=branch2)
+    persons_list = await NodeManager.query(db=db, schema="TestPerson", branch=branch2)
     person_ids = [item.id for item in persons_list]
 
     display_labels = await get_display_labels_per_kind(
-        kind="TestPerson", ids=person_ids, branch_name=branch2.name, session=session
+        kind="TestPerson", ids=person_ids, branch_name=branch2.name, db=db
     )
     assert len(display_labels) == len(person_ids)
 
 
-async def test_get_display_labels(session, default_branch, car_person_data):
-    persons_list = await NodeManager.query(session=session, schema="TestPerson", branch=default_branch)
+async def test_get_display_labels(db: InfrahubDatabase, default_branch, car_person_data):
+    persons_list = await NodeManager.query(db=db, schema="TestPerson", branch=default_branch)
     person_ids = [item.id for item in persons_list]
-    cars_list = await NodeManager.query(session=session, schema="TestCar", branch=default_branch)
+    cars_list = await NodeManager.query(db=db, schema="TestCar", branch=default_branch)
     car_ids = [item.id for item in cars_list]
 
-    display_labels = await get_display_labels(
-        nodes={"main": {"TestPerson": person_ids, "TestCar": car_ids}}, session=session
-    )
+    display_labels = await get_display_labels(nodes={"main": {"TestPerson": person_ids, "TestCar": car_ids}}, db=db)
     assert len(display_labels["main"]) == len(car_ids) + len(person_ids)
 
 
-async def test_get_display_labels_with_branch(session, default_branch, car_person_data):
-    branch2 = await create_branch(branch_name="branch2", session=session)
+async def test_get_display_labels_with_branch(db: InfrahubDatabase, default_branch, car_person_data):
+    branch2 = await create_branch(branch_name="branch2", db=db)
 
-    persons_list = await NodeManager.query(session=session, schema="TestPerson", branch=branch2)
+    persons_list = await NodeManager.query(db=db, schema="TestPerson", branch=branch2)
     persons = {item.name.value: item for item in persons_list}
 
-    repos_list = await NodeManager.query(session=session, schema="CoreRepository", branch=branch2)
+    repos_list = await NodeManager.query(db=db, schema="CoreRepository", branch=branch2)
     repos = {item.name.value: item for item in repos_list}
 
-    cars_list = await NodeManager.query(session=session, schema="TestCar", branch=branch2)
+    cars_list = await NodeManager.query(db=db, schema="TestCar", branch=branch2)
     cars = {item.name.value: item for item in cars_list}
 
     # Add a new Person
-    p3 = await Node.init(session=session, schema="TestPerson", branch=branch2)
-    await p3.new(session=session, name="Bill", height=160)
-    await p3.save(session=session)
+    p3 = await Node.init(db=db, schema="TestPerson", branch=branch2)
+    await p3.new(db=db, name="Bill", height=160)
+    await p3.save(db=db)
     persons["Bill"] = p3
 
-    await cars["volt"].owner.update(data=p3, session=session)
-    await cars["volt"].save(session=session)
+    await cars["volt"].owner.update(data=p3, db=db)
+    await cars["volt"].save(db=db)
 
     repo01 = repos["repo01"]
     repo01.commit.value = "dddddddddd"
-    await repo01.save(session=session)
+    await repo01.save(db=db)
 
     # Update P1 height in main
-    p1 = await NodeManager.get_one(id=persons["John"].id, session=session)
+    p1 = await NodeManager.get_one(id=persons["John"].id, db=db)
     p1.height.value = 120
-    await p1.save(session=session)
+    await p1.save(db=db)
 
-    persons_list = await NodeManager.query(session=session, schema="TestPerson", branch=branch2)
+    persons_list = await NodeManager.query(db=db, schema="TestPerson", branch=branch2)
     person_ids = [item.id for item in persons_list]
-    cars_list = await NodeManager.query(session=session, schema="TestCar", branch=branch2)
+    cars_list = await NodeManager.query(db=db, schema="TestCar", branch=branch2)
     car_ids = [item.id for item in cars_list]
 
     display_labels = await get_display_labels(
-        nodes={branch2.name: {"TestPerson": person_ids, "TestCar": car_ids}}, session=session
+        nodes={branch2.name: {"TestPerson": person_ids, "TestCar": car_ids}}, db=db
     )
     assert len(display_labels["branch2"]) == len(car_ids) + len(person_ids)
 
@@ -142,7 +141,7 @@ async def r1_update_01(data_diff_attribute):
 
 
 async def test_diff_data_attribute_branch_only_default(
-    session, client, client_headers, data_diff_attribute, r1_update_01
+    db: InfrahubDatabase, client, client_headers, data_diff_attribute, r1_update_01
 ):
     with client:
         response = client.get(
@@ -166,7 +165,9 @@ async def test_diff_data_attribute_branch_only_default(
     )
 
 
-async def test_diff_data_attribute_all_branches(session, client, client_headers, data_diff_attribute, r1_update_01):
+async def test_diff_data_attribute_all_branches(
+    db: InfrahubDatabase, client, client_headers, data_diff_attribute, r1_update_01
+):
     p1 = data_diff_attribute["p1"]
     c2 = data_diff_attribute["c2"]
 
@@ -265,7 +266,7 @@ async def test_diff_data_attribute_all_branches(session, client, client_headers,
     )
 
 
-async def test_diff_data_attribute_conflict(session, client, client_headers, data_conflict_attribute):
+async def test_diff_data_attribute_conflict(db: InfrahubDatabase, client, client_headers, data_conflict_attribute):
     p1 = data_conflict_attribute["p1"]
     r1 = data_conflict_attribute["r1"]
 
@@ -391,7 +392,7 @@ async def test_diff_data_attribute_conflict(session, client, client_headers, dat
     )
 
 
-async def test_diff_data_relationship_one(session, client, client_headers, data_diff_relationship_one):
+async def test_diff_data_relationship_one(db: InfrahubDatabase, client, client_headers, data_diff_relationship_one):
     john_id = data_diff_relationship_one["p1"]
     jane_id = data_diff_relationship_one["p2"]
 
@@ -541,7 +542,9 @@ async def test_diff_data_relationship_one(session, client, client_headers, data_
     )
 
 
-async def test_diff_data_relationship_one_conflict(session, client, client_headers, data_conflict_relationship_one):
+async def test_diff_data_relationship_one_conflict(
+    db: InfrahubDatabase, client, client_headers, data_conflict_relationship_one
+):
     john_id = data_conflict_relationship_one["p1"]
     jane_id = data_conflict_relationship_one["p2"]
 
@@ -768,7 +771,7 @@ async def test_diff_data_relationship_one_conflict(session, client, client_heade
     )
 
 
-async def test_diff_data_relationship_many(session, client, client_headers, data_diff_relationship_many):
+async def test_diff_data_relationship_many(db: InfrahubDatabase, client, client_headers, data_diff_relationship_many):
     org1 = data_diff_relationship_many["org1"]
     org3 = data_diff_relationship_many["org3"]
 
@@ -977,7 +980,9 @@ async def test_diff_data_relationship_many(session, client, client_headers, data
     )
 
 
-async def test_diff_data_relationship_many_conflict(session, client, client_headers, data_conflict_relationship_many):
+async def test_diff_data_relationship_many_conflict(
+    db: InfrahubDatabase, client, client_headers, data_conflict_relationship_many
+):
     org1 = data_conflict_relationship_many["org1"]
     red = data_conflict_relationship_many["red"]
     green = data_conflict_relationship_many["green"]
@@ -1112,7 +1117,7 @@ async def test_diff_data_relationship_many_conflict(session, client, client_head
 
 
 async def test_diff_data_deprecated_endpoint_branch_only_default(
-    session, client, client_headers, car_person_data_generic_diff
+    db: InfrahubDatabase, client, client_headers, car_person_data_generic_diff
 ):
     c1 = car_person_data_generic_diff["c1"]
     c4 = car_person_data_generic_diff["c4"]
@@ -1179,7 +1184,7 @@ async def test_diff_data_deprecated_endpoint_branch_only_default(
 
 @pytest.mark.xfail(reason="Need to investigate, occasionally fails")
 async def test_diff_data_deprecated_endpoint_branch_time_from(
-    session, client, client_headers, car_person_data_generic_diff
+    db: InfrahubDatabase, client, client_headers, car_person_data_generic_diff
 ):
     time20 = car_person_data_generic_diff["time20"]
 
@@ -1225,7 +1230,7 @@ async def test_diff_data_deprecated_endpoint_branch_time_from(
 
 
 async def test_diff_data_deprecated_endpoint_branch_time_from_to(
-    session, client, client_headers, car_person_data_generic_diff
+    db: InfrahubDatabase, client, client_headers, car_person_data_generic_diff
 ):
     time0 = car_person_data_generic_diff["time0"]
     time20 = car_person_data_generic_diff["time20"]
@@ -1279,7 +1284,7 @@ async def test_diff_data_deprecated_endpoint_branch_time_from_to(
 
 
 async def test_diff_data_deprecated_endpoint_with_main_default(
-    session, client, client_headers, car_person_data_generic_diff
+    db: InfrahubDatabase, client, client_headers, car_person_data_generic_diff
 ):
     c2 = car_person_data_generic_diff["c2"]
     p1 = car_person_data_generic_diff["p1"]
@@ -1314,7 +1319,7 @@ async def test_diff_data_deprecated_endpoint_with_main_default(
 
 
 async def test_diff_data_deprecated_endpoint_with_main_time_from(
-    session, client, client_headers, car_person_data_generic_diff
+    db: InfrahubDatabase, client, client_headers, car_person_data_generic_diff
 ):
     time20 = car_person_data_generic_diff["time20"]
 
@@ -1367,7 +1372,7 @@ async def test_diff_data_deprecated_endpoint_with_main_time_from(
 
 
 async def test_diff_data_deprecated_endpoint_with_main_time_from_to(
-    session, client, client_headers, car_person_data_generic_diff
+    db: InfrahubDatabase, client, client_headers, car_person_data_generic_diff
 ):
     time0 = car_person_data_generic_diff["time0"]
     time20 = car_person_data_generic_diff["time20"]
@@ -1427,7 +1432,7 @@ async def test_diff_data_deprecated_endpoint_with_main_time_from_to(
     assert main[p1]["elements"]["height"]["value"]["value"]["previous"] == 180
 
 
-async def test_diff_artifact(session, client, client_headers, car_person_data_artifact_diff):
+async def test_diff_artifact(db: InfrahubDatabase, client, client_headers, car_person_data_artifact_diff):
     with client:
         response = client.get(
             "/api/diff/artifacts?branch=branch3",

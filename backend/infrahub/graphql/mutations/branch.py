@@ -23,8 +23,7 @@ from ..types import BranchType
 from ..utils import extract_fields
 
 if TYPE_CHECKING:
-    from neo4j import AsyncSession
-
+    from infrahub.database import InfrahubDatabase
     from infrahub.message_bus.rpc import InfrahubRpcClient
 
 
@@ -52,11 +51,11 @@ class BranchCreate(Mutation):
 
     @classmethod
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchCreateInput, background_execution=False):
-        session: AsyncSession = info.context.get("infrahub_session")
+        db: InfrahubDatabase = info.context.get("infrahub_database")
 
         # Check if the branch already exist
         try:
-            await Branch.get_by_name(session=session, name=data["name"])
+            await Branch.get_by_name(db=db, name=data["name"])
             raise ValueError(f"The branch {data['name']}, already exist")
         except BranchNotFound:
             pass
@@ -73,7 +72,7 @@ class BranchCreate(Mutation):
             new_schema = origin_schema.duplicate(name=obj.name)
             registry.schema.set_schema_branch(name=obj.name, schema=new_schema)
             obj.update_schema_hash()
-            await obj.save(session=session)
+            await obj.save(db=db)
 
             # Add Branch to registry
             registry.branch[obj.name] = obj
@@ -116,10 +115,10 @@ class BranchDelete(Mutation):
 
     @classmethod
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput):
-        session: AsyncSession = info.context.get("infrahub_session")
+        db: InfrahubDatabase = info.context.get("infrahub_database")
 
-        obj = await Branch.get_by_name(session=session, name=data["name"])
-        await obj.delete(session=session)
+        obj = await Branch.get_by_name(db=db, name=data["name"])
+        await obj.delete(db=db)
         return cls(ok=True)
 
 
@@ -131,12 +130,14 @@ class BranchUpdate(Mutation):
 
     @classmethod
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput):
-        session: AsyncSession = info.context.get("infrahub_session")
+        db: InfrahubDatabase = info.context.get("infrahub_database")
 
-        obj = await Branch.get_by_name(session=session, name=data["name"])
+        obj = await Branch.get_by_name(db=db, name=data["name"])
         obj.description = data["description"]
 
-        await obj.save(session=session)
+        async with db.start_transaction() as db:
+            await obj.save(db=db)
+
         return cls(ok=True)
 
 
@@ -149,10 +150,11 @@ class BranchRebase(Mutation):
 
     @classmethod
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput):
-        session: AsyncSession = info.context.get("infrahub_session")
+        db: InfrahubDatabase = info.context.get("infrahub_database")
 
-        obj = await Branch.get_by_name(session=session, name=data["name"])
-        await obj.rebase(session=session)
+        obj = await Branch.get_by_name(db=db, name=data["name"])
+        async with db.start_transaction() as db:
+            await obj.rebase(db=db)
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
 
@@ -176,11 +178,11 @@ class BranchValidate(Mutation):
 
     @classmethod
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput):
-        session: AsyncSession = info.context.get("infrahub_session")
+        db: InfrahubDatabase = info.context.get("infrahub_database")
         rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
 
-        obj = await Branch.get_by_name(session=session, name=data["name"])
-        ok, validation_messages = await obj.validate_branch(rpc_client=rpc_client, session=session)
+        obj = await Branch.get_by_name(db=db, name=data["name"])
+        ok, validation_messages = await obj.validate_branch(rpc_client=rpc_client, db=db)
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
 
@@ -196,20 +198,21 @@ class BranchMerge(Mutation):
 
     @classmethod
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput):
-        session: AsyncSession = info.context.get("infrahub_session")
+        db: InfrahubDatabase = info.context.get("infrahub_database")
         rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
 
-        obj = await Branch.get_by_name(session=session, name=data["name"])
+        obj = await Branch.get_by_name(db=db, name=data["name"])
 
         async with lock.registry.global_graph_lock():
-            await obj.merge(rpc_client=rpc_client, session=session)
+            async with db.start_transaction() as db:
+                await obj.merge(rpc_client=rpc_client, db=db)
 
-            # Copy the schema from the origin branch and set the hash and the schema_changed_at value
-            origin_branch = await obj.get_origin_branch(session=session)
-            updated_schema = await registry.schema.load_schema_from_db(session=session, branch=origin_branch)
-            registry.schema.set_schema_branch(name=origin_branch.name, schema=updated_schema)
-            origin_branch.update_schema_hash()
-            await origin_branch.save(session=session)
+                # Copy the schema from the origin branch and set the hash and the schema_changed_at value
+                origin_branch = await obj.get_origin_branch(db=db)
+                updated_schema = await registry.schema.load_schema_from_db(db=db, branch=origin_branch)
+                registry.schema.set_schema_branch(name=origin_branch.name, schema=updated_schema)
+                origin_branch.update_schema_hash()
+                await origin_branch.save(db=db)
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
 

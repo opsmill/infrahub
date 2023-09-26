@@ -12,14 +12,13 @@ from neo4j.graph import Relationship as Neo4jRelationship
 from infrahub import config
 from infrahub.core.constants import PermissionLevel
 from infrahub.core.timestamp import Timestamp
-from infrahub.database import execute_read_query_async, execute_write_query_async
 from infrahub.exceptions import QueryError
 
 if TYPE_CHECKING:
-    from neo4j import AsyncSession
     from typing_extensions import Self
 
     from infrahub.core.branch import Branch
+    from infrahub.database import InfrahubDatabase
 
 
 def sort_results_by_time(results: List[QueryResult], rel_label: str) -> List[QueryResult]:
@@ -249,7 +248,7 @@ class Query(ABC):
     @classmethod
     async def init(
         cls,
-        session: AsyncSession,
+        db: InfrahubDatabase,
         branch: Optional[Branch] = None,
         at: Optional[Union[Timestamp, str]] = None,
         limit: Optional[int] = None,
@@ -259,12 +258,12 @@ class Query(ABC):
     ) -> Self:
         query = cls(branch=branch, at=at, limit=limit, offset=offset, *args, **kwargs)
 
-        await query.query_init(session=session, **kwargs)
+        await query.query_init(db=db, **kwargs)
 
         return query
 
     @abstractmethod
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         raise NotImplementedError
 
     def add_to_query(self, query: str) -> None:
@@ -341,7 +340,7 @@ class Query(ABC):
 
         return ":params { " + ", ".join(params) + " }"
 
-    async def execute(self, session: AsyncSession) -> Self:
+    async def execute(self, db: InfrahubDatabase) -> Self:
         # Ensure all mandatory params have been provided
         # Ensure at least 1 return obj has been defined
 
@@ -350,15 +349,12 @@ class Query(ABC):
 
         if self.type == QueryType.READ:
             if self.limit or self.offset:
-                results = await execute_read_query_async(
-                    query=self.get_query(), params=self.params, session=session, name=self.name
-                )
+                results = await db.execute_query(query=self.get_query(), params=self.params, name=self.name)
             else:
-                results = await self.query_with_size_limit(session=session)
+                results = await self.query_with_size_limit(db=db)
+
         elif self.type == QueryType.WRITE:
-            results = await execute_write_query_async(
-                query=self.get_query(), params=self.params, session=session, name=self.name
-            )
+            results = await db.execute_query(query=self.get_query(), params=self.params, name=self.name)
         else:
             raise ValueError(f"unknown value for {self.type}")
 
@@ -370,16 +366,15 @@ class Query(ABC):
 
         return self
 
-    async def query_with_size_limit(self, session: AsyncSession):
+    async def query_with_size_limit(self, db: InfrahubDatabase):
         query_limit = config.SETTINGS.database.query_size_limit
         offset = 0
         results = []
         remaining = True
         while remaining:
-            offset_results = await execute_read_query_async(
+            offset_results = await db.execute_query(
                 query=self.get_query(limit=query_limit, offset=offset),
                 params=self.params,
-                session=session,
                 name=self.name,
             )
             results.extend(offset_results)
@@ -390,7 +385,7 @@ class Query(ABC):
 
         return results
 
-    async def count(self, session: AsyncSession) -> int:
+    async def count(self, db: InfrahubDatabase) -> int:
         """Count the number of results matching a READ query.
         OFFSET and LIMIT are automatically excluded when counting.
         """
@@ -400,7 +395,7 @@ class Query(ABC):
         if self.type != QueryType.READ:
             raise ValueError(f"unknown value for {self.type}")
 
-        results = await execute_read_query_async(query=self.get_count_query(), params=self.params, session=session)
+        results = await db.execute_query(query=self.get_count_query(), params=self.params)
 
         if not results and self.raise_error_if_empty:
             raise QueryError(self.get_count_query(), self.params)

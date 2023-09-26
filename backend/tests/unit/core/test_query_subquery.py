@@ -2,15 +2,16 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
 from infrahub.core.schema import NodeSchema
+from infrahub.database import InfrahubDatabase
 
 
 async def test_build_subquery_filter_attribute_text(
-    session, default_branch: Branch, all_attribute_types_schema: NodeSchema
+    db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema: NodeSchema
 ):
     attr_schema = all_attribute_types_schema.get_attribute(name="mystring")
 
     query, params, result_name = await build_subquery_filter(
-        session=session,
+        db=db,
         field=attr_schema,
         name="name",
         filter_name="value",
@@ -34,12 +35,12 @@ async def test_build_subquery_filter_attribute_text(
 
 
 async def test_build_subquery_filter_attribute_int(
-    session, default_branch: Branch, all_attribute_types_schema: NodeSchema
+    db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema: NodeSchema
 ):
     attr_schema = all_attribute_types_schema.get_attribute(name="myint")
 
     query, params, result_name = await build_subquery_filter(
-        session=session,
+        db=db,
         field=attr_schema,
         name="name",
         filter_name="value",
@@ -62,12 +63,12 @@ async def test_build_subquery_filter_attribute_int(
     assert result_name == "filter2"
 
 
-async def test_build_subquery_filter_relationship(session, default_branch: Branch, car_person_schema):
+async def test_build_subquery_filter_relationship(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
     car_schema = registry.schema.get(name="TestCar")
     rel_schema = car_schema.get_relationship(name="owner")
 
     query, params, result_name = await build_subquery_filter(
-        session=session,
+        db=db,
         field=rel_schema,
         name="owner",
         filter_name="name__value",
@@ -95,12 +96,12 @@ async def test_build_subquery_filter_relationship(session, default_branch: Branc
     assert result_name == "filter1"
 
 
-async def test_build_subquery_filter_relationship_ids(session, default_branch: Branch, car_person_schema):
+async def test_build_subquery_filter_relationship_ids(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
     car_schema = registry.schema.get(name="TestCar")
     rel_schema = car_schema.get_relationship(name="owner")
 
     query, params, result_name = await build_subquery_filter(
-        session=session,
+        db=db,
         field=rel_schema,
         name="owner",
         filter_name="ids",
@@ -124,12 +125,12 @@ async def test_build_subquery_filter_relationship_ids(session, default_branch: B
     assert result_name == "filter1"
 
 
-async def test_build_subquery_order_relationship(session, default_branch: Branch, car_person_schema):
+async def test_build_subquery_order_relationship(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
     car_schema = registry.schema.get(name="TestCar")
     rel_schema = car_schema.get_relationship(name="owner")
 
     query, params, result_name = await build_subquery_order(
-        session=session,
+        db=db,
         field=rel_schema,
         name="owner",
         order_by="name__value",
