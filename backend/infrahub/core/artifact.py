@@ -1,5 +1,6 @@
 from typing import Dict, List, Optional
 
+from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
@@ -24,32 +25,39 @@ class CoreArtifactDefinition(Node):
         query: Node,
         target: Node,
         transformation: Node,
-        artifact: Optional[Node] = None,
     ) -> None:
-        if not artifact:
-            artifact = await Node.init(db=db, schema=schema, branch=definition._branch)
-            await artifact.new(
-                db=db,
-                name=definition.artifact_name.value,
-                status="Pending",
-                content_type=definition.content_type.value,
-                object=target.id,
-                definition=definition.id,
+        # only one generation task for the same repo/target/definition combo concurrently
+        async with lock.registry.get(f"{repository.id}-{target.id}-{definition.id}"):
+            artifacts = await registry.manager.query(
+                db=db, schema=schema, filters={"definition__ids": [definition.id], "object__ids": [target.id]}
             )
-            await artifact.save(db=db)
 
-        message = InfrahubArtifactRPC(
-            action=ArtifactMessageAction.GENERATE,
-            repository=repository,
-            artifact=await artifact.to_graphql(db=db),
-            target=await target.to_graphql(db=db),
-            definition=await definition.to_graphql(db=db),
-            branch_name=definition._branch.name,
-            query=await query.to_graphql(db=db),
-            transformation=await transformation.to_graphql(db=db),
-        )
+            if len(artifacts) == 0:
+                artifact = await Node.init(db=db, schema=schema, branch=definition._branch)
+                await artifact.new(
+                    db=db,
+                    name=definition.artifact_name.value,
+                    status="Pending",
+                    content_type=definition.content_type.value,
+                    object=target.id,
+                    definition=definition.id,
+                )
+                await artifact.save(db=db)
+            else:
+                artifact = artifacts[0]
 
-        await rpc_client.call(message=message, wait_for_response=False)
+            message = InfrahubArtifactRPC(
+                action=ArtifactMessageAction.GENERATE,
+                repository=repository,
+                artifact=await artifact.to_graphql(db=db),
+                target=await target.to_graphql(db=db),
+                definition=await definition.to_graphql(db=db),
+                branch_name=definition._branch.name,
+                query=await query.to_graphql(db=db),
+                transformation=await transformation.to_graphql(db=db),
+            )
+
+            await rpc_client.call(message=message, wait_for_response=False)
 
     async def generate(
         self,
@@ -82,18 +90,6 @@ class CoreArtifactDefinition(Node):
         # )
 
         artifact_schema = registry.schema.get(name="CoreArtifact", branch=self._branch)
-        artifacts = await registry.manager.query(
-            db=db,
-            schema=artifact_schema,
-            filters={"definition__ids": [self.id]},
-            branch=self._branch,
-            prefetch_relationships=True,
-        )
-
-        artifacts_by_member = {}
-        for artifact in artifacts:
-            target = await artifact.object.get_peer(db=db)
-            artifacts_by_member[target.id] = artifact
 
         # tasks = []
         # limit_concurrent_execution = asyncio.Semaphore(max_concurrent_execution)
@@ -113,7 +109,6 @@ class CoreArtifactDefinition(Node):
                 target=member,
                 query=query,
                 transformation=transformation,
-                artifact=artifacts_by_member.get(member.id, None),
             )
 
         return [member.id for member in members]
