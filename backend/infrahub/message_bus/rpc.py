@@ -19,6 +19,7 @@ from infrahub_client import UUIDT
 from . import InfrahubBaseMessage, InfrahubResponse, Meta, get_broker
 from .events import InfrahubMessage, InfrahubRPC, InfrahubRPCResponse, MessageType
 from .messages import ROUTING_KEY_MAP
+from .types import MessageTTL
 
 if TYPE_CHECKING:
     from aio_pika.abc import (
@@ -39,6 +40,8 @@ class InfrahubRpcClientBase:
     events_queue: AbstractQueue
     loop: asyncio.AbstractEventLoop
     exchange: AbstractExchange
+    delay_exchange: AbstractExchange
+    dlx: AbstractExchange
 
     def __init__(self) -> None:
         self.futures: MutableMapping[str, asyncio.Future] = {}
@@ -57,14 +60,42 @@ class InfrahubRpcClientBase:
 
         await self.callback_queue.consume(self.on_response, no_ack=True)
         await self.events_queue.consume(self.on_response, no_ack=True)
-        self.exchange = await self.channel.declare_exchange(f"{config.SETTINGS.broker.namespace}.events", type="topic")
-        queue = await self.channel.declare_queue(f"{config.SETTINGS.broker.namespace}.rpcs")
-        await queue.bind(self.exchange, routing_key="check.*.*")
-        await queue.bind(self.exchange, routing_key="event.*.*")
-        await queue.bind(self.exchange, routing_key="git.*.*")
-        await queue.bind(self.exchange, routing_key="request.*.*")
-        await queue.bind(self.exchange, routing_key="transform.*.*")
+        self.exchange = await self.channel.declare_exchange(
+            f"{config.SETTINGS.broker.namespace}.events", type="topic", durable=True
+        )
+        self.dlx = await self.channel.declare_exchange(
+            f"{config.SETTINGS.broker.namespace}.dlx", type="topic", durable=True
+        )
+
+        queue = await self.channel.declare_queue(
+            f"{config.SETTINGS.broker.namespace}.rpcs", durable=True, arguments={"x-queue-type": "quorum"}
+        )
+
+        worker_bindings = ["check.*.*", "event.*.*", "git.*.*", "request.*.*", "transform.*.*"]
+        self.delay_exchange = await self.channel.declare_exchange(
+            f"{config.SETTINGS.broker.namespace}.delayed", type="headers", durable=True
+        )
+        for routing_key in worker_bindings:
+            await queue.bind(self.exchange, routing_key=routing_key)
+            await queue.bind(self.dlx, routing_key=routing_key)
+
+        for ttl in MessageTTL.variations():
+            ttl_queue = await self.channel.declare_queue(
+                f"{config.SETTINGS.broker.namespace}.delay.{ttl.name.lower()}_seconds",
+                durable=True,
+                arguments={
+                    "x-dead-letter-exchange": self.dlx.name,
+                    "x-message-ttl": ttl.value,
+                    "x-queue-type": "quorum",
+                },
+            )
+            await ttl_queue.bind(
+                self.delay_exchange,
+                arguments={"x-match": "all", "delay": ttl.value},
+            )
+
         await self.events_queue.bind(self.exchange, routing_key="refresh.registry.*")
+
         driver = await get_db()
         database = GraphDatabase(driver=driver)
         self.service = InfrahubServices(

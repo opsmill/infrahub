@@ -62,10 +62,12 @@ async def subscribe_rpcs_queue(client: InfrahubClient):
 
     # Create a channel and subscribe to the incoming RPC queue
     channel = await connection.channel()
-    queue = await channel.declare_queue(f"{config.SETTINGS.broker.namespace}.rpcs")
+    queue = await channel.declare_queue(
+        f"{config.SETTINGS.broker.namespace}.rpcs", durable=True, arguments={"x-queue-type": "quorum"}
+    )
     events_queue = await channel.declare_queue(name=f"worker-events-{WORKER_IDENTITY}", exclusive=True)
 
-    exchange = await channel.declare_exchange(f"{config.SETTINGS.broker.namespace}.events", type="topic")
+    exchange = await channel.declare_exchange(f"{config.SETTINGS.broker.namespace}.events", type="topic", durable=True)
     await events_queue.bind(exchange, routing_key="refresh.registry.*")
 
     driver = await get_db()
