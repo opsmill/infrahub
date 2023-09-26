@@ -110,9 +110,6 @@ class InfrahubDatabase:
 
         return self.__class__(mode=InfrahubDatabaseMode.SESSION, driver=self._driver, session_mode=session_mode)
 
-    # def start_transaction(self) -> InfrahubDatabase:
-    #     return self.start_session()
-
     def start_transaction(self) -> InfrahubDatabase:
         return self.__class__(
             mode=InfrahubDatabaseMode.TRANSACTION,
