@@ -644,7 +644,7 @@ class InfrahubNodeBase:
             data["@filters"]["offset"] = offset
 
         if limit:
-            data["@filters"]["limit"] = offset
+            data["@filters"]["limit"] = limit
 
         if include and exclude:
             in_both, _, _ = compare_lists(include, exclude)
