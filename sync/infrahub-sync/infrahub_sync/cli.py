@@ -10,18 +10,18 @@ import yaml
 from infrahub_sync import SyncAdapter, SyncConfig, SyncInstance
 from infrahub_sync.generator import render_template
 from potenda import Potenda
+from rich.console import Console
 
 from infrahub_client import InfrahubClientSync
 
 app = typer.Typer()
-
+console = Console()
 
 logging.basicConfig(level=logging.WARNING)
 
 
 def print_error_and_abort(message: str):
-    error_message = typer.style(f"Error: {message}", fg=typer.colors.RED, bold=True)
-    typer.echo(error_message)
+    console.print(f"Error: {message}", style="bold red")
     raise typer.Abort()
 
 
@@ -75,7 +75,7 @@ def get_potenda_from_instance(sync_instance: SyncInstance, branch: Optional[str]
 def list():
     """List all available SYNC projects."""
     for item in get_all_sync():
-        typer.echo(f"{item.name} | {item.source.name} >> {item.destination.name} | {item.directory}")
+        console.print(f"{item.name} | {item.source.name} >> {item.destination.name} | {item.directory}")
 
 
 @app.command()
@@ -119,7 +119,7 @@ def sync(
             print(mydiff.str())
         ptd.sync(diff=mydiff)
     else:
-        typer.echo("No diffence found. Nothing to sync")
+        console.print("No diffence found. Nothing to sync")
 
 
 @app.command()
@@ -162,4 +162,4 @@ def generate(
                 context={"schema": schema, "adapter": adapter, "config": sync_instance},
             )
 
-            typer.echo(f"Saved {item[0]} in {item[1]}")
+            console.print(f"Saved {item[0]} in {item[1]}")
