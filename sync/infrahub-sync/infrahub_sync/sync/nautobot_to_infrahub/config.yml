@@ -38,8 +38,6 @@ schema_mapping:
     fields:
       - name: name
         mapping: name
-      - name: description
-        mapping: description
       - name: location
         mapping: site.slug
       - name: height
