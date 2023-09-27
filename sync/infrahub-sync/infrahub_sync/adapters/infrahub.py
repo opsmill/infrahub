@@ -59,7 +59,8 @@ class InfrahubAdapter(DiffSyncMixin, DiffSync):
         if self.branch:
             print(f"Using '{branch}' branch ")
             self.client = InfrahubClientSync(
-                address=adapter.settings["url"], default_branch=self.branch, config=sdk_config)
+                address=adapter.settings["url"], default_branch=self.branch, config=sdk_config
+            )
         else:
             print("Using 'main' branch (default)")
             self.client = InfrahubClientSync(address=adapter.settings["url"], config=sdk_config)

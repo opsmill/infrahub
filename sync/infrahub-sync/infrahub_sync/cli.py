@@ -109,7 +109,6 @@ def sync(
     if not sync_instance:
         print_error_and_abort(f"Unable to find the sync {name}. Use the list command to see the sync available")
 
-    
     ptd = get_potenda_from_instance(sync_instance, branch)
     ptd.load()
 
