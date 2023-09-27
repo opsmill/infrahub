@@ -20,7 +20,7 @@ export const OpsInputRegister = (props: Props) => {
   const { name, register, setValue, config, inputType, ...propsToPass } = props;
 
   const inputRegister = register(name, {
-    value: props.value ?? "",
+    value: props.value || "",
     ...config,
   });
 

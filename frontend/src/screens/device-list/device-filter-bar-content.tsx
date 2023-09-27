@@ -4,21 +4,15 @@ import { useAtom } from "jotai";
 import { FormProvider, useForm } from "react-hook-form";
 import { Button } from "../../components/button";
 import { getDropdownOptionsForRelatedPeersPaginated } from "../../graphql/queries/objects/dropdownOptionsForRelatedPeers";
-import { iComboBoxFilter } from "../../graphql/variables/filtersVar";
 import useFilters from "../../hooks/useFilters";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
+import getFormStructureForFilters from "../../utils/formStructureForFilters";
 import { resolve } from "../../utils/objects";
 import { DynamicControl } from "../edit-form-hook/dynamic-control";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
-
-// const sortOptions = [
-//   { name: "Name", href: "#", current: true },
-//   { name: "Status", href: "#", current: false },
-//   { name: "ASN", href: "#", current: false },
-// ];
 
 // TODO: Functionnal programming update
 // TODO: Pagination with infitie scrolling for the select
@@ -62,72 +56,21 @@ export default function DeviceFilterBarContent(props: any) {
 
   const { loading, error, data = {} } = useQuery(query, { skip: !schemaData });
 
-  const peerDropdownOptions: any = data;
-
-  const formFields: DynamicFieldData[] = [];
-
-  schemaData.filters?.forEach((filter) => {
-    const currentValue = filters?.find((f: iComboBoxFilter) => f.name === filter.name);
-    if (filter.kind === "Text" && !filter.enum) {
-      formFields.push({
-        label: filter.name,
-        name: filter.name,
-        type: "text",
-        value: currentValue ?? "",
-      });
-    } else if (filter.kind === "Text" && filter.enum) {
-      formFields.push({
-        label: filter.name,
-        name: filter.name,
-        type: "select",
-        value: currentValue ?? "",
-        options: {
-          values: filter.enum?.map((row: any) => ({
-            name: row,
-            id: row,
-          })),
-        },
-      });
-    } else if (filter.kind === "Object") {
-      if (filter.object_kind && peerDropdownOptions && peerDropdownOptions[filter.object_kind]) {
-        const { edges } = peerDropdownOptions[filter.object_kind];
-
-        const options = edges.map((row: any) => ({
-          name: row.node.display_label,
-          id: row.node.id,
-        }));
-
-        formFields.push({
-          label: filter.name,
-          name: filter.name,
-          type: "select",
-          value: currentValue ? currentValue.value : "",
-          options: {
-            values: options,
-          },
-        });
-      }
-    }
-  });
+  const formFields = getFormStructureForFilters(schemaData, filters, data);
 
   const onSubmit = (data: any) => {
-    const keys = Object.keys(data);
+    const newFilters = Object.entries(data)
+      .map(
+        ([key, value]) =>
+          value && {
+            display_label: key,
+            name: key,
+            value,
+          }
+      )
+      .filter(Boolean);
 
-    const filters: iComboBoxFilter[] = [];
-
-    for (let filterKey of keys) {
-      const filterValue = data[filterKey];
-
-      if (data[filterKey]) {
-        filters.push({
-          display_label: filterKey,
-          name: filterKey,
-          value: filterValue,
-        });
-      }
-    }
-
-    setFilters(filters);
+    setFilters(newFilters);
   };
 
   const formMethods = useForm();

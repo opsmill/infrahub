@@ -78,7 +78,9 @@ export default function ObjectItems(props: any) {
   // This will not work if the type of filter value is not string.
   const filtersString = [
     // Add object filters
-    ...filters.map((row: iComboBoxFilter) => `${row.name}: "${row.value}"`),
+    ...filters.map((row: iComboBoxFilter) =>
+      typeof row.value === "string" ? `${row.name}: "${row.value}"` : `${row.name}: ${row.value}`
+    ),
     // Add pagination filters
     ...[
       { name: "offset", value: pagination?.offset },
