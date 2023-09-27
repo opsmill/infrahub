@@ -60,7 +60,6 @@ class NautobotAdapter(DiffSyncMixin, DiffSync):
             objs = nautobot_model.all()
 
             for obj in objs:
-                print(f"OBJ = {obj}")
                 data = self.nautobot_obj_to_diffsync(obj=obj, mapping=element, model=model)
                 item = model(**data)
                 self.add(item)
