@@ -82,7 +82,7 @@ dagster = "^1.1.19"
 dagit = "^1.1.19"
 structlog = "^22.3.0"
 pynetbox = "^7.0.1"
-pynautobot = "^1.4.0"
+pynautobot = "^1.5.0"
 diffsync = "^1.8.0"
 
 
