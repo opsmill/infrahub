@@ -20,7 +20,7 @@ LOGGER = logging.getLogger("infrahub")
 async def initialization(db: InfrahubDatabase):
     if config.SETTINGS.database.db_type == config.DatabaseType.MEMGRAPH:
         session = await db.session()
-        await session.run(query="SET DATABASE SETTING 'log.level' TO 'DEBUG'")
+        await session.run(query="SET DATABASE SETTING 'log.level' TO 'INFO'")
         await session.run(query="SET DATABASE SETTING 'log.to_stderr' TO 'true'")
         await session.run(query="STORAGE MODE IN_MEMORY_ANALYTICAL")
 
