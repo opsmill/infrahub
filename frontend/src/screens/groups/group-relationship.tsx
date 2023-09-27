@@ -24,6 +24,7 @@ import { getObjectDetailsUrl } from "../../utils/objects";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
+import { constructPath } from "../../utils/fetch";
 
 type iRelationDetailsProps = {
   parentNode: any;
@@ -137,7 +138,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                       {relationshipsData?.map(({ node }: any, index: number) => (
                         <tr
                           onClick={() =>
-                            navigate(getObjectDetailsUrl(node.id, node.__typename, schemaKindName))
+                            navigate(constructPath(getObjectDetailsUrl(node.id, node.__typename, schemaKindName)))
                           }
                           key={index}
                           className="hover:bg-gray-50 cursor-pointer">

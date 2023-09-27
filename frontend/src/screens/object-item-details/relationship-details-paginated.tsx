@@ -363,7 +363,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                             <tr
                               onClick={() =>
                                 navigate(
-                                  getObjectDetailsUrl(node.id, node.__typename, schemaKindName)
+                                  constructPath(getObjectDetailsUrl(node.id, node.__typename, schemaKindName))
                                 )
                               }
                               key={index}
