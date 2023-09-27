@@ -1,11 +1,7 @@
 from infrahub_sync.adapters.nautobot import NautobotAdapter
 
-from .models import (
-   BuiltinTag,
-   BuiltinRole,
-   BuiltinLocation,
-   InfraRack,
-)
+from .models import BuiltinLocation, BuiltinRole, BuiltinTag, InfraRack
+
 
 # -------------------------------------------------------
 # AUTO-GENERATED FILE, DO NOT MODIFY
