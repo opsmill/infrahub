@@ -7,6 +7,7 @@ from typing import List
 class MessageTTL(int, Enum):
     """Defines the message TTL in seconds, the values themselves are in milliseconds."""
 
+    FIVE = 5000
     TEN = 10000
     TWENTY = 20000
 

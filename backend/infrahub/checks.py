@@ -71,6 +71,20 @@ class InfrahubCheck:
         self._write_log_entry(message=message, level="INFO", object_id=object_id, object_type=object_type)
 
     @property
+    def log_entries(self) -> str:
+        output = ""
+        for log in self.logs:
+            output += "-----------------------\n"
+            output += f"Message: {log['message']}\n"
+            output += f"Level: {log['level']}\n"
+            output += f"Level: {log['level']}\n"
+            if "object_id" in log:
+                output += f"Object ID: {log['object_id']}\n"
+            if "object_type" in log:
+                output += f"Object ID: {log['object_type']}\n"
+        return output
+
+    @property
     def branch_name(self) -> str:
         """Return the name of the current git branch."""
 

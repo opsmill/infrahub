@@ -38,9 +38,9 @@ async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, s
     log.info(f"Got a request to process data integrity defined in proposed_change: {message.proposed_change}")
     async with service.database.start_transaction() as db:
         proposed_change = await NodeManager.get_one_by_id_or_default_filter(
-            id=message.proposed_change, schema_name="CoreProposedChange", db=service.database
+            id=message.proposed_change, schema_name="CoreProposedChange", db=db
         )
-        validations = await proposed_change.validations.get_peers(db=service.database)
+        validations = await proposed_change.validations.get_peers(db=db)
         data_check = None
         for validation in validations.values():
             if validation._schema.kind == "CoreDataValidator":
