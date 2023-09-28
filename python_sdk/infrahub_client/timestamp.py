@@ -77,3 +77,7 @@ class Timestamp:
         if not isinstance(other, Timestamp):
             return NotImplemented
         return self.obj >= other.obj
+
+    def add_delta(self, hours: int = 0, minutes: int = 0, seconds: int = 0) -> Timestamp:
+        time = self.obj.add(hours=hours, minutes=minutes, seconds=seconds)
+        return Timestamp(time)

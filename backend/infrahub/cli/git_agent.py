@@ -25,6 +25,7 @@ from infrahub.message_bus.events import (
 from infrahub.message_bus.operations import execute_message
 from infrahub.message_bus.worker import WorkerCallback
 from infrahub.services import InfrahubServices
+from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
 from infrahub.worker import WORKER_IDENTITY
 from infrahub_client import InfrahubClient
@@ -68,11 +69,14 @@ async def subscribe_rpcs_queue(client: InfrahubClient):
 
     exchange = await channel.declare_exchange(f"{config.SETTINGS.broker.namespace}.events", type="topic", durable=True)
     await events_queue.bind(exchange, routing_key="refresh.registry.*")
-
+    delayed_exchange = await channel.get_exchange(name=f"{config.SETTINGS.broker.namespace}.delayed")
     driver = await get_db()
     database = InfrahubDatabase(driver=driver)
     service = InfrahubServices(
-        client=client, database=database, message_bus=RabbitMQMessageBus(channel=channel, exchange=exchange)
+        cache=RedisCache(),
+        client=client,
+        database=database,
+        message_bus=RabbitMQMessageBus(channel=channel, exchange=exchange, delayed_exchange=delayed_exchange),
     )
     async with service.database.start_session() as db:
         await initialization(db=db)

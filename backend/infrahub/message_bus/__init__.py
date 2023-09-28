@@ -1,4 +1,4 @@
-from typing import Iterator, Optional, TypeVar
+from typing import Any, Dict, Iterator, Optional, TypeVar
 
 import aio_pika
 import aiormq
@@ -48,9 +48,15 @@ async def get_broker() -> aio_pika.abc.AbstractRobustConnection:
 
 class Meta(BaseModel):
     request_id: str = ""
-    correlation_id: Optional[str] = None
-    reply_to: Optional[str] = None
-    initiator_id: Optional[str] = Field(None, description="The worker identity of the initial sender of this message")
+    correlation_id: Optional[str] = Field(default=None)
+    reply_to: Optional[str] = Field(default=None)
+    initiator_id: Optional[str] = Field(
+        default=None, description="The worker identity of the initial sender of this message"
+    )
+    retry_count: Optional[int] = Field(
+        default=None, description="Indicates how many times this message has been retried."
+    )
+    headers: Optional[Dict[str, Any]] = Field(default=None)
 
 
 class InfrahubBaseMessage(BaseModel, aio_pika.abc.AbstractMessage):
@@ -64,6 +70,11 @@ class InfrahubBaseMessage(BaseModel, aio_pika.abc.AbstractMessage):
         if parent.meta:
             self.meta.request_id = parent.meta.request_id
             self.meta.initiator_id = parent.meta.initiator_id
+
+    def assign_header(self, key: str, value: Any) -> None:
+        self.meta = self.meta or Meta()
+        self.meta.headers = self.meta.headers or {}
+        self.meta.headers[key] = value
 
     def set_log_data(self, routing_key: str) -> None:
         set_log_data(key="routing_key", value=routing_key)
@@ -82,7 +93,7 @@ class InfrahubBaseMessage(BaseModel, aio_pika.abc.AbstractMessage):
 
     @property
     def body(self) -> bytes:
-        return self.json(exclude_none=True).encode("UTF-8")
+        return self.json(exclude={"meta": {"headers"}, "value": True}, exclude_none=True).encode("UTF-8")
 
     @property
     def locked(self) -> bool:
@@ -91,11 +102,24 @@ class InfrahubBaseMessage(BaseModel, aio_pika.abc.AbstractMessage):
     @property
     def properties(self) -> aiormq.spec.Basic.Properties:
         correlation_id = None
+        headers = None
         if self.meta:
             correlation_id = self.meta.correlation_id
+            headers = self.meta.headers
         return aiormq.spec.Basic.Properties(
-            content_type="application/json", content_encoding="utf-8", correlation_id=correlation_id
+            content_type="application/json", content_encoding="utf-8", correlation_id=correlation_id, headers=headers
         )
+
+    def increase_retry_count(self, count: int = 1) -> None:
+        self.meta = self.meta or Meta()
+        current_retry = self.meta.retry_count or 0
+        self.meta.retry_count = current_retry + count
+
+    @property
+    def reached_max_retries(self) -> bool:
+        if self.meta and self.meta.retry_count:
+            return self.meta.retry_count <= config.SETTINGS.broker.maximum_message_retries
+        return False
 
     def __iter__(self) -> Iterator[int]:
         raise NotImplementedError
@@ -105,10 +129,16 @@ class InfrahubBaseMessage(BaseModel, aio_pika.abc.AbstractMessage):
 
     def __copy__(self) -> aio_pika.Message:
         correlation_id = None
+        headers = None
         if self.meta:
             correlation_id = self.meta.correlation_id
+            headers = self.meta.headers
         return aio_pika.Message(
-            body=self.body, content_type="application/json", content_encoding="utf-8", correlation_id=correlation_id
+            body=self.body,
+            content_type="application/json",
+            content_encoding="utf-8",
+            correlation_id=correlation_id,
+            headers=headers,
         )
 
 

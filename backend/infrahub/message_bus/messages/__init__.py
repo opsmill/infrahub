@@ -2,9 +2,11 @@ from typing import Dict, Type
 
 from infrahub.message_bus import InfrahubBaseMessage
 
+from .check_repository_checkdefinition import CheckRepositoryCheckDefinition
 from .check_repository_mergeconflicts import CheckRepositoryMergeConflicts
 from .event_branch_create import EventBranchCreate
 from .event_schema_update import EventSchemaUpdate
+from .finalize_validator_execution import FinalizeValidatorExecution
 from .git_branch_create import GitBranchCreate
 from .git_file_get import GitFileGet
 from .refresh_registry_branches import RefreshRegistryBranches
@@ -23,11 +25,13 @@ from .transform_jinja_template import TransformJinjaTemplate
 from .transform_python_data import TransformPythonData
 
 MESSAGE_MAP: Dict[str, Type[InfrahubBaseMessage]] = {
+    "check.repository.check_definition": CheckRepositoryCheckDefinition,
     "check.repository.merge_conflicts": CheckRepositoryMergeConflicts,
     "git.branch.create": GitBranchCreate,
     "git.file.get": GitFileGet,
     "event.branch.create": EventBranchCreate,
     "event.schema.update": EventSchemaUpdate,
+    "finalize.validator.execution": FinalizeValidatorExecution,
     "request.git.create_branch": RequestGitCreateBranch,
     "refresh.registry.branches": RefreshRegistryBranches,
     "request.artifact_definition.generate": RequestArtifactDefinitionGenerate,
