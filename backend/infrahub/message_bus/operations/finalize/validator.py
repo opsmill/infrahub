@@ -65,7 +65,7 @@ async def execution(message: messages.FinalizeValidatorExecution, service: Infra
             validator_id=message.validator_id,
             validator_execution_id=message.validator_execution_id,
         )
-        conclusion = "failed"
+        conclusion = "failure"
 
     validator.state.value = "completed"
     validator.completed_at.value = Timestamp().to_string()
