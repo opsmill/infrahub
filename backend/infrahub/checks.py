@@ -77,7 +77,6 @@ class InfrahubCheck:
             output += "-----------------------\n"
             output += f"Message: {log['message']}\n"
             output += f"Level: {log['level']}\n"
-            output += f"Level: {log['level']}\n"
             if "object_id" in log:
                 output += f"Object ID: {log['object_id']}\n"
             if "object_type" in log:

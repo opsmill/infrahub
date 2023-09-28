@@ -159,7 +159,7 @@ class MiscellaneousSettings(BaseSettings):
     print_query_details: bool = False
     start_background_runner: bool = True
     maximum_validator_execution_time: int = Field(
-        30, description="The maximum allowed time (in seconds) for a validator to run."
+        1800, description="The maximum allowed time (in seconds) for a validator to run."
     )
 
 
