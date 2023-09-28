@@ -3,7 +3,7 @@ import importlib
 import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import pytest
 import ujson
@@ -12,6 +12,7 @@ from infrahub import config
 from infrahub.lock import initialize_lock
 from infrahub.message_bus import InfrahubBaseMessage
 from infrahub.message_bus.operations import execute_message
+from infrahub.message_bus.types import MessageTTL
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub_client.utils import str_to_bool
@@ -64,7 +65,7 @@ class BusRecorder(InfrahubMessageBus):
         self.messages: List[InfrahubBaseMessage] = []
         self.messages_per_routing_key: Dict[str, List[InfrahubBaseMessage]] = {}
 
-    async def publish(self, message: InfrahubBaseMessage, routing_key: str) -> None:
+    async def publish(self, message: InfrahubBaseMessage, routing_key: str, delay: Optional[MessageTTL] = None) -> None:
         self.messages.append(message)
         if routing_key not in self.messages_per_routing_key:
             self.messages_per_routing_key[routing_key] = []
@@ -82,7 +83,7 @@ class BusSimulator(InfrahubMessageBus):
         self.service: InfrahubServices = InfrahubServices()
         self.replies: List[InfrahubBaseMessage] = []
 
-    async def publish(self, message: InfrahubBaseMessage, routing_key: str) -> None:
+    async def publish(self, message: InfrahubBaseMessage, routing_key: str, delay: Optional[MessageTTL] = None) -> None:
         self.messages.append(message)
         if routing_key not in self.messages_per_routing_key:
             self.messages_per_routing_key[routing_key] = []
