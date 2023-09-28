@@ -26,8 +26,8 @@ class CoreArtifactDefinition(Node):
         target: Node,
         transformation: Node,
     ) -> None:
-        # only one generation task for the same repo/target/definition combo concurrently
-        async with lock.registry.get(f"{repository.id}-{target.id}-{definition.id}"):
+        # only one generation task for the same target/definition combo concurrently
+        async with lock.registry.get(f"{target.id}-{definition.id}", namespace="artifact"):
             artifacts = await registry.manager.query(
                 db=db, schema=schema, filters={"definition__ids": [definition.id], "object__ids": [target.id]}
             )
