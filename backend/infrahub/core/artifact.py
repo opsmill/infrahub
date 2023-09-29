@@ -96,13 +96,8 @@ class CoreArtifactDefinition(Node):
         # tasks = []
         # limit_concurrent_execution = asyncio.Semaphore(max_concurrent_execution)
 
-
         # TODO need to revisit this part to avoid pulling all members in the first place
-        targets = [
-            member
-            for member in members
-            if len(nodes) != 0 and member.id in nodes or len(nodes) == 0
-        ]
+        targets = [member for member in members if len(nodes) != 0 and member.id in nodes or len(nodes) == 0]
 
         for target in targets:
             # TODO Execute these tasks in a Pool
