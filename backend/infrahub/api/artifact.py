@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Dict
+from typing import TYPE_CHECKING, Dict, List
 
 from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel, Field
