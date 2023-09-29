@@ -58,6 +58,7 @@ class CoreArtifactDefinition(Node):
             )
 
             await rpc_client.call(message=message, wait_for_response=False)
+        return artifact
 
     async def generate(
         self,
@@ -99,9 +100,10 @@ class CoreArtifactDefinition(Node):
         # TODO need to revisit this part to avoid pulling all members in the first place
         targets = [member for member in members if len(nodes) != 0 and member.id in nodes or len(nodes) == 0]
 
+        artifacts = {}
         for target in targets:
             # TODO Execute these tasks in a Pool
-            await self.generate_one_artifact(
+            artifact = await self.generate_one_artifact(
                 db=db,
                 rpc_client=rpc_client,
                 schema=artifact_schema,
@@ -111,5 +113,6 @@ class CoreArtifactDefinition(Node):
                 query=query,
                 transformation=transformation,
             )
+            artifacts[target] = artifact
 
-        return [target.id for target in targets]
+        return [{"node": target.id, "artifact": artifacts[target].id} for target in targets]
