@@ -76,6 +76,8 @@ class CoreArtifactDefinition(Node):
         members_dict: Dict[str, Node] = await group.members.get_peers(db=db)  # type: ignore[attr-defined]
         members = list(members_dict.values())
 
+        if nodes is None:
+            nodes = []
         # group_filter = {"member_of_groups__ids": [group.id]}
         # if nodes:
         #     group_filter["ids"] = nodes
@@ -94,11 +96,15 @@ class CoreArtifactDefinition(Node):
         # tasks = []
         # limit_concurrent_execution = asyncio.Semaphore(max_concurrent_execution)
 
-        for member in members:
-            if nodes and member.id not in nodes:
-                # TODO need to revisit this part to avoid pulling all members in the first place
-                continue
 
+        # TODO need to revisit this part to avoid pulling all members in the first place
+        targets = [
+            member
+            for member in members
+            if len(nodes) != 0 and member.id in nodes or len(nodes) == 0
+        ]
+
+        for target in targets:
             # TODO Execute these tasks in a Pool
             await self.generate_one_artifact(
                 db=db,
@@ -106,9 +112,9 @@ class CoreArtifactDefinition(Node):
                 schema=artifact_schema,
                 definition=self,
                 repository=repository,
-                target=member,
+                target=target,
                 query=query,
                 transformation=transformation,
             )
 
-        return [member.id for member in members]
+        return [target.id for target in targets]
