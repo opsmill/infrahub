@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 import infrahub.config as config
 from infrahub import lock
-from infrahub.exceptions import Error, RepositoryError
+from infrahub.exceptions import Error
 from infrahub.git.repository import InfrahubRepository
 from infrahub.message_bus.events import (
     ArtifactMessageAction,
@@ -61,21 +61,6 @@ async def handle_git_message_action_merge(message: InfrahubGitRPC, client: Infra
         return InfrahubRPCResponse(status=RPCStatusCode.OK)
 
 
-async def handle_git_message_action_repo_add(message: InfrahubGitRPC, client: InfrahubClient) -> InfrahubRPCResponse:
-    async with lock.registry.get(name=message.repository_name, namespace="repository"):
-        try:
-            repo = await InfrahubRepository.new(
-                id=message.repository_id, name=message.repository_name, location=message.location, client=client
-            )
-            await repo.import_objects_from_files(branch_name=repo.default_branch_name)
-            await repo.sync()
-
-        except RepositoryError as exc:
-            return InfrahubRPCResponse(status=RPCStatusCode.BAD_REQUEST, errors=[exc.message])
-
-        return InfrahubRPCResponse(status=RPCStatusCode.CREATED)
-
-
 async def handle_artifact_message_action_generate(
     message: InfrahubArtifactRPC, client: InfrahubClient
 ) -> InfrahubRPCResponse:
@@ -124,12 +109,8 @@ async def handle_git_rpc_message(  # pylint: disable=too-many-return-statements
     LOGGER.debug(f"Will process Git RPC message : {message.action}, {message.repository_name} : {message.params}")
 
     handler_map = {
-        GitMessageAction.REPO_ADD: handle_git_message_action_repo_add,
         GitMessageAction.DIFF: handle_git_message_action_diff,
         GitMessageAction.MERGE: handle_git_message_action_merge,
-        GitMessageAction.REBASE: handle_not_implemented,
-        GitMessageAction.PUSH: handle_not_implemented,
-        GitMessageAction.PULL: handle_not_implemented,
     }
     handler = handler_map.get(message.action) or handle_bad_request
     return await handler(message=message, client=client)

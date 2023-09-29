@@ -73,9 +73,6 @@ class BranchMessageAction(str, BaseEnum):
 
 
 class GitMessageAction(str, BaseEnum):
-    PULL = "pull"
-    PUSH = "push"
-    REBASE = "rebase"
     MERGE = "merge"
     DIFF = "diff"
     REPO_ADD = "repo-add"
