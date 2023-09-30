@@ -3,15 +3,11 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-import infrahub.config as config
-from infrahub import lock
 from infrahub.exceptions import Error
 from infrahub.git.repository import InfrahubRepository
 from infrahub.message_bus.events import (
     ArtifactMessageAction,
-    GitMessageAction,
     InfrahubArtifactRPC,
-    InfrahubGitRPC,
     InfrahubRPC,
     InfrahubRPCResponse,
     MessageType,
@@ -41,13 +37,6 @@ async def handle_not_implemented(  # pylint: disable=unused-argument
     message: InfrahubRPC, client: InfrahubClient
 ) -> InfrahubRPCResponse:
     return InfrahubRPCResponse(status=RPCStatusCode.NOT_IMPLEMENTED)
-
-
-async def handle_git_message_action_merge(message: InfrahubGitRPC, client: InfrahubClient) -> InfrahubRPCResponse:
-    repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
-    async with lock.registry.get(name=message.repository_name, namespace="repository"):
-        await repo.merge(source_branch=message.params["branch_name"], dest_branch=config.SETTINGS.main.default_branch)
-        return InfrahubRPCResponse(status=RPCStatusCode.OK)
 
 
 async def handle_artifact_message_action_generate(
@@ -92,18 +81,6 @@ async def handle_artifact_message_action_generate(
         return InfrahubRPCResponse(status=RPCStatusCode.INTERNAL_ERROR, errors=[exc.message])
 
 
-async def handle_git_rpc_message(  # pylint: disable=too-many-return-statements
-    message: InfrahubGitRPC, client: InfrahubClient
-) -> InfrahubRPCResponse:
-    LOGGER.debug(f"Will process Git RPC message : {message.action}, {message.repository_name} : {message.params}")
-
-    handler_map = {
-        GitMessageAction.MERGE: handle_git_message_action_merge,
-    }
-    handler = handler_map.get(message.action) or handle_bad_request
-    return await handler(message=message, client=client)
-
-
 async def handle_artifact_message(message: InfrahubArtifactRPC, client: InfrahubClient) -> InfrahubRPCResponse:
     LOGGER.debug(
         f"Will process Artifact RPC message : {message.action}, {message.repository_name} : {message.definition['display_label']} {message.target['display_label']}"
@@ -118,7 +95,6 @@ async def handle_artifact_message(message: InfrahubArtifactRPC, client: Infrahub
 
 async def handle_message(message: InfrahubRPC, client: InfrahubClient) -> InfrahubRPCResponse:
     message_type_map = {
-        MessageType.GIT: handle_git_rpc_message,
         MessageType.ARTIFACT: handle_artifact_message,
     }
     handler = message_type_map.get(message.type) or handle_not_found

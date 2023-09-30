@@ -4,14 +4,8 @@ import httpx
 import pytest
 
 from infrahub.exceptions import RepositoryError
-from infrahub.git import InfrahubRepository, handle_git_rpc_message
+from infrahub.git import InfrahubRepository
 from infrahub.message_bus import Meta, messages
-from infrahub.message_bus.events import (
-    GitMessageAction,
-    InfrahubGitRPC,
-    InfrahubRPCResponse,
-    RPCStatusCode,
-)
 from infrahub.message_bus.operations import git
 from infrahub.message_bus.responses import DiffNamesResponse
 from infrahub.services import InfrahubServices
@@ -54,27 +48,27 @@ async def test_git_rpc_create_error(git_upstream_repo_01, tmp_path):
         await git.repository.add(message=message, service=services)
 
 
-async def test_git_rpc_merge(git_upstream_repo_01, git_repo_01: InfrahubRepository, branch01: BranchData, tmp_path):
+async def test_git_rpc_merge(
+    git_upstream_repo_01, git_repo_01: InfrahubRepository, branch01: BranchData, tmp_path, helper
+):
     repo = git_repo_01
 
     await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
 
     commit_main_before = repo.get_commit_value(branch_name="main")
 
-    message = InfrahubGitRPC(
-        action=GitMessageAction.MERGE.value,
-        repository_id=str(UUIDT()),
-        repository_name=repo.name,
-        location=git_upstream_repo_01["path"],
-        params={"branch_name": "branch01"},
+    message = messages.GitRepositoryMerge(
+        repository_id=str(UUIDT()), repository_name=repo.name, source_branch="branch01", destination_branch="main"
     )
 
-    response = await handle_git_rpc_message(message=message, client=None)
+    client_config = Config(requester=dummy_async_request)
+    bus_simulator = helper.get_message_bus_simulator()
+    service = InfrahubServices(client=InfrahubClient(config=client_config), message_bus=bus_simulator)
+    bus_simulator.service = service
+    await service.send(message=message)
 
     commit_main_after = repo.get_commit_value(branch_name="main")
 
-    assert isinstance(response, InfrahubRPCResponse)
-    assert response.status == RPCStatusCode.OK
     assert commit_main_before != commit_main_after
 
 

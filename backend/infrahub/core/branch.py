@@ -34,7 +34,6 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import add_relationship, update_relationships_to
 from infrahub.exceptions import BranchNotFound, ValidationError
 from infrahub.message_bus import messages
-from infrahub.message_bus.events import GitMessageAction, InfrahubGitRPC
 from infrahub.message_bus.responses import DiffNamesResponse
 
 if TYPE_CHECKING:
@@ -714,10 +713,9 @@ class Branch(StandardNode):
         # Collect all Repositories in Main because we'll need the commit in Main for each one.
         repos_in_main_list = await NodeManager.query(schema="CoreRepository", db=db)
         repos_in_main = {repo.id: repo for repo in repos_in_main_list}
-        tasks = []
 
         repos_in_branch_list = await NodeManager.query(schema="CoreRepository", db=db, branch=self)
-
+        events = []
         for repo in repos_in_branch_list:
             # Check if the repo, exist in main, if not ignore this repo
             if repo.id not in repos_in_main:
@@ -728,16 +726,17 @@ class Branch(StandardNode):
 
             # if not changed_files:
             #     continue
-
-            tasks.append(
-                rpc_client.call(
-                    message=InfrahubGitRPC(
-                        action=GitMessageAction.MERGE, repository=repo, params={"branch_name": self.name}
-                    )
+            events.append(
+                messages.GitRepositoryMerge(
+                    repository_id=repo.id,
+                    repository_name=repo.name.value,
+                    source_branch=self.name,
+                    destination_branch=config.SETTINGS.main.default_branch,
                 )
             )
 
-        await asyncio.gather(*tasks)
+        for event in events:
+            await rpc_client.send(message=event)
 
     async def rebase_graph(self, db: InfrahubDatabase, at: Optional[Timestamp] = None):
         at = Timestamp(at)

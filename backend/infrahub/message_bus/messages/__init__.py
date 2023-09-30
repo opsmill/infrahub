@@ -11,6 +11,7 @@ from .git_branch_create import GitBranchCreate
 from .git_diff_namesonly import GitDiffNamesOnly
 from .git_file_get import GitFileGet
 from .git_repository_add import GitRepositoryAdd
+from .git_repository_merge import GitRepositoryMerge
 from .refresh_registry_branches import RefreshRegistryBranches
 from .request_artifactdefinition_generate import RequestArtifactDefinitionGenerate
 from .request_git_createbranch import RequestGitCreateBranch
@@ -33,6 +34,7 @@ MESSAGE_MAP: Dict[str, Type[InfrahubBaseMessage]] = {
     "git.diff.names_only": GitDiffNamesOnly,
     "git.file.get": GitFileGet,
     "git.repository.add": GitRepositoryAdd,
+    "git.repository.merge": GitRepositoryMerge,
     "event.branch.create": EventBranchCreate,
     "event.schema.update": EventSchemaUpdate,
     "finalize.validator.execution": FinalizeValidatorExecution,

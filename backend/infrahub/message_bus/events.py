@@ -46,7 +46,6 @@ MESSAGE_MAPPING = {
     MessageType.DATA: "InfrahubDataMessage",
     MessageType.SCHEMA: "InfrahubSchemaMessage",
     MessageType.BRANCH: "InfrahubBranchMessage",
-    MessageType.GIT: "InfrahubGitRPC",
     MessageType.ARTIFACT: "InfrahubArtifactRPC",
     MessageType.RPC_RESPONSE: "InfrahubRPCResponse",
 }
@@ -288,60 +287,6 @@ class InfrahubRPCResponse(InfrahubMessage):
     def raise_for_status(self) -> None:
         if self.errors:
             raise ProcessingError("\n".join(self.errors))
-
-
-class InfrahubGitRPC(InfrahubRPC):
-    type = MessageType.GIT
-    actions = GitMessageAction
-
-    def __init__(
-        self,
-        repository: Optional[Node] = None,
-        repository_name: Optional[str] = None,
-        repository_id: Optional[str] = None,
-        location: Optional[str] = None,
-        params: Optional[dict] = None,
-        *args,
-        **kwargs,
-    ):
-        if not repository and not repository_id:
-            raise ValueError("Either Repository or repository_id must be provided for InfrahubGitRPC.")
-
-        if not repository and not repository_name:
-            raise ValueError("Either Repository or repository_name must be provided for InfrahubGitRPC.")
-
-        if not repository and not location:
-            raise ValueError("Either Repository or location must be provided for InfrahubGitRPC.")
-
-        super().__init__(*args, **kwargs)
-
-        self.repository = repository
-        self.repository_id = repository_id
-        self.repository_name = repository_name
-        self.location = location
-
-        if repository and not repository_id:
-            self.repository_id = repository.id
-        if repository and not repository_name:
-            self.repository_name = repository.name.value
-        if repository and not location:
-            self.location = repository.location.value
-
-        self.params = params or {}
-
-        # self.branch_name = branch_name
-        # self.source_branch_name = source_branch_name
-
-    def generate_message_body(self) -> dict:
-        """Generate the body of the message as a dict."""
-
-        body = super().generate_message_body()
-        body["repository_id"] = self.repository_id
-        body["repository_name"] = self.repository_name
-        body["location"] = self.location
-        body["params"] = self.params
-
-        return body
 
 
 class InfrahubArtifactRPC(InfrahubRPC):
