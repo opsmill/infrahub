@@ -33,11 +33,9 @@ from infrahub.core.registry import get_branch, registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import add_relationship, update_relationships_to
 from infrahub.exceptions import BranchNotFound, ValidationError
-from infrahub.message_bus.events import (
-    GitMessageAction,
-    InfrahubGitRPC,
-    InfrahubRPCResponse,
-)
+from infrahub.message_bus import messages
+from infrahub.message_bus.events import GitMessageAction, InfrahubGitRPC
+from infrahub.message_bus.responses import DiffNamesResponse
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -513,31 +511,31 @@ class Branch(StandardNode):
         graph_passed, graph_messages = await self.validate_graph(db=db)
         repo_passed, repo_messages = await self.validate_repositories(rpc_client=rpc_client, db=db)
 
-        messages = graph_messages + repo_messages
+        all_messages = graph_messages + repo_messages
         passed = graph_passed & repo_passed
 
-        return passed, messages
+        return passed, all_messages
 
     async def validate_graph(self, db: InfrahubDatabase) -> Tuple[bool, List[str]]:
         passed = True
-        messages = []
+        identified_conflicts = []
 
         # Check the diff and ensure the branch doesn't have some conflict
         diff = await self.diff(db=db)
         if conflicts := await diff.get_conflicts(db=db):
             passed = False
             for conflict in conflicts:
-                messages.append(f"Conflict detected at {conflict}")
+                identified_conflicts.append(f"Conflict detected at {conflict}")
 
-        return passed, messages
+        return passed, identified_conflicts
 
     async def validate_repositories(
         self, rpc_client: InfrahubRpcClient, db: InfrahubDatabase  # pylint: disable=unused-argument
     ) -> Tuple[bool, List[str]]:
         passed = True
-        messages = []
+        all_messages = []
 
-        return passed, messages
+        return passed, all_messages
 
     async def diff(
         self,
@@ -1206,15 +1204,17 @@ class Diff:
         Path format: ("file", repository.id, filename )
         """
 
-        response: InfrahubRPCResponse = await rpc_client.call(
-            message=InfrahubGitRPC(
-                action=GitMessageAction.DIFF,
-                repository=repository,
-                params={"first_commit": commit_from, "second_commit": commit_to},
-            )
+        message = messages.GitDiffNamesOnly(
+            repository_id=repository.id,
+            repository_name=repository.name.value,  # type: ignore[attr-defined]
+            first_commit=commit_from,
+            second_commit=commit_to,
         )
 
-        return {("file", repository.id, filename) for filename in response.response.get("files_changed", [])}
+        reply = await rpc_client.rpc(message=message)
+        diff = reply.parse(response_class=DiffNamesResponse)
+
+        return {("file", repository.id, filename) for filename in diff.files_changed}
 
     async def get_nodes(self, db: InfrahubDatabase) -> Dict[str, Dict[str, NodeDiffElement]]:
         """Return all the nodes calculated by the diff, organized by branch."""
@@ -1675,13 +1675,15 @@ class Diff:
 
         files = []
 
-        response: InfrahubRPCResponse = await rpc_client.call(
-            message=InfrahubGitRPC(
-                action=GitMessageAction.DIFF,
-                repository=repository,
-                params={"first_commit": commit_from, "second_commit": commit_to},
-            )
+        message = messages.GitDiffNamesOnly(
+            repository_id=repository.id,
+            repository_name=repository.name.value,  # type: ignore[attr-defined]
+            first_commit=commit_from,
+            second_commit=commit_to,
         )
+
+        reply = await rpc_client.rpc(message=message)
+        diff = reply.parse(response_class=DiffNamesResponse)
 
         actions = {
             "files_changed": DiffAction.UPDATED,
@@ -1690,7 +1692,7 @@ class Diff:
         }
 
         for action_name, diff_action in actions.items():
-            for filename in response.response.get(action_name, []):
+            for filename in getattr(diff, action_name, []):
                 files.append(
                     FileDiffElement(
                         branch=branch_name,

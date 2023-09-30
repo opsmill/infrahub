@@ -1,8 +1,16 @@
+from typing import List
+
 from pydantic import BaseModel, Field
 
 
 class ContentResponse(BaseModel):
     content: str = Field(..., description="The returned content")
+
+
+class DiffNamesResponse(BaseModel):
+    files_added: List[str] = Field(..., description="Files added")
+    files_changed: List[str] = Field(..., description="Files changed")
+    files_removed: List[str] = Field(..., description="Files removed")
 
 
 class TemplateResponse(BaseModel):
@@ -15,6 +23,7 @@ class TransformResponse(BaseModel):
 
 RESPONSE_MAP = {
     "content_response": ContentResponse,
+    "diffnames_response": DiffNamesResponse,
     "template_response": TemplateResponse,
     "transform_response": TransformResponse,
 }

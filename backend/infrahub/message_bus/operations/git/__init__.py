@@ -1,3 +1,3 @@
-from . import branch, file, repository
+from . import branch, diff, file, repository
 
-__all__ = ["branch", "file", "repository"]
+__all__ = ["branch", "diff", "file", "repository"]

@@ -43,17 +43,6 @@ async def handle_not_implemented(  # pylint: disable=unused-argument
     return InfrahubRPCResponse(status=RPCStatusCode.NOT_IMPLEMENTED)
 
 
-async def handle_git_message_action_diff(message: InfrahubGitRPC, client: InfrahubClient) -> InfrahubRPCResponse:
-    repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
-    files_changed, files_added, files_removed = await repo.calculate_diff_between_commits(
-        first_commit=message.params["first_commit"], second_commit=message.params["second_commit"]
-    )
-    return InfrahubRPCResponse(
-        status=RPCStatusCode.OK,
-        response={"files_changed": files_changed, "files_added": files_added, "files_removed": files_removed},
-    )
-
-
 async def handle_git_message_action_merge(message: InfrahubGitRPC, client: InfrahubClient) -> InfrahubRPCResponse:
     repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=client)
     async with lock.registry.get(name=message.repository_name, namespace="repository"):
@@ -109,7 +98,6 @@ async def handle_git_rpc_message(  # pylint: disable=too-many-return-statements
     LOGGER.debug(f"Will process Git RPC message : {message.action}, {message.repository_name} : {message.params}")
 
     handler_map = {
-        GitMessageAction.DIFF: handle_git_message_action_diff,
         GitMessageAction.MERGE: handle_git_message_action_merge,
     }
     handler = handler_map.get(message.action) or handle_bad_request
