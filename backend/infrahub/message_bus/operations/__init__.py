@@ -24,6 +24,7 @@ COMMAND_MAP = {
     "finalize.validator.execution": finalize.validator.execution,
     "git.branch.create": git.branch.create,
     "git.file.get": git.file.get,
+    "git.repository.add": git.repository.add,
     "refresh.registry.branches": refresh.registry.branches,
     "request.git.create_branch": requests.git.create_branch,
     "request.artifact_definition.generate": requests.artifact_definition.generate,
