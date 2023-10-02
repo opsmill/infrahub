@@ -69,7 +69,9 @@ async def check_definition(message: messages.CheckRepositoryCheckDefinition, ser
         await check.save()
 
     await service.cache.set(
-        key=f"{message.validator_execution_id}__{message.check_execution_id}", value=conclusion, expires=7200
+        key=f"validator_execution_id:{message.validator_execution_id}:check_execution_id:{message.check_execution_id}",
+        value=conclusion,
+        expires=7200,
     )
 
 
@@ -146,13 +148,10 @@ async def merge_conflicts(message: messages.CheckRepositoryMergeConflicts, servi
             await check.save()
 
     for previous_result in existing_checks.values():
-        # await existing_checks[previous_result].delete()
         await previous_result.delete()
 
-    # validator.state.value = "completed"
-    # validator.conclusion.value = validator_conclusion
-    # validator.completed_at.value = Timestamp().to_string()
-    # await validator.save()
     await service.cache.set(
-        key=f"{message.validator_execution_id}__{message.check_execution_id}", value=validator_conclusion, expires=7200
+        key=f"validator_execution_id:{message.validator_execution_id}:check_execution_id:{message.check_execution_id}",
+        value=validator_conclusion,
+        expires=7200,
     )

@@ -30,3 +30,5 @@ services:
         condition: service_healthy
       message-queue:
         condition: service_healthy
+      cache:
+        condition: service_healthy

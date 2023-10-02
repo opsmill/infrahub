@@ -88,7 +88,9 @@ async def check(message: messages.RequestRepositoryChecks, service: InfrahubServ
 
     checks_in_execution = ",".join(check_execution_ids)
     log.info("Checks in execution", checks=checks_in_execution)
-    await service.cache.set(key=validator_execution_id, value=checks_in_execution, expires=7200)
+    await service.cache.set(
+        key=f"validator_execution_id:{validator_execution_id}:checks", value=checks_in_execution, expires=7200
+    )
     events.append(
         messages.FinalizeValidatorExecution(
             start_time=Timestamp().to_string(), validator_id=validator.id, validator_execution_id=validator_execution_id

@@ -50,6 +50,7 @@ def execute_before_any_test(worker_id):
         except (ValueError, IndexError):
             db_id = 1
 
+        config.SETTINGS.cache.address = f"{BUILD_NAME}-cache-1"
         config.SETTINGS.database.address = f"{BUILD_NAME}-database-{db_id}"
         config.SETTINGS.storage.settings = {"directory": "/opt/infrahub/storage"}
 
