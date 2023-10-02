@@ -16,13 +16,16 @@ import {
   getNodeClassName,
   tDataDiffNodePeerChange,
   tDataDiffNodePeerValue,
+  tDataDiffNodeProperty,
 } from "./data-diff-node";
 import { DataDiffProperty } from "./data-diff-property";
+import { DataDiffConflictInfo } from "./diff-conflict-info";
 import { DiffPill } from "./diff-pill";
 import { DataDiffThread } from "./diff-thread";
 
 export type tDataDiffNodePeerProps = {
   peerChanges: tDataDiffNodePeerChange;
+  peerProperties?: { [key: string]: tDataDiffNodeProperty };
 };
 
 export const getPeerRedirection = (
@@ -45,7 +48,10 @@ export const getPeerRedirection = (
 };
 
 export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
-  const { peerChanges } = props;
+  const {
+    peerChanges,
+    peerProperties, // For relationship one
+  } = props;
 
   const { branchname } = useParams();
   const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
@@ -60,7 +66,7 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
     changed_at,
     branches,
     peer: peerChange,
-    properties,
+    properties, // For relationship many
     summary,
     branch: peerBranch,
     new: newPeer,
@@ -81,7 +87,7 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
     if (branches?.length) {
       return branches.map((branch: string, index: number) => {
         return (
-          <div className="p-1 pr-0 flex flex-col lg:flex-row last:mr-0" key={index}>
+          <div className="relative p-1 pr-0 flex flex-col lg:flex-row last:mr-0" key={index}>
             <div className="flex flex-1 items-center">
               {peerChange?.kind && <Badge>{peerChange?.kind}</Badge>}
 
@@ -102,6 +108,8 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
                 {changed_at && <DateDisplay date={changed_at} hideDefault />}
               </div>
             </div>
+
+            {!branchname && <DataDiffConflictInfo path={path} />}
           </div>
         );
       });
@@ -109,7 +117,7 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
 
     if (peerBranch) {
       return (
-        <div className="p-1 pr-0 flex flex-col lg:flex-row last:mr-0">
+        <div className="relative p-1 pr-0 flex flex-col lg:flex-row last:mr-0">
           <div className="flex flex-1 items-center">
             <div className="flex flex-1 items-center">
               {newPeer?.kind && <Badge>{newPeer?.kind}</Badge>}
@@ -133,6 +141,8 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
               {changed_at && <DateDisplay date={changed_at} hideDefault />}
             </div>
           </div>
+
+          {!branchname && <DataDiffConflictInfo path={path} />}
         </div>
       );
     }
@@ -140,7 +150,7 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
     return null;
   };
 
-  const propertiesChanges: ReactNode[] = Object.values(properties ?? {}).map(
+  const propertiesChanges: ReactNode[] = Object.values(properties || peerProperties || {}).map(
     (property, index: number) =>
       property.changes?.map((change: any, index2: number) => (
         <DataDiffProperty key={`${index}-${index2}`} property={change} path={property.path} />
@@ -149,7 +159,15 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
 
   // If there are some properties, then display the accordion
   if (propertiesChanges?.length) {
-    return <Accordion title={renderTitleDisplay()}>{propertiesChanges}</Accordion>;
+    return (
+      <div
+        className={classNames(
+          "mb-1 rounded-md last:mb-0",
+          getNodeClassName([], peerChanges.branch, branchOnly)
+        )}>
+        <Accordion title={renderTitleDisplay()}>{propertiesChanges}</Accordion>
+      </div>
+    );
   }
 
   return (
