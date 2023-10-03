@@ -36,11 +36,12 @@ class BuiltinTag(NetboxModel):
 class CoreOrganization(NetboxModel):
     _modelname = "CoreOrganization"
     _identifiers = ("name",)
-    _attributes = ("description", "type")
+    _attributes = ("group", "description", "type")
 
     name: str
     description: Optional[str]
     type: Optional[str]
+    group: Optional[str]
 
     local_id: Optional[str]
     local_data: Optional[Any]
@@ -61,11 +62,14 @@ class BuiltinRole(NetboxModel):
 class BuiltinLocation(NetboxModel):
     _modelname = "BuiltinLocation"
     _identifiers = ("name",)
-    _attributes = ("description", "type")
+    _attributes = ("tags", "organization", "group", "description", "type")
 
     name: str
     description: Optional[str]
     type: str
+    tags: List[str] = []
+    organization: Optional[str]
+    group: Optional[str]
 
     local_id: Optional[str]
     local_data: Optional[Any]

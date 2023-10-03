@@ -13,6 +13,7 @@ destination:
 order: [
   "BuiltinTag",
   "BuiltinRole",
+  "CoreStandardGroup",
   "CoreOrganization",
   "BuiltinLocation",
   "InfraRack",
@@ -22,10 +23,9 @@ order: [
   "InfraCircuit",
   "InfraRouteTarget",
   "InfraVRF",
-  "CoreStandardGroup",
+  "InfraDevice",
   "InfraVLAN",
   "InfraPrefix",
-  "InfraDevice",
   "InfraIPAddress"
 ]
 
@@ -62,7 +62,15 @@ schema_mapping:
       - name: description
         mapping: description
 
-  # Tenancy
+  # Tenancy (tenants, tenant groups)
+  - name: CoreStandardGroup
+    mapping: tenancy.tenant-groups
+    identifiers: ["name"]
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
   - name: CoreOrganization
     mapping: tenancy.tenants
     identifiers: ["name"]
@@ -73,28 +81,19 @@ schema_mapping:
         mapping: description
       - name: type
         static: "Tenant"
-  - name: CoreOrganization
-    mapping: dcim.manufacturers
-    identifiers: ["name"]
-    fields:
-      - name: name
-        mapping: name
-      - name: description
-        mapping: description
-      - name: type
-        static: "Manufacturer"
-  - name: CoreOrganization
-    mapping: circuits.providers
-    identifiers: ["name"]
-    fields:
-      - name: name
-        mapping: name
-      - name: description
-        mapping: description
-      - name: type
-        static: "Provider"
+      - name: group
+        mapping: group
+        reference: CoreStandardGroup
 
-  # Sites (Region, Sites, Location)
+  # Sites (Site Groups, Region, Sites, Location)
+  - name: CoreStandardGroup
+    mapping: dcim.site-groups
+    identifiers: ["name"]
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
   - name: BuiltinLocation
     mapping: dcim.regions
     fields:
@@ -104,10 +103,9 @@ schema_mapping:
         mapping: name
       - name: type
         static: "Region"
-      # Missing "tags" in BuiltinLocation object
-      # - name: tags
-      #   mapping: tags
-      #   reference: BuiltinTag
+      - name: tags
+        mapping: tags
+        reference: BuiltinTag
   - name: BuiltinLocation
     mapping: dcim.sites
     fields:
@@ -117,14 +115,15 @@ schema_mapping:
         mapping: name
       - name: type
         static: "Site"
-      # Missing "tenant/organization" in BuiltinLocation object
-      # - name: organization
-      #   mapping: tenant.name
-      #   reference: CoreOrganization
-      # Missing "tags" in BuiltinLocation object
-      # - name: tags
-      #   mapping: tags
-      #   reference: BuiltinTag
+      - name: group
+        mapping: group
+        reference: CoreStandardGroup
+      - name: organization
+        mapping: tenant
+        reference: CoreOrganization
+      - name: tags
+        mapping: tags
+        reference: BuiltinTag
   - name: BuiltinLocation
     mapping: dcim.locations
     fields:
@@ -134,14 +133,12 @@ schema_mapping:
         mapping: name
       - name: type
         static: "Location"
-      # Missing "tenant/organization" in BuiltinLocation object
-      # - name: organization
-      #   mapping: tenant.name
-      #   reference: CoreOrganization
-      # Missing "tags" in BuiltinLocation object
-      # - name: tags
-      #   mapping: tags
-      #   reference: BuiltinTag
+      - name: organization
+        mapping: tenant
+        reference: CoreOrganization
+      - name: tags
+        mapping: tags
+        reference: BuiltinTag
 
   # Racks
   - name: InfraRack
@@ -166,7 +163,17 @@ schema_mapping:
         mapping: tags
         reference: BuiltinTag
 
-  # Device Type
+  # Device (manufacturer, device types, devices)
+  - name: CoreOrganization
+    mapping: dcim.manufacturers
+    identifiers: ["name"]
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
+      - name: type
+        static: "Manufacturer"
   - name: TemplateDeviceType
     mapping: dcim.device-types
     identifiers: ["name", "manufacturer"]
@@ -179,9 +186,8 @@ schema_mapping:
         mapping: tags
         reference: BuiltinTag
       - name: manufacturer
-        mapping: manufacturer.name
-
-  # Device
+        mapping: manufacturer
+        reference: CoreOrganization
   # -> if the device in netbox have no name, no serial and no asset, which identifiers could we use ?
   - name: InfraDevice
     identifiers: ["name", "serial_number", "asset_tag", "model", "site"]
@@ -211,7 +217,17 @@ schema_mapping:
         mapping: tags
         reference: BuiltinTag
 
-  # Circuits (Provider Network, Circuits Types, Circuits)
+  # Circuits (Provider, Provider Network, Circuits Types, Circuits)
+  - name: CoreOrganization
+    mapping: circuits.providers
+    identifiers: ["name"]
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
+      - name: type
+        static: "Provider"
   - name: InfraProviderNetwork
     mapping: circuits.provider-networks
     fields:
@@ -230,7 +246,8 @@ schema_mapping:
         mapping: tags
         reference: BuiltinTag
       - name: provider
-        mapping: provider.name
+        mapping: provider
+        reference: CoreOrganization
   - name: TemplateCircuitType
     mapping: circuits.circuit-types
     fields:
@@ -251,7 +268,8 @@ schema_mapping:
       - name: vendor_id
         mapping: cid
       - name: provider
-        mapping: provider.name
+        mapping: provider
+        reference: CoreOrganization
       - name: description
         mapping: description
       # - name: status
@@ -259,7 +277,8 @@ schema_mapping:
       - name: type
         mapping: type.name
       - name: provider
-        mapping: provider.name
+        mapping: provider
+        reference: CoreOrganization
       - name: tags
         mapping: tags
         reference: BuiltinTag
@@ -274,7 +293,8 @@ schema_mapping:
       - name: description
         mapping: description
       - name: organization
-        mapping: tenant.name
+        mapping: tenant
+        reference: CoreOrganization
   - name: InfraVRF
     mapping: ipam.vrfs
     identifiers: ["name"]
@@ -284,21 +304,22 @@ schema_mapping:
       - name: description
         mapping: description
       - name: organization
-        mapping: tenant.name
+        mapping: tenant
+        reference: CoreOrganization
       - name: vrf_rd
         mapping: rd
       # - name: importRT
-      #   mapping: import_targets
+      #   mapping: import_target
       #   reference: InfraRouteTarget
       # - name: exportRT
-      #   mapping: export_targets
+      #   mapping: export_target
       #   reference: InfraRouteTarget
   - name: CoreStandardGroup
     mapping: ipam.vlan-groups
+    identifiers: ["name"]
     fields:
       - name: name
-        mapping: slug
-        identifier: true
+        mapping: name
       - name: description
         mapping: description
   - name: InfraVLAN
@@ -310,13 +331,15 @@ schema_mapping:
       - name: vlan_id
         mapping: vid
       - name: organization
-        mapping: tenant.name
+        mapping: tenant
+        reference: CoreOrganization
       - name: description
         mapping: description
       - name: site
         mapping: site.slug
       - name: vlan_group
-        mapping: group.slug
+        mapping: group
+        reference: CoreStandardGroup
   - name: InfraPrefix
     mapping: ipam.prefixes
     identifiers: ["prefix", "vrf"]
@@ -326,7 +349,8 @@ schema_mapping:
       - name: description
         mapping: description
       - name: organization
-        mapping: tenant.name
+        mapping: tenant
+        reference: CoreOrganization
       - name: role
         mapping: role.name
       - name: vrf
@@ -350,7 +374,8 @@ schema_mapping:
       - name: description
         mapping: description
       - name: organization
-        mapping: tenant.name
+        mapping: tenant
+        reference: CoreOrganization
       - name: role
         mapping: role.name
       # - name: status

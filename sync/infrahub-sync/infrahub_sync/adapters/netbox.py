@@ -88,8 +88,8 @@ class NetboxAdapter(DiffSyncMixin, DiffSync):
                     raise IndexError(f"Unable to get '{field.mapping}' with '{field.reference}' reference from store")
                 if not field_is_list:
                     if node := get_value(obj, field.mapping):
-                        if node.id:
-                            matching_nodes = [item for item in nodes if item.local_id == str(node.id)]
+                        matching_nodes = []
+                        matching_nodes = [item for item in nodes if item.local_id == str(node.id)]
                         if len(matching_nodes) == 0:
                             raise IndexError(f"Unable to locate the node {model} {node.id}")
                         node = matching_nodes[0]
