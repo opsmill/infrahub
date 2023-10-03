@@ -168,7 +168,7 @@ def lint(context: Context, docker: bool = False):
     black(context, docker=docker)
     isort(context, docker=docker)
     pylint(context, docker=docker)
-    # mypy(context)
+    mypy(context, docker=docker)
 
     print(f" - [{NAMESPACE}] All tests have passed!")
 

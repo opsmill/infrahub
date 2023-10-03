@@ -189,6 +189,107 @@ addopts = "-vs --cov-report term-missing --cov-report xml --dist loadscope"
 [tool.mypy]
 pretty = true
 ignore_missing_imports = true
+exclude = "^backend/tests/"
+
+[[tool.mypy.overrides]]
+module = "infrahub"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.api.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.auth"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.checks"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.core.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.cli.events"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.cli.git_agent"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.config"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.database"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.exceptions"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.git.handlers"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.git.repository"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.git_credential.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.lock"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.message_bus"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.message_bus.events"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.message_bus.operations.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.message_bus.rpc"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.server"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.storage.local"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.tasks.registry"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.test_data.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.trace"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.transforms"
+ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = "infrahub_client.*"
