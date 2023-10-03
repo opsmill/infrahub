@@ -125,7 +125,8 @@ branch = true
 
 [tool.coverage.report]
 exclude_lines = [
-    "if TYPE_CHECKING:"
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError()"
 ]
 
 [tool.pylint.general]

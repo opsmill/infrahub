@@ -18,6 +18,7 @@ async def execution(message: messages.FinalizeValidatorExecution, service: Infra
     The message will get rescheduled until the timeout has exceeded or until all checks are accounted for.
     """
     validator = await service.client.get(kind="CoreRepositoryValidator", id=message.validator_id)
+    checks_key = f"validator_execution_id:{message.validator_execution_id}:checks"
     current_conclusion = validator.conclusion.value
     if validator.state.value != "in_progress":
         validator.state.value = "in_progress"
@@ -25,17 +26,21 @@ async def execution(message: messages.FinalizeValidatorExecution, service: Infra
         validator.completed_at.value = ""
         await validator.save()
 
-    required_checks_data = await service.cache.get(key=message.validator_execution_id) or ""
+    required_checks_data = await service.cache.get(key=checks_key) or ""
     required_checks = required_checks_data.split(",")
-    completed_checks_data = await service.cache.list_keys(filter_pattern=f"{message.validator_execution_id}__*")
-    completed_checks = [check.split("__")[1] for check in completed_checks_data]
+    completed_checks_data = await service.cache.list_keys(
+        filter_pattern=f"validator_execution_id:{message.validator_execution_id}:check_execution_id:*"
+    )
+    completed_checks = [check.split(":")[-1] for check in completed_checks_data]
 
     missing_checks = [check for check in required_checks if check not in completed_checks]
     checks_to_verify = [check for check in completed_checks if check in required_checks]
     failed_check = False
 
     for check in checks_to_verify:
-        conclusion = await service.cache.get(f"{message.validator_execution_id}__{check}")
+        conclusion = await service.cache.get(
+            f"validator_execution_id:{message.validator_execution_id}:check_execution_id:{check}"
+        )
         if conclusion != "success":
             failed_check = True
 
@@ -46,7 +51,7 @@ async def execution(message: messages.FinalizeValidatorExecution, service: Infra
 
     if missing_checks:
         remaining_checks = ",".join(missing_checks)
-        await service.cache.set(key=message.validator_execution_id, value=remaining_checks, expires=7200)
+        await service.cache.set(key=checks_key, value=remaining_checks, expires=7200)
         current_time = Timestamp()
         starting_time = Timestamp(message.start_time)
         deadline = starting_time.add_delta(seconds=config.SETTINGS.miscellaneous.maximum_validator_execution_time)
