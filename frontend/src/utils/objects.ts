@@ -11,6 +11,12 @@ export const getObjectDetailsUrl = (
 
   const peerName = schemaKindName[peerKind];
 
+  if (peerName === "StandardGroup") {
+    const url = `/groups/${peerName}/${nodeId}`;
+
+    return url;
+  }
+
   const url = `/objects/${peerName}/${nodeId}`;
 
   return url;
