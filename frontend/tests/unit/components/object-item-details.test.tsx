@@ -26,7 +26,6 @@ describe("Object item details", () => {
 
     const query = screen.getByText(/Query:.*/);
 
-    console.log("query.textContent: ", query.textContent);
     expect(query.textContent).toContain(cleanTabsAndNewLines(accountDetailsMocksQuery));
   });
 });
