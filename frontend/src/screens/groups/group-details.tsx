@@ -16,7 +16,7 @@ import { BUTTON_TYPES, Button } from "../../components/button";
 import MetaDetailsTooltip from "../../components/meta-details-tooltips";
 import SlideOver from "../../components/slide-over";
 import { Tabs } from "../../components/tabs";
-import { DEFAULT_BRANCH_NAME, GROUP_OBJECT } from "../../config/constants";
+import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 import { QSP } from "../../config/qsp";
 import { AuthContext } from "../../decorators/withAuth";
 import { getGroupDetails } from "../../graphql/queries/groups/getGroupDetails";
@@ -46,8 +46,8 @@ export default function GroupItemDetails() {
   const branch = useReactiveVar(branchVar);
   const [schemaList] = useAtom(schemaState);
   const [genericList] = useAtom(genericsState);
-  const schema = schemaList.filter((s) => s.name === groupname)[0];
-  const generic = genericList.filter((s) => s.name === groupname)[0];
+  const schema = schemaList.filter((s) => s.kind === groupname)[0];
+  const generic = genericList.filter((s) => s.kind === groupname)[0];
   const navigate = useNavigate();
 
   const schemaData = generic || schema;
@@ -109,7 +109,7 @@ export default function GroupItemDetails() {
         <div
           onClick={() => navigate(constructPath("/groups"))}
           className="text-xl font-semibold text-gray-900 cursor-pointer hover:underline">
-          {GROUP_OBJECT}
+          Groups
         </div>
         <ChevronRightIcon
           className="h-5 w-5 mt-1 mx-2 flex-shrink-0 text-gray-400"

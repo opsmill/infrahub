@@ -1,5 +1,4 @@
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
-import { useAtom } from "jotai";
 import { ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
@@ -7,7 +6,6 @@ import Accordion from "../../components/accordion";
 import { Badge } from "../../components/badge";
 import { DateDisplay } from "../../components/date-display";
 import { QSP } from "../../config/qsp";
-import { iSchemaKindNameMap, schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { classNames } from "../../utils/common";
 import { diffPeerContent } from "../../utils/diff";
 import { constructPath } from "../../utils/fetch";
@@ -25,17 +23,12 @@ export type tDataDiffNodePeerProps = {
   peerChanges: tDataDiffNodePeerChange;
 };
 
-export const getPeerRedirection = (
-  peer: tDataDiffNodePeerValue,
-  branch: string,
-  schemaKindName: iSchemaKindNameMap,
-  navigate: Function
-) => {
+const getPeerRedirection = (peer: tDataDiffNodePeerValue, branch: string, navigate: Function) => {
   if (!peer.id || !peer.kind) {
     return;
   }
 
-  const objectUrl = getObjectDetailsUrl(peer.id, peer.kind, schemaKindName);
+  const objectUrl = getObjectDetailsUrl(peer.id, peer.kind);
 
   const url = branch ? constructPath(`${objectUrl}?branch=${branch}`) : constructPath(objectUrl);
 
@@ -49,7 +42,6 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
 
   const { branchname } = useParams();
   const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
-  const [schemaKindName] = useAtom(schemaKindNameState);
   const navigate = useNavigate();
 
   // Relationship mayny: action, changed_at, branches, branches, peer, properties, summary
@@ -69,7 +61,7 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
 
   const renderDiffDisplay = (peer: tDataDiffNodePeerValue, branch: any) => {
     if (peer?.kind && peer?.id) {
-      const onClick = getPeerRedirection(peer, branch, schemaKindName, navigate);
+      const onClick = getPeerRedirection(peer, branch, navigate);
 
       return diffPeerContent(peer, action[branch], onClick, branch);
     }

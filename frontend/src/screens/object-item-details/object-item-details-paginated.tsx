@@ -67,8 +67,8 @@ export default function ObjectItemDetails(props: any) {
   const [schemaList] = useAtom(schemaState);
   const [schemaKindName] = useAtom(schemaKindNameState);
   const [genericList] = useAtom(genericsState);
-  const schema = schemaList.filter((s) => s.name === objectname)[0];
-  const generic = genericList.filter((s) => s.name === objectname)[0];
+  const schema = schemaList.find((s) => s.kind === objectname);
+  const generic = genericList.find((s) => s.kind === objectname);
   const navigate = useNavigate();
 
   const schemaData = generic || schema;

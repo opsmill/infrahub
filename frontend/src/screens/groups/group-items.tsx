@@ -23,7 +23,7 @@ import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
 import { getGroupColumns } from "../../utils/getSchemaObjectColumns";
-import { getGroupDetailsUrl } from "../../utils/objects";
+import { getObjectDetailsUrl } from "../../utils/objects";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
@@ -42,7 +42,7 @@ export default function GroupItems() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const navigate = useNavigate();
 
-  const schemaData = genericList.filter((s) => s.name === GROUP_OBJECT)[0];
+  const schemaData = genericList.find((s) => s.kind === GROUP_OBJECT);
 
   // All the fiter values are being sent out as strings inside quotes.
   // This will not work if the type of filter value is not string.
@@ -72,7 +72,7 @@ export default function GroupItems() {
 
   const { loading, error, data = {}, refetch } = useQuery(query, { skip: !schemaData });
 
-  const result = data ? data[schemaData?.kind] ?? {} : {};
+  const result = data && schemaData?.kind ? data[schemaData?.kind] ?? {} : {};
 
   const { count, edges } = result;
 
@@ -157,11 +157,7 @@ export default function GroupItems() {
                     {rows?.map((row: any, index: number) => (
                       <tr
                         onClick={() =>
-                          navigate(
-                            constructPath(
-                              getGroupDetailsUrl(row.id, row.__typename, schemaKindName)
-                            )
-                          )
+                          navigate(constructPath(getObjectDetailsUrl(row.id, row.__typename)))
                         }
                         key={index}
                         className="hover:bg-gray-50 cursor-pointer">

@@ -16,7 +16,7 @@ import { BUTTON_TYPES, Button } from "../../components/button";
 import { DateDisplay } from "../../components/date-display";
 import ModalDelete from "../../components/modal-delete";
 import SlideOver from "../../components/slide-over";
-import { ACCOUNT_OBJECT, PROPOSED_CHANGES } from "../../config/constants";
+import { ACCOUNT_OBJECT, PROPOSED_CHANGES_OBJECT } from "../../config/constants";
 import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { deleteBranch } from "../../graphql/mutations/branches/deleteBranch";
@@ -47,7 +47,7 @@ export const BranchDetails = () => {
   const [detailsContent, setDetailsContent] = useState({});
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
 
-  const accountSchemaData = schemaList.filter((s) => s.name === ACCOUNT_OBJECT)[0];
+  const accountSchemaData = schemaList.find((s) => s.kind === ACCOUNT_OBJECT);
 
   const navigate = useNavigate();
 
@@ -283,7 +283,7 @@ export const BranchDetails = () => {
         title={
           <div className="space-y-2">
             <div className="flex items-center w-full">
-              <span className="text-lg font-semibold mr-3">Create {PROPOSED_CHANGES}</span>
+              <span className="text-lg font-semibold mr-3">Create Proposed Changes</span>
               <div className="flex-1"></div>
               <div className="flex items-center">
                 <Square3Stack3DIcon className="w-5 h-5" />
@@ -308,7 +308,7 @@ export const BranchDetails = () => {
         <ObjectItemCreate
           onCreate={() => setShowCreateDrawer(false)}
           onCancel={() => setShowCreateDrawer(false)}
-          objectname={PROPOSED_CHANGES!}
+          objectname={PROPOSED_CHANGES_OBJECT!}
           formStructure={formStructure}
           customObject={customObject}
         />

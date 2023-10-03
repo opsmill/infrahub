@@ -22,7 +22,6 @@ import usePagination from "../../hooks/usePagination";
 import useQuery from "../../hooks/useQuery";
 import { iComboBoxFilter } from "../../state/atoms/filters.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
-import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
@@ -47,7 +46,6 @@ export default function ObjectItems(props: any) {
 
   const auth = useContext(AuthContext);
 
-  const [schemaKindName] = useAtom(schemaKindNameState);
   const [schemaList] = useAtom(schemaState);
   const [genericList] = useAtom(genericsState);
   const branch = useReactiveVar(branchVar);
@@ -60,8 +58,8 @@ export default function ObjectItems(props: any) {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const navigate = useNavigate();
 
-  const schema = schemaList.filter((s) => s.name === objectname)[0];
-  const generic = genericList.filter((s) => s.name === objectname)[0];
+  const schema = schemaList.find((s) => s.kind === objectname);
+  const generic = genericList.find((s) => s.kind === objectname);
 
   const schemaData = schema || generic;
 
@@ -109,7 +107,7 @@ export default function ObjectItems(props: any) {
 
   const { loading, error, data = {}, refetch } = useQuery(query, { skip: !schemaData });
 
-  const result = data ? data[schemaData?.kind] ?? {} : {};
+  const result = data && schemaData?.kind ? data[schemaData?.kind] ?? {} : {};
 
   const { count, edges } = result;
 
@@ -123,7 +121,7 @@ export default function ObjectItems(props: any) {
     setIsLoading(true);
 
     const mutationString = deleteObject({
-      kind: schemaData.kind,
+      kind: schemaData?.kind,
       data: stringifyWithoutQuotes({
         id: rowToDelete?.id,
       }),
@@ -202,11 +200,7 @@ export default function ObjectItems(props: any) {
                     {rows?.map((row: any, index: number) => (
                       <tr
                         onClick={() =>
-                          navigate(
-                            constructPath(
-                              getObjectDetailsUrl(row.id, row.__typename, schemaKindName)
-                            )
-                          )
+                          navigate(constructPath(getObjectDetailsUrl(row.id, row.__typename)))
                         }
                         key={index}
                         className="hover:bg-gray-50 cursor-pointer">

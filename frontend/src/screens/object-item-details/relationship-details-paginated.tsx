@@ -72,7 +72,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   const [relatedRowToDelete, setRelatedRowToDelete] = useState<any>();
   const [relatedObjectToEdit, setRelatedObjectToEdit] = useState<any>();
 
-  const schema = schemaList.filter((s) => s.name === objectname)[0];
+  const schema = schemaList.find((s) => s.kind === objectname);
 
   let options: SelectOption[] = [];
 
@@ -260,8 +260,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                         constructPath(
                           getObjectDetailsUrl(
                             relationshipsData.node.id,
-                            relationshipsData.node.__typename,
-                            schemaKindName
+                            relationshipsData.node.__typename
                           )
                         )
                       )
@@ -362,9 +361,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                           {relationshipsData?.map(({ node, properties }: any, index: number) => (
                             <tr
                               onClick={() =>
-                                navigate(
-                                  getObjectDetailsUrl(node.id, node.__typename, schemaKindName)
-                                )
+                                navigate(getObjectDetailsUrl(node.id, node.__typename))
                               }
                               key={index}
                               className="hover:bg-gray-50 cursor-pointer">
@@ -475,11 +472,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                         key={node.id}>
                         <Link
                           onClick={() =>
-                            navigate(
-                              constructPath(
-                                getObjectDetailsUrl(node.id, node.__typename, schemaKindName)
-                              )
-                            )
+                            navigate(constructPath(getObjectDetailsUrl(node.id, node.__typename)))
                           }>
                           {node.display_label}
                         </Link>

@@ -5,7 +5,11 @@ import { useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { RoundedButton } from "../../components/rounded-button";
 import SlideOver from "../../components/slide-over";
-import { ACCOUNT_OBJECT, DEFAULT_BRANCH_NAME, PROPOSED_CHANGES } from "../../config/constants";
+import {
+  ACCOUNT_OBJECT,
+  DEFAULT_BRANCH_NAME,
+  PROPOSED_CHANGES_OBJECT,
+} from "../../config/constants";
 import { AuthContext } from "../../decorators/withAuth";
 import { getProposedChanges } from "../../graphql/queries/proposed-changes/getProposedChanges";
 import { branchVar } from "../../graphql/variables/branchVar";
@@ -28,13 +32,13 @@ export const ProposedChanges = () => {
   const navigate = useNavigate();
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
 
-  const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES)[0];
-  const accountSchemaData = schemaList.filter((s) => s.name === ACCOUNT_OBJECT)[0];
+  const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_OBJECT);
+  const accountSchemaData = schemaList.find((s) => s.kind === ACCOUNT_OBJECT);
 
   const queryString = schemaData
     ? getProposedChanges({
         kind: schemaData.kind,
-        accountKind: accountSchemaData.kind,
+        accountKind: accountSchemaData?.kind,
         attributes: schemaData.attributes,
         relationships: getSchemaRelationshipColumns(schemaData),
       })
@@ -48,7 +52,7 @@ export const ProposedChanges = () => {
 
   const { loading, error, data = {}, refetch } = useQuery(query, { skip: !schemaData });
 
-  const result = data ? data[schemaData?.kind] ?? {} : {};
+  const result = data && schemaData?.kind ? data[schemaData?.kind] ?? {} : {};
 
   const { count, edges } = result;
 
@@ -72,12 +76,13 @@ export const ProposedChanges = () => {
     .filter((branch) => branch.name !== "main")
     .map((branch) => ({ id: branch.name, name: branch.name }));
 
-  const reviewersOptions: any[] = data
-    ? data[accountSchemaData.kind]?.edges.map((edge: any) => ({
-        id: edge?.node.id,
-        name: edge?.node?.display_label,
-      }))
-    : [];
+  const reviewersOptions: any[] =
+    data && accountSchemaData?.kind
+      ? data[accountSchemaData.kind]?.edges.map((edge: any) => ({
+          id: edge?.node.id,
+          name: edge?.node?.display_label,
+        }))
+      : [];
 
   const formStructure = getFormStructure(branchesOptions, reviewersOptions);
 
@@ -109,7 +114,7 @@ export const ProposedChanges = () => {
         title={
           <div className="space-y-2">
             <div className="flex items-center w-full">
-              <span className="text-lg font-semibold mr-3">Create {PROPOSED_CHANGES}</span>
+              <span className="text-lg font-semibold mr-3">Create Proposed Changes</span>
               <div className="flex-1"></div>
               <div className="flex items-center">
                 <Square3Stack3DIcon className="w-5 h-5" />
@@ -140,7 +145,7 @@ export const ProposedChanges = () => {
             }
           }}
           onCancel={() => setShowCreateDrawer(false)}
-          objectname={PROPOSED_CHANGES!}
+          objectname={PROPOSED_CHANGES_OBJECT!}
           refetch={refetch}
           formStructure={formStructure}
           customObject={customObject}

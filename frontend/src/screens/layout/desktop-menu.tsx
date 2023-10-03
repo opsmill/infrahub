@@ -21,7 +21,7 @@ export default function DesktopMenu() {
     .map((item, index) => (
       <DropDownMenuItem
         key={index}
-        path={constructPath(`/objects/${item.name}`)}
+        path={constructPath(`/objects/${item.kind}`)}
         label={item.label}
         onClick={onClickMenuItem}
       />

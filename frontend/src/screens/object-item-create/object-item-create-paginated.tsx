@@ -40,7 +40,7 @@ export default function ObjectItemCreate(props: iProps) {
   const date = useReactiveVar(dateVar);
   const [isLoading, setIsLoading] = useState(false);
 
-  const schema = schemaList.filter((s) => s.name === objectname)[0];
+  const schema = schemaList.find((s) => s.kind === objectname);
 
   const peers = R.uniq((schema.relationships || []).map((r) => r.peer).filter(Boolean));
 
