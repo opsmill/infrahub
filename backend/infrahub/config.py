@@ -112,6 +112,9 @@ class BrokerSettings(BaseSettings):
         default=None, min=1, max=65535, description="Specified if running on a non default port."
     )
     namespace: str = "infrahub"
+    maximum_message_retries: int = Field(
+        10, description="The maximum number of retries that are attempted for failed messages"
+    )
 
     @property
     def service_port(self) -> int:
@@ -155,6 +158,9 @@ class GitSettings(BaseSettings):
 class MiscellaneousSettings(BaseSettings):
     print_query_details: bool = False
     start_background_runner: bool = True
+    maximum_validator_execution_time: int = Field(
+        1800, description="The maximum allowed time (in seconds) for a validator to run."
+    )
 
 
 class RemoteLoggingSettings(BaseSettings):

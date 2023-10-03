@@ -39,7 +39,7 @@ class InfrahubRpcClientBase:
     events_queue: AbstractQueue
     loop: asyncio.AbstractEventLoop
     exchange: AbstractExchange
-    delay_exchange: AbstractExchange
+    delayed_exchange: AbstractExchange
     dlx: AbstractExchange
 
     def __init__(self) -> None:
@@ -70,8 +70,8 @@ class InfrahubRpcClientBase:
             f"{config.SETTINGS.broker.namespace}.rpcs", durable=True, arguments={"x-queue-type": "quorum"}
         )
 
-        worker_bindings = ["check.*.*", "event.*.*", "git.*.*", "request.*.*", "transform.*.*"]
-        self.delay_exchange = await self.channel.declare_exchange(
+        worker_bindings = ["check.*.*", "event.*.*", "finalize.*.*", "git.*.*", "request.*.*", "transform.*.*"]
+        self.delayed_exchange = await self.channel.declare_exchange(
             f"{config.SETTINGS.broker.namespace}.delayed", type="headers", durable=True
         )
         for routing_key in worker_bindings:
@@ -89,7 +89,7 @@ class InfrahubRpcClientBase:
                 },
             )
             await ttl_queue.bind(
-                self.delay_exchange,
+                self.delayed_exchange,
                 arguments={"x-match": "all", "delay": ttl.value},
             )
 
@@ -97,7 +97,10 @@ class InfrahubRpcClientBase:
 
         db = InfrahubDatabase(driver=await get_db())
         self.service = InfrahubServices(
-            database=db, message_bus=RabbitMQMessageBus(channel=self.channel, exchange=self.exchange)
+            database=db,
+            message_bus=RabbitMQMessageBus(
+                channel=self.channel, exchange=self.exchange, delayed_exchange=self.delayed_exchange
+            ),
         )
 
         return self

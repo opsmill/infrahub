@@ -1,11 +1,78 @@
 from infrahub import lock
 from infrahub.core.timestamp import Timestamp
+from infrahub.exceptions import CheckError
 from infrahub.git.repository import InfrahubRepository
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
 from infrahub.services import InfrahubServices
 
 log = get_logger()
+
+
+async def check_definition(message: messages.CheckRepositoryCheckDefinition, service: InfrahubServices):
+    validator = await service.client.get(kind="CoreRepositoryValidator", id=message.validator_id)
+    await validator.checks.fetch()
+
+    repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name)
+    conclusion = "failure"
+    severity = "critical"
+    log_entries = ""
+    try:
+        check_run = await repo.execute_python_check(
+            branch_name=message.branch_name,
+            location=message.file_path,
+            class_name=message.class_name,
+            client=service.client,
+            commit=message.commit,
+        )
+        if check_run.passed:
+            conclusion = "success"
+            severity = "info"
+            log.info("The check passed", check_execution_id=message.check_execution_id)
+        else:
+            log.warning("The check reported failures", check_execution_id=message.check_execution_id)
+        log_entries = check_run.log_entries
+    except CheckError as exc:
+        log.warning("The check failed to run", check_execution_id=message.check_execution_id)
+        log_entries = f"FATAL Error/n:{exc.message}"
+
+    check = None
+    for relationship in validator.checks.peers:
+        existing_check = relationship.peer
+        if (
+            existing_check.typename == "CoreStandardCheck"
+            and existing_check.kind.value == "CheckDefinition"
+            and existing_check.name.value == message.class_name
+        ):
+            check = existing_check
+
+    if check:
+        check.created_at.value = Timestamp().to_string()
+        check.message.value = log_entries
+        check.conclusion.value = conclusion
+        check.severity.value = severity
+        await check.save()
+    else:
+        check = await service.client.create(
+            kind="CoreStandardCheck",
+            data={
+                "name": message.class_name,
+                "origin": message.repository_id,
+                "kind": "CheckDefinition",
+                "validator": message.validator_id,
+                "created_at": Timestamp().to_string(),
+                "message": log_entries,
+                "conclusion": conclusion,
+                "severity": severity,
+            },
+        )
+        await check.save()
+
+    await service.cache.set(
+        key=f"validator_execution_id:{message.validator_execution_id}:check_execution_id:{message.check_execution_id}",
+        value=conclusion,
+        expires=7200,
+    )
 
 
 async def merge_conflicts(message: messages.CheckRepositoryMergeConflicts, service: InfrahubServices):
@@ -18,10 +85,6 @@ async def merge_conflicts(message: messages.CheckRepositoryMergeConflicts, servi
 
     success_condition = "-"
     validator = await service.client.get(kind="CoreRepositoryValidator", id=message.validator_id)
-    validator.state.value = "in_progress"
-    validator.started_at.value = Timestamp().to_string()
-    validator.completed_at.value = ""
-    await validator.save()
     await validator.checks.fetch()
 
     repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name)
@@ -85,10 +148,10 @@ async def merge_conflicts(message: messages.CheckRepositoryMergeConflicts, servi
             await check.save()
 
     for previous_result in existing_checks.values():
-        # await existing_checks[previous_result].delete()
         await previous_result.delete()
 
-    validator.state.value = "completed"
-    validator.conclusion.value = validator_conclusion
-    validator.completed_at.value = Timestamp().to_string()
-    await validator.save()
+    await service.cache.set(
+        key=f"validator_execution_id:{message.validator_execution_id}:check_execution_id:{message.check_execution_id}",
+        value=validator_conclusion,
+        expires=7200,
+    )

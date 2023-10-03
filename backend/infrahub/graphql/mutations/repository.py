@@ -6,8 +6,8 @@ from graphene import InputObjectType, Mutation
 
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
-from infrahub.log import get_log_data, get_logger
-from infrahub.message_bus.events import GitMessageAction, InfrahubGitRPC
+from infrahub.log import get_logger
+from infrahub.message_bus import messages
 
 from ..utils import extract_fields
 from .main import InfrahubMutationMixin, InfrahubMutationOptions
@@ -60,9 +60,10 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
 
         # Create the new repository in the filesystem.
         log.info("create_repository", name=obj.name.value)
-        log_data = get_log_data()
-        request_id = log_data.get("request_id", "")
-        await rpc_client.call(InfrahubGitRPC(action=GitMessageAction.REPO_ADD, repository=obj, request_id=request_id))
+        message = messages.GitRepositoryAdd(
+            repository_id=obj.id, repository_name=obj.name.value, location=obj.location.value
+        )
+        await rpc_client.send(message=message)
 
         # TODO Validate that the creation of the repository went as expected
         ok = True

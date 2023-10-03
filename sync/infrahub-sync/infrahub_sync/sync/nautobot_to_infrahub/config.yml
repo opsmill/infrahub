@@ -1,0 +1,77 @@
+---
+name: from-nautobot
+source:
+  name: nautobot
+  settings:
+    url: "https://demo.nautobot.com"
+
+destination:
+  name: infrahub
+  settings:
+    url: "http://localhost:8000"
+
+order: ["BuiltinTag", "BuiltinLocation", "BuiltinRole", "InfraRack"]
+
+schema_mapping:
+  - name: BuiltinTag
+    mapping: extras.tags
+    fields:
+      - name: name
+        mapping: name
+        identifier: true
+      - name: description
+        mapping: description
+
+  - name: BuiltinLocation
+    mapping: dcim.sites
+    fields:
+      - name: name
+        mapping: slug
+      - name: description
+        mapping: description
+      - name: type
+        static: "SITE"
+
+  - name: InfraRack
+    mapping: dcim.racks
+    identifiers: ["location", "name"]
+    fields:
+      - name: name
+        mapping: name
+      - name: location
+        mapping: site.slug
+      - name: height
+        mapping: u_height
+      - name: tags
+        mapping: tags
+        reference: tag
+      - name: serial_number
+        mapping: serial
+      - name: role
+        mapping: role.name
+      - name: facility_id
+        mapping: facility_id
+
+  - name: BuiltinRole
+    mapping: dcim.device_roles
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
+
+  - name: BuiltinRole
+    mapping: dcim.rack_roles
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
+
+  - name: BuiltinRole
+    mapping: ipam.roles
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
