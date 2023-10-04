@@ -41,7 +41,7 @@ export const Generate = (props: tGenerateProps) => {
 
       const qsp = new URLSearchParams(options);
 
-      const urlWithQsp = `${url}${options.length ? `&${qsp.toString()}` : ""}`;
+      const urlWithQsp = `${url}${options.length ? `?${qsp.toString()}` : ""}`;
 
       await fetchUrl(urlWithQsp, {
         method: "POST",
