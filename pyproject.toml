@@ -273,7 +273,7 @@ ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = "infrahub.storage.local"
-ignore_errors = true
+disallow_untyped_defs = true
 
 [[tool.mypy.overrides]]
 module = "infrahub.tasks.registry"
