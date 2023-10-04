@@ -29,17 +29,17 @@ class Potenda:
 
     def load(self):
         try:
-            print(f"Loading models from {self.source}")
+            print(f"Load: Importing data from {self.source}")
             self.source.load()
-            print(f"Loading models from {self.destination}")
+            print(f"Load: Importing data from {self.destination}")
             self.destination.load()
         except Exception as e:
             raise Exception(f"An error occurred while loading the sync: {e}")
 
     def diff(self):
-        print(f"Differentiating data from {self.source} to {self.destination}")
+        print(f"Diff: Comparing data from {self.source} to {self.destination}")
         return self.destination.diff_from(self.source, flags=self.flags)
 
     def sync(self, diff):
-        print(f"Syncing data from {self.source} to {self.destination}")
+        print(f"Sync: Importing data from {self.source} to {self.destination} based on Diff")
         return self.destination.sync_from(self.source, diff=diff, flags=self.flags)

@@ -31,7 +31,6 @@ def update_node(node: InfrahubNodeSync, attrs: dict):
                 new_peer_ids = [node._client.store.get(key=value, kind=rel.peer).id for value in list(attr_value)]
                 attr = getattr(node, attr_name)
                 existing_peer_ids = attr.peer_ids
-
                 in_both, existing_only, new_only = compare_lists(existing_peer_ids, new_peer_ids)
 
                 for id in existing_only:
@@ -75,7 +74,7 @@ class InfrahubAdapter(DiffSyncMixin, DiffSync):
 
     def model_loader(self, model_name: str, model):
         nodes = self.client.all(kind=model.__name__, populate_store=True)
-        print(f"-> Loading {len(nodes)} {model.__name__}")
+        # print(f"-> Loading {len(nodes)} {model.__name__}")
         for node in nodes:
             data = self.infrahub_node_to_diffsync(node)
             item = model(**data)

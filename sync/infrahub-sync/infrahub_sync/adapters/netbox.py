@@ -59,7 +59,7 @@ class NetboxAdapter(DiffSyncMixin, DiffSync):
             netbox_model = getattr(netbox_app, resource_name)
 
             objs = netbox_model.all()
-            print(f"-> Loading {len(objs)} {resource_name}")
+            # print(f"-> Loading {len(objs)} {resource_name}")
             for obj in objs:
                 data = self.netbox_obj_to_diffsync(obj=obj, mapping=element, model=model)
                 item = model(**data)
@@ -85,7 +85,7 @@ class NetboxAdapter(DiffSyncMixin, DiffSync):
             elif field.mapping and field.reference:
                 nodes = [item for item in self.store.get_all(model=field.reference)]
                 if not nodes:
-                    raise IndexError(f"Unable to get '{field.mapping}' with '{field.reference}' reference from store")
+                    raise IndexError(f"Unable to get '{field.mapping}' with '{field.reference}' reference from store. The available models are {self.store.get_all_model_names()}")
                 if not field_is_list:
                     if node := get_value(obj, field.mapping):
                         matching_nodes = []

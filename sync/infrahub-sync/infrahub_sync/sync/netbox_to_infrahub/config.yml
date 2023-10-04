@@ -33,6 +33,7 @@ schema_mapping:
   # Tags
   - name: BuiltinTag
     mapping: extras.tags
+    identifiers: ["name"]
     fields:
       - name: name
         mapping: name
@@ -42,6 +43,7 @@ schema_mapping:
   # Roles (DCIM, IPAM, Devices)
   - name: BuiltinRole
     mapping: dcim.device_roles
+    identifiers: ["name"]
     fields:
       - name: name
         mapping: name
@@ -49,6 +51,7 @@ schema_mapping:
         mapping: description
   - name: BuiltinRole
     mapping: dcim.rack_roles
+    identifiers: ["name"]
     fields:
       - name: name
         mapping: name
@@ -56,6 +59,7 @@ schema_mapping:
         mapping: description
   - name: BuiltinRole
     mapping: ipam.roles
+    identifiers: ["name"]
     fields:
       - name: name
         mapping: name
@@ -188,9 +192,10 @@ schema_mapping:
       - name: manufacturer
         mapping: manufacturer
         reference: CoreOrganization
-  # -> if the device in netbox have no name, no serial and no asset, which identifiers could we use ?
+  # -> The netbox constraint is `dcim_device_unique_name_site_tenant`
+  # Reusing device_name + site + Organization as identifiers
   - name: InfraDevice
-    identifiers: ["name", "serial_number", "asset_tag", "model", "site"]
+    identifiers: ["name", "site", "organization"]
     mapping: dcim.devices
     fields:
       - name: name
@@ -204,6 +209,9 @@ schema_mapping:
       - name: model
         mapping: device_type
         reference: TemplateDeviceType
+      - name: organization
+        mapping: tenant
+        reference: CoreOrganization
       - name: role
         mapping: role.name
       # - name: status
@@ -308,12 +316,12 @@ schema_mapping:
         reference: CoreOrganization
       - name: vrf_rd
         mapping: rd
-      # - name: importRT
-      #   mapping: import_target
-      #   reference: InfraRouteTarget
-      # - name: exportRT
-      #   mapping: export_target
-      #   reference: InfraRouteTarget
+      - name: importRT
+        mapping: import_targets
+        reference: InfraRouteTarget
+      - name: exportRT
+        mapping: export_targets
+        reference: InfraRouteTarget
   - name: CoreStandardGroup
     mapping: ipam.vlan-groups
     identifiers: ["name"]
@@ -376,8 +384,9 @@ schema_mapping:
       - name: organization
         mapping: tenant
         reference: CoreOrganization
-      - name: role
-        mapping: role.name
+      # Not the same as ipam.role
+      # - name: role
+      #   mapping: role.value
       # - name: status
       #   mapping: status.value
       - name: vrf

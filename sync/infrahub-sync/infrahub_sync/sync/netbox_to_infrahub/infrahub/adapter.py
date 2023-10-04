@@ -1,24 +1,23 @@
 from infrahub_sync.adapters.infrahub import InfrahubAdapter
 
 from .models import (
-    BuiltinLocation,
-    BuiltinRole,
-    BuiltinTag,
-    CoreOrganization,
-    CoreStandardGroup,
-    InfraCircuit,
-    InfraDevice,
-    InfraIPAddress,
-    InfraPrefix,
-    InfraProviderNetwork,
-    InfraRack,
-    InfraRouteTarget,
-    InfraVLAN,
-    InfraVRF,
-    TemplateCircuitType,
-    TemplateDeviceType,
+   CoreStandardGroup,
+   BuiltinTag,
+   CoreOrganization,
+   BuiltinRole,
+   BuiltinLocation,
+   InfraCircuit,
+   TemplateCircuitType,
+   InfraDevice,
+   TemplateDeviceType,
+   InfraIPAddress,
+   InfraProviderNetwork,
+   InfraPrefix,
+   InfraRack,
+   InfraRouteTarget,
+   InfraVLAN,
+   InfraVRF,
 )
-
 
 # -------------------------------------------------------
 # AUTO-GENERATED FILE, DO NOT MODIFY

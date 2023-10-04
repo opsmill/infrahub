@@ -59,7 +59,7 @@ class NautobotAdapter(DiffSyncMixin, DiffSync):
             nautobot_model = getattr(nautobot_app, resource_name)
 
             objs = nautobot_model.all()
-            print(f"-> Loading {len(objs)} {resource_name}")
+            # print(f"-> Loading {len(objs)} {resource_name}")
             for obj in objs:
                 data = self.nautobot_obj_to_diffsync(obj=obj, mapping=element, model=model)
                 item = model(**data)

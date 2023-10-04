@@ -387,6 +387,11 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
+      - name: organization
+        peer: CoreOrganization
+        optional: true
+        cardinality: one
+        kind: Attribute
   - name: DeviceType
     namespace: Template
     description: "A model of device"
@@ -408,10 +413,10 @@ nodes:
         name: Device
         optional: true
         peer: InfraDevice
-      - cardinality: one
-        name: manufacturer
-        optional: false
+      - name: manufacturer
         peer: CoreOrganization
+        optional: false
+        cardinality: one
         kind: Attribute
   - name: InterfaceL3
     namespace: Infra

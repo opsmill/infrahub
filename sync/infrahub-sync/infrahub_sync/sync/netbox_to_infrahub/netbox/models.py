@@ -106,8 +106,8 @@ class TemplateCircuitType(NetboxModel):
 
 class InfraDevice(NetboxModel):
     _modelname = "InfraDevice"
-    _identifiers = ("name", "serial_number", "asset_tag", "model", "site")
-    _attributes = ("rack", "role", "tags", "description")
+    _identifiers = ("name", "site", "organization")
+    _attributes = ("model", "rack", "role", "tags", "description", "serial_number", "asset_tag")
 
     name: Optional[str]
     description: Optional[str]
@@ -118,6 +118,7 @@ class InfraDevice(NetboxModel):
     rack: Optional[str]
     role: Optional[str]
     tags: List[str] = []
+    organization: Optional[str]
 
     local_id: Optional[str]
     local_data: Optional[Any]
@@ -140,13 +141,12 @@ class TemplateDeviceType(NetboxModel):
 class InfraIPAddress(NetboxModel):
     _modelname = "InfraIPAddress"
     _identifiers = ("address", "vrf")
-    _attributes = ("organization", "role", "description")
+    _attributes = ("organization", "description")
 
     address: str
     description: Optional[str]
     organization: Optional[str]
     vrf: Optional[str]
-    role: Optional[str]
 
     local_id: Optional[str]
     local_data: Optional[Any]
@@ -233,12 +233,14 @@ class InfraVLAN(NetboxModel):
 class InfraVRF(NetboxModel):
     _modelname = "InfraVRF"
     _identifiers = ("name",)
-    _attributes = ("organization", "description", "vrf_rd")
+    _attributes = ("organization", "importRT", "exportRT", "description", "vrf_rd")
 
     name: str
     description: Optional[str]
     vrf_rd: Optional[str]
     organization: Optional[str]
+    importRT: List[str] = []
+    exportRT: List[str] = []
 
     local_id: Optional[str]
     local_data: Optional[Any]
