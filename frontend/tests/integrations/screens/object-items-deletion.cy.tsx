@@ -21,7 +21,7 @@ import { schemaMocks } from "../../mocks/data/schema";
 import { TestProvider } from "../../mocks/jotai/atom";
 
 // URL for the current view
-const mockedUrl = "/objects/GraphQLQuery";
+const mockedUrl = "/objects/CoreGraphQLQuery";
 
 // Path that will match the route to display the component
 const mockedPath = "/objects/:objectname";
