@@ -192,6 +192,18 @@ ignore_missing_imports = true
 exclude = "^backend/tests/"
 
 [[tool.mypy.overrides]]
+module = "infrahub.*"
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+ module = "infrahub_client.*"
+ disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "infrahub_ctl.*"
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
 module = "infrahub"
 ignore_errors = true
 
@@ -206,6 +218,26 @@ ignore_errors = true
 [[tool.mypy.overrides]]
 module = "infrahub.checks"
 ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.cli"
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "infrahub.cli.db"
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "infrahub.cli.doc"
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "infrahub.cli.generate_schema"
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "infrahub.cli.server"
+disallow_untyped_defs = false
 
 [[tool.mypy.overrides]]
 module = "infrahub.core.*"
@@ -252,6 +284,10 @@ module = "infrahub.lock"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
+module = "infrahub.log"
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
 module = "infrahub.message_bus"
 ignore_errors = true
 
@@ -268,12 +304,28 @@ module = "infrahub.message_bus.rpc"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
+module = "infrahub.middleware"
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "infrahub.serve.log"
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
 module = "infrahub.server"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
+module = "infrahub.services.adapters.cache.redis"
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
 module = "infrahub.storage.local"
 ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.storage.main"
+disallow_untyped_defs = false
 
 [[tool.mypy.overrides]]
 module = "infrahub.tasks.registry"
@@ -292,12 +344,13 @@ module = "infrahub.transforms"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub_client.*"
-disallow_untyped_defs = true
+module = "infrahub.types"
+disallow_untyped_defs = false
 
 [[tool.mypy.overrides]]
-module = "infrahub_ctl.*"
-disallow_untyped_defs = true
+module = "infrahub.utils"
+disallow_untyped_defs = false
+
 
 [tool.ruff]
 
