@@ -42,7 +42,7 @@ describe("Tutorial - Part 6", () => {
 
   it("should update the device and an interface", function () {
     // Access the devices
-    cy.get("[href^='/objects/Device'] > .group", { timeout: 10000 }).click();
+    cy.get("[href^='/objects/InfraDevice'] > .group", { timeout: 10000 }).click();
 
     // Access the device
     cy.contains(DEVICE).click();
