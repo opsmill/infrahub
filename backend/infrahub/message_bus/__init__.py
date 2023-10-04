@@ -57,6 +57,10 @@ class Meta(BaseModel):
         default=None, description="Indicates how many times this message has been retried."
     )
     headers: Optional[Dict[str, Any]] = Field(default=None)
+    validator_execution_id: Optional[str] = Field(
+        default=None, description="Validator execution ID related to this message"
+    )
+    check_execution_id: Optional[str] = Field(default=None, description="Check execution ID related to this message")
 
 
 class InfrahubBaseMessage(BaseModel, aio_pika.abc.AbstractMessage):
