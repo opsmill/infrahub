@@ -101,3 +101,9 @@ export const updateQsp = (qsp: string, newValue: string, setSearchParams: Functi
 
   return setSearchParams(newParams);
 };
+
+export const getUrlWithQsp = (url: string, options: any[]) => {
+  const qsp = new URLSearchParams(options);
+
+  return `${url}${options.length ? `?${qsp.toString()}` : ""}`;
+};
