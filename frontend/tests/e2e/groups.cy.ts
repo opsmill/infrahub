@@ -42,7 +42,7 @@ describe("Groups", () => {
 
   it("should add an object to 2 groups", () => {
     // Access the devices
-    cy.get("[href='/objects/Device'] > .group").click();
+    cy.get("[href='/objects/InfraDevice'] > .group").click();
 
     // Access the device details
     cy.contains(OBJECT_NAME).click();
@@ -95,7 +95,7 @@ describe("Groups", () => {
 
   it("should remove the same object from the previous groups", () => {
     // Access the devices
-    cy.get("[href='/objects/Device'] > .group").click();
+    cy.get("[href='/objects/InfraDevice'] > .group").click();
 
     // Access the device details
     cy.contains(OBJECT_NAME).click();

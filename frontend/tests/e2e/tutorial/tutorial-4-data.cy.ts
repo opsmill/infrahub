@@ -13,7 +13,7 @@ describe("Tutorial - Part 4", () => {
 
   it("should verify the metadata from the demo dataset", function () {
     // Access to the devices
-    cy.get("[href='/objects/Device'] > .group").click();
+    cy.get("[href='/objects/InfraDevice'] > .group").click();
 
     // Click on a device
     cy.contains("atl1-edge1").click();
