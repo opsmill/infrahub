@@ -194,6 +194,8 @@ jobs:
         run: "invoke backend.isort --docker"
       - name: "Pylint Tests"
         run: "invoke backend.pylint --docker"
+      - name: "Mypy Tests"
+        run: "invoke backend.mypy --docker"
       - name: "Unit Tests"
         run: "invoke backend.test-unit"
         env:
