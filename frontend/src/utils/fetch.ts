@@ -105,5 +105,10 @@ export const updateQsp = (qsp: string, newValue: string, setSearchParams: Functi
 export const getUrlWithQsp = (url: string, options: any[]) => {
   const qsp = new URLSearchParams(options);
 
+  if (url.includes("?")) {
+    // If the url already contains some QSP
+    return `${url}${options.length ? `&${qsp.toString()}` : ""}`;
+  }
+
   return `${url}${options.length ? `?${qsp.toString()}` : ""}`;
 };
