@@ -17,7 +17,7 @@ import { getProposedChangesObjectGlobalThreads } from "../../graphql/queries/pro
 import useQuery from "../../hooks/useQuery";
 import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
-import { fetchUrl } from "../../utils/fetch";
+import { fetchUrl, getUrlWithQsp } from "../../utils/fetch";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { DataDiffNode, tDataDiffNode } from "./data-diff-node";
 
@@ -93,9 +93,7 @@ export const DataDiff = () => {
       ["time_to", timeTo ?? ""],
     ].filter(([, v]) => v !== undefined && v !== "");
 
-    const qsp = new URLSearchParams(options);
-
-    const urlWithQsp = `${url}${options.length ? `&${qsp.toString()}` : ""}`;
+    const urlWithQsp = getUrlWithQsp(url, options);
 
     try {
       const diffDetails = await fetchUrl(urlWithQsp);
