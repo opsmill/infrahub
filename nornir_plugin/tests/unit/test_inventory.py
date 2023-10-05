@@ -3,7 +3,7 @@ from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
-from nornir.core.inventory import ConnectionOptions, Defaults  # HostOrGroup,
+from nornir.core.inventory import ConnectionOptions, Defaults  # , HostOrGroup
 from nornir_infrahub.plugins.inventory.infrahub import (  # _get_inventory_element,
     HostNode,
     SchemaMappingNode,
@@ -15,8 +15,7 @@ from nornir_infrahub.plugins.inventory.infrahub import (  # _get_inventory_eleme
 )
 from pydantic.error_wrappers import ValidationError
 
-from infrahub_client import InfrahubNodeSync, InfrahubClient, NodeSchema
-
+from infrahub_client import InfrahubClient, InfrahubNodeSync, NodeSchema
 
 # ip_interface_to_ip_string
 
@@ -31,13 +30,6 @@ def test_ip_interface_to_ip_string_ipv6():
     ip_interface = ipaddress.IPv6Interface("2001:db8::1/64")
     result = ip_interface_to_ip_string(ip_interface)
     assert result == "2001:db8::1"
-
-
-# XXX fails atm
-# def test_ip_interface_to_ip_string_invalid_input():
-#     with pytest.raises(ValueError):
-#         ip_interface = "invalid_input"
-#         ip_interface_to_ip_string(ip_interface)
 
 
 # resolve_node_mapping
@@ -164,7 +156,7 @@ def test_get_defaults():
 # _get_inventory_element
 
 
-# XXX fails atm
+# XXX fails atm - TypeError: 'TypeVar' object is not callable
 # def test_get_inventory_element():
 #     data = {
 #         "hostname": "example.com",
@@ -185,7 +177,6 @@ def test_get_defaults():
 #             }
 #         },
 #     }
-
 #     name = "test_host"
 #     defaults = Defaults(
 #         hostname="default.com",
@@ -281,11 +272,22 @@ def test_validate_include_property():
 # get_related_nodes
 
 
-def test_get_related_nodes(location_schema: NodeSchema):
-    attributes = {'name', 'desription', 'type'}
-    result = get_related_nodes(location_schema, attributes)
-    expected_result = {"CoreStandardGroup"}
-    # XXX not sure I am getting this (?)
+def test_get_related_nodes():
+    schema = {
+        "name": "Person",
+        "namespace": "Test",
+        "default_filter": "name__value",
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True},
+        ],
+        "relationships": [
+            {"name": "vehicules", "peer": "TestVehicule", "cardinality": "many", "identifier": "person__vehicule"}
+        ],
+    }
+    node_schema = NodeSchema(**schema)
+    attrs = {"vehicules", "address"}  # "Address" is not in the relationships
+    result = get_related_nodes(node_schema, attrs)
+    expected_result = {"CoreStandardGroup", "TestVehicule"}
     assert result == expected_result
 
 
