@@ -73,7 +73,7 @@ class TestInfrahubNode:
             "template_path": {"value": "mytemplate.j2"},
             "query": gqlquery01.id,
             "repository": {"id": repo01.id},
-            "tags": [{"id": tag_blue.id}, tag_red.id],
+            "tags": [tag_blue.id, tag_red.id],
         }
 
         node = await client.create(kind="CoreRFile", data=data)
@@ -101,6 +101,7 @@ class TestInfrahubNode:
             "template_path": "mytemplate.j2",
             "query": gqlquery01.id,
             "repository": repo01.id,
+            "tags": [tag_blue.id, tag_red.id],
         }
         schema = await client.schema.get(kind="CoreRFile", branch="main")
         create_payload = client.schema.generate_payload_create(
@@ -133,7 +134,7 @@ class TestInfrahubNode:
             "template_path": {"value": "mytemplate.j2"},
             "query": {"id": gqlquery01.id},  # "source": first_account.id, "owner": first_account.id},
             "repository": {"id": repo01.id},  # "source": first_account.id, "owner": first_account.id},
-            "tags": [{"id": tag_blue.id}, tag_red.id],
+            "tags": [tag_blue.id, tag_red.id],
         }
 
         node = await client.create(kind="CoreRFile", data=data)
