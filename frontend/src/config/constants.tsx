@@ -129,4 +129,4 @@ export const VALIDATIONS_ENUM_MAP: { [key: string]: string } = {
   all: "ALL",
 };
 
-export const MAX_VALUE_LENGTH_DISPLAY = 50;
+export const MAX_VALUE_LENGTH_DISPLAY = 40;
