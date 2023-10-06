@@ -385,7 +385,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                   index !== relationshipsData.length - 1
                                     ? "border-b border-gray-200"
                                     : "",
-                                  "whitespace-nowrap py-3 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8 flex items-center justify-end"
+                                  "whitespace-nowrap py-3 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8"
                                 )}>
                                 <div
                                   className="p-2"

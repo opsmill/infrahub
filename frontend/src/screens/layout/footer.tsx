@@ -29,7 +29,7 @@ const ICONS = [
 
 export const Footer = () => {
   return (
-    <div className="bg-custom-white p-2 flex">
+    <div className="bg-custom-white p-2 flex border-r border-gray-200">
       {ICONS.map((item: any, index: number) => (
         <a
           key={index}

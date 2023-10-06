@@ -180,7 +180,7 @@ export default function ObjectItems(props: any) {
       {!loading && rows && (
         <div className="mt-0 flex flex-col px-4 sm:px-6 lg:px-8 w-full flex-1">
           <div className="-my-2 -mx-4 sm:-mx-6 lg:-mx-8">
-            <div className="inline-block min-w-full pt-2 align-middle">
+            <div className="min-w-full pt-2 align-middle">
               <div className="shadow-sm ring-1 ring-custom-black ring-opacity-5">
                 <table className="min-w-full border-separate" style={{ borderSpacing: 0 }}>
                   <thead className="bg-gray-50">
@@ -224,7 +224,7 @@ export default function ObjectItems(props: any) {
                         <td
                           className={classNames(
                             index !== rows.length - 1 ? "border-b border-gray-200" : "",
-                            "whitespace-nowrap py-3 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8 flex items-center justify-end"
+                            "whitespace-nowrap py-3 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8"
                           )}>
                           <Button
                             disabled={!auth?.permissions?.write}

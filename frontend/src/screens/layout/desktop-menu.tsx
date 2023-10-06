@@ -46,7 +46,7 @@ export default function DesktopMenu() {
   ));
 
   return (
-    <div className="z-10 hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col">
+    <div className="z-100 hidden w-64 md:visible md:inset-y-0 md:flex md:flex-col">
       <div className="flex flex-grow flex-col overflow-y-auto border-r border-gray-200 bg-custom-white pt-5">
         <div
           className="flex flex-shrink-0 items-center px-4 cursor-pointer"

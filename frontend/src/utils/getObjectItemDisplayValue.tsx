@@ -26,13 +26,17 @@ export const getObjectItemDisplayValue = (row: any, attribute: any, schemaKindNa
       .map((edge: any) => edge?.node?.display_label ?? edge?.node?.value ?? "-")
       .slice(0, 5);
 
+    const rest = row[attribute?.name]?.edges?.slice(5)?.length;
+
     return (
-      <div className="flex">
+      <div className="flex flex-wrap items-center">
         {items.map((item: string, index: number) => (
-          <Badge key={index}>{item}</Badge>
+          <Badge key={index} className="m-2">
+            {item}
+          </Badge>
         ))}
 
-        {items.length !== row[attribute?.name]?.edges?.length && "..."}
+        {items.length !== row[attribute?.name]?.edges?.length && <i>{`(${rest} more)`}</i>}
       </div>
     );
   }
