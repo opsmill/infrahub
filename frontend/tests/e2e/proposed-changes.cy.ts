@@ -57,6 +57,9 @@ describe("Main application", () => {
 
     // The new PC should exist
     cy.contains(PROPOSED_CHANGES_NAME).should("exist");
+
+    // We should see the comment section
+    cy.contains("Add a comment").should("exist");
   });
 
   it("should access the Proposed Changes details", function () {
