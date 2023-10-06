@@ -120,10 +120,10 @@ export default function GroupItems() {
 
   return (
     <div className="bg-custom-white flex-1 flex flex-col">
-      <div className="sm:flex sm:items-center py-4 px-4 sm:px-6 lg:px-8 w-full">
+      <div className="flex items-center p-4 w-full">
         {schemaData && (
           <div className="sm:flex-auto flex items-center">
-            <div className="text-xl font-semibold text-gray-900">
+            <div className="text-md font-semibold text-gray-900">
               {schemaData.name} ({count})
             </div>
           </div>
@@ -144,13 +144,13 @@ export default function GroupItems() {
                         <th
                           key={attribute.name}
                           scope="col"
-                          className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 p-4 text-left text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter">
+                          className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 px-4 py-2 text-left text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter">
                           {attribute.label}
                         </th>
                       ))}
                       <th
                         scope="col"
-                        className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 p-4 text-left text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter"></th>
+                        className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 px-4 py-2 text-left text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter"></th>
                     </tr>
                   </thead>
                   <tbody className="bg-custom-white">

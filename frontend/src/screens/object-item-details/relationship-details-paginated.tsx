@@ -347,13 +347,13 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                               <th
                                 key={column.name}
                                 scope="col"
-                                className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 p-4 text-left text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter">
+                                className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 px-4 py-2 text-left text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter">
                                 {column.label}
                               </th>
                             ))}
                             <th
                               scope="col"
-                              className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 p-4 text-left text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter">
+                              className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 px-4 py-2 text-left text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter">
                               <span className="sr-only">Meta</span>
                             </th>
                           </tr>

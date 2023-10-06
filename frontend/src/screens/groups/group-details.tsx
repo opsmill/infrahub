@@ -108,7 +108,7 @@ export default function GroupItemDetails() {
       <div className="px-4 py-5 sm:px-6 flex items-center">
         <div
           onClick={() => navigate(constructPath("/groups"))}
-          className="text-xl font-semibold text-gray-900 cursor-pointer hover:underline">
+          className="text-md font-semibold text-gray-900 cursor-pointer hover:underline">
           {GROUP_OBJECT}
         </div>
         <ChevronRightIcon
