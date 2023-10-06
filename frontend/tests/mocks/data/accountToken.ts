@@ -80,7 +80,7 @@ export const accountTokenDetailsMocksSchema: iNodeSchema[] = [
         inherited: false,
         cardinality: "one",
         branch: true,
-        optional: false,
+        optional: true,
         filters: [
           {
             name: "id",
@@ -834,6 +834,7 @@ export const accountTokenFormStructure = [
     value: "",
     options: { values: [] },
     config: {},
+    isOptionnal: true,
     isProtected: false,
   },
 ];
