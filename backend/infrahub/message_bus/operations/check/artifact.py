@@ -19,18 +19,27 @@ async def create(message: messages.CheckArtifactCreate, service: InfrahubService
         artifact = await service.client.get(kind="CoreArtifact", id=message.artifact_id, branch=message.branch_name)
     else:
         async with lock.registry.get(f"{message.target_id}-{message.artifact_definition}", namespace="artifact"):
-            artifact = await service.client.create(
+            artifacts = await service.client.filters(
                 kind="CoreArtifact",
                 branch=message.branch_name,
-                data={
-                    "name": message.artifact_name,
-                    "status": "Pending",
-                    "object": message.target_id,
-                    "definition": message.artifact_definition,
-                    "content_type": message.content_type,
-                },
+                definition__ids=[message.artifact_definition],
+                object__ids=[message.target_id],
             )
-            await artifact.save()
+            if artifacts:
+                artifact = artifacts[0]
+            else:
+                artifact = await service.client.create(
+                    kind="CoreArtifact",
+                    branch=message.branch_name,
+                    data={
+                        "name": message.artifact_name,
+                        "status": "Pending",
+                        "object": message.target_id,
+                        "definition": message.artifact_definition,
+                        "content_type": message.content_type,
+                    },
+                )
+                await artifact.save()
 
     conclusion = ValidatorConclusion.SUCCESS.value
     severity = "info"
@@ -46,6 +55,7 @@ async def create(message: messages.CheckArtifactCreate, service: InfrahubService
 
     check = None
     check_name = f"{message.artifact_name}: {message.target_name}"
+    await validator.checks.fetch()
     for relationship in validator.checks.peers:
         existing_check = relationship.peer
         if (

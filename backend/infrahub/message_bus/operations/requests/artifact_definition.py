@@ -59,7 +59,10 @@ async def check(message: messages.RequestArtifactDefinitionCheck, service: Infra
     group = artifact_definition.targets.peer
     await group.members.fetch()
     existing_artifacts = await service.client.filters(
-        kind="CoreArtifact", definition__ids=[message.artifact_definition], include=["object"]
+        kind="CoreArtifact",
+        definition__ids=[message.artifact_definition],
+        include=["object"],
+        branch=message.source_branch,
     )
     artifacts_by_member = {}
     for artifact in existing_artifacts:
@@ -89,6 +92,7 @@ async def check(message: messages.RequestArtifactDefinitionCheck, service: Infra
         events.append(
             messages.CheckArtifactCreate(
                 artifact_name=artifact_definition.name.value,
+                artifact_id=artifacts_by_member.get(member.id),
                 artifact_definition=message.artifact_definition,
                 commit=repository.commit.value,
                 content_type=artifact_definition.content_type.value,
