@@ -133,9 +133,6 @@ async def refresh_artifacts(message: messages.RequestProposedChangeRefreshArtifa
         kind="CoreArtifactDefinition", branch=proposed_change.source_branch.value
     )
     for artifact_definition in artifact_definitions:
-        # msg = messages.RequestArtifactDefinitionGenerate(
-        #    artifact_definition=artifact_definition.id, branch=proposed_change.source_branch.value
-        # )
         msg = messages.RequestArtifactDefinitionCheck(
             artifact_definition=artifact_definition.id,
             proposed_change=message.proposed_change,
