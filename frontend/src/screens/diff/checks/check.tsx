@@ -96,7 +96,7 @@ export const Check = (props: tCheckProps) => {
         getCheckBorderColor(severity?.value)
       )}>
       <div className="flex mb-2">
-        <div className="flex flex-col mr-2">
+        <div className="flex flex-1 flex-col mr-2">
           <div className="flex">
             {getCheckIcon(conclusion?.value)}
 
