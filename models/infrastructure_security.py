@@ -1,18 +1,14 @@
 import logging
-import uuid
 import random
-from collections import defaultdict
-from slugify import slugify
 from ipaddress import IPv4Interface, IPv4Network
-from typing import Dict, List
 
-from infrahub_client import UUIDT, InfrahubClient, InfrahubNode, NodeStore
+from infrahub_client import InfrahubClient, InfrahubNode, NodeStore
 
 # flake8: noqa
 # pylint: skip-file
 
 ROLES = ["role11", "role21", "role31"]
-STATUSES = ["reserved", "provisionning", "production", "mainteance", "obsolete"]
+STATUSES = ["reserved", "provisionning", "active", "mainteance", "obsolete"]
 TAGS = ["blue", "green", "red", "tenant", "provider"]
 
 ORGANIZATIONS = (
@@ -32,6 +28,10 @@ APPLICATIONS = (
     ("Infrahub-client", "Infrahub Client"),
     ("Infrahub-api", "Infrahub Api"),
     ("Infrahub-redis", "Infrahub Redis"),
+    ("Domain-controler", "Domain Controler"),
+    ("DNS", "DNS Authorative Server"),
+    ("docker", "Docker"),
+    ("Gitlab", "Gitlab Server"),
 )
 
 PROTOCOLS = (
@@ -42,17 +42,111 @@ PROTOCOLS = (
 )
 
 SERVICES = (
-    # name, description, port, ip_protocol
-    ("HTTPS", "TCP 443", 443, "TCP"),
-    ("REDIS", "TCP 6379", 6379, "TCP"),
+    # name, description, port, ip_protocol, status
+    ("HTTPS", "TCP 443", 443, "TCP", "active"),
+    ("REDIS", "TCP 6379", 6379, "TCP", "active"),
+    ("SSH", "TCP 22", 33, "TCP", "active"),
+    ("DNS UDP", "UDP 53", 53, "UDP", "active"),
+    ("DNS TCP", "TCP 53", 53, "TCP", "provisionning"),
 )
 
-INTERNAL_IPS = list(IPv4Network("192.0.2.0/29").hosts())
 EXTERNAL_IPS = list(IPv4Network("203.0.113.0/29").hosts())
 
-INTERNAL_PREFIXES = IPv4Network("192.0.2.128/25").subnets(new_prefix=29)
+INTERNAL_PREFIXES = (
+    # name, prefix, Status
+    ("office-nyc", "192.168.0.0/16", "active"),
+    ("datacenter-eu-fr", "172.16.0.0/20", "active"),
+    ("datacenter-eu-de", "172.16.16.0/20", "provisionning"),
+    ("datacenter-us-ny", "172.16.32.0/20", "reserved"),
+)
+
+INTERNAL_RANGES = (
+    # name, start IP, end IP, Status
+    ("office-nyc-printer", "192.168.0.1/24", "192.168.0.9/24", "active"),
+    ("office-nyc-wifi", "192.168.1.10/24", "192.168.1.250/24", "active"),
+    ("office-nyc-users", "192.168.0.10/24", "192.168.0.200/24", "obsolete"),
+)
+
+FQDNS = (
+    # name
+    ("redis.example.com", ""),
+    ("website.example.com", ""),
+    ("www.example.com", ""),
+    ("opsmill.com", ""),
+    ("google.com", ""),
+    ("docker.com", ""),
+)
+
+RULES = (
+    # Index, Name, Action, Description, Source Addresses, Desination Addresses, Source Services, Desination Services, Source Applicatons, Desination Applicatons, Status
+    (
+        1,
+        "dns-office-to-dc",
+        "Accept",
+        None,
+        ("office-nyc",),
+        (
+            "datacenter-eu-fr",
+            "datacenter-eu-de",
+        ),
+        ("DNS UDP",),
+        None,
+        None,
+        None,
+        "active",
+    ),
+    (
+        2,
+        "https-eu-fr-to-docker.com",
+        "Accept",
+        None,
+        ("datacenter-eu-fr",),
+        ("docker.com",),
+        ("HTTPS",),
+        None,
+        ("docker",),
+        None,
+        "active",
+    ),
+    (
+        3,
+        "web-nt-wifi-and-dc-to-eu-fr",
+        "Accept",
+        None,
+        (
+            "office-nyc-wifi",
+            "datacenter-us-ny",
+        ),
+        ("datacenter-eu-fr",),
+        ("HTTPS",),
+        None,
+        ("Infrahub-api", "Gitlab"),
+        None,
+        "active",
+    ),
+)
 
 store = NodeStore()
+
+
+def prepare_log(node: InfrahubNode, log: logging.Logger) -> None:
+    if node._schema.kind == "InfraIPAddress":
+        log.info(f"{node._schema.kind} Created {node.address.value}")
+    elif node._schema.kind == "InfraPrefix":
+        log.info(f"{node._schema.kind} Created {node.prefix.value}")
+    else:
+        log.info(f"{node._schema.kind} Created {node.name.value}")
+
+
+async def create_infra_ip(client, branch, name, address, statuses, source, batch):
+    obj = await client.create(
+        branch=branch,
+        kind="InfraIPAddress",
+        data={"name": name, "address": IPv4Interface(address), "status": random.choice(statuses), "source": source},
+    )
+    batch.add(task=obj.save, node=obj)
+    store.set(key=name, node=obj)
+
 
 # ---------------------------------------------------------------
 # Use the `infrahubctl run` command line to execute this script
@@ -66,7 +160,6 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     # ------------------------------------------
     batch = await client.create_batch()
 
-
     for account in ACCOUNTS:
         obj = await client.create(
             branch=branch,
@@ -78,16 +171,16 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
 
     for org in ORGANIZATIONS:
         obj = await client.create(
-            branch  =branch, kind="CoreOrganization", data={"name": {"value": org, "is_protected": True}}
+            branch=branch, kind="CoreOrganization", data={"name": {"value": org, "is_protected": True}}
         )
         batch.add(task=obj.save, node=obj)
         store.set(key=org[0], node=obj)
 
-    # async for node, _ in batch.execute():
-    #     log.info(f"{node._schema.kind} Created {node.name.value}")
+    async for node, _ in batch.execute():
+        prepare_log(node, log)
 
     account_security = store.get("security-builder")
-    account_john = store.get("John Doe")
+    store.get("John Doe")
 
     # ------------------------------------------
     # Create Status, Role & Tags
@@ -96,12 +189,16 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
 
     log.info("Creating Roles, Status & Tag")
     for role in ROLES:
-        obj = await client.create(branch=branch, kind="BuiltinRole", name={"value": role, "source": account_security.id})
+        obj = await client.create(
+            branch=branch, kind="BuiltinRole", name={"value": role, "source": account_security.id}
+        )
         batch.add(task=obj.save, node=obj)
         store.set(key=role, node=obj)
 
     for status in STATUSES:
-        obj = await client.create(branch=branch, kind="BuiltinStatus", name={"value": status, "source": account_security.id})
+        obj = await client.create(
+            branch=branch, kind="BuiltinStatus", name={"value": status, "source": account_security.id}
+        )
         batch.add(task=obj.save, node=obj)
         store.set(key=status, node=obj)
 
@@ -110,10 +207,8 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         batch.add(task=obj.save, node=obj)
         store.set(key=tag, node=obj)
 
-    # async for node, _ in batch.execute():
-    #     log.info(f"{node._schema.kind}  Created {node.name.value}")
-
-    production_status = store.get(kind="BuiltinStatus", key="production")
+    async for node, _ in batch.execute():
+        prepare_log(node, log)
 
     # ------------------------------------------
     # Create Applications & Protocols
@@ -125,11 +220,16 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         obj = await client.create(
             branch=branch,
             kind="SecurityApplication",
-            data={"name": application[0], "application": application[1], "status": random.choice(STATUSES), "source": account_security.id},
+            data={
+                "name": application[0],
+                "application": application[1],
+                "status": random.choice(STATUSES),
+                "source": account_security.id,
+            },
         )
         batch.add(task=obj.save, node=obj)
         store.set(key=application[0], node=obj)
-    
+
     for protocol in PROTOCOLS:
         obj = await client.create(
             branch=branch,
@@ -138,66 +238,135 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         )
         batch.add(task=obj.save, node=obj)
         store.set(key=protocol[0], node=obj)
-    
+
+    async for node, _ in batch.execute():
+        prepare_log(node, log)
+
+    # ------------------------------------------
+    # Create Services
+    # ------------------------------------------
+    batch = await client.create_batch()
+
+    log.info("Creating Services")
     for service in SERVICES:
-        protocol = store.get(service[3])
         obj = await client.create(
             branch=branch,
             kind="SecurityService",
-            data={"name": service[0], "status": random.choice(STATUSES), "description": service[1], "port": service[2], "ip_protocol": protocol, "source": account_security.id},
+            data={
+                "name": service[0],
+                "status": store.get(key=service[3], kind="BuiltinStatus"),
+                "description": service[1],
+                "port": service[2],
+                "ip_protocol": store.get(key=service[3], kind="SecurityProtocol"),
+                "source": account_security.id,
+            },
         )
         batch.add(task=obj.save, node=obj)
         store.set(key=service[0], node=obj)
 
-    # async for node, _ in batch.execute():
-    #     log.info(f"{node._schema.kind} Created {node.name.value}")
-
+    async for node, _ in batch.execute():
+        prepare_log(node, log)
 
     # ------------------------------------------
-    # Create IPAddresses, Prefixes, IP Ranges & FQDN
+    # Create IP Address, FQDNs Prefix
     # ------------------------------------------
     batch = await client.create_batch()
 
-    # log.info("Creating IP, Prefixes, Ranges & FQDN")
-    for ip_address in INTERNAL_IPS + EXTERNAL_IPS:
-        obj = await client.create(
-            branch=branch,
-            kind="InfraIPAddress",
-            data={"address": IPv4Interface(ip_address), "status": random.choice(STATUSES), "source": account_security.id},
-        )
-        batch.add(task=obj.save, node=obj)
-        store.set(key=ip_address, node=obj)
+    log.info("Creating IP Address, FQDNs Prefix")
+    for ip_address in EXTERNAL_IPS:
+        await create_infra_ip(client, branch, ip_address, ip_address, STATUSES, account_security.id, batch)
 
-    chunked_ips = []
-    for i in range(0, len(INTERNAL_IPS), 2):
-        chunked_ips.append(INTERNAL_IPS[i:i+2])
-
-    for range_ips in chunked_ips:
-        start_address = store.get(kind="BuiltinStatus", key=range_ips[0])
-        end_address = store.get(kind="BuiltinStatus", key=range_ips[len(range_ips)-1])
-
-        range_name = f"range-{range_ips[0]}-{range_ips[len(range_ips)-1]}"
-        range_obj = await client.create(
-            branch=branch,
-            kind="SecurityIPRange",
-            data={"name": range_name, "start_address": start_address, "end_address": end_address, "status": random.choice(STATUSES), "source": account_security.id},
-        )
-        batch.add(task=range_obj.save, node=range_obj)
-        store.set(key=range_name, node=range_obj)
+    for ip_range in INTERNAL_RANGES:
+        await create_infra_ip(client, branch, ip_range[1], ip_range[1], STATUSES, account_security.id, batch)
+        await create_infra_ip(client, branch, ip_range[2], ip_range[2], STATUSES, account_security.id, batch)
 
     for prefix in INTERNAL_PREFIXES:
         obj = await client.create(
             branch=branch,
             kind="InfraPrefix",
-            data={"prefix": prefix, "name": f"net-{slugify(str(prefix))}", "status": random.choice(STATUSES), "source": account_security.id},
+            data={
+                "name": prefix[0],
+                "prefix": prefix[1],
+                "status": store.get(key=prefix[2], kind="BuiltinStatus"),
+                "source": account_security.id,
+            },
         )
         batch.add(task=obj.save, node=obj)
-        store.set(key=prefix, node=obj)
-    
+        store.set(key=prefix[0], node=obj)
+
+    for fqdn in FQDNS:
+        obj = await client.create(
+            kind="SecurityFQDN",
+            data={"name": fqdn[0], "status": random.choice(STATUSES), "source": account_security.id},
+        )
+        batch.add(task=obj.save, node=obj)
+        store.set(key=fqdn[0], node=obj)
+
     async for node, _ in batch.execute():
-        if node._schema.kind == "InfraIPAddress":
-            log.info(f"{node._schema.kind} Created {node.address.value}")
-        elif node._schema.kind == "InfraPrefix":
-            log.info(f"{node._schema.kind} Created {node.prefix.value}")
-        else:
-            log.info(f"{node._schema.kind} Created {node.name.value}")
+        prepare_log(node, log)
+
+    # ------------------------------------------
+    # Create IP Ranges
+    # ------------------------------------------
+    batch = await client.create_batch()
+
+    log.info("Creating IP Ranges")
+    for ip_range in INTERNAL_RANGES:
+        obj = await client.create(
+            branch=branch,
+            kind="SecurityIPRange",
+            data={
+                "name": ip_range[0],
+                "start_address": ip_range[1],
+                "end_address": ip_range[2],
+                "status": store.get(key=ip_range[3], kind="BuiltinStatus"),
+                "source": account_security.id,
+            },
+        )
+        batch.add(task=obj.save, node=obj)
+        store.set(key=ip_range[0], node=obj)
+
+    async for node, _ in batch.execute():
+        prepare_log(node, log)
+
+    # ------------------------------------------
+    # Create Rules
+    # ------------------------------------------
+    batch = await client.create_batch()
+
+    log.info("Creating Security Rules")
+    for rule in RULES:
+        data = {
+            "source": account_security.id,
+            "index": rule[0],
+            "name": rule[1],
+            "action": rule[2],
+            "status": store.get(key=rule[10], kind="BuiltinStatus"),
+        }
+        if rule[3]:
+            data["description"] = rule[3]
+
+        # Set Source/Destination Addresses (Prefix, Range, Single IP, FQDN, ..)
+        if rule[4]:
+            data["source_addresses"] = [store.get(key=item) for item in rule[4]]
+        if rule[5]:
+            data["destination_addresses"] = [store.get(key=item) for item in rule[5]]
+
+        # Set Source/Destination Services
+        if rule[6]:
+            data["source_services"] = [store.get(key=item) for item in rule[6]]
+        if rule[7]:
+            data["destination_services"] = [store.get(key=item) for item in rule[7]]
+
+        # Set Source/Destination Applications
+        if rule[8]:
+            data["source_applications"] = [store.get(key=item) for item in rule[8]]
+        if rule[9]:
+            data["destination_applications"] = [store.get(key=item) for item in rule[9]]
+
+        obj = await client.create(branch=branch, kind="SecurityRule", data=data)
+        batch.add(task=obj.save, node=obj)
+        store.set(key=rule[1], node=obj)
+
+    async for node, _ in batch.execute():
+        prepare_log(node, log)

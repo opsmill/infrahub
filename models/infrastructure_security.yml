@@ -29,13 +29,12 @@ nodes:
       - "address__value"
     display_labels:
       - address__value
+    inherit_from:
+      - "SecurityAddress"
     attributes:
       - name: address
         kind: IPHost
         unique: true
-      - name: description
-        kind: Text
-        optional: true
     relationships:
       - name: organization
         peer: CoreOrganization
@@ -89,7 +88,7 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
-  
+
   - name: IPRange
     namespace: Security
     description: "Security IP Range"
@@ -139,11 +138,6 @@ nodes:
     order_by:
       - name__value
     relationships:
-      - name: ip_address
-        peer: InfraIPAddress
-        cardinality: one
-        kind: Attribute
-
       - name: status
         peer: BuiltinStatus
         optional: false
@@ -159,7 +153,7 @@ nodes:
         optional: true
         cardinality: many
         kind: Attribute
-  
+
   - name: Protocol
     namespace: Security
     description: "Security Protocol"
@@ -190,6 +184,7 @@ nodes:
     attributes:
       - name: name
         kind: Text
+        unique: true
       - name: description
         kind: Text
         optional: true
@@ -224,6 +219,7 @@ nodes:
     attributes:
       - name: name
         kind: Text
+        unique: true
       - name: description
         kind: Text
         optional: true
@@ -261,34 +257,28 @@ nodes:
       - name: source_addresses
         peer: SecurityAddress
         identifier: security_rule__source_addresses
-        optional: true
         cardinality: many
       - name: destination_addresses
         peer: SecurityAddress
         identifier: security_rule__destination_addresses
-        optional: true
         cardinality: many
-      
+
       - name: source_services
         peer: SecurityService
         identifier: security_rule__source_services
-        optional: true
         cardinality: many
       - name: destination_services
         peer: SecurityService
         identifier: security_rule__destination_services
-        optional: true
         cardinality: many
-      
+
       - name: source_applications
         peer: SecurityApplication
         identifier: security_rule__source_applications
-        optional: true
         cardinality: many
       - name: destination_applications
         identifier: security_rule__destination_applications
         peer: SecurityApplication
-        optional: true
         cardinality: many
 
       - name: status
