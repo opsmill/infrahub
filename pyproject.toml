@@ -316,10 +316,6 @@ module = "infrahub.server"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.services.adapters.cache.redis"
-disallow_untyped_defs = false
-
-[[tool.mypy.overrides]]
 module = "infrahub.storage.local"
 disallow_untyped_defs = true
 

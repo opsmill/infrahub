@@ -7,7 +7,7 @@ from infrahub.services.adapters.cache import InfrahubCache
 
 
 class RedisCache(InfrahubCache):
-    def __init__(self):
+    def __init__(self) -> None:
         self.connection = redis.Redis(
             host=config.SETTINGS.cache.address,
             port=config.SETTINGS.cache.service_port,
