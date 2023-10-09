@@ -1,6 +1,9 @@
 {
     "name": "INFRAHUB CodeSpace Configuration",
-    "dockerFile": "Dockerfile",
+    "build": {
+      "dockerfile": "./Dockerfile",
+      "context": "."
+    },
     "customizations": {
 		// Configure properties specific to VS Code.
 		"vscode": {
