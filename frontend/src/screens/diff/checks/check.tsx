@@ -2,10 +2,12 @@ import {
   CheckCircleIcon,
   ExclamationCircleIcon,
   ExclamationTriangleIcon,
+  QuestionMarkCircleIcon,
 } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { Badge } from "../../../components/badge";
 import { DateDisplay } from "../../../components/date-display";
+import { PopOver } from "../../../components/popover";
 import { schemaKindNameState } from "../../../state/atoms/schemaKindName.atom";
 import { classNames } from "../../../utils/common";
 
@@ -89,6 +91,36 @@ export const Check = (props: tCheckProps) => {
     conclusion,
   } = check;
 
+  const MoreButton = (
+    <div className="p-1 cursor-pointer">
+      <QuestionMarkCircleIcon className="h-6 w-6 text-custom-blue-green" aria-hidden="true" />
+    </div>
+  );
+
+  const renderContent = () => {
+    return (
+      <div>
+        <div className="flex mb-1">
+          <span className="flex-1">Type:</span>
+
+          <Badge className="flex-1">{schemaKindName[__typename]}</Badge>
+        </div>
+
+        <div className="flex mb-1">
+          <span className="flex-1">Kind:</span>
+
+          <Badge className="flex-1">{kind?.value}</Badge>
+        </div>
+
+        <div className="flex">
+          <span className="flex-1">Origin:</span>
+
+          <Badge className="flex-1">{origin?.value}</Badge>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div
       className={classNames(
@@ -110,14 +142,12 @@ export const Check = (props: tCheckProps) => {
           </div>
         </div>
 
-        <div className="flex flex-col">
-          <Badge className="mb-2">{schemaKindName[__typename]}</Badge>
+        <div className="flex flex-col justify-start">
+          <div className="flex items-center">
+            <DateDisplay date={created_at?.value} />
 
-          <Badge className="mb-2">{kind?.value}</Badge>
-
-          <Badge className="mb-2">{origin?.value}</Badge>
-
-          <DateDisplay date={created_at?.value} />
+            <PopOver buttonComponent={MoreButton}>{renderContent}</PopOver>
+          </div>
         </div>
       </div>
 
