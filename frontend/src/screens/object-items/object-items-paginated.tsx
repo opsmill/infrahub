@@ -167,6 +167,7 @@ export default function ObjectItems(props: any) {
         )}
 
         <RoundedButton
+          data-cy="create"
           disabled={!auth?.permissions?.write}
           onClick={() => setShowCreateDrawer(true)}>
           <PlusIcon className="h-5 w-5" aria-hidden="true" />
@@ -227,6 +228,7 @@ export default function ObjectItems(props: any) {
                             "whitespace-wrap text-xs text-gray-900"
                           )}>
                           <Button
+                            data-cy="delete"
                             disabled={!auth?.permissions?.write}
                             buttonType={BUTTON_TYPES.INVISIBLE}
                             onClick={() => {
