@@ -6,7 +6,7 @@ import { StringParam, useQueryParam } from "use-query-params";
 import { CONFIG } from "../../../config/config";
 import { QSP } from "../../../config/qsp";
 import { proposedChangedState } from "../../../state/atoms/proposedChanges.atom";
-import { fetchUrl } from "../../../utils/fetch";
+import { fetchUrl, getUrlWithQsp } from "../../../utils/fetch";
 import ErrorScreen from "../../error-screen/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
 import NoDataFound from "../../no-data-found/no-data-found";
@@ -37,9 +37,7 @@ export const FilesDiff = () => {
       ["time_to", timeTo ?? ""],
     ].filter(([, v]) => v !== undefined && v !== "");
 
-    const qsp = new URLSearchParams(options);
-
-    const urlWithQsp = `${url}${options.length ? `&${qsp.toString()}` : ""}`;
+    const urlWithQsp = getUrlWithQsp(url, options);
 
     try {
       const filesResult = await fetchUrl(urlWithQsp);

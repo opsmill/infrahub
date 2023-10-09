@@ -258,7 +258,8 @@ class InfrahubSchemaBase:
                         obj_data[key].update(item_metadata)
                     elif rel.cardinality == "many":
                         obj_data[key] = [{"id": str(item)} for item in value]
-                        obj_data[key] = [item.update(item_metadata) for item in obj_data[key]]
+                        for item in obj_data[key]:
+                            item.update(item_metadata)
 
         return obj_data
 
