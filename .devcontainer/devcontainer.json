@@ -1,8 +1,7 @@
 {
     "name": "INFRAHUB CodeSpace Configuration",
-    "image": "mcr.microsoft.com/vscode/devcontainers/python:3.11",
-    // Configure tool-specific properties.
-	"customizations": {
+    "dockerFile": "Dockerfile",
+    "customizations": {
 		// Configure properties specific to VS Code.
 		"vscode": {
 			"settings": {
@@ -22,14 +21,12 @@
             ]
 		}
 	},
-    "runArgs": ["-u", "/bin/bash"],
-    "runCommand": "poetry run invoke demo.destroy demo.init demo.start demo.load-infra-schema demo.load-infra-data",
-    "forwardPorts": [8000], // 7474, 7687, 15672, 5672
     "remoteUser": "infrahub",
     "remoteEnv": {
-      "INFRAHUB_SDK_API_TOKEN": "06438eb2-8019-4776-878c-0941b1f1d1ec"
+        "INFRAHUB_SDK_API_TOKEN": "06438eb2-8019-4776-878c-0941b1f1d1ec"
     },
-    "postCreateCommand": "bash -c 'cd /workspace/infrahub && pyenv install 3.11 --skip-existing && pyenv local 3.11 && pip install toml invoke && curl -sSL https://install.python-poetry.org | python3 - && poetry config virtualenvs.create false && poetry install && poetry run invoke demo.build'",
+    "forwardPorts": [8000],
+    "postCreateCommand": "/workspace/.devcontainer/postCreateCommand.sh",
     "features": {
 		"docker-in-docker": "latest",
 		"github-cli": "latest"
@@ -37,4 +34,4 @@
     "hostRequirements": {
 		"memory": "2gb"
 	}
-  }
+}
