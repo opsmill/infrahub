@@ -13,7 +13,7 @@ import {
   PROPOSED_CHANGES_OBJECT_THREAD_OBJECT,
 } from "../../config/constants";
 import { QSP } from "../../config/qsp";
-import { getProposedChangesObjectGlobalThreads } from "../../graphql/queries/proposed-changes/getProposedChangesObjectGlobalThreads";
+import { getThreadsAndChecks } from "../../graphql/queries/proposed-changes/getThreadsAndChecks";
 import useQuery from "../../hooks/useQuery";
 import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
@@ -69,7 +69,7 @@ export const DataDiff = () => {
   const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_OBJECT_THREAD)[0];
 
   const queryString = schemaData
-    ? getProposedChangesObjectGlobalThreads({
+    ? getThreadsAndChecks({
         id: proposedchange,
         kind: schemaData.kind,
         conflicts: branchOnly === "false",

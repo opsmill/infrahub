@@ -1,3 +1,4 @@
+import { gql } from "@apollo/client";
 import {
   CheckCircleIcon,
   ExclamationCircleIcon,
@@ -6,13 +7,18 @@ import {
 } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { Badge } from "../../../components/badge";
+import { Button } from "../../../components/button";
 import { DateDisplay } from "../../../components/date-display";
 import { PopOver } from "../../../components/popover";
+import { getCheckDetails } from "../../../graphql/queries/diff/getCheckDetails";
+import useQuery from "../../../hooks/useQuery";
 import { schemaKindNameState } from "../../../state/atoms/schemaKindName.atom";
 import { classNames } from "../../../utils/common";
+import ErrorScreen from "../../error-screen/error-screen";
+import LoadingScreen from "../../loading-screen/loading-screen";
 
 type tCheckProps = {
-  check: any;
+  id: string;
 };
 
 const getCheckIcon = (conclusion?: string) => {
@@ -54,6 +60,7 @@ const getCheckBorderColor = (severity?: string) => {
 
 const getCheckData = (check: any) => {
   const { __typename } = check;
+
   switch (__typename) {
     case "CoreDataCheck": {
       const { paths } = check;
@@ -65,6 +72,11 @@ const getCheckData = (check: any) => {
               <li key={path}>{path}</li>
             ))}
           </ul>
+          <div className="mt-2 flex flex-1 justify-around">
+            <Button>Keep data from main</Button>
+
+            <Button>Keep data from branch</Button>
+          </div>
         </div>
       );
     }
@@ -75,9 +87,21 @@ const getCheckData = (check: any) => {
 };
 
 export const Check = (props: tCheckProps) => {
-  const { check } = props;
+  const { id } = props;
 
   const [schemaKindName] = useAtom(schemaKindNameState);
+
+  const queryString = getCheckDetails({
+    id,
+  });
+
+  const query = gql`
+    ${queryString}
+  `;
+
+  const { loading, error, data } = useQuery(query);
+
+  const check = data?.CoreCheck?.edges?.[0]?.node ?? {};
 
   const {
     __typename,
@@ -120,6 +144,22 @@ export const Check = (props: tCheckProps) => {
       </div>
     );
   };
+
+  if (loading) {
+    return (
+      <div className={"flex flex-col rounded-md p-2 bg-custom-white border-l-4"}>
+        <LoadingScreen />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className={"flex flex-col rounded-md p-2 bg-custom-white border-l-4"}>
+        <ErrorScreen message="Something went wrong when fetching the check details" />
+      </div>
+    );
+  }
 
   return (
     <div

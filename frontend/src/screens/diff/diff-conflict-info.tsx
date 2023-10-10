@@ -1,6 +1,7 @@
 import { QuestionMarkCircleIcon } from "@heroicons/react/24/outline";
 import { useContext } from "react";
-import { Tooltip, TooltipPosition } from "../../components/tooltip";
+import { POPOVER_SIZE, PopOver } from "../../components/popover";
+import { Check } from "./checks/check";
 import { DiffContext } from "./data-diff";
 
 type tDataDiffConflictInfo = {
@@ -24,33 +25,30 @@ export const DataDiffConflictInfo = (props: tDataDiffConflictInfo) => {
     return null;
   }
 
-  // const messages = checksDictionnary[matchingKey]
-  //   .map((data: any) => data?.message?.value)
-  //   .filter(Boolean);
+  const checks = checksDictionnary[matchingKey];
 
-  const messages = ["Some info here", "More info there"];
-
-  if (!messages.length) {
-    return null;
-  }
-
-  const message = (
-    <>
-      {messages.map((message: string) => (
-        <>
-          {message}
-          <br />
-        </>
-      ))}
-    </>
+  const MoreButton = (
+    <div className="p-1 cursor-pointer">
+      <QuestionMarkCircleIcon className="h-5 w-5 text-custom-blue-green" aria-hidden="true" />
+    </div>
   );
 
+  const renderContent = () => {
+    return (
+      <div className="grid grid-cols-1 gap-4">
+        {checks.map((check: any, index: number) => (
+          <Check key={index} id={check?.id} />
+        ))}
+      </div>
+    );
+  };
+
   return (
-    <div className="absolute right-0 hidden group-hover:block">
-      <div className="cursor-pointer hidden group-hover:block">
-        <Tooltip message={message} position={TooltipPosition.LEFT}>
-          <QuestionMarkCircleIcon className="h-6 w-6 text-custom-blue-green" aria-hidden="true" />
-        </Tooltip>
+    <div className="absolute right-0 font-normal">
+      <div className="cursor-pointer">
+        <PopOver buttonComponent={MoreButton} size={POPOVER_SIZE.LARGE} className="bg-gray-100">
+          {renderContent}
+        </PopOver>
       </div>
     </div>
   );

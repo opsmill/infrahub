@@ -32,7 +32,6 @@ export const ValidatorDetails = () => {
   `;
 
   const { loading, error, data } = useQuery(query);
-  console.log("data: ", data);
 
   useEffect(() => {
     return () => {
@@ -56,7 +55,7 @@ export const ValidatorDetails = () => {
   return (
     <div className="flex-1 overflow-auto flex flex-col">
       <div className="flex flex-col">
-        <div className="bg-custom-white overflow-auto">
+        <div className="bg-custom-white">
           <dl className="sm:divide-y sm:divide-gray-200">
             <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-3 sm:px-6">
               <dt className="text-sm font-medium text-gray-500 flex items-center">ID</dt>
@@ -93,7 +92,7 @@ export const ValidatorDetails = () => {
 
       <div className="grid grid-cols-2 3xl:grid-cols-3 gap-4 p-4">
         {validator?.checks?.edges?.map((check: any, index: number) => (
-          <Check key={index} check={check?.node} />
+          <Check key={index} id={check?.node?.id} />
         ))}
       </div>
     </div>
