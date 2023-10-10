@@ -1,7 +1,10 @@
 from nornir import InitNornir
+from nornir.core.plugins.inventory import InventoryPluginRegister
+from nornir_infrahub.plugins.inventory.infrahub import InfrahubInventory
 
 
 def main():
+    InventoryPluginRegister.register("InfrahubInventory", InfrahubInventory)
     nr = InitNornir(
         inventory={
             "plugin": "InfrahubInventory",
