@@ -224,19 +224,11 @@ module = "infrahub.cli"
 disallow_untyped_defs = false
 
 [[tool.mypy.overrides]]
-module = "infrahub.cli.db"
-disallow_untyped_defs = false
-
-[[tool.mypy.overrides]]
 module = "infrahub.cli.doc"
 disallow_untyped_defs = false
 
 [[tool.mypy.overrides]]
 module = "infrahub.cli.generate_schema"
-disallow_untyped_defs = false
-
-[[tool.mypy.overrides]]
-module = "infrahub.cli.server"
 disallow_untyped_defs = false
 
 [[tool.mypy.overrides]]
@@ -284,10 +276,6 @@ module = "infrahub.lock"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.log"
-disallow_untyped_defs = false
-
-[[tool.mypy.overrides]]
 module = "infrahub.message_bus"
 ignore_errors = true
 
@@ -314,10 +302,6 @@ disallow_untyped_defs = false
 [[tool.mypy.overrides]]
 module = "infrahub.server"
 ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.storage.local"
-disallow_untyped_defs = true
 
 [[tool.mypy.overrides]]
 module = "infrahub.storage.main"

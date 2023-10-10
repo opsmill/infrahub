@@ -28,7 +28,7 @@ def set_log_data(key: str, value: Any) -> None:
     structlog.contextvars.bind_contextvars(**{key: value})
 
 
-def configure_logging(production: bool = True, log_level: str = "INFO"):
+def configure_logging(production: bool = True, log_level: str = "INFO") -> None:
     shared_processors: List[Processor] = [
         structlog.contextvars.merge_contextvars,
         structlog.processors.StackInfoRenderer(),
