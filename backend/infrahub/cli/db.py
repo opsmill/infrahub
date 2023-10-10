@@ -16,13 +16,13 @@ PERMISSIONS_AVAILABLE = ["read", "write", "admin"]
 
 
 @app.callback()
-def callback():
+def callback() -> None:
     """
     Manage the graph in the database.
     """
 
 
-async def _init():
+async def _init() -> None:
     """Erase the content of the database and initialize it with the core schema."""
 
     # log_level = "DEBUG" if debug else "INFO"
@@ -48,7 +48,7 @@ async def _init():
     await db.close()
 
 
-async def _load_test_data(dataset: str):
+async def _load_test_data(dataset: str) -> None:
     """Load test data into the database from the test_data directory."""
 
     db = InfrahubDatabase(driver=await get_db(retry=1))
@@ -72,7 +72,7 @@ def init(
     config_file: str = typer.Option(
         "infrahub.toml", envvar="INFRAHUB_CONFIG", help="Location of the configuration file to use for Infrahub"
     )
-):
+) -> None:
     """Erase the content of the database and initialize it with the core schema."""
 
     logging.getLogger("neo4j").setLevel(logging.ERROR)
@@ -88,7 +88,7 @@ def load_test_data(
         "infrahub.toml", envvar="INFRAHUB_CONFIG", help="Location of the configuration file to use for Infrahub"
     ),
     dataset: str = "dataset01",
-):
+) -> None:
     """Load test data into the database from the test_data directory."""
 
     logging.getLogger("neo4j").setLevel(logging.ERROR)
