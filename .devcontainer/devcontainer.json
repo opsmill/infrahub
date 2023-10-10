@@ -31,12 +31,13 @@
   "onCreateCommand": "./.devcontainer/onCreateCommand.sh",
   "postCreateCommand": "./.devcontainer/postCreateCommand.sh",
   "postStartCommand": "./.devcontainer/postStartCommand.sh",
+  "postAttachCommand": "./.devcontainer/postAttachCommand.sh",
   "features": {
     "docker-in-docker": "latest",
     "github-cli": "latest"
   },
   "hostRequirements": {
-    "cpus": 4,
+    "cpus": 8,
     "memory": "16gb"
  }
 }
