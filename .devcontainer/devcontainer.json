@@ -36,7 +36,7 @@
     "github-cli": "latest"
   },
   "hostRequirements": {
-    "cpus": 8,
-    "memory": "8gb"
+    "cpus": 4,
+    "memory": "16gb"
  }
 }
