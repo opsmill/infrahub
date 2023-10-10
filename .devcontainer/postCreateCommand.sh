@@ -1,5 +1,3 @@
 #!/bin/bash
 
-cd /workspace/infrahub
-
-poetry install
+invoke demo.init demo.start
