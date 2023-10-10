@@ -102,7 +102,7 @@ describe("List screen", () => {
     );
 
     // Open delete modal
-    cy.get(":nth-child(1) > .py-3 > .rounded-md").click();
+    cy.get(":nth-child(1) > :nth-child(5) > .rounded-md").click();
 
     // The obejct should be correctly deplsayed
     cy.get(".mt-2 > .text-sm").invoke("text").should("include", objectToDelete);
