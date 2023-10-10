@@ -58,6 +58,7 @@ async def check(message: messages.RequestArtifactDefinitionCheck, service: Infra
     await artifact_definition.targets.fetch()
     group = artifact_definition.targets.peer
     await group.members.fetch()
+
     existing_artifacts = await service.client.filters(
         kind="CoreArtifact",
         definition__ids=[message.artifact_definition],
@@ -83,7 +84,7 @@ async def check(message: messages.RequestArtifactDefinitionCheck, service: Infra
         transform_location = transform.template_path.value
     elif transform.typename == "CoreTransformPython":
         transform_location = f"{transform.file_path.value}::{transform.class_name.value}"
-    await group.members.fetch()
+
     for relationship in group.members.peers:
         member = relationship.peer
         check_execution_id = str(UUIDT())

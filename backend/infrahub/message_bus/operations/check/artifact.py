@@ -1,3 +1,5 @@
+from typing import Dict, Union
+
 from infrahub import lock
 from infrahub.core.constants import ValidatorConclusion
 from infrahub.core.timestamp import Timestamp
@@ -43,46 +45,62 @@ async def create(message: messages.CheckArtifactCreate, service: InfrahubService
 
     conclusion = ValidatorConclusion.SUCCESS.value
     severity = "info"
+    artifact_result: Dict[str, Union[str, bool, None]] = {
+        "changed": None,
+        "checksum": None,
+        "artifact_id": None,
+        "storage_id": None,
+    }
+    check_message = "Failed to render artifact"
+
     try:
         result = await repo.render_artifact(artifact=artifact, message=message)
-        check_log = f"Artifact changed={result.changed}, checksum={result.checksum}, artifact_id={result.artifact_id}, storage_id={result.storage_id}"
+        artifact_result["changed"] = result.changed
+        artifact_result["checksum"] = result.checksum
+        artifact_result["artifact_id"] = result.artifact_id
+        artifact_result["storage_id"] = result.storage_id
+        check_message = "Artifact rendered successfully"
+
     except Exception as exc:  # pylint: disable=broad-except
         conclusion = ValidatorConclusion.FAILURE.value
         artifact.status.value = "Error"
         severity = "critical"
-        check_log = str(exc)
+        check_message += f": {str(exc)}"
         await artifact.save()
 
     check = None
     check_name = f"{message.artifact_name}: {message.target_name}"
-    await validator.checks.fetch()
-    for relationship in validator.checks.peers:
-        existing_check = relationship.peer
-        if (
-            existing_check.typename == "CoreStandardCheck"
-            and existing_check.kind.value == "CheckDefinition"
-            and existing_check.name.value == check_name
-        ):
-            check = existing_check
+    existing_check = await service.client.filters(
+        kind="CoreArtifactCheck", validator__ids=validator.id, name__value=check_name
+    )
+    if existing_check:
+        check = existing_check[0]
 
     if check:
         check.created_at.value = Timestamp().to_string()
-        check.message.value = check_log
         check.conclusion.value = conclusion
         check.severity.value = severity
+        check.changed.value = artifact_result["changed"]
+        check.checksum.value = artifact_result["checksum"]
+        check.artifact_id.value = artifact_result["artifact_id"]
+        check.storage_id.value = artifact_result["storage_id"]
         await check.save()
     else:
         check = await service.client.create(
-            kind="CoreStandardCheck",
+            kind="CoreArtifactCheck",
             data={
                 "name": check_name,
                 "origin": message.repository_id,
-                "kind": "CheckDefinition",
+                "kind": "ArtifactDefinition",
                 "validator": message.validator_id,
                 "created_at": Timestamp().to_string(),
-                "message": check_log,
+                "message": check_message,
                 "conclusion": conclusion,
                 "severity": severity,
+                "changed": artifact_result["changed"],
+                "checksum": artifact_result["checksum"],
+                "artifact_id": artifact_result["artifact_id"],
+                "storage_id": artifact_result["storage_id"],
             },
         )
         await check.save()

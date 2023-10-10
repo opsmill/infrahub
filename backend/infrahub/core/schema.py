@@ -1765,6 +1765,8 @@ core_models = {
             "inherit_from": ["CoreCheck"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
+                {"name": "changed", "kind": "Boolean", "optional": True},
+                {"name": "checksum", "kind": "Text", "optional": True},
                 {"name": "artifact_id", "kind": "Text", "optional": True},
                 {"name": "storage_id", "kind": "Text", "optional": True},
                 {"name": "line_number", "kind": "Number", "optional": True},
