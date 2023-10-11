@@ -8,7 +8,7 @@ import { ALERT_TYPES, Alert } from "../../../components/alert";
 import { CONFIG } from "../../../config/config";
 import { QSP } from "../../../config/qsp";
 import { proposedChangedState } from "../../../state/atoms/proposedChanges.atom";
-import { fetchUrl } from "../../../utils/fetch";
+import { fetchUrl, getUrlWithQsp } from "../../../utils/fetch";
 import LoadingScreen from "../../loading-screen/loading-screen";
 import NoDataFound from "../../no-data-found/no-data-found";
 import { ArtifactRepoDiff } from "./artifact-repo-diff";
@@ -37,9 +37,7 @@ export const ArtifactsDiff = () => {
       ["time_to", timeTo ?? ""],
     ].filter(([, v]) => v !== undefined && v !== "");
 
-    const qsp = new URLSearchParams(options);
-
-    const urlWithQsp = `${url}${options.length ? `&${qsp.toString()}` : ""}`;
+    const urlWithQsp = getUrlWithQsp(url, options);
 
     try {
       const filesResult = await fetchUrl(urlWithQsp);

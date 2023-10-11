@@ -55,9 +55,7 @@ describe("Tutorial - Part 6", () => {
     cy.contains(regex).click();
 
     // Open the edit button
-    cy.get(".md\\:pl-64 > :nth-child(2) > .flex-col > .bg-custom-white").within(() => {
-      cy.contains("Edit").click();
-    });
+    cy.contains("Edit").click();
 
     // Update the description
     cy.get(":nth-child(2) > .relative > .block").clear();

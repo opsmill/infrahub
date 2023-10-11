@@ -16,7 +16,7 @@ import { BUTTON_TYPES, Button } from "../../components/button";
 import MetaDetailsTooltip from "../../components/meta-details-tooltips";
 import SlideOver from "../../components/slide-over";
 import { Tabs } from "../../components/tabs";
-import { DEFAULT_BRANCH_NAME } from "../../config/constants";
+import { DEFAULT_BRANCH_NAME, GROUP_OBJECT } from "../../config/constants";
 import { QSP } from "../../config/qsp";
 import { AuthContext } from "../../decorators/withAuth";
 import { getGroupDetails } from "../../graphql/queries/groups/getGroupDetails";
@@ -108,8 +108,8 @@ export default function GroupItemDetails() {
       <div className="px-4 py-5 sm:px-6 flex items-center">
         <div
           onClick={() => navigate(constructPath("/groups"))}
-          className="text-xl font-semibold text-gray-900 cursor-pointer hover:underline">
-          Groups
+          className="text-md font-semibold text-gray-900 cursor-pointer hover:underline">
+          {GROUP_OBJECT}
         </div>
         <ChevronRightIcon
           className="h-5 w-5 mt-1 mx-2 flex-shrink-0 text-gray-400"

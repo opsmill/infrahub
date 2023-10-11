@@ -123,3 +123,5 @@ export const VALIDATIONS_ENUM_MAP: { [key: string]: string } = {
   CoreSchemaValidator: "SCHEMA",
   all: "ALL",
 };
+
+export const MAX_VALUE_LENGTH_DISPLAY = 40;
