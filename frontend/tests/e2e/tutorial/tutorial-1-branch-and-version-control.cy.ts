@@ -25,7 +25,7 @@ describe("Tutorial - Part 1", () => {
     cy.get("[href='/objects/Organization'] > .group").click();
 
     // Click on the + icon
-    cy.get(".sm\\:flex.py-4 > .p-2").click();
+    cy.get("[data-cy='create']").click();
 
     // Add organization name
     cy.get(".grid > :nth-child(1) > .relative > .block").type(ORGANIZATION_NAME);
@@ -92,9 +92,7 @@ describe("Tutorial - Part 1", () => {
     }
 
     // Open the edit panel
-    cy.get(".md\\:pl-64 > :nth-child(2) > .flex-col > .bg-custom-white").within(() => {
-      cy.contains("Edit").click();
-    });
+    cy.contains("Edit").click();
 
     // Verify that the field is pre-populated
     cy.get(".grid > :nth-child(1) > .relative > .block").should("have.value", ORGANIZATION_NAME);

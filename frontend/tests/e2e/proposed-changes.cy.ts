@@ -99,10 +99,8 @@ describe("Main application", () => {
 
     cy.intercept("/graphql/main").as("CreateComment1");
 
-    cy.get(".p-4").within(() => {
-      // Send request
-      cy.contains("Comment").click();
-    });
+    // Send request
+    cy.get("[data-cy='submit-form']").click();
 
     cy.wait("@CreateComment1");
 
@@ -123,7 +121,7 @@ describe("Main application", () => {
       cy.intercept("/graphql/main").as("CreateComment2");
 
       // Send request
-      cy.contains("Comment").click();
+      cy.get("[data-cy='submit-form']").click();
 
       cy.wait("@CreateComment2");
 
@@ -154,15 +152,13 @@ describe("Main application", () => {
       cy.contains("Confirm").click();
     });
 
-    cy.get(".m-4").within(() => {
-      // Send request
-      cy.contains("Comment").click();
+    // Send request
+    cy.get("[data-cy='submit-form']").first().click();
 
-      cy.wait("@CreateComment3");
+    cy.wait("@CreateComment3");
 
-      // Add third comment
-      cy.contains(PROPOSED_CHANGE_COMMENT_3).should("exist");
-    });
+    // Add third comment
+    cy.contains(PROPOSED_CHANGE_COMMENT_3).should("exist");
 
     cy.contains("Resolved").should("be.disabled");
 

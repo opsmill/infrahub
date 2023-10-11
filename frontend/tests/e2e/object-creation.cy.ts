@@ -25,9 +25,7 @@ describe("Object creation and deletion", () => {
     });
 
     // Open the create form
-    cy.get(".sm\\:flex.py-4").within(() => {
-      cy.get(".p-2").click();
-    });
+    cy.get("[data-cy='create']").click();
 
     // Type the name
     cy.get(".grid > :nth-child(1) > .relative > .block").type(NEW_ACCOUNT.name);
@@ -61,7 +59,10 @@ describe("Object creation and deletion", () => {
 
     // Get the delete button for the new account
     cy.contains(NEW_ACCOUNT.name).scrollIntoView();
-    cy.contains(NEW_ACCOUNT.name).siblings(".py-3").click();
+    cy.contains(NEW_ACCOUNT.name)
+      .siblings("td")
+      .last()
+      .within(() => cy.get("[data-cy='delete']").click());
 
     // The account name should be displayed in the delete modal
     cy.get("b").should("include.text", NEW_ACCOUNT.name);
