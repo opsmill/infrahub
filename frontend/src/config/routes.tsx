@@ -20,7 +20,7 @@ export const MAIN_ROUTES = [
     element: <ObjectItemDetailsPaginated />,
   },
   {
-    path: "/objects/Artifact/:objectid",
+    path: "/objects/CoreArtifact/:objectid",
     element: <ArtifactsObjectItemDetailsPaginated />,
   },
   {

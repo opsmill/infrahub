@@ -136,9 +136,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                     <tbody className="bg-custom-white">
                       {relationshipsData?.map(({ node }: any, index: number) => (
                         <tr
-                          onClick={() =>
-                            navigate(getObjectDetailsUrl(node.id, node.__typename, schemaKindName))
-                          }
+                          onClick={() => navigate(getObjectDetailsUrl(node.id, node.__typename))}
                           key={index}
                           className="hover:bg-gray-50 cursor-pointer">
                           {columns?.map((column) => (

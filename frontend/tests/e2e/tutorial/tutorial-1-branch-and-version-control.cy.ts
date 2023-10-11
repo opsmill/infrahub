@@ -22,7 +22,7 @@ describe("Tutorial - Part 1", () => {
     cy.visit("/");
 
     // Select the Admin object in the menu
-    cy.get("[href='/objects/Organization'] > .group").click();
+    cy.get("[href='/objects/CoreOrganization'] > .group").click();
 
     // Click on the + icon
     cy.get("[data-cy='create']").click();
@@ -69,7 +69,7 @@ describe("Tutorial - Part 1", () => {
     cy.visit(`/?branch=${NEW_BRANCH_NAME}`);
 
     // Select the Admin object in the menu
-    cy.get(`[href='/objects/Organization?branch=${NEW_BRANCH_NAME}'] > .group`).click();
+    cy.get(`[href='/objects/CoreOrganization?branch=${NEW_BRANCH_NAME}'] > .group`).click();
 
     // Select the organization
     cy.contains(ORGANIZATION_NAME).should("exist");

@@ -36,8 +36,8 @@ import {
 import { TestProvider } from "../../mocks/jotai/atom";
 
 // URL for the current view
-const mockedUrl = `/objects/Device/${deviceDetailsMocksId}`;
-const mockedUrlToken = `/objects/AccountTokenBis/${accountTokenId}`;
+const mockedUrl = `/objects/InfraDevice/${deviceDetailsMocksId}`;
+const mockedUrlToken = `/objects/InternalAccountTokenBis/${accountTokenId}`;
 
 // Path that will match the route to display the component
 const mockedPath = "/objects/:objectname/:objectid";

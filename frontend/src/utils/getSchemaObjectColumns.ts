@@ -81,7 +81,7 @@ export const getSchemaAttributeColumns = (
 };
 
 export const getSchemaObjectColumns = (
-  schema: iNodeSchema | iGenericSchema,
+  schema?: iNodeSchema | iGenericSchema,
   disableExcludeLists?: boolean
 ): iColumn[] => {
   if (!schema) {
@@ -95,7 +95,7 @@ export const getSchemaObjectColumns = (
   return columns;
 };
 
-export const getGroupColumns = (schema: iNodeSchema | iGenericSchema): iColumn[] => {
+export const getGroupColumns = (schema?: iNodeSchema | iGenericSchema): iColumn[] => {
   if (!schema) {
     return [];
   }

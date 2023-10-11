@@ -8,10 +8,7 @@ import { ALERT_TYPES, Alert } from "../../components/alert";
 import { Button } from "../../components/button";
 import { Checkbox } from "../../components/checkbox";
 import { CONFIG } from "../../config/config";
-import {
-  PROPOSED_CHANGES_OBJECT_THREAD,
-  PROPOSED_CHANGES_OBJECT_THREAD_OBJECT,
-} from "../../config/constants";
+import { PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "../../config/constants";
 import { QSP } from "../../config/qsp";
 import { getProposedChangesObjectGlobalThreads } from "../../graphql/queries/proposed-changes/getProposedChangesObjectGlobalThreads";
 import useQuery from "../../hooks/useQuery";
@@ -42,7 +39,7 @@ export const DataDiff = () => {
 
   const branch = branchname || proposedChangesDetails?.source_branch?.value;
 
-  const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_OBJECT_THREAD)[0];
+  const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_OBJECT_THREAD_OBJECT);
 
   const queryString = schemaData
     ? getProposedChangesObjectGlobalThreads({

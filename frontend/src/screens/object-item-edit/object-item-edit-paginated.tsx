@@ -48,7 +48,7 @@ export default function ObjectItemEditComponent(props: Props) {
   const date = useReactiveVar(dateVar);
   const [isLoading, setIsLoading] = useState(false);
 
-  const schema = schemaList.filter((s) => s.name === objectname)[0];
+  const schema = schemaList.find((s) => s.kind === objectname);
 
   const relationships = getSchemaRelationshipColumns(schema);
 

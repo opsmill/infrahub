@@ -46,8 +46,8 @@ export default function GroupItemDetails() {
   const branch = useReactiveVar(branchVar);
   const [schemaList] = useAtom(schemaState);
   const [genericList] = useAtom(genericsState);
-  const schema = schemaList.filter((s) => s.name === groupname)[0];
-  const generic = genericList.filter((s) => s.name === groupname)[0];
+  const schema = schemaList.filter((s) => s.kind === groupname)[0];
+  const generic = genericList.filter((s) => s.kind === groupname)[0];
   const navigate = useNavigate();
 
   const schemaData = generic || schema;

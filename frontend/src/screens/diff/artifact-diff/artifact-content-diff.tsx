@@ -15,7 +15,6 @@ import { AddComment } from "../../../components/conversations/add-comment";
 import { Thread } from "../../../components/conversations/thread";
 import { CONFIG } from "../../../config/config";
 import {
-  PROPOSED_CHANGES_ARTIFACT_THREAD,
   PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT,
   PROPOSED_CHANGES_FILE_THREAD_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
@@ -110,13 +109,13 @@ export const ArtifactContentDiff = (props: any) => {
   const [newFile, setNewFile] = useState("");
   const [displayAddComment, setDisplayAddComment] = useState<any>({});
 
-  const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_ARTIFACT_THREAD)[0];
+  const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT);
 
   const queryString =
     schemaData && proposedchange
       ? getProposedChangesArtifactsThreads({
           id: proposedchange,
-          kind: schemaData.kind,
+          kind: schemaData?.kind,
         })
       : ""; // Empty query to make the gql parsing work
 
@@ -130,7 +129,8 @@ export const ArtifactContentDiff = (props: any) => {
     ? useQuery(query, { skip: !schemaData })
     : { loading: false, error: null, data: null, refetch: null };
 
-  const threads = data ? data[schemaData?.kind]?.edges?.map((edge: any) => edge.node) : [];
+  const threads =
+    data && schemaData?.kind ? data[schemaData?.kind]?.edges?.map((edge: any) => edge.node) : [];
   const approverId = auth?.data?.sub;
 
   const fetchFileDetails = useCallback(async (storageId: string, setState: Function) => {

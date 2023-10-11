@@ -8,7 +8,6 @@ import { ALERT_TYPES, Alert } from "../../components/alert";
 import { AddComment } from "../../components/conversations/add-comment";
 import { Thread } from "../../components/conversations/thread";
 import {
-  PROPOSED_CHANGES_OBJECT_THREAD,
   PROPOSED_CHANGES_OBJECT_THREAD_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
 } from "../../config/constants";
@@ -41,7 +40,7 @@ export const DataDiffComments = (props: tDataDiffComments) => {
   const [isLoading, setIsLoading] = useState(false);
   const { refetch: contextRefetch, node, currentBranch } = useContext(DiffContext);
 
-  const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_OBJECT_THREAD)[0];
+  const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_OBJECT_THREAD_OBJECT);
 
   const approverId = auth?.data?.sub;
 
