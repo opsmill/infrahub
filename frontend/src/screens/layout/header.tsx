@@ -38,7 +38,7 @@ export default function Header(props: Props) {
   const [schemaList] = useAtom(schemaState);
   const navigate = useNavigate();
 
-  const schema = schemaList.find((s) => s.name === ACCOUNT_OBJECT);
+  const schema = schemaList.find((s) => s.kind === ACCOUNT_OBJECT);
 
   const localToken = localStorage.getItem(ACCESS_TOKEN_KEY);
 

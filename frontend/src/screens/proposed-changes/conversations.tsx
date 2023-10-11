@@ -17,7 +17,6 @@ import { Tooltip } from "../../components/tooltip";
 import {
   ACCOUNT_OBJECT,
   DEFAULT_BRANCH_NAME,
-  PROPOSED_CHANGES,
   PROPOSED_CHANGES_CHANGE_THREAD_OBJECT,
   PROPOSED_CHANGES_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
@@ -114,7 +113,7 @@ export const Conversations = (props: tConversations) => {
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const navigate = useNavigate();
 
-  const accountSchemaData = schemaList.filter((s) => s.name === ACCOUNT_OBJECT)[0];
+  const accountSchemaData = schemaList.find((s) => s.kind === ACCOUNT_OBJECT);
 
   const queryString = getProposedChangesThreads({
     id: proposedchange,
@@ -645,7 +644,7 @@ export const Conversations = (props: tConversations) => {
           closeDrawer={() => setShowEditDrawer(false)}
           onUpdateComplete={() => refetch()}
           objectid={proposedchange!}
-          objectname={PROPOSED_CHANGES!}
+          objectname={PROPOSED_CHANGES_OBJECT!}
           formStructure={formStructure}
         />
       </SlideOver>

@@ -38,9 +38,9 @@ export default function AddObjectToGroup(props: Props) {
   const [pagination] = usePagination();
   const [isLoading, setIsLoading] = useState(false);
 
-  const schemaData = genericsList.filter((s) => s.name === GROUP_OBJECT)[0];
+  const schemaData = genericsList.find((s) => s.kind === GROUP_OBJECT);
 
-  const schema = schemaList.filter((s) => s.name === objectname)[0];
+  const schema = schemaList.find((s) => s.kind === objectname);
   const generic = genericsList.filter((s) => s.name === objectname)[0];
   const objectSchemaData = schema || generic;
 

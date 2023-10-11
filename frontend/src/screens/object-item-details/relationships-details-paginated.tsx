@@ -36,7 +36,7 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
 
-  const schema = schemaList.filter((s) => s.name === objectname)[0];
+  const schema = schemaList.find((s) => s.kind === objectname);
   const relationshipSchema = schema?.relationships?.find((r) => r?.name === relationshipTab);
   const columns = getAttributeColumnsFromNodeOrGenericSchema(
     schemaList,
