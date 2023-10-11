@@ -103,7 +103,6 @@ export const DataDiff = () => {
   const checks = data?.CoreValidator?.edges?.map((edge: any) => edge?.node?.checks);
 
   const checksDictionnary = constructChecksDictionnary(checks);
-  console.log("checksDictionnary: ", checksDictionnary);
 
   const fetchDiffDetails = useCallback(async () => {
     if (!branch) return;
@@ -166,7 +165,7 @@ export const DataDiff = () => {
         <div className="mr-2">
           <Button onClick={() => setBranchOnly(branchOnly !== "false" ? "false" : "true")}>
             Display main
-            <Checkbox enabled={branchOnly === "false"} />
+            <Checkbox enabled={branchOnly === "false"} readOnly />
           </Button>
         </div>
 

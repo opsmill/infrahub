@@ -41,7 +41,7 @@ query {
             }
           }
         }
-        checks {
+        checks {{#if filters}}({{{filters}}}){{/if}} {
           count
           edges {
             node {
