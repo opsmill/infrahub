@@ -88,10 +88,10 @@ export const ProposedChanges = () => {
 
   return (
     <div>
-      <div className="bg-white sm:flex sm:items-center py-4 px-4 sm:px-6 lg:px-8 w-full">
+      <div className="bg-white flex items-center p-4 w-full">
         {schemaData && (
           <div className="sm:flex-auto flex items-center">
-            <h1 className="text-xl font-semibold text-gray-900">
+            <h1 className="text-md font-semibold text-gray-900">
               {schemaData.name} ({count})
             </h1>
           </div>

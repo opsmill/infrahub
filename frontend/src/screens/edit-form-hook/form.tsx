@@ -86,6 +86,7 @@ export const Form = ({
           {onCancel && <Button onClick={onCancel}>Cancel</Button>}
 
           <Button
+            data-cy="submit-form"
             type="submit"
             buttonType={BUTTON_TYPES.MAIN}
             isLoading={isLoading}

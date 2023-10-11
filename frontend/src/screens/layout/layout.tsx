@@ -9,11 +9,11 @@ export default function Layout() {
 
   return (
     <>
-      <div className="h-screen flex">
+      <div className="h-screen flex overflow-x-hidden">
         <MobileMenu sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
         <DesktopMenu />
 
-        <div className="flex flex-1 flex-col md:pl-64 overflow-auto bg-gray-100">
+        <div className="flex flex-1 flex-col bg-gray-100 overflow-y-scroll overflow-x-hidden">
           <Header setSidebarOpen={setSidebarOpen} />
 
           <div className="flex flex-col flex-1">
