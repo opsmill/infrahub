@@ -1,6 +1,7 @@
 import ipaddress
 from typing import Any
-from unittest.mock import Mock, patch
+
+# from unittest.mock import Mock, patch
 
 import pytest
 from nornir.core.inventory import ConnectionOptions, Defaults  # , HostOrGroup
