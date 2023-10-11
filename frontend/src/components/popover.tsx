@@ -64,7 +64,7 @@ export const PopOver = ({
             <>
               {title && <div className="font-semibold text-center p-4">{title}</div>}
 
-              <div className="p-4">{children({ close })}</div>
+              <div className="p-2">{children({ close })}</div>
             </>
           )}
         </Popover.Panel>

@@ -72,8 +72,8 @@ const getCheckData = (check: any) => {
               <li key={path}>{path}</li>
             ))}
           </ul>
-          <div className="mt-2 flex flex-1 justify-around">
-            <Button>Keep data from main</Button>
+          <div className="mt-2 flex flex-1">
+            <Button className="mr-2">Keep data from main</Button>
 
             <Button>Keep data from branch</Button>
           </div>

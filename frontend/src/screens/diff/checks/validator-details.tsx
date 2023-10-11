@@ -102,10 +102,12 @@ export const ValidatorDetails = () => {
         </div>
       </div>
 
-      <div className="flex-1 grid grid-cols-2 3xl:grid-cols-3 gap-4 p-4">
-        {validator?.checks?.edges?.map((check: any, index: number) => (
-          <Check key={index} id={check?.node?.id} />
-        ))}
+      <div className="flex-1">
+        <div className="grid grid-cols-2 3xl:grid-cols-3 gap-4 p-4">
+          {validator?.checks?.edges?.map((check: any, index: number) => (
+            <Check key={index} id={check?.node?.id} />
+          ))}
+        </div>
       </div>
 
       <Pagination count={validator?.checks?.count} />
