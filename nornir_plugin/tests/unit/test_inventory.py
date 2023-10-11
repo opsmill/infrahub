@@ -295,70 +295,19 @@ def test_get_related_nodes():
 
 
 # XXX fails atm
-@patch("nornir_infrahub.plugins.inventory.infrahub.InfrahubClientSync.init")
-@patch("nornir_infrahub.plugins.inventory.infrahub.get_related_nodes")
-def test_infrahub_inventory_load(mock_get_related_nodes, mock_client, mock_infrahub_inventory):
+def test_infrahub_inventory_load(mock_infrahub_inventory):
     mock_defaults_content = """
-    host1.cmh:
-       hostname: 127.0.0.1
-       port: 2201
-       username: vagrant
-       password: vagrant
-       platform: linux
-       groups:
-           - cmh
-       data:
-           site: cmh
-           role: host
-           type: host
-           nested_data:
-               a_dict:
-                   a: 1
-                   b: 2
-               a_list: [1, 2]
-               a_string: "asdasd"
-    host2.cmh:
-        hostname: 127.0.0.1
-        port: 2202
-        username: vagrant
-        password: vagrant
-        platform: linux
-        groups:
-            - cmh
-        data:
-            site: cmh
-            role: host
-            type: host
-            nested_data:
-                a_dict:
-                    b: 2
-                    c: 3
-                a_list: [1, 2]
-                a_string: "qwe"
     """
     mock_group_content = """
-    global:
-        data:
-            domain: global.local
-            asn: 1
-    eu:
-        data:
-          asn: 65100
-    bma:
-        groups:
-            - eu
-            - global
-    cmh:
-        data:
-            asn: 65000
-            vlans:
-            100: frontend
-            200: backend
     """
 
-    with patch("builtins.open",
-               side_effect=[Mock(read_data=mock_defaults_content), Mock(read_data=mock_group_content)]):
+    with patch(
+        "builtins.open", side_effect=[Mock(read_data=mock_defaults_content), Mock(read_data=mock_group_content)]
+    ):
         inventory = mock_infrahub_inventory.load()
+
+    print(inventory.hosts.keys())
+    print(inventory.groups.keys())
 
     assert len(inventory.hosts) > 0
     # assert len(inventory.groups) > 0
