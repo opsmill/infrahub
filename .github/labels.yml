@@ -24,12 +24,20 @@
   description: "Issue related to the Python SDK"
   color: "56e8e1"
 
+- name: "group/nornir"
+  description: "Issue related to the Nornir Plugin"
+  color: "41ba21"
+
 - name: "group/sync-engine"
   description: "Issue related to the Synchronization engine"
   color: "56e8e1"
 
+- name: "group/ci"
+  description: "Issue related to the CI pipeline"
+  color: "f25009"
+
 # ----------------------------------
-# TYPE
+# TYPE INFRAHUB (default)
 # ----------------------------------
 - name: "type/feature"
   description: "New feature or request"
@@ -39,17 +47,65 @@
   description: "Something isn't working as expected"
   color: "d73a4a"
 
-- name: "type/documentation"
-  description: "Improvements or additions to documentation"
-  color: "0075ca"
-
 - name: "type/housekeeping"
   description: "Maintenance task"
   color: "fef2c0"
 
+# ----------------------------------
+# TYPE PYTHON SDK
+# ----------------------------------
+- name: "type/feature/py-sdk"
+  description: "New feature or request related to the Python SDK"
+  color: "a2eeef"
+
+- name: "type/bug/py-sdk"
+  description: "Something isn't working as expected related to the Python SDK"
+  color: "d73a4a"
+
+- name: "type/housekeeping/py-sdk"
+  description: "Maintenance task related to the Python SDK"
+  color: "fef2c0"
+
+# ----------------------------------
+# TYPE CTL
+# ----------------------------------
+- name: "type/feature/ctl"
+  description: "New feature or request related to the infrahubctl command line"
+  color: "a2eeef"
+
+- name: "type/bug/ctl"
+  description: "Something isn't working as expected related to the infrahubctl command line"
+  color: "d73a4a"
+
+- name: "type/housekeeping/ctl"
+  description: "Maintenance task related to the infrahubctl command line"
+  color: "fef2c0"
+
+# ----------------------------------
+# TYPE NORNIR
+# ----------------------------------
+- name: "type/feature/nornir"
+  description: "New feature or request related to the Nornir plugin"
+  color: "a2eeef"
+
+- name: "type/bug/nornir"
+  description: "Something isn't working as expected related to the Nornir plugin"
+  color: "d73a4a"
+
+- name: "type/housekeeping/nornir"
+  description: "Maintenance task related to the Nornir plugin"
+  color: "fef2c0"
+
+# ----------------------------------
+# TYPE ALL
+# ----------------------------------
 - name: "type/question"
   description: "Question or discussion"
   color: "d876e3"
+
+- name: "type/documentation"
+  description: "Improvements or additions to documentation"
+  color: "0075ca"
 
 - name: "type/duplicate"
   description: "This issue or pull request already exists"
@@ -108,7 +164,6 @@
 # ----------------------------------
 # CI
 # ----------------------------------
-
 - name: "ci/skip-changelog"
   description: "Don't include this PR in the changelog"
   color: "c30664"
