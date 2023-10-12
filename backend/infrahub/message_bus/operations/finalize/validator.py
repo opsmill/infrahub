@@ -17,7 +17,7 @@ async def execution(message: messages.FinalizeValidatorExecution, service: Infra
 
     The message will get rescheduled until the timeout has exceeded or until all checks are accounted for.
     """
-    validator = await service.client.get(kind="CoreRepositoryValidator", id=message.validator_id)
+    validator = await service.client.get(kind=message.validator_type, id=message.validator_id)
     checks_key = f"validator_execution_id:{message.validator_execution_id}:checks"
     current_conclusion = validator.conclusion.value
     if validator.state.value != "in_progress":
