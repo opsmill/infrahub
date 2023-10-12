@@ -1,0 +1,55 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/develop/schema.schema.json
+---
+version: '1.0'
+nodes:
+  - name: RouteReflector
+    namespace: Infra
+    description: "Route Reflector schema"
+    label: "Route Reflector"
+    default_filter: name__value
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: description
+        kind: Text
+        optional: true
+      - name: type
+        kind: Text
+    relationships:
+      - name: site
+        peer: BuiltinLocation
+        optional: false
+        cardinality: one
+        kind: Attribute
+      - name: ip_addresses
+        peer: InfraIPAddress
+        optional: true
+        cardinality: one
+        kind: Component
+  - name: IPAddress
+    namespace: Infra
+    description: "IP Address"
+    label: "IP Address"
+    default_filter: address__value
+    order_by:
+      - "address__value"
+    display_labels:
+      - address__value
+    attributes:
+      - name: address
+        kind: IPHost
+      - name: description
+        kind: Text
+        optional: true
+extensions:
+  nodes:
+    - kind: BuiltinLocation
+      relationships:
+        - name: route_reflectors
+          peer: InfraRouteReflector
+          optional: true
+          cardinality: many
+          kind: Generic
