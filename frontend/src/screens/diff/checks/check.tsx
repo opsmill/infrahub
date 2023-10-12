@@ -7,7 +7,6 @@ import {
 } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { Badge } from "../../../components/badge";
-import { Button } from "../../../components/button";
 import { DateDisplay } from "../../../components/date-display";
 import { PopOver } from "../../../components/popover";
 import { getCheckDetails } from "../../../graphql/queries/diff/getCheckDetails";
@@ -72,11 +71,11 @@ const getCheckData = (check: any) => {
               <li key={path}>{path}</li>
             ))}
           </ul>
-          <div className="mt-2 flex flex-1">
+          {/* <div className="mt-2 flex flex-1">
             <Button className="mr-2">Keep data from main</Button>
 
             <Button>Keep data from branch</Button>
-          </div>
+          </div> */}
         </div>
       );
     }
