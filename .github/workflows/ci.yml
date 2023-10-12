@@ -392,6 +392,9 @@ jobs:
       - name: Run End to End Tests
         working-directory: ./frontend
         run: npm run cypress:run:e2e
+      - name: Containers after failure
+        if: failure()
+        run: docker ps -a
       - name: Upload cypress screenshots
         if: failure()
         uses: actions/upload-artifact@v3
