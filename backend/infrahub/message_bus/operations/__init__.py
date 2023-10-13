@@ -28,6 +28,7 @@ COMMAND_MAP = {
     "git.diff.names_only": git.diff.names_only,
     "git.file.get": git.file.get,
     "git.repository.add": git.repository.add,
+    "git.repository.merge": git.repository.merge,
     "refresh.registry.branches": refresh.registry.branches,
     "request.git.create_branch": requests.git.create_branch,
     "request.artifact_definition.check": requests.artifact_definition.check,
