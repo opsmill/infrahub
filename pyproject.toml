@@ -221,18 +221,6 @@ module = "infrahub.checks"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.cli"
-disallow_untyped_defs = false
-
-[[tool.mypy.overrides]]
-module = "infrahub.cli.doc"
-disallow_untyped_defs = false
-
-[[tool.mypy.overrides]]
-module = "infrahub.cli.generate_schema"
-disallow_untyped_defs = false
-
-[[tool.mypy.overrides]]
 module = "infrahub.core.*"
 ignore_errors = true
 
