@@ -1,5 +1,6 @@
 import { QuestionMarkCircleIcon } from "@heroicons/react/24/outline";
 import { useContext } from "react";
+import { BadgeCircle, CIRCLE_BADGE_TYPES } from "../../components/badge-circle";
 import { POPOVER_SIZE, PopOver } from "../../components/popover";
 import { Check } from "./checks/check";
 import { DiffContext } from "./data-diff";
@@ -8,8 +9,16 @@ type tDataDiffConflictInfo = {
   path: string;
 };
 
+const getIdFromPath = (path: string) => {
+  const id = path.split("/")[1];
+
+  return id;
+};
+
 export const DataDiffConflictInfo = (props: tDataDiffConflictInfo) => {
   const { path } = props;
+
+  const id = getIdFromPath(path);
 
   const { checksDictionnary } = useContext(DiffContext);
 
@@ -35,10 +44,16 @@ export const DataDiffConflictInfo = (props: tDataDiffConflictInfo) => {
 
   const renderContent = () => {
     return (
-      <div className="grid grid-cols-1 gap-4">
-        {checks.map((check: any, index: number) => (
-          <Check key={index} id={check?.id} />
-        ))}
+      <div>
+        <div className="flex mb-2">
+          <BadgeCircle type={CIRCLE_BADGE_TYPES.LIGHT}>{id}</BadgeCircle>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4">
+          {checks.map((check: any, index: number) => (
+            <Check key={index} id={check?.id} />
+          ))}
+        </div>
       </div>
     );
   };
