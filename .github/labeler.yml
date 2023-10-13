@@ -1,0 +1,24 @@
+---
+"group/ci":
+  - .github/**
+
+"group/backend":
+  - backend/**
+
+"group/frontend":
+  - frontend/**
+
+"group/infrahubctl":
+  - ctl/**
+
+"group/nornir":
+  - nornir_plugin/**
+
+"group/python-sdk":
+  - python_sdk/**
+
+"group/sync-engine":
+  - sync/**
+
+"type/documentation":
+  - docs/**
