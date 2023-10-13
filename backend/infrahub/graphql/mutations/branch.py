@@ -4,8 +4,7 @@ import pydantic
 from graphene import Boolean, Field, InputObjectType, List, Mutation, String
 from graphql import GraphQLResolveInfo
 
-import infrahub.config as config
-from infrahub import lock
+from infrahub import config, lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.exceptions import BranchNotFound
@@ -219,8 +218,13 @@ class BranchMerge(Mutation):
         ok = True
 
         if config.SETTINGS.broker.enable and info.context.get("background"):
-            info.context.get("background").add_task(
-                send_event, InfrahubBranchMessage(action=BranchMessageAction.MERGE, branch=obj.name)
+            log_data = get_log_data()
+            request_id = log_data.get("request_id", "")
+            message = messages.EventBranchMerge(
+                source_branch=obj.name,
+                target_branch=config.SETTINGS.main.default_branch,
+                meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
             )
+            info.context.get("background").add_task(services.send, message)
 
         return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok)

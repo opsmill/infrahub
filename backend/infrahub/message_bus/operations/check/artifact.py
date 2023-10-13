@@ -1,12 +1,12 @@
 from typing import Dict, Union
 
-from infrahub import lock
 from infrahub.core.constants import ValidatorConclusion
 from infrahub.core.timestamp import Timestamp
 from infrahub.git.repository import InfrahubRepository
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
 from infrahub.services import InfrahubServices
+from infrahub.tasks.artifact import define_artifact
 from infrahub.tasks.check import set_check_status
 
 log = get_logger()
@@ -17,31 +17,7 @@ async def create(message: messages.CheckArtifactCreate, service: InfrahubService
     validator = await service.client.get(kind="CoreArtifactValidator", id=message.validator_id, include=["checks"])
 
     repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=service.client)
-    if message.artifact_id:
-        artifact = await service.client.get(kind="CoreArtifact", id=message.artifact_id, branch=message.branch_name)
-    else:
-        async with lock.registry.get(f"{message.target_id}-{message.artifact_definition}", namespace="artifact"):
-            artifacts = await service.client.filters(
-                kind="CoreArtifact",
-                branch=message.branch_name,
-                definition__ids=[message.artifact_definition],
-                object__ids=[message.target_id],
-            )
-            if artifacts:
-                artifact = artifacts[0]
-            else:
-                artifact = await service.client.create(
-                    kind="CoreArtifact",
-                    branch=message.branch_name,
-                    data={
-                        "name": message.artifact_name,
-                        "status": "Pending",
-                        "object": message.target_id,
-                        "definition": message.artifact_definition,
-                        "content_type": message.content_type,
-                    },
-                )
-                await artifact.save()
+    artifact = await define_artifact(message=message, service=service)
 
     conclusion = ValidatorConclusion.SUCCESS.value
     severity = "info"
