@@ -1,6 +1,6 @@
 import { QuestionMarkCircleIcon } from "@heroicons/react/24/outline";
 import { useContext } from "react";
-import { BadgeCircle, CIRCLE_BADGE_TYPES } from "../../components/badge-circle";
+import { Id } from "../../components/id";
 import { POPOVER_SIZE, PopOver } from "../../components/popover";
 import { Check } from "./checks/check";
 import { DiffContext } from "./data-diff";
@@ -46,7 +46,7 @@ export const DataDiffConflictInfo = (props: tDataDiffConflictInfo) => {
     return (
       <div>
         <div className="flex mb-2">
-          <BadgeCircle type={CIRCLE_BADGE_TYPES.LIGHT}>{id}</BadgeCircle>
+          <Id id={id} />
         </div>
 
         <div className="grid grid-cols-1 gap-4">
