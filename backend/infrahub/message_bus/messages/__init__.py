@@ -2,6 +2,7 @@ from typing import Dict, Type
 
 from infrahub.message_bus import InfrahubBaseMessage
 
+from .check_artifact_create import CheckArtifactCreate
 from .check_repository_checkdefinition import CheckRepositoryCheckDefinition
 from .check_repository_mergeconflicts import CheckRepositoryMergeConflicts
 from .event_branch_create import EventBranchCreate
@@ -11,7 +12,9 @@ from .git_branch_create import GitBranchCreate
 from .git_diff_namesonly import GitDiffNamesOnly
 from .git_file_get import GitFileGet
 from .git_repository_add import GitRepositoryAdd
+from .git_repository_merge import GitRepositoryMerge
 from .refresh_registry_branches import RefreshRegistryBranches
+from .request_artifactdefinition_check import RequestArtifactDefinitionCheck
 from .request_artifactdefinition_generate import RequestArtifactDefinitionGenerate
 from .request_git_createbranch import RequestGitCreateBranch
 from .request_proposedchange_dataintegrity import RequestProposedChangeDataIntegrity
@@ -27,17 +30,20 @@ from .transform_jinja_template import TransformJinjaTemplate
 from .transform_python_data import TransformPythonData
 
 MESSAGE_MAP: Dict[str, Type[InfrahubBaseMessage]] = {
+    "check.artifact.create": CheckArtifactCreate,
     "check.repository.check_definition": CheckRepositoryCheckDefinition,
     "check.repository.merge_conflicts": CheckRepositoryMergeConflicts,
     "git.branch.create": GitBranchCreate,
     "git.diff.names_only": GitDiffNamesOnly,
     "git.file.get": GitFileGet,
     "git.repository.add": GitRepositoryAdd,
+    "git.repository.merge": GitRepositoryMerge,
     "event.branch.create": EventBranchCreate,
     "event.schema.update": EventSchemaUpdate,
     "finalize.validator.execution": FinalizeValidatorExecution,
     "request.git.create_branch": RequestGitCreateBranch,
     "refresh.registry.branches": RefreshRegistryBranches,
+    "request.artifact_definition.check": RequestArtifactDefinitionCheck,
     "request.artifact_definition.generate": RequestArtifactDefinitionGenerate,
     "request.proposed_change.data_integrity": RequestProposedChangeDataIntegrity,
     "request.proposed_change.refresh_artifacts": RequestProposedChangeRefreshArtifacts,

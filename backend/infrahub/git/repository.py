@@ -37,8 +37,8 @@ from infrahub_client import GraphQLError, InfrahubClient, InfrahubNode, Validati
 from infrahub_client.utils import compare_lists
 
 if TYPE_CHECKING:
+    from infrahub.message_bus import messages
     from infrahub_client.branch import BranchData
-
 # pylint: disable=too-few-public-methods,too-many-lines
 
 LOGGER = get_logger("infrahub.git")
@@ -1784,6 +1784,52 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         artifact.status.value = "Ready"
         await artifact.save()
 
+        return ArtifactGenerateResult(changed=True, checksum=checksum, storage_id=storage_id, artifact_id=artifact.id)
+
+    async def render_artifact(
+        self, artifact: InfrahubNode, message: messages.CheckArtifactCreate
+    ) -> ArtifactGenerateResult:
+        data = await self.client.execute_graphql(
+            query=message.query,
+            variables=message.variables,
+            tracker="artifact-query-graphql-data",
+            branch_name=message.branch_name,
+            rebase=message.rebase,
+            timeout=message.timeout,
+        )
+
+        if message.transform_type == "CoreRFile":
+            artifact_content = await self.render_jinja2_template(
+                commit=message.commit, location=message.transform_location, data={"data": data}
+            )
+        elif message.transform_type == "CoreTransformPython":
+            artifact_content = await self.execute_python_transform(
+                branch_name=message.branch_name,
+                commit=message.commit,
+                location=message.transform_location,
+                data=data,
+                client=self.client,
+            )
+
+        if message.content_type == "application/json":
+            artifact_content_str = ujson.dumps(artifact_content, indent=2)
+        elif message.content_type == "text/plain":
+            artifact_content_str = artifact_content
+
+        checksum = hashlib.md5(bytes(artifact_content_str, encoding="utf-8")).hexdigest()
+
+        if artifact.checksum.value == checksum:
+            return ArtifactGenerateResult(
+                changed=False, checksum=checksum, storage_id=artifact.storage_id.value, artifact_id=artifact.id
+            )
+
+        resp = await self.client.object_store.upload(content=artifact_content_str, tracker="artifact-upload-content")
+        storage_id = resp["identifier"]
+
+        artifact.checksum.value = checksum
+        artifact.storage_id.value = storage_id
+        artifact.status.value = "Ready"
+        await artifact.save()
         return ArtifactGenerateResult(changed=True, checksum=checksum, storage_id=storage_id, artifact_id=artifact.id)
 
     def validate_location(self, commit: str, worktree_directory: str, file_path: str) -> None:

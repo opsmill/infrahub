@@ -86,12 +86,17 @@ VOLUME_NAMES = ["database_data", "database_logs", "git_data", "git_remote_data",
 GITHUB_ENVS_TO_PASS = [
     "GITHUB_ACTION",
     "GITHUB_REF_NAME",
+    "GITHUB_BASE_REF",
+    "GITHUB_HEAD_REF",
     "GITHUB_REPOSITORY",
     "GITHUB_RUN_ATTEMPT",
     "GITHUB_SHA",
     "GITHUB_RUN_ID",
     "GITHUB_RUN_NUMBER",
+    "BUILDKITE_BRANCH",
+    "BUILDKITE_COMMIT",
     "BUILDKITE_ANALYTICS_TOKEN",
+    "BUILDKITE_ANALYTICS_BRANCH",
 ]
 
 

@@ -1,4 +1,4 @@
-from infrahub.git.handlers import handle_git_rpc_message, handle_message
+from infrahub.git.handlers import handle_message
 from infrahub.git.repository import (
     BRANCHES_DIRECTORY_NAME,
     COMMITS_DIRECTORY_NAME,
@@ -29,6 +29,5 @@ __all__ = [
     "Worktree",
     "extract_repo_file_information",
     "initialize_repositories_directory",
-    "handle_git_rpc_message",
     "handle_message",
 ]

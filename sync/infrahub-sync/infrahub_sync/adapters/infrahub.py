@@ -31,7 +31,6 @@ def update_node(node: InfrahubNodeSync, attrs: dict):
                 new_peer_ids = [node._client.store.get(key=value, kind=rel.peer).id for value in list(attr_value)]
                 attr = getattr(node, attr_name)
                 existing_peer_ids = attr.peer_ids
-
                 in_both, existing_only, new_only = compare_lists(existing_peer_ids, new_peer_ids)
 
                 for id in existing_only:
@@ -75,6 +74,7 @@ class InfrahubAdapter(DiffSyncMixin, DiffSync):
 
     def model_loader(self, model_name: str, model):
         nodes = self.client.all(kind=model.__name__, populate_store=True)
+        # print(f"-> Loading {len(nodes)} {model.__name__}")
         for node in nodes:
             data = self.infrahub_node_to_diffsync(node)
             item = model(**data)
@@ -88,7 +88,13 @@ class InfrahubAdapter(DiffSyncMixin, DiffSync):
         for attr_name in node._schema.attribute_names:
             if has_field(config=self.config, name=node._schema.kind, field=attr_name):
                 attr = getattr(node, attr_name)
-                data[attr_name] = attr.value
+                # Is it the right place to do it or are we missing some de-serialize ?
+                # got a ValidationError from pydantic while trying to get the model(**data)
+                # for IPHost and IPInterface
+                if type(attr.value) != type(str) and attr.value:
+                    data[attr_name] = str(attr.value)
+                else:
+                    data[attr_name] = attr.value
 
         for rel_schema in node._schema.relationships:
             if not has_field(config=self.config, name=node._schema.kind, field=rel_schema.name):
