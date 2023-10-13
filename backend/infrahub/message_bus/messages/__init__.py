@@ -6,6 +6,7 @@ from .check_artifact_create import CheckArtifactCreate
 from .check_repository_checkdefinition import CheckRepositoryCheckDefinition
 from .check_repository_mergeconflicts import CheckRepositoryMergeConflicts
 from .event_branch_create import EventBranchCreate
+from .event_node_mutated import EventNodeMutated
 from .event_schema_update import EventSchemaUpdate
 from .finalize_validator_execution import FinalizeValidatorExecution
 from .git_branch_create import GitBranchCreate
@@ -39,6 +40,7 @@ MESSAGE_MAP: Dict[str, Type[InfrahubBaseMessage]] = {
     "git.repository.add": GitRepositoryAdd,
     "git.repository.merge": GitRepositoryMerge,
     "event.branch.create": EventBranchCreate,
+    "event.node.mutated": EventNodeMutated,
     "event.schema.update": EventSchemaUpdate,
     "finalize.validator.execution": FinalizeValidatorExecution,
     "request.git.create_branch": RequestGitCreateBranch,
