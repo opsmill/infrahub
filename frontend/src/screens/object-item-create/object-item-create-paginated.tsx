@@ -102,7 +102,7 @@ export default function ObjectItemCreate(props: iProps) {
       }
 
       const mutationString = createObject({
-        kind: schema.kind,
+        kind: schema?.kind,
         data: stringifyWithoutQuotes({ ...newObject, ...customObject }),
       });
 
@@ -119,11 +119,14 @@ export default function ObjectItemCreate(props: iProps) {
       });
 
       toast(
-        <Alert type={ALERT_TYPES.SUCCESS} message={`${schemaKindName[schema.kind]} created`} />
+        <Alert
+          type={ALERT_TYPES.SUCCESS}
+          message={`${schema?.kind && schemaKindName[schema?.kind]} created`}
+        />
       );
 
       if (onCreate) {
-        onCreate(result?.data?.[`${schema.kind}Create`]);
+        onCreate(result?.data?.[`${schema?.kind}Create`]);
       }
 
       if (refetch) refetch();
@@ -131,14 +134,6 @@ export default function ObjectItemCreate(props: iProps) {
       setIsLoading(false);
     } catch (error: any) {
       console.error("An error occured while creating the object: ", error);
-
-      toast(
-        <Alert
-          type={ALERT_TYPES.ERROR}
-          message={"An error occured while creating the object"}
-          details={error.message}
-        />
-      );
 
       setIsLoading(false);
     }

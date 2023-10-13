@@ -9,7 +9,6 @@ import {
 import { format, formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
 import { useCallback, useContext, useState } from "react";
-import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "../config/qsp";
 import { AuthContext } from "../decorators/withAuth";
@@ -20,7 +19,6 @@ import { branchVar } from "../graphql/variables/branchVar";
 import { dateVar } from "../graphql/variables/dateVar";
 import { branchesState } from "../state/atoms/branches.atom";
 import { classNames, objectToString } from "../utils/common";
-import { ALERT_TYPES, Alert } from "./alert";
 import { BUTTON_TYPES, Button } from "./button";
 import { Input } from "./input";
 import { PopOver } from "./popover";
@@ -152,9 +150,6 @@ export default function BranchSelector() {
       window.location.reload();
     } catch (error) {
       console.error("Error while creating the branch: ", error);
-      toast(
-        <Alert type={ALERT_TYPES.ERROR} message={"An error occured while creating the branch"} />
-      );
 
       setIsLoading(false);
     }
