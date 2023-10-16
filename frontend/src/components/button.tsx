@@ -101,7 +101,6 @@ export const Button = forwardRef((props: ButtonProps, ref: any) => {
     onClick && onClick(event);
   };
 
-  console.log("className: ", className);
   return (
     <button
       type={type ?? "button"}
