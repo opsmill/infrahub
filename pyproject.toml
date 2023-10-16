@@ -316,10 +316,6 @@ ignore_errors = true
 module = "infrahub.types"
 disallow_untyped_defs = false
 
-[[tool.mypy.overrides]]
-module = "infrahub.utils"
-disallow_untyped_defs = false
-
 
 [tool.ruff]
 
