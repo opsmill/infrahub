@@ -225,10 +225,6 @@ module = "infrahub.core.*"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.cli.events"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.cli.git_agent"
 ignore_errors = true
 

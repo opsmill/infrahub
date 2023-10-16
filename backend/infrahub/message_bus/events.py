@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import importlib
 import pickle
-from typing import TYPE_CHECKING, Any, Generator, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
-from aio_pika import DeliveryMode, ExchangeType, IncomingMessage, Message
+from aio_pika import DeliveryMode, IncomingMessage, Message
 from aio_pika.patterns.base import Base as PickleSerializer
 
 import infrahub.config as config
@@ -14,9 +14,9 @@ from infrahub.utils import BaseEnum
 from . import get_broker
 
 if TYPE_CHECKING:
+    from aio_pika.abc import AbstractExchange
     from typing_extensions import Self
 
-    from infrahub.core.node import Node
 
 # pylint: disable=arguments-differ
 
@@ -44,7 +44,6 @@ class MessageType(str, BaseEnum):
 
 MESSAGE_MAPPING = {
     MessageType.DATA: "InfrahubDataMessage",
-    MessageType.SCHEMA: "InfrahubSchemaMessage",
     MessageType.BRANCH: "InfrahubBranchMessage",
     MessageType.ARTIFACT: "InfrahubArtifactRPC",
     MessageType.RPC_RESPONSE: "InfrahubRPCResponse",
@@ -52,12 +51,6 @@ MESSAGE_MAPPING = {
 
 
 class DataMessageAction(str, BaseEnum):
-    CREATE = "create"
-    UPDATE = "update"
-    DELETE = "delete"
-
-
-class SchemaMessageAction(str, BaseEnum):
     CREATE = "create"
     UPDATE = "update"
     DELETE = "delete"
@@ -289,181 +282,11 @@ class InfrahubRPCResponse(InfrahubMessage):
             raise ProcessingError("\n".join(self.errors))
 
 
-class InfrahubArtifactRPC(InfrahubRPC):
-    type = MessageType.ARTIFACT
-    actions = ArtifactMessageAction
-
-    def __init__(
-        self,
-        branch_name: str,
-        transformation: dict,
-        definition: dict,
-        target: dict,
-        artifact: dict,
-        query=dict,
-        repository: Optional[Node] = None,
-        repository_name: Optional[str] = None,
-        repository_id: Optional[str] = None,
-        commit: Optional[str] = None,
-        *args,
-        **kwargs,
-    ):
-        if not repository and not repository_id:
-            raise ValueError("Either Repository or repository_id must be provided for InfrahubArtifactRPC.")
-
-        if not repository and not repository_name:
-            raise ValueError("Either Repository or repository_name must be provided for InfrahubArtifactRPC.")
-
-        if not repository and not commit:
-            raise ValueError("Either Repository or commit must be provided for InfrahubArtifactRPC.")
-
-        super().__init__(*args, **kwargs)
-
-        self.repository = repository
-        self.repository_id = repository_id
-        self.repository_name = repository_name
-        self.commit = commit
-
-        self.artifact = artifact
-        self.query = query
-        self.transformation = transformation
-        self.definition = definition
-        self.target = target
-
-        if repository and not repository_id:
-            self.repository_id = repository.id
-        if repository and not repository_name:
-            self.repository_name = repository.name.value
-        if repository and not commit:
-            self.commit = repository.commit.value
-
-        self.branch_name = branch_name
-
-    def generate_message_body(self) -> dict:
-        """Generate the body of the message as a dict."""
-
-        body = super().generate_message_body()
-        body["repository_id"] = self.repository_id
-        body["repository_name"] = self.repository_name
-        body["branch_name"] = self.branch_name
-        body["commit"] = self.commit
-        body["transformation"] = self.transformation
-        body["query"] = self.query
-        body["definition"] = self.definition
-        body["target"] = self.target
-        body["artifact"] = self.artifact
-
-        return body
-
-
-# --------------------------------------------------------
-# Events
-# --------------------------------------------------------
-class InfrahubDataMessage(InfrahubActionMessage):
-    type = MessageType.DATA
-    actions = DataMessageAction
-
-    def __init__(
-        self,
-        node: Optional[Node] = None,
-        node_id: Optional[str] = None,
-        node_kind: Optional[str] = None,
-        branch: Optional[str] = None,
-        *args,
-        **kwargs,
-    ):
-        super().__init__(*args, **kwargs)
-
-        self.node_kind = node_kind or node.get_kind()
-        self.node_id = node_id or node.id
-        self.branch = branch or node._branch.name
-        self._node = node
-
-    # @classmethod
-    # def init(cls, body: dict, message: IncomingMessage) -> InfrahubDataMessage:
-    #     """Initialize an Message from an Incoming Message and a body."""
-
-    #     action = body.get("action")
-    #     branch = body.get("branch")
-    #     node_id = body.get("node", {}).get("id")
-    #     node_kind = body.get("node", {}).get("kind")
-
-    #     return cls(action=action, branch=branch, node_id=node_id, node_kind=node_kind)
-
-    def __repr__(self) -> str:
-        return f"[{self.type.value.upper()}] branch: {self.branch} | {self.action} | {self.node_kind} | {self.node_id} "
-
-    @property
-    def topic(self):
-        """name of the topic for this event."""
-        return f"{self.type}.{self.branch}.node.{self.node_kind}.{self.action}.{self.node_id}"
-
-    def generate_message_body(self) -> dict:
-        """Generate the body of the message as a dict."""
-
-        body = super().generate_message_body()
-        body["branch"] = self.branch
-        body["node_kind"] = self.node_kind
-        body["node_id"] = self.node_id
-
-        return body
-
-
-class SchemaMessage(InfrahubDataMessage):
-    """Infrahub Message related to action on the Schema.
-
-    topic format: schema.<branch_name>.node.<node_type>.<action>.<object_id>
-    """
-
-    type = MessageType.SCHEMA
-    actions = SchemaMessageAction
-
-
-class InfrahubBranchMessage(InfrahubActionMessage):
-    """Infrahub Message related to action on the branches.
-
-    topic format: branch.<branch_name>.<action>
-    """
-
-    type = MessageType.BRANCH
-    actions = BranchMessageAction
-
-    def __init__(self, branch: str, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.branch = branch
-
-    # @classmethod
-    # def init(cls, body: dict, message: IncomingMessage) -> InfrahubBranchMessage:
-    #     """Initialize an Message from an Incoming Message and a body."""
-
-    #     action = body.get("action")
-    #     branch = body.get("branch")
-
-    #     return cls(action=action, branch=branch)
-
-    @property
-    def topic(self) -> str:
-        """name of the topic for this event."""
-        return f"{self.type}.{self.branch}.{self.action}"
-
-    def generate_message_body(self) -> dict:
-        """Generate the body of the message as a dict."""
-        body = super().generate_message_body()
-        body["branch"] = self.branch
-
-        return body
-
-
-async def get_event_exchange(channel=None) -> Generator:
+async def get_event_exchange(channel=None) -> AbstractExchange:
     """Return the event exchange initialized as TOPIC."""
     if not channel:
         broker = await get_broker()
         channel = await broker.channel()
 
     exchange_name = f"{config.SETTINGS.broker.namespace}.events"
-    return await channel.declare_exchange(exchange_name, ExchangeType.TOPIC, durable=True)
-
-
-async def send_event(msg: Message):
-    """Task Wrapper to send a message as a background task."""
-    return await msg.send()
+    return await channel.get_exchange(name=exchange_name)
