@@ -1787,7 +1787,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         return ArtifactGenerateResult(changed=True, checksum=checksum, storage_id=storage_id, artifact_id=artifact.id)
 
     async def render_artifact(
-        self, artifact: InfrahubNode, message: messages.CheckArtifactCreate
+        self, artifact: InfrahubNode, message: Union[messages.CheckArtifactCreate, messages.RequestArtifactGenerate]
     ) -> ArtifactGenerateResult:
         data = await self.client.execute_graphql(
             query=message.query,

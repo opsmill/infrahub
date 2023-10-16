@@ -1,15 +1,9 @@
 import pytest
-from deepdiff import DeepDiff
 from fastapi.testclient import TestClient
 
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
-from infrahub.message_bus.events import (
-    ArtifactMessageAction,
-    InfrahubRPCResponse,
-    MessageType,
-    RPCStatusCode,
-)
+from infrahub.message_bus import messages
 from infrahub.message_bus.rpc import InfrahubRpcClientTesting
 
 
@@ -64,30 +58,13 @@ async def test_artifact_definition_endpoint(
 
     # Must execute in a with block to execute the startup/shutdown events
     with client:
-        mock_response = InfrahubRPCResponse(
-            status=RPCStatusCode.OK,
-            response={"artifact_id": "XXXXX", "changed": True, "checksum": "YYYYYY", "storage_id": "DDDDDDDDDD"},
-        )
-        await client.app.state.rpc_client.add_response(
-            response=mock_response, message_type=MessageType.ARTIFACT, action=ArtifactMessageAction.GENERATE
-        )
-        await client.app.state.rpc_client.add_response(
-            response=mock_response, message_type=MessageType.ARTIFACT, action=ArtifactMessageAction.GENERATE
-        )
-
         response = client.post(
             f"/api/artifact/generate/{ad1.id}",
             headers=admin_headers,
         )
 
     assert response.status_code == 200
-    assert response.json() is not None
-    result = response.json()
-
-    expected_result = {
-        "nodes": [
-            car_person_data_generic["c1"].id,
-            car_person_data_generic["c2"].id,
-        ]
-    }
-    assert DeepDiff(result, expected_result, ignore_order=True).to_dict() == {}
+    assert (
+        messages.RequestArtifactDefinitionGenerate(meta=None, artifact_definition=ad1.id, branch="main", limit=[])
+        in client.app.state.rpc_client.sent
+    )

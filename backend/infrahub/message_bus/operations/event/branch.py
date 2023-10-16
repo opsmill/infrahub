@@ -17,3 +17,13 @@ async def create(message: messages.EventBranchCreate, service: InfrahubServices)
     for event in events:
         event.assign_meta(parent=message)
         await service.send(message=event)
+
+
+async def merge(message: messages.EventBranchMerge, service: InfrahubServices) -> None:
+    log.info("Branch merged", source_branch=message.source_branch, target_branch=message.target_branch)
+
+    events: List[InfrahubBaseMessage] = [messages.TriggerArtifactDefinitionGenerate(branch=message.target_branch)]
+
+    for event in events:
+        event.assign_meta(parent=message)
+        await service.send(message=event)

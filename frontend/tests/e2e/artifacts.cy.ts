@@ -1,6 +1,6 @@
 /// <reference types="cypress" />
 
-import { ARTIFACT_DEFINITION_NAME } from "../mocks/e2e/artifacts";
+import { ARTIFACT_DEFINITION_FULL_NAME, ARTIFACT_DEFINITION_NAME } from "../mocks/e2e/artifacts";
 import { ADMIN_CREDENTIALS, SCREENSHOT_ENV_VARIABLE, screenshotConfig } from "../utils";
 
 describe("Main application", () => {
@@ -50,7 +50,7 @@ describe("Main application", () => {
     cy.get("tbody.bg-custom-white").find("tr").should("have.length.above", 1);
 
     // Click to access artifact details
-    cy.contains(ARTIFACT_DEFINITION_NAME).first().click();
+    cy.contains(ARTIFACT_DEFINITION_FULL_NAME).first().click();
 
     // Loader should not exist
     cy.contains("Just a moment").should("not.exist");
