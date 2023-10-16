@@ -92,19 +92,13 @@ export const Thread = (props: tThread) => {
         await handleResolve();
       }
 
-      refetch();
+      if (refetch) {
+        refetch();
+      }
 
       setIsLoading(false);
     } catch (error: any) {
       console.error("An error occured while creating the comment: ", error);
-
-      toast(
-        <Alert
-          type={ALERT_TYPES.ERROR}
-          message={"An error occured while creating the comment"}
-          details={error.message}
-        />
-      );
 
       setIsLoading(false);
     }

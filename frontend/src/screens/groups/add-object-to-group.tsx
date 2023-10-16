@@ -138,7 +138,7 @@ export default function AddObjectToGroup(props: Props) {
         });
       }
 
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schemaData.name} updated`} />);
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schemaData?.name} updated`} />);
 
       closeDrawer();
 
@@ -148,12 +148,10 @@ export default function AddObjectToGroup(props: Props) {
 
       return;
     } catch (e) {
+      console.error("Something went wrong while updating the object:", e);
+
       setIsLoading(false);
 
-      toast(
-        <Alert message="Something went wrong while updating the object" type={ALERT_TYPES.ERROR} />
-      );
-      console.error("Something went wrong while updating the object:", e);
       return;
     }
   }

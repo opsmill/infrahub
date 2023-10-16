@@ -44,8 +44,8 @@ export const ArtifactsDiff = () => {
 
       setArtifactsDiff(filesResult);
     } catch (err) {
-      console.error("err: ", err);
-      toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading artifactsDiff diff" />);
+      console.error("Error while loading artifacts diff: ", err);
+      toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading artifacts diff" />);
     }
 
     setIsLoading(false);
