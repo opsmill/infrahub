@@ -24,6 +24,21 @@ nodes:
         optional: false
         cardinality: one
         kind: Attribute
+      - name: status
+        peer: BuiltinStatus
+        optional: false
+        cardinality: one
+        kind: Attribute
+      - name: role
+        peer: BuiltinRole
+        optional: false
+        cardinality: one
+        kind: Attribute
+      - name: tags
+        peer: BuiltinTag
+        optional: true
+        cardinality: many
+        kind: Attribute
       - name: ip_addresses
         peer: InfraIPAddress
         optional: true
