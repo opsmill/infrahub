@@ -250,14 +250,6 @@ export const Conversations = (props: tConversations) => {
 
       console.error("An error occured while creating the comment: ", error);
 
-      toast(
-        <Alert
-          type={ALERT_TYPES.ERROR}
-          message={"An error occured while creating the comment"}
-          details={error.message}
-        />
-      );
-
       setIsLoading(false);
     }
   };
@@ -304,11 +296,10 @@ export const Conversations = (props: tConversations) => {
 
       return;
     } catch (e) {
-      setIsLoading(false);
-      toast(
-        <Alert message="Something went wrong while updating the object" type={ALERT_TYPES.ERROR} />
-      );
       console.error("Something went wrong while updating the object:", e);
+
+      setIsLoading(false);
+
       return;
     }
   };
@@ -422,11 +413,10 @@ export const Conversations = (props: tConversations) => {
 
       return;
     } catch (e) {
-      setIsLoadingClose(false);
-      toast(
-        <Alert message="Something went wrong while updating the object" type={ALERT_TYPES.ERROR} />
-      );
       console.error("Something went wrong while updating the object:", e);
+
+      setIsLoadingClose(false);
+
       return;
     }
   };

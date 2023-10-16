@@ -96,12 +96,6 @@ export const Root = () => {
         return [];
       }
 
-      toast(
-        <Alert
-          type={ALERT_TYPES.ERROR}
-          message={"Something went wrong when fetching the branch details"}
-        />
-      );
       console.error("Error while fetching branches: ", err);
 
       return [];

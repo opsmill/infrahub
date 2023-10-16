@@ -145,7 +145,7 @@ export const ArtifactContentDiff = (props: any) => {
 
       setState(fileResult || "");
     } catch (err) {
-      console.error("err: ", err);
+      console.error("Error while loading files diff: ", err);
       toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading files diff" />);
     }
 

@@ -97,7 +97,8 @@ export const DataDiff = () => {
 
       setDiff(diffDetails.diffs ?? []);
     } catch (err) {
-      console.error("err: ", err);
+      console.error("Error when fethcing branches: ", err);
+
       toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading branch diff" />);
     }
 

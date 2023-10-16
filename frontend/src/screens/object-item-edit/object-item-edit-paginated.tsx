@@ -141,14 +141,10 @@ export default function ObjectItemEditComponent(props: Props) {
 
         return;
       } catch (e) {
-        setIsLoading(false);
-        toast(
-          <Alert
-            message="Something went wrong while updating the object"
-            type={ALERT_TYPES.ERROR}
-          />
-        );
         console.error("Something went wrong while updating the object:", e);
+
+        setIsLoading(false);
+
         return;
       }
     }
