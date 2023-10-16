@@ -62,9 +62,7 @@ store = NodeStore()
 
 
 async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str, site_name: str):
-    account_pop = store.get("pop-builder")
-    account_crm = store.get("CRM Synchronization")
-    active_status = store.get(kind="BuiltinStatus", key="active")
+    account_eng = store.get("Engineering Team")
 
     # --------------------------------------------------
     # Create the Site
@@ -72,8 +70,8 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
     site = await client.create(
         branch=branch,
         kind="BuiltinLocation",
-        name={"value": site_name, "is_protected": True, "source": account_crm.id},
-        type={"value": "SITE", "is_protected": True, "source": account_crm.id},
+        name={"value": site_name, "is_protected": True, "source": account_eng.id},
+        type={"value": "SITE", "is_protected": True, "source": account_eng.id},
     )
     await site.save()
     log.info(f"Created Site: {site_name}")
@@ -88,8 +86,6 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
 #
 # ---------------------------------------------------------------
 async def run(client: InfrahubClient, log: logging.Logger, branch: str):
-    SITE_NAMES = site_names_generator(nbr_site=5)
-
     # ------------------------------------------
     # Create User Accounts
     # ------------------------------------------
@@ -139,6 +135,8 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     # Create Sites
     # ------------------------------------------
     log.info("Creating Site")
+
+    SITE_NAMES = site_names_generator(nbr_site=10)
 
     batch = await client.create_batch()
 
