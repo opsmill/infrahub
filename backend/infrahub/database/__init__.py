@@ -14,9 +14,11 @@ from neo4j import (
 )
 
 # from contextlib import asynccontextmanager
-from neo4j.exceptions import ClientError
+from neo4j.exceptions import ClientError, ServiceUnavailable
 
-import infrahub.config as config
+from infrahub import config
+from infrahub.exceptions import DatabaseError
+from infrahub.log import get_logger
 from infrahub.utils import InfrahubStringEnum
 
 from .metrics import QUERY_EXECUTION_METRICS
@@ -25,6 +27,8 @@ if TYPE_CHECKING:
     from types import TracebackType
 
 validated_database = {}
+
+log = get_logger()
 
 
 class InfrahubDriver:
@@ -181,12 +185,16 @@ class InfrahubDatabase:
     ) -> List[Record]:
         with QUERY_EXECUTION_METRICS.labels(str(self._session_mode), name).time():
             if self.is_transaction:
-                tx = await self.transaction()
-                response = await tx.run(query=query, parameters=params)
-                return [item async for item in response]
+                execution_method = await self.transaction()
+            else:
+                execution_method = await self.session()
 
-            session = await self.session()
-            response = await session.run(query=query, parameters=params)
+            try:
+                response = await execution_method.run(query=query, parameters=params)
+            except ServiceUnavailable as exc:
+                log.error("Database Service unavailable", error=str(exc))
+                raise DatabaseError(message="Unable to connect to the database") from exc
+
             return [item async for item in response]
 
 
