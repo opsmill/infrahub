@@ -22,6 +22,7 @@ COMMAND_MAP = {
     "check.repository.check_definition": check.repository.check_definition,
     "check.repository.merge_conflicts": check.repository.merge_conflicts,
     "event.branch.create": event.branch.create,
+    "event.node.mutated": event.node.mutated,
     "event.schema.update": event.schema.update,
     "finalize.validator.execution": finalize.validator.execution,
     "git.branch.create": git.branch.create,

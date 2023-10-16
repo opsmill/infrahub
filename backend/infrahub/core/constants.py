@@ -66,6 +66,13 @@ class DiffAction(InfrahubStringEnum):
     UNCHANGED = "unchanged"
 
 
+class MutationAction(InfrahubStringEnum):
+    ADDED = "added"
+    REMOVED = "removed"
+    UPDATED = "updated"
+    UNDEFINED = "undefined"
+
+
 class FilterSchemaKind(InfrahubStringEnum):
     TEXT = "Text"
     LIST = "Text"
