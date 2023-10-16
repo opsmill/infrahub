@@ -11,6 +11,7 @@ from infrahub.auth import (
     validate_mutation_permissions_update_node,
 )
 from infrahub.core import registry
+from infrahub.core.constants import MutationAction
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
@@ -46,21 +47,22 @@ class InfrahubMutationMixin:
         at = info.context.get("infrahub_at")
         branch = info.context.get("infrahub_branch")
         account_session: AccountSession = info.context.get("account_session", None)
+        db: InfrahubDatabase = info.context.get("infrahub_database")
 
         obj = None
         mutation = None
-        action = ""
+        action = MutationAction.UNDEFINED
         validate_mutation_permissions(operation=cls.__name__, account_session=account_session)
 
         if "Create" in cls.__name__:
             obj, mutation = await cls.mutate_create(root=root, info=info, branch=branch, at=at, *args, **kwargs)
-            action = "create"
+            action = MutationAction.ADDED
         elif "Update" in cls.__name__:
             obj, mutation = await cls.mutate_update(root=root, info=info, branch=branch, at=at, *args, **kwargs)
-            action = "update"
+            action = MutationAction.UPDATED
         elif "Delete" in cls.__name__:
             obj, mutation = await cls.mutate_delete(root=root, info=info, branch=branch, at=at, *args, **kwargs)
-            action = "delete"
+            action = MutationAction.REMOVED
         else:
             raise ValueError(
                 f"Unexpected class Name: {cls.__name__}, should start with either Create, Update or Delete"
@@ -70,16 +72,13 @@ class InfrahubMutationMixin:
             log_data = get_log_data()
             request_id = log_data.get("request_id", "")
 
-            attributes = {}
-            for attribute_name in obj._attributes:
-                attribute = getattr(obj, attribute_name)
-                attributes[attribute_name] = attribute.value
+            data = await obj.to_graphql(db=db)
             message = messages.EventNodeMutated(
                 branch=branch.name,
                 kind=obj._schema.kind,
                 node_id=obj.id,
-                attributes=attributes,
-                action=action,
+                data=data,
+                action=action.value,
                 meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
             )
             info.context.get("background").add_task(services.send, message)

@@ -12,4 +12,4 @@ class EventNodeMutated(InfrahubBaseMessage):
     kind: str = Field(..., description="The type of object modified")
     node_id: str = Field(..., description="The ID of the mutated node")
     action: str = Field(..., description="The action taken on the node")
-    attributes: Dict[str, Any] = Field(..., description="Attributes on modified object")
+    data: Dict[str, Any] = Field(..., description="Data on modified object")
