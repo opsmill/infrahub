@@ -152,7 +152,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     log.info("Creating Route Reflector")
 
     for idx, rr in enumerate(ROUTE_REFLECTORS):
-        rr_name = f"{site_name}-{rr[0]}"
+        rr_name = f"{rr[5]}-{rr[0]}"
         rr_status = store.get(kind="BuiltinStatus", key=rr[1]).id
         rr_type = rr[2]
         rr_role = store.get(kind="BuiltinRole", key=rr[3]).id
@@ -165,6 +165,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
             kind="InfraIPAddress",
             address={"value": f"{str(rr_ip_address)}/32", "source": account_eng.id},
         )
+        store.set(key=rr_ip_address, node=ip)
         await ip.save()
 
         obj = await client.create(
@@ -175,10 +176,10 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
             type={"value": rr_type, "source": account_eng.id},
             role={"id": rr_role, "source": account_eng.id, "is_protected": True, "owner": account_eng.id},
             tags=tt_tags,
-            site={"id": rr_site.id, "source": account_eng.id, "is_protected": True},
+            site={"id": rr_site, "source": account_eng.id, "is_protected": True},
             ip_address=store.get(kind="InfraIPAddress", key=rr_ip_address).id,
         )
+        store.set(key=rr_name, node=obj)
         await obj.save()
 
-        store.set(key=rr_name, node=obj)
         log.info(f"- Created Route Reflector: {rr_name} with IP: {rr_ip_address}")
