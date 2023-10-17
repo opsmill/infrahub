@@ -14,5 +14,5 @@ async def mutated(
         node_id=message.node_id,
         action=message.action,
         kind=message.kind,
-        attributes=message.attributes,
+        data=message.data,
     )
