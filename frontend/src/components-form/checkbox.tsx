@@ -34,7 +34,9 @@ export default function OpsCheckbox(props: Props) {
           disabled={isProtected}
         />
         {error?.message && (
-          <div className="absolute text-sm text-red-500 ml-4 pl-2">{error?.message}</div>
+          <div className="absolute text-sm text-red-500 ml-4 pl-2" data-cy="field-error-message">
+            {error?.message}
+          </div>
         )}
       </div>
     </div>
