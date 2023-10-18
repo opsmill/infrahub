@@ -36,6 +36,11 @@ import {
   taskMocksSchemaOptional as taskMocksSchemaOptional3,
   taskMocksSchemaWithDefaultValue as taskMocksSchemaWithDefaultValue3,
 } from "../../mocks/data/task_3";
+import {
+  taskMocksData as taskMocksData4,
+  taskMocksQuery as taskMocksQuery4,
+  taskMocksSchema as taskMocksSchema4,
+} from "../../mocks/data/task_4";
 import { TestProvider } from "../../mocks/jotai/atom";
 
 // URL for the current view
@@ -84,6 +89,16 @@ const mocks: any[] = [
     },
     result: {
       data: taskMocksData3,
+    },
+  },
+  {
+    request: {
+      query: gql`
+        ${taskMocksQuery4}
+      `,
+    },
+    result: {
+      data: taskMocksData4,
     },
   },
 ];
@@ -141,7 +156,7 @@ describe("Object list", () => {
     cy.get(".bg-custom-blue-700").click();
 
     // The required message should appear
-    cy.get(".sm\\:col-span-7 > .relative > .absolute").should("have.text", "Required");
+    cy.get("[data-cy='field-error-message']").should("have.text", "Required");
   });
 
   it("should open the add panel, submit after filling the text field and do not display a required message", function () {
@@ -183,7 +198,7 @@ describe("Object list", () => {
     cy.get(".bg-custom-blue-700").click();
 
     // The required message should appear
-    cy.get(".sm\\:col-span-7 > .relative > .absolute").should("not.exist");
+    cy.get("[data-cy='field-error-message']").should("not.exist");
   });
 
   it("should open the add panel, submit without checking the checkbox and display a required message", function () {
@@ -223,7 +238,7 @@ describe("Object list", () => {
     cy.get(".bg-custom-blue-700").click();
 
     // The required message should appear
-    cy.get(".flex-col > .relative > .absolute").should("have.text", "Required");
+    cy.get("[data-cy='field-error-message']").should("have.text", "Required");
   });
 
   it("should open the add panel, submit without checking the checkbox and should not display a required message (default value is defined)", function () {
@@ -265,7 +280,7 @@ describe("Object list", () => {
     cy.get(".bg-custom-blue-700").click();
 
     // The required message should appear
-    cy.get(".flex-col > .relative > .absolute").should("not.exist");
+    cy.get("[data-cy='field-error-message']").should("not.exist");
   });
 
   it("should open the add panel, submit without checking the checkbox and should not display a required message (optional)", function () {
@@ -307,7 +322,7 @@ describe("Object list", () => {
     cy.get(".bg-custom-blue-700").click();
 
     // The required message should appear
-    cy.get(".flex-col > .relative > .absolute").should("not.exist");
+    cy.get("[data-cy='field-error-message']").should("not.exist");
   });
 
   it("should open the add panel, submit without defining an integer and display a required message", function () {
@@ -347,7 +362,7 @@ describe("Object list", () => {
     cy.get(".bg-custom-blue-700").click();
 
     // The required message should appear
-    cy.get(".sm\\:col-span-7 > .relative > .absolute").should("have.text", "Required");
+    cy.get("[data-cy='field-error-message']").should("have.text", "Required");
   });
 
   it("should open the add panel, submit without defining an integer and should not display a required message (0 should work as defined integer)", function () {
@@ -389,8 +404,8 @@ describe("Object list", () => {
     // Save
     cy.get(".bg-custom-blue-700").click();
 
-    // The required message should appear
-    cy.get(".flex-col > .relative > .absolute").should("not.exist");
+    // The required message should not appear
+    cy.get("[data-cy='field-error-message']").should("not.exist");
   });
 
   it("should open the add panel, submit without defining an integer and should not display a required message (default value is defined)", function () {
@@ -431,8 +446,8 @@ describe("Object list", () => {
     // Save
     cy.get(".bg-custom-blue-700").click();
 
-    // The required message should appear
-    cy.get(".flex-col > .relative > .absolute").should("not.exist");
+    // The required message should not appear
+    cy.get("[data-cy='field-error-message']").should("not.exist");
   });
 
   it("should open the add panel, submit without defining an integer and should not display a required message (optional)", function () {
@@ -473,7 +488,47 @@ describe("Object list", () => {
     // Save
     cy.get(".bg-custom-blue-700").click();
 
+    // The required message should not appear
+    cy.get("[data-cy='field-error-message']").should("not.exist");
+  });
+
+  it("should open the add panel, submit without defining a datetime and should display a required message", function () {
+    cy.viewport(1920, 1080);
+
+    cy.intercept("POST", "/graphql/main ", this.mutation).as("mutate");
+
+    // Provide the initial value for jotai
+    const ObjectItemsProvider = () => {
+      return (
+        <TestProvider
+          initialValues={[[schemaState, [...accountDetailsMocksSchema, ...taskMocksSchema4]]]}>
+          <AuthenticatedObjectItems />
+        </TestProvider>
+      );
+    };
+
+    // Mount the view with the default route and the mocked data
+    cy.mount(
+      <MockedProvider mocks={mocks} addTypename={false}>
+        <Routes>
+          <Route element={<ObjectItemsProvider />} path={mockedPath} />
+        </Routes>
+      </MockedProvider>,
+      {
+        // Add iniital route for the app router, to display the current items view
+        routerProps: {
+          initialEntries: [mockedUrl],
+        },
+      }
+    );
+
+    // Open edit panel
+    cy.get(".p-2").click();
+
+    // Save
+    cy.get(".bg-custom-blue-700").click();
+
     // The required message should appear
-    cy.get(".flex-col > .relative > .absolute").should("not.exist");
+    cy.get("[data-cy='field-error-message']").should("have.text", "Required");
   });
 });
