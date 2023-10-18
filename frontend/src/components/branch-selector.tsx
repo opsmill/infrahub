@@ -42,7 +42,7 @@ export default function BranchSelector() {
 
   const valueLabel = (
     <>
-      <Square3Stack3DIcon className="h-5 w-5" aria-hidden="true" />
+      <Square3Stack3DIcon className="w-4 h-4" aria-hidden="true" />
       <p className="ml-2.5 text-sm font-medium">{branch?.name}</p>
     </>
   );
@@ -53,7 +53,7 @@ export default function BranchSelector() {
       buttonType={BUTTON_TYPES.MAIN}
       className="flex-1 rounded-r-md border border-transparent"
       type="submit">
-      <PlusIcon className="h-5 w-5 text-custom-white" aria-hidden="true" />
+      <PlusIcon className="w-4 h-4 text-custom-white" aria-hidden="true" />
     </Button>
   );
 
@@ -100,7 +100,7 @@ export default function BranchSelector() {
         <p className={selected ? "font-semibold" : "font-normal"}>{option.name}</p>
         {selected ? (
           <span className={active ? "text-custom-white" : "text-gray-500"}>
-            <CheckIcon className="h-5 w-5" aria-hidden="true" />
+            <CheckIcon className="w-4 h-4" aria-hidden="true" />
           </span>
         ) : null}
       </div>

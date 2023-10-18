@@ -146,7 +146,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                 index !== relationshipsData.length - 1
                                   ? "border-b border-gray-200"
                                   : "",
-                                "whitespace-nowrap py-3 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8"
+                                "whitespace-nowrap p-4 text-sm font-medium text-gray-900"
                               )}>
                               {getObjectItemDisplayValue(node, column, schemaKindName)}
                             </td>
@@ -156,7 +156,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                               index !== relationshipsData.length - 1
                                 ? "border-b border-gray-200"
                                 : "",
-                              "whitespace-nowrap py-3 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8"
+                              "whitespace-nowrap p-4 text-sm font-medium text-gray-900"
                             )}>
                             <Button
                               disabled={!auth?.permissions?.write}
@@ -164,7 +164,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                               onClick={() => {
                                 setRelatedObjectToEdit(node);
                               }}>
-                              <PencilSquareIcon className="w-6 h-6 text-gray-500" />
+                              <PencilSquareIcon className="w-4 h-4 text-gray-500" />
                             </Button>
 
                             <Button
@@ -173,7 +173,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                               onClick={() => {
                                 setRelatedRowToDelete(node);
                               }}>
-                              <img src={UnlinkIcon} className="w-6 h-6" />
+                              <img src={UnlinkIcon} className="w-4 h-4" />
                             </Button>
                           </td>
                         </tr>
@@ -225,7 +225,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                       </span>
                       <div className="flex-1"></div>
                       <div className="flex items-center">
-                        <Square3Stack3DIcon className="w-5 h-5" />
+                        <Square3Stack3DIcon className="w-4 h-4" />
                         <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
                       </div>
                     </div>

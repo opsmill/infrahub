@@ -24,7 +24,7 @@ export const SelectButton = (props: any) => {
                   className="rounded-none border border-transparent"
                   as={Button}
                   buttonType={BUTTON_TYPES.MAIN}>
-                  <ChevronDownIcon className="h-5 w-5 text-custom-white" aria-hidden="true" />
+                  <ChevronDownIcon className="w-4 h-4 text-custom-white" aria-hidden="true" />
                 </Listbox.Button>
               </div>
             </div>

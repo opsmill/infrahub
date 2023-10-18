@@ -136,7 +136,7 @@ export default function ObjectItemDetails() {
           {schemaData.name}
         </div>
         <ChevronRightIcon
-          className="h-5 w-5 mt-1 mx-2 flex-shrink-0 text-gray-400"
+          className="w-4 h-4 mt-1 mx-2 flex-shrink-0 text-gray-400"
           aria-hidden="true"
         />
         <p className="mt-1 max-w-2xl text-sm text-gray-500">{objectDetailsData.display_label}</p>
@@ -171,7 +171,7 @@ export default function ObjectItemDetails() {
 
           <div className="flex-1 bg-custom-white p-4 min-w-[500px]">
             <dl className="sm:divide-y sm:divide-gray-200">
-              <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-3 sm:px-6">
+              <div className="p-4 px-3 grid grid-cols-3 gap-4">
                 <dt className="text-sm font-medium text-gray-500 flex items-center">ID</dt>
                 <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
                   <a
@@ -193,9 +193,7 @@ export default function ObjectItemDetails() {
                 }
 
                 return (
-                  <div
-                    className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-3 sm:px-6"
-                    key={attribute.name}>
+                  <div className="p-4 px-3 grid grid-cols-3 gap-4" key={attribute.name}>
                     <dt className="text-sm font-medium text-gray-500 flex items-center">
                       {attribute.label}
                     </dt>
@@ -224,7 +222,7 @@ export default function ObjectItemDetails() {
                       </dd>
 
                       {objectDetailsData[attribute.name] && (
-                        <div className="p-2">
+                        <div className="px-2">
                           <MetaDetailsTooltip
                             items={[
                               {
@@ -280,7 +278,7 @@ export default function ObjectItemDetails() {
                                     });
                                     setShowMetaEditModal(true);
                                   }}>
-                                  <PencilSquareIcon className="w-5 h-5 text-custom-blue-500" />
+                                  <PencilSquareIcon className="w-4 h-4 text-custom-blue-500" />
                                 </Button>
                               </div>
                             }
@@ -289,7 +287,7 @@ export default function ObjectItemDetails() {
                       )}
 
                       {objectDetailsData[attribute.name].is_protected && (
-                        <LockClosedIcon className="h-5 w-5 ml-2" />
+                        <LockClosedIcon className="w-4 h-4" />
                       )}
                     </div>
                   </div>
@@ -330,7 +328,7 @@ export default function ObjectItemDetails() {
               <span className="text-lg font-semibold mr-3">{objectDetailsData.display_label}</span>
               <div className="flex-1"></div>
               <div className="flex items-center">
-                <Square3Stack3DIcon className="w-5 h-5" />
+                <Square3Stack3DIcon className="w-4 h-4" />
                 <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
               </div>
             </div>
@@ -371,7 +369,7 @@ export default function ObjectItemDetails() {
               <span className="text-lg font-semibold mr-3">{objectDetailsData.display_label}</span>
               <div className="flex-1"></div>
               <div className="flex items-center">
-                <Square3Stack3DIcon className="w-5 h-5" />
+                <Square3Stack3DIcon className="w-4 h-4" />
                 <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
               </div>
             </div>
@@ -410,7 +408,7 @@ export default function ObjectItemDetails() {
               <span className="text-lg font-semibold mr-3">{metaEditFieldDetails?.label}</span>
               <div className="flex-1"></div>
               <div className="flex items-center">
-                <Square3Stack3DIcon className="w-5 h-5" />
+                <Square3Stack3DIcon className="w-4 h-4" />
                 <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
               </div>
             </div>

@@ -60,7 +60,7 @@ export const diffContent: { [key: string]: any } = {
         </div>
 
         <div>
-          <ChevronRightIcon className="h-5 w-5 mr-2" aria-hidden="true" />
+          <ChevronRightIcon className="w-4 h-4 mr-2" aria-hidden="true" />
         </div>
 
         <div className="flex">
@@ -112,7 +112,7 @@ export const diffPeerContent = (
         </div>
 
         <div>
-          <ChevronRightIcon className="h-5 w-5 mr-2" aria-hidden="true" />
+          <ChevronRightIcon className="w-4 h-4 mr-2" aria-hidden="true" />
         </div>
 
         <div className="flex">

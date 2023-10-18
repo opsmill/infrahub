@@ -132,7 +132,7 @@ export default function Header(props: Props) {
             </label>
             <div className="relative w-full text-gray-400 focus-within:text-gray-600">
               <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center">
-                <MagnifyingGlassIcon className="h-5 w-5" aria-hidden="true" />
+                <MagnifyingGlassIcon className="w-4 h-4" aria-hidden="true" />
               </div>
               <input
                 onChange={() => {}}

@@ -286,7 +286,7 @@ export const BranchDetails = () => {
               <span className="text-lg font-semibold mr-3">Create Proposed Changes</span>
               <div className="flex-1"></div>
               <div className="flex items-center">
-                <Square3Stack3DIcon className="w-5 h-5" />
+                <Square3Stack3DIcon className="w-4 h-4" />
                 <div className="ml-1.5 pb-1">{branch?.name}</div>
               </div>
             </div>
