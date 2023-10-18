@@ -1,11 +1,11 @@
-import { parseISO } from "date-fns";
+import { isValid, parseISO } from "date-fns";
 import { SelectOption } from "../components/select";
 import { iPeerDropdownOptions } from "../graphql/queries/objects/dropdownOptionsForRelatedPeers";
 import {
   ControlType,
   DynamicFieldData,
-  getFormInputControlTypeFromSchemaAttributeKind,
   SchemaAttributeType,
+  getFormInputControlTypeFromSchemaAttributeKind,
 } from "../screens/edit-form-hook/dynamic-control-types";
 import { iGenericSchema, iNodeSchema } from "../state/atoms/schema.atom";
 
@@ -18,10 +18,18 @@ const getIsDisabled = (owner?: any, user?: any, isProtected?: boolean) => {
 };
 
 const getFieldValue = (row: any, attribute: any) => {
-  const value = row && row[attribute.name] ? row[attribute.name].value : attribute.default_value;
+  const value = row?.[attribute.name] ? row[attribute.name].value : attribute.default_value;
 
   if (attribute.kind === "DateTime") {
-    return parseISO(value);
+    if (isValid(value)) {
+      return value;
+    }
+
+    if (isValid(parseISO(value))) {
+      return parseISO(value);
+    }
+
+    return null;
   }
 
   return value;
@@ -37,6 +45,19 @@ const validate = (value: any, attribute: any = {}, optional?: boolean) => {
 
   // If the attribute is of kind integer, then it should be a number
   if (attribute.kind === "Integer" && Number.isInteger(value)) {
+    return true;
+  }
+
+  // If the attribute is a date, check if the date is valid
+  if (attribute.kind === "DateTime") {
+    if (!value) {
+      return "Required";
+    }
+
+    if (!isValid(value)) {
+      return "Invalid date";
+    }
+
     return true;
   }
 
