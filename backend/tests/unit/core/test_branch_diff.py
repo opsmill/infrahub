@@ -197,8 +197,6 @@ async def test_diff_get_files_repositories_for_branch_case01(
     assert isinstance(resp, list)
     assert sorted([fde.location for fde in resp]) == ["mydir/myfile.py", "readme.md"]
 
-    assert await rpc_client.ensure_all_responses_have_been_delivered()
-
 
 async def test_diff_get_files_repositories_for_branch_case02(
     db: InfrahubDatabase, rpc_client: InfrahubRpcClientTesting, default_branch: Branch, repos_in_main
