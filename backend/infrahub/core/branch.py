@@ -8,11 +8,11 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
 from pydantic import BaseModel, Field, validator
 
-import infrahub.config as config
+from infrahub import config
 from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
-    BranchSupportType,
     DiffAction,
+    PathType,
     RelationshipStatus,
 )
 from infrahub.core.manager import NodeManager
@@ -46,71 +46,6 @@ if TYPE_CHECKING:
     from infrahub.message_bus.rpc import InfrahubRpcClient
 
 # pylint: disable=redefined-builtin,too-many-statements,too-many-lines,too-many-branches,too-many-public-methods
-
-
-class ObjectConflict(BaseModel):
-    type: str
-    id: str
-    path: str
-
-    def __str__(self) -> str:
-        return self.path
-
-
-class ModifiedPath(BaseModel):
-    type: str
-    node_id: str
-    element_name: Optional[str] = None
-    property_name: Optional[str] = None
-    peer_id: Optional[str] = None
-    action: DiffAction
-
-    def __eq__(self, other) -> bool:
-        if not isinstance(other, ModifiedPath):
-            raise NotImplementedError
-
-        if self.modification_type != other.modification_type:
-            return False
-
-        if self.modification_type == "node":
-            if self.action == other.action and self.action in [DiffAction.REMOVED, DiffAction.UPDATED]:
-                return False
-
-        if self.modification_type == "element":
-            if self.action == other.action and self.action == DiffAction.REMOVED:
-                return False
-
-        return self.type == other.type and self.node_id == other.node_id
-
-    def __lt__(self, other: object) -> bool:
-        if not isinstance(other, ModifiedPath):
-            raise NotImplementedError
-        return str(self) < str(other)
-
-    def __hash__(self):
-        return hash((type(self),) + tuple(self.__dict__.values()))
-
-    def __str__(self) -> str:
-        identifier = f"{self.type}/{self.node_id}"
-        if self.element_name:
-            identifier += f"/{self.element_name}"
-
-        if self.peer_id:
-            identifier += f"/{self.peer_id}"
-
-        if self.property_name and self.property_name == "HAS_VALUE":
-            identifier += "/value"
-        elif self.property_name:
-            identifier += f"/property/{self.property_name}"
-
-        return identifier
-
-    @property
-    def modification_type(self) -> str:
-        if self.element_name:
-            return "element"
-
-        return "node"
 
 
 class Branch(StandardNode):
@@ -835,8 +770,11 @@ class BaseDiffElement(BaseModel):
 
 
 class ValueElement(BaseDiffElement):
-    previous: Optional[Any]
-    new: Optional[Any]
+    previous: Optional[Any] = None
+    new: Optional[Any] = None
+
+    def __hash__(self):
+        return hash(type(self))
 
 
 class PropertyDiffElement(BaseDiffElement):
@@ -917,6 +855,91 @@ class DiffSummaryElement(BaseModel):
             "kind": self.kind,
             "actions": [action.value for action in self.actions],
         }
+
+
+class ModifiedPath(BaseModel):
+    type: str
+    node_id: str
+    path_type: PathType
+    kind: str
+    element_name: Optional[str] = None
+    property_name: Optional[str] = None
+    peer_id: Optional[str] = None
+    action: DiffAction
+    change: Optional[ValueElement] = None
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, ModifiedPath):
+            raise NotImplementedError
+
+        if self.modification_type != other.modification_type:
+            return False
+
+        if self.modification_type == "node":
+            if self.action == other.action and self.action in [DiffAction.REMOVED, DiffAction.UPDATED]:
+                return False
+
+        if self.modification_type == "element":
+            if self.action == other.action and self.action == DiffAction.REMOVED:
+                return False
+
+        return self.type == other.type and self.node_id == other.node_id
+
+    def __lt__(self, other: object) -> bool:
+        if not isinstance(other, ModifiedPath):
+            raise NotImplementedError
+        return str(self) < str(other)
+
+    def __hash__(self):
+        return hash((type(self),) + tuple(self.__dict__.values()))
+
+    def _path(self, with_peer: bool = True) -> str:
+        identifier = f"{self.type}/{self.node_id}"
+        if self.element_name:
+            identifier += f"/{self.element_name}"
+
+        if with_peer and self.peer_id:
+            identifier += f"/{self.peer_id}"
+
+        if self.property_name and self.property_name == "HAS_VALUE":
+            identifier += "/value"
+        elif self.property_name:
+            identifier += f"/property/{self.property_name}"
+
+        return identifier
+
+    def __str__(self) -> str:
+        return self._path()
+
+    @property
+    def conflict_path(self) -> str:
+        return self._path(with_peer=False)
+
+    @property
+    def modification_type(self) -> str:
+        if self.element_name:
+            return "element"
+
+        return "node"
+
+
+class BranchChanges(ValueElement):
+    branch: str
+    action: DiffAction
+
+
+class ObjectConflict(BaseModel):
+    name: str
+    type: str
+    kind: str
+    id: str
+    conflict_path: str
+    path: str
+    path_type: PathType
+    changes: List[BranchChanges] = Field(default_factory=list)
+
+    def __str__(self) -> str:
+        return self.path
 
 
 class Diff:
@@ -1116,7 +1139,32 @@ class Diff:
         # Since we have 2 sets or tuple, we can quickly calculate the intersection using set(A) & set(B)
         conflicts = paths[branches[0]] & paths[branches[1]]
 
-        return [ObjectConflict(type=conflict.type, id=conflict.node_id, path=str(conflict)) for conflict in conflicts]
+        branch0 = {str(conflict): conflict for conflict in paths[branches[0]]}
+        branch1 = {str(conflict): conflict for conflict in paths[branches[1]]}
+        changes = {branches[0]: branch0, branches[1]: branch1}
+        responses = []
+        for conflict in conflicts:
+            response = ObjectConflict(
+                name=conflict.element_name or "",
+                type=conflict.type,
+                id=conflict.node_id,
+                kind=conflict.kind,
+                path=str(conflict),
+                conflict_path=conflict.conflict_path,
+                path_type=conflict.path_type,
+            )
+            for branch, change in changes.items():
+                if response.path in change and change[response.path]:
+                    response.changes.append(
+                        BranchChanges(
+                            branch=branch,
+                            action=change[response.path].action,
+                            new=change[response.path].change.new,
+                            previous=change[response.path].change.previous,
+                        )
+                    )
+            responses.append(response)
+        return responses
 
     async def get_modified_paths_graph(self, db: InfrahubDatabase) -> Dict[str, Set[ModifiedPath]]:
         """Return a list of all the modified paths in the graph per branch.
@@ -1139,16 +1187,21 @@ class Diff:
                 paths[branch_name] = set()
 
             for node_id, node in data.items():
-                p = ModifiedPath(type="data", node_id=node_id, action=node.action)
+                p = ModifiedPath(
+                    type="data", kind=node.kind, node_id=node_id, action=node.action, path_type=PathType.NODE
+                )
                 paths[branch_name].add(p)
                 for attr_name, attr in node.attributes.items():
-                    for prop_type in attr.properties.keys():
+                    for prop_type, prop_value in attr.properties.items():
                         p = ModifiedPath(
                             type="data",
+                            kind=node.kind,
                             node_id=node_id,
                             action=attr.action,
                             element_name=attr_name,
+                            path_type=PathType.ATTRIBUTE,
                             property_name=prop_type,
+                            change=prop_value.value,
                         )
                         paths[branch_name].add(p)
 
@@ -1159,10 +1212,9 @@ class Diff:
 
             if branch_name not in paths:
                 paths[branch_name] = set()
-
             for rel_name, rels in data.items():
                 for _, rel in rels.items():
-                    for prop_type in rel.properties.keys():
+                    for prop_type, prop_value in rel.properties.items():
                         for node_id in rel.nodes:
                             neighbor_id = [neighbor for neighbor in rel.nodes.keys() if neighbor != node_id][0]
                             schema = registry.get_schema(name=rel.nodes[node_id].kind, branch=branch_name)
@@ -1171,10 +1223,13 @@ class Diff:
                                 p = ModifiedPath(
                                     type="data",
                                     node_id=node_id,
+                                    kind=schema.kind,
                                     action=rel.action,
                                     element_name=matching_relationship[0].name,
+                                    path_type=PathType.from_relationship(matching_relationship[0].cardinality),
                                     property_name=prop_type,
                                     peer_id=neighbor_id,
+                                    change=prop_value.value,
                                 )
                                 paths[branch_name].add(p)
 

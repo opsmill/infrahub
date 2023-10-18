@@ -1,3 +1,4 @@
+import json
 from typing import List
 
 from infrahub.core.branch import ObjectConflict
@@ -77,13 +78,24 @@ async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, s
                 validator=data_check.id,
                 conclusion="success",
                 severity="info",
-                paths=[],
+                conflicts="[]",
             )
             await check.save(db=db)
             check_objects.append(check.id)
 
         for conflict in conflicts:
             conflict_obj = await Node.init(db=db, schema="CoreDataCheck")
+            conflicts_data = [
+                {
+                    "name": conflict.name,
+                    "node_id": conflict.id,
+                    "kind": conflict.kind,
+                    "path_type": conflict.path_type.value,
+                    "path": conflict.conflict_path,
+                    "changes": [change.dict() for change in conflict.changes],
+                }
+            ]
+
             await conflict_obj.new(
                 db=db,
                 label="Data Conflict",
@@ -92,8 +104,9 @@ async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, s
                 validator=data_check.id,
                 conclusion="failure",
                 severity="critical",
-                paths=[str(conflict)],
+                conflicts=json.dumps(conflicts_data),
             )
+
             await conflict_obj.save(db=db)
             check_objects.append(conflict_obj.id)
 
