@@ -122,7 +122,7 @@ export const BranchDetails = () => {
   });
 
   return (
-    <div className="bg-custom-white p-6">
+    <div className="bg-custom-white">
       {loading && <LoadingScreen />}
 
       {error && <ErrorScreen message="Something went wrong when fetching the branch details." />}
@@ -160,23 +160,23 @@ export const BranchDetails = () => {
         <>
           <div className="border-t border-b border-gray-200 px-2 py-2 sm:p-0 mb-6">
             <dl className="divide-y divide-gray-200">
-              <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6">
+              <div className="p-4 grid grid-cols-3 gap-4">
                 <dt className="text-sm font-medium text-gray-500">Name</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">{branch.name}</dd>
               </div>
-              <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6">
+              <div className="p-4 grid grid-cols-3 gap-4">
                 <dt className="text-sm font-medium text-gray-500">Origin branch</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
-                  <Badge>{branch.origin_branch}</Badge>
+                  <Badge className="text-sm">{branch.origin_branch}</Badge>
                 </dd>
               </div>
-              <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6">
+              <div className="p-4 grid grid-cols-3 gap-4">
                 <dt className="text-sm font-medium text-gray-500">Branched</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
                   <DateDisplay date={branch.branched_at} />
                 </dd>
               </div>
-              <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6">
+              <div className="p-4 grid grid-cols-3 gap-4">
                 <dt className="text-sm font-medium text-gray-500">Created</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
                   <DateDisplay date={branch.created_at} />
@@ -187,7 +187,7 @@ export const BranchDetails = () => {
         </>
       )}
 
-      <div className="">
+      <div className="p-6">
         <div className="mb-6">
           {branch?.name && (
             <>
