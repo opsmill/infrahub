@@ -91,7 +91,7 @@ export const DataDiffThread = (props: tDataDiffThread) => {
               className="p-1"
               type={BUTTON_TYPES.DEFAULT}>
               {/* Display either a pill with the number of comments, or a plus icon to add a comment */}
-              <PlusIcon className="h-4 w-4 " aria-hidden="true" />
+              <PlusIcon className="h-3 w-3 " aria-hidden="true" />
             </RoundedButton>
           </Tooltip>
         </div>

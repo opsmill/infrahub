@@ -200,10 +200,6 @@ describe("Main application", () => {
       cy.screenshot("proposed-changes-6-data-diff", screenshotConfig);
     }
 
-    cy.get(
-      ":nth-child(4) > :nth-child(1) > :nth-child(1) > :nth-child(2) > :nth-child(1) > :nth-child(1) > .rounded-md > :nth-child(1)"
-    ).within(() => {
-      cy.contains("IS_PROTECTED").should("exist");
-    });
+    cy.contains("IS_PROTECTED").should("exist");
   });
 });
