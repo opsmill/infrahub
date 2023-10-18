@@ -70,7 +70,15 @@ class InfrahubRpcClientBase:
             f"{config.SETTINGS.broker.namespace}.rpcs", durable=True, arguments={"x-queue-type": "quorum"}
         )
 
-        worker_bindings = ["check.*.*", "event.*.*", "finalize.*.*", "git.*.*", "request.*.*", "transform.*.*"]
+        worker_bindings = [
+            "check.*.*",
+            "event.*.*",
+            "finalize.*.*",
+            "git.*.*",
+            "request.*.*",
+            "transform.*.*",
+            "trigger.*.*",
+        ]
         self.delayed_exchange = await self.channel.declare_exchange(
             f"{config.SETTINGS.broker.namespace}.delayed", type="headers", durable=True
         )
@@ -173,6 +181,7 @@ class InfrahubRpcClientTesting(InfrahubRpcClientBase):
 
         self.responses = defaultdict(list)
         self.replies: List[InfrahubResponse] = []
+        self.sent: List[InfrahubBaseMessage] = []
 
     async def connect(self) -> InfrahubRpcClient:
         return self
@@ -196,6 +205,9 @@ class InfrahubRpcClientTesting(InfrahubRpcClientBase):
         """Register a predefined response for a given message_type and action."""
 
         self.responses[(message_type.value, action.value)].append(response)
+
+    async def send(self, message: InfrahubBaseMessage) -> None:
+        self.sent.append(message)
 
     async def ensure_all_responses_have_been_delivered(self) -> bool:
         for key, events in self.responses.items():

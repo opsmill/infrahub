@@ -5,22 +5,21 @@ from typing import TYPE_CHECKING, Optional
 from graphene import InputObjectType, Mutation
 from graphene.types.mutation import MutationOptions
 
-import infrahub.config as config
+from infrahub import config
 from infrahub.auth import (
     validate_mutation_permissions,
     validate_mutation_permissions_update_node,
 )
 from infrahub.core import registry
+from infrahub.core.constants import MutationAction
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
 from infrahub.exceptions import NodeNotFound, ValidationError
-from infrahub.log import get_logger
-from infrahub.message_bus.events import (
-    DataMessageAction,
-    InfrahubDataMessage,
-    send_event,
-)
+from infrahub.log import get_log_data, get_logger
+from infrahub.message_bus import Meta, messages
+from infrahub.services import services
+from infrahub.worker import WORKER_IDENTITY
 
 from ..utils import extract_fields
 
@@ -48,28 +47,41 @@ class InfrahubMutationMixin:
         at = info.context.get("infrahub_at")
         branch = info.context.get("infrahub_branch")
         account_session: AccountSession = info.context.get("account_session", None)
+        db: InfrahubDatabase = info.context.get("infrahub_database")
 
         obj = None
         mutation = None
-        action = None
+        action = MutationAction.UNDEFINED
         validate_mutation_permissions(operation=cls.__name__, account_session=account_session)
 
         if "Create" in cls.__name__:
             obj, mutation = await cls.mutate_create(root=root, info=info, branch=branch, at=at, *args, **kwargs)
-            action = DataMessageAction.CREATE
+            action = MutationAction.ADDED
         elif "Update" in cls.__name__:
             obj, mutation = await cls.mutate_update(root=root, info=info, branch=branch, at=at, *args, **kwargs)
-            action = DataMessageAction.UPDATE
+            action = MutationAction.UPDATED
         elif "Delete" in cls.__name__:
             obj, mutation = await cls.mutate_delete(root=root, info=info, branch=branch, at=at, *args, **kwargs)
-            action = DataMessageAction.DELETE
+            action = MutationAction.REMOVED
         else:
             raise ValueError(
                 f"Unexpected class Name: {cls.__name__}, should start with either Create, Update or Delete"
             )
 
         if config.SETTINGS.broker.enable and info.context.get("background"):
-            info.context.get("background").add_task(send_event, InfrahubDataMessage(action=action, node=obj))
+            log_data = get_log_data()
+            request_id = log_data.get("request_id", "")
+
+            data = await obj.to_graphql(db=db)
+            message = messages.EventNodeMutated(
+                branch=branch.name,
+                kind=obj._schema.kind,
+                node_id=obj.id,
+                data=data,
+                action=action.value,
+                meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
+            )
+            info.context.get("background").add_task(services.send, message)
 
         return mutation
 

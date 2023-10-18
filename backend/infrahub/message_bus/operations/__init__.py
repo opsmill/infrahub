@@ -10,6 +10,7 @@ from infrahub.message_bus.operations import (
     refresh,
     requests,
     transform,
+    trigger,
 )
 from infrahub.message_bus.types import MessageTTL
 from infrahub.services import InfrahubServices
@@ -22,6 +23,8 @@ COMMAND_MAP = {
     "check.repository.check_definition": check.repository.check_definition,
     "check.repository.merge_conflicts": check.repository.merge_conflicts,
     "event.branch.create": event.branch.create,
+    "event.node.mutated": event.node.mutated,
+    "event.branch.merge": event.branch.merge,
     "event.schema.update": event.schema.update,
     "finalize.validator.execution": finalize.validator.execution,
     "git.branch.create": git.branch.create,
@@ -31,6 +34,7 @@ COMMAND_MAP = {
     "git.repository.merge": git.repository.merge,
     "refresh.registry.branches": refresh.registry.branches,
     "request.git.create_branch": requests.git.create_branch,
+    "request.artifact.generate": requests.artifact.generate,
     "request.artifact_definition.check": requests.artifact_definition.check,
     "request.artifact_definition.generate": requests.artifact_definition.generate,
     "request.proposed_change.data_integrity": requests.proposed_change.data_integrity,
@@ -40,6 +44,7 @@ COMMAND_MAP = {
     "request.repository.checks": requests.repository.check,
     "transform.jinja.template": transform.jinja.template,
     "transform.python.data": transform.python.data,
+    "trigger.artifact_definition.generate": trigger.artifact_definition.generate,
 }
 
 
