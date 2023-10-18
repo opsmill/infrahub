@@ -1719,7 +1719,7 @@ core_models = {
             "inherit_from": ["CoreCheck"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
-                {"name": "paths", "kind": "List"},
+                {"name": "conflicts", "kind": "JSON"},
             ],
         },
         {
@@ -1740,7 +1740,7 @@ core_models = {
             "inherit_from": ["CoreCheck"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
-                {"name": "paths", "kind": "List"},
+                {"name": "conflicts", "kind": "JSON"},
             ],
         },
         {

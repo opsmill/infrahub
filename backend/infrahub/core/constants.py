@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import enum
 from typing import List
 
@@ -71,6 +73,20 @@ class MutationAction(InfrahubStringEnum):
     REMOVED = "removed"
     UPDATED = "updated"
     UNDEFINED = "undefined"
+
+
+class PathType(InfrahubStringEnum):
+    NODE = "node"
+    ATTRIBUTE = "attribute"
+    RELATIONSHIP_ONE = "relationship_one"
+    RELATIONSHIP_MANY = "relationship_many"
+
+    @classmethod
+    def from_relationship(cls, relationship: RelationshipCardinality) -> PathType:
+        if relationship == RelationshipCardinality.ONE:
+            return cls("relationship_one")
+
+        return cls("relationship_many")
 
 
 class FilterSchemaKind(InfrahubStringEnum):
