@@ -2,8 +2,8 @@ from invoke import Context, task
 
 from .shared import (
     BUILD_NAME,
-    NBR_WORKERS,
     INFRAHUB_DATABASE,
+    NBR_WORKERS,
     build_test_compose_files_cmd,
     build_test_envs,
     execute_command,
@@ -200,7 +200,7 @@ def test_core(context: Context, database: str = INFRAHUB_DATABASE):
 
 @task(optional=["database"])
 def test_integration(context: Context, database: str = INFRAHUB_DATABASE):
-     with context.cd(escape_path(REPO_BASE)):
+    with context.cd(escape_path(REPO_BASE)):
         compose_files_cmd = build_test_compose_files_cmd(database=database)
         base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run {build_test_envs()} infrahub-test"
         exec_cmd = f"pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/integration"

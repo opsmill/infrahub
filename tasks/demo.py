@@ -7,8 +7,8 @@ from invoke import Context, task
 from .shared import (
     AVAILABLE_SERVICES,
     BUILD_NAME,
-    PYTHON_VER,
     INFRAHUB_DATABASE,
+    PYTHON_VER,
     build_compose_files_cmd,
     build_dev_compose_files_cmd,
     execute_command,
