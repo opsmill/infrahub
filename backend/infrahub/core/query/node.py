@@ -294,7 +294,7 @@ class NodeListGetAttributeQuery(Query):
         self.include_source = include_source
         self.include_owner = include_owner
 
-        super().__init__(order_by=["a.name"], *args, **kwargs)
+        super().__init__(order_by=["n.uuid", "a.name"], *args, **kwargs)
 
     async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         self.params["ids"] = self.ids
