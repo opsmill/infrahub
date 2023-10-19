@@ -72,7 +72,7 @@ types-ujson = "*"
 types-pyyaml = "*"
 typer-cli = "*"
 pytest-cov = "^4.0.0"
-ruff = "0.0.265"
+ruff = "0.1.0"
 pytest-xdist = "^3.3.1"
 buildkite-test-collector = "^0.1.7"
 
@@ -312,8 +312,12 @@ select = [
     "DTZ",
     "E",
     "F",
+    "ICN",
     "TCH",
+    "T10",
+    "Q",
     "W",
+    "YTT",
 ]
 
 line-length = 170
