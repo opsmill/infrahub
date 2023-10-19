@@ -57,10 +57,8 @@ export const Generate = (props: tGenerateProps) => {
 
       setIsLoading(false);
     } catch (error) {
-      console.error("error: ", error);
-      toast(
-        <Alert message="An error occured while generating the artifact" type={ALERT_TYPES.ERROR} />
-      );
+      console.error("Error when generating artifacts: ", error);
+
       setIsLoading(false);
     }
   };

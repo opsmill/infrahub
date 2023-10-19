@@ -4,18 +4,12 @@ import pydantic
 from graphene import Boolean, Field, InputObjectType, List, Mutation, String
 from graphql import GraphQLResolveInfo
 
-import infrahub.config as config
-from infrahub import lock
+from infrahub import config, lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.exceptions import BranchNotFound
 from infrahub.log import get_log_data, get_logger
 from infrahub.message_bus import Meta, messages
-from infrahub.message_bus.events import (
-    BranchMessageAction,
-    InfrahubBranchMessage,
-    send_event,
-)
 from infrahub.services import services
 from infrahub.worker import WORKER_IDENTITY
 
@@ -160,11 +154,6 @@ class BranchRebase(Mutation):
 
         ok = True
 
-        if config.SETTINGS.broker.enable and info.context.get("background"):
-            info.context.get("background").add_task(
-                send_event, InfrahubBranchMessage(action=BranchMessageAction.REBASE, branch=obj.name)
-            )
-
         return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok)
 
 
@@ -219,8 +208,13 @@ class BranchMerge(Mutation):
         ok = True
 
         if config.SETTINGS.broker.enable and info.context.get("background"):
-            info.context.get("background").add_task(
-                send_event, InfrahubBranchMessage(action=BranchMessageAction.MERGE, branch=obj.name)
+            log_data = get_log_data()
+            request_id = log_data.get("request_id", "")
+            message = messages.EventBranchMerge(
+                source_branch=obj.name,
+                target_branch=config.SETTINGS.main.default_branch,
+                meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
             )
+            info.context.get("background").add_task(services.send, message)
 
         return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok)

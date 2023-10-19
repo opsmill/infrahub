@@ -28,8 +28,8 @@ export default function GroupRelationships(props: RelationshipsDetailsProps) {
   const [genericList] = useAtom(genericsState);
   const [generics] = useAtom(genericsState);
 
-  const schema = schemaList.filter((s) => s.name === groupname)[0];
-  const generic = genericList.filter((s) => s.name === groupname)[0];
+  const schema = schemaList.filter((s) => s.kind === groupname)[0];
+  const generic = genericList.filter((s) => s.kind === groupname)[0];
 
   const relationshipSchema = schema?.relationships?.find((r) => r?.name === relationshipTab);
 

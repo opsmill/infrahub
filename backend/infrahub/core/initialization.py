@@ -3,7 +3,6 @@ from typing import List, Optional
 
 import infrahub.config as config
 from infrahub.core import registry
-from infrahub.core.artifact import CoreArtifactDefinition
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.node import Node
@@ -83,7 +82,6 @@ async def initialization(db: InfrahubDatabase):
     # ---------------------------------------------------
 
     registry.node["Node"] = Node
-    registry.node["CoreArtifactDefinition"] = CoreArtifactDefinition
 
     # ---------------------------------------------------
     # Load all existing Groups into the registry

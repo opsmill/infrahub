@@ -8,10 +8,7 @@ import { BUTTON_TYPES, RoundedButton } from "../../components/rounded-button";
 import { SidePanelTitle } from "../../components/sidepanel-title";
 import SlideOver from "../../components/slide-over";
 import { Tooltip } from "../../components/tooltip";
-import {
-  PROPOSED_CHANGES_OBJECT_THREAD,
-  PROPOSED_CHANGES_OBJECT_THREAD_OBJECT,
-} from "../../config/constants";
+import { PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "../../config/constants";
 import { AuthContext } from "../../decorators/withAuth";
 import { getProposedChangesObjectThreads } from "../../graphql/queries/proposed-changes/getProposedChangesObjectThreads";
 import useQuery from "../../hooks/useQuery";
@@ -33,7 +30,7 @@ export const DataDiffThread = (props: tDataDiffThread) => {
   const { node, currentBranch } = useContext(DiffContext);
   const [showThread, setShowThread] = useState(false);
 
-  const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_OBJECT_THREAD)[0];
+  const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_OBJECT_THREAD_OBJECT);
 
   const queryString = schemaData
     ? getProposedChangesObjectThreads({
@@ -94,7 +91,7 @@ export const DataDiffThread = (props: tDataDiffThread) => {
               className="p-1"
               type={BUTTON_TYPES.DEFAULT}>
               {/* Display either a pill with the number of comments, or a plus icon to add a comment */}
-              <PlusIcon className="h-4 w-4 " aria-hidden="true" />
+              <PlusIcon className="h-3 w-3 " aria-hidden="true" />
             </RoundedButton>
           </Tooltip>
         </div>

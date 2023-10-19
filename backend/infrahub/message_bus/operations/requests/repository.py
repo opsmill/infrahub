@@ -93,7 +93,10 @@ async def check(message: messages.RequestRepositoryChecks, service: InfrahubServ
     )
     events.append(
         messages.FinalizeValidatorExecution(
-            start_time=Timestamp().to_string(), validator_id=validator.id, validator_execution_id=validator_execution_id
+            start_time=Timestamp().to_string(),
+            validator_id=validator.id,
+            validator_execution_id=validator_execution_id,
+            validator_type="CoreRepositoryValidator",
         )
     )
 

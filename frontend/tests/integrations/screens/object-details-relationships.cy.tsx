@@ -21,7 +21,7 @@ import {
 import { TestProvider } from "../../mocks/jotai/atom";
 
 // URL for the current view
-const graphqlQueryItemsUrl = `/objects/Device/${deviceDetailsMocksId}`;
+const graphqlQueryItemsUrl = `/objects/InfraDevice/${deviceDetailsMocksId}`;
 
 // Path that will match the route to display the component
 const graphqlQueryItemsPath = "/objects/:objectname/:objectid";

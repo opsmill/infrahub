@@ -48,7 +48,7 @@ export default function ObjectItemEditComponent(props: Props) {
   const date = useReactiveVar(dateVar);
   const [isLoading, setIsLoading] = useState(false);
 
-  const schema = schemaList.filter((s) => s.name === objectname)[0];
+  const schema = schemaList.find((s) => s.kind === objectname);
 
   const relationships = getSchemaRelationshipColumns(schema);
 
@@ -141,14 +141,10 @@ export default function ObjectItemEditComponent(props: Props) {
 
         return;
       } catch (e) {
-        setIsLoading(false);
-        toast(
-          <Alert
-            message="Something went wrong while updating the object"
-            type={ALERT_TYPES.ERROR}
-          />
-        );
         console.error("Something went wrong while updating the object:", e);
+
+        setIsLoading(false);
+
         return;
       }
     }

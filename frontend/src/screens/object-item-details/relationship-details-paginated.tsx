@@ -72,7 +72,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   const [relatedRowToDelete, setRelatedRowToDelete] = useState<any>();
   const [relatedObjectToEdit, setRelatedObjectToEdit] = useState<any>();
 
-  const schema = schemaList.filter((s) => s.name === objectname)[0];
+  const schema = schemaList.find((s) => s.kind === objectname);
 
   let options: SelectOption[] = [];
 
@@ -260,8 +260,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                         constructPath(
                           getObjectDetailsUrl(
                             relationshipsData.node.id,
-                            relationshipsData.node.__typename,
-                            schemaKindName
+                            relationshipsData.node.__typename
                           )
                         )
                       )
@@ -339,7 +338,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
               <div className="mt-0 flex flex-col px-4 sm:px-6 lg:px-8 w-full flex-1">
                 <div className="-my-2 -mx-4 sm:-mx-6 lg:-mx-8">
                   <div className="inline-block min-w-full pt-2 align-middle">
-                    <div className="shadow-sm ring-1 ring-custom-black ring-opacity-5">
+                    <div className="shadow-sm ring-1 ring-custom-black ring-opacity-5 overflow-x-auto">
                       <table className="min-w-full border-separate" style={{ borderSpacing: 0 }}>
                         <thead className="bg-gray-50">
                           <tr>
@@ -347,13 +346,13 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                               <th
                                 key={column.name}
                                 scope="col"
-                                className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter sm:pl-6 lg:pl-8">
+                                className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 px-4 py-2 text-left text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter">
                                 {column.label}
                               </th>
                             ))}
                             <th
                               scope="col"
-                              className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter sm:pl-6 lg:pl-8">
+                              className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 px-4 py-2 text-left text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter">
                               <span className="sr-only">Meta</span>
                             </th>
                           </tr>
@@ -362,9 +361,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                           {relationshipsData?.map(({ node, properties }: any, index: number) => (
                             <tr
                               onClick={() =>
-                                navigate(
-                                  getObjectDetailsUrl(node.id, node.__typename, schemaKindName)
-                                )
+                                navigate(getObjectDetailsUrl(node.id, node.__typename))
                               }
                               key={index}
                               className="hover:bg-gray-50 cursor-pointer">
@@ -385,7 +382,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                   index !== relationshipsData.length - 1
                                     ? "border-b border-gray-200"
                                     : "",
-                                  "whitespace-nowrap py-3 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8 flex items-center justify-end"
+                                  "whitespace-nowrap py-3 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8"
                                 )}>
                                 <div
                                   className="p-2"
@@ -475,11 +472,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                         key={node.id}>
                         <Link
                           onClick={() =>
-                            navigate(
-                              constructPath(
-                                getObjectDetailsUrl(node.id, node.__typename, schemaKindName)
-                              )
-                            )
+                            navigate(constructPath(getObjectDetailsUrl(node.id, node.__typename)))
                           }>
                           {node.display_label}
                         </Link>

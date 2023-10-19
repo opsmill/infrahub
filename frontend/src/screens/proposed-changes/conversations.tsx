@@ -17,7 +17,6 @@ import { Tooltip } from "../../components/tooltip";
 import {
   ACCOUNT_OBJECT,
   DEFAULT_BRANCH_NAME,
-  PROPOSED_CHANGES,
   PROPOSED_CHANGES_CHANGE_THREAD_OBJECT,
   PROPOSED_CHANGES_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
@@ -114,7 +113,7 @@ export const Conversations = (props: tConversations) => {
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const navigate = useNavigate();
 
-  const accountSchemaData = schemaList.filter((s) => s.name === ACCOUNT_OBJECT)[0];
+  const accountSchemaData = schemaList.find((s) => s.kind === ACCOUNT_OBJECT);
 
   const queryString = getProposedChangesThreads({
     id: proposedchange,
@@ -251,14 +250,6 @@ export const Conversations = (props: tConversations) => {
 
       console.error("An error occured while creating the comment: ", error);
 
-      toast(
-        <Alert
-          type={ALERT_TYPES.ERROR}
-          message={"An error occured while creating the comment"}
-          details={error.message}
-        />
-      );
-
       setIsLoading(false);
     }
   };
@@ -305,11 +296,10 @@ export const Conversations = (props: tConversations) => {
 
       return;
     } catch (e) {
-      setIsLoading(false);
-      toast(
-        <Alert message="Something went wrong while updating the object" type={ALERT_TYPES.ERROR} />
-      );
       console.error("Something went wrong while updating the object:", e);
+
+      setIsLoading(false);
+
       return;
     }
   };
@@ -423,11 +413,10 @@ export const Conversations = (props: tConversations) => {
 
       return;
     } catch (e) {
-      setIsLoadingClose(false);
-      toast(
-        <Alert message="Something went wrong while updating the object" type={ALERT_TYPES.ERROR} />
-      );
       console.error("Something went wrong while updating the object:", e);
+
+      setIsLoadingClose(false);
+
       return;
     }
   };
@@ -645,7 +634,7 @@ export const Conversations = (props: tConversations) => {
           closeDrawer={() => setShowEditDrawer(false)}
           onUpdateComplete={() => refetch()}
           objectid={proposedchange!}
-          objectname={PROPOSED_CHANGES!}
+          objectname={PROPOSED_CHANGES_OBJECT!}
           formStructure={formStructure}
         />
       </SlideOver>

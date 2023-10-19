@@ -10,24 +10,32 @@ from infrahub.message_bus.operations import (
     refresh,
     requests,
     transform,
+    trigger,
 )
 from infrahub.message_bus.types import MessageTTL
 from infrahub.services import InfrahubServices
+from infrahub.tasks.check import set_check_status
 
 log = get_logger()
 
 COMMAND_MAP = {
+    "check.artifact.create": check.artifact.create,
     "check.repository.check_definition": check.repository.check_definition,
     "check.repository.merge_conflicts": check.repository.merge_conflicts,
     "event.branch.create": event.branch.create,
+    "event.node.mutated": event.node.mutated,
+    "event.branch.merge": event.branch.merge,
     "event.schema.update": event.schema.update,
     "finalize.validator.execution": finalize.validator.execution,
     "git.branch.create": git.branch.create,
     "git.diff.names_only": git.diff.names_only,
     "git.file.get": git.file.get,
     "git.repository.add": git.repository.add,
+    "git.repository.merge": git.repository.merge,
     "refresh.registry.branches": refresh.registry.branches,
     "request.git.create_branch": requests.git.create_branch,
+    "request.artifact.generate": requests.artifact.generate,
+    "request.artifact_definition.check": requests.artifact_definition.check,
     "request.artifact_definition.generate": requests.artifact_definition.generate,
     "request.proposed_change.data_integrity": requests.proposed_change.data_integrity,
     "request.proposed_change.refresh_artifacts": requests.proposed_change.refresh_artifacts,
@@ -36,6 +44,7 @@ COMMAND_MAP = {
     "request.repository.checks": requests.repository.check,
     "transform.jinja.template": transform.jinja.template,
     "transform.python.data": transform.python.data,
+    "trigger.artifact_definition.generate": trigger.artifact_definition.generate,
 }
 
 
@@ -52,6 +61,7 @@ async def execute_message(routing_key: str, message_body: bytes, service: Infrah
             return
         if message.reached_max_retries:
             log.error("Message failed after maximum number of retries", error=str(exc))
+            await set_check_status(message, conclusion="failure", service=service)
             return
         message.increase_retry_count()
         await service.send(message, delay=MessageTTL.FIVE)

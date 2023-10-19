@@ -17,7 +17,6 @@ import { AddComment } from "../../../components/conversations/add-comment";
 import { Thread } from "../../../components/conversations/thread";
 import { CONFIG } from "../../../config/config";
 import {
-  PROPOSED_CHANGES_FILE_THREAD,
   PROPOSED_CHANGES_FILE_THREAD_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
 } from "../../../config/constants";
@@ -115,7 +114,7 @@ export const FileContentDiff = (props: any) => {
   const [newFile, setNewFile] = useState(false);
   const [displayAddComment, setDisplayAddComment] = useState<any>({});
 
-  const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_FILE_THREAD)[0];
+  const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_FILE_THREAD_OBJECT);
 
   const queryString =
     schemaData && proposedchange
@@ -135,7 +134,8 @@ export const FileContentDiff = (props: any) => {
     ? useQuery(query, { skip: !schemaData })
     : { loading: false, error: null, data: null, refetch: null };
 
-  const threads = data ? data[schemaData?.kind]?.edges?.map((edge: any) => edge.node) : [];
+  const threads =
+    data && schemaData?.kind ? data[schemaData?.kind]?.edges?.map((edge: any) => edge.node) : [];
   const approverId = auth?.data?.sub;
 
   const fetchFileDetails = useCallback(async (commit: string, setState: Function) => {
@@ -159,7 +159,7 @@ export const FileContentDiff = (props: any) => {
 
       setState(fileResult);
     } catch (err) {
-      console.error("err: ", err);
+      console.error("Error while loading files diff: ", err);
       toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading files diff" />);
     }
 

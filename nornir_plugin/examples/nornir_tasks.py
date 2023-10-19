@@ -1,4 +1,6 @@
 from nornir import InitNornir
+from nornir.core.plugins.inventory import InventoryPluginRegister
+from nornir_infrahub.plugins.inventory.infrahub import InfrahubInventory
 from nornir_infrahub.plugins.tasks import (
     generate_artifacts,
     get_artifact,
@@ -10,6 +12,7 @@ from nornir_utils.plugins.functions import print_result
 
 
 def main():
+    InventoryPluginRegister.register("InfrahubInventory", InfrahubInventory)
     nr = InitNornir(
         inventory={
             "plugin": "InfrahubInventory",

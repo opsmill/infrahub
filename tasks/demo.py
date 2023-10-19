@@ -8,6 +8,7 @@ from .shared import (
     AVAILABLE_SERVICES,
     BUILD_NAME,
     PYTHON_VER,
+    INFRAHUB_DATABASE,
     build_compose_files_cmd,
     build_dev_compose_files_cmd,
     execute_command,
@@ -31,7 +32,7 @@ mutation($name: String!, $location: String!){
 
 @task(optional=["database"])
 def build(
-    context, service: str = None, python_ver: str = PYTHON_VER, nocache: bool = False, database: str = "memgraph"
+    context, service: str = None, python_ver: str = PYTHON_VER, nocache: bool = False, database: str = INFRAHUB_DATABASE
 ):  # pylint: disable=too-many-arguments
     """Build an image with the provided name and python version.
 
@@ -65,7 +66,7 @@ def build(
 
 
 @task(optional=["database"])
-def pull(context: Context, database: str = "memgraph"):
+def pull(context: Context, database: str = INFRAHUB_DATABASE):
     """Pull external containers from registry."""
     with context.cd(escape_path(REPO_BASE)):
         compose_files_cmd = build_compose_files_cmd(database=database)
@@ -81,7 +82,7 @@ def pull(context: Context, database: str = "memgraph"):
 # Local Environment tasks
 # ----------------------------------------------------------------------------
 @task(optional=["database"])
-def debug(context: Context, database: str = "memgraph"):
+def debug(context: Context, database: str = INFRAHUB_DATABASE):
     """Start a local instance of Infrahub in debug mode."""
     with context.cd(escape_path(REPO_BASE)):
         compose_files_cmd = build_compose_files_cmd(database=database)
@@ -90,7 +91,7 @@ def debug(context: Context, database: str = "memgraph"):
 
 
 @task(optional=["database"])
-def start(context: Context, database: str = "memgraph"):
+def start(context: Context, database: str = INFRAHUB_DATABASE):
     """Start a local instance of Infrahub within docker compose."""
     with context.cd(escape_path(REPO_BASE)):
         compose_files_cmd = build_compose_files_cmd(database=database)
@@ -99,7 +100,7 @@ def start(context: Context, database: str = "memgraph"):
 
 
 @task(optional=["database"])
-def restart(context: Context, database: str = "memgraph"):
+def restart(context: Context, database: str = INFRAHUB_DATABASE):
     """Restart Infrahub API Server and Git Agent within docker compose."""
     with context.cd(escape_path(REPO_BASE)):
         compose_files_cmd = build_compose_files_cmd(database=database)
@@ -110,7 +111,7 @@ def restart(context: Context, database: str = "memgraph"):
 
 
 @task(optional=["database"])
-def stop(context: Context, database: str = "memgraph"):
+def stop(context: Context, database: str = INFRAHUB_DATABASE):
     """Stop the running instance of Infrahub."""
     with context.cd(escape_path(REPO_BASE)):
         compose_files_cmd = build_compose_files_cmd(database=database)
@@ -119,7 +120,7 @@ def stop(context: Context, database: str = "memgraph"):
 
 
 @task
-def destroy(context: Context, database: str = "memgraph"):
+def destroy(context: Context, database: str = INFRAHUB_DATABASE):
     """Destroy all containers and volumes."""
     with context.cd(escape_path(REPO_BASE)):
         compose_files_cmd = build_compose_files_cmd(database=database)
@@ -129,7 +130,7 @@ def destroy(context: Context, database: str = "memgraph"):
 
 
 @task(optional=["database"])
-def cli_server(context: Context, database: str = "memgraph"):
+def cli_server(context: Context, database: str = INFRAHUB_DATABASE):
     """Launch a bash shell inside the running Infrahub container."""
     with context.cd(escape_path(REPO_BASE)):
         compose_files_cmd = build_compose_files_cmd(database=database)
@@ -138,7 +139,7 @@ def cli_server(context: Context, database: str = "memgraph"):
 
 
 @task(optional=["database"])
-def cli_git(context: Context, database: str = "memgraph"):
+def cli_git(context: Context, database: str = INFRAHUB_DATABASE):
     """Launch a bash shell inside the running Infrahub container."""
     with context.cd(escape_path(REPO_BASE)):
         compose_files_cmd = build_compose_files_cmd(database=database)
@@ -147,7 +148,7 @@ def cli_git(context: Context, database: str = "memgraph"):
 
 
 @task
-def init(context: Context, database: str = "memgraph"):
+def init(context: Context, database: str = INFRAHUB_DATABASE):
     """Initialize Infrahub database before using it the first time."""
     with context.cd(escape_path(REPO_BASE)):
         compose_files_cmd = build_compose_files_cmd(database=database)
@@ -156,7 +157,7 @@ def init(context: Context, database: str = "memgraph"):
 
 
 @task(optional=["database"])
-def status(context: Context, database: str = "memgraph"):
+def status(context: Context, database: str = INFRAHUB_DATABASE):
     """Display the status of all containers."""
     with context.cd(escape_path(REPO_BASE)):
         compose_files_cmd = build_compose_files_cmd(database=database)
@@ -165,7 +166,7 @@ def status(context: Context, database: str = "memgraph"):
 
 
 @task(optional=["database"])
-def load_infra_schema(context: Context, database: str = "memgraph"):
+def load_infra_schema(context: Context, database: str = INFRAHUB_DATABASE):
     """Load the base schema for infrastructure."""
     with context.cd(escape_path(REPO_BASE)):
         compose_files_cmd = build_compose_files_cmd(database=database)
@@ -178,7 +179,7 @@ def load_infra_schema(context: Context, database: str = "memgraph"):
 
 
 @task(optional=["database"])
-def load_infra_data(context: Context, database: str = "memgraph"):
+def load_infra_data(context: Context, database: str = INFRAHUB_DATABASE):
     """Load some demo data."""
     with context.cd(escape_path(REPO_BASE)):
         compose_files_cmd = build_compose_files_cmd(database=database)
@@ -188,7 +189,7 @@ def load_infra_data(context: Context, database: str = "memgraph"):
 
 
 @task(optional=["database"])
-def infra_git_import(context: Context, database: str = "memgraph"):
+def infra_git_import(context: Context, database: str = INFRAHUB_DATABASE):
     """Load some demo data."""
     PACKAGE_NAME = "infrahub-demo-edge-b635811.tar.gz"
     with context.cd(escape_path(REPO_BASE)):
@@ -206,7 +207,7 @@ def infra_git_import(context: Context, database: str = "memgraph"):
 
 @task(optional=["database"])
 def infra_git_create(
-    context: Context, database: str = "memgraph", name="demo-edge", location="/remote/infrahub-demo-edge"
+    context: Context, database: str = INFRAHUB_DATABASE, name="demo-edge", location="/remote/infrahub-demo-edge"
 ):
     """Load some demo data."""
     clean_query = re.sub(r"\n\s*", "", ADD_REPO_QUERY)
@@ -230,7 +231,7 @@ def infra_git_create(
 # Dev Environment tasks
 # ----------------------------------------------------------------------------
 @task(optional=["database"])
-def dev_start(context: Context, database: str = "memgraph"):
+def dev_start(context: Context, database: str = INFRAHUB_DATABASE):
     """Start a local instance of NEO4J & RabbitMQ."""
     with context.cd(escape_path(REPO_BASE)):
         dev_compose_files_cmd = build_dev_compose_files_cmd(database=database)
@@ -239,7 +240,7 @@ def dev_start(context: Context, database: str = "memgraph"):
 
 
 @task(optional=["database"])
-def dev_stop(context: Context, database: str = "memgraph"):
+def dev_stop(context: Context, database: str = INFRAHUB_DATABASE):
     """Start a local instance of NEO4J & RabbitMQ."""
     with context.cd(escape_path(REPO_BASE)):
         dev_compose_files_cmd = build_dev_compose_files_cmd(database=database)

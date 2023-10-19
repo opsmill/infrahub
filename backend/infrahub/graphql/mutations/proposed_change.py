@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 
 
 class CheckType(Enum):
+    ARTIFACT = "artifact"
     DATA = "data"
     REPOSITORY = "repository"
     SCHEMA = "schema"
@@ -51,6 +52,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         proposed_change, result = await super().mutate_create(root=root, info=info, data=data, branch=branch, at=at)
 
         events = [
+            messages.RequestProposedChangeRefreshArtifacts(proposed_change=proposed_change.id),
             messages.RequestProposedChangeDataIntegrity(proposed_change=proposed_change.id),
             messages.RequestProposedChangeRepositoryChecks(proposed_change=proposed_change.id),
             messages.RequestProposedChangeSchemaIntegrity(proposed_change=proposed_change.id),
@@ -116,7 +118,9 @@ class ProposedChangeRequestRunCheck(Mutation):
         proposed_change = await NodeManager.get_one_by_id_or_default_filter(
             id=identifier, schema_name="CoreProposedChange", db=db
         )
-        if check_type == CheckType.DATA:
+        if check_type == CheckType.ARTIFACT:
+            await rpc_client.send(messages.RequestProposedChangeRefreshArtifacts(proposed_change=proposed_change.id))
+        elif check_type == CheckType.DATA:
             await rpc_client.send(messages.RequestProposedChangeDataIntegrity(proposed_change=proposed_change.id))
         elif check_type == CheckType.REPOSITORY:
             await rpc_client.send(messages.RequestProposedChangeRepositoryChecks(proposed_change=proposed_change.id))

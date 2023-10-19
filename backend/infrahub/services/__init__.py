@@ -21,7 +21,7 @@ class InfrahubServices:
     ):
         self.cache = cache or InfrahubCache()
         self._client = client
-        self.database = database
+        self._database = database
         self.message_bus = message_bus or InfrahubMessageBus()
 
     @property
@@ -30,6 +30,13 @@ class InfrahubServices:
             raise InitializationError()
 
         return self._client
+
+    @property
+    def database(self) -> InfrahubDatabase:
+        if not self._database:
+            raise InitializationError("Service is not initialized with a database")
+
+        return self._database
 
     async def send(self, message: InfrahubBaseMessage, delay: Optional[MessageTTL] = None) -> None:
         routing_key = ROUTING_KEY_MAP.get(type(message))

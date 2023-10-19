@@ -118,6 +118,7 @@ def sync(
         if diff:
             print(mydiff.str())
         ptd.sync(diff=mydiff)
+        console.print("Sync: Completed")
     else:
         console.print("No diffence found. Nothing to sync")
 

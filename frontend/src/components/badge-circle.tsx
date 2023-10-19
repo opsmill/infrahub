@@ -14,7 +14,7 @@ const DEFAULT_CLASS = "flex items-center text-sm font-medium mr-2 px-2.5 py-0.5 
 
 const DEFAULT_CIRCLE_CLASS = "h-1.5 w-1.5 mr-1";
 
-const getClasseName = (type: CIRCLE_BADGE_TYPES, onClick: Function) => {
+const getClasseName = (type?: CIRCLE_BADGE_TYPES, onClick?: Function) => {
   switch (type) {
     case CIRCLE_BADGE_TYPES.VALIDATE: {
       return `
@@ -49,7 +49,7 @@ const getClasseName = (type: CIRCLE_BADGE_TYPES, onClick: Function) => {
   }
 };
 
-const getCircleClasseName = (type: CIRCLE_BADGE_TYPES, onClick: Function) => {
+const getCircleClasseName = (type?: CIRCLE_BADGE_TYPES, onClick?: Function) => {
   switch (type) {
     case CIRCLE_BADGE_TYPES.VALIDATE: {
       return `
@@ -84,8 +84,17 @@ const getCircleClasseName = (type: CIRCLE_BADGE_TYPES, onClick: Function) => {
   }
 };
 
-export const BadgeCircle = (props: any) => {
-  const { type, className, children, onDelete, value, onClick } = props;
+type tBadgeCircleProps = {
+  type?: CIRCLE_BADGE_TYPES;
+  className?: string;
+  children: any;
+  onDelete?: Function;
+  value?: any;
+  onClick?: Function;
+};
+
+export const BadgeCircle = (props: tBadgeCircleProps) => {
+  const { type, className = "", children, onDelete, value, onClick } = props;
 
   const customClassName = getClasseName(type, onClick || onDelete);
   const customCircleClassName = getCircleClasseName(type, onClick || onDelete);

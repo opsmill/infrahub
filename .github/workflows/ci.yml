@@ -23,6 +23,9 @@ env:
   INFRAHUB_IMAGE_VER: "testing"
   PYTEST_XDIST_WORKER_COUNT: 2
   INFRAHUB_TEST_IN_DOCKER: 1
+  BUILDKITE_ANALYTICS_BRANCH: ${{ github.ref }}
+  BUILDKITE_BRANCH: ${{ github.ref }}
+  BUILDKITE_COMMIT: ${{ github.sha }}
 
 jobs:
   files-changed:
@@ -168,6 +171,44 @@ jobs:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
           flag-name: python-sdk-integration
+          parallel: true
+
+  nornir-plugin-tests:
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.sdk == 'true'
+    needs: ["files-changed", "yaml-lint", "python-lint"]
+    runs-on: "ubuntu-20.04"
+    timeout-minutes: 30
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v3"
+      - name: "Install Invoke"
+        run: "pip install toml invoke"
+      - name: "Build Test Image"
+        run: "invoke test.build"
+      - name: "Pull External Docker Images"
+        run: "invoke test.pull"
+      - name: "Black Tests"
+        run: "invoke sdk.black --docker"
+      - name: "Isort Tests"
+        run: "invoke sdk.isort --docker"
+      - name: "Pylint Tests"
+        run: "invoke sdk.pylint --docker"
+      - name: "Mypy Tests"
+        run: "invoke sdk.mypy --docker"
+      - name: "Unit Tests"
+        run: "invoke sdk.test-unit"
+        env:
+          BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_SDK_UNIT }}
+      - name: "Coveralls : Unit Tests"
+        uses: coverallsapp/github-action@v2.0.0
+        env:
+          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+        with:
+          flag-name: nornir-plugin-unit
           parallel: true
 
   backend-tests-default:
@@ -319,7 +360,7 @@ jobs:
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled')
-    runs-on: "runner-ubuntu-8-32"
+    runs-on: "runner-ubuntu-16-64"
     timeout-minutes: 30
     steps:
       - name: "Check out repository code"
@@ -351,6 +392,9 @@ jobs:
       - name: Run End to End Tests
         working-directory: ./frontend
         run: npm run cypress:run:e2e
+      - name: Containers after failure
+        if: failure()
+        run: docker ps -a
       - name: Upload cypress screenshots
         if: failure()
         uses: actions/upload-artifact@v3
@@ -375,7 +419,7 @@ jobs:
 
 
   coverall-report:
-    needs: ["frontend-tests", "ctl-tests", "backend-tests-default", "python-sdk-tests"]
+    needs: ["frontend-tests", "ctl-tests", "backend-tests-default", "python-sdk-tests", "nornir-plugin-tests"]
     if: |
       always() && !cancelled()
     runs-on: ubuntu-latest
@@ -407,5 +451,5 @@ jobs:
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
-          carryforward: "backend-unit,backend-integration,frontend-unit,infrahubctl-unit,python-sdk-unit,python-sdk-integration"
+          carryforward: "backend-unit,backend-integration,frontend-unit,infrahubctl-unit,python-sdk-unit,python-sdk-integration,nornir-plugin-unit"
           parallel-finished: true

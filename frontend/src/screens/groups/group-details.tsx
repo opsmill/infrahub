@@ -46,8 +46,8 @@ export default function GroupItemDetails() {
   const branch = useReactiveVar(branchVar);
   const [schemaList] = useAtom(schemaState);
   const [genericList] = useAtom(genericsState);
-  const schema = schemaList.filter((s) => s.name === groupname)[0];
-  const generic = genericList.filter((s) => s.name === groupname)[0];
+  const schema = schemaList.filter((s) => s.kind === groupname)[0];
+  const generic = genericList.filter((s) => s.kind === groupname)[0];
   const navigate = useNavigate();
 
   const schemaData = generic || schema;
@@ -108,7 +108,7 @@ export default function GroupItemDetails() {
       <div className="px-4 py-5 sm:px-6 flex items-center">
         <div
           onClick={() => navigate(constructPath("/groups"))}
-          className="text-xl font-semibold text-gray-900 cursor-pointer hover:underline">
+          className="text-md font-semibold text-gray-900 cursor-pointer hover:underline">
           {GROUP_OBJECT}
         </div>
         <ChevronRightIcon

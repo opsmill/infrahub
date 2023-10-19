@@ -3,7 +3,7 @@ from graphene.types.generic import GenericScalar
 
 import infrahub.config as config
 from infrahub.message_bus import get_broker
-from infrahub.message_bus.events import InfrahubMessage, get_event_exchange
+from infrahub.message_bus.events import get_event_exchange
 
 from .query import execute_query
 
@@ -85,5 +85,6 @@ class InfrahubBaseSubscription(ObjectType):
                 # Cancel consuming after __aexit__
                 async for message in queue_iter:
                     async with message.process():
-                        event = InfrahubMessage.convert(message=message)
-                        yield {"type": event.type.value, "action": event.action, "body": event.generate_message_body()}
+                        pass
+                        # event = InfrahubMessage.convert(message=message)
+                        # yield {"type": event.type.value, "action": event.action, "body": event.generate_message_body()}

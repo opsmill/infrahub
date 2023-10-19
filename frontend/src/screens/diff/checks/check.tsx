@@ -1,16 +1,23 @@
+import { gql } from "@apollo/client";
 import {
   CheckCircleIcon,
   ExclamationCircleIcon,
   ExclamationTriangleIcon,
+  QuestionMarkCircleIcon,
 } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { Badge } from "../../../components/badge";
 import { DateDisplay } from "../../../components/date-display";
+import { PopOver } from "../../../components/popover";
+import { getCheckDetails } from "../../../graphql/queries/diff/getCheckDetails";
+import useQuery from "../../../hooks/useQuery";
 import { schemaKindNameState } from "../../../state/atoms/schemaKindName.atom";
 import { classNames } from "../../../utils/common";
+import ErrorScreen from "../../error-screen/error-screen";
+import LoadingScreen from "../../loading-screen/loading-screen";
 
 type tCheckProps = {
-  check: any;
+  id: string;
 };
 
 const getCheckIcon = (conclusion?: string) => {
@@ -52,6 +59,7 @@ const getCheckBorderColor = (severity?: string) => {
 
 const getCheckData = (check: any) => {
   const { __typename } = check;
+
   switch (__typename) {
     case "CoreDataCheck": {
       const { paths } = check;
@@ -63,6 +71,11 @@ const getCheckData = (check: any) => {
               <li key={path}>{path}</li>
             ))}
           </ul>
+          {/* <div className="mt-2 flex flex-1">
+            <Button className="mr-2">Keep data from main</Button>
+
+            <Button>Keep data from branch</Button>
+          </div> */}
         </div>
       );
     }
@@ -73,9 +86,21 @@ const getCheckData = (check: any) => {
 };
 
 export const Check = (props: tCheckProps) => {
-  const { check } = props;
+  const { id } = props;
 
   const [schemaKindName] = useAtom(schemaKindNameState);
+
+  const queryString = getCheckDetails({
+    id,
+  });
+
+  const query = gql`
+    ${queryString}
+  `;
+
+  const { loading, error, data } = useQuery(query);
+
+  const check = data?.CoreCheck?.edges?.[0]?.node ?? {};
 
   const {
     __typename,
@@ -89,6 +114,52 @@ export const Check = (props: tCheckProps) => {
     conclusion,
   } = check;
 
+  const MoreButton = (
+    <div className="p-1 cursor-pointer">
+      <QuestionMarkCircleIcon className="h-6 w-6 text-custom-blue-green" aria-hidden="true" />
+    </div>
+  );
+
+  const renderContent = () => {
+    return (
+      <div>
+        <div className="flex mb-1">
+          <span className="flex-1">Type:</span>
+
+          <Badge className="flex-1">{schemaKindName[__typename]}</Badge>
+        </div>
+
+        <div className="flex mb-1">
+          <span className="flex-1">Kind:</span>
+
+          <Badge className="flex-1">{kind?.value}</Badge>
+        </div>
+
+        <div className="flex">
+          <span className="flex-1">Origin:</span>
+
+          <Badge className="flex-1">{origin?.value}</Badge>
+        </div>
+      </div>
+    );
+  };
+
+  if (loading) {
+    return (
+      <div className={"flex flex-col rounded-md p-2 bg-custom-white border-l-4"}>
+        <LoadingScreen />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className={"flex flex-col rounded-md p-2 bg-custom-white border-l-4"}>
+        <ErrorScreen message="Something went wrong when fetching the check details" />
+      </div>
+    );
+  }
+
   return (
     <div
       className={classNames(
@@ -96,7 +167,7 @@ export const Check = (props: tCheckProps) => {
         getCheckBorderColor(severity?.value)
       )}>
       <div className="flex mb-2">
-        <div className="flex flex-col mr-2">
+        <div className="flex flex-1 flex-col mr-2">
           <div className="flex">
             {getCheckIcon(conclusion?.value)}
 
@@ -110,14 +181,12 @@ export const Check = (props: tCheckProps) => {
           </div>
         </div>
 
-        <div className="flex flex-col">
-          <Badge className="mb-2">{schemaKindName[__typename]}</Badge>
+        <div className="flex flex-col justify-start">
+          <div className="flex items-center">
+            <DateDisplay date={created_at?.value} />
 
-          <Badge className="mb-2">{kind?.value}</Badge>
-
-          <Badge className="mb-2">{origin?.value}</Badge>
-
-          <DateDisplay date={created_at?.value} />
+            <PopOver buttonComponent={MoreButton}>{renderContent}</PopOver>
+          </div>
         </div>
       </div>
 

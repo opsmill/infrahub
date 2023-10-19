@@ -2,6 +2,8 @@ import { ApolloClient, DefaultOptions, InMemoryCache, createHttpLink } from "@ap
 import { setContext } from "@apollo/client/link/context";
 import { onError } from "@apollo/client/link/error";
 import fetch from "cross-fetch";
+import { toast } from "react-toastify";
+import { ALERT_TYPES, Alert } from "../components/alert";
 import { CONFIG } from "../config/config";
 import { ACCESS_TOKEN_KEY } from "../config/constants";
 import { getNewToken } from "../decorators/withAuth";
@@ -47,7 +49,15 @@ const authLink = setContext((_, { headers }) => {
 const errorLink = onError(({ graphQLErrors, operation, forward }) => {
   if (graphQLErrors) {
     graphQLErrors.forEach(async ({ message, locations, path, extensions }) => {
-      console.error(`[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`);
+      console.error(
+        `[GraphQL error]: Message: ${message}, Location: ${JSON.stringify(
+          locations
+        )}, Path: ${path}`
+      );
+
+      if (message) {
+        toast(<Alert type={ALERT_TYPES.ERROR} message={message} />);
+      }
 
       switch (extensions?.code) {
         case 401: {

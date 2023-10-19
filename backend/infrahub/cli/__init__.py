@@ -24,7 +24,7 @@ app.add_typer(generate_schema_app, name="generate-schema")
 app.add_typer(doc_app, name="doc")
 
 
-async def _init_shell(config_file: str):
+async def _init_shell(config_file: str) -> None:
     """Launch a Python Interactive shell."""
     config.load_and_exit(config_file_name=config_file)
 
@@ -35,7 +35,7 @@ async def _init_shell(config_file: str):
 
 
 @app.command()
-def shell(config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG")):
+def shell(config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG")) -> None:
     """Start a python shell within Infrahub context."""
     aiorun(_init_shell(config_file=config_file))
 

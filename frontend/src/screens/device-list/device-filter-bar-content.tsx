@@ -22,8 +22,8 @@ export default function DeviceFilterBarContent(props: any) {
   const [filters, setFilters] = useFilters();
   const [schemaList] = useAtom(schemaState);
   const [genericList] = useAtom(genericsState);
-  const schema = schemaList.filter((s) => s.name === objectname)[0];
-  const generic = genericList.filter((s) => s.name === objectname)[0];
+  const schema = schemaList.find((s) => s.kind === objectname);
+  const generic = genericList.find((s) => s.kind === objectname);
 
   const schemaData = schema || generic;
 

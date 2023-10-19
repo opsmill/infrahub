@@ -2,8 +2,10 @@ import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import { useEffect } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
+import { Pagination } from "../../../components/pagination";
 import { QSP } from "../../../config/qsp";
 import { getValidatorDetails } from "../../../graphql/queries/diff/getValidatorDetails";
+import usePagination from "../../../hooks/usePagination";
 import useQuery from "../../../hooks/useQuery";
 import { iNodeSchema, schemaState } from "../../../state/atoms/schema.atom";
 import { getObjectItemDisplayValue } from "../../../utils/getObjectItemDisplayValue";
@@ -22,9 +24,19 @@ const getValidatorAttributes = (typename: string, schemaList: iNodeSchema[]) => 
 export const ValidatorDetails = () => {
   const [schemaList] = useAtom(schemaState);
   const [qspTab, setQsp] = useQueryParam(QSP.VALIDATOR_DETAILS, StringParam);
+  const [pagination] = usePagination();
+
+  const filtersString = [
+    // Add pagination filters
+    ...[
+      { name: "offset", value: pagination?.offset },
+      { name: "limit", value: pagination?.limit },
+    ].map((row: any) => `${row.name}: ${row.value}`),
+  ].join(",");
 
   const queryString = getValidatorDetails({
     id: qspTab,
+    filters: filtersString,
   });
 
   const query = gql`
@@ -32,7 +44,6 @@ export const ValidatorDetails = () => {
   `;
 
   const { loading, error, data } = useQuery(query);
-  console.log("data: ", data);
 
   useEffect(() => {
     return () => {
@@ -56,7 +67,7 @@ export const ValidatorDetails = () => {
   return (
     <div className="flex-1 overflow-auto flex flex-col">
       <div className="flex flex-col">
-        <div className="bg-custom-white overflow-auto">
+        <div className="bg-custom-white">
           <dl className="sm:divide-y sm:divide-gray-200">
             <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-3 sm:px-6">
               <dt className="text-sm font-medium text-gray-500 flex items-center">ID</dt>
@@ -91,11 +102,15 @@ export const ValidatorDetails = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 3xl:grid-cols-3 gap-4 p-4">
-        {validator?.checks?.edges?.map((check: any, index: number) => (
-          <Check key={index} check={check?.node} />
-        ))}
+      <div className="flex-1">
+        <div className="grid grid-cols-2 3xl:grid-cols-3 gap-4 p-4">
+          {validator?.checks?.edges?.map((check: any, index: number) => (
+            <Check key={index} id={check?.node?.id} />
+          ))}
+        </div>
       </div>
+
+      <Pagination count={validator?.checks?.count} />
     </div>
   );
 };

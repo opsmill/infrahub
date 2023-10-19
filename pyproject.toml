@@ -72,7 +72,7 @@ types-ujson = "*"
 types-pyyaml = "*"
 typer-cli = "*"
 pytest-cov = "^4.0.0"
-ruff = "0.0.265"
+ruff = "0.1.0"
 pytest-xdist = "^3.3.1"
 buildkite-test-collector = "^0.1.7"
 
@@ -89,6 +89,7 @@ diffsync = "^1.8.0"
 [tool.poetry.group.nornir.dependencies]
 nornir = "^3.3.0"
 nornir-utils = "^0.2.0"
+python-slugify = "^8.0.1"
 
 [tool.poetry.scripts]
 infrahub = "infrahub.cli:app"
@@ -220,35 +221,7 @@ module = "infrahub.checks"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.cli"
-disallow_untyped_defs = false
-
-[[tool.mypy.overrides]]
-module = "infrahub.cli.db"
-disallow_untyped_defs = false
-
-[[tool.mypy.overrides]]
-module = "infrahub.cli.doc"
-disallow_untyped_defs = false
-
-[[tool.mypy.overrides]]
-module = "infrahub.cli.generate_schema"
-disallow_untyped_defs = false
-
-[[tool.mypy.overrides]]
-module = "infrahub.cli.server"
-disallow_untyped_defs = false
-
-[[tool.mypy.overrides]]
 module = "infrahub.core.*"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.cli.events"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.cli.git_agent"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
@@ -261,10 +234,6 @@ ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = "infrahub.exceptions"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.git.handlers"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
@@ -282,10 +251,6 @@ ignore_errors = true
 [[tool.mypy.overrides]]
 module = "infrahub.lock"
 ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.log"
-disallow_untyped_defs = false
 
 [[tool.mypy.overrides]]
 module = "infrahub.message_bus"
@@ -316,10 +281,6 @@ module = "infrahub.server"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.storage.local"
-disallow_untyped_defs = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.storage.main"
 disallow_untyped_defs = false
 
@@ -343,10 +304,6 @@ ignore_errors = true
 module = "infrahub.types"
 disallow_untyped_defs = false
 
-[[tool.mypy.overrides]]
-module = "infrahub.utils"
-disallow_untyped_defs = false
-
 
 [tool.ruff]
 
@@ -355,8 +312,12 @@ select = [
     "DTZ",
     "E",
     "F",
+    "ICN",
     "TCH",
+    "T10",
+    "Q",
     "W",
+    "YTT",
 ]
 
 line-length = 170

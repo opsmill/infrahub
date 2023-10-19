@@ -2,7 +2,7 @@ import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import { useParams } from "react-router-dom";
 import { Pill } from "../../components/pill";
-import { PROPOSED_CHANGES } from "../../config/constants";
+import { PROPOSED_CHANGES_OBJECT } from "../../config/constants";
 import { getProposedChangesChecks } from "../../graphql/queries/proposed-changes/getProposedChangesChecks";
 import useQuery from "../../hooks/useQuery";
 import { schemaState } from "../../state/atoms/schema.atom";
@@ -11,11 +11,11 @@ import LoadingScreen from "../loading-screen/loading-screen";
 export const ProposedChangesChecksTab = () => {
   const { proposedchange } = useParams();
   const [schemaList] = useAtom(schemaState);
-  const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES)[0];
+  const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_OBJECT);
 
   const queryString = getProposedChangesChecks({
     id: proposedchange,
-    kind: schemaData.kind,
+    kind: schemaData?.kind,
   });
 
   const query = gql`
