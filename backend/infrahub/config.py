@@ -75,10 +75,10 @@ class DatabaseSettings(BaseSettings):
     port: int = 7687
     database: Optional[str] = Field(regex=VALID_DATABASE_NAME_REGEX, description="Name of the database")
     query_size_limit: int = Field(
-        1000,
+        5000,
         description="The max number of records to fetch in a single query before performing internal pagination.",
         min=1,
-        max=5000,
+        max=20000,
     )
 
     class Config:

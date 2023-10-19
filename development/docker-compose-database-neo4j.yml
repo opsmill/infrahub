@@ -24,12 +24,10 @@ services:
   infrahub-server:
     environment:
       - "INFRAHUB_DB_TYPE=neo4j"
-      - "INFRAHUB_DB_QUERY_SIZE_LIMIT=4999"
 
   infrahub-git:
     environment:
       - "INFRAHUB_DB_TYPE=neo4j"
-      - "INFRAHUB_DB_QUERY_SIZE_LIMIT=4999"
 
 volumes:
   database_data:
