@@ -63,12 +63,12 @@ class Meta(BaseModel):
     check_execution_id: Optional[str] = Field(default=None, description="Check execution ID related to this message")
 
 
-class InfrahubBaseMessage(BaseModel, aio_pika.abc.AbstractMessage):
+class InfrahubMessage(BaseModel, aio_pika.abc.AbstractMessage):
     """Base Model for messages"""
 
     meta: Optional[Meta] = None
 
-    def assign_meta(self, parent: "InfrahubBaseMessage") -> None:
+    def assign_meta(self, parent: "InfrahubMessage") -> None:
         """Assign relevant meta properties from a parent message."""
         self.meta = self.meta or Meta()
         if parent.meta:
@@ -146,7 +146,7 @@ class InfrahubBaseMessage(BaseModel, aio_pika.abc.AbstractMessage):
         )
 
 
-class InfrahubResponse(InfrahubBaseMessage):
+class InfrahubResponse(InfrahubMessage):
     """A response to an RPC request"""
 
     passed: bool = True

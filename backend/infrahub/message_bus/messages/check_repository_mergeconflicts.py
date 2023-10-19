@@ -1,9 +1,9 @@
 from pydantic import Field
 
-from infrahub.message_bus import InfrahubBaseMessage
+from infrahub.message_bus import InfrahubMessage
 
 
-class CheckRepositoryMergeConflicts(InfrahubBaseMessage):
+class CheckRepositoryMergeConflicts(InfrahubMessage):
     """Runs a check to validate if there are merge conflicts for a proposed change between two branches."""
 
     validator_id: str = Field(..., description="The id of the validator associated with this check")

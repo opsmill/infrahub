@@ -1,9 +1,9 @@
 from pydantic import Field
 
-from infrahub.message_bus import InfrahubBaseMessage
+from infrahub.message_bus import InfrahubMessage
 
 
-class CheckRepositoryCheckDefinition(InfrahubBaseMessage):
+class CheckRepositoryCheckDefinition(InfrahubMessage):
     """Runs a check as defined within a CoreCheckDefinition within a repository."""
 
     validator_id: str = Field(..., description="The id of the validator associated with this check")

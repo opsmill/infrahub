@@ -3,7 +3,7 @@ from typing import List
 from infrahub.core.constants import ValidatorConclusion, ValidatorState
 from infrahub.core.timestamp import Timestamp
 from infrahub.log import get_logger
-from infrahub.message_bus import InfrahubBaseMessage, Meta, messages
+from infrahub.message_bus import InfrahubMessage, Meta, messages
 from infrahub.services import InfrahubServices
 from infrahub_client import UUIDT
 
@@ -16,7 +16,7 @@ async def check(message: messages.RequestArtifactDefinitionCheck, service: Infra
         artifact_definition=message.artifact_definition,
         source_branch=message.source_branch,
     )
-    events: List[InfrahubBaseMessage] = []
+    events: List[InfrahubMessage] = []
 
     artifact_definition = await service.client.get(
         kind="CoreArtifactDefinition", id=message.artifact_definition, branch=message.source_branch

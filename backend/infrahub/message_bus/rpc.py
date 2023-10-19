@@ -15,7 +15,7 @@ from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
 from infrahub.worker import WORKER_IDENTITY
 from infrahub_client import UUIDT
 
-from . import InfrahubBaseMessage, InfrahubResponse, Meta, get_broker
+from . import InfrahubMessage, InfrahubResponse, Meta, get_broker
 from .messages import ROUTING_KEY_MAP
 from .types import MessageTTL
 
@@ -126,7 +126,7 @@ class InfrahubRpcClientBase:
         else:
             log.error("Invalid message received", message=f"{message!r}")
 
-    async def rpc(self, message: InfrahubBaseMessage) -> InfrahubResponse:
+    async def rpc(self, message: InfrahubMessage) -> InfrahubResponse:
         correlation_id = str(UUIDT())
 
         future = self.loop.create_future()
@@ -142,7 +142,7 @@ class InfrahubRpcClientBase:
         data = json.loads(response.body)
         return InfrahubResponse(**data)
 
-    async def send(self, message: InfrahubBaseMessage) -> None:
+    async def send(self, message: InfrahubMessage) -> None:
         routing_key = ROUTING_KEY_MAP.get(type(message))
 
         if not routing_key:
@@ -166,16 +166,16 @@ class InfrahubRpcClientTesting(InfrahubRpcClientBase):
 
         self.responses = defaultdict(list)
         self.replies: List[InfrahubResponse] = []
-        self.sent: List[InfrahubBaseMessage] = []
+        self.sent: List[InfrahubMessage] = []
 
     async def connect(self) -> InfrahubRpcClient:
         return self
 
-    async def rpc(self, message: InfrahubBaseMessage) -> InfrahubResponse:
+    async def rpc(self, message: InfrahubMessage) -> InfrahubResponse:
         return self.replies.pop()
 
     async def add_mock_reply(self, response: InfrahubResponse) -> None:
         self.replies.append(response)
 
-    async def send(self, message: InfrahubBaseMessage) -> None:
+    async def send(self, message: InfrahubMessage) -> None:
         self.sent.append(message)
