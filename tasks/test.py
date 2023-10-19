@@ -7,13 +7,13 @@ from .shared import (
     execute_command,
     get_env_vars,
 )
-from .utils import REPO_BASE, escape_path
+from .utils import ESCAPED_REPO_PATH
 
 
 @task
 def build(context: Context):
     """Start a local instance of Infrahub in debug mode."""
-    with context.cd(escape_path(REPO_BASE)):
+    with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_test_compose_files_cmd()
         exec_cmd = f"{get_env_vars(context=context)} docker compose {compose_files_cmd} -p {BUILD_NAME} build"
 
@@ -23,7 +23,7 @@ def build(context: Context):
 @task(optional=["database"])
 def pull(context: Context, database: str = "memgraph"):
     """Pull external containers from registry."""
-    with context.cd(escape_path(REPO_BASE)):
+    with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_test_compose_files_cmd(database=database)
 
         for service in AVAILABLE_SERVICES:
@@ -36,7 +36,7 @@ def pull(context: Context, database: str = "memgraph"):
 @task
 def destroy(context: Context):
     """Destroy the test environment."""
-    with context.cd(escape_path(REPO_BASE)):
+    with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_test_compose_files_cmd()
         exec_cmd = (
             f"{get_env_vars(context=context)} docker compose {compose_files_cmd} -p {BUILD_NAME} down --remove-orphans"

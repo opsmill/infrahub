@@ -33,6 +33,9 @@ def escape_path(path: Path) -> str:
     )
 
 
+ESCAPED_REPO_PATH = escape_path(REPO_BASE)
+
+
 def project_ver() -> str:
     """Find version from pyproject.toml to use for docker image tagging."""
     with open(f"{REPO_BASE}/pyproject.toml", encoding="UTF-8") as file:

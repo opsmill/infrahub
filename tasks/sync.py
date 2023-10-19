@@ -1,6 +1,6 @@
 from invoke import Context, task
 
-from .utils import REPO_BASE, escape_path
+from .utils import ESCAPED_REPO_PATH
 
 MAIN_DIRECTORY = "sync/infrahub-sync"
 NAMESPACE = "SYNC"
@@ -15,7 +15,7 @@ def format_black(context: Context):
 
     print(f" - [{NAMESPACE}] Format code with black")
     exec_cmd = f"black {MAIN_DIRECTORY}/"
-    with context.cd(escape_path(REPO_BASE)):
+    with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
 
@@ -25,7 +25,7 @@ def format_autoflake(context: Context):
 
     print(f" - [{NAMESPACE}] Format code with autoflake")
     exec_cmd = f"autoflake --recursive --verbose --in-place --remove-all-unused-imports --remove-unused-variables {MAIN_DIRECTORY}"
-    with context.cd(escape_path(REPO_BASE)):
+    with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
 
@@ -35,7 +35,7 @@ def format_isort(context: Context):
 
     print(f" - [{NAMESPACE}] Format code with isort")
     exec_cmd = f"isort {MAIN_DIRECTORY}"
-    with context.cd(escape_path(REPO_BASE)):
+    with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
 
@@ -59,7 +59,7 @@ def black(context: Context):
 
     print(f" - [{NAMESPACE}] Check code with black")
     exec_cmd = f"black --check --diff {MAIN_DIRECTORY}"
-    with context.cd(escape_path(REPO_BASE)):
+    with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
 
@@ -69,7 +69,7 @@ def isort(context: Context):
 
     print(f" - [{NAMESPACE}] Check code with isort")
     exec_cmd = f"isort --check --diff {MAIN_DIRECTORY}"
-    with context.cd(escape_path(REPO_BASE)):
+    with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
 
@@ -79,7 +79,7 @@ def mypy(context: Context):
 
     print(f" - [{NAMESPACE}] Check code with mypy")
     exec_cmd = f"mypy --show-error-codes {MAIN_DIRECTORY}"
-    with context.cd(escape_path(REPO_BASE)):
+    with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
 
@@ -89,7 +89,7 @@ def pylint(context: Context):
 
     print(f" - [{NAMESPACE}] Check code with pylint")
     exec_cmd = f"pylint {MAIN_DIRECTORY}"
-    with context.cd(escape_path(REPO_BASE)):
+    with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
 
@@ -99,7 +99,7 @@ def ruff(context: Context):
 
     print(f" - [{NAMESPACE}] Check code with ruff")
     exec_cmd = f"ruff check {MAIN_DIRECTORY}"
-    with context.cd(escape_path(REPO_BASE)):
+    with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
 
