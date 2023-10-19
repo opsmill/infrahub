@@ -34,7 +34,7 @@ export default function MetaDetailsTooltip(props: Props) {
   return (
     <Popover className="relative flex">
       <Popover.Button>
-        <div className="w-4 h-4">
+        <div className="w-4 h-4" data-cy="metadata-button">
           <InformationCircleIcon className="w-4 h-4 text-gray-500" />
         </div>
       </Popover.Button>
