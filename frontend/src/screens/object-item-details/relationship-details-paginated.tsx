@@ -303,10 +303,11 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                           },
                         ]}
                         header={
-                          <div className="flex justify-between w-full py-4">
+                          <div className="flex justify-between items-center w-full p-4">
                             <div className="font-semibold">{relationshipSchema.label}</div>
-                            <div
-                              className="cursor-pointer"
+                            <Button
+                              buttonType={BUTTON_TYPES.INVISIBLE}
+                              disabled={!auth?.permissions?.write}
                               onClick={() => {
                                 setMetaEditFieldDetails({
                                   type: "relationship",
@@ -314,9 +315,10 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                   label: relationshipSchema.label || relationshipSchema.name,
                                 });
                                 setShowMetaEditModal(true);
-                              }}>
+                              }}
+                              data-cy="metadata-edit-button">
                               <PencilSquareIcon className="w-4 h-4 text-custom-blue-500" />
-                            </div>
+                            </Button>
                           </div>
                         }
                       />
@@ -431,7 +433,8 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                   buttonType={BUTTON_TYPES.INVISIBLE}
                                   onClick={() => {
                                     setRelatedObjectToEdit(node);
-                                  }}>
+                                  }}
+                                  data-cy="metadata-edit-button">
                                   <PencilSquareIcon className="w-4 h-4 text-gray-500" />
                                 </Button>
 
@@ -608,7 +611,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
               setShowRelationMetaEditModal(false);
             }}
             onUpdateComplete={() => setShowRelationMetaEditModal(false)}
-            attributeOrRelationshipToEdit={rowForMetaEdit}
+            attributeOrRelationshipToEdit={relationshipsData?.properties}
             schemaList={schemaList}
             schema={schema}
             attributeOrRelationshipName={relationshipSchema.name}

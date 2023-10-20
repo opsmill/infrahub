@@ -51,11 +51,11 @@ export default function MetaDetailsTooltip(props: Props) {
             "absolute z-10 bg-custom-white rounded-lg border shadow-xl",
             position === "LEFT" ? "right-0" : ""
           )}>
-          <div className="w-80 text-sm divide-y px-4">
+          <div className="w-80 text-sm divide-y">
             {!!header && header}
             {items.map((item) => {
               return (
-                <div key={item.label} className="flex justify-between w-full py-4">
+                <div key={item.label} className="flex justify-between items-center w-full p-4">
                   <div>{item.label}: </div>
                   {item.type === "date" && item.value && (
                     <div>

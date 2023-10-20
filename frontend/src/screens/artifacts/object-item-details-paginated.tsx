@@ -265,7 +265,7 @@ export default function ObjectItemDetails() {
                               },
                             ]}
                             header={
-                              <div className="flex justify-between w-full py-4">
+                              <div className="flex justify-between items-center w-full p-4">
                                 <div className="font-semibold">{attribute.label}</div>
                                 <Button
                                   buttonType={BUTTON_TYPES.INVISIBLE}
@@ -277,7 +277,8 @@ export default function ObjectItemDetails() {
                                       label: attribute.label || attribute.name,
                                     });
                                     setShowMetaEditModal(true);
-                                  }}>
+                                  }}
+                                  data-cy="metadata-edit-button">
                                   <PencilSquareIcon className="w-4 h-4 text-custom-blue-500" />
                                 </Button>
                               </div>
