@@ -20,7 +20,12 @@ describe("Tutorial - Part 4", () => {
 
     cy.get(".sm\\:p-0 > :nth-child(1)").within(() => {
       // Click to open the metadata for the name
-      cy.get(":nth-child(2) > div.items-center > .p-2").click();
+      cy.contains("Name")
+        .parent()
+        .within(() => {
+          cy.get("[data-cy='metadata-button']").click();
+        });
+
       cy.get(":nth-child(4) > .underline").should("have.text", "Pop-Builder");
 
       if (this.screenshots) {
@@ -41,7 +46,12 @@ describe("Tutorial - Part 4", () => {
 
     // Click to open the metadata for the role
     cy.get(".sm\\:p-0 > :nth-child(1)").within(() => {
-      cy.get(":nth-child(7) > .py-4 > .mt-1 > .p-2").click();
+      cy.contains("Role")
+        .parent()
+        .within(() => {
+          cy.get("[data-cy='metadata-button']").click();
+        });
+
       cy.get(":nth-child(5) > .underline").should("have.text", "Engineering Team");
     });
 
