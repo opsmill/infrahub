@@ -4,6 +4,9 @@ from typing import Optional, Union
 
 from pydantic import BaseSettings
 
+from infrahub import config
+from infrahub.exceptions import NodeNotFound
+
 from .main import InfrahubObjectStorage
 
 
@@ -37,6 +40,12 @@ class InfrahubLocalStorage(InfrahubObjectStorage):
 
     async def retrieve(self, identifier: str, encoding: str = "utf-8") -> str:
         fileh = Path(self.generate_path(identifier=identifier))
+
+        if not fileh.exists():
+            raise NodeNotFound(
+                branch_name=config.SETTINGS.main.default_branch, node_type="StorageObject", identifier=identifier
+            )
+
         return fileh.read_text(encoding=encoding)
 
     @property
