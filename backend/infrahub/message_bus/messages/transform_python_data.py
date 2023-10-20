@@ -1,9 +1,9 @@
 from pydantic import Field
 
-from infrahub.message_bus import InfrahubBaseMessage
+from infrahub.message_bus import InfrahubMessage
 
 
-class TransformPythonData(InfrahubBaseMessage):
+class TransformPythonData(InfrahubMessage):
     """Sent to run a Python transform."""
 
     repository_id: str = Field(..., description="The unique ID of the Repository")

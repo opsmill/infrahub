@@ -5,7 +5,6 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.message_bus import InfrahubResponse
-from infrahub.message_bus.events import InfrahubRPCResponse, RPCStatusCode
 from infrahub.message_bus.rpc import InfrahubRpcClientTesting
 
 
@@ -83,9 +82,6 @@ async def test_transform_endpoint_path(
     await t1.save(db=db)
     # Must execute in a with block to execute the startup/shutdown events
     with client:
-        mock_response = InfrahubRPCResponse(
-            status=RPCStatusCode.OK, response={"transformed_data": {"KEY1": "value1", "KEY2": "value2"}}
-        )
         mock_response = InfrahubResponse(
             response_class="transform_response",
             response_data={"transformed_data": {"KEY1": "value1", "KEY2": "value2"}},

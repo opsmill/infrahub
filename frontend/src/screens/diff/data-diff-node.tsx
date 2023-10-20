@@ -11,6 +11,7 @@ import { QSP } from "../../config/qsp";
 import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
 import { classNames } from "../../utils/common";
 import { DataDiffElement } from "./data-diff-element";
+import { DataDiffConflictInfo } from "./diff-conflict-info";
 import { DiffPill } from "./diff-pill";
 import { DataDiffThread } from "./diff-thread";
 
@@ -81,7 +82,7 @@ export type tDataDiffNodeChange = {
   changed_at?: number;
   identifier?: string;
   action: string;
-  properties?: tDataDiffNodeProperty[];
+  properties: { [key: string]: tDataDiffNodeProperty };
   peer?: tDataDiffNodePeerChange;
   peers?: tDataDiffNodePeerChange[];
   summary?: tDataDiffNodeSummary;
@@ -188,7 +189,7 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
   const display_label = nodeDisplayLabels[currentBranch] ?? nodeDisplayLabels?.main;
 
   const renderTitle = () => (
-    <div className={"p-1 pr-0 flex flex-col lg:flex-row"}>
+    <div className={"p-1 pr-0 relative flex flex-col items-center lg:flex-row group"}>
       <div className="flex flex-1 items-center group">
         <Badge className="mr-2" type={getBadgeType(action)}>
           {action?.toUpperCase()}
@@ -218,6 +219,8 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
           {changed_at && <DateDisplay date={changed_at} hideDefault />}
         </div>
       </div>
+
+      {!branchname && <DataDiffConflictInfo path={path} />}
     </div>
   );
 

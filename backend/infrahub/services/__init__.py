@@ -2,7 +2,7 @@ from typing import Optional
 
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import InitializationError
-from infrahub.message_bus import InfrahubBaseMessage, InfrahubResponse, Meta
+from infrahub.message_bus import InfrahubMessage, InfrahubResponse, Meta
 from infrahub.message_bus.messages import ROUTING_KEY_MAP
 from infrahub.message_bus.types import MessageTTL
 from infrahub_client import InfrahubClient
@@ -21,7 +21,7 @@ class InfrahubServices:
     ):
         self.cache = cache or InfrahubCache()
         self._client = client
-        self.database = database
+        self._database = database
         self.message_bus = message_bus or InfrahubMessageBus()
 
     @property
@@ -31,13 +31,20 @@ class InfrahubServices:
 
         return self._client
 
-    async def send(self, message: InfrahubBaseMessage, delay: Optional[MessageTTL] = None) -> None:
+    @property
+    def database(self) -> InfrahubDatabase:
+        if not self._database:
+            raise InitializationError("Service is not initialized with a database")
+
+        return self._database
+
+    async def send(self, message: InfrahubMessage, delay: Optional[MessageTTL] = None) -> None:
         routing_key = ROUTING_KEY_MAP.get(type(message))
         if not routing_key:
             raise ValueError("Unable to determine routing key")
         await self.message_bus.publish(message, routing_key=routing_key, delay=delay)
 
-    async def reply(self, message: InfrahubResponse, initiator: InfrahubBaseMessage) -> None:
+    async def reply(self, message: InfrahubResponse, initiator: InfrahubMessage) -> None:
         message.meta = message.meta or Meta()
         if initiator.meta:
             message.meta.correlation_id = initiator.meta.correlation_id

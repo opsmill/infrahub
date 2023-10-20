@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, List, MutableMapping
+from typing import TYPE_CHECKING, List, MutableMapping
 
 from infrahub import config
 from infrahub.database import InfrahubDatabase, get_db
@@ -15,8 +15,7 @@ from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
 from infrahub.worker import WORKER_IDENTITY
 from infrahub_client import UUIDT
 
-from . import InfrahubBaseMessage, InfrahubResponse, Meta, get_broker
-from .events import InfrahubMessage, InfrahubRPC, InfrahubRPCResponse, MessageType
+from . import InfrahubMessage, InfrahubResponse, Meta, get_broker
 from .messages import ROUTING_KEY_MAP
 from .types import MessageTTL
 
@@ -127,21 +126,7 @@ class InfrahubRpcClientBase:
         else:
             log.error("Invalid message received", message=f"{message!r}")
 
-    async def call(self, message: InfrahubRPC, wait_for_response: bool = True) -> Any:
-        correlation_id = str(UUIDT())
-
-        if wait_for_response:
-            future = self.loop.create_future()
-            self.futures[correlation_id] = future
-        else:
-            self.futures[correlation_id] = None
-        await message.send(channel=self.channel, correlation_id=correlation_id, reply_to=self.callback_queue.name)
-
-        if wait_for_response:
-            reply = await future
-            return InfrahubMessage.convert(reply)
-
-    async def rpc(self, message: InfrahubBaseMessage) -> InfrahubResponse:
+    async def rpc(self, message: InfrahubMessage) -> InfrahubResponse:
         correlation_id = str(UUIDT())
 
         future = self.loop.create_future()
@@ -157,7 +142,7 @@ class InfrahubRpcClientBase:
         data = json.loads(response.body)
         return InfrahubResponse(**data)
 
-    async def send(self, message: InfrahubBaseMessage) -> None:
+    async def send(self, message: InfrahubMessage) -> None:
         routing_key = ROUTING_KEY_MAP.get(type(message))
 
         if not routing_key:
@@ -181,39 +166,16 @@ class InfrahubRpcClientTesting(InfrahubRpcClientBase):
 
         self.responses = defaultdict(list)
         self.replies: List[InfrahubResponse] = []
-        self.sent: List[InfrahubBaseMessage] = []
+        self.sent: List[InfrahubMessage] = []
 
     async def connect(self) -> InfrahubRpcClient:
         return self
 
-    async def call(self, message: InfrahubRPC, wait_for_response: bool = True) -> Any:
-        if len(self.responses[(message.type, message.action)]) == 0:
-            raise IndexError(f"No more RPC message in store for '{message.type}::{message.action}'")
-
-        if (message.type, message.action) in self.responses:
-            return self.responses[(message.type, message.action)].pop(0)
-
-        raise NotImplementedError(f"Unable to find an RPC message for '{message.type}::{message.action}'")
-
-    async def rpc(self, message: InfrahubBaseMessage) -> InfrahubResponse:
+    async def rpc(self, message: InfrahubMessage) -> InfrahubResponse:
         return self.replies.pop()
 
     async def add_mock_reply(self, response: InfrahubResponse) -> None:
         self.replies.append(response)
 
-    async def add_response(self, response: InfrahubRPCResponse, message_type: MessageType, action: Any):
-        """Register a predefined response for a given message_type and action."""
-
-        self.responses[(message_type.value, action.value)].append(response)
-
-    async def send(self, message: InfrahubBaseMessage) -> None:
+    async def send(self, message: InfrahubMessage) -> None:
         self.sent.append(message)
-
-    async def ensure_all_responses_have_been_delivered(self) -> bool:
-        for key, events in self.responses.items():
-            if len(events) != 0:
-                raise Exception(  # pylint: disable=broad-exception-raised
-                    f"Some responses for {key}, haven't been delivered."
-                )
-
-        return True

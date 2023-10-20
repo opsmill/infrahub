@@ -7,13 +7,13 @@ import { Button } from "./button";
 import { Input } from "./input";
 
 export const DatePicker = (props: any) => {
-  const { date, onChange, onClickNow } = props;
+  const { date, onChange, onClickNow, error } = props;
 
   const currentDate = date && isValid(date) ? date : null;
 
   const [text, setText] = useState(currentDate ? format(currentDate, "MM/dd/yyy HH:mm") : "");
   const [stateHasFocus, setStateHasFocus] = useState(false);
-  const [hasError, setHasError] = useState({});
+  const [hasError, setHasError] = useState(error);
 
   const refCustomInput = useRef();
 
@@ -28,7 +28,7 @@ export const DatePicker = (props: any) => {
     setText(value);
 
     if (!value) {
-      setHasError({});
+      setHasError({ message: "Required" });
       onClickNow();
     }
 

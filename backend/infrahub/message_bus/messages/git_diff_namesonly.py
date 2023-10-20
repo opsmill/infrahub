@@ -1,9 +1,9 @@
 from pydantic import Field
 
-from infrahub.message_bus import InfrahubBaseMessage
+from infrahub.message_bus import InfrahubMessage
 
 
-class GitDiffNamesOnly(InfrahubBaseMessage):
+class GitDiffNamesOnly(InfrahubMessage):
     """Request a list of modified files between two commits."""
 
     repository_id: str = Field(..., description="The unique ID of the Repository")

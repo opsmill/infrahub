@@ -10,11 +10,6 @@ from infrahub.core.branch import Branch
 from infrahub.exceptions import BranchNotFound
 from infrahub.log import get_log_data, get_logger
 from infrahub.message_bus import Meta, messages
-from infrahub.message_bus.events import (
-    BranchMessageAction,
-    InfrahubBranchMessage,
-    send_event,
-)
 from infrahub.services import services
 from infrahub.worker import WORKER_IDENTITY
 
@@ -158,11 +153,6 @@ class BranchRebase(Mutation):
         fields = await extract_fields(info.field_nodes[0].selection_set)
 
         ok = True
-
-        if config.SETTINGS.broker.enable and info.context.get("background"):
-            info.context.get("background").add_task(
-                send_event, InfrahubBranchMessage(action=BranchMessageAction.REBASE, branch=obj.name)
-            )
 
         return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok)
 

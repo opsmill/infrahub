@@ -1,4 +1,3 @@
-import os
 import sys
 from pathlib import Path
 from typing import Tuple
@@ -11,8 +10,30 @@ except ImportError:
     sys.exit("Please make sure to `pip install toml` or enable the Poetry shell and run `poetry install`.")
 
 path = Path(__file__)
-TASKS_DIR = str(path.parent)
-REPO_BASE = os.path.join(TASKS_DIR, "..")
+TASKS_DIR = path.parent
+REPO_BASE = TASKS_DIR.parent
+
+
+def escape_path(path: Path) -> str:
+    """Escape special characters in the provided path string to make it shell-safe."""
+    return str(path).translate(
+        str.maketrans(
+            {
+                "-": r"\-",
+                "]": r"\]",
+                "\\": r"\\",
+                "^": r"\^",
+                "$": r"\$",
+                "*": r"\*",
+                "(": r"\(",
+                ")": r"\)",
+                ".": r"\.",
+            }
+        )
+    )
+
+
+ESCAPED_REPO_PATH = escape_path(REPO_BASE)
 
 
 def project_ver() -> str:

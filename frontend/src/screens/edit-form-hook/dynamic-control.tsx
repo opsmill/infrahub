@@ -119,7 +119,14 @@ export const DynamicControl = (props: DynamicFieldData) => {
       // but something that we can look into later on
     }
     case "datepicker": {
-      return <OpsDatePickerRegister {...props} register={register} setValue={setValue} />;
+      return (
+        <OpsDatePickerRegister
+          {...props}
+          value={existingValue || value}
+          register={register}
+          setValue={setValue}
+        />
+      );
     }
     case "json": {
       const objectValue = existingValue ?? value;

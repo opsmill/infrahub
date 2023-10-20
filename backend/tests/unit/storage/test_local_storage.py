@@ -1,6 +1,9 @@
 import os
 from pathlib import Path
 
+import pytest
+
+from infrahub.exceptions import NodeNotFound
 from infrahub.storage.local import InfrahubLocalStorage, LocalStorageSettings
 from infrahub_client import UUIDT
 
@@ -44,6 +47,12 @@ async def test_retrieve_file(helper, local_storage_dir: str, file1_in_storage: s
 
     file1 = await storage.retrieve(identifier=file1_in_storage)
     assert file1
+
+
+async def test_retrieve_file_does_not_exist(helper, local_storage_dir: str):
+    storage = await InfrahubLocalStorage.init(settings={"directory": local_storage_dir})
+    with pytest.raises(NodeNotFound):
+        await storage.retrieve(identifier="doesnotexist")
 
 
 async def test_store_file(

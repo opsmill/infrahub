@@ -31,6 +31,7 @@ export default function MetaDetailsTooltip(props: Props) {
   const navigateToObjectDetailsPage = (obj: any) =>
     navigate(constructPath(`/objects/${schemaKindName[obj.__typename]}/${obj.id}`));
 
+  // TODO: use the popover component
   return (
     <Popover className="relative flex">
       <Popover.Button>

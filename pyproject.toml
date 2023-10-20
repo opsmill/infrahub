@@ -72,7 +72,7 @@ types-ujson = "*"
 types-pyyaml = "*"
 typer-cli = "*"
 pytest-cov = "^4.0.0"
-ruff = "0.0.265"
+ruff = "0.1.0"
 pytest-xdist = "^3.3.1"
 buildkite-test-collector = "^0.1.7"
 
@@ -225,14 +225,6 @@ module = "infrahub.core.*"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.cli.events"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.cli.git_agent"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.config"
 ignore_errors = true
 
@@ -242,10 +234,6 @@ ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = "infrahub.exceptions"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.git.handlers"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
@@ -316,10 +304,6 @@ ignore_errors = true
 module = "infrahub.types"
 disallow_untyped_defs = false
 
-[[tool.mypy.overrides]]
-module = "infrahub.utils"
-disallow_untyped_defs = false
-
 
 [tool.ruff]
 
@@ -328,8 +312,12 @@ select = [
     "DTZ",
     "E",
     "F",
+    "ICN",
     "TCH",
+    "T10",
+    "Q",
     "W",
+    "YTT",
 ]
 
 line-length = 170

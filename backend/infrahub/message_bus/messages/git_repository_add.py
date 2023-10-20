@@ -1,9 +1,9 @@
 from pydantic import Field
 
-from infrahub.message_bus import InfrahubBaseMessage
+from infrahub.message_bus import InfrahubMessage
 
 
-class GitRepositoryAdd(InfrahubBaseMessage):
+class GitRepositoryAdd(InfrahubMessage):
     """Clone and sync an external repository after creation."""
 
     location: str = Field(..., description="The external URL of the repository")

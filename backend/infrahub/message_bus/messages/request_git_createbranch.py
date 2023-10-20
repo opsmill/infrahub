@@ -1,9 +1,9 @@
 from pydantic import Field
 
-from infrahub.message_bus import InfrahubBaseMessage
+from infrahub.message_bus import InfrahubMessage
 
 
-class RequestGitCreateBranch(InfrahubBaseMessage):
+class RequestGitCreateBranch(InfrahubMessage):
     """Sent to trigger the creation of a branch in git repositories."""
 
     branch: str = Field(..., description="The branch to target")

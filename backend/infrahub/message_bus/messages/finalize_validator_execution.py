@@ -1,9 +1,9 @@
 from pydantic import Field
 
-from infrahub.message_bus import InfrahubBaseMessage
+from infrahub.message_bus import InfrahubMessage
 
 
-class FinalizeValidatorExecution(InfrahubBaseMessage):
+class FinalizeValidatorExecution(InfrahubMessage):
     """Update the status of a validator after all checks have been completed."""
 
     validator_id: str = Field(..., description="The id of the validator associated with this check")

@@ -2,10 +2,10 @@ from typing import Optional
 
 from pydantic import Field
 
-from infrahub.message_bus import InfrahubBaseMessage
+from infrahub.message_bus import InfrahubMessage
 
 
-class CheckArtifactCreate(InfrahubBaseMessage):
+class CheckArtifactCreate(InfrahubMessage):
     """Runs a check to verify the creation of an artifact."""
 
     artifact_name: str = Field(..., description="Name of the artifact")

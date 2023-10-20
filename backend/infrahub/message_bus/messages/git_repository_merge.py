@@ -1,9 +1,9 @@
 from pydantic import Field
 
-from infrahub.message_bus import InfrahubBaseMessage
+from infrahub.message_bus import InfrahubMessage
 
 
-class GitRepositoryMerge(InfrahubBaseMessage):
+class GitRepositoryMerge(InfrahubMessage):
     """Merge one branch into another."""
 
     repository_id: str = Field(..., description="The unique ID of the Repository")

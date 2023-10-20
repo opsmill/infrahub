@@ -2,10 +2,10 @@ from typing import Any, Dict
 
 from pydantic import Field
 
-from infrahub.message_bus import InfrahubBaseMessage
+from infrahub.message_bus import InfrahubMessage
 
 
-class EventNodeMutated(InfrahubBaseMessage):
+class EventNodeMutated(InfrahubMessage):
     """Sent when a node has been mutated"""
 
     branch: str = Field(..., description="The branch that was created")
