@@ -1,9 +1,9 @@
 from pydantic import Field
 
-from infrahub.message_bus import InfrahubBaseMessage
+from infrahub.message_bus import InfrahubMessage
 
 
-class EventBranchCreate(InfrahubBaseMessage):
+class EventBranchCreate(InfrahubMessage):
     """Sent a new branch is created."""
 
     branch: str = Field(..., description="The branch that was created")

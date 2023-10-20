@@ -10,7 +10,7 @@ import ujson
 
 from infrahub import config
 from infrahub.lock import initialize_lock
-from infrahub.message_bus import InfrahubBaseMessage
+from infrahub.message_bus import InfrahubMessage
 from infrahub.message_bus.operations import execute_message
 from infrahub.message_bus.types import MessageTTL
 from infrahub.services import InfrahubServices
@@ -63,10 +63,10 @@ def execute_before_any_test(worker_id):
 
 class BusRecorder(InfrahubMessageBus):
     def __init__(self):
-        self.messages: List[InfrahubBaseMessage] = []
-        self.messages_per_routing_key: Dict[str, List[InfrahubBaseMessage]] = {}
+        self.messages: List[InfrahubMessage] = []
+        self.messages_per_routing_key: Dict[str, List[InfrahubMessage]] = {}
 
-    async def publish(self, message: InfrahubBaseMessage, routing_key: str, delay: Optional[MessageTTL] = None) -> None:
+    async def publish(self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None) -> None:
         self.messages.append(message)
         if routing_key not in self.messages_per_routing_key:
             self.messages_per_routing_key[routing_key] = []
@@ -79,19 +79,19 @@ class BusRecorder(InfrahubMessageBus):
 
 class BusSimulator(InfrahubMessageBus):
     def __init__(self):
-        self.messages: List[InfrahubBaseMessage] = []
-        self.messages_per_routing_key: Dict[str, List[InfrahubBaseMessage]] = {}
+        self.messages: List[InfrahubMessage] = []
+        self.messages_per_routing_key: Dict[str, List[InfrahubMessage]] = {}
         self.service: InfrahubServices = InfrahubServices()
-        self.replies: List[InfrahubBaseMessage] = []
+        self.replies: List[InfrahubMessage] = []
 
-    async def publish(self, message: InfrahubBaseMessage, routing_key: str, delay: Optional[MessageTTL] = None) -> None:
+    async def publish(self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None) -> None:
         self.messages.append(message)
         if routing_key not in self.messages_per_routing_key:
             self.messages_per_routing_key[routing_key] = []
         self.messages_per_routing_key[routing_key].append(message)
         await execute_message(routing_key=routing_key, message_body=message.body, service=self.service)
 
-    async def reply(self, message: InfrahubBaseMessage, routing_key: str) -> None:
+    async def reply(self, message: InfrahubMessage, routing_key: str) -> None:
         self.replies.append(message)
 
     @property

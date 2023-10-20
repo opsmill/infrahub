@@ -2,7 +2,7 @@ from typing import List
 
 from infrahub.core.timestamp import Timestamp
 from infrahub.log import get_logger
-from infrahub.message_bus import InfrahubBaseMessage, messages
+from infrahub.message_bus import InfrahubMessage, messages
 from infrahub.services import InfrahubServices
 from infrahub_client import UUIDT
 
@@ -12,7 +12,7 @@ log = get_logger()
 async def check(message: messages.RequestRepositoryChecks, service: InfrahubServices):
     """Request to start validation checks on a specific repository."""
     log.info("Running repository checks", repository_id=message.repository, proposed_change_id=message.proposed_change)
-    events: List[InfrahubBaseMessage] = []
+    events: List[InfrahubMessage] = []
     repository = await service.client.get(kind="CoreRepository", id=message.repository, branch=message.source_branch)
     proposed_change = await service.client.get(kind="CoreProposedChange", id=message.proposed_change)
     source_branch = await service.client.branch.get(branch_name=message.source_branch)

@@ -1,6 +1,6 @@
 from typing import Dict, Type
 
-from infrahub.message_bus import InfrahubBaseMessage
+from infrahub.message_bus import InfrahubMessage
 
 from .check_artifact_create import CheckArtifactCreate
 from .check_repository_checkdefinition import CheckRepositoryCheckDefinition
@@ -33,7 +33,7 @@ from .transform_jinja_template import TransformJinjaTemplate
 from .transform_python_data import TransformPythonData
 from .trigger_artifact_definition_generate import TriggerArtifactDefinitionGenerate
 
-MESSAGE_MAP: Dict[str, Type[InfrahubBaseMessage]] = {
+MESSAGE_MAP: Dict[str, Type[InfrahubMessage]] = {
     "check.artifact.create": CheckArtifactCreate,
     "check.repository.check_definition": CheckRepositoryCheckDefinition,
     "check.repository.merge_conflicts": CheckRepositoryMergeConflicts,
@@ -63,6 +63,6 @@ MESSAGE_MAP: Dict[str, Type[InfrahubBaseMessage]] = {
 }
 
 
-ROUTING_KEY_MAP: Dict[Type[InfrahubBaseMessage], str] = {
+ROUTING_KEY_MAP: Dict[Type[InfrahubMessage], str] = {
     message: routing_key for routing_key, message in MESSAGE_MAP.items()
 }

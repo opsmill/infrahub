@@ -1,9 +1,9 @@
 from pydantic import Field
 
-from infrahub.message_bus import InfrahubBaseMessage
+from infrahub.message_bus import InfrahubMessage
 
 
-class RequestRepositoryChecks(InfrahubBaseMessage):
+class RequestRepositoryChecks(InfrahubMessage):
     """Sent to trigger the checks for a repository to be executed."""
 
     proposed_change: str = Field(..., description="The unique ID of the Proposed Change")
