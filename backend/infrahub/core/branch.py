@@ -71,6 +71,10 @@ class ModifiedPath(BaseModel):
             if self.action == other.action and self.action in [DiffAction.REMOVED, DiffAction.UPDATED]:
                 return False
 
+        if self.modification_type == "element":
+            if self.action == other.action and self.action == DiffAction.REMOVED:
+                return False
+
         return self.type == other.type and self.node_id == other.node_id
 
     def __lt__(self, other: object) -> bool:
@@ -590,9 +594,10 @@ class Branch(StandardNode):
                     rel_ids_to_update.append(node.rel_id)
 
                 elif node.action == DiffAction.REMOVED:
-                    query = await NodeDeleteQuery.init(db=db, branch=default_branch, node_id=node_id, at=at)
-                    await query.execute(db=db)
-                    rel_ids_to_update.extend([node.rel_id, origin_nodes[node_id].get("rb").element_id])
+                    if node_id in origin_nodes:
+                        query = await NodeDeleteQuery.init(db=db, branch=default_branch, node_id=node_id, at=at)
+                        await query.execute(db=db)
+                        rel_ids_to_update.extend([node.rel_id, origin_nodes[node_id].get("rb").element_id])
 
                 for _, attr in node.attributes.items():
                     if attr.action == DiffAction.ADDED:
