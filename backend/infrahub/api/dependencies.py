@@ -42,7 +42,7 @@ class BranchParams(BaseModel):
 
 
 async def get_session(request: Request) -> AsyncIterator[AsyncSession]:
-    session = request.app.state.db.session(database=config.SETTINGS.database.database)
+    session = request.app.state.db.session(database=config.SETTINGS.database.database_name)
     try:
         yield session
     finally:

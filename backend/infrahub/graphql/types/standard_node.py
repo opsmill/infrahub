@@ -33,7 +33,7 @@ class InfrahubObjectType(ObjectType):
         account = context.get("infrahub_account", None)
         db = context.get("infrahub_database")
 
-        async with db.session(database=config.SETTINGS.database.database) as session:
+        async with db.session(database=config.SETTINGS.database.database_name) as session:
             context["infrahub_session"] = session
 
             filters = {key: value for key, value in kwargs.items() if "__" in key and value}

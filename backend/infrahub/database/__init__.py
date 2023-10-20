@@ -124,11 +124,11 @@ class InfrahubDatabase:
 
         if self._session_mode == InfrahubDatabaseSessionMode.READ:
             self._session = self._driver.session(
-                database=config.SETTINGS.database.database, default_access_mode=READ_ACCESS
+                database=config.SETTINGS.database.database_name, default_access_mode=READ_ACCESS
             )
         else:
             self._session = self._driver.session(
-                database=config.SETTINGS.database.database, default_access_mode=WRITE_ACCESS
+                database=config.SETTINGS.database.database_name, default_access_mode=WRITE_ACCESS
             )
 
         self._is_session_local = True
@@ -146,11 +146,11 @@ class InfrahubDatabase:
         if self._mode == InfrahubDatabaseMode.SESSION:
             if self._session_mode == InfrahubDatabaseSessionMode.READ:
                 self._session = self._driver.session(
-                    database=config.SETTINGS.database.database, default_access_mode=READ_ACCESS
+                    database=config.SETTINGS.database.database_name, default_access_mode=READ_ACCESS
                 )
             else:
                 self._session = self._driver.session(
-                    database=config.SETTINGS.database.database, default_access_mode=WRITE_ACCESS
+                    database=config.SETTINGS.database.database_name, default_access_mode=WRITE_ACCESS
                 )
 
             return self
@@ -215,7 +215,7 @@ async def validate_database(
 
     except ClientError as exc:
         if create_db and exc.code == "Neo.ClientError.Database.DatabaseNotFound":
-            await create_database(driver=driver, database_name=config.SETTINGS.database.database)
+            await create_database(driver=driver, database_name=config.SETTINGS.database.database_name)
 
         if retry == 0:
             raise
@@ -230,9 +230,9 @@ async def get_db(retry: int = 0) -> AsyncDriver:
     URI = f"{config.SETTINGS.database.protocol}://{config.SETTINGS.database.address}:{config.SETTINGS.database.port}"
     driver = AsyncGraphDatabase.driver(URI, auth=(config.SETTINGS.database.username, config.SETTINGS.database.password))
 
-    if config.SETTINGS.database.database not in validated_database:
+    if config.SETTINGS.database.database_name not in validated_database:
         await validate_database(
-            driver=driver, database_name=config.SETTINGS.database.database, retry=retry, create_db=True
+            driver=driver, database_name=config.SETTINGS.database.database_name, retry=retry, create_db=True
         )
 
     return driver

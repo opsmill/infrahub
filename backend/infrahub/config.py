@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 import toml
-from pydantic import BaseSettings, Field, ValidationError, root_validator
+from pydantic import BaseSettings, Field, ValidationError
 
 from infrahub_client import generate_uuid
 
@@ -95,11 +95,9 @@ class DatabaseSettings(BaseSettings):
             "query_size_limit": {"env": "INFRAHUB_DB_QUERY_SIZE_LIMIT"},
         }
 
-    @root_validator(pre=False)
-    def default_database_name(cls, values):  # pylint: disable=no-self-argument
-        if not values.get("database", None):
-            values["database"] = values["db_type"].value
-        return values
+    @property
+    def database_name(self) -> str:
+        return self.database or self.db_type.value
 
 
 class BrokerSettings(BaseSettings):

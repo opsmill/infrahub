@@ -98,7 +98,7 @@ async def app_initialization():
     # Initialize the Background Runner
     if config.SETTINGS.miscellaneous.start_background_runner:
         app.state.runner = BackgroundRunner(
-            db=app.state.db, database_name=config.SETTINGS.database.database, interval=10
+            db=app.state.db, database_name=config.SETTINGS.database.database_name, interval=10
         )
         asyncio.create_task(app.state.runner.run())
 
