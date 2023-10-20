@@ -95,7 +95,6 @@ describe("Object update", () => {
     cy.contains(ETHERNET_NAME).click();
 
     // Open the metadata panel
-    // Open the metadata panel
     cy.get(".sm\\:p-0").within(() => {
       cy.contains("Status")
         .parent()
