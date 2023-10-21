@@ -61,8 +61,12 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     def get_labels(self) -> List[str]:
         """Return the labels for this object, composed of the kind
         and the list of Generic this object is inheriting from."""
+
         if isinstance(self._schema, NodeSchema):
-            return [self.get_kind()] + self._schema.inherit_from
+            labels: List[str] = [self.get_kind()] + self._schema.inherit_from
+            if self._schema.namespace not in ["Schema", "Internal"] and "CoreGroup" not in self._schema.inherit_from:
+                labels.append("CoreNode")
+            return labels
 
         return [self.get_kind()]
 
