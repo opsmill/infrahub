@@ -85,6 +85,35 @@ async def test_query_NodeGetListQuery_filter_height(
     assert len(query.get_node_ids()) == 2
 
 
+async def test_query_NodeGetListQuery_filter_owner(
+    db: InfrahubDatabase, default_branch: Branch, person_john_main: Node, first_account: Node, branch: Branch
+):
+    person = await Node.init(db=db, schema="TestPerson", branch=branch)
+    await person.new(db=db, name={"value": "Diane", "owner": first_account.id}, height=165)
+    await person.save(db=db)
+
+    schema = registry.schema.get(name="TestPerson", branch=branch)
+    query = await NodeGetListQuery.init(
+        db=db, branch=branch, schema=schema, filters={"any__owner__id": first_account.id}
+    )
+    await query.execute(db=db)
+    assert len(query.get_node_ids()) == 1
+
+    schema = registry.schema.get(name="TestPerson", branch=branch)
+    query = await NodeGetListQuery.init(
+        db=db, branch=branch, schema=schema, filters={"name__owner__id": first_account.id}
+    )
+    await query.execute(db=db)
+    assert len(query.get_node_ids()) == 1
+
+    schema = registry.schema.get(name="TestPerson", branch=branch)
+    query = await NodeGetListQuery.init(
+        db=db, branch=branch, schema=schema, filters={"height__owner__id": first_account.id}
+    )
+    await query.execute(db=db)
+    assert len(query.get_node_ids()) == 0
+
+
 async def test_query_NodeGetListQuery_filter_boolean(
     db: InfrahubDatabase, car_accord_main, car_camry_main, car_volt_main, car_yaris_main, branch: Branch
 ):

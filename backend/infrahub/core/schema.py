@@ -288,7 +288,7 @@ class AttributeSchema(BaseSchemaModel):
     async def get_query_filter(
         self, db: InfrahubDatabase, *args, **kwargs  # pylint: disable=unused-argument
     ) -> Tuple[List[QueryElement], Dict[str, Any], List[str]]:
-        return self.get_class().get_query_filter(*args, **kwargs)
+        return await self.get_class().get_query_filter(*args, **kwargs)
 
 
 class RelationshipSchema(BaseSchemaModel):
@@ -321,7 +321,7 @@ class RelationshipSchema(BaseSchemaModel):
         filter_name: str,
         filter_value: Optional[Union[str, int, bool]] = None,
         name: Optional[str] = None,  # pylint: disable=unused-argument
-        branch: Branch = None,
+        branch: Optional[Branch] = None,
         include_match: bool = True,
         param_prefix: Optional[str] = None,
     ) -> Tuple[List[QueryElement], Dict[str, Any], List[str]]:

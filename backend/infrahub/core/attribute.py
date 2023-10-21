@@ -356,14 +356,15 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         return True
 
     @classmethod
-    def get_query_filter(  # pylint: disable=unused-argument
+    async def get_query_filter(  # pylint: disable=unused-argument
         cls,
         name: str,
         filter_name: str,
-        branch=None,
+        branch: Optional[Branch] = None,
         filter_value: Optional[Union[str, int, bool]] = None,
         include_match: bool = True,
         param_prefix: Optional[str] = None,
+        db: Optional[InfrahubDatabase] = None,
     ) -> Tuple[List[QueryElement], Dict[str, Any], List[str]]:
         """Generate Query String Snippet to filter the right node."""
 
@@ -379,19 +380,52 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         if include_match:
             query_filter.append(QueryNode(name="n"))
 
-        query_filter.extend(
-            [
-                QueryRel(labels=[cls._rel_to_node_label]),
-                QueryNode(name="i", labels=["Attribute"], params={"name": f"${param_prefix}_name"}),
-                QueryRel(labels=["HAS_VALUE"]),
-                QueryNode(name="av", labels=["AttributeValue"]),
-            ]
-        )
-        query_params[f"{param_prefix}_name"] = name
+        query_filter.append(QueryRel(labels=[cls._rel_to_node_label]))
 
-        if filter_value is not None:
-            query_filter[-1].params = {"value": f"${param_prefix}_value"}
-            query_params[f"{param_prefix}_value"] = filter_value
+        if name in ["any", "attribute"]:
+            query_filter.append(QueryNode(name="i", labels=["Attribute"]))
+        else:
+            query_filter.append(QueryNode(name="i", labels=["Attribute"], params={"name": f"${param_prefix}_name"}))
+            query_params[f"{param_prefix}_name"] = name
+
+        if filter_name == "value":
+            query_filter.append(QueryRel(labels=["HAS_VALUE"]))
+
+            if filter_value is not None:
+                query_filter.append(
+                    QueryNode(name="av", labels=["AttributeValue"], params={"value": f"${param_prefix}_value"})
+                )
+                query_params[f"{param_prefix}_value"] = filter_value
+            else:
+                query_filter.append(QueryNode(name="av", labels=["AttributeValue"]))
+
+        elif filter_name in cls._flag_properties and filter_value is not None:
+            query_filter.append(QueryRel(labels=[filter_name.upper()]))
+            query_filter.append(
+                QueryNode(name="ap", labels=["Boolean"], params={"value": f"${param_prefix}_{filter_name}"})
+            )
+            query_params[f"{param_prefix}_{filter_name}"] = filter_value
+
+        elif "__" in filter_name and filter_value is not None:
+            filter_name_split = filter_name.split(sep="__", maxsplit=1)
+            property_name: str = filter_name_split[0]
+            property_attr: str = filter_name_split[1]
+
+            if property_name not in cls._node_properties:
+                raise ValueError(f"filter {filter_name}: {filter_value}, {property_name} is not a valid property")
+
+            if property_attr not in ["id"]:
+                raise ValueError(f"filter {filter_name}: {filter_value}, {property_attr} is supported")
+
+            clean_filter_name = f"{property_name}_{property_attr}"
+
+            query_filter.extend(
+                [
+                    QueryRel(labels=[f"HAS_{property_name.upper()}"]),
+                    QueryNode(name="ap", labels=["CoreNode"], params={"uuid": f"${param_prefix}_{clean_filter_name}"}),
+                ]
+            )
+            query_params[f"{param_prefix}_{clean_filter_name}"] = filter_value
 
         return query_filter, query_params, query_where
 
