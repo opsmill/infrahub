@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type, Union
 import graphene
 
 from infrahub.core import get_branch, registry
+from infrahub.core.constants import RelationshipKind
 from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema
 from infrahub.graphql.mutations.graphql_query import InfrahubGraphQLQueryMutation
 from infrahub.graphql.mutations.proposed_change import InfrahubProposedChangeMutation
@@ -588,7 +589,10 @@ def generate_graphql_mutation_delete(
 
 
 async def generate_filters(
-    db: InfrahubDatabase, schema: Union[NodeSchema, GenericSchema, GroupSchema], top_level: bool = False
+    db: InfrahubDatabase,
+    schema: Union[NodeSchema, GenericSchema, GroupSchema],
+    top_level: bool = False,
+    include_properties: bool = True,
 ) -> Dict[str, Union[graphene.Scalar, graphene.List]]:
     """Generate the GraphQL filters for a given Schema object.
 
@@ -616,9 +620,14 @@ async def generate_filters(
         return filters
 
     for attr in schema.attributes:
-        filters.update(get_attribute_type(kind=attr.kind).get_graphql_filters(name=attr.name))
+        filters.update(
+            get_attribute_type(kind=attr.kind).get_graphql_filters(
+                name=attr.name, include_properties=include_properties
+            )
+        )
 
-    filters.update(get_attribute_type().get_graphql_filters(name="any"))
+    if top_level:
+        filters.update(get_attribute_type().get_graphql_filters(name="any"))
 
     if not top_level:
         return filters
@@ -629,7 +638,10 @@ async def generate_filters(
         if not isinstance(peer_schema, (NodeSchema, GenericSchema)):
             continue
 
-        peer_filters = await generate_filters(db=db, schema=peer_schema, top_level=False)
+        if rel.kind == RelationshipKind.GROUP:
+            peer_filters = await generate_filters(db=db, schema=peer_schema, top_level=False, include_properties=False)
+        else:
+            peer_filters = await generate_filters(db=db, schema=peer_schema, top_level=False)
 
         for key, value in peer_filters.items():
             if key in default_filters:
