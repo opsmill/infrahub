@@ -11,6 +11,7 @@ import infrahub.config as config
 from infrahub import lock
 from infrahub.core import get_branch, get_branch_from_registry
 from infrahub.core.constants import (
+    RESERVED_ATTR_REL_NAMES,
     BranchSupportType,
     FilterSchemaKind,
     RelationshipCardinality,
@@ -204,6 +205,7 @@ class SchemaBranch:
 
     def process(self) -> None:
         self.generate_identifiers()
+        self.validate_names()
         self.process_default_values()
         self.process_inheritance()
         self.process_branch_support()
@@ -224,6 +226,20 @@ class SchemaBranch:
                 rel.identifier = str("__".join(sorted([node.kind, rel.peer]))).lower()
 
             self.set(name=name, schema=node)
+
+    def validate_names(self) -> None:
+        for name in list(self.nodes.keys()) + list(self.generics.keys()):
+            node = self.get(name=name)
+
+            if node.kind in INTERNAL_SCHEMA_NODE_KINDS:
+                continue
+
+            for attr in node.attributes:
+                if attr.name in RESERVED_ATTR_REL_NAMES:
+                    raise ValueError(f"{node.kind}: {attr.name} isn't allowed as an attribute name.")
+            for rel in node.relationships:
+                if rel.name in RESERVED_ATTR_REL_NAMES:
+                    raise ValueError(f"{node.kind}: {rel.name} isn't allowed as a relationship name.")
 
     def process_labels(self) -> None:
         for name in list(self.nodes.keys()) + list(self.generics.keys()):
