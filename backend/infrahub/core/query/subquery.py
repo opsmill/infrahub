@@ -29,10 +29,12 @@ async def build_subquery_filter(
     # Currently any and attribute have the same effect and relationship is not supported yet
     if field:
         get_query_filter = field.get_query_filter
-    elif filter_name in ["any", "attribute"]:
+    elif name in ["any", "attribute"]:
         default_attribute = get_attribute_type()
         base_attribute = default_attribute.get_infrahub_class()
         get_query_filter = base_attribute.get_query_filter
+    else:
+        raise ValueError("Either a field must be provided or name must be any or attribute")
 
     field_filter, field_params, field_where = await get_query_filter(
         name=name,
