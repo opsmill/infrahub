@@ -20,6 +20,7 @@ from infrahub.core.constants import (
 from infrahub.core.manager import NodeManager
 from infrahub.core.models import SchemaBranchDiff, SchemaBranchHash
 from infrahub.core.node import Node
+from infrahub.core.property import FlagPropertyMixin, NodePropertyMixin
 from infrahub.core.schema import (
     AttributeSchema,
     FilterSchema,
@@ -342,20 +343,19 @@ class SchemaBranch:
             self.set(name=name, schema=node)
 
     def process_filters(self) -> Node:
-        # Generate the filters for all nodes, at the NodeSchema and at the relationships level.
-        for node_name in self.nodes:
-            node_schema = self.get(name=node_name)
-            new_node = node_schema.duplicate()
-            new_node.filters = self.generate_filters(schema=new_node, include_relationships=True)
+        # Generate the filters for all nodes and generics, at the NodeSchema and at the relationships level.
+        for name in list(self.nodes.keys()) + list(self.generics.keys()):
+            node = self.get(name=name)
+            node.filters = self.generate_filters(schema=node, include_relationships=True)
 
-            for rel in new_node.relationships:
+            for rel in node.relationships:
                 peer_schema = self.get(name=rel.peer)
                 if not peer_schema or isinstance(peer_schema, GroupSchema):
                     continue
 
                 rel.filters = self.generate_filters(schema=peer_schema, include_relationships=False)
 
-            self.set(name=node_name, schema=new_node)
+            self.set(name=name, schema=node)
 
     def generate_weight(self):
         for name in list(self.nodes.keys()) + list(self.generics.keys()):
@@ -410,9 +410,10 @@ class SchemaBranch:
 
             self.set(name=node_name, schema=schema)
 
-    @staticmethod
-    def generate_filters(schema: NodeSchema, include_relationships: bool = False) -> List[FilterSchema]:
-        """Generate the FilterSchema for a given NodeSchema object."""
+    def generate_filters(
+        self, schema: Union[NodeSchema, GenericSchema], include_relationships: bool = False
+    ) -> List[FilterSchema]:
+        """Generate the FilterSchema for a given NodeSchema or GenericSchema object."""
 
         filters = []
 
@@ -433,12 +434,51 @@ class SchemaBranch:
 
             filters.append(filter)
 
+            for flag_prop in FlagPropertyMixin._flag_properties:
+                filters.append(FilterSchema(name=f"{attr.name}__{flag_prop}", kind=FilterSchemaKind.BOOLEAN))
+            for node_prop in NodePropertyMixin._node_properties:
+                filters.append(FilterSchema(name=f"{attr.name}__{node_prop}__id", kind=FilterSchemaKind.TEXT))
+
+        # Define generic filters, mainly used to query all nodes associated with a given account
+        if include_relationships:
+            filters.append(FilterSchema(name=f"any__value", kind=FilterSchemaKind.TEXT))
+            for flag_prop in FlagPropertyMixin._flag_properties:
+                filters.append(FilterSchema(name=f"any__{flag_prop}", kind=FilterSchemaKind.BOOLEAN))
+            for node_prop in NodePropertyMixin._node_properties:
+                filters.append(FilterSchema(name=f"any__{node_prop}__id", kind=FilterSchemaKind.TEXT))
+
         if not include_relationships:
             return filters
 
         for rel in schema.relationships:
-            if rel.kind in ["Attribute", "Parent"]:
-                filters.append(FilterSchema(name=f"{rel.name}__ids", kind=FilterSchemaKind.LIST, object_kind=rel.peer))
+            if rel.kind not in ["Attribute", "Parent"]:
+                continue
+            filters.append(FilterSchema(name=f"{rel.name}__ids", kind=FilterSchemaKind.LIST, object_kind=rel.peer))
+            peer_schema = self.get(name=rel.peer)
+
+            for attr in peer_schema.attributes:
+                if attr.kind in ["Text", "String"]:
+                    filter = FilterSchema(name=f"{rel.name}__{attr.name}__value", kind=FilterSchemaKind.TEXT)
+                elif attr.kind in ["Number", "Integer"]:
+                    filter = FilterSchema(name=f"{rel.name}__{attr.name}__value", kind=FilterSchemaKind.NUMBER)
+                elif attr.kind in ["Boolean", "Checkbox"]:
+                    filter = FilterSchema(name=f"{rel.name}__{attr.name}__value", kind=FilterSchemaKind.BOOLEAN)
+                else:
+                    continue
+
+                if attr.enum:
+                    filter.enum = attr.enum
+
+                filters.append(filter)
+
+                for flag_prop in FlagPropertyMixin._flag_properties:
+                    filters.append(
+                        FilterSchema(name=f"{rel.name}__{attr.name}__{flag_prop}", kind=FilterSchemaKind.BOOLEAN)
+                    )
+                for node_prop in NodePropertyMixin._node_properties:
+                    filters.append(
+                        FilterSchema(name=f"{rel.name}__{attr.name}__{node_prop}__id", kind=FilterSchemaKind.TEXT)
+                    )
 
         return filters
 

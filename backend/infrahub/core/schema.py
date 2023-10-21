@@ -428,6 +428,7 @@ class BaseNodeSchema(BaseSchemaModel):
     display_labels: Optional[List[str]]
     attributes: List[AttributeSchema] = Field(default_factory=list)
     relationships: List[RelationshipSchema] = Field(default_factory=list)
+    filters: List[FilterSchema] = Field(default_factory=list)
 
     _exclude_from_hash: List[str] = ["attributes", "relationships"]
     _sort_by: List[str] = ["name"]
@@ -576,7 +577,6 @@ class NodeSchema(BaseNodeSchema):
     label: Optional[str]
     inherit_from: Optional[List[str]] = Field(default_factory=list)
     groups: Optional[List[str]] = Field(default_factory=list)
-    filters: List[FilterSchema] = Field(default_factory=list)
 
     @root_validator
     def unique_names(cls, values):
