@@ -150,7 +150,7 @@ async def test_query_RelationshipDeleteQuery(
         peer_id=tag_blue_main.id,
         peer_db_id=tag_blue_main.db_id,
         rel_node_id=rel_node.get("uuid"),
-        rel_node_db_id=rel_node.id,
+        rel_node_db_id=rel_node.element_id,
         rels=[RelData.from_db(rel) for rel in paths[0][0]._relationships],
         properties={},
     )
@@ -215,7 +215,7 @@ async def test_query_RelationshipDeleteQuery(
         peer_id=tag_blue_main.id,
         peer_db_id=tag_blue_main.db_id,
         rel_node_id=latest_rel_node.get("uuid"),
-        rel_node_db_id=latest_rel_node.id,
+        rel_node_db_id=latest_rel_node.element_id,
         rels=[RelData.from_db(rel) for rel in active_path[0]._relationships],
         properties={},
     )
