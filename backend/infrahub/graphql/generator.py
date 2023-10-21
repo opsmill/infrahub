@@ -9,7 +9,7 @@ from infrahub.core import get_branch, registry
 from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema
 from infrahub.graphql.mutations.graphql_query import InfrahubGraphQLQueryMutation
 from infrahub.graphql.mutations.proposed_change import InfrahubProposedChangeMutation
-from infrahub.types import ATTRIBUTE_TYPES
+from infrahub.types import ATTRIBUTE_TYPES, get_attribute_type
 
 from .mutations import InfrahubMutation, InfrahubRepositoryMutation
 from .resolver import (
@@ -270,7 +270,7 @@ def generate_graphql_object(schema: NodeSchema, branch: Branch) -> Type[Infrahub
 
     for attr in schema.local_attributes:
         attr_type = registry.get_graphql_type(
-            name=ATTRIBUTE_TYPES[attr.kind].get_graphql_type_name(), branch=branch.name
+            name=get_attribute_type(kind=attr.kind).get_graphql_type_name(), branch=branch.name
         )
         main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
 
@@ -392,7 +392,7 @@ def generate_interface_object(schema: GenericSchema, branch: Branch) -> Type[gra
 
     for attr in schema.attributes:
         attr_type = registry.get_graphql_type(
-            name=ATTRIBUTE_TYPES[attr.kind].get_graphql_type_name(), branch=branch.name
+            name=get_attribute_type(kind=attr.kind).get_graphql_type_name(), branch=branch.name
         )
         main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
 
@@ -470,7 +470,7 @@ def generate_graphql_mutation_create_input(schema: NodeSchema) -> Type[graphene.
     attrs: Dict[str, Union[graphene.String, graphene.InputField]] = {"id": graphene.String(required=False)}
 
     for attr in schema.attributes:
-        attr_type = ATTRIBUTE_TYPES[attr.kind].get_graphql_input()
+        attr_type = get_attribute_type(kind=attr.kind).get_graphql_input()
 
         # A Field is not required if explicitely indicated or if a default value has been provided
         required = not attr.optional if not attr.default_value else False
@@ -503,7 +503,7 @@ def generate_graphql_mutation_update_input(schema: NodeSchema) -> Type[graphene.
     attrs: Dict[str, Union[graphene.String, graphene.InputField]] = {"id": graphene.String(required=True)}
 
     for attr in schema.attributes:
-        attr_type = ATTRIBUTE_TYPES[attr.kind].get_graphql_input()
+        attr_type = get_attribute_type(kind=attr.kind).get_graphql_input()
         attrs[attr.name] = graphene.InputField(attr_type, required=False, description=attr.description)
 
     for rel in schema.relationships:
@@ -616,8 +616,9 @@ async def generate_filters(
         return filters
 
     for attr in schema.attributes:
-        attr_type = ATTRIBUTE_TYPES[attr.kind].graphql_filter
-        filters[f"{attr.name}__value"] = attr_type()
+        filters.update(get_attribute_type(kind=attr.kind).get_graphql_filters(name=attr.name))
+
+    filters.update(get_attribute_type().get_graphql_filters(name="any"))
 
     if not top_level:
         return filters
