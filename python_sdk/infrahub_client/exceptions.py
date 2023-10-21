@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List, Optional
+from typing import List, Mapping, Optional
 
 
 class Error(Exception):
@@ -54,7 +54,7 @@ class NodeNotFound(Error):
         self,
         branch_name: str,
         node_type: str,
-        identifier: Dict[str, List[str]],
+        identifier: Mapping[str, List[str]],
         message: str = "Unable to find the node in the database.",
     ):
         self.branch_name = branch_name

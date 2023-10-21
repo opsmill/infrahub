@@ -24,7 +24,12 @@ from infrahub_client.uuidt import UUIDT
 
 if TYPE_CHECKING:
     from infrahub_client.client import InfrahubClient, InfrahubClientSync
-    from infrahub_client.schema import AttributeSchema, NodeSchema, RelationshipSchema
+    from infrahub_client.schema import (
+        AttributeSchema,
+        GenericSchema,
+        NodeSchema,
+        RelationshipSchema,
+    )
 
 
 PROPERTIES_FLAG = ["is_visible", "is_protected"]
@@ -469,7 +474,7 @@ class RelationshipManagerSync(RelationshipManagerBase):
 
 
 class InfrahubNodeBase:
-    def __init__(self, schema: NodeSchema, branch: str, data: Optional[dict] = None) -> None:
+    def __init__(self, schema: Union[NodeSchema, GenericSchema], branch: str, data: Optional[dict] = None) -> None:
         self._schema = schema
         self._data = data
         self._branch = branch
@@ -708,7 +713,11 @@ class InfrahubNodeBase:
 
 class InfrahubNode(InfrahubNodeBase):
     def __init__(
-        self, client: InfrahubClient, schema: NodeSchema, branch: Optional[str] = None, data: Optional[dict] = None
+        self,
+        client: InfrahubClient,
+        schema: Union[NodeSchema, GenericSchema],
+        branch: Optional[str] = None,
+        data: Optional[dict] = None,
     ) -> None:
         self._client = client
         self.__class__ = type(f"{schema.kind}InfrahubNode", (self.__class__,), {})
@@ -807,7 +816,11 @@ class InfrahubNode(InfrahubNodeBase):
 
 class InfrahubNodeSync(InfrahubNodeBase):
     def __init__(
-        self, client: InfrahubClientSync, schema: NodeSchema, branch: Optional[str] = None, data: Optional[dict] = None
+        self,
+        client: InfrahubClientSync,
+        schema: Union[NodeSchema, GenericSchema],
+        branch: Optional[str] = None,
+        data: Optional[dict] = None,
     ) -> None:
         self.__class__ = type(f"{schema.kind}InfrahubNodeSync", (self.__class__,), {})
         self._client = client

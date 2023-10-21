@@ -5,7 +5,7 @@ import copy
 import logging
 from logging import Logger
 from time import sleep
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, MutableMapping, Optional, Union
 
 import httpx
 
@@ -24,7 +24,7 @@ from infrahub_client.graphql import Query
 from infrahub_client.node import InfrahubNode, InfrahubNodeSync
 from infrahub_client.object_store import ObjectStore, ObjectStoreSync
 from infrahub_client.queries import MUTATION_COMMIT_UPDATE, QUERY_ALL_REPOSITORIES
-from infrahub_client.schema import InfrahubSchema, InfrahubSchemaSync
+from infrahub_client.schema import InfrahubSchema, InfrahubSchemaSync, NodeSchema
 from infrahub_client.store import NodeStore, NodeStoreSync
 from infrahub_client.timestamp import Timestamp
 from infrahub_client.types import AsyncRequester, HTTPMethod, SyncRequester
@@ -125,10 +125,10 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         branch = branch or self.default_branch
         schema = await self.schema.get(kind=kind, branch=branch)
 
-        filters: Dict[str, Any] = {}
+        filters: MutableMapping[str, Any] = {}
 
         if id:
-            if not is_valid_uuid(id) and schema.default_filter:
+            if not is_valid_uuid(id) and isinstance(schema, NodeSchema) and schema.default_filter:
                 filters[schema.default_filter] = id
             else:
                 filters["ids"] = [id]
@@ -739,10 +739,10 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         branch = branch or self.default_branch
         schema = self.schema.get(kind=kind, branch=branch)
 
-        filters: Dict[str, Any] = {}
+        filters: MutableMapping[str, Any] = {}
 
         if id:
-            if not is_valid_uuid(id) and schema.default_filter:
+            if not is_valid_uuid(id) and isinstance(schema, NodeSchema) and schema.default_filter:
                 filters[schema.default_filter] = id
             else:
                 filters["ids"] = [id]

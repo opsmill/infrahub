@@ -3,7 +3,16 @@ from __future__ import annotations
 from collections import defaultdict
 from enum import Enum
 from pathlib import Path  # noqa: TCH003
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    List,
+    MutableMapping,
+    Optional,
+    Tuple,
+    Union,
+)
 
 from pydantic import BaseModel, Field
 
@@ -89,6 +98,7 @@ class BaseNodeSchema(BaseModel):
     description: Optional[str]
     attributes: List[AttributeSchema] = Field(default_factory=list)
     relationships: List[RelationshipSchema] = Field(default_factory=list)
+    filters: List[FilterSchema] = Field(default_factory=list)
 
     @property
     def kind(self) -> str:
@@ -181,7 +191,6 @@ class NodeSchema(BaseNodeSchema):
     groups: Optional[List[str]] = Field(default_factory=list)
     branch: Optional[BranchSupportType]
     default_filter: Optional[str]
-    filters: List[FilterSchema] = Field(default_factory=list)
 
 
 class NodeExtensionSchema(BaseModel):
@@ -277,7 +286,9 @@ class InfrahubSchema(InfrahubSchemaBase):
         self.client = client
         self.cache: dict = defaultdict(lambda: dict)
 
-    async def get(self, kind: str, branch: Optional[str] = None, refresh: bool = False) -> NodeSchema:
+    async def get(
+        self, kind: str, branch: Optional[str] = None, refresh: bool = False
+    ) -> Union[NodeSchema, GenericSchema]:
         branch = branch or self.client.default_branch
 
         if refresh:
@@ -296,7 +307,9 @@ class InfrahubSchema(InfrahubSchemaBase):
 
         raise SchemaNotFound(identifier=kind)
 
-    async def all(self, branch: Optional[str] = None, refresh: bool = False) -> Dict[str, NodeSchema]:
+    async def all(
+        self, branch: Optional[str] = None, refresh: bool = False
+    ) -> MutableMapping[str, Union[NodeSchema, GenericSchema]]:
         """Retrieve the entire schema for a given branch.
 
         if present in cache, the schema will be served from the cache, unless refresh is set to True
@@ -329,7 +342,7 @@ class InfrahubSchema(InfrahubSchemaBase):
         response.raise_for_status()
         return False, None
 
-    async def fetch(self, branch: str) -> Dict[str, NodeSchema]:
+    async def fetch(self, branch: str) -> MutableMapping[str, Union[NodeSchema, GenericSchema]]:
         """Fetch the schema from the server for a given branch.
 
         Args:
@@ -342,10 +355,16 @@ class InfrahubSchema(InfrahubSchemaBase):
         response = await self.client._get(url=url)
         response.raise_for_status()
 
-        nodes = {}
-        for node_schema in response.json()["nodes"]:
+        data: MutableMapping[str, Any] = response.json()
+
+        nodes: MutableMapping[str, Union[NodeSchema, GenericSchema]] = {}
+        for node_schema in data.get("nodes", []):
             node = NodeSchema(**node_schema)
             nodes[node.kind] = node
+
+        for generic_schema in data.get("generics", []):
+            generic = GenericSchema(**generic_schema)
+            nodes[generic.kind] = generic
 
         return nodes
 
@@ -355,7 +374,9 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
         self.client = client
         self.cache: dict = defaultdict(lambda: dict)
 
-    def all(self, branch: Optional[str] = None, refresh: bool = False) -> Dict[str, NodeSchema]:
+    def all(
+        self, branch: Optional[str] = None, refresh: bool = False
+    ) -> MutableMapping[str, Union[NodeSchema, GenericSchema]]:
         """Retrieve the entire schema for a given branch.
 
         if present in cache, the schema will be served from the cache, unless refresh is set to True
@@ -374,7 +395,7 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
 
         return self.cache[branch]
 
-    def get(self, kind: str, branch: Optional[str] = None, refresh: bool = False) -> NodeSchema:
+    def get(self, kind: str, branch: Optional[str] = None, refresh: bool = False) -> Union[NodeSchema, GenericSchema]:
         branch = branch or self.client.default_branch
 
         if refresh:
@@ -393,7 +414,7 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
 
         raise SchemaNotFound(identifier=kind)
 
-    def fetch(self, branch: str) -> Dict[str, NodeSchema]:
+    def fetch(self, branch: str) -> MutableMapping[str, Union[NodeSchema, GenericSchema]]:
         """Fetch the schema from the server for a given branch.
 
         Args:
@@ -406,17 +427,23 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
         response = self.client._get(url=url)
         response.raise_for_status()
 
-        nodes = {}
-        for node_schema in response.json()["nodes"]:
+        data: MutableMapping[str, Any] = response.json()
+
+        nodes: MutableMapping[str, Union[NodeSchema, GenericSchema]] = {}
+        for node_schema in data.get("nodes", []):
             node = NodeSchema(**node_schema)
             nodes[node.kind] = node
+
+        for generic_schema in data.get("generics", []):
+            generic = GenericSchema(**generic_schema)
+            nodes[generic.kind] = generic
 
         return nodes
 
     def load(self, schema: dict, branch: Optional[str] = None) -> Tuple[bool, Optional[dict]]:
         branch = branch or self.client.default_branch
         url = f"{self.client.address}/api/schema/load?branch={branch}"
-        response = self.client._post(url=url, timeout=30, payload=schema)
+        response = self.client._post(url=url, timeout=60, payload=schema)
 
         if response.status_code == 202:
             return True, None
