@@ -278,6 +278,8 @@ class SchemaBranch:
             if not node.inherit_from:
                 continue
 
+            generics_used_by["CoreNode"].append(node.kind)
+
             for generic_kind in node.inherit_from:
                 if generic_kind not in self.generics.keys():
                     # TODO add a proper exception for all schema related issue
