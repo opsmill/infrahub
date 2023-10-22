@@ -722,3 +722,11 @@ async def mock_schema_query_01(httpx_mock: HTTPXMock) -> HTTPXMock:
 
     httpx_mock.add_response(method="GET", url="http://mock/api/schema/?branch=main", json=ujson.loads(response_text))
     return httpx_mock
+
+
+@pytest.fixture
+async def mock_schema_query_02(httpx_mock: HTTPXMock) -> HTTPXMock:
+    response_text = Path(os.path.join(get_fixtures_dir(), "schema_02.json")).read_text(encoding="UTF-8")
+
+    httpx_mock.add_response(method="GET", url="http://mock/api/schema/?branch=main", json=ujson.loads(response_text))
+    return httpx_mock

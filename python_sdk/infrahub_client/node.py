@@ -17,20 +17,20 @@ from typing import (
 
 from infrahub_client.exceptions import Error, FilterNotFound, NodeNotFound
 from infrahub_client.graphql import Mutation
-from infrahub_client.schema import RelationshipCardinality, RelationshipKind
+from infrahub_client.schema import (
+    GenericSchema,
+    RelationshipCardinality,
+    RelationshipKind,
+)
 from infrahub_client.timestamp import Timestamp
 from infrahub_client.utils import compare_lists, get_flat_value
 from infrahub_client.uuidt import UUIDT
 
 if TYPE_CHECKING:
     from infrahub_client.client import InfrahubClient, InfrahubClientSync
-    from infrahub_client.schema import (
-        AttributeSchema,
-        GenericSchema,
-        NodeSchema,
-        RelationshipSchema,
-    )
+    from infrahub_client.schema import AttributeSchema, NodeSchema, RelationshipSchema
 
+# pylint: disable=too-many-lines
 
 PROPERTIES_FLAG = ["is_visible", "is_protected"]
 PROPERTIES_OBJECT = ["source", "owner"]
@@ -633,7 +633,7 @@ class InfrahubNodeBase:
 
         return data, variables
 
-    def generate_query_data(
+    def generate_query_data_init(
         self,
         filters: Optional[Dict[str, Any]] = None,
         offset: Optional[int] = None,
@@ -656,20 +656,45 @@ class InfrahubNodeBase:
             if in_both:
                 raise ValueError(f"{in_both} are part of both include and exclude")
 
+        return data
+
+    def generate_query_data_node(
+        self, include: Optional[List[str]] = None, exclude: Optional[List[str]] = None, inherited: bool = True
+    ) -> Dict[str, Union[Any, Dict]]:
+        """Generate the node part of a GraphQL Query with attributes and nodes.
+
+        Args:
+            include (Optional[List[str]], optional): List of attributes or relationships to include. Defaults to None.
+            exclude (Optional[List[str]], optional): List of attributes or relationships to exclude. Defaults to None.
+            inherited (bool, optional): Indicated of the attributes and the relationships inherited from generics should be included as well. Defaults to True.
+
+        Returns:
+            Dict[str, Union[Any, Dict]]: Query in Dict format
+        """
+
+        data: Dict[str, Any] = {}
+
         for attr_name in self._attributes:
             if exclude and attr_name in exclude:
                 continue
 
             attr: Attribute = getattr(self, attr_name)
+
+            if not inherited and attr._schema.inherited:
+                continue
+
             attr_data = attr._generate_query_data()
             if attr_data:
-                data["edges"]["node"][attr_name] = attr_data
+                data[attr_name] = attr_data
 
         for rel_name in self._relationships:
             if exclude and rel_name in exclude:
                 continue
 
             rel_schema = self._schema.get_relationship(name=rel_name)
+
+            if not rel_schema or (not inherited and rel_schema.inherited):
+                continue
 
             if (
                 rel_schema.cardinality == RelationshipCardinality.MANY  # type: ignore[union-attr]
@@ -682,9 +707,9 @@ class InfrahubNodeBase:
                 rel_data = RelatedNode._generate_query_data()
             elif rel_schema and rel_schema.cardinality == "many":
                 rel_data = RelationshipManager._generate_query_data()
-            data["edges"]["node"][rel_name] = rel_data
+            data[rel_name] = rel_data
 
-        return {self._schema.kind: data}
+        return data
 
     def validate_filters(self, filters: Optional[Dict[str, Any]] = None) -> bool:
         if not filters:
@@ -775,6 +800,29 @@ class InfrahubNode(InfrahubNodeBase):
 
         if self.id:
             self._client.store.set(key=self.id, node=self)
+
+    async def generate_query_data(
+        self,
+        filters: Optional[Dict[str, Any]] = None,
+        offset: Optional[int] = None,
+        limit: Optional[int] = None,
+        include: Optional[List[str]] = None,
+        exclude: Optional[List[str]] = None,
+    ) -> Dict[str, Union[Any, Dict]]:
+        data = self.generate_query_data_init(
+            filters=filters, offset=offset, limit=limit, include=include, exclude=exclude
+        )
+        data["edges"]["node"].update(self.generate_query_data_node(include=include, exclude=exclude, inherited=True))
+
+        if isinstance(self._schema, GenericSchema):
+            for parent in self._schema.used_by:
+                parent_schema = await self._client.schema.get(kind=parent)
+                parent_node = InfrahubNode(client=self._client, schema=parent_schema)
+                data["edges"]["node"][f"...on {parent}"] = parent_node.generate_query_data_node(
+                    include=include, exclude=exclude, inherited=False
+                )
+
+        return {self._schema.kind: data}
 
     async def _create(self, at: Timestamp) -> None:
         input_data = self._generate_input_data()
@@ -875,6 +923,29 @@ class InfrahubNodeSync(InfrahubNodeBase):
             self._create(at=at)
         else:
             self._update(at=at)
+
+    def generate_query_data(
+        self,
+        filters: Optional[Dict[str, Any]] = None,
+        offset: Optional[int] = None,
+        limit: Optional[int] = None,
+        include: Optional[List[str]] = None,
+        exclude: Optional[List[str]] = None,
+    ) -> Dict[str, Union[Any, Dict]]:
+        data = self.generate_query_data_init(
+            filters=filters, offset=offset, limit=limit, include=include, exclude=exclude
+        )
+        data["edges"]["node"].update(self.generate_query_data_node(include=include, exclude=exclude, inherited=True))
+
+        if isinstance(self._schema, GenericSchema):
+            for parent in self._schema.used_by:
+                parent_schema = self._client.schema.get(kind=parent)
+                parent_node = InfrahubNodeSync(client=self._client, schema=parent_schema)
+                data["edges"]["node"][f"...on {parent}"] = parent_node.generate_query_data_node(
+                    include=include, exclude=exclude, inherited=False
+                )
+
+        return {self._schema.kind: data}
 
     def _create(self, at: Timestamp) -> None:
         input_data = self._generate_input_data()

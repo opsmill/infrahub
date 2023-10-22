@@ -20,6 +20,18 @@ def query_data_no_filter():
 
 
 @pytest.fixture
+def query_data_fragment():
+    data = {
+        "device": {
+            "name": {"value": None},
+            "...on Builtin": {"description": {"value": None}, "interfaces": {"name": {"value": None}}},
+        }
+    }
+
+    return data
+
+
+@pytest.fixture
 def query_data_empty_filter():
     data = {
         "device": {
@@ -107,6 +119,53 @@ def test_render_query_block(query_data_no_filter):
         "    interfaces {",
         "      name {",
         "        value",
+        "      }",
+        "    }",
+        "  }",
+    ]
+
+    assert lines == expected_lines
+
+
+def test_render_query_block_fragment(query_data_fragment):
+    lines = render_query_block(data=query_data_fragment)
+
+    expected_lines = [
+        "    device {",
+        "        name {",
+        "            value",
+        "        }",
+        "        ...on Builtin {",
+        "            description {",
+        "                value",
+        "            }",
+        "            interfaces {",
+        "                name {",
+        "                    value",
+        "                }",
+        "            }",
+        "        }",
+        "    }",
+    ]
+
+    assert lines == expected_lines
+
+    # Render the query block with an indentation of 2
+    lines = render_query_block(data=query_data_fragment, offset=2, indentation=2)
+
+    expected_lines = [
+        "  device {",
+        "    name {",
+        "      value",
+        "    }",
+        "    ...on Builtin {",
+        "      description {",
+        "        value",
+        "      }",
+        "      interfaces {",
+        "        name {",
+        "          value",
+        "        }",
         "      }",
         "    }",
         "  }",

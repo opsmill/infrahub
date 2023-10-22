@@ -94,6 +94,7 @@ class RelationshipSchema(BaseModel):
 
 class BaseNodeSchema(BaseModel):
     name: str
+    label: Optional[str]
     namespace: str
     description: Optional[str]
     attributes: List[AttributeSchema] = Field(default_factory=list)
@@ -182,13 +183,12 @@ class BaseNodeSchema(BaseModel):
 class GenericSchema(BaseNodeSchema):
     """A Generic can be either an Interface or a Union depending if there are some Attributes or Relationships defined."""
 
-    label: Optional[str]
+    used_by: List[str] = Field(default_factory=list)
 
 
 class NodeSchema(BaseNodeSchema):
-    label: Optional[str]
-    inherit_from: Optional[List[str]] = Field(default_factory=list)
-    groups: Optional[List[str]] = Field(default_factory=list)
+    inherit_from: List[str] = Field(default_factory=list)
+    groups: List[str] = Field(default_factory=list)
     branch: Optional[BranchSupportType]
     default_filter: Optional[str]
 
@@ -198,8 +198,8 @@ class NodeExtensionSchema(BaseModel):
     kind: str
     description: Optional[str]
     label: Optional[str]
-    inherit_from: Optional[List[str]] = Field(default_factory=list)
-    groups: Optional[List[str]] = Field(default_factory=list)
+    inherit_from: List[str] = Field(default_factory=list)
+    groups: List[str] = Field(default_factory=list)
     branch: Optional[BranchSupportType]
     default_filter: Optional[str]
     attributes: List[AttributeSchema] = Field(default_factory=list)

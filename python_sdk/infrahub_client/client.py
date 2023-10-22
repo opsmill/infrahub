@@ -208,7 +208,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         # If Offset or Limit was provided we just query as it
         # If not, we'll query all nodes based on the size of the batch
         if offset or limit:
-            query_data = InfrahubNode(client=self, schema=schema, branch=branch).generate_query_data(
+            query_data = await InfrahubNode(client=self, schema=schema, branch=branch).generate_query_data(
                 offset=offset, limit=limit, filters=filters, include=include, exclude=exclude
             )
             query = Query(query=query_data)
@@ -226,7 +226,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
             while has_remaining_items:
                 page_offset = (page_number - 1) * self.pagination_size
 
-                query_data = InfrahubNode(client=self, schema=schema, branch=branch).generate_query_data(
+                query_data = await InfrahubNode(client=self, schema=schema, branch=branch).generate_query_data(
                     offset=page_offset, limit=self.pagination_size, filters=filters, include=include, exclude=exclude
                 )
                 query = Query(query=query_data)
