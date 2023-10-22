@@ -159,6 +159,7 @@ async def test_query_data_no_filters(client, location_schema, client_type):
             "count": None,
             "edges": {
                 "node": {
+                    "__typename": None,
                     "id": None,
                     "display_label": None,
                     "name": {
@@ -264,18 +265,18 @@ async def test_query_data_node(client, location_schema, client_type):
 
 
 @pytest.mark.parametrize("client_type", client_types)
-async def test_query_data_fragment(clients, mock_schema_query_02, client_type):  # pylint: disable=unused-argument
+async def test_query_data_generic(clients, mock_schema_query_02, client_type):  # pylint: disable=unused-argument
     if client_type == "standard":
         client: InfrahubClient = getattr(clients, client_type)  # type: ignore[annotation-unchecked]
         corenode_schema: GenericSchema = await client.schema.get(kind="CoreNode")  # type: ignore[annotation-unchecked]
         node = InfrahubNode(client=client, schema=corenode_schema)
-        data = await node.generate_query_data()
+        data = await node.generate_query_data(fragment=False)
 
     else:
         client: InfrahubClientSync = getattr(clients, client_type)  # type: ignore[annotation-unchecked]
         corenode_schema: GenericSchema = client.schema.get(kind="CoreNode")  # type: ignore[annotation-unchecked]
         node = InfrahubNodeSync(client=client, schema=corenode_schema)
-        data = node.generate_query_data()
+        data = node.generate_query_data(fragment=False)
 
     assert data == {
         "CoreNode": {
@@ -283,6 +284,7 @@ async def test_query_data_fragment(clients, mock_schema_query_02, client_type): 
             "count": None,
             "edges": {
                 "node": {
+                    "__typename": None,
                     "id": None,
                     "display_label": None,
                 },
@@ -292,18 +294,20 @@ async def test_query_data_fragment(clients, mock_schema_query_02, client_type): 
 
 
 @pytest.mark.parametrize("client_type", client_types)
-async def test_query_data_fragment(clients, mock_schema_query_02, client_type):  # pylint: disable=unused-argument
+async def test_query_data_generic_fragment(
+    clients, mock_schema_query_02, client_type
+):  # pylint: disable=unused-argument
     if client_type == "standard":
         client: InfrahubClient = getattr(clients, client_type)  # type: ignore[annotation-unchecked]
         corenode_schema: GenericSchema = await client.schema.get(kind="CoreNode")  # type: ignore[annotation-unchecked]
         node = InfrahubNode(client=client, schema=corenode_schema)
-        data = await node.generate_query_data()
+        data = await node.generate_query_data(fragment=True)
 
     else:
         client: InfrahubClientSync = getattr(clients, client_type)  # type: ignore[annotation-unchecked]
         corenode_schema: GenericSchema = client.schema.get(kind="CoreNode")  # type: ignore[annotation-unchecked]
         node = InfrahubNodeSync(client=client, schema=corenode_schema)
-        data = node.generate_query_data()
+        data = node.generate_query_data(fragment=True)
 
     assert data == {
         "CoreNode": {
@@ -311,6 +315,7 @@ async def test_query_data_fragment(clients, mock_schema_query_02, client_type): 
             "count": None,
             "edges": {
                 "node": {
+                    "__typename": None,
                     "...on BuiltinLocation": {
                         "description": {
                             "is_protected": None,
@@ -434,6 +439,7 @@ async def test_query_data_include(client, location_schema, client_type):
             "count": None,
             "edges": {
                 "node": {
+                    "__typename": None,
                     "id": None,
                     "display_label": None,
                     "name": {
@@ -523,6 +529,7 @@ async def test_query_data_exclude(client, location_schema, client_type):
             "count": None,
             "edges": {
                 "node": {
+                    "__typename": None,
                     "id": None,
                     "display_label": None,
                     "name": {

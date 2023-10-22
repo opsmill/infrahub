@@ -641,7 +641,10 @@ class InfrahubNodeBase:
         include: Optional[List[str]] = None,
         exclude: Optional[List[str]] = None,
     ) -> Dict[str, Union[Any, Dict]]:
-        data: Dict[str, Any] = {"count": None, "edges": {"node": {"id": None, "display_label": None}}}
+        data: Dict[str, Any] = {
+            "count": None,
+            "edges": {"node": {"id": None, "display_label": None, "__typename": None}},
+        }
 
         data["@filters"] = filters or {}
 
@@ -659,7 +662,11 @@ class InfrahubNodeBase:
         return data
 
     def generate_query_data_node(
-        self, include: Optional[List[str]] = None, exclude: Optional[List[str]] = None, inherited: bool = True
+        self,
+        include: Optional[List[str]] = None,
+        exclude: Optional[List[str]] = None,
+        inherited: bool = True,
+        insert_alias: bool = False,
     ) -> Dict[str, Union[Any, Dict]]:
         """Generate the node part of a GraphQL Query with attributes and nodes.
 
@@ -686,6 +693,11 @@ class InfrahubNodeBase:
             attr_data = attr._generate_query_data()
             if attr_data:
                 data[attr_name] = attr_data
+                if insert_alias:
+                    data[attr_name]["@alias"] = f"__alias__{self._schema.kind}__{attr_name}"
+            elif insert_alias:
+                if insert_alias:
+                    data[attr_name] = {"@alias": f"__alias__{self._schema.kind}__{attr_name}"}
 
         for rel_name in self._relationships:
             if exclude and rel_name in exclude:
@@ -752,6 +764,18 @@ class InfrahubNode(InfrahubNodeBase):
 
         super().__init__(schema=schema, branch=branch or client.default_branch, data=data)
 
+    @classmethod
+    async def from_graphql(
+        cls, client: InfrahubClient, branch: str, data: dict, schema: Optional[Union[NodeSchema, GenericSchema]] = None
+    ):
+        if not schema:
+            node_kind = data.get("__typename", None) or data.get("node", {}).get("__typename", None)
+            if not node_kind:
+                raise ValueError("Unable to determine the type of the node, __typename not present in data")
+            schema = await client.schema.get(kind=node_kind)
+
+        return cls(client=client, schema=schema, branch=branch, data=data)
+
     def _init_relationships(self, data: Optional[dict] = None) -> None:
         for rel_name in self._relationships:
             rel_schema = [rel for rel in self._schema.relationships if rel.name == rel_name][0]
@@ -808,19 +832,22 @@ class InfrahubNode(InfrahubNodeBase):
         limit: Optional[int] = None,
         include: Optional[List[str]] = None,
         exclude: Optional[List[str]] = None,
+        fragment: bool = False,
     ) -> Dict[str, Union[Any, Dict]]:
         data = self.generate_query_data_init(
             filters=filters, offset=offset, limit=limit, include=include, exclude=exclude
         )
         data["edges"]["node"].update(self.generate_query_data_node(include=include, exclude=exclude, inherited=True))
 
-        if isinstance(self._schema, GenericSchema):
+        if isinstance(self._schema, GenericSchema) and fragment:
             for parent in self._schema.used_by:
                 parent_schema = await self._client.schema.get(kind=parent)
                 parent_node = InfrahubNode(client=self._client, schema=parent_schema)
-                data["edges"]["node"][f"...on {parent}"] = parent_node.generate_query_data_node(
-                    include=include, exclude=exclude, inherited=False
-                )
+
+                parent_data = parent_node.generate_query_data_node(include=include, exclude=exclude, inherited=False)
+
+                if parent_data:
+                    data["edges"]["node"][f"...on {parent}"] = parent_data
 
         return {self._schema.kind: data}
 
@@ -878,6 +905,18 @@ class InfrahubNodeSync(InfrahubNodeBase):
 
         super().__init__(schema=schema, branch=branch or client.default_branch, data=data)
 
+    @classmethod
+    def from_graphql(
+        cls, client: InfrahubClient, branch: str, data: dict, schema: Optional[Union[NodeSchema, GenericSchema]] = None
+    ):
+        if not schema:
+            node_kind = data.get("__typename", None) or data.get("node", {}).get("__typename", None)
+            if not node_kind:
+                raise ValueError("Unable to determine the type of the node, __typename not present in data")
+            schema = client.schema.get(kind=node_kind)
+
+        return cls(client=client, schema=schema, branch=branch, data=data)
+
     def _init_relationships(self, data: Optional[dict] = None) -> None:
         for rel_name in self._relationships:
             rel_schema = [rel for rel in self._schema.relationships if rel.name == rel_name][0]
@@ -931,19 +970,20 @@ class InfrahubNodeSync(InfrahubNodeBase):
         limit: Optional[int] = None,
         include: Optional[List[str]] = None,
         exclude: Optional[List[str]] = None,
+        fragment: bool = False,
     ) -> Dict[str, Union[Any, Dict]]:
         data = self.generate_query_data_init(
             filters=filters, offset=offset, limit=limit, include=include, exclude=exclude
         )
         data["edges"]["node"].update(self.generate_query_data_node(include=include, exclude=exclude, inherited=True))
 
-        if isinstance(self._schema, GenericSchema):
+        if isinstance(self._schema, GenericSchema) and fragment:
             for parent in self._schema.used_by:
                 parent_schema = self._client.schema.get(kind=parent)
                 parent_node = InfrahubNodeSync(client=self._client, schema=parent_schema)
-                data["edges"]["node"][f"...on {parent}"] = parent_node.generate_query_data_node(
-                    include=include, exclude=exclude, inherited=False
-                )
+                parent_data = parent_node.generate_query_data_node(include=include, exclude=exclude, inherited=False)
+                if parent_data:
+                    data["edges"]["node"][f"...on {parent}"] = parent_data
 
         return {self._schema.kind: data}
 

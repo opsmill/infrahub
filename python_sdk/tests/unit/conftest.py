@@ -143,6 +143,7 @@ async def location_data02_no_pagination():
 async def location_data01():
     data = {
         "node": {
+            "__typename": "BuiltinLocation",
             "id": "llllllll-llll-llll-llll-llllllllllll",
             "display_label": "dfw1",
             "name": {"is_protected": True, "is_visible": True, "owner": None, "source": None, "value": "DFW"},
@@ -328,6 +329,7 @@ async def tag_green_data_no_pagination():
 async def tag_blue_data():
     data = {
         "node": {
+            "__typename": "BuiltinTag",
             "id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
             "display_label": "blue",
             "name": {
@@ -351,6 +353,7 @@ async def tag_blue_data():
 async def tag_red_data():
     data = {
         "node": {
+            "__typename": "BuiltinTag",
             "id": "rrrrrrrr-rrrr-rrrr-rrrr-rrrrrrrrrrrr",
             "display_label": "red",
             "name": {
@@ -374,6 +377,7 @@ async def tag_red_data():
 async def tag_green_data():
     data = {
         "node": {
+            "__typename": "BuiltinTag",
             "id": "gggggggg-gggg-gggg-gggg-gggggggggggg",
             "display_label": "green",
             "name": {
@@ -621,6 +625,36 @@ async def mock_query_repository_page1_1(
     httpx_mock.add_response(
         method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-corerepository-page1"}
     )
+    return httpx_mock
+
+
+@pytest.fixture
+async def mock_query_corenode_page1_1(httpx_mock: HTTPXMock, client: InfrahubClient, mock_schema_query_02) -> HTTPXMock:
+    response = {
+        "data": {
+            "CoreNode": {
+                "count": 2,
+                "edges": [
+                    {
+                        "node": {
+                            "__typename": "BuiltinTag",
+                            "id": "179068dd-210a-8278-7532-18f23abfdd04",
+                            "display_label": "RED",
+                        }
+                    },
+                    {
+                        "node": {
+                            "__typename": "BuiltinLocation",
+                            "id": "179068dd-21e7-f5e0-7531-18f2477f33dc",
+                            "display_label": "MyLocation",
+                        }
+                    },
+                ],
+            }
+        }
+    }
+
+    httpx_mock.add_response(method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-corenode-page1"})
     return httpx_mock
 
 
