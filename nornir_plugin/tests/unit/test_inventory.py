@@ -1,8 +1,6 @@
 import ipaddress
 from typing import Any
 
-# from unittest.mock import Mock, patch
-
 import pytest
 from nornir.core.inventory import ConnectionOptions, Defaults  # , HostOrGroup
 from nornir_infrahub.plugins.inventory.infrahub import (  # _get_inventory_element,
@@ -17,6 +15,9 @@ from nornir_infrahub.plugins.inventory.infrahub import (  # _get_inventory_eleme
 from pydantic.error_wrappers import ValidationError
 
 from infrahub_client import InfrahubClient, InfrahubNodeSync, NodeSchema
+
+# from unittest.mock import Mock, patch
+
 
 # ip_interface_to_ip_string
 
