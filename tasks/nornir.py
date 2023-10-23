@@ -1,5 +1,13 @@
 from invoke import Context, task
 
+from .shared import (
+    BUILD_NAME,
+    NBR_WORKERS,
+    build_test_compose_files_cmd,
+    build_test_envs,
+    execute_command,
+    get_env_vars,
+)
 from .utils import ESCAPED_REPO_PATH
 
 MAIN_DIRECTORY = "nornir_plugin"
@@ -113,6 +121,16 @@ def lint(context: Context):
     mypy(context)
 
     print(f" - [{NAMESPACE}] All tests have passed!")
+
+
+@task
+def test_unit(context: Context):
+    with context.cd(ESCAPED_REPO_PATH):
+        compose_files_cmd = build_test_compose_files_cmd(database=False)
+        base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run {build_test_envs()} infrahub-test"
+        exec_cmd = f"pytest -n {NBR_WORKERS} -v --cov=infrahub_client {MAIN_DIRECTORY}/tests/unit"
+        print(f"{base_cmd} {exec_cmd}")
+        return execute_command(context=context, command=f"{base_cmd} {exec_cmd}")
 
 
 @task(default=True)
