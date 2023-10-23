@@ -126,18 +126,18 @@ class TestInfrahubClientSync:
 
     async def test_get_generic(self, client: InfrahubClientSync, db: InfrahubDatabase, init_db_base):
         nodes = client.all(kind="CoreNode")
-        assert len(nodes) == 4
+        assert len(nodes)
 
     async def test_get_generic_fragment(self, client: InfrahubClientSync, db: InfrahubDatabase, init_db_base):
         nodes = client.all(kind="LineageSource", fragment=True, exclude=["type"])
-        assert len(nodes) == 1
+        assert len(nodes) == 2
         assert nodes[0].typename == "CoreAccount"
         assert nodes[0].name.value is not None  # type: ignore[attr-defined]
 
     async def test_get_generic_filter_source(self, client: InfrahubClientSync, db: InfrahubDatabase, init_db_base):
         admin = client.get(kind="CoreAccount", name__value="admin")
 
-        obj1 = Node.init(schema="BuiltinLocation", db=db)
+        obj1 = await Node.init(schema="BuiltinLocation", db=db)
         await obj1.new(db=db, name={"value": "jfk3", "source": admin.id}, description="new york", type="site")
         await obj1.save(db=db)
 

@@ -22,7 +22,7 @@ class TestInfrahubSchema:
         ifc = await InfrahubClient.init(config=config)
         schema_nodes = await ifc.schema.all()
 
-        assert len(schema_nodes) == len(core_models["nodes"])
+        assert len(schema_nodes) == len(core_models["nodes"]) + len(core_models["generics"])
         assert "BuiltinLocation" in schema_nodes
         assert isinstance(schema_nodes["BuiltinLocation"], NodeSchema)
 
@@ -33,4 +33,4 @@ class TestInfrahubSchema:
 
         assert isinstance(schema_node, NodeSchema)
         assert ifc.default_branch in ifc.schema.cache
-        assert len(ifc.schema.cache[ifc.default_branch]) == len(core_models["nodes"])
+        assert len(ifc.schema.cache[ifc.default_branch]) == len(core_models["nodes"]) + len(core_models["generics"])
