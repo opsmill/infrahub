@@ -167,6 +167,7 @@ async def test_method_get_by_id(
                 "edges": [
                     {
                         "node": {
+                            "__typename": "CoreRepository",
                             "id": "bfae43e8-5ebb-456c-a946-bf64e930710a",
                             "name": {"value": "infrahub-demo-core"},
                             "location": {"value": "git@github.com:opsmill/infrahub-demo-core.git"},
@@ -211,6 +212,7 @@ async def test_method_get_by_default_filter(
                 "edges": [
                     {
                         "node": {
+                            "__typename": "CoreRepository",
                             "id": "bfae43e8-5ebb-456c-a946-bf64e930710a",
                             "name": {"value": "infrahub-demo-core"},
                             "location": {"value": "git@github.com:opsmill/infrahub-demo-core.git"},
@@ -255,6 +257,7 @@ async def test_method_get_by_name(
                 "edges": [
                     {
                         "node": {
+                            "__typename": "CoreRepository",
                             "id": "bfae43e8-5ebb-456c-a946-bf64e930710a",
                             "name": {"value": "infrahub-demo-core"},
                             "location": {"value": "git@github.com:opsmill/infrahub-demo-core.git"},
