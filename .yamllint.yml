@@ -10,6 +10,7 @@ ignore: |
 
 rules:
   new-lines: disable
+  comments-indentation: disable
   line-length:
     max: 120
     allow-non-breakable-words: true
