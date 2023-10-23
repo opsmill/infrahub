@@ -206,10 +206,6 @@ module = "infrahub_ctl.*"
 disallow_untyped_defs = true
 
 [[tool.mypy.overrides]]
-module = "infrahub"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.api.*"
 ignore_errors = true
 
