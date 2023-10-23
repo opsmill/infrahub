@@ -2,7 +2,6 @@ import ipaddress
 import itertools
 import logging
 from pathlib import Path
-from slugify import slugify
 from typing import Any, Callable, Dict, List, Optional, Set, Type, Union
 
 import ruamel.yaml
@@ -19,6 +18,7 @@ from nornir.core.inventory import (
 )
 from pydantic import BaseModel, Field, validator
 from pydantic.dataclasses import dataclass
+from slugify import slugify
 
 from infrahub_client import Config, InfrahubClientSync, InfrahubNodeSync, NodeSchema
 

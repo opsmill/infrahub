@@ -36,6 +36,7 @@ jobs:
       backend: ${{ steps.changes.outputs.backend_all }}
       frontend: ${{ steps.changes.outputs.frontend_all }}
       sdk: ${{ steps.changes.outputs.sdk_all }}
+      nornir: ${{ steps.changes.outputs.nornir_all }}
       ctl: ${{ steps.changes.outputs.ctl_all }}
       e2e: ${{ steps.changes.outputs.e2e_all }}
       python: ${{ steps.changes.outputs.python_all }}
@@ -160,7 +161,6 @@ jobs:
         with:
           flag-name: python-sdk-unit
           parallel: true
-
       - name: "Integration Tests"
         run: "invoke sdk.test-integration"
         env:
@@ -178,7 +178,7 @@ jobs:
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.sdk == 'true'
+      needs.files-changed.outputs.nornir == 'true'
     needs: ["files-changed", "yaml-lint", "python-lint"]
     runs-on: "ubuntu-20.04"
     timeout-minutes: 30
@@ -192,17 +192,17 @@ jobs:
       - name: "Pull External Docker Images"
         run: "invoke test.pull"
       - name: "Black Tests"
-        run: "invoke sdk.black --docker"
+        run: "invoke nornir.black --docker"
       - name: "Isort Tests"
-        run: "invoke sdk.isort --docker"
+        run: "invoke nornir.isort --docker"
       - name: "Pylint Tests"
-        run: "invoke sdk.pylint --docker"
+        run: "invoke nornir.pylint --docker"
       - name: "Mypy Tests"
-        run: "invoke sdk.mypy --docker"
+        run: "invoke nornir.mypy --docker"
       - name: "Unit Tests"
-        run: "invoke sdk.test-unit"
+        run: "invoke nornir.test-unit"
         env:
-          BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_SDK_UNIT }}
+          BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_NORNIR_UNIT }}
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2.0.0
         env:
