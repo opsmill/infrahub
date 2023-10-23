@@ -21,7 +21,7 @@ async def dbs_for_test(db: InfrahubDatabase):
 
 @pytest.mark.neo4j
 async def test_validate_database(db: InfrahubDatabase, dbs_for_test):
-    await validate_database(driver=db._driver, database_name=config.SETTINGS.database.database, retry=2)
+    await validate_database(driver=db._driver, database_name=config.SETTINGS.database.database_name, retry=2)
 
     with pytest.raises(ClientError):
         await validate_database(driver=db._driver, database_name=dbs_for_test[1])
