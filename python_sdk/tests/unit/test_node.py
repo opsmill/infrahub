@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from infrahub_client.client import InfrahubClient, InfrahubClientSync
     from infrahub_client.schema import GenericSchema
 
-# pylint: disable=no-member
+# pylint: disable=no-member,too-many-lines
 # type: ignore[attr-defined]
 
 async_node_methods = [method for method in dir(InfrahubNode) if not method.startswith("_")]
@@ -318,6 +318,7 @@ async def test_query_data_generic_fragment(
                     "__typename": None,
                     "...on BuiltinLocation": {
                         "description": {
+                            "@alias": "__alias__BuiltinLocation__description",
                             "is_protected": None,
                             "is_visible": None,
                             "owner": {
@@ -333,6 +334,7 @@ async def test_query_data_generic_fragment(
                             "value": None,
                         },
                         "name": {
+                            "@alias": "__alias__BuiltinLocation__name",
                             "is_protected": None,
                             "is_visible": None,
                             "owner": {
@@ -348,6 +350,7 @@ async def test_query_data_generic_fragment(
                             "value": None,
                         },
                         "primary_tag": {
+                            "@alias": "__alias__BuiltinLocation__primary_tag",
                             "node": {
                                 "__typename": None,
                                 "display_label": None,
@@ -369,6 +372,7 @@ async def test_query_data_generic_fragment(
                             },
                         },
                         "type": {
+                            "@alias": "__alias__BuiltinLocation__type",
                             "is_protected": None,
                             "is_visible": None,
                             "owner": {
@@ -386,6 +390,7 @@ async def test_query_data_generic_fragment(
                     },
                     "...on BuiltinTag": {
                         "description": {
+                            "@alias": "__alias__BuiltinTag__description",
                             "is_protected": None,
                             "is_visible": None,
                             "owner": {
@@ -401,6 +406,7 @@ async def test_query_data_generic_fragment(
                             "value": None,
                         },
                         "name": {
+                            "@alias": "__alias__BuiltinTag__name",
                             "is_protected": None,
                             "is_visible": None,
                             "owner": {

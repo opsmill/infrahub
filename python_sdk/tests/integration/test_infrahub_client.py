@@ -126,6 +126,28 @@ class TestInfrahubClient:
         assert isinstance(node2, InfrahubNode)
         assert node2.name.value == "jfk2"  # type: ignore[attr-defined]
 
+    async def test_get_generic(self, client: InfrahubClient, db: InfrahubDatabase, init_db_base):
+        nodes = await client.all(kind="CoreNode")
+        assert len(nodes) == 4
+
+    async def test_get_generic_fragment(self, client: InfrahubClient, db: InfrahubDatabase, init_db_base):
+        nodes = await client.all(kind="LineageSource", fragment=True, exclude=["type"])
+        assert len(nodes) == 1
+        assert nodes[0].typename == "CoreAccount"
+        assert nodes[0].name.value is not None  # type: ignore[attr-defined]
+
+    async def test_get_generic_filter_source(self, client: InfrahubClient, db: InfrahubDatabase, init_db_base):
+        admin = await client.get(kind="CoreAccount", name__value="admin")
+
+        obj1 = await Node.init(schema="BuiltinLocation", db=db)
+        await obj1.new(db=db, name={"value": "jfk3", "source": admin.id}, description="new york", type="site")
+        await obj1.save(db=db)
+
+        nodes = await client.filters(kind="CoreNode", any__source__id=admin.id)
+        assert len(nodes) == 1
+        assert nodes[0].typename == "BuiltinLocation"
+        assert nodes[0].id == obj1.id
+
     async def test_get_related_nodes(self, client: InfrahubClient, db: InfrahubDatabase, init_db_base):
         nodes = await client.all(kind="CoreRepository")
         assert len(nodes) == 1
