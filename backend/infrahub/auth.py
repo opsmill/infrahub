@@ -3,29 +3,23 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from http.cookies import SimpleCookie
-from typing import TYPE_CHECKING, Awaitable, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional
 
 import bcrypt
 import jwt
 from pydantic import BaseModel
-from starlette import authentication as auth
-from starlette.authentication import AuthenticationError
 
 from infrahub import config, models
 from infrahub.core import get_branch
-from infrahub.core.account import get_account, validate_token
+from infrahub.core.account import validate_token
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.exceptions import AuthorizationError, NodeNotFound
 
 if TYPE_CHECKING:
-    from starlette.requests import HTTPConnection
-
     from infrahub.database import InfrahubDatabase
 
 # from ..datatypes import AuthResult
-# from ..exceptions import InvalidCredentials
 
 
 class AuthType(str, Enum):
@@ -253,114 +247,3 @@ async def invalidate_refresh_token(db: InfrahubDatabase, token_id: str) -> None:
     )
     if refresh_token:
         await refresh_token.delete(db=db)
-
-
-# Code copied from https://github.com/florimondmanca/starlette-auth-toolkit/
-
-
-class InvalidCredentials(AuthenticationError):
-    def __init__(
-        self,
-        message: str = "Could not authenticate with the provided credentials",
-    ):
-        super().__init__(message)
-
-
-class AuthBackend(auth.AuthenticationBackend):
-    async def authenticate(self, conn: HTTPConnection):  # -> AuthResult:
-        raise NotImplementedError
-
-
-class _BaseSchemeAuth(AuthBackend):
-    scheme: str
-
-    def get_credentials(self, conn: HTTPConnection) -> Optional[str]:
-        if "Authorization" not in conn.headers:
-            return self.get_token_from_cookie(conn)
-
-        authorization = conn.headers.get("Authorization")
-        scheme, _, credentials = authorization.partition(" ")
-        if scheme.lower() != self.scheme.lower():
-            return None
-
-        return credentials
-
-    def parse_credentials(self, credentials: str) -> List[str]:
-        return [credentials]
-
-    verify: Callable[..., Awaitable[Optional[auth.BaseUser]]]
-
-    def get_token_from_cookie(self, conn: HTTPConnection) -> Optional[str]:
-        cookies = SimpleCookie(conn.headers.get("Cookie", ""))
-
-        if "access_token" in cookies and cookies["access_token"].value:
-            return cookies["access_token"].value
-        return None
-
-    async def authenticate(self, conn: HTTPConnection):
-        credentials = self.get_credentials(conn)
-        if credentials is None:
-            return None
-
-        parts = self.parse_credentials(credentials)
-
-        async with conn.app.state.db.start_session() as db:
-            user = await self.verify(db=db, token=parts[0])
-
-        if user is None:
-            raise InvalidCredentials
-
-        return auth.AuthCredentials(["authenticated"]), user
-
-
-# class BaseBasicAuth(_BaseSchemeAuth):
-#     scheme = "Basic"
-
-#     def parse_credentials(self, credentials: str) -> typing.List[str]:
-#         try:
-#             decoded_credentials = base64.b64decode(credentials).decode("ascii")
-#         except (ValueError, UnicodeDecodeError, binascii.Error):
-#             raise InvalidCredentials
-
-#         try:
-#             username, password = decoded_credentials.split(":")
-#         except ValueError:
-#             raise InvalidCredentials
-
-#         return [username, password]
-
-#     async def find_user(self, username: str) -> typing.Optional[auth.BaseUser]:
-#         raise NotImplementedError
-
-#     async def verify_password(self, user: auth.BaseUser, password: str) -> bool:
-#         raise NotImplementedError
-
-#     async def verify(
-#         self, username: str, password: str
-#     ) -> typing.Optional[auth.BaseUser]:
-#         user = await self.find_user(username=username)
-
-#         if user is None:
-#             return None
-
-#         valid = await self.verify_password(user, password)
-#         if not valid:
-#             return None
-
-#         return user
-
-
-class BaseTokenAuth(_BaseSchemeAuth):
-    scheme = "Token"
-
-    def parse_credentials(self, credentials: str) -> List[str]:
-        token = credentials
-        return [token]
-
-    async def verify(self, db: InfrahubDatabase, token: str) -> Optional[auth.BaseUser]:
-        account_name, _ = await validate_token(db=db, token=token)
-        if account_name:
-            account = await get_account(db=db, account=account_name)
-            return account
-
-        return False
