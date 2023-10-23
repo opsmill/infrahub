@@ -142,7 +142,12 @@ class InfrahubMutationMixin:
             for unique_attr in cls._meta.schema.unique_attributes:
                 attr = getattr(obj, unique_attr.name)
                 nodes = await NodeManager.query(
-                    schema=cls._meta.schema, filters={f"{unique_attr.name}__value": attr.value}, fields={}, db=db, branch=branch, at=at
+                    schema=cls._meta.schema,
+                    filters={f"{unique_attr.name}__value": attr.value},
+                    fields={},
+                    db=db,
+                    branch=branch,
+                    at=at,
                 )
                 if [node for node in nodes if node.id != obj.id]:
                     raise ValidationError(
@@ -188,12 +193,19 @@ class InfrahubMutationMixin:
         return obj, cls(ok=ok)
 
     @classmethod
-    async def validate_constraints(cls, db: InfrahubDatabase, node: Node, branch: Optional[str] = None, at: Optional[str] = None) -> None:
+    async def validate_constraints(
+        cls, db: InfrahubDatabase, node: Node, branch: Optional[str] = None, at: Optional[str] = None
+    ) -> None:
         """Check if the new object is conform with the uniqueness constraints."""
         for unique_attr in cls._meta.schema.unique_attributes:
             attr = getattr(node, unique_attr.name)
             nodes = await NodeManager.query(
-                schema=cls._meta.schema, filters={f"{unique_attr.name}__value": attr.value}, fields={}, db=db, branch=branch, at=at
+                schema=cls._meta.schema,
+                filters={f"{unique_attr.name}__value": attr.value},
+                fields={},
+                db=db,
+                branch=branch,
+                at=at,
             )
             if nodes:
                 raise ValidationError(
