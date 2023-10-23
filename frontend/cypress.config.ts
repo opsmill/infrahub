@@ -13,7 +13,7 @@ export default defineConfig({
     runMode: 3,
     // Configure retry attempts for `cypress open`
     // Default is 0
-    openMode: 1,
+    openMode: 0,
   },
   component: {
     devServer: {
@@ -36,6 +36,6 @@ export default defineConfig({
     video: false,
     viewportHeight: 720,
     viewportWidth: 1280,
-    defaultCommandTimeout: 30000,
+    defaultCommandTimeout: 20000,
   },
 });

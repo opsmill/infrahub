@@ -6,7 +6,7 @@ const ETHERNET_NAME = "Ethernet11";
 
 const ACCOUNT = "Account";
 
-const ACCOUNT_NAME = "Architecture Team";
+const ACCOUNT_NAME = "Operation Team";
 
 describe("Object update", () => {
   beforeEach(function () {
@@ -22,14 +22,20 @@ describe("Object update", () => {
     // Access an interface
     cy.contains(ETHERNET_NAME).click();
 
-    // pen the metadata panel
-    cy.get(":nth-child(2) > div.items-center > .p-2").click();
+    // Open the metadata panel
+    cy.get(".sm\\:p-0").within(() => {
+      cy.contains("Status")
+        .parent()
+        .within(() => {
+          cy.get("[data-cy='metadata-button']").click();
 
-    // Check the source
-    cy.get(".w-80 > :nth-child(4)").should("exist");
+          // Check the source
+          cy.contains(ACCOUNT_NAME).should("exist");
 
-    // Edit the metadata
-    cy.get(".w-80 > :nth-child(1) > .rounded-md").click();
+          // Edit the metadata
+          cy.get("[data-cy='metadata-edit-button']").click();
+        });
+    });
 
     // Is visible
     cy.get(":nth-child(3) > .flex-col > .relative > .w-4").should("be.checked");
@@ -89,7 +95,13 @@ describe("Object update", () => {
     cy.contains(ETHERNET_NAME).click();
 
     // Open the metadata panel
-    cy.get(":nth-child(2) > div.items-center > .p-2").click();
+    cy.get(".sm\\:p-0").within(() => {
+      cy.contains("Status")
+        .parent()
+        .within(() => {
+          cy.get("[data-cy='metadata-button']").click();
+        });
+    });
 
     // Check the source
     cy.get(".w-80 > :nth-child(4)").should("exist");

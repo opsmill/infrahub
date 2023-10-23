@@ -48,7 +48,7 @@ export const BranchesItems = () => {
                       </Tooltip>
 
                       <ChevronLeftIcon
-                        className="h-5 w-5 mx-2 flex-shrink-0 text-gray-400"
+                        className="w-4 h-4 mx-2 flex-shrink-0 text-gray-400"
                         aria-hidden="true"
                       />
 

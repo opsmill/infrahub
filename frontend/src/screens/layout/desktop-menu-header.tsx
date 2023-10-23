@@ -28,7 +28,7 @@ export default function DropDownMenuHeader(props: Props) {
             <svg
               className={classNames(
                 open ? "text-gray-400 rotate-90" : "text-gray-300",
-                "ml-3 h-5 w-5 flex-shrink-0 transform transition-colors duration-150 ease-in-out group-hover:text-gray-400"
+                "ml-3 w-4 h-4 flex-shrink-0 transform transition-colors duration-150 ease-in-out group-hover:text-gray-400"
               )}
               viewBox="0 0 20 20"
               aria-hidden="true">

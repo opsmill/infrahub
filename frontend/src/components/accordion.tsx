@@ -17,9 +17,9 @@ export default function Accordion(props: AccordionProps) {
         <div className="flex flex-1 w-full items-center" onClick={() => setIsOpen(!isOpen)}>
           <span className="flex h-7 items-center mr-2 relative">
             {isOpen ? (
-              <ChevronDownIcon className="h-5 w-5" aria-hidden="true" />
+              <ChevronDownIcon className="w-4 h-4" aria-hidden="true" />
             ) : (
-              <ChevronRightIcon className="h-5 w-5" aria-hidden="true" />
+              <ChevronRightIcon className="w-4 h-4" aria-hidden="true" />
             )}
           </span>
           <span className="flex-1 font-semibold text-left justify-start">{title}</span>

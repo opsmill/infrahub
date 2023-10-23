@@ -149,7 +149,7 @@ export default function ObjectItemDetails(props: any) {
               {schemaData.name}
             </div>
             <ChevronRightIcon
-              className="h-5 w-5 mt-1 mx-2 flex-shrink-0 text-gray-400"
+              className="w-4 h-4 mt-1 mx-2 flex-shrink-0 text-gray-400"
               aria-hidden="true"
             />
             <p className="mt-1 max-w-2xl text-sm text-gray-500">
@@ -187,7 +187,7 @@ export default function ObjectItemDetails(props: any) {
       {!qspTab && (
         <div className="px-4 py-5 sm:p-0 flex-1 overflow-auto">
           <dl className="sm:divide-y sm:divide-gray-200">
-            <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-3 sm:px-6">
+            <div className="p-4 px-3 grid grid-cols-3 gap-4">
               <dt className="text-sm font-medium text-gray-500 flex items-center">ID</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
                 {objectDetailsData.id}
@@ -202,9 +202,7 @@ export default function ObjectItemDetails(props: any) {
               }
 
               return (
-                <div
-                  className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-3 sm:px-6"
-                  key={attribute.name}>
+                <div className="p-4 px-3 grid grid-cols-3 gap-4" key={attribute.name}>
                   <dt className="text-sm font-medium text-gray-500 flex items-center">
                     {attribute.label}
                   </dt>
@@ -219,7 +217,7 @@ export default function ObjectItemDetails(props: any) {
                     </dd>
 
                     {objectDetailsData[attribute.name] && (
-                      <div className="p-2">
+                      <div className="px-2">
                         <MetaDetailsTooltip
                           items={[
                             {
@@ -262,7 +260,7 @@ export default function ObjectItemDetails(props: any) {
                             },
                           ]}
                           header={
-                            <div className="flex justify-between w-full py-4">
+                            <div className="flex justify-between items-center w-full p-4">
                               <div className="font-semibold">{attribute.label}</div>
                               <Button
                                 buttonType={BUTTON_TYPES.INVISIBLE}
@@ -274,8 +272,9 @@ export default function ObjectItemDetails(props: any) {
                                     label: attribute.label || attribute.name,
                                   });
                                   setShowMetaEditModal(true);
-                                }}>
-                                <PencilSquareIcon className="w-5 h-5 text-custom-blue-500" />
+                                }}
+                                data-cy="metadata-edit-button">
+                                <PencilSquareIcon className="w-4 h-4 text-custom-blue-500" />
                               </Button>
                             </div>
                           }
@@ -284,7 +283,7 @@ export default function ObjectItemDetails(props: any) {
                     )}
 
                     {objectDetailsData[attribute.name].is_protected && (
-                      <LockClosedIcon className="h-5 w-5 ml-2" />
+                      <LockClosedIcon className="w-4 h-4" />
                     )}
                   </div>
                 </div>
@@ -324,7 +323,7 @@ export default function ObjectItemDetails(props: any) {
               <span className="text-lg font-semibold mr-3">{objectDetailsData.display_label}</span>
               <div className="flex-1"></div>
               <div className="flex items-center">
-                <Square3Stack3DIcon className="w-5 h-5" />
+                <Square3Stack3DIcon className="w-4 h-4" />
                 <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
               </div>
             </div>
@@ -365,7 +364,7 @@ export default function ObjectItemDetails(props: any) {
               <span className="text-lg font-semibold mr-3">{objectDetailsData.display_label}</span>
               <div className="flex-1"></div>
               <div className="flex items-center">
-                <Square3Stack3DIcon className="w-5 h-5" />
+                <Square3Stack3DIcon className="w-4 h-4" />
                 <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
               </div>
             </div>
@@ -404,7 +403,7 @@ export default function ObjectItemDetails(props: any) {
               <span className="text-lg font-semibold mr-3">{metaEditFieldDetails?.label}</span>
               <div className="flex-1"></div>
               <div className="flex items-center">
-                <Square3Stack3DIcon className="w-5 h-5" />
+                <Square3Stack3DIcon className="w-4 h-4" />
                 <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
               </div>
             </div>
@@ -417,6 +416,7 @@ export default function ObjectItemDetails(props: any) {
           closeDrawer={() => setShowMetaEditModal(false)}
           onUpdateComplete={() => refetch()}
           attributeOrRelationshipToEdit={
+            objectDetailsData[metaEditFieldDetails?.attributeOrRelationshipName]?.properties ||
             objectDetailsData[metaEditFieldDetails?.attributeOrRelationshipName]
           }
           schemaList={schemaList}

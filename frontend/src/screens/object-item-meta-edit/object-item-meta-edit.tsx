@@ -59,10 +59,7 @@ export default function ObjectItemMetaEdit(props: Props) {
       try {
         const mutationString = updateObjectWithId({
           kind: schema.kind,
-          data: stringifyWithoutQuotes({
-            id: row.id,
-            ...updatedObject,
-          }),
+          data: stringifyWithoutQuotes(updatedObject),
         });
 
         const mutation = gql`

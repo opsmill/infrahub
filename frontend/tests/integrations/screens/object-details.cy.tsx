@@ -66,12 +66,14 @@ describe("List screen", () => {
     );
 
     // The device ASN should be correctly named
-    cy.get(":nth-child(8) > .py-4 > .mt-1 > .cursor-pointer").should(
-      "have.text",
-      deviceDetailsMocksASNName
-    );
+    cy.contains("Asn").siblings().first().should("have.text", deviceDetailsMocksASNName);
 
-    cy.get(":nth-child(8) > .py-4 > .mt-1 > .p-2").click();
+    cy.contains("Asn")
+      .siblings()
+      .first()
+      .within(() => {
+        cy.get("[data-cy='metadata-button']").click();
+      });
 
     cy.get(":nth-child(5) > .underline").should("have.text", deviceDetailsMocksOwnerName);
 

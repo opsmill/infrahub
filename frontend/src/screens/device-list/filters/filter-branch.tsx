@@ -67,7 +67,7 @@ export default function FilterBranch() {
           }}
         />
         <Combobox.Button className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none">
-          <ChevronUpDownIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
+          <ChevronUpDownIcon className="w-4 h-4 text-gray-400" aria-hidden="true" />
         </Combobox.Button>
 
         {filteredBranches.length > 0 && (
