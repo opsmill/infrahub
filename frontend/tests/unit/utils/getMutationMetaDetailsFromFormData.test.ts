@@ -30,8 +30,6 @@ describe("Mutation details from object data", () => {
       data: stringifyWithoutQuotes(updatedObject),
     });
 
-    console.log("mutationString: ", mutationString);
-    console.log("mutationStringForMetaEdit: ", mutationStringForMetaEdit);
     expect(mutationString).toEqual(mutationStringForMetaEdit);
   });
 });
