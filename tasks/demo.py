@@ -152,6 +152,8 @@ def init(context: Context, database: str = INFRAHUB_DATABASE):
     """Initialize Infrahub database before using it the first time."""
     with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_compose_files_cmd(database=database)
+        command = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} stop infrahub-server infrahub-git"
+        execute_command(context=context, command=command)
         command = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-server infrahub db init"
         execute_command(context=context, command=command)
 
