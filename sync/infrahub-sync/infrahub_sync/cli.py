@@ -38,7 +38,7 @@ def get_all_sync() -> List[SyncInstance]:
 
     for config_file in glob.glob(f"{here}/sync/**/config.yml", recursive=True):
         directory_name = os.path.dirname(config_file)
-        config_data = yaml.safe_load(Path(config_file).read_text())
+        config_data = yaml.safe_load(Path(config_file).read_text(encoding="utf-8"))
         SyncConfig(**config_data)
         results.append(SyncInstance(**config_data, directory=directory_name))
 
@@ -71,15 +71,15 @@ def get_potenda_from_instance(sync_instance: SyncInstance, branch: Optional[str]
     return ptd
 
 
-@app.command()
-def list():
+@app.command(name="list")
+def list_projects():
     """List all available SYNC projects."""
     for item in get_all_sync():
         console.print(f"{item.name} | {item.source.name} >> {item.destination.name} | {item.directory}")
 
 
-@app.command()
-def diff(
+@app.command(name="diff")
+def diff_cmd(
     name: str = typer.Argument(..., help="Name of the sync to use"),
     branch: str = typer.Option(default=None, help="Branch to use for the sync."),
 ):
@@ -96,8 +96,8 @@ def diff(
     print(mydiff.str())
 
 
-@app.command()
-def sync(
+@app.command(name="sync")
+def sync_cmd(
     name: str = typer.Argument(..., help="Name of the sync to use"),
     branch: str = typer.Option(default=None, help="Branch to use for the sync."),
     diff: bool = typer.Option(

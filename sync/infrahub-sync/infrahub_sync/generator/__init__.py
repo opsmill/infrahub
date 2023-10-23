@@ -143,4 +143,4 @@ def render_template(template_dir: str, template_file: str, output_dir: str, outp
     template = templateEnv.get_template(str(template_path))
 
     rendered_tpl = template.render(**context)  # type: ignore[arg-type]
-    output_filename.write_text(rendered_tpl)
+    output_filename.write_text(rendered_tpl, encoding="utf-8")
