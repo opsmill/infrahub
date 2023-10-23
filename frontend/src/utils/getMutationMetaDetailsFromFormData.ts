@@ -2,7 +2,22 @@ import { iNodeSchema } from "../state/atoms/schema.atom";
 
 export type MutationMode = "create" | "update";
 
-const metadataFields = ["owner", "source", "is_visible", "is_protected"];
+const metadataFields = ["source", "owner", "is_visible", "is_protected"];
+
+const isValueValid = (value: any) => {
+  if (value === undefined) {
+    // Value should not be undefined
+    return false;
+  }
+
+  if (typeof value === "string") {
+    // Verify empty string
+    return !!value;
+  }
+
+  // Verify number
+  return !isNaN(value);
+};
 
 const getMutationMetaDetailsFromFormData = (
   schema: iNodeSchema,
@@ -13,7 +28,7 @@ const getMutationMetaDetailsFromFormData = (
   attributeOrRelationshipToEdit: any
 ) => {
   const cleanedData = Object.entries(data).reduce((acc, [key, value]: [string, any]) => {
-    if (!value || isNaN(value)) {
+    if (!isValueValid(value)) {
       return acc;
     }
 
