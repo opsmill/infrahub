@@ -12,15 +12,12 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from starlette.middleware.authentication import AuthenticationMiddleware
-from starlette.responses import PlainTextResponse
 from starlette_exporter import PrometheusMiddleware, handle_metrics
 
 import infrahub.config as config
 from infrahub import __version__
 from infrahub.api import router as api
 from infrahub.api.background import BackgroundRunner
-from infrahub.auth import BaseTokenAuth
 from infrahub.core.initialization import initialization
 from infrahub.database import InfrahubDatabase, InfrahubDatabaseMode, get_db
 from infrahub.exceptions import Error
@@ -143,12 +140,6 @@ async def api_exception_handler_base_infrahub_error(_: Request, exc: Error) -> J
     add_span_exception(exc)
     return JSONResponse(status_code=exc.HTTP_CODE, content=error)
 
-
-app.add_middleware(
-    AuthenticationMiddleware,
-    backend=BaseTokenAuth(),
-    on_error=lambda _, exc: PlainTextResponse(str(exc), status_code=401),
-)
 
 app.add_middleware(
     PrometheusMiddleware,
