@@ -1,6 +1,7 @@
 import pytest
 from graphql import graphql
 
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
@@ -55,6 +56,67 @@ async def test_create_check_unique(db: InfrahubDatabase, default_branch, car_per
         schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
         context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors
+    assert len(result.errors) == 1
+    assert "An object already exist" in result.errors[0].message
+
+
+async def test_create_check_unique_across_branch(db: InfrahubDatabase, default_branch, car_person_schema):
+    p1 = await Node.init(db=db, schema="TestPerson")
+    await p1.new(db=db, name="John", height=180)
+    await p1.save(db=db)
+
+    query = """
+    mutation {
+        TestPersonCreate(data: {name: { value: "John"}, height: {value: 182}}) {
+            ok
+            object {
+                id
+            }
+        }
+    }
+    """
+
+    branch1 = await create_branch(branch_name="branch1", db=db)
+
+    result = await graphql(
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=branch1),
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": branch1},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors
+    assert len(result.errors) == 1
+    assert "An object already exist" in result.errors[0].message
+
+
+async def test_create_check_unique_in_branch(db: InfrahubDatabase, default_branch, car_person_schema):
+    branch1 = await create_branch(branch_name="branch1", db=db)
+
+    p1 = await Node.init(db=db, schema="TestPerson", branch=branch1)
+    await p1.new(db=db, name="John", height=180)
+    await p1.save(db=db)
+
+    query = """
+    mutation {
+        TestPersonCreate(data: {name: { value: "John"}, height: {value: 182}}) {
+            ok
+            object {
+                id
+            }
+        }
+    }
+    """
+    result = await graphql(
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=branch1),
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": branch1},
         root_value=None,
         variable_values={},
     )
