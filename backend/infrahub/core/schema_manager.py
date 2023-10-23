@@ -416,7 +416,7 @@ class SchemaBranch:
         self, schema: Union[NodeSchema, GenericSchema], include_relationships: bool = False
     ) -> List[FilterSchema]:
         """Generate the FilterSchema for a given NodeSchema or GenericSchema object."""
-
+        # pylint: disable=too-many-branches
         filters = []
 
         filters.append(FilterSchema(name="ids", kind=FilterSchemaKind.LIST))
@@ -443,7 +443,7 @@ class SchemaBranch:
 
         # Define generic filters, mainly used to query all nodes associated with a given account
         if include_relationships:
-            filters.append(FilterSchema(name=f"any__value", kind=FilterSchemaKind.TEXT))
+            filters.append(FilterSchema(name="any__value", kind=FilterSchemaKind.TEXT))
             for flag_prop in FlagPropertyMixin._flag_properties:
                 filters.append(FilterSchema(name=f"any__{flag_prop}", kind=FilterSchemaKind.BOOLEAN))
             for node_prop in NodePropertyMixin._node_properties:
