@@ -16,7 +16,7 @@ class DatabaseType(str, Enum):
 
 INVOKE_SUDO = os.getenv("INVOKE_SUDO", None)
 INVOKE_PTY = os.getenv("INVOKE_PTY", None)
-INFRAHUB_DATABASE = os.getenv("INFRAHUB_DB_TYPE", DatabaseType.MEMGRAPH.value)
+INFRAHUB_DATABASE = os.getenv("INFRAHUB_DB_TYPE", DatabaseType.NEO4J.value)
 
 here = os.path.abspath(os.path.dirname(__file__))
 TOP_DIRECTORY_NAME = os.path.basename(os.path.abspath(os.path.join(here, "..")))
