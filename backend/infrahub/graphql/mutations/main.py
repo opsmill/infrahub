@@ -193,8 +193,7 @@ class InfrahubMutationMixin:
         return obj, cls(ok=ok)
 
     @classmethod
-    async def validate_constraints(
-        cls, db: InfrahubDatabase, node: Node, branch: Optional[str] = None) -> None:
+    async def validate_constraints(cls, db: InfrahubDatabase, node: Node, branch: Optional[str] = None) -> None:
         """Check if the new object is conform with the uniqueness constraints."""
         for unique_attr in cls._meta.schema.unique_attributes:
             attr = getattr(node, unique_attr.name)
