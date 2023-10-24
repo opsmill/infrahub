@@ -103,7 +103,7 @@ class InfrahubMutationMixin:
         try:
             obj = await node_class.init(db=db, schema=cls._meta.schema, branch=branch, at=at)
             await obj.new(db=db, **data)
-            await cls.validate_constraints(db=db, node=obj, branch=branch, at=at)
+            await cls.validate_constraints(db=db, node=obj, branch=branch)
 
             async with db.start_transaction() as db:
                 await obj.save(db=db)
@@ -194,8 +194,7 @@ class InfrahubMutationMixin:
 
     @classmethod
     async def validate_constraints(
-        cls, db: InfrahubDatabase, node: Node, branch: Optional[str] = None, at: Optional[str] = None
-    ) -> None:
+        cls, db: InfrahubDatabase, node: Node, branch: Optional[str] = None) -> None:
         """Check if the new object is conform with the uniqueness constraints."""
         for unique_attr in cls._meta.schema.unique_attributes:
             attr = getattr(node, unique_attr.name)
@@ -205,7 +204,6 @@ class InfrahubMutationMixin:
                 fields={},
                 db=db,
                 branch=branch,
-                at=at,
             )
             if nodes:
                 raise ValidationError(
