@@ -145,53 +145,6 @@ async def r1_update_01(data_diff_attribute):
 # ----------------------------------------------------------------------
 
 
-@pytest.mark.xfail(reason="Need to investigate, occasionally fails")
-async def test_diff_data_deprecated_endpoint_branch_time_from(
-    db: InfrahubDatabase, client, client_headers, car_person_data_generic_diff
-):
-    time20 = car_person_data_generic_diff["time20"]
-
-    c4 = car_person_data_generic_diff["c4"]
-    p2 = car_person_data_generic_diff["p2"]
-    r1 = car_person_data_generic_diff["r1"]
-
-    with client:
-        response = client.get(
-            f"/api/diff/data?branch=branch2&branch_only=true&time_from={time20.to_iso8601_string()}",
-            headers=client_headers,
-        )
-
-    assert response.status_code == 200
-    data = response.json()
-    assert data is not None
-    assert list(data.keys()) == ["branch2"]
-    assert len(data["branch2"]) == 3
-
-    branch2 = {node["id"]: node for node in data["branch2"]}
-
-    assert branch2[c4]["kind"] == "TestGazCar"
-    assert branch2[c4]["action"] == "removed"
-    assert branch2[c4]["summary"] == {"added": 0, "removed": 5, "updated": 0}
-    assert branch2[c4]["elements"]["owner"]["peer"]["previous"]["id"] == p2
-
-    assert branch2[p2]["display_label"] == "Jane"
-    assert branch2[p2]["kind"] == "TestPerson"
-    assert branch2[p2]["action"] == "updated"
-    assert branch2[p2]["summary"] == {"added": 0, "removed": 1, "updated": 0}
-    assert branch2[p2]["elements"]["cars"]["peers"][0]["peer"]["id"] == c4
-    assert branch2[p2]["elements"]["cars"]["peers"][0]["peer"]["kind"] == "GazCar"
-
-    assert branch2[r1]["kind"] == "CoreRepository"
-    assert branch2[r1]["action"] == "updated"
-    assert branch2[r1]["summary"] == {"added": 0, "removed": 0, "updated": 1}
-    assert branch2[r1]["elements"]["description"]["value"]["value"]["new"] == "dddddddddd"
-    assert branch2[r1]["elements"]["description"]["value"]["value"]["previous"] == "bbbbbbbbbbbbbbb"  # FIXME
-    assert (
-        branch2[r1]["elements"]["commit"]["value"]["changed_at"]
-        == car_person_data_generic_diff["time21"].to_iso8601_string()
-    )
-
-
 async def test_diff_artifact(db: InfrahubDatabase, client, client_headers, car_person_data_artifact_diff):
     with client:
         response = client.get(
