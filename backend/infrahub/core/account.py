@@ -14,7 +14,6 @@ if TYPE_CHECKING:
 
 
 class AccountTokenValidateQuery(Query):
-
     name: str = "account_token_validate"
 
     def __init__(self, token, *args, **kwargs):

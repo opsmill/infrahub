@@ -198,9 +198,7 @@ class StandardNode(BaseModel):
         ids: Optional[List[str]] = None,
         **kwargs,
     ) -> List[Self]:
-        query: Query = await StandardNodeGetListQuery.init(
-            db=db, node_class=cls, ids=ids, limit=limit, **kwargs
-        )
+        query: Query = await StandardNodeGetListQuery.init(db=db, node_class=cls, ids=ids, limit=limit, **kwargs)
         await query.execute(db=db)
 
         return [cls.from_db(result.get("n")) for result in query.get_results()]
