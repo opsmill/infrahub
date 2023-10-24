@@ -395,7 +395,7 @@ class Query(ABC):
         if self.type != QueryType.READ:
             raise ValueError(f"unknown value for {self.type}")
 
-        results = await db.execute_query(query=self.get_count_query(), params=self.params)
+        results = await db.execute_query(query=self.get_count_query(), params=self.params, name=f"{self.name}_count")
 
         if not results and self.raise_error_if_empty:
             raise QueryError(self.get_count_query(), self.params)
