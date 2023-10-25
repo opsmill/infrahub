@@ -435,7 +435,7 @@ class SchemaBranch:
             if not filter_kind:
                 continue
 
-            filter = FilterSchema(name=f"{attr.name}__{attr.name}__value", kind=filter_kind)
+            filter = FilterSchema(name=f"{attr.name}__value", kind=filter_kind)
 
             if attr.enum:
                 filter.enum = attr.enum
