@@ -179,3 +179,15 @@ export const getThreadTitle = (thread?: any, label?: string) => {
     </div>
   );
 };
+
+const badgeTypes: { [key: string]: BADGE_TYPES } = {
+  added: BADGE_TYPES.VALIDATE,
+  updated: BADGE_TYPES.WARNING,
+  removed: BADGE_TYPES.CANCEL,
+};
+
+export const getBadgeType = (action?: string) => {
+  if (!action) return null;
+
+  return badgeTypes[action];
+};

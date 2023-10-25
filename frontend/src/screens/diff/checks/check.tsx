@@ -15,6 +15,7 @@ import { schemaKindNameState } from "../../../state/atoms/schemaKindName.atom";
 import { classNames } from "../../../utils/common";
 import ErrorScreen from "../../error-screen/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
+import { Conflict } from "./conflict";
 
 type tCheckProps = {
   id: string;
@@ -62,15 +63,15 @@ const getCheckData = (check: any) => {
 
   switch (__typename) {
     case "CoreDataCheck": {
-      const { paths } = check;
+      const { conflicts } = check;
       return (
-        <div className="">
-          <span className="font-semibold">Paths:</span>
-          <ul className="list-disc list-inside ">
-            {paths?.value?.map((path: string) => (
-              <li key={path}>{path}</li>
+        <div>
+          <div>
+            {conflicts?.value?.map((conflict: any, index: number) => (
+              <Conflict key={index} {...conflict} />
             ))}
-          </ul>
+          </div>
+
           {/* <div className="mt-2 flex flex-1">
             <Button className="mr-2">Keep data from main</Button>
 
