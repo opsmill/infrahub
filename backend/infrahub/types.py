@@ -312,6 +312,4 @@ ATTRIBUTE_TYPES: Dict[str, Type[InfrahubDataType]] = {
 def get_attribute_type(kind: str = "Default") -> Type[InfrahubDataType]:
     """Return an InfrahubDataType object for a given kind
     If no kind is provided, return the default one."""
-    if kind in ATTRIBUTE_TYPES:
-        return ATTRIBUTE_TYPES[kind]
-    return Default
+    return ATTRIBUTE_TYPES.get(kind, Default)

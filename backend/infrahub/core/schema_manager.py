@@ -55,6 +55,15 @@ SUPPORTED_SCHEMA_NODE_TYPE = [
 ]
 SUPPORTED_SCHEMA_EXTENSION_TYPE = ["NodeExtensionSchema"]
 
+KIND_FILTER_MAP = {
+    "Text": FilterSchemaKind.TEXT,
+    "String": FilterSchemaKind.TEXT,
+    "Number": FilterSchemaKind.NUMBER,
+    "Integer": FilterSchemaKind.NUMBER,
+    "Boolean": FilterSchemaKind.BOOLEAN,
+    "Checkbox": FilterSchemaKind.BOOLEAN,
+}
+
 
 class SchemaDiff(BaseModel):
     added: List[str] = Field(default_factory=list)
@@ -422,14 +431,11 @@ class SchemaBranch:
         filters.append(FilterSchema(name="ids", kind=FilterSchemaKind.LIST))
 
         for attr in schema.attributes:
-            if attr.kind in ["Text", "String"]:
-                filter = FilterSchema(name=f"{attr.name}__value", kind=FilterSchemaKind.TEXT)
-            elif attr.kind in ["Number", "Integer"]:
-                filter = FilterSchema(name=f"{attr.name}__value", kind=FilterSchemaKind.NUMBER)
-            elif attr.kind in ["Boolean", "Checkbox"]:
-                filter = FilterSchema(name=f"{attr.name}__value", kind=FilterSchemaKind.BOOLEAN)
-            else:
+            filter_kind = KIND_FILTER_MAP.get(attr.kind, None)
+            if not filter_kind:
                 continue
+
+            filter = FilterSchema(name=f"{attr.name}__{attr.name}__value", kind=filter_kind)
 
             if attr.enum:
                 filter.enum = attr.enum
@@ -459,14 +465,11 @@ class SchemaBranch:
             peer_schema = self.get(name=rel.peer)
 
             for attr in peer_schema.attributes:
-                if attr.kind in ["Text", "String"]:
-                    filter = FilterSchema(name=f"{rel.name}__{attr.name}__value", kind=FilterSchemaKind.TEXT)
-                elif attr.kind in ["Number", "Integer"]:
-                    filter = FilterSchema(name=f"{rel.name}__{attr.name}__value", kind=FilterSchemaKind.NUMBER)
-                elif attr.kind in ["Boolean", "Checkbox"]:
-                    filter = FilterSchema(name=f"{rel.name}__{attr.name}__value", kind=FilterSchemaKind.BOOLEAN)
-                else:
+                filter_kind = KIND_FILTER_MAP.get(attr.kind, None)
+                if not filter_kind:
                     continue
+
+                filter = FilterSchema(name=f"{rel.name}__{attr.name}__value", kind=filter_kind)
 
                 if attr.enum:
                     filter.enum = attr.enum

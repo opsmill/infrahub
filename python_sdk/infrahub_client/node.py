@@ -864,11 +864,11 @@ class InfrahubNode(InfrahubNodeBase):
 
                 # Add the attribute and the relationship already part of the parent to the exclude list for the children
                 exclude_parent = self._attributes + self._relationships
-                _, _, in_list2 = compare_lists(list1=include or [], list2=exclude_parent)
+                _, _, only_in_list2 = compare_lists(list1=include or [], list2=exclude_parent)
+
+                exclude_child = only_in_list2
                 if exclude:
-                    exclude_child = exclude + in_list2
-                else:
-                    exclude_child = in_list2
+                    exclude_child += exclude
 
                 child_data = child_node.generate_query_data_node(
                     include=include, exclude=exclude_child, inherited=False, insert_alias=True
