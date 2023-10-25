@@ -1,12 +1,18 @@
 from __future__ import annotations
 
 import importlib
-from typing import Dict, Type
+import typing
+from typing import TYPE_CHECKING, Dict, Type
 
 import graphene
 from graphene.types.generic import GenericScalar
 
 from infrahub.core import registry
+
+if TYPE_CHECKING:
+    from infrahub.core.attribute import BaseAttribute
+    from infrahub.graphql.mutations.attribute import BaseAttributeInput
+    from infrahub.graphql.types.attribute import BaseAttribute as BaseAttributeType
 
 DEFAULT_MODULE_ATTRIBUTE = "infrahub.core.attribute"
 DEFAULT_MODULE_GRAPHQL_INPUT = "infrahub.graphql.mutations"
@@ -30,17 +36,17 @@ class InfrahubDataType:
         return self.label
 
     @classmethod
-    def get_infrahub_class(cls):
+    def get_infrahub_class(cls) -> Type[BaseAttribute]:
         module = importlib.import_module(DEFAULT_MODULE_ATTRIBUTE)
         return getattr(module, cls.infrahub)
 
     @classmethod
-    def get_graphql_input(cls):
+    def get_graphql_input(cls) -> Type[BaseAttributeInput]:
         module = importlib.import_module(DEFAULT_MODULE_GRAPHQL_INPUT)
         return getattr(module, cls.graphql_input)
 
     @classmethod
-    def get_graphql_type(cls):
+    def get_graphql_type(cls) -> Type[BaseAttributeType]:
         module = importlib.import_module(DEFAULT_MODULE_GRAPHQL_QUERY)
         return getattr(module, cls.graphql_query)
 
@@ -48,6 +54,32 @@ class InfrahubDataType:
     def get_graphql_type_name(cls):
         module = importlib.import_module(DEFAULT_MODULE_GRAPHQL_QUERY)
         return getattr(module, cls.graphql_query).__name__
+
+    @classmethod
+    def get_graphql_filters(cls, name: str, include_properties: bool = True) -> Dict[str, typing.Any]:
+        filters: Dict[str, typing.Any] = {}
+        attr_class = cls.get_infrahub_class()
+        filters[f"{name}__value"] = cls.graphql_filter()
+
+        if not include_properties:
+            return filters
+
+        for node_prop in attr_class._node_properties:
+            filters[f"{name}__{node_prop}__id"] = graphene.ID()
+
+        for flag_prop in attr_class._flag_properties:
+            filters[f"{name}__{flag_prop}"] = graphene.Boolean()
+
+        return filters
+
+
+class Default(InfrahubDataType):
+    label: str = "Default"
+    graphql = graphene.String
+    graphql_query = "BaseAttribute"
+    graphql_input = "BaseAttributeInput"
+    graphql_filter = graphene.String
+    infrahub = "BaseAttribute"
 
 
 class ID(InfrahubDataType):
@@ -275,3 +307,9 @@ ATTRIBUTE_TYPES: Dict[str, Type[InfrahubDataType]] = {
     "Integer": Integer,
     "Boolean": Boolean,
 }
+
+
+def get_attribute_type(kind: str = "Default") -> Type[InfrahubDataType]:
+    """Return an InfrahubDataType object for a given kind
+    If no kind is provided, return the default one."""
+    return ATTRIBUTE_TYPES.get(kind, Default)

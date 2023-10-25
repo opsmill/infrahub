@@ -288,7 +288,7 @@ class AttributeSchema(BaseSchemaModel):
     async def get_query_filter(
         self, db: InfrahubDatabase, *args, **kwargs  # pylint: disable=unused-argument
     ) -> Tuple[List[QueryElement], Dict[str, Any], List[str]]:
-        return self.get_class().get_query_filter(*args, **kwargs)
+        return await self.get_class().get_query_filter(*args, **kwargs)
 
 
 class RelationshipSchema(BaseSchemaModel):
@@ -321,7 +321,7 @@ class RelationshipSchema(BaseSchemaModel):
         filter_name: str,
         filter_value: Optional[Union[str, int, bool]] = None,
         name: Optional[str] = None,  # pylint: disable=unused-argument
-        branch: Branch = None,
+        branch: Optional[Branch] = None,
         include_match: bool = True,
         param_prefix: Optional[str] = None,
     ) -> Tuple[List[QueryElement], Dict[str, Any], List[str]]:
@@ -428,6 +428,7 @@ class BaseNodeSchema(BaseSchemaModel):
     display_labels: Optional[List[str]]
     attributes: List[AttributeSchema] = Field(default_factory=list)
     relationships: List[RelationshipSchema] = Field(default_factory=list)
+    filters: List[FilterSchema] = Field(default_factory=list)
 
     _exclude_from_hash: List[str] = ["attributes", "relationships"]
     _sort_by: List[str] = ["name"]
@@ -576,7 +577,6 @@ class NodeSchema(BaseNodeSchema):
     label: Optional[str]
     inherit_from: Optional[List[str]] = Field(default_factory=list)
     groups: Optional[List[str]] = Field(default_factory=list)
-    filters: List[FilterSchema] = Field(default_factory=list)
 
     @root_validator
     def unique_names(cls, values):

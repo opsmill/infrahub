@@ -20,6 +20,31 @@ def query_data_no_filter():
 
 
 @pytest.fixture
+def query_data_alias():
+    data = {
+        "device": {
+            "name": {"@alias": "new_name", "value": None},
+            "description": {"value": {"@alias": "myvalue"}},
+            "interfaces": {"@alias": "myinterfaces", "name": {"value": None}},
+        }
+    }
+
+    return data
+
+
+@pytest.fixture
+def query_data_fragment():
+    data = {
+        "device": {
+            "name": {"value": None},
+            "...on Builtin": {"description": {"value": None}, "interfaces": {"name": {"value": None}}},
+        }
+    }
+
+    return data
+
+
+@pytest.fixture
 def query_data_empty_filter():
     data = {
         "device": {
@@ -110,6 +135,52 @@ def test_render_query_block(query_data_no_filter):
         "      }",
         "    }",
         "  }",
+    ]
+
+    assert lines == expected_lines
+
+
+def test_render_query_block_alias(query_data_alias):
+    lines = render_query_block(data=query_data_alias)
+
+    expected_lines = [
+        "    device {",
+        "        new_name: name {",
+        "            value",
+        "        }",
+        "        description {",
+        "            myvalue: value",
+        "        }",
+        "        myinterfaces: interfaces {",
+        "            name {",
+        "                value",
+        "            }",
+        "        }",
+        "    }",
+    ]
+
+    assert lines == expected_lines
+
+
+def test_render_query_block_fragment(query_data_fragment):
+    lines = render_query_block(data=query_data_fragment)
+
+    expected_lines = [
+        "    device {",
+        "        name {",
+        "            value",
+        "        }",
+        "        ...on Builtin {",
+        "            description {",
+        "                value",
+        "            }",
+        "            interfaces {",
+        "                name {",
+        "                    value",
+        "                }",
+        "            }",
+        "        }",
+        "    }",
     ]
 
     assert lines == expected_lines

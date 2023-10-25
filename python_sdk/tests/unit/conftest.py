@@ -56,6 +56,7 @@ async def location_schema() -> NodeSchema:
 @pytest.fixture
 async def location_data01_no_pagination():
     data = {
+        "__typename": "BuiltinLocation",
         "id": "llllllll-llll-llll-llll-llllllllllll",
         "display_label": "dfw1",
         "name": {"is_protected": True, "is_visible": True, "owner": None, "source": None, "value": "DFW"},
@@ -89,6 +90,7 @@ async def location_data01_no_pagination():
 @pytest.fixture
 async def location_data02_no_pagination():
     data = {
+        "__typename": "BuiltinLocation",
         "id": "llllllll-llll-llll-llll-llllllllllll",
         "display_label": "dfw1",
         "name": {
@@ -143,6 +145,7 @@ async def location_data02_no_pagination():
 async def location_data01():
     data = {
         "node": {
+            "__typename": "BuiltinLocation",
             "id": "llllllll-llll-llll-llll-llllllllllll",
             "display_label": "dfw1",
             "name": {"is_protected": True, "is_visible": True, "owner": None, "source": None, "value": "DFW"},
@@ -189,6 +192,7 @@ async def location_data01():
 async def location_data02():
     data = {
         "node": {
+            "__typename": "BuiltinLocation",
             "id": "llllllll-llll-llll-llll-llllllllllll",
             "display_label": "dfw1",
             "name": {
@@ -276,6 +280,7 @@ async def tag_schema() -> NodeSchema:
 @pytest.fixture
 async def tag_blue_data_no_pagination():
     data = {
+        "__typename": "BuiltinTag",
         "id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
         "display_label": "blue",
         "name": {
@@ -293,6 +298,7 @@ async def tag_blue_data_no_pagination():
 @pytest.fixture
 async def tag_red_data_no_pagination():
     data = {
+        "__typename": "BuiltinTag",
         "id": "rrrrrrrr-rrrr-rrrr-rrrr-rrrrrrrrrrrr",
         "display_label": "red",
         "name": {
@@ -310,6 +316,7 @@ async def tag_red_data_no_pagination():
 @pytest.fixture
 async def tag_green_data_no_pagination():
     data = {
+        "__typename": "BuiltinTag",
         "id": "gggggggg-gggg-gggg-gggg-gggggggggggg",
         "display_label": "green",
         "name": {
@@ -328,6 +335,7 @@ async def tag_green_data_no_pagination():
 async def tag_blue_data():
     data = {
         "node": {
+            "__typename": "BuiltinTag",
             "id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
             "display_label": "blue",
             "name": {
@@ -351,6 +359,7 @@ async def tag_blue_data():
 async def tag_red_data():
     data = {
         "node": {
+            "__typename": "BuiltinTag",
             "id": "rrrrrrrr-rrrr-rrrr-rrrr-rrrrrrrrrrrr",
             "display_label": "red",
             "name": {
@@ -374,6 +383,7 @@ async def tag_red_data():
 async def tag_green_data():
     data = {
         "node": {
+            "__typename": "BuiltinTag",
             "id": "gggggggg-gggg-gggg-gggg-gggggggggggg",
             "display_label": "green",
             "name": {
@@ -493,6 +503,7 @@ async def mock_repositories_query_no_pagination(httpx_mock: HTTPXMock) -> HTTPXM
         "data": {
             "repository": [
                 {
+                    "__typename": "CoreRepository",
                     "id": "9486cfce-87db-479d-ad73-07d80ba96a0f",
                     "name": {"value": "infrahub-demo-edge"},
                     "location": {"value": "git@github.com:dgarros/infrahub-demo-edge.git"},
@@ -505,6 +516,7 @@ async def mock_repositories_query_no_pagination(httpx_mock: HTTPXMock) -> HTTPXM
         "data": {
             "repository": [
                 {
+                    "__typename": "CoreRepository",
                     "id": "9486cfce-87db-479d-ad73-07d80ba96a0f",
                     "name": {"value": "infrahub-demo-edge"},
                     "location": {"value": "git@github.com:dgarros/infrahub-demo-edge.git"},
@@ -527,12 +539,14 @@ async def mock_query_repository_all_01_no_pagination(
         "data": {
             "repository": [
                 {
+                    "__typename": "CoreRepository",
                     "id": "9486cfce-87db-479d-ad73-07d80ba96a0f",
                     "name": {"value": "infrahub-demo-edge"},
                     "location": {"value": "git@github.com:opsmill/infrahub-demo-edge.git"},
                     "commit": {"value": "aaaaaaaaaaaaaaaaaaaa"},
                 },
                 {
+                    "__typename": "CoreRepository",
                     "id": "bfae43e8-5ebb-456c-a946-bf64e930710a",
                     "name": {"value": "infrahub-demo-core"},
                     "location": {"value": "git@github.com:opsmill/infrahub-demo-core.git"},
@@ -555,6 +569,7 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                 "edges": [
                     {
                         "node": {
+                            "__typename": "CoreRepository",
                             "id": "9486cfce-87db-479d-ad73-07d80ba96a0f",
                             "name": {"value": "infrahub-demo-edge"},
                             "location": {"value": "git@github.com:dgarros/infrahub-demo-edge.git"},
@@ -572,6 +587,7 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                 "edges": [
                     {
                         "node": {
+                            "__typename": "CoreRepository",
                             "id": "9486cfce-87db-479d-ad73-07d80ba96a0f",
                             "name": {"value": "infrahub-demo-edge"},
                             "location": {"value": "git@github.com:dgarros/infrahub-demo-edge.git"},
@@ -599,6 +615,7 @@ async def mock_query_repository_page1_1(
                 "edges": [
                     {
                         "node": {
+                            "__typename": "CoreRepository",
                             "id": "9486cfce-87db-479d-ad73-07d80ba96a0f",
                             "name": {"value": "infrahub-demo-edge"},
                             "location": {"value": "git@github.com:opsmill/infrahub-demo-edge.git"},
@@ -607,6 +624,7 @@ async def mock_query_repository_page1_1(
                     },
                     {
                         "node": {
+                            "__typename": "CoreRepository",
                             "id": "bfae43e8-5ebb-456c-a946-bf64e930710a",
                             "name": {"value": "infrahub-demo-core"},
                             "location": {"value": "git@github.com:opsmill/infrahub-demo-core.git"},
@@ -621,6 +639,36 @@ async def mock_query_repository_page1_1(
     httpx_mock.add_response(
         method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-corerepository-page1"}
     )
+    return httpx_mock
+
+
+@pytest.fixture
+async def mock_query_corenode_page1_1(httpx_mock: HTTPXMock, client: InfrahubClient, mock_schema_query_02) -> HTTPXMock:
+    response = {
+        "data": {
+            "CoreNode": {
+                "count": 2,
+                "edges": [
+                    {
+                        "node": {
+                            "__typename": "BuiltinTag",
+                            "id": "179068dd-210a-8278-7532-18f23abfdd04",
+                            "display_label": "RED",
+                        }
+                    },
+                    {
+                        "node": {
+                            "__typename": "BuiltinLocation",
+                            "id": "179068dd-21e7-f5e0-7531-18f2477f33dc",
+                            "display_label": "MyLocation",
+                        }
+                    },
+                ],
+            }
+        }
+    }
+
+    httpx_mock.add_response(method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-corenode-page1"})
     return httpx_mock
 
 
@@ -647,6 +695,7 @@ async def mock_query_repository_page1_2(
                 "edges": [
                     {
                         "node": {
+                            "__typename": "CoreRepository",
                             "id": "9486cfce-87db-479d-ad73-07d80ba96a0f",
                             "name": {"value": "infrahub-demo-edge"},
                             "location": {"value": "git@github.com:opsmill/infrahub-demo-edge.git"},
@@ -655,6 +704,7 @@ async def mock_query_repository_page1_2(
                     },
                     {
                         "node": {
+                            "__typename": "CoreRepository",
                             "id": "bfae43e8-5ebb-456c-a946-bf64e930710a",
                             "name": {"value": "infrahub-demo-core"},
                             "location": {"value": "git@github.com:opsmill/infrahub-demo-core.git"},
@@ -663,6 +713,7 @@ async def mock_query_repository_page1_2(
                     },
                     {
                         "node": {
+                            "__typename": "CoreRepository",
                             "id": "cccccccc-5ebb-456c-a946-bf64e930710a",
                             "name": {"value": "infrahub-demo-core"},
                             "location": {"value": "git@github.com:opsmill/infrahub-demo-core.git"},
@@ -691,6 +742,7 @@ async def mock_query_repository_page2_2(
                 "edges": [
                     {
                         "node": {
+                            "__typename": "CoreRepository",
                             "id": "dddddddd-87db-479d-ad73-07d80ba96a0f",
                             "name": {"value": "infrahub-demo-edge"},
                             "location": {"value": "git@github.com:opsmill/infrahub-demo-edge.git"},
@@ -699,6 +751,7 @@ async def mock_query_repository_page2_2(
                     },
                     {
                         "node": {
+                            "__typename": "CoreRepository",
                             "id": "eeeeeeee-5ebb-456c-a946-bf64e930710a",
                             "name": {"value": "infrahub-demo-core"},
                             "location": {"value": "git@github.com:opsmill/infrahub-demo-core.git"},
@@ -719,6 +772,14 @@ async def mock_query_repository_page2_2(
 @pytest.fixture
 async def mock_schema_query_01(httpx_mock: HTTPXMock) -> HTTPXMock:
     response_text = Path(os.path.join(get_fixtures_dir(), "schema_01.json")).read_text(encoding="UTF-8")
+
+    httpx_mock.add_response(method="GET", url="http://mock/api/schema/?branch=main", json=ujson.loads(response_text))
+    return httpx_mock
+
+
+@pytest.fixture
+async def mock_schema_query_02(httpx_mock: HTTPXMock) -> HTTPXMock:
+    response_text = Path(os.path.join(get_fixtures_dir(), "schema_02.json")).read_text(encoding="UTF-8")
 
     httpx_mock.add_response(method="GET", url="http://mock/api/schema/?branch=main", json=ujson.loads(response_text))
     return httpx_mock

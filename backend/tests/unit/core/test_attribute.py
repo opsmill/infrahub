@@ -188,8 +188,10 @@ async def test_node_property_getter(db: InfrahubDatabase, default_branch: Branch
     assert attr.owner_id == "yetotheruuid"
 
 
-async def test_string_attr_query_filter(db: InfrahubDatabase, default_branch: Branch):
-    filters, params, matchs = String.get_query_filter(name="description", filter_name="value", filter_value="test")
+async def test_get_query_filter_string_value(db: InfrahubDatabase, default_branch: Branch):
+    filters, params, matchs = await String.get_query_filter(
+        name="description", filter_name="value", filter_value="test"
+    )
     expected_response = [
         "(n)",
         "[:HAS_ATTRIBUTE]",
@@ -201,7 +203,7 @@ async def test_string_attr_query_filter(db: InfrahubDatabase, default_branch: Br
     assert params == {"attr_description_name": "description", "attr_description_value": "test"}
     assert matchs == []
 
-    filters, params, matchs = String.get_query_filter(
+    filters, params, matchs = await String.get_query_filter(
         name="description", filter_name="value", filter_value="test", include_match=False
     )
     expected_response = [
@@ -212,6 +214,50 @@ async def test_string_attr_query_filter(db: InfrahubDatabase, default_branch: Br
     ]
     assert [str(item) for item in filters] == expected_response
     assert params == {"attr_description_name": "description", "attr_description_value": "test"}
+    assert matchs == []
+
+
+async def test_get_query_filter_any(db: InfrahubDatabase, default_branch: Branch):
+    filters, params, matchs = await String.get_query_filter(name="any", filter_name="value", filter_value="test")
+    expected_response = [
+        "(n)",
+        "[:HAS_ATTRIBUTE]",
+        "(i:Attribute)",
+        "[:HAS_VALUE]",
+        "(av:AttributeValue { value: $attr_any_value })",
+    ]
+    assert [str(item) for item in filters] == expected_response
+    assert params == {"attr_any_value": "test"}
+    assert matchs == []
+
+
+async def test_get_query_filter_flag_property(db: InfrahubDatabase, default_branch: Branch):
+    filters, params, matchs = await String.get_query_filter(
+        name="descr", filter_name="is_protected", filter_value=False
+    )
+    expected_response = [
+        "(n)",
+        "[:HAS_ATTRIBUTE]",
+        "(i:Attribute { name: $attr_descr_name })",
+        "[:IS_PROTECTED]",
+        "(ap:Boolean { value: $attr_descr_is_protected })",
+    ]
+    assert [str(item) for item in filters] == expected_response
+    assert params == {"attr_descr_name": "descr", "attr_descr_is_protected": False}
+    assert matchs == []
+
+
+async def test_get_query_filter_any_node_property(db: InfrahubDatabase, default_branch: Branch):
+    filters, params, matchs = await String.get_query_filter(name="any", filter_name="source__id", filter_value="abcdef")
+    expected_response = [
+        "(n)",
+        "[:HAS_ATTRIBUTE]",
+        "(i:Attribute)",
+        "[:HAS_SOURCE]",
+        "(ap:CoreNode { uuid: $attr_any_source_id })",
+    ]
+    assert [str(item) for item in filters] == expected_response
+    assert params == {"attr_any_source_id": "abcdef"}
     assert matchs == []
 
 

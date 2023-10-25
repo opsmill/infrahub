@@ -570,44 +570,12 @@ class NodeGetListQuery(Query):
             return
 
         if self.filters:
-            # if Filters are provided
-            #  Go over all the fields, remove the first part of the query to identify the field
-            #  { "name__name": value }
+            filter_query, filter_params = await self.build_filters(
+                db=db, filters=self.filters, branch_filter=branch_filter
+            )
 
-            filter_cnt = 0
-            for field_name in self.schema.valid_input_names:
-                attr_filters = extract_field_filters(field_name=field_name, filters=self.filters)
-                if not attr_filters:
-                    continue
-
-                filter_cnt += 1
-
-                field = self.schema.get_field(field_name)
-
-                for field_attr_name, field_attr_value in attr_filters.items():
-                    subquery, subquery_params, subquery_result_name = await build_subquery_filter(
-                        db=db,
-                        field=field,
-                        name=field_name,
-                        filter_name=field_attr_name,
-                        filter_value=field_attr_value,
-                        branch_filter=branch_filter,
-                        branch=self.branch,
-                        subquery_idx=filter_cnt,
-                    )
-                    self.params.update(subquery_params)
-
-                    with_str = ", ".join(
-                        [
-                            f"{subquery_result_name} as {label}" if label == "n" else label
-                            for label in self.return_labels
-                        ]
-                    )
-
-                    self.add_to_query("CALL {")
-                    self.add_to_query(subquery)
-                    self.add_to_query("}")
-                    self.add_to_query(f"WITH {with_str}")
+            self.add_to_query(filter_query)
+            self.params.update(filter_params)
 
         if self.schema.order_by:
             order_cnt = 1
@@ -629,10 +597,6 @@ class NodeGetListQuery(Query):
                 self.order_by.append(subquery_result_name)
                 self.params.update(subquery_params)
 
-                with_str = ", ".join(
-                    [f"{subquery_result_name} as {label}" if label == "n" else label for label in self.return_labels]
-                )
-
                 self.add_to_query("CALL {")
                 self.add_to_query(subquery)
                 self.add_to_query("}")
@@ -643,6 +607,48 @@ class NodeGetListQuery(Query):
             self.order_by.append("n.uuid")
 
         self.return_labels = final_return_labels
+
+    async def build_filters(
+        self, db: InfrahubDatabase, filters: Dict[str, Any], branch_filter: str
+    ) -> Tuple[List[str], Dict[str, Any]]:
+        filter_query: List[str] = []
+        filter_params: Dict[str, Any] = {}
+        filter_cnt = 0
+
+        INTERNAL_FILTERS: List[str] = ["any", "attribute", "relationship"]
+
+        for field_name in self.schema.valid_input_names + INTERNAL_FILTERS:
+            attr_filters = extract_field_filters(field_name=field_name, filters=filters)
+            if not attr_filters:
+                continue
+
+            filter_cnt += 1
+
+            field = self.schema.get_field(field_name, raise_on_error=False)
+
+            for field_attr_name, field_attr_value in attr_filters.items():
+                subquery, subquery_params, subquery_result_name = await build_subquery_filter(
+                    db=db,
+                    field=field,
+                    name=field_name,
+                    filter_name=field_attr_name,
+                    filter_value=field_attr_value,
+                    branch_filter=branch_filter,
+                    branch=self.branch,
+                    subquery_idx=filter_cnt,
+                )
+                filter_params.update(subquery_params)
+
+                with_str = ", ".join(
+                    [f"{subquery_result_name} as {label}" if label == "n" else label for label in self.return_labels]
+                )
+
+                filter_query.append("CALL {")
+                filter_query.append(subquery)
+                filter_query.append("}")
+                filter_query.append(f"WITH {with_str}")
+
+        return filter_query, filter_params
 
     def get_node_ids(self) -> List[str]:
         return [str(result.get("n.uuid")) for result in self.get_results()]

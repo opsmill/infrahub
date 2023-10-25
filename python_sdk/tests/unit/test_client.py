@@ -146,6 +146,18 @@ async def test_method_all_single_page(
 
 
 @pytest.mark.parametrize("client_type", client_types)
+async def test_method_all_generic(clients, mock_query_corenode_page1_1, client_type):  # pylint: disable=unused-argument
+    if client_type == "standard":
+        nodes = await clients.standard.all(kind="CoreNode")
+    else:
+        nodes = clients.sync.all(kind="CoreNode")
+
+    assert len(nodes) == 2
+    assert nodes[0].typename == "BuiltinTag"
+    assert nodes[1].typename == "BuiltinLocation"
+
+
+@pytest.mark.parametrize("client_type", client_types)
 async def test_method_get_by_id(
     httpx_mock: HTTPXMock, clients, mock_schema_query_01, client_type
 ):  # pylint: disable=unused-argument
@@ -155,6 +167,7 @@ async def test_method_get_by_id(
                 "edges": [
                     {
                         "node": {
+                            "__typename": "CoreRepository",
                             "id": "bfae43e8-5ebb-456c-a946-bf64e930710a",
                             "name": {"value": "infrahub-demo-core"},
                             "location": {"value": "git@github.com:opsmill/infrahub-demo-core.git"},
@@ -199,6 +212,7 @@ async def test_method_get_by_default_filter(
                 "edges": [
                     {
                         "node": {
+                            "__typename": "CoreRepository",
                             "id": "bfae43e8-5ebb-456c-a946-bf64e930710a",
                             "name": {"value": "infrahub-demo-core"},
                             "location": {"value": "git@github.com:opsmill/infrahub-demo-core.git"},
@@ -243,6 +257,7 @@ async def test_method_get_by_name(
                 "edges": [
                     {
                         "node": {
+                            "__typename": "CoreRepository",
                             "id": "bfae43e8-5ebb-456c-a946-bf64e930710a",
                             "name": {"value": "infrahub-demo-core"},
                             "location": {"value": "git@github.com:opsmill/infrahub-demo-core.git"},

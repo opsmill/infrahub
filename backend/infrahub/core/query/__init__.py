@@ -266,12 +266,17 @@ class Query(ABC):
     async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         raise NotImplementedError
 
-    def add_to_query(self, query: str) -> None:
+    def add_to_query(self, query: Union[str, List[str]]) -> None:
         """Add a new section at the end of the query.
 
         A string with multiple lines will be broken down into multiple entries in self.query_lines
         Trailing and leading spaces per line will be removed."""
-        self.query_lines.extend([line.strip() for line in query.split("\n") if line.strip()])
+
+        if isinstance(query, list):
+            for item in query:
+                self.add_to_query(query=item)
+        else:
+            self.query_lines.extend([line.strip() for line in query.split("\n") if line.strip()])
 
     def get_query(
         self, var: bool = False, inline: bool = False, limit: Optional[int] = None, offset: Optional[int] = None

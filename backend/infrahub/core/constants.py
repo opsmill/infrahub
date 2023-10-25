@@ -7,6 +7,18 @@ GLOBAL_BRANCH_NAME = "-global-"
 
 RESERVED_BRANCH_NAMES = [GLOBAL_BRANCH_NAME]
 
+RESERVED_ATTR_REL_NAMES = [
+    "any",
+    "attribute",
+    "attributes",
+    "attr",
+    "attrs",
+    "relationship",
+    "relationships",
+    "rel",
+    "rels",
+]
+
 
 class PermissionLevel(enum.Flag):
     READ = 1

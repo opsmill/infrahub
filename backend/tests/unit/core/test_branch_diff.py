@@ -319,7 +319,7 @@ async def test_diff_get_nodes_entire_branch(db: InfrahubDatabase, default_branch
 
     expected_response_branch2_repo01_time01 = {
         "branch": "branch2",
-        "labels": ["CoreRepository", "LineageOwner", "LineageSource", "Node"],
+        "labels": ["CoreNode", "CoreRepository", "LineageOwner", "LineageSource", "Node"],
         "kind": "CoreRepository",
         "id": repo01b2.id,
         "action": "updated",
@@ -354,7 +354,7 @@ async def test_diff_get_nodes_entire_branch(db: InfrahubDatabase, default_branch
 
     expected_response_branch2_repo01_time02 = {
         "branch": "branch2",
-        "labels": ["CoreRepository", "LineageOwner", "LineageSource", "Node"],
+        "labels": ["CoreNode", "CoreRepository", "LineageOwner", "LineageSource", "Node"],
         "kind": "CoreRepository",
         "id": repo01b2.id,
         "action": "updated",
@@ -410,7 +410,7 @@ async def test_diff_get_nodes_multiple_changes(db: InfrahubDatabase, default_bra
 
     expected_response_branch2_repo01_time02 = {
         "branch": "branch2",
-        "labels": ["DataOwner", "DataSource", "Node", "Repository"],
+        "labels": ["DataOwner", "DataSource", "Node", "Repository", "CoreNode"],
         "kind": "Repository",
         "id": repo01b2.id,
         "action": "updated",
@@ -712,10 +712,10 @@ async def test_diff_relationship_one_conflict(db: InfrahubDatabase, default_bran
             "nodes": {
                 c1_main.id: {
                     "id": c1_main.id,
-                    "labels": ["CoreArtifactTarget", "Node", "TestCar", "TestElectricCar"],
+                    "labels": ["CoreArtifactTarget", "Node", "TestCar", "TestElectricCar", "CoreNode"],
                     "kind": "TestElectricCar",
                 },
-                p1_main.id: {"id": p1_main.id, "labels": ["Node", "TestPerson"], "kind": "TestPerson"},
+                p1_main.id: {"id": p1_main.id, "labels": ["Node", "TestPerson", "CoreNode"], "kind": "TestPerson"},
             },
             "properties": {
                 "IS_VISIBLE": {
@@ -743,10 +743,10 @@ async def test_diff_relationship_one_conflict(db: InfrahubDatabase, default_bran
             "nodes": {
                 c1_main.id: {
                     "id": c1_main.id,
-                    "labels": ["CoreArtifactTarget", "Node", "TestCar", "TestElectricCar"],
+                    "labels": ["CoreArtifactTarget", "Node", "TestCar", "TestElectricCar", "CoreNode"],
                     "kind": "TestElectricCar",
                 },
-                p2_main.id: {"id": p2_main.id, "labels": ["Node", "TestPerson"], "kind": "TestPerson"},
+                p2_main.id: {"id": p2_main.id, "labels": ["Node", "TestPerson", "CoreNode"], "kind": "TestPerson"},
             },
             "properties": {
                 "IS_VISIBLE": {
@@ -796,10 +796,10 @@ async def test_diff_relationship_one_conflict(db: InfrahubDatabase, default_bran
             "nodes": {
                 c1_main.id: {
                     "id": c1_main.id,
-                    "labels": ["CoreArtifactTarget", "Node", "TestCar", "TestElectricCar"],
+                    "labels": ["CoreArtifactTarget", "Node", "TestCar", "TestElectricCar", "CoreNode"],
                     "kind": "TestElectricCar",
                 },
-                p2_main.id: {"id": p2_main.id, "labels": ["Node", "TestPerson"], "kind": "TestPerson"},
+                p2_main.id: {"id": p2_main.id, "labels": ["Node", "TestPerson", "CoreNode"], "kind": "TestPerson"},
             },
             "properties": {
                 "IS_VISIBLE": {
@@ -862,8 +862,8 @@ async def test_diff_relationship_many(db: InfrahubDatabase, default_branch: Bran
         "name": "builtintag__coreorganization",
         "action": DiffAction.ADDED,
         "nodes": {
-            org1.id: {"id": org1.id, "labels": ["CoreOrganization", "Node"], "kind": "CoreOrganization"},
-            red.id: {"id": red.id, "labels": ["BuiltinTag", "Node"], "kind": "BuiltinTag"},
+            org1.id: {"id": org1.id, "labels": ["CoreOrganization", "Node", "CoreNode"], "kind": "CoreOrganization"},
+            red.id: {"id": red.id, "labels": ["BuiltinTag", "Node", "CoreNode"], "kind": "BuiltinTag"},
         },
         "properties": {
             "IS_VISIBLE": {
@@ -902,8 +902,8 @@ async def test_diff_relationship_many(db: InfrahubDatabase, default_branch: Bran
         "name": "builtintag__coreorganization",
         "action": DiffAction.ADDED,
         "nodes": {
-            org1.id: {"id": org1.id, "labels": ["CoreOrganization", "Node"], "kind": "CoreOrganization"},
-            yellow.id: {"id": yellow.id, "labels": ["BuiltinTag", "Node"], "kind": "BuiltinTag"},
+            org1.id: {"id": org1.id, "labels": ["CoreOrganization", "Node", "CoreNode"], "kind": "CoreOrganization"},
+            yellow.id: {"id": yellow.id, "labels": ["BuiltinTag", "Node", "CoreNode"], "kind": "BuiltinTag"},
         },
         "properties": {
             "IS_VISIBLE": {

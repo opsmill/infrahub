@@ -40,7 +40,8 @@ def render_variables_to_string(data: Dict[str, type[Union[str, int, float, bool]
 
 def render_query_block(data: dict, offset: int = 4, indentation: int = 4) -> List[str]:
     FILTERS_KEY = "@filters"
-    KEYWORDS_TO_SKIP = [FILTERS_KEY]
+    ALIAS_KEY = "@alias"
+    KEYWORDS_TO_SKIP = [FILTERS_KEY, ALIAS_KEY]
 
     offset_str = " " * offset
     lines = []
@@ -49,14 +50,21 @@ def render_query_block(data: dict, offset: int = 4, indentation: int = 4) -> Lis
             continue
         if value is None:
             lines.append(f"{offset_str}{key}")
+        elif isinstance(value, dict) and len(value) == 1 and ALIAS_KEY in value and value[ALIAS_KEY]:
+            lines.append(f"{offset_str}{value[ALIAS_KEY]}: {key}")
         elif isinstance(value, dict):
-            if "@filters" in value and value["@filters"]:
-                filters_str = ", ".join(
-                    [f"{key}: {convert_to_graphql_as_string(value)}" for key, value in value[FILTERS_KEY].items()]
-                )
-                lines.append(f"{offset_str}{key}({filters_str}) " + "{")
+            if ALIAS_KEY in value and value[ALIAS_KEY]:
+                key_str = f"{value[ALIAS_KEY]}: {key}"
             else:
-                lines.append(f"{offset_str}{key} " + "{")
+                key_str = key
+
+            if FILTERS_KEY in value and value[FILTERS_KEY]:
+                filters_str = ", ".join(
+                    [f"{key2}: {convert_to_graphql_as_string(value2)}" for key2, value2 in value[FILTERS_KEY].items()]
+                )
+                lines.append(f"{offset_str}{key_str}({filters_str}) " + "{")
+            else:
+                lines.append(f"{offset_str}{key_str} " + "{")
 
             lines.extend(render_query_block(data=value, offset=offset + indentation, indentation=indentation))
             lines.append(offset_str + "}")
