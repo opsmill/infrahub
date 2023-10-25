@@ -29,12 +29,12 @@ export const getCheckDetails = Handlebars.compile(`
           value
         }
         ... on CoreDataCheck {
-          paths {
+          conflicts {
             value
           }
         }
         ... on CoreSchemaCheck {
-          paths {
+          conflicts {
             value
           }
         }

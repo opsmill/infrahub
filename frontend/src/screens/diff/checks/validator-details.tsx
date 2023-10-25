@@ -101,7 +101,7 @@ export const ValidatorDetails = () => {
       </div>
 
       <div className="flex-1">
-        <div className="grid grid-cols-2 3xl:grid-cols-3 gap-4 p-4">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 p-4">
           {validator?.checks?.edges?.map((check: any, index: number) => (
             <Check key={index} id={check?.node?.id} />
           ))}
