@@ -140,11 +140,6 @@ async def r1_update_01(data_diff_attribute):
     return expected_response
 
 
-# ----------------------------------------------------------------------
-# Deprecated API
-# ----------------------------------------------------------------------
-
-
 async def test_diff_artifact(db: InfrahubDatabase, client, client_headers, car_person_data_artifact_diff):
     with client:
         response = client.get(
