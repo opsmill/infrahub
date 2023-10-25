@@ -27,6 +27,7 @@ if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
     from infrahub.auth import AccountSession
+    from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 
 # pylint: disable=unused-argument
@@ -91,8 +92,8 @@ class InfrahubMutationMixin:
         root: dict,
         info: GraphQLResolveInfo,
         data: InputObjectType,
-        branch: Optional[str] = None,
-        at: Optional[str] = None,
+        branch: Branch,
+        at: str,
     ):
         db: InfrahubDatabase = info.context.get("infrahub_database")
 
@@ -122,8 +123,8 @@ class InfrahubMutationMixin:
         root: dict,
         info: GraphQLResolveInfo,
         data: InputObjectType,
-        branch: Optional[str] = None,
-        at: Optional[str] = None,
+        branch: Branch,
+        at: str,
         database: Optional[InfrahubDatabase] = None,
         node: Optional[Node] = None,
     ):
@@ -185,8 +186,8 @@ class InfrahubMutationMixin:
         root,
         info: GraphQLResolveInfo,
         data: InputObjectType,
-        branch: Optional[str] = None,
-        at: Optional[str] = None,
+        branch: Branch,
+        at: str,
     ):
         db: InfrahubDatabase = info.context.get("infrahub_database")
 

@@ -76,8 +76,8 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         root: dict,
         info: GraphQLResolveInfo,
         data: InputObjectType,
-        branch: Optional[str] = None,
-        at: Optional[str] = None,
+        branch: Branch,
+        at: str,
         database: Optional[InfrahubDatabase] = None,
         node: Optional[Node] = None,
     ):
