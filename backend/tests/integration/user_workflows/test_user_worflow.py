@@ -337,61 +337,77 @@ class TestUserWorkflow01:
         assert response.json() is not None
         result = response.json()
 
-        expected_result_branch1 = {'action': {'branch1': 'updated'},
-            'display_label': {'branch1': 'Loopback0'},
-            'elements': {'description': {'change': {'action': 'updated',
-                                                    'branches': ['branch1'],
-                                                    'id': '17915618-03d7-7f70-4356-1851b7247682',
-                                                    'properties': {},
-                                                    'summary': {'added': 0,
-                                                                'removed': 0,
-                                                                'updated': 1},
-                                                    'type': 'Attribute',
-                                                    'value': {'changes': [{'action': 'updated',
-                                                                           'branch': 'branch1',
-                                                                           'changed_at': '2023-10-25T11:26:48.387801Z',
-                                                                           'type': 'HAS_VALUE',
-                                                                           'value': {'new': 'New '
-                                                                                            'description '
-                                                                                            'in '
-                                                                                            'branch1',
-                                                                                     'previous': 'NULL'}}],
-                                                              'path': 'data/17915618-03d5-2db0-4358-185140cb1203/description/value'}},
-                                         'name': 'description',
-                                         'path': 'data/17915618-03d5-2db0-4358-185140cb1203/description',
-                                         'type': 'Attribute'}},
-            'id': '17915618-03d5-2db0-4358-185140cb1203',
-            'kind': 'InfraInterfaceL3',
-            'path': 'data/17915618-03d5-2db0-4358-185140cb1203',
-            'summary': {'added': 0, 'removed': 0, 'updated': 1}}
+        expected_result_branch1 = {
+            "action": {"branch1": "updated"},
+            "display_label": {"branch1": "Loopback0"},
+            "elements": {
+                "description": {
+                    "change": {
+                        "action": "updated",
+                        "branches": ["branch1"],
+                        "id": "17915618-03d7-7f70-4356-1851b7247682",
+                        "properties": {},
+                        "summary": {"added": 0, "removed": 0, "updated": 1},
+                        "type": "Attribute",
+                        "value": {
+                            "changes": [
+                                {
+                                    "action": "updated",
+                                    "branch": "branch1",
+                                    "changed_at": "2023-10-25T11:26:48.387801Z",
+                                    "type": "HAS_VALUE",
+                                    "value": {"new": "New " "description " "in " "branch1", "previous": "NULL"},
+                                }
+                            ],
+                            "path": "data/17915618-03d5-2db0-4358-185140cb1203/description/value",
+                        },
+                    },
+                    "name": "description",
+                    "path": "data/17915618-03d5-2db0-4358-185140cb1203/description",
+                    "type": "Attribute",
+                }
+            },
+            "id": "17915618-03d5-2db0-4358-185140cb1203",
+            "kind": "InfraInterfaceL3",
+            "path": "data/17915618-03d5-2db0-4358-185140cb1203",
+            "summary": {"added": 0, "removed": 0, "updated": 1},
+        }
 
-        expected_result_main = {'action': {'main': 'updated'},
-            'display_label': {'main': 'Ethernet1'},
-            'elements': {'description': {'change': {'action': 'updated',
-                                                    'branches': ['main'],
-                                                    'id': '17915618-15e5-0ca0-435e-18516f4db7c8',
-                                                    'properties': {},
-                                                    'summary': {'added': 0,
-                                                                'removed': 0,
-                                                                'updated': 1},
-                                                    'type': 'Attribute',
-                                                    'value': {'changes': [{'action': 'updated',
-                                                                           'branch': 'main',
-                                                                           'changed_at': '2023-10-25T11:26:49.190014Z',
-                                                                           'type': 'HAS_VALUE',
-                                                                           'value': {'new': 'New '
-                                                                                            'description '
-                                                                                            'in '
-                                                                                            'main',
-                                                                                     'previous': 'NULL'}}],
-                                                              'path': 'data/17915618-15e2-e1f0-435b-18517dcffdf5/description/value'}},
-                                         'name': 'description',
-                                         'path': 'data/17915618-15e2-e1f0-435b-18517dcffdf5/description',
-                                         'type': 'Attribute'}},
-            'id': '17915618-15e2-e1f0-435b-18517dcffdf5',
-            'kind': 'InfraInterfaceL3',
-            'path': 'data/17915618-15e2-e1f0-435b-18517dcffdf5',
-            'summary': {'added': 0, 'removed': 0, 'updated': 1}}
+        expected_result_main = {
+            "action": {"main": "updated"},
+            "display_label": {"main": "Ethernet1"},
+            "elements": {
+                "description": {
+                    "change": {
+                        "action": "updated",
+                        "branches": ["main"],
+                        "id": "17915618-15e5-0ca0-435e-18516f4db7c8",
+                        "properties": {},
+                        "summary": {"added": 0, "removed": 0, "updated": 1},
+                        "type": "Attribute",
+                        "value": {
+                            "changes": [
+                                {
+                                    "action": "updated",
+                                    "branch": "main",
+                                    "changed_at": "2023-10-25T11:26:49.190014Z",
+                                    "type": "HAS_VALUE",
+                                    "value": {"new": "New " "description " "in " "main", "previous": "NULL"},
+                                }
+                            ],
+                            "path": "data/17915618-15e2-e1f0-435b-18517dcffdf5/description/value",
+                        },
+                    },
+                    "name": "description",
+                    "path": "data/17915618-15e2-e1f0-435b-18517dcffdf5/description",
+                    "type": "Attribute",
+                }
+            },
+            "id": "17915618-15e2-e1f0-435b-18517dcffdf5",
+            "kind": "InfraInterfaceL3",
+            "path": "data/17915618-15e2-e1f0-435b-18517dcffdf5",
+            "summary": {"added": 0, "removed": 0, "updated": 1},
+        }
 
         paths_to_exclude = [
             "root['id']",
