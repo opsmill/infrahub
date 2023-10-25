@@ -915,33 +915,6 @@ async def generate_diff_payload(  # pylint: disable=too-many-branches,too-many-s
 
 
 @router.get("/data")
-async def get_diff_data_deprecated(
-    db: InfrahubDatabase = Depends(get_db),
-    branch: Branch = Depends(get_branch_dep),
-    time_from: Optional[str] = None,
-    time_to: Optional[str] = None,
-    branch_only: bool = True,
-    _: str = Depends(get_current_user),
-) -> Dict[str, List[BranchDiffNode]]:
-    diff = await branch.diff(db=db, diff_from=time_from, diff_to=time_to, branch_only=branch_only)
-    schema = registry.schema.get_full(branch=branch)
-    return await generate_diff_payload(diff=diff, db=db, kinds_to_include=list(schema.keys()))
-
-
-@router.get("/schema")
-async def get_diff_schema_deprecated(
-    db: InfrahubDatabase = Depends(get_db),
-    branch: Branch = Depends(get_branch_dep),
-    time_from: Optional[str] = None,
-    time_to: Optional[str] = None,
-    branch_only: bool = True,
-    _: str = Depends(get_current_user),
-) -> Dict[str, List[BranchDiffNode]]:
-    diff = await branch.diff(db=db, diff_from=time_from, diff_to=time_to, branch_only=branch_only)
-    return await generate_diff_payload(diff=diff, db=db, kinds_to_include=INTERNAL_SCHEMA_NODE_KINDS)
-
-
-@router.get("/data-new")
 async def get_diff_data(
     db: InfrahubDatabase = Depends(get_db),
     branch: Branch = Depends(get_branch_dep),
@@ -956,7 +929,7 @@ async def get_diff_data(
     return await diff_payload.generate_diff_payload()
 
 
-@router.get("/schema-new")
+@router.get("/schema")
 async def get_diff_schema(
     db: InfrahubDatabase = Depends(get_db),
     branch: Branch = Depends(get_branch_dep),
