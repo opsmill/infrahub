@@ -35,11 +35,13 @@ const constructChecksDictionnary = (checks: any[]) => {
 
   // Construct with path as key and check as value
   const dictionnary = totalChecks?.reduce((acc: any, elem: any) => {
-    // For each path, get { path1: [check1, check2], path2: [check1], ... }
-    const paths = elem?.paths?.value?.reduce(
-      (acc2: any, path: any) => ({ ...acc2, [path]: [...(acc[path] || []), elem] }),
-      {}
-    );
+    // For each path, get { path1: [check1, check2], path2: [check3], ... }
+    const paths = elem?.conflicts?.value?.reduce((acc2: any, conflict: any) => {
+      return {
+        ...acc2,
+        [conflict.path]: [...(acc[conflict.path] || []), elem],
+      };
+    }, {});
 
     return {
       ...acc,
