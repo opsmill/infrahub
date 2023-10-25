@@ -134,6 +134,8 @@ jobs:
     needs: ["files-changed", "yaml-lint", "python-lint"]
     runs-on: "ubuntu-20.04"
     timeout-minutes: 30
+    env:
+      INFRAHUB_DB_TYPE: memgraph
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
@@ -243,6 +245,8 @@ jobs:
     needs: ["files-changed", "yaml-lint", "python-lint"]
     runs-on: "runner-ubuntu-4-16"
     timeout-minutes: 45
+    env:
+      INFRAHUB_DB_TYPE: memgraph
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
@@ -292,6 +296,8 @@ jobs:
     needs: ["files-changed", "yaml-lint", "python-lint"]
     runs-on: "runner-ubuntu-4-16"
     timeout-minutes: 30
+    env:
+      INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
@@ -300,9 +306,9 @@ jobs:
       - name: "Build Test Image"
         run: "invoke test.build"
       - name: "Pull External Docker Images"
-        run: "invoke test.pull --database=neo4j"
+        run: "invoke test.pull"
       - name: "Unit Tests"
-        run: "invoke backend.test-unit --database=neo4j"
+        run: "invoke backend.test-unit"
         env:
           BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_BACKEND_UNIT_NEO4J }}
 
