@@ -24,7 +24,6 @@ import {
 } from "../../config/constants";
 import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
-import { mergeBranch } from "../../graphql/mutations/branches/mergeBranch";
 import { createObject } from "../../graphql/mutations/objects/createObject";
 import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
@@ -35,7 +34,6 @@ import useQuery from "../../hooks/useQuery";
 import { branchesState } from "../../state/atoms/branches.atom";
 import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
-import { objectToString } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import { getProposedChangesStateBadgeType } from "../../utils/proposed-changes";
 import { stringifyWithoutQuotes } from "../../utils/string";
@@ -309,23 +307,6 @@ export const Conversations = (props: tConversations) => {
 
     try {
       setIsLoadingMerge(true);
-
-      const mergeData = {
-        name: proposedChangesDetails?.source_branch?.value,
-      };
-
-      const mergeMutationString = mergeBranch({ data: objectToString(mergeData) });
-
-      const mergeMutation = gql`
-        ${mergeMutationString}
-      `;
-
-      await graphqlClient.mutate({
-        mutation: mergeMutation,
-        context: {
-          date,
-        },
-      });
 
       const stateData = {
         state: {

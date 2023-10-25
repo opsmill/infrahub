@@ -22,7 +22,10 @@ async def create(message: messages.EventBranchCreate, service: InfrahubServices)
 async def merge(message: messages.EventBranchMerge, service: InfrahubServices) -> None:
     log.info("Branch merged", source_branch=message.source_branch, target_branch=message.target_branch)
 
-    events: List[InfrahubMessage] = [messages.TriggerArtifactDefinitionGenerate(branch=message.target_branch)]
+    events: List[InfrahubMessage] = [
+        messages.RefreshRegistryBranches(),
+        messages.TriggerArtifactDefinitionGenerate(branch=message.target_branch),
+    ]
 
     for event in events:
         event.assign_meta(parent=message)

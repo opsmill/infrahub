@@ -124,16 +124,21 @@ class InfrahubMutationMixin:
         data: InputObjectType,
         branch: Optional[str] = None,
         at: Optional[str] = None,
+        database: Optional[InfrahubDatabase] = None,
+        node: Optional[Node] = None,
     ):
-        db: InfrahubDatabase = info.context.get("infrahub_database")
+        db: InfrahubDatabase = database or info.context.get("infrahub_database")
         account_session: AccountSession = info.context.get("account_session", None)
 
-        if not (
-            obj := await NodeManager.get_one(
-                db=db, id=data.get("id"), branch=branch, at=at, include_owner=True, include_source=True
-            )
-        ):
-            raise NodeNotFound(branch, cls._meta.schema.kind, data.get("id"))
+        obj = node or await NodeManager.get_one_by_id_or_default_filter(
+            db=db,
+            schema_name=cls._meta.schema.kind,
+            id=data.get("id"),
+            branch=branch,
+            at=at,
+            include_owner=True,
+            include_source=True,
+        )
 
         try:
             await obj.from_graphql(db=db, data=data)
@@ -154,8 +159,11 @@ class InfrahubMutationMixin:
                 operation=cls.__name__, node_id=node_id, account_session=account_session, fields=fields
             )
 
-            async with db.start_transaction() as dbt:
-                await obj.save(db=dbt)
+            if db.is_transaction:
+                await obj.save(db=db)
+            else:
+                async with db.start_transaction() as dbt:
+                    await obj.save(db=dbt)
 
         except ValidationError as exc:
             raise ValueError(str(exc)) from exc
