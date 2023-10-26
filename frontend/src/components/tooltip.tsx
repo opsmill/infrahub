@@ -30,7 +30,7 @@ export const Tooltip = (props: TooltipProps) => {
         className={classNames(
           position ? getPositionClassName[position] : getPositionClassName[TooltipPosition.BOTTOM],
           `whitespace-pre absolute z-10
-          transition-all delay-1000 duration-300
+          transition-all delay-500 duration-100
           px-3 py-2 min-w-min
           text-sm font-medium text-white text-center
           bg-gray-600 rounded-lg shadow-sm opacity-0
