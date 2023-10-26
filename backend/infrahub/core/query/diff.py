@@ -181,11 +181,47 @@ class DiffRelationshipQuery(DiffQuery):
     name: str = "diff_relationship"
     type: QueryType = QueryType.READ
 
+    def __init__(
+        self,
+        namespaces_include: Optional[List[str]] = None,
+        namespaces_exclude: Optional[List[str]] = None,
+        kinds_include: Optional[List[str]] = None,
+        kinds_exclude: Optional[List[str]] = None,
+        branch_support: Optional[List[BranchSupportType]] = None,
+        *args,
+        **kwargs,
+    ):
+        self.namespaces_include = namespaces_include
+        self.namespaces_exclude = namespaces_exclude
+        self.kinds_include = kinds_include
+        self.kinds_exclude = kinds_exclude
+        self.branch_support = branch_support or [BranchSupportType.AWARE]
+
+        super().__init__(*args, **kwargs)
+
     async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
-        query = """
+        where_clause = ""
+        if self.namespaces_include:
+            where_clause += "(src.namespace IN $namespaces_include OR dst.namespace IN $namespaces_include) AND "
+            self.params["namespaces_include"] = self.namespaces_include
+
+        if self.namespaces_exclude:
+            where_clause += "NOT(src.namespace IN $namespaces_exclude OR dst.namespace IN $namespaces_exclude) AND "
+            self.params["namespaces_exclude"] = self.namespaces_exclude
+
+        if self.kinds_include:
+            where_clause += "(src.kind IN $kinds_include OR dst.kind IN $kinds_include) AND "
+            self.params["kinds_include"] = self.kinds_include
+
+        if self.kinds_exclude:
+            where_clause += "NOT(src.kind IN $kinds_exclude OR dst.kind IN $kinds_exclude) AND "
+            self.params["kinds_exclude"] = self.kinds_exclude
+
+        query = (
+            """
         CALL {
-            MATCH p = ((:Node)-[r1:IS_RELATED]->(rel:Relationship)<-[r2:IS_RELATED]-(:Node))
-            WHERE (rel.branch_support IN ["aware"] AND r1.branch = r2.branch AND
+            MATCH p = ((src:Node)-[r1:IS_RELATED]->(rel:Relationship)<-[r2:IS_RELATED]-(dst:Node))
+            WHERE (rel.branch_support IN $branch_support AND %s r1.branch = r2.branch AND
                 (r1.to = r2.to OR (r1.to is NULL AND r2.to is NULL)) AND r1.from = r2.from AND r1.status = r2.status
                 AND all(r IN relationships(p) WHERE (r.branch IN $branch_names AND r.from >= $diff_from AND r.from <= $diff_to
                     AND ((r.to >= $diff_from AND r.to <= $diff_to) OR r.to is NULL))
@@ -196,7 +232,7 @@ class DiffRelationshipQuery(DiffQuery):
         CALL {
             WITH rel, branch_name
             MATCH p = ((sn:Node)-[r1:IS_RELATED]->(rel:Relationship)<-[r2:IS_RELATED]-(dn:Node))
-            WHERE (rel.branch_support IN ["aware"] AND r1.branch = r2.branch AND
+            WHERE (rel.branch_support IN $branch_support AND r1.branch = r2.branch AND
                 (r1.to = r2.to OR (r1.to is NULL AND r2.to is NULL)) AND r1.from = r2.from AND r1.status = r2.status
                 AND all(r IN relationships(p) WHERE (r.branch = branch_name AND r.from >= $diff_from AND r.from <= $diff_to
                     AND ((r.to >= $diff_from AND r.to <= $diff_to) OR r.to is NULL))
@@ -208,11 +244,14 @@ class DiffRelationshipQuery(DiffQuery):
         }
         WITH rel1 as rel, sn1 as sn, dn1 as dn, r11 as r1, r21 as r2
         """
+            % where_clause
+        )
 
         self.add_to_query(query)
         self.params["branch_names"] = self.branch_names
         self.params["diff_from"] = self.diff_from.to_string()
         self.params["diff_to"] = self.diff_to.to_string()
+        self.params["branch_support"] = [item.value for item in self.branch_support]
 
         self.return_labels = ["sn", "dn", "rel", "r1", "r2"]
 

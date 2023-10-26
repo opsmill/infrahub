@@ -338,6 +338,41 @@ async def test_DiffRelationshipQuery(db: InfrahubDatabase, base_dataset_02):
     results = list(query.get_results())
     assert len(results) == 0
 
+    # FILTERS by KINDS
+    query = await DiffRelationshipQuery.init(
+        db=db,
+        branch=branch1,
+        diff_from=base_dataset_02["time_m60"],
+        diff_to=base_dataset_02["time0"],
+        kinds_exclude=["TestPerson"],
+    )
+    await query.execute(db=db)
+    results = list(query.get_results())
+    assert len(results) == 0
+
+    query = await DiffRelationshipQuery.init(
+        db=db,
+        branch=branch1,
+        diff_from=base_dataset_02["time_m60"],
+        diff_to=base_dataset_02["time0"],
+        kinds_include=["TestPerson"],
+    )
+    await query.execute(db=db)
+    results = list(query.get_results())
+    assert len(results) == 2
+
+    # FILTERS by NAMESPACE
+    query = await DiffRelationshipQuery.init(
+        db=db,
+        branch=branch1,
+        diff_from=base_dataset_02["time_m60"],
+        diff_to=base_dataset_02["time0"],
+        namespaces_include=["Test"],
+    )
+    await query.execute(db=db)
+    results = list(query.get_results())
+    assert len(results) == 2
+
 
 async def test_DiffRelationshipPropertyQuery(db: InfrahubDatabase, base_dataset_02):
     branch1 = await get_branch(branch="branch1", db=db)
