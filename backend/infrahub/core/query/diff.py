@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Union
+from typing import TYPE_CHECKING, List, Optional, Union
 
+from infrahub.core.constants import BranchSupportType
 from infrahub.core.query import Query, QueryResult, QueryType, sort_results_by_time
 from infrahub.core.timestamp import Timestamp
 
@@ -49,6 +50,24 @@ class DiffQuery(Query):
 class DiffNodeQuery(DiffQuery):
     name: str = "diff_node"
 
+    def __init__(
+        self,
+        namespaces_include: Optional[List[str]] = None,
+        namespaces_exclude: Optional[List[str]] = None,
+        kinds_include: Optional[List[str]] = None,
+        kinds_exclude: Optional[List[str]] = None,
+        branch_support: Optional[List[BranchSupportType]] = None,
+        *args,
+        **kwargs,
+    ):
+        self.namespaces_include = namespaces_include
+        self.namespaces_exclude = namespaces_exclude
+        self.kinds_include = kinds_include
+        self.kinds_exclude = kinds_exclude
+        self.branch_support = branch_support or [BranchSupportType.AWARE]
+
+        super().__init__(*args, **kwargs)
+
     async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         # TODO need to improve the query to capture an object that has been deleted into the branch
         # TODO probably also need to consider a node what was merged already
@@ -60,12 +79,33 @@ class DiffNodeQuery(DiffQuery):
         )
 
         self.params.update(br_params)
+        self.params["branch_support"] = [item.value for item in self.branch_support]
 
-        query = """
-        MATCH (root:Root)-[r:IS_PART_OF]-(n)
+        where_clause = ""
+        if self.namespaces_include:
+            where_clause += "n.namespace IN $namespaces_include AND "
+            self.params["namespaces_include"] = self.namespaces_include
+
+        if self.namespaces_exclude:
+            where_clause += "NOT(n.namespace IN $namespaces_exclude) AND "
+            self.params["namespaces_exclude"] = self.namespaces_exclude
+
+        if self.kinds_include:
+            where_clause += "n.kind IN $kinds_include AND "
+            self.params["kinds_include"] = self.kinds_include
+
+        if self.kinds_exclude:
+            where_clause += "NOT(n.kind IN $kinds_exclude) AND "
+            self.params["kinds_exclude"] = self.kinds_exclude
+
+        where_clause += "n.branch_support IN $branch_support AND %s" % "\n AND ".join(br_filter)
+
+        query = (
+            """
+        MATCH (root:Root)-[r:IS_PART_OF]-(n:Node)
         WHERE %s
-        """ % (
-            "\n AND ".join(br_filter),
+        """
+            % where_clause
         )
 
         self.add_to_query(query)
@@ -77,6 +117,24 @@ class DiffNodeQuery(DiffQuery):
 class DiffAttributeQuery(DiffQuery):
     name: str = "diff_attribute"
 
+    def __init__(
+        self,
+        namespaces_include: Optional[List[str]] = None,
+        namespaces_exclude: Optional[List[str]] = None,
+        kinds_include: Optional[List[str]] = None,
+        kinds_exclude: Optional[List[str]] = None,
+        branch_support: Optional[List[BranchSupportType]] = None,
+        *args,
+        **kwargs,
+    ):
+        self.namespaces_include = namespaces_include
+        self.namespaces_exclude = namespaces_exclude
+        self.kinds_include = kinds_include
+        self.kinds_exclude = kinds_exclude
+        self.branch_support = branch_support or [BranchSupportType.AWARE]
+
+        super().__init__(*args, **kwargs)
+
     async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         # TODO need to improve the query to capture an object that has been deleted into the branch
 
@@ -85,12 +143,33 @@ class DiffAttributeQuery(DiffQuery):
         )
 
         self.params.update(rels_params)
+        self.params["branch_support"] = [item.value for item in self.branch_support]
 
-        query = """
-        MATCH (n)-[r1:HAS_ATTRIBUTE]-(a:Attribute)-[r2:HAS_VALUE|IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER]->(ap)
-        WHERE a.branch_support IN ["aware"] AND %s
-        """ % (
-            "\n AND ".join(rels_filters),
+        where_clause = ""
+        if self.namespaces_include:
+            where_clause += "n.namespace IN $namespaces_include AND "
+            self.params["namespaces_include"] = self.namespaces_include
+
+        if self.namespaces_exclude:
+            where_clause += "NOT(n.namespace IN $namespaces_exclude) AND "
+            self.params["namespaces_exclude"] = self.namespaces_exclude
+
+        if self.kinds_include:
+            where_clause += "n.kind IN $kinds_include AND "
+            self.params["kinds_include"] = self.kinds_include
+
+        if self.kinds_exclude:
+            where_clause += "NOT(n.kind IN $kinds_exclude) AND "
+            self.params["kinds_exclude"] = self.kinds_exclude
+
+        where_clause += "a.branch_support IN $branch_support AND %s" % "\n AND ".join(rels_filters)
+
+        query = (
+            """
+        MATCH (n:Node)-[r1:HAS_ATTRIBUTE]-(a:Attribute)-[r2:HAS_VALUE|IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER]->(ap)
+        WHERE %s
+        """
+            % where_clause
         )
 
         self.add_to_query(query)

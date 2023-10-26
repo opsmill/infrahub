@@ -55,6 +55,68 @@ async def test_diff_node_query(db: InfrahubDatabase, default_branch, base_datase
 
     assert len(query.results) == 5
 
+    # Filter node by NAMESPACES
+    query = await DiffNodeQuery.init(
+        db=db,
+        branch=branch1,
+        diff_from=base_dataset_02["time_m60"],
+        diff_to=base_dataset_02["time0"],
+        namespaces_include=["NotPresent"],
+    )
+    await query.execute(db=db)
+    assert len(query.results) == 0
+
+    query = await DiffNodeQuery.init(
+        db=db,
+        branch=branch1,
+        diff_from=base_dataset_02["time_m60"],
+        diff_to=base_dataset_02["time0"],
+        namespaces_include=["Test", "Other"],
+    )
+    await query.execute(db=db)
+    assert len(query.results) == 6
+
+    query = await DiffNodeQuery.init(
+        db=db,
+        branch=branch1,
+        diff_from=base_dataset_02["time_m60"],
+        diff_to=base_dataset_02["time0"],
+        namespaces_exclude=["Other"],
+    )
+    await query.execute(db=db)
+    assert len(query.results) == 6
+
+    query = await DiffNodeQuery.init(
+        db=db,
+        branch=branch1,
+        diff_from=base_dataset_02["time_m60"],
+        diff_to=base_dataset_02["time0"],
+        namespaces_exclude=["Test"],
+    )
+    await query.execute(db=db)
+    assert len(query.results) == 0
+
+    # Filter node by KINDS
+    query = await DiffNodeQuery.init(
+        db=db,
+        branch=branch1,
+        diff_from=base_dataset_02["time_m60"],
+        diff_to=base_dataset_02["time0"],
+        kinds_include=["TestCar"],
+    )
+    await query.execute(db=db)
+    assert len(query.results) == 3
+
+    query = await DiffNodeQuery.init(
+        db=db,
+        branch=branch1,
+        diff_from=base_dataset_02["time_m60"],
+        diff_to=base_dataset_02["time0"],
+        kinds_exclude=["TestCar"],
+    )
+    await query.execute(db=db)
+    assert len(query.results) == 3
+
 
 async def test_diff_attribute_query(db: InfrahubDatabase, default_branch, base_dataset_02):
     branch1 = await get_branch(branch="branch1", db=db)
@@ -104,6 +166,50 @@ async def test_diff_attribute_query(db: InfrahubDatabase, default_branch, base_d
     assert sorted(results_per_node.keys()) == ["c3"]
 
     assert len(results_per_node["c3"]) == 12
+
+    # Filter node by NAMESPACE
+    query = await DiffAttributeQuery.init(
+        db=db,
+        branch=branch1,
+        diff_from=base_dataset_02["time_m60"],
+        diff_to=base_dataset_02["time0"],
+        namespaces_include=["Test"],
+    )
+    await query.execute(db=db)
+    results_per_node = group_results_per_node(query.results)
+    assert sorted(results_per_node.keys()) == ["c1", "c2", "c3"]
+
+    query = await DiffAttributeQuery.init(
+        db=db,
+        branch=branch1,
+        diff_from=base_dataset_02["time_m60"],
+        diff_to=base_dataset_02["time0"],
+        namespaces_exclude=["Test", "Other"],
+    )
+    await query.execute(db=db)
+    assert len(query.results) == 0
+
+    # Filter node by KINDS
+    query = await DiffAttributeQuery.init(
+        db=db,
+        branch=branch1,
+        diff_from=base_dataset_02["time_m60"],
+        diff_to=base_dataset_02["time0"],
+        kinds_include=["TestPerson"],
+    )
+    await query.execute(db=db)
+    assert len(query.results) == 0
+
+    query = await DiffAttributeQuery.init(
+        db=db,
+        branch=branch1,
+        diff_from=base_dataset_02["time_m60"],
+        diff_to=base_dataset_02["time0"],
+        kinds_exclude=["TestPerson"],
+    )
+    await query.execute(db=db)
+    results_per_node = group_results_per_node(query.results)
+    assert sorted(results_per_node.keys()) == ["c1", "c2", "c3"]
 
 
 async def test_diff_attribute_query_rebased_branch(db: InfrahubDatabase, default_branch, base_dataset_03):
