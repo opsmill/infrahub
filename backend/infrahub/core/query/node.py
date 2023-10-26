@@ -128,6 +128,7 @@ class NodeCreateAllQuery(NodeQuery):
         self.params["node_prop"] = {
             "uuid": str(uuid),
             "kind": self.node.get_kind(),
+            "namespace": self.node._schema.namespace,
             "branch_support": self.node._schema.branch,
         }
         self.params["node_branch_prop"] = {
