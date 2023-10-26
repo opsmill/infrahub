@@ -255,16 +255,12 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                 </dt>
                 <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 underline flex items-center">
                   <Link
-                    onClick={() =>
-                      navigate(
-                        constructPath(
-                          getObjectDetailsUrl(
-                            relationshipsData.node.id,
-                            relationshipsData.node.__typename
-                          )
-                        )
+                    to={constructPath(
+                      getObjectDetailsUrl(
+                        relationshipsData.node?.id,
+                        relationshipsData.node?.__typename
                       )
-                    }>
+                    )}>
                     {relationshipsData.node?.display_label}
                   </Link>
 
@@ -470,10 +466,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                       <dd
                         className="mt-1 text-sm text-gray-900 sm:mt-0 underline flex items-center"
                         key={node.id}>
-                        <Link
-                          onClick={() =>
-                            navigate(constructPath(getObjectDetailsUrl(node.id, node.__typename)))
-                          }>
+                        <Link to={constructPath(getObjectDetailsUrl(node.id, node.__typename))}>
                           {node.display_label}
                         </Link>
 

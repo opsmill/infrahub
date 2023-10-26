@@ -109,7 +109,7 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
 
     if (peerBranch) {
       return (
-        <div className="relative p-1 pr-0 flex flex-col lg:flex-row last:mr-0">
+        <div className="relative p-1 pr-0 flex flex-col lg:flex-row last:mr-0 group">
           <div className="flex flex-1 items-center">
             <div className="flex flex-1 items-center">
               {newPeer?.kind && <Badge>{newPeer?.kind}</Badge>}
