@@ -1,10 +1,15 @@
+import { ArrowTopRightOnSquareIcon } from "@heroicons/react/24/outline";
 import { Badge } from "../../../components/badge";
+import { Link } from "../../../components/link";
+import { Tooltip, TooltipPosition } from "../../../components/tooltip";
 import { classNames } from "../../../utils/common";
 import { diffContent, getBadgeType } from "../../../utils/diff";
+import { constructPath } from "../../../utils/fetch";
+import { getObjectDetailsUrl } from "../../../utils/objects";
 import { getNodeClassName } from "../data-diff-node";
 
 export const Conflict = (props: any) => {
-  const { changes, kind, name } = props;
+  const { changes, kind, name, node_id } = props;
 
   return (
     <div>
@@ -22,6 +27,8 @@ export const Conflict = (props: any) => {
             value: change,
           };
 
+          const url = constructPath(getObjectDetailsUrl(node_id, kind), [["branch", branch]]);
+
           return (
             <div
               key={index}
@@ -35,6 +42,14 @@ export const Conflict = (props: any) => {
 
               <div className="flex items-center justify-center">
                 {diffContent[action](property)}
+              </div>
+
+              <div className="ml-2">
+                <Tooltip message={"Open object in new tab"} position={TooltipPosition.RIGHT}>
+                  <Link to={url} target="_blank">
+                    <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+                  </Link>
+                </Tooltip>
               </div>
             </div>
           );

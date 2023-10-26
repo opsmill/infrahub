@@ -1,14 +1,17 @@
-import { MouseEventHandler } from "react";
+import { Link as RouterLink } from "react-router-dom";
 
 type LinkProps = {
-  onClick: MouseEventHandler;
-  children: any;
+  to: string;
+  children?: any;
+  target?: string;
 };
 
 export const Link = (props: LinkProps) => {
+  const { children, ...propsToPass } = props;
+
   return (
-    <div onClick={props.onClick} className="cursor-pointer underline">
-      {props.children}
-    </div>
+    <RouterLink {...propsToPass} className="cursor-pointer underline">
+      {children}
+    </RouterLink>
   );
 };
