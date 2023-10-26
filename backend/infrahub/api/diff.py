@@ -15,7 +15,11 @@ from infrahub.core.branch import Branch  # noqa: TCH001
 from infrahub.core.branch import Diff  # noqa: TCH001
 from infrahub.core.branch import NodeDiffElement  # noqa: TCH001
 from infrahub.core.branch import RelationshipDiffElement  # noqa: TCH001
-from infrahub.core.constants import DiffAction, RelationshipCardinality
+from infrahub.core.constants import (
+    BranchSupportType,
+    DiffAction,
+    RelationshipCardinality,
+)
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema_manager import INTERNAL_SCHEMA_NODE_KINDS
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
@@ -923,7 +927,7 @@ async def get_diff_data(
     branch_only: bool = True,
     _: str = Depends(get_current_user),
 ) -> BranchDiff:
-    diff = await branch.diff(db=db, diff_from=time_from, diff_to=time_to, branch_only=branch_only)
+    diff = await branch.diff(db=db, diff_from=time_from, diff_to=time_to, branch_only=branch_only, namespaces_exclude=["Schema"])
     schema = registry.schema.get_full(branch=branch)
     diff_payload = DiffPayload(db=db, diff=diff, kinds_to_include=list(schema.keys()))
     return await diff_payload.generate_diff_payload()
@@ -938,8 +942,10 @@ async def get_diff_schema(
     branch_only: bool = True,
     _: str = Depends(get_current_user),
 ) -> BranchDiff:
-    diff = await branch.diff(db=db, diff_from=time_from, diff_to=time_to, branch_only=branch_only)
-    diff_payload = DiffPayload(db=db, diff=diff, kinds_to_include=INTERNAL_SCHEMA_NODE_KINDS)
+    diff = await branch.diff(
+        db=db, diff_from=time_from, diff_to=time_to, branch_only=branch_only, kinds_include=INTERNAL_SCHEMA_NODE_KINDS
+    )
+    diff_payload = DiffPayload(db=db, diff=diff)
     return await diff_payload.generate_diff_payload()
 
 
@@ -988,7 +994,14 @@ async def get_diff_artifacts(
     response = {}
 
     # Query the Diff for all artifacts
-    diff = await branch.diff(db=db, diff_from=time_from, diff_to=time_to, branch_only=branch_only)
+    diff = await branch.diff(
+        db=db,
+        diff_from=time_from,
+        diff_to=time_to,
+        branch_only=branch_only,
+        kinds_include=["CoreArtifact"],
+        branch_support=[BranchSupportType.AWARE, BranchSupportType.LOCAL],
+    )
     payload = await generate_diff_payload(diff=diff, db=db, kinds_to_include=["CoreArtifact"])
 
     # Extract the ids of all the targets associated with these artifacts and query the display label for all of them

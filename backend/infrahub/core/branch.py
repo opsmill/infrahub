@@ -9,7 +9,12 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 from pydantic import BaseModel, Field, validator
 
 import infrahub.config as config
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, DiffAction, RelationshipStatus
+from infrahub.core.constants import (
+    GLOBAL_BRANCH_NAME,
+    BranchSupportType,
+    DiffAction,
+    RelationshipStatus,
+)
 from infrahub.core.manager import NodeManager
 from infrahub.core.models import SchemaBranchHash  # noqa: TCH001
 from infrahub.core.node.standard import StandardNode
@@ -546,8 +551,24 @@ class Branch(StandardNode):
         branch_only: bool = False,
         diff_from: Optional[Union[str, Timestamp]] = None,
         diff_to: Optional[Union[str, Timestamp]] = None,
+        namespaces_include: Optional[List[str]] = None,
+        namespaces_exclude: Optional[List[str]] = None,
+        kinds_include: Optional[List[str]] = None,
+        kinds_exclude: Optional[List[str]] = None,
+        branch_support: Optional[List[BranchSupportType]] = None,
     ) -> Diff:
-        return await Diff.init(branch=self, diff_from=diff_from, diff_to=diff_to, branch_only=branch_only, db=db)
+        return await Diff.init(
+            branch=self,
+            diff_from=diff_from,
+            diff_to=diff_to,
+            branch_only=branch_only,
+            namespaces_include=namespaces_include,
+            namespaces_exclude=namespaces_exclude,
+            kinds_include=kinds_include,
+            kinds_exclude=kinds_exclude,
+            branch_support=branch_support,
+            db=db,
+        )
 
     async def merge(self, db: InfrahubDatabase, rpc_client: InfrahubRpcClient, at: Union[str, Timestamp] = None):
         """Merge the current branch into main."""
@@ -909,6 +930,11 @@ class Diff:
         branch_only: bool = False,
         diff_from: Union[str, Timestamp] = None,
         diff_to: Union[str, Timestamp] = None,
+        namespaces_include: Optional[List[str]] = None,
+        namespaces_exclude: Optional[List[str]] = None,
+        kinds_include: Optional[List[str]] = None,
+        kinds_exclude: Optional[List[str]] = None,
+        branch_support: Optional[List[BranchSupportType]] = None,
     ):
         """_summary_
 
@@ -926,6 +952,12 @@ class Diff:
         self.branch = branch
         self.branch_only = branch_only
         self.origin_branch = origin_branch
+
+        self.namespaces_include = namespaces_include
+        self.namespaces_exclude = namespaces_exclude
+        self.kinds_include = kinds_include
+        self.kinds_exclude = kinds_exclude
+        self.branch_support = branch_support or [BranchSupportType.AWARE]
 
         if not diff_from and self.branch.is_default:
             raise ValueError(f"diff_from is mandatory when diffing on the default branch `{self.branch.name}`.")
@@ -959,11 +991,25 @@ class Diff:
         branch_only: bool = False,
         diff_from: Union[str, Timestamp] = None,
         diff_to: Union[str, Timestamp] = None,
+        namespaces_include: Optional[List[str]] = None,
+        namespaces_exclude: Optional[List[str]] = None,
+        kinds_include: Optional[List[str]] = None,
+        kinds_exclude: Optional[List[str]] = None,
+        branch_support: Optional[List[BranchSupportType]] = None,
     ):
         origin_branch = await branch.get_origin_branch(db=db)
 
         return cls(
-            branch=branch, origin_branch=origin_branch, branch_only=branch_only, diff_from=diff_from, diff_to=diff_to
+            branch=branch,
+            origin_branch=origin_branch,
+            branch_only=branch_only,
+            diff_from=diff_from,
+            diff_to=diff_to,
+            namespaces_include=namespaces_include,
+            namespaces_exclude=namespaces_exclude,
+            kinds_include=kinds_include,
+            kinds_exclude=kinds_exclude,
+            branch_support=branch_support,
         )
 
     async def has_conflict(
@@ -1241,7 +1287,15 @@ class Diff:
         # Process nodes that have been Added or Removed first
         # ------------------------------------------------------------
         query_nodes = await DiffNodeQuery.init(
-            db=db, branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to
+            db=db,
+            branch=self.branch,
+            diff_from=self.diff_from,
+            diff_to=self.diff_to,
+            namespaces_include=self.namespaces_include,
+            namespaces_exclude=self.namespaces_exclude,
+            kinds_include=self.kinds_include,
+            kinds_exclude=self.kinds_exclude,
+            branch_support=self.branch_support,
         )
         await query_nodes.execute(db=db)
 
@@ -1287,7 +1341,15 @@ class Diff:
         # ------------------------------------------------------------
         attrs_to_query = set()
         query_attrs = await DiffAttributeQuery.init(
-            db=db, branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to
+            db=db,
+            branch=self.branch,
+            diff_from=self.diff_from,
+            diff_to=self.diff_to,
+            namespaces_include=self.namespaces_include,
+            namespaces_exclude=self.namespaces_exclude,
+            kinds_include=self.kinds_include,
+            kinds_exclude=self.kinds_exclude,
+            branch_support=self.branch_support,
         )
         await query_attrs.execute(db=db)
 
@@ -1486,7 +1548,15 @@ class Diff:
         #   to identify the relationship that have been ADDED or DELETED
         # ------------------------------------------------------------
         query_rels = await DiffRelationshipQuery.init(
-            db=db, branch=self.branch, diff_from=self.diff_from, diff_to=self.diff_to
+            db=db,
+            branch=self.branch,
+            diff_from=self.diff_from,
+            diff_to=self.diff_to,
+            namespaces_include=self.namespaces_include,
+            namespaces_exclude=self.namespaces_exclude,
+            kinds_include=self.kinds_include,
+            kinds_exclude=self.kinds_exclude,
+            branch_support=self.branch_support,
         )
         await query_rels.execute(db=db)
 
