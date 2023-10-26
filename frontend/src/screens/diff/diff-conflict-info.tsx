@@ -45,8 +45,10 @@ export const DataDiffConflictInfo = (props: tDataDiffConflictInfo) => {
   const renderContent = () => {
     return (
       <div>
-        <div className="flex mb-2">
-          <Id id={id} />
+        <div className="flex items-center mb-2">
+          <div className="mr-2">
+            <Id id={id} />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-4">

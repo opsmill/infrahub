@@ -1,5 +1,6 @@
 import { gql } from "@apollo/client";
 import {
+  ArrowTopRightOnSquareIcon,
   CheckCircleIcon,
   ExclamationCircleIcon,
   ExclamationTriangleIcon,
@@ -8,7 +9,9 @@ import {
 import { useAtom } from "jotai";
 import { Badge } from "../../../components/badge";
 import { DateDisplay } from "../../../components/date-display";
+import { Link } from "../../../components/link";
 import { PopOver } from "../../../components/popover";
+import { Tooltip } from "../../../components/tooltip";
 import { getCheckDetails } from "../../../graphql/queries/diff/getCheckDetails";
 import useQuery from "../../../hooks/useQuery";
 import { schemaKindNameState } from "../../../state/atoms/schemaKindName.atom";
@@ -121,6 +124,10 @@ export const Check = (props: tCheckProps) => {
     </div>
   );
 
+  const url = "/";
+
+  const tooltipMessage = "Open validator in checks view";
+
   const renderContent = () => {
     return (
       <div>
@@ -169,10 +176,18 @@ export const Check = (props: tCheckProps) => {
       )}>
       <div className="flex mb-2">
         <div className="flex flex-1 flex-col mr-2">
-          <div className="flex">
+          <div className="flex items-center">
             {getCheckIcon(conclusion?.value)}
 
             {name?.value || display_label}
+
+            <div className="ml-2">
+              <Tooltip message={tooltipMessage}>
+                <Link to={url} target="_blank">
+                  <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+                </Link>
+              </Tooltip>
+            </div>
           </div>
 
           <div className="flex items-center justify-center min-h-[50px]">
