@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import enum
 from typing import List
 
+from infrahub.exceptions import ValidationError
 from infrahub.utils import InfrahubNumberEnum, InfrahubStringEnum
 
 GLOBAL_BRANCH_NAME = "-global-"
@@ -100,6 +103,21 @@ class ProposedChangeState(InfrahubStringEnum):
     MERGED = "merged"
     CLOSED = "closed"
     CANCELED = "canceled"
+
+    def validate_state_transition(self, updated_state: ProposedChangeState) -> None:
+        if self == ProposedChangeState.OPEN:
+            return
+        if self in [ProposedChangeState.CANCELED, ProposedChangeState.MERGED]:
+            raise ValidationError(
+                input_value=f"A proposed change is not allowed to transition from the {self.value} state"
+            )
+        if self == ProposedChangeState.CLOSED and updated_state not in [
+            ProposedChangeState.CANCELED,
+            ProposedChangeState.OPEN,
+        ]:
+            raise ValidationError(
+                input_value="A closed proposed change is only allowed to transition to the open state"
+            )
 
 
 class RelationshipCardinality(InfrahubStringEnum):
