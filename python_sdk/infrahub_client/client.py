@@ -10,7 +10,11 @@ from typing import Any, Dict, List, MutableMapping, Optional, Union
 import httpx
 
 from infrahub_client.batch import InfrahubBatch
-from infrahub_client.branch import BranchData, InfrahubBranchManager, InfrahubBranchManagerSync
+from infrahub_client.branch import (
+    BranchData,
+    InfrahubBranchManager,
+    InfrahubBranchManagerSync,
+)
 from infrahub_client.config import Config
 from infrahub_client.data import RepositoryData
 from infrahub_client.exceptions import (
