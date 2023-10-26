@@ -3,7 +3,6 @@ import { useState } from "react";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "./alert";
 import { BUTTON_TYPES, Button } from "./button";
-import Transition from "./transition";
 
 type tClipboard = {
   value: any;
@@ -30,11 +29,9 @@ export const Clipboard = (props: tClipboard) => {
 
   return (
     <Button buttonType={BUTTON_TYPES.INVISIBLE} onClick={handleCopy} className={className}>
-      <Transition>
-        {!isCopied && <ClipboardDocumentIcon className="h-4 w-4" />}
+      {!isCopied && <ClipboardDocumentIcon className="h-4 w-4" />}
 
-        {isCopied && <ClipboardDocumentCheckIcon className="h-4 w-4" />}
-      </Transition>
+      {isCopied && <ClipboardDocumentCheckIcon className="h-4 w-4" />}
     </Button>
   );
 };
