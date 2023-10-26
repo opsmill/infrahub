@@ -6,6 +6,7 @@ from .check_artifact_create import CheckArtifactCreate
 from .check_repository_checkdefinition import CheckRepositoryCheckDefinition
 from .check_repository_mergeconflicts import CheckRepositoryMergeConflicts
 from .event_branch_create import EventBranchCreate
+from .event_branch_delete import EventBranchDelete
 from .event_branch_merge import EventBranchMerge
 from .event_node_mutated import EventNodeMutated
 from .event_schema_update import EventSchemaUpdate
@@ -38,6 +39,7 @@ MESSAGE_MAP: Dict[str, Type[InfrahubMessage]] = {
     "check.repository.check_definition": CheckRepositoryCheckDefinition,
     "check.repository.merge_conflicts": CheckRepositoryMergeConflicts,
     "event.branch.create": EventBranchCreate,
+    "event.branch.delete": EventBranchDelete,
     "event.branch.merge": EventBranchMerge,
     "event.node.mutated": EventNodeMutated,
     "event.schema.update": EventSchemaUpdate,

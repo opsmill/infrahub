@@ -113,6 +113,18 @@ class BranchDelete(Mutation):
 
         obj = await Branch.get_by_name(db=db, name=data["name"])
         await obj.delete(db=db)
+
+        if config.SETTINGS.broker.enable and info.context.get("background"):
+            log_data = get_log_data()
+            request_id = log_data.get("request_id", "")
+            message = messages.EventBranchDelete(
+                branch=obj.name,
+                branch_id=obj.id,
+                data_only=obj.is_data_only,
+                meta=Meta(request_id=request_id),
+            )
+            info.context.get("background").add_task(services.send, message)
+
         return cls(ok=True)
 
 
