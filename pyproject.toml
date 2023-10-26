@@ -26,6 +26,7 @@ deepdiff = "^6.2"
 ujson = "^5.7"
 pydantic = "^1.10"
 pyyaml = "^6.0"
+gitpython = "3.1.40"
 
 [tool.poetry.group.server.dependencies]
 fastapi = "~0.95"
@@ -47,7 +48,6 @@ opentelemetry-sdk = "^1.16.0"
 opentelemetry-instrumentation-fastapi = "^0.37b0"
 opentelemetry-exporter-otlp-proto-http = "^1.16.0"
 opentelemetry-exporter-otlp-proto-grpc = "^1.16.0"
-gitpython = "3.1.40"
 
 [tool.poetry.group.perf.dependencies]
 locust = "^2.13.1"
