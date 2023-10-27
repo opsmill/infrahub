@@ -1947,14 +1947,13 @@ core_models = {
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
-            "branch": BranchSupportType.AWARE.value,
+            "branch": BranchSupportType.LOCAL.value,
             "attributes": [
                 {"name": "name", "kind": "Text"},
                 {
                     "name": "status",
                     "kind": "Text",
                     "enum": ArtifactStatus.available_types(),
-                    "branch": BranchSupportType.LOCAL.value,
                 },
                 {
                     "name": "content_type",
@@ -1965,14 +1964,12 @@ core_models = {
                     "name": "checksum",
                     "kind": "Text",
                     "optional": True,
-                    "branch": BranchSupportType.LOCAL.value,
                 },
                 {
                     "name": "storage_id",
                     "kind": "Text",
                     "optional": True,
                     "description": "ID of the file in the object store",
-                    "branch": BranchSupportType.LOCAL.value,
                 },
                 {"name": "parameters", "kind": "JSON", "optional": True},
             ],
@@ -1993,7 +1990,6 @@ core_models = {
                     "cardinality": "one",
                     "optional": False,
                 },
-                {"name": "tags", "peer": "BuiltinTag", "kind": "Attribute", "optional": True, "cardinality": "many"},
             ],
         },
         {
