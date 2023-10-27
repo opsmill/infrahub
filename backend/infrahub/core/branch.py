@@ -11,8 +11,10 @@ from pydantic import BaseModel, Field, validator
 from infrahub import config
 from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
+    BranchSupportType,
     DiffAction,
     PathType,
+    RelationshipCardinality,
     RelationshipStatus,
 )
 from infrahub.core.manager import NodeManager
@@ -829,6 +831,12 @@ class RelationshipDiffElement(BaseDiffElement):
     properties: Dict[str, PropertyDiffElement]
     changed_at: Optional[Timestamp]
 
+    def get_node_id_by_kind(self, kind: str) -> Optional[str]:
+        ids = [rel.id for rel in self.nodes.values() if rel.kind == kind]
+        if ids:
+            return ids[0]
+        return None
+
 
 class FileDiffElement(BaseDiffElement):
     branch: str
@@ -912,6 +920,14 @@ class ModifiedPath(BaseModel):
         return self._path()
 
     @property
+    def change_type(self) -> str:
+        if self.path_type in [PathType.ATTRIBUTE, PathType.RELATIONSHIP_MANY, PathType.RELATIONSHIP_ONE]:
+            if self.property_name and self.property_name != "HAS_VALUE":
+                return f"{self.path_type.value}_property"
+            return f"{self.path_type.value}_value"
+        return self.path_type.value
+
+    @property
     def conflict_path(self) -> str:
         return self._path(with_peer=False)
 
@@ -936,6 +952,8 @@ class ObjectConflict(BaseModel):
     conflict_path: str
     path: str
     path_type: PathType
+    property_name: Optional[str] = None
+    change_type: str
     changes: List[BranchChanges] = Field(default_factory=list)
 
     def __str__(self) -> str:
@@ -1150,8 +1168,10 @@ class Diff:
                 id=conflict.node_id,
                 kind=conflict.kind,
                 path=str(conflict),
+                change_type=conflict.change_type,
                 conflict_path=conflict.conflict_path,
                 path_type=conflict.path_type,
+                property_name=conflict.property_name,
             )
             for branch, change in changes.items():
                 if response.path in change and change[response.path]:
@@ -1187,13 +1207,13 @@ class Diff:
                 paths[branch_name] = set()
 
             for node_id, node in data.items():
-                p = ModifiedPath(
+                modified_path = ModifiedPath(
                     type="data", kind=node.kind, node_id=node_id, action=node.action, path_type=PathType.NODE
                 )
-                paths[branch_name].add(p)
+                paths[branch_name].add(modified_path)
                 for attr_name, attr in node.attributes.items():
                     for prop_type, prop_value in attr.properties.items():
-                        p = ModifiedPath(
+                        modified_path = ModifiedPath(
                             type="data",
                             kind=node.kind,
                             node_id=node_id,
@@ -1203,24 +1223,65 @@ class Diff:
                             property_name=prop_type,
                             change=prop_value.value,
                         )
-                        paths[branch_name].add(p)
+                        paths[branch_name].add(modified_path)
 
         relationships = await self.get_relationships(db=db)
+        cardinality_one_branch_relationships: Dict[str, List[ModifiedPath]] = {}
+        branch_kind_node: Dict[str, Dict[str, List[str]]] = {}
+        display_label_map: Dict[str, Dict[str, str]] = {}
+        for branch_name in relationships.keys():
+            branch_kind_node[branch_name] = {}
+            cardinality_one_branch_relationships[branch_name] = []
+            display_label_map[branch_name] = {}
+
         for branch_name, data in relationships.items():  # pylint: disable=too-many-nested-blocks
+            cardinality_one_relationships: Dict[str, ModifiedPath] = {}
             if self.branch_only and branch_name != self.branch.name:
                 continue
 
             if branch_name not in paths:
                 paths[branch_name] = set()
+
             for rel_name, rels in data.items():
                 for _, rel in rels.items():
-                    for prop_type, prop_value in rel.properties.items():
-                        for node_id in rel.nodes:
-                            neighbor_id = [neighbor for neighbor in rel.nodes.keys() if neighbor != node_id][0]
-                            schema = registry.get_schema(name=rel.nodes[node_id].kind, branch=branch_name)
-                            matching_relationship = [r for r in schema.relationships if r.identifier == rel_name]
+                    for node_id in rel.nodes:
+                        neighbor_id = [neighbor for neighbor in rel.nodes.keys() if neighbor != node_id][0]
+                        schema = registry.get_schema(name=rel.nodes[node_id].kind, branch=branch_name)
+                        matching_relationship = [r for r in schema.relationships if r.identifier == rel_name]
+                        if (
+                            matching_relationship
+                            and matching_relationship[0].cardinality == RelationshipCardinality.ONE
+                        ):
+                            relationship_key = f"{node_id}/{matching_relationship[0].name}"
+                            if relationship_key not in cardinality_one_relationships:
+                                cardinality_one_relationships[relationship_key] = ModifiedPath(
+                                    type="data",
+                                    node_id=node_id,
+                                    action=DiffAction.UNCHANGED,
+                                    kind=schema.kind,
+                                    element_name=matching_relationship[0].name,
+                                    path_type=PathType.from_relationship(matching_relationship[0].cardinality),
+                                    change=ValueElement(),
+                                )
+                            peer_kind = matching_relationship[0].peer
+                            if peer_kind not in branch_kind_node[branch_name]:
+                                branch_kind_node[branch_name][peer_kind] = []
+                            if rel.action == DiffAction.ADDED:
+                                neighbor_id = rel.get_node_id_by_kind(kind=peer_kind)
+                                cardinality_one_relationships[relationship_key].change.new = neighbor_id
+                                branch_kind_node[branch_name][peer_kind].append(neighbor_id)
+                            elif rel.action == DiffAction.REMOVED:
+                                neighbor_id = rel.get_node_id_by_kind(kind=peer_kind)
+                                cardinality_one_relationships[relationship_key].change.previous = neighbor_id
+                                branch_kind_node[branch_name][peer_kind].append(neighbor_id)
+                            if (
+                                cardinality_one_relationships[relationship_key].change.previous
+                                != cardinality_one_relationships[relationship_key].change.new
+                            ):
+                                cardinality_one_relationships[relationship_key].action = DiffAction.UPDATED
+                        for prop_type, prop_value in rel.properties.items():
                             if matching_relationship:
-                                p = ModifiedPath(
+                                modified_path = ModifiedPath(
                                     type="data",
                                     node_id=node_id,
                                     kind=schema.kind,
@@ -1231,7 +1292,26 @@ class Diff:
                                     peer_id=neighbor_id,
                                     change=prop_value.value,
                                 )
-                                paths[branch_name].add(p)
+                                paths[branch_name].add(modified_path)
+
+            for entry in cardinality_one_relationships.values():
+                cardinality_one_branch_relationships[branch_name].append(entry)
+
+        for branch_name, entries in branch_kind_node.items():
+            for kind, ids in entries.items():
+                schema = registry.get_schema(name=kind, branch=branch_name)
+                fields = schema.generate_fields_for_display_label()
+                nodes = await NodeManager.get_many(ids=ids, fields=fields, db=db, branch=branch_name)
+                for node_id, node in nodes.items():
+                    display_label_map[branch_name][node_id] = await node.render_display_label(db=db)
+
+            for relationship in cardinality_one_branch_relationships[branch_name]:
+                if relationship.change:
+                    if mapped_name := display_label_map[branch_name].get(relationship.change.new):
+                        relationship.change.new = mapped_name
+                    if mapped_name := display_label_map[branch_name].get(relationship.change.previous):
+                        relationship.change.previous = mapped_name
+                paths[branch_name].add(relationship)
 
         return paths
 
