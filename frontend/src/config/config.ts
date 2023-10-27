@@ -22,8 +22,7 @@ export const CONFIG = {
   CONFIG_URL: `${INFRAHUB_API_SERVER_URL}/api/config`,
   AUTH_SIGN_IN_URL: `${INFRAHUB_API_SERVER_URL}/api/auth/login`,
   AUTH_REFRESH_TOKEN_URL: `${INFRAHUB_API_SERVER_URL}/api/auth/refresh`,
-  DATA_DIFF_URL: (branch?: string) =>
-    `${INFRAHUB_API_SERVER_URL}/api/diff/data?branch=${branch}`,
+  DATA_DIFF_URL: (branch?: string) => `${INFRAHUB_API_SERVER_URL}/api/diff/data?branch=${branch}`,
   FILES_DIFF_URL: (branch?: string) => `${INFRAHUB_API_SERVER_URL}/api/diff/files?branch=${branch}`,
   SCHEMA_DIFF_URL: (branch?: string) =>
     `${INFRAHUB_API_SERVER_URL}/api/diff/schema?branch=${branch}`,
