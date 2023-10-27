@@ -448,7 +448,7 @@ def extract_diff_relationship_many(
 
 
 class DiffPayload:
-    def __init__(self, db: InfrahubDatabase, diff: Diff, kinds_to_include: List[str]):
+    def __init__(self, db: InfrahubDatabase, diff: Diff, kinds_to_include: Optional[List[str]] = None):
         self.db = db
         self.diff = diff
         self.kinds_to_include = kinds_to_include
@@ -927,7 +927,9 @@ async def get_diff_data(
     branch_only: bool = True,
     _: str = Depends(get_current_user),
 ) -> BranchDiff:
-    diff = await branch.diff(db=db, diff_from=time_from, diff_to=time_to, branch_only=branch_only, namespaces_exclude=["Schema"])
+    diff = await branch.diff(
+        db=db, diff_from=time_from, diff_to=time_to, branch_only=branch_only, namespaces_exclude=["Schema"]
+    )
     schema = registry.schema.get_full(branch=branch)
     diff_payload = DiffPayload(db=db, diff=diff, kinds_to_include=list(schema.keys()))
     return await diff_payload.generate_diff_payload()
@@ -988,7 +990,7 @@ async def get_diff_artifacts(
     branch: Branch = Depends(get_branch_dep),
     time_from: Optional[str] = None,
     time_to: Optional[str] = None,
-    branch_only: bool = True,
+    branch_only: bool = False,
     _: str = Depends(get_current_user),
 ) -> Dict[str, BranchDiffArtifact]:
     response = {}
@@ -1010,7 +1012,6 @@ async def get_diff_artifacts(
         db=db,
         schema="CoreArtifactTarget",
         filters={"artifacts__ids": artifact_ids},
-        # fields={"id": None},
         prefetch_relationships=True,
         branch=branch,
     )
