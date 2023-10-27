@@ -52,8 +52,8 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         root: dict,
         info: GraphQLResolveInfo,
         data: InputObjectType,
-        branch: Optional[str] = None,
-        at: Optional[str] = None,
+        branch: Branch,
+        at: str,
     ):
         rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
 

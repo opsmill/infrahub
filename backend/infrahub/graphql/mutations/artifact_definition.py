@@ -1,28 +1,27 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from graphene import InputObjectType, Mutation
 
-from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
 
-from ..utils import extract_fields
 from .main import InfrahubMutationMixin, InfrahubMutationOptions
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
     from infrahub.core.branch import Branch
+    from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
     from infrahub.message_bus.rpc import InfrahubRpcClient
 
 log = get_logger()
 
 
-class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
+class InfrahubArtifactDefinitionMutation(InfrahubMutationMixin, Mutation):
     @classmethod
     def __init_subclass_with_meta__(
         cls, schema: NodeSchema = None, _meta=None, **options
@@ -47,26 +46,37 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         branch: Branch,
         at: str,
     ):
-        db: InfrahubDatabase = info.context.get("infrahub_database")
         rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
 
-        # Create the new repository in the database.
-        obj = await Node.init(db=db, schema=cls._meta.schema, branch=branch, at=at)
-        await obj.new(db=db, **data)
-        await cls.validate_constraints(db=db, node=obj, branch=branch)
-        async with db.start_transaction() as db:
-            await obj.save(db=db)
+        artifact_definition, result = await super().mutate_create(root=root, info=info, data=data, branch=branch, at=at)
 
-        fields = await extract_fields(info.field_nodes[0].selection_set)
+        events = [
+            messages.RequestArtifactDefinitionGenerate(artifact_definition=artifact_definition.id, branch=branch.name),
+        ]
+        for event in events:
+            await rpc_client.send(event)
 
-        # Create the new repository in the filesystem.
-        log.info("create_repository", name=obj.name.value)
-        message = messages.GitRepositoryAdd(
-            repository_id=obj.id, repository_name=obj.name.value, location=obj.location.value
-        )
-        await rpc_client.send(message=message)
+        return artifact_definition, result
 
-        # TODO Validate that the creation of the repository went as expected
-        ok = True
+    @classmethod
+    async def mutate_update(
+        cls,
+        root: dict,
+        info: GraphQLResolveInfo,
+        data: InputObjectType,
+        branch: Branch,
+        at: str,
+        database: Optional[InfrahubDatabase] = None,
+        node: Optional[Node] = None,
+    ):
+        rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
 
-        return obj, cls(object=await obj.to_graphql(db=db, fields=fields.get("object", {})), ok=ok)
+        artifact_definition, result = await super().mutate_update(root=root, info=info, data=data, branch=branch, at=at)
+
+        events = [
+            messages.RequestArtifactDefinitionGenerate(artifact_definition=artifact_definition.id, branch=branch.name),
+        ]
+        for event in events:
+            await rpc_client.send(event)
+
+        return artifact_definition, result

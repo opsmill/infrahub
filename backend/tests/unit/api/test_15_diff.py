@@ -186,6 +186,25 @@ async def test_diff_artifact(db: InfrahubDatabase, client, client_headers, car_p
                 "storage_id": "8caf6f89-073f-4173-aa4b-f50e1309f03c",
             },
         },
+        car_person_data_artifact_diff["art3"]: {
+            "action": "updated",
+            "branch": "branch3",
+            "display_label": "nolt #444444 - myyartifact",
+            "id": car_person_data_artifact_diff["art3"],
+            "target": {
+                "id": car_person_data_artifact_diff["c3"],
+                "kind": "TestGazCar",
+                "display_label": "nolt #444444",
+            },
+            "item_new": {
+                "checksum": "nhytgbvfredc9063c26263353de24e1b913e1e1c",
+                "storage_id": "lkjhgfds-073f-4173-aa4b-f50e1309f03c",
+            },
+            "item_previous": {
+                "checksum": "poiuytrewq9063c26263353de24e1b913e1e1c",
+                "storage_id": "mnbvcxza-073f-4173-aa4b-f50e1309f03c",
+            },
+        },
     }
 
     assert DeepDiff(expected_response, data, ignore_order=True).to_dict() == {}

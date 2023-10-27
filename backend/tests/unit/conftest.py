@@ -253,7 +253,7 @@ async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_pers
     query = """
     MATCH (root:Root)
 
-    CREATE (c1:Node:TestCar { uuid: "c1", kind: "TestCar", branch_support: "aware" })
+    CREATE (c1:Node:TestCar { uuid: "c1", namespace: "Test", kind: "TestCar", branch_support: "aware" })
     CREATE (c1)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m60, status: "active" }]->(root)
 
     CREATE (bool_true:Boolean { value: true })
@@ -296,7 +296,7 @@ async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_pers
     CREATE (c1at4)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
     CREATE (c1at4)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
-    CREATE (c2:Node:TestCar { uuid: "c2", kind: "TestCar", branch_support: "aware" })
+    CREATE (c2:Node:TestCar { uuid: "c2", namespace: "Test", kind: "TestCar", branch_support: "aware" })
     CREATE (c2)-[:IS_PART_OF {branch: $main_branch, branch_level: 1, from: $time_m20, status: "active"}]->(root)
 
     CREATE (c2at1:Attribute:AttributeLocal { uuid: "c2at1", type: "Str", name: "name", branch_support: "aware"})
@@ -327,7 +327,7 @@ async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_pers
     CREATE (c2at4)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_false)
     CREATE (c2at4)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_true)
 
-    CREATE (c3:Node:TestCar { uuid: "c3", kind: "TestCar", branch_support: "aware" })
+    CREATE (c3:Node:TestCar { uuid: "c3", namespace: "Test", kind: "TestCar", branch_support: "aware" })
     CREATE (c3)-[:IS_PART_OF {branch: $branch1, branch_level: 2, from: $time_m40, status: "active"}]->(root)
 
     CREATE (c3at1:Attribute:AttributeLocal { uuid: "c3at1", type: "Str", name: "name", branch_support: "aware"})
@@ -358,7 +358,7 @@ async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_pers
     CREATE (c3at4)-[:IS_PROTECTED {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(bool_false)
     CREATE (c3at4)-[:IS_VISIBLE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(bool_true)
 
-    CREATE (p1:Node:TestPerson { uuid: "p1", kind: "TestPerson", branch_support: "aware" })
+    CREATE (p1:Node:TestPerson { uuid: "p1", namespace: "Test", kind: "TestPerson", branch_support: "aware" })
     CREATE (p1)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m60, status: "active"}]->(root)
     CREATE (p1at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "name", branch_support: "aware"})
     CREATE (p1)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(p1at1)
@@ -367,7 +367,7 @@ async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_pers
     CREATE (p1at1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
     CREATE (p1at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
-    CREATE (p2:Node:TestPerson { uuid: "p2", kind: "TestPerson", branch_support: "aware" })
+    CREATE (p2:Node:TestPerson { uuid: "p2", namespace: "Test", kind: "TestPerson", branch_support: "aware" })
     CREATE (p2)-[:IS_PART_OF {branch: $main_branch, branch_level: 1, from: $time_m60, status: "active"}]->(root)
     CREATE (p2at1:Attribute:AttributeLocal { uuid: "p2at1", type: "Str", name: "name", branch_support: "aware"})
     CREATE (p2)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(p2at1)
@@ -376,7 +376,7 @@ async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_pers
     CREATE (p2at1)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
     CREATE (p2at1)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
-    CREATE (p3:Node:TestPerson { uuid: "p3", kind: "TestPerson", branch_support: "aware" })
+    CREATE (p3:Node:TestPerson { uuid: "p3", namespace: "Test", kind: "TestPerson", branch_support: "aware" })
     CREATE (p3)-[:IS_PART_OF {branch: $main_branch, branch_level: 1, from: $time_m60, status: "active"}]->(root)
     CREATE (p3at1:Attribute:AttributeLocal { uuid: "p3at1", type: "Str", name: "name", branch_support: "aware"})
     CREATE (p3)-[:HAS_ATTRIBUTE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60}]->(p3at1)
@@ -473,7 +473,7 @@ async def base_dataset_12(db: InfrahubDatabase, default_branch: Branch, car_pers
     query = """
     MATCH (root:Root)
 
-    CREATE (c1:Node:TestCar { uuid: "c1", kind: "TestCar", branch_support: "aware" })
+    CREATE (c1:Node:TestCar { uuid: "c1", namespace: "Test", kind: "TestCar", branch_support: "aware" })
     CREATE (c1)-[:IS_PART_OF { branch: $main_branch, branch_level: 1, from: $time_m60, status: "active" }]->(root)
 
     CREATE (bool_true:Boolean { value: true })
@@ -516,7 +516,7 @@ async def base_dataset_12(db: InfrahubDatabase, default_branch: Branch, car_pers
     CREATE (c1at4)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
     CREATE (c1at4)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
-    CREATE (c2:Node:TestCar { uuid: "c2", kind: "TestCar", branch_support: "aware" })
+    CREATE (c2:Node:TestCar { uuid: "c2", namespace: "Test", kind: "TestCar", branch_support: "aware" })
     CREATE (c2)-[:IS_PART_OF {branch: $main_branch, branch_level: 1, from: $time_m20, status: "active"}]->(root)
 
     CREATE (c2at1:Attribute:AttributeLocal { uuid: "c2at1", type: "Str", name: "name", branch_support: "aware"})
@@ -547,7 +547,7 @@ async def base_dataset_12(db: InfrahubDatabase, default_branch: Branch, car_pers
     CREATE (c2at4)-[:IS_PROTECTED {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_false)
     CREATE (c2at4)-[:IS_VISIBLE {branch: $main_branch, branch_level: 1, status: "active", from: $time_m20 }]->(bool_true)
 
-    CREATE (c3:Node:TestCar { uuid: "c3", kind: "TestCar", branch_support: "aware" })
+    CREATE (c3:Node:TestCar { uuid: "c3", namespace: "Test", kind: "TestCar", branch_support: "aware" })
     CREATE (c3)-[:IS_PART_OF {branch: $branch1, branch_level: 2, from: $time_m40, status: "active"}]->(root)
 
     CREATE (c3at1:Attribute:AttributeLocal { uuid: "c3at1", type: "Str", name: "name", branch_support: "aware"})
@@ -578,7 +578,7 @@ async def base_dataset_12(db: InfrahubDatabase, default_branch: Branch, car_pers
     CREATE (c3at4)-[:IS_PROTECTED {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(bool_false)
     CREATE (c3at4)-[:IS_VISIBLE {branch: $branch1, branch_level: 2, status: "active", from: $time_m40 }]->(bool_true)
 
-    CREATE (p1:Node:TestPerson { uuid: "p1", kind: "TestPerson", branch_support: "agnostic" })
+    CREATE (p1:Node:TestPerson { uuid: "p1", namespace: "Test", kind: "TestPerson", branch_support: "agnostic" })
     CREATE (p1)-[:IS_PART_OF { branch: $global_branch, branch_level: 1, from: $time_m60, status: "active"}]->(root)
     CREATE (p1at1:Attribute:AttributeLocal { uuid: "p1at1", type: "Str", name: "name", branch_support: "agnostic"})
     CREATE (p1)-[:HAS_ATTRIBUTE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60}]->(p1at1)
@@ -587,7 +587,7 @@ async def base_dataset_12(db: InfrahubDatabase, default_branch: Branch, car_pers
     CREATE (p1at1)-[:IS_PROTECTED {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
     CREATE (p1at1)-[:IS_VISIBLE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
-    CREATE (p2:Node:TestPerson { uuid: "p2", kind: "TestPerson", branch_support: "agnostic" })
+    CREATE (p2:Node:TestPerson { uuid: "p2", namespace: "Test", kind: "TestPerson", branch_support: "agnostic" })
     CREATE (p2)-[:IS_PART_OF {branch: $global_branch, branch_level: 1, from: $time_m60, status: "active"}]->(root)
     CREATE (p2at1:Attribute:AttributeLocal { uuid: "p2at1", type: "Str", name: "name", branch_support: "agnostic"})
     CREATE (p2)-[:HAS_ATTRIBUTE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60}]->(p2at1)
@@ -596,7 +596,7 @@ async def base_dataset_12(db: InfrahubDatabase, default_branch: Branch, car_pers
     CREATE (p2at1)-[:IS_PROTECTED {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_false)
     CREATE (p2at1)-[:IS_VISIBLE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60 }]->(bool_true)
 
-    CREATE (p3:Node:TestPerson { uuid: "p3", kind: "TestPerson", branch_support: "agnostic" })
+    CREATE (p3:Node:TestPerson { uuid: "p3", namespace: "Test", kind: "TestPerson", branch_support: "agnostic" })
     CREATE (p3)-[:IS_PART_OF {branch: $global_branch, branch_level: 1, from: $time_m60, status: "active"}]->(root)
     CREATE (p3at1:Attribute:AttributeLocal { uuid: "p3at1", type: "Str", name: "name", branch_support: "agnostic"})
     CREATE (p3)-[:HAS_ATTRIBUTE {branch: $global_branch, branch_level: 1, status: "active", from: $time_m60}]->(p3at1)

@@ -1947,7 +1947,7 @@ core_models = {
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
-            "branch": BranchSupportType.AWARE.value,
+            "branch": BranchSupportType.LOCAL.value,
             "attributes": [
                 {"name": "name", "kind": "Text"},
                 {
@@ -1960,7 +1960,11 @@ core_models = {
                     "kind": "Text",
                     "enum": ContentType.available_types(),
                 },
-                {"name": "checksum", "kind": "Text", "optional": True},
+                {
+                    "name": "checksum",
+                    "kind": "Text",
+                    "optional": True,
+                },
                 {
                     "name": "storage_id",
                     "kind": "Text",
@@ -1986,7 +1990,6 @@ core_models = {
                     "cardinality": "one",
                     "optional": False,
                 },
-                {"name": "tags", "peer": "BuiltinTag", "kind": "Attribute", "optional": True, "cardinality": "many"},
             ],
         },
         {
