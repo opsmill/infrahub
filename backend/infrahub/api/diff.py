@@ -3,7 +3,7 @@ from __future__ import annotations
 import copy
 import enum
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.logger import logger
@@ -1027,34 +1027,57 @@ async def get_diff_artifacts(
     for kind, ids in target_per_kinds.items():
         display_labels.update(await get_display_labels_per_kind(kind=kind, ids=ids, branch_name=branch.name, db=db))
 
-    for branch_name, data in payload.items():
-        for node in data:
-            if "storage_id" not in node.elements or "checksum" not in node.elements:
-                continue
+    # If an artifact has been already created in main, it will appear as CREATED insted of UPDATED
+    # To fix that situation, we extract all unique identifier for an artifact (target_id, definition_id) in order to make it easier to search later
+    artifacts_in_main: Dict[Tuple[str, str], BranchDiffNode] = {}
+    for node in payload["main"]:
+        if "storage_id" not in node.elements or "checksum" not in node.elements or "definition" not in node.elements:
+            continue
 
-            display_label = node.display_label
-            target = target_per_artifact.get(node.id, None)
-            if target:
-                target.display_label = display_labels.get(target.id, None)
-                if target.display_label:
-                    display_label = f"{target.display_label} - {node.display_label}"
+        target = target_per_artifact.get(node.id, None)
+        definition_id = node.elements["definition"].peer.new.id
+        artifacts_in_main[(target.id, definition_id)] = node
 
-            diff_artifact = BranchDiffArtifact(
-                id=node.id, action=node.action, branch=branch_name, display_label=display_label, target=target
+    for node in payload[branch.name]:
+        if "storage_id" not in node.elements or "checksum" not in node.elements:
+            continue
+
+        display_label = node.display_label
+        target = target_per_artifact.get(node.id, None)
+        if target:
+            target.display_label = display_labels.get(target.id, None)
+            if target.display_label:
+                display_label = f"{target.display_label} - {node.display_label}"
+
+        diff_artifact = BranchDiffArtifact(
+            id=node.id, action=node.action, branch=branch.name, display_label=display_label, target=target
+        )
+
+        if node.action in [DiffAction.UPDATED, DiffAction.ADDED]:
+            diff_artifact.item_new = BranchDiffArtifactStorage(
+                storage_id=node.elements["storage_id"].value.value.new,
+                checksum=node.elements["checksum"].value.value.new,
             )
 
-            if node.action in [DiffAction.UPDATED, DiffAction.ADDED]:
-                diff_artifact.item_new = BranchDiffArtifactStorage(
-                    storage_id=node.elements["storage_id"].value.value.new,
-                    checksum=node.elements["checksum"].value.value.new,
-                )
+        if node.action in [DiffAction.UPDATED, DiffAction.REMOVED]:
+            diff_artifact.item_previous = BranchDiffArtifactStorage(
+                storage_id=node.elements["storage_id"].value.value.previous,
+                checksum=node.elements["checksum"].value.value.previous,
+            )
 
-            if node.action in [DiffAction.UPDATED, DiffAction.REMOVED]:
-                diff_artifact.item_previous = BranchDiffArtifactStorage(
-                    storage_id=node.elements["storage_id"].value.value.previous,
-                    checksum=node.elements["checksum"].value.value.previous,
-                )
+        # if there is an artifact in main with the same target.id / definition.id, we merge them
+        if (
+            node.action == DiffAction.ADDED
+            and "definition" in node.elements
+            and (target.id, node.elements["definition"].peer.new.id) in artifacts_in_main
+        ):
+            diff_artifact.action = DiffAction.UPDATED
+            node_in_main = artifacts_in_main[(target.id, node.elements["definition"].peer.new.id)]
+            diff_artifact.item_previous = BranchDiffArtifactStorage(
+                storage_id=node_in_main.elements["storage_id"].value.value.new,
+                checksum=node_in_main.elements["checksum"].value.value.new,
+            )
 
-            response[node.id] = diff_artifact
+        response[node.id] = diff_artifact
 
     return response
