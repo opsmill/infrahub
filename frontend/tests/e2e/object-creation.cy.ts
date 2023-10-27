@@ -28,10 +28,10 @@ describe("Object creation and deletion", () => {
     cy.get("[data-cy='create']").click();
 
     // Type the name
-    cy.get(".grid > :nth-child(1) > .relative > .block").type(NEW_ACCOUNT.name);
+    cy.get(".grid > :nth-child(1) > .relative > .block").type(NEW_ACCOUNT.name, { delay: 0 });
 
     // Type the password
-    cy.get(":nth-child(2) > .relative > .block").type(NEW_ACCOUNT.password);
+    cy.get(":nth-child(2) > .relative > .block").type(NEW_ACCOUNT.password, { delay: 0 });
 
     // Click save
     cy.get(".justify-end > .bg-custom-blue-700").click();

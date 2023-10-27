@@ -29,7 +29,6 @@ import { addRelationship } from "../../graphql/mutations/relationships/addRelati
 import UnlinkIcon from "../../images/icons/unlink.svg";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { genericsState, iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
-import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom copy";
 import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
@@ -114,7 +113,6 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
     },
   ];
 
-  const [schemaKindName] = useAtom(schemaKindNameState);
   const navigate = useNavigate();
 
   const [, setShowMetaEditModal] = useAtom(showMetaEditState);
@@ -686,12 +684,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                 }
               }}
               objectid={relatedObjectToEdit.id}
-              objectname={(() => {
-                const relatedKind = relatedObjectToEdit.__typename.replace(regex, "");
-                const relatedSchema = schemaList.find((s) => s.kind === relatedKind);
-                const kind = schemaKindName[relatedSchema!.kind];
-                return kind;
-              })()}
+              objectname={relatedObjectToEdit.__typename}
             />
           </SlideOver>
         )}

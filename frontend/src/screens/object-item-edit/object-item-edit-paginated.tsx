@@ -52,7 +52,7 @@ export default function ObjectItemEditComponent(props: Props) {
 
   const relationships = getSchemaRelationshipColumns(schema);
 
-  const peers = (schema.relationships || []).map((r) => r.peer).filter(Boolean);
+  const peers = (schema?.relationships || []).map((r) => r.peer).filter(Boolean);
 
   const queryString = schema
     ? getObjectDetailsAndPeers({
