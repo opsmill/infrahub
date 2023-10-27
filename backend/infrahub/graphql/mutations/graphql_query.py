@@ -60,8 +60,8 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
         root: dict,
         info: GraphQLResolveInfo,
         data: InputObjectType,
-        branch: Optional[str] = None,
-        at: Optional[str] = None,
+        branch: Branch,
+        at: str,
     ):
         branch_obj: Branch = info.context.get("infrahub_branch")
 
@@ -77,8 +77,8 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
         root: dict,
         info: GraphQLResolveInfo,
         data: InputObjectType,
-        branch: Optional[str] = None,
-        at: Optional[str] = None,
+        branch: Branch,
+        at: str,
         database: Optional[InfrahubDatabase] = None,
         node: Optional[Node] = None,
     ):

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from graphene import InputObjectType, Mutation
 
@@ -15,6 +15,7 @@ from .main import InfrahubMutationMixin, InfrahubMutationOptions
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
+    from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
     from infrahub.message_bus.rpc import InfrahubRpcClient
 
@@ -43,8 +44,8 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         root: dict,
         info: GraphQLResolveInfo,
         data: InputObjectType,
-        branch: Optional[str] = None,
-        at: Optional[str] = None,
+        branch: Branch,
+        at: str,
     ):
         db: InfrahubDatabase = info.context.get("infrahub_database")
         rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
