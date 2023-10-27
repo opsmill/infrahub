@@ -54,6 +54,11 @@ export const getCheckDetails = Handlebars.compile(`
             value
           }
         }
+        validator{
+          node{
+            id
+          }
+        }
         __typename
       }
     }

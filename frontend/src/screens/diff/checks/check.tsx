@@ -7,17 +7,22 @@ import {
   QuestionMarkCircleIcon,
 } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
+import { useParams } from "react-router-dom";
+import { StringParam, useQueryParam } from "use-query-params";
 import { Badge } from "../../../components/badge";
 import { DateDisplay } from "../../../components/date-display";
 import { Link } from "../../../components/link";
 import { PopOver } from "../../../components/popover";
 import { Tooltip } from "../../../components/tooltip";
+import { QSP } from "../../../config/qsp";
 import { getCheckDetails } from "../../../graphql/queries/diff/getCheckDetails";
 import useQuery from "../../../hooks/useQuery";
 import { schemaKindNameState } from "../../../state/atoms/schemaKindName.atom";
 import { classNames } from "../../../utils/common";
+import { constructPath } from "../../../utils/fetch";
 import ErrorScreen from "../../error-screen/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
+import { DIFF_TABS } from "../diff";
 import { Conflict } from "./conflict";
 
 type tCheckProps = {
@@ -67,6 +72,7 @@ const getCheckData = (check: any) => {
   switch (__typename) {
     case "CoreDataCheck": {
       const { conflicts } = check;
+
       return (
         <div>
           <div>
@@ -93,6 +99,8 @@ export const Check = (props: tCheckProps) => {
   const { id } = props;
 
   const [schemaKindName] = useAtom(schemaKindNameState);
+  const { proposedchange } = useParams();
+  const [qspTab] = useQueryParam(QSP.PROPOSED_CHANGES_TAB, StringParam);
 
   const queryString = getCheckDetails({
     id,
@@ -116,6 +124,7 @@ export const Check = (props: tCheckProps) => {
     message,
     severity,
     conclusion,
+    validator,
   } = check;
 
   const MoreButton = (
@@ -124,9 +133,25 @@ export const Check = (props: tCheckProps) => {
     </div>
   );
 
-  const url = "/";
+  // Redirection to access the checks in the validator details view
+  const checkParams: [string, string][] = [
+    [QSP.PROPOSED_CHANGES_TAB, DIFF_TABS.CHECKS],
+    [QSP.VALIDATOR_DETAILS, validator?.node?.id],
+  ];
 
-  const tooltipMessage = "Open validator in checks view";
+  // Redirection to access the data diff view, with both branches
+  const dataParams: [string, string][] = [
+    [QSP.PROPOSED_CHANGES_TAB, DIFF_TABS.DATA],
+    [QSP.BRANCH_FILTER_BRANCH_ONLY, "false"],
+  ];
+
+  const newParams: [string, string][] =
+    qspTab !== DIFF_TABS.CHECKS && validator?.node?.id ? checkParams : dataParams;
+
+  const url = constructPath(`/proposed-changes/${proposedchange}`, newParams);
+
+  const tooltipMessage =
+    qspTab !== DIFF_TABS.CHECKS ? "Open validator in checks view" : "Open diff view";
 
   const renderContent = () => {
     return (
