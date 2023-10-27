@@ -122,8 +122,12 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
   if (peer && peer?.changes?.length) {
     return (
       <div className={peer?.changes?.length > 1 ? "rounded-md bg-red-400 p-1 mb-1" : "mb-1"}>
-        {peer?.changes.map((peer, index) => (
-          <DataDiffPeer key={index} peerChanges={peer} peerProperties={properties} />
+        {peer?.changes.map((peerChanges, index) => (
+          <DataDiffPeer
+            key={index}
+            peerChanges={{ ...peerChanges, path: peer?.path }}
+            peerProperties={properties}
+          />
         ))}
       </div>
     );

@@ -10,7 +10,7 @@ type tDataDiffConflictInfo = {
 };
 
 const getIdFromPath = (path: string) => {
-  const id = path.split("/")[1];
+  const id = path?.split("/")?.[1];
 
   return id;
 };
