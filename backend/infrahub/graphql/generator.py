@@ -9,10 +9,14 @@ from infrahub.core import get_branch, registry
 from infrahub.core.constants import RelationshipKind
 from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema
 from infrahub.graphql.mutations.graphql_query import InfrahubGraphQLQueryMutation
-from infrahub.graphql.mutations.proposed_change import InfrahubProposedChangeMutation
 from infrahub.types import ATTRIBUTE_TYPES, get_attribute_type
 
-from .mutations import InfrahubMutation, InfrahubRepositoryMutation
+from .mutations import (
+    InfrahubArtifactDefinitionMutation,
+    InfrahubMutation,
+    InfrahubProposedChangeMutation,
+    InfrahubRepositoryMutation,
+)
 from .resolver import (
     default_resolver,
     many_relationship_resolver,
@@ -228,6 +232,7 @@ async def generate_mutation_mixin(db: InfrahubDatabase, branch: Union[Branch, st
 
         base_class = InfrahubMutation
         mutation_map = {
+            "CoreArtifactDefinition": InfrahubArtifactDefinitionMutation,
             "CoreRepository": InfrahubRepositoryMutation,
             "CoreProposedChange": InfrahubProposedChangeMutation,
             "CoreGraphQLQuery": InfrahubGraphQLQueryMutation,
