@@ -361,7 +361,9 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                           {relationshipsData?.map(({ node, properties }: any, index: number) => (
                             <tr
                               onClick={() =>
-                                navigate(getObjectDetailsUrl(node.id, node.__typename))
+                                navigate(
+                                  constructPath(getObjectDetailsUrl(node.id, node.__typename))
+                                )
                               }
                               key={index}
                               className="hover:bg-gray-50 cursor-pointer">
