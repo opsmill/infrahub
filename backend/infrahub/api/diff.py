@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.logger import logger
 from pydantic import BaseModel, Extra, Field
 
+from infrahub import config
 from infrahub.api.dependencies import get_branch_dep, get_current_user, get_db
 from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch  # noqa: TCH001
@@ -23,6 +24,7 @@ from infrahub.core.constants import (
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema_manager import INTERNAL_SCHEMA_NODE_KINDS
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
+from infrahub_client.utils import compare_lists
 
 if TYPE_CHECKING:
     from infrahub.message_bus.rpc import InfrahubRpcClient
@@ -995,6 +997,7 @@ async def get_diff_artifacts(
 ) -> Dict[str, BranchDiffArtifact]:
     response = {}
 
+    default_branch_name = config.SETTINGS.main.default_branch
     # Query the Diff for all artifacts
     diff = await branch.diff(
         db=db,
@@ -1007,14 +1010,27 @@ async def get_diff_artifacts(
     payload = await generate_diff_payload(diff=diff, db=db, kinds_to_include=["CoreArtifact"])
 
     # Extract the ids of all the targets associated with these artifacts and query the display label for all of them
-    artifact_ids = [node.id for _, data in payload.items() for node in data]
+    artifact_ids_branch = [node.id for node in payload[branch.name]]
+    artifact_ids_main = [node.id for node in payload[default_branch_name]]
+    _, _, only_in_main = compare_lists(list1=artifact_ids_branch, list2=artifact_ids_main)
+
     targets = await registry.manager.query(
         db=db,
         schema="CoreArtifactTarget",
-        filters={"artifacts__ids": artifact_ids},
+        filters={"artifacts__ids": artifact_ids_branch},
         prefetch_relationships=True,
         branch=branch,
     )
+
+    if only_in_main:
+        targets_in_main = await registry.manager.query(
+            db=db,
+            schema="CoreArtifactTarget",
+            filters={"artifacts__ids": only_in_main},
+            prefetch_relationships=True,
+            branch=default_branch_name,
+        )
+        targets += targets_in_main
 
     target_per_kinds = defaultdict(list)
     target_per_artifact: Dict[str, ArtifactTarget] = {}
@@ -1030,11 +1046,18 @@ async def get_diff_artifacts(
     # If an artifact has been already created in main, it will appear as CREATED insted of UPDATED
     # To fix that situation, we extract all unique identifier for an artifact (target_id, definition_id) in order to make it easier to search later
     artifacts_in_main: Dict[Tuple[str, str], BranchDiffNode] = {}
-    for node in payload["main"]:
-        if "storage_id" not in node.elements or "checksum" not in node.elements or "definition" not in node.elements:
+    for node in payload[default_branch_name]:
+        if (
+            node.action != DiffAction.ADDED
+            or "storage_id" not in node.elements
+            or "checksum" not in node.elements
+            or "definition" not in node.elements
+        ):
             continue
 
         target = target_per_artifact.get(node.id, None)
+        if not target:
+            continue
         definition_id = node.elements["definition"].peer.new.id
         artifacts_in_main[(target.id, definition_id)] = node
 
