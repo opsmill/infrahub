@@ -27,7 +27,6 @@ const sizesClass = {
 
 // Stop propagation for clicks
 const preventClick = (event: any) => {
-  event?.preventDefault();
   event?.stopPropagation();
 };
 
