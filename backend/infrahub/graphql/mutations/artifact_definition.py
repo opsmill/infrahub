@@ -13,6 +13,9 @@ from .main import InfrahubMutationMixin, InfrahubMutationOptions
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
+    from infrahub.core.branch import Branch
+    from infrahub.core.node import Node
+    from infrahub.database import InfrahubDatabase
     from infrahub.message_bus.rpc import InfrahubRpcClient
 
 log = get_logger()
@@ -40,15 +43,15 @@ class InfrahubArtifactDefinitionMutation(InfrahubMutationMixin, Mutation):
         root: dict,
         info: GraphQLResolveInfo,
         data: InputObjectType,
-        branch: Optional[str] = None,
-        at: Optional[str] = None,
+        branch: Branch,
+        at: str,
     ):
         rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
 
         artifact_definition, result = await super().mutate_create(root=root, info=info, data=data, branch=branch, at=at)
 
         events = [
-            messages.RequestArtifactDefinitionGenerate(artifact_definition=artifact_definition.id, branch=branch),
+            messages.RequestArtifactDefinitionGenerate(artifact_definition=artifact_definition.id, branch=branch.name),
         ]
         for event in events:
             await rpc_client.send(event)
@@ -61,15 +64,17 @@ class InfrahubArtifactDefinitionMutation(InfrahubMutationMixin, Mutation):
         root: dict,
         info: GraphQLResolveInfo,
         data: InputObjectType,
-        branch: Optional[str] = None,
-        at: Optional[str] = None,
+        branch: Branch,
+        at: str,
+        database: Optional[InfrahubDatabase] = None,
+        node: Optional[Node] = None,
     ):
         rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
 
         artifact_definition, result = await super().mutate_update(root=root, info=info, data=data, branch=branch, at=at)
 
         events = [
-            messages.RequestArtifactDefinitionGenerate(artifact_definition=artifact_definition.id, branch=branch),
+            messages.RequestArtifactDefinitionGenerate(artifact_definition=artifact_definition.id, branch=branch.name),
         ]
         for event in events:
             await rpc_client.send(event)
