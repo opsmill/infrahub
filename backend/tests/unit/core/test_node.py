@@ -11,6 +11,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_relationships, get_paths_between_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
+from infrahub_client import UUIDT
 
 
 async def test_node_init(
@@ -66,6 +67,27 @@ async def test_node_init_schema_name(db: InfrahubDatabase, default_branch: Branc
     assert obj.level.value == 4
     assert obj.description.value is None
     assert obj.color.value == "#444444"
+
+
+async def test_node_init_id(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+    registry.set_schema(name="TestCriticality", schema=criticality_schema)
+
+    uuid1 = str(UUIDT())
+    obj = await Node.init(db=db, schema="TestCriticality")
+    await obj.new(db=db, id=uuid1, name="low", level=4)
+
+    assert obj.id == uuid1
+    assert obj._existing is False
+
+
+async def test_node_init_invalid_id(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+    registry.set_schema(name="TestCriticality", schema=criticality_schema)
+
+    obj = await Node.init(db=db, schema="TestCriticality")
+    with pytest.raises(ValidationError) as exc:
+        await obj.new(db=db, id="not-a-uuid", name="low", level=4)
+
+    assert "UUID" in str(exc.value)
 
 
 async def test_node_init_mandatory_missing(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
@@ -182,7 +204,7 @@ async def test_render_display_label(db: InfrahubDatabase, default_branch: Branch
 
     obj = await Node.init(db=db, schema=node_schema)
     await obj.new(db=db, firstname="John", lastname="Doe", age=99)
-    assert await obj.render_display_label(db=db) == "TestDisplay(ID: None)"
+    assert await obj.render_display_label(db=db) == f"TestDisplay(ID: {obj.id})[NEW]"
 
 
 async def test_node_init_with_single_relationship(db: InfrahubDatabase, default_branch: Branch, car_person_schema):

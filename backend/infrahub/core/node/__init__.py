@@ -13,14 +13,14 @@ from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import ValidationError
 from infrahub.types import ATTRIBUTE_TYPES
+from infrahub_client import UUIDT
+from infrahub_client.utils import is_valid_uuid
 
 from ..relationship import RelationshipManager
 from ..utils import update_relationships_to
 from .base import BaseNode, BaseNodeMeta, BaseNodeOptions
 
 if TYPE_CHECKING:
-    from uuid import UUID
-
     from typing_extensions import Self
 
     from infrahub.core.branch import Branch
@@ -82,6 +82,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         return self._branch
 
     def __repr__(self):
+        if not self._existing:
+            return f"{self.get_kind()}(ID: {str(self.id)})[NEW]"
+
         return f"{self.get_kind()}(ID: {str(self.id)})"
 
     def __init__(
@@ -93,6 +96,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         self._schema: NodeSchema = schema
         self._branch: Branch = branch
         self._at: Timestamp = at
+        self._existing: bool = False
 
         self._updated_at: Optional[Timestamp] = None
         self.id: str = None
@@ -147,7 +151,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 errors.append(ValidationError({field_name: f"{field_name} is not a valid input for {self.get_kind()}"}))
 
         # If the object is new, we need to ensure that all mandatory attributes and relationships have been provided
-        if not self.id:
+        if not self._existing:
             for mandatory_attr in self._schema.mandatory_attribute_names:
                 if mandatory_attr not in fields.keys():
                     errors.append(
@@ -269,20 +273,27 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             if self.label.value is None and self.name.value:
                 self.label.value = " ".join([word.title() for word in self.name.value.split("_")])
 
-    async def new(self, db: InfrahubDatabase, **kwargs) -> Self:
+    async def new(self, db: InfrahubDatabase, id: Optional[str] = None, **kwargs) -> Self:
+        if id and not is_valid_uuid(id):
+            raise ValidationError({"id": f"{id} is not a valid UUID"})
+
         await self._process_fields(db=db, fields=kwargs)
+
+        self.id = id or str(UUIDT())
+
         return self
 
     async def load(
         self,
         db: InfrahubDatabase,
-        id: UUID = None,
-        db_id: Optional[int] = None,
+        id: Optional[str] = None,
+        db_id: Optional[str] = None,
         updated_at: Union[Timestamp, str] = None,
         **kwargs,
     ) -> Self:
         self.id = id
         self.db_id = db_id
+        self._existing = True
 
         if updated_at:
             self._updated_at = Timestamp(updated_at)
@@ -296,19 +307,20 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         query = await NodeCreateAllQuery.init(db=db, node=self, at=create_at)
         await query.execute(db=db)
 
-        self.id, self.db_id = query.get_self_ids()
+        _, self.db_id = query.get_self_ids()
         self._at = create_at
         self._updated_at = create_at
+        self._existing = True
 
         new_ids = query.get_ids()
 
-        # Go over the list of Attribute and create them one by one
+        # Go over the list of Attribute and assign the new IDs one by one
         for name in self._attributes:
             attr: BaseAttribute = getattr(self, name)
             attr.id, attr.db_id = new_ids[name]
             attr.at = create_at
 
-        # Go over the list of relationships and create them one by one
+        # Go over the list of relationships and assign the new IDs one by one
         for name in self._relationships:
             relm: RelationshipManager = getattr(self, name)
             for rel in relm._relationships:
@@ -345,7 +357,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         save_at = Timestamp(at)
 
-        if self.id:
+        if self._existing:
             await self._update(at=save_at, db=db)
             return self
 

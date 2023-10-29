@@ -9,7 +9,6 @@ from infrahub.core.query.subquery import build_subquery_filter, build_subquery_o
 from infrahub.core.query.utils import find_node_schema
 from infrahub.core.utils import extract_field_filters
 from infrahub.exceptions import QueryError
-from infrahub_client import UUIDT
 
 if TYPE_CHECKING:
     from infrahub.core.attribute import AttributeCreateData, BaseAttribute
@@ -103,9 +102,8 @@ class NodeCreateAllQuery(NodeQuery):
     raise_error_if_empty: bool = True
 
     async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
-        uuid = UUIDT()
         at = self.at or self.node._at
-        self.params["uuid"] = str(uuid)
+        self.params["uuid"] = self.node.id
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
         self.params["kind"] = self.node.get_kind()
@@ -126,7 +124,7 @@ class NodeCreateAllQuery(NodeQuery):
         self.params["rels"] = [rel.dict() for rel in relationships]
 
         self.params["node_prop"] = {
-            "uuid": str(uuid),
+            "uuid": self.node.id,
             "kind": self.node.get_kind(),
             "branch_support": self.node._schema.branch,
         }
