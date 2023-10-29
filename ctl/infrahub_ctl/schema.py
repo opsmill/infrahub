@@ -41,7 +41,7 @@ async def _load(schema: Path, branch: str, log: logging.Logger) -> None:  # pyli
             console.print(f"  '{'/'.join(loc_str)}' | {error['msg']} ({error['type']})")
         raise typer.Exit(2)
 
-    _, errors = await client.schema.load(schema=schema_data, branch=branch)
+    _, errors = await client.schema.load(schemas=[schema_data], branch=branch)
 
     if errors:
         console.print("[red]Unable to load the schema:")

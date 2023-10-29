@@ -328,10 +328,10 @@ class InfrahubSchema(InfrahubSchemaBase):
 
         return self.cache[branch]
 
-    async def load(self, schema: dict, branch: Optional[str] = None) -> Tuple[bool, Optional[dict]]:
+    async def load(self, schemas: List[dict], branch: Optional[str] = None) -> Tuple[bool, Optional[dict]]:
         branch = branch or self.client.default_branch
         url = f"{self.client.address}/api/schema/load?branch={branch}"
-        response = await self.client._post(url=url, timeout=60, payload=schema)
+        response = await self.client._post(url=url, timeout=60, payload={"schemas": schemas})
 
         if response.status_code == 202:
             return True, None

@@ -53,7 +53,7 @@ def event_loop():
 
 
 @pytest.fixture(scope="session", autouse=True)
-def execute_before_any_test(worker_id):
+def execute_before_any_test(worker_id, tmpdir_factory):
     config.load_and_exit()
     initialize_lock()
 
@@ -64,6 +64,9 @@ def execute_before_any_test(worker_id):
             db_id = 1
         config.SETTINGS.database.address = f"{BUILD_NAME}-database-{db_id}"
         config.SETTINGS.storage.settings = {"directory": "/opt/infrahub/storage"}
+    else:
+        storage_dir = tmpdir_factory.mktemp("storage")
+        config.SETTINGS.storage.settings = {"directory": str(storage_dir)}
 
     config.SETTINGS.broker.enable = False
     config.SETTINGS.cache.enable = False
@@ -205,3 +208,102 @@ async def gqlquery03(db: InfrahubDatabase, repo01: Node, tag_blue: Node, tag_red
     )
     await obj.save(db=db)
     return obj
+
+
+@pytest.fixture
+async def schema_extension_01() -> Dict[str, Any]:
+    return {
+        "version": "1.0",
+        "nodes": [
+            {
+                "name": "Rack",
+                "namespace": "Infra",
+                "description": "A Rack represents a physical two- or four-post equipment rack in which devices can be installed.",
+                "label": "Rack",
+                "default_filter": "name__value",
+                "display_labels": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text"},
+                    {"name": "description", "kind": "Text", "optional": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "location",
+                        "peer": "BuiltinLocation",
+                        "optional": False,
+                        "cardinality": "one",
+                        "kind": "Attribute",
+                    },
+                    {
+                        "name": "tags",
+                        "peer": "BuiltinTag",
+                        "optional": True,
+                        "cardinality": "many",
+                        "kind": "Attribute",
+                    },
+                ],
+            }
+        ],
+        "extensions": {
+            "nodes": [
+                {
+                    "kind": "BuiltinLocation",
+                    "relationships": [
+                        {
+                            "name": "racks",
+                            "peer": "InfraRack",
+                            "optional": True,
+                            "cardinality": "many",
+                            "kind": "Generic",
+                        }
+                    ],
+                }
+            ]
+        },
+    }
+
+
+@pytest.fixture
+async def schema_extension_02() -> Dict[str, Any]:
+    return {
+        "version": "1.0",
+        "nodes": [
+            {
+                "name": "Contract",
+                "namespace": "Procurement",
+                "description": "Generic Contract",
+                "label": "Contract",
+                "display_labels": ["contract_ref__value"],
+                "order_by": ["contract_ref__value"],
+                "attributes": [
+                    {"name": "contract_ref", "label": "Contract Reference", "kind": "Text", "unique": True},
+                    {"name": "description", "kind": "Text", "optional": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "Organization",
+                        "peer": "CoreOrganization",
+                        "optional": False,
+                        "cardinality": "one",
+                        "kind": "Attribute",
+                    }
+                ],
+            }
+        ],
+        "extensions": {
+            "nodes": [
+                {
+                    "kind": "CoreOrganization",
+                    "relationships": [
+                        {
+                            "name": "contract",
+                            "peer": "ProcurementContract",
+                            "optional": True,
+                            "cardinality": "many",
+                            "kind": "Component",
+                        }
+                    ],
+                }
+            ]
+        },
+    }
