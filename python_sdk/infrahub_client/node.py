@@ -480,13 +480,18 @@ class InfrahubNodeBase:
         self._schema = schema
         self._data = data
         self._branch = branch
+        self._existing: bool = True
 
-        self.id: Optional[str] = data.get("id", None) if isinstance(data, dict) else None
+        extracted_uuid = data.get("id", None) if isinstance(data, dict) else None
+        self.id = extracted_uuid or str(UUIDT())
         self.display_label: Optional[str] = data.get("display_label", None) if isinstance(data, dict) else None
         self.typename: Optional[str] = data.get("__typename", schema.kind) if isinstance(data, dict) else schema.kind
 
         self._attributes = [item.name for item in self._schema.attributes]
         self._relationships = [item.name for item in self._schema.relationships]
+
+        if not extracted_uuid:
+            self._existing = False
 
         self._init_attributes(data)
         self._init_relationships(data)
@@ -503,10 +508,10 @@ class InfrahubNodeBase:
     def __repr__(self) -> str:
         if self.display_label:
             return self.display_label
-        if not self.id:
-            return f"{self._schema.kind} (no id yet)"
+        if not self._existing:
+            return f"{self._schema.kind} ({self.id})[NEW]"
 
-        return f"{self._schema.kind} ({self.id})"
+        return f"{self._schema.kind} ({self.id}) "
 
     def _generate_input_data(self, update: bool = False) -> Dict[str, Dict]:
         """Generate a dictionnary that represent the input data required by a mutation.
@@ -835,13 +840,12 @@ class InfrahubNode(InfrahubNodeBase):
 
     async def save(self, at: Optional[Timestamp] = None) -> None:
         at = Timestamp(at)
-        if not self.id:
+        if self._existing is False:
             await self._create(at=at)
         else:
             await self._update(at=at)
 
-        if self.id:
-            self._client.store.set(key=self.id, node=self)
+        self._client.store.set(key=self.id, node=self)
 
     async def generate_query_data(
         self,
@@ -881,6 +885,7 @@ class InfrahubNode(InfrahubNodeBase):
 
     async def _create(self, at: Timestamp) -> None:
         input_data = self._generate_input_data()
+        input_data["data"]["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
         mutation_name = f"{self._schema.kind}Create"
         query = Mutation(
@@ -889,14 +894,14 @@ class InfrahubNode(InfrahubNodeBase):
             query=mutation_query,
             variables=input_data["mutation_variables"],
         )
-        response = await self._client.execute_graphql(
+        await self._client.execute_graphql(
             query=query.render(),
             branch_name=self._branch,
             at=at,
             tracker=f"mutation-{str(self._schema.kind).lower()}-create",
             variables=input_data["variables"],
         )
-        self.id = response[mutation_name]["object"]["id"]
+        self._existing = True
 
     async def _update(self, at: Timestamp) -> None:
         input_data = self._generate_input_data(update=True)
@@ -990,7 +995,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
 
     def save(self, at: Optional[Timestamp] = None) -> None:
         at = Timestamp(at)
-        if not self.id:
+        if self._existing is False:
             self._create(at=at)
         else:
             self._update(at=at)
@@ -1032,14 +1037,14 @@ class InfrahubNodeSync(InfrahubNodeBase):
             variables=input_data["mutation_variables"],
         )
 
-        response = self._client.execute_graphql(
+        self._client.execute_graphql(
             query=query.render(),
             branch_name=self._branch,
             at=at,
             tracker=f"mutation-{str(self._schema.kind).lower()}-create",
             variables=input_data["variables"],
         )
-        self.id = response[mutation_name]["object"]["id"]
+        self._existing = True
 
     def _update(self, at: Timestamp) -> None:
         input_data = self._generate_input_data(update=True)
