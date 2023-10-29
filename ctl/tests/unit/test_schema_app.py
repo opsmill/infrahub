@@ -22,7 +22,9 @@ def test_schema_load_one_valid(httpx_mock: HTTPXMock):
 
     content = httpx_mock.get_requests()[0].content.decode("utf8")
     content_json = yaml.safe_load(content)
-    fixture_file_content = yaml.safe_load(Path(fixture_file).read_text())
+    fixture_file_content = yaml.safe_load(
+        Path(fixture_file).read_text(encoding="utf-8"),
+    )
     assert content_json == {"schemas": [fixture_file_content]}
 
 
@@ -39,6 +41,6 @@ def test_schema_load_multiple(httpx_mock: HTTPXMock):
 
     content = httpx_mock.get_requests()[0].content.decode("utf8")
     content_json = yaml.safe_load(content)
-    fixture_file1_content = yaml.safe_load(Path(fixture_file1).read_text())
-    fixture_file2_content = yaml.safe_load(Path(fixture_file2).read_text())
+    fixture_file1_content = yaml.safe_load(Path(fixture_file1).read_text(encoding="utf-8"))
+    fixture_file2_content = yaml.safe_load(Path(fixture_file2).read_text(encoding="utf-8"))
     assert content_json == {"schemas": [fixture_file1_content, fixture_file2_content]}
