@@ -399,7 +399,7 @@ describe("Object list", () => {
     cy.get(".p-2").click();
 
     // Type 0 as value
-    cy.get(".sm\\:col-span-7 > .relative > .block").type("0");
+    cy.get(".sm\\:col-span-7 > .relative > .block").type("0", { delay: 0 });
 
     // Save
     cy.get(".bg-custom-blue-700").click();

@@ -16,9 +16,15 @@ import { DataDiffConflictInfo } from "./diff-conflict-info";
 import { DiffPill } from "./diff-pill";
 import { DataDiffThread } from "./diff-thread";
 
+export type tConflictChange = {
+  id?: string;
+  kind?: string;
+  display_label?: string;
+};
+
 export type tDataDiffNodePropertyValue = {
-  new: string;
-  previous: string;
+  new: string | tConflictChange;
+  previous: string | tConflictChange;
 };
 
 export type tDataDiffNodePropertyChange = {

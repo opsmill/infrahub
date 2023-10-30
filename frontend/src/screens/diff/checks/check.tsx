@@ -67,6 +67,7 @@ const getCheckData = (check: any) => {
   switch (__typename) {
     case "CoreDataCheck": {
       const { conflicts } = check;
+
       return (
         <div>
           <div>

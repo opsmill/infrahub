@@ -1229,10 +1229,12 @@ class Diff:
         cardinality_one_branch_relationships: Dict[str, List[ModifiedPath]] = {}
         branch_kind_node: Dict[str, Dict[str, List[str]]] = {}
         display_label_map: Dict[str, Dict[str, str]] = {}
+        kind_map: Dict[str, Dict[str, str]] = {}
         for branch_name in relationships.keys():
             branch_kind_node[branch_name] = {}
             cardinality_one_branch_relationships[branch_name] = []
             display_label_map[branch_name] = {}
+            kind_map[branch_name] = {}
 
         for branch_name, data in relationships.items():  # pylint: disable=too-many-nested-blocks
             cardinality_one_relationships: Dict[str, ModifiedPath] = {}
@@ -1304,13 +1306,22 @@ class Diff:
                 nodes = await NodeManager.get_many(ids=ids, fields=fields, db=db, branch=branch_name)
                 for node_id, node in nodes.items():
                     display_label_map[branch_name][node_id] = await node.render_display_label(db=db)
+                    kind_map[branch_name][node_id] = kind
 
             for relationship in cardinality_one_branch_relationships[branch_name]:
                 if relationship.change:
                     if mapped_name := display_label_map[branch_name].get(relationship.change.new):
-                        relationship.change.new = mapped_name
+                        relationship.change.new = {
+                            "id": relationship.change.new,
+                            "display_label": mapped_name,
+                            "kind": kind_map[branch_name].get(relationship.change.new),
+                        }
                     if mapped_name := display_label_map[branch_name].get(relationship.change.previous):
-                        relationship.change.previous = mapped_name
+                        relationship.change.previous = {
+                            "id": relationship.change.previous,
+                            "display_label": mapped_name,
+                            "kind": kind_map[branch_name].get(relationship.change.previous),
+                        }
                 if relationship.action != DiffAction.UNCHANGED:
                     paths[branch_name].add(relationship)
 
