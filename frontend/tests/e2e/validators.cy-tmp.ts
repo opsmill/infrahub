@@ -25,7 +25,9 @@ describe("Main application", () => {
     cy.get(".bg-white > .p-2").click();
 
     // Type the PC name
-    cy.get(".grid > :nth-child(1) > .relative > .block").type(PROPOSED_CHANGES_NAME_FAIL);
+    cy.get(".grid > :nth-child(1) > .relative > .block").type(PROPOSED_CHANGES_NAME_FAIL, {
+      delay: 0,
+    });
 
     // Open the branch selector
     cy.get(".space-y-12 > :nth-child(1) > .grid > :nth-child(2)").within(() => {
@@ -60,7 +62,9 @@ describe("Main application", () => {
     cy.get(".bg-white > .p-2").click();
 
     // Type the PC name
-    cy.get(".grid > :nth-child(1) > .relative > .block").type(PROPOSED_CHANGES_NAME_WARNING);
+    cy.get(".grid > :nth-child(1) > .relative > .block").type(PROPOSED_CHANGES_NAME_WARNING, {
+      delay: 0,
+    });
 
     // Open the branch selector
     cy.get(".space-y-12 > :nth-child(1) > .grid > :nth-child(2)").within(() => {
