@@ -277,7 +277,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     async def new(self, db: InfrahubDatabase, id: Optional[str] = None, **kwargs) -> Self:
         if id and not is_valid_uuid(id):
             raise ValidationError({"id": f"{id} is not a valid UUID"})
-        elif id:
+        if id:
             query = await NodeCheckIDQuery.init(db=db, node_id=id)
             if await query.count(db=db):
                 raise ValidationError({"id": f"{id} is already in use"})
