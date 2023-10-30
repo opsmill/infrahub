@@ -1,8 +1,9 @@
+import glob
 import hashlib
 import os
 from itertools import groupby
 from pathlib import Path
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple, Union
 from uuid import UUID, uuid4
 
 import httpx
@@ -197,3 +198,18 @@ def is_valid_url(url: str) -> bool:
         return all([parsed.scheme, parsed.netloc])
     except TypeError:
         return False
+
+
+def find_files(
+    extension: Union[str, List[str]], directory: Union[str, Path] = ".", recursive: bool = True
+) -> List[Path]:
+    files = []
+
+    if isinstance(extension, str):
+        extension = [extension]
+
+    for ext in extension:
+        files.extend(glob.glob(f"{directory}/**/*.{ext}", recursive=recursive))
+        files.extend(glob.glob(f"{directory}/**/.*.{ext}", recursive=recursive))
+
+    return [Path(item) for item in files]

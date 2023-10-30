@@ -12,7 +12,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch  # noqa: TCH001
 from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
-from infrahub.exceptions import SchemaNotFound
+from infrahub.exceptions import PermissionDeniedError, SchemaNotFound
 from infrahub.log import get_logger
 from infrahub.message_bus import Meta, messages
 from infrahub.services import services
@@ -57,6 +57,10 @@ class SchemaLoadAPI(SchemaRoot):
     version: str
 
 
+class SchemasLoadAPI(SchemaRoot):
+    schemas: List[SchemaLoadAPI]
+
+
 @router.get("")
 @router.get("/")
 async def get_schema(
@@ -74,7 +78,7 @@ async def get_schema(
 
 @router.post("/load")
 async def load_schema(
-    schema: SchemaLoadAPI,
+    schemas: SchemasLoadAPI,
     background_tasks: BackgroundTasks,
     db: InfrahubDatabase = Depends(get_db),
     branch: Branch = Depends(get_branch_dep),
@@ -82,7 +86,12 @@ async def load_schema(
 ) -> JSONResponse:
     log.info("load_request", branch=branch.name)
 
-    schema.validate_namespaces()
+    errors: List[str] = []
+    for schema in schemas.schemas:
+        errors += schema.validate_namespaces()
+
+    if errors:
+        raise PermissionDeniedError(", ".join(errors))
 
     async with lock.registry.global_schema_lock():
         branch_schema = registry.schema.get_schema_branch(name=branch.name)
@@ -90,7 +99,8 @@ async def load_schema(
         # We create a copy of the existing branch schema to do some validation before loading it.
         tmp_schema = branch_schema.duplicate()
         try:
-            tmp_schema.load_schema(schema=schema)
+            for schema in schemas.schemas:
+                tmp_schema.load_schema(schema=schema)
             tmp_schema.process()
         except SchemaNotFound as exc:
             return JSONResponse(status_code=422, content={"error": exc.message})
