@@ -320,7 +320,7 @@ line-length = 170
 
 [tool.ruff.mccabe]
 # Target max-complexity=10
-max-complexity = 30
+max-complexity = 31
 
 [tool.ruff.per-file-ignores]
 

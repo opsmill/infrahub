@@ -1311,7 +1311,8 @@ class Diff:
                         relationship.change.new = mapped_name
                     if mapped_name := display_label_map[branch_name].get(relationship.change.previous):
                         relationship.change.previous = mapped_name
-                paths[branch_name].add(relationship)
+                if relationship.action != DiffAction.UNCHANGED:
+                    paths[branch_name].add(relationship)
 
         return paths
 

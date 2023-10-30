@@ -88,6 +88,7 @@ async def test_diff_get_modified_paths_graph(db: InfrahubDatabase, base_dataset_
         "data/c1/owner/p1/property/IS_VISIBLE",
         "data/c2/owner/p1/property/IS_PROTECTED",
         "data/c2/owner/p1/property/IS_VISIBLE",
+        "data/c2/owner",
         "data/c3",
         "data/c3/color/value",
         "data/c3/color/property/IS_PROTECTED",
