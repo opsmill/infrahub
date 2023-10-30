@@ -80,6 +80,21 @@ async def test_node_init_id(db: InfrahubDatabase, default_branch: Branch, critic
     assert obj._existing is False
 
 
+async def test_node_init_id_conflict(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+    registry.set_schema(name="TestCriticality", schema=criticality_schema)
+
+    uuid1 = str(UUIDT())
+    obj1 = await Node.init(db=db, schema="TestCriticality")
+    await obj1.new(db=db, id=uuid1, name="low", level=4)
+    await obj1.save(db=db)
+
+    with pytest.raises(ValidationError) as exc:
+        obj2 = await Node.init(db=db, schema="TestCriticality")
+        await obj2.new(db=db, id=uuid1, name="high", level=4)
+
+    assert "already in use" in str(exc.value)
+
+
 async def test_node_init_invalid_id(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
     registry.set_schema(name="TestCriticality", schema=criticality_schema)
 

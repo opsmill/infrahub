@@ -69,7 +69,7 @@ class AttrToProcess:
 class NodeQuery(Query):
     def __init__(
         self,
-        node: Node = None,
+        node: Optional[Node] = None,
         node_id: Optional[str] = None,
         node_db_id: Optional[int] = None,
         id: Optional[str] = None,
@@ -228,6 +228,31 @@ class NodeDeleteQuery(NodeQuery):
         """
 
         self.params["at"] = self.at.to_string()
+
+        self.add_to_query(query)
+        self.return_labels = ["n"]
+
+
+class NodeCheckIDQuery(Query):
+    name = "node_check_id"
+
+    type: QueryType = QueryType.READ
+
+    def __init__(
+        self,
+        node_id: str,
+        *args,
+        **kwargs,
+    ):
+        self.node_id = node_id
+        super().__init__(*args, **kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+        self.params["uuid"] = self.node_id
+
+        query = """
+        MATCH (root:Root)-[]-(n:Node { uuid: $uuid })
+        """
 
         self.add_to_query(query)
         self.return_labels = ["n"]

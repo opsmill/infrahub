@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, List, Optional, Union
 from infrahub.core import registry
 from infrahub.core.constants import BranchSupportType
 from infrahub.core.query.node import (
+    NodeCheckIDQuery,
     NodeCreateAllQuery,
     NodeDeleteQuery,
     NodeGetListQuery,
@@ -276,6 +277,10 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     async def new(self, db: InfrahubDatabase, id: Optional[str] = None, **kwargs) -> Self:
         if id and not is_valid_uuid(id):
             raise ValidationError({"id": f"{id} is not a valid UUID"})
+        elif id:
+            query = await NodeCheckIDQuery.init(db=db, node_id=id)
+            if await query.count(db=db):
+                raise ValidationError({"id": f"{id} is already in use"})
 
         await self._process_fields(db=db, fields=kwargs)
 
