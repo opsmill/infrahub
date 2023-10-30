@@ -221,10 +221,8 @@ class SchemaRoot(BaseModel):
 
 
 class InfrahubSchemaBase:
-    def validate(self, data: dict[str, Any]) -> bool:
+    def validate(self, data: dict[str, Any]) -> None:
         SchemaRoot(**data)
-
-        return True
 
     def validate_data_against_schema(self, schema: Union[NodeSchema, GenericSchema], data: dict) -> None:
         for key in data.keys():
