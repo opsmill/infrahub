@@ -9,7 +9,6 @@ from infrahub.core.query.subquery import build_subquery_filter, build_subquery_o
 from infrahub.core.query.utils import find_node_schema
 from infrahub.core.utils import extract_field_filters
 from infrahub.exceptions import QueryError
-from infrahub_client import UUIDT
 
 if TYPE_CHECKING:
     from infrahub.core.attribute import AttributeCreateData, BaseAttribute
@@ -70,7 +69,7 @@ class AttrToProcess:
 class NodeQuery(Query):
     def __init__(
         self,
-        node: Node = None,
+        node: Optional[Node] = None,
         node_id: Optional[str] = None,
         node_db_id: Optional[int] = None,
         id: Optional[str] = None,
@@ -103,9 +102,8 @@ class NodeCreateAllQuery(NodeQuery):
     raise_error_if_empty: bool = True
 
     async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
-        uuid = UUIDT()
         at = self.at or self.node._at
-        self.params["uuid"] = str(uuid)
+        self.params["uuid"] = self.node.id
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
         self.params["kind"] = self.node.get_kind()
@@ -126,7 +124,7 @@ class NodeCreateAllQuery(NodeQuery):
         self.params["rels"] = [rel.dict() for rel in relationships]
 
         self.params["node_prop"] = {
-            "uuid": str(uuid),
+            "uuid": self.node.id,
             "kind": self.node.get_kind(),
             "namespace": self.node._schema.namespace,
             "branch_support": self.node._schema.branch,
@@ -231,6 +229,31 @@ class NodeDeleteQuery(NodeQuery):
         """
 
         self.params["at"] = self.at.to_string()
+
+        self.add_to_query(query)
+        self.return_labels = ["n"]
+
+
+class NodeCheckIDQuery(Query):
+    name = "node_check_id"
+
+    type: QueryType = QueryType.READ
+
+    def __init__(
+        self,
+        node_id: str,
+        *args,
+        **kwargs,
+    ):
+        self.node_id = node_id
+        super().__init__(*args, **kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+        self.params["uuid"] = self.node_id
+
+        query = """
+        MATCH (root:Root)-[]-(n:Node { uuid: $uuid })
+        """
 
         self.add_to_query(query)
         self.return_labels = ["n"]
