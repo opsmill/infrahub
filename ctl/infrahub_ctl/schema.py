@@ -29,6 +29,13 @@ class SchemaFile(BaseModel):
     valid: bool = True
     error_message: Optional[str] = None
 
+    def load_content(self) -> None:
+        try:
+            self.content = yaml.safe_load(self.location.read_text())
+        except yaml.YAMLError:
+            self.error_message = "Invalid YAML/JSON file"
+            self.valid = False
+
 
 async def _load(schemas: List[Path], branch: str, log: logging.Logger) -> None:  # pylint: disable=unused-argument
     # pylint: disable=too-many-branches
@@ -39,23 +46,13 @@ async def _load(schemas: List[Path], branch: str, log: logging.Logger) -> None: 
     for schema in schemas:
         if schema.is_file():
             schema_file = SchemaFile(location=schema)
-            try:
-                schema_file.content = yaml.safe_load(schema.read_text())
-            except yaml.YAMLError:
-                schema_file.error_message = "Invalid YAML/JSON file"
-                schema_file.valid = False
-
+            schema_file.load_content()
             schemas_data.append(schema_file)
         elif schema.is_dir():
             files = find_files(extension=["yaml", "yml", "json"], directory=schema, recursive=True)
             for item in files:
                 schema_file = SchemaFile(location=item)
-                try:
-                    schema_file.content = yaml.safe_load(item.read_text())
-                except yaml.YAMLError:
-                    schema_file.error_message = "Invalid YAML/JSON file"
-                    schema_file.valid = False
-
+                schema_file.load_content()
                 schemas_data.append(schema_file)
 
     has_error = False
