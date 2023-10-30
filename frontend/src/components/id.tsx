@@ -32,7 +32,7 @@ export const Id = (props: tId) => {
   }
 
   if (error || !object?.display_label) {
-    <BadgeCircle type={CIRCLE_BADGE_TYPES.LIGHT}>Name not found</BadgeCircle>;
+    return <BadgeCircle type={CIRCLE_BADGE_TYPES.LIGHT}>Name not found</BadgeCircle>;
   }
 
   return (
