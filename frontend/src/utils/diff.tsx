@@ -18,7 +18,7 @@ export const displayValue = (value: any) => {
     return "-";
   }
 
-  return value || "-";
+  return value?.display_label || value || "-";
 };
 
 // Display the values

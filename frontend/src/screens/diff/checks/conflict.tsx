@@ -25,7 +25,6 @@ export const Conflict = (props: any) => {
       <div>
         {changes.map((change: any, index: number) => {
           const { action, branch } = change;
-          console.log("change: ", change);
 
           const property = {
             value: change,
