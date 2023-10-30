@@ -442,7 +442,7 @@ class Branch(StandardNode):
         # Update the branch in the registry after the rebase
         registry.branch[self.name] = self
 
-    async def validate_branch(self, rpc_client: InfrahubRpcClient, db: InfrahubDatabase) -> Tuple[bool, List[str]]:
+    async def validate_branch(self, db: InfrahubDatabase) -> List[ObjectConflict]:
         """Validate if a branch is eligible to be merged.
         - Must be conflict free both for data and repository
         - All checks must pass
@@ -453,34 +453,12 @@ class Branch(StandardNode):
         Need to return a list of violations, must be multiple
         """
 
-        graph_passed, graph_messages = await self.validate_graph(db=db)
-        repo_passed, repo_messages = await self.validate_repositories(rpc_client=rpc_client, db=db)
+        return await self.validate_graph(db=db)
 
-        all_messages = graph_messages + repo_messages
-        passed = graph_passed & repo_passed
-
-        return passed, all_messages
-
-    async def validate_graph(self, db: InfrahubDatabase) -> Tuple[bool, List[str]]:
-        passed = True
-        identified_conflicts = []
-
+    async def validate_graph(self, db: InfrahubDatabase) -> List[ObjectConflict]:
         # Check the diff and ensure the branch doesn't have some conflict
         diff = await self.diff(db=db)
-        if conflicts := await diff.get_conflicts(db=db):
-            passed = False
-            for conflict in conflicts:
-                identified_conflicts.append(f"Conflict detected at {conflict}")
-
-        return passed, identified_conflicts
-
-    async def validate_repositories(
-        self, rpc_client: InfrahubRpcClient, db: InfrahubDatabase  # pylint: disable=unused-argument
-    ) -> Tuple[bool, List[str]]:
-        passed = True
-        all_messages = []
-
-        return passed, all_messages
+        return await diff.get_conflicts(db=db)
 
     async def diff(
         self,
@@ -507,24 +485,49 @@ class Branch(StandardNode):
             db=db,
         )
 
-    async def merge(self, db: InfrahubDatabase, rpc_client: InfrahubRpcClient, at: Union[str, Timestamp] = None):
+    async def merge(
+        self,
+        db: InfrahubDatabase,
+        rpc_client: InfrahubRpcClient,
+        at: Union[str, Timestamp] = None,
+        conflict_resolution: Optional[Dict[str, bool]] = None,
+    ):
         """Merge the current branch into main."""
+        conflict_resolution = conflict_resolution or {}
+        conflicts = await self.validate_branch(db=db)
 
-        passed, _ = await self.validate_branch(rpc_client=rpc_client, db=db)
-        if not passed:
-            raise ValidationError(f"Unable to merge the branch '{self.name}', validation failed")
+        if conflict_resolution:
+            errors: List[str] = []
+            for conflict in conflicts:
+                if conflict.conflict_path not in conflict_resolution:
+                    errors.append(str(conflict))
+
+            if errors:
+                raise ValidationError(
+                    f"Unable to merge the branch '{self.name}', conflict resolution missing: {', '.join(errors)}"
+                )
+
+        elif conflicts:
+            errors = [str(conflict) for conflict in conflicts]
+            raise ValidationError(f"Unable to merge the branch '{self.name}', validation failed: {', '.join(errors)}")
 
         if self.name == config.SETTINGS.main.default_branch:
             raise ValidationError(f"Unable to merge the branch '{self.name}' into itself")
 
         # TODO need to find a way to properly communicate back to the user any issue that could come up during the merge
         # From the Graph or From the repositories
-        await self.merge_graph(db=db, at=at)
+        await self.merge_graph(db=db, at=at, conflict_resolution=conflict_resolution)
 
         await self.merge_repositories(rpc_client=rpc_client, db=db)
 
-    async def merge_graph(self, db: InfrahubDatabase, at: Optional[Union[str, Timestamp]] = None):
+    async def merge_graph(
+        self,
+        db: InfrahubDatabase,
+        at: Optional[Union[str, Timestamp]] = None,
+        conflict_resolution: Optional[Dict[str, bool]] = None,
+    ):
         rel_ids_to_update = []
+        conflict_resolution = conflict_resolution or {}
 
         default_branch: Branch = registry.branch[config.SETTINGS.main.default_branch]
 
@@ -596,7 +599,9 @@ class Branch(StandardNode):
                             )
                             rel_ids_to_update.append(prop.rel_id)
 
-                        elif prop.action == DiffAction.UPDATED:
+                        elif prop.action == DiffAction.UPDATED and (
+                            prop.path not in conflict_resolution or conflict_resolution[prop.path]
+                        ):
                             await add_relationship(
                                 src_node_id=attr.db_id,
                                 dst_node_id=prop.db_id,
@@ -629,7 +634,14 @@ class Branch(StandardNode):
         for rel_name in rels[self.name].keys():
             for _, rel in rels[self.name][rel_name].items():
                 for node in rel.nodes.values():
-                    if rel.action in [DiffAction.ADDED, DiffAction.REMOVED]:
+                    matched_conflict_path = [path for path in rel.conflict_paths if path in conflict_resolution]
+                    conflict_path = None
+                    if matched_conflict_path:
+                        conflict_path = matched_conflict_path[0]
+
+                    if rel.action in [DiffAction.ADDED, DiffAction.REMOVED] and (
+                        conflict_path not in conflict_resolution or conflict_resolution[conflict_path]
+                    ):
                         rel_status = RelationshipStatus.ACTIVE
                         if rel.action == DiffAction.REMOVED:
                             rel_status = RelationshipStatus.DELETED
@@ -743,6 +755,11 @@ class Branch(StandardNode):
         await delete_query.execute(db=db)
 
 
+class RelationshipPath(BaseModel):
+    paths: List[str] = Field(default_factory=list)
+    conflict_paths: List[str] = Field(default_factory=list)
+
+
 class BaseDiffElement(BaseModel):
     class Config:
         arbitrary_types_allowed = True
@@ -783,6 +800,7 @@ class PropertyDiffElement(BaseDiffElement):
     branch: str
     type: str
     action: DiffAction
+    path: Optional[str] = None
     db_id: str = Field(exclude=True)
     rel_id: str = Field(exclude=True)
     origin_rel_id: Optional[str] = Field(exclude=True)
@@ -793,6 +811,7 @@ class PropertyDiffElement(BaseDiffElement):
 class NodeAttributeDiffElement(BaseDiffElement):
     id: str
     name: str
+    path: str
     action: DiffAction
     db_id: str = Field(exclude=True)
     rel_id: str = Field(exclude=True)
@@ -806,6 +825,7 @@ class NodeDiffElement(BaseDiffElement):
     labels: List[str]
     kind: str
     id: str
+    path: str
     action: DiffAction
     db_id: str = Field(exclude=True)
     rel_id: Optional[str] = Field(exclude=True)
@@ -830,6 +850,8 @@ class RelationshipDiffElement(BaseDiffElement):
     nodes: Dict[str, RelationshipEdgeNodeDiffElement]
     properties: Dict[str, PropertyDiffElement]
     changed_at: Optional[Timestamp]
+    paths: List[str]
+    conflict_paths: List[str]
 
     def get_node_id_by_kind(self, kind: str) -> Optional[str]:
         ids = [rel.id for rel in self.nodes.values() if rel.kind == kind]
@@ -905,6 +927,9 @@ class ModifiedPath(BaseModel):
         identifier = f"{self.type}/{self.node_id}"
         if self.element_name:
             identifier += f"/{self.element_name}"
+
+        if self.path_type == PathType.RELATIONSHIP_ONE and not self.property_name:
+            identifier += "/peer"
 
         if with_peer and self.peer_id:
             identifier += f"/{self.peer_id}"
@@ -1469,6 +1494,7 @@ class Diff:
                 "kind": result.get("n").get("kind"),
                 "id": node_id,
                 "db_id": result.get("n").element_id,
+                "path": f"data/{node_id}",
                 "attributes": {},
                 "rel_id": result.get("r").element_id,
                 "changed_at": Timestamp(from_time),
@@ -1511,6 +1537,7 @@ class Diff:
                     "kind": result.get("n").get("kind"),
                     "id": node_id,
                     "db_id": result.get("n").element_id,
+                    "path": f"data/{node_id}",
                     "attributes": {},
                     "changed_at": None,
                     "action": DiffAction.UPDATED,
@@ -1529,6 +1556,7 @@ class Diff:
                     "id": attr_id,
                     "db_id": result.get("a").element_id,
                     "name": attr_name,
+                    "path": f"data/{node_id}/{attr_name}",
                     "rel_id": result.get("r1").element_id,
                     "properties": {},
                     "origin_rel_id": None,
@@ -1601,9 +1629,14 @@ class Diff:
             if prop_to and prop_to < self.diff_to:
                 continue
 
+            path = f"data/{node_id}/{attr_name}/property/{prop_type}"
+            if prop_type == "HAS_VALUE":
+                path = f"data/{node_id}/{attr_name}/value"
+
             item = {
                 "type": prop_type,
                 "branch": branch_name,
+                "path": path,
                 "db_id": result.get("ap").element_id,
                 "rel_id": result.get("r2").element_id,
                 "origin_rel_id": None,
@@ -1743,6 +1776,12 @@ class Diff:
                 "properties": {},
             }
 
+            relationship_paths = self.parse_relationship_paths(
+                nodes=item["nodes"], branch_name=branch_name, relationship_name=rel_name
+            )
+            item["paths"] = relationship_paths.paths
+            item["conflict_paths"] = relationship_paths.conflict_paths
+
             # FIXME Need to revisit changed_at, mostlikely not accurate. More of a placeholder at this point
             if branch_status == RelationshipStatus.ACTIVE.value:
                 item["action"] = DiffAction.ADDED
@@ -1804,6 +1843,11 @@ class Diff:
                 "changed_at": None,
                 "branch": branch_name,
             }
+            relationship_paths = self.parse_relationship_paths(
+                nodes=item["nodes"], branch_name=branch_name, relationship_name=rel_name
+            )
+            item["paths"] = relationship_paths.paths
+            item["conflict_paths"] = relationship_paths.conflict_paths
 
             self._results[branch_name]["rels"][rel_name][rel_id] = RelationshipDiffElement(**item)
 
@@ -1861,6 +1905,26 @@ class Diff:
             self._results[branch_name]["rels"][rel_name][rel_id].properties[prop_type] = PropertyDiffElement(**prop)
 
         self._calculated_diff_rels_at = Timestamp()
+
+    @staticmethod
+    def parse_relationship_paths(
+        nodes: Dict[str, RelationshipEdgeNodeDiffElement], branch_name: str, relationship_name: str
+    ) -> RelationshipPath:
+        node_ids = list(nodes.keys())
+        neighbor_map = {node_ids[0]: node_ids[1], node_ids[1]: node_ids[0]}
+        relationship_paths = RelationshipPath()
+        for relationship in nodes.values():
+            schema = registry.get_schema(name=relationship.kind, branch=branch_name)
+            matching_relationship = [r for r in schema.relationships if r.identifier == relationship_name]
+            relationship_path_name = "-undefined-"
+            if matching_relationship:
+                relationship_path_name = matching_relationship[0].name
+            relationship_paths.paths.append(
+                f"data/{relationship.id}/{relationship_path_name}/{neighbor_map[relationship.id]}"
+            )
+            relationship_paths.conflict_paths.append(f"data/{relationship.id}/{relationship_path_name}/peer")
+
+        return relationship_paths
 
     async def get_files(self, db: InfrahubDatabase, rpc_client: InfrahubRpcClient) -> Dict[str, List[FileDiffElement]]:
         if not self._calculated_diff_files_at:

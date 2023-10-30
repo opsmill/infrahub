@@ -279,28 +279,28 @@ async def test_get_branches_and_times_for_range_branch2(db: InfrahubDatabase, ba
 
 async def test_validate_graph(db: InfrahubDatabase, base_dataset_02, register_core_models_schema):
     branch1 = await Branch.get_by_name(name="branch1", db=db)
-    passed, messages = await branch1.validate_graph(db=db)
+    conflicts = await branch1.validate_graph(db=db)
 
-    assert passed is True
-    assert messages == []
+    assert not conflicts
+    assert conflicts == []
 
     # Change the name of C1 in Branch1 to create a conflict
     c1 = await NodeManager.get_one(id="c1", branch=branch1, db=db)
     c1.name.value = "new name"
     await c1.save(db=db)
 
-    passed, messages = await branch1.validate_graph(db=db)
-    assert passed is False
-    assert messages == ["Conflict detected at data/c1/name/value"]
+    conflicts = await branch1.validate_graph(db=db)
+    assert conflicts
+    assert conflicts[0].path == "data/c1/name/value"
 
 
 async def test_validate_empty_branch(db: InfrahubDatabase, base_dataset_02, register_core_models_schema):
     branch2 = await create_branch(branch_name="branch2", db=db)
 
-    passed, messages = await branch2.validate_graph(db=db)
+    conflicts = await branch2.validate_graph(db=db)
 
-    assert passed is True
-    assert messages == []
+    assert not conflicts
+    assert conflicts == []
 
 
 async def test_rebase_flag(db: InfrahubDatabase, base_dataset_02):

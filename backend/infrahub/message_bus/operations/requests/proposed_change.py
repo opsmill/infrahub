@@ -15,6 +15,12 @@ log = get_logger()
 
 
 async def _create_data_check(db: InfrahubDatabase, proposed_change: Node) -> Node:
+    validations = await proposed_change.validations.get_peers(db=db)
+
+    for validation in validations.values():
+        if validation._schema.kind == "CoreDataValidator":
+            return validation
+
     validator_obj = await Node.init(db=db, schema="CoreDataValidator")
     await validator_obj.new(
         db=db,
@@ -40,15 +46,8 @@ async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, s
         proposed_change = await NodeManager.get_one_by_id_or_default_filter(
             id=message.proposed_change, schema_name="CoreProposedChange", db=db
         )
-        validations = await proposed_change.validations.get_peers(db=db)
-        data_check = None
-        for validation in validations.values():
-            if validation._schema.kind == "CoreDataValidator":
-                data_check = validation
-                break
 
-        if not data_check:
-            data_check = await _create_data_check(db=db, proposed_change=proposed_change)
+        data_check = await _create_data_check(db=db, proposed_change=proposed_change)
 
         data_check.state.value = ValidatorState.IN_PROGRESS.value
         data_check.conclusion.value = ValidatorConclusion.UNKNOWN.value
@@ -56,34 +55,38 @@ async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, s
         data_check.completed_at.value = ""
         await data_check.save(db=db)
 
-        previous_relationships = await data_check.checks.get_relationships(db=db)
-        for rel in previous_relationships:
-            await rel.delete(db=db)
+        previous_checks = await data_check.checks.get_peers(db=db)
 
         conflicts = await _get_conflicts(db=db, proposed_change=proposed_change)
 
-        conclusion = ValidatorConclusion.SUCCESS
+        conclusion = ValidatorConclusion.FAILURE
 
         check_objects = []
-        if conflicts:
-            conclusion = ValidatorConclusion.FAILURE
-        else:
-            check = await Node.init(db=db, schema="CoreDataCheck")
-            await check.new(
-                db=db,
-                label="Data Conflict",
-                origin="internal",
-                kind="DataIntegrity",
-                validator=data_check.id,
-                conclusion="success",
-                severity="info",
-                conflicts="[]",
-            )
-            await check.save(db=db)
+        keep_check = []
+        if not conflicts:
+            conclusion = ValidatorConclusion.SUCCESS
+            check = None
+            for previous_check in previous_checks.values():
+                if previous_check.conflicts.value == []:
+                    check = previous_check
+                    keep_check.append(check.id)
+
+            if not check:
+                check = await Node.init(db=db, schema="CoreDataCheck")
+                await check.new(
+                    db=db,
+                    label="Data Conflict",
+                    origin="internal",
+                    kind="DataIntegrity",
+                    validator=data_check.id,
+                    conclusion="success",
+                    severity="info",
+                    conflicts=[],
+                )
+                await check.save(db=db)
             check_objects.append(check.id)
 
         for conflict in conflicts:
-            conflict_obj = await Node.init(db=db, schema="CoreDataCheck")
             conflicts_data = [
                 {
                     "name": conflict.name,
@@ -96,20 +99,32 @@ async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, s
                     "changes": [change.dict() for change in conflict.changes],
                 }
             ]
+            conflict_obj = None
+            for previous_check in previous_checks.values():
+                if previous_check.conflicts.value == conflicts_data:
+                    conflict_obj = previous_check
+                    keep_check.append(conflict_obj.id)
 
-            await conflict_obj.new(
-                db=db,
-                label="Data Conflict",
-                origin="internal",
-                kind="DataIntegrity",
-                validator=data_check.id,
-                conclusion="failure",
-                severity="critical",
-                conflicts=conflicts_data,
-            )
+            if not conflict_obj:
+                conflict_obj = await Node.init(db=db, schema="CoreDataCheck")
 
-            await conflict_obj.save(db=db)
+                await conflict_obj.new(
+                    db=db,
+                    label="Data Conflict",
+                    origin="internal",
+                    kind="DataIntegrity",
+                    validator=data_check.id,
+                    conclusion="failure",
+                    severity="critical",
+                    conflicts=conflicts_data,
+                )
+
+                await conflict_obj.save(db=db)
             check_objects.append(conflict_obj.id)
+
+        for check_id, previous_check in previous_checks.items():
+            if check_id not in keep_check:
+                await previous_check.delete(db=db)
 
         data_check.state.value = ValidatorState.COMPLETED.value
         data_check.conclusion.value = conclusion.value

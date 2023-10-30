@@ -180,10 +180,15 @@ class BranchValidate(Mutation):
     @classmethod
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput):
         db: InfrahubDatabase = info.context.get("infrahub_database")
-        rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
 
         obj = await Branch.get_by_name(db=db, name=data["name"])
-        ok, validation_messages = await obj.validate_branch(rpc_client=rpc_client, db=db)
+        ok = True
+        validation_messages = ""
+        conflicts = await obj.validate_branch(db=db)
+        if conflicts:
+            ok = False
+            errors = [str(conflict) for conflict in conflicts]
+            validation_messages = ", ".join(errors)
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
 
