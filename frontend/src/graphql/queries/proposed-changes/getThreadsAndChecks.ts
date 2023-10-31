@@ -31,7 +31,7 @@ query {
             node {
               id
               ... on CoreDataCheck {
-                paths {
+                conflicts {
                   value
                 }
               }

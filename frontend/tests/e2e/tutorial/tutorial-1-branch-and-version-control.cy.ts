@@ -1,4 +1,4 @@
-/// <reference types="cypress" />
+/// <reference types="cypress" , { delay: 0 });
 
 import {
   MAIN_BRANCH_NAME,
@@ -28,8 +28,10 @@ describe("Tutorial - Part 1", () => {
     cy.get("[data-cy='create']").click();
 
     // Add organization name
-    cy.get(".grid > :nth-child(1) > .relative > .block").type(ORGANIZATION_NAME);
-    cy.get(".grid > :nth-child(3) > .relative > .block").type(ORGANIZATION_DESCRIPTION);
+    cy.get(".grid > :nth-child(1) > .relative > .block").type(ORGANIZATION_NAME, { delay: 0 });
+    cy.get(".grid > :nth-child(3) > .relative > .block").type(ORGANIZATION_DESCRIPTION, {
+      delay: 0,
+    });
 
     if (this.screenshots) {
       cy.screenshot("tutorial_1_organization_create", screenshotConfig);
@@ -52,7 +54,7 @@ describe("Tutorial - Part 1", () => {
     cy.get("#headlessui-popover-button-\\:r8\\: > .py-1\\.5").click();
 
     // Fill the new branch name
-    cy.get(".flex-col > :nth-child(1) > .block").type(NEW_BRANCH_NAME);
+    cy.get(".flex-col > :nth-child(1) > .block").type(NEW_BRANCH_NAME, { delay: 0 });
 
     if (this.screenshots) {
       cy.screenshot("tutorial_1_branch_creation", screenshotConfig);
@@ -100,7 +102,7 @@ describe("Tutorial - Part 1", () => {
     // Update the label
     cy.get(":nth-child(3) > .relative > .block").should("have.value", ORGANIZATION_DESCRIPTION);
     cy.get(":nth-child(3) > .relative > .block").clear();
-    cy.get(":nth-child(3) > .relative > .block").type(NEW_ORGANIZATION_DESCRIPTION);
+    cy.get(":nth-child(3) > .relative > .block").type(NEW_ORGANIZATION_DESCRIPTION, { delay: 0 });
 
     if (this.screenshots) {
       cy.screenshot("tutorial_1_organization_edit", screenshotConfig);

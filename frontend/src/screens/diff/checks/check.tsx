@@ -1,5 +1,6 @@
 import { gql } from "@apollo/client";
 import {
+  ArrowTopRightOnSquareIcon,
   CheckCircleIcon,
   ExclamationCircleIcon,
   ExclamationTriangleIcon,
@@ -8,13 +9,16 @@ import {
 import { useAtom } from "jotai";
 import { Badge } from "../../../components/badge";
 import { DateDisplay } from "../../../components/date-display";
+import { Link } from "../../../components/link";
 import { PopOver } from "../../../components/popover";
+import { Tooltip } from "../../../components/tooltip";
 import { getCheckDetails } from "../../../graphql/queries/diff/getCheckDetails";
 import useQuery from "../../../hooks/useQuery";
 import { schemaKindNameState } from "../../../state/atoms/schemaKindName.atom";
 import { classNames } from "../../../utils/common";
 import ErrorScreen from "../../error-screen/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
+import { Conflict } from "./conflict";
 
 type tCheckProps = {
   id: string;
@@ -62,15 +66,16 @@ const getCheckData = (check: any) => {
 
   switch (__typename) {
     case "CoreDataCheck": {
-      const { paths } = check;
+      const { conflicts } = check;
+
       return (
-        <div className="">
-          <span className="font-semibold">Paths:</span>
-          <ul className="list-disc list-inside ">
-            {paths?.value?.map((path: string) => (
-              <li key={path}>{path}</li>
+        <div>
+          <div>
+            {conflicts?.value?.map((conflict: any, index: number) => (
+              <Conflict key={index} {...conflict} />
             ))}
-          </ul>
+          </div>
+
           {/* <div className="mt-2 flex flex-1">
             <Button className="mr-2">Keep data from main</Button>
 
@@ -120,6 +125,10 @@ export const Check = (props: tCheckProps) => {
     </div>
   );
 
+  const url = "/";
+
+  const tooltipMessage = "Open validator in checks view";
+
   const renderContent = () => {
     return (
       <div>
@@ -168,10 +177,18 @@ export const Check = (props: tCheckProps) => {
       )}>
       <div className="flex mb-2">
         <div className="flex flex-1 flex-col mr-2">
-          <div className="flex">
+          <div className="flex items-center">
             {getCheckIcon(conclusion?.value)}
 
             {name?.value || display_label}
+
+            <div className="ml-2">
+              <Tooltip message={tooltipMessage}>
+                <Link to={url} target="_blank">
+                  <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+                </Link>
+              </Tooltip>
+            </div>
           </div>
 
           <div className="flex items-center justify-center min-h-[50px]">

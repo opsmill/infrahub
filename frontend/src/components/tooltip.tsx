@@ -25,19 +25,20 @@ export const Tooltip = (props: TooltipProps) => {
 
   return (
     <div className={"group/tooltip relative flex cursor-pointer"}>
-      {children}
       <span
         className={classNames(
           position ? getPositionClassName[position] : getPositionClassName[TooltipPosition.BOTTOM],
-          `whitespace-pre absolute z-10
-          transition-all delay-1000 duration-300
+          `whitespace-pre absolute -z-10
           px-3 py-2 min-w-min
           text-sm font-medium text-white text-center
           bg-gray-600 rounded-lg shadow-sm opacity-0
-          group-hover/tooltip:opacity-100`
+          transition-opacity
+          group-hover/tooltip:opacity-100
+          group-hover/tooltip:z-10`
         )}>
         {message}
       </span>
+      {children}
     </div>
   );
 };

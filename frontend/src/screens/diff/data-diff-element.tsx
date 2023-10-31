@@ -44,7 +44,7 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
 
   const renderTitleDisplay = (diffValue: tDataDiffNodeValueChange) => {
     return (
-      <div className="p-1 pr-0 flex flex-col lg:flex-row">
+      <div className="relative p-1 pr-0 flex flex-col lg:flex-row ">
         <div className="flex flex-1 items-center">
           <div className="flex flex-1 items-center group">
             <span className="mr-2 font-semibold">{name}</span>
