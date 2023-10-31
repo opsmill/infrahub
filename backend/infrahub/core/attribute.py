@@ -514,6 +514,10 @@ class String(BaseAttribute):
     type = str
 
 
+class StringMandatory(BaseAttribute):
+    value: str
+
+
 class HashedPassword(BaseAttribute):
     type = str
 
@@ -522,6 +526,10 @@ class HashedPassword(BaseAttribute):
         """Serialize the value before storing it in the database."""
 
         return hash_password(value)
+
+
+class HashedPasswordMandatory(HashedPassword):
+    value: str
 
 
 class Integer(BaseAttribute):

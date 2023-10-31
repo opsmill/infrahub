@@ -17,9 +17,8 @@ from infrahub.core.node import Node
 from infrahub.exceptions import AuthorizationError, NodeNotFound
 
 if TYPE_CHECKING:
+    from infrahub.core.definitions import CoreAccountNode
     from infrahub.database import InfrahubDatabase
-
-# from ..datatypes import AuthResult
 
 
 class AuthType(str, Enum):
@@ -44,7 +43,7 @@ async def authenticate_with_password(
     db: InfrahubDatabase, credentials: models.PasswordCredential, branch: Optional[str] = None
 ) -> models.UserToken:
     selected_branch = await get_branch(db=db, branch=branch)
-    response = await NodeManager.query(
+    response: List[CoreAccountNode] = await NodeManager.query(
         schema="CoreAccount",
         db=db,
         branch=selected_branch,
@@ -59,7 +58,8 @@ async def authenticate_with_password(
             message="That login user doesn't exist in the system",
         )
     account = response[0]
-    valid_credentials = bcrypt.checkpw(credentials.password.encode("UTF-8"), account.password.value.encode("UTF-8"))
+    password = account.password.value
+    valid_credentials = bcrypt.checkpw(credentials.password.encode("UTF-8"), str(password or "").encode("UTF-8"))
     if not valid_credentials:
         raise AuthorizationError("Incorrect password")
 
@@ -96,7 +96,7 @@ async def create_fresh_access_token(
     if not refresh_token:
         raise AuthorizationError("The provided refresh token has been invalidated in the database")
 
-    account = await NodeManager.get_one(
+    account: CoreAccountNode = await NodeManager.get_one(
         id=refresh_data.account_id,
         db=db,
     )

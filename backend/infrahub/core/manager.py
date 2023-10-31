@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, List, Optional, Type, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
 
 from infrahub.core import get_branch, registry
 from infrahub.core.node import Node
@@ -23,7 +23,6 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
-
 
 # pylint: disable=redefined-builtin
 
@@ -62,7 +61,7 @@ class NodeManager:
         include_owner: bool = False,
         prefetch_relationships: bool = False,
         account=None,
-    ) -> List[Node]:  # pylint: disable=unused-argument
+    ) -> List[Any]:  # pylint: disable=unused-argument
         """Query one or multiple nodes of a given type based on filter arguments.
 
         Args:
@@ -285,7 +284,7 @@ class NodeManager:
         include_owner: bool = False,
         prefetch_relationships: bool = False,
         account=None,
-    ) -> Node:
+    ) -> Any:
         """Return one node based on its ID."""
         result = await cls.get_many(
             ids=[id],
@@ -316,7 +315,7 @@ class NodeManager:
         include_owner: bool = False,
         prefetch_relationships: bool = False,
         account=None,
-    ) -> Dict[str, Node]:
+    ) -> Dict[str, Any]:
         """Return a list of nodes based on their IDs."""
 
         branch = await get_branch(branch=branch, db=db)
