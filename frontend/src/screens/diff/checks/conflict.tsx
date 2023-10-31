@@ -1,17 +1,12 @@
 import { gql, useReactiveVar } from "@apollo/client";
-import {
-  ArrowTopRightOnSquareIcon,
-  CheckIcon,
-  ChevronRightIcon,
-  XMarkIcon,
-} from "@heroicons/react/24/outline";
+import { ArrowTopRightOnSquareIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../../components/alert";
 import { Badge } from "../../../components/badge";
-import { BUTTON_TYPES, Button } from "../../../components/button";
 import { Id } from "../../../components/id";
 import { Link } from "../../../components/link";
+import { ToggleButtons } from "../../../components/toggle-buttons";
 import { Tooltip, TooltipPosition } from "../../../components/tooltip";
 import { DATA_CHECK_OBJECT } from "../../../config/constants";
 import graphqlClient from "../../../graphql/graphqlClientApollo";
@@ -73,11 +68,9 @@ export const Conflict = (props: any) => {
   const date = useReactiveVar(dateVar);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleAccept = async (branch: string) => {
+  const handleAccept = async (conflictValue: string) => {
     try {
       setIsLoading(true);
-
-      const conflictValue = branch == "main" ? "target" : "source";
 
       const newValue = conflictValue === keep_branch?.value ? null : conflictValue;
 
@@ -117,6 +110,19 @@ export const Conflict = (props: any) => {
       setIsLoading(false);
     }
   };
+
+  const tabs = [
+    {
+      label: "target",
+      isActive: keep_branch?.value === "target",
+      onClick: () => handleAccept("target"),
+    },
+    {
+      label: "source",
+      isActive: keep_branch?.value === "source",
+      onClick: () => handleAccept("source"),
+    },
+  ];
 
   return (
     <div>
@@ -173,7 +179,7 @@ export const Conflict = (props: any) => {
                 </div>
               </div>
 
-              <Tooltip
+              {/* <Tooltip
                 message={isSelected ? "Cancel this change" : "Accept this change"}
                 position={TooltipPosition.LEFT}>
                 <Button
@@ -186,10 +192,14 @@ export const Conflict = (props: any) => {
                     <CheckIcon className="h-4 w-4" />
                   )}
                 </Button>
-              </Tooltip>
+              </Tooltip> */}
             </div>
           );
         })}
+      </div>
+
+      <div className="flex items-center">
+        Accept: <ToggleButtons tabs={tabs} isLoading={isLoading} />
       </div>
     </div>
   );
