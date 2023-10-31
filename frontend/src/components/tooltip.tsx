@@ -32,7 +32,7 @@ export const Tooltip = (props: TooltipProps) => {
           px-3 py-2 min-w-min
           text-sm font-medium text-white text-center
           bg-gray-600 rounded-lg shadow-sm opacity-0
-          transition-opacity
+          transition-opacity delay-500
           group-hover/tooltip:opacity-100
           group-hover/tooltip:z-10`
         )}>

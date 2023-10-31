@@ -10,9 +10,6 @@ export const getCheckDetails = Handlebars.compile(`
         name {
           value
         }
-        message {
-          value
-        }
         severity {
           value
         }
@@ -30,6 +27,9 @@ export const getCheckDetails = Handlebars.compile(`
         }
         ... on CoreDataCheck {
           conflicts {
+            value
+          }
+          keep_branch {
             value
           }
         }
