@@ -1,12 +1,28 @@
-import { ArrowTopRightOnSquareIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
+import { gql, useReactiveVar } from "@apollo/client";
+import {
+  ArrowTopRightOnSquareIcon,
+  CheckIcon,
+  ChevronRightIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
+import { useState } from "react";
+import { toast } from "react-toastify";
+import { ALERT_TYPES, Alert } from "../../../components/alert";
 import { Badge } from "../../../components/badge";
+import { BUTTON_TYPES, Button } from "../../../components/button";
 import { Id } from "../../../components/id";
 import { Link } from "../../../components/link";
 import { Tooltip, TooltipPosition } from "../../../components/tooltip";
+import { DATA_CHECK_OBJECT } from "../../../config/constants";
+import graphqlClient from "../../../graphql/graphqlClientApollo";
+import { updateObjectWithId } from "../../../graphql/mutations/objects/updateObjectWithId";
+import { branchVar } from "../../../graphql/variables/branchVar";
+import { dateVar } from "../../../graphql/variables/dateVar";
 import { classNames } from "../../../utils/common";
 import { diffContent, getBadgeType } from "../../../utils/diff";
 import { constructPath } from "../../../utils/fetch";
 import { getObjectDetailsUrl } from "../../../utils/objects";
+import { stringifyWithoutQuotes } from "../../../utils/string";
 import { getNodeClassName } from "../data-diff-node";
 
 const renderConflict = {
@@ -49,7 +65,58 @@ const renderConflict = {
 };
 
 export const Conflict = (props: any) => {
-  const { changes, kind, name, node_id, property_name, change_type } = props;
+  const { check, id, changes, kind, name, node_id, property_name, change_type, refetch } = props;
+
+  const { keep_branch } = check;
+
+  const branchFromStore = useReactiveVar(branchVar);
+  const date = useReactiveVar(dateVar);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleAccept = async (branch: string) => {
+    try {
+      setIsLoading(true);
+
+      const conflictValue = branch == "main" ? "target" : "source";
+
+      const newValue = conflictValue === keep_branch?.value ? null : conflictValue;
+
+      const newData = {
+        id,
+        keep_branch: {
+          value: newValue,
+        },
+      };
+
+      const mustationString = updateObjectWithId({
+        kind: DATA_CHECK_OBJECT,
+        data: stringifyWithoutQuotes(newData),
+      });
+
+      const mutation = gql`
+        ${mustationString}
+      `;
+
+      await graphqlClient.mutate({
+        mutation,
+        context: {
+          branch: branchFromStore?.name,
+          date,
+        },
+      });
+
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message="Conflict marked as resovled" />);
+
+      setIsLoading(false);
+
+      if (refetch) {
+        refetch();
+      }
+    } catch (error) {
+      console.error("Error while updateing the conflict: ", error);
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div>
@@ -71,34 +138,55 @@ export const Conflict = (props: any) => {
 
           const url = constructPath(getObjectDetailsUrl(node_id, kind), [["branch", branch]]);
 
+          const isSelected =
+            (keep_branch?.value === "target" && branch === "main") ||
+            (keep_branch?.value === "source" && branch !== "main");
+
+          const className = isSelected ? "border-2 border-gray-500" : "";
+
           return (
-            <div
-              key={index}
-              className={classNames(
-                "grid grid-cols-3 gap-2 mb-2 last:mb-0 p-2 rounded-md",
-                getNodeClassName([], branch, "false")
-              )}>
-              <div className="flex items-center">
-                <Badge className="mr-2">{branch}</Badge>
-              </div>
+            <div key={index} className="flex items-center mb-2 last:mb-0">
+              <div
+                className={classNames(
+                  "flex-1 grid grid-cols-2 gap-2 p-2 rounded-md",
+                  className,
+                  getNodeClassName([], branch, "false")
+                )}>
+                <div className="flex items-center">
+                  <Badge className="mr-2">{branch}</Badge>
 
-              <div className="flex items-center">
-                <Badge className="mr-2" type={getBadgeType(action)}>
-                  {action?.toUpperCase()}
-                </Badge>
-              </div>
+                  <Badge className="mr-2" type={getBadgeType(action)}>
+                    {action?.toUpperCase()}
+                  </Badge>
+                </div>
 
-              <div className="flex items-center justify-between">
-                {diffContent[action](property)}
+                <div className="flex items-center justify-between">
+                  {diffContent[action](property)}
 
-                <div className="ml-2">
-                  <Tooltip message={"Open object in new tab"} position={TooltipPosition.RIGHT}>
-                    <Link to={url} target="_blank">
-                      <ArrowTopRightOnSquareIcon className="h-4 w-4" />
-                    </Link>
-                  </Tooltip>
+                  <div className="ml-2">
+                    <Tooltip message={"Open object in new tab"} position={TooltipPosition.LEFT}>
+                      <Link to={url} target="_blank">
+                        <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+                      </Link>
+                    </Tooltip>
+                  </div>
                 </div>
               </div>
+
+              <Tooltip
+                message={isSelected ? "Cancel this change" : "Accept this change"}
+                position={TooltipPosition.LEFT}>
+                <Button
+                  buttonType={BUTTON_TYPES.INVISIBLE}
+                  onClick={() => handleAccept(branch)}
+                  isLoading={isLoading}>
+                  {isSelected ? (
+                    <XMarkIcon className="h-4 w-4" />
+                  ) : (
+                    <CheckIcon className="h-4 w-4" />
+                  )}
+                </Button>
+              </Tooltip>
             </div>
           );
         })}

@@ -28,6 +28,8 @@ export const REFRESH_TOKEN_KEY = "refresh_token";
 
 export const NODE_OBJECT = "CoreNode";
 
+export const DATA_CHECK_OBJECT = "CoreDataCheck";
+
 export const ACCOUNT_OBJECT = "CoreAccount";
 
 export const ACCOUNT_TOKEN_OBJECT = "CoreAccountToken";
