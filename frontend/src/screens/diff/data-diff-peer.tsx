@@ -24,6 +24,7 @@ import { DataDiffThread } from "./diff-thread";
 export type tDataDiffNodePeerProps = {
   peerChanges: tDataDiffNodePeerChange;
   peerProperties?: { [key: string]: tDataDiffNodeProperty };
+  name?: string;
 };
 
 const getPeerRedirection = (peer: tDataDiffNodePeerValue, branch: string, navigate: Function) => {
@@ -44,6 +45,7 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
   const {
     peerChanges,
     peerProperties, // For relationship one
+    name,
   } = props;
 
   const { branchname } = useParams();
@@ -79,7 +81,7 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
     if (branches?.length) {
       return branches.map((branch: string, index: number) => {
         return (
-          <div className="relative p-1 pr-0 flex flex-col lg:flex-row last:mr-0" key={index}>
+          <div className="group relative p-1 pr-0 flex flex-col lg:flex-row last:mr-0" key={index}>
             <div className="flex flex-1 items-center">
               {peerChange?.kind && <Badge>{peerChange?.kind}</Badge>}
 
@@ -109,14 +111,17 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
 
     if (peerBranch) {
       return (
-        <div className="relative p-1 pr-0 flex flex-col lg:flex-row last:mr-0 group">
-          <div className="flex flex-1 items-center">
+        <div className="group p-1 pr-0 flex flex-col lg:flex-row last:mr-0">
+          <div className="flex flex-1 items-center relative">
             <div className="flex flex-1 items-center">
-              {newPeer?.kind && <Badge>{newPeer?.kind}</Badge>}
-              {previousPeer?.kind && <Badge>{previousPeer?.kind}</Badge>}
+              <div className="flex items-center">
+                {newPeer?.kind && <Badge>{newPeer?.kind}</Badge>}
 
-              <span className="mr-2 font-semibold">{newPeer?.display_label}</span>
-              <span className="mr-2 font-semibold">{previousPeer?.display_label}</span>
+                <span className="mr-2 font-semibold">{name}</span>
+              </div>
+
+              {/* Do not display comment button if we are on the branch details view */}
+              {!branchname && <DataDiffThread path={path} />}
             </div>
 
             <div className="flex flex-1 items-center">

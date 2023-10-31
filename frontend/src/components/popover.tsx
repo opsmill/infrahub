@@ -5,6 +5,7 @@ import { Fragment } from "react";
 import { classNames } from "../utils/common";
 
 export enum POPOVER_SIZE {
+  NONE,
   SMALL,
   MEDIUM,
   LARGE,
@@ -21,12 +22,14 @@ type PopoverPros = {
 };
 
 const widthClass = {
+  [POPOVER_SIZE.NONE]: "",
   [POPOVER_SIZE.SMALL]: "w-[300px]",
   [POPOVER_SIZE.MEDIUM]: "w-[500px]",
   [POPOVER_SIZE.LARGE]: "w-[800px]",
 };
 
 const heightClass = {
+  [POPOVER_SIZE.NONE]: "",
   [POPOVER_SIZE.SMALL]: "h-[300px]",
   [POPOVER_SIZE.MEDIUM]: "h-[500px]",
   [POPOVER_SIZE.LARGE]: "h-[800px]",
