@@ -1,14 +1,16 @@
 import logging
 from asyncio import run as aiorun
 from pathlib import Path
+from typing import List, Optional
 
 import typer
 import yaml
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 from rich.console import Console
 from rich.logging import RichHandler
 
 import infrahub_ctl.config as config
+from infrahub_client.utils import find_files
 from infrahub_ctl.client import initialize_client
 
 app = typer.Typer()
@@ -21,27 +23,65 @@ def callback() -> None:
     """
 
 
-async def _load(schema: Path, branch: str, log: logging.Logger) -> None:  # pylint: disable=unused-argument
+class SchemaFile(BaseModel):
+    location: Path
+    content: Optional[dict] = None
+    valid: bool = True
+    error_message: Optional[str] = None
+
+    def load_content(self) -> None:
+        try:
+            self.content = yaml.safe_load(self.location.read_text())
+        except yaml.YAMLError:
+            self.error_message = "Invalid YAML/JSON file"
+            self.valid = False
+
+
+async def _load(schemas: List[Path], branch: str, log: logging.Logger) -> None:  # pylint: disable=unused-argument
+    # pylint: disable=too-many-branches
     console = Console()
 
-    try:
-        schema_data = yaml.safe_load(schema.read_text())
-    except yaml.YAMLError as exc:
-        console.print("[red]Invalid JSON file")
-        raise typer.Exit(2) from exc
+    schemas_data: List[SchemaFile] = []
+
+    for schema in schemas:
+        if schema.is_file():
+            schema_file = SchemaFile(location=schema)
+            schema_file.load_content()
+            schemas_data.append(schema_file)
+        elif schema.is_dir():
+            files = find_files(extension=["yaml", "yml", "json"], directory=schema, recursive=True)
+            for item in files:
+                schema_file = SchemaFile(location=item)
+                schema_file.load_content()
+                schemas_data.append(schema_file)
+
+    has_error = False
+    for schema_file in schemas_data:
+        if schema_file.valid:
+            continue
+        console.print(f"[red]{schema_file.error_message} ({schema_file.location})")
+        has_error = True
+
+    if has_error:
+        raise typer.Exit(2)
 
     client = await initialize_client()
 
-    try:
-        client.schema.validate(schema_data)
-    except ValidationError as exc:
-        console.print(f"[red]Schema not valid, found '{len(exc.errors())}' error(s)")
-        for error in exc.errors():
-            loc_str = [str(item) for item in error["loc"]]
-            console.print(f"  '{'/'.join(loc_str)}' | {error['msg']} ({error['type']})")
+    # Valid data format of content
+    for schema_file in schemas_data:
+        try:
+            client.schema.validate(schema_file.content)
+        except ValidationError as exc:
+            console.print(f"[red]Schema not valid, found '{len(exc.errors())}' error(s) in {schema_file.location}")
+            has_error = True
+            for error in exc.errors():
+                loc_str = [str(item) for item in error["loc"]]
+                console.print(f"  '{'/'.join(loc_str)}' | {error['msg']} ({error['type']})")
+
+    if has_error:
         raise typer.Exit(2)
 
-    _, errors = await client.schema.load(schema=schema_data, branch=branch)
+    _, errors = await client.schema.load(schemas=[item.content for item in schemas_data], branch=branch)
 
     if errors:
         console.print("[red]Unable to load the schema:")
@@ -54,12 +94,13 @@ async def _load(schema: Path, branch: str, log: logging.Logger) -> None:  # pyli
         else:
             console.print(f"  '{errors}'")
     else:
-        console.print("[green]Schema loaded successfully!")
+        for schema_file in schemas_data:
+            console.print(f"[green] schema '{schema_file.location}' loaded successfully!")
 
 
 @app.command()
 def load(
-    schema: Path,
+    schemas: List[Path],
     debug: bool = False,
     branch: str = typer.Option("main", help="Branch on which to load the schema."),
     config_file: str = typer.Option("infrahubctl.toml", envvar="INFRAHUBCTL_CONFIG"),
@@ -77,7 +118,7 @@ def load(
     logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
     log = logging.getLogger("infrahubctl")
 
-    aiorun(_load(schema=schema, branch=branch, log=log))
+    aiorun(_load(schemas=schemas, branch=branch, log=log))
 
 
 @app.command()

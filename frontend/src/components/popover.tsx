@@ -16,13 +16,20 @@ type PopoverPros = {
   buttonComponent?: any;
   title?: string;
   disabled?: boolean;
-  size?: POPOVER_SIZE;
+  width?: POPOVER_SIZE;
+  height?: POPOVER_SIZE;
 };
 
-const sizesClass = {
+const widthClass = {
   [POPOVER_SIZE.SMALL]: "w-[300px]",
   [POPOVER_SIZE.MEDIUM]: "w-[500px]",
-  [POPOVER_SIZE.LARGE]: "w-[700px]",
+  [POPOVER_SIZE.LARGE]: "w-[800px]",
+};
+
+const heightClass = {
+  [POPOVER_SIZE.SMALL]: "h-[300px]",
+  [POPOVER_SIZE.MEDIUM]: "h-[500px]",
+  [POPOVER_SIZE.LARGE]: "h-[800px]",
 };
 
 // Stop propagation for clicks
@@ -37,7 +44,8 @@ export const PopOver = ({
   buttonComponent,
   title,
   disabled,
-  size,
+  width,
+  height,
 }: PopoverPros) => {
   return (
     <Popover className="flex relative" onClick={preventClick}>
@@ -55,10 +63,11 @@ export const PopOver = ({
         leaveTo="opacity-0 translate-y-1">
         <Popover.Panel
           className={classNames(
-            "absolute z-10 rounded-lg border shadow-xl right-0 top-10 mt-3 grid grid-cols-1 divide-y divide-gray-200",
+            "absolute z-10 overflow-scroll rounded-lg border shadow-xl right-0 top-10 mt-3 grid grid-cols-1 divide-y divide-gray-200",
             className?.includes("bg-") ? "" : "bg-custom-white",
             className ?? "",
-            sizesClass[size ?? POPOVER_SIZE.SMALL]
+            widthClass[width ?? POPOVER_SIZE.SMALL],
+            heightClass[height ?? POPOVER_SIZE.SMALL]
           )}>
           {({ close }) => (
             <>

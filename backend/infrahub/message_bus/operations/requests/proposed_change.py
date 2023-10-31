@@ -1,4 +1,3 @@
-import json
 from typing import List
 
 from infrahub.core.branch import ObjectConflict
@@ -106,7 +105,7 @@ async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, s
                 validator=data_check.id,
                 conclusion="failure",
                 severity="critical",
-                conflicts=json.dumps(conflicts_data),
+                conflicts=conflicts_data,
             )
 
             await conflict_obj.save(db=db)

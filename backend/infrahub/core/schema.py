@@ -14,6 +14,7 @@ from infrahub.core.constants import (
     AccountRole,
     AccountType,
     ArtifactStatus,
+    BranchConflictKeep,
     BranchSupportType,
     ContentType,
     CriticalityLevel,
@@ -27,7 +28,6 @@ from infrahub.core.constants import (
 )
 from infrahub.core.query import QueryNode, QueryRel
 from infrahub.core.relationship import Relationship
-from infrahub.exceptions import PermissionDeniedError
 from infrahub.types import ATTRIBUTE_TYPES
 from infrahub_client.utils import duplicates, intersection
 
@@ -684,15 +684,14 @@ class SchemaRoot(BaseModel):
 
         return True
 
-    def validate_namespaces(self) -> None:
+    def validate_namespaces(self) -> List[str]:
         models = self.nodes + self.generics
         errors: List[str] = []
         for model in models:
             if model.namespace in RESTRICTED_NAMESPACES:
                 errors.append(f"Restricted namespace '{model.namespace}' used on '{model.name}'")
 
-        if errors:
-            raise PermissionDeniedError(", ".join(errors))
+        return errors
 
 
 # TODO need to investigate how we could generate the internal schema
@@ -1720,6 +1719,7 @@ core_models = {
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
                 {"name": "conflicts", "kind": "JSON"},
+                {"name": "keep_branch", "enum": BranchConflictKeep.available_types(), "kind": "Text", "optional": True},
             ],
         },
         {
