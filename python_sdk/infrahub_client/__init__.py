@@ -18,6 +18,7 @@ from infrahub_client.graphql import Mutation, Query
 from infrahub_client.node import InfrahubNode, InfrahubNodeSync
 from infrahub_client.schema import (
     AttributeSchema,
+    InfrahubRepositoryConfig,
     InfrahubSchema,
     NodeSchema,
     RelationshipCardinality,
@@ -41,6 +42,7 @@ __all__ = [
     "InfrahubClientSync",
     "InfrahubNode",
     "InfrahubNodeSync",
+    "InfrahubRepositoryConfig",
     "InfrahubSchema",
     "FilterNotFound",
     "generate_uuid",
