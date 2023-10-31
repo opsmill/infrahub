@@ -40,7 +40,11 @@ import ObjectItemCreate from "../object-item-create/object-item-create-paginated
 export default function ObjectItems(props: any) {
   const { objectname: objectnameFromParams } = useParams();
 
-  const { objectname: objectnameFromProps = "", filters: filtersFromProps = [] } = props;
+  const {
+    objectname: objectnameFromProps = "",
+    filters: filtersFromProps = [],
+    preventBlock,
+  } = props;
 
   const objectname = objectnameFromProps || objectnameFromParams;
 
@@ -68,7 +72,7 @@ export default function ObjectItems(props: any) {
     navigate("/");
   }
 
-  if (schemaData && MENU_EXCLUDELIST.includes(schemaData.kind)) {
+  if (schemaData && MENU_EXCLUDELIST.includes(schemaData.kind) && !preventBlock) {
     navigate("/");
   }
 
