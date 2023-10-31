@@ -193,7 +193,7 @@ def load_infra_data(context: Context, database: str = INFRAHUB_DATABASE):
 @task(optional=["database"])
 def infra_git_import(context: Context, database: str = INFRAHUB_DATABASE):
     """Load some demo data."""
-    PACKAGE_NAME = "infrahub-demo-edge-b635811.tar.gz"
+    PACKAGE_NAME = "infrahub-demo-edge-cff6665.tar.gz"
     with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_compose_files_cmd(database=database)
         base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
