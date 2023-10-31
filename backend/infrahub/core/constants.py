@@ -56,6 +56,11 @@ class BranchSupportType(InfrahubStringEnum):
     LOCAL = "local"
 
 
+class BranchConflictKeep(InfrahubStringEnum):
+    TARGET = "target"
+    SOURCE = "source"
+
+
 class ContentType(InfrahubStringEnum):
     APPLICATION_JSON = "application/json"
     TEXT_PLAIN = "text/plain"
