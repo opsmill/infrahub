@@ -61,26 +61,20 @@ const getCheckBorderColor = (severity?: string) => {
   }
 };
 
-const getCheckData = (check: any) => {
+const getCheckData = (check: any, refetch: Function) => {
   const { __typename } = check;
 
   switch (__typename) {
     case "CoreDataCheck": {
-      const { conflicts } = check;
+      const { id, conflicts } = check;
 
       return (
         <div>
           <div>
             {conflicts?.value?.map((conflict: any, index: number) => (
-              <Conflict key={index} {...conflict} />
+              <Conflict key={index} {...conflict} check={check} id={id} refetch={refetch} />
             ))}
           </div>
-
-          {/* <div className="mt-2 flex flex-1">
-            <Button className="mr-2">Keep data from main</Button>
-
-            <Button>Keep data from branch</Button>
-          </div> */}
         </div>
       );
     }
@@ -103,7 +97,7 @@ export const Check = (props: tCheckProps) => {
     ${queryString}
   `;
 
-  const { loading, error, data } = useQuery(query);
+  const { loading, error, data, refetch } = useQuery(query);
 
   const check = data?.CoreCheck?.edges?.[0]?.node ?? {};
 
@@ -191,10 +185,10 @@ export const Check = (props: tCheckProps) => {
             </div>
           </div>
 
-          <div className="flex items-center justify-center min-h-[50px]">
+          <div className="flex items-center min-h-[50px] text-gray-500">
             {message?.value}
 
-            {!message?.value && <span className="italic text-gray-400">Empty message</span>}
+            {!message?.value && <span className="italic text-center">Empty message</span>}
           </div>
         </div>
 
@@ -210,7 +204,7 @@ export const Check = (props: tCheckProps) => {
       <div>
         <div className="border-t-2 border-gray-100 mb-2 rounded-md" />
 
-        {getCheckData(check)}
+        {getCheckData(check, refetch)}
       </div>
     </div>
   );
