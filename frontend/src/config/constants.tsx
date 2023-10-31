@@ -32,7 +32,7 @@ export const DATA_CHECK_OBJECT = "CoreDataCheck";
 
 export const ACCOUNT_OBJECT = "CoreAccount";
 
-export const ACCOUNT_TOKEN_OBJECT = "CoreAccountToken";
+export const ACCOUNT_TOKEN_OBJECT = "InternalAccountToken";
 
 export const ARTIFACT_DEFINITION_OBJECT = "CoreArtifactDefinition";
 
