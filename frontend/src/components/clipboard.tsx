@@ -3,16 +3,17 @@ import { useState } from "react";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "./alert";
 import { BUTTON_TYPES, Button } from "./button";
-import Transition from "./transition";
+import { Tooltip } from "./tooltip";
 
 type tClipboard = {
   value: any;
   className?: string;
-  message?: string;
+  alert?: string;
+  tooltip?: string;
 };
 
 export const Clipboard = (props: tClipboard) => {
-  const { value, message = "Content copied", className } = props;
+  const { value, alert = "Content copied", tooltip = "Copy content", className } = props;
 
   const [isCopied, setIsCopied] = useState(false);
 
@@ -21,7 +22,7 @@ export const Clipboard = (props: tClipboard) => {
 
     await navigator.clipboard.writeText(value);
 
-    toast(<Alert message={message} type={ALERT_TYPES.INFO} />);
+    toast(<Alert message={alert} type={ALERT_TYPES.INFO} />);
 
     setTimeout(() => {
       setIsCopied(false);
@@ -29,12 +30,12 @@ export const Clipboard = (props: tClipboard) => {
   };
 
   return (
-    <Button buttonType={BUTTON_TYPES.INVISIBLE} onClick={handleCopy} className={className}>
-      <Transition>
+    <Tooltip message={tooltip}>
+      <Button buttonType={BUTTON_TYPES.INVISIBLE} onClick={handleCopy} className={className}>
         {!isCopied && <ClipboardDocumentIcon className="h-4 w-4" />}
 
         {isCopied && <ClipboardDocumentCheckIcon className="h-4 w-4" />}
-      </Transition>
-    </Button>
+      </Button>
+    </Tooltip>
   );
 };

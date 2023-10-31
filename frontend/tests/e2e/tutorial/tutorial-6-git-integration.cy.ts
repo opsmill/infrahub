@@ -21,7 +21,7 @@ describe("Tutorial - Part 6", () => {
     cy.get("#headlessui-popover-button-\\:r8\\: > .shadow-sm").click();
 
     // Add the new branch name
-    cy.get(".flex-col > :nth-child(1) > .block").type(NEW_BRANCH);
+    cy.get(".flex-col > :nth-child(1) > .block").type(NEW_BRANCH, { delay: 0 });
 
     // Toggle the data-only field
     cy.get(".px-1\\.5").within(() => {
@@ -59,7 +59,7 @@ describe("Tutorial - Part 6", () => {
 
     // Update the description
     cy.get(":nth-child(2) > .relative > .block").clear();
-    cy.get(":nth-child(2) > .relative > .block").type(NEW_INTERFACE_DESCRIPTION);
+    cy.get(":nth-child(2) > .relative > .block").type(NEW_INTERFACE_DESCRIPTION, { delay: 0 });
     cy.get(":nth-child(2) > .relative > .block").blur();
 
     if (this.screenshots) {

@@ -94,7 +94,7 @@ async def test_schema_load_endpoint_valid_simple(
 
     with client:
         creation = client.post(
-            "/api/schema/load", headers=admin_headers, json=helper.schema_file("infra_simple_01.json")
+            "/api/schema/load", headers=admin_headers, json={"schemas": [helper.schema_file("infra_simple_01.json")]}
         )
         read = client.get("/api/schema", headers=admin_headers)
 
@@ -123,7 +123,9 @@ async def test_schema_load_restricted_namespace(
 ):
     with client:
         response = client.post(
-            "/api/schema/load", headers=admin_headers, json=helper.schema_file("restricted_namespace_01.json")
+            "/api/schema/load",
+            headers=admin_headers,
+            json={"schemas": [helper.schema_file("restricted_namespace_01.json")]},
         )
 
     assert response.status_code == 403
@@ -142,7 +144,7 @@ async def test_schema_load_endpoint_idempotent_simple(
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         creation = client.post(
-            "/api/schema/load", headers=admin_headers, json=helper.schema_file("infra_simple_01.json")
+            "/api/schema/load", headers=admin_headers, json={"schemas": [helper.schema_file("infra_simple_01.json")]}
         )
         read = client.get("/api/schema", headers=admin_headers)
 
@@ -163,7 +165,7 @@ async def test_schema_load_endpoint_idempotent_simple(
         assert relationships["tags"] == 5000
 
         creation = client.post(
-            "/api/schema/load", headers=admin_headers, json=helper.schema_file("infra_simple_01.json")
+            "/api/schema/load", headers=admin_headers, json={"schemas": [helper.schema_file("infra_simple_01.json")]}
         )
         read = client.get("/api/schema", headers=admin_headers)
 
@@ -184,7 +186,9 @@ async def test_schema_load_endpoint_valid_with_generics(
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         response1 = client.post(
-            "/api/schema/load", headers=admin_headers, json=helper.schema_file("infra_w_generics_01.json")
+            "/api/schema/load",
+            headers=admin_headers,
+            json={"schemas": [helper.schema_file("infra_w_generics_01.json")]},
         )
         assert response1.status_code == 202
 
@@ -206,7 +210,9 @@ async def test_schema_load_endpoint_idempotent_with_generics(
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         response1 = client.post(
-            "/api/schema/load", headers=admin_headers, json=helper.schema_file("infra_w_generics_01.json")
+            "/api/schema/load",
+            headers=admin_headers,
+            json={"schemas": [helper.schema_file("infra_w_generics_01.json")]},
         )
         assert response1.status_code == 202
 
@@ -219,7 +225,9 @@ async def test_schema_load_endpoint_idempotent_with_generics(
         nbr_rels = await count_relationships(db=db)
 
         response3 = client.post(
-            "/api/schema/load", headers=admin_headers, json=helper.schema_file("infra_w_generics_01.json")
+            "/api/schema/load",
+            headers=admin_headers,
+            json={"schemas": [helper.schema_file("infra_w_generics_01.json")]},
         )
         assert response3.status_code == 202
 
@@ -243,7 +251,9 @@ async def test_schema_load_endpoint_valid_with_extensions(
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         response = client.post(
-            "/api/schema/load", headers=admin_headers, json=helper.schema_file("infra_w_extensions_01.json")
+            "/api/schema/load",
+            headers=admin_headers,
+            json={"schemas": [helper.schema_file("infra_w_extensions_01.json")]},
         )
 
     assert response.status_code == 202
@@ -263,7 +273,9 @@ async def test_schema_load_endpoint_not_valid_simple_02(
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         response = client.post(
-            "/api/schema/load", headers=admin_headers, json=helper.schema_file("not_valid_simple_02.json")
+            "/api/schema/load",
+            headers=admin_headers,
+            json={"schemas": [helper.schema_file("not_valid_simple_02.json")]},
         )
 
     assert response.status_code == 422
@@ -280,7 +292,9 @@ async def test_schema_load_endpoint_not_valid_simple_03(
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         response = client.post(
-            "/api/schema/load", headers=admin_headers, json=helper.schema_file("not_valid_simple_03.json")
+            "/api/schema/load",
+            headers=admin_headers,
+            json={"schemas": [helper.schema_file("not_valid_simple_03.json")]},
         )
 
     assert response.status_code == 422
@@ -297,7 +311,9 @@ async def test_schema_load_endpoint_not_valid_simple_04(
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         response = client.post(
-            "/api/schema/load", headers=admin_headers, json=helper.schema_file("not_valid_simple_04.json")
+            "/api/schema/load",
+            headers=admin_headers,
+            json={"schemas": [helper.schema_file("not_valid_simple_04.json")]},
         )
 
     assert response.status_code == 422
@@ -313,7 +329,9 @@ async def test_schema_load_endpoint_not_valid_simple_05(
 ):
     with client:
         response = client.post(
-            "/api/schema/load", headers=admin_headers, json=helper.schema_file("not_valid_simple_05.json")
+            "/api/schema/load",
+            headers=admin_headers,
+            json={"schemas": [helper.schema_file("not_valid_simple_05.json")]},
         )
 
     assert response.status_code == 422
@@ -331,7 +349,9 @@ async def test_schema_load_endpoint_not_valid_with_generics_02(
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         response = client.post(
-            "/api/schema/load", headers=admin_headers, json=helper.schema_file("not_valid_w_generics_02.json")
+            "/api/schema/load",
+            headers=admin_headers,
+            json={"schemas": [helper.schema_file("not_valid_w_generics_02.json")]},
         )
 
     assert response.status_code == 422

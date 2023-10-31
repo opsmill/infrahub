@@ -3,21 +3,28 @@ import { useAtom } from "jotai";
 import { useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import Accordion from "../../components/accordion";
-import { BADGE_TYPES, Badge } from "../../components/badge";
+import { Badge } from "../../components/badge";
 import { DateDisplay } from "../../components/date-display";
 import { Pill } from "../../components/pill";
 import { Tooltip } from "../../components/tooltip";
 import { QSP } from "../../config/qsp";
 import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
 import { classNames } from "../../utils/common";
+import { getBadgeType } from "../../utils/diff";
 import { DataDiffElement } from "./data-diff-element";
 import { DataDiffConflictInfo } from "./diff-conflict-info";
 import { DiffPill } from "./diff-pill";
 import { DataDiffThread } from "./diff-thread";
 
+export type tConflictChange = {
+  id?: string;
+  kind?: string;
+  display_label?: string;
+};
+
 export type tDataDiffNodePropertyValue = {
-  new: string;
-  previous: string;
+  new: string | tConflictChange;
+  previous: string | tConflictChange;
 };
 
 export type tDataDiffNodePropertyChange = {
@@ -126,18 +133,6 @@ export type tDataDiffNodeProps = {
   node: tDataDiffNode;
   commentsCount?: number;
   branch?: string;
-};
-
-const badgeTypes: { [key: string]: BADGE_TYPES } = {
-  added: BADGE_TYPES.VALIDATE,
-  updated: BADGE_TYPES.WARNING,
-  removed: BADGE_TYPES.CANCEL,
-};
-
-export const getBadgeType = (action?: string) => {
-  if (!action) return null;
-
-  return badgeTypes[action];
 };
 
 // Branch from QSP = branchname

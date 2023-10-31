@@ -4,19 +4,16 @@ from typing import TYPE_CHECKING
 
 from graphene import InputObjectType, Mutation
 
-from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
 
-from ..utils import extract_fields
 from .main import InfrahubMutationMixin, InfrahubMutationOptions
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
     from infrahub.core.branch import Branch
-    from infrahub.database import InfrahubDatabase
     from infrahub.message_bus.rpc import InfrahubRpcClient
 
 log = get_logger()
@@ -47,19 +44,10 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         branch: Branch,
         at: str,
     ):
-        db: InfrahubDatabase = info.context.get("infrahub_database")
-        rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
-
-        # Create the new repository in the database.
-        obj = await Node.init(db=db, schema=cls._meta.schema, branch=branch, at=at)
-        await obj.new(db=db, **data)
-        await cls.validate_constraints(db=db, node=obj, branch=branch)
-        async with db.start_transaction() as db:
-            await obj.save(db=db)
-
-        fields = await extract_fields(info.field_nodes[0].selection_set)
+        obj, result = await super().mutate_create(root, info, data, branch, at)
 
         # Create the new repository in the filesystem.
+        rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
         log.info("create_repository", name=obj.name.value)
         message = messages.GitRepositoryAdd(
             repository_id=obj.id, repository_name=obj.name.value, location=obj.location.value
@@ -67,6 +55,5 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         await rpc_client.send(message=message)
 
         # TODO Validate that the creation of the repository went as expected
-        ok = True
 
-        return obj, cls(object=await obj.to_graphql(db=db, fields=fields.get("object", {})), ok=ok)
+        return obj, result

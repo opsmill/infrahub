@@ -73,21 +73,6 @@ def find_graphql_query(name: str, directory: Union[str, Path] = ".") -> str:
     raise QueryNotFoundError(name=name)
 
 
-def find_files(
-    extension: Union[str, List[str]], directory: Union[str, Path] = ".", recursive: bool = True
-) -> List[str]:
-    files = []
-
-    if isinstance(extension, str):
-        files.extend(glob.glob(f"{directory}/**/*.{extension}", recursive=recursive))
-        files.extend(glob.glob(f"{directory}/**/.*.{extension}", recursive=recursive))
-    elif isinstance(extension, list):
-        for ext in extension:
-            files.extend(glob.glob(f"{directory}/**/*.{ext}", recursive=recursive))
-            files.extend(glob.glob(f"{directory}/**/.*.{ext}", recursive=recursive))
-    return files
-
-
 def render_action_rich(value: str) -> str:
     if value == "created":
         return f"[green]{value.upper()}[/green]"

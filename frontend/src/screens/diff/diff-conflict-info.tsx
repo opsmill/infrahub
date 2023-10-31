@@ -2,6 +2,7 @@ import { QuestionMarkCircleIcon } from "@heroicons/react/24/outline";
 import { useContext } from "react";
 import { Id } from "../../components/id";
 import { POPOVER_SIZE, PopOver } from "../../components/popover";
+import { reduceArrays } from "../../utils/array";
 import { Check } from "./checks/check";
 import { DiffContext } from "./data-diff";
 
@@ -28,13 +29,15 @@ export const DataDiffConflictInfo = (props: tDataDiffConflictInfo) => {
 
   const keys = Object.keys(checksDictionnary);
 
-  const matchingKey = keys.find((key: string) => key.startsWith(path));
+  const matchingKeys = keys.filter((key: string) => key.startsWith(path));
 
-  if (!matchingKey) {
+  if (!matchingKeys.length) {
     return null;
   }
 
-  const checks = checksDictionnary[matchingKey];
+  const checks = matchingKeys
+    .map((matchingKey: string) => checksDictionnary[matchingKey])
+    .reduce(reduceArrays, []);
 
   const MoreButton = (
     <div className="p-1 cursor-pointer">
@@ -45,8 +48,10 @@ export const DataDiffConflictInfo = (props: tDataDiffConflictInfo) => {
   const renderContent = () => {
     return (
       <div>
-        <div className="flex mb-2">
-          <Id id={id} />
+        <div className="flex items-center mb-2">
+          <div className="mr-2">
+            <Id id={id} />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-4">
@@ -61,7 +66,7 @@ export const DataDiffConflictInfo = (props: tDataDiffConflictInfo) => {
   return (
     <div className="absolute right-0 font-normal">
       <div className="cursor-pointer">
-        <PopOver buttonComponent={MoreButton} size={POPOVER_SIZE.LARGE} className="bg-gray-100">
+        <PopOver buttonComponent={MoreButton} width={POPOVER_SIZE.LARGE} className="bg-gray-100">
           {renderContent}
         </PopOver>
       </div>

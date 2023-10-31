@@ -37,6 +37,56 @@ async def test_create_simple_object(db: InfrahubDatabase, default_branch, car_pe
     assert len(result.data["TestPersonCreate"]["object"]["id"]) == 36  # lenght of an UUID
 
 
+async def test_create_with_id(db: InfrahubDatabase, default_branch, car_person_schema):
+    uuid1 = "79c83773-6b23-4537-a3ce-b214b625ff1d"
+    query = (
+        """
+    mutation {
+        TestPersonCreate(data: {id: "%s", name: { value: "John"}, height: {value: 182}}) {
+            ok
+            object {
+                id
+            }
+        }
+    }
+    """
+        % uuid1
+    )
+    result = await graphql(
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["TestPersonCreate"]["ok"] is True
+    assert result.data["TestPersonCreate"]["object"]["id"] == uuid1
+
+    query = """
+    mutation {
+        TestPersonCreate(data: {id: "not-valid", name: { value: "John"}, height: {value: 182}}) {
+            ok
+            object {
+                id
+            }
+        }
+    }
+    """
+    result = await graphql(
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors
+    assert len(result.errors) == 1
+    assert "not-valid is not a valid UUID" in result.errors[0].message
+
+
 async def test_create_check_unique(db: InfrahubDatabase, default_branch, car_person_schema):
     p1 = await Node.init(db=db, schema="TestPerson")
     await p1.new(db=db, name="John", height=180)

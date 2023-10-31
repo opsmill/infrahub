@@ -26,6 +26,8 @@ export const ACCESS_TOKEN_KEY = "access_token";
 
 export const REFRESH_TOKEN_KEY = "refresh_token";
 
+export const NODE_OBJECT = "CoreNode";
+
 export const ACCOUNT_OBJECT = "CoreAccount";
 
 export const ACCOUNT_TOKEN_OBJECT = "CoreAccountToken";

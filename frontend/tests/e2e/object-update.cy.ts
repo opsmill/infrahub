@@ -33,12 +33,12 @@ describe("Object update", () => {
     // The name should be correctly defined in the input
     cy.get(":nth-child(2) > .relative > .block").should("have.value", ETHERNET_NAME);
     cy.get(":nth-child(2) > .relative > .block").clear();
-    cy.get(":nth-child(2) > .relative > .block").type(ETHERNET_NEW_NAME);
+    cy.get(":nth-child(2) > .relative > .block").type(ETHERNET_NEW_NAME, { delay: 0 });
 
     // The name should be correctly defined in the input
     cy.get(":nth-child(4) > .relative > .block").should("have.value", ETHERNET_SPEED);
     cy.get(":nth-child(4) > .relative > .block").clear();
-    cy.get(":nth-child(4) > .relative > .block").type(ETHERNET_NEW_SPEED);
+    cy.get(":nth-child(4) > .relative > .block").type(ETHERNET_NEW_SPEED, { delay: 0 });
 
     // Save
     cy.contains("Save").click();
