@@ -21,7 +21,7 @@ import { branchesState } from "../state/atoms/branches.atom";
 import { classNames, objectToString } from "../utils/common";
 import { BUTTON_TYPES, Button } from "./button";
 import { Input } from "./input";
-import { PopOver } from "./popover";
+import { POPOVER_SIZE, PopOver } from "./popover";
 import { Select } from "./select";
 import { SelectButton } from "./select-button";
 import { Switch } from "./switch";
@@ -175,7 +175,8 @@ export default function BranchSelector() {
         disabled={!auth?.permissions?.write}
         buttonComponent={PopOverButton}
         className="right-0"
-        title={"Create a new branch"}>
+        title={"Create a new branch"}
+        height={POPOVER_SIZE.NONE}>
         {({ close }: any) => (
           <>
             <div className="flex flex-col">
