@@ -35,7 +35,7 @@ class InfrahubRepositoryRFileConfig(BaseModel):
 
 
 class InfrahubRepositoryConfig(BaseModel):
-    schemas: Optional[List[Path]] = Field(default_factory=list)
+    schemas: List[Path] = Field(default_factory=list)
     rfiles: Optional[List[InfrahubRepositoryRFileConfig]]
 
 
