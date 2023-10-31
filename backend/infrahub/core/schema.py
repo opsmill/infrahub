@@ -14,6 +14,7 @@ from infrahub.core.constants import (
     AccountRole,
     AccountType,
     ArtifactStatus,
+    BranchConflictKeep,
     BranchSupportType,
     ContentType,
     CriticalityLevel,
@@ -1718,6 +1719,7 @@ core_models = {
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
                 {"name": "conflicts", "kind": "JSON"},
+                {"name": "keep_branch", "enum": BranchConflictKeep.available_types(), "kind": "Text", "optional": True},
             ],
         },
         {
