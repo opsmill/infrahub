@@ -1,10 +1,12 @@
 import logging
 import uuid
+import copy
 from collections import defaultdict
 from ipaddress import IPv4Network
 from typing import Dict, List
 
 from infrahub_client import UUIDT, InfrahubClient, InfrahubNode, NodeStore
+from infrahub_client.exceptions import GraphQLError
 
 # flake8: noqa
 # pylint: skip-file
@@ -63,14 +65,14 @@ def site_names_generator(nbr_site=2) -> List[str]:
     return site_names
 
 
-# P2P_NETWORKS_POOL = {
-#     ("atl1", "edge1", "ord1", "edge1"): next(P2P_NETWORK_POOL).hosts(),
-#     ("atl1", "edge1", "jfk1", "edge1"): next(P2P_NETWORK_POOL).hosts(),
-#     ("jfk1", "edge1", "ord1", "edge1"): next(P2P_NETWORK_POOL).hosts(),
-#     ("atl1", "edge2", "ord1", "edge2"): next(P2P_NETWORK_POOL).hosts(),
-#     ("atl1", "edge2", "jfk1", "edge2"): next(P2P_NETWORK_POOL).hosts(),
-#     ("jfk1", "edge2", "ord1", "edge2"): next(P2P_NETWORK_POOL).hosts(),
-# }
+P2P_NETWORKS_POOL = {
+    ("atl1", "edge1", "ord1", "edge1"): next(P2P_NETWORK_POOL).hosts(),
+    ("atl1", "edge1", "jfk1", "edge1"): next(P2P_NETWORK_POOL).hosts(),
+    ("jfk1", "edge1", "ord1", "edge1"): next(P2P_NETWORK_POOL).hosts(),
+    ("atl1", "edge2", "ord1", "edge2"): next(P2P_NETWORK_POOL).hosts(),
+    ("atl1", "edge2", "jfk1", "edge2"): next(P2P_NETWORK_POOL).hosts(),
+    ("jfk1", "edge2", "ord1", "edge2"): next(P2P_NETWORK_POOL).hosts(),
+}
 
 BACKBONE_CIRCUIT_IDS = [
     "DUFF-1543451",
@@ -230,7 +232,7 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
         type={"value": "SITE", "is_protected": True, "source": account_crm.id},
     )
     await site.save()
-    log.info(f"Created Site: {site_name}")
+    log.info(f"- Created {site._schema.kind} - {site.name.value}")
 
     peer_networks = {
         0: next(P2P_NETWORK_POOL).hosts(),
@@ -253,7 +255,6 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
             role={"id": role_id, "source": account_pop.id, "is_protected": True, "owner": group_eng.id},
         )
         await obj.save()
-
         store.set(key=vlan_name, node=obj)
 
     for idx, device in enumerate(DEVICES):
@@ -276,9 +277,8 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
             platform={"id": platform_id, "source": account_pop.id, "is_protected": True},
         )
         await obj.save()
-
         store.set(key=device_name, node=obj)
-        log.info(f"- Created Device: {device_name}")
+        log.info(f"- Created {obj._schema.kind} - {obj.name.value}")
 
         # Add device to groups
         await group_add_member(client=client, group=group_edge_router, members=[obj], branch=branch)
@@ -312,7 +312,6 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
             address={"value": f"{str(next(LOOPBACK_POOL))}/32", "source": account_pop.id},
         )
         await ip.save()
-
         store.set(key=f"{device_name}-loopback", node=ip)
 
         # Management Interface
@@ -331,7 +330,6 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
             speed=1000,
         )
         await intf.save()
-
         ip = await client.create(
             branch=branch, kind="InfraIPAddress", interface=intf.id, address=f"{str(next(MANAGEMENT_IPS))}/24"
         )
@@ -364,13 +362,6 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
             address = None
             if intf_role == "peer":
                 address = f"{str(next(peer_networks[intf_idx]))}/31"
-
-            # if intf_role == "backbone":
-            #     site_idx = intf_idx - 2
-            #     other_site_name = other_sites[site_idx]
-            #     sites = sorted([site_name, other_site_name])
-            #     link_id = (sites[0], device[0], sites[1], device[0])
-            #     address = f"{str(next(P2P_NETWORKS_POOL[link_id]))}/31"
 
             if intf_role in ["transit", "peering"]:
                 subnet = next(NETWORKS_POOL_EXTERNAL).hosts()
@@ -416,6 +407,7 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
                     },
                 )
                 await circuit.save()
+                log.info(f"- Created {circuit._schema.kind} - {provider_name} [{circuit.vendor_id.value}]")
 
                 endpoint1 = await client.create(
                     branch=branch,
@@ -454,8 +446,8 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
                     )
                     await bgp_session.save()
 
-                    log.info(
-                        f" Created BGP Session '{device_name}' >> '{provider_name}': '{peer_group_name}' '{ip.address.value}' >> '{peer_ip.address.value}'"
+                    log.debug(
+                        f"-- Created BGP Session '{device_name}' >> '{provider_name}': '{peer_group_name}' '{ip.address.value}' >> '{peer_ip.address.value}'"
                     )
 
         # L2 Interfaces
@@ -490,7 +482,7 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
         intf2.description.value = f"Connected to {site_name}-edge1 {intf1.name.value}"
         await intf2.save()
 
-        log.info(f"Connected  '{site_name}-edge1::{intf1.name.value}' <> '{site_name}-edge2::{intf2.name.value}'")
+        log.info(f"-- Connected '{site_name}-edge1::{intf1.name.value}' <> '{site_name}-edge2::{intf2.name.value}'")
 
     # --------------------------------------------------
     # Create iBGP Sessions within the Site
@@ -524,7 +516,7 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
         await obj.save()
 
         log.info(
-            f" Created BGP Session '{device1}' >> '{device2}': '{peer_group_name}' '{loopback1.address.value}' >> '{loopback2.address.value}'"
+            f"-- Created BGP Session '{device1}' >> '{device2}': '{peer_group_name}' '{loopback1.address.value}' >> '{loopback2.address.value}'"
         )
 
     return site_name
@@ -534,14 +526,14 @@ async def branch_scenario_add_transit(client: InfrahubClient, log: logging.Logge
     """
     Create a new branch and Add a new transit link with GTT on the edge1 device of the given site.
     """
+    log.info("Create a new branch and Add a new transit link with GTT on the edge1 device of the given site")
     device_name = f"{site_name}-edge1"
 
     new_branch_name = f"{site_name}-add-transit"
     new_branch = await client.branch.create(
         branch_name=new_branch_name, data_only=True, description=f"Add a new Transit link in {site_name}"
     )
-    log.info(f"Created branch: {new_branch_name!r}")
-
+    log.info(f"- Creating branch: {new_branch_name!r}")
     # Querying the object for now, need to pull from the store instead
     site = await client.get(branch=new_branch_name, kind="BuiltinLocation", name__value=site_name)
 
@@ -559,7 +551,7 @@ async def branch_scenario_add_transit(client: InfrahubClient, log: logging.Logge
         branch=new_branch_name, kind="InfraInterfaceL3", device__ids=[device.id], role__ids=[role_spare.id]
     )
     intf = intfs[0]
-    log.info(f" Adding new Transit on '{device_name}::{intf.name.value}'")
+    log.info(f"-- Adding new Transit on '{device_name}::{intf.name.value}'")
 
     # Allocate a new subnet and calculate new IP Addresses
     subnet = next(NETWORKS_POOL_EXTERNAL).hosts()
@@ -599,6 +591,7 @@ async def branch_scenario_add_transit(client: InfrahubClient, log: logging.Logge
         },
     )
     await circuit.save()
+    log.info(f"--- Created {circuit._schema.kind} - {provider.name.value} [{circuit.vendor_id.value}]")
 
     endpoint1 = await client.create(
         branch=new_branch_name,
@@ -638,7 +631,7 @@ async def branch_scenario_add_transit(client: InfrahubClient, log: logging.Logge
     #     await bgp_session.save()
 
     #     log.info(
-    #         f" Created BGP Session '{device_name}' >> '{provider_name}': '{peer_group_name}' '{ip.address.value}' >> '{peer_ip.address.value}'"
+    #         f"Created BGP Session '{device_name}' >> '{provider_name}': '{peer_group_name}' '{ip.address.value}' >> '{peer_ip.address.value}'"
     #     )
 
 
@@ -655,7 +648,8 @@ async def branch_scenario_replace_ip_addresses(client: InfrahubClient, log: logg
         data_only=True,
         description=f"Change the IP addresses between edge1 and edge2 in {site_name}",
     )
-    log.info(f"Created branch: {new_branch_name!r}")
+    log.info("Create a new Branch and Change the IP addresses between edge1 and edge2 on the selected site")
+    log.info(f"- Creating branch: {new_branch_name!r}")
 
     new_peer_network = next(P2P_NETWORK_POOL).hosts()
 
@@ -685,6 +679,7 @@ async def branch_scenario_replace_ip_addresses(client: InfrahubClient, log: logg
         address=f"{str(next(new_peer_network))}/31",
     )
     await peer_ip.save()
+    log.info(f"-- Replaced {device1_name}-{peer_intfs_dev1[0].name} IP to {peer_ip.address.value}")
 
     ip = await client.create(
         branch=new_branch_name,
@@ -693,17 +688,19 @@ async def branch_scenario_replace_ip_addresses(client: InfrahubClient, log: logg
         address={"value": f"{str(next(new_peer_network))}/31"},  # , "source": account_pop.id},
     )
     await ip.save()
+    log.info(f"-- Replaced {device2_name}-{peer_intfs_dev2[0].name} IP to {peer_ip.address.value}")
 
 
 async def branch_scenario_remove_colt(client: InfrahubClient, log: logging.Logger, site_name: str):
     """
-    Create a new Branch and Delete both Transit Circuit with Colt
+    Create a new Branch and Delete Colt Transit Circuit 
     """
+    log.info("Create a new Branch and Delete Colt Transit Circuit")
     new_branch_name = f"{site_name}-delete-transit"
     new_branch = await client.branch.create(
         branch_name=new_branch_name, data_only=True, description=f"Delete transit circuit with colt in {site_name}"
     )
-    log.info(f"Created branch: {new_branch_name!r}")
+    log.info(f"- Creating branch: {new_branch_name!r}")
 
     spare = await client.get(branch=new_branch_name, kind="BuiltinRole", name__value="peer")
 
@@ -757,12 +754,14 @@ async def branch_scenario_remove_colt(client: InfrahubClient, log: logging.Logge
             branch=new_branch_name, kind="InfraCircuit", id=item["node"]["circuit"]["node"]["id"]
         )
         await circuit.delete()
+        log.info(f"-- Deleted Colt [{item["node"]["circuit"]["node"]["circuit_id"]}]")
 
 
 async def branch_scenario_conflict_device(client: InfrahubClient, log: logging.Logger, site_name: str):
     """
     Create a new Branch and introduce some conflicts
     """
+    log.info("Create a new Branch and introduce some conflicts")
     device1_name = f"{site_name}-edge1"
     f"{site_name}-edge2"
 
@@ -772,7 +771,7 @@ async def branch_scenario_conflict_device(client: InfrahubClient, log: logging.L
         data_only=True,
         description=f"Put {device1_name} in maintenance mode",
     )
-    log.info(f"Created branch: {new_branch_name!r}")
+    log.info(f"- Creating branch: {new_branch_name!r}")
 
     maintenance_status = store.get(key="maintenance")
     provisionning_status = store.get(key="provisionning")
@@ -805,13 +804,14 @@ async def branch_scenario_conflict_platform(client: InfrahubClient, log: logging
     """
     Create a new Branch and introduce some conflicts on the platforms for node ADD and DELETE
     """
+    log.info("Create a new Branch and introduce some conflicts on the platforms for node ADD and DELETE")
     new_branch_name = f"platform-conflict"
     new_branch = await client.branch.create(
         branch_name=new_branch_name,
         data_only=True,
         description=f"Add new platform",
     )
-    log.info(f"Created branch: {new_branch_name!r}")
+    log.info(f"- Creating branch: {new_branch_name!r}")
 
     # Create a new Platform object with the same name, both in the branch and in main
     platform1_branch = await client.create(
@@ -847,22 +847,26 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     # ------------------------------------------
     # Create User Accounts, Groups & Organizations & Platforms
     # ------------------------------------------
+    log.info(f"Creating User Accounts, Groups & Organizations & Platforms")
+    for account in ACCOUNTS:
+        try:
+            obj = await client.create(
+                branch=branch,
+                kind="CoreAccount",
+                data={"name": account[0], "password": account[2], "type": account[1], "role": account[3]},
+            )
+            await obj.save()
+        except GraphQLError as exc :
+            pass
+        store.set(key=account[0], node=obj)
+        log.info(f"- Created {obj._schema.kind} - {obj.name.value}")
+    
     batch = await client.create_batch()
-
     for group in GROUPS:
         obj = await client.create(branch=branch, kind="CoreStandardGroup", data={"name": group[0], "label": group[1]})
 
         batch.add(task=obj.save, node=obj)
         store.set(key=group[0], node=obj)
-
-    for account in ACCOUNTS:
-        obj = await client.create(
-            branch=branch,
-            kind="CoreAccount",
-            data={"name": account[0], "password": account[2], "type": account[1], "role": account[3]},
-        )
-        batch.add(task=obj.save, node=obj)
-        store.set(key=account[0], node=obj)
 
     for org in ORGANIZATIONS:
         obj = await client.create(
@@ -888,7 +892,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
 
     # Create all Groups, Accounts and Organizations
     async for node, _ in batch.execute():
-        log.info(f"{node._schema.kind} Created {node.name.value}")
+        log.info(f"- Created {node._schema.kind} - {node.name.value}")
 
     account_pop = store.get("pop-builder")
     account_cloe = store.get("Chloe O'Brian")
@@ -896,6 +900,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     # ------------------------------------------
     # Create Autonommous Systems
     # ------------------------------------------
+    log.info(f"Creating Autonommous Systems")
     batch = await client.create_batch()
     for org in ORGANIZATIONS:
         obj = await client.create(
@@ -911,11 +916,12 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         store.set(key=org[0], node=obj)
 
     async for node, _ in batch.execute():
-        log.info(f"{node._schema.kind} Created {node.name.value}")
+        log.info(f"- Created {node._schema.kind} - {node.name.value}")
 
     # ------------------------------------------
     # Create BGP Peer Groups
     # ------------------------------------------
+    log.info(f"Creating BGP Peer Groups")
     batch = await client.create_batch()
     for peer_group in BGP_PEER_GROUPS:
         remote_as_id = None
@@ -936,7 +942,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         store.set(key=peer_group[0], node=obj)
 
     async for node, _ in batch.execute():
-        log.info(f"Peer Group Created Created {node.name.value}")
+        log.info(f"- Created {node._schema.kind} - {node.name.value}")
 
     # ------------------------------------------
     # Create Status, Role & Tags
@@ -960,7 +966,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         store.set(key=tag, node=obj)
 
     async for node, _ in batch.execute():
-        log.info(f"{node._schema.kind}  Created {node.name.value}")
+        log.info(f"- Created {node._schema.kind} - {node.name.value}")
 
     active_status = store.get(kind="BuiltinStatus", key="active")
     internal_as = store.get(kind="InfraAutonomousSystem", key="Duff")
@@ -968,8 +974,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     # ------------------------------------------
     # Create Sites
     # ------------------------------------------
-    log.info("Creating Site & Device")
-
+    log.info("Creating Site and associated objects (Device, Circuit, BGP Sessions)")
     batch = await client.create_batch()
 
     for site_name in SITE_NAMES:
@@ -981,6 +986,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     # --------------------------------------------------
     # CREATE Full Mesh iBGP SESSION between all the Edge devices
     # --------------------------------------------------
+    log.info("Creating Full Mesh iBGP SESSION between all the Edge devices")
     batch = await client.create_batch()
     for site1 in SITE_NAMES:
         for site2 in SITE_NAMES:
@@ -1012,71 +1018,104 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
                     )
                     batch.add(task=obj.save, node=obj)
                     log.info(
-                        f"Creating BGP Session '{device1}' >> '{device2}': '{peer_group_name}' '{loopback1.address.value}' >> '{loopback2.address.value}'"
+                        f"- Created BGP Session '{device1}' >> '{device2}': '{peer_group_name}' '{loopback1.address.value}' >> '{loopback2.address.value}'"
                     )
 
     async for node, _ in batch.execute():
         log.debug(f"BGP Session Creation Completed")
 
     # --------------------------------------------------
-    # CREATE BACKBONE LINKS & CIRCUITS
+    # CREATE Backbone Links & Circuits
     # --------------------------------------------------
-    # for idx, backbone_link in enumerate(P2P_NETWORKS_POOL.keys()):
-    #     site1 = backbone_link[0]
-    #     site2 = backbone_link[2]
-    #     device = backbone_link[1]
+    log.info("Creating Backbone Links & Circuits")
+    for idx, backbone_link in enumerate(P2P_NETWORKS_POOL.keys()):
+        site1 = backbone_link[0]
+        site2 = backbone_link[2]
+        device = backbone_link[1]
 
-    #     # Build a new list with the names of the other sites for later
-    #     other_site_site1 = copy.copy(SITES)
-    #     other_site_site1.remove(site1)
-    #     other_site_site1 = sorted(other_site_site1)
+        # Build a new list with the names of the other sites for later
+        other_site_site1 = copy.copy(SITE_NAMES)
+        other_site_site1.remove(site1)
+        other_site_site1 = sorted(other_site_site1)
 
-    #     other_site_site2 = copy.copy(SITES)
-    #     other_site_site2.remove(site2)
-    #     other_site_site2 = sorted(other_site_site2)
+        other_site_site2 = copy.copy(SITE_NAMES)
+        other_site_site2.remove(site2)
+        other_site_site2 = sorted(other_site_site2)
 
-    #     intf1 = INTERFACE_OBJS[f"{site1}-{device}"][other_site_site1.index(site2) + 2]
-    #     intf2 = INTERFACE_OBJS[f"{site2}-{device}"][other_site_site2.index(site1) + 2]
+        intf1 = INTERFACE_OBJS[f"{site1}-{device}"][other_site_site1.index(site2) + 2]
+        intf2 = INTERFACE_OBJS[f"{site2}-{device}"][other_site_site2.index(site1) + 2]
 
-    #     circuit_id = BACKBONE_CIRCUIT_IDS[idx]
+        circuit_id = BACKBONE_CIRCUIT_IDS[idx]
 
-    #     if idx <= 2:
-    #         provider_name = "Lumen"
-    #     else:
-    #         provider_name = "Zayo"
+        if idx <= 2:
+            provider_name = "Lumen"
+        else:
+            provider_name = "Zayo"
 
-    #     provider = store.get(kind="BuiltinOrganization", key=provider_name)
-    #     obj = await client.create(
-    #         branch=branch,
-    #         kind="InfraCircuit",
-    #         circuit_id=BACKBONE_CIRCUIT_IDS[idx],
-    #         vendor_id=f"{provider_name.upper()}-{UUIDT().short()}",
-    #         provider=provider,
-    #         # type="DARK FIBER",
-    #         status=active_status,
-    #         role=store.get(kind="BuiltinRole", key="backbone"),
-    #     )
-    #     await obj.save()
+        provider = store.get(kind="CoreOrganization", key=provider_name)
+        obj = await client.create(
+            branch=branch,
+            kind="InfraCircuit",
+            description=f"Backbone {site1} <-> {site2}",
+            circuit_id=BACKBONE_CIRCUIT_IDS[idx],
+            vendor_id=f"{provider_name.upper()}-{UUIDT().short()}",
+            provider=provider,
+            # type="DARK FIBER",
+            status=active_status,
+            role=store.get(kind="BuiltinRole", key="backbone"),
+        )
+        await obj.save()
+        log.info(f"- Created {obj._schema.kind} - {provider_name} [{obj.vendor_id.value}]")
 
-    #     endpoint1 = await client.create(
-    #         branch=branch, kind="InfraCircuitEndpoint", site=site1, circuit=obj, connected_endpoint=intf1
-    #     )
-    #     await endpoint1.save()
-    #     endpoint2 = await client.create(
-    #         branch=branch, kind="InfraCircuitEndpoint", site=site2, circuit=obj, connected_endpoint=intf2
-    #     )
-    #     await endpoint2.save()
+        # Create Circuit Endpoints
+        endpoint1 = await client.create(
+            branch=branch,
+            kind="InfraCircuitEndpoint",
+            description=f"Endpoint {circuit_id} to {site1}-{device}",
+            site=site1,
+            circuit=obj,
+            connected_endpoint=intf1,
+        )
+        await endpoint1.save()
+        
+        endpoint2 = await client.create(
+            branch=branch,
+            kind="InfraCircuitEndpoint",
+            description=f"Endpoint {circuit_id} to {site2}-{device}",
+            site=site2,
+            circuit=obj,
+            connected_endpoint=intf2,
+        )
+        await endpoint2.save()
 
-    #     intf11 = await client.get(branch=branch, kind="InfraInterfaceL3", id=intf1.id)
+        # Create IP Address
+        intf11_address = f"{str(next(P2P_NETWORKS_POOL[backbone_link]))}/31"
+        intf21_address = f"{str(next(P2P_NETWORKS_POOL[backbone_link]))}/31"
+        intf11_ip = await client.create(
+            branch=branch,
+            kind="InfraIPAddress",
+            interface={"id": intf1.id, "source": account_pop.id},
+            address={"value": intf11_address, "source": account_pop.id},
+        )
+        await intf11_ip.save()
+        intf21_ip = await client.create(
+            branch=branch,
+            kind="InfraIPAddress",
+            interface={"id": intf2.id, "source": account_pop.id},
+            address={"value": intf21_address, "source": account_pop.id},
+        )
+        await intf21_ip.save()
 
-    #     intf11.description.value = f"Connected to {site2}-{device} via {circuit_id}"
-    #     await intf11.save()
+        # Update Interface
+        intf11 = await client.get(branch=branch, kind="InfraInterfaceL3", id=intf1.id)
+        intf11.description.value = f"Backbone: Connected to {site2}-{device} via {circuit_id}"
+        await intf11.save()
 
-    #     intf21 = await client.get(branch=branch, kind="InfraInterfaceL3", id=intf2.id)
-    #     intf21.description.value = f"Connected to {site1}-{device} via {circuit_id}"
-    #     await intf21.save()
+        intf21 = await client.get(branch=branch, kind="InfraInterfaceL3", id=intf2.id)
+        intf21.description.value = f"Backbone: Connected to {site1}-{device} via {circuit_id}"
+        await intf21.save()
 
-    #     log.info(f"Connected  '{site1}-{device}::{intf1.name.value}' <> '{site2}-{device}::{intf2.name.value}'")
+        log.info(f"-- Connected '{site1}-{device}::{intf1.name.value}' <> '{site2}-{device}::{intf2.name.value}'")
 
     # --------------------------------------------------
     # Create some changes in additional branches
