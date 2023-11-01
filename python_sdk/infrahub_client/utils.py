@@ -7,6 +7,23 @@ from typing import Any, List, Optional, Tuple, Union
 from uuid import UUID, uuid4
 
 import httpx
+import yaml
+from pydantic import BaseModel
+
+
+class YamlFile(BaseModel):
+    identifier: str
+    location: Path
+    content: Optional[dict] = None
+    valid: bool = True
+    error_message: Optional[str] = None
+
+    def load_content(self) -> None:
+        try:
+            self.content = yaml.safe_load(self.location.read_text())
+        except yaml.YAMLError:
+            self.error_message = "Invalid YAML/JSON file"
+            self.valid = False
 
 
 def base36encode(number: int) -> str:

@@ -113,6 +113,12 @@ class TestInfrahubClient:
 
         return repo
 
+    async def test_import_schema_files(self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository):
+        commit = repo.get_commit_value(branch_name="main")
+        await repo.import_schema_files(branch_name="main", commit=commit)
+
+        assert await client.schema.get(kind="DemoEdgeFabric", refresh=True)
+
     async def test_import_all_graphql_query(
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository
     ):

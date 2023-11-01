@@ -247,7 +247,22 @@ extensions:
 
 ### Load a Schema file
 
-A schema file can be loaded into Infrahub with the `infrahubctl` command
+Schema files can be loaded into Infrahub with the `infrahubctl` command or directly via the Git integration
+
+#### infrahubctl command
+
+The `infrahubctl` command can be used to load indivual schema file or multiple files as part of a directory.
 ```
-infrahubctl schema load <path to schema file>
+infrahubctl schema load <path to schema file or a directory> <path to schema file or a directory>
+```
+
+#### Git integration
+
+The schemas that should be loaded must be declared in the ``.infrahub.yml`` directory, under schemas. 
+> Individual files and directory are both supported.
+
+```yaml
+---
+schemas:
+  - schemas/demo_edge_fabric.yml
 ```
