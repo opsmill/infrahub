@@ -755,7 +755,7 @@ async def branch_scenario_remove_colt(client: InfrahubClient, log: logging.Logge
             branch=new_branch_name, kind="InfraCircuit", id=item["node"]["circuit"]["node"]["id"]
         )
         await circuit.delete()
-        log.info(f" - Deleted Colt [{circuit_id}]")
+        log.info(f" - Deleted Colt [{circuit_id.value}]")
 
 
 async def branch_scenario_conflict_device(client: InfrahubClient, log: logging.Logger, site_name: str):
