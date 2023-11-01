@@ -591,7 +591,7 @@ async def branch_scenario_add_transit(client: InfrahubClient, log: logging.Logge
         },
     )
     await circuit.save()
-    log.info(f"- - Created {circuit._schema.kind} - {provider.name.value} [{circuit.vendor_id.value}]")
+    log.info(f"  - Created {circuit._schema.kind} - {provider.name.value} [{circuit.vendor_id.value}]")
 
     endpoint1 = await client.create(
         branch=new_branch_name,
@@ -747,7 +747,7 @@ async def branch_scenario_remove_colt(client: InfrahubClient, log: logging.Logge
     ]
 
     for item in colt_circuits:
-        circuit_id = item["node"]["circuit"]["node"]["circuit_id"]
+        circuit_id = item["node"]["circuit"]["node"]["circuit_id"]["value"]
         circuit_endpoint = await client.get(branch=new_branch_name, kind="InfraCircuitEndpoint", id=item["node"]["id"])
         await circuit_endpoint.delete()
 
@@ -755,7 +755,7 @@ async def branch_scenario_remove_colt(client: InfrahubClient, log: logging.Logge
             branch=new_branch_name, kind="InfraCircuit", id=item["node"]["circuit"]["node"]["id"]
         )
         await circuit.delete()
-        log.info(f" - Deleted Colt [{circuit_id.value}]")
+        log.info(f" - Deleted Colt [{circuit_id}]")
 
 
 async def branch_scenario_conflict_device(client: InfrahubClient, log: logging.Logger, site_name: str):
