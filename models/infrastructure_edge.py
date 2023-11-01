@@ -857,7 +857,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
                 data={"name": account[0], "password": account[2], "type": account[1], "role": account[3]},
             )
             await obj.save()
-        except GraphQLError as exc:
+        except GraphQLError:
             pass
         store.set(key=account[0], node=obj)
         log.info(f"- Created {obj._schema.kind} - {obj.name.value}")
