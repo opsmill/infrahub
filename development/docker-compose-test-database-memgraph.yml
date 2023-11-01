@@ -5,7 +5,7 @@ services:
     deploy:
       mode: replicated
       replicas: "${NBR_WORKERS}"
-    image: "memgraph/memgraph:2.11.0"
+    image: "${DATABASE_DOCKER_IMAGE:-memgraph/memgraph:latest}"
     volumes:
       - ./memgraph.conf:/etc/memgraph/memgraph.conf
     environment:
@@ -17,13 +17,3 @@ services:
       timeout: 10s
       retries: 20
       start_period: 3s
-  infrahub-test:
-    environment:
-      - "INFRAHUB_DB_TYPE=memgraph"
-    depends_on:
-      database:
-        condition: service_healthy
-      message-queue:
-        condition: service_healthy
-      cache:
-        condition: service_healthy

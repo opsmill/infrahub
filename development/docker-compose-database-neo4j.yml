@@ -2,7 +2,7 @@
 version: "3.4"
 services:
   database:
-    image: "neo4j:5.13-community"
+    image: "${DATABASE_DOCKER_IMAGE:-neo4j:community}"
     environment:
       - "NEO4J_AUTH=neo4j/admin"
       - "NEO4J_dbms_security_procedures_unrestricted=apoc.*"
@@ -18,13 +18,6 @@ services:
       retries: 20
       start_period: 3s
 
-  infrahub-server:
-    environment:
-      - "INFRAHUB_DB_TYPE=neo4j"
-
-  infrahub-git:
-    environment:
-      - "INFRAHUB_DB_TYPE=neo4j"
 
 volumes:
   database_data:
