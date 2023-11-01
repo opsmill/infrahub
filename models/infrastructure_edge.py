@@ -688,7 +688,7 @@ async def branch_scenario_replace_ip_addresses(client: InfrahubClient, log: logg
         address={"value": f"{str(next(new_peer_network))}/31"},  # , "source": account_pop.id},
     )
     await ip.save()
-    log.info(f" - Replaced {device2_name}-{peer_intfs_dev2[0].name.value} IP to {peer_ip.address.value}")
+    log.info(f" - Replaced {device2_name}-{peer_intfs_dev2[0].name.value} IP to {ip.address.value}")
 
 
 async def branch_scenario_remove_colt(client: InfrahubClient, log: logging.Logger, site_name: str):
