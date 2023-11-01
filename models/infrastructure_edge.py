@@ -1,6 +1,6 @@
+import copy
 import logging
 import uuid
-import copy
 from collections import defaultdict
 from ipaddress import IPv4Network
 from typing import Dict, List
@@ -447,7 +447,7 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
                     await bgp_session.save()
 
                     log.debug(
-                        f"-- Created BGP Session '{device_name}' >> '{provider_name}': '{peer_group_name}' '{ip.address.value}' >> '{peer_ip.address.value}'"
+                        f" - Created BGP Session '{device_name}' >> '{provider_name}': '{peer_group_name}' '{ip.address.value}' >> '{peer_ip.address.value}'"
                     )
 
         # L2 Interfaces
@@ -482,7 +482,7 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
         intf2.description.value = f"Connected to {site_name}-edge1 {intf1.name.value}"
         await intf2.save()
 
-        log.info(f"-- Connected '{site_name}-edge1::{intf1.name.value}' <> '{site_name}-edge2::{intf2.name.value}'")
+        log.info(f" - Connected '{site_name}-edge1::{intf1.name.value}' <> '{site_name}-edge2::{intf2.name.value}'")
 
     # --------------------------------------------------
     # Create iBGP Sessions within the Site
@@ -516,7 +516,7 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
         await obj.save()
 
         log.info(
-            f"-- Created BGP Session '{device1}' >> '{device2}': '{peer_group_name}' '{loopback1.address.value}' >> '{loopback2.address.value}'"
+            f" - Created BGP Session '{device1}' >> '{device2}': '{peer_group_name}' '{loopback1.address.value}' >> '{loopback2.address.value}'"
         )
 
     return site_name
@@ -551,7 +551,7 @@ async def branch_scenario_add_transit(client: InfrahubClient, log: logging.Logge
         branch=new_branch_name, kind="InfraInterfaceL3", device__ids=[device.id], role__ids=[role_spare.id]
     )
     intf = intfs[0]
-    log.info(f"-- Adding new Transit on '{device_name}::{intf.name.value}'")
+    log.info(f" - Adding new Transit on '{device_name}::{intf.name.value}'")
 
     # Allocate a new subnet and calculate new IP Addresses
     subnet = next(NETWORKS_POOL_EXTERNAL).hosts()
@@ -591,7 +591,7 @@ async def branch_scenario_add_transit(client: InfrahubClient, log: logging.Logge
         },
     )
     await circuit.save()
-    log.info(f"--- Created {circuit._schema.kind} - {provider.name.value} [{circuit.vendor_id.value}]")
+    log.info(f"- - Created {circuit._schema.kind} - {provider.name.value} [{circuit.vendor_id.value}]")
 
     endpoint1 = await client.create(
         branch=new_branch_name,
@@ -679,7 +679,7 @@ async def branch_scenario_replace_ip_addresses(client: InfrahubClient, log: logg
         address=f"{str(next(new_peer_network))}/31",
     )
     await peer_ip.save()
-    log.info(f"-- Replaced {device1_name}-{peer_intfs_dev1[0].name} IP to {peer_ip.address.value}")
+    log.info(f" - Replaced {device1_name}-{peer_intfs_dev1[0].name.value} IP to {peer_ip.address.value}")
 
     ip = await client.create(
         branch=new_branch_name,
@@ -688,12 +688,12 @@ async def branch_scenario_replace_ip_addresses(client: InfrahubClient, log: logg
         address={"value": f"{str(next(new_peer_network))}/31"},  # , "source": account_pop.id},
     )
     await ip.save()
-    log.info(f"-- Replaced {device2_name}-{peer_intfs_dev2[0].name} IP to {peer_ip.address.value}")
+    log.info(f" - Replaced {device2_name}-{peer_intfs_dev2[0].name.value} IP to {peer_ip.address.value}")
 
 
 async def branch_scenario_remove_colt(client: InfrahubClient, log: logging.Logger, site_name: str):
     """
-    Create a new Branch and Delete Colt Transit Circuit 
+    Create a new Branch and Delete Colt Transit Circuit
     """
     log.info("Create a new Branch and Delete Colt Transit Circuit")
     new_branch_name = f"{site_name}-delete-transit"
@@ -747,6 +747,7 @@ async def branch_scenario_remove_colt(client: InfrahubClient, log: logging.Logge
     ]
 
     for item in colt_circuits:
+        circuit_id = item["node"]["circuit"]["node"]["circuit_id"]
         circuit_endpoint = await client.get(branch=new_branch_name, kind="InfraCircuitEndpoint", id=item["node"]["id"])
         await circuit_endpoint.delete()
 
@@ -754,7 +755,7 @@ async def branch_scenario_remove_colt(client: InfrahubClient, log: logging.Logge
             branch=new_branch_name, kind="InfraCircuit", id=item["node"]["circuit"]["node"]["id"]
         )
         await circuit.delete()
-        log.info(f"-- Deleted Colt [{item["node"]["circuit"]["node"]["circuit_id"]}]")
+        log.info(f" - Deleted Colt [{circuit_id}]")
 
 
 async def branch_scenario_conflict_device(client: InfrahubClient, log: logging.Logger, site_name: str):
@@ -856,11 +857,11 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
                 data={"name": account[0], "password": account[2], "type": account[1], "role": account[3]},
             )
             await obj.save()
-        except GraphQLError as exc :
+        except GraphQLError as exc:
             pass
         store.set(key=account[0], node=obj)
         log.info(f"- Created {obj._schema.kind} - {obj.name.value}")
-    
+
     batch = await client.create_batch()
     for group in GROUPS:
         obj = await client.create(branch=branch, kind="CoreStandardGroup", data={"name": group[0], "label": group[1]})
@@ -1077,7 +1078,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
             connected_endpoint=intf1,
         )
         await endpoint1.save()
-        
+
         endpoint2 = await client.create(
             branch=branch,
             kind="InfraCircuitEndpoint",
@@ -1115,7 +1116,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         intf21.description.value = f"Backbone: Connected to {site1}-{device} via {circuit_id}"
         await intf21.save()
 
-        log.info(f"-- Connected '{site1}-{device}::{intf1.name.value}' <> '{site2}-{device}::{intf2.name.value}'")
+        log.info(f" - Connected '{site1}-{device}::{intf1.name.value}' <> '{site2}-{device}::{intf2.name.value}'")
 
     # --------------------------------------------------
     # Create some changes in additional branches
