@@ -407,7 +407,7 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
                     },
                 )
                 await circuit.save()
-                log.info(f"- Created {circuit._schema.kind} - {provider_name} [{circuit.vendor_id.value}]")
+                log.info(f" - Created {circuit._schema.kind} - {provider_name} [{circuit.vendor_id.value}]")
 
                 endpoint1 = await client.create(
                     branch=branch,
