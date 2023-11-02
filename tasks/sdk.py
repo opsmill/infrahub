@@ -1,3 +1,5 @@
+import os
+
 from invoke import Context, task
 
 from .shared import (
@@ -13,6 +15,7 @@ from .utils import ESCAPED_REPO_PATH
 
 MAIN_DIRECTORY = "python_sdk"
 NAMESPACE = "SDK"
+MAIN_DIRECTORY_PATH = os.path.join(ESCAPED_REPO_PATH, MAIN_DIRECTORY)
 
 
 # ----------------------------------------------------------------------------
@@ -23,8 +26,8 @@ def format_black(context: Context):
     """Run black to format all Python files."""
 
     print(f" - [{NAMESPACE}] Format code with black")
-    exec_cmd = f"black {MAIN_DIRECTORY}/"
-    with context.cd(ESCAPED_REPO_PATH):
+    exec_cmd = f"black ."
+    with context.cd(MAIN_DIRECTORY_PATH):
         context.run(exec_cmd)
 
 
@@ -33,8 +36,8 @@ def format_autoflake(context: Context):
     """Run autoflack to format all Python files."""
 
     print(f" - [{NAMESPACE}] Format code with autoflake")
-    exec_cmd = f"autoflake --recursive --verbose --in-place --remove-all-unused-imports --remove-unused-variables {MAIN_DIRECTORY}"
-    with context.cd(ESCAPED_REPO_PATH):
+    exec_cmd = f"autoflake --recursive --verbose --in-place --remove-all-unused-imports --remove-unused-variables ."
+    with context.cd(MAIN_DIRECTORY_PATH):
         context.run(exec_cmd)
 
 
@@ -43,8 +46,8 @@ def format_isort(context: Context):
     """Run isort to format all Python files."""
 
     print(f" - [{NAMESPACE}] Format code with isort")
-    exec_cmd = f"isort {MAIN_DIRECTORY}"
-    with context.cd(ESCAPED_REPO_PATH):
+    exec_cmd = f"isort ."
+    with context.cd(MAIN_DIRECTORY_PATH):
         context.run(exec_cmd)
 
 
@@ -67,16 +70,14 @@ def black(context: Context, docker: bool = False):
     """Run black to check that Python files adherence to black standards."""
 
     print(f" - [{NAMESPACE}] Check code with black")
-    exec_cmd = f"black --check --diff {MAIN_DIRECTORY}"
+    exec_cmd = f"black --check --diff ."
 
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
-        exec_cmd = (
-            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
-        )
+        exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd} --workdir /source/{MAIN_DIRECTORY}"
         print(exec_cmd)
 
-    with context.cd(ESCAPED_REPO_PATH):
+    with context.cd(MAIN_DIRECTORY_PATH):
         context.run(exec_cmd)
 
 
@@ -85,16 +86,14 @@ def isort(context: Context, docker: bool = False):
     """Run isort to check that Python files adherence to import standards."""
 
     print(f" - [{NAMESPACE}] Check code with isort")
-    exec_cmd = f"isort --check --diff {MAIN_DIRECTORY}"
+    exec_cmd = f"isort --check --diff ."
 
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
-        exec_cmd = (
-            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
-        )
+        exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}  --workdir /source/{MAIN_DIRECTORY}"
         print(exec_cmd)
 
-    with context.cd(ESCAPED_REPO_PATH):
+    with context.cd(MAIN_DIRECTORY_PATH):
         context.run(exec_cmd)
 
 
@@ -103,16 +102,14 @@ def mypy(context: Context, docker: bool = False):
     """This will run mypy for the specified name and Python version."""
 
     print(f" - [{NAMESPACE}] Check code with mypy")
-    exec_cmd = f"mypy --show-error-codes {MAIN_DIRECTORY}"
+    exec_cmd = f"mypy --show-error-codes infrahub_sdk/ infrahub_ctl/"
 
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
-        exec_cmd = (
-            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
-        )
+        exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd} --workdir /source/{MAIN_DIRECTORY}"
         print(exec_cmd)
 
-    with context.cd(ESCAPED_REPO_PATH):
+    with context.cd(MAIN_DIRECTORY_PATH):
         context.run(exec_cmd)
 
 
@@ -121,16 +118,14 @@ def pylint(context: Context, docker: bool = False):
     """This will run pylint for the specified name and Python version."""
 
     print(f" - [{NAMESPACE}] Check code with pylint")
-    exec_cmd = f"pylint {MAIN_DIRECTORY}"
+    exec_cmd = f"pylint infrahub_sdk/ infrahub_ctl/"
 
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
-        exec_cmd = (
-            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
-        )
+        exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}  --workdir /source/{MAIN_DIRECTORY}"
         print(exec_cmd)
 
-    with context.cd(ESCAPED_REPO_PATH):
+    with context.cd(MAIN_DIRECTORY_PATH):
         context.run(exec_cmd)
 
 
@@ -139,7 +134,7 @@ def ruff(context: Context, docker: bool = False):
     """This will run ruff."""
 
     print(f" - [{NAMESPACE}] Check code with ruff")
-    exec_cmd = f"ruff check {MAIN_DIRECTORY}"
+    exec_cmd = f"ruff check ."
 
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
@@ -148,7 +143,7 @@ def ruff(context: Context, docker: bool = False):
         )
         print(exec_cmd)
 
-    with context.cd(ESCAPED_REPO_PATH):
+    with context.cd(MAIN_DIRECTORY_PATH):
         context.run(exec_cmd)
 
 
