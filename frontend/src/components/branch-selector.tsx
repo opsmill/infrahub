@@ -58,15 +58,19 @@ export default function BranchSelector() {
   );
 
   const branchesOptions = branches.sort((branch1, branch2) => {
-    if (branch1.id === "main") {
+    if (branch1.name === "main") {
+      return -1;
+    }
+
+    if (branch2.name === "main") {
       return 1;
     }
 
-    if (branch2.id === "main") {
-      return 1;
+    if (branch2.name === "main") {
+      return -1;
     }
 
-    if (branch1.id > branch2.id) {
+    if (branch1.name > branch2.name) {
       return 1;
     }
 
