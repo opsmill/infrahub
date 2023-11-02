@@ -26,12 +26,12 @@ Load a schema file into Infrahub.
 **Usage**:
 
 ```console
-$ infrahubctl schema load [OPTIONS] SCHEMA
+$ infrahubctl schema load [OPTIONS] SCHEMAS...
 ```
 
 **Arguments**:
 
-* `SCHEMA`: [required]
+* `SCHEMAS...`: [required]
 
 **Options**:
 
