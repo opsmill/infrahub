@@ -88,7 +88,7 @@ async def test_diff_get_modified_paths_graph(db: InfrahubDatabase, base_dataset_
         "data/c1/owner/p1/property/IS_VISIBLE",
         "data/c2/owner/p1/property/IS_PROTECTED",
         "data/c2/owner/p1/property/IS_VISIBLE",
-        "data/c2/owner",
+        "data/c2/owner/peer",
         "data/c3",
         "data/c3/color/value",
         "data/c3/color/property/IS_PROTECTED",
@@ -323,6 +323,7 @@ async def test_diff_get_nodes_entire_branch(db: InfrahubDatabase, default_branch
         "labels": ["CoreNode", "CoreRepository", "LineageOwner", "LineageSource", "Node"],
         "kind": "CoreRepository",
         "id": repo01b2.id,
+        "path": f"data/{repo01b2.id}",
         "action": "updated",
         "changed_at": None,
         "attributes": [
@@ -331,11 +332,13 @@ async def test_diff_get_nodes_entire_branch(db: InfrahubDatabase, default_branch
                 "name": "description",
                 "action": "updated",
                 "changed_at": None,
+                "path": f"data/{repo01b2.id}/description",
                 "properties": [
                     {
                         "branch": "branch2",
                         "type": "HAS_VALUE",
                         "action": "updated",
+                        "path": f"data/{repo01b2.id}/description/value",
                         "value": {
                             "new": "Repo 01 second change in branch",
                             "previous": "Repo 01 initial value",
@@ -358,6 +361,7 @@ async def test_diff_get_nodes_entire_branch(db: InfrahubDatabase, default_branch
         "labels": ["CoreNode", "CoreRepository", "LineageOwner", "LineageSource", "Node"],
         "kind": "CoreRepository",
         "id": repo01b2.id,
+        "path": f"data/{repo01b2.id}",
         "action": "updated",
         "changed_at": None,
         "attributes": [
@@ -366,10 +370,12 @@ async def test_diff_get_nodes_entire_branch(db: InfrahubDatabase, default_branch
                 "name": "description",
                 "action": "updated",
                 "changed_at": None,
+                "path": f"data/{repo01b2.id}/description",
                 "properties": [
                     {
                         "branch": "branch2",
                         "type": "HAS_VALUE",
+                        "path": f"data/{repo01b2.id}/description/value",
                         "action": "updated",
                         "value": {
                             "new": "Repo 01 first change in branch",
@@ -452,6 +458,7 @@ async def test_diff_get_nodes_dataset_02(db: InfrahubDatabase, base_dataset_02):
         "labels": ["Node", "TestCar"],
         "kind": "TestCar",
         "id": "c1",
+        "path": "data/c1",
         "action": "updated",
         "changed_at": None,
         "attributes": [
@@ -459,11 +466,13 @@ async def test_diff_get_nodes_dataset_02(db: InfrahubDatabase, base_dataset_02):
                 "id": "c1at1",
                 "name": "name",
                 "action": "updated",
+                "path": "data/c1/name",
                 "changed_at": None,
                 "properties": [
                     {
                         "branch": "main",
                         "type": "HAS_VALUE",
+                        "path": "data/c1/name/value",
                         "action": "updated",
                         "value": {"new": "volt", "previous": "accord"},
                         "changed_at": base_dataset_02["time_m20"],
@@ -479,18 +488,21 @@ async def test_diff_get_nodes_dataset_02(db: InfrahubDatabase, base_dataset_02):
         "labels": ["Node", "TestCar"],
         "kind": "TestCar",
         "id": "c1",
+        "path": "data/c1",
         "action": "updated",
         "changed_at": None,
         "attributes": [
             {
                 "id": "c1at2",
                 "name": "nbr_seats",
+                "path": "data/c1/nbr_seats",
                 "action": "updated",
                 "changed_at": None,
                 "properties": [
                     {
                         "branch": "branch1",
                         "type": "IS_PROTECTED",
+                        "path": "data/c1/nbr_seats/property/IS_PROTECTED",
                         "action": "updated",
                         "value": {"new": True, "previous": False},
                         "changed_at": base_dataset_02["time_m20"],
@@ -499,6 +511,7 @@ async def test_diff_get_nodes_dataset_02(db: InfrahubDatabase, base_dataset_02):
                         "branch": "branch1",
                         "type": "HAS_VALUE",
                         "action": "updated",
+                        "path": "data/c1/nbr_seats/value",
                         "value": {"new": 4, "previous": 5},
                         "changed_at": base_dataset_02["time_m20"],
                     },
@@ -567,6 +580,8 @@ async def test_diff_get_relationships(db: InfrahubDatabase, base_dataset_02):
         "id": "r1",
         "name": "testcar__testperson",
         "action": DiffAction.UPDATED,
+        "paths": ["data/c1/owner/p1", "data/p1/cars/c1"],
+        "conflict_paths": ["data/c1/owner/peer", "data/p1/cars/peer"],
         "nodes": {
             "c1": {"id": "c1", "labels": ["TestCar", "Node"], "kind": "TestCar"},
             "p1": {"id": "p1", "labels": ["Node", "TestPerson"], "kind": "TestPerson"},
@@ -575,6 +590,7 @@ async def test_diff_get_relationships(db: InfrahubDatabase, base_dataset_02):
             "IS_VISIBLE": {
                 "branch": "branch1",
                 "type": "IS_VISIBLE",
+                "path": None,
                 "action": DiffAction.UPDATED,
                 "value": {"previous": True, "new": False},
                 "changed_at": Timestamp(base_dataset_02["time_m20"]),
@@ -599,6 +615,8 @@ async def test_diff_get_relationships(db: InfrahubDatabase, base_dataset_02):
         "id": "r2",
         "name": "testcar__testperson",
         "action": DiffAction.ADDED,
+        "paths": ["data/p1/cars/c2", "data/c2/owner/p1"],
+        "conflict_paths": ["data/p1/cars/peer", "data/c2/owner/peer"],
         "nodes": {
             "c2": {"id": "c2", "labels": ["TestCar", "Node"], "kind": "TestCar"},
             "p1": {"id": "p1", "labels": ["Node", "TestPerson"], "kind": "TestPerson"},
@@ -608,6 +626,7 @@ async def test_diff_get_relationships(db: InfrahubDatabase, base_dataset_02):
                 "branch": "branch1",
                 "type": "IS_VISIBLE",
                 "action": DiffAction.ADDED,
+                "path": None,
                 "value": {"previous": None, "new": True},
                 "changed_at": Timestamp(base_dataset_02["time_m20"]),
             },
@@ -615,6 +634,7 @@ async def test_diff_get_relationships(db: InfrahubDatabase, base_dataset_02):
                 "branch": "branch1",
                 "type": "IS_PROTECTED",
                 "action": DiffAction.ADDED,
+                "path": None,
                 "value": {"previous": None, "new": False},
                 "changed_at": Timestamp(base_dataset_02["time_m20"]),
             },
@@ -639,6 +659,8 @@ async def test_diff_get_relationships(db: InfrahubDatabase, base_dataset_02):
         "branch": "main",
         "id": "r1",
         "name": "testcar__testperson",
+        "paths": ["data/c1/owner/p1", "data/p1/cars/c1"],
+        "conflict_paths": ["data/c1/owner/peer", "data/p1/cars/peer"],
         "action": DiffAction.UPDATED,
         "nodes": {
             "c1": {"id": "c1", "labels": ["TestCar", "Node"], "kind": "TestCar"},
@@ -649,6 +671,7 @@ async def test_diff_get_relationships(db: InfrahubDatabase, base_dataset_02):
                 "branch": "main",
                 "action": DiffAction.UPDATED,
                 "type": "IS_PROTECTED",
+                "path": None,
                 "value": {"previous": False, "new": True},
                 "changed_at": Timestamp(base_dataset_02["time_m30"]),
             }
@@ -710,6 +733,14 @@ async def test_diff_relationship_one_conflict(db: InfrahubDatabase, default_bran
             "id": "XXXXX",
             "name": "person_previous__car",
             "action": DiffAction.ADDED,
+            "paths": [
+                f"data/{c1_main.id}/previous_owner/{p1_main.id}",
+                f"data/{p1_main.id}/-undefined-/{c1_main.id}",
+            ],
+            "conflict_paths": [
+                f"data/{c1_main.id}/previous_owner/peer",
+                f"data/{p1_main.id}/-undefined-/peer",
+            ],
             "nodes": {
                 c1_main.id: {
                     "id": c1_main.id,
@@ -722,6 +753,7 @@ async def test_diff_relationship_one_conflict(db: InfrahubDatabase, default_bran
                 "IS_VISIBLE": {
                     "branch": "branch2",
                     "type": "IS_VISIBLE",
+                    "path": None,
                     "action": DiffAction.ADDED,
                     "value": {"previous": None, "new": True},
                     "changed_at": Timestamp(time11),
@@ -729,6 +761,7 @@ async def test_diff_relationship_one_conflict(db: InfrahubDatabase, default_bran
                 "IS_PROTECTED": {
                     "branch": "branch2",
                     "type": "IS_PROTECTED",
+                    "path": None,
                     "action": DiffAction.ADDED,
                     "value": {"previous": None, "new": False},
                     "changed_at": Timestamp(time11),
@@ -740,6 +773,14 @@ async def test_diff_relationship_one_conflict(db: InfrahubDatabase, default_bran
             "branch": "branch2",
             "id": "XXXXXX",
             "name": "person_previous__car",
+            "paths": [
+                f"data/{c1_main.id}/previous_owner/{p2_main.id}",
+                f"data/{p2_main.id}/-undefined-/{c1_main.id}",
+            ],
+            "conflict_paths": [
+                f"data/{c1_main.id}/previous_owner/peer",
+                f"data/{p2_main.id}/-undefined-/peer",
+            ],
             "action": DiffAction.REMOVED,
             "nodes": {
                 c1_main.id: {
@@ -753,6 +794,7 @@ async def test_diff_relationship_one_conflict(db: InfrahubDatabase, default_bran
                 "IS_VISIBLE": {
                     "branch": "branch2",
                     "type": "IS_VISIBLE",
+                    "path": None,
                     "action": DiffAction.REMOVED,
                     "value": {"previous": True, "new": True},
                     "changed_at": Timestamp(time11),
@@ -760,6 +802,7 @@ async def test_diff_relationship_one_conflict(db: InfrahubDatabase, default_bran
                 "IS_PROTECTED": {
                     "branch": "branch2",
                     "type": "IS_PROTECTED",
+                    "path": None,
                     "action": DiffAction.REMOVED,
                     "value": {"previous": False, "new": False},
                     "changed_at": Timestamp(time11),
@@ -794,6 +837,14 @@ async def test_diff_relationship_one_conflict(db: InfrahubDatabase, default_bran
             "db_id": "89106",
             "name": "person_previous__car",
             "action": DiffAction.REMOVED,
+            "paths": [
+                f"data/{c1_main.id}/previous_owner/{p2_main.id}",
+                f"data/{p2_main.id}/-undefined-/{c1_main.id}",
+            ],
+            "conflict_paths": [
+                f"data/{c1_main.id}/previous_owner/peer",
+                f"data/{p2_main.id}/-undefined-/peer",
+            ],
             "nodes": {
                 c1_main.id: {
                     "id": c1_main.id,
@@ -806,6 +857,7 @@ async def test_diff_relationship_one_conflict(db: InfrahubDatabase, default_bran
                 "IS_VISIBLE": {
                     "branch": "main",
                     "type": "IS_VISIBLE",
+                    "path": None,
                     "action": DiffAction.REMOVED,
                     "value": {"previous": True, "new": True},
                     "changed_at": Timestamp(time12),
@@ -813,6 +865,7 @@ async def test_diff_relationship_one_conflict(db: InfrahubDatabase, default_bran
                 "IS_PROTECTED": {
                     "branch": "main",
                     "type": "IS_PROTECTED",
+                    "path": None,
                     "action": DiffAction.REMOVED,
                     "value": {"previous": False, "new": False},
                     "changed_at": Timestamp(time12),
@@ -862,6 +915,8 @@ async def test_diff_relationship_many(db: InfrahubDatabase, default_branch: Bran
         "id": rel_id_branch,
         "name": "builtintag__coreorganization",
         "action": DiffAction.ADDED,
+        "paths": [f"data/{org1.id}/tags/{red.id}", f"data/{red.id}/-undefined-/{org1.id}"],
+        "conflict_paths": [f"data/{org1.id}/tags/peer", f"data/{red.id}/-undefined-/peer"],
         "nodes": {
             org1.id: {"id": org1.id, "labels": ["CoreOrganization", "Node", "CoreNode"], "kind": "CoreOrganization"},
             red.id: {"id": red.id, "labels": ["BuiltinTag", "Node", "CoreNode"], "kind": "BuiltinTag"},
@@ -871,6 +926,7 @@ async def test_diff_relationship_many(db: InfrahubDatabase, default_branch: Bran
                 "branch": "branch1",
                 "type": "IS_VISIBLE",
                 "action": DiffAction.ADDED,
+                "path": None,
                 "value": {"previous": None, "new": True},
                 "changed_at": Timestamp(base_dataset_04["time_m5"]),
             },
@@ -878,6 +934,7 @@ async def test_diff_relationship_many(db: InfrahubDatabase, default_branch: Bran
                 "branch": "branch1",
                 "type": "IS_PROTECTED",
                 "action": DiffAction.ADDED,
+                "path": None,
                 "value": {"previous": None, "new": False},
                 "changed_at": Timestamp(base_dataset_04["time_m5"]),
             },
@@ -902,6 +959,8 @@ async def test_diff_relationship_many(db: InfrahubDatabase, default_branch: Bran
         "id": rel_id_main,
         "name": "builtintag__coreorganization",
         "action": DiffAction.ADDED,
+        "paths": [f"data/{org1.id}/tags/{yellow.id}", f"data/{yellow.id}/-undefined-/{org1.id}"],
+        "conflict_paths": [f"data/{org1.id}/tags/peer", f"data/{yellow.id}/-undefined-/peer"],
         "nodes": {
             org1.id: {"id": org1.id, "labels": ["CoreOrganization", "Node", "CoreNode"], "kind": "CoreOrganization"},
             yellow.id: {"id": yellow.id, "labels": ["BuiltinTag", "Node", "CoreNode"], "kind": "BuiltinTag"},
@@ -910,6 +969,7 @@ async def test_diff_relationship_many(db: InfrahubDatabase, default_branch: Bran
             "IS_VISIBLE": {
                 "branch": "main",
                 "type": "IS_VISIBLE",
+                "path": None,
                 "action": DiffAction.ADDED,
                 "value": {"previous": None, "new": True},
                 "changed_at": Timestamp(base_dataset_04["time_m10"]),
@@ -917,6 +977,7 @@ async def test_diff_relationship_many(db: InfrahubDatabase, default_branch: Bran
             "IS_PROTECTED": {
                 "branch": "main",
                 "type": "IS_PROTECTED",
+                "path": None,
                 "action": DiffAction.ADDED,
                 "value": {"previous": None, "new": False},
                 "changed_at": Timestamp(base_dataset_04["time_m10"]),

@@ -6,11 +6,12 @@ from graphql import GraphQLResolveInfo
 from infrahub import config, lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import ProposedChangeState
+from infrahub.core.constants import ProposedChangeState, ValidatorConclusion
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import ValidationError
 from infrahub.graphql.mutations.main import InfrahubMutationMixin
 from infrahub.log import get_log_data
 from infrahub.message_bus import Meta, messages
@@ -105,10 +106,30 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
             )
 
             if updated_state == ProposedChangeState.MERGED:
+                conflict_resolution: Dict[str, bool] = {}
                 source_branch = await Branch.get_by_name(db=dbt, name=proposed_change.source_branch.value)
+                validations = await proposed_change.validations.get_peers(db=dbt)
+                for validation in validations.values():
+                    validator_kind = validation.get_kind()
+                    if (
+                        validator_kind != "CoreDataValidator"
+                        and validation.conclusion.value != ValidatorConclusion.SUCCESS.value
+                    ):
+                        # Ignoring Data integrity checks as they are handled again later
+                        raise ValidationError("Unable to merge proposed change containing failing checks")
+                    if validator_kind == "CoreDataValidator":
+                        data_checks = await validation.checks.get_peers(db=dbt)
+                        for check in data_checks.values():
+                            if check.conflicts.value and not check.keep_branch.value:
+                                raise ValidationError(
+                                    "Data conflicts found on branch and missing decisions about what branch to keep"
+                                )
+                            if check.conflicts.value:
+                                keep_source_value = check.keep_branch.value == "source"
+                                conflict_resolution[check.conflicts.value[0]["path"]] = keep_source_value
 
                 async with lock.registry.global_graph_lock():
-                    await source_branch.merge(rpc_client=rpc_client, db=dbt)
+                    await source_branch.merge(rpc_client=rpc_client, db=dbt, conflict_resolution=conflict_resolution)
 
                     # Copy the schema from the origin branch and set the hash and the schema_changed_at value
                     origin_branch = await source_branch.get_origin_branch(db=dbt)
