@@ -6,9 +6,8 @@ import sys
 from typing import Optional
 
 import typer
-from rich.logging import RichHandler
-
 from infrahub.checks import INFRAHUB_CHECK_VARIABLE_TO_IMPORT
+from rich.logging import RichHandler
 
 app = typer.Typer()
 

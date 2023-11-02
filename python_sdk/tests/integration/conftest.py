@@ -4,15 +4,15 @@ import os
 from typing import Any, Dict, Optional
 
 import httpx
+import infrahub.config as config
 import pytest
 from fastapi.testclient import TestClient
-
-import infrahub.config as config
 from infrahub.core.initialization import first_time_initialization, initialization
 from infrahub.core.node import Node
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase, get_db
 from infrahub.lock import initialize_lock
+
 from infrahub_sdk.schema import NodeSchema
 from infrahub_sdk.types import HTTPMethod
 from infrahub_sdk.utils import str_to_bool

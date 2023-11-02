@@ -1,8 +1,8 @@
 import pytest
-
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.exceptions import NodeNotFound
 from infrahub_sdk.node import InfrahubNode
