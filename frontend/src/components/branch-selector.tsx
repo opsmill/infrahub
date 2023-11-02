@@ -57,29 +57,23 @@ export default function BranchSelector() {
     </Button>
   );
 
-  const branchesOptions = branches
-    .map((branch) => ({
-      ...branch,
-      id: branch.name,
-      name: branch.name,
-    }))
-    .sort((branch1, branch2) => {
-      if (branch1.id === "main") {
-        return 1;
-      }
+  const branchesOptions = branches.sort((branch1, branch2) => {
+    if (branch1.id === "main") {
+      return 1;
+    }
 
-      if (branch2.id === "main") {
-        return 1;
-      }
+    if (branch2.id === "main") {
+      return 1;
+    }
 
-      if (branch1.id > branch2.id) {
-        return 1;
-      }
+    if (branch1.id > branch2.id) {
+      return 1;
+    }
 
-      return -1;
-    });
+    return -1;
+  });
 
-  const defaultBranch = branches?.filter((b) => b.is_default)[0]?.name;
+  const defaultBranch = branches?.filter((b) => b.is_default)[0]?.id;
 
   /**
    * Update GraphQL client endpoint whenever branch changes
