@@ -20,10 +20,3 @@ services:
     volumes:
       - ../:/source
     tty: true
-    depends_on:
-      database:
-        condition: service_healthy
-      message-queue:
-        condition: service_healthy
-      cache:
-        condition: service_healthy
