@@ -13,7 +13,7 @@ from infrahub.message_bus.operations import execute_message
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
 from infrahub.worker import WORKER_IDENTITY
-from infrahub_client import UUIDT
+from infrahub_sdk import UUIDT
 
 from . import InfrahubMessage, InfrahubResponse, Meta, get_broker
 from .messages import ROUTING_KEY_MAP

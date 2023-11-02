@@ -7,7 +7,7 @@ from infrahub.core.query.node import NodeToProcess
 from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
-from infrahub_client import UUIDT
+from infrahub_sdk import UUIDT
 
 
 async def test_get_one_attribute(db: InfrahubDatabase, default_branch: Branch, criticality_schema):

@@ -5,7 +5,7 @@ import pytest
 
 from infrahub.exceptions import NodeNotFound
 from infrahub.storage.local import InfrahubLocalStorage, LocalStorageSettings
-from infrahub_client import UUIDT
+from infrahub_sdk import UUIDT
 
 
 class set_directory(object):

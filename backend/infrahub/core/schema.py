@@ -29,7 +29,7 @@ from infrahub.core.constants import (
 from infrahub.core.query import QueryNode, QueryRel
 from infrahub.core.relationship import Relationship
 from infrahub.types import ATTRIBUTE_TYPES
-from infrahub_client.utils import duplicates, intersection
+from infrahub_sdk.utils import duplicates, intersection
 
 if TYPE_CHECKING:
     from typing_extensions import Self

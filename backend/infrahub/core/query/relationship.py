@@ -9,7 +9,7 @@ from infrahub.core.query import Query, QueryType
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import element_id_to_id, extract_field_filters
-from infrahub_client import UUIDT
+from infrahub_sdk import UUIDT
 
 if TYPE_CHECKING:
     from uuid import UUID

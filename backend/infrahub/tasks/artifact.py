@@ -3,7 +3,7 @@ from typing import Union
 from infrahub import lock
 from infrahub.message_bus import messages
 from infrahub.services import InfrahubServices
-from infrahub_client import InfrahubNode
+from infrahub_sdk import InfrahubNode
 
 
 async def define_artifact(

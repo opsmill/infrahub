@@ -2,7 +2,7 @@ import logging
 
 from infrahub import lock
 from infrahub.exceptions import RepositoryError
-from infrahub_client import InfrahubClient
+from infrahub_sdk import InfrahubClient
 
 from .repository import InfrahubRepository
 

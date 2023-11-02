@@ -5,8 +5,8 @@ from collections import defaultdict
 from ipaddress import IPv4Network
 from typing import Dict, List
 
-from infrahub_client import UUIDT, InfrahubClient, InfrahubNode, NodeStore
-from infrahub_client.exceptions import GraphQLError
+from infrahub_sdk import UUIDT, InfrahubClient, InfrahubNode, NodeStore
+from infrahub_sdk.exceptions import GraphQLError
 
 # flake8: noqa
 # pylint: skip-file

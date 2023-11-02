@@ -6,7 +6,7 @@ from typing import Any, Optional
 
 from git.repo import Repo
 
-from infrahub_client import InfrahubClient
+from infrahub_sdk import InfrahubClient
 
 INFRAHUB_CHECK_VARIABLE_TO_IMPORT = "INFRAHUB_CHECKS"
 

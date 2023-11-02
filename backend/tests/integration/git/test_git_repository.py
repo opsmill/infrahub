@@ -17,8 +17,8 @@ from infrahub.core.utils import count_relationships, delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.git import InfrahubRepository
 from infrahub.utils import get_models_dir
-from infrahub_client import Config, InfrahubClient, NodeNotFound
-from infrahub_client.types import HTTPMethod
+from infrahub_sdk import Config, InfrahubClient, NodeNotFound
+from infrahub_sdk.types import HTTPMethod
 
 # pylint: disable=unused-argument
 

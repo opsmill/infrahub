@@ -27,7 +27,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import add_relationship, update_relationships_to
 from infrahub.exceptions import ValidationError
 from infrahub.helpers import hash_password
-from infrahub_client import UUIDT
+from infrahub_sdk import UUIDT
 
 if TYPE_CHECKING:
     from uuid import UUID

@@ -12,7 +12,7 @@ from infrahub.core.query.relationship import (
 )
 from infrahub.core.relationship import Relationship
 from infrahub.exceptions import NodeNotFound, ValidationError
-from infrahub_client.utils import compare_lists
+from infrahub_sdk.utils import compare_lists
 
 from ..types import RelatedNodeInput
 

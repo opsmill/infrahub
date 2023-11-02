@@ -16,7 +16,7 @@ from infrahub.core.relationship import Relationship
 from infrahub.core.schema import GenericSchema, NodeSchema, RelationshipSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import NodeNotFound, SchemaNotFound
-from infrahub_client.utils import deep_merge_dict
+from infrahub_sdk.utils import deep_merge_dict
 
 if TYPE_CHECKING:
     from uuid import UUID

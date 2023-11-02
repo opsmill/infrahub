@@ -24,7 +24,7 @@ from infrahub.core.constants import (
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema_manager import INTERNAL_SCHEMA_NODE_KINDS
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
-from infrahub_client.utils import compare_lists
+from infrahub_sdk.utils import compare_lists
 
 if TYPE_CHECKING:
     from infrahub.message_bus.rpc import InfrahubRpcClient

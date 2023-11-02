@@ -33,18 +33,18 @@ from infrahub.exceptions import (
 )
 from infrahub.log import get_logger
 from infrahub.transforms import INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT
-from infrahub_client import (
+from infrahub_sdk import (
     GraphQLError,
     InfrahubClient,
     InfrahubNode,
     InfrahubRepositoryConfig,
     ValidationError,
 )
-from infrahub_client.utils import YamlFile, compare_lists
+from infrahub_sdk.utils import YamlFile, compare_lists
 
 if TYPE_CHECKING:
     from infrahub.message_bus import messages
-    from infrahub_client.branch import BranchData
+    from infrahub_sdk.branch import BranchData
 # pylint: disable=too-few-public-methods,too-many-lines
 
 LOGGER = get_logger("infrahub.git")

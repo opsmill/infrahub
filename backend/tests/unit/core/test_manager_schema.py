@@ -16,7 +16,7 @@ from infrahub.core.schema import (
 )
 from infrahub.core.schema_manager import SchemaBranch, SchemaManager
 from infrahub.database import InfrahubDatabase
-from infrahub_client.utils import compare_lists
+from infrahub_sdk.utils import compare_lists
 
 
 # -----------------------------------------------------------------

@@ -5,7 +5,7 @@ from typing import List, Optional
 import typer
 
 import infrahub.config as config
-from infrahub_client import InfrahubClientSync
+from infrahub_sdk import InfrahubClientSync
 
 app = typer.Typer()
 

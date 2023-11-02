@@ -12,7 +12,7 @@ from infrahub_sync.generator import render_template
 from potenda import Potenda
 from rich.console import Console
 
-from infrahub_client import InfrahubClientSync
+from infrahub_sdk import InfrahubClientSync
 
 app = typer.Typer()
 console = Console()

@@ -7,7 +7,7 @@ from infrahub.core.node import Node
 from infrahub.core.utils import count_relationships
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql import generate_graphql_schema
-from infrahub_client import UUIDT
+from infrahub_sdk import UUIDT
 
 
 @pytest.fixture(autouse=True)

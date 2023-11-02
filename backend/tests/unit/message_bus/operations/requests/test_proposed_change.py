@@ -3,8 +3,8 @@ import os
 from infrahub.message_bus import Meta, messages
 from infrahub.message_bus.operations.requests.proposed_change import repository_checks
 from infrahub.services import InfrahubServices
-from infrahub_client import Config, InfrahubClient
-from infrahub_client.playback import JSONPlayback
+from infrahub_sdk import Config, InfrahubClient
+from infrahub_sdk.playback import JSONPlayback
 
 CURRENT_DIRECTORY = os.path.abspath(os.path.dirname(__file__))
 TEST_DATA = f"{CURRENT_DIRECTORY}/test_data"

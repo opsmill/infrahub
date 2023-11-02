@@ -23,7 +23,7 @@ from infrahub.services import InfrahubServices
 from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
 from infrahub.worker import WORKER_IDENTITY
-from infrahub_client import InfrahubClient
+from infrahub_sdk import InfrahubClient
 
 app = typer.Typer()
 

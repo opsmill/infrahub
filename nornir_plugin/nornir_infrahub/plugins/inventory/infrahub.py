@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field, validator
 from pydantic.dataclasses import dataclass
 from slugify import slugify
 
-from infrahub_client import Config, InfrahubClientSync, InfrahubNodeSync, NodeSchema
+from infrahub_sdk import Config, InfrahubClientSync, InfrahubNodeSync, NodeSchema
 
 logger = logging.getLogger(__name__)
 

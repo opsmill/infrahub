@@ -9,9 +9,9 @@ from infrahub.message_bus import Meta, messages
 from infrahub.message_bus.operations import git
 from infrahub.message_bus.responses import DiffNamesResponse
 from infrahub.services import InfrahubServices
-from infrahub_client import UUIDT, Config, InfrahubClient
-from infrahub_client.branch import BranchData
-from infrahub_client.types import HTTPMethod
+from infrahub_sdk import UUIDT, Config, InfrahubClient
+from infrahub_sdk.branch import BranchData
+from infrahub_sdk.types import HTTPMethod
 
 # pylint: disable=redefined-outer-name
 

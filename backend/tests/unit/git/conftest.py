@@ -13,9 +13,9 @@ from pytest_httpx import HTTPXMock
 from infrahub.core.schema import SchemaRoot, core_models
 from infrahub.git import InfrahubRepository
 from infrahub.utils import find_first_file_in_directory, get_fixtures_dir
-from infrahub_client import UUIDT, InfrahubClient, InfrahubNode
-from infrahub_client import SchemaRoot as ClientSchemaRoot
-from infrahub_client.branch import BranchData
+from infrahub_sdk import UUIDT, InfrahubClient, InfrahubNode
+from infrahub_sdk import SchemaRoot as ClientSchemaRoot
+from infrahub_sdk.branch import BranchData
 
 
 @pytest.fixture

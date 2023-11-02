@@ -14,7 +14,7 @@ from nornir_infrahub.plugins.inventory.infrahub import (  # _get_inventory_eleme
 )
 from pydantic.error_wrappers import ValidationError
 
-from infrahub_client import InfrahubClient, InfrahubNodeSync, NodeSchema
+from infrahub_sdk import InfrahubClient, InfrahubNodeSync, NodeSchema
 
 # from unittest.mock import Mock, patch
 

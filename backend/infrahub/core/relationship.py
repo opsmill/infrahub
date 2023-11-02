@@ -24,8 +24,8 @@ from infrahub.core.query.relationship import (
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import update_relationships_to
 from infrahub.exceptions import NodeNotFound, ValidationError
-from infrahub_client import UUIDT
-from infrahub_client.utils import intersection
+from infrahub_sdk import UUIDT
+from infrahub_sdk.utils import intersection
 
 if TYPE_CHECKING:
     from uuid import UUID

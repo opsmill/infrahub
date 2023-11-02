@@ -40,7 +40,7 @@ from infrahub.graphql.generator import (
 )
 from infrahub.message_bus.rpc import InfrahubRpcClientTesting
 from infrahub.test_data import dataset01 as ds01
-from infrahub_client import UUIDT
+from infrahub_sdk import UUIDT
 
 
 @pytest.fixture(scope="session")

@@ -15,38 +15,38 @@ The Python SDK has 3 main methods to query data from Infrahub
 
 +++ Async
 ```python
-from infrahub_client import InfrahubClient
+from infrahub_sdk import InfrahubClient
 
 client = await InfrahubClient.init(address="http://localhost:8000")
 accounts = await client.all(kind="CoreAccount")
 ```
 ```python
-from infrahub_client import InfrahubClient
+from infrahub_sdk import InfrahubClient
 
 client = await InfrahubClient.init(address="http://localhost:8000")
 accounts = await client.get(kind="CoreAccount", id="XXX")
 ```
 ```python
-from infrahub_client import InfrahubClient
+from infrahub_sdk import InfrahubClient
 
 client = await InfrahubClient.init(address="http://localhost:8000")
 accounts = await client.filters(kind="CoreAccount", name__value="admin")
 ```
 +++ Sync
 ```python
-from infrahub_client import InfrahubClientSync
+from infrahub_sdk import InfrahubClientSync
 
 client = InfrahubClientSync.init(address="http://localhost:8000")
 accounts = client.all(kind="CoreAccount")
 ```
 ```python
-from infrahub_client import InfrahubClientSync
+from infrahub_sdk import InfrahubClientSync
 
 client = InfrahubClientSync.init(address="http://localhost:8000")
 accounts = client.get(kind="CoreAccount", id="XXX")
 ```
 ```python
-from infrahub_client import InfrahubClientSync
+from infrahub_sdk import InfrahubClientSync
 
 client = InfrahubClientSync.init(address="http://localhost:8000")
 accounts = client.filters(kind="CoreAccount", name__value="admin")
@@ -58,7 +58,7 @@ All Attributes and Relationships defined in the schema will be automatically bui
 
 +++ Async
 ```python
-from infrahub_client import InfrahubClient
+from infrahub_sdk import InfrahubClient
 
 client = await InfrahubClient.init(address="http://localhost:8000")
 account = await client.get(kind="CoreRepository", id="XXX")
@@ -66,7 +66,7 @@ print(account.name.value)
 ```
 +++ Sync
 ```python
-from infrahub_client import InfrahubClientSync
+from infrahub_sdk import InfrahubClientSync
 
 client = InfrahubClientSync.init(address="http://localhost:8000")
 account = client.get(kind="CoreRepository", id="XXX")
@@ -86,14 +86,14 @@ it's possible to add or remove some attributes and/or relationships from the que
 
 +++ Async
 ```python
-from infrahub_client import InfrahubClient
+from infrahub_sdk import InfrahubClient
 
 client = await InfrahubClient.init(address="http://localhost:8000")
 accounts = await client.all(kind="CoreRepository", exclude=["tags"], include=["queries"])
 ```
 +++ Sync
 ```python
-from infrahub_client import InfrahubClientSync
+from infrahub_sdk import InfrahubClientSync
 
 client = InfrahubClientSync.init(address="http://localhost:8000")
 accounts = client.all(kind="CoreRepository", exclude=["tags"], include=["queries"])
@@ -110,7 +110,7 @@ In both cases, you can `fetch()` all the peers of a relationship
 
 +++ Async
 ```python
-from infrahub_client import InfrahubClient, InfrahubNode
+from infrahub_sdk import InfrahubClient, InfrahubNode
 
 client = await InfrahubClient.init(address="http://localhost:8000")
 account: InfrahubNode = await client.get(kind="CoreRepository", id="XXXX")
@@ -119,7 +119,7 @@ tags: List[InfrahubNode]  = [ tag.peer for tag in account.tags ]
 ```
 +++ Sync
 ```python
-from infrahub_client import InfrahubClientSync, InfrahubNodeSync
+from infrahub_sdk import InfrahubClientSync, InfrahubNodeSync
 
 client = InfrahubClientSync.init(address="http://localhost:8000")
 account: InfrahubNodeSync = client.get(kind="CoreRepository", id="XXXX")

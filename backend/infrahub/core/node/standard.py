@@ -15,7 +15,7 @@ from infrahub.core.query.standard_node import (
     StandardNodeUpdateQuery,
 )
 from infrahub.exceptions import Error
-from infrahub_client import UUIDT
+from infrahub_sdk import UUIDT
 
 # pylint: disable=redefined-builtin
 

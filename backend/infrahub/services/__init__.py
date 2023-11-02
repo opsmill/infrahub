@@ -5,7 +5,7 @@ from infrahub.exceptions import InitializationError
 from infrahub.message_bus import InfrahubMessage, InfrahubResponse, Meta
 from infrahub.message_bus.messages import ROUTING_KEY_MAP
 from infrahub.message_bus.types import MessageTTL
-from infrahub_client import InfrahubClient
+from infrahub_sdk import InfrahubClient
 
 from .adapters.cache import InfrahubCache
 from .adapters.message_bus import InfrahubMessageBus

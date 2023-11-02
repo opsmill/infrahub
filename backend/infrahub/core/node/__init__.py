@@ -14,8 +14,8 @@ from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import ValidationError
 from infrahub.types import ATTRIBUTE_TYPES
-from infrahub_client import UUIDT
-from infrahub_client.utils import is_valid_uuid
+from infrahub_sdk import UUIDT
+from infrahub_sdk.utils import is_valid_uuid
 
 from ..relationship import RelationshipManager
 from ..utils import update_relationships_to

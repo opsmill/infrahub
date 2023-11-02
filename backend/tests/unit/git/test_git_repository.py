@@ -23,8 +23,8 @@ from infrahub.git import (
     extract_repo_file_information,
 )
 from infrahub.utils import find_first_file_in_directory
-from infrahub_client import UUIDT, InfrahubNode
-from infrahub_client.branch import BranchData
+from infrahub_sdk import UUIDT, InfrahubNode
+from infrahub_sdk.branch import BranchData
 
 
 async def test_directories_props(git_upstream_repo_01, git_repos_dir):

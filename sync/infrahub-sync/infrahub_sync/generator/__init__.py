@@ -6,7 +6,7 @@ import jinja2
 from infrahub_sync import SyncConfig
 from infrahub_sync.generator.utils import list_to_set, list_to_str
 
-from infrahub_client import (
+from infrahub_sdk import (
     AttributeSchema,
     NodeSchema,
     RelationshipKind,

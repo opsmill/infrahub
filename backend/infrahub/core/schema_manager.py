@@ -34,7 +34,7 @@ from infrahub.core.schema import (
 from infrahub.exceptions import SchemaNotFound
 from infrahub.graphql import generate_graphql_schema
 from infrahub.log import get_logger
-from infrahub_client.utils import intersection
+from infrahub_sdk.utils import intersection
 
 log = get_logger()
 
