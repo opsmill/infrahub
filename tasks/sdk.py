@@ -71,13 +71,15 @@ def black(context: Context, docker: bool = False):
 
     print(f" - [{NAMESPACE}] Check code with black")
     exec_cmd = "black --check --diff ."
+    exec_directory = MAIN_DIRECTORY_PATH
 
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
-        exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd} --workdir /source/{MAIN_DIRECTORY}"
+        exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run  --workdir /source/{MAIN_DIRECTORY} infrahub-test {exec_cmd}"
+        exec_directory = ESCAPED_REPO_PATH
         print(exec_cmd)
 
-    with context.cd(MAIN_DIRECTORY_PATH):
+    with context.cd(exec_directory):
         context.run(exec_cmd)
 
 
@@ -87,13 +89,15 @@ def isort(context: Context, docker: bool = False):
 
     print(f" - [{NAMESPACE}] Check code with isort")
     exec_cmd = "isort --check --diff ."
+    exec_directory = MAIN_DIRECTORY_PATH
 
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
-        exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}  --workdir /source/{MAIN_DIRECTORY}"
+        exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run  --workdir /source/{MAIN_DIRECTORY} infrahub-test {exec_cmd}"
+        exec_directory = ESCAPED_REPO_PATH
         print(exec_cmd)
 
-    with context.cd(MAIN_DIRECTORY_PATH):
+    with context.cd(exec_directory):
         context.run(exec_cmd)
 
 
@@ -103,13 +107,15 @@ def mypy(context: Context, docker: bool = False):
 
     print(f" - [{NAMESPACE}] Check code with mypy")
     exec_cmd = "mypy --show-error-codes infrahub_sdk/ infrahub_ctl/"
+    exec_directory = MAIN_DIRECTORY_PATH
 
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
-        exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd} --workdir /source/{MAIN_DIRECTORY}"
+        exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run --workdir /source/{MAIN_DIRECTORY} infrahub-test {exec_cmd}"
+        exec_directory = ESCAPED_REPO_PATH
         print(exec_cmd)
 
-    with context.cd(MAIN_DIRECTORY_PATH):
+    with context.cd(exec_directory):
         context.run(exec_cmd)
 
 
@@ -119,13 +125,15 @@ def pylint(context: Context, docker: bool = False):
 
     print(f" - [{NAMESPACE}] Check code with pylint")
     exec_cmd = "pylint infrahub_sdk/ infrahub_ctl/"
+    exec_directory = MAIN_DIRECTORY_PATH
 
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
-        exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}  --workdir /source/{MAIN_DIRECTORY}"
+        exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run --workdir /source/{MAIN_DIRECTORY} infrahub-test {exec_cmd}"
+        exec_directory = ESCAPED_REPO_PATH
         print(exec_cmd)
 
-    with context.cd(MAIN_DIRECTORY_PATH):
+    with context.cd(exec_directory):
         context.run(exec_cmd)
 
 
@@ -135,15 +143,15 @@ def ruff(context: Context, docker: bool = False):
 
     print(f" - [{NAMESPACE}] Check code with ruff")
     exec_cmd = "ruff check ."
+    exec_directory = MAIN_DIRECTORY_PATH
 
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
-        exec_cmd = (
-            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
-        )
+        exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run  --workdir /source/{MAIN_DIRECTORY} infrahub-test {exec_cmd}"
+        exec_directory = ESCAPED_REPO_PATH
         print(exec_cmd)
 
-    with context.cd(MAIN_DIRECTORY_PATH):
+    with context.cd(exec_directory):
         context.run(exec_cmd)
 
 
