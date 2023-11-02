@@ -17,11 +17,7 @@ from typing import (
 
 from infrahub_sdk.exceptions import Error, FilterNotFound, NodeNotFound
 from infrahub_sdk.graphql import Mutation
-from infrahub_sdk.schema import (
-    GenericSchema,
-    RelationshipCardinality,
-    RelationshipKind,
-)
+from infrahub_sdk.schema import GenericSchema, RelationshipCardinality, RelationshipKind
 from infrahub_sdk.timestamp import Timestamp
 from infrahub_sdk.utils import compare_lists, get_flat_value
 from infrahub_sdk.uuidt import UUIDT
@@ -38,7 +34,12 @@ PROPERTIES_FLAG = ["is_visible", "is_protected"]
 PROPERTIES_OBJECT = ["source", "owner"]
 SAFE_VALUE = re.compile(r"(^[\. /:a-zA-Z0-9_-]+$)|(^$)")
 
-IP_TYPES = Union[ipaddress.IPv4Interface, ipaddress.IPv6Interface, ipaddress.IPv4Network, ipaddress.IPv6Network]
+IP_TYPES = Union[
+    ipaddress.IPv4Interface,
+    ipaddress.IPv6Interface,
+    ipaddress.IPv4Network,
+    ipaddress.IPv6Network,
+]
 
 
 class Attribute:
@@ -221,7 +222,11 @@ class RelatedNodeBase:
         for prop_name in PROPERTIES_FLAG:
             properties[prop_name] = None
         for prop_name in PROPERTIES_OBJECT:
-            properties[prop_name] = {"id": None, "display_label": None, "__typename": None}
+            properties[prop_name] = {
+                "id": None,
+                "display_label": None,
+                "__typename": None,
+            }
 
         if properties:
             data["properties"] = properties
@@ -260,7 +265,11 @@ class RelatedNode(RelatedNodeBase):
         if self.id and self.typename:
             return self._client.store.get(key=self.id, kind=self.typename)  # type: ignore[return-value]
 
-        raise NodeNotFound(branch_name=self._branch, node_type=self.schema.peer, identifier={"key": [self.id]})
+        raise NodeNotFound(
+            branch_name=self._branch,
+            node_type=self.schema.peer,
+            identifier={"key": [self.id]},
+        )
 
 
 class RelatedNodeSync(RelatedNodeBase):
@@ -295,7 +304,11 @@ class RelatedNodeSync(RelatedNodeBase):
         if self.id and self.typename:
             return self._client.store.get(key=self.id, kind=self.typename)  # type: ignore[return-value]
 
-        raise NodeNotFound(branch_name=self._branch, node_type=self.schema.peer, identifier={"key": [self.id]})
+        raise NodeNotFound(
+            branch_name=self._branch,
+            node_type=self.schema.peer,
+            identifier={"key": [self.id]},
+        )
 
 
 class RelationshipManagerBase:
@@ -328,7 +341,11 @@ class RelationshipManagerBase:
         for prop_name in PROPERTIES_FLAG:
             properties[prop_name] = None
         for prop_name in PROPERTIES_OBJECT:
-            properties[prop_name] = {"id": None, "display_label": None, "__typename": None}
+            properties[prop_name] = {
+                "id": None,
+                "display_label": None,
+                "__typename": None,
+            }
 
         if properties:
             data["edges"]["properties"] = properties
@@ -358,13 +375,25 @@ class RelationshipManager(RelationshipManagerBase):
         if isinstance(data, list):
             for item in data:
                 self.peers.append(
-                    RelatedNode(name=name, client=self.client, branch=self.branch, schema=schema, data=item)
+                    RelatedNode(
+                        name=name,
+                        client=self.client,
+                        branch=self.branch,
+                        schema=schema,
+                        data=item,
+                    )
                 )
 
         elif isinstance(data, dict) and "edges" in data:
             for item in data["edges"]:
                 self.peers.append(
-                    RelatedNode(name=name, client=self.client, branch=self.branch, schema=schema, data=item)
+                    RelatedNode(
+                        name=name,
+                        client=self.client,
+                        branch=self.branch,
+                        schema=schema,
+                        data=item,
+                    )
                 )
 
         else:
@@ -378,7 +407,10 @@ class RelationshipManager(RelationshipManagerBase):
             exclude = self.node._schema.relationship_names + self.node._schema.attribute_names
             exclude.remove(self.schema.name)
             node = await self.client.get(
-                kind=self.node._schema.kind, id=self.node.id, include=[self.schema.name], exclude=exclude
+                kind=self.node._schema.kind,
+                id=self.node.id,
+                include=[self.schema.name],
+                exclude=exclude,
             )
             rm = getattr(node, self.schema.name)
             self.peers = rm.peers
@@ -392,7 +424,14 @@ class RelationshipManager(RelationshipManagerBase):
         new_node = RelatedNode(schema=self.schema, client=self.client, branch=self.branch, data=data)
 
         if new_node.id and new_node.id not in self.peer_ids:
-            self.peers.append(RelatedNode(schema=self.schema, client=self.client, branch=self.branch, data=data))
+            self.peers.append(
+                RelatedNode(
+                    schema=self.schema,
+                    client=self.client,
+                    branch=self.branch,
+                    data=data,
+                )
+            )
 
     def remove(self, data: Union[str, RelatedNode, dict]) -> None:
         node_to_remove = RelatedNode(schema=self.schema, client=self.client, branch=self.branch, data=data)
@@ -428,13 +467,25 @@ class RelationshipManagerSync(RelationshipManagerBase):
         if isinstance(data, list):
             for item in data:
                 self.peers.append(
-                    RelatedNodeSync(name=name, client=self.client, branch=self.branch, schema=schema, data=item)
+                    RelatedNodeSync(
+                        name=name,
+                        client=self.client,
+                        branch=self.branch,
+                        schema=schema,
+                        data=item,
+                    )
                 )
 
         elif isinstance(data, dict) and "edges" in data:
             for item in data["edges"]:
                 self.peers.append(
-                    RelatedNodeSync(name=name, client=self.client, branch=self.branch, schema=schema, data=item)
+                    RelatedNodeSync(
+                        name=name,
+                        client=self.client,
+                        branch=self.branch,
+                        schema=schema,
+                        data=item,
+                    )
                 )
 
         else:
@@ -448,7 +499,10 @@ class RelationshipManagerSync(RelationshipManagerBase):
             exclude = self.node._schema.relationship_names + self.node._schema.attribute_names
             exclude.remove(self.schema.name)
             node = self.client.get(
-                kind=self.node._schema.kind, id=self.node.id, include=[self.schema.name], exclude=exclude
+                kind=self.node._schema.kind,
+                id=self.node.id,
+                include=[self.schema.name],
+                exclude=exclude,
             )
             rm = getattr(node, self.schema.name)
             self.peers = rm.peers
@@ -462,7 +516,14 @@ class RelationshipManagerSync(RelationshipManagerBase):
         new_node = RelatedNodeSync(schema=self.schema, client=self.client, branch=self.branch, data=data)
 
         if new_node.id and new_node.id not in self.peer_ids:
-            self.peers.append(RelatedNodeSync(schema=self.schema, client=self.client, branch=self.branch, data=data))
+            self.peers.append(
+                RelatedNodeSync(
+                    schema=self.schema,
+                    client=self.client,
+                    branch=self.branch,
+                    data=data,
+                )
+            )
 
     def remove(self, data: Union[str, RelatedNodeSync, dict]) -> None:
         node_to_remove = RelatedNodeSync(schema=self.schema, client=self.client, branch=self.branch, data=data)
@@ -476,7 +537,12 @@ class RelationshipManagerSync(RelationshipManagerBase):
 
 
 class InfrahubNodeBase:
-    def __init__(self, schema: Union[NodeSchema, GenericSchema], branch: str, data: Optional[dict] = None) -> None:
+    def __init__(
+        self,
+        schema: Union[NodeSchema, GenericSchema],
+        branch: str,
+        data: Optional[dict] = None,
+    ) -> None:
         self._schema = schema
         self._data = data
         self._branch = branch
@@ -500,7 +566,11 @@ class InfrahubNodeBase:
         for attr_name in self._attributes:
             attr_schema = [attr for attr in self._schema.attributes if attr.name == attr_name][0]
             attr_data = data.get(attr_name, None) if isinstance(data, dict) else None
-            setattr(self, attr_name, Attribute(name=attr_name, schema=attr_schema, data=attr_data))
+            setattr(
+                self,
+                attr_name,
+                Attribute(name=attr_name, schema=attr_schema, data=attr_data),
+            )
 
     def _init_relationships(self, data: Optional[dict] = None) -> None:
         pass
@@ -580,7 +650,11 @@ class InfrahubNodeBase:
 
         mutation_variables = {key: type(value) for key, value in variables.items()}
 
-        return {"data": {"data": data}, "variables": variables, "mutation_variables": mutation_variables}
+        return {
+            "data": {"data": data},
+            "variables": variables,
+            "mutation_variables": mutation_variables,
+        }
 
     @staticmethod
     def _strip_unmodified_dict(data: dict, original_data: dict, variables: dict, item: str) -> None:
@@ -620,7 +694,12 @@ class InfrahubNodeBase:
                     data.pop(item)
                     continue
                 if isinstance(original_data[item], dict):
-                    self._strip_unmodified_dict(data=data, original_data=original_data, variables=variables, item=item)
+                    self._strip_unmodified_dict(
+                        data=data,
+                        original_data=original_data,
+                        variables=variables,
+                        item=item,
+                    )
                     if item in self._relationships and original_data[item].get("node"):
                         relationship_data_cardinality_one = copy(original_data)
                         relationship_data_cardinality_one[item] = original_data[item]["node"]
@@ -758,7 +837,11 @@ class InfrahubNodeBase:
                     break
             if not found:
                 valid_filters = [entry.name for entry in self._schema.filters]
-                raise FilterNotFound(identifier=filter_name, kind=self._schema.kind, filters=valid_filters)
+                raise FilterNotFound(
+                    identifier=filter_name,
+                    kind=self._schema.kind,
+                    filters=valid_filters,
+                )
 
         return True
 
@@ -789,7 +872,11 @@ class InfrahubNode(InfrahubNodeBase):
 
     @classmethod
     async def from_graphql(
-        cls, client: InfrahubClient, branch: str, data: dict, schema: Optional[Union[NodeSchema, GenericSchema]] = None
+        cls,
+        client: InfrahubClient,
+        branch: str,
+        data: dict,
+        schema: Optional[Union[NodeSchema, GenericSchema]] = None,
     ) -> Self:
         if not schema:
             node_kind = data.get("__typename", None) or data.get("node", {}).get("__typename", None)
@@ -830,7 +917,11 @@ class InfrahubNode(InfrahubNodeBase):
         at = Timestamp(at)
         input_data = {"data": {"id": self.id}}
         mutation_query = {"ok": None}
-        query = Mutation(mutation=f"{self._schema.kind}Delete", input_data=input_data, query=mutation_query)
+        query = Mutation(
+            mutation=f"{self._schema.kind}Delete",
+            input_data=input_data,
+            query=mutation_query,
+        )
         await self._client.execute_graphql(
             query=query.render(),
             branch_name=self._branch,
@@ -857,7 +948,11 @@ class InfrahubNode(InfrahubNodeBase):
         fragment: bool = False,
     ) -> Dict[str, Union[Any, Dict]]:
         data = self.generate_query_data_init(
-            filters=filters, offset=offset, limit=limit, include=include, exclude=exclude
+            filters=filters,
+            offset=offset,
+            limit=limit,
+            include=include,
+            exclude=exclude,
         )
         data["edges"]["node"].update(self.generate_query_data_node(include=include, exclude=exclude, inherited=True))
 
@@ -875,7 +970,10 @@ class InfrahubNode(InfrahubNodeBase):
                     exclude_child += exclude
 
                 child_data = child_node.generate_query_data_node(
-                    include=include, exclude=exclude_child, inherited=False, insert_alias=True
+                    include=include,
+                    exclude=exclude_child,
+                    inherited=False,
+                    insert_alias=True,
                 )
 
                 if child_data:
@@ -985,7 +1083,11 @@ class InfrahubNodeSync(InfrahubNodeBase):
         at = Timestamp(at)
         input_data = {"data": {"id": self.id}}
         mutation_query = {"ok": None}
-        query = Mutation(mutation=f"{self._schema.kind}Delete", input_data=input_data, query=mutation_query)
+        query = Mutation(
+            mutation=f"{self._schema.kind}Delete",
+            input_data=input_data,
+            query=mutation_query,
+        )
         self._client.execute_graphql(
             query=query.render(),
             branch_name=self._branch,
@@ -1010,7 +1112,11 @@ class InfrahubNodeSync(InfrahubNodeBase):
         fragment: bool = False,
     ) -> Dict[str, Union[Any, Dict]]:
         data = self.generate_query_data_init(
-            filters=filters, offset=offset, limit=limit, include=include, exclude=exclude
+            filters=filters,
+            offset=offset,
+            limit=limit,
+            include=include,
+            exclude=exclude,
         )
         data["edges"]["node"].update(self.generate_query_data_node(include=include, exclude=exclude, inherited=True))
 
@@ -1101,7 +1207,13 @@ def generate_relationship_property(node: Union[InfrahubNode, InfrahubNodeSync], 
             setattr(
                 self,
                 internal_name,
-                node_class(name=external_name, branch=node._branch, client=node._client, schema=schema, data=value),
+                node_class(
+                    name=external_name,
+                    branch=node._branch,
+                    client=node._client,
+                    schema=schema,
+                    data=value,
+                ),
             )
 
     return prop

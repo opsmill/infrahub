@@ -27,7 +27,11 @@ async def mock_branches_list_query(httpx_mock: HTTPXMock) -> HTTPXMock:
         }
     }
 
-    httpx_mock.add_response(method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-branch-all"})
+    httpx_mock.add_response(
+        method="POST",
+        json=response,
+        match_headers={"X-Infrahub-Tracker": "query-branch-all"},
+    )
     return httpx_mock
 
 
@@ -35,7 +39,12 @@ async def mock_branches_list_query(httpx_mock: HTTPXMock) -> HTTPXMock:
 async def authentication_error_payload():
     response = {
         "data": None,
-        "errors": [{"message": "Authentication is required to perform this operation", "extensions": {"code": 401}}],
+        "errors": [
+            {
+                "message": "Authentication is required to perform this operation",
+                "extensions": {"code": 401},
+            }
+        ],
     }
 
     return response
@@ -55,7 +64,10 @@ async def mock_branch_create_error(httpx_mock: HTTPXMock) -> HTTPXMock:
     }
 
     httpx_mock.add_response(
-        status_code=200, method="POST", json=response, match_headers={"X-Infrahub-Tracker": "mutation-branch-create"}
+        status_code=200,
+        method="POST",
+        json=response,
+        match_headers={"X-Infrahub-Tracker": "mutation-branch-create"},
     )
     return httpx_mock
 

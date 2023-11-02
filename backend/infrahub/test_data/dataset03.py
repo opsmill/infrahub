@@ -3,10 +3,11 @@ import logging
 from collections import defaultdict
 from ipaddress import IPv4Network
 
+from infrahub_sdk import UUIDT
+
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
-from infrahub_sdk import UUIDT
 
 # flake8: noqa
 # pylint: skip-file

@@ -10,10 +10,10 @@ from rich.console import Console
 from ujson import JSONDecodeError
 
 import infrahub_ctl.config as config
-from infrahub_sdk.exceptions import GraphQLError
 from infrahub_ctl.client import initialize_client, initialize_client_sync
 from infrahub_ctl.exceptions import QueryNotFoundError
 from infrahub_ctl.utils import find_graphql_query, get_branch, parse_cli_vars
+from infrahub_sdk.exceptions import GraphQLError
 
 app = typer.Typer()
 
@@ -50,7 +50,8 @@ async def _schema(schema: Path) -> None:
 
 @app.command(name="schema")
 def validate_schema(
-    schema: Path, config_file: Path = typer.Option(config.DEFAULT_CONFIG_FILE, envvar=config.ENVVAR_CONFIG_FILE)
+    schema: Path,
+    config_file: Path = typer.Option(config.DEFAULT_CONFIG_FILE, envvar=config.ENVVAR_CONFIG_FILE),
 ) -> None:
     """Validate the format of a schema file either in JSON or YAML"""
 
@@ -92,7 +93,10 @@ def validate_graphql(
     client = initialize_client_sync()
     try:
         response = client.execute_graphql(
-            query=query_str, branch_name=branch, variables=variables_dict, raise_for_error=False
+            query=query_str,
+            branch_name=branch,
+            variables=variables_dict,
+            raise_for_error=False,
         )
     except GraphQLError as exc:
         console.print(f"[red]{len(exc.errors)} error(s) occured while executing the query")

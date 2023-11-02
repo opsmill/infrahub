@@ -1,11 +1,6 @@
 import pytest
 
-from infrahub_sdk.graphql import (
-    Mutation,
-    Query,
-    render_input_block,
-    render_query_block,
-)
+from infrahub_sdk.graphql import Mutation, Query, render_input_block, render_query_block
 
 # pylint: disable=redefined-outer-name
 
@@ -13,7 +8,11 @@ from infrahub_sdk.graphql import (
 @pytest.fixture
 def query_data_no_filter():
     data = {
-        "device": {"name": {"value": None}, "description": {"value": None}, "interfaces": {"name": {"value": None}}}
+        "device": {
+            "name": {"value": None},
+            "description": {"value": None},
+            "interfaces": {"name": {"value": None}},
+        }
     }
 
     return data
@@ -37,7 +36,10 @@ def query_data_fragment():
     data = {
         "device": {
             "name": {"value": None},
-            "...on Builtin": {"description": {"value": None}, "interfaces": {"name": {"value": None}}},
+            "...on Builtin": {
+                "description": {"value": None},
+                "interfaces": {"name": {"value": None}},
+            },
         }
     }
 
@@ -65,7 +67,10 @@ def query_data_filters_01():
             "@filters": {"name__value": "$name"},
             "name": {"value": None},
             "description": {"value": None},
-            "interfaces": {"@filters": {"enabled__value": "$enabled"}, "name": {"value": None}},
+            "interfaces": {
+                "@filters": {"enabled__value": "$enabled"},
+                "name": {"value": None},
+            },
         }
     }
     return data
@@ -77,7 +82,10 @@ def query_data_filters_02():
         "device": {
             "@filters": {"name__value": "myname", "integer__value": 44},
             "name": {"value": None},
-            "interfaces": {"@filters": {"enabled__value": True}, "name": {"value": None}},
+            "interfaces": {
+                "@filters": {"enabled__value": True},
+                "name": {"value": None},
+            },
         }
     }
     return data
@@ -379,7 +387,10 @@ def test_mutation_rendering_many_relationships():
         "data": {
             "description": {"value": "JFK Airport"},
             "name": {"value": "JFK1"},
-            "tags": [{"id": "b44c6a7d-3b9c-466a-b6e3-a547b0ecc965"}, {"id": "c5dffab1-e3f1-4039-9a1e-c0df1705d612"}],
+            "tags": [
+                {"id": "b44c6a7d-3b9c-466a-b6e3-a547b0ecc965"},
+                {"id": "c5dffab1-e3f1-4039-9a1e-c0df1705d612"},
+            ],
         }
     }
 
@@ -419,7 +430,12 @@ mutation {
 def test_mutation_rendering_with_vars(input_data_01):
     query_data = {"ok": None, "object": {"id": None}}
     variables = {"name": str, "description": str, "number": int}
-    query = Mutation(mutation="myobject_create", query=query_data, input_data=input_data_01, variables=variables)
+    query = Mutation(
+        mutation="myobject_create",
+        query=query_data,
+        input_data=input_data_01,
+        variables=variables,
+    )
 
     expected_query = """
 mutation ($name: String!, $description: String!, $number: Int!) {

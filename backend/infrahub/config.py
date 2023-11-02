@@ -8,9 +8,8 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 import toml
-from pydantic import BaseSettings, Field, ValidationError
-
 from infrahub_sdk import generate_uuid
+from pydantic import BaseSettings, Field, ValidationError
 
 SETTINGS: Settings = None
 

@@ -21,7 +21,11 @@ async def execute_batch_task_in_pool(
 
 
 class InfrahubBatch:
-    def __init__(self, semaphore: Optional[asyncio.Semaphore] = None, max_concurrent_execution: int = 5):
+    def __init__(
+        self,
+        semaphore: Optional[asyncio.Semaphore] = None,
+        max_concurrent_execution: int = 5,
+    ):
         self._tasks: List[BatchTask] = []
         self.semaphore = semaphore or asyncio.Semaphore(value=max_concurrent_execution)
 

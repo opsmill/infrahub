@@ -37,7 +37,12 @@ async def test_fetch_schema(mock_schema_query_01, client_type):  # pylint: disab
         nodes = client.schema.fetch(branch="main")
 
     assert len(nodes) == 4
-    assert sorted(nodes.keys()) == ["BuiltinLocation", "BuiltinTag", "CoreGraphQLQuery", "CoreRepository"]
+    assert sorted(nodes.keys()) == [
+        "BuiltinLocation",
+        "BuiltinTag",
+        "CoreGraphQLQuery",
+        "CoreRepository",
+    ]
     assert isinstance(nodes["BuiltinTag"], NodeSchema)
 
 
@@ -49,7 +54,8 @@ async def test_schema_data_validation(rfile_schema, client_type):
         client = InfrahubClientSync.init(address="http://mock", insert_tracker=True)
 
     client.schema.validate_data_against_schema(
-        schema=rfile_schema, data={"name": "some-name", "description": "Some description"}
+        schema=rfile_schema,
+        data={"name": "some-name", "description": "Some description"},
     )
 
     with pytest.raises(ValidationError) as excinfo:

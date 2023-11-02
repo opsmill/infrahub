@@ -5,6 +5,7 @@ import hashlib
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
+from infrahub_sdk.utils import intersection
 from pydantic import BaseModel, Field
 
 import infrahub.config as config
@@ -34,7 +35,6 @@ from infrahub.core.schema import (
 from infrahub.exceptions import SchemaNotFound
 from infrahub.graphql import generate_graphql_schema
 from infrahub.log import get_logger
-from infrahub_sdk.utils import intersection
 
 log = get_logger()
 

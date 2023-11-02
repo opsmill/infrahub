@@ -1,7 +1,6 @@
 import logging
 
 import networkx as nx
-
 from infrahub_sdk import InfrahubClient, NodeStore
 
 # flake8: noqa

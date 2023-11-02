@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Dict, List, Optional, Type, Union
 
+from infrahub_sdk.utils import deep_merge_dict
+
 from infrahub.core import get_branch, registry
 from infrahub.core.node import Node
 from infrahub.core.query.node import (
@@ -16,7 +18,6 @@ from infrahub.core.relationship import Relationship
 from infrahub.core.schema import GenericSchema, NodeSchema, RelationshipSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import NodeNotFound, SchemaNotFound
-from infrahub_sdk.utils import deep_merge_dict
 
 if TYPE_CHECKING:
     from uuid import UUID

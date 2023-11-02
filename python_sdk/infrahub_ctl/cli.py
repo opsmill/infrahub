@@ -17,8 +17,6 @@ from rich.traceback import Frame, Traceback
 
 # pylint: disable=import-outside-toplevel
 import infrahub_ctl.config as config
-from infrahub_sdk.exceptions import GraphQLError
-from infrahub_sdk.schema import InfrahubRepositoryConfig
 from infrahub_ctl.branch import app as branch_app
 from infrahub_ctl.check import app as check_app
 from infrahub_ctl.client import initialize_client, initialize_client_sync
@@ -31,6 +29,8 @@ from infrahub_ctl.utils import (
     parse_cli_vars,
 )
 from infrahub_ctl.validate import app as validate_app
+from infrahub_sdk.exceptions import GraphQLError
+from infrahub_sdk.schema import InfrahubRepositoryConfig
 
 app = typer.Typer(pretty_exceptions_show_locals=False)
 
@@ -40,7 +40,14 @@ app.add_typer(schema, name="schema")
 app.add_typer(validate_app, name="validate")
 
 
-async def _run(script: Path, method: str, log: logging.Logger, branch: str, concurrent: int, timeout: int) -> None:
+async def _run(
+    script: Path,
+    method: str,
+    log: logging.Logger,
+    branch: str,
+    concurrent: int,
+    timeout: int,
+) -> None:
     directory_name = os.path.dirname(script)
     filename = os.path.basename(script)
     module_name = os.path.splitext(filename)[0]
@@ -78,7 +85,10 @@ def identify_faulty_jinja_code(traceback: Traceback, nbr_context_lines: int = 3)
             code,
             lexer_name,
             line_numbers=True,
-            line_range=(frame.lineno - nbr_context_lines, frame.lineno + nbr_context_lines),
+            line_range=(
+                frame.lineno - nbr_context_lines,
+                frame.lineno + nbr_context_lines,
+            ),
             highlight_lines={frame.lineno},
             code_width=88,
             theme=traceback.theme,
@@ -150,7 +160,10 @@ def render(  # pylint: disable=too-many-branches,too-many-statements
     client = initialize_client_sync()
     try:
         response = client.execute_graphql(
-            query=query_str, branch_name=branch, variables=variables_dict, raise_for_error=False
+            query=query_str,
+            branch_name=branch,
+            variables=variables_dict,
+            raise_for_error=False,
         )
     except GraphQLError as exc:
         console.print(f"[red]{len(exc.errors)} error(s) occured while executing the query")
@@ -210,7 +223,9 @@ def run(
     config_file: str = typer.Option("infrahubctl.toml", envvar="INFRAHUBCTL_CONFIG"),
     branch: str = typer.Option("main", help="Branch on which to run the script."),
     concurrent: int = typer.Option(
-        4, help="Maximum number of requets to execute at the same time.", envvar="INFRAHUBCTL_CONCURRENT_EXECUTION"
+        4,
+        help="Maximum number of requets to execute at the same time.",
+        envvar="INFRAHUBCTL_CONCURRENT_EXECUTION",
     ),
     timeout: int = typer.Option(60, help="Timeout in sec", envvar="INFRAHUBCTL_TIMEOUT"),
 ) -> None:
@@ -228,4 +243,13 @@ def run(
     logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
     log = logging.getLogger("infrahubctl")
 
-    aiorun(_run(script=script, method=method, log=log, branch=branch, concurrent=concurrent, timeout=timeout))
+    aiorun(
+        _run(
+            script=script,
+            method=method,
+            log=log,
+            branch=branch,
+            concurrent=concurrent,
+            timeout=timeout,
+        )
+    )

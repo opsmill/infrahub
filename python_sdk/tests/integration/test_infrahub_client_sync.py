@@ -1,32 +1,33 @@
 import pytest
 
-from infrahub.core import registry
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
-from infrahub_sdk import Config, InfrahubClient
+from infrahub_sdk import Config, InfrahubClientSync
 from infrahub_sdk.exceptions import BranchNotFound
-from infrahub_sdk.node import InfrahubNode
+from infrahub_sdk.node import InfrahubNodeSync
 
 from .conftest import InfrahubTestClient
 
 # pylint: disable=unused-argument
 
 
-class TestInfrahubClient:
+class TestInfrahubClientSync:
     @pytest.fixture(scope="class")
     async def test_client(self):
-        registry.delete_all()
-
         # pylint: disable=import-outside-toplevel
         from infrahub.server import app
 
         return InfrahubTestClient(app)
 
     @pytest.fixture
-    async def client(self, test_client):
-        config = Config(username="admin", password="infrahub", requester=test_client.async_request)
-        return await InfrahubClient.init(config=config)
+    def client(self, test_client):
+        config = Config(
+            username="admin",
+            password="infrahub",
+            sync_requester=test_client.sync_request,
+        )
+        return InfrahubClientSync.init(config=config)
 
     @pytest.fixture(scope="class")
     async def base_dataset(self, db):
@@ -46,7 +47,10 @@ class TestInfrahubClient:
 
         obj2 = await Node.init(schema="CoreRepository", db=db)
         await obj2.new(
-            db=db, name="repository1", description="test repository", location="git@github.com:mock/test.git"
+            db=db,
+            name="repository1",
+            description="test repository",
+            location="git@github.com:mock/test.git",
         )
         await obj2.save(db=db)
 
@@ -75,27 +79,28 @@ class TestInfrahubClient:
         )
         await obj4.save(db=db)
 
-    async def test_query_branches(self, client: InfrahubClient, init_db_base, base_dataset):
-        branches = await client.branch.all()
-        main = await client.branch.get(branch_name="main")
+    async def test_query_branches(self, client: InfrahubClientSync, init_db_base, base_dataset):
+        branches = client.branch.all()
+        main = client.branch.get(branch_name="main")
 
         with pytest.raises(BranchNotFound):
-            await client.branch.get(branch_name="not-found")
+            client.branch.get(branch_name="not-found")
 
         assert main.name == "main"
         assert "main" in branches
         assert "branch01" in branches
 
-    async def test_branch_delete(self, client: InfrahubClient, init_db_base, base_dataset, db):
+    async def test_branch_delete(self, client: InfrahubClientSync, init_db_base, base_dataset, db):
         async_branch = "async-delete-branch"
         await create_branch(branch_name=async_branch, db=db)
-        pre_delete = await client.branch.all()
-        await client.branch.delete(async_branch)
-        post_delete = await client.branch.all()
+
+        pre_delete = client.branch.all()
+        client.branch.delete(async_branch)
+        post_delete = client.branch.all()
         assert async_branch in pre_delete.keys()
         assert async_branch not in post_delete.keys()
 
-    async def test_get_all(self, client: InfrahubClient, db: InfrahubDatabase, init_db_base):
+    async def test_get_all(self, client: InfrahubClientSync, db: InfrahubDatabase, init_db_base):
         obj1 = await Node.init(schema="BuiltinLocation", db=db)
         await obj1.new(db=db, name="jfk1", description="new york", type="site")
         await obj1.save(db=db)
@@ -104,12 +109,12 @@ class TestInfrahubClient:
         await obj2.new(db=db, name="sfo1", description="san francisco", type="site")
         await obj2.save(db=db)
 
-        nodes = await client.all(kind="BuiltinLocation")
+        nodes = client.all(kind="BuiltinLocation")
         assert len(nodes) == 2
-        assert isinstance(nodes[0], InfrahubNode)
+        assert isinstance(nodes[0], InfrahubNodeSync)
         assert sorted([node.name.value for node in nodes]) == ["jfk1", "sfo1"]  # type: ignore[attr-defined]
 
-    async def test_get_one(self, client: InfrahubClient, db: InfrahubDatabase, init_db_base):
+    async def test_get_one(self, client: InfrahubClientSync, db: InfrahubDatabase, init_db_base):
         obj1 = await Node.init(schema="BuiltinLocation", db=db)
         await obj1.new(db=db, name="jfk2", description="new york", type="site")
         await obj1.save(db=db)
@@ -118,41 +123,46 @@ class TestInfrahubClient:
         await obj2.new(db=db, name="sfo2", description="san francisco", type="site")
         await obj2.save(db=db)
 
-        node1 = await client.get(kind="BuiltinLocation", id=obj1.id)
-        assert isinstance(node1, InfrahubNode)
+        node1 = client.get(kind="BuiltinLocation", id=obj1.id)
+        assert isinstance(node1, InfrahubNodeSync)
         assert node1.name.value == "jfk2"  # type: ignore[attr-defined]
 
-        node2 = await client.get(kind="BuiltinLocation", id="jfk2")
-        assert isinstance(node2, InfrahubNode)
+        node2 = client.get(kind="BuiltinLocation", id="jfk2")
+        assert isinstance(node2, InfrahubNodeSync)
         assert node2.name.value == "jfk2"  # type: ignore[attr-defined]
 
-    async def test_get_generic(self, client: InfrahubClient, db: InfrahubDatabase, init_db_base):
-        nodes = await client.all(kind="CoreNode")
+    async def test_get_generic(self, client: InfrahubClientSync, db: InfrahubDatabase, init_db_base):
+        nodes = client.all(kind="CoreNode")
         assert len(nodes)
 
-    async def test_get_generic_fragment(self, client: InfrahubClient, db: InfrahubDatabase, init_db_base):
-        nodes = await client.all(kind="LineageSource", fragment=True, exclude=["type"])
-        assert len(nodes)
+    async def test_get_generic_fragment(self, client: InfrahubClientSync, db: InfrahubDatabase, init_db_base):
+        nodes = client.all(kind="LineageSource", fragment=True, exclude=["type"])
+        assert len(nodes) == 2
         assert nodes[0].typename == "CoreAccount"
         assert nodes[0].name.value is not None  # type: ignore[attr-defined]
 
-    async def test_get_generic_filter_source(self, client: InfrahubClient, db: InfrahubDatabase, init_db_base):
-        admin = await client.get(kind="CoreAccount", name__value="admin")
+    async def test_get_generic_filter_source(self, client: InfrahubClientSync, db: InfrahubDatabase, init_db_base):
+        admin = client.get(kind="CoreAccount", name__value="admin")
 
         obj1 = await Node.init(schema="BuiltinLocation", db=db)
-        await obj1.new(db=db, name={"value": "jfk3", "source": admin.id}, description="new york", type="site")
+        await obj1.new(
+            db=db,
+            name={"value": "jfk3", "source": admin.id},
+            description="new york",
+            type="site",
+        )
         await obj1.save(db=db)
 
-        nodes = await client.filters(kind="CoreNode", any__source__id=admin.id)
+        nodes = client.filters(kind="CoreNode", any__source__id=admin.id)
         assert len(nodes) == 1
         assert nodes[0].typename == "BuiltinLocation"
         assert nodes[0].id == obj1.id
 
-    async def test_get_related_nodes(self, client: InfrahubClient, db: InfrahubDatabase, init_db_base):
-        nodes = await client.all(kind="CoreRepository")
+    async def test_get_related_nodes(self, client: InfrahubClientSync, db: InfrahubDatabase, init_db_base):
+        nodes = client.all(kind="CoreRepository")
         assert len(nodes) == 1
         repo = nodes[0]
 
         assert repo.transformations.peers == []  # type: ignore[attr-defined]
-        await repo.transformations.fetch()  # type: ignore[attr-defined]
+        repo.transformations.fetch()  # type: ignore[attr-defined]
         assert len(repo.transformations.peers) == 2  # type: ignore[attr-defined]

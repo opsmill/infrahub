@@ -105,7 +105,11 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         return cls(*args, **kwargs)
 
     async def create(
-        self, kind: str, data: Optional[dict] = None, branch: Optional[str] = None, **kwargs: Any
+        self,
+        kind: str,
+        data: Optional[dict] = None,
+        branch: Optional[str] = None,
+        **kwargs: Any,
     ) -> InfrahubNode:
         branch = branch or self.default_branch
         schema = await self.schema.get(kind=kind, branch=branch)
@@ -224,11 +228,19 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         # If not, we'll query all nodes based on the size of the batch
         if offset or limit:
             query_data = await InfrahubNode(client=self, schema=schema, branch=branch).generate_query_data(
-                offset=offset, limit=limit, filters=filters, include=include, exclude=exclude, fragment=fragment
+                offset=offset,
+                limit=limit,
+                filters=filters,
+                include=include,
+                exclude=exclude,
+                fragment=fragment,
             )
             query = Query(query=query_data)
             response = await self.execute_graphql(
-                query=query.render(), branch_name=branch, at=at, tracker=f"query-{str(schema.kind).lower()}-page1"
+                query=query.render(),
+                branch_name=branch,
+                at=at,
+                tracker=f"query-{str(schema.kind).lower()}-page1",
             )
 
             nodes = [
@@ -366,7 +378,11 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         # TODO add a special method to execute mutation that will check if the method returned OK
 
     async def _post(
-        self, url: str, payload: dict, headers: Optional[dict] = None, timeout: Optional[int] = None
+        self,
+        url: str,
+        payload: dict,
+        headers: Optional[dict] = None,
+        timeout: Optional[int] = None,
     ) -> httpx.Response:
         """Execute a HTTP POST with HTTPX.
 
@@ -379,7 +395,11 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         base_headers = copy.copy(self.headers or {})
         headers.update(base_headers)
         return await self._request(
-            url=url, method=HTTPMethod.POST, headers=headers, timeout=timeout or self.default_timeout, payload=payload
+            url=url,
+            method=HTTPMethod.POST,
+            headers=headers,
+            timeout=timeout or self.default_timeout,
+            payload=payload,
         )
 
     async def _get(self, url: str, headers: Optional[dict] = None, timeout: Optional[int] = None) -> httpx.Response:
@@ -394,11 +414,19 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         base_headers = copy.copy(self.headers or {})
         headers.update(base_headers)
         return await self._request(
-            url=url, method=HTTPMethod.GET, headers=headers, timeout=timeout or self.default_timeout
+            url=url,
+            method=HTTPMethod.GET,
+            headers=headers,
+            timeout=timeout or self.default_timeout,
         )
 
     async def _default_request_method(
-        self, url: str, method: HTTPMethod, headers: Dict[str, Any], timeout: int, payload: Optional[Dict] = None
+        self,
+        url: str,
+        method: HTTPMethod,
+        headers: Dict[str, Any],
+        timeout: int,
+        payload: Optional[Dict] = None,
     ) -> httpx.Response:
         params: Dict[str, Any] = {}
         if payload:
@@ -406,7 +434,11 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.request(
-                    method=method.value, url=url, headers=headers, timeout=timeout, **params
+                    method=method.value,
+                    url=url,
+                    headers=headers,
+                    timeout=timeout,
+                    **params,
                 )
             except httpx.ConnectError as exc:
                 raise ServerNotReacheableError(address=self.address) from exc
@@ -426,7 +458,10 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         response = await self._request(
             url=url,
             method=HTTPMethod.POST,
-            payload={"username": self.config.username, "password": self.config.password},
+            payload={
+                "username": self.config.username,
+                "password": self.config.password,
+            },
             headers={"content-type": "application/json"},
             timeout=self.default_timeout,
         )
@@ -461,7 +496,10 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
             url += "?" + "&".join([f"{key}={value}" for key, value in url_params.items()])
 
         resp = await self._request(
-            url=url, method=HTTPMethod.GET, headers=headers, timeout=timeout or self.default_timeout
+            url=url,
+            method=HTTPMethod.GET,
+            headers=headers,
+            timeout=timeout or self.default_timeout,
         )
 
         if raise_for_error:
@@ -484,7 +522,9 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         for branch_name in branch_names:
             tasks.append(
                 self.execute_graphql(
-                    query=QUERY_ALL_REPOSITORIES, branch_name=branch_name, tracker="query-repository-all"
+                    query=QUERY_ALL_REPOSITORIES,
+                    branch_name=branch_name,
+                    tracker="query-repository-all",
                 )
             )
             # TODO need to rate limit how many requests we are sending at once to avoid doing a DOS on the API
@@ -534,7 +574,11 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         return cls(*args, **kwargs)
 
     def create(
-        self, kind: str, data: Optional[dict] = None, branch: Optional[str] = None, **kwargs: Any
+        self,
+        kind: str,
+        data: Optional[dict] = None,
+        branch: Optional[str] = None,
+        **kwargs: Any,
     ) -> InfrahubNodeSync:
         branch = branch or self.default_branch
         schema = self.schema.get(kind=kind, branch=branch)
@@ -699,11 +743,19 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         # If not, we'll query all nodes based on the size of the batch
         if offset or limit:
             query_data = InfrahubNodeSync(client=self, schema=schema, branch=branch).generate_query_data(
-                offset=offset, limit=limit, filters=filters, include=include, exclude=exclude, fragment=fragment
+                offset=offset,
+                limit=limit,
+                filters=filters,
+                include=include,
+                exclude=exclude,
+                fragment=fragment,
             )
             query = Query(query=query_data)
             response = self.execute_graphql(
-                query=query.render(), branch_name=branch, at=at, tracker=f"query-{str(schema.kind).lower()}-page1"
+                query=query.render(),
+                branch_name=branch,
+                at=at,
+                tracker=f"query-{str(schema.kind).lower()}-page1",
             )
 
             nodes = [
@@ -833,10 +885,19 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         headers = headers or {}
         base_headers = copy.copy(self.headers or {})
         headers.update(base_headers)
-        return self._request(url=url, method=HTTPMethod.GET, headers=headers, timeout=timeout or self.default_timeout)
+        return self._request(
+            url=url,
+            method=HTTPMethod.GET,
+            headers=headers,
+            timeout=timeout or self.default_timeout,
+        )
 
     def _post(
-        self, url: str, payload: dict, headers: Optional[dict] = None, timeout: Optional[int] = None
+        self,
+        url: str,
+        payload: dict,
+        headers: Optional[dict] = None,
+        timeout: Optional[int] = None,
     ) -> httpx.Response:
         """Execute a HTTP POST with HTTPX.
 
@@ -858,14 +919,25 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         )
 
     def _default_request_method(
-        self, url: str, method: HTTPMethod, headers: Dict[str, Any], timeout: int, payload: Optional[Dict] = None
+        self,
+        url: str,
+        method: HTTPMethod,
+        headers: Dict[str, Any],
+        timeout: int,
+        payload: Optional[Dict] = None,
     ) -> httpx.Response:
         params: Dict[str, Any] = {}
         if payload:
             params["json"] = payload
         with httpx.Client() as client:
             try:
-                response = client.request(method=method.value, url=url, headers=headers, timeout=timeout, **params)
+                response = client.request(
+                    method=method.value,
+                    url=url,
+                    headers=headers,
+                    timeout=timeout,
+                    **params,
+                )
             except httpx.ConnectError as exc:
                 raise ServerNotReacheableError(address=self.address) from exc
             except httpx.ReadTimeout as exc:
@@ -884,7 +956,10 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         response = self._request(
             url=url,
             method=HTTPMethod.POST,
-            payload={"username": self.config.username, "password": self.config.password},
+            payload={
+                "username": self.config.username,
+                "password": self.config.password,
+            },
             headers={"content-type": "application/json"},
             timeout=self.default_timeout,
         )

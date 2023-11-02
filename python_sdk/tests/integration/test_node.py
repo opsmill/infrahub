@@ -27,16 +27,28 @@ class TestInfrahubNode:
         return await InfrahubClient.init(config=config)
 
     async def test_node_create(self, client: InfrahubClient, init_db_base, location_schema):
-        data = {"name": {"value": "JFK1"}, "description": {"value": "JFK Airport"}, "type": {"value": "SITE"}}
+        data = {
+            "name": {"value": "JFK1"},
+            "description": {"value": "JFK Airport"},
+            "type": {"value": "SITE"},
+        }
         node = InfrahubNode(client=client, schema=location_schema, data=data)
         await node.save()
 
         assert node.id is not None
 
     async def test_node_delete_client(
-        self, db: InfrahubDatabase, client: InfrahubClient, init_db_base, location_schema
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        init_db_base,
+        location_schema,
     ):
-        data = {"name": {"value": "ARN"}, "description": {"value": "Arlanda Airport"}, "type": {"value": "SITE"}}
+        data = {
+            "name": {"value": "ARN"},
+            "description": {"value": "Arlanda Airport"},
+            "type": {"value": "SITE"},
+        }
         node = InfrahubNode(client=client, schema=location_schema, data=data)
         await node.save()
         nodedb_pre_delete = await NodeManager.get_one(id=node.id, db=db, include_owner=True, include_source=True)
@@ -47,7 +59,13 @@ class TestInfrahubNode:
         assert nodedb_pre_delete.id
         assert not nodedb_post_delete
 
-    async def test_node_delete_node(self, db: InfrahubDatabase, client: InfrahubClient, init_db_base, location_schema):
+    async def test_node_delete_node(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        init_db_base,
+        location_schema,
+    ):
         obj = await Node.init(db=db, schema="CoreAccount")
         await obj.new(db=db, name="delete-my-account", type="Git", password="delete-my-password")
         await obj.save(db=db)
@@ -130,7 +148,12 @@ class TestInfrahubNode:
         first_account: Node,
     ):
         data = {
-            "name": {"value": "rfile02", "is_protected": True, "source": first_account.id, "owner": first_account.id},
+            "name": {
+                "value": "rfile02",
+                "is_protected": True,
+                "source": first_account.id,
+                "owner": first_account.id,
+            },
             "template_path": {"value": "mytemplate.j2"},
             "query": {"id": gqlquery01.id},  # "source": first_account.id, "owner": first_account.id},
             "repository": {"id": repo01.id},  # "source": first_account.id, "owner": first_account.id},
@@ -147,7 +170,13 @@ class TestInfrahubNode:
         assert nodedb.name.is_protected is True
 
     async def test_node_update(
-        self, db: InfrahubDatabase, client: InfrahubClient, init_db_base, tag_blue: Node, tag_red: Node, repo99: Node
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        init_db_base,
+        tag_blue: Node,
+        tag_red: Node,
+        repo99: Node,
     ):
         node = await client.get(kind="CoreRepository", name__value="repo99")
         assert node.id is not None

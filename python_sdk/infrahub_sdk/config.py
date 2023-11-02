@@ -9,18 +9,26 @@ from infrahub_sdk.utils import is_valid_url
 
 
 class Config(BaseSettings):
-    address: str = Field(default="http://localhost:8000", description="The URL to use when connecting to Infrahub.")
+    address: str = Field(
+        default="http://localhost:8000",
+        description="The URL to use when connecting to Infrahub.",
+    )
     api_token: Optional[str] = Field(default=None, description="API token for authentication against Infrahub.")
     username: Optional[str] = Field(default=None, description="Username for accessing Infrahub", min_length=1)
     password: Optional[str] = Field(default=None, description="Password for accessing Infrahub", min_length=1)
-    recorder: RecorderType = Field(default=RecorderType.NONE, description="Select builtin recorder for later replay.")
+    recorder: RecorderType = Field(
+        default=RecorderType.NONE,
+        description="Select builtin recorder for later replay.",
+    )
     custom_recorder: Optional[Recorder] = Field(
-        default=None, description="Provides a way to record responses from the Infrahub API"
+        default=None,
+        description="Provides a way to record responses from the Infrahub API",
     )
     requester: Optional[AsyncRequester] = None
     timeout: int = Field(default=10, description="Default connection timeout in seconds")
     transport: RequesterTransport = Field(
-        default=RequesterTransport.HTTPX, description="Set an alternate transport using a predefined option"
+        default=RequesterTransport.HTTPX,
+        description="Set an alternate transport using a predefined option",
     )
     sync_requester: Optional[SyncRequester] = None
 

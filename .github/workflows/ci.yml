@@ -38,7 +38,6 @@ jobs:
       sdk: ${{ steps.changes.outputs.sdk_all }}
       nornir: ${{ steps.changes.outputs.nornir_all }}
       sync: ${{ steps.changes.outputs.sync_all }}
-      ctl: ${{ steps.changes.outputs.ctl_all }}
       e2e: ${{ steps.changes.outputs.e2e_all }}
       python: ${{ steps.changes.outputs.python_all }}
       javascript: ${{ steps.changes.outputs.javascript_all }}
@@ -312,41 +311,6 @@ jobs:
         env:
           BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_BACKEND_UNIT_NEO4J }}
 
-  ctl-tests:
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.ctl == 'true'
-    needs: ["files-changed", "yaml-lint", "python-lint"]
-    runs-on: "ubuntu-20.04"
-    steps:
-      - name: "Check out repository code"
-        uses: "actions/checkout@v3"
-      - name: "Install Invoke"
-        run: "pip install toml invoke"
-      - name: "Build Test Image"
-        run: "invoke test.build"
-      - name: "Black Tests"
-        run: "invoke ctl.black --docker"
-      - name: "Isort Tests"
-        run: "invoke ctl.isort --docker"
-      - name: "Pylint Tests"
-        run: "invoke ctl.pylint --docker"
-      - name: "Mypy Tests"
-        run: "invoke ctl.mypy --docker"
-      - name: "Unit Tests"
-        run: "invoke ctl.test-unit"
-        env:
-          BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_CTL_UNIT }}
-      - name: "Coveralls : Unit Tests"
-        uses: coverallsapp/github-action@v2.0.0
-        env:
-          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
-        with:
-          flag-name: infrahubctl-unit
-          parallel: true
-
   frontend-tests:
     if: |
       always() && !cancelled() &&
@@ -384,7 +348,7 @@ jobs:
           file: frontend/coverage/lcov.info
 
   # E2E-testing-memgraph:
-  #   needs: ["frontend-tests", "ctl-tests", "backend-tests-default", "python-sdk-tests"]
+  #   needs: ["frontend-tests", "backend-tests-default", "python-sdk-tests"]
   #   if: |
   #     always() && !cancelled() &&
   #     !contains(needs.*.result, 'failure') &&
@@ -447,7 +411,7 @@ jobs:
   #       run: invoke demo.status
 
   E2E-testing-neo4j:
-    needs: ["frontend-tests", "ctl-tests", "backend-tests-default", "python-sdk-tests"]
+    needs: ["frontend-tests", "backend-tests-default", "python-sdk-tests"]
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -512,7 +476,7 @@ jobs:
         run: invoke demo.status
 
   coverall-report:
-    needs: ["frontend-tests", "ctl-tests", "backend-tests-default", "python-sdk-tests", "nornir-plugin-tests"]
+    needs: ["frontend-tests", "backend-tests-default", "python-sdk-tests", "nornir-plugin-tests"]
     if: |
       always() && !cancelled()
     runs-on: ubuntu-latest
@@ -544,5 +508,5 @@ jobs:
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
-          carryforward: "backend-unit,backend-integration,frontend-unit,infrahubctl-unit,python-sdk-unit,python-sdk-integration,nornir-plugin-unit"
+          carryforward: "backend-unit,backend-integration,frontend-unit,python-sdk-unit,python-sdk-integration,nornir-plugin-unit"
           parallel-finished: true

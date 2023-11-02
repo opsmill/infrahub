@@ -62,11 +62,19 @@ class InfrahubBranchManager(InfraHubBranchManagerBase):
         self.client = client
 
     async def create(
-        self, branch_name: str, data_only: bool = False, description: str = "", background_execution: bool = False
+        self,
+        branch_name: str,
+        data_only: bool = False,
+        description: str = "",
+        background_execution: bool = False,
     ) -> BranchData:
         input_data = {
             "background_execution": background_execution,
-            "data": {"name": branch_name, "description": description, "is_data_only": data_only},
+            "data": {
+                "name": branch_name,
+                "description": description,
+                "is_data_only": data_only,
+            },
         }
 
         query = Mutation(mutation="BranchCreate", input_data=input_data, query=MUTATION_QUERY_DATA)
@@ -135,7 +143,9 @@ class InfrahubBranchManager(InfraHubBranchManagerBase):
 
     async def get(self, branch_name: str) -> BranchData:
         data = await self.client.execute_graphql(
-            query=QUERY_BRANCH, variables={"branch_name": branch_name}, tracker="query-branch"
+            query=QUERY_BRANCH,
+            variables={"branch_name": branch_name},
+            tracker="query-branch",
         )
 
         if not data["Branch"]:
@@ -150,7 +160,11 @@ class InfrahubBranchManager(InfraHubBranchManagerBase):
         time_to: Optional[str] = None,
     ) -> Dict[Any, Any]:
         url = self.generate_diff_data_url(
-            client=self.client, branch_name=branch_name, branch_only=branch_only, time_from=time_from, time_to=time_to
+            client=self.client,
+            branch_name=branch_name,
+            branch_only=branch_only,
+            time_from=time_from,
+            time_to=time_to,
         )
         response = await self.client._get(url=url, headers=self.client.headers)
         return response.json()
@@ -169,7 +183,9 @@ class InfrahubBranchManagerSync(InfraHubBranchManagerBase):
 
     def get(self, branch_name: str) -> BranchData:
         data = self.client.execute_graphql(
-            query=QUERY_BRANCH, variables={"branch_name": branch_name}, tracker="query-branch"
+            query=QUERY_BRANCH,
+            variables={"branch_name": branch_name},
+            tracker="query-branch",
         )
 
         if not data["Branch"]:
@@ -177,11 +193,19 @@ class InfrahubBranchManagerSync(InfraHubBranchManagerBase):
         return BranchData(**data["Branch"][0])
 
     def create(
-        self, branch_name: str, data_only: bool = False, description: str = "", background_execution: bool = False
+        self,
+        branch_name: str,
+        data_only: bool = False,
+        description: str = "",
+        background_execution: bool = False,
     ) -> BranchData:
         input_data = {
             "background_execution": background_execution,
-            "data": {"name": branch_name, "description": description, "is_data_only": data_only},
+            "data": {
+                "name": branch_name,
+                "description": description,
+                "is_data_only": data_only,
+            },
         }
 
         query = Mutation(mutation="BranchCreate", input_data=input_data, query=MUTATION_QUERY_DATA)
@@ -207,7 +231,11 @@ class InfrahubBranchManagerSync(InfraHubBranchManagerBase):
         time_to: Optional[str] = None,
     ) -> Dict[Any, Any]:
         url = self.generate_diff_data_url(
-            client=self.client, branch_name=branch_name, branch_only=branch_only, time_from=time_from, time_to=time_to
+            client=self.client,
+            branch_name=branch_name,
+            branch_only=branch_only,
+            time_from=time_from,
+            time_to=time_to,
         )
         response = self.client._get(url=url, headers=self.client.headers)
         return response.json()

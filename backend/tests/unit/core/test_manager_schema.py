@@ -2,6 +2,7 @@ import copy
 
 import pytest
 from deepdiff import DeepDiff
+from infrahub_sdk.utils import compare_lists
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -16,7 +17,6 @@ from infrahub.core.schema import (
 )
 from infrahub.core.schema_manager import SchemaBranch, SchemaManager
 from infrahub.database import InfrahubDatabase
-from infrahub_sdk.utils import compare_lists
 
 
 # -----------------------------------------------------------------

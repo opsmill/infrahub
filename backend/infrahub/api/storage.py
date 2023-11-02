@@ -1,12 +1,12 @@
 import hashlib
 
 from fastapi import APIRouter, Depends, File, Response, UploadFile
+from infrahub_sdk import UUIDT
 from pydantic import BaseModel
 
 from infrahub.api.dependencies import get_current_user
 from infrahub.core import registry
 from infrahub.log import get_logger
-from infrahub_sdk import UUIDT
 
 log = get_logger()
 router = APIRouter(prefix="/storage")

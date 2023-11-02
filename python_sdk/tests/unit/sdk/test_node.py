@@ -95,7 +95,11 @@ async def test_init_node_no_data(client, location_schema, client_type):
 
 @pytest.mark.parametrize("client_type", client_types)
 async def test_init_node_data_user(client, location_schema, client_type):
-    data = {"name": {"value": "JFK1"}, "description": {"value": "JFK Airport"}, "type": {"value": "SITE"}}
+    data = {
+        "name": {"value": "JFK1"},
+        "description": {"value": "JFK Airport"},
+        "type": {"value": "SITE"},
+    }
     if client_type == "standard":
         node = InfrahubNode(client=client, schema=location_schema, data=data)
     else:
@@ -174,22 +178,46 @@ async def test_query_data_no_filters(client, location_schema, client_type):
                     "name": {
                         "is_protected": None,
                         "is_visible": None,
-                        "owner": {"__typename": None, "display_label": None, "id": None},
-                        "source": {"__typename": None, "display_label": None, "id": None},
+                        "owner": {
+                            "__typename": None,
+                            "display_label": None,
+                            "id": None,
+                        },
+                        "source": {
+                            "__typename": None,
+                            "display_label": None,
+                            "id": None,
+                        },
                         "value": None,
                     },
                     "description": {
                         "is_protected": None,
                         "is_visible": None,
-                        "owner": {"__typename": None, "display_label": None, "id": None},
-                        "source": {"__typename": None, "display_label": None, "id": None},
+                        "owner": {
+                            "__typename": None,
+                            "display_label": None,
+                            "id": None,
+                        },
+                        "source": {
+                            "__typename": None,
+                            "display_label": None,
+                            "id": None,
+                        },
                         "value": None,
                     },
                     "type": {
                         "is_protected": None,
                         "is_visible": None,
-                        "owner": {"__typename": None, "display_label": None, "id": None},
-                        "source": {"__typename": None, "display_label": None, "id": None},
+                        "owner": {
+                            "__typename": None,
+                            "display_label": None,
+                            "id": None,
+                        },
+                        "source": {
+                            "__typename": None,
+                            "display_label": None,
+                            "id": None,
+                        },
                         "value": None,
                     },
                     "primary_tag": {
@@ -460,22 +488,46 @@ async def test_query_data_include(client, location_schema, client_type):
                     "name": {
                         "is_protected": None,
                         "is_visible": None,
-                        "owner": {"__typename": None, "display_label": None, "id": None},
-                        "source": {"__typename": None, "display_label": None, "id": None},
+                        "owner": {
+                            "__typename": None,
+                            "display_label": None,
+                            "id": None,
+                        },
+                        "source": {
+                            "__typename": None,
+                            "display_label": None,
+                            "id": None,
+                        },
                         "value": None,
                     },
                     "description": {
                         "is_protected": None,
                         "is_visible": None,
-                        "owner": {"__typename": None, "display_label": None, "id": None},
-                        "source": {"__typename": None, "display_label": None, "id": None},
+                        "owner": {
+                            "__typename": None,
+                            "display_label": None,
+                            "id": None,
+                        },
+                        "source": {
+                            "__typename": None,
+                            "display_label": None,
+                            "id": None,
+                        },
                         "value": None,
                     },
                     "type": {
                         "is_protected": None,
                         "is_visible": None,
-                        "owner": {"__typename": None, "display_label": None, "id": None},
-                        "source": {"__typename": None, "display_label": None, "id": None},
+                        "owner": {
+                            "__typename": None,
+                            "display_label": None,
+                            "id": None,
+                        },
+                        "source": {
+                            "__typename": None,
+                            "display_label": None,
+                            "id": None,
+                        },
                         "value": None,
                     },
                     "primary_tag": {
@@ -550,15 +602,31 @@ async def test_query_data_exclude(client, location_schema, client_type):
                     "name": {
                         "is_protected": None,
                         "is_visible": None,
-                        "owner": {"__typename": None, "display_label": None, "id": None},
-                        "source": {"__typename": None, "display_label": None, "id": None},
+                        "owner": {
+                            "__typename": None,
+                            "display_label": None,
+                            "id": None,
+                        },
+                        "source": {
+                            "__typename": None,
+                            "display_label": None,
+                            "id": None,
+                        },
                         "value": None,
                     },
                     "type": {
                         "is_protected": None,
                         "is_visible": None,
-                        "owner": {"__typename": None, "display_label": None, "id": None},
-                        "source": {"__typename": None, "display_label": None, "id": None},
+                        "owner": {
+                            "__typename": None,
+                            "display_label": None,
+                            "id": None,
+                        },
+                        "source": {
+                            "__typename": None,
+                            "display_label": None,
+                            "id": None,
+                        },
                         "value": None,
                     },
                 },
@@ -569,7 +637,11 @@ async def test_query_data_exclude(client, location_schema, client_type):
 
 @pytest.mark.parametrize("client_type", client_types)
 async def test_create_input_data(client, location_schema, client_type):
-    data = {"name": {"value": "JFK1"}, "description": {"value": "JFK Airport"}, "type": {"value": "SITE"}}
+    data = {
+        "name": {"value": "JFK1"},
+        "description": {"value": "JFK Airport"},
+        "type": {"value": "SITE"},
+    }
 
     if client_type == "standard":
         node = InfrahubNode(client=client, schema=location_schema, data=data)
@@ -646,7 +718,12 @@ async def test_create_input_data__with_relationships_01(client, location_schema,
 @pytest.mark.parametrize("client_type", client_types)
 async def test_create_input_data_with_relationships_02(clients, rfile_schema, client_type):
     data = {
-        "name": {"value": "rfile01", "is_protected": True, "source": "ffffffff", "owner": "ffffffff"},
+        "name": {
+            "value": "rfile01",
+            "is_protected": True,
+            "source": "ffffffff",
+            "owner": "ffffffff",
+        },
         "template_path": {"value": "mytemplate.j2"},
         "query": {"id": "qqqqqqqq", "source": "ffffffff", "owner": "ffffffff"},
         "repository": {"id": "rrrrrrrr", "source": "ffffffff", "owner": "ffffffff"},
@@ -687,7 +764,12 @@ async def test_create_input_data_with_relationships_03(clients, rfile_schema, cl
         "id": "aaaaaaaaaaaaaa",
         "name": {"value": "rfile01", "is_protected": True, "source": "ffffffff"},
         "template_path": {"value": "mytemplate.j2"},
-        "query": {"id": "qqqqqqqq", "source": "ffffffff", "owner": "ffffffff", "is_protected": True},
+        "query": {
+            "id": "qqqqqqqq",
+            "source": "ffffffff",
+            "owner": "ffffffff",
+            "is_protected": True,
+        },
         "repository": {"id": "rrrrrrrr", "source": "ffffffff", "owner": "ffffffff"},
         "tags": [{"id": "t1t1t1t1"}, "t2t2t2t2"],
     }
@@ -726,7 +808,12 @@ async def test_create_input_data_with_relationships_03_for_update(clients, rfile
         "id": "aaaaaaaaaaaaaa",
         "name": {"value": "rfile01", "is_protected": True, "source": "ffffffff"},
         "template_path": {"value": "mytemplate.j2"},
-        "query": {"id": "qqqqqqqq", "source": "ffffffff", "owner": "ffffffff", "is_protected": True},
+        "query": {
+            "id": "qqqqqqqq",
+            "source": "ffffffff",
+            "owner": "ffffffff",
+            "is_protected": True,
+        },
         "repository": {"id": "rrrrrrrr", "source": "ffffffff", "owner": "ffffffff"},
         "tags": [{"id": "t1t1t1t1"}, "t2t2t2t2"],
     }
@@ -805,7 +892,13 @@ async def test_create_input_data_with_IPNetwork_attribute(client, ipnetwork_sche
 
 @pytest.mark.parametrize("client_type", client_types)
 async def test_update_input_data__with_relationships_01(
-    client, location_schema, location_data01, tag_schema, tag_blue_data, tag_green_data, client_type
+    client,
+    location_schema,
+    location_data01,
+    tag_schema,
+    tag_blue_data,
+    tag_green_data,
+    client_type,
 ):
     if client_type == "standard":
         location = InfrahubNode(client=client, schema=location_schema, data=location_data01)
@@ -898,7 +991,13 @@ async def test_update_input_data_empty_relationship(
 
 @pytest.mark.parametrize("client_type", client_types)
 async def test_node_get_relationship_from_store(
-    client, location_schema, location_data01, tag_schema, tag_red_data, tag_blue_data, client_type
+    client,
+    location_schema,
+    location_data01,
+    tag_schema,
+    tag_red_data,
+    tag_blue_data,
+    client_type,
 ):
     if client_type == "standard":
         node = InfrahubNode(client=client, schema=location_schema, data=location_data01)
@@ -959,7 +1058,9 @@ async def test_node_fetch_relationship(
     }
 
     httpx_mock.add_response(
-        method="POST", json=response1, match_headers={"X-Infrahub-Tracker": "query-builtintag-page1"}
+        method="POST",
+        json=response1,
+        match_headers={"X-Infrahub-Tracker": "query-builtintag-page1"},
     )
 
     response2 = {
@@ -974,7 +1075,9 @@ async def test_node_fetch_relationship(
     }
 
     httpx_mock.add_response(
-        method="POST", json=response2, match_headers={"X-Infrahub-Tracker": "query-builtintag-page1"}
+        method="POST",
+        json=response2,
+        match_headers={"X-Infrahub-Tracker": "query-builtintag-page1"},
     )
 
     if client_type == "standard":
@@ -1031,7 +1134,11 @@ async def test_node_extract(client, location_schema, location_data01, client_typ
     else:
         node = InfrahubNodeSync(client=client, schema=location_schema, data=location_data01)
 
-    params = {"identifier": "id", "name": "name__value", "description": "description__value"}
+    params = {
+        "identifier": "id",
+        "name": "name__value",
+        "description": "description__value",
+    }
 
     assert node.extract(params=params) == {
         "description": None,

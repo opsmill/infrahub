@@ -12,12 +12,22 @@ class JSONPlayback(BaseSettings):
     directory: str = Field(default=".", description="Directory to read recorded files from")
 
     async def async_request(
-        self, url: str, method: HTTPMethod, headers: Dict[str, Any], timeout: int, payload: Optional[Dict] = None
+        self,
+        url: str,
+        method: HTTPMethod,
+        headers: Dict[str, Any],
+        timeout: int,
+        payload: Optional[Dict] = None,
     ) -> httpx.Response:
         return self._read_request(url=url, method=method, headers=headers, payload=payload, timeout=timeout)
 
     def sync_request(
-        self, url: str, method: HTTPMethod, headers: Dict[str, Any], timeout: int, payload: Optional[Dict] = None
+        self,
+        url: str,
+        method: HTTPMethod,
+        headers: Dict[str, Any],
+        timeout: int,
+        payload: Optional[Dict] = None,
     ) -> httpx.Response:
         return self._read_request(url=url, method=method, headers=headers, payload=payload, timeout=timeout)
 

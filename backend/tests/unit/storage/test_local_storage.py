@@ -2,10 +2,10 @@ import os
 from pathlib import Path
 
 import pytest
+from infrahub_sdk import UUIDT
 
 from infrahub.exceptions import NodeNotFound
 from infrahub.storage.local import InfrahubLocalStorage, LocalStorageSettings
-from infrahub_sdk import UUIDT
 
 
 class set_directory(object):

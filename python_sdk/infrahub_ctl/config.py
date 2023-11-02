@@ -33,7 +33,10 @@ class Settings(BaseSettings):
         return values
 
 
-def load(config_file: Union[str, Path] = "infrahubctl.toml", config_data: Optional[dict] = None) -> None:
+def load(
+    config_file: Union[str, Path] = "infrahubctl.toml",
+    config_data: Optional[dict] = None,
+) -> None:
     """Load configuration.
 
     Configuration is loaded from a config file in toml format that contains the settings,
@@ -58,7 +61,10 @@ def load(config_file: Union[str, Path] = "infrahubctl.toml", config_data: Option
     SETTINGS = Settings()
 
 
-def load_and_exit(config_file: Union[str, Path] = "infrahubctl.toml", config_data: Optional[dict] = None) -> None:
+def load_and_exit(
+    config_file: Union[str, Path] = "infrahubctl.toml",
+    config_data: Optional[dict] = None,
+) -> None:
     """Calls load, but wraps it in a try except block.
 
     This is done to handle a ValidationErorr which is raised when settings are specified but invalid.

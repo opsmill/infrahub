@@ -8,7 +8,11 @@ client_types = ["standard", "sync"]
 @pytest.mark.parametrize("client_type", client_types)
 def test_node_store_set(client_type, clients, location_schema):
     client = getattr(clients, client_type)
-    data = {"name": {"value": "JFK1"}, "description": {"value": "JFK Airport"}, "type": {"value": "SITE"}}
+    data = {
+        "name": {"value": "JFK1"},
+        "description": {"value": "JFK Airport"},
+        "type": {"value": "SITE"},
+    }
     node = InfrahubNode(client=client, schema=location_schema, data=data)
 
     store = NodeStore()

@@ -21,7 +21,9 @@ FILE_CONTENT_01 = """
 @pytest.fixture
 async def mock_get_object_store_01(httpx_mock: HTTPXMock) -> HTTPXMock:
     httpx_mock.add_response(
-        method="GET", text=FILE_CONTENT_01, match_headers={"X-Infrahub-Tracker": "object-store-get"}
+        method="GET",
+        text=FILE_CONTENT_01,
+        match_headers={"X-Infrahub-Tracker": "object-store-get"},
     )
     return httpx_mock
 
@@ -29,7 +31,11 @@ async def mock_get_object_store_01(httpx_mock: HTTPXMock) -> HTTPXMock:
 @pytest.fixture
 async def mock_upload_object_store_01(httpx_mock: HTTPXMock) -> HTTPXMock:
     payload = {"identifier": "xxxxxxxxxx", "checksum": "yyyyyyyyyyyyyy"}
-    httpx_mock.add_response(method="POST", json=payload, match_headers={"X-Infrahub-Tracker": "object-store-upload"})
+    httpx_mock.add_response(
+        method="POST",
+        json=payload,
+        match_headers={"X-Infrahub-Tracker": "object-store-upload"},
+    )
     return httpx_mock
 
 

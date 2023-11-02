@@ -1,8 +1,9 @@
 import logging
 
+from infrahub_sdk import InfrahubClient
+
 from infrahub import lock
 from infrahub.exceptions import RepositoryError
-from infrahub_sdk import InfrahubClient
 
 from .repository import InfrahubRepository
 

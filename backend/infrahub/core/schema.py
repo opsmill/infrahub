@@ -6,6 +6,7 @@ import hashlib
 import keyword
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
+from infrahub_sdk.utils import duplicates, intersection
 from pydantic import BaseModel, Extra, Field, root_validator, validator
 
 from infrahub.core import registry
@@ -29,7 +30,6 @@ from infrahub.core.constants import (
 from infrahub.core.query import QueryNode, QueryRel
 from infrahub.core.relationship import Relationship
 from infrahub.types import ATTRIBUTE_TYPES
-from infrahub_sdk.utils import duplicates, intersection
 
 if TYPE_CHECKING:
     from typing_extensions import Self

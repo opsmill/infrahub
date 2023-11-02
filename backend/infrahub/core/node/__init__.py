@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, List, Optional, Union
 
+from infrahub_sdk import UUIDT
+from infrahub_sdk.utils import is_valid_uuid
+
 from infrahub.core import registry
 from infrahub.core.constants import BranchSupportType
 from infrahub.core.query.node import (
@@ -14,8 +17,6 @@ from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import ValidationError
 from infrahub.types import ATTRIBUTE_TYPES
-from infrahub_sdk import UUIDT
-from infrahub_sdk.utils import is_valid_uuid
 
 from ..relationship import RelationshipManager
 from ..utils import update_relationships_to

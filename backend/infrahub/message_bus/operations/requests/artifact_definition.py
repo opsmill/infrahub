@@ -1,11 +1,12 @@
 from typing import List
 
+from infrahub_sdk import UUIDT
+
 from infrahub.core.constants import ValidatorConclusion, ValidatorState
 from infrahub.core.timestamp import Timestamp
 from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubMessage, Meta, messages
 from infrahub.services import InfrahubServices
-from infrahub_sdk import UUIDT
 
 log = get_logger()
 

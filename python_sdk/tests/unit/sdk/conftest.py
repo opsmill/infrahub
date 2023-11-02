@@ -45,9 +45,25 @@ async def location_schema() -> NodeSchema:
             {"name": "type", "kind": "String"},
         ],
         "relationships": [
-            {"name": "tags", "peer": "BuiltinTag", "optional": True, "cardinality": "many"},
-            {"name": "primary_tag", "peer": "BuiltinTag", "optional": True, "cardinality": "one"},
-            {"name": "member_of_groups", "peer": "CoreGroup", "optional": True, "cardinality": "many", "kind": "Group"},
+            {
+                "name": "tags",
+                "peer": "BuiltinTag",
+                "optional": True,
+                "cardinality": "many",
+            },
+            {
+                "name": "primary_tag",
+                "peer": "BuiltinTag",
+                "optional": True,
+                "cardinality": "one",
+            },
+            {
+                "name": "member_of_groups",
+                "peer": "CoreGroup",
+                "optional": True,
+                "cardinality": "many",
+                "kind": "Group",
+            },
         ],
     }
     return NodeSchema(**data)  # type: ignore
@@ -59,9 +75,27 @@ async def location_data01_no_pagination():
         "__typename": "BuiltinLocation",
         "id": "llllllll-llll-llll-llll-llllllllllll",
         "display_label": "dfw1",
-        "name": {"is_protected": True, "is_visible": True, "owner": None, "source": None, "value": "DFW"},
-        "description": {"is_protected": False, "is_visible": True, "owner": None, "source": None, "value": None},
-        "type": {"is_protected": True, "is_visible": True, "owner": None, "source": None, "value": "SITE"},
+        "name": {
+            "is_protected": True,
+            "is_visible": True,
+            "owner": None,
+            "source": None,
+            "value": "DFW",
+        },
+        "description": {
+            "is_protected": False,
+            "is_visible": True,
+            "owner": None,
+            "source": None,
+            "value": None,
+        },
+        "type": {
+            "is_protected": True,
+            "is_visible": True,
+            "owner": None,
+            "source": None,
+            "value": "SITE",
+        },
         "primary_tag": {
             "id": "rrrrrrrr-rrrr-rrrr-rrrr-rrrrrrrrrrrr",
             "display_label": "red",
@@ -97,15 +131,29 @@ async def location_data02_no_pagination():
             "is_protected": True,
             "is_visible": True,
             "owner": None,
-            "source": {"__typename": "Account", "display_label": "CRM", "id": "cccccccc-cccc-cccc-cccc-cccccccccccc"},
+            "source": {
+                "__typename": "Account",
+                "display_label": "CRM",
+                "id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+            },
             "value": "dfw1",
         },
-        "description": {"is_protected": False, "is_visible": True, "owner": None, "source": None, "value": None},
+        "description": {
+            "is_protected": False,
+            "is_visible": True,
+            "owner": None,
+            "source": None,
+            "value": None,
+        },
         "type": {
             "is_protected": True,
             "is_visible": True,
             "owner": None,
-            "source": {"__typename": "Account", "display_label": "CRM", "id": "cccccccc-cccc-cccc-cccc-cccccccccccc"},
+            "source": {
+                "__typename": "Account",
+                "display_label": "CRM",
+                "id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+            },
             "value": "SITE",
         },
         "primary_tag": {
@@ -148,9 +196,27 @@ async def location_data01():
             "__typename": "BuiltinLocation",
             "id": "llllllll-llll-llll-llll-llllllllllll",
             "display_label": "dfw1",
-            "name": {"is_protected": True, "is_visible": True, "owner": None, "source": None, "value": "DFW"},
-            "description": {"is_protected": False, "is_visible": True, "owner": None, "source": None, "value": None},
-            "type": {"is_protected": True, "is_visible": True, "owner": None, "source": None, "value": "SITE"},
+            "name": {
+                "is_protected": True,
+                "is_visible": True,
+                "owner": None,
+                "source": None,
+                "value": "DFW",
+            },
+            "description": {
+                "is_protected": False,
+                "is_visible": True,
+                "owner": None,
+                "source": None,
+                "value": None,
+            },
+            "type": {
+                "is_protected": True,
+                "is_visible": True,
+                "owner": None,
+                "source": None,
+                "value": "SITE",
+            },
             "primary_tag": {
                 "properties": {
                     "is_protected": True,
@@ -206,7 +272,13 @@ async def location_data02():
                 },
                 "value": "dfw1",
             },
-            "description": {"is_protected": False, "is_visible": True, "owner": None, "source": None, "value": None},
+            "description": {
+                "is_protected": False,
+                "is_visible": True,
+                "owner": None,
+                "source": None,
+                "value": None,
+            },
             "type": {
                 "is_protected": True,
                 "is_visible": True,
@@ -287,10 +359,20 @@ async def tag_blue_data_no_pagination():
             "is_protected": False,
             "is_visible": True,
             "owner": None,
-            "source": {"__typename": "Account", "display_label": "CRM", "id": "cccccccc-cccc-cccc-cccc-cccccccccccc"},
+            "source": {
+                "__typename": "Account",
+                "display_label": "CRM",
+                "id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+            },
             "value": "blue",
         },
-        "description": {"is_protected": False, "is_visible": True, "owner": None, "source": None, "value": None},
+        "description": {
+            "is_protected": False,
+            "is_visible": True,
+            "owner": None,
+            "source": None,
+            "value": None,
+        },
     }
     return data
 
@@ -305,10 +387,20 @@ async def tag_red_data_no_pagination():
             "is_protected": False,
             "is_visible": True,
             "owner": None,
-            "source": {"__typename": "Account", "display_label": "CRM", "id": "cccccccc-cccc-cccc-cccc-cccccccccccc"},
+            "source": {
+                "__typename": "Account",
+                "display_label": "CRM",
+                "id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+            },
             "value": "red",
         },
-        "description": {"is_protected": False, "is_visible": True, "owner": None, "source": None, "value": None},
+        "description": {
+            "is_protected": False,
+            "is_visible": True,
+            "owner": None,
+            "source": None,
+            "value": None,
+        },
     }
     return data
 
@@ -323,10 +415,20 @@ async def tag_green_data_no_pagination():
             "is_protected": False,
             "is_visible": True,
             "owner": None,
-            "source": {"__typename": "Account", "display_label": "CRM", "id": "cccccccc-cccc-cccc-cccc-cccccccccccc"},
+            "source": {
+                "__typename": "Account",
+                "display_label": "CRM",
+                "id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+            },
             "value": "green",
         },
-        "description": {"is_protected": False, "is_visible": True, "owner": None, "source": None, "value": None},
+        "description": {
+            "is_protected": False,
+            "is_visible": True,
+            "owner": None,
+            "source": None,
+            "value": None,
+        },
     }
     return data
 
@@ -349,7 +451,13 @@ async def tag_blue_data():
                 },
                 "value": "blue",
             },
-            "description": {"is_protected": False, "is_visible": True, "owner": None, "source": None, "value": None},
+            "description": {
+                "is_protected": False,
+                "is_visible": True,
+                "owner": None,
+                "source": None,
+                "value": None,
+            },
         }
     }
     return data
@@ -373,7 +481,13 @@ async def tag_red_data():
                 },
                 "value": "red",
             },
-            "description": {"is_protected": False, "is_visible": True, "owner": None, "source": None, "value": None},
+            "description": {
+                "is_protected": False,
+                "is_visible": True,
+                "owner": None,
+                "source": None,
+                "value": None,
+            },
         }
     }
     return data
@@ -397,7 +511,13 @@ async def tag_green_data():
                 },
                 "value": "green",
             },
-            "description": {"is_protected": False, "is_visible": True, "owner": None, "source": None, "value": None},
+            "description": {
+                "is_protected": False,
+                "is_visible": True,
+                "owner": None,
+                "source": None,
+                "value": None,
+            },
         }
     }
     return data
@@ -425,8 +545,19 @@ async def rfile_schema() -> NodeSchema:
                 "cardinality": "one",
                 "optional": False,
             },
-            {"name": "query", "peer": "CoreGraphQLQuery", "kind": "Attribute", "cardinality": "one", "optional": False},
-            {"name": "tags", "peer": "BuiltinTag", "optional": True, "cardinality": "many"},
+            {
+                "name": "query",
+                "peer": "CoreGraphQLQuery",
+                "kind": "Attribute",
+                "cardinality": "one",
+                "optional": False,
+            },
+            {
+                "name": "tags",
+                "peer": "BuiltinTag",
+                "optional": True,
+                "cardinality": "many",
+            },
         ],
     }
     return NodeSchema(**data)  # type: ignore
@@ -444,7 +575,13 @@ async def ipaddress_schema() -> NodeSchema:
             {"name": "address", "kind": "IPHost"},
         ],
         "relationships": [
-            {"name": "interface", "peer": "InfraInterfaceL3", "optional": True, "cardinality": "one", "kind": "Parent"}
+            {
+                "name": "interface",
+                "peer": "InfraInterfaceL3",
+                "optional": True,
+                "cardinality": "one",
+                "kind": "Parent",
+            }
         ],
     }
     return NodeSchema(**data)  # type: ignore
@@ -462,7 +599,13 @@ async def ipnetwork_schema() -> NodeSchema:
             {"name": "network", "kind": "IPNetwork"},
         ],
         "relationships": [
-            {"name": "site", "peer": "BuiltinLocation", "optional": True, "cardinality": "one", "kind": "Parent"}
+            {
+                "name": "site",
+                "peer": "BuiltinLocation",
+                "optional": True,
+                "cardinality": "one",
+                "kind": "Parent",
+            }
         ],
     }
     return NodeSchema(**data)  # type: ignore
@@ -493,7 +636,11 @@ async def mock_branches_list_query(httpx_mock: HTTPXMock) -> HTTPXMock:
         }
     }
 
-    httpx_mock.add_response(method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-branch-all"})
+    httpx_mock.add_response(
+        method="POST",
+        json=response,
+        match_headers={"X-Infrahub-Tracker": "query-branch-all"},
+    )
     return httpx_mock
 
 
@@ -556,7 +703,11 @@ async def mock_query_repository_all_01_no_pagination(
         }
     }
 
-    httpx_mock.add_response(method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-repository-all"})
+    httpx_mock.add_response(
+        method="POST",
+        json=response,
+        match_headers={"X-Infrahub-Tracker": "query-repository-all"},
+    )
     return httpx_mock
 
 
@@ -637,7 +788,9 @@ async def mock_query_repository_page1_1(
     }
 
     httpx_mock.add_response(
-        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-corerepository-page1"}
+        method="POST",
+        json=response,
+        match_headers={"X-Infrahub-Tracker": "query-corerepository-page1"},
     )
     return httpx_mock
 
@@ -668,7 +821,11 @@ async def mock_query_corenode_page1_1(httpx_mock: HTTPXMock, client: InfrahubCli
         }
     }
 
-    httpx_mock.add_response(method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-corenode-page1"})
+    httpx_mock.add_response(
+        method="POST",
+        json=response,
+        match_headers={"X-Infrahub-Tracker": "query-corenode-page1"},
+    )
     return httpx_mock
 
 
@@ -679,7 +836,9 @@ async def mock_query_repository_page1_empty(
     response: dict = {"data": {"CoreRepository": {"edges": []}}}
 
     httpx_mock.add_response(
-        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-corerepository-page1"}
+        method="POST",
+        json=response,
+        match_headers={"X-Infrahub-Tracker": "query-corerepository-page1"},
     )
     return httpx_mock
 
@@ -726,7 +885,9 @@ async def mock_query_repository_page1_2(
     }
 
     httpx_mock.add_response(
-        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-corerepository-page1"}
+        method="POST",
+        json=response,
+        match_headers={"X-Infrahub-Tracker": "query-corerepository-page1"},
     )
     return httpx_mock
 
@@ -764,7 +925,9 @@ async def mock_query_repository_page2_2(
     }
 
     httpx_mock.add_response(
-        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-corerepository-page2"}
+        method="POST",
+        json=response,
+        match_headers={"X-Infrahub-Tracker": "query-corerepository-page2"},
     )
     return httpx_mock
 
@@ -773,7 +936,11 @@ async def mock_query_repository_page2_2(
 async def mock_schema_query_01(httpx_mock: HTTPXMock) -> HTTPXMock:
     response_text = Path(os.path.join(get_fixtures_dir(), "schema_01.json")).read_text(encoding="UTF-8")
 
-    httpx_mock.add_response(method="GET", url="http://mock/api/schema/?branch=main", json=ujson.loads(response_text))
+    httpx_mock.add_response(
+        method="GET",
+        url="http://mock/api/schema/?branch=main",
+        json=ujson.loads(response_text),
+    )
     return httpx_mock
 
 
@@ -781,5 +948,9 @@ async def mock_schema_query_01(httpx_mock: HTTPXMock) -> HTTPXMock:
 async def mock_schema_query_02(httpx_mock: HTTPXMock) -> HTTPXMock:
     response_text = Path(os.path.join(get_fixtures_dir(), "schema_02.json")).read_text(encoding="UTF-8")
 
-    httpx_mock.add_response(method="GET", url="http://mock/api/schema/?branch=main", json=ujson.loads(response_text))
+    httpx_mock.add_response(
+        method="GET",
+        url="http://mock/api/schema/?branch=main",
+        json=ujson.loads(response_text),
+    )
     return httpx_mock

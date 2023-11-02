@@ -24,21 +24,42 @@ TEST_IN_DOCKER = str_to_bool(os.environ.get("INFRAHUB_TEST_IN_DOCKER", "false"))
 # pylint: disable=redefined-outer-name
 class InfrahubTestClient(TestClient):
     def _request(
-        self, url: str, method: HTTPMethod, headers: Dict[str, Any], timeout: int, payload: Optional[Dict] = None
+        self,
+        url: str,
+        method: HTTPMethod,
+        headers: Dict[str, Any],
+        timeout: int,
+        payload: Optional[Dict] = None,
     ) -> httpx.Response:
         content = None
         if payload:
             content = str(json.dumps(payload)).encode("UTF-8")
         with self as client:
-            return client.request(method=method.value, url=url, headers=headers, timeout=timeout, content=content)
+            return client.request(
+                method=method.value,
+                url=url,
+                headers=headers,
+                timeout=timeout,
+                content=content,
+            )
 
     async def async_request(
-        self, url: str, method: HTTPMethod, headers: Dict[str, Any], timeout: int, payload: Optional[Dict] = None
+        self,
+        url: str,
+        method: HTTPMethod,
+        headers: Dict[str, Any],
+        timeout: int,
+        payload: Optional[Dict] = None,
     ) -> httpx.Response:
         return self._request(url=url, method=method, headers=headers, timeout=timeout, payload=payload)
 
     def sync_request(
-        self, url: str, method: HTTPMethod, headers: Dict[str, Any], timeout: int, payload: Optional[Dict] = None
+        self,
+        url: str,
+        method: HTTPMethod,
+        headers: Dict[str, Any],
+        timeout: int,
+        payload: Optional[Dict] = None,
     ) -> httpx.Response:
         return self._request(url=url, method=method, headers=headers, timeout=timeout, payload=payload)
 
@@ -103,8 +124,18 @@ async def location_schema() -> NodeSchema:
             {"name": "type", "kind": "String"},
         ],
         "relationships": [
-            {"name": "tags", "peer": "BuiltinTag", "optional": True, "cardinality": "many"},
-            {"name": "primary_tag", "peer": "BultinTag", "optional": True, "cardinality": "one"},
+            {
+                "name": "tags",
+                "peer": "BuiltinTag",
+                "optional": True,
+                "cardinality": "many",
+            },
+            {
+                "name": "primary_tag",
+                "peer": "BultinTag",
+                "optional": True,
+                "cardinality": "one",
+            },
         ],
     }
     return NodeSchema(**data)  # type: ignore
@@ -276,7 +307,12 @@ async def schema_extension_02() -> Dict[str, Any]:
                 "display_labels": ["contract_ref__value"],
                 "order_by": ["contract_ref__value"],
                 "attributes": [
-                    {"name": "contract_ref", "label": "Contract Reference", "kind": "Text", "unique": True},
+                    {
+                        "name": "contract_ref",
+                        "label": "Contract Reference",
+                        "kind": "Text",
+                        "unique": True,
+                    },
                     {"name": "description", "kind": "Text", "optional": True},
                 ],
                 "relationships": [

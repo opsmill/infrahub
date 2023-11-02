@@ -1,4 +1,5 @@
 import pytest
+from infrahub_sdk import UUIDT
 
 from infrahub.core.attribute import Integer, IPHost, IPNetwork, String
 from infrahub.core.branch import Branch
@@ -8,7 +9,6 @@ from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
-from infrahub_sdk import UUIDT
 
 
 async def test_init(

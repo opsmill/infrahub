@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 
 import pytest
 import ujson
+from infrahub_sdk.utils import str_to_bool
 
 from infrahub import config
 from infrahub.lock import initialize_lock
@@ -15,7 +16,6 @@ from infrahub.message_bus.operations import execute_message
 from infrahub.message_bus.types import MessageTTL
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
-from infrahub_sdk.utils import str_to_bool
 
 BUILD_NAME = os.environ.get("INFRAHUB_BUILD_NAME", "infrahub")
 TEST_IN_DOCKER = str_to_bool(os.environ.get("INFRAHUB_TEST_IN_DOCKER", "false"))

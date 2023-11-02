@@ -8,14 +8,14 @@ from typing import Dict
 import pytest
 import ujson
 from git import Repo
+from infrahub_sdk import UUIDT, InfrahubClient, InfrahubNode
+from infrahub_sdk import SchemaRoot as ClientSchemaRoot
+from infrahub_sdk.branch import BranchData
 from pytest_httpx import HTTPXMock
 
 from infrahub.core.schema import SchemaRoot, core_models
 from infrahub.git import InfrahubRepository
 from infrahub.utils import find_first_file_in_directory, get_fixtures_dir
-from infrahub_sdk import UUIDT, InfrahubClient, InfrahubNode
-from infrahub_sdk import SchemaRoot as ClientSchemaRoot
-from infrahub_sdk.branch import BranchData
 
 
 @pytest.fixture

@@ -10,5 +10,6 @@ async def main():
     accounts = await client.filters(kind="CoreAccount")
     rprint(accounts)
 
+
 if __name__ == "__main__":
     aiorun(main())

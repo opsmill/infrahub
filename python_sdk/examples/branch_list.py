@@ -10,5 +10,6 @@ async def main():
     branches = await client.branch.all()
     rprint(branches)
 
+
 if __name__ == "__main__":
     aiorun(main())

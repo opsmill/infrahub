@@ -12,13 +12,13 @@ from rich.panel import Panel
 from rich.table import Table
 
 import infrahub_ctl.config as config
-from infrahub_sdk import Error, GraphQLError
 from infrahub_ctl.client import initialize_client
 from infrahub_ctl.utils import (
     calculate_time_diff,
     print_graphql_errors,
     render_action_rich,
 )
+from infrahub_sdk import Error, GraphQLError
 
 app = typer.Typer()
 
@@ -314,12 +314,17 @@ def node_panel_generator(nodes: List[Dict]) -> Generator:
             lines.append(property_string)
 
         yield Panel(
-            "\n".join(lines), title=f"Node {node['kind']} {node['display_label']} ({node['id']})", title_align="left"
+            "\n".join(lines),
+            title=f"Node {node['kind']} {node['display_label']} ({node['id']})",
+            title_align="left",
         )
 
 
 async def _diff(
-    branch_name: str, time_from: Union[str, datetime], time_to: Union[str, datetime], branch_only: bool
+    branch_name: str,
+    time_from: Union[str, datetime],
+    time_to: Union[str, datetime],
+    branch_only: bool,
 ) -> None:
     console = Console()
 
@@ -327,21 +332,32 @@ async def _diff(
 
     try:
         response = await client.branch.diff_data(
-            branch_name=branch_name, branch_only=branch_only, time_from=time_from, time_to=time_to
+            branch_name=branch_name,
+            branch_only=branch_only,
+            time_from=time_from,
+            time_to=time_to,
         )
     except Error as exc:
         console.print(f"[red]{exc.message}")
         sys.exit(1)
 
     for branch, nodes in response.json().items():
-        console.print(Panel(node_panel_generator(nodes), title=f"Branch: [green]{branch}", title_align="left"))
+        console.print(
+            Panel(
+                node_panel_generator(nodes),
+                title=f"Branch: [green]{branch}",
+                title_align="left",
+            )
+        )
 
 
 @app.command()
 def diff(
     branch_name: str,
     time_from: Optional[datetime] = typer.Option(
-        None, "--from", help="Start Time used to calculate the Diff, Default: from the start of the branch"
+        None,
+        "--from",
+        help="Start Time used to calculate the Diff, Default: from the start of the branch",
     ),
     time_to: Optional[datetime] = typer.Option(None, "--to", help="End Time used to calculate the Diff, Default: now"),
     branch_only: bool = True,
@@ -353,4 +369,11 @@ def diff(
 
     logging.getLogger("infrahub_client").setLevel(logging.CRITICAL)
 
-    aiorun(_diff(branch_name=branch_name, time_from=time_from or "", time_to=time_to or "", branch_only=branch_only))
+    aiorun(
+        _diff(
+            branch_name=branch_name,
+            time_from=time_from or "",
+            time_to=time_to or "",
+            branch_only=branch_only,
+        )
+    )

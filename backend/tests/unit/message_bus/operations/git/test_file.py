@@ -1,8 +1,9 @@
+from infrahub_sdk import UUIDT, InfrahubClient
+
 from infrahub.git import InfrahubRepository
 from infrahub.message_bus import Meta, messages
 from infrahub.message_bus.responses import ContentResponse
 from infrahub.services import InfrahubServices
-from infrahub_sdk import UUIDT, InfrahubClient
 
 
 async def test_file_get(git_fixture_repo: InfrahubRepository, helper):

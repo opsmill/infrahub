@@ -27,7 +27,12 @@ class ServerNotResponsiveError(Error):
 
 
 class GraphQLError(Error):
-    def __init__(self, errors: List[str], query: Optional[str] = None, variables: Optional[dict] = None):
+    def __init__(
+        self,
+        errors: List[str],
+        query: Optional[str] = None,
+        variables: Optional[dict] = None,
+    ):
         self.query = query
         self.variables = variables
         self.errors = errors
@@ -72,7 +77,13 @@ class NodeNotFound(Error):
 
 
 class FilterNotFound(Error):
-    def __init__(self, identifier: str, kind: str, message: Optional[str] = None, filters: Optional[List[str]] = None):
+    def __init__(
+        self,
+        identifier: str,
+        kind: str,
+        message: Optional[str] = None,
+        filters: Optional[List[str]] = None,
+    ):
         self.identifier = identifier
         self.kind = kind
         self.filters = filters or []

@@ -6,6 +6,7 @@ from typing import Dict
 import pendulum
 import pytest
 from git.repo import Repo
+from infrahub_sdk import UUIDT
 from neo4j._codec.hydration.v1 import HydrationHandler
 from pytest_httpx import HTTPXMock
 
@@ -40,7 +41,6 @@ from infrahub.graphql.generator import (
 )
 from infrahub.message_bus.rpc import InfrahubRpcClientTesting
 from infrahub.test_data import dataset01 as ds01
-from infrahub_sdk import UUIDT
 
 
 @pytest.fixture(scope="session")

@@ -17,7 +17,12 @@ class RequesterTransport(str, enum.Enum):
 @runtime_checkable
 class SyncRequester(Protocol):
     def __call__(
-        self, url: str, method: HTTPMethod, headers: Dict[str, Any], timeout: int, payload: Optional[Dict] = None
+        self,
+        url: str,
+        method: HTTPMethod,
+        headers: Dict[str, Any],
+        timeout: int,
+        payload: Optional[Dict] = None,
     ) -> httpx.Response:
         ...
 
@@ -25,6 +30,11 @@ class SyncRequester(Protocol):
 @runtime_checkable
 class AsyncRequester(Protocol):
     async def __call__(
-        self, url: str, method: HTTPMethod, headers: Dict[str, Any], timeout: int, payload: Optional[Dict] = None
+        self,
+        url: str,
+        method: HTTPMethod,
+        headers: Dict[str, Any],
+        timeout: int,
+        payload: Optional[Dict] = None,
     ) -> httpx.Response:
         ...

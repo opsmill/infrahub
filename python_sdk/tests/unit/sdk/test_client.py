@@ -181,7 +181,9 @@ async def test_method_get_by_id(
 
     response_id = "bfae43e8-5ebb-456c-a946-bf64e930710a"
     httpx_mock.add_response(
-        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-corerepository-page1"}
+        method="POST",
+        json=response,
+        match_headers={"X-Infrahub-Tracker": "query-corerepository-page1"},
     )
 
     if client_type == "standard":
@@ -226,7 +228,9 @@ async def test_method_get_by_default_filter(
 
     response_id = "bfae43e8-5ebb-456c-a946-bf64e930710a"
     httpx_mock.add_response(
-        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-corerepository-page1"}
+        method="POST",
+        json=response,
+        match_headers={"X-Infrahub-Tracker": "query-corerepository-page1"},
     )
 
     if client_type == "standard":
@@ -270,7 +274,9 @@ async def test_method_get_by_name(
     }
 
     httpx_mock.add_response(
-        method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-corerepository-page1"}
+        method="POST",
+        json=response,
+        match_headers={"X-Infrahub-Tracker": "query-corerepository-page1"},
     )
 
     if client_type == "standard":
@@ -295,7 +301,11 @@ async def test_method_get_not_found(
 
 @pytest.mark.parametrize("client_type", client_types)
 async def test_method_get_found_many(
-    httpx_mock: HTTPXMock, clients, mock_schema_query_01, mock_query_repository_page1_1, client_type
+    httpx_mock: HTTPXMock,
+    clients,
+    mock_schema_query_01,
+    mock_query_repository_page1_1,
+    client_type,
 ):  # pylint: disable=unused-argument
     with pytest.raises(IndexError):
         if client_type == "standard":
@@ -325,28 +335,42 @@ async def test_method_filters_many(
 ):  # pylint: disable=unused-argument
     if client_type == "standard":
         repos = await clients.standard.filters(
-            kind="CoreRepository", ids=["bfae43e8-5ebb-456c-a946-bf64e930710a", "9486cfce-87db-479d-ad73-07d80ba96a0f"]
+            kind="CoreRepository",
+            ids=[
+                "bfae43e8-5ebb-456c-a946-bf64e930710a",
+                "9486cfce-87db-479d-ad73-07d80ba96a0f",
+            ],
         )
         assert len(repos) == 2
         assert not clients.standard.store._store["CoreRepository"]
 
         repos = await clients.standard.filters(
             kind="CoreRepository",
-            ids=["bfae43e8-5ebb-456c-a946-bf64e930710a", "9486cfce-87db-479d-ad73-07d80ba96a0f"],
+            ids=[
+                "bfae43e8-5ebb-456c-a946-bf64e930710a",
+                "9486cfce-87db-479d-ad73-07d80ba96a0f",
+            ],
             populate_store=True,
         )
         assert len(clients.standard.store._store["CoreRepository"]) == 2
         assert len(repos) == 2
     else:
         repos = clients.sync.filters(
-            kind="CoreRepository", ids=["bfae43e8-5ebb-456c-a946-bf64e930710a", "9486cfce-87db-479d-ad73-07d80ba96a0f"]
+            kind="CoreRepository",
+            ids=[
+                "bfae43e8-5ebb-456c-a946-bf64e930710a",
+                "9486cfce-87db-479d-ad73-07d80ba96a0f",
+            ],
         )
         assert len(repos) == 2
         assert not clients.sync.store._store["CoreRepository"]
 
         repos = clients.sync.filters(
             kind="CoreRepository",
-            ids=["bfae43e8-5ebb-456c-a946-bf64e930710a", "9486cfce-87db-479d-ad73-07d80ba96a0f"],
+            ids=[
+                "bfae43e8-5ebb-456c-a946-bf64e930710a",
+                "9486cfce-87db-479d-ad73-07d80ba96a0f",
+            ],
             populate_store=True,
         )
         assert len(clients.sync.store._store["CoreRepository"]) == 2
@@ -359,10 +383,18 @@ async def test_method_filters_empty(
 ):  # pylint: disable=unused-argument
     if client_type == "standard":
         repos = await clients.standard.filters(
-            kind="CoreRepository", ids=["bfae43e8-5ebb-456c-a946-bf64e930710a", "9486cfce-87db-479d-ad73-07d80ba96a0f"]
+            kind="CoreRepository",
+            ids=[
+                "bfae43e8-5ebb-456c-a946-bf64e930710a",
+                "9486cfce-87db-479d-ad73-07d80ba96a0f",
+            ],
         )
     else:
         repos = clients.sync.filters(
-            kind="CoreRepository", ids=["bfae43e8-5ebb-456c-a946-bf64e930710a", "9486cfce-87db-479d-ad73-07d80ba96a0f"]
+            kind="CoreRepository",
+            ids=[
+                "bfae43e8-5ebb-456c-a946-bf64e930710a",
+                "9486cfce-87db-479d-ad73-07d80ba96a0f",
+            ],
         )
     assert len(repos) == 0

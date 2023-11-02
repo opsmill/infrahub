@@ -87,7 +87,9 @@ def render_input_block(data: dict, offset: int = 4, indentation: int = 4) -> Lis
                     lines.append(f"{offset_str}{' '*indentation}" + "{")
                     lines.extend(
                         render_input_block(
-                            data=item, offset=offset + indentation + indentation, indentation=indentation
+                            data=item,
+                            offset=offset + indentation + indentation,
+                            indentation=indentation,
                         )
                     )
                     lines.append(f"{offset_str}{' '*indentation}" + "},")
@@ -145,10 +147,20 @@ class Mutation(BaseGraphQLQuery):
         lines = [self.render_first_line()]
         lines.append(" " * self.indentation + f"{self.mutation}(")
         lines.extend(
-            render_input_block(data=self.input_data, indentation=self.indentation, offset=self.indentation * 2)
+            render_input_block(
+                data=self.input_data,
+                indentation=self.indentation,
+                offset=self.indentation * 2,
+            )
         )
         lines.append(" " * self.indentation + "){")
-        lines.extend(render_query_block(data=self.query, indentation=self.indentation, offset=self.indentation * 2))
+        lines.extend(
+            render_query_block(
+                data=self.query,
+                indentation=self.indentation,
+                offset=self.indentation * 2,
+            )
+        )
         lines.append(" " * self.indentation + "}")
         lines.append("}")
 

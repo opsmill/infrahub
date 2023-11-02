@@ -2,13 +2,13 @@ from typing import TYPE_CHECKING, Dict
 
 from graphene import Boolean, Field, InputField, InputObjectType, Mutation, String
 from graphql import GraphQLResolveInfo
+from infrahub_sdk import UUIDT
 
 from infrahub.auth import AuthType
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import NodeNotFound, PermissionDeniedError
-from infrahub_sdk import UUIDT
 
 from ..types import InfrahubObjectType
 from ..utils import extract_fields

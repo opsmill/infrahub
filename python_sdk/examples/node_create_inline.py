@@ -5,7 +5,13 @@ from infrahub_sdk import InfrahubClient
 
 async def main():
     client = await InfrahubClient.init(address="http://localhost:8000")
-    obj = await client.create(kind="CoreAccount", name="janedoe", label="Jane Doe", type="User", password="J0esSecret!")
+    obj = await client.create(
+        kind="CoreAccount",
+        name="janedoe",
+        label="Jane Doe",
+        type="User",
+        password="J0esSecret!",
+    )
     await obj.save()
     print(f"New user created with the Id {obj.id}")
 

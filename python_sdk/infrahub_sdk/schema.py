@@ -229,7 +229,10 @@ class InfrahubSchemaBase:
         for key in data.keys():
             if key not in schema.relationship_names + schema.attribute_names:
                 identifier = f"{schema.kind}"
-                raise ValidationError(identifier=identifier, message=f"{key} is not a valid value for {identifier}")
+                raise ValidationError(
+                    identifier=identifier,
+                    message=f"{key} is not a valid value for {identifier}",
+                )
 
     def generate_payload_create(
         self,

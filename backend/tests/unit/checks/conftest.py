@@ -1,7 +1,6 @@
 import pytest
-from pytest_httpx import HTTPXMock
-
 from infrahub_sdk import InfrahubClient
+from pytest_httpx import HTTPXMock
 
 
 @pytest.fixture
