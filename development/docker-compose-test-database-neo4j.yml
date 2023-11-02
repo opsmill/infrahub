@@ -5,7 +5,7 @@ services:
     deploy:
       mode: replicated
       replicas: "${NBR_WORKERS}"
-    image: "neo4j:5.13-community"
+    image: "${DATABASE_DOCKER_IMAGE:-neo4j:community}"
     environment:
       - "NEO4J_AUTH=neo4j/admin"
       - "NEO4J_dbms_security_procedures_unrestricted=apoc.*"
@@ -19,8 +19,6 @@ services:
       retries: 20
       start_period: 10s
   infrahub-test:
-    environment:
-      - "INFRAHUB_DB_TYPE=neo4j"
     depends_on:
       database:
         condition: service_healthy
