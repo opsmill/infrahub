@@ -2,6 +2,7 @@ import ipaddress
 from typing import Any
 
 import pytest
+from infrahub_sdk import InfrahubClient, InfrahubNodeSync, NodeSchema
 from nornir.core.inventory import ConnectionOptions, Defaults  # , HostOrGroup
 from nornir_infrahub.plugins.inventory.infrahub import (  # _get_inventory_element,
     HostNode,
@@ -13,8 +14,6 @@ from nornir_infrahub.plugins.inventory.infrahub import (  # _get_inventory_eleme
     resolve_node_mapping,
 )
 from pydantic.error_wrappers import ValidationError
-
-from infrahub_client import InfrahubClient, InfrahubNodeSync, NodeSchema
 
 # from unittest.mock import Mock, patch
 

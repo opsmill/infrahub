@@ -6,6 +6,7 @@ from asyncio import run as aiorun
 from typing import Any
 
 import typer
+from infrahub_sdk import InfrahubClient
 from prometheus_client import start_http_server
 from rich.logging import RichHandler
 
@@ -23,7 +24,6 @@ from infrahub.services import InfrahubServices
 from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
 from infrahub.worker import WORKER_IDENTITY
-from infrahub_client import InfrahubClient
 
 app = typer.Typer()
 

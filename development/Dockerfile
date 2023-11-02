@@ -69,7 +69,7 @@ COPY --from=frontend /source/dist/ /opt/infrahub/frontend/dist
 #   Copy in only pyproject.toml/poetry.lock to help with caching this layer if no updates to dependencies
 # --------------------------------------------
 COPY poetry.lock pyproject.toml /source/
-RUN poetry install --no-interaction --no-ansi --no-root
+RUN poetry install --no-interaction --no-ansi --no-root --no-directory
 
 # --------------------------------------------
 # Copy in the rest of the source code and install the project

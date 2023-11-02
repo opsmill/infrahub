@@ -5,6 +5,7 @@ import re
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 import ujson
+from infrahub_sdk import UUIDT
 from pydantic import BaseModel, Field
 
 from infrahub.core import registry
@@ -27,7 +28,6 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import add_relationship, update_relationships_to
 from infrahub.exceptions import ValidationError
 from infrahub.helpers import hash_password
-from infrahub_client import UUIDT
 
 if TYPE_CHECKING:
     from uuid import UUID

@@ -11,7 +11,7 @@ order: 650
 
 #### Method 1
 ```python
-from infrahub_client import InfrahubClient
+from infrahub_sdk import InfrahubClient
 
 client = await InfrahubClient.init(address="http://localhost:8000")
 data = {"name": "johndoe", "label": "John Doe", "type": "User", "password": "J0esSecret!"}
@@ -22,7 +22,7 @@ print(f"New user created with the Id {obj.id}")
 
 #### Method 2
 ```python
-from infrahub_client import InfrahubClient
+from infrahub_sdk import InfrahubClient
 
 client = await InfrahubClient.init(address="http://localhost:8000")
 obj = await client.create(kind="CoreAccount", name="janedoe", label="Jane Doe", type="User", password="J0esSecret!")
@@ -33,7 +33,7 @@ print(f"New user created with the Id {obj.id}")
 +++ Sync
 #### Method 1
 ```python
-from infrahub_client import InfrahubClientSync
+from infrahub_sdk import InfrahubClientSync
 
 client = InfrahubClientSync.init(address="http://localhost:8000")
 data = {"name": "johndoe", "label": "John Doe", "type": "User", "password": "J0esSecret!"}
@@ -43,7 +43,7 @@ print(f"New user created with the Id {obj.id}")
 ```
 #### Method 2
 ```python
-from infrahub_client import InfrahubClientSync
+from infrahub_sdk import InfrahubClientSync
 
 client = InfrahubClientSync.init(address="http://localhost:8000")
 obj = client.create(kind="CoreAccount", name="janedoe", label="Jane Doe", type="User", password="J0esSecret!")
@@ -57,7 +57,7 @@ print(f"New user created with the Id {obj.id}")
 +++ Async
 
 ```python
-from infrahub_client import InfrahubClient
+from infrahub_sdk import InfrahubClient
 
 client = await InfrahubClient.init(address="http://localhost:8000")
 obj = await client.get(kind="CoreAccount", name__value="admin")
@@ -68,7 +68,7 @@ await obj.save()
 +++ Sync
 
 ```python
-from infrahub_client import InfrahubClientSync
+from infrahub_sdk import InfrahubClientSync
 
 client = InfrahubClientSync.init(address="http://localhost:8000")
 obj = client.get(kind="CoreAccount", name__value="admin")
@@ -83,7 +83,7 @@ obj.save()
 +++ Async
 
 ```python
-from infrahub_client import InfrahubClient
+from infrahub_sdk import InfrahubClient
 
 client = await InfrahubClient.init(address="http://localhost:8000")
 obj = await client.get(kind="CoreAccount", name__value="johndoe")
@@ -91,7 +91,7 @@ await obj.delete()
 ```
 +++ Sync
 ```python
-from infrahub_client import InfrahubClientSync
+from infrahub_sdk import InfrahubClientSync
 
 client = InfrahubClientSync.init(address="http://localhost:8000")
 obj = client.get(kind="CoreAccount", name__value="johndoe")

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
+from infrahub_sdk import UUIDT
+from infrahub_sdk.utils import intersection
 from pydantic import BaseModel, Field
 
 from infrahub.core import registry
@@ -24,8 +26,6 @@ from infrahub.core.query.relationship import (
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import update_relationships_to
 from infrahub.exceptions import NodeNotFound, ValidationError
-from infrahub_client import UUIDT
-from infrahub_client.utils import intersection
 
 if TYPE_CHECKING:
     from uuid import UUID

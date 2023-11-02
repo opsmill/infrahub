@@ -1,11 +1,11 @@
 import pytest
-
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
-from infrahub_client import Config, InfrahubClientSync
-from infrahub_client.exceptions import BranchNotFound
-from infrahub_client.node import InfrahubNodeSync
+
+from infrahub_sdk import Config, InfrahubClientSync
+from infrahub_sdk.exceptions import BranchNotFound
+from infrahub_sdk.node import InfrahubNodeSync
 
 from .conftest import InfrahubTestClient
 
@@ -22,7 +22,11 @@ class TestInfrahubClientSync:
 
     @pytest.fixture
     def client(self, test_client):
-        config = Config(username="admin", password="infrahub", sync_requester=test_client.sync_request)
+        config = Config(
+            username="admin",
+            password="infrahub",
+            sync_requester=test_client.sync_request,
+        )
         return InfrahubClientSync.init(config=config)
 
     @pytest.fixture(scope="class")
@@ -43,7 +47,10 @@ class TestInfrahubClientSync:
 
         obj2 = await Node.init(schema="CoreRepository", db=db)
         await obj2.new(
-            db=db, name="repository1", description="test repository", location="git@github.com:mock/test.git"
+            db=db,
+            name="repository1",
+            description="test repository",
+            location="git@github.com:mock/test.git",
         )
         await obj2.save(db=db)
 
@@ -138,7 +145,12 @@ class TestInfrahubClientSync:
         admin = client.get(kind="CoreAccount", name__value="admin")
 
         obj1 = await Node.init(schema="BuiltinLocation", db=db)
-        await obj1.new(db=db, name={"value": "jfk3", "source": admin.id}, description="new york", type="site")
+        await obj1.new(
+            db=db,
+            name={"value": "jfk3", "source": admin.id},
+            description="new york",
+            type="site",
+        )
         await obj1.save(db=db)
 
         nodes = client.filters(kind="CoreNode", any__source__id=admin.id)

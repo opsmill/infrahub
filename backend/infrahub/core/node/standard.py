@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from uuid import UUID  # noqa: TCH003
 
 import ujson
+from infrahub_sdk import UUIDT
 from pydantic import BaseModel
 
 from infrahub.core.query.standard_node import (
@@ -15,7 +16,6 @@ from infrahub.core.query.standard_node import (
     StandardNodeUpdateQuery,
 )
 from infrahub.exceptions import Error
-from infrahub_client import UUIDT
 
 # pylint: disable=redefined-builtin
 

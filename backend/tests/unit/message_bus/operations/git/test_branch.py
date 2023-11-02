@@ -1,7 +1,8 @@
+from infrahub_sdk import InfrahubClient
+
 from infrahub.git import InfrahubRepository
 from infrahub.message_bus import messages
 from infrahub.services import InfrahubServices
-from infrahub_client import InfrahubClient
 
 
 async def test_branch_create(git_fixture_repo: InfrahubRepository, helper):

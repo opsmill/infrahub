@@ -27,11 +27,6 @@ sync_files: &sync_files
   - "pyproject.toml"
   - "poetry.lock"
 
-ctl_files: &ctl_files
-  - "ctl/**"
-  - "pyproject.toml"
-  - "poetry.lock"
-
 frontend_files: &frontend_files
   - "frontend/**"
 
@@ -70,13 +65,6 @@ sync_all:
   - *sync_files
   - *sdk_files
   - *backend_files
-  - *ci_config
-  - *development_files
-
-ctl_all:
-  - *sdk_files
-  - *backend_files
-  - *ctl_files
   - *ci_config
   - *development_files
 

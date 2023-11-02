@@ -1,4 +1,5 @@
 import pytest
+from infrahub_sdk import UUIDT
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -11,7 +12,6 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_relationships, get_paths_between_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
-from infrahub_client import UUIDT
 
 
 async def test_node_init(

@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Dict
 
 from graphene import Boolean, InputField, InputObjectType, List, Mutation, String
+from infrahub_sdk.utils import compare_lists
 
 from infrahub.core.constants import RelationshipCardinality
 from infrahub.core.manager import NodeManager
@@ -12,7 +13,6 @@ from infrahub.core.query.relationship import (
 )
 from infrahub.core.relationship import Relationship
 from infrahub.exceptions import NodeNotFound, ValidationError
-from infrahub_client.utils import compare_lists
 
 from ..types import RelatedNodeInput
 
