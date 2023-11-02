@@ -1,6 +1,6 @@
 from asyncio import run as aiorun
 
-from infrahub_client import InfrahubClient
+from infrahub_sdk import InfrahubClient
 
 
 async def main():

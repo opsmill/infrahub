@@ -1,6 +1,6 @@
 from rich import print as rprint
 
-from infrahub_client import InfrahubClientSync
+from infrahub_sdk import InfrahubClientSync
 
 
 def main():

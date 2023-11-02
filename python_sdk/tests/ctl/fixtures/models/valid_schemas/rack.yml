@@ -1,0 +1,39 @@
+---
+version: '1.0'
+nodes:
+  - name: Rack
+    namespace: Infra
+    description: "A Rack represents a physical two- or four-post equipment rack in which devices can be installed."
+    label: "Rack"
+    default_filter: name__value
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: description
+        kind: Text
+        optional: true
+      - name: height
+        kind: Text
+    relationships:
+      - name: location
+        peer: BuiltinLocation
+        optional: false
+        cardinality: one
+        kind: Attribute
+      - name: tags
+        peer: BuiltinTag
+        optional: true
+        cardinality: many
+        kind: Attribute
+extensions:
+  nodes:
+    - kind: BuiltinLocation
+      relationships:
+        - name: racks
+          peer: InfraRack
+          optional: true
+          cardinality: many
+          kind: Generic

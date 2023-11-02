@@ -1,0 +1,69 @@
+[tool.poetry]
+name = "infrahub-sdk"
+version = "0.1.0"
+description = "Python Client to interact with Infrahub"
+authors = ["OpsMill <contact@opsmill.com>"]
+readme = "README.md"
+license = "Apache-2.0"
+homepage = "https://opsmill.io"
+repository = "https://opsmill.io"
+documentation = "https://opsmill.io"
+packages = [
+    {include = "infrahub_sdk"},
+    {include = "infrahub_ctl"}
+]
+classifiers = [
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+httpx = "^0.24.0"
+rich = "^13.3"
+pendulum = "~2.1"
+typer = "^0.7"
+Jinja2 = "^3.1"
+toml = "^0.10.2"
+jsonlines = "^3.1"
+deepdiff = "^6.2"
+ujson = "^5.7"
+pydantic = "^1.10"
+pyyaml = "^6.0"
+gitpython = "3.1.40"
+
+[tool.poetry.group.dev.dependencies]
+black = "*"
+pytest = "*"
+yamllint = "*"
+pylint = "*"
+mypy = "*"
+ipython = "*"
+pytest-asyncio = "*"
+requests = "*"
+pre-commit = "^2.20.0"
+isort = "*"
+autoflake = "*"
+pytest-clarity = "^1.0.1"
+pytest-httpx = "^0.22"
+types-toml = "*"
+types-ujson = "*"
+types-pyyaml = "*"
+typer-cli = "*"
+pytest-cov = "^4.0.0"
+ruff = "0.1.0"
+pytest-xdist = "^3.3.1"
+buildkite-test-collector = "^0.1.7"
+types-python-slugify = "^8.0.0.3"
+
+[tool.poetry.scripts]
+infrahub = "infrahub.cli:app"
+infrahubctl = "infrahub_ctl.cli:app"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
