@@ -17,6 +17,14 @@ import ujson
 import yaml
 from git import Repo
 from git.exc import GitCommandError, InvalidGitRepositoryError
+from infrahub_sdk import (
+    GraphQLError,
+    InfrahubClient,
+    InfrahubNode,
+    InfrahubRepositoryConfig,
+    ValidationError,
+)
+from infrahub_sdk.utils import YamlFile, compare_lists
 from pydantic import BaseModel
 from pydantic import ValidationError as PydanticValidationError
 from pydantic import validator
@@ -33,12 +41,11 @@ from infrahub.exceptions import (
 )
 from infrahub.log import get_logger
 from infrahub.transforms import INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT
-from infrahub_client import GraphQLError, InfrahubClient, InfrahubNode, ValidationError
-from infrahub_client.utils import compare_lists
 
 if TYPE_CHECKING:
-    from infrahub_client.branch import BranchData
+    from infrahub_sdk.branch import BranchData
 
+    from infrahub.message_bus import messages
 # pylint: disable=too-few-public-methods,too-many-lines
 
 LOGGER = get_logger("infrahub.git")
@@ -1010,6 +1017,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         if not commit:
             commit = self.get_commit_value(branch_name=branch_name)
 
+        await self.import_schema_files(branch_name=branch_name, commit=commit)
         await self.import_all_graphql_query(branch_name=branch_name, commit=commit)
         await self.import_all_python_files(branch_name=branch_name, commit=commit)
         await self.import_all_yaml_files(branch_name=branch_name, commit=commit)
@@ -1193,6 +1201,113 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             existing_artifact_definition.content_type.value = local_artifact_definition.content_type
 
         await existing_artifact_definition.save()
+
+    async def get_repository_config(self, branch_name: str, commit: str) -> Optional[InfrahubRepositoryConfig]:
+        branch_wt = self.get_worktree(identifier=commit or branch_name)
+
+        config_file_name = ".infrahub.yml"
+        config_file = Path(os.path.join(branch_wt.directory, config_file_name))
+        if not config_file.is_file():
+            LOGGER.debug(f"{self.name} | Unable to find the configuration file {config_file_name}, skipping")
+            return
+
+        config_file_content = config_file.read_text(encoding="utf-8")
+        try:
+            data = yaml.safe_load(config_file_content)
+        except yaml.YAMLError as exc:
+            LOGGER.error(
+                f"{self.name} | Unable to load the configuration file in YAML format {config_file_name} : {exc}"
+            )
+            return
+
+        try:
+            return InfrahubRepositoryConfig(**data)
+        except PydanticValidationError as exc:
+            LOGGER.error(
+                f"{self.name} | Unable to load the configuration file {config_file_name}, the format is not valid  : {exc}"
+            )
+            return
+
+    async def import_schema_files(self, branch_name: str, commit: str) -> None:
+        # pylint: disable=too-many-branches
+        config_file = await self.get_repository_config(branch_name=branch_name, commit=commit)
+        branch_wt = self.get_worktree(identifier=commit or branch_name)
+
+        if not config_file:
+            return
+
+        schemas_data: List[YamlFile] = []
+
+        for schema in config_file.schemas:
+            full_schema = Path(os.path.join(branch_wt.directory, schema))
+            if not full_schema.exists():
+                LOGGER.warning(f"{self.name} | Unable to find the schema {schema}")
+                continue
+
+            if full_schema.is_file():
+                schema_file = YamlFile(identifier=str(schema), location=full_schema)
+                schema_file.load_content()
+                schemas_data.append(schema_file)
+            elif full_schema.is_dir():
+                files = await self.find_files(
+                    extension=["yaml", "yml", "json"],
+                    branch_name=branch_name,
+                    commit=commit,
+                    directory=full_schema,
+                    recursive=True,
+                )
+                for item in files:
+                    identifier = item.replace(branch_wt.directory, "")
+                    schema_file = YamlFile(identifier=identifier, location=item)
+                    schema_file.load_content()
+                    schemas_data.append(schema_file)
+
+        has_error = False
+        for schema_file in schemas_data:
+            if schema_file.valid:
+                continue
+            LOGGER.error(
+                f"{self.name} | Unable to load the file {schema_file.identifier}, {schema_file.error_message}",
+                commit=commit,
+            )
+            has_error = True
+
+        if has_error:
+            return
+
+        # Valid data format of content
+        for schema_file in schemas_data:
+            try:
+                self.client.schema.validate(schema_file.content)
+            except PydanticValidationError as exc:
+                LOGGER.error(
+                    f"{self.name} | Schema not valid, found '{len(exc.errors())}' error(s) in {schema_file.identifier} : {exc}",
+                    commit=commit,
+                )
+                has_error = True
+
+        if has_error:
+            return
+
+        _, errors = await self.client.schema.load(schemas=[item.content for item in schemas_data], branch=branch_name)
+
+        if errors:
+            error_messages = []
+
+            if "detail" in errors:
+                for error in errors.get("detail"):
+                    loc_str = [str(item) for item in error["loc"][1:]]
+                    error_messages.append(f"{'/'.join(loc_str)} | {error['msg']} ({error['type']})")
+            elif "error" in errors:
+                error_messages.append(f"{errors.get('error')}")
+            else:
+                error_messages.append(f"{errors}")
+
+            LOGGER.error(f"{self.name} | Unable to load the schema : {', '.join(error_messages)}", commit=commit)
+
+        else:
+            for schema_file in schemas_data:
+                LOGGER.info(f"{self.name} | schema '{schema_file.identifier}' loaded successfully!", commit=commit)
 
     async def import_all_graphql_query(self, branch_name: str, commit: str) -> None:
         """Search for all .gql file and import them as GraphQL query."""
@@ -1570,6 +1685,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         extension: Union[str, List[str]],
         branch_name: Optional[str] = None,
         commit: Optional[str] = None,
+        directory: Optional[str] = None,
         recursive: bool = True,
     ) -> List[str]:
         """Return the absolute path of all files matching a specific extension in a given Branch or Commit."""
@@ -1577,15 +1693,18 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             raise ValueError("Either branch_name or commit must be provided.")
         branch_wt = self.get_worktree(identifier=commit or branch_name)
 
-        files = []
+        search_dir = branch_wt.directory
+        if directory:
+            search_dir = os.path.join(search_dir, directory)
 
+        files = []
         if isinstance(extension, str):
-            files.extend(glob.glob(f"{branch_wt.directory}/**/*.{extension}", recursive=recursive))
-            files.extend(glob.glob(f"{branch_wt.directory}/**/.*.{extension}", recursive=recursive))
+            files.extend(glob.glob(f"{search_dir}/**/*.{extension}", recursive=recursive))
+            files.extend(glob.glob(f"{search_dir}/**/.*.{extension}", recursive=recursive))
         elif isinstance(extension, list):
             for ext in extension:
-                files.extend(glob.glob(f"{branch_wt.directory}/**/*.{ext}", recursive=recursive))
-                files.extend(glob.glob(f"{branch_wt.directory}/**/.*.{ext}", recursive=recursive))
+                files.extend(glob.glob(f"{search_dir}/**/*.{ext}", recursive=recursive))
+                files.extend(glob.glob(f"{search_dir}/**/.*.{ext}", recursive=recursive))
         return files
 
     async def find_graphql_queries(self, commit: str) -> List[GraphQLQueryInformation]:
@@ -1784,6 +1903,52 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         artifact.status.value = "Ready"
         await artifact.save()
 
+        return ArtifactGenerateResult(changed=True, checksum=checksum, storage_id=storage_id, artifact_id=artifact.id)
+
+    async def render_artifact(
+        self, artifact: InfrahubNode, message: Union[messages.CheckArtifactCreate, messages.RequestArtifactGenerate]
+    ) -> ArtifactGenerateResult:
+        data = await self.client.execute_graphql(
+            query=message.query,
+            variables=message.variables,
+            tracker="artifact-query-graphql-data",
+            branch_name=message.branch_name,
+            rebase=message.rebase,
+            timeout=message.timeout,
+        )
+
+        if message.transform_type == "CoreRFile":
+            artifact_content = await self.render_jinja2_template(
+                commit=message.commit, location=message.transform_location, data={"data": data}
+            )
+        elif message.transform_type == "CoreTransformPython":
+            artifact_content = await self.execute_python_transform(
+                branch_name=message.branch_name,
+                commit=message.commit,
+                location=message.transform_location,
+                data=data,
+                client=self.client,
+            )
+
+        if message.content_type == "application/json":
+            artifact_content_str = ujson.dumps(artifact_content, indent=2)
+        elif message.content_type == "text/plain":
+            artifact_content_str = artifact_content
+
+        checksum = hashlib.md5(bytes(artifact_content_str, encoding="utf-8")).hexdigest()
+
+        if artifact.checksum.value == checksum:
+            return ArtifactGenerateResult(
+                changed=False, checksum=checksum, storage_id=artifact.storage_id.value, artifact_id=artifact.id
+            )
+
+        resp = await self.client.object_store.upload(content=artifact_content_str, tracker="artifact-upload-content")
+        storage_id = resp["identifier"]
+
+        artifact.checksum.value = checksum
+        artifact.storage_id.value = storage_id
+        artifact.status.value = "Ready"
+        await artifact.save()
         return ArtifactGenerateResult(changed=True, checksum=checksum, storage_id=storage_id, artifact_id=artifact.id)
 
     def validate_location(self, commit: str, worktree_directory: str, file_path: str) -> None:

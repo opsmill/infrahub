@@ -51,7 +51,7 @@ export const BrancheItemDetails = () => {
             Branches
           </div>
           <ChevronRightIcon
-            className="h-5 w-5 mt-1 mx-2 flex-shrink-0 text-gray-400"
+            className="w-4 h-4 mt-1 mx-2 flex-shrink-0 text-gray-400"
             aria-hidden="true"
           />
 

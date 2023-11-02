@@ -18,7 +18,19 @@ export const displayValue = (value: any) => {
     return "-";
   }
 
-  return value || "-";
+  return value?.display_label || value || "-";
+};
+
+const getValueTooltip = (value: any) => {
+  if (!value?.kind) {
+    return null;
+  }
+
+  return (
+    <div className="flex items-center">
+      Kind: <Badge>{value.kind}</Badge>
+    </div>
+  );
 };
 
 // Display the values
@@ -29,9 +41,17 @@ export const diffContent: { [key: string]: any } = {
 
     const { new: newValue } = value;
 
+    const newMesage = getValueTooltip(newValue);
+
     return (
       <div className="flex">
-        <Badge type={BADGE_TYPES.VALIDATE}>{displayValue(newValue)}</Badge>
+        {newMesage ? (
+          <Tooltip message={newMesage}>
+            <Badge type={BADGE_TYPES.VALIDATE}>{displayValue(newValue)}</Badge>
+          </Tooltip>
+        ) : (
+          <Badge type={BADGE_TYPES.CANCEL}>{displayValue(newValue)}</Badge>
+        )}
       </div>
     );
   },
@@ -40,9 +60,17 @@ export const diffContent: { [key: string]: any } = {
 
     const { previous: previousValue } = value;
 
+    const previousMesage = getValueTooltip(previousValue);
+
     return (
       <div className="flex">
-        <Badge type={BADGE_TYPES.CANCEL}>{displayValue(previousValue)}</Badge>
+        {previousMesage ? (
+          <Tooltip message={previousMesage}>
+            <Badge type={BADGE_TYPES.CANCEL}>{displayValue(previousValue)}</Badge>
+          </Tooltip>
+        ) : (
+          <Badge type={BADGE_TYPES.CANCEL}>{displayValue(previousValue)}</Badge>
+        )}
       </div>
     );
   },
@@ -51,22 +79,34 @@ export const diffContent: { [key: string]: any } = {
 
     const { new: newValue, previous: previousValue } = value;
 
+    const previousMesage = getValueTooltip(previousValue);
+
+    const newMesage = getValueTooltip(newValue);
+
     return (
       <div className="flex items-center">
         <div className="flex">
-          <Tooltip message="Previous value">
+          {previousMesage ? (
+            <Tooltip message={previousMesage}>
+              <Badge type={BADGE_TYPES.CANCEL}>{displayValue(previousValue)}</Badge>
+            </Tooltip>
+          ) : (
             <Badge type={BADGE_TYPES.CANCEL}>{displayValue(previousValue)}</Badge>
-          </Tooltip>
+          )}
         </div>
 
         <div>
-          <ChevronRightIcon className="h-5 w-5 mr-2" aria-hidden="true" />
+          <ChevronRightIcon className="w-4 h-4 mx-2" aria-hidden="true" />
         </div>
 
         <div className="flex">
-          <Tooltip message="New value">
-            <Badge type={BADGE_TYPES.VALIDATE}>{displayValue(newValue)}</Badge>
-          </Tooltip>
+          {newMesage ? (
+            <Tooltip message={newMesage}>
+              <Badge type={BADGE_TYPES.VALIDATE}>{displayValue(newValue)}</Badge>
+            </Tooltip>
+          ) : (
+            <Badge type={BADGE_TYPES.CANCEL}>{displayValue(newValue)}</Badge>
+          )}
         </div>
       </div>
     );
@@ -112,7 +152,7 @@ export const diffPeerContent = (
         </div>
 
         <div>
-          <ChevronRightIcon className="h-5 w-5 mr-2" aria-hidden="true" />
+          <ChevronRightIcon className="w-4 h-4 mr-2" aria-hidden="true" />
         </div>
 
         <div className="flex">
@@ -178,4 +218,16 @@ export const getThreadTitle = (thread?: any, label?: string) => {
       )}
     </div>
   );
+};
+
+const badgeTypes: { [key: string]: BADGE_TYPES } = {
+  added: BADGE_TYPES.VALIDATE,
+  updated: BADGE_TYPES.WARNING,
+  removed: BADGE_TYPES.CANCEL,
+};
+
+export const getBadgeType = (action?: string) => {
+  if (!action) return null;
+
+  return badgeTypes[action];
 };

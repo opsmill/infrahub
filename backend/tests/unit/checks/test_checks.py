@@ -1,7 +1,7 @@
 import pytest
+from infrahub_sdk import InfrahubClient
 
 from infrahub.checks import InfrahubCheck
-from infrahub_client import InfrahubClient
 
 
 async def test_class_init():
@@ -53,12 +53,12 @@ async def test_validate_sync_async(mock_gql_query_my_query):
         def validate(self):
             self.log_error("Not valid")
 
-    check = await IFCheckAsync.init(server_url="http://mock", branch="main")
+    check = await IFCheckAsync.init(branch="main")
     await check.run()
 
     assert check.passed is False
 
-    check = await IFCheckSync.init(server_url="http://mock", branch="main")
+    check = await IFCheckSync.init(branch="main")
     await check.run()
 
     assert check.passed is False

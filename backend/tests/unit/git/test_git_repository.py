@@ -2,6 +2,8 @@ import os
 
 import pytest
 from git import Repo
+from infrahub_sdk import UUIDT, InfrahubNode
+from infrahub_sdk.branch import BranchData
 
 from infrahub.exceptions import (
     CheckError,
@@ -23,8 +25,6 @@ from infrahub.git import (
     extract_repo_file_information,
 )
 from infrahub.utils import find_first_file_in_directory
-from infrahub_client import UUIDT, InfrahubNode
-from infrahub_client.branch import BranchData
 
 
 async def test_directories_props(git_upstream_repo_01, git_repos_dir):
@@ -660,6 +660,12 @@ async def test_find_files(git_repo_jinja: InfrahubRepository):
 
     yaml_files = await repo.find_files(extension=["yml", "j2"], branch_name="main")
     assert len(yaml_files) == 4
+
+    yaml_files = await repo.find_files(extension="yml", directory="test_files", branch_name="main")
+    assert len(yaml_files) == 2
+
+    yaml_files = await repo.find_files(extension="yml", directory="notpresent", branch_name="main")
+    assert len(yaml_files) == 0
 
 
 async def test_find_files_by_commit(git_repo_jinja: InfrahubRepository):

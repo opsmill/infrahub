@@ -4,7 +4,7 @@ import { useAtom } from "jotai";
 import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { Tabs } from "../../components/tabs";
-import { PROPOSED_CHANGES } from "../../config/constants";
+import { PROPOSED_CHANGES_OBJECT } from "../../config/constants";
 import { QSP } from "../../config/qsp";
 import { getProposedChanges } from "../../graphql/queries/proposed-changes/getProposedChanges";
 import useQuery from "../../hooks/useQuery";
@@ -53,7 +53,7 @@ export const ProposedChangesDetails = () => {
   const [, setProposedChange] = useAtom(proposedChangedState);
   const navigate = useNavigate();
 
-  const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES)[0];
+  const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_OBJECT);
 
   const queryString = schemaData
     ? getProposedChanges({
@@ -130,7 +130,7 @@ export const ProposedChangesDetails = () => {
         </div>
 
         <ChevronRightIcon
-          className="h-5 w-5 mt-1 mx-2 flex-shrink-0 text-gray-400"
+          className="w-4 h-4 mt-1 mx-2 flex-shrink-0 text-gray-400"
           aria-hidden="true"
         />
 

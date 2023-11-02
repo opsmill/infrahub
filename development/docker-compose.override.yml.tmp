@@ -97,8 +97,6 @@ services:
   # Uncomment to expose the database and/or the message bus outside of Docker Compose
   # --------------------------------------------------------------------------------
   # database:
-  #   image: "memgraph/memgraph-platform:2.8.0-memgraph2.8.0-lab2.6.0"
-  #   entrypoint: ["/usr/bin/supervisord"]
   #   ports:
   #     - "7474:7474"
   #     - "7687:7687"
@@ -106,6 +104,9 @@ services:
   #   ports:
   #     - "5672:5672"
   #     - "15672:15672"
+  # cache:
+  #   ports:
+  #     - "6379:6379"
 
 volumes:
   grafana_data:

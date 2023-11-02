@@ -9,7 +9,7 @@ import { CONFIG } from "../../config/config";
 import { QSP } from "../../config/qsp";
 import { AuthContext } from "../../decorators/withAuth";
 import { classNames } from "../../utils/common";
-import { fetchUrl } from "../../utils/fetch";
+import { fetchUrl, getUrlWithQsp } from "../../utils/fetch";
 
 type tGenerateProps = {
   label?: string;
@@ -39,9 +39,7 @@ export const Generate = (props: tGenerateProps) => {
         ["at", at ?? ""],
       ].filter(([, v]) => v !== undefined && v !== "");
 
-      const qsp = new URLSearchParams(options);
-
-      const urlWithQsp = `${url}${options.length ? `&${qsp.toString()}` : ""}`;
+      const urlWithQsp = getUrlWithQsp(url, options);
 
       await fetchUrl(urlWithQsp, {
         method: "POST",
@@ -59,10 +57,8 @@ export const Generate = (props: tGenerateProps) => {
 
       setIsLoading(false);
     } catch (error) {
-      console.error("error: ", error);
-      toast(
-        <Alert message="An error occured while generating the artifact" type={ALERT_TYPES.ERROR} />
-      );
+      console.error("Error when generating artifacts: ", error);
+
       setIsLoading(false);
     }
   };

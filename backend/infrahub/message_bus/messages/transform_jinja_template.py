@@ -1,9 +1,9 @@
 from pydantic import Field
 
-from infrahub.message_bus import InfrahubBaseMessage
+from infrahub.message_bus import InfrahubMessage
 
 
-class TransformJinjaTemplate(InfrahubBaseMessage):
+class TransformJinjaTemplate(InfrahubMessage):
     """Sent to trigger the checks for a repository to be executed."""
 
     repository_id: str = Field(..., description="The unique ID of the Repository")

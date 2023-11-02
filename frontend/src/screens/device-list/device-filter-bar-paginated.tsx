@@ -39,7 +39,7 @@ export default function DeviceFilterBar(props: any) {
           Filters
         </h2>
         <div className="bg-gray-100">
-          <div className="mx-auto py-3 sm:flex sm:items-center sm:px-6 lg:px-8">
+          <div className="p-4 flex items-center">
             <div className="flex space-x-6 divide-x divide-gray-200 text-sm">
               <div className="group flex items-center align-middle font-medium text-custom-blue-700">
                 {filters.length} Filters
@@ -66,13 +66,13 @@ export default function DeviceFilterBar(props: any) {
             {!showFilters && (
               <ChevronRightIcon
                 onClick={() => setShowFilters(true)}
-                className="w-6 h-6 cursor-pointer text-gray-500"
+                className="w-4 h-4 cursor-pointer text-gray-500"
               />
             )}
             {showFilters && (
               <ChevronDownIcon
                 onClick={() => setShowFilters(false)}
-                className="w-6 h-6 cursor-pointer text-gray-500"
+                className="w-4 h-4 cursor-pointer text-gray-500"
               />
             )}
 
@@ -83,7 +83,7 @@ export default function DeviceFilterBar(props: any) {
                   <Menu.Button className="group inline-flex justify-center text-sm font-medium text-gray-700 hover:text-gray-900">
                     Sort
                     <ChevronDownIcon
-                      className="-mr-1 ml-1 h-5 w-5 flex-shrink-0 text-gray-400 group-hover:text-gray-500"
+                      className="-mr-1 ml-1 w-4 h-4 flex-shrink-0 text-gray-400 group-hover:text-gray-500"
                       aria-hidden="true"
                     />
                   </Menu.Button>

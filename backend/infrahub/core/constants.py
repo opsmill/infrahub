@@ -1,11 +1,26 @@
+from __future__ import annotations
+
 import enum
 from typing import List
 
+from infrahub.exceptions import ValidationError
 from infrahub.utils import InfrahubNumberEnum, InfrahubStringEnum
 
 GLOBAL_BRANCH_NAME = "-global-"
 
 RESERVED_BRANCH_NAMES = [GLOBAL_BRANCH_NAME]
+
+RESERVED_ATTR_REL_NAMES = [
+    "any",
+    "attribute",
+    "attributes",
+    "attr",
+    "attrs",
+    "relationship",
+    "relationships",
+    "rel",
+    "rels",
+]
 
 
 class PermissionLevel(enum.Flag):
@@ -41,6 +56,11 @@ class BranchSupportType(InfrahubStringEnum):
     LOCAL = "local"
 
 
+class BranchConflictKeep(InfrahubStringEnum):
+    TARGET = "target"
+    SOURCE = "source"
+
+
 class ContentType(InfrahubStringEnum):
     APPLICATION_JSON = "application/json"
     TEXT_PLAIN = "text/plain"
@@ -66,6 +86,27 @@ class DiffAction(InfrahubStringEnum):
     UNCHANGED = "unchanged"
 
 
+class MutationAction(InfrahubStringEnum):
+    ADDED = "added"
+    REMOVED = "removed"
+    UPDATED = "updated"
+    UNDEFINED = "undefined"
+
+
+class PathType(InfrahubStringEnum):
+    NODE = "node"
+    ATTRIBUTE = "attribute"
+    RELATIONSHIP_ONE = "relationship_one"
+    RELATIONSHIP_MANY = "relationship_many"
+
+    @classmethod
+    def from_relationship(cls, relationship: RelationshipCardinality) -> PathType:
+        if relationship == RelationshipCardinality.ONE:
+            return cls("relationship_one")
+
+        return cls("relationship_many")
+
+
 class FilterSchemaKind(InfrahubStringEnum):
     TEXT = "Text"
     LIST = "Text"
@@ -81,6 +122,21 @@ class ProposedChangeState(InfrahubStringEnum):
     MERGED = "merged"
     CLOSED = "closed"
     CANCELED = "canceled"
+
+    def validate_state_transition(self, updated_state: ProposedChangeState) -> None:
+        if self == ProposedChangeState.OPEN:
+            return
+        if self in [ProposedChangeState.CANCELED, ProposedChangeState.MERGED]:
+            raise ValidationError(
+                input_value=f"A proposed change is not allowed to transition from the {self.value} state"
+            )
+        if self == ProposedChangeState.CLOSED and updated_state not in [
+            ProposedChangeState.CANCELED,
+            ProposedChangeState.OPEN,
+        ]:
+            raise ValidationError(
+                input_value="A closed proposed change is only allowed to transition to the open state"
+            )
 
 
 class RelationshipCardinality(InfrahubStringEnum):

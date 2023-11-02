@@ -83,10 +83,10 @@ export default function ObjectRows(props: Props) {
                       </div>
                       <div>
                         {relationship.cardinality === "one" && (
-                          <ChevronRightIcon className="w-5 h-5" />
+                          <ChevronRightIcon className="w-4 h-4" />
                         )}
                         {relationship.cardinality === "many" && (
-                          <ChevronDoubleRightIcon className="w-5 h-5" />
+                          <ChevronDoubleRightIcon className="w-4 h-4" />
                         )}
                       </div>
                       <div className="ml-4 flex-shrink-0 flex space-x-2 flex-1 justify-end">

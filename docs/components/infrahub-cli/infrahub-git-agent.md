@@ -30,7 +30,7 @@ $ infrahub git-agent start [OPTIONS] [PORT]
 
 **Arguments**:
 
-* `[PORT]`: Port used to expose a metrics endpoint  [default: 8000]
+* `[PORT]`: Port used to expose a metrics endpoint  [env var: INFRAHUB_METRICS_PORT;default: 8000]
 
 **Options**:
 

@@ -1,11 +1,11 @@
 import ipaddress
 import itertools
 import logging
-import re
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Set, Type, Union
 
 import ruamel.yaml
+from infrahub_sdk import Config, InfrahubClientSync, InfrahubNodeSync, NodeSchema
 from nornir.core.inventory import (
     ConnectionOptions,
     Defaults,
@@ -19,15 +19,9 @@ from nornir.core.inventory import (
 )
 from pydantic import BaseModel, Field, validator
 from pydantic.dataclasses import dataclass
-
-from infrahub_client import Config, InfrahubClientSync, InfrahubNodeSync, NodeSchema
+from slugify import slugify
 
 logger = logging.getLogger(__name__)
-
-
-def slugify(value: str) -> str:
-    value = re.sub(r"[^\w\s-]", "", value.lower())
-    return re.sub(r"[-\s]+", "-", value).strip("-_")
 
 
 def ip_interface_to_ip_string(ip_interface: Union[ipaddress.IPv4Interface, ipaddress.IPv6Interface]) -> str:
@@ -110,11 +104,7 @@ class HostNode(BaseModel):
         # add member_of_groups to include property
         # this relation needs to be pre fetched to be able to determine the group membership of a HostNode
         include = ["member_of_groups"]
-        if not isinstance(v, list):
-            raise ValueError("include must be of type List[str]")
         for item in v:
-            if not isinstance(item, str):
-                raise ValueError("include must be of type List[str]")
             include.append(item)
         return include
 

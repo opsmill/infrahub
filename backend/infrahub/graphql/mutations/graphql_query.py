@@ -4,7 +4,9 @@ from graphene import InputObjectType, Mutation
 from graphql import GraphQLResolveInfo
 
 from infrahub.core.branch import Branch
+from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
+from infrahub.database import InfrahubDatabase
 from infrahub.graphql.analyzer import GraphQLQueryAnalyzer
 from infrahub.graphql.mutations.main import InfrahubMutationMixin
 
@@ -58,8 +60,8 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
         root: dict,
         info: GraphQLResolveInfo,
         data: InputObjectType,
-        branch: Optional[str] = None,
-        at: Optional[str] = None,
+        branch: Branch,
+        at: str,
     ):
         branch_obj: Branch = info.context.get("infrahub_branch")
 
@@ -75,8 +77,10 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
         root: dict,
         info: GraphQLResolveInfo,
         data: InputObjectType,
-        branch: Optional[str] = None,
-        at: Optional[str] = None,
+        branch: Branch,
+        at: str,
+        database: Optional[InfrahubDatabase] = None,
+        node: Optional[Node] = None,
     ):
         branch_obj: Branch = info.context.get("infrahub_branch")
 

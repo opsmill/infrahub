@@ -9,6 +9,7 @@ import { getProfileDetails } from "../../graphql/queries/profile/getProfileDetai
 import useQuery from "../../hooks/useQuery";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { parseJwt } from "../../utils/common";
+import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import TabPassword from "./tab-account";
 import TabPreferences from "./tab-preferences";
@@ -50,7 +51,7 @@ export default function UserProfile() {
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
   const [schemaList] = useAtom(schemaState);
 
-  const schema = schemaList.find((s) => s.name === ACCOUNT_OBJECT);
+  const schema = schemaList.find((s) => s.kind === ACCOUNT_OBJECT);
 
   const localToken = localStorage.getItem(ACCESS_TOKEN_KEY);
 
@@ -71,7 +72,11 @@ export default function UserProfile() {
   `;
 
   // TODO: Find a way to avoid querying object details if we are on a tab
-  const { loading, data } = useQuery(query, { skip: !schema || !accountId });
+  const { loading, data, error } = useQuery(query, { skip: !schema || !accountId });
+
+  if (error) {
+    return <ErrorScreen />;
+  }
 
   if (loading || !schema) {
     return <LoadingScreen />;

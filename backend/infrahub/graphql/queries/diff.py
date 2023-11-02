@@ -1,14 +1,16 @@
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Any, Dict
 from typing import List as TypingList
 from typing import Optional, Union
 
 from graphene import Boolean, Field, List, ObjectType, String
-from graphql import GraphQLResolveInfo
 
 if TYPE_CHECKING:
-    from neo4j import AsyncSession
+    from graphql import GraphQLResolveInfo
 
     from infrahub.core.branch import Branch
+    from infrahub.database import InfrahubDatabase
 
 
 class DiffSummaryEntry(ObjectType):
@@ -40,10 +42,10 @@ class DiffSummaryEntry(ObjectType):
         time_from: Optional[str] = None,
         time_to: Optional[str] = None,
     ) -> TypingList[Dict[str, Union[str, TypingList[str]]]]:
-        session: AsyncSession = context.get("infrahub_session")
+        db: InfrahubDatabase = context.get("infrahub_database")
         branch: Branch = context.get("infrahub_branch")
-        diff = await branch.diff(session=session, diff_from=time_from, diff_to=time_to, branch_only=branch_only)
-        summary = await diff.get_summary(session=session)
+        diff = await branch.diff(db=db, diff_from=time_from, diff_to=time_to, branch_only=branch_only)
+        summary = await diff.get_summary(db=db)
         return [entry.to_graphql() for entry in summary]
 
 

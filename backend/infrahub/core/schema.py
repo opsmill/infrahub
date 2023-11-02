@@ -6,6 +6,7 @@ import hashlib
 import keyword
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
+from infrahub_sdk.utils import duplicates, intersection
 from pydantic import BaseModel, Extra, Field, root_validator, validator
 
 from infrahub.core import registry
@@ -14,6 +15,7 @@ from infrahub.core.constants import (
     AccountRole,
     AccountType,
     ArtifactStatus,
+    BranchConflictKeep,
     BranchSupportType,
     ContentType,
     CriticalityLevel,
@@ -27,16 +29,14 @@ from infrahub.core.constants import (
 )
 from infrahub.core.query import QueryNode, QueryRel
 from infrahub.core.relationship import Relationship
-from infrahub.exceptions import PermissionDeniedError
 from infrahub.types import ATTRIBUTE_TYPES
-from infrahub_client.utils import duplicates, intersection
 
 if TYPE_CHECKING:
-    from neo4j import AsyncSession
     from typing_extensions import Self
 
     from infrahub.core.branch import Branch
     from infrahub.core.query import QueryElement
+    from infrahub.database import InfrahubDatabase
 
 # pylint: disable=no-self-argument,redefined-builtin,too-many-lines
 
@@ -286,9 +286,9 @@ class AttributeSchema(BaseSchemaModel):
         return ATTRIBUTE_TYPES[self.kind].get_infrahub_class()
 
     async def get_query_filter(
-        self, session: AsyncSession, *args, **kwargs  # pylint: disable=unused-argument
+        self, db: InfrahubDatabase, *args, **kwargs  # pylint: disable=unused-argument
     ) -> Tuple[List[QueryElement], Dict[str, Any], List[str]]:
-        return self.get_class().get_query_filter(*args, **kwargs)
+        return await self.get_class().get_query_filter(*args, **kwargs)
 
 
 class RelationshipSchema(BaseSchemaModel):
@@ -317,11 +317,11 @@ class RelationshipSchema(BaseSchemaModel):
 
     async def get_query_filter(
         self,
-        session: AsyncSession,
+        db: InfrahubDatabase,
         filter_name: str,
         filter_value: Optional[Union[str, int, bool]] = None,
         name: Optional[str] = None,  # pylint: disable=unused-argument
-        branch: Branch = None,
+        branch: Optional[Branch] = None,
         include_match: bool = True,
         param_prefix: Optional[str] = None,
     ) -> Tuple[List[QueryElement], Dict[str, Any], List[str]]:
@@ -396,7 +396,7 @@ class RelationshipSchema(BaseSchemaModel):
         field = peer_schema.get_field(filter_field_name)
 
         field_filter, field_params, field_where = await field.get_query_filter(
-            session=session,
+            db=db,
             name=filter_field_name,
             filter_name=filter_next_name,
             filter_value=filter_value,
@@ -428,6 +428,7 @@ class BaseNodeSchema(BaseSchemaModel):
     display_labels: Optional[List[str]]
     attributes: List[AttributeSchema] = Field(default_factory=list)
     relationships: List[RelationshipSchema] = Field(default_factory=list)
+    filters: List[FilterSchema] = Field(default_factory=list)
 
     _exclude_from_hash: List[str] = ["attributes", "relationships"]
     _sort_by: List[str] = ["name"]
@@ -576,7 +577,6 @@ class NodeSchema(BaseNodeSchema):
     label: Optional[str]
     inherit_from: Optional[List[str]] = Field(default_factory=list)
     groups: Optional[List[str]] = Field(default_factory=list)
-    filters: List[FilterSchema] = Field(default_factory=list)
 
     @root_validator
     def unique_names(cls, values):
@@ -684,15 +684,14 @@ class SchemaRoot(BaseModel):
 
         return True
 
-    def validate_namespaces(self) -> None:
+    def validate_namespaces(self) -> List[str]:
         models = self.nodes + self.generics
         errors: List[str] = []
         for model in models:
             if model.namespace in RESTRICTED_NAMESPACES:
                 errors.append(f"Restricted namespace '{model.namespace}' used on '{model.name}'")
 
-        if errors:
-            raise PermissionDeniedError(", ".join(errors))
+        return errors
 
 
 # TODO need to investigate how we could generate the internal schema
@@ -1362,7 +1361,7 @@ core_models = {
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["label__value"],
-            "branch": BranchSupportType.AWARE.value,
+            "branch": BranchSupportType.AGNOSTIC.value,
             "inherit_from": ["LineageOwner", "LineageSource"],
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
@@ -1405,7 +1404,6 @@ core_models = {
                     "peer": "CoreAccount",
                     "optional": False,
                     "cardinality": "one",
-                    "branch": BranchSupportType.AGNOSTIC.value,
                 },
             ],
         },
@@ -1425,7 +1423,6 @@ core_models = {
                     "peer": "CoreAccount",
                     "optional": False,
                     "cardinality": "one",
-                    "branch": BranchSupportType.AGNOSTIC.value,
                 },
             ],
         },
@@ -1666,7 +1663,14 @@ core_models = {
                 {"name": "password", "kind": "Text", "optional": True},
             ],
             "relationships": [
-                {"name": "account", "peer": "CoreAccount", "kind": "Attribute", "optional": True, "cardinality": "one"},
+                {
+                    "name": "account",
+                    "peer": "CoreAccount",
+                    "branch": BranchSupportType.AGNOSTIC.value,
+                    "kind": "Attribute",
+                    "optional": True,
+                    "cardinality": "one",
+                },
                 {"name": "tags", "peer": "BuiltinTag", "kind": "Attribute", "optional": True, "cardinality": "many"},
                 {
                     "name": "transformations",
@@ -1714,7 +1718,8 @@ core_models = {
             "inherit_from": ["CoreCheck"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
-                {"name": "paths", "kind": "List"},
+                {"name": "conflicts", "kind": "JSON"},
+                {"name": "keep_branch", "enum": BranchConflictKeep.available_types(), "kind": "Text", "optional": True},
             ],
         },
         {
@@ -1735,7 +1740,7 @@ core_models = {
             "inherit_from": ["CoreCheck"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
-                {"name": "paths", "kind": "List"},
+                {"name": "conflicts", "kind": "JSON"},
             ],
         },
         {
@@ -1760,6 +1765,8 @@ core_models = {
             "inherit_from": ["CoreCheck"],
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
+                {"name": "changed", "kind": "Boolean", "optional": True},
+                {"name": "checksum", "kind": "Text", "optional": True},
                 {"name": "artifact_id", "kind": "Text", "optional": True},
                 {"name": "storage_id", "kind": "Text", "optional": True},
                 {"name": "line_number", "kind": "Number", "optional": True},
@@ -1940,7 +1947,7 @@ core_models = {
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
-            "branch": BranchSupportType.AWARE.value,
+            "branch": BranchSupportType.LOCAL.value,
             "attributes": [
                 {"name": "name", "kind": "Text"},
                 {
@@ -1953,7 +1960,11 @@ core_models = {
                     "kind": "Text",
                     "enum": ContentType.available_types(),
                 },
-                {"name": "checksum", "kind": "Text", "optional": True},
+                {
+                    "name": "checksum",
+                    "kind": "Text",
+                    "optional": True,
+                },
                 {
                     "name": "storage_id",
                     "kind": "Text",
@@ -1979,7 +1990,6 @@ core_models = {
                     "cardinality": "one",
                     "optional": False,
                 },
-                {"name": "tags", "peer": "BuiltinTag", "kind": "Attribute", "optional": True, "cardinality": "many"},
             ],
         },
         {

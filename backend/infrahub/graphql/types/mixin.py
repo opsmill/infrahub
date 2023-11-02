@@ -1,9 +1,12 @@
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import TYPE_CHECKING, Any, Dict
 
-import infrahub.config as config
 from infrahub.core.manager import NodeManager
+
+if TYPE_CHECKING:
+    from infrahub.core.branch import Branch
+    from infrahub.database import InfrahubDatabase
 
 
 class GetListMixin:
@@ -12,17 +15,15 @@ class GetListMixin:
     @classmethod
     async def get_list(cls, fields: dict, context: dict, **kwargs):
         at = context.get("infrahub_at")
-        branch = context.get("infrahub_branch")
         account = context.get("infrahub_account", None)
-        db = context.get("infrahub_database")
+        branch: Branch = context.get("infrahub_branch")
+        db: InfrahubDatabase = context.get("infrahub_database")
 
-        async with db.session(database=config.SETTINGS.database.database) as session:
-            context["infrahub_session"] = session
-
+        async with db.start_session() as db:
             filters = {key: value for key, value in kwargs.items() if ("__" in key and value) or key == "ids"}
 
             objs = await NodeManager.query(
-                session=session,
+                db=db,
                 schema=cls._meta.schema,
                 filters=filters or None,
                 fields=fields,
@@ -36,24 +37,23 @@ class GetListMixin:
             if not objs:
                 return []
 
-            return [await obj.to_graphql(session=session, fields=fields) for obj in objs]
+            return [await obj.to_graphql(db=db, fields=fields) for obj in objs]
 
     @classmethod
     async def get_paginated_list(cls, fields: dict, context: dict, **kwargs):
         at = context.get("infrahub_at")
         branch = context.get("infrahub_branch")
         account = context.get("infrahub_account", None)
-        db = context.get("infrahub_database")
-        async with db.session(database=config.SETTINGS.database.database) as session:
-            context["infrahub_session"] = session
+        db: InfrahubDatabase = context.get("infrahub_database")
 
+        async with db.start_session() as db:
             response: Dict[str, Any] = {"edges": []}
             offset = kwargs.pop("offset", None)
             limit = kwargs.pop("limit", None)
             filters = {key: value for key, value in kwargs.items() if ("__" in key and value) or key == "ids"}
             if "count" in fields:
                 response["count"] = await NodeManager.count(
-                    session=session,
+                    db=db,
                     schema=cls._meta.schema,
                     filters=filters,
                     at=at,
@@ -63,7 +63,7 @@ class GetListMixin:
             node_fields = edges.get("node", {})
 
             objs = await NodeManager.query(
-                session=session,
+                db=db,
                 schema=cls._meta.schema,
                 filters=filters or None,
                 fields=node_fields,
@@ -77,7 +77,7 @@ class GetListMixin:
             )
 
             if objs:
-                objects = [{"node": await obj.to_graphql(session=session, fields=node_fields)} for obj in objs]
+                objects = [{"node": await obj.to_graphql(db=db, fields=node_fields)} for obj in objs]
                 response["edges"] = objects
 
             return response

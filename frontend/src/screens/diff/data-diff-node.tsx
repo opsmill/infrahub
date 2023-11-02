@@ -3,20 +3,28 @@ import { useAtom } from "jotai";
 import { useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import Accordion from "../../components/accordion";
-import { BADGE_TYPES, Badge } from "../../components/badge";
+import { Badge } from "../../components/badge";
 import { DateDisplay } from "../../components/date-display";
 import { Pill } from "../../components/pill";
 import { Tooltip } from "../../components/tooltip";
 import { QSP } from "../../config/qsp";
 import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
 import { classNames } from "../../utils/common";
+import { getBadgeType } from "../../utils/diff";
 import { DataDiffElement } from "./data-diff-element";
+import { DataDiffConflictInfo } from "./diff-conflict-info";
 import { DiffPill } from "./diff-pill";
 import { DataDiffThread } from "./diff-thread";
 
+export type tConflictChange = {
+  id?: string;
+  kind?: string;
+  display_label?: string;
+};
+
 export type tDataDiffNodePropertyValue = {
-  new: string;
-  previous: string;
+  new: string | tConflictChange;
+  previous: string | tConflictChange;
 };
 
 export type tDataDiffNodePropertyChange = {
@@ -81,7 +89,7 @@ export type tDataDiffNodeChange = {
   changed_at?: number;
   identifier?: string;
   action: string;
-  properties?: tDataDiffNodeProperty[];
+  properties: { [key: string]: tDataDiffNodeProperty };
   peer?: tDataDiffNodePeerChange;
   peers?: tDataDiffNodePeerChange[];
   summary?: tDataDiffNodeSummary;
@@ -125,18 +133,6 @@ export type tDataDiffNodeProps = {
   node: tDataDiffNode;
   commentsCount?: number;
   branch?: string;
-};
-
-const badgeTypes: { [key: string]: BADGE_TYPES } = {
-  added: BADGE_TYPES.VALIDATE,
-  updated: BADGE_TYPES.WARNING,
-  removed: BADGE_TYPES.CANCEL,
-};
-
-export const getBadgeType = (action?: string) => {
-  if (!action) return null;
-
-  return badgeTypes[action];
 };
 
 // Branch from QSP = branchname
@@ -188,7 +184,7 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
   const display_label = nodeDisplayLabels[currentBranch] ?? nodeDisplayLabels?.main;
 
   const renderTitle = () => (
-    <div className={"p-1 pr-0 flex flex-col lg:flex-row"}>
+    <div className={"p-1 pr-0 relative flex flex-col items-center lg:flex-row group"}>
       <div className="flex flex-1 items-center group">
         <Badge className="mr-2" type={getBadgeType(action)}>
           {action?.toUpperCase()}
@@ -205,7 +201,7 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
       {commentsCount && (
         <div className="flex items-center">
           <Tooltip message={"Total number of comments"}>
-            <ChatBubbleLeftRightIcon className="h-5 w-5 mr-2" />
+            <ChatBubbleLeftRightIcon className="w-4 h-4 mr-2" />
             <Pill className="mr-2">{JSON.stringify(commentsCount)}</Pill>
           </Tooltip>
         </div>
@@ -218,6 +214,8 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
           {changed_at && <DateDisplay date={changed_at} hideDefault />}
         </div>
       </div>
+
+      {!branchname && <DataDiffConflictInfo path={path} />}
     </div>
   );
 

@@ -23,13 +23,13 @@ By default, the Python client will automatically gather the active schema from I
 
 +++ Async
 ```python
-from infrahub_client import InfrahubClient
+from infrahub_sdk import InfrahubClient
 
 client = await InfrahubClient.init(address="http://localhost:8000")
 ```
 +++ Sync
 ```python
-from infrahub_client import InfrahubClientSync
+from infrahub_sdk import InfrahubClientSync
 
 client = InfrahubClientSync.init(address="http://localhost:8000")
 ```
@@ -47,13 +47,13 @@ from the environment variable `INFRAHUB_SDK_API_TOKEN`
 
 +++ Async
 ```python
-from infrahub_client import InfrahubClient, Config
+from infrahub_sdk import InfrahubClient, Config
 
 client = await InfrahubClient.init(config=Config(api_token="TOKEN"))
 ```
 +++ Sync
 ```python
-from infrahub_client import InfrahubClientSync, Config
+from infrahub_sdk import InfrahubClientSync, Config
 
 client = InfrahubClientSync.init(config=Config(api_token="TOKEN"))
 ```

@@ -14,7 +14,7 @@ describe("Tutorial - Part 2", () => {
     cy.visit("/");
 
     // Access the accounts list
-    cy.get("[href='/objects/Organization'] > .group").click();
+    cy.get("[href='/objects/CoreOrganization'] > .group").click();
 
     // Access admin account
     cy.contains(ORGANIZATION_NAME).click();

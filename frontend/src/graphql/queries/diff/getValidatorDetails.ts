@@ -41,10 +41,11 @@ query {
             }
           }
         }
-        checks {
+        checks {{#if filters}}({{{filters}}}){{/if}} {
           count
           edges {
             node {
+              id
               display_label
               name {
                 value
@@ -68,12 +69,12 @@ query {
                 value
               }
               ... on CoreDataCheck {
-                paths {
+                conflicts {
                   value
                 }
               }
               ... on CoreSchemaCheck {
-                paths {
+                 conflicts {
                   value
                 }
               }

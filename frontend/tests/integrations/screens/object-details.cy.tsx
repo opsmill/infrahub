@@ -18,7 +18,7 @@ import {
 import { TestProvider } from "../../mocks/jotai/atom";
 
 // URL for the current view
-const graphqlQueryItemsUrl = `/objects/Device/${deviceDetailsMocksId}`;
+const graphqlQueryItemsUrl = `/objects/InfraDevice/${deviceDetailsMocksId}`;
 
 // Path that will match the route to display the component
 const graphqlQueryItemsPath = "/objects/:objectname/:objectid";
@@ -66,12 +66,14 @@ describe("List screen", () => {
     );
 
     // The device ASN should be correctly named
-    cy.get(":nth-child(8) > .py-4 > .mt-1 > .cursor-pointer").should(
-      "have.text",
-      deviceDetailsMocksASNName
-    );
+    cy.contains("Asn").siblings().first().should("have.text", deviceDetailsMocksASNName);
 
-    cy.get(":nth-child(8) > .py-4 > .mt-1 > .p-2").click();
+    cy.contains("Asn")
+      .siblings()
+      .first()
+      .within(() => {
+        cy.get("[data-cy='metadata-button']").click();
+      });
 
     cy.get(":nth-child(5) > .underline").should("have.text", deviceDetailsMocksOwnerName);
 

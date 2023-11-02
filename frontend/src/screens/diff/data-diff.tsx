@@ -8,16 +8,13 @@ import { ALERT_TYPES, Alert } from "../../components/alert";
 import { Button } from "../../components/button";
 import { Checkbox } from "../../components/checkbox";
 import { CONFIG } from "../../config/config";
-import {
-  PROPOSED_CHANGES_OBJECT_THREAD,
-  PROPOSED_CHANGES_OBJECT_THREAD_OBJECT,
-} from "../../config/constants";
+import { PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "../../config/constants";
 import { QSP } from "../../config/qsp";
-import { getProposedChangesObjectGlobalThreads } from "../../graphql/queries/proposed-changes/getProposedChangesObjectGlobalThreads";
+import { getThreadsAndChecks } from "../../graphql/queries/proposed-changes/getThreadsAndChecks";
 import useQuery from "../../hooks/useQuery";
 import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
-import { fetchUrl } from "../../utils/fetch";
+import { fetchUrl, getUrlWithQsp } from "../../utils/fetch";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { DataDiffNode, tDataDiffNode } from "./data-diff-node";
 
@@ -25,9 +22,35 @@ type tDiffContext = {
   refetch?: Function;
   node?: tDataDiffNode;
   currentBranch?: string;
+  checksDictionnary?: any;
 };
 
 export const DiffContext = createContext<tDiffContext>({});
+
+const constructChecksDictionnary = (checks: any[]) => {
+  // Flatten all the checks from all validators
+  const totalChecks = checks
+    ?.map((validator: any) => validator?.edges?.map((edge: any) => edge?.node))
+    .reduce((acc, elem) => [...acc, ...elem], []);
+
+  // Construct with path as key and check as value
+  const dictionnary = totalChecks?.reduce((acc: any, elem: any) => {
+    // For each path, get { path1: [check1, check2], path2: [check3], ... }
+    const paths = elem?.conflicts?.value?.reduce((acc2: any, conflict: any) => {
+      return {
+        ...acc2,
+        [conflict.path]: [...(acc[conflict.path] || []), elem],
+      };
+    }, {});
+
+    return {
+      ...acc,
+      ...paths,
+    };
+  }, {});
+
+  return dictionnary;
+};
 
 export const DataDiff = () => {
   const { branchname, proposedchange } = useParams();
@@ -42,12 +65,13 @@ export const DataDiff = () => {
 
   const branch = branchname || proposedChangesDetails?.source_branch?.value;
 
-  const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_OBJECT_THREAD)[0];
+  const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_OBJECT_THREAD_OBJECT);
 
   const queryString = schemaData
-    ? getProposedChangesObjectGlobalThreads({
+    ? getThreadsAndChecks({
         id: proposedchange,
         kind: schemaData.kind,
+        conflicts: branchOnly === "false",
       })
     : // Empty query to make the gql parsing work
       // TODO: Find another solution for queries while loading schemaData
@@ -60,25 +84,27 @@ export const DataDiff = () => {
   const { data, refetch } = useQuery(query, { skip: !schemaData });
 
   // Get the comments count per object path like { [path]: [count] }, and include all sub path for each object
-  const objectComments =
-    data &&
-    data[PROPOSED_CHANGES_OBJECT_THREAD_OBJECT]?.edges
-      .map((edge: any) => edge.node)
-      .reduce((acc: any, node: any) => {
-        const objectPathResult = node?.object_path?.value?.match(/^\w+\/(\w|-)+/g);
+  const objectComments = data?.[PROPOSED_CHANGES_OBJECT_THREAD_OBJECT]?.edges
+    .map((edge: any) => edge.node)
+    .reduce((acc: any, node: any) => {
+      const objectPathResult = node?.object_path?.value?.match(/^\w+\/(\w|-)+/g);
 
-        const objectPath = objectPathResult && objectPathResult[0];
+      const objectPath = objectPathResult && objectPathResult[0];
 
-        if (!objectPath) {
-          return;
-        }
+      if (!objectPath) {
+        return;
+      }
 
-        return {
-          ...acc,
-          // Count all comments for this object (will include comments on sub nodes)
-          [objectPath]: (acc[objectPath] ?? 0) + (node?.comments?.count ?? 0),
-        };
-      }, {});
+      return {
+        ...acc,
+        // Count all comments for this object (will include comments on sub nodes)
+        [objectPath]: (acc[objectPath] ?? 0) + (node?.comments?.count ?? 0),
+      };
+    }, {});
+
+  const checks = data?.CoreValidator?.edges?.map((edge: any) => edge?.node?.checks);
+
+  const checksDictionnary = constructChecksDictionnary(checks);
 
   const fetchDiffDetails = useCallback(async () => {
     if (!branch) return;
@@ -93,16 +119,15 @@ export const DataDiff = () => {
       ["time_to", timeTo ?? ""],
     ].filter(([, v]) => v !== undefined && v !== "");
 
-    const qsp = new URLSearchParams(options);
-
-    const urlWithQsp = `${url}${options.length ? `&${qsp.toString()}` : ""}`;
+    const urlWithQsp = getUrlWithQsp(url, options);
 
     try {
       const diffDetails = await fetchUrl(urlWithQsp);
 
       setDiff(diffDetails.diffs ?? []);
     } catch (err) {
-      console.error("err: ", err);
+      console.error("Error when fethcing branches: ", err);
+
       toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading branch diff" />);
     }
 
@@ -121,10 +146,13 @@ export const DataDiff = () => {
       branch ?? branchname ?? proposedChangesDetails?.source_branch?.value ?? "main";
 
     const context = {
-      // Provide refetch function to update count on comment
-      refetch,
-      node,
       currentBranch,
+      // Provides refetch function to update count on comment
+      refetch,
+      // Provides full node information
+      node,
+      // Provides all the checks results
+      checksDictionnary,
     };
 
     return (
@@ -140,7 +168,7 @@ export const DataDiff = () => {
         <div className="mr-2">
           <Button onClick={() => setBranchOnly(branchOnly !== "false" ? "false" : "true")}>
             Display main
-            <Checkbox enabled={branchOnly === "false"} />
+            <Checkbox enabled={branchOnly === "false"} readOnly />
           </Button>
         </div>
 

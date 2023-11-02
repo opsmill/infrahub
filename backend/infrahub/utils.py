@@ -1,12 +1,12 @@
 import hashlib
 import os
 from enum import Enum, EnumMeta
-from typing import List, Optional
+from typing import Any, List, Optional
 
 KWARGS_TO_DROP = ["session"]
 
 
-def get_fixtures_dir():
+def get_fixtures_dir() -> str:
     """Get the directory which stores fixtures that are common to multiple unit/integration tests."""
     here = os.path.abspath(os.path.dirname(__file__))
     fixtures_dir = os.path.join(here, "..", "tests", "fixtures")
@@ -14,7 +14,7 @@ def get_fixtures_dir():
     return os.path.abspath(fixtures_dir)
 
 
-def get_models_dir():
+def get_models_dir() -> str:
     """Get the directory which stores additional models."""
     here = os.path.abspath(os.path.dirname(__file__))
     models_dir = os.path.join(here, "..", "..", "models")
@@ -33,7 +33,7 @@ def find_first_file_in_directory(directory: str) -> Optional[str]:
 
 
 class MetaEnum(EnumMeta):
-    def __contains__(cls, item):
+    def __contains__(cls, item: Any) -> bool:
         try:
             cls(item)  # pylint: disable=no-value-for-parameter
         except ValueError:

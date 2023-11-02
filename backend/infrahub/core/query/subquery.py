@@ -3,20 +3,20 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Optional, Tuple, Union
 
 from infrahub.core.query import QueryNode, QueryRel
+from infrahub.types import get_attribute_type
 
 if TYPE_CHECKING:
-    from neo4j import AsyncSession
-
     from infrahub.core.branch import Branch
     from infrahub.core.schema import AttributeSchema, RelationshipSchema
+    from infrahub.database import InfrahubDatabase
 
 
 async def build_subquery_filter(
-    session: AsyncSession,
-    field: Union[AttributeSchema, RelationshipSchema],
+    db: InfrahubDatabase,
     filter_name: str,
     filter_value: Any,
     branch_filter: str,
+    field: Optional[Union[AttributeSchema, RelationshipSchema]] = None,
     node_alias: str = "n",
     name: Optional[str] = None,
     branch: Branch = None,
@@ -25,14 +25,25 @@ async def build_subquery_filter(
     params = {}
     prefix = f"filter{subquery_idx}"
 
-    field_filter, field_params, field_where = await field.get_query_filter(
-        session=session,
+    # If the field is not provided, it means that the query is targeting a special keyword like:: any or attribute
+    # Currently any and attribute have the same effect and relationship is not supported yet
+    if field:
+        get_query_filter = field.get_query_filter
+    elif name in ["any", "attribute"]:
+        default_attribute = get_attribute_type()
+        base_attribute = default_attribute.get_infrahub_class()
+        get_query_filter = base_attribute.get_query_filter
+    else:
+        raise ValueError("Either a field must be provided or name must be any or attribute")
+
+    field_filter, field_params, field_where = await get_query_filter(
         name=name,
         include_match=False,
         filter_name=filter_name,
         filter_value=filter_value,
         branch=branch,
         param_prefix=prefix,
+        db=db,
     )
     params.update(field_params)
 
@@ -65,7 +76,7 @@ async def build_subquery_filter(
 
 
 async def build_subquery_order(
-    session: AsyncSession,
+    db: InfrahubDatabase,
     field: Union[AttributeSchema, RelationshipSchema],
     order_by: str,
     branch_filter: str,
@@ -78,7 +89,7 @@ async def build_subquery_order(
     prefix = f"order{subquery_idx}"
 
     field_filter, field_params, field_where = await field.get_query_filter(
-        session=session,
+        db=db,
         name=name,
         include_match=False,
         filter_name=order_by,

@@ -8,14 +8,14 @@ from typing import Dict
 import pytest
 import ujson
 from git import Repo
+from infrahub_sdk import UUIDT, InfrahubClient, InfrahubNode
+from infrahub_sdk import SchemaRoot as ClientSchemaRoot
+from infrahub_sdk.branch import BranchData
 from pytest_httpx import HTTPXMock
 
 from infrahub.core.schema import SchemaRoot, core_models
 from infrahub.git import InfrahubRepository
 from infrahub.utils import find_first_file_in_directory, get_fixtures_dir
-from infrahub_client import UUIDT, InfrahubClient, InfrahubNode
-from infrahub_client import SchemaRoot as ClientSchemaRoot
-from infrahub_client.branch import BranchData
 
 
 @pytest.fixture
@@ -108,7 +108,7 @@ def git_upstream_repo_10(helper, git_sources_dir) -> Dict[str, str]:
 
     name = "infrahub-demo-edge"
     fixtures_dir = helper.get_fixtures_dir()
-    fixture_repo = os.path.join(fixtures_dir, "infrahub-demo-edge-b635811.tar.gz")
+    fixture_repo = os.path.join(fixtures_dir, "infrahub-demo-edge-cff6665.tar.gz")
 
     # Extract the fixture package in the source directory
     file = tarfile.open(fixture_repo)

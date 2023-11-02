@@ -13,6 +13,7 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                 "edges": [
                     {
                         "node": {
+                            "__typename": "CoreRepository",
                             "id": "9486cfce-87db-479d-ad73-07d80ba96a0f",
                             "name": {"value": "infrahub-demo-edge"},
                             "location": {"value": "git@github.com:dgarros/infrahub-demo-edge.git"},

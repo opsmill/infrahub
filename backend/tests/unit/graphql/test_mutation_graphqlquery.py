@@ -3,6 +3,7 @@ from graphql import graphql
 
 from infrahub.core import registry
 from infrahub.core.node import Node
+from infrahub.database import InfrahubDatabase
 from infrahub.graphql import generate_graphql_schema
 
 
@@ -11,7 +12,7 @@ def load_graphql_requirements(group_graphql):
     pass
 
 
-async def test_create_query_no_vars(db, session, default_branch, register_core_models_schema):
+async def test_create_query_no_vars(db: InfrahubDatabase, default_branch, register_core_models_schema):
     query_value = """
     query MyQuery {
         CoreRepository {
@@ -53,9 +54,9 @@ async def test_create_query_no_vars(db, session, default_branch, register_core_m
     )
 
     result = await graphql(
-        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -65,7 +66,7 @@ async def test_create_query_no_vars(db, session, default_branch, register_core_m
     query_id = result.data["CoreGraphQLQueryCreate"]["object"]["id"]
     assert len(query_id) == 36  # lenght of an UUID
 
-    query1 = await registry.manager.get_one(id=query_id, session=session)
+    query1 = await registry.manager.get_one(id=query_id, db=db)
     assert query1.depth.value == 6
     assert query1.height.value == 7
     assert query1.operations.value == ["mutation", "query"]
@@ -73,7 +74,7 @@ async def test_create_query_no_vars(db, session, default_branch, register_core_m
     assert query1.models.value == ["CoreRepository"]
 
 
-async def test_create_query_with_vars(db, session, default_branch, register_core_models_schema):
+async def test_create_query_with_vars(db: InfrahubDatabase, default_branch, register_core_models_schema):
     query_value = """
     query MyQuery {
         CoreRepository {
@@ -122,9 +123,9 @@ async def test_create_query_with_vars(db, session, default_branch, register_core
     )
 
     result = await graphql(
-        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -134,7 +135,7 @@ async def test_create_query_with_vars(db, session, default_branch, register_core
     query_id = result.data["CoreGraphQLQueryCreate"]["object"]["id"]
     assert len(query_id) == 36  # lenght of an UUID
 
-    query2 = await registry.manager.get_one(id=query_id, session=session)
+    query2 = await registry.manager.get_one(id=query_id, db=db)
     assert query2.depth.value == 8
     assert query2.height.value == 11
     assert query2.operations.value == ["mutation", "query"]
@@ -142,7 +143,7 @@ async def test_create_query_with_vars(db, session, default_branch, register_core
     assert query2.models.value == ["BuiltinTag", "CoreRepository"]
 
 
-async def test_update_query(db, session, default_branch, register_core_models_schema):
+async def test_update_query(db: InfrahubDatabase, default_branch, register_core_models_schema):
     query_create = """
     query MyQuery {
         CoreRepository {
@@ -157,9 +158,9 @@ async def test_update_query(db, session, default_branch, register_core_models_sc
     }
     """
 
-    obj = await Node.init(session=session, branch=default_branch, schema="CoreGraphQLQuery")
+    obj = await Node.init(db=db, branch=default_branch, schema="CoreGraphQLQuery")
     await obj.new(
-        session=session,
+        db=db,
         name="query1",
         query=query_create,
         depth=6,
@@ -168,7 +169,7 @@ async def test_update_query(db, session, default_branch, register_core_models_sc
         variables=[],
         models=["CoreRepository"],
     )
-    await obj.save(session=session)
+    await obj.save(db=db)
 
     query_update = """
     query MyQuery {
@@ -217,9 +218,9 @@ async def test_update_query(db, session, default_branch, register_core_models_sc
     )
 
     result = await graphql(
-        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -227,7 +228,7 @@ async def test_update_query(db, session, default_branch, register_core_models_sc
     assert result.errors is None
     assert result.data["CoreGraphQLQueryUpdate"]["ok"] is True
 
-    obj2 = await registry.manager.get_one(id=obj.id, session=session)
+    obj2 = await registry.manager.get_one(id=obj.id, db=db)
     assert obj2.depth.value == 8
     assert obj2.height.value == 11
     assert obj2.operations.value == ["mutation", "query"]
@@ -235,7 +236,7 @@ async def test_update_query(db, session, default_branch, register_core_models_sc
     assert obj2.models.value == ["BuiltinTag", "CoreRepository"]
 
 
-async def test_update_query_no_update(db, session, default_branch, register_core_models_schema):
+async def test_update_query_no_update(db: InfrahubDatabase, default_branch, register_core_models_schema):
     query_create = """
     query MyQuery {
         CoreRepository {
@@ -250,9 +251,9 @@ async def test_update_query_no_update(db, session, default_branch, register_core
     }
     """
 
-    obj = await Node.init(session=session, branch=default_branch, schema="CoreGraphQLQuery")
+    obj = await Node.init(db=db, branch=default_branch, schema="CoreGraphQLQuery")
     await obj.new(
-        session=session,
+        db=db,
         name="query1",
         query=query_create,
         depth=6,
@@ -261,7 +262,7 @@ async def test_update_query_no_update(db, session, default_branch, register_core
         variables=[],
         models=["CoreRepository"],
     )
-    await obj.save(session=session)
+    await obj.save(db=db)
 
     query = """
     mutation {
@@ -280,9 +281,9 @@ async def test_update_query_no_update(db, session, default_branch, register_core
     )
 
     result = await graphql(
-        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
@@ -290,7 +291,7 @@ async def test_update_query_no_update(db, session, default_branch, register_core
     assert result.errors is None
     assert result.data["CoreGraphQLQueryUpdate"]["ok"] is True
 
-    obj2 = await registry.manager.get_one(id=obj.id, session=session)
+    obj2 = await registry.manager.get_one(id=obj.id, db=db)
     assert obj2.depth.value == 6
     assert obj2.height.value == 7
     assert obj2.operations.value == ["query"]

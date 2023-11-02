@@ -6,12 +6,17 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type, Union
 import graphene
 
 from infrahub.core import get_branch, registry
+from infrahub.core.constants import RelationshipKind
 from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema
 from infrahub.graphql.mutations.graphql_query import InfrahubGraphQLQueryMutation
-from infrahub.graphql.mutations.proposed_change import InfrahubProposedChangeMutation
-from infrahub.types import ATTRIBUTE_TYPES
+from infrahub.types import ATTRIBUTE_TYPES, get_attribute_type
 
-from .mutations import InfrahubMutation, InfrahubRepositoryMutation
+from .mutations import (
+    InfrahubArtifactDefinitionMutation,
+    InfrahubMutation,
+    InfrahubProposedChangeMutation,
+    InfrahubRepositoryMutation,
+)
 from .resolver import (
     default_resolver,
     many_relationship_resolver,
@@ -21,9 +26,8 @@ from .schema import account_resolver, default_paginated_list_resolver
 from .types import InfrahubInterface, InfrahubObject, InfrahubUnion, RelatedNodeInput
 
 if TYPE_CHECKING:
-    from neo4j import AsyncSession
-
     from infrahub.core.branch import Branch
+    from infrahub.database import InfrahubDatabase
 
 # pylint: disable=protected-access,too-many-locals,too-many-lines
 
@@ -53,11 +57,11 @@ def load_node_interface(branch: Branch):
 
 
 async def generate_object_types(
-    session: AsyncSession, branch: Union[Branch, str]
+    db: InfrahubDatabase, branch: Union[Branch, str]
 ):  # pylint: disable=too-many-branches,too-many-statements
     """Generate all GraphQL objects for the schema and store them in the internal registry."""
 
-    branch = await get_branch(session=session, branch=branch)
+    branch = await get_branch(db=db, branch=branch)
 
     full_schema = await registry.schema.get_full_safe(branch=branch)
 
@@ -166,7 +170,7 @@ async def generate_object_types(
         for rel in node_schema.relationships:
             peer_schema = await rel.get_peer_schema(branch=branch)
 
-            peer_filters = await generate_filters(session=session, schema=peer_schema, top_level=False)
+            peer_filters = await generate_filters(db=db, schema=peer_schema, top_level=False)
 
             if rel.cardinality == "one":
                 if isinstance(peer_schema, GroupSchema):
@@ -185,20 +189,20 @@ async def generate_object_types(
                 )
 
 
-async def generate_query_mixin(session: AsyncSession, branch: Union[Branch, str] = None) -> Type[object]:
+async def generate_query_mixin(db: InfrahubDatabase, branch: Union[Branch, str] = None) -> Type[object]:
     class_attrs = {}
 
     full_schema = await registry.schema.get_full_safe(branch=branch)
 
     # Generate all Graphql objectType and store them in the registry
-    await generate_object_types(session=session, branch=branch)
+    await generate_object_types(db=db, branch=branch)
 
     for node_name, node_schema in full_schema.items():
         if not isinstance(node_schema, (NodeSchema, GenericSchema)):
             continue
 
         node_type = registry.get_graphql_type(name=f"Paginated{node_name}", branch=branch)
-        node_filters = await generate_filters(session=session, schema=node_schema, top_level=True)
+        node_filters = await generate_filters(db=db, schema=node_schema, top_level=True)
 
         class_attrs[node_schema.kind] = graphene.Field(
             node_type,
@@ -215,10 +219,10 @@ async def generate_query_mixin(session: AsyncSession, branch: Union[Branch, str]
     return type("QueryMixin", (object,), class_attrs)
 
 
-async def generate_mutation_mixin(session: AsyncSession, branch: Union[Branch, str] = None) -> Type[object]:
+async def generate_mutation_mixin(db: InfrahubDatabase, branch: Union[Branch, str] = None) -> Type[object]:
     class_attrs = {}
 
-    branch = await get_branch(branch=branch, session=session)
+    branch = await get_branch(branch=branch, db=db)
 
     full_schema = registry.schema.get_full(branch=branch)
 
@@ -228,6 +232,7 @@ async def generate_mutation_mixin(session: AsyncSession, branch: Union[Branch, s
 
         base_class = InfrahubMutation
         mutation_map = {
+            "CoreArtifactDefinition": InfrahubArtifactDefinitionMutation,
             "CoreRepository": InfrahubRepositoryMutation,
             "CoreProposedChange": InfrahubProposedChangeMutation,
             "CoreGraphQLQuery": InfrahubGraphQLQueryMutation,
@@ -271,7 +276,7 @@ def generate_graphql_object(schema: NodeSchema, branch: Branch) -> Type[Infrahub
 
     for attr in schema.local_attributes:
         attr_type = registry.get_graphql_type(
-            name=ATTRIBUTE_TYPES[attr.kind].get_graphql_type_name(), branch=branch.name
+            name=get_attribute_type(kind=attr.kind).get_graphql_type_name(), branch=branch.name
         )
         main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
 
@@ -393,7 +398,7 @@ def generate_interface_object(schema: GenericSchema, branch: Branch) -> Type[gra
 
     for attr in schema.attributes:
         attr_type = registry.get_graphql_type(
-            name=ATTRIBUTE_TYPES[attr.kind].get_graphql_type_name(), branch=branch.name
+            name=get_attribute_type(kind=attr.kind).get_graphql_type_name(), branch=branch.name
         )
         main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
 
@@ -471,7 +476,7 @@ def generate_graphql_mutation_create_input(schema: NodeSchema) -> Type[graphene.
     attrs: Dict[str, Union[graphene.String, graphene.InputField]] = {"id": graphene.String(required=False)}
 
     for attr in schema.attributes:
-        attr_type = ATTRIBUTE_TYPES[attr.kind].get_graphql_input()
+        attr_type = get_attribute_type(kind=attr.kind).get_graphql_input()
 
         # A Field is not required if explicitely indicated or if a default value has been provided
         required = not attr.optional if not attr.default_value else False
@@ -504,7 +509,7 @@ def generate_graphql_mutation_update_input(schema: NodeSchema) -> Type[graphene.
     attrs: Dict[str, Union[graphene.String, graphene.InputField]] = {"id": graphene.String(required=True)}
 
     for attr in schema.attributes:
-        attr_type = ATTRIBUTE_TYPES[attr.kind].get_graphql_input()
+        attr_type = get_attribute_type(kind=attr.kind).get_graphql_input()
         attrs[attr.name] = graphene.InputField(attr_type, required=False, description=attr.description)
 
     for rel in schema.relationships:
@@ -589,7 +594,10 @@ def generate_graphql_mutation_delete(
 
 
 async def generate_filters(
-    session: AsyncSession, schema: Union[NodeSchema, GenericSchema, GroupSchema], top_level: bool = False
+    db: InfrahubDatabase,
+    schema: Union[NodeSchema, GenericSchema, GroupSchema],
+    top_level: bool = False,
+    include_properties: bool = True,
 ) -> Dict[str, Union[graphene.Scalar, graphene.List]]:
     """Generate the GraphQL filters for a given Schema object.
 
@@ -617,8 +625,14 @@ async def generate_filters(
         return filters
 
     for attr in schema.attributes:
-        attr_type = ATTRIBUTE_TYPES[attr.kind].graphql_filter
-        filters[f"{attr.name}__value"] = attr_type()
+        filters.update(
+            get_attribute_type(kind=attr.kind).get_graphql_filters(
+                name=attr.name, include_properties=include_properties
+            )
+        )
+
+    if top_level:
+        filters.update(get_attribute_type().get_graphql_filters(name="any"))
 
     if not top_level:
         return filters
@@ -629,7 +643,10 @@ async def generate_filters(
         if not isinstance(peer_schema, (NodeSchema, GenericSchema)):
             continue
 
-        peer_filters = await generate_filters(session=session, schema=peer_schema, top_level=False)
+        if rel.kind == RelationshipKind.GROUP:
+            peer_filters = await generate_filters(db=db, schema=peer_schema, top_level=False, include_properties=False)
+        else:
+            peer_filters = await generate_filters(db=db, schema=peer_schema, top_level=False)
 
         for key, value in peer_filters.items():
             if key in default_filters:

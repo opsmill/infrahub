@@ -2,9 +2,10 @@ import pytest
 
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
+from infrahub.database import InfrahubDatabase
 
 
-async def test_graphql_endpoint(session, client, client_headers, default_branch: Branch, car_person_data):
+async def test_graphql_endpoint(db: InfrahubDatabase, client, client_headers, default_branch: Branch, car_person_data):
     query = """
     query {
         TestPerson {
@@ -50,7 +51,7 @@ async def test_graphql_endpoint(session, client, client_headers, default_branch:
 
 @pytest.mark.xfail(reason="Need to investigate, Currently working alone but failing when it's part of the test suite")
 async def test_graphql_endpoint_generics(
-    session, default_branch: Branch, client, client_headers, car_person_data_generic
+    db: InfrahubDatabase, default_branch: Branch, client, client_headers, car_person_data_generic
 ):
     query = """
     query {
@@ -87,8 +88,8 @@ async def test_graphql_endpoint_generics(
     assert len(result_per_name["Jane"]["cars"]) == 1
 
 
-async def test_graphql_options(session, client, client_headers, default_branch: Branch, car_person_data):
-    await create_branch(branch_name="branch2", session=session)
+async def test_graphql_options(db: InfrahubDatabase, client, client_headers, default_branch: Branch, car_person_data):
+    await create_branch(branch_name="branch2", db=db)
 
     # Must execute in a with block to execute the startup/shutdown events
     with client:
@@ -119,7 +120,7 @@ async def test_graphql_options(session, client, client_headers, default_branch: 
 
 
 async def test_read_profile(
-    session,
+    db: InfrahubDatabase,
     client,
     admin_headers,
     authentication_base,

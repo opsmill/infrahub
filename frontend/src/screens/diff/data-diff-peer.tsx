@@ -1,5 +1,4 @@
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
-import { useAtom } from "jotai";
 import { ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
@@ -7,7 +6,6 @@ import Accordion from "../../components/accordion";
 import { Badge } from "../../components/badge";
 import { DateDisplay } from "../../components/date-display";
 import { QSP } from "../../config/qsp";
-import { iSchemaKindNameMap, schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { classNames } from "../../utils/common";
 import { diffPeerContent } from "../../utils/diff";
 import { constructPath } from "../../utils/fetch";
@@ -16,26 +14,25 @@ import {
   getNodeClassName,
   tDataDiffNodePeerChange,
   tDataDiffNodePeerValue,
+  tDataDiffNodeProperty,
 } from "./data-diff-node";
 import { DataDiffProperty } from "./data-diff-property";
+import { DataDiffConflictInfo } from "./diff-conflict-info";
 import { DiffPill } from "./diff-pill";
 import { DataDiffThread } from "./diff-thread";
 
 export type tDataDiffNodePeerProps = {
   peerChanges: tDataDiffNodePeerChange;
+  peerProperties?: { [key: string]: tDataDiffNodeProperty };
+  name?: string;
 };
 
-export const getPeerRedirection = (
-  peer: tDataDiffNodePeerValue,
-  branch: string,
-  schemaKindName: iSchemaKindNameMap,
-  navigate: Function
-) => {
+const getPeerRedirection = (peer: tDataDiffNodePeerValue, branch: string, navigate: Function) => {
   if (!peer.id || !peer.kind) {
     return;
   }
 
-  const objectUrl = getObjectDetailsUrl(peer.id, peer.kind, schemaKindName);
+  const objectUrl = getObjectDetailsUrl(peer.id, peer.kind);
 
   const url = branch ? constructPath(`${objectUrl}?branch=${branch}`) : constructPath(objectUrl);
 
@@ -45,11 +42,14 @@ export const getPeerRedirection = (
 };
 
 export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
-  const { peerChanges } = props;
+  const {
+    peerChanges,
+    peerProperties, // For relationship one
+    name,
+  } = props;
 
   const { branchname } = useParams();
   const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
-  const [schemaKindName] = useAtom(schemaKindNameState);
   const navigate = useNavigate();
 
   // Relationship mayny: action, changed_at, branches, branches, peer, properties, summary
@@ -60,7 +60,7 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
     changed_at,
     branches,
     peer: peerChange,
-    properties,
+    properties, // For relationship many
     summary,
     branch: peerBranch,
     new: newPeer,
@@ -69,7 +69,7 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
 
   const renderDiffDisplay = (peer: tDataDiffNodePeerValue, branch: any) => {
     if (peer?.kind && peer?.id) {
-      const onClick = getPeerRedirection(peer, branch, schemaKindName, navigate);
+      const onClick = getPeerRedirection(peer, branch, navigate);
 
       return diffPeerContent(peer, action[branch], onClick, branch);
     }
@@ -81,7 +81,7 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
     if (branches?.length) {
       return branches.map((branch: string, index: number) => {
         return (
-          <div className="p-1 pr-0 flex flex-col lg:flex-row last:mr-0" key={index}>
+          <div className="group relative p-1 pr-0 flex flex-col lg:flex-row last:mr-0" key={index}>
             <div className="flex flex-1 items-center">
               {peerChange?.kind && <Badge>{peerChange?.kind}</Badge>}
 
@@ -102,6 +102,8 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
                 {changed_at && <DateDisplay date={changed_at} hideDefault />}
               </div>
             </div>
+
+            {!branchname && <DataDiffConflictInfo path={path} />}
           </div>
         );
       });
@@ -109,14 +111,17 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
 
     if (peerBranch) {
       return (
-        <div className="p-1 pr-0 flex flex-col lg:flex-row last:mr-0">
-          <div className="flex flex-1 items-center">
+        <div className="group p-1 pr-0 flex flex-col lg:flex-row last:mr-0">
+          <div className="flex flex-1 items-center relative">
             <div className="flex flex-1 items-center">
-              {newPeer?.kind && <Badge>{newPeer?.kind}</Badge>}
-              {previousPeer?.kind && <Badge>{previousPeer?.kind}</Badge>}
+              <div className="flex items-center">
+                {newPeer?.kind && <Badge>{newPeer?.kind}</Badge>}
 
-              <span className="mr-2 font-semibold">{newPeer?.display_label}</span>
-              <span className="mr-2 font-semibold">{previousPeer?.display_label}</span>
+                <span className="mr-2 font-semibold">{name}</span>
+              </div>
+
+              {/* Do not display comment button if we are on the branch details view */}
+              {!branchname && <DataDiffThread path={path} />}
             </div>
 
             <div className="flex flex-1 items-center">
@@ -133,6 +138,8 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
               {changed_at && <DateDisplay date={changed_at} hideDefault />}
             </div>
           </div>
+
+          {!branchname && <DataDiffConflictInfo path={path} />}
         </div>
       );
     }
@@ -140,7 +147,7 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
     return null;
   };
 
-  const propertiesChanges: ReactNode[] = Object.values(properties ?? {}).map(
+  const propertiesChanges: ReactNode[] = Object.values(properties || peerProperties || {}).map(
     (property, index: number) =>
       property.changes?.map((change: any, index2: number) => (
         <DataDiffProperty key={`${index}-${index2}`} property={change} path={property.path} />
@@ -149,7 +156,15 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
 
   // If there are some properties, then display the accordion
   if (propertiesChanges?.length) {
-    return <Accordion title={renderTitleDisplay()}>{propertiesChanges}</Accordion>;
+    return (
+      <div
+        className={classNames(
+          "mb-1 rounded-md last:mb-0",
+          getNodeClassName([], peerChanges.branch, branchOnly)
+        )}>
+        <Accordion title={renderTitleDisplay()}>{propertiesChanges}</Accordion>
+      </div>
+    );
   }
 
   return (
@@ -160,7 +175,7 @@ export const DataDiffPeer = (props: tDataDiffNodePeerProps) => {
       )}>
       <div className="flex">
         {/* Align with transparent chevron to fit the UI with other accordions with visible chevrons */}
-        <ChevronDownIcon className="h-5 w-5 mr-2 text-transparent" aria-hidden="true" />
+        <ChevronDownIcon className="w-4 h-4 mr-2 text-transparent" aria-hidden="true" />
         <div className="flex-1">{renderTitleDisplay()}</div>
       </div>
     </div>

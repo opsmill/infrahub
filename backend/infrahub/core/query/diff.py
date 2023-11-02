@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Union
+from typing import TYPE_CHECKING, List, Optional, Union
 
+from infrahub.core.constants import BranchSupportType
 from infrahub.core.query import Query, QueryResult, QueryType, sort_results_by_time
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
-    from neo4j import AsyncSession
-
     from infrahub.core.branch import Branch
+    from infrahub.database import InfrahubDatabase
 
 
 class DiffQuery(Query):
@@ -50,7 +50,25 @@ class DiffQuery(Query):
 class DiffNodeQuery(DiffQuery):
     name: str = "diff_node"
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    def __init__(
+        self,
+        namespaces_include: Optional[List[str]] = None,
+        namespaces_exclude: Optional[List[str]] = None,
+        kinds_include: Optional[List[str]] = None,
+        kinds_exclude: Optional[List[str]] = None,
+        branch_support: Optional[List[BranchSupportType]] = None,
+        *args,
+        **kwargs,
+    ):
+        self.namespaces_include = namespaces_include
+        self.namespaces_exclude = namespaces_exclude
+        self.kinds_include = kinds_include
+        self.kinds_exclude = kinds_exclude
+        self.branch_support = branch_support or [BranchSupportType.AWARE]
+
+        super().__init__(*args, **kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         # TODO need to improve the query to capture an object that has been deleted into the branch
         # TODO probably also need to consider a node what was merged already
 
@@ -61,12 +79,33 @@ class DiffNodeQuery(DiffQuery):
         )
 
         self.params.update(br_params)
+        self.params["branch_support"] = [item.value for item in self.branch_support]
 
-        query = """
-        MATCH (root:Root)-[r:IS_PART_OF]-(n)
+        where_clause = ""
+        if self.namespaces_include:
+            where_clause += "n.namespace IN $namespaces_include AND "
+            self.params["namespaces_include"] = self.namespaces_include
+
+        if self.namespaces_exclude:
+            where_clause += "NOT(n.namespace IN $namespaces_exclude) AND "
+            self.params["namespaces_exclude"] = self.namespaces_exclude
+
+        if self.kinds_include:
+            where_clause += "n.kind IN $kinds_include AND "
+            self.params["kinds_include"] = self.kinds_include
+
+        if self.kinds_exclude:
+            where_clause += "NOT(n.kind IN $kinds_exclude) AND "
+            self.params["kinds_exclude"] = self.kinds_exclude
+
+        where_clause += "n.branch_support IN $branch_support AND %s" % "\n AND ".join(br_filter)
+
+        query = (
+            """
+        MATCH (root:Root)-[r:IS_PART_OF]-(n:Node)
         WHERE %s
-        """ % (
-            "\n AND ".join(br_filter),
+        """
+            % where_clause
         )
 
         self.add_to_query(query)
@@ -78,7 +117,25 @@ class DiffNodeQuery(DiffQuery):
 class DiffAttributeQuery(DiffQuery):
     name: str = "diff_attribute"
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    def __init__(
+        self,
+        namespaces_include: Optional[List[str]] = None,
+        namespaces_exclude: Optional[List[str]] = None,
+        kinds_include: Optional[List[str]] = None,
+        kinds_exclude: Optional[List[str]] = None,
+        branch_support: Optional[List[BranchSupportType]] = None,
+        *args,
+        **kwargs,
+    ):
+        self.namespaces_include = namespaces_include
+        self.namespaces_exclude = namespaces_exclude
+        self.kinds_include = kinds_include
+        self.kinds_exclude = kinds_exclude
+        self.branch_support = branch_support or [BranchSupportType.AWARE]
+
+        super().__init__(*args, **kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         # TODO need to improve the query to capture an object that has been deleted into the branch
 
         rels_filters, rels_params = self.branch.get_query_filter_relationships_diff(
@@ -86,12 +143,33 @@ class DiffAttributeQuery(DiffQuery):
         )
 
         self.params.update(rels_params)
+        self.params["branch_support"] = [item.value for item in self.branch_support]
 
-        query = """
-        MATCH (n)-[r1:HAS_ATTRIBUTE]-(a:Attribute)-[r2:HAS_VALUE|IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER]->(ap)
-        WHERE a.branch_support IN ["aware"] AND %s
-        """ % (
-            "\n AND ".join(rels_filters),
+        where_clause = ""
+        if self.namespaces_include:
+            where_clause += "n.namespace IN $namespaces_include AND "
+            self.params["namespaces_include"] = self.namespaces_include
+
+        if self.namespaces_exclude:
+            where_clause += "NOT(n.namespace IN $namespaces_exclude) AND "
+            self.params["namespaces_exclude"] = self.namespaces_exclude
+
+        if self.kinds_include:
+            where_clause += "n.kind IN $kinds_include AND "
+            self.params["kinds_include"] = self.kinds_include
+
+        if self.kinds_exclude:
+            where_clause += "NOT(n.kind IN $kinds_exclude) AND "
+            self.params["kinds_exclude"] = self.kinds_exclude
+
+        where_clause += "a.branch_support IN $branch_support AND %s" % "\n AND ".join(rels_filters)
+
+        query = (
+            """
+        MATCH (n:Node)-[r1:HAS_ATTRIBUTE]-(a:Attribute)-[r2:HAS_VALUE|IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER]->(ap)
+        WHERE %s
+        """
+            % where_clause
         )
 
         self.add_to_query(query)
@@ -103,11 +181,47 @@ class DiffRelationshipQuery(DiffQuery):
     name: str = "diff_relationship"
     type: QueryType = QueryType.READ
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
-        query = """
+    def __init__(
+        self,
+        namespaces_include: Optional[List[str]] = None,
+        namespaces_exclude: Optional[List[str]] = None,
+        kinds_include: Optional[List[str]] = None,
+        kinds_exclude: Optional[List[str]] = None,
+        branch_support: Optional[List[BranchSupportType]] = None,
+        *args,
+        **kwargs,
+    ):
+        self.namespaces_include = namespaces_include
+        self.namespaces_exclude = namespaces_exclude
+        self.kinds_include = kinds_include
+        self.kinds_exclude = kinds_exclude
+        self.branch_support = branch_support or [BranchSupportType.AWARE]
+
+        super().__init__(*args, **kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+        where_clause = ""
+        if self.namespaces_include:
+            where_clause += "(src.namespace IN $namespaces_include OR dst.namespace IN $namespaces_include) AND "
+            self.params["namespaces_include"] = self.namespaces_include
+
+        if self.namespaces_exclude:
+            where_clause += "NOT(src.namespace IN $namespaces_exclude OR dst.namespace IN $namespaces_exclude) AND "
+            self.params["namespaces_exclude"] = self.namespaces_exclude
+
+        if self.kinds_include:
+            where_clause += "(src.kind IN $kinds_include OR dst.kind IN $kinds_include) AND "
+            self.params["kinds_include"] = self.kinds_include
+
+        if self.kinds_exclude:
+            where_clause += "NOT(src.kind IN $kinds_exclude OR dst.kind IN $kinds_exclude) AND "
+            self.params["kinds_exclude"] = self.kinds_exclude
+
+        query = (
+            """
         CALL {
-            MATCH p = ((:Node)-[r1:IS_RELATED]->(rel:Relationship)<-[r2:IS_RELATED]-(:Node))
-            WHERE (rel.branch_support IN ["aware"] AND r1.branch = r2.branch AND
+            MATCH p = ((src:Node)-[r1:IS_RELATED]->(rel:Relationship)<-[r2:IS_RELATED]-(dst:Node))
+            WHERE (rel.branch_support IN $branch_support AND %s r1.branch = r2.branch AND
                 (r1.to = r2.to OR (r1.to is NULL AND r2.to is NULL)) AND r1.from = r2.from AND r1.status = r2.status
                 AND all(r IN relationships(p) WHERE (r.branch IN $branch_names AND r.from >= $diff_from AND r.from <= $diff_to
                     AND ((r.to >= $diff_from AND r.to <= $diff_to) OR r.to is NULL))
@@ -118,7 +232,7 @@ class DiffRelationshipQuery(DiffQuery):
         CALL {
             WITH rel, branch_name
             MATCH p = ((sn:Node)-[r1:IS_RELATED]->(rel:Relationship)<-[r2:IS_RELATED]-(dn:Node))
-            WHERE (rel.branch_support IN ["aware"] AND r1.branch = r2.branch AND
+            WHERE (rel.branch_support IN $branch_support AND r1.branch = r2.branch AND
                 (r1.to = r2.to OR (r1.to is NULL AND r2.to is NULL)) AND r1.from = r2.from AND r1.status = r2.status
                 AND all(r IN relationships(p) WHERE (r.branch = branch_name AND r.from >= $diff_from AND r.from <= $diff_to
                     AND ((r.to >= $diff_from AND r.to <= $diff_to) OR r.to is NULL))
@@ -130,11 +244,14 @@ class DiffRelationshipQuery(DiffQuery):
         }
         WITH rel1 as rel, sn1 as sn, dn1 as dn, r11 as r1, r21 as r2
         """
+            % where_clause
+        )
 
         self.add_to_query(query)
         self.params["branch_names"] = self.branch_names
         self.params["diff_from"] = self.diff_from.to_string()
         self.params["diff_to"] = self.diff_to.to_string()
+        self.params["branch_support"] = [item.value for item in self.branch_support]
 
         self.return_labels = ["sn", "dn", "rel", "r1", "r2"]
 
@@ -143,7 +260,7 @@ class DiffRelationshipPropertyQuery(DiffQuery):
     name: str = "diff_relationship_property"
     type: QueryType = QueryType.READ
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         rels_filter, rels_params = self.branch.get_query_filter_relationships_range(
             rel_labels=["r"], start_time=self.diff_from, end_time=self.diff_to
         )
@@ -202,7 +319,7 @@ class DiffNodePropertiesByIDSRangeQuery(Query):
 
         super().__init__(order_by=["a.name"], *args, **kwargs)
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         self.params["ids"] = self.ids
 
         rels_filter, rels_params = self.branch.get_query_filter_relationships_range(
@@ -256,7 +373,7 @@ class DiffNodePropertiesByIDSQuery(Query):
 
         super().__init__(*args, **kwargs)
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         self.params["ids"] = self.ids
 
         rels_filter, rels_params = self.branch.get_query_filter_relationships(
@@ -313,7 +430,7 @@ class DiffRelationshipPropertiesByIDSRangeQuery(Query):
 
         super().__init__(*args, **kwargs)
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         self.params["ids"] = self.ids
 
         rels_filter, rels_params = self.branch.get_query_filter_relationships_range(

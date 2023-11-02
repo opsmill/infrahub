@@ -36,8 +36,8 @@ import {
 import { TestProvider } from "../../mocks/jotai/atom";
 
 // URL for the current view
-const mockedUrl = `/objects/Device/${deviceDetailsMocksId}`;
-const mockedUrlToken = `/objects/AccountTokenBis/${accountTokenId}`;
+const mockedUrl = `/objects/InfraDevice/${deviceDetailsMocksId}`;
+const mockedUrlToken = `/objects/InternalAccountTokenBis/${accountTokenId}`;
 
 // Path that will match the route to display the component
 const mockedPath = "/objects/:objectname/:objectid";
@@ -197,7 +197,7 @@ describe("Object details", () => {
 
     // Clear and type the new name
     cy.get(".grid > :nth-child(1) > .relative > .block").clear();
-    cy.get(".grid > :nth-child(1) > .relative > .block").type(deviceDetailsNewName);
+    cy.get(".grid > :nth-child(1) > .relative > .block").type(deviceDetailsNewName, { delay: 0 });
 
     // Verify that the name is correctly set
     cy.get(".grid > :nth-child(1) > .relative > .block").should("have.value", deviceDetailsNewName);

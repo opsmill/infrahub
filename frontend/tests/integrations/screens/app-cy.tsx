@@ -30,10 +30,10 @@ describe("Branches screen", () => {
     cy.get("#headlessui-popover-panel-\\:rp\\:").should("exist");
 
     // Type in the field for branch name
-    cy.get(":nth-child(2) > .flex-col > :nth-child(1)").type(branchName);
+    cy.get(":nth-child(2) > .flex-col > :nth-child(1)").type(branchName, { delay: 0 });
 
     // Type in the field for branch description
-    cy.get(":nth-child(2) > .flex-col > :nth-child(2)").type(branchDescription);
+    cy.get(":nth-child(2) > .flex-col > :nth-child(2)").type(branchDescription, { delay: 0 });
 
     // Click on the submit button
     cy.get(".justify-center > .py-1\\.5").click();

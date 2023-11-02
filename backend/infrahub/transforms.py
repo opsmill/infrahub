@@ -4,8 +4,7 @@ from abc import abstractmethod
 from typing import Optional
 
 from git import Repo
-
-from infrahub_client import InfrahubClient
+from infrahub_sdk import InfrahubClient
 
 INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT = "INFRAHUB_TRANSFORMS"
 

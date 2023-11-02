@@ -1,9 +1,10 @@
 import jwt
 
 from infrahub import config
+from infrahub.database import InfrahubDatabase
 
 
-async def test_password_based_login(session, default_branch, client, first_account):
+async def test_password_based_login(db: InfrahubDatabase, default_branch, client, first_account):
     with client:
         response = client.post("/api/auth/login", json={"username": "First Account", "password": "FirstPassword123"})
 
@@ -18,7 +19,7 @@ async def test_password_based_login(session, default_branch, client, first_accou
     assert first_account.id == decoded["sub"]
 
 
-async def test_refresh_access_token(session, default_branch, client, first_account):
+async def test_refresh_access_token(db: InfrahubDatabase, default_branch, client, first_account):
     """Validate that it's possible to refresh an access token using a refresh token"""
     with client:
         login_response = client.post(
@@ -42,7 +43,7 @@ async def test_refresh_access_token(session, default_branch, client, first_accou
     assert decoded_access["session_id"] == decoded_refresh["session_id"]
 
 
-async def test_access_resource_using_refresh_token(session, default_branch, client, first_account):
+async def test_access_resource_using_refresh_token(db: InfrahubDatabase, default_branch, client, first_account):
     """It should not be possible to access a resource using a refresh token"""
     with client:
         login_response = client.post(
@@ -60,7 +61,7 @@ async def test_access_resource_using_refresh_token(session, default_branch, clie
     assert response.json() == {"data": None, "errors": [{"message": "Invalid token", "extensions": {"code": 401}}]}
 
 
-async def test_generate_api_token(session, default_branch, client, create_test_admin):
+async def test_generate_api_token(db: InfrahubDatabase, default_branch, client, create_test_admin):
     """It should not be possible to generate an API token using a JWT token"""
     with client:
         login_response = client.post(

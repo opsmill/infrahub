@@ -13,14 +13,19 @@ describe("Tutorial - Part 4", () => {
 
   it("should verify the metadata from the demo dataset", function () {
     // Access to the devices
-    cy.get("[href='/objects/Device'] > .group").click();
+    cy.get("[href='/objects/InfraDevice'] > .group").click();
 
     // Click on a device
     cy.contains("atl1-edge1").click();
 
     cy.get(".sm\\:p-0 > :nth-child(1)").within(() => {
       // Click to open the metadata for the name
-      cy.get(":nth-child(2) > div.items-center > .p-2").click();
+      cy.contains("Name")
+        .parent()
+        .within(() => {
+          cy.get("[data-cy='metadata-button']").click();
+        });
+
       cy.get(":nth-child(4) > .underline").should("have.text", "Pop-Builder");
 
       if (this.screenshots) {
@@ -41,7 +46,12 @@ describe("Tutorial - Part 4", () => {
 
     // Click to open the metadata for the role
     cy.get(".sm\\:p-0 > :nth-child(1)").within(() => {
-      cy.get(":nth-child(7) > .py-4 > .mt-1 > .p-2").click();
+      cy.contains("Role")
+        .parent()
+        .within(() => {
+          cy.get("[data-cy='metadata-button']").click();
+        });
+
       cy.get(":nth-child(5) > .underline").should("have.text", "Engineering Team");
     });
 

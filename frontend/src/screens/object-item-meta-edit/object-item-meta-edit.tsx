@@ -59,10 +59,7 @@ export default function ObjectItemMetaEdit(props: Props) {
       try {
         const mutationString = updateObjectWithId({
           kind: schema.kind,
-          data: stringifyWithoutQuotes({
-            id: row.id,
-            ...updatedObject,
-          }),
+          data: stringifyWithoutQuotes(updatedObject),
         });
 
         const mutation = gql`
@@ -84,16 +81,9 @@ export default function ObjectItemMetaEdit(props: Props) {
 
         return;
       } catch (e) {
-        setIsLoading(false);
-
-        toast(
-          <Alert
-            message="Something went wrong while updating the meetadata"
-            type={ALERT_TYPES.ERROR}
-          />
-        );
-
         console.error("Something went wrong while updating the meetadata", e);
+
+        setIsLoading(false);
 
         return;
       }

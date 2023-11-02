@@ -1,8 +1,7 @@
 import logging
 
-from neo4j import AsyncSession
-
 from infrahub.core.node import Node
+from infrahub.database import InfrahubDatabase
 
 # pylint: skip-file
 
@@ -73,7 +72,7 @@ INTERFACE_ROLES = {
 LOGGER = logging.getLogger("infrahub")
 
 
-async def load_data(session: AsyncSession, nbr_devices: int = None):
+async def load_data(db: InfrahubDatabase, nbr_devices: int = None):
     # ------------------------------------------
     # Create User Accounts and Groups
     # ------------------------------------------
@@ -81,9 +80,9 @@ async def load_data(session: AsyncSession, nbr_devices: int = None):
     # tags_dict = {}
 
     for group in GROUPS:
-        obj = await Node.init(session=session, schema="CoreGroup")
-        await obj.new(session=session, description=group[0], name=group[1])
-        await obj.save(session=session)
+        obj = await Node.init(db=db, schema="CoreGroup")
+        await obj.new(db=db, description=group[0], name=group[1])
+        await obj.save(db=db)
         groups_dict[group[1]] = obj
         LOGGER.info(f"Group Created: {obj.name.value}")
 
@@ -94,31 +93,31 @@ async def load_data(session: AsyncSession, nbr_devices: int = None):
     roles_dict = {}
 
     LOGGER.info("Creating Site")
-    site_hq = await Node.init(session=session, schema="BuiltinLocation")
-    await site_hq.new(session=session, name="HQ", type="Site")
-    await site_hq.save(session=session)
+    site_hq = await Node.init(db=db, schema="BuiltinLocation")
+    await site_hq.new(db=db, name="HQ", type="Site")
+    await site_hq.save(db=db)
 
     LOGGER.info("Creating Roles & Status")
     for role in ROLES:
-        obj = await Node.init(session=session, schema="BuiltinRole")
-        await obj.new(session=session, description=role.title(), name=role)
-        await obj.save(session=session)
+        obj = await Node.init(db=db, schema="BuiltinRole")
+        await obj.new(db=db, description=role.title(), name=role)
+        await obj.save(db=db)
         roles_dict[role] = obj
         LOGGER.info(f"Created Role: {role}")
 
     STATUSES = ["active", "provisionning", "maintenance"]
     for status in STATUSES:
-        obj = await Node.init(session=session, schema="BuiltinStatus")
-        await obj.new(session=session, description=status.title(), name=status)
-        await obj.save(session=session)
+        obj = await Node.init(db=db, schema="BuiltinStatus")
+        await obj.new(db=db, description=status.title(), name=status)
+        await obj.save(db=db)
         statuses_dict[status] = obj
         LOGGER.info(f"Created Status: {status}")
 
     # TAGS = ["blue", "green", "red"]
     # for tag in TAGS:
-    #     obj = await Node.init(session=session, schema="Tag")
-    #     await obj.new(session=session, name=tag)
-    #     await obj.save(session=session)
+    #     obj = await Node.init(db=db, schema="Tag")
+    #     await obj.new(db=db, name=tag)
+    #     await obj.save(db=db)
     #     tags_dict[tag] = obj
     #     LOGGER.info(f"Created Tag: {tag}")
 
@@ -135,17 +134,17 @@ async def load_data(session: AsyncSession, nbr_devices: int = None):
         role_id = None
         if device[4]:
             role_id = roles_dict[device[4]].id
-        obj = await Node.init(session=session, schema="InfraDevice")
-        await obj.new(session=session, name=device[0], status=status.id, type=device[2], role=role_id, site=site_hq)
+        obj = await Node.init(db=db, schema="InfraDevice")
+        await obj.new(db=db, name=device[0], status=status.id, type=device[2], role=role_id, site=site_hq)
 
-        await obj.save(session=session)
+        await obj.save(db=db)
         LOGGER.info(f"- Created Device: {device[0]}")
 
         # Add a special interface for spine1
         if device[0] == "spine1":
-            intf = await Node.init(session=session, schema="InfraInterfaceL3")
+            intf = await Node.init(db=db, schema="InfraInterfaceL3")
             await intf.new(
-                session=session,
+                db=db,
                 device="spine1",
                 name="Loopback0",
                 enabled=True,
@@ -153,11 +152,11 @@ async def load_data(session: AsyncSession, nbr_devices: int = None):
                 role=role_loopback.id,
                 speed=10000,
             )
-            await intf.save(session=session)
+            await intf.save(db=db)
 
-            ip = await Node.init(session=session, schema="InfraIPAddress")
-            await ip.new(session=session, interface=intf, address=f"192.168.{idx}.10/24")
-            await ip.save(session=session)
+            ip = await Node.init(db=db, schema="InfraIPAddress")
+            await ip.new(db=db, interface=intf, address=f"192.168.{idx}.10/24")
+            await ip.save(db=db)
 
         if device[4] not in ["spine", "leaf"]:
             continue
@@ -172,9 +171,9 @@ async def load_data(session: AsyncSession, nbr_devices: int = None):
             if intf_idx in [0, 1]:
                 enabled = False
 
-            intf = await Node.init(session=session, schema="InfraInterfaceL3")
+            intf = await Node.init(db=db, schema="InfraInterfaceL3")
             await intf.new(
-                session=session,
+                db=db,
                 device=obj,
                 name=intf_name,
                 speed=10000,
@@ -182,9 +181,9 @@ async def load_data(session: AsyncSession, nbr_devices: int = None):
                 status=active_status.id,
                 role=intf_role_id,
             )
-            await intf.save(session=session)
+            await intf.save(db=db)
 
             if intf_idx == 1:
-                ip = await Node.init(session=session, schema="InfraIPAddress")
-                await ip.new(session=session, interface=intf, address=f"192.168.{idx}.{intf_idx}/24")
-                await ip.save(session=session)
+                ip = await Node.init(db=db, schema="InfraIPAddress")
+                await ip.new(db=db, interface=intf, address=f"192.168.{idx}.{intf_idx}/24")
+                await ip.save(db=db)

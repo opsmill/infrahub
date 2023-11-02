@@ -6,6 +6,7 @@ import { QSP } from "../../config/qsp";
 import { classNames } from "../../utils/common";
 import { diffContent } from "../../utils/diff";
 import { getNodeClassName, tDataDiffNodePropertyChange } from "./data-diff-node";
+import { DataDiffConflictInfo } from "./diff-conflict-info";
 import { DiffPill } from "./diff-pill";
 import { DataDiffThread } from "./diff-thread";
 
@@ -23,9 +24,9 @@ export const DataDiffProperty = (props: tDataDiffNodePropertyProps) => {
   const { type, action, changed_at, branch } = property;
 
   return (
-    <div className="flex">
+    <div className="relative flex group">
       {/* Align with transparent chevron to fit the UI with other accordions with visible chevrons */}
-      <ChevronDownIcon className="h-5 w-5 mr-2 text-transparent" aria-hidden="true" />
+      <ChevronDownIcon className="w-4 h-4 mr-2 text-transparent" aria-hidden="true" />
 
       <div
         className={classNames(
@@ -52,6 +53,8 @@ export const DataDiffProperty = (props: tDataDiffNodePropertyProps) => {
           </div>
         </div>
       </div>
+
+      {!branchname && <DataDiffConflictInfo path={path} />}
     </div>
   );
 };

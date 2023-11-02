@@ -1,16 +1,15 @@
 from typing import List
 
-from neo4j import AsyncSession
-
 from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.database import InfrahubDatabase
 from infrahub.log import get_logger
 
 log = get_logger()
 
 
-async def refresh_branches(session: AsyncSession):
+async def refresh_branches(db: InfrahubDatabase):
     """Pull all the branches from the database and update the registry.
 
     If a branch is already present with a different value for the hash
@@ -18,7 +17,7 @@ async def refresh_branches(session: AsyncSession):
     """
 
     async with lock.registry.local_schema_lock():
-        branches: List[Branch] = await Branch.get_list(session=session)
+        branches: List[Branch] = await Branch.get_list(db=db)
         active_branches = [branch.name for branch in branches]
         for new_branch in branches:
             if new_branch.name in registry.branch:
@@ -29,12 +28,12 @@ async def refresh_branches(session: AsyncSession):
                     )
                     registry.branch[new_branch.name] = new_branch
 
-                    await registry.schema.load_schema(session=session, branch=new_branch)
+                    await registry.schema.load_schema(db=db, branch=new_branch)
 
             else:
                 registry.branch[new_branch.name] = new_branch
                 log.info(f"{new_branch.name}: New branch detected, pulling schema")
-                await registry.schema.load_schema(session=session, branch=new_branch)
+                await registry.schema.load_schema(db=db, branch=new_branch)
 
         for branch_name in list(registry.branch.keys()):
             if branch_name not in active_branches:

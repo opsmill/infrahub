@@ -29,7 +29,6 @@ import { addRelationship } from "../../graphql/mutations/relationships/addRelati
 import UnlinkIcon from "../../images/icons/unlink.svg";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { genericsState, iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
-import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom copy";
 import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
@@ -72,7 +71,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   const [relatedRowToDelete, setRelatedRowToDelete] = useState<any>();
   const [relatedObjectToEdit, setRelatedObjectToEdit] = useState<any>();
 
-  const schema = schemaList.filter((s) => s.name === objectname)[0];
+  const schema = schemaList.find((s) => s.kind === objectname);
 
   let options: SelectOption[] = [];
 
@@ -114,7 +113,6 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
     },
   ];
 
-  const [schemaKindName] = useAtom(schemaKindNameState);
   const navigate = useNavigate();
 
   const [, setShowMetaEditModal] = useAtom(showMetaEditState);
@@ -249,28 +247,23 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
         {relationshipsData && (
           <>
             {relationshipSchema?.cardinality === "one" && (
-              <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-3 sm:px-6">
+              <div className="p-4 px-3 grid grid-cols-3 gap-4">
                 <dt className="text-sm font-medium text-gray-500 flex items-center">
                   {relationshipSchema?.label}
                 </dt>
                 <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 underline flex items-center">
                   <Link
-                    onClick={() =>
-                      navigate(
-                        constructPath(
-                          getObjectDetailsUrl(
-                            relationshipsData.node.id,
-                            relationshipsData.node.__typename,
-                            schemaKindName
-                          )
-                        )
+                    to={constructPath(
+                      getObjectDetailsUrl(
+                        relationshipsData.node?.id,
+                        relationshipsData.node?.__typename
                       )
-                    }>
+                    )}>
                     {relationshipsData.node?.display_label}
                   </Link>
 
                   {relationshipsData.properties && (
-                    <div className="p-2">
+                    <div className="px-2">
                       <MetaDetailsTooltip
                         items={[
                           {
@@ -304,10 +297,11 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                           },
                         ]}
                         header={
-                          <div className="flex justify-between w-full py-4">
+                          <div className="flex justify-between items-center w-full p-4">
                             <div className="font-semibold">{relationshipSchema.label}</div>
-                            <div
-                              className="cursor-pointer"
+                            <Button
+                              buttonType={BUTTON_TYPES.INVISIBLE}
+                              disabled={!auth?.permissions?.write}
                               onClick={() => {
                                 setMetaEditFieldDetails({
                                   type: "relationship",
@@ -315,9 +309,10 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                   label: relationshipSchema.label || relationshipSchema.name,
                                 });
                                 setShowMetaEditModal(true);
-                              }}>
-                              <PencilSquareIcon className="w-5 h-5 text-custom-blue-500" />
-                            </div>
+                              }}
+                              data-cy="metadata-edit-button">
+                              <PencilSquareIcon className="w-4 h-4 text-custom-blue-500" />
+                            </Button>
                           </div>
                         }
                       />
@@ -325,11 +320,11 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                   )}
 
                   {relationshipsData.properties?.is_protected && (
-                    <LockClosedIcon className="h-5 w-5 ml-2" />
+                    <LockClosedIcon className="w-4 h-4" />
                   )}
 
                   {relationshipsData.properties?.is_visible === false && (
-                    <EyeSlashIcon className="h-5 w-5 ml-2" />
+                    <EyeSlashIcon className="w-4 h-4" />
                   )}
                 </dd>
               </div>
@@ -339,7 +334,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
               <div className="mt-0 flex flex-col px-4 sm:px-6 lg:px-8 w-full flex-1">
                 <div className="-my-2 -mx-4 sm:-mx-6 lg:-mx-8">
                   <div className="inline-block min-w-full pt-2 align-middle">
-                    <div className="shadow-sm ring-1 ring-custom-black ring-opacity-5">
+                    <div className="shadow-sm ring-1 ring-custom-black ring-opacity-5 overflow-x-auto">
                       <table className="min-w-full border-separate" style={{ borderSpacing: 0 }}>
                         <thead className="bg-gray-50">
                           <tr>
@@ -347,13 +342,13 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                               <th
                                 key={column.name}
                                 scope="col"
-                                className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter sm:pl-6 lg:pl-8">
+                                className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 px-4 py-2 text-left text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter">
                                 {column.label}
                               </th>
                             ))}
                             <th
                               scope="col"
-                              className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter sm:pl-6 lg:pl-8">
+                              className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 px-4 py-2 text-left text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter">
                               <span className="sr-only">Meta</span>
                             </th>
                           </tr>
@@ -363,7 +358,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                             <tr
                               onClick={() =>
                                 navigate(
-                                  constructPath(getObjectDetailsUrl(node.id, node.__typename, schemaKindName))
+                                  constructPath(getObjectDetailsUrl(node.id, node.__typename))
                                 )
                               }
                               key={index}
@@ -375,7 +370,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                     index !== relationshipsData.length - 1
                                       ? "border-b border-gray-200"
                                       : "",
-                                    "whitespace-nowrap py-3 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8"
+                                    "whitespace-nowrap p-4 text-sm font-medium text-gray-900"
                                   )}>
                                   {getObjectItemDisplayValue(node, column)}
                                 </td>
@@ -385,10 +380,10 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                   index !== relationshipsData.length - 1
                                     ? "border-b border-gray-200"
                                     : "",
-                                  "whitespace-nowrap py-3 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8 flex items-center justify-end"
+                                  "whitespace-nowrap p-4 text-sm font-medium text-gray-900 flex justify-end"
                                 )}>
                                 <div
-                                  className="p-2"
+                                  className="flex px-2"
                                   onClick={() => {
                                     setRowForMetaEdit(node);
                                     setShowRelationMetaEditModal(true);
@@ -434,8 +429,9 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                   buttonType={BUTTON_TYPES.INVISIBLE}
                                   onClick={() => {
                                     setRelatedObjectToEdit(node);
-                                  }}>
-                                  <PencilSquareIcon className="w-6 h-6 text-gray-500" />
+                                  }}
+                                  data-cy="metadata-edit-button">
+                                  <PencilSquareIcon className="w-4 h-4 text-gray-500" />
                                 </Button>
 
                                 <Button
@@ -444,7 +440,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                   onClick={() => {
                                     setRelatedRowToDelete(node);
                                   }}>
-                                  <img src={UnlinkIcon} className="w-6 h-6" />
+                                  <img src={UnlinkIcon} className="w-4 h-4" />
                                 </Button>
                               </td>
                             </tr>
@@ -462,7 +458,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
             )}
 
             {relationshipSchema?.cardinality === "many" && mode === "DESCRIPTION-LIST" && (
-              <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-3 sm:px-6">
+              <div className="p-4 px-3 grid grid-cols-3 gap-4">
                 <dt className="text-sm font-medium text-gray-500 flex items-center">
                   {relationshipSchema?.label}
                 </dt>
@@ -473,14 +469,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                       <dd
                         className="mt-1 text-sm text-gray-900 sm:mt-0 underline flex items-center"
                         key={node.id}>
-                        <Link
-                          onClick={() =>
-                            navigate(
-                              constructPath(
-                                getObjectDetailsUrl(node.id, node.__typename, schemaKindName)
-                              )
-                            )
-                          }>
+                        <Link to={constructPath(getObjectDetailsUrl(node.id, node.__typename))}>
                           {node.display_label}
                         </Link>
 
@@ -522,12 +511,10 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                           </div>
                         )}
 
-                        {properties.is_protected && <LockClosedIcon className="h-5 w-5 ml-2" />}
+                        {properties.is_protected && <LockClosedIcon className="w-4 h-4" />}
 
-                        {properties.is_visible === false && (
-                          <EyeSlashIcon className="h-5 w-5 ml-2" />
-                        )}
-                        {/* {<TrashIcon className="h-5 w-5 ml-2" onClick={async () => {
+                        {properties.is_visible === false && <EyeSlashIcon className="w-4 h-4" />}
+                        {/* {<TrashIcon className="w-4 h-4" onClick={async () => {
                             const newList  = relationshipsData.map((row: any) => ({ id: row.id })).filter((row: any) =>  row.id !== item.id);
                             await updateObjectWithId(objectid!, schema, {
                               [relationshipSchema.name]: newList
@@ -564,7 +551,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                 </span>
                 <div className="flex-1"></div>
                 <div className="flex items-center">
-                  <Square3Stack3DIcon className="w-5 h-5" />
+                  <Square3Stack3DIcon className="w-4 h-4" />
                   <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
                 </div>
               </div>
@@ -601,7 +588,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                     </span>
                     <div className="flex-1"></div>
                     <div className="flex items-center">
-                      <Square3Stack3DIcon className="w-5 h-5" />
+                      <Square3Stack3DIcon className="w-4 h-4" />
                       <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
                     </div>
                   </div>
@@ -617,7 +604,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
               setShowRelationMetaEditModal(false);
             }}
             onUpdateComplete={() => setShowRelationMetaEditModal(false)}
-            attributeOrRelationshipToEdit={rowForMetaEdit}
+            attributeOrRelationshipToEdit={relationshipsData?.properties}
             schemaList={schemaList}
             schema={schema}
             attributeOrRelationshipName={relationshipSchema.name}
@@ -662,7 +649,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                       </span>
                       <div className="flex-1"></div>
                       <div className="flex items-center">
-                        <Square3Stack3DIcon className="w-5 h-5" />
+                        <Square3Stack3DIcon className="w-4 h-4" />
                         <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
                       </div>
                     </div>
@@ -692,12 +679,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                 }
               }}
               objectid={relatedObjectToEdit.id}
-              objectname={(() => {
-                const relatedKind = relatedObjectToEdit.__typename.replace(regex, "");
-                const relatedSchema = schemaList.find((s) => s.kind === relatedKind);
-                const kind = schemaKindName[relatedSchema!.kind];
-                return kind;
-              })()}
+              objectname={relatedObjectToEdit.__typename}
             />
           </SlideOver>
         )}

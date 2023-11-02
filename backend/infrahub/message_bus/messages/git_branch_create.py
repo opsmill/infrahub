@@ -1,9 +1,9 @@
 from pydantic import Field
 
-from infrahub.message_bus import InfrahubBaseMessage
+from infrahub.message_bus import InfrahubMessage
 
 
-class GitBranchCreate(InfrahubBaseMessage):
+class GitBranchCreate(InfrahubMessage):
     """Create a branch in a Git repository."""
 
     branch: str = Field(..., description="Name of the branch to create")

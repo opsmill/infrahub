@@ -1,7 +1,7 @@
 from graphql import parse
-from neo4j import AsyncSession
 
 from infrahub.core.branch import Branch
+from infrahub.database import InfrahubDatabase
 from infrahub.graphql import generate_graphql_schema
 from infrahub.graphql.utils import extract_fields, extract_schema_models
 
@@ -49,9 +49,9 @@ async def test_extract_fields_fragment(query_02):
     assert await extract_fields(document.definitions[0].selection_set) == expected_response
 
 
-async def test_schema_models(session: AsyncSession, default_branch: Branch, car_person_schema_generics, query_01: str):
+async def test_schema_models(db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics, query_01: str):
     document = parse(query_01)
-    schema = await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch)
+    schema = await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch)
     fields = await extract_fields(document.definitions[0].selection_set)
 
     expected_response = {
@@ -68,10 +68,10 @@ async def test_schema_models(session: AsyncSession, default_branch: Branch, car_
 
 
 async def test_schema_models_generics(
-    session: AsyncSession, default_branch: Branch, car_person_schema_generics, query_02: str
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics, query_02: str
 ):
     document = parse(query_02)
-    schema = await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch)
+    schema = await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch)
     fields = await extract_fields(document.definitions[0].selection_set)
 
     expected_response = {

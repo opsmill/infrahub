@@ -12,17 +12,14 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from starlette.middleware.authentication import AuthenticationMiddleware
-from starlette.responses import PlainTextResponse
 from starlette_exporter import PrometheusMiddleware, handle_metrics
 
 import infrahub.config as config
 from infrahub import __version__
 from infrahub.api import router as api
 from infrahub.api.background import BackgroundRunner
-from infrahub.auth import BaseTokenAuth
 from infrahub.core.initialization import initialization
-from infrahub.database import get_db
+from infrahub.database import InfrahubDatabase, InfrahubDatabaseMode, get_db
 from infrahub.exceptions import Error
 from infrahub.graphql.app import InfrahubGraphQLApp
 from infrahub.lock import initialize_lock
@@ -81,10 +78,10 @@ async def app_initialization():
         )
 
     # Initialize database Driver and load local registry
-    app.state.db = await get_db()
+    app.state.db = InfrahubDatabase(mode=InfrahubDatabaseMode.DRIVER, driver=await get_db())
 
-    async with app.state.db.session(database=config.SETTINGS.database.database) as session:
-        await initialization(session=session)
+    async with app.state.db.start_session() as db:
+        await initialization(db=db)
 
     # Initialize connection to the RabbitMQ bus
     await connect_to_broker()
@@ -98,7 +95,7 @@ async def app_initialization():
     # Initialize the Background Runner
     if config.SETTINGS.miscellaneous.start_background_runner:
         app.state.runner = BackgroundRunner(
-            driver=app.state.db, database_name=config.SETTINGS.database.database, interval=10
+            db=app.state.db, database_name=config.SETTINGS.database.database_name, interval=10
         )
         asyncio.create_task(app.state.runner.run())
 
@@ -143,12 +140,6 @@ async def api_exception_handler_base_infrahub_error(_: Request, exc: Error) -> J
     add_span_exception(exc)
     return JSONResponse(status_code=exc.HTTP_CODE, content=error)
 
-
-app.add_middleware(
-    AuthenticationMiddleware,
-    backend=BaseTokenAuth(),
-    on_error=lambda _, exc: PlainTextResponse(str(exc), status_code=401),
-)
 
 app.add_middleware(
     PrometheusMiddleware,

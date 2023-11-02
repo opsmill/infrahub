@@ -1,4 +1,4 @@
-/// <reference types="cypress" />
+/// <reference types="cypress" , { delay: 0 });
 
 import {
   MAIN_BRANCH_NAME,
@@ -22,14 +22,16 @@ describe("Tutorial - Part 1", () => {
     cy.visit("/");
 
     // Select the Admin object in the menu
-    cy.get("[href='/objects/Organization'] > .group").click();
+    cy.get("[href='/objects/CoreOrganization'] > .group").click();
 
     // Click on the + icon
-    cy.get(".sm\\:flex.py-4 > .p-2").click();
+    cy.get("[data-cy='create']").click();
 
     // Add organization name
-    cy.get(".grid > :nth-child(1) > .relative > .block").type(ORGANIZATION_NAME);
-    cy.get(".grid > :nth-child(3) > .relative > .block").type(ORGANIZATION_DESCRIPTION);
+    cy.get(".grid > :nth-child(1) > .relative > .block").type(ORGANIZATION_NAME, { delay: 0 });
+    cy.get(".grid > :nth-child(3) > .relative > .block").type(ORGANIZATION_DESCRIPTION, {
+      delay: 0,
+    });
 
     if (this.screenshots) {
       cy.screenshot("tutorial_1_organization_create", screenshotConfig);
@@ -52,7 +54,7 @@ describe("Tutorial - Part 1", () => {
     cy.get("#headlessui-popover-button-\\:r8\\: > .py-1\\.5").click();
 
     // Fill the new branch name
-    cy.get(".flex-col > :nth-child(1) > .block").type(NEW_BRANCH_NAME);
+    cy.get(".flex-col > :nth-child(1) > .block").type(NEW_BRANCH_NAME, { delay: 0 });
 
     if (this.screenshots) {
       cy.screenshot("tutorial_1_branch_creation", screenshotConfig);
@@ -69,7 +71,7 @@ describe("Tutorial - Part 1", () => {
     cy.visit(`/?branch=${NEW_BRANCH_NAME}`);
 
     // Select the Admin object in the menu
-    cy.get(`[href='/objects/Organization?branch=${NEW_BRANCH_NAME}'] > .group`).click();
+    cy.get(`[href='/objects/CoreOrganization?branch=${NEW_BRANCH_NAME}'] > .group`).click();
 
     // Select the organization
     cy.contains(ORGANIZATION_NAME).should("exist");
@@ -92,9 +94,7 @@ describe("Tutorial - Part 1", () => {
     }
 
     // Open the edit panel
-    cy.get(".md\\:pl-64 > :nth-child(2) > .flex-col > .bg-custom-white").within(() => {
-      cy.contains("Edit").click();
-    });
+    cy.contains("Edit").click();
 
     // Verify that the field is pre-populated
     cy.get(".grid > :nth-child(1) > .relative > .block").should("have.value", ORGANIZATION_NAME);
@@ -102,7 +102,7 @@ describe("Tutorial - Part 1", () => {
     // Update the label
     cy.get(":nth-child(3) > .relative > .block").should("have.value", ORGANIZATION_DESCRIPTION);
     cy.get(":nth-child(3) > .relative > .block").clear();
-    cy.get(":nth-child(3) > .relative > .block").type(NEW_ORGANIZATION_DESCRIPTION);
+    cy.get(":nth-child(3) > .relative > .block").type(NEW_ORGANIZATION_DESCRIPTION, { delay: 0 });
 
     if (this.screenshots) {
       cy.screenshot("tutorial_1_organization_edit", screenshotConfig);

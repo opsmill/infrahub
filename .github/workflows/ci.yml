@@ -23,6 +23,9 @@ env:
   INFRAHUB_IMAGE_VER: "testing"
   PYTEST_XDIST_WORKER_COUNT: 2
   INFRAHUB_TEST_IN_DOCKER: 1
+  BUILDKITE_ANALYTICS_BRANCH: ${{ github.ref }}
+  BUILDKITE_BRANCH: ${{ github.ref }}
+  BUILDKITE_COMMIT: ${{ github.sha }}
 
 jobs:
   files-changed:
@@ -33,7 +36,8 @@ jobs:
       backend: ${{ steps.changes.outputs.backend_all }}
       frontend: ${{ steps.changes.outputs.frontend_all }}
       sdk: ${{ steps.changes.outputs.sdk_all }}
-      ctl: ${{ steps.changes.outputs.ctl_all }}
+      nornir: ${{ steps.changes.outputs.nornir_all }}
+      sync: ${{ steps.changes.outputs.sync_all }}
       e2e: ${{ steps.changes.outputs.e2e_all }}
       python: ${{ steps.changes.outputs.python_all }}
       javascript: ${{ steps.changes.outputs.javascript_all }}
@@ -129,6 +133,8 @@ jobs:
     needs: ["files-changed", "yaml-lint", "python-lint"]
     runs-on: "ubuntu-20.04"
     timeout-minutes: 30
+    env:
+      INFRAHUB_DB_TYPE: memgraph
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
@@ -157,7 +163,6 @@ jobs:
         with:
           flag-name: python-sdk-unit
           parallel: true
-
       - name: "Integration Tests"
         run: "invoke sdk.test-integration"
         env:
@@ -170,6 +175,66 @@ jobs:
           flag-name: python-sdk-integration
           parallel: true
 
+  nornir-plugin-tests:
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.nornir == 'true'
+    needs: ["files-changed", "yaml-lint", "python-lint"]
+    runs-on: "ubuntu-20.04"
+    timeout-minutes: 30
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v3"
+      - name: "Install Invoke"
+        run: "pip install toml invoke"
+      - name: "Build Test Image"
+        run: "invoke test.build"
+      - name: "Black Tests"
+        run: "invoke nornir.black --docker"
+      - name: "Isort Tests"
+        run: "invoke nornir.isort --docker"
+      - name: "Pylint Tests"
+        run: "invoke nornir.pylint --docker"
+      - name: "Mypy Tests"
+        run: "invoke nornir.mypy --docker"
+      - name: "Unit Tests"
+        run: "invoke nornir.test-unit"
+        env:
+          BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_NORNIR_UNIT }}
+      - name: "Coveralls : Unit Tests"
+        uses: coverallsapp/github-action@v2.0.0
+        env:
+          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+        with:
+          flag-name: nornir-plugin-unit
+          parallel: true
+
+
+  infrahub-sync-tests:
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.sync == 'true'
+    needs: ["files-changed", "yaml-lint", "python-lint"]
+    runs-on: "ubuntu-20.04"
+    timeout-minutes: 30
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v3"
+      - name: "Install Invoke"
+        run: "pip install toml invoke"
+      - name: "Build Test Image"
+        run: "invoke test.build"
+      - name: "Black Tests"
+        run: "invoke sync.black --docker"
+      - name: "Isort Tests"
+        run: "invoke sync.isort --docker"
+      - name: "Pylint Tests"
+        run: "invoke sync.pylint --docker"
+
   backend-tests-default:
     if: |
       always() && !cancelled() &&
@@ -179,6 +244,8 @@ jobs:
     needs: ["files-changed", "yaml-lint", "python-lint"]
     runs-on: "runner-ubuntu-4-16"
     timeout-minutes: 45
+    env:
+      INFRAHUB_DB_TYPE: memgraph
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
@@ -194,6 +261,8 @@ jobs:
         run: "invoke backend.isort --docker"
       - name: "Pylint Tests"
         run: "invoke backend.pylint --docker"
+      - name: "Mypy Tests"
+        run: "invoke backend.mypy --docker"
       - name: "Unit Tests"
         run: "invoke backend.test-unit"
         env:
@@ -226,58 +295,21 @@ jobs:
     needs: ["files-changed", "yaml-lint", "python-lint"]
     runs-on: "runner-ubuntu-4-16"
     timeout-minutes: 30
+    env:
+      INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
       - name: "Setup Python environment"
         run: "pip install toml invoke"
-      # - name: Cache Docker images.
-      #   uses: ScribeMD/docker-cache@0.3.3
-      #   with:
-      #     key: "docker-${{ runner.os }}-backend-neo4j-${{ hashFiles('development/**') }}"
       - name: "Build Test Image"
         run: "invoke test.build"
       - name: "Pull External Docker Images"
-        run: "invoke test.pull --database=neo4j"
+        run: "invoke test.pull"
       - name: "Unit Tests"
-        run: "invoke backend.test-core --database=neo4j"
+        run: "invoke backend.test-unit"
         env:
           BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_BACKEND_UNIT_NEO4J }}
-
-  ctl-tests:
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.ctl == 'true'
-    needs: ["files-changed", "yaml-lint", "python-lint"]
-    runs-on: "ubuntu-20.04"
-    steps:
-      - name: "Check out repository code"
-        uses: "actions/checkout@v3"
-      - name: "Install Invoke"
-        run: "pip install toml invoke"
-      - name: "Build Test Image"
-        run: "invoke test.build"
-      - name: "Black Tests"
-        run: "invoke ctl.black --docker"
-      - name: "Isort Tests"
-        run: "invoke ctl.isort --docker"
-      - name: "Pylint Tests"
-        run: "invoke ctl.pylint --docker"
-      - name: "Mypy Tests"
-        run: "invoke ctl.mypy --docker"
-      - name: "Unit Tests"
-        run: "invoke ctl.test-unit"
-        env:
-          BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_CTL_UNIT }}
-      - name: "Coveralls : Unit Tests"
-        uses: coverallsapp/github-action@v2.0.0
-        env:
-          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
-        with:
-          flag-name: infrahubctl-unit
-          parallel: true
 
   frontend-tests:
     if: |
@@ -315,14 +347,79 @@ jobs:
           parallel: true
           file: frontend/coverage/lcov.info
 
-  E2E-testing:
-    needs: ["frontend-tests", "ctl-tests", "backend-tests-default", "python-sdk-tests"]
+  # E2E-testing-memgraph:
+  #   needs: ["frontend-tests", "backend-tests-default", "python-sdk-tests"]
+  #   if: |
+  #     always() && !cancelled() &&
+  #     !contains(needs.*.result, 'failure') &&
+  #     !contains(needs.*.result, 'cancelled')
+  #   runs-on: "runner-ubuntu-8-32"
+  #   timeout-minutes: 30
+  #   steps:
+  #     - name: "Check out repository code"
+  #       uses: "actions/checkout@v3"
+  #     - name: Install NodeJS
+  #       uses: actions/setup-node@v3
+  #       with:
+  #         node-version: 16
+  #         cache: 'npm'
+  #         cache-dependency-path: frontend/package-lock.json
+  #     - name: Install frontend dependencies
+  #       working-directory: ./frontend
+  #       run: npm install
+  #     - name: "Install Invoke"
+  #       run: "pip install toml invoke"
+  #     - name: Build Demo
+  #       run: "invoke demo.build"
+  #     - name: "Pull External Docker Images"
+  #       run: "invoke demo.pull"
+  #     - name: Initialize Demo
+  #       id: init-demo
+  #       run: "invoke demo.init demo.start demo.load-infra-schema"
+  #     - name: Check Demo Status
+  #       run: "invoke demo.status"
+  #     - name: Load Data
+  #       run: "invoke demo.load-infra-data"
+  #     - name: Git Repository
+  #       run: "invoke demo.infra-git-import demo.infra-git-create"
+  #     - name: Run End to End Tests
+  #       working-directory: ./frontend
+  #       run: npm run cypress:run:e2e
+  #     - name: Containers after failure
+  #       if: failure()
+  #       run: docker ps -a
+  #     - name: Upload cypress screenshots
+  #       if: failure()
+  #       uses: actions/upload-artifact@v3
+  #       with:
+  #         name: screenshots
+  #         path: docs/media/*
+  #     - name: Display server logs
+  #       if: failure()
+  #       run: docker logs infrahub-infrahub-server-1
+  #     - name: Display git 1 logs
+  #       if: failure()
+  #       run: docker logs infrahub-infrahub-git-1
+  #     - name: Display git 2 logs
+  #       if: failure()
+  #       run: docker logs infrahub-infrahub-git-2
+  #     - name: Display database logs
+  #       if: failure()
+  #       run: docker logs infrahub-database-1
+  #     - name: Display server status
+  #       if: failure()
+  #       run: invoke demo.status
+
+  E2E-testing-neo4j:
+    needs: ["frontend-tests", "backend-tests-default", "python-sdk-tests"]
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled')
     runs-on: "runner-ubuntu-8-32"
     timeout-minutes: 30
+    env:
+      INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
@@ -353,6 +450,9 @@ jobs:
       - name: Run End to End Tests
         working-directory: ./frontend
         run: npm run cypress:run:e2e
+      - name: Containers after failure
+        if: failure()
+        run: docker ps -a
       - name: Upload cypress screenshots
         if: failure()
         uses: actions/upload-artifact@v3
@@ -375,9 +475,8 @@ jobs:
         if: failure()
         run: invoke demo.status
 
-
   coverall-report:
-    needs: ["frontend-tests", "ctl-tests", "backend-tests-default", "python-sdk-tests"]
+    needs: ["frontend-tests", "backend-tests-default", "python-sdk-tests", "nornir-plugin-tests"]
     if: |
       always() && !cancelled()
     runs-on: ubuntu-latest
@@ -409,5 +508,5 @@ jobs:
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
-          carryforward: "backend-unit,backend-integration,frontend-unit,infrahubctl-unit,python-sdk-unit,python-sdk-integration"
+          carryforward: "backend-unit,backend-integration,frontend-unit,python-sdk-unit,python-sdk-integration,nornir-plugin-unit"
           parallel-finished: true

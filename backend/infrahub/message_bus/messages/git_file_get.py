@@ -1,9 +1,9 @@
 from pydantic import Field
 
-from infrahub.message_bus import InfrahubBaseMessage
+from infrahub.message_bus import InfrahubMessage
 
 
-class GitFileGet(InfrahubBaseMessage):
+class GitFileGet(InfrahubMessage):
     """Read a file from a Git repository."""
 
     commit: str = Field(..., description="The commit id to use to access the file")

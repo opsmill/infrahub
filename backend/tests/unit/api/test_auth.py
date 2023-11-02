@@ -1,6 +1,7 @@
 import jwt
 
 from infrahub import config
+from infrahub.database import InfrahubDatabase
 
 EXPIRED_ACCESS_TOKEN = (
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1YTVjYmNlZS1mN2IwLTRmNzc"
@@ -19,7 +20,7 @@ EXPIRED_REFRESH_TOKEN = (
 )
 
 
-async def test_password_based_login(session, default_branch, client, first_account):
+async def test_password_based_login(db: InfrahubDatabase, default_branch, client, first_account):
     with client:
         response = client.post("/api/auth/login", json={"username": "First Account", "password": "FirstPassword123"})
 
@@ -34,7 +35,7 @@ async def test_password_based_login(session, default_branch, client, first_accou
     assert first_account.id == decoded["sub"]
 
 
-async def test_refresh_with_invalidated_token(session, default_branch, client, first_account):
+async def test_refresh_with_invalidated_token(db: InfrahubDatabase, default_branch, client, first_account):
     with client:
         response = client.post("/api/auth/login", json={"username": "First Account", "password": "FirstPassword123"})
 
@@ -61,7 +62,7 @@ async def test_refresh_with_invalidated_token(session, default_branch, client, f
     }
 
 
-async def test_refresh_access_token(session, default_branch, client, first_account):
+async def test_refresh_access_token(db: InfrahubDatabase, default_branch, client, first_account):
     """Validate that it's possible to refresh an access token using a refresh token"""
     with client:
         login_response = client.post(
@@ -85,7 +86,7 @@ async def test_refresh_access_token(session, default_branch, client, first_accou
     assert decoded_access["session_id"] == decoded_refresh["session_id"]
 
 
-async def test_refresh_access_token_with_cookies(session, default_branch, client, first_account):
+async def test_refresh_access_token_with_cookies(db: InfrahubDatabase, default_branch, client, first_account):
     """Validate that it's possible to refresh an access token using a refresh token stored in cookies"""
     with client:
         login_response = client.post(
@@ -115,7 +116,9 @@ async def test_refresh_access_token_with_cookies(session, default_branch, client
     assert decoded_access["session_id"] == decoded_refresh["session_id"]
 
 
-async def test_fail_to_refresh_access_token_with_access_token(session, default_branch, client, first_account):
+async def test_fail_to_refresh_access_token_with_access_token(
+    db: InfrahubDatabase, default_branch, client, first_account
+):
     """Validate that it's not possible to refresh an access token using an access token"""
     with client:
         login_response = client.post(
@@ -138,7 +141,7 @@ async def test_fail_to_refresh_access_token_with_access_token(session, default_b
     }
 
 
-async def test_password_based_login_unknown_user(session, default_branch, client, first_account):
+async def test_password_based_login_unknown_user(db: InfrahubDatabase, default_branch, client, first_account):
     with client:
         response = client.post("/api/auth/login", json={"username": "i-do-not-exist", "password": "something"})
 
@@ -149,7 +152,7 @@ async def test_password_based_login_unknown_user(session, default_branch, client
     }
 
 
-async def test_password_based_login_invalid_password(session, default_branch, client, first_account):
+async def test_password_based_login_invalid_password(db: InfrahubDatabase, default_branch, client, first_account):
     with client:
         response = client.post("/api/auth/login", json={"username": "First Account", "password": "incorrect"})
 
@@ -160,7 +163,7 @@ async def test_password_based_login_invalid_password(session, default_branch, cl
     }
 
 
-async def test_use_expired_token(session, default_branch, client):
+async def test_use_expired_token(db: InfrahubDatabase, default_branch, client):
     with client:
         response = client.get("/api/rfile/testing", headers={"Authorization": f"Bearer {EXPIRED_ACCESS_TOKEN}"})
 
@@ -168,7 +171,7 @@ async def test_use_expired_token(session, default_branch, client):
     assert response.json() == {"data": None, "errors": [{"message": "Expired Signature", "extensions": {"code": 401}}]}
 
 
-async def test_refresh_access_token_with_expired_refresh_token(session, default_branch, client):
+async def test_refresh_access_token_with_expired_refresh_token(db: InfrahubDatabase, default_branch, client):
     """Validate that the correct error is returned for an expired refresh token"""
     with client:
         response = client.post("/api/auth/refresh", headers={"Authorization": f"Bearer {EXPIRED_REFRESH_TOKEN}"})
@@ -177,7 +180,7 @@ async def test_refresh_access_token_with_expired_refresh_token(session, default_
     assert response.json() == {"data": None, "errors": [{"message": "Expired Signature", "extensions": {"code": 401}}]}
 
 
-async def test_access_resource_using_refresh_token(session, default_branch, client, first_account):
+async def test_access_resource_using_refresh_token(db: InfrahubDatabase, default_branch, client, first_account):
     """It should not be possible to access a resource using a refresh token"""
     with client:
         login_response = client.post(
@@ -194,7 +197,7 @@ async def test_access_resource_using_refresh_token(session, default_branch, clie
     assert response.json() == {"data": None, "errors": [{"message": "Invalid token", "extensions": {"code": 401}}]}
 
 
-async def test_generate_api_token(session, default_branch, client, create_test_admin):
+async def test_generate_api_token(db: InfrahubDatabase, default_branch, client, create_test_admin):
     """It should not be possible to generate an API token using a JWT token"""
     with client:
         login_response = client.post(

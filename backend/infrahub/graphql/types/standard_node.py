@@ -33,19 +33,17 @@ class InfrahubObjectType(ObjectType):
         account = context.get("infrahub_account", None)
         db = context.get("infrahub_database")
 
-        async with db.session(database=config.SETTINGS.database.database) as session:
+        async with db.session(database=config.SETTINGS.database.database_name) as session:
             context["infrahub_session"] = session
 
             filters = {key: value for key, value in kwargs.items() if "__" in key and value}
 
             if filters:
                 objs = await cls._meta.model.get_list(
-                    filters=filters, at=at, branch=branch, account=account, include_source=True, session=session
+                    filters=filters, at=at, branch=branch, account=account, include_source=True, db=db
                 )
             else:
-                objs = await cls._meta.model.get_list(
-                    at=at, branch=branch, account=account, include_source=True, session=session
-                )
+                objs = await cls._meta.model.get_list(at=at, branch=branch, account=account, include_source=True, db=db)
 
             if not objs:
                 return []

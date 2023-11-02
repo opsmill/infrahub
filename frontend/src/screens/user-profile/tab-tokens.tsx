@@ -9,7 +9,7 @@ export default function TabProfile() {
 
   const accountId = tokenData?.sub;
 
-  const filters = [`account__id: "${accountId}"`];
+  const filters = [`account__ids: "${accountId}"`];
 
-  return <ObjectItems objectname={ACCOUNT_TOKEN_OBJECT} filters={filters} />;
+  return <ObjectItems objectname={ACCOUNT_TOKEN_OBJECT} filters={filters} preventBlock />;
 }

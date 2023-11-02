@@ -17,7 +17,6 @@ import { Tooltip } from "../../components/tooltip";
 import {
   ACCOUNT_OBJECT,
   DEFAULT_BRANCH_NAME,
-  PROPOSED_CHANGES,
   PROPOSED_CHANGES_CHANGE_THREAD_OBJECT,
   PROPOSED_CHANGES_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
@@ -25,7 +24,6 @@ import {
 } from "../../config/constants";
 import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
-import { mergeBranch } from "../../graphql/mutations/branches/mergeBranch";
 import { createObject } from "../../graphql/mutations/objects/createObject";
 import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
@@ -36,7 +34,6 @@ import useQuery from "../../hooks/useQuery";
 import { branchesState } from "../../state/atoms/branches.atom";
 import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
-import { objectToString } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import { getProposedChangesStateBadgeType } from "../../utils/proposed-changes";
 import { stringifyWithoutQuotes } from "../../utils/string";
@@ -114,7 +111,7 @@ export const Conversations = (props: tConversations) => {
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const navigate = useNavigate();
 
-  const accountSchemaData = schemaList.filter((s) => s.name === ACCOUNT_OBJECT)[0];
+  const accountSchemaData = schemaList.find((s) => s.kind === ACCOUNT_OBJECT);
 
   const queryString = getProposedChangesThreads({
     id: proposedchange,
@@ -251,14 +248,6 @@ export const Conversations = (props: tConversations) => {
 
       console.error("An error occured while creating the comment: ", error);
 
-      toast(
-        <Alert
-          type={ALERT_TYPES.ERROR}
-          message={"An error occured while creating the comment"}
-          details={error.message}
-        />
-      );
-
       setIsLoading(false);
     }
   };
@@ -305,11 +294,10 @@ export const Conversations = (props: tConversations) => {
 
       return;
     } catch (e) {
-      setIsLoading(false);
-      toast(
-        <Alert message="Something went wrong while updating the object" type={ALERT_TYPES.ERROR} />
-      );
       console.error("Something went wrong while updating the object:", e);
+
+      setIsLoading(false);
+
       return;
     }
   };
@@ -319,23 +307,6 @@ export const Conversations = (props: tConversations) => {
 
     try {
       setIsLoadingMerge(true);
-
-      const mergeData = {
-        name: proposedChangesDetails?.source_branch?.value,
-      };
-
-      const mergeMutationString = mergeBranch({ data: objectToString(mergeData) });
-
-      const mergeMutation = gql`
-        ${mergeMutationString}
-      `;
-
-      await graphqlClient.mutate({
-        mutation: mergeMutation,
-        context: {
-          date,
-        },
-      });
 
       const stateData = {
         state: {
@@ -423,11 +394,10 @@ export const Conversations = (props: tConversations) => {
 
       return;
     } catch (e) {
-      setIsLoadingClose(false);
-      toast(
-        <Alert message="Something went wrong while updating the object" type={ALERT_TYPES.ERROR} />
-      );
       console.error("Something went wrong while updating the object:", e);
+
+      setIsLoadingClose(false);
+
       return;
     }
   };
@@ -489,40 +459,40 @@ export const Conversations = (props: tConversations) => {
 
           <div className="border-t border-gray-200 px-2 py-2 sm:p-0">
             <dl className="divide-y divide-gray-200">
-              <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
+              <div className="p-4 grid grid-cols-3 gap-4 items-center">
                 <dt className="text-sm font-medium text-gray-500">ID</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">{proposedchange}</dd>
               </div>
 
-              <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
+              <div className="p-4 grid grid-cols-3 gap-4 items-center">
                 <dt className="text-sm font-medium text-gray-500">Name</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
                   {proposedChangesDetails?.name.value}
                 </dd>
               </div>
 
-              <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
+              <div className="p-4 grid grid-cols-3 gap-4 items-center">
                 <dt className="text-sm font-medium text-gray-500">State</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
                   <Badge type={getProposedChangesStateBadgeType(state)}>{state}</Badge>
                 </dd>
               </div>
 
-              <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
+              <div className="p-4 grid grid-cols-3 gap-4 items-center">
                 <dt className="text-sm font-medium text-gray-500">Source branch</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
                   <Badge>{proposedChangesDetails?.source_branch.value}</Badge>
                 </dd>
               </div>
 
-              <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
+              <div className="p-4 grid grid-cols-3 gap-4 items-center">
                 <dt className="text-sm font-medium text-gray-500">Destination branch</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
                   <Badge>{proposedChangesDetails?.destination_branch.value}</Badge>
                 </dd>
               </div>
 
-              <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
+              <div className="p-4 grid grid-cols-3 gap-4 items-center">
                 <dt className="text-sm font-medium text-gray-500">Created by</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
                   <Tooltip message={proposedChangesDetails?.created_by?.node?.display_label}>
@@ -535,7 +505,7 @@ export const Conversations = (props: tConversations) => {
                 </dd>
               </div>
 
-              <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
+              <div className="p-4 grid grid-cols-3 gap-4 items-center">
                 <dt className="text-sm font-medium text-gray-500">Reviewers</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
                   {reviewers.map((reviewer: any, index: number) => (
@@ -550,7 +520,7 @@ export const Conversations = (props: tConversations) => {
                 </dd>
               </div>
 
-              <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
+              <div className="p-4 grid grid-cols-3 gap-4 items-center">
                 <dt className="text-sm font-medium text-gray-500">Approved by</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
                   {approvers.map((approver: any, index: number) => (
@@ -565,14 +535,14 @@ export const Conversations = (props: tConversations) => {
                 </dd>
               </div>
 
-              <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
+              <div className="p-4 grid grid-cols-3 gap-4 items-center">
                 <dt className="text-sm font-medium text-gray-500">Updated</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
                   <DateDisplay date={proposedChangesDetails?._updated_at} />
                 </dd>
               </div>
 
-              <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
+              <div className="p-4 grid grid-cols-3 gap-4 items-center">
                 <dt className="text-sm font-medium text-gray-500">Actions</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
                   <Button
@@ -615,7 +585,7 @@ export const Conversations = (props: tConversations) => {
               </span>
               <div className="flex-1"></div>
               <div className="flex items-center">
-                <Square3Stack3DIcon className="w-5 h-5" />
+                <Square3Stack3DIcon className="w-4 h-4" />
                 <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
               </div>
             </div>
@@ -645,7 +615,7 @@ export const Conversations = (props: tConversations) => {
           closeDrawer={() => setShowEditDrawer(false)}
           onUpdateComplete={() => refetch()}
           objectid={proposedchange!}
-          objectname={PROPOSED_CHANGES!}
+          objectname={PROPOSED_CHANGES_OBJECT!}
           formStructure={formStructure}
         />
       </SlideOver>

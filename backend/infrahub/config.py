@@ -8,9 +8,8 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 import toml
-from pydantic import BaseSettings, Field, ValidationError, root_validator
-
-from infrahub_client import generate_uuid
+from infrahub_sdk import generate_uuid
+from pydantic import BaseSettings, Field, ValidationError
 
 SETTINGS: Settings = None
 
@@ -75,10 +74,10 @@ class DatabaseSettings(BaseSettings):
     port: int = 7687
     database: Optional[str] = Field(regex=VALID_DATABASE_NAME_REGEX, description="Name of the database")
     query_size_limit: int = Field(
-        1000,
+        5000,
         description="The max number of records to fetch in a single query before performing internal pagination.",
         min=1,
-        max=5000,
+        max=20000,
     )
 
     class Config:
@@ -95,11 +94,9 @@ class DatabaseSettings(BaseSettings):
             "query_size_limit": {"env": "INFRAHUB_DB_QUERY_SIZE_LIMIT"},
         }
 
-    @root_validator(pre=False)
-    def default_database_name(cls, values):  # pylint: disable=no-self-argument
-        if not values.get("database", None):
-            values["database"] = values["db_type"].value
-        return values
+    @property
+    def database_name(self) -> str:
+        return self.database or self.db_type.value
 
 
 class BrokerSettings(BaseSettings):
@@ -112,6 +109,9 @@ class BrokerSettings(BaseSettings):
         default=None, min=1, max=65535, description="Specified if running on a non default port."
     )
     namespace: str = "infrahub"
+    maximum_message_retries: int = Field(
+        10, description="The maximum number of retries that are attempted for failed messages"
+    )
 
     @property
     def service_port(self) -> int:
@@ -155,6 +155,9 @@ class GitSettings(BaseSettings):
 class MiscellaneousSettings(BaseSettings):
     print_query_details: bool = False
     start_background_runner: bool = True
+    maximum_validator_execution_time: int = Field(
+        1800, description="The maximum allowed time (in seconds) for a validator to run."
+    )
 
 
 class RemoteLoggingSettings(BaseSettings):
@@ -184,10 +187,6 @@ class AnalyticsSettings(BaseSettings):
 
 class ExperimentalFeaturesSettings(BaseSettings):
     pull_request: bool = False
-    ignore_authentication_requirements: bool = Field(
-        default=True,
-        description="If set to true operations that would have been denied due to lack of authentication still works.",
-    )
 
     class Config:
         env_prefix = "INFRAHUB_EXPERIMENTAL_"

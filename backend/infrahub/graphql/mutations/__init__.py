@@ -1,4 +1,5 @@
 from .account import CoreAccountTokenCreate
+from .artifact_definition import InfrahubArtifactDefinitionMutation
 from .attribute import (
     AnyAttributeInput,
     BoolAttributeInput,
@@ -21,6 +22,7 @@ from .branch import (
 )
 from .main import InfrahubMutation, InfrahubMutationMixin, InfrahubMutationOptions
 from .proposed_change import (
+    InfrahubProposedChangeMutation,
     ProposedChangeRequestRefreshArtifacts,
     ProposedChangeRequestRunCheck,
 )
@@ -40,10 +42,12 @@ __all__ = [
     "BranchUpdate",
     "CheckboxAttributeInput",
     "CoreAccountTokenCreate",
+    "InfrahubArtifactDefinitionMutation",
     "InfrahubRepositoryMutation",
     "InfrahubMutationOptions",
     "InfrahubMutation",
     "InfrahubMutationMixin",
+    "InfrahubProposedChangeMutation",
     "JSONAttributeInput",
     "ListAttributeInput",
     "NumberAttributeInput",

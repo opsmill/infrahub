@@ -26,7 +26,8 @@ const DEFAULT_CLASS = (className?: string, type?: BUTTON_TYPES) => `
   ${className?.includes("rounded") ? "" : "rounded-md"}
   ${className?.includes("border") ? "" : "border border-gray-300"}
   ${className?.includes("shadow") || type === BUTTON_TYPES.INVISIBLE ? "" : "shadow-sm"}
-  py-1.5 px-2.5
+  ${className?.includes("p-") || className?.includes("px-") ? "" : "px-2.5"}
+  ${className?.includes("p-") || className?.includes("py-") ? "" : "py-1.5"}
   inline-flex items-center gap-x-1.5
   text-sm font-semibold
   focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
@@ -72,7 +73,7 @@ const getClasseName = (type?: BUTTON_TYPES) => {
     case BUTTON_TYPES.INVISIBLE: {
       return `
         bg-transparent border-transparent
-        hover:bg-transparent
+        hover:bg-gray-50
         disabled:cursor-not-allowed disabled:bg-transparent
       `;
     }
@@ -107,10 +108,7 @@ export const Button = forwardRef((props: ButtonProps, ref: any) => {
       {...propsToPass}
       onClick={handleClick}
       disabled={isLoading ? true : propsToPass.disabled}>
-      {isLoading && (
-        <LoadingScreen className="mx-4" size={24} hideText colorClass={"fill-custom-white"} />
-      )}
-
+      {isLoading && <LoadingScreen size={18} hideText className="px-4" />}
       {!isLoading && children}
     </button>
   );

@@ -1,6 +1,6 @@
 from invoke import Context, task
 
-from .utils import REPO_BASE
+from .utils import ESCAPED_REPO_PATH
 
 MAIN_DIRECTORY = "tasks"
 NAMESPACE = "MAIN"
@@ -14,7 +14,7 @@ def format_black(context: Context):
     """Run black to format all Python files."""
 
     print(f" - [{NAMESPACE}] Format code with black")
-    with context.cd(REPO_BASE):
+    with context.cd(ESCAPED_REPO_PATH):
         exec_cmd = f"black {MAIN_DIRECTORY}/ models/"
         context.run(exec_cmd)
 
@@ -24,7 +24,7 @@ def format_autoflake(context: Context):
     """Run autoflack to format all Python files."""
 
     print(f" - [{NAMESPACE}] Format code with autoflake")
-    with context.cd(REPO_BASE):
+    with context.cd(ESCAPED_REPO_PATH):
         exec_cmd = f"autoflake --recursive --verbose --in-place --remove-all-unused-imports --remove-unused-variables {MAIN_DIRECTORY} models"
         context.run(exec_cmd)
 
@@ -34,7 +34,7 @@ def format_isort(context: Context):
     """Run isort to format all Python files."""
 
     print(f" - [{NAMESPACE}] Format code with isort")
-    with context.cd(REPO_BASE):
+    with context.cd(ESCAPED_REPO_PATH):
         exec_cmd = f"isort {MAIN_DIRECTORY} models"
         context.run(exec_cmd)
 

@@ -3,15 +3,14 @@ from pathlib import Path
 from typing import List, Optional, Union
 
 import jinja2
-from infrahub_sync import SyncConfig
-from infrahub_sync.generator.utils import list_to_set, list_to_str
-
-from infrahub_client import (
+from infrahub_sdk import (
     AttributeSchema,
     NodeSchema,
     RelationshipKind,
     RelationshipSchema,
 )
+from infrahub_sync import SyncConfig
+from infrahub_sync.generator.utils import list_to_set, list_to_str
 
 ATTRIBUTE_KIND_MAP = {
     "Text": "str",
@@ -143,4 +142,4 @@ def render_template(template_dir: str, template_file: str, output_dir: str, outp
     template = templateEnv.get_template(str(template_path))
 
     rendered_tpl = template.render(**context)  # type: ignore[arg-type]
-    output_filename.write_text(rendered_tpl)
+    output_filename.write_text(rendered_tpl, encoding="utf-8")

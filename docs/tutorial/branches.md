@@ -15,6 +15,8 @@ To get started, let's create a new branch that we'll call `cr1234`.
 
 You can create a new branch in the frontend by using the button with a plus sign in the top right corner, next to the name of the current branch, i.e. 'main'.
 
+Branch names are fairly permissive, but must conform to [git ref format](https://git-scm.com/docs/git-check-ref-format). For example, slashes (`/`) are allowed, tildes (`~`) are not.
+
 ![](../media/tutorial/tutorial-1-branch-and-version-control.cy.ts/tutorial_1_branch_creation.png)
 
 ##### Other options available

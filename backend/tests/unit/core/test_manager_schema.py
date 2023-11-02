@@ -2,7 +2,7 @@ import copy
 
 import pytest
 from deepdiff import DeepDiff
-from neo4j import AsyncSession
+from infrahub_sdk.utils import compare_lists
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -16,7 +16,7 @@ from infrahub.core.schema import (
     internal_schema,
 )
 from infrahub.core.schema_manager import SchemaBranch, SchemaManager
-from infrahub_client.utils import compare_lists
+from infrahub.database import InfrahubDatabase
 
 
 # -----------------------------------------------------------------
@@ -342,7 +342,7 @@ async def test_schema_branch_generate_identifiers(schema_all_in_one):
     assert generic.relationships[1].identifier == "builtinstatus__infragenericinterface"
 
 
-async def test_schema_branch_load_schema_extension(session: AsyncSession, default_branch, helper):
+async def test_schema_branch_load_schema_extension(db: InfrahubDatabase, default_branch, helper):
     schema = SchemaRoot(**core_models)
 
     schema_branch = SchemaBranch(cache={}, name="test")
@@ -366,7 +366,7 @@ async def test_schema_branch_load_schema_extension(session: AsyncSession, defaul
 
 
 async def test_schema_branch_process_filters(
-    session, reset_registry, default_branch: Branch, register_internal_models_schema
+    db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
 ):
     FULL_SCHEMA = {
         "nodes": [
@@ -414,7 +414,36 @@ async def test_schema_branch_process_filters(
     criticality_dict = schema_branch.get("BuiltinCriticality").dict()
 
     expected_filters = [
-        {"name": "ids", "kind": FilterSchemaKind.LIST, "enum": None, "object_kind": None, "description": None},
+        {"name": "ids", "kind": FilterSchemaKind.TEXT, "enum": None, "object_kind": None, "description": None},
+        {"name": "name__value", "kind": FilterSchemaKind.TEXT, "enum": None, "object_kind": None, "description": None},
+        {
+            "name": "name__is_visible",
+            "kind": FilterSchemaKind.BOOLEAN,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {
+            "name": "name__is_protected",
+            "kind": FilterSchemaKind.BOOLEAN,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {
+            "name": "name__source__id",
+            "kind": FilterSchemaKind.TEXT,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {
+            "name": "name__owner__id",
+            "kind": FilterSchemaKind.TEXT,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
         {
             "name": "level__value",
             "kind": FilterSchemaKind.NUMBER,
@@ -423,14 +452,57 @@ async def test_schema_branch_process_filters(
             "description": None,
         },
         {
-            "name": "color__value",
+            "name": "level__is_visible",
+            "kind": FilterSchemaKind.BOOLEAN,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {
+            "name": "level__is_protected",
+            "kind": FilterSchemaKind.BOOLEAN,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {
+            "name": "level__source__id",
             "kind": FilterSchemaKind.TEXT,
             "enum": None,
             "object_kind": None,
             "description": None,
         },
         {
-            "name": "name__value",
+            "name": "level__owner__id",
+            "kind": FilterSchemaKind.TEXT,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {"name": "color__value", "kind": FilterSchemaKind.TEXT, "enum": None, "object_kind": None, "description": None},
+        {
+            "name": "color__is_visible",
+            "kind": FilterSchemaKind.BOOLEAN,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {
+            "name": "color__is_protected",
+            "kind": FilterSchemaKind.BOOLEAN,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {
+            "name": "color__source__id",
+            "kind": FilterSchemaKind.TEXT,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {
+            "name": "color__owner__id",
             "kind": FilterSchemaKind.TEXT,
             "enum": None,
             "object_kind": None,
@@ -443,13 +515,70 @@ async def test_schema_branch_process_filters(
             "object_kind": None,
             "description": None,
         },
+        {
+            "name": "description__is_visible",
+            "kind": FilterSchemaKind.BOOLEAN,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {
+            "name": "description__is_protected",
+            "kind": FilterSchemaKind.BOOLEAN,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {
+            "name": "description__source__id",
+            "kind": FilterSchemaKind.TEXT,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {
+            "name": "description__owner__id",
+            "kind": FilterSchemaKind.TEXT,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {"name": "any__value", "kind": FilterSchemaKind.TEXT, "enum": None, "object_kind": None, "description": None},
+        {
+            "name": "any__is_visible",
+            "kind": FilterSchemaKind.BOOLEAN,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {
+            "name": "any__is_protected",
+            "kind": FilterSchemaKind.BOOLEAN,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {
+            "name": "any__source__id",
+            "kind": FilterSchemaKind.TEXT,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {
+            "name": "any__owner__id",
+            "kind": FilterSchemaKind.TEXT,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
     ]
 
     assert not DeepDiff(criticality_dict["filters"], expected_filters, ignore_order=True)
 
 
 async def test_schema_branch_copy(
-    session: AsyncSession, reset_registry, default_branch: Branch, register_internal_models_schema
+    db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
 ):
     FULL_SCHEMA = {
         "nodes": [
@@ -501,7 +630,7 @@ async def test_schema_branch_copy(
 
 
 async def test_schema_branch_diff(
-    session: AsyncSession, reset_registry, default_branch: Branch, register_internal_models_schema
+    db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
 ):
     FULL_SCHEMA = {
         "nodes": [
@@ -601,7 +730,7 @@ async def test_schema_manager_get(default_branch: Branch):
 # -----------------------------------------------------------------
 
 
-async def test_load_node_to_db_node_schema(session: AsyncSession, default_branch: Branch):
+async def test_load_node_to_db_node_schema(db: InfrahubDatabase, default_branch: Branch):
     registry.schema = SchemaManager()
     registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
 
@@ -621,18 +750,18 @@ async def test_load_node_to_db_node_schema(session: AsyncSession, default_branch
     }
     node = NodeSchema(**SCHEMA)
 
-    await registry.schema.load_node_to_db(node=node, session=session, branch=default_branch)
+    await registry.schema.load_node_to_db(node=node, db=db, branch=default_branch)
 
     node2 = registry.schema.get(name=node.kind, branch=default_branch)
     assert node2.id
     assert node2.relationships[0].id
     assert node2.attributes[0].id
 
-    results = await SchemaManager.query(schema="SchemaNode", branch=default_branch, session=session)
+    results = await SchemaManager.query(schema="SchemaNode", branch=default_branch, db=db)
     assert len(results) == 1
 
 
-async def test_load_node_to_db_generic_schema(session: AsyncSession, default_branch):
+async def test_load_node_to_db_generic_schema(db: InfrahubDatabase, default_branch):
     registry.schema = SchemaManager()
     registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
 
@@ -644,15 +773,15 @@ async def test_load_node_to_db_generic_schema(session: AsyncSession, default_bra
         ],
     }
     node = GenericSchema(**SCHEMA)
-    await registry.schema.load_node_to_db(node=node, session=session, branch=default_branch)
+    await registry.schema.load_node_to_db(node=node, db=db, branch=default_branch)
 
     results = await SchemaManager.query(
-        schema="SchemaGeneric", filters={"kind__value": "InfraGenericInterface"}, branch=default_branch, session=session
+        schema="SchemaGeneric", filters={"kind__value": "InfraGenericInterface"}, branch=default_branch, db=db
     )
     assert len(results) == 1
 
 
-async def test_load_node_to_db_group_schema(session: AsyncSession, default_branch: Branch):
+async def test_load_node_to_db_group_schema(db: InfrahubDatabase, default_branch: Branch):
     registry.schema = SchemaManager()
     registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
 
@@ -662,15 +791,15 @@ async def test_load_node_to_db_group_schema(session: AsyncSession, default_branc
     }
 
     node = GroupSchema(**SCHEMA)
-    await registry.schema.load_node_to_db(node=node, session=session, branch=default_branch)
+    await registry.schema.load_node_to_db(node=node, db=db, branch=default_branch)
 
     results = await SchemaManager.query(
-        schema="SchemaGroup", filters={"kind__value": "GenericGroup"}, branch=default_branch, session=session
+        schema="SchemaGroup", filters={"kind__value": "GenericGroup"}, branch=default_branch, db=db
     )
     assert len(results) == 1
 
 
-async def test_update_node_in_db_node_schema(session: AsyncSession, default_branch: Branch):
+async def test_update_node_in_db_node_schema(db: InfrahubDatabase, default_branch: Branch):
     SCHEMA = {
         "name": "Criticality",
         "namespace": "Builtin",
@@ -688,7 +817,7 @@ async def test_update_node_in_db_node_schema(session: AsyncSession, default_bran
 
     registry.schema = SchemaManager()
     registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
-    await registry.schema.load_node_to_db(node=NodeSchema(**SCHEMA), session=session, branch=default_branch)
+    await registry.schema.load_node_to_db(node=NodeSchema(**SCHEMA), db=db, branch=default_branch)
 
     node = registry.schema.get(name="BuiltinCriticality", branch=default_branch)
 
@@ -697,74 +826,74 @@ async def test_update_node_in_db_node_schema(session: AsyncSession, default_bran
     new_node.default_filter = "kind__value"
     new_node.attributes[0].unique = False
 
-    await registry.schema.update_node_in_db(node=new_node, session=session, branch=default_branch)
+    await registry.schema.update_node_in_db(node=new_node, db=db, branch=default_branch)
 
-    results = await SchemaManager.get_many(ids=[node.id, new_node.attributes[0].id], session=session)
+    results = await SchemaManager.get_many(ids=[node.id, new_node.attributes[0].id], db=db)
 
     assert results[new_node.id].default_filter.value == "kind__value"
     assert results[new_node.attributes[0].id].unique.value is False
 
 
-async def test_load_schema_to_db_internal_models(session: AsyncSession, default_branch: Branch):
+async def test_load_schema_to_db_internal_models(db: InfrahubDatabase, default_branch: Branch):
     schema = SchemaRoot(**internal_schema)
     new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
-    await registry.schema.load_schema_to_db(schema=new_schema, session=session, branch=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=new_schema, db=db, branch=default_branch.name)
 
     node_schema = registry.schema.get(name="SchemaNode", branch=default_branch)
-    results = await SchemaManager.query(schema=node_schema, session=session)
+    results = await SchemaManager.query(schema=node_schema, db=db)
     assert len(results) > 1
 
 
 async def test_load_schema_to_db_core_models(
-    session: AsyncSession, default_branch: Branch, register_internal_models_schema
+    db: InfrahubDatabase, default_branch: Branch, register_internal_models_schema
 ):
     schema = SchemaRoot(**core_models)
     new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
-    await registry.schema.load_schema_to_db(schema=new_schema, session=session)
+    await registry.schema.load_schema_to_db(schema=new_schema, db=db)
 
     node_schema = registry.get_schema(name="SchemaGeneric")
-    results = await SchemaManager.query(schema=node_schema, session=session)
+    results = await SchemaManager.query(schema=node_schema, db=db)
     assert len(results) > 1
 
 
 async def test_load_schema_to_db_simple_01(
-    session: AsyncSession,
+    db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
     helper,
 ):
     schema = SchemaRoot(**helper.schema_file("infra_simple_01.json"))
     new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
-    await registry.schema.load_schema_to_db(schema=new_schema, session=session, branch=default_branch)
+    await registry.schema.load_schema_to_db(schema=new_schema, db=db, branch=default_branch)
 
     node_schema = registry.schema.get(name="SchemaNode")
     results = await SchemaManager.query(
-        schema=node_schema, filters={"name__value": "Device"}, session=session, branch=default_branch
+        schema=node_schema, filters={"name__value": "Device"}, db=db, branch=default_branch
     )
     assert len(results) == 1
 
 
 async def test_load_schema_to_db_w_generics_01(
-    session: AsyncSession,
+    db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
     helper,
 ):
     schema = SchemaRoot(**helper.schema_file("infra_w_generics_01.json"))
     new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
-    await registry.schema.load_schema_to_db(schema=new_schema, session=session, branch=default_branch)
+    await registry.schema.load_schema_to_db(schema=new_schema, db=db, branch=default_branch)
 
     node_schema = registry.schema.get(name="SchemaNode")
     results = await SchemaManager.query(
-        schema=node_schema, filters={"name__value": "InterfaceL3"}, session=session, branch=default_branch
+        schema=node_schema, filters={"name__value": "InterfaceL3"}, db=db, branch=default_branch
     )
     assert len(results) == 1
 
 
 async def test_load_schema_from_db(
-    session: AsyncSession, reset_registry, default_branch: Branch, register_internal_models_schema
+    db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
 ):
     FULL_SCHEMA = {
         "nodes": [
@@ -821,9 +950,9 @@ async def test_load_schema_from_db(
     }
 
     schema1 = registry.schema.register_schema(schema=SchemaRoot(**FULL_SCHEMA), branch=default_branch.name)
-    await registry.schema.load_schema_to_db(schema=schema1, session=session, branch=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema1, db=db, branch=default_branch.name)
     schema11 = registry.schema.get_schema_branch(name=default_branch.name)
-    schema2 = await registry.schema.load_schema_from_db(session=session, branch=default_branch.name)
+    schema2 = await registry.schema.load_schema_from_db(db=db, branch=default_branch.name)
 
     assert len(schema2.nodes) == 7
     assert len(schema2.generics) == 1
@@ -836,7 +965,7 @@ async def test_load_schema_from_db(
 
 
 async def test_load_schema(
-    session: AsyncSession, reset_registry, default_branch: Branch, register_internal_models_schema
+    db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
 ):
     FULL_SCHEMA = {
         "nodes": [
@@ -893,9 +1022,9 @@ async def test_load_schema(
     }
 
     schema1 = registry.schema.register_schema(schema=SchemaRoot(**FULL_SCHEMA), branch=default_branch.name)
-    await registry.schema.load_schema_to_db(schema=schema1, session=session, branch=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema1, db=db, branch=default_branch.name)
     schema11 = registry.schema.get_schema_branch(name=default_branch.name)
-    schema2 = await registry.schema.load_schema(session=session, branch=default_branch.name)
+    schema2 = await registry.schema.load_schema(db=db, branch=default_branch.name)
 
     assert len(schema2.nodes) == 7
     assert len(schema2.generics) == 1

@@ -8,7 +8,7 @@ from rich.logging import RichHandler
 import infrahub.config as config
 from infrahub.core.initialization import first_time_initialization, initialization
 from infrahub.core.utils import delete_all_nodes
-from infrahub.database import get_db
+from infrahub.database import InfrahubDatabase, get_db
 
 app = typer.Typer()
 
@@ -16,13 +16,13 @@ PERMISSIONS_AVAILABLE = ["read", "write", "admin"]
 
 
 @app.callback()
-def callback():
+def callback() -> None:
     """
     Manage the graph in the database.
     """
 
 
-async def _init():
+async def _init() -> None:
     """Erase the content of the database and initialize it with the core schema."""
 
     # log_level = "DEBUG" if debug else "INFO"
@@ -39,23 +39,21 @@ async def _init():
     #   TODO, if possible try to implement this in an idempotent way
     # --------------------------------------------------
 
-    db = await get_db(retry=1)
-
-    async with db.session(database=config.SETTINGS.database.database) as session:
+    dbdriver = InfrahubDatabase(driver=await get_db(retry=1))
+    async with dbdriver.start_transaction() as db:
         log.info("Delete All Nodes")
-        await delete_all_nodes(session=session)
-        await first_time_initialization(session=session)
+        await delete_all_nodes(db=db)
+        await first_time_initialization(db=db)
 
     await db.close()
 
 
-async def _load_test_data(dataset: str):
+async def _load_test_data(dataset: str) -> None:
     """Load test data into the database from the test_data directory."""
 
-    db = await get_db(retry=1)
-
-    async with db.session(database=config.SETTINGS.database.database) as session:
-        await initialization(session=session)
+    db = InfrahubDatabase(driver=await get_db(retry=1))
+    async with db.start_session() as db:
+        await initialization(db=db)
 
         log_level = "DEBUG"
 
@@ -64,7 +62,7 @@ async def _load_test_data(dataset: str):
         logging.getLogger("infrahub")
 
         dataset_module = importlib.import_module(f"infrahub.test_data.{dataset}")
-        await dataset_module.load_data(session=session)
+        await dataset_module.load_data(db=db)
 
     await db.close()
 
@@ -74,7 +72,7 @@ def init(
     config_file: str = typer.Option(
         "infrahub.toml", envvar="INFRAHUB_CONFIG", help="Location of the configuration file to use for Infrahub"
     )
-):
+) -> None:
     """Erase the content of the database and initialize it with the core schema."""
 
     logging.getLogger("neo4j").setLevel(logging.ERROR)
@@ -90,7 +88,7 @@ def load_test_data(
         "infrahub.toml", envvar="INFRAHUB_CONFIG", help="Location of the configuration file to use for Infrahub"
     ),
     dataset: str = "dataset01",
-):
+) -> None:
     """Load test data into the database from the test_data directory."""
 
     logging.getLogger("neo4j").setLevel(logging.ERROR)

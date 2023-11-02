@@ -9,7 +9,6 @@ import {
 import { format, formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
 import { useCallback, useContext, useState } from "react";
-import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "../config/qsp";
 import { AuthContext } from "../decorators/withAuth";
@@ -20,10 +19,9 @@ import { branchVar } from "../graphql/variables/branchVar";
 import { dateVar } from "../graphql/variables/dateVar";
 import { branchesState } from "../state/atoms/branches.atom";
 import { classNames, objectToString } from "../utils/common";
-import { ALERT_TYPES, Alert } from "./alert";
 import { BUTTON_TYPES, Button } from "./button";
 import { Input } from "./input";
-import { PopOver } from "./popover";
+import { POPOVER_SIZE, PopOver } from "./popover";
 import { Select } from "./select";
 import { SelectButton } from "./select-button";
 import { Switch } from "./switch";
@@ -44,7 +42,7 @@ export default function BranchSelector() {
 
   const valueLabel = (
     <>
-      <Square3Stack3DIcon className="h-5 w-5" aria-hidden="true" />
+      <Square3Stack3DIcon className="w-4 h-4" aria-hidden="true" />
       <p className="ml-2.5 text-sm font-medium">{branch?.name}</p>
     </>
   );
@@ -55,16 +53,31 @@ export default function BranchSelector() {
       buttonType={BUTTON_TYPES.MAIN}
       className="flex-1 rounded-r-md border border-transparent"
       type="submit">
-      <PlusIcon className="h-5 w-5 text-custom-white" aria-hidden="true" />
+      <PlusIcon className="w-4 h-4 text-custom-white" aria-hidden="true" />
     </Button>
   );
 
-  const branchesOptions = branches.map((branch) => ({
-    id: branch.name,
-    name: branch.name,
-  }));
+  const branchesOptions = branches.sort((branch1, branch2) => {
+    if (branch1.name === "main") {
+      return -1;
+    }
 
-  const defaultBranch = branches?.filter((b) => b.is_default)[0]?.name;
+    if (branch2.name === "main") {
+      return 1;
+    }
+
+    if (branch2.name === "main") {
+      return -1;
+    }
+
+    if (branch1.name > branch2.name) {
+      return 1;
+    }
+
+    return -1;
+  });
+
+  const defaultBranch = branches?.filter((b) => b.is_default)[0]?.id;
 
   /**
    * Update GraphQL client endpoint whenever branch changes
@@ -102,7 +115,7 @@ export default function BranchSelector() {
         <p className={selected ? "font-semibold" : "font-normal"}>{option.name}</p>
         {selected ? (
           <span className={active ? "text-custom-white" : "text-gray-500"}>
-            <CheckIcon className="h-5 w-5" aria-hidden="true" />
+            <CheckIcon className="w-4 h-4" aria-hidden="true" />
           </span>
         ) : null}
       </div>
@@ -152,9 +165,6 @@ export default function BranchSelector() {
       window.location.reload();
     } catch (error) {
       console.error("Error while creating the branch: ", error);
-      toast(
-        <Alert type={ALERT_TYPES.ERROR} message={"An error occured while creating the branch"} />
-      );
 
       setIsLoading(false);
     }
@@ -173,14 +183,15 @@ export default function BranchSelector() {
         value={branch}
         valueLabel={valueLabel}
         onChange={onBranchChange}
-        options={branches}
+        options={branchesOptions}
         renderOption={renderOption}
       />
       <PopOver
         disabled={!auth?.permissions?.write}
         buttonComponent={PopOverButton}
         className="right-0"
-        title={"Create a new branch"}>
+        title={"Create a new branch"}
+        height={POPOVER_SIZE.NONE}>
         {({ close }: any) => (
           <>
             <div className="flex flex-col">

@@ -17,15 +17,19 @@ describe("Protected fields", () => {
     cy.contains("atl1-edge1").click();
 
     // Open the metadata tooltip
-    cy.get(":nth-child(7) > .py-4 > .mt-1 > .p-2").click();
+    cy.get(".sm\\:p-0").within(() => {
+      cy.contains("Role")
+        .parent()
+        .within(() => {
+          cy.get("[data-cy='metadata-button']").click();
+        });
+    });
 
     // The owner should be the eng team
     cy.get(":nth-child(5) > .underline").should("have.text", ENG_TEAM_ONLY_CREDENTIALS.username);
 
     // Open the edit panel for the object
-    cy.get(".md\\:pl-64 > :nth-child(2) > .flex-col > .bg-custom-white").within(() => {
-      cy.contains("Edit").click();
-    });
+    cy.contains("Edit").click();
 
     // The input should be available
     cy.get("#headlessui-combobox-input-\\:r1g\\:").should("not.be.disabled");
@@ -41,15 +45,19 @@ describe("Protected fields", () => {
     cy.contains("atl1-edge1").click();
 
     // Open the metadata tooltip
-    cy.get(":nth-child(7) > .py-4 > .mt-1 > .p-2").click();
+    cy.get(".sm\\:p-0").within(() => {
+      cy.contains("Role")
+        .parent()
+        .within(() => {
+          cy.get("[data-cy='metadata-button']").click();
+        });
+    });
 
     // The owner should be the eng team
     cy.get(":nth-child(5) > .underline").should("have.text", ENG_TEAM_ONLY_CREDENTIALS.username);
 
     // Open the edit panel for the object
-    cy.get(".md\\:pl-64 > :nth-child(2) > .flex-col > .bg-custom-white").within(() => {
-      cy.contains("Edit").click();
-    });
+    cy.contains("Edit").click();
 
     // The input should be available
     cy.get("#headlessui-combobox-input-\\:r1g\\:").should("not.be.disabled");
@@ -65,17 +73,21 @@ describe("Protected fields", () => {
     cy.contains("atl1-edge1").click();
 
     // Open the metadata tooltip
-    cy.get(":nth-child(7) > .py-4 > .mt-1 > .p-2").click();
+    cy.get(".sm\\:p-0").within(() => {
+      cy.contains("Role")
+        .parent()
+        .within(() => {
+          cy.get("[data-cy='metadata-button']").click();
+        });
+    });
 
     // The owner should be the eng team
     cy.get(":nth-child(5) > .underline").should("have.text", ENG_TEAM_ONLY_CREDENTIALS.username);
 
     // Open the edit panel for the object
-    cy.get(".md\\:pl-64 > :nth-child(2) > .flex-col > .bg-custom-white").within(() => {
-      cy.contains("Edit").click();
-    });
+    cy.contains("Edit").click();
 
-    // The input should be available
+    // The input should not be available
     cy.get("#headlessui-combobox-input-\\:r1g\\:").should("be.disabled");
   });
 });

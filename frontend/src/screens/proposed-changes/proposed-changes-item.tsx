@@ -1,6 +1,6 @@
 import { gql, useReactiveVar } from "@apollo/client";
 import { ChevronLeftIcon, TrashIcon } from "@heroicons/react/24/outline";
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/alert";
@@ -10,7 +10,8 @@ import { BUTTON_TYPES, Button } from "../../components/button";
 import { DateDisplay } from "../../components/date-display";
 import ModalDelete from "../../components/modal-delete";
 import { Tooltip } from "../../components/tooltip";
-import { PROPOSED_CHANGES } from "../../config/constants";
+import { PROPOSED_CHANGES_OBJECT } from "../../config/constants";
+import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
 import { branchVar } from "../../graphql/variables/branchVar";
@@ -24,6 +25,7 @@ export const ProposedChange = (props: any) => {
 
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
+  const auth = useContext(AuthContext);
   const [isLoading, setIsLoading] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
 
@@ -41,7 +43,7 @@ export const ProposedChange = (props: any) => {
     setIsLoading(true);
 
     const mutationString = deleteObject({
-      kind: `Core${PROPOSED_CHANGES}`,
+      kind: PROPOSED_CHANGES_OBJECT,
       data: stringifyWithoutQuotes({
         id: row.id,
       }),
@@ -72,7 +74,8 @@ export const ProposedChange = (props: any) => {
       <Button
         buttonType={BUTTON_TYPES.INVISIBLE}
         className="absolute -right-4 -top-4 hidden group-hover/pc:block"
-        onClick={() => setDeleteModal(true)}>
+        onClick={() => setDeleteModal(true)}
+        disabled={!auth?.permissions?.write}>
         <TrashIcon className="h-4 w-4 text-red-500" />
       </Button>
 
@@ -96,7 +99,7 @@ export const ProposedChange = (props: any) => {
                 </Tooltip>
 
                 <ChevronLeftIcon
-                  className="h-5 w-5 mx-2 flex-shrink-0 text-gray-400 mr-4"
+                  className="w-4 h-4 mx-2 flex-shrink-0 text-gray-400 mr-4"
                   aria-hidden="true"
                 />
 

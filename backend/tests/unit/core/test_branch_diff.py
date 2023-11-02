@@ -3,7 +3,6 @@ from typing import Dict
 import pendulum
 import pytest
 from deepdiff import DeepDiff
-from neo4j import AsyncSession
 from pydantic import Field
 
 from infrahub.core import get_branch
@@ -13,58 +12,54 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
-from infrahub.message_bus.events import (
-    GitMessageAction,
-    InfrahubRPCResponse,
-    MessageType,
-    RPCStatusCode,
-)
+from infrahub.database import InfrahubDatabase
+from infrahub.message_bus import InfrahubResponse
 from infrahub.message_bus.rpc import InfrahubRpcClientTesting
 
 
-async def test_diff_has_changes_graph(session: AsyncSession, base_dataset_02):
-    branch1 = await Branch.get_by_name(name="branch1", session=session)
+async def test_diff_has_changes_graph(db: InfrahubDatabase, base_dataset_02):
+    branch1 = await Branch.get_by_name(name="branch1", db=db)
 
-    diff = await Diff.init(branch=branch1, session=session)
-    assert await diff.has_changes_graph(session=session)
+    diff = await Diff.init(branch=branch1, db=db)
+    assert await diff.has_changes_graph(db=db)
 
-    diff = await Diff.init(branch=branch1, diff_from=base_dataset_02["time0"], session=session)
+    diff = await Diff.init(branch=branch1, diff_from=base_dataset_02["time0"], db=db)
 
-    assert not await diff.has_changes_graph(session=session)
+    assert not await diff.has_changes_graph(db=db)
 
     # Create a change in main to validate that a new change will be detected but not if main is excluded (branch_only)
-    c1 = await NodeManager.get_one(id="c1", session=session)
+    c1 = await NodeManager.get_one(id="c1", db=db)
     c1.name.value = "new name"
-    await c1.save(session=session)
+    await c1.save(db=db)
 
-    diff = await Diff.init(branch=branch1, diff_from=base_dataset_02["time0"], session=session)
-    assert await diff.has_changes_graph(session=session)
+    diff = await Diff.init(branch=branch1, diff_from=base_dataset_02["time0"], db=db)
+    assert await diff.has_changes_graph(db=db)
 
-    diff = await Diff.init(branch=branch1, branch_only=True, diff_from=base_dataset_02["time0"])
-    assert not await diff.has_changes_graph(session=session)
+    diff = await Diff.init(branch=branch1, branch_only=True, diff_from=base_dataset_02["time0"], db=db)
+    assert not await diff.has_changes_graph(db=db)
 
 
-async def test_diff_has_conflict_graph(session: AsyncSession, base_dataset_02):
-    branch1 = await Branch.get_by_name(name="branch1", session=session)
+async def test_diff_has_conflict_graph(db: InfrahubDatabase, base_dataset_02):
+    branch1 = await Branch.get_by_name(name="branch1", db=db)
 
-    diff = await Diff.init(branch=branch1, session=session)
-    assert not await diff.has_conflict_graph(session=session)
+    diff = await Diff.init(branch=branch1, db=db)
+    assert not await diff.has_conflict_graph(db=db)
 
     # Change the name of C1 in Branch1 to create a conflict
-    c1 = await NodeManager.get_one(id="c1", branch=branch1, session=session)
+    c1 = await NodeManager.get_one(id="c1", branch=branch1, db=db)
     c1.name.value = "new name"
-    await c1.save(session=session)
+    await c1.save(db=db)
 
-    diff = await Diff.init(branch=branch1, session=session)
-    assert await diff.has_conflict_graph(session=session)
+    diff = await Diff.init(branch=branch1, db=db)
+    assert await diff.has_conflict_graph(db=db)
 
     # The conflict shouldn't be reported if we are only considering the branch
-    diff = await Diff.init(branch=branch1, branch_only=True, session=session)
-    assert not await diff.has_conflict_graph(session=session)
+    diff = await Diff.init(branch=branch1, branch_only=True, db=db)
+    assert not await diff.has_conflict_graph(db=db)
 
 
-async def test_diff_get_modified_paths_graph(session: AsyncSession, base_dataset_02):
-    branch1 = await Branch.get_by_name(name="branch1", session=session)
+async def test_diff_get_modified_paths_graph(db: InfrahubDatabase, base_dataset_02):
+    branch1 = await Branch.get_by_name(name="branch1", db=db)
 
     expected_paths_main = [
         "data/c1",
@@ -93,6 +88,7 @@ async def test_diff_get_modified_paths_graph(session: AsyncSession, base_dataset
         "data/c1/owner/p1/property/IS_VISIBLE",
         "data/c2/owner/p1/property/IS_PROTECTED",
         "data/c2/owner/p1/property/IS_VISIBLE",
+        "data/c2/owner/peer",
         "data/c3",
         "data/c3/color/value",
         "data/c3/color/property/IS_PROTECTED",
@@ -111,8 +107,8 @@ async def test_diff_get_modified_paths_graph(session: AsyncSession, base_dataset
         "data/p1/cars/c2/property/IS_VISIBLE",
     ]
 
-    diff = await Diff.init(branch=branch1, session=session)
-    paths = await diff.get_modified_paths_graph(session=session)
+    diff = await Diff.init(branch=branch1, db=db)
+    paths = await diff.get_modified_paths_graph(db=db)
 
     # Due to how the conflict check works on ModifiedPath with def __eq__ we can't compare
     # the paths directly against each other, instead the string version of the paths are compared
@@ -122,32 +118,33 @@ async def test_diff_get_modified_paths_graph(session: AsyncSession, base_dataset
     assert modified_branch1 == sorted(expected_paths_branch1)
 
     # Change the name of C1 in Branch1 to create a conflict
-    c1 = await NodeManager.get_one(id="c1", branch=branch1, session=session)
+    c1 = await NodeManager.get_one(id="c1", branch=branch1, db=db)
     c1.name.value = "new name"
-    await c1.save(session=session)
+    await c1.save(db=db)
 
-    diff = await Diff.init(branch=branch1, session=session)
-    paths = await diff.get_modified_paths_graph(session=session)
+    diff = await Diff.init(branch=branch1, db=db)
+    paths = await diff.get_modified_paths_graph(db=db)
     expected_paths_branch1.append("data/c1/name/value")
     modified_branch1 = sorted([str(path) for path in paths["branch1"]])
 
     assert modified_branch1 == sorted(expected_paths_branch1)
 
 
-async def test_diff_get_files_repository(session: AsyncSession, rpc_client, repos_in_main, base_dataset_02):
-    mock_response = InfrahubRPCResponse(
-        status=RPCStatusCode.OK,
-        response={
+async def test_diff_get_files_repository(db: InfrahubDatabase, rpc_client, repos_in_main, base_dataset_02):
+    mock_response = InfrahubResponse(
+        response_class="diffnames_response",
+        response_data={
             "files_changed": ["readme.md", "mydir/myfile.py"],
             "files_removed": ["notthere.md"],
             "files_added": ["newandshiny.md"],
         },
     )
-    await rpc_client.add_response(response=mock_response, message_type=MessageType.GIT, action=GitMessageAction.DIFF)
 
-    branch2 = await create_branch(branch_name="branch2", session=session)
+    await rpc_client.add_mock_reply(response=mock_response)
 
-    diff = await Diff.init(branch=branch2, session=session)
+    branch2 = await create_branch(branch_name="branch2", db=db)
+
+    diff = await Diff.init(branch=branch2, db=db)
 
     resp = await diff.get_files_repository(
         rpc_client=rpc_client,
@@ -168,65 +165,82 @@ async def test_diff_get_files_repository(session: AsyncSession, rpc_client, repo
 
 
 async def test_diff_get_files_repositories_for_branch_case01(
-    session, rpc_client: InfrahubRpcClientTesting, default_branch: Branch, repos_in_main
+    db: InfrahubDatabase, rpc_client: InfrahubRpcClientTesting, default_branch: Branch, repos_in_main
 ):
     """Testing the get_modified_paths_repositories_for_branch_case01 method with 2 repositories in the database
     but only one has a different commit value between 2 and from so we expect only 2 files"""
 
-    mock_response = InfrahubRPCResponse(
-        status=RPCStatusCode.OK, response={"files_changed": ["readme.md", "mydir/myfile.py"]}
+    mock_response = InfrahubResponse(
+        response_class="diffnames_response",
+        response_data={
+            "files_changed": ["readme.md", "mydir/myfile.py"],
+            "files_removed": [],
+            "files_added": [],
+        },
     )
-    await rpc_client.add_response(response=mock_response, message_type=MessageType.GIT, action=GitMessageAction.DIFF)
 
-    branch2 = await create_branch(branch_name="branch2", session=session)
+    await rpc_client.add_mock_reply(response=mock_response)
 
-    repos_list = await NodeManager.query(session=session, schema="CoreRepository", branch=branch2)
+    branch2 = await create_branch(branch_name="branch2", db=db)
+
+    repos_list = await NodeManager.query(db=db, schema="CoreRepository", branch=branch2)
     repos = {repo.name.value: repo for repo in repos_list}
 
     repo01 = repos["repo01"]
     repo01.commit.value = "dddddddddd"
-    await repo01.save(session=session)
+    await repo01.save(db=db)
 
-    diff = await Diff.init(branch=branch2, session=session)
+    diff = await Diff.init(branch=branch2, db=db)
 
-    resp = await diff.get_files_repositories_for_branch(session=session, rpc_client=rpc_client, branch=branch2)
+    resp = await diff.get_files_repositories_for_branch(db=db, rpc_client=rpc_client, branch=branch2)
 
     assert len(resp) == 2
     assert isinstance(resp, list)
     assert sorted([fde.location for fde in resp]) == ["mydir/myfile.py", "readme.md"]
 
-    assert await rpc_client.ensure_all_responses_have_been_delivered()
-
 
 async def test_diff_get_files_repositories_for_branch_case02(
-    session, rpc_client: InfrahubRpcClientTesting, default_branch: Branch, repos_in_main
+    db: InfrahubDatabase, rpc_client: InfrahubRpcClientTesting, default_branch: Branch, repos_in_main
 ):
     """Testing the get_modified_paths_repositories_for_branch_case01 method with 2 repositories in the database
     both repositories have a new commit value so we expect both to return something"""
 
-    mock_response = InfrahubRPCResponse(
-        status=RPCStatusCode.OK, response={"files_changed": ["readme.md", "mydir/myfile.py"]}
+    mock_response = InfrahubResponse(
+        response_class="diffnames_response",
+        response_data={
+            "files_changed": ["readme.md", "mydir/myfile.py"],
+            "files_removed": [],
+            "files_added": [],
+        },
     )
-    await rpc_client.add_response(response=mock_response, message_type=MessageType.GIT, action=GitMessageAction.DIFF)
-    mock_response = InfrahubRPCResponse(status=RPCStatusCode.OK, response={"files_changed": ["anotherfile.rb"]})
-    await rpc_client.add_response(response=mock_response, message_type=MessageType.GIT, action=GitMessageAction.DIFF)
+    await rpc_client.add_mock_reply(response=mock_response)
 
-    branch2 = await create_branch(branch_name="branch2", session=session)
+    mock_response = InfrahubResponse(
+        response_class="diffnames_response",
+        response_data={
+            "files_changed": ["anotherfile.rb"],
+            "files_removed": [],
+            "files_added": [],
+        },
+    )
+    await rpc_client.add_mock_reply(response=mock_response)
 
-    repos_list = await NodeManager.query(session=session, schema="CoreRepository", branch=branch2)
+    branch2 = await create_branch(branch_name="branch2", db=db)
+
+    repos_list = await NodeManager.query(db=db, schema="CoreRepository", branch=branch2)
     repos = {repo.name.value: repo for repo in repos_list}
 
     repo01 = repos["repo01"]
     repo01.commit.value = "dddddddddd"
-    await repo01.save(session=session)
+    await repo01.save(db=db)
 
     repo02 = repos["repo02"]
     repo02.commit.value = "eeeeeeeeee"
-    await repo02.save(session=session)
+    await repo02.save(db=db)
 
-    diff = await Diff.init(branch=branch2, session=session)
+    diff = await Diff.init(branch=branch2, db=db)
 
-    resp = await diff.get_files_repositories_for_branch(session=session, rpc_client=rpc_client, branch=branch2)
+    resp = await diff.get_files_repositories_for_branch(db=db, rpc_client=rpc_client, branch=branch2)
 
     assert len(resp) == 3
     assert isinstance(resp, list)
@@ -234,34 +248,47 @@ async def test_diff_get_files_repositories_for_branch_case02(
 
 
 async def test_diff_get_files(
-    session: AsyncSession, rpc_client: InfrahubRpcClientTesting, default_branch: Branch, repos_in_main
+    db: InfrahubDatabase, rpc_client: InfrahubRpcClientTesting, default_branch: Branch, repos_in_main
 ):
     """Testing the get_modified_paths_repositories_for_branch_case01 method with 2 repositories in the database
     both repositories have a new commit value so we expect both to return something"""
 
-    mock_response = InfrahubRPCResponse(
-        status=RPCStatusCode.OK, response={"files_changed": ["readme.md", "mydir/myfile.py"]}
+    mock_response = InfrahubResponse(
+        response_class="diffnames_response",
+        response_data={
+            "files_changed": ["readme.md", "mydir/myfile.py"],
+            "files_removed": [],
+            "files_added": [],
+        },
     )
-    await rpc_client.add_response(response=mock_response, message_type=MessageType.GIT, action=GitMessageAction.DIFF)
-    mock_response = InfrahubRPCResponse(status=RPCStatusCode.OK, response={"files_changed": ["anotherfile.rb"]})
-    await rpc_client.add_response(response=mock_response, message_type=MessageType.GIT, action=GitMessageAction.DIFF)
+    await rpc_client.add_mock_reply(response=mock_response)
 
-    branch2 = await create_branch(branch_name="branch2", session=session)
+    mock_response = InfrahubResponse(
+        response_class="diffnames_response",
+        response_data={
+            "files_changed": ["anotherfile.rb"],
+            "files_removed": [],
+            "files_added": [],
+        },
+    )
+    await rpc_client.add_mock_reply(response=mock_response)
 
-    repos_list = await NodeManager.query(session=session, schema="CoreRepository", branch=branch2)
+    branch2 = await create_branch(branch_name="branch2", db=db)
+
+    repos_list = await NodeManager.query(db=db, schema="CoreRepository", branch=branch2)
     repos = {repo.name.value: repo for repo in repos_list}
 
     repo01 = repos["repo01"]
     repo01.commit.value = "dddddddddd"
-    await repo01.save(session=session)
+    await repo01.save(db=db)
 
     repo02 = repos["repo02"]
     repo02.commit.value = "eeeeeeeeee"
-    await repo02.save(session=session)
+    await repo02.save(db=db)
 
-    diff = await Diff.init(branch=branch2, session=session)
+    diff = await Diff.init(branch=branch2, db=db)
 
-    resp = await diff.get_files(session=session, rpc_client=rpc_client)
+    resp = await diff.get_files(db=db, rpc_client=rpc_client)
 
     assert len(resp) == 2
     assert "branch2" in resp
@@ -269,33 +296,34 @@ async def test_diff_get_files(
     assert sorted([fde.location for fde in resp["branch2"]]) == ["anotherfile.rb", "mydir/myfile.py", "readme.md"]
 
 
-async def test_diff_get_nodes_entire_branch(session: AsyncSession, default_branch, repos_in_main):
-    branch2 = await create_branch(branch_name="branch2", session=session)
+async def test_diff_get_nodes_entire_branch(db: InfrahubDatabase, default_branch, repos_in_main):
+    branch2 = await create_branch(branch_name="branch2", db=db)
 
-    repo01b2 = await NodeManager.get_one(id=repos_in_main["repo01"].id, branch=branch2, session=session)
+    repo01b2 = await NodeManager.get_one(id=repos_in_main["repo01"].id, branch=branch2, db=db)
     repo01b2.commit.value = "1234567890"
     repo01b2.description.value = "Repo 01 first change in branch"
 
     time01 = Timestamp()
-    await repo01b2.save(session=session, at=time01)
+    await repo01b2.save(db=db, at=time01)
 
     time02 = Timestamp()
 
-    repo01b2 = await NodeManager.get_one(id=repos_in_main["repo01"].id, branch=branch2, session=session)
+    repo01b2 = await NodeManager.get_one(id=repos_in_main["repo01"].id, branch=branch2, db=db)
     repo01b2.commit.value = "0987654321"
     repo01b2.description.value = "Repo 01 second change in branch"
     time03 = Timestamp()
-    await repo01b2.save(session=session, at=time03)
+    await repo01b2.save(db=db, at=time03)
 
     # Calculate the diff since the creation of the branch
-    diff1 = await Diff.init(branch=branch2, session=session)
-    nodes = await diff1.get_nodes(session=session)
+    diff1 = await Diff.init(branch=branch2, db=db)
+    nodes = await diff1.get_nodes(db=db)
 
     expected_response_branch2_repo01_time01 = {
         "branch": "branch2",
-        "labels": ["CoreRepository", "LineageOwner", "LineageSource", "Node"],
+        "labels": ["CoreNode", "CoreRepository", "LineageOwner", "LineageSource", "Node"],
         "kind": "CoreRepository",
         "id": repo01b2.id,
+        "path": f"data/{repo01b2.id}",
         "action": "updated",
         "changed_at": None,
         "attributes": [
@@ -304,11 +332,13 @@ async def test_diff_get_nodes_entire_branch(session: AsyncSession, default_branc
                 "name": "description",
                 "action": "updated",
                 "changed_at": None,
+                "path": f"data/{repo01b2.id}/description",
                 "properties": [
                     {
                         "branch": "branch2",
                         "type": "HAS_VALUE",
                         "action": "updated",
+                        "path": f"data/{repo01b2.id}/description/value",
                         "value": {
                             "new": "Repo 01 second change in branch",
                             "previous": "Repo 01 initial value",
@@ -323,14 +353,15 @@ async def test_diff_get_nodes_entire_branch(session: AsyncSession, default_branc
     assert nodes["branch2"][repo01b2.id].to_graphql() == expected_response_branch2_repo01_time01
 
     # Calculate the diff since the creation of the branch
-    diff1 = await Diff.init(branch=branch2, session=session, diff_to=time02)
-    nodes = await diff1.get_nodes(session=session)
+    diff1 = await Diff.init(branch=branch2, db=db, diff_to=time02)
+    nodes = await diff1.get_nodes(db=db)
 
     expected_response_branch2_repo01_time02 = {
         "branch": "branch2",
-        "labels": ["CoreRepository", "LineageOwner", "LineageSource", "Node"],
+        "labels": ["CoreNode", "CoreRepository", "LineageOwner", "LineageSource", "Node"],
         "kind": "CoreRepository",
         "id": repo01b2.id,
+        "path": f"data/{repo01b2.id}",
         "action": "updated",
         "changed_at": None,
         "attributes": [
@@ -339,10 +370,12 @@ async def test_diff_get_nodes_entire_branch(session: AsyncSession, default_branc
                 "name": "description",
                 "action": "updated",
                 "changed_at": None,
+                "path": f"data/{repo01b2.id}/description",
                 "properties": [
                     {
                         "branch": "branch2",
                         "type": "HAS_VALUE",
+                        "path": f"data/{repo01b2.id}/description/value",
                         "action": "updated",
                         "value": {
                             "new": "Repo 01 first change in branch",
@@ -359,32 +392,32 @@ async def test_diff_get_nodes_entire_branch(session: AsyncSession, default_branc
 
 
 @pytest.mark.xfail(reason="Need to investigate, fails on every other run")
-async def test_diff_get_nodes_multiple_changes(session: AsyncSession, default_branch, repos_in_main):
-    branch2 = await create_branch(branch_name="branch2", session=session)
+async def test_diff_get_nodes_multiple_changes(db: InfrahubDatabase, default_branch, repos_in_main):
+    branch2 = await create_branch(branch_name="branch2", db=db)
 
-    repo01b2 = await NodeManager.get_one(id=repos_in_main["repo01"].id, branch=branch2, session=session)
+    repo01b2 = await NodeManager.get_one(id=repos_in_main["repo01"].id, branch=branch2, db=db)
     repo01b2.commit.value = "1234567890"
 
     time01 = Timestamp()
-    await repo01b2.save(session=session, at=time01)
+    await repo01b2.save(db=db, at=time01)
     time01_after = Timestamp()
 
-    repo01b2 = await NodeManager.get_one(id=repos_in_main["repo01"].id, branch=branch2, session=session)
+    repo01b2 = await NodeManager.get_one(id=repos_in_main["repo01"].id, branch=branch2, db=db)
     repo01b2.commit.value = "0987654321"
 
     time02 = Timestamp()
-    await repo01b2.save(session=session, at=time02)
+    await repo01b2.save(db=db, at=time02)
     Timestamp()
 
     # Calculate the diff, just after the first modification in the branch (time01_after)
     # It should change the previous value returned by the query
 
-    diff2 = await Diff.init(branch=branch2, session=session, diff_from=time01_after)
-    nodes = await diff2.get_nodes(session=session)
+    diff2 = await Diff.init(branch=branch2, db=db, diff_from=time01_after)
+    nodes = await diff2.get_nodes(db=db)
 
     expected_response_branch2_repo01_time02 = {
         "branch": "branch2",
-        "labels": ["DataOwner", "DataSource", "Node", "Repository"],
+        "labels": ["DataOwner", "DataSource", "Node", "Repository", "CoreNode"],
         "kind": "Repository",
         "id": repo01b2.id,
         "action": "updated",
@@ -414,17 +447,18 @@ async def test_diff_get_nodes_multiple_changes(session: AsyncSession, default_br
     assert nodes["branch2"][repo01b2.id].to_graphql() == expected_response_branch2_repo01_time02
 
 
-async def test_diff_get_nodes_dataset_02(session: AsyncSession, base_dataset_02):
-    branch1 = await Branch.get_by_name(name="branch1", session=session)
+async def test_diff_get_nodes_dataset_02(db: InfrahubDatabase, base_dataset_02):
+    branch1 = await Branch.get_by_name(name="branch1", db=db)
 
-    diff = await Diff.init(branch=branch1, session=session)
-    nodes = await diff.get_nodes(session=session)
+    diff = await Diff.init(branch=branch1, db=db)
+    nodes = await diff.get_nodes(db=db)
 
     expected_response_main_c1 = {
         "branch": "main",
         "labels": ["Node", "TestCar"],
         "kind": "TestCar",
         "id": "c1",
+        "path": "data/c1",
         "action": "updated",
         "changed_at": None,
         "attributes": [
@@ -432,11 +466,13 @@ async def test_diff_get_nodes_dataset_02(session: AsyncSession, base_dataset_02)
                 "id": "c1at1",
                 "name": "name",
                 "action": "updated",
+                "path": "data/c1/name",
                 "changed_at": None,
                 "properties": [
                     {
                         "branch": "main",
                         "type": "HAS_VALUE",
+                        "path": "data/c1/name/value",
                         "action": "updated",
                         "value": {"new": "volt", "previous": "accord"},
                         "changed_at": base_dataset_02["time_m20"],
@@ -452,18 +488,21 @@ async def test_diff_get_nodes_dataset_02(session: AsyncSession, base_dataset_02)
         "labels": ["Node", "TestCar"],
         "kind": "TestCar",
         "id": "c1",
+        "path": "data/c1",
         "action": "updated",
         "changed_at": None,
         "attributes": [
             {
                 "id": "c1at2",
                 "name": "nbr_seats",
+                "path": "data/c1/nbr_seats",
                 "action": "updated",
                 "changed_at": None,
                 "properties": [
                     {
                         "branch": "branch1",
                         "type": "IS_PROTECTED",
+                        "path": "data/c1/nbr_seats/property/IS_PROTECTED",
                         "action": "updated",
                         "value": {"new": True, "previous": False},
                         "changed_at": base_dataset_02["time_m20"],
@@ -472,6 +511,7 @@ async def test_diff_get_nodes_dataset_02(session: AsyncSession, base_dataset_02)
                         "branch": "branch1",
                         "type": "HAS_VALUE",
                         "action": "updated",
+                        "path": "data/c1/nbr_seats/value",
                         "value": {"new": 4, "previous": 5},
                         "changed_at": base_dataset_02["time_m20"],
                     },
@@ -489,45 +529,45 @@ async def test_diff_get_nodes_dataset_02(session: AsyncSession, base_dataset_02)
     assert nodes["branch1"]["c3"].attributes["nbr_seats"].properties["HAS_VALUE"].action == DiffAction.ADDED
 
     # ADD a new node in Branch1 and validate that the diff is reporting it properly
-    p1 = await Node.init(schema="TestPerson", branch=branch1, session=session)
-    await p1.new(name="Bill", height=175, session=session)
-    await p1.save(session=session)
+    p1 = await Node.init(schema="TestPerson", branch=branch1, db=db)
+    await p1.new(name="Bill", height=175, db=db)
+    await p1.save(db=db)
 
-    diff = await Diff.init(branch=branch1, session=session)
-    nodes = await diff.get_nodes(session=session)
+    diff = await Diff.init(branch=branch1, db=db)
+    nodes = await diff.get_nodes(db=db)
 
     assert nodes["branch1"][p1.id].action == DiffAction.ADDED
     assert nodes["branch1"][p1.id].attributes["name"].action == DiffAction.ADDED
     assert nodes["branch1"][p1.id].attributes["name"].properties["HAS_VALUE"].action == DiffAction.ADDED
 
     # TODO DELETE node
-    p3 = await NodeManager.get_one(id="p3", branch=branch1, session=session)
-    await p3.delete(session=session)
+    p3 = await NodeManager.get_one(id="p3", branch=branch1, db=db)
+    await p3.delete(db=db)
 
-    diff = await Diff.init(branch=branch1, session=session)
-    nodes = await diff.get_nodes(session=session)
+    diff = await Diff.init(branch=branch1, db=db)
+    nodes = await diff.get_nodes(db=db)
     assert nodes["branch1"]["p3"].action == DiffAction.REMOVED
     assert nodes["branch1"]["p3"].attributes["name"].action == DiffAction.REMOVED
     assert nodes["branch1"]["p3"].attributes["name"].properties["HAS_VALUE"].action == DiffAction.REMOVED
 
 
-async def test_diff_get_nodes_rebased_branch(session: AsyncSession, base_dataset_03):
-    branch2 = await Branch.get_by_name(name="branch2", session=session)
+async def test_diff_get_nodes_rebased_branch(db: InfrahubDatabase, base_dataset_03):
+    branch2 = await Branch.get_by_name(name="branch2", db=db)
 
     # Calculate the diff with the default value
-    diff = await Diff.init(branch=branch2, session=session)
-    nodes = await diff.get_nodes(session=session)
+    diff = await Diff.init(branch=branch2, db=db)
+    nodes = await diff.get_nodes(db=db)
 
     assert list(nodes.keys()) == ["branch2"]
     assert list(nodes["branch2"].keys()) == ["p2"]
     assert sorted(nodes["branch2"]["p2"].attributes.keys()) == ["firstname", "lastname"]
 
 
-async def test_diff_get_relationships(session: AsyncSession, base_dataset_02):
-    branch1 = await Branch.get_by_name(name="branch1", session=session)
+async def test_diff_get_relationships(db: InfrahubDatabase, base_dataset_02):
+    branch1 = await Branch.get_by_name(name="branch1", db=db)
 
-    diff = await Diff.init(branch=branch1, session=session)
-    rels = await diff.get_relationships(session=session)
+    diff = await Diff.init(branch=branch1, db=db)
+    rels = await diff.get_relationships(db=db)
 
     assert sorted(rels.keys()) == ["branch1", "main"]
     assert sorted(rels["branch1"]["testcar__testperson"].keys()) == ["r1", "r2"]
@@ -540,6 +580,8 @@ async def test_diff_get_relationships(session: AsyncSession, base_dataset_02):
         "id": "r1",
         "name": "testcar__testperson",
         "action": DiffAction.UPDATED,
+        "paths": ["data/c1/owner/p1", "data/p1/cars/c1"],
+        "conflict_paths": ["data/c1/owner/peer", "data/p1/cars/peer"],
         "nodes": {
             "c1": {"id": "c1", "labels": ["TestCar", "Node"], "kind": "TestCar"},
             "p1": {"id": "p1", "labels": ["Node", "TestPerson"], "kind": "TestPerson"},
@@ -548,6 +590,7 @@ async def test_diff_get_relationships(session: AsyncSession, base_dataset_02):
             "IS_VISIBLE": {
                 "branch": "branch1",
                 "type": "IS_VISIBLE",
+                "path": None,
                 "action": DiffAction.UPDATED,
                 "value": {"previous": True, "new": False},
                 "changed_at": Timestamp(base_dataset_02["time_m20"]),
@@ -572,6 +615,8 @@ async def test_diff_get_relationships(session: AsyncSession, base_dataset_02):
         "id": "r2",
         "name": "testcar__testperson",
         "action": DiffAction.ADDED,
+        "paths": ["data/p1/cars/c2", "data/c2/owner/p1"],
+        "conflict_paths": ["data/p1/cars/peer", "data/c2/owner/peer"],
         "nodes": {
             "c2": {"id": "c2", "labels": ["TestCar", "Node"], "kind": "TestCar"},
             "p1": {"id": "p1", "labels": ["Node", "TestPerson"], "kind": "TestPerson"},
@@ -581,6 +626,7 @@ async def test_diff_get_relationships(session: AsyncSession, base_dataset_02):
                 "branch": "branch1",
                 "type": "IS_VISIBLE",
                 "action": DiffAction.ADDED,
+                "path": None,
                 "value": {"previous": None, "new": True},
                 "changed_at": Timestamp(base_dataset_02["time_m20"]),
             },
@@ -588,6 +634,7 @@ async def test_diff_get_relationships(session: AsyncSession, base_dataset_02):
                 "branch": "branch1",
                 "type": "IS_PROTECTED",
                 "action": DiffAction.ADDED,
+                "path": None,
                 "value": {"previous": None, "new": False},
                 "changed_at": Timestamp(base_dataset_02["time_m20"]),
             },
@@ -612,6 +659,8 @@ async def test_diff_get_relationships(session: AsyncSession, base_dataset_02):
         "branch": "main",
         "id": "r1",
         "name": "testcar__testperson",
+        "paths": ["data/c1/owner/p1", "data/p1/cars/c1"],
+        "conflict_paths": ["data/c1/owner/peer", "data/p1/cars/peer"],
         "action": DiffAction.UPDATED,
         "nodes": {
             "c1": {"id": "c1", "labels": ["TestCar", "Node"], "kind": "TestCar"},
@@ -622,6 +671,7 @@ async def test_diff_get_relationships(session: AsyncSession, base_dataset_02):
                 "branch": "main",
                 "action": DiffAction.UPDATED,
                 "type": "IS_PROTECTED",
+                "path": None,
                 "value": {"previous": False, "new": True},
                 "changed_at": Timestamp(base_dataset_02["time_m30"]),
             }
@@ -638,34 +688,34 @@ async def test_diff_get_relationships(session: AsyncSession, base_dataset_02):
     )
 
 
-async def test_diff_relationship_one_conflict(session: AsyncSession, default_branch: Branch, car_person_data_generic):
+async def test_diff_relationship_one_conflict(db: InfrahubDatabase, default_branch: Branch, car_person_data_generic):
     c1_main = car_person_data_generic["c1"]
     p1_main = car_person_data_generic["p1"]
     p2_main = car_person_data_generic["p2"]
 
     time_minus1 = pendulum.now(tz="UTC")
 
-    await c1_main.previous_owner.update(data=p2_main, session=session)
-    await c1_main.save(session=session, at=time_minus1)
+    await c1_main.previous_owner.update(data=p2_main, db=db)
+    await c1_main.save(db=db, at=time_minus1)
 
-    branch2 = await create_branch(branch_name="branch2", session=session)
+    branch2 = await create_branch(branch_name="branch2", db=db)
 
-    c1_branch = await NodeManager.get_one(session=session, id=c1_main.id, branch=branch2)
-    p1_branch = await NodeManager.get_one(session=session, id=p1_main.id, branch=branch2)
+    c1_branch = await NodeManager.get_one(db=db, id=c1_main.id, branch=branch2)
+    p1_branch = await NodeManager.get_one(db=db, id=p1_main.id, branch=branch2)
 
     # Change previous owner of C1 from P2 to P1 in branch
     time11 = pendulum.now(tz="UTC")
-    await c1_branch.previous_owner.update(data=p1_branch, session=session)
-    await c1_branch.save(session=session, at=time11)
+    await c1_branch.previous_owner.update(data=p1_branch, db=db)
+    await c1_branch.save(db=db, at=time11)
 
     # Change previous owner of C1 from P2 to Null in main
     time12 = pendulum.now(tz="UTC")
-    c1_main = await NodeManager.get_one(session=session, id=c1_main.id)
-    await c1_main.previous_owner.update(data=[], session=session)
-    await c1_main.save(session=session, at=time12)
+    c1_main = await NodeManager.get_one(db=db, id=c1_main.id)
+    await c1_main.previous_owner.update(data=[], db=db)
+    await c1_main.save(db=db, at=time12)
 
-    diff = await Diff.init(branch=branch2, session=session, branch_only=False)
-    rels = await diff.get_relationships(session=session)
+    diff = await Diff.init(branch=branch2, db=db, branch_only=False)
+    rels = await diff.get_relationships(db=db)
 
     assert sorted(rels.keys()) == ["branch2", "main"]
     assert len(rels["main"]["person_previous__car"].keys()) == 1
@@ -683,18 +733,27 @@ async def test_diff_relationship_one_conflict(session: AsyncSession, default_bra
             "id": "XXXXX",
             "name": "person_previous__car",
             "action": DiffAction.ADDED,
+            "paths": [
+                f"data/{c1_main.id}/previous_owner/{p1_main.id}",
+                f"data/{p1_main.id}/-undefined-/{c1_main.id}",
+            ],
+            "conflict_paths": [
+                f"data/{c1_main.id}/previous_owner/peer",
+                f"data/{p1_main.id}/-undefined-/peer",
+            ],
             "nodes": {
                 c1_main.id: {
                     "id": c1_main.id,
-                    "labels": ["CoreArtifactTarget", "Node", "TestCar", "TestElectricCar"],
+                    "labels": ["CoreArtifactTarget", "Node", "TestCar", "TestElectricCar", "CoreNode"],
                     "kind": "TestElectricCar",
                 },
-                p1_main.id: {"id": p1_main.id, "labels": ["Node", "TestPerson"], "kind": "TestPerson"},
+                p1_main.id: {"id": p1_main.id, "labels": ["Node", "TestPerson", "CoreNode"], "kind": "TestPerson"},
             },
             "properties": {
                 "IS_VISIBLE": {
                     "branch": "branch2",
                     "type": "IS_VISIBLE",
+                    "path": None,
                     "action": DiffAction.ADDED,
                     "value": {"previous": None, "new": True},
                     "changed_at": Timestamp(time11),
@@ -702,6 +761,7 @@ async def test_diff_relationship_one_conflict(session: AsyncSession, default_bra
                 "IS_PROTECTED": {
                     "branch": "branch2",
                     "type": "IS_PROTECTED",
+                    "path": None,
                     "action": DiffAction.ADDED,
                     "value": {"previous": None, "new": False},
                     "changed_at": Timestamp(time11),
@@ -713,19 +773,28 @@ async def test_diff_relationship_one_conflict(session: AsyncSession, default_bra
             "branch": "branch2",
             "id": "XXXXXX",
             "name": "person_previous__car",
+            "paths": [
+                f"data/{c1_main.id}/previous_owner/{p2_main.id}",
+                f"data/{p2_main.id}/-undefined-/{c1_main.id}",
+            ],
+            "conflict_paths": [
+                f"data/{c1_main.id}/previous_owner/peer",
+                f"data/{p2_main.id}/-undefined-/peer",
+            ],
             "action": DiffAction.REMOVED,
             "nodes": {
                 c1_main.id: {
                     "id": c1_main.id,
-                    "labels": ["CoreArtifactTarget", "Node", "TestCar", "TestElectricCar"],
+                    "labels": ["CoreArtifactTarget", "Node", "TestCar", "TestElectricCar", "CoreNode"],
                     "kind": "TestElectricCar",
                 },
-                p2_main.id: {"id": p2_main.id, "labels": ["Node", "TestPerson"], "kind": "TestPerson"},
+                p2_main.id: {"id": p2_main.id, "labels": ["Node", "TestPerson", "CoreNode"], "kind": "TestPerson"},
             },
             "properties": {
                 "IS_VISIBLE": {
                     "branch": "branch2",
                     "type": "IS_VISIBLE",
+                    "path": None,
                     "action": DiffAction.REMOVED,
                     "value": {"previous": True, "new": True},
                     "changed_at": Timestamp(time11),
@@ -733,6 +802,7 @@ async def test_diff_relationship_one_conflict(session: AsyncSession, default_bra
                 "IS_PROTECTED": {
                     "branch": "branch2",
                     "type": "IS_PROTECTED",
+                    "path": None,
                     "action": DiffAction.REMOVED,
                     "value": {"previous": False, "new": False},
                     "changed_at": Timestamp(time11),
@@ -767,18 +837,27 @@ async def test_diff_relationship_one_conflict(session: AsyncSession, default_bra
             "db_id": "89106",
             "name": "person_previous__car",
             "action": DiffAction.REMOVED,
+            "paths": [
+                f"data/{c1_main.id}/previous_owner/{p2_main.id}",
+                f"data/{p2_main.id}/-undefined-/{c1_main.id}",
+            ],
+            "conflict_paths": [
+                f"data/{c1_main.id}/previous_owner/peer",
+                f"data/{p2_main.id}/-undefined-/peer",
+            ],
             "nodes": {
                 c1_main.id: {
                     "id": c1_main.id,
-                    "labels": ["CoreArtifactTarget", "Node", "TestCar", "TestElectricCar"],
+                    "labels": ["CoreArtifactTarget", "Node", "TestCar", "TestElectricCar", "CoreNode"],
                     "kind": "TestElectricCar",
                 },
-                p2_main.id: {"id": p2_main.id, "labels": ["Node", "TestPerson"], "kind": "TestPerson"},
+                p2_main.id: {"id": p2_main.id, "labels": ["Node", "TestPerson", "CoreNode"], "kind": "TestPerson"},
             },
             "properties": {
                 "IS_VISIBLE": {
                     "branch": "main",
                     "type": "IS_VISIBLE",
+                    "path": None,
                     "action": DiffAction.REMOVED,
                     "value": {"previous": True, "new": True},
                     "changed_at": Timestamp(time12),
@@ -786,6 +865,7 @@ async def test_diff_relationship_one_conflict(session: AsyncSession, default_bra
                 "IS_PROTECTED": {
                     "branch": "main",
                     "type": "IS_PROTECTED",
+                    "path": None,
                     "action": DiffAction.REMOVED,
                     "value": {"previous": False, "new": False},
                     "changed_at": Timestamp(time12),
@@ -810,11 +890,11 @@ async def test_diff_relationship_one_conflict(session: AsyncSession, default_bra
     )
 
 
-async def test_diff_relationship_many(session: AsyncSession, default_branch: Branch, base_dataset_04):
-    branch1 = await get_branch(branch="branch1", session=session)
+async def test_diff_relationship_many(db: InfrahubDatabase, default_branch: Branch, base_dataset_04):
+    branch1 = await get_branch(branch="branch1", db=db)
 
-    diff = await Diff.init(branch=branch1, session=session)
-    rels = await diff.get_relationships(session=session)
+    diff = await Diff.init(branch=branch1, db=db)
+    rels = await diff.get_relationships(db=db)
 
     assert sorted(rels.keys()) == ["branch1", "main"]
     assert len(rels["main"]["builtintag__coreorganization"].keys()) == 1
@@ -835,15 +915,18 @@ async def test_diff_relationship_many(session: AsyncSession, default_branch: Bra
         "id": rel_id_branch,
         "name": "builtintag__coreorganization",
         "action": DiffAction.ADDED,
+        "paths": [f"data/{org1.id}/tags/{red.id}", f"data/{red.id}/-undefined-/{org1.id}"],
+        "conflict_paths": [f"data/{org1.id}/tags/peer", f"data/{red.id}/-undefined-/peer"],
         "nodes": {
-            org1.id: {"id": org1.id, "labels": ["CoreOrganization", "Node"], "kind": "CoreOrganization"},
-            red.id: {"id": red.id, "labels": ["BuiltinTag", "Node"], "kind": "BuiltinTag"},
+            org1.id: {"id": org1.id, "labels": ["CoreOrganization", "Node", "CoreNode"], "kind": "CoreOrganization"},
+            red.id: {"id": red.id, "labels": ["BuiltinTag", "Node", "CoreNode"], "kind": "BuiltinTag"},
         },
         "properties": {
             "IS_VISIBLE": {
                 "branch": "branch1",
                 "type": "IS_VISIBLE",
                 "action": DiffAction.ADDED,
+                "path": None,
                 "value": {"previous": None, "new": True},
                 "changed_at": Timestamp(base_dataset_04["time_m5"]),
             },
@@ -851,6 +934,7 @@ async def test_diff_relationship_many(session: AsyncSession, default_branch: Bra
                 "branch": "branch1",
                 "type": "IS_PROTECTED",
                 "action": DiffAction.ADDED,
+                "path": None,
                 "value": {"previous": None, "new": False},
                 "changed_at": Timestamp(base_dataset_04["time_m5"]),
             },
@@ -875,14 +959,17 @@ async def test_diff_relationship_many(session: AsyncSession, default_branch: Bra
         "id": rel_id_main,
         "name": "builtintag__coreorganization",
         "action": DiffAction.ADDED,
+        "paths": [f"data/{org1.id}/tags/{yellow.id}", f"data/{yellow.id}/-undefined-/{org1.id}"],
+        "conflict_paths": [f"data/{org1.id}/tags/peer", f"data/{yellow.id}/-undefined-/peer"],
         "nodes": {
-            org1.id: {"id": org1.id, "labels": ["CoreOrganization", "Node"], "kind": "CoreOrganization"},
-            yellow.id: {"id": yellow.id, "labels": ["BuiltinTag", "Node"], "kind": "BuiltinTag"},
+            org1.id: {"id": org1.id, "labels": ["CoreOrganization", "Node", "CoreNode"], "kind": "CoreOrganization"},
+            yellow.id: {"id": yellow.id, "labels": ["BuiltinTag", "Node", "CoreNode"], "kind": "BuiltinTag"},
         },
         "properties": {
             "IS_VISIBLE": {
                 "branch": "main",
                 "type": "IS_VISIBLE",
+                "path": None,
                 "action": DiffAction.ADDED,
                 "value": {"previous": None, "new": True},
                 "changed_at": Timestamp(base_dataset_04["time_m10"]),
@@ -890,6 +977,7 @@ async def test_diff_relationship_many(session: AsyncSession, default_branch: Bra
             "IS_PROTECTED": {
                 "branch": "main",
                 "type": "IS_PROTECTED",
+                "path": None,
                 "action": DiffAction.ADDED,
                 "value": {"previous": None, "new": False},
                 "changed_at": Timestamp(base_dataset_04["time_m10"]),

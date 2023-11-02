@@ -15,6 +15,7 @@ import {
 } from "./data-diff-node";
 import { DataDiffPeer } from "./data-diff-peer";
 import { DataDiffProperty } from "./data-diff-property";
+import { DataDiffConflictInfo } from "./diff-conflict-info";
 import { DiffPill } from "./diff-pill";
 import { DataDiffThread } from "./diff-thread";
 
@@ -29,6 +30,7 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
   const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
 
   const { name, change, path } = element;
+  console.log("element: ", element);
 
   // value AND properties || peer || peers
   const { value, changed_at, properties, summary, peer, peers } = change ?? {};
@@ -43,7 +45,7 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
 
   const renderTitleDisplay = (diffValue: tDataDiffNodeValueChange) => {
     return (
-      <div className="p-1 pr-0 flex flex-col lg:flex-row">
+      <div className="relative p-1 pr-0 flex flex-col lg:flex-row ">
         <div className="flex flex-1 items-center">
           <div className="flex flex-1 items-center group">
             <span className="mr-2 font-semibold">{name}</span>
@@ -64,6 +66,8 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
             {changed_at && <DateDisplay date={changed_at} hideDefault />}
           </div>
         </div>
+
+        {!branchname && <DataDiffConflictInfo path={path} />}
       </div>
     );
   };
@@ -83,7 +87,7 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
 
   if (value?.changes?.length) {
     return (
-      <>
+      <div className={value?.changes?.length > 1 ? "rounded-md bg-red-400 p-1 mb-1" : "mb-1"}>
         {value?.changes?.map((change, index) => {
           return (
             <div
@@ -101,14 +105,14 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
               {!propertiesChanges?.length && !peersChanges?.length && (
                 <div className="flex">
                   {/* Align with transparent chevron to fit the UI with other accordions with visible chevrons */}
-                  <ChevronDownIcon className="h-5 w-5 mr-2 text-transparent" aria-hidden="true" />
+                  <ChevronDownIcon className="w-4 h-4 mr-2 text-transparent" aria-hidden="true" />
                   <div className="flex-1">{renderTitleDisplay(change)}</div>
                 </div>
               )}
             </div>
           );
         })}
-      </>
+      </div>
     );
   }
 
@@ -118,11 +122,16 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
 
   if (peer && peer?.changes?.length) {
     return (
-      <>
-        {peer?.changes.map((peer, index) => (
-          <DataDiffPeer key={index} peerChanges={peer} />
+      <div className={peer?.changes?.length > 1 ? "rounded-md bg-red-400 p-1 mb-1" : "mb-1"}>
+        {peer?.changes.map((peerChanges, index) => (
+          <DataDiffPeer
+            key={index}
+            peerChanges={{ ...peerChanges, path: peer?.path }}
+            peerProperties={properties}
+            name={name}
+          />
         ))}
-      </>
+      </div>
     );
   }
 

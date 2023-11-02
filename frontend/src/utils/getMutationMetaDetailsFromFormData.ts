@@ -2,6 +2,23 @@ import { iNodeSchema } from "../state/atoms/schema.atom";
 
 export type MutationMode = "create" | "update";
 
+const metadataFields = ["source", "owner", "is_visible", "is_protected"];
+
+const isValueValid = (value: any) => {
+  if (value === undefined) {
+    // Value should not be undefined
+    return false;
+  }
+
+  if (typeof value === "string") {
+    // Verify empty string
+    return !!value;
+  }
+
+  // Verify number
+  return !isNaN(value);
+};
+
 const getMutationMetaDetailsFromFormData = (
   schema: iNodeSchema,
   data: any,
@@ -10,14 +27,23 @@ const getMutationMetaDetailsFromFormData = (
   attributeOrRelationshipName: any,
   attributeOrRelationshipToEdit: any
 ) => {
-  let updatedObject: any = {
-    id: row.id,
-  };
+  const cleanedData = Object.entries(data).reduce((acc, [key, value]: [string, any]) => {
+    if (!isValueValid(value)) {
+      return acc;
+    }
 
-  let cleanedData = Object.entries(data).reduce(
-    (acc, [key, value]) => (value !== undefined && value !== "" ? { ...acc, [key]: value } : acc),
-    {}
-  );
+    if (metadataFields.includes(key)) {
+      return {
+        ...acc,
+        [`_relation__${key}`]: value,
+      };
+    }
+
+    return {
+      ...acc,
+      [key]: value,
+    };
+  }, {});
 
   if (type === "relationship") {
     const relationshipSchema = schema.relationships?.find(
@@ -34,27 +60,32 @@ const getMutationMetaDetailsFromFormData = (
             ...cleanedData,
             id: item.id,
           };
-        } else {
-          return {
-            id: item.id,
-          };
         }
+
+        return {
+          id: item.id,
+        };
       });
 
-      updatedObject[attributeOrRelationshipName] = newRelationshipList;
-    } else {
-      updatedObject[attributeOrRelationshipName] = {
-        id: row[attributeOrRelationshipName]?.node?.id ?? row[attributeOrRelationshipName]?.id,
-        ...cleanedData,
+      return {
+        id: row.id,
+        [attributeOrRelationshipName]: newRelationshipList,
       };
     }
-  } else {
-    updatedObject[attributeOrRelationshipName] = {
-      ...cleanedData,
+
+    return {
+      id: row.id,
+      [attributeOrRelationshipName]: {
+        id: row[attributeOrRelationshipName]?.node?.id ?? row[attributeOrRelationshipName]?.id,
+        ...cleanedData,
+      },
     };
   }
 
-  return updatedObject;
+  return {
+    id: row.id,
+    [attributeOrRelationshipName]: cleanedData,
+  };
 };
 
 export default getMutationMetaDetailsFromFormData;

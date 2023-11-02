@@ -8,7 +8,7 @@ from .shared import (
     execute_command,
     get_env_vars,
 )
-from .utils import REPO_BASE
+from .utils import ESCAPED_REPO_PATH
 
 MAIN_DIRECTORY = "ctl"
 NAMESPACE = "CTL"
@@ -30,7 +30,7 @@ def generate_doc(context: Context):
     print(f" - [{NAMESPACE}] Generate CLI documentation")
     for command in CLI_COMMANDS:
         exec_cmd = f'typer  {command[0]} utils docs --name "{command[1]}" --output docs/infrahubctl/{command[2]}.md'
-        with context.cd(REPO_BASE):
+        with context.cd(ESCAPED_REPO_PATH):
             context.run(exec_cmd)
 
 
@@ -43,7 +43,7 @@ def format_black(context: Context):
 
     print(f" - [{NAMESPACE}] Format code with black")
     exec_cmd = f"black {MAIN_DIRECTORY}/"
-    with context.cd(REPO_BASE):
+    with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
 
@@ -53,7 +53,7 @@ def format_autoflake(context: Context):
 
     print(f" - [{NAMESPACE}] Format code with autoflake")
     exec_cmd = f"autoflake --recursive --verbose --in-place --remove-all-unused-imports --remove-unused-variables {MAIN_DIRECTORY}"
-    with context.cd(REPO_BASE):
+    with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
 
@@ -63,7 +63,7 @@ def format_isort(context: Context):
 
     print(f" - [{NAMESPACE}] Format code with isort")
     exec_cmd = f"isort {MAIN_DIRECTORY}"
-    with context.cd(REPO_BASE):
+    with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
 
@@ -93,7 +93,7 @@ def black(context: Context, docker: bool = False):
         exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run {build_test_envs()} infrahub-test {exec_cmd}"
         print(exec_cmd)
 
-    with context.cd(REPO_BASE):
+    with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
 
@@ -109,7 +109,7 @@ def isort(context: Context, docker: bool = False):
         exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run {build_test_envs()} infrahub-test {exec_cmd}"
         print(exec_cmd)
 
-    with context.cd(REPO_BASE):
+    with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
 
@@ -127,7 +127,7 @@ def mypy(context: Context, docker: bool = False):
         )
         print(exec_cmd)
 
-    with context.cd(REPO_BASE):
+    with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
 
@@ -143,7 +143,7 @@ def pylint(context: Context, docker: bool = False):
         exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run {build_test_envs()} infrahub-test {exec_cmd}"
         print(exec_cmd)
 
-    with context.cd(REPO_BASE):
+    with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
 
@@ -159,7 +159,7 @@ def ruff(context: Context, docker: bool = False):
         exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run {build_test_envs()} infrahub-test {exec_cmd}"
         print(exec_cmd)
 
-    with context.cd(REPO_BASE):
+    with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
 
@@ -177,7 +177,7 @@ def lint(context: Context, docker: bool = False):
 
 @task
 def test_unit(context: Context):
-    with context.cd(REPO_BASE):
+    with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_test_compose_files_cmd(database=False)
         base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run {build_test_envs()} infrahub-test"
         exec_cmd = f"pytest -n {NBR_WORKERS} -v --cov=infrahub_ctl {MAIN_DIRECTORY}/tests/unit"
