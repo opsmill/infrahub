@@ -2,6 +2,7 @@
 name: 💡 Feature Request
 description: Suggest a feature for Infrahub
 title: 'feature: '
+labels: ["type/feature"]
 body:
   - type: dropdown
     attributes:
