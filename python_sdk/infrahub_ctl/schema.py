@@ -109,7 +109,7 @@ def load(
     if not config.SETTINGS:
         config.load_and_exit(config_file=config_file)
 
-    logging.getLogger("infrahub_client").setLevel(logging.CRITICAL)
+    logging.getLogger("infrahub_sdk").setLevel(logging.CRITICAL)
     logging.getLogger("httpx").setLevel(logging.ERROR)
     logging.getLogger("httpcore").setLevel(logging.ERROR)
 

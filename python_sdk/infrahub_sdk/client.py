@@ -56,7 +56,7 @@ class BaseClient:
         self.retry_on_failure = retry_on_failure
         self.retry_delay = retry_delay
         self.default_branch = default_branch
-        self.log = log or logging.getLogger("infrahub_client")
+        self.log = log or logging.getLogger("infrahub_sdk")
         self.insert_tracker = insert_tracker
         self.pagination_size = pagination_size
         self.headers = {"content-type": "application/json"}

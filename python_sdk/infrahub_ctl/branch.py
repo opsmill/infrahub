@@ -92,7 +92,7 @@ def list_branch(
 ) -> None:
     """List all existing branches."""
 
-    logging.getLogger("infrahub_client").setLevel(logging.CRITICAL)
+    logging.getLogger("infrahub_sdk").setLevel(logging.CRITICAL)
 
     if not config.SETTINGS:
         config.load_and_exit(config_file=config_file)
@@ -126,7 +126,7 @@ def create(
 ) -> None:
     """Create a new branch."""
 
-    logging.getLogger("infrahub_client").setLevel(logging.CRITICAL)
+    logging.getLogger("infrahub_sdk").setLevel(logging.CRITICAL)
 
     if not config.SETTINGS:
         config.load_and_exit(config_file=config_file)
@@ -158,7 +158,7 @@ def delete(
 ) -> None:
     """Delete a branch."""
 
-    logging.getLogger("infrahub_client").setLevel(logging.CRITICAL)
+    logging.getLogger("infrahub_sdk").setLevel(logging.CRITICAL)
 
     if not config.SETTINGS:
         config.load_and_exit(config_file=config_file)
@@ -190,7 +190,7 @@ def rebase(
 ) -> None:
     """Rebase a Branch with main."""
 
-    logging.getLogger("infrahub_client").setLevel(logging.CRITICAL)
+    logging.getLogger("infrahub_sdk").setLevel(logging.CRITICAL)
 
     if not config.SETTINGS:
         config.load_and_exit(config_file=config_file)
@@ -222,7 +222,7 @@ def merge(
 ) -> None:
     """Merge a Branch with main."""
 
-    logging.getLogger("infrahub_client").setLevel(logging.CRITICAL)
+    logging.getLogger("infrahub_sdk").setLevel(logging.CRITICAL)
 
     if not config.SETTINGS:
         config.load_and_exit(config_file=config_file)
@@ -367,7 +367,7 @@ def diff(
     if not config.SETTINGS:
         config.load_and_exit(config_file=config_file)
 
-    logging.getLogger("infrahub_client").setLevel(logging.CRITICAL)
+    logging.getLogger("infrahub_sdk").setLevel(logging.CRITICAL)
 
     aiorun(
         _diff(
