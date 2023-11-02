@@ -17,3 +17,4 @@ development/docker-compose.dev-override.yml
 
 storage/*
 .coverage.*
+python_sdk/dist/*
