@@ -1,12 +1,12 @@
 import pytest
-
 from infrahub.core import registry
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
-from infrahub_client import Config, InfrahubClient
-from infrahub_client.exceptions import BranchNotFound
-from infrahub_client.node import InfrahubNode
+
+from infrahub_sdk import Config, InfrahubClient
+from infrahub_sdk.exceptions import BranchNotFound
+from infrahub_sdk.node import InfrahubNode
 
 from .conftest import InfrahubTestClient
 
@@ -46,7 +46,10 @@ class TestInfrahubClient:
 
         obj2 = await Node.init(schema="CoreRepository", db=db)
         await obj2.new(
-            db=db, name="repository1", description="test repository", location="git@github.com:mock/test.git"
+            db=db,
+            name="repository1",
+            description="test repository",
+            location="git@github.com:mock/test.git",
         )
         await obj2.save(db=db)
 
@@ -140,7 +143,12 @@ class TestInfrahubClient:
         admin = await client.get(kind="CoreAccount", name__value="admin")
 
         obj1 = await Node.init(schema="BuiltinLocation", db=db)
-        await obj1.new(db=db, name={"value": "jfk3", "source": admin.id}, description="new york", type="site")
+        await obj1.new(
+            db=db,
+            name={"value": "jfk3", "source": admin.id},
+            description="new york",
+            type="site",
+        )
         await obj1.save(db=db)
 
         nodes = await client.filters(kind="CoreNode", any__source__id=admin.id)

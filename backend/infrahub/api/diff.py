@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.logger import logger
+from infrahub_sdk.utils import compare_lists
 from pydantic import BaseModel, Extra, Field
 
 from infrahub import config
@@ -24,7 +25,6 @@ from infrahub.core.constants import (
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema_manager import INTERNAL_SCHEMA_NODE_KINDS
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
-from infrahub_client.utils import compare_lists
 
 if TYPE_CHECKING:
     from infrahub.message_bus.rpc import InfrahubRpcClient

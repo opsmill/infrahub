@@ -5,6 +5,7 @@ from typing import Any, Dict, Optional
 
 import pytest
 import yaml
+from infrahub_sdk import UUIDT
 
 import infrahub.config as config
 from infrahub.core import registry
@@ -15,7 +16,6 @@ from infrahub.core.schema import SchemaRoot
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase, get_db
 from infrahub.utils import get_models_dir
-from infrahub_client import UUIDT
 
 
 @pytest.fixture(scope="session")

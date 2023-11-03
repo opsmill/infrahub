@@ -2,10 +2,7 @@ import copy
 from typing import Any, Dict, Mapping
 
 from diffsync import DiffSync, DiffSyncModel
-from infrahub_sync import DiffSyncMixin, DiffSyncModelMixin, SyncAdapter, SyncConfig
-from infrahub_sync.generator import has_field
-
-from infrahub_client import (
+from infrahub_sdk import (
     Config,
     InfrahubClientSync,
     InfrahubNodeSync,
@@ -13,7 +10,9 @@ from infrahub_client import (
     NodeSchema,
     NodeStoreSync,
 )
-from infrahub_client.utils import compare_lists
+from infrahub_sdk.utils import compare_lists
+from infrahub_sync import DiffSyncMixin, DiffSyncModelMixin, SyncAdapter, SyncConfig
+from infrahub_sync.generator import has_field
 
 
 def update_node(node: InfrahubNodeSync, attrs: dict):

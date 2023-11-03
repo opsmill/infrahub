@@ -17,6 +17,14 @@ import ujson
 import yaml
 from git import Repo
 from git.exc import GitCommandError, InvalidGitRepositoryError
+from infrahub_sdk import (
+    GraphQLError,
+    InfrahubClient,
+    InfrahubNode,
+    InfrahubRepositoryConfig,
+    ValidationError,
+)
+from infrahub_sdk.utils import YamlFile, compare_lists
 from pydantic import BaseModel
 from pydantic import ValidationError as PydanticValidationError
 from pydantic import validator
@@ -33,18 +41,11 @@ from infrahub.exceptions import (
 )
 from infrahub.log import get_logger
 from infrahub.transforms import INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT
-from infrahub_client import (
-    GraphQLError,
-    InfrahubClient,
-    InfrahubNode,
-    InfrahubRepositoryConfig,
-    ValidationError,
-)
-from infrahub_client.utils import YamlFile, compare_lists
 
 if TYPE_CHECKING:
+    from infrahub_sdk.branch import BranchData
+
     from infrahub.message_bus import messages
-    from infrahub_client.branch import BranchData
 # pylint: disable=too-few-public-methods,too-many-lines
 
 LOGGER = get_logger("infrahub.git")

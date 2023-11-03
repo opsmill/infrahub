@@ -2,7 +2,7 @@
 version: "3.4"
 services:
   database:
-    image: "memgraph/memgraph:2.11.0"
+    image: "${DATABASE_DOCKER_IMAGE:-memgraph/memgraph:latest}"
     volumes:
       - database_data:/var/lib/memgraph
       - database_logs:/var/log/memgraph

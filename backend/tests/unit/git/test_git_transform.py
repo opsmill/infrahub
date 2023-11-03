@@ -1,7 +1,8 @@
+from infrahub_sdk import UUIDT
+
 from infrahub.git import InfrahubRepository
 from infrahub.message_bus import Meta, messages
 from infrahub.services import InfrahubServices
-from infrahub_client import UUIDT
 
 
 async def test_git_transform_jinja2_success(git_repo_jinja: InfrahubRepository, helper):

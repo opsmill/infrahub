@@ -6,8 +6,6 @@ authors = ["OpsMill <info@opsmill.com>"]
 
 packages = [
     { include = "infrahub", from = "backend" },
-    { include = "infrahub_ctl", from = "ctl" },
-    { include = "infrahub_client", from = "python_sdk"},
     { include = "infrahub_sync", from = "sync/infrahub-sync"},
     { include = "nornir_infrahub", from = "nornir_plugin"},
     { include = "potenda", from = "sync/potenda"},
@@ -15,18 +13,7 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.8, < 3.12"
-rich = "^13.3"
-pendulum = "~2.1"
-typer = "^0.7"
-Jinja2 = "^3.1"
-httpx = "^0.24"
-toml = "^0.10.2"
-jsonlines = "^3.1"
-deepdiff = "^6.2"
-ujson = "^5.7"
-pydantic = "^1.10"
-pyyaml = "^6.0"
-gitpython = "3.1.40"
+infrahub-sdk = {path = "python_sdk", develop=true}
 
 [tool.poetry.group.server.dependencies]
 fastapi = "~0.95"
@@ -93,7 +80,6 @@ python-slugify = "^8.0.1"
 
 [tool.poetry.scripts]
 infrahub = "infrahub.cli:app"
-infrahubctl = "infrahub_ctl.cli:app"
 infrahub-git-credential = "infrahub.git_credential.helper:app"
 infrahub-git-askpass = "infrahub.git_credential.askpass:app"
 infrahub-sync = "infrahub_sync.cli:app"
@@ -119,7 +105,7 @@ exclude = '''
 
 [tool.isort]
 profile = "black"
-known_first_party = [ "infrahub" , "infrahub_client", "infrahub_ctl" ]
+known_first_party = [ "infrahub" ]
 
 [tool.coverage.run]
 branch = true
@@ -194,14 +180,6 @@ exclude = "^backend/tests/"
 
 [[tool.mypy.overrides]]
 module = "infrahub.*"
-disallow_untyped_defs = true
-
-[[tool.mypy.overrides]]
- module = "infrahub_client.*"
- disallow_untyped_defs = true
-
-[[tool.mypy.overrides]]
-module = "infrahub_ctl.*"
 disallow_untyped_defs = true
 
 [[tool.mypy.overrides]]

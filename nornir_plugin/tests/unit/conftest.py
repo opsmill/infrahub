@@ -2,10 +2,9 @@ import ipaddress
 from unittest.mock import patch
 
 import pytest
+from infrahub_sdk import InfrahubClient, InfrahubClientSync
+from infrahub_sdk.schema import NodeSchema
 from nornir_infrahub.plugins.inventory.infrahub import InfrahubInventory
-
-from infrahub_client import InfrahubClient, InfrahubClientSync
-from infrahub_client.schema import NodeSchema
 
 
 @pytest.fixture

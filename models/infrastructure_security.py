@@ -2,7 +2,7 @@ import logging
 import random
 from ipaddress import IPv4Interface, IPv4Network
 
-from infrahub_client import InfrahubClient, InfrahubNode, NodeStore
+from infrahub_sdk import InfrahubClient, InfrahubNode, NodeStore
 
 # flake8: noqa
 # pylint: skip-file

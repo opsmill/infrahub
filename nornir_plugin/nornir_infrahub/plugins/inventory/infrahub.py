@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Set, Type, Union
 
 import ruamel.yaml
+from infrahub_sdk import Config, InfrahubClientSync, InfrahubNodeSync, NodeSchema
 from nornir.core.inventory import (
     ConnectionOptions,
     Defaults,
@@ -19,8 +20,6 @@ from nornir.core.inventory import (
 from pydantic import BaseModel, Field, validator
 from pydantic.dataclasses import dataclass
 from slugify import slugify
-
-from infrahub_client import Config, InfrahubClientSync, InfrahubNodeSync, NodeSchema
 
 logger = logging.getLogger(__name__)
 

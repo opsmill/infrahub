@@ -1,9 +1,10 @@
 from typing import Union
 
+from infrahub_sdk import InfrahubNode
+
 from infrahub import lock
 from infrahub.message_bus import messages
 from infrahub.services import InfrahubServices
-from infrahub_client import InfrahubNode
 
 
 async def define_artifact(

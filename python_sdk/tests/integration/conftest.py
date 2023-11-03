@@ -4,18 +4,18 @@ import os
 from typing import Any, Dict, Optional
 
 import httpx
+import infrahub.config as config
 import pytest
 from fastapi.testclient import TestClient
-
-import infrahub.config as config
 from infrahub.core.initialization import first_time_initialization, initialization
 from infrahub.core.node import Node
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase, get_db
 from infrahub.lock import initialize_lock
-from infrahub_client.schema import NodeSchema
-from infrahub_client.types import HTTPMethod
-from infrahub_client.utils import str_to_bool
+
+from infrahub_sdk.schema import NodeSchema
+from infrahub_sdk.types import HTTPMethod
+from infrahub_sdk.utils import str_to_bool
 
 BUILD_NAME = os.environ.get("INFRAHUB_BUILD_NAME", "infrahub")
 TEST_IN_DOCKER = str_to_bool(os.environ.get("INFRAHUB_TEST_IN_DOCKER", "false"))
@@ -24,21 +24,42 @@ TEST_IN_DOCKER = str_to_bool(os.environ.get("INFRAHUB_TEST_IN_DOCKER", "false"))
 # pylint: disable=redefined-outer-name
 class InfrahubTestClient(TestClient):
     def _request(
-        self, url: str, method: HTTPMethod, headers: Dict[str, Any], timeout: int, payload: Optional[Dict] = None
+        self,
+        url: str,
+        method: HTTPMethod,
+        headers: Dict[str, Any],
+        timeout: int,
+        payload: Optional[Dict] = None,
     ) -> httpx.Response:
         content = None
         if payload:
             content = str(json.dumps(payload)).encode("UTF-8")
         with self as client:
-            return client.request(method=method.value, url=url, headers=headers, timeout=timeout, content=content)
+            return client.request(
+                method=method.value,
+                url=url,
+                headers=headers,
+                timeout=timeout,
+                content=content,
+            )
 
     async def async_request(
-        self, url: str, method: HTTPMethod, headers: Dict[str, Any], timeout: int, payload: Optional[Dict] = None
+        self,
+        url: str,
+        method: HTTPMethod,
+        headers: Dict[str, Any],
+        timeout: int,
+        payload: Optional[Dict] = None,
     ) -> httpx.Response:
         return self._request(url=url, method=method, headers=headers, timeout=timeout, payload=payload)
 
     def sync_request(
-        self, url: str, method: HTTPMethod, headers: Dict[str, Any], timeout: int, payload: Optional[Dict] = None
+        self,
+        url: str,
+        method: HTTPMethod,
+        headers: Dict[str, Any],
+        timeout: int,
+        payload: Optional[Dict] = None,
     ) -> httpx.Response:
         return self._request(url=url, method=method, headers=headers, timeout=timeout, payload=payload)
 
@@ -103,8 +124,18 @@ async def location_schema() -> NodeSchema:
             {"name": "type", "kind": "String"},
         ],
         "relationships": [
-            {"name": "tags", "peer": "BuiltinTag", "optional": True, "cardinality": "many"},
-            {"name": "primary_tag", "peer": "BultinTag", "optional": True, "cardinality": "one"},
+            {
+                "name": "tags",
+                "peer": "BuiltinTag",
+                "optional": True,
+                "cardinality": "many",
+            },
+            {
+                "name": "primary_tag",
+                "peer": "BultinTag",
+                "optional": True,
+                "cardinality": "one",
+            },
         ],
     }
     return NodeSchema(**data)  # type: ignore
@@ -276,7 +307,12 @@ async def schema_extension_02() -> Dict[str, Any]:
                 "display_labels": ["contract_ref__value"],
                 "order_by": ["contract_ref__value"],
                 "attributes": [
-                    {"name": "contract_ref", "label": "Contract Reference", "kind": "Text", "unique": True},
+                    {
+                        "name": "contract_ref",
+                        "label": "Contract Reference",
+                        "kind": "Text",
+                        "unique": True,
+                    },
                     {"name": "description", "kind": "Text", "optional": True},
                 ],
                 "relationships": [

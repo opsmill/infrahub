@@ -1,7 +1,7 @@
 import pytest
+from infrahub_sdk import InfrahubClient
 
 from infrahub.checks import InfrahubCheck
-from infrahub_client import InfrahubClient
 
 
 async def test_class_init():
