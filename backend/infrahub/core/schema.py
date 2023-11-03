@@ -1660,7 +1660,7 @@ core_models = {
                 {"name": "default_branch", "kind": "Text", "default_value": "main"},
                 {"name": "commit", "kind": "Text", "optional": True, "branch": BranchSupportType.LOCAL.value},
                 {"name": "username", "kind": "Text", "optional": True},
-                {"name": "password", "kind": "Text", "optional": True},
+                {"name": "password", "kind": "Password", "optional": True},
             ],
             "relationships": [
                 {
