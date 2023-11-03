@@ -48,6 +48,7 @@ EXCLUDED_NAMESPACES = ["Internal", "Lineage"]
 class InterfaceMenu(BaseModel):
     title: str = Field(..., description="Title of the menu item")
     path: str = Field(default="", description="URL endpoint if applicable")
+    icon: str = Field(default="", description="The icon to show for the current view")
     children: List[InterfaceMenu] = Field(default_factory=list, description="Child objects")
 
     def __lt__(self, other: object) -> bool:
