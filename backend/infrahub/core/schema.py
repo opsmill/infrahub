@@ -575,7 +575,7 @@ class GenericSchema(BaseNodeSchema):
 
 class NodeSchema(BaseNodeSchema):
     label: Optional[str]
-    inherit_from: Optional[List[str]] = Field(default_factory=list)
+    inherit_from: List[str] = Field(default_factory=list)
     groups: Optional[List[str]] = Field(default_factory=list)
 
     @root_validator
