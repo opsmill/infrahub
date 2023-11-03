@@ -181,6 +181,9 @@ class ProposedChangeRequestRefreshArtifacts(Mutation):
         proposed_change = await NodeManager.get_one_by_id_or_default_filter(
             id=identifier, schema_name="CoreProposedChange", db=db
         )
+        state = ProposedChangeState(proposed_change.state.value)
+        state.validate_state_check_run()
+
         await rpc_client.send(messages.RequestProposedChangeRefreshArtifacts(proposed_change=proposed_change.id))
         return {"ok": True}
 
@@ -207,6 +210,9 @@ class ProposedChangeRequestRunCheck(Mutation):
         proposed_change = await NodeManager.get_one_by_id_or_default_filter(
             id=identifier, schema_name="CoreProposedChange", db=db
         )
+        state = ProposedChangeState(proposed_change.state.value)
+        state.validate_state_check_run()
+
         if check_type == CheckType.ARTIFACT:
             await rpc_client.send(messages.RequestProposedChangeRefreshArtifacts(proposed_change=proposed_change.id))
         elif check_type == CheckType.DATA:
