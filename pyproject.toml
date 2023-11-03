@@ -77,6 +77,7 @@ diffsync = "^1.8.0"
 nornir = "^3.3.0"
 nornir-utils = "^0.2.0"
 python-slugify = "^8.0.1"
+ruamel-yaml = "0.18.5"
 
 [tool.poetry.scripts]
 infrahub = "infrahub.cli:app"
