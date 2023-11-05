@@ -83,6 +83,7 @@ def execute_before_any_test(worker_id, tmpdir_factory):
             db_id = int(worker_id[2]) + 1
         except (ValueError, IndexError):
             db_id = 1
+        config.SETTINGS.cache.address = f"{BUILD_NAME}-cache-1"
         config.SETTINGS.database.address = f"{BUILD_NAME}-database-{db_id}"
         config.SETTINGS.storage.settings = {"directory": "/opt/infrahub/storage"}
     else:
@@ -90,7 +91,7 @@ def execute_before_any_test(worker_id, tmpdir_factory):
         config.SETTINGS.storage.settings = {"directory": str(storage_dir)}
 
     config.SETTINGS.broker.enable = False
-    config.SETTINGS.cache.enable = False
+    config.SETTINGS.cache.enable = True
     config.SETTINGS.miscellaneous.start_background_runner = False
     config.SETTINGS.security.secret_key = "4e26b3d9-b84f-42c9-a03f-fee3ada3b2fa"
     config.SETTINGS.main.internal_address = "http://mock"
