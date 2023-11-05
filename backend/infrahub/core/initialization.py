@@ -1,7 +1,7 @@
 import logging
 from typing import List, Optional
 
-import infrahub.config as config
+from infrahub import config, lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
@@ -24,14 +24,20 @@ async def initialization(db: InfrahubDatabase):
         await session.run(query="STORAGE MODE IN_MEMORY_ANALYTICAL")
 
     # ---------------------------------------------------
-    # Load the Root node
+    # Initialize the database and Load the Root node
     # ---------------------------------------------------
-    roots = await Root.get_list(db=db)
-    if len(roots) == 0:
-        raise DatabaseError("Database hasn't been initialized yet. please run 'infrahub db init'")
-    if len(roots) > 1:
-        raise DatabaseError("Database is corrupted, more than 1 root node found.")
-    registry.id = roots[0].uuid
+    async with lock.registry.initialization():
+        LOGGER.debug("Checking Root Node")
+
+        roots = await Root.get_list(db=db)
+        if len(roots) == 0:
+            await first_time_initialization(db=db)
+            roots = await Root.get_list(db=db)
+
+        if len(roots) > 1:
+            raise DatabaseError("Database is corrupted, more than 1 root node found.")
+
+        registry.id = roots[0].uuid
 
     # ---------------------------------------------------
     # Initialize the Storage Driver
