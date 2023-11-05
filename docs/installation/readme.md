@@ -75,7 +75,7 @@ Please reach out if you need some help and feel free to send a PR with the insta
 
 Once docker desktop and invoke are properly installed you can build start Infrahub with the following command
 ```
-invoke demo.build demo.init demo.start demo.load-infra-schema demo.load-infra-data
+invoke demo.build demo.start demo.load-infra-schema demo.load-infra-data
 ```
 
 [!ref Check the documentation of the demo environment for more information](../knowledge-base/local-demo-environment.md)

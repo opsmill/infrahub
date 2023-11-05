@@ -11,7 +11,7 @@ It's designed to be controlled by `invoke` using a list of predefined commands
 | Command               | Description                                                  | { class="compact" }
 | --------------------- | ------------------------------------------------------------ |
 | `demo.build`          | Build an image with the provided name and python version.    |
-| `demo.init`           | Initialize Infrahub database before using it the first time. |
+| `demo.init`           | (deprecated) Initialize Infrahub database before using it the first time. |
 | `demo.start`          | Start a local instance of Infrahub within docker compose.    |
 | `demo.stop`           | Stop the running instance of Infrahub.                       |
 | `demo.destroy`        | Destroy all containers and volumes.                          |
@@ -53,11 +53,8 @@ invoke demo.build
 ```
 Initialize the database and start the application
 ```
-invoke demo.init
 invoke demo.start
 ```
-
-> It's possible to execute both commands at once with `invoke demo.init demo.start`
 
 ### Load some data
 
