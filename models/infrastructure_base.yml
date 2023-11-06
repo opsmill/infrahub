@@ -6,6 +6,7 @@ generics:
     namespace: Infra
     description: "Generic Network Interface."
     label: "Interface"
+    menu_placement: "InfraDevice"
     display_labels:
       - name__value
     order_by:
@@ -159,6 +160,7 @@ nodes:
     namespace: Infra
     description: "Network Layer 3 Interface"
     label: "Interface L3"
+    menu_placement: "InfraDevice"
     display_labels:
       - name__value
     order_by:
@@ -177,6 +179,7 @@ nodes:
     namespace: Infra
     description: "Network Layer 2 Interface"
     label: "Interface L2"
+    menu_placement: "InfraDevice"
     display_labels:
       - name__value
     order_by:

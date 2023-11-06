@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List
+from typing import Dict, List
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
@@ -14,42 +14,13 @@ from infrahub.log import get_logger
 log = get_logger()
 router = APIRouter(prefix="/menu")
 
-EXCLUDED_INHERITED_GENERICS = [
-    "CoreCheck",
-    "CoreComment",
-    "CoreGroup",
-    "CoreThread",
-    "CoreTransformation",
-    "CoreValidator",
-    "InfraInterface",
-]
-
-EXCLUDED_MODELS = [
-    "CoreAccount",
-    "CoreArtifact",
-    "CoreArtifactDefinition",
-    "CoreArtifactTarget",
-    "CoreCheck",
-    "CoreComment",
-    "CoreCheckDefinition",
-    "CoreGraphQLQuery",
-    "CoreGroup",
-    "CoreNode",
-    "CoreRepository",
-    "CoreProposedChange",
-    "CoreRepository",
-    "CoreTransformation",
-    "CoreThread",
-    "CoreValidator",
-]
-EXCLUDED_NAMESPACES = ["Internal", "Lineage"]
-
 
 class InterfaceMenu(BaseModel):
     title: str = Field(..., description="Title of the menu item")
     path: str = Field(default="", description="URL endpoint if applicable")
     icon: str = Field(default="", description="The icon to show for the current view")
     children: List[InterfaceMenu] = Field(default_factory=list, description="Child objects")
+    kind: str = Field(default="")
 
     def __lt__(self, other: object) -> bool:
         if not isinstance(other, InterfaceMenu):
@@ -57,12 +28,12 @@ class InterfaceMenu(BaseModel):
         return self.title < other.title
 
 
-def inherits_from_excluded_generic(model: NodeSchema) -> bool:
-    for parent in model.inherit_from:
-        if parent in EXCLUDED_INHERITED_GENERICS:
-            return True
-
-    return False
+def add_to_menu(structure: Dict[str, List[InterfaceMenu]], menu_item: InterfaceMenu) -> None:
+    for child in structure[menu_item.kind]:
+        menu_item.children.append(child)
+        if child.kind in structure:
+            add_to_menu(structure, child)
+    menu_item.children.sort()
 
 
 @router.get("")
@@ -72,38 +43,37 @@ async def get_menu(
     log.info("menu_request", branch=branch.name)
 
     full_schema = registry.schema.get_full(branch=branch)
-
     objects = InterfaceMenu(
         title="Objects",
         children=[],
     )
+
+    structure: Dict[str, List[InterfaceMenu]] = {}
 
     groups = InterfaceMenu(
         title="Groups",
     )
     for key in full_schema.keys():
         model = full_schema[key]
-        if isinstance(model, GroupSchema) or model.namespace in EXCLUDED_NAMESPACES or model.kind in EXCLUDED_MODELS:
+
+        if isinstance(model, GroupSchema) or not model.include_in_menu:
             continue
 
         if isinstance(model, NodeSchema) and "CoreGroup" in model.inherit_from:
             groups.children.append(InterfaceMenu(title=model.name, path=f"/objects/{model.kind}"))
-        if isinstance(model, NodeSchema) and inherits_from_excluded_generic(model):
-            continue
 
-        if model.kind == "InfraInterface":
-            objects.children.append(
-                InterfaceMenu(
-                    title="Interfaces",
-                    children=[
-                        InterfaceMenu(title="Interface L2", path="/objects/InfraInterfaceL2"),
-                        InterfaceMenu(title="Interface L3", path="/objects/InfraInterfaceL3"),
-                        InterfaceMenu(title="Interface", path="/objects/InfraInterface"),
-                    ],
-                )
-            )
-        else:
-            objects.children.append(InterfaceMenu(title=model.name, path=f"/objects/{model.kind}"))
+        menu_name = model.menu_placement or "base"
+        if menu_name not in structure:
+            structure[menu_name] = []
+
+        structure[menu_name].append(
+            InterfaceMenu(title=model.name, path=f"/objects/{model.kind}", icon=model.icon or "", kind=model.kind)
+        )
+
+    for menu_item in structure["base"]:
+        objects.children.append(menu_item)
+        if menu_item.kind in structure:
+            add_to_menu(structure, menu_item)
 
     objects.children.sort()
     groups.children.sort()
@@ -111,28 +81,34 @@ async def get_menu(
     unified_storage = InterfaceMenu(
         title="Unified Storage",
         children=[
-            InterfaceMenu(title="Schema", path="/schema"),
-            InterfaceMenu(title="Repository", path="/objects/CoreCheckDefinition"),
-            InterfaceMenu(title="GraphQL Query", path="/objects/CoreGraphQLQuery"),
+            InterfaceMenu(title="Schema", path="/schema", icon="mdi:file-code"),
+            InterfaceMenu(title="Repository", path="/objects/CoreRepository", icon="mdi:source-repository"),
+            InterfaceMenu(title="GraphQL Query", path="/objects/CoreGraphQLQuery", icon="mdi:graphql"),
         ],
     )
 
     change_control = InterfaceMenu(
         title="Change Control",
         children=[
-            InterfaceMenu(title="Branches", path="/branches"),
-            InterfaceMenu(title="Proposed Changes", path="/proposed-changes"),
-            InterfaceMenu(title="Check Definition", path="/objects/CoreCheckDefinition"),
+            InterfaceMenu(title="Branches", path="/branches", icon="mdi:source-branch"),
+            InterfaceMenu(title="Proposed Changes", path="/proposed-changes", icon="mdi:file-replace-outline"),
+            InterfaceMenu(title="Check Definition", path="/objects/CoreCheckDefinition", icon="mdi:check-all"),
         ],
     )
     deployment = InterfaceMenu(
         title="Deployment",
         children=[
-            InterfaceMenu(title="Artifact", path="/objects/CoreArtifact"),
-            InterfaceMenu(title="Artifact Definition", path="/objects/CoreArtifactDefinition"),
-            InterfaceMenu(title="Transformation", path="/objects/CoreTransformation"),
+            InterfaceMenu(title="Artifact", path="/objects/CoreArtifact", icon="mdi:file-document-outline"),
+            InterfaceMenu(
+                title="Artifact Definition",
+                path="/objects/CoreArtifactDefinition",
+                icon="mdi:file-document-multiple-outline",
+            ),
+            InterfaceMenu(title="Transformation", path="/objects/CoreTransformation", icon="mdi:cog-transfer"),
         ],
     )
-    admin = InterfaceMenu(title="Admin", children=[InterfaceMenu(title="Accounts", path="objects/CoreAccount")])
+    admin = InterfaceMenu(
+        title="Admin", children=[InterfaceMenu(title="Accounts", path="/objects/CoreAccount", icon="mdi:account")]
+    )
 
     return [objects, groups, unified_storage, change_control, deployment, admin]
