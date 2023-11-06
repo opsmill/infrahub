@@ -17,8 +17,8 @@ export const DropDownMenuItem = (props: Props) => {
         return (
           <div
             className={classNames(
-              "p-1 mb-1 group flex w-full items-center rounded-md text-sm font-medium text-gray-600",
-              isActive ? "bg-gray-300" : "hover:bg-gray-50 hover:text-gray-900"
+              "p-2 m-1 group flex w-full items-center rounded-md text-sm font-medium text-gray-600",
+              isActive ? "bg-gray-300" : "hover:bg-gray-100 hover:text-gray-900"
             )}>
             {props.title}
           </div>

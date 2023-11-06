@@ -1,57 +1,39 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
+import { ALERT_TYPES, Alert } from "../../components/alert";
+import { CONFIG } from "../../config/config";
 import logo from "../../images/Infrahub-SVG-hori.svg";
+import { fetchUrl } from "../../utils/fetch";
+import LoadingScreen from "../loading-screen/loading-screen";
 import DropDownMenuHeader from "./desktop-menu-header";
 import { Footer } from "./footer";
 
-const structure = [
-  {
-    title: "Objects",
-    children: [
-      {
-        title: "Device",
-        path: "/objects/CoreDevice",
-      },
-      {
-        title: "Interfaces",
-        children: [
-          {
-            title: "Interface L2",
-            path: "/objects/InfraInterfaceL2",
-          },
-          {
-            title: "Interface L3",
-            path: "/objects/InfraInterfaceL3",
-          },
-          {
-            title: "Other Interfaces",
-            children: [
-              {
-                title: "Random Interface",
-                path: "/objects/InfraInterface",
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  },
-  {
-    title: "Admin",
-    children: [
-      {
-        title: "Scema",
-        path: "/schema",
-      },
-      {
-        title: "Groups",
-        path: "/groups",
-      },
-    ],
-  },
-];
-
 export default function DesktopMenu() {
   const navigate = useNavigate();
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [menu, setMenu] = useState([]);
+
+  const fecthMenu = async () => {
+    try {
+      setIsLoading(true);
+
+      const result = await fetchUrl(CONFIG.MENU_URL);
+
+      setMenu(result);
+
+      setIsLoading(false);
+    } catch (error) {
+      console.error("error: ", error);
+      toast(<Alert type={ALERT_TYPES.ERROR} message="Error while fetching the menu" />);
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fecthMenu();
+  }, []);
 
   return (
     <div className="z-100 hidden w-64 md:visible md:inset-y-0 md:flex md:flex-col">
@@ -60,11 +42,20 @@ export default function DesktopMenu() {
           <img src={logo} />
         </div>
         <div className="flex flex-grow flex-col flex-1 overflow-auto">
-          <nav className="flex-1 p-1 bg-custom-white" aria-label="Sidebar">
-            {structure.map((item: any, index: number) => (
-              <DropDownMenuHeader key={index} title={item.title} items={item.children} />
-            ))}
-          </nav>
+          {isLoading && <LoadingScreen size={32} hideText />}
+
+          {!isLoading && (
+            <nav className="flex-1 bg-custom-white divide-y" aria-label="Sidebar">
+              {menu.map((item: any, index: number) => (
+                <DropDownMenuHeader
+                  key={index}
+                  title={item.title}
+                  items={item.children}
+                  icon={item.icon}
+                />
+              ))}
+            </nav>
+          )}
         </div>
       </div>
 
