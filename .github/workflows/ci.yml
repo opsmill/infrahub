@@ -338,6 +338,12 @@ jobs:
       - name: "Run integration tests"
         working-directory: ./frontend
         run: "npm run cypress:run"
+      - name: Upload cypress screenshots
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: screenshots
+          path: docs/media/*
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2.0.0
         env:
