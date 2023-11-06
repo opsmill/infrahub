@@ -630,9 +630,10 @@ class Branch(StandardNode):
         # RELATIONSHIPS
         # ---------------------------------------------
         rels = await diff.get_relationships(db=db)
+        branch_relationships = rels.get(self.name, {})
 
-        for rel_name in rels[self.name].keys():
-            for _, rel in rels[self.name][rel_name].items():
+        for rel_name in branch_relationships.keys():
+            for _, rel in branch_relationships[rel_name].items():
                 for node in rel.nodes.values():
                     matched_conflict_path = [path for path in rel.conflict_paths if path in conflict_resolution]
                     conflict_path = None
@@ -677,12 +678,14 @@ class Branch(StandardNode):
                     if rel.action in [DiffAction.UPDATED, DiffAction.REMOVED]:
                         rel_ids_to_update.append(prop.origin_rel_id)
 
-        await update_relationships_to(ids=rel_ids_to_update, to=at, db=db)
+        if rel_ids_to_update:
+            await update_relationships_to(ids=rel_ids_to_update, to=at, db=db)
 
-        # Update the branched_from time and update the registry
-        self.branched_from = Timestamp().to_string()
-        await self.save(db=db)
-        registry.branch[self.name] = self
+            # Update the branched_from time and update the registry
+            # provided that an update is needed
+            self.branched_from = Timestamp().to_string()
+            await self.save(db=db)
+            registry.branch[self.name] = self
 
     async def merge_repositories(self, rpc_client: InfrahubRpcClient, db: InfrahubDatabase):
         # Collect all Repositories in Main because we'll need the commit in Main for each one.
