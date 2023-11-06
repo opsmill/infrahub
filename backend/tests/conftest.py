@@ -39,7 +39,7 @@ def event_loop():
     loop.close()
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="module", autouse=True)
 def execute_before_any_test(worker_id):
     config.load_and_exit()
 
@@ -49,7 +49,7 @@ def execute_before_any_test(worker_id):
         except (ValueError, IndexError):
             db_id = 1
 
-        config.SETTINGS.cache.address = f"{BUILD_NAME}-cache-1"
+        config.SETTINGS.cache.address = f"{BUILD_NAME}-cache-{db_id}"
         config.SETTINGS.database.address = f"{BUILD_NAME}-database-{db_id}"
         config.SETTINGS.storage.settings = {"directory": "/opt/infrahub/storage"}
 

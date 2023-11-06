@@ -20,3 +20,7 @@ services:
     volumes:
       - ../:/source
     tty: true
+  cache:
+    deploy:
+      mode: replicated
+      replicas: "${NBR_WORKERS}"
