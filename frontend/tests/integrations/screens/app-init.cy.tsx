@@ -46,11 +46,11 @@ describe("Config fetch", () => {
 
     cy.wait("@getMenu");
 
-    // Check if the Device menu is existing
+    // Check if the Objects menu is existing
     cy.get("[data-cy='sidebar-menu']").within(() => {
       // Scroll to be sure to display it
-      cy.contains("Device").scrollIntoView();
-      cy.contains("Device").should("exist");
+      cy.contains("Objects").scrollIntoView();
+      cy.contains("Objects").should("exist");
     });
   });
 });
