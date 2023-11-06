@@ -44,11 +44,11 @@ describe("Config fetch", () => {
       expect(schemaArray).to.have.lengthOf(1);
     });
 
-    cy.wait("@getMenu");
-
-    // Check if the Objects menu is existing
-    cy.get("[data-cy='sidebar-menu']").within(() => {
-      cy.contains("AutonomousSystem").should("exist");
+    cy.wait("@getMenu").then(() => {
+      // Check if the Objects menu is existing
+      cy.get("[data-cy='sidebar-menu']").within(() => {
+        cy.contains("Objects").should("exist");
+      });
     });
   });
 });
