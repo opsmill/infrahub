@@ -48,7 +48,7 @@ describe("Config fetch", () => {
 
     // Check if the Objects menu is existing
     cy.get("[data-cy='sidebar-menu']").within(() => {
-      cy.contains("Objects").should("exist");
+      cy.contains("AutonomousSystem").should("exist");
     });
   });
 });
