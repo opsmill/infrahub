@@ -20,6 +20,8 @@ describe("Config fetch", () => {
 
     cy.intercept("GET", "/api/schema", this.schema).as("getSchema");
 
+    cy.intercept("GET", "/api/menu", this.menu).as("getMenu");
+
     cy.mount(
       <MockedProvider addTypename={false}>
         <App />
@@ -40,13 +42,15 @@ describe("Config fetch", () => {
       const schemaArray = response?.body?.nodes;
 
       expect(schemaArray).to.have.lengthOf(1);
+    });
 
-      // Check if the Device menu is existing
-      cy.get("[data-cy='sidebar-menu']").within(() => {
-        // Scroll to be sure to display it
-        cy.contains("Device").scrollIntoView();
-        cy.contains("Device").should("exist");
-      });
+    cy.wait("@getMenu");
+
+    // Check if the Device menu is existing
+    cy.get("[data-cy='sidebar-menu']").within(() => {
+      // Scroll to be sure to display it
+      cy.contains("Device").scrollIntoView();
+      cy.contains("Device").should("exist");
     });
   });
 });
