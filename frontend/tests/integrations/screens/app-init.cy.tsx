@@ -40,13 +40,13 @@ describe("Config fetch", () => {
       const schemaArray = response?.body?.nodes;
 
       expect(schemaArray).to.have.lengthOf(1);
-    });
 
-    // Check if the Device menu is existing
-    cy.get("[data-cy='sidebar-menu']").within(() => {
-      // Scroll to be sure to display it
-      cy.contains("Device").scrollIntoView();
-      cy.contains("Device").should("exist");
+      // Check if the Device menu is existing
+      cy.get("[data-cy='sidebar-menu']").within(() => {
+        // Scroll to be sure to display it
+        cy.contains("Device").scrollIntoView();
+        cy.contains("Device").should("exist");
+      });
     });
   });
 });
