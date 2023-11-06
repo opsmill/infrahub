@@ -45,7 +45,10 @@ export default function DesktopMenu() {
           {isLoading && <LoadingScreen size={32} hideText />}
 
           {!isLoading && (
-            <nav className="flex-1 bg-custom-white divide-y" aria-label="Sidebar">
+            <nav
+              className="flex-1 bg-custom-white divide-y"
+              aria-label="Sidebar"
+              data-cy="sidebar-menu">
               {menu.map((item: any, index: number) => (
                 <DropDownMenuHeader
                   key={index}

@@ -43,7 +43,7 @@ describe("Config fetch", () => {
     });
 
     // Check if the Device menu is existing
-    cy.get("#headlessui-disclosure-panel-\\:r3\\:").within(() => {
+    cy.get("[data-cy='sidebar-menu']").within(() => {
       cy.contains("Device").should("exist");
     });
   });
