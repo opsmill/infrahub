@@ -9,6 +9,7 @@ describe("Config fetch", () => {
     cy.fixture("login").as("login");
     cy.fixture("config").as("config");
     cy.fixture("schema").as("schema");
+    cy.fixture("menu").as("menu");
   });
 
   it("should login and load the config", function () {
@@ -19,6 +20,8 @@ describe("Config fetch", () => {
     cy.intercept("GET", "/api/config", this.config).as("getConfig");
 
     cy.intercept("GET", "/api/schema", this.schema).as("getSchema");
+
+    cy.intercept("GET", "/api/menu", this.menu).as("getMenu");
 
     cy.mount(
       <MockedProvider addTypename={false}>
@@ -41,8 +44,6 @@ describe("Config fetch", () => {
 
       expect(schemaArray).to.have.lengthOf(1);
     });
-
-    cy.intercept("GET", "/api/menu", this.menu).as("getMenu");
 
     cy.wait("@getMenu").then(() => {
       // Check if the Objects menu is existing
