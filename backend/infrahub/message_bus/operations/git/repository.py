@@ -8,7 +8,7 @@ log = get_logger()
 
 
 async def add(message: messages.GitRepositoryAdd, service: InfrahubServices) -> None:
-    log.info("Cloning and importing repositoryy", repository=message.repository_name, location=message.location)
+    log.info("Cloning and importing repository", repository=message.repository_name, location=message.location)
     async with lock.registry.get(name=message.repository_name, namespace="repository"):
         repo = await InfrahubRepository.new(
             id=message.repository_id, name=message.repository_name, location=message.location, client=service.client

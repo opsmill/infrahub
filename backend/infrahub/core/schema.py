@@ -575,7 +575,7 @@ class GenericSchema(BaseNodeSchema):
 
 class NodeSchema(BaseNodeSchema):
     label: Optional[str]
-    inherit_from: Optional[List[str]] = Field(default_factory=list)
+    inherit_from: List[str] = Field(default_factory=list)
     groups: Optional[List[str]] = Field(default_factory=list)
 
     @root_validator
@@ -1660,7 +1660,7 @@ core_models = {
                 {"name": "default_branch", "kind": "Text", "default_value": "main"},
                 {"name": "commit", "kind": "Text", "optional": True, "branch": BranchSupportType.LOCAL.value},
                 {"name": "username", "kind": "Text", "optional": True},
-                {"name": "password", "kind": "Text", "optional": True},
+                {"name": "password", "kind": "Password", "optional": True},
             ],
             "relationships": [
                 {
