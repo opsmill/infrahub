@@ -20,8 +20,6 @@ describe("Config fetch", () => {
 
     cy.intercept("GET", "/api/schema", this.schema).as("getSchema");
 
-    cy.intercept("GET", "/api/menu", this.menu).as("getMenu");
-
     cy.mount(
       <MockedProvider addTypename={false}>
         <App />
@@ -43,6 +41,8 @@ describe("Config fetch", () => {
 
       expect(schemaArray).to.have.lengthOf(1);
     });
+
+    cy.intercept("GET", "/api/menu", this.menu).as("getMenu");
 
     cy.wait("@getMenu").then(() => {
       // Check if the Objects menu is existing
