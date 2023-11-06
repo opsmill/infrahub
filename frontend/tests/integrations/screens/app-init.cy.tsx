@@ -48,8 +48,6 @@ describe("Config fetch", () => {
 
     // Check if the Objects menu is existing
     cy.get("[data-cy='sidebar-menu']").within(() => {
-      // Scroll to be sure to display it
-      cy.contains("Objects").scrollIntoView();
       cy.contains("Objects").should("exist");
     });
   });

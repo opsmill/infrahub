@@ -344,6 +344,12 @@ jobs:
         with:
           name: screenshots
           path: docs/media/*
+      - name: Upload cypress videos
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: screenshots
+          path: /frontend/cypress/videos/*
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2.0.0
         env:
