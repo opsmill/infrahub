@@ -39,10 +39,9 @@ def event_loop():
     loop.close()
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="module", autouse=True)
 def execute_before_any_test(worker_id):
     config.load_and_exit()
-    initialize_lock()
 
     if TEST_IN_DOCKER:
         try:
@@ -50,15 +49,17 @@ def execute_before_any_test(worker_id):
         except (ValueError, IndexError):
             db_id = 1
 
-        config.SETTINGS.cache.address = f"{BUILD_NAME}-cache-1"
+        config.SETTINGS.cache.address = f"{BUILD_NAME}-cache-{db_id}"
         config.SETTINGS.database.address = f"{BUILD_NAME}-database-{db_id}"
         config.SETTINGS.storage.settings = {"directory": "/opt/infrahub/storage"}
 
     config.SETTINGS.broker.enable = False
-    config.SETTINGS.cache.enable = False
+    config.SETTINGS.cache.enable = True
     config.SETTINGS.miscellaneous.start_background_runner = False
     config.SETTINGS.security.secret_key = "4e26b3d9-b84f-42c9-a03f-fee3ada3b2fa"
     config.SETTINGS.main.internal_address = "http://mock"
+
+    initialize_lock()
 
 
 class BusRecorder(InfrahubMessageBus):

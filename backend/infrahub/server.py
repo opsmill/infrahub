@@ -80,8 +80,7 @@ async def app_initialization():
     # Initialize database Driver and load local registry
     app.state.db = InfrahubDatabase(mode=InfrahubDatabaseMode.DRIVER, driver=await get_db())
 
-    async with app.state.db.start_session() as db:
-        await initialization(db=db)
+    initialize_lock()
 
     # Initialize connection to the RabbitMQ bus
     await connect_to_broker()
@@ -89,8 +88,9 @@ async def app_initialization():
     # Initialize RPC Client
     app.state.rpc_client = await InfrahubRpcClient().connect()
     services.prepare(service=app.state.rpc_client.service)
-    # Initialize the client for the cache
-    initialize_lock()
+
+    async with app.state.db.start_session() as db:
+        await initialization(db=db)
 
     # Initialize the Background Runner
     if config.SETTINGS.miscellaneous.start_background_runner:

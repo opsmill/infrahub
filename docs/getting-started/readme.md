@@ -11,7 +11,6 @@ The main requirements to run the Sandbox environment are:
 
 ```
 invoke demo.build
-invoke demo.init
 ```
 
 You can then start all the services with
