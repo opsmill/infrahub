@@ -11,13 +11,13 @@ RUN mkdir /remote
 
 RUN apt-get update && \
     apt-get upgrade -y && \
-    apt-get install --no-install-recommends -y pkg-config build-essential && \
-    apt-get autoremove -y && \
-    apt-get clean all && \
+    apt-get install --no-install-recommends -y curl git pkg-config build-essential ca-certificates && \
+    curl -sSL https://install.python-poetry.org | python3 - && \
     rm -rf /var/lib/apt/lists/* && \
-    pip --no-cache-dir install --upgrade pip wheel
+    rm -rf /var/lib/apt/lists/* && \
+    pip --no-cache-dir install --no-compile --upgrade pip wheel
 
-RUN curl -sSL https://install.python-poetry.org | python3 -
+# RUN curl -sSL https://install.python-poetry.org | python3 -
 ENV PATH="${PATH}:/root/.local/bin"
 
 RUN poetry config virtualenvs.create false
@@ -36,7 +36,7 @@ WORKDIR /source
 
 RUN npm install --omit=dev
 COPY frontend/ /source/
-RUN npm run build
+RUN npm run build && npm cache clean --force
 
 # ****************************************************************
 # STAGE : Backend
@@ -46,22 +46,19 @@ FROM base AS backend
 # --------------------------------------------
 # Configure Git & Environment
 # --------------------------------------------
-RUN git config --global user.name "Infrahub"
-RUN git config --global user.email "infrahub@opsmill.com"
-RUN git config --global --add safe.directory '*'
-RUN git config --global credential.usehttppath true
-RUN git config --global credential.helper /usr/local/bin/infrahub-git-credential
+RUN git config --global user.name "Infrahub" && \
+    git config --global user.email "infrahub@opsmill.com" && \
+    git config --global --add safe.directory '*' && \
+    git config --global credential.usehttppath true && \
+    git config --global credential.helper /usr/local/bin/infrahub-git-credential
 
-RUN mkdir -p /opt/infrahub/git
-RUN mkdir -p /opt/infrahub/storage
-RUN mkdir -p /opt/infrahub/source
+RUN mkdir -p /opt/infrahub/git /opt/infrahub/storage /opt/infrahub/source /opt/infrahub/frontend/dist
 
 WORKDIR /source
 
 # --------------------------------------------
 # Import Frontend Build
 # --------------------------------------------
-RUN mkdir -p /opt/infrahub/frontend/dist
 COPY --from=frontend /source/dist/ /opt/infrahub/frontend/dist
 
 # --------------------------------------------
@@ -69,31 +66,38 @@ COPY --from=frontend /source/dist/ /opt/infrahub/frontend/dist
 #   Copy in only pyproject.toml/poetry.lock to help with caching this layer if no updates to dependencies
 # --------------------------------------------
 COPY poetry.lock pyproject.toml /source/
-RUN poetry install --no-interaction --no-ansi --no-root --no-directory
+RUN poetry install --no-interaction --no-ansi --no-root --no-directory --no-dev
 
 # --------------------------------------------
 # Copy in the rest of the source code and install the project
 # --------------------------------------------
-COPY . /source
-RUN poetry install --no-interaction --no-ansi
-
-# ****************************************************************
-# STAGE : Gitpod
-# ****************************************************************
-
-FROM backend as gitpod
+COPY . ./
+RUN poetry install --no-interaction --no-ansi  --with server --with sync --with nornir
 
 # --------------------------------------------
-# Create new user and assign the right permissions
+# Purge & Cleanup
 # --------------------------------------------
-ARG USER_ID=33333
-ARG GROUP_ID=33333
+RUN apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false pkg-config build-essential && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
-RUN addgroup --gid ${GROUP_ID} user
-RUN adduser --disabled-password --gecos '' --uid ${USER_ID} --gid ${GROUP_ID} user
+# # ****************************************************************
+# # STAGE : Gitpod
+# # ****************************************************************
 
-RUN chown -R ${USER_ID}:${GROUP_ID} /prom_shared
-RUN chown -R ${USER_ID}:${GROUP_ID} /opt
-RUN chown -R ${USER_ID}:${GROUP_ID} /remote
+# FROM backend as gitpod
 
-USER user
+# # --------------------------------------------
+# # Create new user and assign the right permissions
+# # --------------------------------------------
+# ARG USER_ID=33333
+# ARG GROUP_ID=33333
+
+# RUN addgroup --gid ${GROUP_ID} user
+# RUN adduser --disabled-password --gecos '' --uid ${USER_ID} --gid ${GROUP_ID} user
+
+# RUN chown -R ${USER_ID}:${GROUP_ID} /prom_shared
+# RUN chown -R ${USER_ID}:${GROUP_ID} /opt
+# RUN chown -R ${USER_ID}:${GROUP_ID} /remote
+
+# USER user
