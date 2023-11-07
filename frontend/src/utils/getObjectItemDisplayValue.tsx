@@ -60,7 +60,7 @@ export const getObjectItemDisplayValue = (row: any, attribute: any, schemaKindNa
     "-";
 
   if (attribute?.kind === "Password") {
-    return <PasswordDisplay value={"okokookok"} />;
+    return <PasswordDisplay value={textValue} />;
   }
 
   if (textValue?.length > MAX_VALUE_LENGTH_DISPLAY) {
