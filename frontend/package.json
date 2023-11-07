@@ -30,6 +30,7 @@
     "@headlessui/react": "^1.7.10",
     "@heroicons/react": "^2.0.15",
     "@hookform/error-message": "^2.0.1",
+    "@iconify-icon/react": "^1.0.8",
     "@sentry/react": "^7.45.0",
     "@sentry/tracing": "^7.45.0",
     "@tailwindcss/forms": "^0.5.3",
