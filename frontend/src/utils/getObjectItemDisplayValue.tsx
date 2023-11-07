@@ -1,4 +1,5 @@
 import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { PasswordDisplay } from "../components/PasswordDisplay";
 import { Badge } from "../components/badge";
 import { CodeEditor } from "../components/code-editor";
 import { DateDisplay } from "../components/date-display";
@@ -57,6 +58,10 @@ export const getObjectItemDisplayValue = (row: any, attribute: any, schemaKindNa
     row[attribute?.name]?.node?.display_label ??
     (typeof row[attribute?.name] === "string" ? row[attribute?.name] : "") ??
     "-";
+
+  if (attribute?.kind === "Password") {
+    return <PasswordDisplay value={"okokookok"} />;
+  }
 
   if (textValue?.length > MAX_VALUE_LENGTH_DISPLAY) {
     return `${textValue.substr(0, MAX_VALUE_LENGTH_DISPLAY)} ...`;
