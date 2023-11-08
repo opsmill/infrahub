@@ -66,7 +66,7 @@ export default function GroupItems() {
     ? getGroups({
         attributes: schemaData.attributes,
         filters: filtersString,
-        kind,
+        groupKind: kind,
       })
     : // Empty query to make the gql parsing work
       // TODO: Find another solution for queries while loading schemaData

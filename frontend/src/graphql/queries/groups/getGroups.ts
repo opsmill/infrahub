@@ -19,7 +19,8 @@ query Group {
     }
   }
   {{/if}}
-  {{kind}}{{#if filters}}({{{filters}}}){{/if}} {
+
+  {{groupKind}}{{#if filters}}({{{filters}}}){{/if}} {
     count
     edges {
       node {

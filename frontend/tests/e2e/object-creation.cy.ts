@@ -17,7 +17,7 @@ describe("Object creation and deletion", () => {
 
   it("should create an object", function () {
     // Access the account view
-    cy.contains("Account").click();
+    cy.get("[href='/objects/CoreAccount'").click();
 
     // Get the actual number of items
     cy.get("div.flex > .text-sm > :nth-child(3)").then((element) => {
@@ -28,13 +28,21 @@ describe("Object creation and deletion", () => {
     cy.get("[data-cy='create']").click();
 
     // Type the name
-    cy.get(".grid > :nth-child(1) > .relative > .block").type(NEW_ACCOUNT.name, { delay: 0 });
+    cy.get(".grid > :nth-child(1) > .relative > .block").type(NEW_ACCOUNT.name, {
+      delay: 0,
+      force: true,
+    });
+    cy.get(".grid > :nth-child(1) > .relative > .block").should("have.value", NEW_ACCOUNT.name);
 
     // Type the password
-    cy.get(":nth-child(2) > .relative > .block").type(NEW_ACCOUNT.password, { delay: 0 });
+    cy.get(".grid > :nth-child(2) > .relative > .block").type(NEW_ACCOUNT.password, {
+      delay: 0,
+      force: true,
+    });
+    cy.get(".grid > :nth-child(2) > .relative > .block").should("have.value", NEW_ACCOUNT.password);
 
     // Click save
-    cy.get(".justify-end > .bg-custom-blue-700").click();
+    cy.get("[data-cy='submit-form']").click();
 
     // Wait after refetch, the body data should contain an object
     waitFor(
@@ -50,7 +58,7 @@ describe("Object creation and deletion", () => {
 
   it("should delete an object", function () {
     // Access the account view
-    cy.contains("Account").click();
+    cy.get("[href='/objects/CoreAccount'").click();
 
     // Get the actual number of items
     cy.get("div.flex > .text-sm > :nth-child(3)").then((element) => {
