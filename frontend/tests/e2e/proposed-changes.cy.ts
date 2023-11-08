@@ -20,7 +20,7 @@ describe("Main application", () => {
 
   it("should create a Proposed Changes", function () {
     // Access the proposed changes view
-    cy.contains("Proposed changes").click();
+    cy.contains("Proposed Changes").click();
 
     // Open the creat panel
     cy.get(".bg-white > .p-2").click();
@@ -64,7 +64,7 @@ describe("Main application", () => {
 
   it("should access the Proposed Changes details", function () {
     // Access the proposed changes view
-    cy.contains("Proposed changes").click();
+    cy.contains("Proposed Changes").click();
 
     // Access the new PC details
     cy.get(".grid").within(() => {
@@ -86,7 +86,7 @@ describe("Main application", () => {
 
   it("should access the Proposed Changes details and update the comments", function () {
     // Access the proposed changes view
-    cy.contains("Proposed changes").click();
+    cy.contains("Proposed Changes").click();
 
     // Access the new PC details
     cy.get(".grid").within(() => {
@@ -150,7 +150,7 @@ describe("Main application", () => {
 
     cy.intercept("/graphql/main").as("CreateComment3");
 
-    cy.get(".bg-gray-50").within(() => {
+    cy.get("[data-cy='modal-confirm-buttons']").within(() => {
       // Send request
       cy.contains("Confirm").click();
     });
@@ -172,7 +172,7 @@ describe("Main application", () => {
 
   it("should access the Proposed Changes diff view", function () {
     // Access the proposed changes view
-    cy.contains("Proposed changes").click();
+    cy.contains("Proposed Changes").click();
 
     // Access the new PC details
     cy.contains(PROPOSED_CHANGES_NAME).click();
