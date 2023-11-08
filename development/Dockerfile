@@ -17,7 +17,6 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/* && \
     pip --no-cache-dir install --no-compile --upgrade pip wheel
 
-# RUN curl -sSL https://install.python-poetry.org | python3 -
 ENV PATH="${PATH}:/root/.local/bin"
 
 RUN poetry config virtualenvs.create false
@@ -72,7 +71,7 @@ RUN poetry install --no-interaction --no-ansi --no-root --no-directory --no-dev
 # Copy in the rest of the source code and install the project
 # --------------------------------------------
 COPY . ./
-RUN poetry install --no-interaction --no-ansi  --with server --with sync --with nornir
+RUN poetry install --no-interaction --no-ansi
 
 # --------------------------------------------
 # Purge & Cleanup
@@ -81,23 +80,23 @@ RUN apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# # ****************************************************************
-# # STAGE : Gitpod
-# # ****************************************************************
+# ****************************************************************
+# STAGE : Gitpod
+# ****************************************************************
 
-# FROM backend as gitpod
+FROM backend as gitpod
 
-# # --------------------------------------------
-# # Create new user and assign the right permissions
-# # --------------------------------------------
-# ARG USER_ID=33333
-# ARG GROUP_ID=33333
+# --------------------------------------------
+# Create new user and assign the right permissions
+# --------------------------------------------
+ARG USER_ID=33333
+ARG GROUP_ID=33333
 
-# RUN addgroup --gid ${GROUP_ID} user
-# RUN adduser --disabled-password --gecos '' --uid ${USER_ID} --gid ${GROUP_ID} user
+RUN addgroup --gid ${GROUP_ID} user
+RUN adduser --disabled-password --gecos '' --uid ${USER_ID} --gid ${GROUP_ID} user
 
-# RUN chown -R ${USER_ID}:${GROUP_ID} /prom_shared
-# RUN chown -R ${USER_ID}:${GROUP_ID} /opt
-# RUN chown -R ${USER_ID}:${GROUP_ID} /remote
+RUN chown -R ${USER_ID}:${GROUP_ID} /prom_shared
+RUN chown -R ${USER_ID}:${GROUP_ID} /opt
+RUN chown -R ${USER_ID}:${GROUP_ID} /remote
 
-# USER user
+USER user
