@@ -27,13 +27,19 @@ class InterfaceMenu(BaseModel):
             raise NotImplementedError
         return self.title < other.title
 
+    def list_title(self) -> str:
+        return f"All {self.title}(s)"
+
 
 def add_to_menu(structure: Dict[str, List[InterfaceMenu]], menu_item: InterfaceMenu) -> None:
+    all_items = InterfaceMenu(title=menu_item.list_title(), path=menu_item.path, icon=menu_item.icon)
+    menu_item.path = ""
     for child in structure[menu_item.kind]:
         menu_item.children.append(child)
         if child.kind in structure:
             add_to_menu(structure, child)
     menu_item.children.sort()
+    menu_item.children.insert(0, all_items)
 
 
 @router.get("")
@@ -60,7 +66,8 @@ async def get_menu(
             continue
 
         if isinstance(model, NodeSchema) and "CoreGroup" in model.inherit_from:
-            groups.children.append(InterfaceMenu(title=model.name, path=f"/objects/{model.kind}"))
+            groups.children.append(InterfaceMenu(title=model.name, path=f"/groups/{model.kind}"))
+            continue
 
         menu_name = model.menu_placement or "base"
         if menu_name not in structure:
@@ -71,13 +78,14 @@ async def get_menu(
         )
 
     for menu_item in structure["base"]:
-        objects.children.append(menu_item)
         if menu_item.kind in structure:
             add_to_menu(structure, menu_item)
 
+        objects.children.append(menu_item)
+
     objects.children.sort()
     groups.children.sort()
-
+    groups.children.insert(0, InterfaceMenu(title="All Groups", path="/groups"))
     unified_storage = InterfaceMenu(
         title="Unified Storage",
         children=[
