@@ -30,7 +30,7 @@ export default defineConfig({
     // setupNodeEvents(on) {
     //   on("file:preprocessor", vitePreprocessor());
     // },
-    baseUrl: "http://localhost:8000/",
+    baseUrl: "http://localhost:8080/",
     specPattern: "tests/e2e/**/*.cy.{js,jsx,ts,tsx}",
     reporter: "spec",
     video: false,
