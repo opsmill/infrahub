@@ -105,7 +105,7 @@ export const diffContent: { [key: string]: any } = {
               <Badge type={BADGE_TYPES.VALIDATE}>{displayValue(newValue)}</Badge>
             </Tooltip>
           ) : (
-            <Badge type={BADGE_TYPES.CANCEL}>{displayValue(newValue)}</Badge>
+            <Badge type={BADGE_TYPES.VALIDATE}>{displayValue(newValue)}</Badge>
           )}
         </div>
       </div>

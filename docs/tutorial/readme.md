@@ -22,7 +22,6 @@ The tutorial is meant to be executed in order, as we'll be making some changes a
 
 ```
 invoke demo.build
-invoke demo.init
 invoke demo.start
 ```
 

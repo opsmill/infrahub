@@ -18,7 +18,7 @@ tasks:
     command: |
       cd /workspace/infrahub
       source $HOME/.bashrc
-      poetry run invoke demo.destroy demo.init demo.start demo.load-infra-schema demo.load-infra-data
+      poetry run invoke demo.destroy demo.start demo.load-infra-schema demo.load-infra-data
 
 # Ports to expose on workspace startup
 ports:

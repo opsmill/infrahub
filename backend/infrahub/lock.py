@@ -35,6 +35,7 @@ LOCK_RESERVE_TIME_METRICS = Histogram(
 )
 
 LOCAL_SCHEMA_LOCK = "local.schema"
+GLOBAL_INIT_LOCK = "global.init"
 GLOBAL_SCHEMA_LOCK = "global.schema"
 GLOBAL_GRAPH_LOCK = "global.graph"
 
@@ -157,6 +158,9 @@ class InfrahubLockRegistry:
 
     def local_schema_lock(self) -> LocalLock:
         return self.get(name=LOCAL_SCHEMA_LOCK)
+
+    def initialization(self) -> LocalLock:
+        return self.get(name=GLOBAL_INIT_LOCK)
 
     async def local_schema_wait(self) -> None:
         await self.wait_until_available(name=LOCAL_SCHEMA_LOCK)

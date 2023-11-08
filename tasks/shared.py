@@ -42,11 +42,13 @@ TEST_COMPOSE_FILE = "development/docker-compose-test.yml"
 TEST_COMPOSE_FILES_MEMGRAPH = [
     "development/docker-compose-deps.yml",
     "development/docker-compose-test-database-memgraph.yml",
+    "development/docker-compose-test-cache.yml",
     TEST_COMPOSE_FILE,
 ]
 TEST_COMPOSE_FILES_NEO4J = [
     "development/docker-compose-deps.yml",
     "development/docker-compose-test-database-neo4j.yml",
+    "development/docker-compose-test-cache.yml",
     TEST_COMPOSE_FILE,
 ]
 
