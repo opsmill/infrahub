@@ -1,5 +1,5 @@
 import { Disclosure } from "@headlessui/react";
-import { Icon, iconExists } from "@iconify-icon/react";
+import { Icon } from "@iconify-icon/react";
 import React from "react";
 import { Circle } from "../../components/circle";
 import { classNames } from "../../utils/common";
@@ -24,11 +24,11 @@ export default function DropDownMenuHeader(props: Props) {
               "flex flex-1 items-center group p-3 text-gray-900 text-left text-sm font-medium ",
               subItem ? "bg-gray-50 hover:bg-gray-100" : "bg-gray-200 hover:bg-gray-300"
             )}>
-            {icon && iconExists(icon) && (
+            {icon && (
               <Icon icon={icon} className="mr-1 text-custom-blue-500 group-hover:text-gray-500" />
             )}
 
-            {(!icon || (icon && !iconExists(icon))) && <Circle />}
+            {!icon && <Circle />}
 
             <span className="flex-1">{title}</span>
 
@@ -58,7 +58,7 @@ export default function DropDownMenuHeader(props: Props) {
                   );
                 }
 
-                return <DropDownMenuItem key={index} title={item.title} path={item.path} />;
+                return <DropDownMenuItem key={index} {...item} />;
               })}
             </div>
           </Disclosure.Panel>

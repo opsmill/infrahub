@@ -1,3 +1,4 @@
+import { Icon } from "@iconify-icon/react";
 import { NavLink, useParams } from "react-router-dom";
 import useFilters from "../../hooks/useFilters";
 import { classNames } from "../../utils/common";
@@ -5,6 +6,7 @@ import { classNames } from "../../utils/common";
 interface Props {
   path: string;
   title: string | undefined;
+  icon?: string;
 }
 
 const getActiveStatus = (isActive: boolean, path: string, params?: any) => {
@@ -24,7 +26,7 @@ const getActiveStatus = (isActive: boolean, path: string, params?: any) => {
 };
 
 export const DropDownMenuItem = (props: Props) => {
-  const { path } = props;
+  const { path, icon } = props;
 
   const params = useParams();
   const [, setFilters] = useFilters();
@@ -41,6 +43,10 @@ export const DropDownMenuItem = (props: Props) => {
               "p-2 m-1 group flex w-full items-center rounded-md text-sm font-medium text-gray-600",
               isItemActive ? "bg-gray-300" : "hover:bg-gray-100 hover:text-gray-900"
             )}>
+            {icon && (
+              <Icon icon={icon} className="mr-1 text-custom-blue-500 group-hover:text-gray-500" />
+            )}
+
             {props.title}
           </div>
         );
