@@ -444,6 +444,9 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
                 raise ServerNotReacheableError(address=self.address) from exc
             except httpx.ReadTimeout as exc:
                 raise ServerNotResponsiveError(url=url, timeout=timeout) from exc
+            except httpx.NetworkError as exc:
+                raise ServerNotReacheableError(address=self.address) from exc
+
         self._record(response)
         return response
 
@@ -942,6 +945,9 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
                 raise ServerNotReacheableError(address=self.address) from exc
             except httpx.ReadTimeout as exc:
                 raise ServerNotResponsiveError(url=url, timeout=timeout) from exc
+            except httpx.NetworkError as exc:
+                raise ServerNotReacheableError(address=self.address) from exc
+
         self._record(response)
         return response
 
