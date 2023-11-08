@@ -30,7 +30,6 @@ export const DataDiffElement = (props: tDataDiffNodeElementProps) => {
   const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
 
   const { name, change, path } = element;
-  console.log("element: ", element);
 
   // value AND properties || peer || peers
   const { value, changed_at, properties, summary, peer, peers } = change ?? {};
