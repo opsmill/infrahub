@@ -2,7 +2,7 @@ import { gql, useReactiveVar } from "@apollo/client";
 import { TrashIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useContext, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/alert";
 import { BUTTON_TYPES, Button } from "../../components/button";
@@ -17,7 +17,7 @@ import { branchVar } from "../../graphql/variables/branchVar";
 import { dateVar } from "../../graphql/variables/dateVar";
 import usePagination from "../../hooks/usePagination";
 import useQuery from "../../hooks/useQuery";
-import { genericsState } from "../../state/atoms/schema.atom";
+import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
@@ -30,9 +30,13 @@ import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
 
 export default function GroupItems() {
-  const auth = useContext(AuthContext);
+  const { groupname } = useParams();
 
+  const kind = groupname || GROUP_OBJECT;
+
+  const auth = useContext(AuthContext);
   const [schemaKindName] = useAtom(schemaKindNameState);
+  const [schemaList] = useAtom(schemaState);
   const [genericList] = useAtom(genericsState);
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
@@ -42,7 +46,8 @@ export default function GroupItems() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const navigate = useNavigate();
 
-  const schemaData = genericList.find((s) => s.kind === GROUP_OBJECT);
+  const schemaData =
+    genericList.find((s) => s.kind === kind) || schemaList.find((s) => s.kind === kind);
 
   // All the fiter values are being sent out as strings inside quotes.
   // This will not work if the type of filter value is not string.
@@ -61,6 +66,7 @@ export default function GroupItems() {
     ? getGroups({
         attributes: schemaData.attributes,
         filters: filtersString,
+        kind,
       })
     : // Empty query to make the gql parsing work
       // TODO: Find another solution for queries while loading schemaData

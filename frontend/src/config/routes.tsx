@@ -52,6 +52,10 @@ export const MAIN_ROUTES = [
     element: <GroupItems />,
   },
   {
+    path: "/groups/:groupname",
+    element: <GroupItems />,
+  },
+  {
     path: "/groups/:groupname/:groupid",
     element: <GroupItemDetails />,
   },
