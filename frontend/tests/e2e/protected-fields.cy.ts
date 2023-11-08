@@ -12,7 +12,7 @@ describe("Protected fields", () => {
 
     cy.visit("/");
 
-    cy.contains("Device").click();
+    cy.contains("All Device(s)").click();
 
     cy.contains("atl1-edge1").click();
 
@@ -31,8 +31,16 @@ describe("Protected fields", () => {
     // Open the edit panel for the object
     cy.contains("Edit").click();
 
-    // The input should be available
-    cy.get("#headlessui-combobox-input-\\:r1g\\:").should("not.be.disabled");
+    // Open the metadata tooltip
+    cy.get("[data-cy='object-item-edit'").within(() => {
+      cy.contains("Role")
+        .parent()
+        .parent()
+        .within(() => {
+          // The input should be available
+          cy.get("input").should("not.be.disabled");
+        });
+    });
   });
 
   it("should login and access the protected fields as owner", () => {
@@ -40,7 +48,7 @@ describe("Protected fields", () => {
 
     cy.visit("/");
 
-    cy.contains("Device").click();
+    cy.contains("All Device(s)").click();
 
     cy.contains("atl1-edge1").click();
 
@@ -59,8 +67,16 @@ describe("Protected fields", () => {
     // Open the edit panel for the object
     cy.contains("Edit").click();
 
-    // The input should be available
-    cy.get("#headlessui-combobox-input-\\:r1g\\:").should("not.be.disabled");
+    // Open the metadata tooltip
+    cy.get("[data-cy='object-item-edit'").within(() => {
+      cy.contains("Role")
+        .parent()
+        .parent()
+        .within(() => {
+          // The input should be available
+          cy.get("input").should("not.be.disabled");
+        });
+    });
   });
 
   it("should login with write permissions but should not access the protecteed fields", () => {
@@ -68,7 +84,7 @@ describe("Protected fields", () => {
 
     cy.visit("/");
 
-    cy.contains("Device").click();
+    cy.contains("All Device(s)").click();
 
     cy.contains("atl1-edge1").click();
 
@@ -87,7 +103,15 @@ describe("Protected fields", () => {
     // Open the edit panel for the object
     cy.contains("Edit").click();
 
-    // The input should not be available
-    cy.get("#headlessui-combobox-input-\\:r1g\\:").should("be.disabled");
+    // Open the metadata tooltip
+    cy.get("[data-cy='object-item-edit'").within(() => {
+      cy.contains("Role")
+        .parent()
+        .parent()
+        .within(() => {
+          // The input should be available
+          cy.get("input").should("be.disabled");
+        });
+    });
   });
 });

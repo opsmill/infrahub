@@ -151,7 +151,7 @@ export default function ObjectItemEditComponent(props: Props) {
   }
 
   return (
-    <div className="bg-custom-white flex-1 overflow-auto flex flex-col">
+    <div className="bg-custom-white flex-1 overflow-auto flex flex-col" data-cy="object-item-edit">
       {formStructure && (
         <EditFormHookComponent
           onCancel={props.closeDrawer}
