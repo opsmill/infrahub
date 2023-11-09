@@ -17,11 +17,6 @@ sdk_files: &sdk_files
   - "pyproject.toml"
   - "poetry.lock"
 
-nornir_files: &nornir_files
-  - "nornir_plugin/**"
-  - "pyproject.toml"
-  - "poetry.lock"
-
 sync_files: &sync_files
   - "sync/**"
   - "pyproject.toml"
@@ -49,13 +44,6 @@ backend_all:
   - *development_files
 
 sdk_all:
-  - *sdk_files
-  - *backend_files
-  - *ci_config
-  - *development_files
-
-nornir_all:
-  - *nornir_files
   - *sdk_files
   - *backend_files
   - *ci_config

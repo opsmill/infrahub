@@ -165,8 +165,9 @@ export default function Header(props: Props) {
           {auth?.accessToken && (
             <Menu as="div" className="relative ml-3">
               <div>
-                <Menu.Button className="flex max-w-xs items-center rounded-full bg-custom-white text-sm focus:outline-none focus:ring-2 focus:ring-custom-blue-500 focus:ring-offset-2">
-                  <span className="sr-only">Open user menu</span>
+                <Menu.Button
+                  className="flex max-w-xs items-center rounded-full bg-custom-white text-sm focus:outline-none focus:ring-2 focus:ring-custom-blue-500 focus:ring-offset-2"
+                  data-cy="current-user-avatar-button">
                   <Avatar
                     name={profile?.name?.value}
                     // image="https://shotkit.com/wp-content/uploads/2020/07/headshots_image002.jpg"
