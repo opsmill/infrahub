@@ -88,7 +88,7 @@ export const ATTRIBUTES_NAME_EXCLUDELIST = ["checksum", "storage_id"];
 
 export const ATTRIBUTES_EXCLUDELIST = ["HashedPassword"];
 
-export const COLUMNS_EXCLUDELIST = ["TextArea", "JSON"];
+export const COLUMNS_EXCLUDELIST = ["TextArea", "JSON", "Password"];
 
 export const NODE_PATH_EXCLUDELIST = ["property"];
 

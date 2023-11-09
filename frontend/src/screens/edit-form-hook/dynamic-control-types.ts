@@ -46,20 +46,6 @@ export const getFormInputControlTypeFromSchemaAttributeKind = (
   kind: SchemaAttributeType
 ): ControlType => {
   switch (kind) {
-    case "Text":
-    case "ID":
-    case "Email":
-    case "Password":
-    case "URL":
-    case "File":
-    case "MacAddress":
-    case "Color":
-    case "IPHost":
-    case "IPNetwork":
-    case "List":
-    case "Any":
-    case "String":
-      return "text";
     case "TextArea":
       return "textarea";
     case "Number":
@@ -73,6 +59,20 @@ export const getFormInputControlTypeFromSchemaAttributeKind = (
       return "datepicker";
     case "JSON":
       return "json";
+    case "Password":
+      return "password";
+    case "Text":
+    case "ID":
+    case "Email":
+    case "URL":
+    case "File":
+    case "MacAddress":
+    case "Color":
+    case "IPHost":
+    case "IPNetwork":
+    case "List":
+    case "Any":
+    case "String":
     default:
       return "text";
   }
