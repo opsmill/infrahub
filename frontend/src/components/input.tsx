@@ -22,7 +22,7 @@ export const Input = forwardRef((props: any, ref: any) => {
 
   const displayButton = (
     <Button buttonType={BUTTON_TYPES.INVISIBLE} onClick={() => setDisplay(!display)}>
-      <Icon icon={display ? "mdi:eye" : "mdi:eye-closed"} className="text-gray-600" />
+      <Icon icon={display ? "mdi:eye" : "mdi:eye-off"} className="text-gray-600" />
     </Button>
   );
 
