@@ -1,11 +1,10 @@
 """LocalStore module."""
 
 from collections import defaultdict
-from typing import List, Mapping, Text, Type, Union, TYPE_CHECKING, Dict, Set
+from typing import TYPE_CHECKING, Dict, List, Mapping, Set, Text, Type, Union
 
-from diffsync.exceptions import ObjectNotFound, ObjectAlreadyExists
+from diffsync.exceptions import ObjectAlreadyExists, ObjectNotFound
 from diffsync.store import BaseStore
-
 
 if TYPE_CHECKING:
     from diffsync import DiffSyncModel

@@ -10,7 +10,7 @@ NAMESPACE = "MAIN"
 # Formatting tasks
 # ----------------------------------------------------------------------------
 @task
-def format_black(context: Context):
+def format_ruff(context: Context):
     """Run black to format all Python files."""
 
     print(f" - [{NAMESPACE}] Format code with black")
@@ -43,8 +43,7 @@ def format_isort(context: Context):
 def format_all(context: Context):
     """This will run all formatter."""
 
-    format_isort(context)
     format_autoflake(context)
-    format_black(context)
+    format_ruff(context)
 
     print(f" - [{NAMESPACE}] All formatters have been executed!")

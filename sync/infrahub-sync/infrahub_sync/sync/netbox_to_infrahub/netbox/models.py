@@ -107,7 +107,15 @@ class TemplateCircuitType(NetboxModel):
 class InfraDevice(NetboxModel):
     _modelname = "InfraDevice"
     _identifiers = ("name", "site", "organization")
-    _attributes = ("model", "rack", "role", "tags", "description", "serial_number", "asset_tag")
+    _attributes = (
+        "model",
+        "rack",
+        "role",
+        "tags",
+        "description",
+        "serial_number",
+        "asset_tag",
+    )
 
     name: Optional[str]
     description: Optional[str]
@@ -186,7 +194,14 @@ class InfraPrefix(NetboxModel):
 class InfraRack(NetboxModel):
     _modelname = "InfraRack"
     _identifiers = ("name", "location")
-    _attributes = ("role", "tags", "height", "facility_id", "serial_number", "asset_tag")
+    _attributes = (
+        "role",
+        "tags",
+        "height",
+        "facility_id",
+        "serial_number",
+        "asset_tag",
+    )
 
     name: str
     height: str

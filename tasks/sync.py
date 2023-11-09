@@ -8,7 +8,7 @@ from .shared import (
     execute_command,
     get_env_vars,
 )
-from .utils import ESCAPED_REPO_PATH
+from .utils import ESCAPED_REPO_PATH, REPO_BASE
 
 MAIN_DIRECTORY = "sync/infrahub-sync"
 NAMESPACE = "SYNC"
@@ -18,11 +18,11 @@ NAMESPACE = "SYNC"
 # Formatting tasks
 # ----------------------------------------------------------------------------
 @task
-def format_black(context: Context):
-    """Run black to format all Python files."""
+def format_ruff(context: Context):
+    """Run ruff to format all Python files."""
 
-    print(f" - [{NAMESPACE}] Format code with black")
-    exec_cmd = f"black {MAIN_DIRECTORY}/"
+    print(f" - [{NAMESPACE}] Format code with ruff")
+    exec_cmd = f"ruff format {MAIN_DIRECTORY} --config {REPO_BASE}/pyproject.toml"
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
@@ -37,23 +37,12 @@ def format_autoflake(context: Context):
         context.run(exec_cmd)
 
 
-@task
-def format_isort(context: Context):
-    """Run isort to format all Python files."""
-
-    print(f" - [{NAMESPACE}] Format code with isort")
-    exec_cmd = f"isort {MAIN_DIRECTORY}"
-    with context.cd(ESCAPED_REPO_PATH):
-        context.run(exec_cmd)
-
-
 @task(name="format")
 def format_all(context: Context):
     """This will run all formatter."""
 
-    format_isort(context)
     format_autoflake(context)
-    format_black(context)
+    format_ruff(context)
 
     print(f" - [{NAMESPACE}] All formatters have been executed!")
 

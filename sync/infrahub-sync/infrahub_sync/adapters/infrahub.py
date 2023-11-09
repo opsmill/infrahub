@@ -30,7 +30,7 @@ def update_node(node: InfrahubNodeSync, attrs: dict):
                 new_peer_ids = [node._client.store.get(key=value, kind=rel.peer).id for value in list(attr_value)]
                 attr = getattr(node, attr_name)
                 existing_peer_ids = attr.peer_ids
-                in_both, existing_only, new_only = compare_lists(existing_peer_ids, new_peer_ids)
+                in_both, existing_only, new_only = compare_lists(existing_peer_ids, new_peer_ids)  # noqa: F841
 
                 for id in existing_only:
                     attr.remove(id)
@@ -44,7 +44,15 @@ def update_node(node: InfrahubNodeSync, attrs: dict):
 class InfrahubAdapter(DiffSyncMixin, DiffSync):
     type = "Infrahub"
 
-    def __init__(self, *args, target: str, adapter: SyncAdapter, config: SyncConfig, branch: str = None, **kwargs):
+    def __init__(
+        self,
+        *args,
+        target: str,
+        adapter: SyncAdapter,
+        config: SyncConfig,
+        branch: str = None,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
         self.target = target
         self.config = config
@@ -57,7 +65,9 @@ class InfrahubAdapter(DiffSyncMixin, DiffSync):
         if self.branch:
             print(f"Using '{branch}' branch ")
             self.client = InfrahubClientSync(
-                address=adapter.settings["url"], default_branch=self.branch, config=sdk_config
+                address=adapter.settings["url"],
+                default_branch=self.branch,
+                config=sdk_config,
             )
         else:
             print("Using 'main' branch (default)")
@@ -90,7 +100,7 @@ class InfrahubAdapter(DiffSyncMixin, DiffSync):
                 # Is it the right place to do it or are we missing some de-serialize ?
                 # got a ValidationError from pydantic while trying to get the model(**data)
                 # for IPHost and IPInterface
-                if type(attr.value) != type(str) and attr.value:
+                if not isinstance(attr.value, str) and attr.value:
                     data[attr_name] = str(attr.value)
                 else:
                     data[attr_name] = attr.value
@@ -126,7 +136,12 @@ class InfrahubAdapter(DiffSyncMixin, DiffSync):
         return data
 
 
-def diffsync_to_infrahub(ids: Mapping[Any, Any], attrs: Mapping[Any, Any], store: NodeStoreSync, schema: NodeSchema):
+def diffsync_to_infrahub(
+    ids: Mapping[Any, Any],
+    attrs: Mapping[Any, Any],
+    store: NodeStoreSync,
+    schema: NodeSchema,
+):
     data = copy.deepcopy(dict(ids))
     data.update(dict(attrs))
 

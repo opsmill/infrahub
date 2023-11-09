@@ -9,6 +9,7 @@ from infrahub_sdk import (
     RelationshipKind,
     RelationshipSchema,
 )
+
 from infrahub_sync import SyncConfig
 from infrahub_sync.generator.utils import list_to_set, list_to_str
 

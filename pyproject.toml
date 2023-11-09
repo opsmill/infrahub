@@ -7,6 +7,7 @@ authors = ["OpsMill <info@opsmill.com>"]
 packages = [
     { include = "infrahub", from = "backend" },
     { include = "infrahub_sync", from = "sync/infrahub-sync"},
+    { include = "nornir_infrahub", from = "nornir_plugin"},
     { include = "potenda", from = "sync/potenda"},
 ]
 
@@ -39,7 +40,6 @@ opentelemetry-exporter-otlp-proto-grpc = "^1.16.0"
 locust = "^2.13.1"
 
 [tool.poetry.group.dev.dependencies]
-black = "*"
 pytest = "*"
 yamllint = "*"
 pylint = "*"
@@ -48,7 +48,6 @@ ipython = "*"
 pytest-asyncio = "*"
 requests = "*"
 pre-commit = "^2.20.0"
-isort = "*"
 autoflake = "*"
 pytest-clarity = "^1.0.1"
 pytest-httpx = "^0.22"
@@ -57,7 +56,7 @@ types-ujson = "*"
 types-pyyaml = "*"
 typer-cli = "*"
 pytest-cov = "^4.0.0"
-ruff = "0.1.0"
+ruff = "^0.1.5"
 pytest-xdist = "^3.3.1"
 buildkite-test-collector = "^0.1.7"
 types-python-slugify = "^8.0.0.3"
@@ -71,31 +70,21 @@ pynetbox = "^7.0.1"
 pynautobot = "^1.5.0"
 diffsync = "^1.8.0"
 
+
+[tool.poetry.group.nornir.dependencies]
+nornir = "^3.3.0"
+nornir-utils = "^0.2.0"
+python-slugify = "^8.0.1"
+ruamel-yaml = "0.18.5"
+
 [tool.poetry.scripts]
 infrahub = "infrahub.cli:app"
 infrahub-git-credential = "infrahub.git_credential.helper:app"
 infrahub-git-askpass = "infrahub.git_credential.askpass:app"
 infrahub-sync = "infrahub_sync.cli:app"
 
-[tool.black]
-line-length = 120
-include = '\.pyi?$'
-exclude = '''
-        /(
-          \.git
-        | \.tox
-        | \.venv
-        | env/
-        | _build
-        | build
-        | dist
-        | examples
-        )/
-    '''
-
-[tool.isort]
-profile = "black"
-known_first_party = [ "infrahub" ]
+[tool.poetry.plugins."nornir.plugins.inventory"]
+"InfrahubInventory" = "nornir_infrahub.plugins.inventory.infrahub:InfrahubInventory"
 
 [tool.coverage.run]
 branch = true
@@ -262,21 +251,63 @@ disallow_untyped_defs = false
 
 
 [tool.ruff]
+line-length = 120
 
+exclude = [
+        ".git",
+        ".tox",
+        ".venv",
+        "env",
+        "_build",
+        "build",
+        "dist",
+        "examples",
+]
+
+task-tags = [
+    "FIXME",
+    "TODO",
+    "XXX",
+]
+
+[tool.ruff.lint]
 select = [
+    # mccabe complexity
     "C90",
-    "DTZ",
+    # pycodestyle errors
     "E",
-    "F",
-    "ICN",
-    "TCH",
-    "T10",
-    "Q",
+    # pycodestyle warnings
     "W",
+    # pyflakes
+    "F",
+    # isort-like checks
+    "I",
+    # flake8-datetimez
+    "DTZ",
+    # flake8-import-conventions
+    "ICN",
+    # flake8-type-checking
+    "TCH",
+    # flake8-debugger
+    "T10",
+    # flake8-quotes
+    "Q",
+    # flake8-2020
     "YTT",
 ]
 
-line-length = 170
+#https://docs.astral.sh/ruff/formatter/black/
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.ruff.lint.isort]
+known-first-party = ["infrahub"]
+
+[tool.ruff.lint.pycodestyle]
+max-line-length = 150
 
 [tool.ruff.mccabe]
 # Target max-complexity=10

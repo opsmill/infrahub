@@ -8,10 +8,11 @@ from typing import List, Optional
 import typer
 import yaml
 from infrahub_sdk import InfrahubClientSync
-from infrahub_sync import SyncAdapter, SyncConfig, SyncInstance
-from infrahub_sync.generator import render_template
 from potenda import Potenda
 from rich.console import Console
+
+from infrahub_sync import SyncAdapter, SyncConfig, SyncInstance
+from infrahub_sync.generator import render_template
 
 app = typer.Typer()
 console = Console()
@@ -57,13 +58,27 @@ def get_potenda_from_instance(sync_instance: SyncInstance, branch: Optional[str]
     destination = import_adapter(adapter=sync_instance.destination, directory=sync_instance.directory)
 
     if sync_instance.source.name == "infrahub" and branch:
-        src = source(config=sync_instance, target="source", adapter=sync_instance.source, branch=branch)
+        src = source(
+            config=sync_instance,
+            target="source",
+            adapter=sync_instance.source,
+            branch=branch,
+        )
     else:
         src = source(config=sync_instance, target="source", adapter=sync_instance.source)
     if sync_instance.destination.name == "infrahub" and branch:
-        dst = destination(config=sync_instance, target="destination", adapter=sync_instance.destination, branch=branch)
+        dst = destination(
+            config=sync_instance,
+            target="destination",
+            adapter=sync_instance.destination,
+            branch=branch,
+        )
     else:
-        dst = destination(config=sync_instance, target="destination", adapter=sync_instance.destination)
+        dst = destination(
+            config=sync_instance,
+            target="destination",
+            adapter=sync_instance.destination,
+        )
 
     ptd = Potenda(destination=dst, source=src, config=sync_instance, top_level=sync_instance.order)
 
@@ -100,7 +115,8 @@ def sync_cmd(
     name: str = typer.Argument(..., help="Name of the sync to use"),
     branch: str = typer.Option(default=None, help="Branch to use for the sync."),
     diff: bool = typer.Option(
-        default=True, help="Print the differences between the source and the destinatio before syncing"
+        default=True,
+        help="Print the differences between the source and the destinatio before syncing",
     ),
 ):
     """Synchronize the data between source and the destination systems for a given project."""

@@ -16,7 +16,7 @@ limitations under the License.
 """
 
 from collections import OrderedDict
-from typing import Iterator, List, Dict, Optional
+from typing import Dict, Iterator, List, Optional
 
 SPACE = "    "
 BRANCH = "│   "
