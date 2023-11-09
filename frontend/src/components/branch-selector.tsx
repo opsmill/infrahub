@@ -1,6 +1,4 @@
 import { gql, useReactiveVar } from "@apollo/client";
-import { CheckIcon } from "@heroicons/react/20/solid";
-import { CircleStackIcon, ShieldCheckIcon, Square3Stack3DIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { format, formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
@@ -38,7 +36,7 @@ export default function BranchSelector() {
 
   const valueLabel = (
     <>
-      <Square3Stack3DIcon className="w-4 h-4" aria-hidden="true" />
+      <Icon icon={"mdi:layers-triple"} />
       <p className="ml-2.5 text-sm font-medium">{branch?.name}</p>
     </>
   );
@@ -94,16 +92,18 @@ export default function BranchSelector() {
     <div className="flex relative flex-col">
       {option.is_data_only && (
         <div className="absolute bottom-0 right-0">
-          <CircleStackIcon
-            className={classNames("h-4 w-4", active ? "text-custom-white" : "text-gray-500")}
+          <Icon
+            icon={"mdi:database"}
+            className={classNames(active ? "text-custom-white" : "text-gray-500")}
           />
         </div>
       )}
 
       {option.is_default && (
         <div className="absolute bottom-0 right-0">
-          <ShieldCheckIcon
-            className={classNames("h-4 w-4", active ? "text-custom-white" : "text-gray-500")}
+          <Icon
+            icon={"mdi:shield-check"}
+            className={classNames(active ? "text-custom-white" : "text-gray-500")}
           />
         </div>
       )}
@@ -112,7 +112,7 @@ export default function BranchSelector() {
         <p className={selected ? "font-semibold" : "font-normal"}>{option.name}</p>
         {selected ? (
           <span className={active ? "text-custom-white" : "text-gray-500"}>
-            <CheckIcon className="w-4 h-4" aria-hidden="true" />
+            <Icon icon={"mdi:check"} />
           </span>
         ) : null}
       </div>

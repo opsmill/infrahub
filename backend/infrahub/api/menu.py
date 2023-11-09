@@ -98,7 +98,7 @@ async def get_menu(
     change_control = InterfaceMenu(
         title="Change Control",
         children=[
-            InterfaceMenu(title="Branches", path="/branches", icon="mdi:source-branch"),
+            InterfaceMenu(title="Branches", path="/branches", icon="mdi:layers-triple"),
             InterfaceMenu(title="Proposed Changes", path="/proposed-changes", icon="mdi:file-replace-outline"),
             InterfaceMenu(title="Check Definition", path="/objects/CoreCheckDefinition", icon="mdi:check-all"),
         ],
