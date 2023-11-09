@@ -2,12 +2,11 @@
 
 from invoke import Collection, Context, task
 
-from . import backend, demo, main, nornir, performance, sdk, sync, test
+from . import backend, demo, main, performance, sdk, sync, test
 
 ns = Collection()
 ns.add_collection(sdk)
 ns.add_collection(performance)
-ns.add_collection(nornir)
 ns.add_collection(backend)
 ns.add_collection(demo)
 ns.add_collection(main)
@@ -27,7 +26,6 @@ def yamllint(context: Context):
 def format_all(context: Context):
     main.format_all(context)
     sdk.format_all(context)
-    nornir.format_all(context)
     backend.format_all(context)
     sync.format_all(context)
 
@@ -36,7 +34,6 @@ def format_all(context: Context):
 def lint_all(context: Context):
     yamllint(context)
     sdk.lint(context)
-    nornir.lint(context)
     backend.lint(context)
     sync.lint(context)
 

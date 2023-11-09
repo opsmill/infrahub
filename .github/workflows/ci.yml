@@ -36,7 +36,6 @@ jobs:
       backend: ${{ steps.changes.outputs.backend_all }}
       frontend: ${{ steps.changes.outputs.frontend_all }}
       sdk: ${{ steps.changes.outputs.sdk_all }}
-      nornir: ${{ steps.changes.outputs.nornir_all }}
       sync: ${{ steps.changes.outputs.sync_all }}
       e2e: ${{ steps.changes.outputs.e2e_all }}
       python: ${{ steps.changes.outputs.python_all }}
@@ -174,43 +173,6 @@ jobs:
         with:
           flag-name: python-sdk-integration
           parallel: true
-
-  nornir-plugin-tests:
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.nornir == 'true'
-    needs: ["files-changed", "yaml-lint", "python-lint"]
-    runs-on: "ubuntu-20.04"
-    timeout-minutes: 30
-    steps:
-      - name: "Check out repository code"
-        uses: "actions/checkout@v3"
-      - name: "Install Invoke"
-        run: "pip install toml invoke"
-      - name: "Build Test Image"
-        run: "invoke test.build"
-      - name: "Black Tests"
-        run: "invoke nornir.black --docker"
-      - name: "Isort Tests"
-        run: "invoke nornir.isort --docker"
-      - name: "Pylint Tests"
-        run: "invoke nornir.pylint --docker"
-      - name: "Mypy Tests"
-        run: "invoke nornir.mypy --docker"
-      - name: "Unit Tests"
-        run: "invoke nornir.test-unit"
-        env:
-          BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_NORNIR_UNIT }}
-      - name: "Coveralls : Unit Tests"
-        uses: coverallsapp/github-action@v2.0.0
-        env:
-          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
-        with:
-          flag-name: nornir-plugin-unit
-          parallel: true
-
 
   infrahub-sync-tests:
     if: |
@@ -387,7 +349,7 @@ jobs:
   #       run: "invoke demo.pull"
   #     - name: Initialize Demo
   #       id: init-demo
-  #       run: "invoke demo.init demo.start demo.load-infra-schema"
+  #       run: "invoke demo.start demo.load-infra-schema"
   #     - name: Check Demo Status
   #       run: "invoke demo.status"
   #     - name: Load Data
@@ -452,7 +414,7 @@ jobs:
         run: "invoke demo.pull"
       - name: Initialize Demo
         id: init-demo
-        run: "invoke demo.init demo.start demo.load-infra-schema"
+        run: "invoke demo.start demo.load-infra-schema"
       - name: Check Demo Status
         run: "invoke demo.status"
       - name: Load Data
@@ -488,7 +450,7 @@ jobs:
         run: invoke demo.status
 
   coverall-report:
-    needs: ["frontend-tests", "backend-tests-default", "python-sdk-tests", "nornir-plugin-tests"]
+    needs: ["frontend-tests", "backend-tests-default", "python-sdk-tests"]
     if: |
       always() && !cancelled()
     runs-on: ubuntu-latest
@@ -520,5 +482,5 @@ jobs:
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
-          carryforward: "backend-unit,backend-integration,frontend-unit,python-sdk-unit,python-sdk-integration,nornir-plugin-unit"
+          carryforward: "backend-unit,backend-integration,frontend-unit,python-sdk-unit,python-sdk-integration"
           parallel-finished: true

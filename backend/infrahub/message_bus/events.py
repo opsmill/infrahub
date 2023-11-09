@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import infrahub.config as config
 
 from . import get_broker
 
 if TYPE_CHECKING:
-    from aio_pika.abc import AbstractExchange
+    from aio_pika.abc import AbstractChannel, AbstractExchange
 
 
-async def get_event_exchange(channel=None) -> AbstractExchange:
+async def get_event_exchange(channel: Optional[AbstractChannel] = None) -> AbstractExchange:
     """Return the event exchange initialized as TOPIC."""
     if not channel:
         broker = await get_broker()

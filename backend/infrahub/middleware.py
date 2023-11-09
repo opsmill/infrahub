@@ -1,4 +1,5 @@
 import os
+from typing import Any
 
 from fastapi.logger import logger
 from starlette.middleware.cors import CORSMiddleware
@@ -8,7 +9,7 @@ import infrahub.config as config
 
 
 class InfrahubCORSMiddleware(CORSMiddleware):
-    def __init__(self, app: ASGIApp, *args, **kwargs):
+    def __init__(self, app: ASGIApp, *args: Any, **kwargs: Any):
         if not config.SETTINGS:
             config_file_name = os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")
             config_file_path = os.path.abspath(config_file_name)

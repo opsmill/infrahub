@@ -5,7 +5,7 @@ import os.path
 import sys
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import toml
 from infrahub_sdk import generate_uuid
@@ -56,7 +56,7 @@ class MainSettings(BaseSettings):
 
 class StorageSettings(BaseSettings):
     driver: StorageDriver = StorageDriver.LOCAL
-    settings: Optional[Dict[str, str]]
+    settings: Optional[Dict[str, str]] = Field(default=None)
 
     class Config:
         case_sensitive = False
@@ -72,9 +72,9 @@ class DatabaseSettings(BaseSettings):
     password: str = "admin"
     address: str = "localhost"
     port: int = 7687
-    database: Optional[str] = Field(regex=VALID_DATABASE_NAME_REGEX, description="Name of the database")
+    database: Optional[str] = Field(default=None, regex=VALID_DATABASE_NAME_REGEX, description="Name of the database")
     query_size_limit: int = Field(
-        5000,
+        default=5000,
         description="The max number of records to fetch in a single query before performing internal pagination.",
         min=1,
         max=20000,
@@ -110,7 +110,7 @@ class BrokerSettings(BaseSettings):
     )
     namespace: str = "infrahub"
     maximum_message_retries: int = Field(
-        10, description="The maximum number of retries that are attempted for failed messages"
+        default=10, description="The maximum number of retries that are attempted for failed messages"
     )
 
     @property
@@ -156,7 +156,7 @@ class MiscellaneousSettings(BaseSettings):
     print_query_details: bool = False
     start_background_runner: bool = True
     maximum_validator_execution_time: int = Field(
-        1800, description="The maximum allowed time (in seconds) for a validator to run."
+        default=1800, description="The maximum allowed time (in seconds) for a validator to run."
     )
 
 
@@ -239,7 +239,7 @@ class TraceSettings(BaseSettings):
         return self.exporter_port or default_port
 
     @property
-    def trace_endpoint(self) -> str:
+    def trace_endpoint(self) -> Optional[str]:
         if not self.exporter_endpoint:
             return None
         if self.insecure:
@@ -276,7 +276,7 @@ class Settings(BaseSettings):
     experimental_features: ExperimentalFeaturesSettings = ExperimentalFeaturesSettings()
 
 
-def load(config_file_name="infrahub.toml", config_data=None):
+def load(config_file_name: str = "infrahub.toml", config_data: Optional[Dict[str, Any]] = None) -> None:
     """Load configuration.
 
     Configuration is loaded from a config file in toml format that contains the settings,
@@ -298,7 +298,7 @@ def load(config_file_name="infrahub.toml", config_data=None):
     SETTINGS = Settings()
 
 
-def load_and_exit(config_file_name="infrahub.toml", config_data=None):
+def load_and_exit(config_file_name: str = "infrahub.toml", config_data: Optional[Dict[str, Any]] = None) -> None:
     """Calls load, but wraps it in a try except block.
 
     This is done to handle a ValidationErorr which is raised when settings are specified but invalid.
