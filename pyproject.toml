@@ -271,6 +271,8 @@ task-tags = [
 ]
 
 [tool.ruff.lint]
+preview = true
+
 select = [
     # mccabe complexity
     "C90",
