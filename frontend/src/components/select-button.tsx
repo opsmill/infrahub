@@ -1,5 +1,5 @@
 import { Listbox, Transition } from "@headlessui/react";
-import { ChevronDownIcon } from "@heroicons/react/24/outline";
+import { Icon } from "@iconify-icon/react";
 import { Fragment } from "react";
 import { classNames } from "../utils/common";
 import { BUTTON_TYPES, Button } from "./button";
@@ -24,7 +24,7 @@ export const SelectButton = (props: any) => {
                   className="rounded-none border border-transparent"
                   as={Button}
                   buttonType={BUTTON_TYPES.MAIN}>
-                  <ChevronDownIcon className="w-4 h-4 text-custom-white" aria-hidden="true" />
+                  <Icon icon="mdi:chevron-down" className="tetx-custom-white" />
                 </Listbox.Button>
               </div>
             </div>
