@@ -11,6 +11,7 @@ export type SchemaAttributeType =
   | "DateTime"
   | "Email"
   | "Password"
+  | "HashedPassword"
   | "URL"
   | "File"
   | "MacAddress"
@@ -60,6 +61,7 @@ export const getFormInputControlTypeFromSchemaAttributeKind = (
     case "JSON":
       return "json";
     case "Password":
+    case "HashedPassword":
       return "password";
     case "Text":
     case "ID":
