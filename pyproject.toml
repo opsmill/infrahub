@@ -232,20 +232,12 @@ module = "infrahub.message_bus"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.message_bus.events"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.message_bus.operations.*"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = "infrahub.message_bus.rpc"
 ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.middleware"
-disallow_untyped_defs = false
 
 [[tool.mypy.overrides]]
 module = "infrahub.serve.log"
