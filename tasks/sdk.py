@@ -55,11 +55,11 @@ def format_all(context: Context):
 # Testing tasks
 # ----------------------------------------------------------------------------
 @task
-def black(context: Context, docker: bool = False):
-    """Run black to check that Python files adherence to black standards."""
+def ruff(context: Context, docker: bool = False):
+    """Run ruff to check that Python files adherence to black standards."""
 
-    print(f" - [{NAMESPACE}] Check code with black")
-    exec_cmd = "black --check --diff ."
+    print(f" - [{NAMESPACE}] Check code with ruff")
+    exec_cmd = "ruff --check ."
     exec_directory = MAIN_DIRECTORY_PATH
 
     if docker:
@@ -67,27 +67,6 @@ def black(context: Context, docker: bool = False):
         exec_cmd = (
             f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
             f"run  --workdir /source/{MAIN_DIRECTORY} infrahub-test {exec_cmd}"
-        )
-        exec_directory = ESCAPED_REPO_PATH
-        print(exec_cmd)
-
-    with context.cd(exec_directory):
-        context.run(exec_cmd)
-
-
-@task
-def isort(context: Context, docker: bool = False):
-    """Run isort to check that Python files adherence to import standards."""
-
-    print(f" - [{NAMESPACE}] Check code with isort")
-    exec_cmd = "isort --check --diff ."
-    exec_directory = MAIN_DIRECTORY_PATH
-
-    if docker:
-        compose_files_cmd = build_test_compose_files_cmd(database=False)
-        exec_cmd = (
-            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
-            f" run  --workdir /source/{MAIN_DIRECTORY} infrahub-test {exec_cmd}"
         )
         exec_directory = ESCAPED_REPO_PATH
         print(exec_cmd)
@@ -139,32 +118,9 @@ def pylint(context: Context, docker: bool = False):
 
 
 @task
-def ruff(context: Context, docker: bool = False):
-    """This will run ruff."""
-
-    print(f" - [{NAMESPACE}] Check code with ruff")
-    exec_cmd = "ruff check ."
-    exec_directory = MAIN_DIRECTORY_PATH
-
-    if docker:
-        compose_files_cmd = build_test_compose_files_cmd(database=False)
-        exec_cmd = (
-            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
-            f" run  --workdir /source/{MAIN_DIRECTORY} infrahub-test {exec_cmd}"
-        )
-        exec_directory = ESCAPED_REPO_PATH
-        print(exec_cmd)
-
-    with context.cd(exec_directory):
-        context.run(exec_cmd)
-
-
-@task
 def lint(context: Context, docker: bool = False):
     """This will run all linter."""
     ruff(context, docker=docker)
-    black(context, docker=docker)
-    isort(context, docker=docker)
     pylint(context, docker=docker)
     mypy(context, docker=docker)
 
