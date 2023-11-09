@@ -30,8 +30,7 @@ export const Input = forwardRef((props: any, ref: any) => {
     <div className="relative">
       <input
         onChange={(event) => {
-          const value =
-            propsToPass.type === "number" ? event.target.valueAsNumber : event.target.value;
+          const value = type === "number" ? event.target.valueAsNumber : event.target.value;
 
           onChange(value);
         }}
