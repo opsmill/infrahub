@@ -18,7 +18,7 @@ describe("Tutorial - Part 6", () => {
 
   it("should create a new branch with a git integration", function () {
     // Open the branch creation form
-    cy.get("#headlessui-popover-button-\\:r8\\: > .shadow-sm").click();
+    cy.get("[data-cy='create-branch-button']").click();
 
     // Add the new branch name
     cy.get(".flex-col > :nth-child(1) > .block").type(NEW_BRANCH, { delay: 0 });

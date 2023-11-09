@@ -2,6 +2,7 @@ import { Icon } from "@iconify-icon/react";
 import { NavLink, useParams } from "react-router-dom";
 import useFilters from "../../hooks/useFilters";
 import { classNames } from "../../utils/common";
+import { constructPath } from "../../utils/fetch";
 
 interface Props {
   path: string;
@@ -33,7 +34,7 @@ export const DropDownMenuItem = (props: Props) => {
   const onClickMenuItem = () => setFilters();
 
   return (
-    <NavLink to={path} onClick={onClickMenuItem}>
+    <NavLink to={constructPath(path)} onClick={onClickMenuItem}>
       {({ isActive }) => {
         const isItemActive = getActiveStatus(isActive, path, params);
 

@@ -51,7 +51,7 @@ describe("Tutorial - Part 1", () => {
     cy.get(":nth-child(1) > :nth-child(1) > .border").should("have.text", MAIN_BRANCH_NAME);
 
     // Click to open the branch creation form
-    cy.get("#headlessui-popover-button-\\:r8\\: > .py-1\\.5").click();
+    cy.get("[data-cy='create-branch-button']").click();
 
     // Fill the new branch name
     cy.get(".flex-col > :nth-child(1) > .block").type(NEW_BRANCH_NAME, { delay: 0 });

@@ -2,7 +2,7 @@
 
 import { ADMIN_CREDENTIALS } from "../utils";
 
-const ETHERNET_NAME = "Ethernet11";
+const ETHERNET_DESCRIPTION = "Connected to dfw1-edge2 Ethernet1";
 
 const ACCOUNT = "Account";
 
@@ -20,7 +20,7 @@ describe("Object update", () => {
     cy.contains("Interface").click();
 
     // Access an interface
-    cy.contains(ETHERNET_NAME).click();
+    cy.contains(ETHERNET_DESCRIPTION).click();
 
     // Open the metadata panel
     cy.get(".sm\\:p-0").within(() => {
@@ -41,7 +41,7 @@ describe("Object update", () => {
     cy.get(":nth-child(3) > .flex-col > .relative > .w-4").should("be.checked");
 
     // Is protected
-    cy.get(":nth-child(4) > .flex-col > .relative > .w-4").should("be.checked");
+    cy.get(":nth-child(4) > .flex-col > .relative > .w-4").should("not.be.checked");
 
     // Owner select
     cy.get(".grid-cols-1 > :nth-child(1) > .grid").within(() => {
@@ -76,7 +76,7 @@ describe("Object update", () => {
     // Check the is proteced field
     cy.get(":nth-child(4) > .flex-col > .relative > .w-4").click();
 
-    cy.get(":nth-child(4) > .flex-col > .relative > .w-4").should("not.be.checked");
+    cy.get(":nth-child(4) > .flex-col > .relative > .w-4").should("be.checked");
 
     cy.get(".justify-end").within(() => {
       cy.intercept("/graphql/main").as("Request");
@@ -92,7 +92,7 @@ describe("Object update", () => {
     cy.contains("Interface").click();
 
     // Access an interface
-    cy.contains(ETHERNET_NAME).click();
+    cy.contains(ETHERNET_DESCRIPTION).click();
 
     // Open the metadata panel
     cy.get(".sm\\:p-0").within(() => {
@@ -113,7 +113,7 @@ describe("Object update", () => {
     cy.get(":nth-child(3) > .flex-col > .relative > .w-4").should("be.checked");
 
     // Is protected
-    cy.get(":nth-child(4) > .flex-col > .relative > .w-4").should("not.be.checked");
+    cy.get(":nth-child(4) > .flex-col > .relative > .w-4").should("be.checked");
 
     // Owner select
     cy.get(".grid-cols-1 > :nth-child(1) > .grid").within(() => {
