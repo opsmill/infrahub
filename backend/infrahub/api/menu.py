@@ -34,6 +34,7 @@ class InterfaceMenu(BaseModel):
 def add_to_menu(structure: Dict[str, List[InterfaceMenu]], menu_item: InterfaceMenu) -> None:
     all_items = InterfaceMenu(title=menu_item.list_title(), path=menu_item.path, icon=menu_item.icon)
     menu_item.path = ""
+    menu_item.icon = ""
     for child in structure[menu_item.kind]:
         menu_item.children.append(child)
         if child.kind in structure:
@@ -66,7 +67,7 @@ async def get_menu(
             continue
 
         if isinstance(model, NodeSchema) and "CoreGroup" in model.inherit_from:
-            groups.children.append(InterfaceMenu(title=model.name, path=f"/groups/{model.kind}"))
+            groups.children.append(InterfaceMenu(title=model.label or model.name, path=f"/groups/{model.kind}"))
             continue
 
         menu_name = model.menu_placement or "base"
@@ -74,7 +75,9 @@ async def get_menu(
             structure[menu_name] = []
 
         structure[menu_name].append(
-            InterfaceMenu(title=model.name, path=f"/objects/{model.kind}", icon=model.icon or "", kind=model.kind)
+            InterfaceMenu(
+                title=model.label or model.name, path=f"/objects/{model.kind}", icon=model.icon or "", kind=model.kind
+            )
         )
 
     for menu_item in structure["base"]:
