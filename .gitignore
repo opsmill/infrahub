@@ -4,7 +4,6 @@ coverage.xml
 *.env
 script.py
 .vscode/settings.json
-.retype/*
 node_modules/*
 development/docker-compose.override.yml
 development/docker-compose.dev-override.yml
@@ -16,6 +15,11 @@ development/docker-compose.dev-override.yml
 # Direnv files (https://direnv.net/)
 .direnv/
 .envrc
+
+# Retype App
+.retype/*
+docs/.retype
+retype.manifest
 
 storage/*
 .coverage.*
