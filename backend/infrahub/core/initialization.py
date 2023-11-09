@@ -81,8 +81,8 @@ async def initialization(db: InfrahubDatabase):
 
             if branch.update_schema_hash():
                 LOGGER.warning(
-                     f"{default_branch.name} | New schema detected after pulling the schema from the db "
-                     f" {hash_in_db!r} >> {branch.schema_hash.main!r}"
+                    f"{default_branch.name} | New schema detected after pulling the schema from the db "
+                    f" {hash_in_db!r} >> {branch.schema_hash.main!r}"
                 )
 
     # ---------------------------------------------------

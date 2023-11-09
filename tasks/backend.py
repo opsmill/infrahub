@@ -44,7 +44,6 @@ def format_ruff(context: Context):
 
     print(f" - [{NAMESPACE}] Format code with ruff")
     exec_cmd = f"ruff format {MAIN_DIRECTORY} --config {REPO_BASE}/pyproject.toml"
-    print(f"command = {exec_cmd}")
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
