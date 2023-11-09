@@ -101,7 +101,7 @@ jobs:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
       - name: "Setup environment"
-        run: "pip install ruff==0.1.15"
+        run: "pip install ruff==0.1.5"
       - name: "Linting: ruff"
         run: "ruff check ."
 
