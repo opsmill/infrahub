@@ -772,7 +772,8 @@ class InfrahubNodeBase:
         Args:
             include (Optional[List[str]], optional): List of attributes or relationships to include. Defaults to None.
             exclude (Optional[List[str]], optional): List of attributes or relationships to exclude. Defaults to None.
-            inherited (bool, optional): Indicated of the attributes and the relationships inherited from generics should be included as well. Defaults to True.
+            inherited (bool, optional): Indicated of the attributes and the relationships inherited from generics should be included as well.
+            Defaults to True.
 
         Returns:
             Dict[str, Union[Any, Dict]]: Query in Dict format
