@@ -7,7 +7,6 @@ authors = ["OpsMill <info@opsmill.com>"]
 packages = [
     { include = "infrahub", from = "backend" },
     { include = "infrahub_sync", from = "sync/infrahub-sync"},
-    { include = "nornir_infrahub", from = "nornir_plugin"},
     { include = "potenda", from = "sync/potenda"},
 ]
 
