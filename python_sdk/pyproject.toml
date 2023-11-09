@@ -37,7 +37,6 @@ pyyaml = "^6.0"
 gitpython = "3.1.40"
 
 [tool.poetry.group.dev.dependencies]
-black = "*"
 pytest = "*"
 yamllint = "*"
 pylint = "*"
@@ -46,7 +45,6 @@ ipython = "*"
 pytest-asyncio = "*"
 requests = "*"
 pre-commit = "^2.20.0"
-isort = "*"
 autoflake = "*"
 pytest-clarity = "^1.0.1"
 pytest-httpx = "^0.22"
@@ -63,26 +61,6 @@ types-python-slugify = "^8.0.0.3"
 [tool.poetry.scripts]
 infrahub = "infrahub.cli:app"
 infrahubctl = "infrahub_ctl.cli:app"
-
-[tool.black]
-line-length = 120
-include = '\.pyi?$'
-exclude = '''
-        /(
-          \.git
-        | \.tox
-        | \.venv
-        | env/
-        | _build
-        | build
-        | dist
-        | examples
-        )/
-    '''
-
-[tool.isort]
-profile = "black"
-known_first_party = [ "infrahub_sdk", "infrahub_ctl" ]
 
 [tool.coverage.run]
 branch = true
@@ -160,20 +138,65 @@ ignore_errors = true
 
 
 [tool.ruff]
+line-length = 120
+
+exclude = [
+        ".git",
+        ".tox",
+        ".venv",
+        "env",
+        "_build",
+        "build",
+        "dist",
+        "examples",
+]
+
+task-tags = [
+    "FIXME",
+    "TODO",
+    "XXX",
+]
+
+[tool.ruff.lint]
+preview = true
+
 select = [
+    # mccabe complexity
     "C90",
-    "DTZ",
+    # pycodestyle errors
     "E",
-    "F",
-    "ICN",
-    "TCH",
-    "T10",
-    "Q",
+    # pycodestyle warnings
     "W",
+    # pyflakes
+    "F",
+    # isort-like checks
+    "I",
+    # flake8-datetimez
+    "DTZ",
+    # flake8-import-conventions
+    "ICN",
+    # flake8-type-checking
+    "TCH",
+    # flake8-debugger
+    "T10",
+    # flake8-quotes
+    "Q",
+    # flake8-2020
     "YTT",
 ]
 
-line-length = 170
+#https://docs.astral.sh/ruff/formatter/black/
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.ruff.lint.isort]
+known-first-party = ["infrahub"]
+
+[tool.ruff.lint.pycodestyle]
+max-line-length = 150
 
 [tool.ruff.mccabe]
 # Target max-complexity=10

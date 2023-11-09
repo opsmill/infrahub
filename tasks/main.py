@@ -29,16 +29,6 @@ def format_autoflake(context: Context):
         context.run(exec_cmd)
 
 
-@task
-def format_isort(context: Context):
-    """Run isort to format all Python files."""
-
-    print(f" - [{NAMESPACE}] Format code with isort")
-    with context.cd(ESCAPED_REPO_PATH):
-        exec_cmd = f"isort {MAIN_DIRECTORY} models"
-        context.run(exec_cmd)
-
-
 @task(name="format", default=True)
 def format_all(context: Context):
     """This will run all formatter."""
