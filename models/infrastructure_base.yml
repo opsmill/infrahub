@@ -52,7 +52,7 @@ generics:
   - name: Endpoint
     namespace: Infra
     description: "Generic Endpoint to connect two objects together."
-    include_in_menu: False
+    include_in_menu: false
     label: "Endpoint"
     relationships:
       - name: connected_endpoint
@@ -66,7 +66,7 @@ nodes:
     namespace: Infra
     description: "A Platform represent the type of software running on a device."
     label: "Platform"
-    icon: " mdi:application-cog-outline" #mdi:application-brackets-outline
+    icon: " mdi:application-cog-outline"  # mdi:application-brackets-outline
     menu_placement: "InfraDevice"
     default_filter: name__value
     order_by:
@@ -239,7 +239,7 @@ nodes:
     namespace: Infra
     description: "A VLAN is isolated layer two domain"
     label: "VLAN"
-    icon: "mdi:lan-pending" #"mdi:lan"
+    icon: "mdi:lan-pending"   # mdi:lan
     default_filter: name__value
     order_by:
       - name__value
