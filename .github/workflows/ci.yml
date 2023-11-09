@@ -102,7 +102,7 @@ jobs:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
       - name: "Setup environment"
-        run: "pip install black==23.10.1 ruff==0.1.0"
+        run: "pip install black==23.10.1 ruff==0.1.5"
       - name: "Linting: BLACK"
         run: "black --check ."
       - name: "Linting: ruff"
