@@ -73,7 +73,7 @@ async def compare_query():
         response_time2.append(time.time() - time_start)
 
     def time_to_ms(input):
-        return f"{int(input*1000)}ms"
+        return f"{int(input * 1000)}ms"
 
     print("-----------------------------------------")
     avg1 = sum(response_time1) / len(response_time1)
@@ -81,6 +81,6 @@ async def compare_query():
     print(f" Query 1 {time_to_ms(avg1)} | {[time_to_ms(x) for x in response_time1]}")
     print(f" Query 2 {time_to_ms(avg2)} | {[time_to_ms(x) for x in response_time2]}")
     if avg1 < avg2:
-        print(f"  Query 1 is faster by {time_to_ms(avg2-avg1)} {int((avg1/avg2)*100)}%")
+        print(f"  Query 1 is faster by {time_to_ms(avg2 - avg1)} {int((avg1 / avg2) * 100)}%")
     else:
-        print(f"  Query 2 is faster by {time_to_ms(avg1-avg2)} {int((avg2/avg1)*100)}%")
+        print(f"  Query 2 is faster by {time_to_ms(avg1 - avg2)} {int((avg2 / avg1) * 100)}%")

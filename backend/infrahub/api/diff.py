@@ -13,10 +13,12 @@ from pydantic import BaseModel, Extra, Field
 from infrahub import config
 from infrahub.api.dependencies import get_branch_dep, get_current_user, get_db
 from infrahub.core import get_branch, registry
-from infrahub.core.branch import Branch  # noqa: TCH001
-from infrahub.core.branch import Diff  # noqa: TCH001
-from infrahub.core.branch import NodeDiffElement  # noqa: TCH001
-from infrahub.core.branch import RelationshipDiffElement  # noqa: TCH001
+from infrahub.core.branch import (
+    Branch,  # noqa: TCH001
+    Diff,  # noqa: TCH001
+    NodeDiffElement,  # noqa: TCH001
+    RelationshipDiffElement,  # noqa: TCH001
+)
 from infrahub.core.constants import (
     BranchSupportType,
     DiffAction,

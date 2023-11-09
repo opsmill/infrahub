@@ -67,7 +67,8 @@ async def initialization(db: InfrahubDatabase):
         await registry.schema.load_schema_from_db(db=db, branch=default_branch)
         if default_branch.update_schema_hash():
             LOGGER.warning(
-                f"{default_branch.name} | New schema detected after pulling the schema from the db : {hash_in_db!r} >> {default_branch.schema_hash.main!r}"
+                f"{default_branch.name} | New schema detected after pulling the schema from the db :"
+                f" {hash_in_db!r} >> {default_branch.schema_hash.main!r}"
             )
 
         for branch in branches:
@@ -80,7 +81,8 @@ async def initialization(db: InfrahubDatabase):
 
             if branch.update_schema_hash():
                 LOGGER.warning(
-                    f"{branch.name} | New schema detected after pulling the schema from the db {hash_in_db!r} >> {branch.schema_hash.main!r}"
+                     f"{default_branch.name} | New schema detected after pulling the schema from the db "
+                     f" {hash_in_db!r} >> {branch.schema_hash.main!r}"
                 )
 
     # ---------------------------------------------------

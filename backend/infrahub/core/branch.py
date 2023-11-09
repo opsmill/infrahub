@@ -246,7 +246,9 @@ class Branch(StandardNode):
     def get_query_filter_relationships(
         self, rel_labels: list, at: Optional[Union[Timestamp, str]] = None, include_outside_parentheses: bool = False
     ) -> Tuple[List, Dict]:
-        """Generate a CYPHER Query filter based on a list of relationships to query a part of the graph at a specific time and on a specific branch."""
+        """
+        Generate a CYPHER Query filter based on a list of relationships to query a part of the graph at a specific time and on a specific branch.
+        """
 
         filters = []
         params = {}
