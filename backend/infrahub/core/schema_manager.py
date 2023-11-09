@@ -216,6 +216,7 @@ class SchemaBranch:
     def process(self) -> None:
         self.generate_identifiers()
         self.validate_names()
+        self.validate_menu_placements()
         self.process_default_values()
         self.process_inheritance()
         self.process_branch_support()
@@ -250,6 +251,15 @@ class SchemaBranch:
             for rel in node.relationships:
                 if rel.name in RESERVED_ATTR_REL_NAMES:
                     raise ValueError(f"{node.kind}: {rel.name} isn't allowed as a relationship name.")
+
+    def validate_menu_placements(self) -> None:
+        for name in list(self.nodes.keys()) + list(self.generics.keys()):
+            node = self.get(name=name)
+            if node.menu_placement:
+                try:
+                    self.get(name=node.menu_placement)
+                except SchemaNotFound:
+                    raise ValueError(f"{node.kind}: {node.menu_placement} is not a valid menu placement") from None
 
     def process_labels(self) -> None:
         for name in list(self.nodes.keys()) + list(self.generics.keys()):

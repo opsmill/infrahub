@@ -1,5 +1,6 @@
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { classNames } from "../utils/common";
+import { Circle } from "./circle";
 
 export enum CIRCLE_BADGE_TYPES {
   VALIDATE,
@@ -11,8 +12,6 @@ export enum CIRCLE_BADGE_TYPES {
 // type BadgeProps = {}
 
 const DEFAULT_CLASS = "flex items-center text-sm font-medium mr-2 px-2.5 py-0.5 rounded";
-
-const DEFAULT_CIRCLE_CLASS = "h-1.5 w-1.5 mr-1";
 
 const getClasseName = (type?: CIRCLE_BADGE_TYPES, onClick?: Function) => {
   switch (type) {
@@ -123,12 +122,7 @@ export const BadgeCircle = (props: tBadgeCircleProps) => {
         onDelete ? "cursor-pointer" : ""
       )}
       onClick={handleClick}>
-      <svg
-        className={classNames(DEFAULT_CIRCLE_CLASS, customCircleClassName)}
-        viewBox="0 0 6 6"
-        aria-hidden="true">
-        <circle cx={3} cy={3} r={3} />
-      </svg>
+      <Circle className={customCircleClassName} />
 
       {children}
 

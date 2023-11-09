@@ -338,6 +338,18 @@ jobs:
       - name: "Run integration tests"
         working-directory: ./frontend
         run: "npm run cypress:run"
+      - name: Upload cypress screenshots
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: screenshots
+          path: docs/media/*
+      - name: Upload cypress videos
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: screenshots
+          path: frontend/cypress/videos/*
       - name: "Coveralls : Unit Tests"
         uses: coverallsapp/github-action@v2.0.0
         env:
@@ -417,7 +429,7 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled')
     runs-on: "runner-ubuntu-8-32"
-    timeout-minutes: 30
+    timeout-minutes: 40
     env:
       INFRAHUB_DB_TYPE: neo4j
     steps:

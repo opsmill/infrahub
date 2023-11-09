@@ -67,18 +67,14 @@ const getParams = (params: [string, string][], overrideParams?: [string, string]
 export const constructPath = (path: string, overrideParams?: [string, string][]) => {
   const { href } = window.location;
 
-  const url = new URL(href);
+  const targetUrl = new URL(href);
 
-  const { searchParams } = url;
+  const { searchParams: targetParams } = targetUrl;
 
   // Get QSP as [ [ key, value ], ... ]
-  const params: [string, string][] = Array.from(searchParams)
-    .filter(
-      ([k]) => QSP_TO_INCLUDE.includes(k) // Remove some QSP if not needed to be forwarded
-    )
-    .filter(
-      ([k]) => !path.includes(k) // If a QSP is already in the path, then we don't override it
-    );
+  const params: [string, string][] = Array.from(targetParams).filter(
+    ([k]) => QSP_TO_INCLUDE.includes(k) // Remove some QSP if not needed to be forwarded
+  );
 
   // Construct the new params as "?key=value&..."
   const newParams = getParams(params, overrideParams).reduce(

@@ -1,3 +1,3 @@
 #!/bin/bash
 
-invoke demo.init demo.start
+invoke demo.start
