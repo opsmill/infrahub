@@ -142,7 +142,12 @@ async def create_infra_ip(client, branch, name, address, statuses, source, batch
     obj = await client.create(
         branch=branch,
         kind="InfraIPAddress",
-        data={"name": name, "address": IPv4Interface(address), "status": random.choice(statuses), "source": source},
+        data={
+            "name": name,
+            "address": IPv4Interface(address),
+            "status": random.choice(statuses),
+            "source": source,
+        },
     )
     batch.add(task=obj.save, node=obj)
     store.set(key=name, node=obj)
@@ -164,14 +169,21 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         obj = await client.create(
             branch=branch,
             kind="CoreAccount",
-            data={"name": account[0], "password": account[2], "type": account[1], "role": account[3]},
+            data={
+                "name": account[0],
+                "password": account[2],
+                "type": account[1],
+                "role": account[3],
+            },
         )
         batch.add(task=obj.save, node=obj)
         store.set(key=account[0], node=obj)
 
     for org in ORGANIZATIONS:
         obj = await client.create(
-            branch=branch, kind="CoreOrganization", data={"name": {"value": org, "is_protected": True}}
+            branch=branch,
+            kind="CoreOrganization",
+            data={"name": {"value": org, "is_protected": True}},
         )
         batch.add(task=obj.save, node=obj)
         store.set(key=org[0], node=obj)
@@ -190,20 +202,28 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     log.info("Creating Roles, Status & Tag")
     for role in ROLES:
         obj = await client.create(
-            branch=branch, kind="BuiltinRole", name={"value": role, "source": account_security.id}
+            branch=branch,
+            kind="BuiltinRole",
+            name={"value": role, "source": account_security.id},
         )
         batch.add(task=obj.save, node=obj)
         store.set(key=role, node=obj)
 
     for status in STATUSES:
         obj = await client.create(
-            branch=branch, kind="BuiltinStatus", name={"value": status, "source": account_security.id}
+            branch=branch,
+            kind="BuiltinStatus",
+            name={"value": status, "source": account_security.id},
         )
         batch.add(task=obj.save, node=obj)
         store.set(key=status, node=obj)
 
     for tag in TAGS:
-        obj = await client.create(branch=branch, kind="BuiltinTag", name={"value": tag, "source": account_security.id})
+        obj = await client.create(
+            branch=branch,
+            kind="BuiltinTag",
+            name={"value": tag, "source": account_security.id},
+        )
         batch.add(task=obj.save, node=obj)
         store.set(key=tag, node=obj)
 
@@ -234,7 +254,11 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         obj = await client.create(
             branch=branch,
             kind="SecurityProtocol",
-            data={"name": protocol[0], "description": protocol[1], "source": account_security.id},
+            data={
+                "name": protocol[0],
+                "description": protocol[1],
+                "source": account_security.id,
+            },
         )
         batch.add(task=obj.save, node=obj)
         store.set(key=protocol[0], node=obj)
@@ -274,11 +298,29 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
 
     log.info("Creating IP Address, FQDNs Prefix")
     for ip_address in EXTERNAL_IPS:
-        await create_infra_ip(client, branch, ip_address, ip_address, STATUSES, account_security.id, batch)
+        await create_infra_ip(
+            client, branch, ip_address, ip_address, STATUSES, account_security.id, batch
+        )
 
     for ip_range in INTERNAL_RANGES:
-        await create_infra_ip(client, branch, ip_range[1], ip_range[1], STATUSES, account_security.id, batch)
-        await create_infra_ip(client, branch, ip_range[2], ip_range[2], STATUSES, account_security.id, batch)
+        await create_infra_ip(
+            client,
+            branch,
+            ip_range[1],
+            ip_range[1],
+            STATUSES,
+            account_security.id,
+            batch,
+        )
+        await create_infra_ip(
+            client,
+            branch,
+            ip_range[2],
+            ip_range[2],
+            STATUSES,
+            account_security.id,
+            batch,
+        )
 
     for prefix in INTERNAL_PREFIXES:
         obj = await client.create(
@@ -297,7 +339,11 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     for fqdn in FQDNS:
         obj = await client.create(
             kind="SecurityFQDN",
-            data={"name": fqdn[0], "status": random.choice(STATUSES), "source": account_security.id},
+            data={
+                "name": fqdn[0],
+                "status": random.choice(STATUSES),
+                "source": account_security.id,
+            },
         )
         batch.add(task=obj.save, node=obj)
         store.set(key=fqdn[0], node=obj)

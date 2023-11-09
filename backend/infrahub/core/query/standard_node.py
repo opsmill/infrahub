@@ -42,9 +42,7 @@ class StandardNodeCreateQuery(StandardNodeQuery):
 
         query = """
         CREATE (n:%s $node_prop)
-        """ % (
-            node_type
-        )
+        """ % (node_type)
 
         self.add_to_query(query=query)
         self.return_labels = ["n"]
@@ -64,9 +62,7 @@ class StandardNodeUpdateQuery(StandardNodeQuery):
         query = """
         MATCH (n:%s { uuid: $uuid })
         SET n = $node_prop
-        """ % (
-            self.node.get_type(),
-        )
+        """ % (self.node.get_type(),)
 
         self.add_to_query(query=query)
         self.return_labels = ["n"]
@@ -82,9 +78,7 @@ class StandardNodeDeleteQuery(StandardNodeQuery):
         query = """
         MATCH (n:%s { uuid: $uuid })
         DETACH DELETE (n)
-        """ % (
-            self.node.get_type()
-        )
+        """ % (self.node.get_type())
 
         self.params["uuid"] = str(self.node_id)
         self.add_to_query(query)

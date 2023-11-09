@@ -21,12 +21,16 @@ INFRAHUB_DATABASE = os.getenv("INFRAHUB_DB_TYPE", DatabaseType.NEO4J.value)
 DATABASE_DOCKER_IMAGE = os.getenv("DATABASE_DOCKER_IMAGE", None)
 MEMGRAPH_DOCKER_IMAGE = os.getenv("MEMGRAPH_DOCKER_IMAGE", "memgraph/memgraph:2.11.0")
 NEO4J_DOCKER_IMAGE = os.getenv("NEO4J_DOCKER_IMAGE", "neo4j:5.13-community")
-MESSAGE_QUEUE_DOCKER_IMAGE = os.getenv("MESSAGE_QUEUE_DOCKER_IMAGE", "rabbitmq:3.12-management")
+MESSAGE_QUEUE_DOCKER_IMAGE = os.getenv(
+    "MESSAGE_QUEUE_DOCKER_IMAGE", "rabbitmq:3.12-management"
+)
 CACHE_DOCKER_IMAGE = os.getenv("CACHE_DOCKER_IMAGE", "redis:7.2")
 
 here = os.path.abspath(os.path.dirname(__file__))
 TOP_DIRECTORY_NAME = os.path.basename(os.path.abspath(os.path.join(here, "..")))
-BUILD_NAME = os.getenv("INFRAHUB_BUILD_NAME", re.sub(r"[^a-zA-Z0-9_/.]", "", TOP_DIRECTORY_NAME))
+BUILD_NAME = os.getenv(
+    "INFRAHUB_BUILD_NAME", re.sub(r"[^a-zA-Z0-9_/.]", "", TOP_DIRECTORY_NAME)
+)
 PYTHON_VER = os.getenv("PYTHON_VER", "3.11")
 IMAGE_NAME = os.getenv("IMAGE_NAME", f"opsmill/{BUILD_NAME}-py{PYTHON_VER}")
 IMAGE_VER = os.getenv("IMAGE_VER", project_ver())

@@ -1082,7 +1082,9 @@ class Diff:
         )
 
     async def has_conflict(
-        self, db: InfrahubDatabase, rpc_client: InfrahubRpcClient  # pylint: disable=unused-argument
+        self,
+        db: InfrahubDatabase,
+        rpc_client: InfrahubRpcClient,  # pylint: disable=unused-argument
     ) -> bool:
         """Return True if the same path has been modified on multiple branches. False otherwise"""
 

@@ -29,13 +29,20 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     account = await client.create(
         branch=branch,
         kind="CoreAccount",
-        data={"name": "test-script", "password": "test-script", "type": "Script", "role": "read-write"},
+        data={
+            "name": "test-script",
+            "password": "test-script",
+            "type": "Script",
+            "role": "read-write",
+        },
     )
     await account.save()
     store.set(key="test-script", node=account)
 
     for tag in ["BLUE", "RED"]:
-        obj = await client.create(branch=branch, kind="BuiltinTag", name={"value": tag, "source": account.id})
+        obj = await client.create(
+            branch=branch, kind="BuiltinTag", name={"value": tag, "source": account.id}
+        )
         batch.add(task=obj.save, node=obj)
         store.set(key=tag, node=obj)
 
@@ -43,7 +50,9 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
         tags = [store.get(kind="BuiltinTag", key=tag_name) for tag_name in org[1]]
 
         obj = await client.create(
-            branch=branch, kind="CoreOrganization", data={"name": {"value": org[0], "is_protected": True}, "tags": tags}
+            branch=branch,
+            kind="CoreOrganization",
+            data={"name": {"value": org[0], "is_protected": True}, "tags": tags},
         )
         batch.add(task=obj.save, node=obj)
         store.set(key=org[0], node=obj)

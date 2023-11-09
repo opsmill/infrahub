@@ -66,7 +66,9 @@ def build(
         if service:
             exec_cmd += f" {service}"
 
-        execute_command(context=context, command=f"{base_cmd} {exec_cmd}", print_cmd=True)
+        execute_command(
+            context=context, command=f"{base_cmd} {exec_cmd}", print_cmd=True
+        )
 
 
 @task(optional=["database"])
@@ -185,7 +187,9 @@ def load_infra_data(context: Context, database: str = INFRAHUB_DATABASE):
     with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_compose_files_cmd(database=database)
         base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
-        command = f"{base_cmd} run infrahub-git infrahubctl run models/infrastructure_edge.py"
+        command = (
+            f"{base_cmd} run infrahub-git infrahubctl run models/infrastructure_edge.py"
+        )
         execute_command(context=context, command=command)
 
 
@@ -257,10 +261,14 @@ def wait_healthy(context: Context, expected: int = 2):
     """Wait until containers are healthy before continuing."""
     missing_healthy = True
     while missing_healthy:
-        output = context.run("docker ps --filter 'health=healthy' --format '{{ .Names}}'", hide=True)
+        output = context.run(
+            "docker ps --filter 'health=healthy' --format '{{ .Names}}'", hide=True
+        )
         containers = output.stdout.splitlines()
         if len(containers) >= expected:
             missing_healthy = False
         else:
-            print(f"Expected {expected} healthy containers only saw: {', '.join(containers)}")
+            print(
+                f"Expected {expected} healthy containers only saw: {', '.join(containers)}"
+            )
             sleep(1)

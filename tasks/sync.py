@@ -59,9 +59,7 @@ def black(context: Context, docker: bool = False):
 
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
-        exec_cmd = (
-            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
-        )
+        exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
         print(exec_cmd)
 
     with context.cd(ESCAPED_REPO_PATH):
@@ -77,9 +75,7 @@ def isort(context: Context, docker: bool = False):
 
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
-        exec_cmd = (
-            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
-        )
+        exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
         print(exec_cmd)
 
     with context.cd(ESCAPED_REPO_PATH):
@@ -95,9 +91,7 @@ def mypy(context: Context, docker: bool = False):
 
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
-        exec_cmd = (
-            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
-        )
+        exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
         print(exec_cmd)
 
     with context.cd(ESCAPED_REPO_PATH):
@@ -113,9 +107,7 @@ def pylint(context: Context, docker: bool = False):
 
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
-        exec_cmd = (
-            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
-        )
+        exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
         print(exec_cmd)
 
     with context.cd(ESCAPED_REPO_PATH):
@@ -131,9 +123,7 @@ def ruff(context: Context, docker: bool = False):
 
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
-        exec_cmd = (
-            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
-        )
+        exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
         print(exec_cmd)
 
     with context.cd(ESCAPED_REPO_PATH):

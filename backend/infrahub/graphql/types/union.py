@@ -19,9 +19,7 @@ class InfrahubUnion(Union):
         types = ("PlaceHolder",)
 
     @classmethod
-    def __init_subclass_with_meta__(
-        cls, schema: GroupSchema = None, types=(), _meta=None, **options
-    ):  # pylint: disable=arguments-renamed
+    def __init_subclass_with_meta__(cls, schema: GroupSchema = None, types=(), _meta=None, **options):  # pylint: disable=arguments-renamed
         if not isinstance(schema, GroupSchema):
             raise ValueError(f"You need to pass a valid GroupSchema in '{cls.__name__}.Meta', received '{schema}'")
 
