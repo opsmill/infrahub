@@ -26,8 +26,6 @@ export const Input = forwardRef((props: any, ref: any) => {
     </Button>
   );
 
-  console.log("props.type: ", props.type);
-
   return (
     <div className="relative">
       <input

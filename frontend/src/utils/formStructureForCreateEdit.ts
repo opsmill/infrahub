@@ -99,6 +99,8 @@ const getFormStructureForCreateEdit = (
       }));
     }
 
+    console.log("attribute: ", attribute);
+
     formFields.push({
       name: attribute.name + ".value",
       kind: attribute.kind as SchemaAttributeType,
