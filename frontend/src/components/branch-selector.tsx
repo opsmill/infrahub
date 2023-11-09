@@ -1,11 +1,7 @@
 import { gql, useReactiveVar } from "@apollo/client";
 import { CheckIcon } from "@heroicons/react/20/solid";
-import {
-  CircleStackIcon,
-  PlusIcon,
-  ShieldCheckIcon,
-  Square3Stack3DIcon,
-} from "@heroicons/react/24/outline";
+import { CircleStackIcon, ShieldCheckIcon, Square3Stack3DIcon } from "@heroicons/react/24/outline";
+import { Icon } from "@iconify-icon/react";
 import { format, formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
 import { useCallback, useContext, useState } from "react";
@@ -52,8 +48,9 @@ export default function BranchSelector() {
       disabled={!auth?.permissions?.write}
       buttonType={BUTTON_TYPES.MAIN}
       className="flex-1 rounded-r-md border border-transparent"
-      type="submit">
-      <PlusIcon className="w-4 h-4 text-custom-white" aria-hidden="true" />
+      type="submit"
+      data-cy="create-branch-button">
+      <Icon icon={"mdi:plus"} className="text-custom-white" />
     </Button>
   );
 

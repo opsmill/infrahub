@@ -2,7 +2,7 @@ import Handlebars from "handlebars";
 
 export const getGroups = Handlebars.compile(`
 query Group {
-  {{#if kind}}
+  {{#if objectid}}
   {{kind}}(ids:["{{objectid}}"]) {
     edges {
       node {
@@ -19,7 +19,8 @@ query Group {
     }
   }
   {{/if}}
-  CoreGroup{{#if filters}}({{{filters}}}){{/if}} {
+
+  {{groupKind}}{{#if filters}}({{{filters}}}){{/if}} {
     count
     edges {
       node {

@@ -57,6 +57,7 @@ export default function AddObjectToGroup(props: Props) {
         attributes: schemaData.attributes,
         filters: filtersString,
         kind: objectSchemaData.kind,
+        groupKind: GROUP_OBJECT,
         objectid,
       })
     : // Empty query to make the gql parsing work

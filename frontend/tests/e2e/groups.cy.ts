@@ -17,7 +17,8 @@ describe("Groups", () => {
 
   it("should list the groups and access to a group details", () => {
     // Access the group page
-    cy.get("[href='/groups'] > .group").click();
+    cy.get("[href='/groups']").scrollIntoView();
+    cy.get("[href='/groups']").click();
 
     // 4 results should be present
     cy.get("div.flex > .text-sm > :nth-child(3)").should("have.text", "4");
@@ -42,7 +43,7 @@ describe("Groups", () => {
 
   it("should add an object to 2 groups", () => {
     // Access the devices
-    cy.get("[href='/objects/InfraDevice'] > .group").click();
+    cy.get("[href='/objects/InfraDevice']").click();
 
     // Access the device details
     cy.contains(OBJECT_NAME).click();
@@ -79,7 +80,8 @@ describe("Groups", () => {
     cy.get(".bg-gray-500").click();
 
     // Access the group page
-    cy.get("[href='/groups'] > .group").click();
+    cy.get("[href='/groups']").scrollIntoView();
+    cy.get("[href='/groups']").click();
 
     // Access group details
     cy.contains(GROUP_NAME).click();
@@ -134,7 +136,8 @@ describe("Groups", () => {
     cy.get(".bg-gray-500").click();
 
     // Access the group page
-    cy.get("[href='/groups'] > .group").click();
+    cy.get("[href='/groups']").scrollIntoView();
+    cy.get("[href='/groups']").click();
 
     // Access group details
     cy.contains(GROUP_NAME).click();
