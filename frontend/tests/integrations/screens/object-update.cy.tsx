@@ -197,7 +197,10 @@ describe("Object details", () => {
 
     // Clear and type the new name
     cy.get(".grid > :nth-child(1) > .relative > .block").clear();
-    cy.get(".grid > :nth-child(1) > .relative > .block").type(deviceDetailsNewName, { delay: 0 });
+    cy.get(".grid > :nth-child(1) > .relative > .block").type(deviceDetailsNewName, {
+      delay: 0,
+      force: true,
+    });
 
     // Verify that the name is correctly set
     cy.get(".grid > :nth-child(1) > .relative > .block").should("have.value", deviceDetailsNewName);

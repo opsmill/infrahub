@@ -26,7 +26,10 @@ describe("Main application", () => {
     cy.get(".bg-white > .p-2").click();
 
     // Type the PC name
-    cy.get(".grid > :nth-child(1) > .relative > .block").type(PROPOSED_CHANGES_NAME, { delay: 0 });
+    cy.get(".grid > :nth-child(1) > .relative > .block").type(PROPOSED_CHANGES_NAME, {
+      delay: 0,
+      force: true,
+    });
     cy.get(".grid > :nth-child(1) > .relative > .block").should(
       "have.value",
       PROPOSED_CHANGES_NAME
@@ -97,7 +100,7 @@ describe("Main application", () => {
     cy.contains("Just a moment").should("not.exist");
 
     // Type the first comment in the add comment section
-    cy.get("textarea").first().type(PROPOSED_CHANGE_COMMENT_1, { delay: 0 });
+    cy.get("textarea").first().type(PROPOSED_CHANGE_COMMENT_1, { delay: 0, force: true });
     cy.get("textarea").first().should("have.value", PROPOSED_CHANGE_COMMENT_1);
 
     cy.intercept("/graphql/main").as("CreateComment1");
@@ -118,7 +121,7 @@ describe("Main application", () => {
       // Add reply
       cy.contains("Reply").click();
 
-      cy.get("textarea").first().type(PROPOSED_CHANGE_COMMENT_2, { delay: 0 });
+      cy.get("textarea").first().type(PROPOSED_CHANGE_COMMENT_2, { delay: 0, force: true });
       cy.get("textarea").first().should("have.value", PROPOSED_CHANGE_COMMENT_2);
 
       cy.intercept("/graphql/main").as("CreateComment2");
@@ -137,7 +140,7 @@ describe("Main application", () => {
 
       // Add third comment
       cy.get("textarea").should("have.value", "");
-      cy.get("textarea").type(PROPOSED_CHANGE_COMMENT_3, { delay: 0 });
+      cy.get("textarea").type(PROPOSED_CHANGE_COMMENT_3, { delay: 0, force: true });
       cy.get("textarea").should("have.value", PROPOSED_CHANGE_COMMENT_3);
 
       // Mark as resolved once commented

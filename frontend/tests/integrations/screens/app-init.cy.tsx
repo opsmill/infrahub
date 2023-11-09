@@ -29,9 +29,9 @@ describe("Config fetch", () => {
       </MockedProvider>
     );
 
-    cy.get(":nth-child(1) > .relative > .block").type("test", { delay: 0 });
+    cy.get(":nth-child(1) > .relative > .block").type("test", { delay: 0, force: true });
 
-    cy.get(":nth-child(2) > .relative > .block").type("test", { delay: 0 });
+    cy.get(":nth-child(2) > .relative > .block").type("test", { delay: 0, force: true });
 
     cy.get(".justify-end > .rounded-md").click();
 
