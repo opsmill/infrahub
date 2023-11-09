@@ -1,4 +1,4 @@
-/// <reference types="cypress" , { delay: 0, force: true });
+/// <reference types="cypress" />
 
 import {
   MAIN_BRANCH_NAME,
@@ -145,7 +145,7 @@ describe("Tutorial - Part 1", () => {
     }
 
     // The branch details should be ok
-    cy.get(".divide-y > :nth-child(1) > .flex").should("have.text", NEW_BRANCH_NAME);
+    cy.get(".border-t > .divide-y > :nth-child(1) > .flex").should("have.text", NEW_BRANCH_NAME);
 
     // Access to the branch diff
     cy.contains("Diff").click();
