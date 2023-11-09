@@ -66,7 +66,7 @@ def ruff(context: Context, docker: bool = False):
         compose_files_cmd = build_test_compose_files_cmd(database=False)
         exec_cmd = (
             f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
-            f" run  --project-directory /source/{MAIN_DIRECTORY} infrahub-test {exec_cmd}"
+            f" run --workdir /source/{MAIN_DIRECTORY} infrahub-test {exec_cmd}"
         )
         exec_directory = ESCAPED_REPO_PATH
         print(exec_cmd)
@@ -87,7 +87,7 @@ def mypy(context: Context, docker: bool = False):
         compose_files_cmd = build_test_compose_files_cmd(database=False)
         exec_cmd = (
             f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
-            f" run --project-directory /source/{MAIN_DIRECTORY} infrahub-test {exec_cmd}"
+            f" run --workdir /source/{MAIN_DIRECTORY} infrahub-test {exec_cmd}"
         )
         exec_directory = ESCAPED_REPO_PATH
         print(exec_cmd)
@@ -108,7 +108,7 @@ def pylint(context: Context, docker: bool = False):
         compose_files_cmd = build_test_compose_files_cmd(database=False)
         exec_cmd = (
             f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
-            f" run --project-directory /source/{MAIN_DIRECTORY} infrahub-test {exec_cmd}"
+            f" run --workdir /source/{MAIN_DIRECTORY} infrahub-test {exec_cmd}"
         )
         exec_directory = ESCAPED_REPO_PATH
         print(exec_cmd)
