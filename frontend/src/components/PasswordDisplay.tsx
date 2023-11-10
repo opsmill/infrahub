@@ -1,6 +1,7 @@
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 import { BUTTON_TYPES, Button } from "./button";
+import { MAX_VALUE_LENGTH_DISPLAY } from "../config/constants";
 
 type tPasswordDisplayProps = {
   value: string;
@@ -13,7 +14,7 @@ export const PasswordDisplay = (props: tPasswordDisplayProps) => {
 
   const displayButton = (
     <Button buttonType={BUTTON_TYPES.INVISIBLE} onClick={() => setDisplay(!display)}>
-      <Icon icon={display ? "mdi:eye" : "mdi:eye-closed"} className="text-gray-600" />
+      <Icon icon={display ? "mdi:eye" : "mdi:eye-off"} className="text-gray-600" />
     </Button>
   );
 
@@ -22,7 +23,11 @@ export const PasswordDisplay = (props: tPasswordDisplayProps) => {
       <div className="flex items-center">
         <div className="mr-1">{displayButton}</div>
 
-        <div>{value}</div>
+        <div>
+          {value?.length > MAX_VALUE_LENGTH_DISPLAY
+            ? `${value.substr(0, MAX_VALUE_LENGTH_DISPLAY)}...`
+            : value}
+        </div>
       </div>
     );
   }
