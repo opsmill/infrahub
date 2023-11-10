@@ -62,7 +62,9 @@ export default function ModalConfirm(props: iProps) {
                     </div>
                   </div>
                 </div>
-                <div className="bg-gray-50 px-4 py-3 flex flex-row-reverse">
+                <div
+                  className="bg-gray-50 px-4 py-3 flex flex-row-reverse"
+                  data-cy="modal-confirm-buttons">
                   <Button
                     onClick={onConfirm}
                     buttonType={BUTTON_TYPES.VALIDATE}

@@ -18,10 +18,10 @@ describe("Tutorial - Part 6", () => {
 
   it("should create a new branch with a git integration", function () {
     // Open the branch creation form
-    cy.get("#headlessui-popover-button-\\:r8\\: > .shadow-sm").click();
+    cy.get("[data-cy='create-branch-button']").click();
 
     // Add the new branch name
-    cy.get(".flex-col > :nth-child(1) > .block").type(NEW_BRANCH, { delay: 0 });
+    cy.get(".flex-col > :nth-child(1) > .block").type(NEW_BRANCH, { delay: 0, force: true });
 
     // Toggle the data-only field
     cy.get(".px-1\\.5").within(() => {
@@ -59,7 +59,10 @@ describe("Tutorial - Part 6", () => {
 
     // Update the description
     cy.get(":nth-child(2) > .relative > .block").clear();
-    cy.get(":nth-child(2) > .relative > .block").type(NEW_INTERFACE_DESCRIPTION, { delay: 0 });
+    cy.get(":nth-child(2) > .relative > .block").type(NEW_INTERFACE_DESCRIPTION, {
+      delay: 0,
+      force: true,
+    });
     cy.get(":nth-child(2) > .relative > .block").blur();
 
     if (this.screenshots) {

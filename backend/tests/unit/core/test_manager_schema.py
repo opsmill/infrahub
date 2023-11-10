@@ -902,6 +902,7 @@ async def test_load_schema_from_db(
                 "name": "Criticality",
                 "default_filter": "name__value",
                 "label": "Criticality",
+                "include_in_menu": True,
                 "attributes": [
                     {"name": "name", "kind": "Text", "label": "Name", "unique": True},
                     {"name": "level", "kind": "Number", "label": "Level"},
@@ -924,6 +925,7 @@ async def test_load_schema_from_db(
                 "namespace": "Builtin",
                 "name": "Tag",
                 "label": "Tag",
+                "include_in_menu": False,
                 "default_filter": "name__value",
                 "attributes": [
                     {"name": "name", "kind": "Text", "label": "Name", "unique": True},
@@ -936,6 +938,7 @@ async def test_load_schema_from_db(
                 "namespace": "Test",
                 "name": "GenericInterface",
                 "label": "Generic Interface",
+                "include_in_menu": True,
                 "attributes": [
                     {"name": "my_generic_name", "kind": "Text", "label": "My Generic String"},
                 ],
@@ -974,6 +977,7 @@ async def test_load_schema(
                 "name": "Criticality",
                 "default_filter": "name__value",
                 "label": "Criticality",
+                "include_in_menu": True,
                 "attributes": [
                     {"name": "name", "kind": "Text", "label": "Name", "unique": True},
                     {"name": "level", "kind": "Number", "label": "Level"},
@@ -997,6 +1001,7 @@ async def test_load_schema(
                 "name": "Tag",
                 "label": "Tag",
                 "default_filter": "name__value",
+                "include_in_menu": True,
                 "attributes": [
                     {"name": "name", "kind": "Text", "label": "Name", "unique": True},
                     {"name": "description", "kind": "Text", "label": "Description", "optional": True},
@@ -1008,6 +1013,7 @@ async def test_load_schema(
                 "namespace": "Test",
                 "name": "GenericInterface",
                 "label": "Generic Interface",
+                "include_in_menu": True,
                 "attributes": [
                     {"name": "my_generic_name", "kind": "Text", "label": "My Generic String"},
                 ],

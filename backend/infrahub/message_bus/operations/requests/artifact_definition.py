@@ -11,7 +11,9 @@ from infrahub.services import InfrahubServices
 log = get_logger()
 
 
-async def check(message: messages.RequestArtifactDefinitionCheck, service: InfrahubServices) -> None:
+async def check(  # pylint: disable=too-many-statements
+    message: messages.RequestArtifactDefinitionCheck, service: InfrahubServices
+) -> None:
     log.info(
         "Validating generation of artifacts",
         artifact_definition=message.artifact_definition,
@@ -79,6 +81,9 @@ async def check(message: messages.RequestArtifactDefinitionCheck, service: Infra
     await transform.query.fetch()
     query = transform.query.peer
     repository = transformation_repository.peer
+    branch = await service.client.branch.get(branch_name=message.source_branch)
+    if not branch.is_data_only:
+        repository = await service.client.get(kind="CoreRepository", id=repository.id, branch=message.source_branch)
     transform_location = ""
 
     if transform.typename == "CoreRFile":
@@ -163,6 +168,9 @@ async def generate(message: messages.RequestArtifactDefinitionGenerate, service:
     await transform.query.fetch()
     query = transform.query.peer
     repository = transformation_repository.peer
+    branch = await service.client.branch.get(branch_name=message.branch)
+    if not branch.is_data_only:
+        repository = await service.client.get(kind="CoreRepository", id=repository.id, branch=message.branch)
     transform_location = ""
 
     if transform.typename == "CoreRFile":

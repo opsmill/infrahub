@@ -1,13 +1,12 @@
 [tool.poetry]
 name = "infrahub"
-version = "0.8.1"
+version = "0.8.2"
 description = ""
 authors = ["OpsMill <info@opsmill.com>"]
 
 packages = [
     { include = "infrahub", from = "backend" },
     { include = "infrahub_sync", from = "sync/infrahub-sync"},
-    { include = "nornir_infrahub", from = "nornir_plugin"},
     { include = "potenda", from = "sync/potenda"},
 ]
 
@@ -72,21 +71,11 @@ pynetbox = "^7.0.1"
 pynautobot = "^1.5.0"
 diffsync = "^1.8.0"
 
-
-[tool.poetry.group.nornir.dependencies]
-nornir = "^3.3.0"
-nornir-utils = "^0.2.0"
-python-slugify = "^8.0.1"
-ruamel-yaml = "0.18.5"
-
 [tool.poetry.scripts]
 infrahub = "infrahub.cli:app"
 infrahub-git-credential = "infrahub.git_credential.helper:app"
 infrahub-git-askpass = "infrahub.git_credential.askpass:app"
 infrahub-sync = "infrahub_sync.cli:app"
-
-[tool.poetry.plugins."nornir.plugins.inventory"]
-"InfrahubInventory" = "nornir_infrahub.plugins.inventory.infrahub:InfrahubInventory"
 
 [tool.black]
 line-length = 120
@@ -232,20 +221,12 @@ module = "infrahub.message_bus"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.message_bus.events"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.message_bus.operations.*"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = "infrahub.message_bus.rpc"
 ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.middleware"
-disallow_untyped_defs = false
 
 [[tool.mypy.overrides]]
 module = "infrahub.serve.log"

@@ -34,8 +34,8 @@ export const Pagination = (props: tPaginationType) => {
   // Set the current page to 0 as it is an index
   const currentPage = offset / limit ?? 0;
 
-  const offsetStart = offset + 1;
   const offsetEnd = offset + limit > count ? count : offset + limit;
+  const offsetStart = offsetEnd > 0 ? offset + 1 : 0;
 
   const handlePageChange = (page: any) => {
     const { nextSelectedPage } = page;
@@ -67,15 +67,25 @@ export const Pagination = (props: tPaginationType) => {
     setPagination(newPagination);
   };
 
+  const paginationText =
+    offsetStart !== offsetEnd ? (
+      <>
+        Showing <span className="font-medium">{offsetStart}</span> to{" "}
+        <span className="font-medium">{offsetEnd}</span> of{" "}
+        <span className="font-medium">{count}</span> results
+      </>
+    ) : (
+      <>
+        Showing <span className="font-medium">{offsetStart}</span> of{" "}
+        <span className="font-medium">{count}</span> results
+      </>
+    );
+
   return (
     <div className="sticky bottom-0 flex items-center justify-between border-t border-gray-200 bg-custom-white px-4 py-3 sm:px-6">
       <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
         <div className="flex items-center">
-          <div className="text-sm text-gray-700">
-            Showing <span className="font-medium">{offsetStart}</span> to{" "}
-            <span className="font-medium">{offsetEnd}</span> of{" "}
-            <span className="font-medium">{count}</span> results
-          </div>
+          <div className="text-sm text-gray-700">{paginationText}</div>
 
           <div className="w-[75px] ml-8">
             <Select

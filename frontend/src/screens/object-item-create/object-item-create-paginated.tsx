@@ -42,7 +42,7 @@ export default function ObjectItemCreate(props: iProps) {
 
   const schema = schemaList.find((s) => s.kind === objectname);
 
-  const peers = R.uniq((schema.relationships || []).map((r) => r.peer).filter(Boolean));
+  const peers = R.uniq((schema?.relationships || []).map((r) => r.peer).filter(Boolean));
 
   const queryString = peers.length
     ? getDropdownOptionsForRelatedPeersPaginated({

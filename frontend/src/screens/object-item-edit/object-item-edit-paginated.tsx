@@ -14,7 +14,10 @@ import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdit";
 import getMutationDetailsFromFormData from "../../utils/getMutationDetailsFromFormData";
-import { getSchemaRelationshipColumns } from "../../utils/getSchemaObjectColumns";
+import {
+  getSchemaAttributeColumns,
+  getSchemaRelationshipColumns,
+} from "../../utils/getSchemaObjectColumns";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
@@ -50,6 +53,7 @@ export default function ObjectItemEditComponent(props: Props) {
 
   const schema = schemaList.find((s) => s.kind === objectname);
 
+  const attributes = getSchemaAttributeColumns(schema, true);
   const relationships = getSchemaRelationshipColumns(schema);
 
   const peers = (schema?.relationships || []).map((r) => r.peer).filter(Boolean);
@@ -57,6 +61,7 @@ export default function ObjectItemEditComponent(props: Props) {
   const queryString = schema
     ? getObjectDetailsAndPeers({
         ...schema,
+        attributes,
         relationships,
         objectid,
         peers,
@@ -151,7 +156,7 @@ export default function ObjectItemEditComponent(props: Props) {
   }
 
   return (
-    <div className="bg-custom-white flex-1 overflow-auto flex flex-col">
+    <div className="bg-custom-white flex-1 overflow-auto flex flex-col" data-cy="object-item-edit">
       {formStructure && (
         <EditFormHookComponent
           onCancel={props.closeDrawer}

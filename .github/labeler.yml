@@ -11,9 +11,6 @@
 "group/infrahubctl":
   - ctl/**
 
-"group/nornir":
-  - nornir_plugin/**
-
 "group/python-sdk":
   - python_sdk/**
 

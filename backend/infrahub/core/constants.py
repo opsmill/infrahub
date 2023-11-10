@@ -123,6 +123,12 @@ class ProposedChangeState(InfrahubStringEnum):
     CLOSED = "closed"
     CANCELED = "canceled"
 
+    def validate_state_check_run(self) -> None:
+        if self == ProposedChangeState.OPEN:
+            return
+
+        raise ValidationError(input_value="Unable to trigger check on proposed changes that aren't in the open state")
+
     def validate_state_transition(self, updated_state: ProposedChangeState) -> None:
         if self == ProposedChangeState.OPEN:
             return

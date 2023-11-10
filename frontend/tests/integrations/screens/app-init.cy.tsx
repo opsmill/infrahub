@@ -9,6 +9,7 @@ describe("Config fetch", () => {
     cy.fixture("login").as("login");
     cy.fixture("config").as("config");
     cy.fixture("schema").as("schema");
+    cy.fixture("menu").as("menu");
   });
 
   it("should login and load the config", function () {
@@ -20,15 +21,17 @@ describe("Config fetch", () => {
 
     cy.intercept("GET", "/api/schema", this.schema).as("getSchema");
 
+    cy.intercept("GET", "/api/menu", this.menu).as("getMenu");
+
     cy.mount(
       <MockedProvider addTypename={false}>
         <App />
       </MockedProvider>
     );
 
-    cy.get(":nth-child(1) > .relative > .block").type("test", { delay: 0 });
+    cy.get(":nth-child(1) > .relative > .block").type("test", { delay: 0, force: true });
 
-    cy.get(":nth-child(2) > .relative > .block").type("test", { delay: 0 });
+    cy.get(":nth-child(2) > .relative > .block").type("test", { delay: 0, force: true });
 
     cy.get(".justify-end > .rounded-md").click();
 
@@ -42,6 +45,11 @@ describe("Config fetch", () => {
       expect(schemaArray).to.have.lengthOf(1);
     });
 
-    cy.get("#headlessui-disclosure-panel-\\:r3\\: > a > .group").should("have.text", "Device");
+    cy.wait("@getMenu").then(() => {
+      // Check if the Objects menu is existing
+      cy.get("[data-cy='sidebar-menu']").within(() => {
+        cy.contains("Objects").should("exist");
+      });
+    });
   });
 });
