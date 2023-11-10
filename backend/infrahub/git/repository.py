@@ -844,6 +844,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             except GraphQLError as exc:
                 if "already exist" not in exc.errors[0]["message"]:
                     raise
+                branch = await self.client.branch.get(branch_name=branch_name)
 
             await self.create_branch_in_git(branch_name=branch.name, branch_id=branch.id)
 
