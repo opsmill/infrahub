@@ -6,10 +6,12 @@ import sys
 from typing import Optional
 
 import typer
-from infrahub.checks import INFRAHUB_CHECK_VARIABLE_TO_IMPORT
 from rich.logging import RichHandler
 
 app = typer.Typer()
+
+
+INFRAHUB_CHECK_VARIABLE_TO_IMPORT = "INFRAHUB_CHECKS"
 
 
 # pylint: disable=too-many-nested-blocks,too-many-branches
