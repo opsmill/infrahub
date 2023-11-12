@@ -13,6 +13,9 @@ from infrahub.checks import INFRAHUB_CHECK_VARIABLE_TO_IMPORT
 app = typer.Typer()
 
 
+INFRAHUB_CHECK_VARIABLE_TO_IMPORT = "INFRAHUB_CHECKS"
+
+
 # pylint: disable=too-many-nested-blocks,too-many-branches
 
 
