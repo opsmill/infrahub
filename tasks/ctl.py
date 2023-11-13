@@ -72,7 +72,7 @@ def format_all(context: Context):
 # ----------------------------------------------------------------------------
 @task
 def ruff(context: Context, docker: bool = False):
-    """Run ruff to check that Python files adherence to black standards."""
+    """Run ruff to check that Python files adherence to standards."""
 
     print(f" - [{NAMESPACE}] Check code with ruff")
     exec_cmd = f"ruff check {MAIN_DIRECTORY}"
