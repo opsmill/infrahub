@@ -28,6 +28,7 @@ env:
   BUILDKITE_COMMIT: ${{ github.sha }}
 
 jobs:
+   # ------------------------------------------ Check Files Changes  ------------------------------------------
   files-changed:
     name: Detect which file has changed
     runs-on: ubuntu-20.04
@@ -51,6 +52,7 @@ jobs:
           token: ${{ github.token }}
           filters: .github/file-filters.yml
 
+ # ------------------------------------------ All Linter  ------------------------------------------
   yaml-lint:
     if: needs.files-changed.outputs.yaml == 'true'
     needs: ["files-changed"]
@@ -72,6 +74,7 @@ jobs:
         run: "pip install yamllint==1.29.0"
       - name: "Linting: yamllint"
         run: "yamllint ."
+
   javascript-lint:
     if: needs.files-changed.outputs.javascript == 'true'
     needs: ["files-changed"]
@@ -92,6 +95,7 @@ jobs:
       - name: Run ESLint
         working-directory: ./frontend
         run: npm run eslint
+
   python-lint:
     if: needs.files-changed.outputs.python == 'true'
     needs: ["files-changed"]
@@ -103,8 +107,9 @@ jobs:
       - name: "Setup environment"
         run: "pip install ruff==0.1.5"
       - name: "Linting: ruff"
-        run: "ruff check ."
+        run: "ruff check . --fix"
 
+  # ------------------------------------------ Build  Docker Image ------------------------------------------
   # backend-build-docker:
   #   runs-on: ubuntu-latest
   #   steps:
@@ -121,6 +126,7 @@ jobs:
   #         cache-from: type=gha
   #         cache-to: type=gha,mode=max
 
+  # ------------------------------------------ Tests by Component  ------------------------------------------
   python-sdk-tests:
     if: |
       always() && !cancelled() &&
@@ -141,8 +147,6 @@ jobs:
         run: "invoke test.build"
       - name: "Pull External Docker Images"
         run: "invoke test.pull"
-      - name: "Ruff Tests"
-        run: "invoke sdk.ruff --docker"
       - name: "Pylint Tests"
         run: "invoke sdk.pylint --docker"
       - name: "Mypy Tests"
@@ -186,8 +190,6 @@ jobs:
         run: "pip install toml invoke"
       - name: "Build Test Image"
         run: "invoke test.build"
-      - name: "Ruff Tests"
-        run: "invoke sync.ruff --docker"
       - name: "Pylint Tests"
         run: "invoke sync.pylint --docker"
 
@@ -211,8 +213,6 @@ jobs:
         run: "invoke test.build"
       - name: "Pull External Docker Images"
         run: "invoke test.pull"
-      - name: "Ruff Tests"
-        run: "invoke backend.ruff --docker"
       - name: "Pylint Tests"
         run: "invoke backend.pylint --docker"
       - name: "Mypy Tests"
@@ -313,6 +313,7 @@ jobs:
           parallel: true
           file: frontend/coverage/lcov.info
 
+  # ------------------------------------------ E2E Tests  ------------------------------------------
   # E2E-testing-memgraph:
   #   needs: ["frontend-tests", "backend-tests-default", "python-sdk-tests"]
   #   if: |
@@ -441,6 +442,7 @@ jobs:
         if: failure()
         run: invoke demo.status
 
+  # ------------------------------------------ Coverall Report  ------------------------------------------
   coverall-report:
     needs: ["frontend-tests", "backend-tests-default", "python-sdk-tests"]
     if: |

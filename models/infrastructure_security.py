@@ -298,9 +298,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
 
     log.info("Creating IP Address, FQDNs Prefix")
     for ip_address in EXTERNAL_IPS:
-        await create_infra_ip(
-            client, branch, ip_address, ip_address, STATUSES, account_security.id, batch
-        )
+        await create_infra_ip(client, branch, ip_address, ip_address, STATUSES, account_security.id, batch)
 
     for ip_range in INTERNAL_RANGES:
         await create_infra_ip(

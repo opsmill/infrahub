@@ -40,9 +40,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     store.set(key="test-script", node=account)
 
     for tag in ["BLUE", "RED"]:
-        obj = await client.create(
-            branch=branch, kind="BuiltinTag", name={"value": tag, "source": account.id}
-        )
+        obj = await client.create(branch=branch, kind="BuiltinTag", name={"value": tag, "source": account.id})
         batch.add(task=obj.save, node=obj)
         store.set(key=tag, node=obj)
 

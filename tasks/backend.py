@@ -76,7 +76,7 @@ def ruff(context: Context, docker: bool = False):
     """Run ruff to check that Python files adherence to black standards."""
 
     print(f" - [{NAMESPACE}] Check code with ruff")
-    exec_cmd = f"ruff check {MAIN_DIRECTORY}"
+    exec_cmd = f"ruff check {MAIN_DIRECTORY} --fix"
 
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
@@ -134,9 +134,7 @@ def test_unit(context: Context, database: str = INFRAHUB_DATABASE):
     with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_test_compose_files_cmd(database=database)
         base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run {build_test_envs()} infrahub-test"
-        exec_cmd = (
-            f"pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/unit"
-        )
+        exec_cmd = f"pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/unit"
         if database == "neo4j":
             exec_cmd += " --neo4j"
         print(f"{base_cmd} {exec_cmd}")

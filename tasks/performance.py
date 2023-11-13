@@ -15,9 +15,7 @@ def run(context: Context, directory: str = "utilities", dataset: str = "dataset0
     date_format = NOW.strftime("%Y-%m-%d-%H-%M-%S")
 
     local_dir = os.path.dirname(os.path.abspath(__file__))
-    test_files = glob.glob(
-        f"{local_dir}/{directory}/{PERFORMANCE_FILE_PREFIX}{dataset}*.py"
-    )
+    test_files = glob.glob(f"{local_dir}/{directory}/{PERFORMANCE_FILE_PREFIX}{dataset}*.py")
 
     branch_name, hash = git_info(context)  # pylint: disable=redefined-builtin
 

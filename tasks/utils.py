@@ -7,9 +7,7 @@ from invoke import Context
 try:
     import toml
 except ImportError:
-    sys.exit(
-        "Please make sure to `pip install toml` or enable the Poetry shell and run `poetry install`."
-    )
+    sys.exit("Please make sure to `pip install toml` or enable the Poetry shell and run `poetry install`.")
 
 path = Path(__file__)
 TASKS_DIR = path.parent
