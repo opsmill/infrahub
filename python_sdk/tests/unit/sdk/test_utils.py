@@ -1,7 +1,6 @@
 import uuid
 
 import pytest
-
 from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.utils import (
     base16decode,

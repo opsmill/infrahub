@@ -3,8 +3,6 @@ import ipaddress
 from typing import TYPE_CHECKING
 
 import pytest
-from pytest_httpx import HTTPXMock
-
 from infrahub_sdk.exceptions import NodeNotFound
 from infrahub_sdk.node import (
     SAFE_VALUE,
@@ -14,6 +12,7 @@ from infrahub_sdk.node import (
     RelatedNodeBase,
     RelationshipManagerBase,
 )
+from pytest_httpx import HTTPXMock
 
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient, InfrahubClientSync

@@ -1,7 +1,6 @@
+from infrahub_ctl.branch import app
 from pytest_httpx import HTTPXMock
 from typer.testing import CliRunner
-
-from infrahub_ctl.branch import app
 
 runner = CliRunner()
 

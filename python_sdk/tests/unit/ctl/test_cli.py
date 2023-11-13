@@ -1,6 +1,5 @@
-from typer.testing import CliRunner
-
 from infrahub_ctl.cli import app
+from typer.testing import CliRunner
 
 runner = CliRunner()
 

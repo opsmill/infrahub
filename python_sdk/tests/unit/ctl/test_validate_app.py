@@ -1,10 +1,9 @@
 import os
 
 import pytest
-from typer.testing import CliRunner
-
 from infrahub_ctl.utils import get_fixtures_dir
 from infrahub_ctl.validate import app
+from typer.testing import CliRunner
 
 runner = CliRunner()
 

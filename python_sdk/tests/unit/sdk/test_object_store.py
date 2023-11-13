@@ -1,9 +1,8 @@
 import inspect
 
 import pytest
-from pytest_httpx import HTTPXMock
-
 from infrahub_sdk.object_store import ObjectStore, ObjectStoreSync
+from pytest_httpx import HTTPXMock
 
 # pylint: disable=redefined-outer-name,unused-argument
 

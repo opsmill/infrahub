@@ -1,6 +1,5 @@
 import pendulum
 import pytest
-
 from infrahub_sdk.timestamp import Timestamp
 
 

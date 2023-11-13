@@ -1,12 +1,11 @@
 import inspect
 
 import pytest
-from pytest_httpx import HTTPXMock
-
 from infrahub_sdk import InfrahubClient, InfrahubClientSync
 from infrahub_sdk.data import RepositoryData
 from infrahub_sdk.exceptions import FilterNotFound, NodeNotFound
 from infrahub_sdk.node import InfrahubNode, InfrahubNodeSync
+from pytest_httpx import HTTPXMock
 
 async_client_methods = [method for method in dir(InfrahubClient) if not method.startswith("_")]
 sync_client_methods = [method for method in dir(InfrahubClientSync) if not method.startswith("_")]

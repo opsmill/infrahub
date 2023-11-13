@@ -1,12 +1,12 @@
 import pytest
+from infrahub_sdk import Config, InfrahubClient
+from infrahub_sdk.exceptions import BranchNotFound
+from infrahub_sdk.node import InfrahubNode
+
 from infrahub.core import registry
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
-
-from infrahub_sdk import Config, InfrahubClient
-from infrahub_sdk.exceptions import BranchNotFound
-from infrahub_sdk.node import InfrahubNode
 
 from .conftest import InfrahubTestClient
 

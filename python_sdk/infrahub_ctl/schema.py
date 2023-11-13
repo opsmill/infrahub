@@ -5,13 +5,13 @@ from typing import List, Optional
 
 import typer
 import yaml
+from infrahub_sdk.utils import find_files
 from pydantic import BaseModel, ValidationError
 from rich.console import Console
 from rich.logging import RichHandler
 
 import infrahub_ctl.config as config
 from infrahub_ctl.client import initialize_client
-from infrahub_sdk.utils import find_files
 
 app = typer.Typer()
 

@@ -1,5 +1,4 @@
 import pytest
-
 from infrahub_sdk import Config, InfrahubClient
 
 from .conftest import InfrahubTestClient

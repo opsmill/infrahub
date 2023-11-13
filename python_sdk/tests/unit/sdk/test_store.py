@@ -1,5 +1,4 @@
 import pytest
-
 from infrahub_sdk import InfrahubNode, NodeStore
 
 client_types = ["standard", "sync"]
