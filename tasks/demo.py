@@ -32,7 +32,11 @@ mutation($name: String!, $location: String!){
 
 @task(optional=["database"])
 def build(
-    context, service: str = None, python_ver: str = PYTHON_VER, nocache: bool = False, database: str = INFRAHUB_DATABASE
+    context,
+    service: str = None,
+    python_ver: str = PYTHON_VER,
+    nocache: bool = False,
+    database: str = INFRAHUB_DATABASE,
 ):  # pylint: disable=too-many-arguments
     """Build an image with the provided name and python version.
 
@@ -204,7 +208,10 @@ def infra_git_import(context: Context, database: str = INFRAHUB_DATABASE):
 
 @task(optional=["database"])
 def infra_git_create(
-    context: Context, database: str = INFRAHUB_DATABASE, name="demo-edge", location="/remote/infrahub-demo-edge"
+    context: Context,
+    database: str = INFRAHUB_DATABASE,
+    name="demo-edge",
+    location="/remote/infrahub-demo-edge",
 ):
     """Load some demo data."""
     clean_query = re.sub(r"\n\s*", "", ADD_REPO_QUERY)
