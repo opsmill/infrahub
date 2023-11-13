@@ -23,6 +23,7 @@ def format_ruff(context: Context):
 
     print(f" - [{NAMESPACE}] Format code with ruff")
     exec_cmd = f"ruff format {MAIN_DIRECTORY} --config {REPO_BASE}/pyproject.toml"
+    exec_cmd += f"ruff check --fix {MAIN_DIRECTORY} --config {REPO_BASE}/pyproject.toml"
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
@@ -55,7 +56,7 @@ def ruff(context: Context, docker: bool = False):
     """Run ruff to check that Python files adherence to black standards."""
 
     print(f" - [{NAMESPACE}] Check code with ruff")
-    exec_cmd = f"ruff check {MAIN_DIRECTORY} --fix --config {REPO_BASE}/pyproject.toml"
+    exec_cmd = f"ruff check --diff {MAIN_DIRECTORY} --config {REPO_BASE}/pyproject.toml"
 
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
