@@ -59,7 +59,7 @@ def ruff(context: Context, docker: bool = False):
     """Run ruff to check that Python files adherence to black standards."""
 
     print(f" - [{NAMESPACE}] Check code with ruff")
-    exec_cmd = "ruff check . --fix"
+    exec_cmd = "ruff check . --fix --config {REPO_BASE}/pyproject.toml"
     exec_directory = MAIN_DIRECTORY_PATH
 
     if docker:

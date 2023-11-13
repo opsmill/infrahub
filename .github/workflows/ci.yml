@@ -107,7 +107,7 @@ jobs:
       - name: "Setup environment"
         run: "pip install ruff==0.1.5"
       - name: "Linting: ruff"
-        run: "ruff check . --fix"
+        run: "ruff check . --fix --config pyproject.toml"
 
   # ------------------------------------------ Build  Docker Image ------------------------------------------
   # backend-build-docker:
