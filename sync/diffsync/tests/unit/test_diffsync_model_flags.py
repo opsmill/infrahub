@@ -16,7 +16,6 @@ limitations under the License.
 """
 
 import pytest
-
 from diffsync.enum import DiffSyncModelFlags
 from diffsync.exceptions import ObjectNotFound
 

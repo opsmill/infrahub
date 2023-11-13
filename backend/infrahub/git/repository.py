@@ -25,9 +25,8 @@ from infrahub_sdk import (
     ValidationError,
 )
 from infrahub_sdk.utils import YamlFile, compare_lists
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 from pydantic import ValidationError as PydanticValidationError
-from pydantic import validator
 
 import infrahub.config as config
 from infrahub.checks import INFRAHUB_CHECK_VARIABLE_TO_IMPORT, InfrahubCheck
@@ -220,7 +219,8 @@ def extract_repo_file_information(
     Args:
         full_filename (str): Absolute path to the file to load Example:/opt/infrahub/git/repo01/commits/71da[..]4b7/myfile.py
         root_directory: Absolute path to the root of the repository directory. Example:/opt/infrahub/git/repo01
-        worktree_directory (str, optional): Absolute path to the root of the worktree directory. Defaults to None. example: /opt/infrahub/git/repo01/commits/71da[..]4b7/
+        worktree_directory (str, optional): Absolute path to the root of the worktree directory. Defaults to None.
+        Example: /opt/infrahub/git/repo01/commits/71da[..]4b7/
 
     Returns:
         RepoFileInformation: Pydantic object to store all information about this file

@@ -14,15 +14,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from collections.abc import Iterable as ABCIterable, Mapping as ABCMapping
-from typing import Callable, Iterable, List, Mapping, Optional, Tuple, Type, TYPE_CHECKING
-
 import asyncio
+from collections.abc import Iterable as ABCIterable
+from collections.abc import Mapping as ABCMapping
+from typing import TYPE_CHECKING, Callable, Iterable, List, Mapping, Optional, Tuple, Type
+
 import structlog  # type: ignore
 
 from .diff import Diff, DiffElement
-from .enum import DiffSyncModelFlags, DiffSyncFlags, DiffSyncStatus, DiffSyncActions
-from .exceptions import ObjectNotFound, ObjectNotCreated, ObjectNotUpdated, ObjectNotDeleted, ObjectCrudException
+from .enum import DiffSyncActions, DiffSyncFlags, DiffSyncModelFlags, DiffSyncStatus
+from .exceptions import ObjectCrudException, ObjectNotCreated, ObjectNotDeleted, ObjectNotFound, ObjectNotUpdated
 from .utils import intersection, symmetric_difference
 
 if TYPE_CHECKING:  # pragma: no cover

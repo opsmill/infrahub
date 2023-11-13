@@ -134,7 +134,8 @@ async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, s
 
 
 async def schema_integrity(
-    message: messages.RequestProposedChangeSchemaIntegrity, service: InfrahubServices  # pylint: disable=unused-argument
+    message: messages.RequestProposedChangeSchemaIntegrity,
+    service: InfrahubServices,  # pylint: disable=unused-argument
 ) -> None:
     log.info(f"Got a request to process schema integrity defined in proposed_change: {message.proposed_change}")
 

@@ -22,12 +22,13 @@ MAIN_DIRECTORY_PATH = os.path.join(ESCAPED_REPO_PATH, MAIN_DIRECTORY)
 # Formatting tasks
 # ----------------------------------------------------------------------------
 @task
-def format_black(context: Context):
-    """Run black to format all Python files."""
+def format_ruff(context: Context):
+    """Run ruff to format all Python files."""
 
-    print(f" - [{NAMESPACE}] Format code with black")
-    exec_cmd = "black ."
-    with context.cd(MAIN_DIRECTORY_PATH):
+    print(f" - [{NAMESPACE}] Format code with ruff")
+    exec_cmd = f"ruff format {MAIN_DIRECTORY}/ --config {MAIN_DIRECTORY}/pyproject.toml && "
+    exec_cmd += f"ruff check --fix {MAIN_DIRECTORY}/ --config {MAIN_DIRECTORY}/pyproject.toml"
+    with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
 
@@ -41,23 +42,12 @@ def format_autoflake(context: Context):
         context.run(exec_cmd)
 
 
-@task
-def format_isort(context: Context):
-    """Run isort to format all Python files."""
-
-    print(f" - [{NAMESPACE}] Format code with isort")
-    exec_cmd = "isort ."
-    with context.cd(MAIN_DIRECTORY_PATH):
-        context.run(exec_cmd)
-
-
 @task(name="format")
 def format_all(context: Context):
     """This will run all formatter."""
 
-    format_isort(context)
     format_autoflake(context)
-    format_black(context)
+    format_ruff(context)
 
     print(f" - [{NAMESPACE}] All formatters have been executed!")
 
@@ -66,34 +56,21 @@ def format_all(context: Context):
 # Testing tasks
 # ----------------------------------------------------------------------------
 @task
-def black(context: Context, docker: bool = False):
-    """Run black to check that Python files adherence to black standards."""
+def ruff(context: Context, docker: bool = False):
+    """Run ruff to check that Python files adherence to black standards."""
 
-    print(f" - [{NAMESPACE}] Check code with black")
-    exec_cmd = "black --check --diff ."
+    print(f" - [{NAMESPACE}] Check code with ruff")
     exec_directory = MAIN_DIRECTORY_PATH
+    if not docker:
+        exec_cmd = f"ruff check --diff {exec_directory} --config {exec_directory}/pyproject.toml"
 
     if docker:
+        exec_cmd = "ruff check --diff . --config pyproject.toml"
         compose_files_cmd = build_test_compose_files_cmd(database=False)
-        exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run  --workdir /source/{MAIN_DIRECTORY} infrahub-test {exec_cmd}"
-        exec_directory = ESCAPED_REPO_PATH
-        print(exec_cmd)
-
-    with context.cd(exec_directory):
-        context.run(exec_cmd)
-
-
-@task
-def isort(context: Context, docker: bool = False):
-    """Run isort to check that Python files adherence to import standards."""
-
-    print(f" - [{NAMESPACE}] Check code with isort")
-    exec_cmd = "isort --check --diff ."
-    exec_directory = MAIN_DIRECTORY_PATH
-
-    if docker:
-        compose_files_cmd = build_test_compose_files_cmd(database=False)
-        exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run  --workdir /source/{MAIN_DIRECTORY} infrahub-test {exec_cmd}"
+        exec_cmd = (
+            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
+            f" run --workdir /source/{MAIN_DIRECTORY} infrahub-test {exec_cmd}"
+        )
         exec_directory = ESCAPED_REPO_PATH
         print(exec_cmd)
 
@@ -111,7 +88,10 @@ def mypy(context: Context, docker: bool = False):
 
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
-        exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run --workdir /source/{MAIN_DIRECTORY} infrahub-test {exec_cmd}"
+        exec_cmd = (
+            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
+            f" run --workdir /source/{MAIN_DIRECTORY} infrahub-test {exec_cmd}"
+        )
         exec_directory = ESCAPED_REPO_PATH
         print(exec_cmd)
 
@@ -129,25 +109,10 @@ def pylint(context: Context, docker: bool = False):
 
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
-        exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run --workdir /source/{MAIN_DIRECTORY} infrahub-test {exec_cmd}"
-        exec_directory = ESCAPED_REPO_PATH
-        print(exec_cmd)
-
-    with context.cd(exec_directory):
-        context.run(exec_cmd)
-
-
-@task
-def ruff(context: Context, docker: bool = False):
-    """This will run ruff."""
-
-    print(f" - [{NAMESPACE}] Check code with ruff")
-    exec_cmd = "ruff check ."
-    exec_directory = MAIN_DIRECTORY_PATH
-
-    if docker:
-        compose_files_cmd = build_test_compose_files_cmd(database=False)
-        exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run  --workdir /source/{MAIN_DIRECTORY} infrahub-test {exec_cmd}"
+        exec_cmd = (
+            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME}"
+            f" run --workdir /source/{MAIN_DIRECTORY} infrahub-test {exec_cmd}"
+        )
         exec_directory = ESCAPED_REPO_PATH
         print(exec_cmd)
 
@@ -159,8 +124,6 @@ def ruff(context: Context, docker: bool = False):
 def lint(context: Context, docker: bool = False):
     """This will run all linter."""
     ruff(context, docker=docker)
-    black(context, docker=docker)
-    isort(context, docker=docker)
     pylint(context, docker=docker)
     mypy(context, docker=docker)
 

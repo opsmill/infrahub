@@ -56,9 +56,7 @@ def load_node_interface(branch: Branch):
     registry.set_graphql_type(name=paginated_interface._meta.name, graphql_type=paginated_interface, branch=branch.name)
 
 
-async def generate_object_types(
-    db: InfrahubDatabase, branch: Union[Branch, str]
-):  # pylint: disable=too-many-branches,too-many-statements
+async def generate_object_types(db: InfrahubDatabase, branch: Union[Branch, str]):  # pylint: disable=too-many-branches,too-many-statements
     """Generate all GraphQL objects for the schema and store them in the internal registry."""
 
     branch = await get_branch(db=db, branch=branch)

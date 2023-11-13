@@ -9,6 +9,8 @@ development/docker-compose.override.yml
 development/docker-compose.dev-override.yml
 .DS_Store
 .python-version
+.ruff_cache
+**/.ruff_cache
 
 # Direnv files (https://direnv.net/)
 .direnv/

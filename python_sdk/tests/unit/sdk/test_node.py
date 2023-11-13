@@ -331,9 +331,7 @@ async def test_query_data_generic(clients, mock_schema_query_02, client_type):  
 
 
 @pytest.mark.parametrize("client_type", client_types)
-async def test_query_data_generic_fragment(
-    clients, mock_schema_query_02, client_type
-):  # pylint: disable=unused-argument
+async def test_query_data_generic_fragment(clients, mock_schema_query_02, client_type):  # pylint: disable=unused-argument
     if client_type == "standard":
         client: InfrahubClient = getattr(clients, client_type)  # type: ignore[annotation-unchecked]
         corenode_schema: GenericSchema = await client.schema.get(kind="CoreNode")  # type: ignore[annotation-unchecked]

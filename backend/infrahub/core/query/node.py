@@ -178,9 +178,7 @@ class NodeCreateAllQuery(NodeQuery):
         )
         WITH distinct n
         MATCH (n)-[:HAS_ATTRIBUTE|IS_RELATED]-(rn)-[:HAS_VALUE|IS_RELATED]-(rv)
-        """ % ":".join(
-            self.node.get_labels()
-        )
+        """ % ":".join(self.node.get_labels())
 
         self.params["at"] = at.to_string()
 
@@ -275,14 +273,11 @@ class NodeListGetLocalAttributeValueQuery(Query):
 
         self.params.update(rel_params)
 
-        query = (
-            """
+        query = """
         MATCH (a:Attribute) WHERE a.uuid IN $attrs_ids
         MATCH (a)-[r1:HAS_VALUE]-(av:AttributeValue)
         WHERE %s
-        """
-            % rel_filter[0]
-        )
+        """ % rel_filter[0]
 
         self.add_to_query(query)
         self.return_labels = ["a", "av", "r1"]

@@ -4,12 +4,11 @@
 from unittest import mock
 
 import pytest
-
 from diffsync import DiffSync, DiffSyncModel
 from diffsync.enum import DiffSyncFlags, DiffSyncModelFlags
-from diffsync.exceptions import DiffClassMismatch, ObjectAlreadyExists, ObjectNotFound, ObjectCrudException
+from diffsync.exceptions import DiffClassMismatch, ObjectAlreadyExists, ObjectCrudException, ObjectNotFound
 
-from .conftest import Site, Device, Interface, TrackedDiff, BackendA, PersonA
+from .conftest import BackendA, Device, Interface, PersonA, Site, TrackedDiff
 
 
 def test_diffsync_default_name_type(generic_diffsync):

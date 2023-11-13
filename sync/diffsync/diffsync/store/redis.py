@@ -1,8 +1,8 @@
 """RedisStore module."""
 import copy
 import uuid
-from pickle import loads, dumps  # nosec
-from typing import List, Mapping, Text, Type, Union, TYPE_CHECKING, Set
+from pickle import dumps, loads  # nosec
+from typing import TYPE_CHECKING, List, Mapping, Set, Text, Type, Union
 
 try:
     from redis import Redis
@@ -11,7 +11,7 @@ except ImportError as ierr:
     print("Redis is not installed. Have you installed diffsync with redis extra? `pip install diffsync[redis]`")
     raise ierr
 
-from diffsync.exceptions import ObjectNotFound, ObjectStoreException, ObjectAlreadyExists
+from diffsync.exceptions import ObjectAlreadyExists, ObjectNotFound, ObjectStoreException
 from diffsync.store import BaseStore
 
 if TYPE_CHECKING:

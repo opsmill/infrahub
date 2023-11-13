@@ -15,8 +15,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from os.path import join, dirname
 import subprocess
+from os.path import dirname, join
 
 EXAMPLES = join(dirname(dirname(dirname(__file__))), "examples")
 

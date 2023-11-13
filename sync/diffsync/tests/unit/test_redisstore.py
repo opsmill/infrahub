@@ -1,7 +1,7 @@
 """Testing of RedisStore."""
 import pytest
-from diffsync.store.redis import RedisStore
 from diffsync.exceptions import ObjectStoreException
+from diffsync.store.redis import RedisStore
 
 
 def _get_path_from_redisdb(redisdb_instance):
