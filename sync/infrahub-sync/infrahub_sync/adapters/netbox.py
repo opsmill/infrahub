@@ -86,7 +86,8 @@ class NetboxAdapter(DiffSyncMixin, DiffSync):
                 nodes = [item for item in self.store.get_all(model=field.reference)]
                 if not nodes:
                     raise IndexError(
-                        f"Unable to get '{field.mapping}' with '{field.reference}' reference from store. The available models are {self.store.get_all_model_names()}"
+                        f"Unable to get '{field.mapping}' with '{field.reference}' reference from store."
+                        f" The available models are {self.store.get_all_model_names()}"
                     )
                 if not field_is_list:
                     if node := get_value(obj, field.mapping):

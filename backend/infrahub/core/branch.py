@@ -246,7 +246,9 @@ class Branch(StandardNode):
     def get_query_filter_relationships(
         self, rel_labels: list, at: Optional[Union[Timestamp, str]] = None, include_outside_parentheses: bool = False
     ) -> Tuple[List, Dict]:
-        """Generate a CYPHER Query filter based on a list of relationships to query a part of the graph at a specific time and on a specific branch."""
+        """
+        Generate a CYPHER Query filter based on a list of relationships to query a part of the graph at a specific time and on a specific branch.
+        """
 
         filters = []
         params = {}
@@ -279,7 +281,8 @@ class Branch(StandardNode):
         return filters, params
 
     def get_query_filter_path(self, at: Optional[Union[Timestamp, str]] = None) -> Tuple[str, Dict]:
-        """Generate a CYPHER Query filter based on a path to query a part of the graph at a specific time and on a specific branch.
+        """
+        Generate a CYPHER Query filter based on a path to query a part of the graph at a specific time and on a specific branch.
 
         Examples:
             >>> rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at)
@@ -355,7 +358,8 @@ class Branch(StandardNode):
         diff_from: Timestamp,
         diff_to: Timestamp,
     ) -> Tuple[List, Dict]:
-        """Generate a CYPHER Query filter to query all events that are applicable to a given branch based
+        """
+        Generate a CYPHER Query filter to query all events that are applicable to a given branch based
         - The time when the branch as created
         - The branched_from time of the branch
         - The diff_to and diff_from time as provided
@@ -398,7 +402,8 @@ class Branch(StandardNode):
         start_time: Union[Timestamp, str],
         end_time: Union[Timestamp, str],
     ) -> Tuple[List, Dict]:
-        """Generate a CYPHER Query filter to query a range of values in the graph between start_time and end_time."""
+        """
+        Generate a CYPHER Query filter to query a range of values in the graph between start_time and end_time."""
 
         filters = []
         params = {}
@@ -443,7 +448,8 @@ class Branch(StandardNode):
         registry.branch[self.name] = self
 
     async def validate_branch(self, db: InfrahubDatabase) -> List[ObjectConflict]:
-        """Validate if a branch is eligible to be merged.
+        """
+        Validate if a branch is eligible to be merged.
         - Must be conflict free both for data and repository
         - All checks must pass
         - Check schema changes
@@ -1082,7 +1088,9 @@ class Diff:
         )
 
     async def has_conflict(
-        self, db: InfrahubDatabase, rpc_client: InfrahubRpcClient  # pylint: disable=unused-argument
+        self,
+        db: InfrahubDatabase,
+        rpc_client: InfrahubRpcClient,  # pylint: disable=unused-argument
     ) -> bool:
         """Return True if the same path has been modified on multiple branches. False otherwise"""
 

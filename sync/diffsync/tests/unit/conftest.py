@@ -17,10 +17,9 @@ limitations under the License.
 from typing import ClassVar, List, Mapping, Optional, Tuple
 
 import pytest
-
 from diffsync import DiffSync, DiffSyncModel
 from diffsync.diff import Diff, DiffElement
-from diffsync.exceptions import ObjectNotCreated, ObjectNotUpdated, ObjectNotDeleted
+from diffsync.exceptions import ObjectNotCreated, ObjectNotDeleted, ObjectNotUpdated
 
 
 @pytest.fixture

@@ -208,17 +208,14 @@ async def test_branch_query(
         root_value=None,
         variable_values={},
     )
-    name_query = (
-        """
+    name_query = """
     query {
         Branch(name: "%s" ) {
             id
             name
         }
     }
-    """
-        % branch3["name"]
-    )
+    """ % branch3["name"]
     name_response = await graphql(
         schema,
         source=name_query,
@@ -233,9 +230,7 @@ async def test_branch_query(
             name
         }
     }
-    """ % [
-        branch3["id"]
-    ]
+    """ % [branch3["id"]]
     id_query = id_query.replace("'", '"')
 
     id_response = await graphql(

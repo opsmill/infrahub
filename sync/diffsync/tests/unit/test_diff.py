@@ -16,7 +16,6 @@ limitations under the License.
 """
 
 import pytest
-
 from diffsync.diff import Diff, DiffElement
 from diffsync.exceptions import ObjectAlreadyExists
 

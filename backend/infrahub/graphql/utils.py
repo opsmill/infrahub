@@ -270,7 +270,7 @@ def print_selection_set(selection_set: SelectionSetNode, level: int = 1) -> int:
         # print(f"in print_selection_set loop {field}")
         # The field we are at is already a lever deeper, even if it doesn't have its own selection set.
         # max_depth = max(max_depth, level + 1)
-        print(f"{level*tab}{field.name.value}")
+        print(f"{level * tab}{field.name.value}")
         if selection_set := getattr(field, "selection_set", None):
             # max_depth = max(max_depth, self._get_query_depth(selection_set, level + 1))
             print_selection_set(selection_set, level + 1)

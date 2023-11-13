@@ -16,11 +16,11 @@ limitations under the License.
 """
 
 from functools import total_ordering
-from typing import Any, Iterator, Iterable, Mapping, Optional, Text, Type
+from typing import Any, Iterable, Iterator, Mapping, Optional, Text, Type
 
-from .exceptions import ObjectAlreadyExists
-from .utils import intersection, OrderedDefaultDict
 from .enum import DiffSyncActions
+from .exceptions import ObjectAlreadyExists
+from .utils import OrderedDefaultDict, intersection
 
 
 class Diff:

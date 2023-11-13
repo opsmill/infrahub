@@ -71,7 +71,7 @@ async def _load_test_data(dataset: str) -> None:
 def init(
     config_file: str = typer.Option(
         "infrahub.toml", envvar="INFRAHUB_CONFIG", help="Location of the configuration file to use for Infrahub"
-    )
+    ),
 ) -> None:
     """Erase the content of the database and initialize it with the core schema."""
 

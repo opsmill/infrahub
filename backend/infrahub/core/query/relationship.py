@@ -508,9 +508,7 @@ class RelationshipGetPeerQuery(RelationshipQuery):
         MATCH (rl)-[rel_is_visible:IS_VISIBLE]-(is_visible)
         MATCH (rl)-[rel_is_protected:IS_PROTECTED]-(is_protected)
         WHERE all(r IN [ rel_is_visible, rel_is_protected] WHERE (%s))
-        """ % (
-            branch_filter,
-        )
+        """ % (branch_filter,)
 
         self.add_to_query(query)
 
