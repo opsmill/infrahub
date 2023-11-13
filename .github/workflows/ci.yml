@@ -107,9 +107,7 @@ jobs:
       - name: "Setup environment"
         run: "pip install ruff==0.1.5"
       - name: "Linting: ruff"
-        run: "ruff check --diff . --exclude=python_sdk --config pyproject.toml"
-      - name: "Linting: ruff for python_SDK"
-        run: "ruff check --diff python_sdk --config python_sdk/pyproject.toml"
+        run: "ruff check --diff ."
 
   # ------------------------------------------ Build  Docker Image ------------------------------------------
   # backend-build-docker:
