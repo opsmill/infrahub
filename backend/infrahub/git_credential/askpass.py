@@ -3,9 +3,9 @@ import sys
 from typing import List, Optional
 
 import typer
+from infrahub_sdk import InfrahubClientSync
 
 import infrahub.config as config
-from infrahub_client import InfrahubClientSync
 
 app = typer.Typer()
 

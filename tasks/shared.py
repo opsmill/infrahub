@@ -1,5 +1,6 @@
 import os
 import platform
+import re
 from enum import Enum
 from typing import Any, Union
 
@@ -15,74 +16,100 @@ class DatabaseType(str, Enum):
 
 INVOKE_SUDO = os.getenv("INVOKE_SUDO", None)
 INVOKE_PTY = os.getenv("INVOKE_PTY", None)
+INFRAHUB_DATABASE = os.getenv("INFRAHUB_DB_TYPE", DatabaseType.NEO4J.value)
 
+DATABASE_DOCKER_IMAGE = os.getenv("DATABASE_DOCKER_IMAGE", None)
+MEMGRAPH_DOCKER_IMAGE = os.getenv("MEMGRAPH_DOCKER_IMAGE", "memgraph/memgraph:2.11.0")
+NEO4J_DOCKER_IMAGE = os.getenv("NEO4J_DOCKER_IMAGE", "neo4j:5.13-community")
+MESSAGE_QUEUE_DOCKER_IMAGE = os.getenv("MESSAGE_QUEUE_DOCKER_IMAGE", "rabbitmq:3.12-management")
+CACHE_DOCKER_IMAGE = os.getenv("CACHE_DOCKER_IMAGE", "redis:7.2")
 
 here = os.path.abspath(os.path.dirname(__file__))
 TOP_DIRECTORY_NAME = os.path.basename(os.path.abspath(os.path.join(here, "..")))
-BUILD_NAME = os.getenv("INFRAHUB_BUILD_NAME", TOP_DIRECTORY_NAME)
+BUILD_NAME = os.getenv("INFRAHUB_BUILD_NAME", re.sub(r"[^a-zA-Z0-9_/.]", "", TOP_DIRECTORY_NAME))
 PYTHON_VER = os.getenv("PYTHON_VER", "3.11")
 IMAGE_NAME = os.getenv("IMAGE_NAME", f"opsmill/{BUILD_NAME}-py{PYTHON_VER}")
 IMAGE_VER = os.getenv("IMAGE_VER", project_ver())
 PWD = os.getcwd()
 
 NBR_WORKERS = os.getenv("PYTEST_XDIST_WORKER_COUNT", 1)
+GITHUB_ACTION = os.getenv("GITHUB_ACTION", False)
 
-AVAILABLE_SERVICES = ["infrahub-git", "frontend", "infrahub-server", "database", "message-queue"]
+AVAILABLE_SERVICES = ["infrahub-git", "infrahub-server", "database", "message-queue"]
 SUPPORTED_DATABASES = [DatabaseType.MEMGRAPH.value, DatabaseType.NEO4J.value]
 
 TEST_COMPOSE_FILE = "development/docker-compose-test.yml"
 TEST_COMPOSE_FILES_MEMGRAPH = [
-    "development/docker-compose-message-queue.yml",
+    "development/docker-compose-deps.yml",
     "development/docker-compose-test-database-memgraph.yml",
+    "development/docker-compose-test-cache.yml",
     TEST_COMPOSE_FILE,
 ]
 TEST_COMPOSE_FILES_NEO4J = [
-    "development/docker-compose-message-queue.yml",
+    "development/docker-compose-deps.yml",
     "development/docker-compose-test-database-neo4j.yml",
+    "development/docker-compose-test-cache.yml",
     TEST_COMPOSE_FILE,
 ]
 
 
-IMAGE_NAME_FRONTEND = os.getenv("INFRAHUB_IMAGE_NAME_FRONTEND", f"opsmill/{BUILD_NAME}-frontend")
-IMAGE_NAME_BACKEND = os.getenv("INFRAHUB_IMAGE_NAME_BACKEND", f"opsmill/{BUILD_NAME}-backend-py{PYTHON_VER}")
+IMAGE_NAME = os.getenv("INFRAHUB_IMAGE_NAME", f"opsmill/{BUILD_NAME}-py{PYTHON_VER}")
 IMAGE_VER = os.getenv("INFRAHUB_IMAGE_VER", project_ver())
 
 OVERRIDE_FILE_NAME = "development/docker-compose.override.yml"
 DEFAULT_FILE_NAME = "development/docker-compose.default.yml"
 COMPOSE_FILES_MEMGRAPH = [
-    "development/docker-compose-message-queue.yml",
+    "development/docker-compose-deps.yml",
     "development/docker-compose-database-memgraph.yml",
     "development/docker-compose.yml",
 ]
 COMPOSE_FILES_NEO4J = [
-    "development/docker-compose-message-queue.yml",
+    "development/docker-compose-deps.yml",
     "development/docker-compose-database-neo4j.yml",
     "development/docker-compose.yml",
 ]
 
 DEV_COMPOSE_FILES_MEMGRAPH = [
-    "development/docker-compose-message-queue.yml",
+    "development/docker-compose-deps.yml",
     "development/docker-compose-database-memgraph.yml",
 ]
 DEV_COMPOSE_FILES_NEO4J = [
-    "development/docker-compose-message-queue.yml",
+    "development/docker-compose-deps.yml",
     "development/docker-compose-database-neo4j.yml",
 ]
 DEV_OVERRIDE_FILE_NAME = "development/docker-compose.dev-override.yml"
 
 ENV_VARS_DICT = {
-    "IMAGE_NAME_FRONTEND": IMAGE_NAME_FRONTEND,
-    "IMAGE_NAME_BACKEND": IMAGE_NAME_BACKEND,
+    "IMAGE_NAME": IMAGE_NAME,
     "IMAGE_VER": IMAGE_VER,
     "PYTHON_VER": PYTHON_VER,
     "INFRAHUB_BUILD_NAME": BUILD_NAME,
     "NBR_WORKERS": NBR_WORKERS,
+    "CACHE_DOCKER_IMAGE": CACHE_DOCKER_IMAGE,
+    "MESSAGE_QUEUE_DOCKER_IMAGE": MESSAGE_QUEUE_DOCKER_IMAGE,
+    "INFRAHUB_DB_TYPE": INFRAHUB_DATABASE,
 }
 
 PLATFORMS_PTY_ENABLE = ["Linux", "Darwin"]
 PLATFORMS_SUDO_DETECT = ["Linux"]
 
-VOLUME_NAMES = ["database_data", "database_logs", "git_data", "storage_data"]
+VOLUME_NAMES = ["database_data", "database_logs", "git_data", "git_remote_data", "storage_data"]
+
+GITHUB_ENVS_TO_PASS = [
+    "GITHUB_ACTION",
+    "GITHUB_REF_NAME",
+    "GITHUB_BASE_REF",
+    "GITHUB_HEAD_REF",
+    "GITHUB_REPOSITORY",
+    "GITHUB_RUN_ATTEMPT",
+    "GITHUB_SHA",
+    "GITHUB_RUN_ID",
+    "GITHUB_RUN_NUMBER",
+    "BUILDKITE_BRANCH",
+    "BUILDKITE_COMMIT",
+    "BUILDKITE_ANALYTICS_TOKEN",
+    "BUILDKITE_ANALYTICS_BRANCH",
+]
 
 
 def check_environment(context: Context) -> dict:
@@ -120,21 +147,17 @@ def execute_command(context: Context, command: str, print_cmd: bool = False) -> 
     if print_cmd:
         print(command)
 
+    print(f"command={command}")
     return context.run(command, pty=params["pty"])
 
 
 def get_env_vars(context: Context) -> str:
-    # user_id = None
-    # group_id = None
-    # try:
-    #     user_id = get_user_id(context=context)
-    #     group_id = get_group_id(context=context)
-    # except ValueError:
-    #     pass
-
-    # ENV_VARS_DICT["USER_ID"] = user_id or 1000
-    # ENV_VARS_DICT["GROUP_ID"] = group_id or 1000
-
+    if DATABASE_DOCKER_IMAGE:
+        ENV_VARS_DICT["DATABASE_DOCKER_IMAGE"] = ENV_VARS_DICT
+    elif INFRAHUB_DATABASE == DatabaseType.NEO4J.value:
+        ENV_VARS_DICT["DATABASE_DOCKER_IMAGE"] = NEO4J_DOCKER_IMAGE
+    elif INFRAHUB_DATABASE == DatabaseType.MEMGRAPH.value:
+        ENV_VARS_DICT["DATABASE_DOCKER_IMAGE"] = MEMGRAPH_DOCKER_IMAGE
     return " ".join([f"{key}={value}" for key, value in ENV_VARS_DICT.items()])
 
 
@@ -191,3 +214,10 @@ def build_test_compose_files_cmd(
     #     DEV_COMPOSE_FILES.append(DEV_OVERRIDE_FILE_NAME)
 
     return f"-f {' -f '.join(DEV_COMPOSE_FILES)}"
+
+
+def build_test_envs():
+    if GITHUB_ACTION:
+        return f"-e {' -e '.join(GITHUB_ENVS_TO_PASS)}"
+
+    return ""

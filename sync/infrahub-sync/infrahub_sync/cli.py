@@ -7,17 +7,21 @@ from typing import List, Optional
 
 import typer
 import yaml
+from infrahub_sdk import InfrahubClientSync
 from infrahub_sync import SyncAdapter, SyncConfig, SyncInstance
 from infrahub_sync.generator import render_template
 from potenda import Potenda
 from rich.console import Console
 
-from infrahub_client import InfrahubClientSync
-
 app = typer.Typer()
-
+console = Console()
 
 logging.basicConfig(level=logging.WARNING)
+
+
+def print_error_and_abort(message: str):
+    console.print(f"Error: {message}", style="bold red")
+    raise typer.Abort()
 
 
 def import_adapter(adapter: SyncAdapter, directory: str):
@@ -33,7 +37,7 @@ def get_all_sync() -> List[SyncInstance]:
 
     for config_file in glob.glob(f"{here}/sync/**/config.yml", recursive=True):
         directory_name = os.path.dirname(config_file)
-        config_data = yaml.safe_load(Path(config_file).read_text())
+        config_data = yaml.safe_load(Path(config_file).read_text(encoding="utf-8"))
         SyncConfig(**config_data)
         results.append(SyncInstance(**config_data, directory=directory_name))
 
@@ -48,30 +52,42 @@ def get_instance(name: str) -> Optional[SyncInstance]:
     return None
 
 
-@app.command()
-def list():
+def get_potenda_from_instance(sync_instance: SyncInstance, branch: Optional[str] = None) -> Potenda:
+    source = import_adapter(adapter=sync_instance.source, directory=sync_instance.directory)
+    destination = import_adapter(adapter=sync_instance.destination, directory=sync_instance.directory)
+
+    if sync_instance.source.name == "infrahub" and branch:
+        src = source(config=sync_instance, target="source", adapter=sync_instance.source, branch=branch)
+    else:
+        src = source(config=sync_instance, target="source", adapter=sync_instance.source)
+    if sync_instance.destination.name == "infrahub" and branch:
+        dst = destination(config=sync_instance, target="destination", adapter=sync_instance.destination, branch=branch)
+    else:
+        dst = destination(config=sync_instance, target="destination", adapter=sync_instance.destination)
+
+    ptd = Potenda(destination=dst, source=src, config=sync_instance, top_level=sync_instance.order)
+
+    return ptd
+
+
+@app.command(name="list")
+def list_projects():
     """List all available SYNC projects."""
     for item in get_all_sync():
-        print(f"{item.name} | {item.source.name} >> {item.destination.name} | {item.directory}")
+        console.print(f"{item.name} | {item.source.name} >> {item.destination.name} | {item.directory}")
 
 
-@app.command()
-def diff(
+@app.command(name="diff")
+def diff_cmd(
     name: str = typer.Argument(..., help="Name of the sync to use"),
-    branch: str = typer.Option("main", help="Branch to use for the sync."),
+    branch: str = typer.Option(default=None, help="Branch to use for the sync."),
 ):
     """Calculate and print the differences between the source and the destination systems for a given project."""
     sync_instance = get_instance(name=name)
     if not sync_instance:
-        raise typer.Abort(f"Unable to find the sync {name}")
+        print_error_and_abort(f"Unable to find the sync {name}. Use the list command to see the sync available")
 
-    source = import_adapter(adapter=sync_instance.source, directory=sync_instance.directory)
-    destination = import_adapter(adapter=sync_instance.destination, directory=sync_instance.directory)
-
-    src = source(config=sync_instance, target="source", adapter=sync_instance.source)
-    dst = destination(config=sync_instance, target="destination", adapter=sync_instance.destination)
-
-    ptd = Potenda(destination=dst, source=src, config=sync_instance, top_level=sync_instance.order)
+    ptd = get_potenda_from_instance(sync_instance, branch)
     ptd.load()
 
     mydiff = ptd.diff()
@@ -79,30 +95,31 @@ def diff(
     print(mydiff.str())
 
 
-@app.command()
-def sync(
+@app.command(name="sync")
+def sync_cmd(
     name: str = typer.Argument(..., help="Name of the sync to use"),
-    branch: str = typer.Option("main", help="Branch to use for the sync."),
+    branch: str = typer.Option(default=None, help="Branch to use for the sync."),
+    diff: bool = typer.Option(
+        default=True, help="Print the differences between the source and the destinatio before syncing"
+    ),
 ):
     """Synchronize the data between source and the destination systems for a given project."""
     sync_instance = get_instance(name=name)
     if not sync_instance:
-        raise typer.Abort(f"Unable to find the sync {name}")
+        print_error_and_abort(f"Unable to find the sync {name}. Use the list command to see the sync available")
 
-    source = import_adapter(adapter=sync_instance.source, directory=sync_instance.directory)
-    destination = import_adapter(adapter=sync_instance.destination, directory=sync_instance.directory)
-
-    src = source(config=sync_instance, target="source", adapter=sync_instance.source)
-    dst = destination(config=sync_instance, target="destination", adapter=sync_instance.destination)
-
-    ptd = Potenda(destination=dst, source=src, config=sync_instance, top_level=sync_instance.order)
+    ptd = get_potenda_from_instance(sync_instance, branch)
     ptd.load()
 
     mydiff = ptd.diff()
 
-    print(mydiff.str())
-
-    ptd.sync(diff=mydiff)
+    if mydiff.has_diffs():
+        if diff:
+            print(mydiff.str())
+        ptd.sync(diff=mydiff)
+        console.print("Sync: Completed")
+    else:
+        console.print("No diffence found. Nothing to sync")
 
 
 @app.command()
@@ -111,11 +128,9 @@ def generate(
 ):
     """Generate all the python files for a given sync based on the configuration."""
 
-    console = Console()
-
     sync_instance = get_instance(name=name)
     if not sync_instance:
-        raise typer.Abort(f"Unable to find the sync {name}")
+        print_error_and_abort(f"Unable to find the sync {name}. Use the list command to see the sync available")
 
     files_to_render = (
         ("diffsync_models.j2", "models.py"),

@@ -80,7 +80,7 @@ export const accountTokenDetailsMocksSchema: iNodeSchema[] = [
         inherited: false,
         cardinality: "one",
         branch: true,
-        optional: false,
+        optional: true,
         filters: [
           {
             name: "id",
@@ -247,7 +247,7 @@ export const accountTokenDetailsMocksSchema: iNodeSchema[] = [
   },
 ];
 
-// Same schema but with a different name to be allowed to test it even if in the MENU_BLACKLIST constant
+// Same schema but with a different name to be allowed to test it even if in the MENU_EXCLUDELIST constant
 export const accountTokenDetailsMocksSchemaBIS: iNodeSchema[] = [
   {
     id: accountTokenId,
@@ -801,6 +801,7 @@ export const accountTokenFormStructure = [
     value: null,
     options: { values: [] },
     config: {},
+    isOptionnal: true,
     isProtected: false,
   },
   {
@@ -811,6 +812,7 @@ export const accountTokenFormStructure = [
     value: "06438eb2-8019-4776-878c-0941b1f1d1ec",
     options: { values: [] },
     config: {},
+    isOptionnal: false,
     isProtected: false,
   },
   {
@@ -821,6 +823,7 @@ export const accountTokenFormStructure = [
     value: "2023-07-14T22:00:00.000Z",
     options: { values: [] },
     config: {},
+    isOptionnal: true,
     isProtected: false,
   },
   {
@@ -831,6 +834,7 @@ export const accountTokenFormStructure = [
     value: "",
     options: { values: [] },
     config: {},
+    isOptionnal: true,
     isProtected: false,
   },
 ];

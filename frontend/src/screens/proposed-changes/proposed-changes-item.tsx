@@ -1,6 +1,6 @@
 import { gql, useReactiveVar } from "@apollo/client";
 import { ChevronLeftIcon, TrashIcon } from "@heroicons/react/24/outline";
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/alert";
@@ -11,11 +11,13 @@ import { DateDisplay } from "../../components/date-display";
 import ModalDelete from "../../components/modal-delete";
 import { Tooltip } from "../../components/tooltip";
 import { PROPOSED_CHANGES_OBJECT } from "../../config/constants";
+import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
 import { branchVar } from "../../graphql/variables/branchVar";
 import { dateVar } from "../../graphql/variables/dateVar";
 import { constructPath } from "../../utils/fetch";
+import { getProposedChangesStateBadgeType } from "../../utils/proposed-changes";
 import { stringifyWithoutQuotes } from "../../utils/string";
 
 export const ProposedChange = (props: any) => {
@@ -23,6 +25,7 @@ export const ProposedChange = (props: any) => {
 
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
+  const auth = useContext(AuthContext);
   const [isLoading, setIsLoading] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
 
@@ -40,7 +43,7 @@ export const ProposedChange = (props: any) => {
     setIsLoading(true);
 
     const mutationString = deleteObject({
-      kind: `Core${PROPOSED_CHANGES_OBJECT}`,
+      kind: PROPOSED_CHANGES_OBJECT,
       data: stringifyWithoutQuotes({
         id: row.id,
       }),
@@ -71,7 +74,8 @@ export const ProposedChange = (props: any) => {
       <Button
         buttonType={BUTTON_TYPES.INVISIBLE}
         className="absolute -right-4 -top-4 hidden group-hover/pc:block"
-        onClick={() => setDeleteModal(true)}>
+        onClick={() => setDeleteModal(true)}
+        disabled={!auth?.permissions?.write}>
         <TrashIcon className="h-4 w-4 text-red-500" />
       </Button>
 
@@ -79,6 +83,12 @@ export const ProposedChange = (props: any) => {
         <div className="flex flex-1">
           <div className="flex flex-1 flex-col">
             <div className="flex flex-1 items-center space-x-3 mb-4">
+              <div>
+                <Badge type={getProposedChangesStateBadgeType(row?.state?.value)}>
+                  {row?.state?.value}
+                </Badge>
+              </div>
+
               <div className="text-base font-semibold leading-6 text-gray-900">
                 {row.name.value}
               </div>
@@ -89,7 +99,7 @@ export const ProposedChange = (props: any) => {
                 </Tooltip>
 
                 <ChevronLeftIcon
-                  className="h-5 w-5 mx-2 flex-shrink-0 text-gray-400 mr-4"
+                  className="w-4 h-4 mx-2 flex-shrink-0 text-gray-400 mr-4"
                   aria-hidden="true"
                 />
 
@@ -133,8 +143,9 @@ export const ProposedChange = (props: any) => {
           </div>
 
           <div className="flex flex-col items-end">
-            <div>
-              Updated at: <DateDisplay date={row._updated_at} />
+            <div className="flex items-center">
+              <div className="mr-2">Updated:</div>
+              <DateDisplay date={row._updated_at} />
             </div>
           </div>
         </div>

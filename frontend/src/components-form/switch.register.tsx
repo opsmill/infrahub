@@ -12,30 +12,28 @@ interface Props {
   onChange?: Function;
   error?: FormFieldError;
   isProtected?: boolean;
+  isOptionnal?: boolean;
   disabled?: boolean;
 }
 
 export const OpsSwitchRegister = (props: Props) => {
-  const { name, value, register, setValue, config, label, onChange, error, isProtected, disabled } =
-    props;
+  const { name, register, setValue, config, onChange, isProtected, ...propsToPass } = props;
 
   const inputRegister = register(name, {
-    value: value ?? "",
+    value: props.value ?? "",
     ...config,
   });
 
   return (
     <OpsSwitch
-      error={error}
-      label={label}
-      value={value}
+      {...propsToPass}
       onChange={(value) => {
         if (onChange) {
           onChange(value);
         }
         setValue(inputRegister.name, value);
       }}
-      isProtected={isProtected || disabled}
+      isProtected={isProtected || props.disabled}
     />
   );
 };

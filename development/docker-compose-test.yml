@@ -8,7 +8,7 @@ services:
       context: ../
       dockerfile: development/Dockerfile
       target: backend
-    image: "${IMAGE_NAME_BACKEND}:${IMAGE_VER}"
+    image: "${IMAGE_NAME}:${IMAGE_VER}"
     environment:
       - "INFRAHUB_BUILD_NAME=${INFRAHUB_BUILD_NAME}"
       - "INFRAHUB_CONFIG=/source/development/infrahub.toml"
@@ -16,6 +16,7 @@ services:
       - "INFRAHUB_LOG_LEVEL=CRITICAL"
       - "PROMETHEUS_MULTIPROC_DIR=/prom_shared"
       - "INFRAHUB_TEST_IN_DOCKER=1"
+      - "INFRAHUB_DB_TYPE=${INFRAHUB_DB_TYPE}"
     volumes:
       - ../:/source
     tty: true

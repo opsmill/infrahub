@@ -2,22 +2,21 @@ import asyncio
 import json
 import os
 from abc import abstractmethod
-from typing import Optional
+from typing import Any, Optional
 
-from git import Repo
-
-from infrahub_client import InfrahubClient
+from git.repo import Repo
+from infrahub_sdk import InfrahubClient
 
 INFRAHUB_CHECK_VARIABLE_TO_IMPORT = "INFRAHUB_CHECKS"
 
 
 class InfrahubCheck:
     name: Optional[str] = None
-    query: str = None
+    query: str = ""
     timeout: int = 10
     rebase: bool = True
 
-    def __init__(self, branch=None, root_directory=None, output=None, server_url=None):
+    def __init__(self, branch=None, root_directory=None, output=None):
         self.data = None
         self.git = None
 
@@ -28,10 +27,9 @@ class InfrahubCheck:
 
         self.branch = branch
 
-        self.server_url = server_url or os.environ.get("INFRAHUB_URL", "http://127.0.0.1:8000")
         self.root_directory = root_directory or os.getcwd()
 
-        self.client: InfrahubClient = None
+        self.client: InfrahubClient
 
         if not self.name:
             self.name = self.__class__.__name__
@@ -40,24 +38,22 @@ class InfrahubCheck:
             raise ValueError("A query must be provided")
 
     @classmethod
-    async def init(cls, client=None, test_client=None, *args, **kwargs):
+    async def init(cls, client: Optional[InfrahubClient] = None, *args, **kwargs):
         """Async init method, If an existing InfrahubClient client hasn't been provided, one will be created automatically."""
 
-        item = cls(*args, **kwargs)
+        instance = cls(*args, **kwargs)
+        instance.client = client or InfrahubClient()
 
-        if client:
-            item.client = client
-        else:
-            item.client = await InfrahubClient.init(address=item.server_url, test_client=test_client)
-
-        return item
+        return instance
 
     @property
     def errors(self):
         return [log for log in self.logs if log["level"] == "ERROR"]
 
-    def log_error(self, message, object_id=None, object_type=None):
-        log_message = {"level": "ERROR", "message": message, "branch": self.branch_name}
+    def _write_log_entry(
+        self, message: Any, level: str, object_id: Optional[Any] = None, object_type: Optional[Any] = None
+    ) -> None:
+        log_message = {"level": level, "message": message, "branch": self.branch_name}
         if object_id:
             log_message["object_id"] = object_id
         if object_type:
@@ -67,17 +63,24 @@ class InfrahubCheck:
         if self.output == "stdout":
             print(json.dumps(log_message))
 
-    def log_info(self, message, object_id=None, object_type=None):
-        log_message = {"level": "INFO", "message": message, "branch": self.branch_name}
-        if object_id:
-            log_message["object_id"] = object_id
-        if object_type:
-            log_message["object_type"] = object_type
+    def log_error(self, message, object_id=None, object_type=None) -> None:
+        self._write_log_entry(message=message, level="ERROR", object_id=object_id, object_type=object_type)
 
-        self.logs.append(log_message)
+    def log_info(self, message, object_id=None, object_type=None) -> None:
+        self._write_log_entry(message=message, level="INFO", object_id=object_id, object_type=object_type)
 
-        if self.output == "stdout":
-            print(json.dumps(log_message))
+    @property
+    def log_entries(self) -> str:
+        output = ""
+        for log in self.logs:
+            output += "-----------------------\n"
+            output += f"Message: {log['message']}\n"
+            output += f"Level: {log['level']}\n"
+            if "object_id" in log:
+                output += f"Object ID: {log['object_id']}\n"
+            if "object_type" in log:
+                output += f"Object ID: {log['object_type']}\n"
+        return output
 
     @property
     def branch_name(self) -> str:
@@ -88,13 +91,14 @@ class InfrahubCheck:
 
         if not self.git:
             self.git = Repo(self.root_directory)
-            self.branch = str(self.git.active_branch)
+
+        self.branch = str(self.git.active_branch)
 
         return self.branch
 
     @abstractmethod
     def validate(self):
-        pass
+        """Code to validate the status of this check."""
 
     async def collect_data(self):
         """Query the result of the GraphQL Query defined in sef.query and store the result in self.data"""
@@ -108,10 +112,11 @@ class InfrahubCheck:
 
         await self.collect_data()
 
-        if asyncio.iscoroutinefunction(self.validate):
-            await self.validate()
+        validate_method = getattr(self, "validate")
+        if asyncio.iscoroutinefunction(validate_method):
+            await validate_method()
         else:
-            self.validate()
+            validate_method()
 
         nbr_errors = len([log for log in self.logs if log["level"] == "ERROR"])
 

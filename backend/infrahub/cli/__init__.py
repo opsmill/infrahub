@@ -10,7 +10,7 @@ from infrahub.cli.generate_schema import app as generate_schema_app
 from infrahub.cli.git_agent import app as git_app
 from infrahub.cli.server import app as server_app
 from infrahub.core.initialization import initialization
-from infrahub.database import get_db
+from infrahub.database import InfrahubDatabase, get_db
 
 # pylint: disable=import-outside-toplevel
 
@@ -24,18 +24,18 @@ app.add_typer(generate_schema_app, name="generate-schema")
 app.add_typer(doc_app, name="doc")
 
 
-async def _init_shell(config_file: str):
+async def _init_shell(config_file: str) -> None:
     """Launch a Python Interactive shell."""
     config.load_and_exit(config_file_name=config_file)
 
-    db = await get_db()
+    db = InfrahubDatabase(driver=await get_db(retry=1))
 
-    async with db.session(database=config.SETTINGS.database.database) as session:
-        await initialization(session=session)
+    async with db.start_session() as db:
+        await initialization(db=db)
 
 
 @app.command()
-def shell(config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG")):
+def shell(config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG")) -> None:
     """Start a python shell within Infrahub context."""
     aiorun(_init_shell(config_file=config_file))
 

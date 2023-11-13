@@ -2,12 +2,12 @@ import copy
 
 import pytest
 from deepdiff import DeepDiff
-from neo4j import AsyncSession
+from infrahub_sdk.utils import compare_lists
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.constants import BranchSupportType, FilterSchemaKind
 from infrahub.core.schema import (
-    FilterSchemaKind,
     GenericSchema,
     GroupSchema,
     NodeSchema,
@@ -16,7 +16,7 @@ from infrahub.core.schema import (
     internal_schema,
 )
 from infrahub.core.schema_manager import SchemaBranch, SchemaManager
-from infrahub_client.utils import compare_lists
+from infrahub.database import InfrahubDatabase
 
 
 # -----------------------------------------------------------------
@@ -31,9 +31,10 @@ def schema_all_in_one():
                 "namespace": "Builtin",
                 "inherit_from": ["InfraGenericInterface"],
                 "default_filter": "name__value",
+                "branch": BranchSupportType.AGNOSTIC.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
-                    {"name": "level", "kind": "Number"},
+                    {"name": "level", "kind": "Number", "branch": BranchSupportType.AWARE.value},
                     {"name": "color", "kind": "Text", "default_value": "#444444"},
                     {"name": "description", "kind": "Text", "optional": True},
                 ],
@@ -48,12 +49,27 @@ def schema_all_in_one():
                 "default_filter": "name__value",
                 "attributes": [
                     {"name": "name", "kind": "Text", "label": "Name", "unique": True},
-                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
+                    {
+                        "name": "description",
+                        "kind": "Text",
+                        "label": "Description",
+                        "optional": True,
+                        "branch": BranchSupportType.AGNOSTIC.value,
+                    },
                 ],
             },
             {
                 "name": "Status",
                 "namespace": "Builtin",
+                "branch": BranchSupportType.AGNOSTIC.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                ],
+            },
+            {
+                "name": "Badge",
+                "namespace": "Builtin",
+                "branch": BranchSupportType.LOCAL.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "label": "Name", "unique": True},
                 ],
@@ -74,6 +90,7 @@ def schema_all_in_one():
                 "attributes": [
                     {"name": "my_generic_name", "kind": "Text"},
                     {"name": "mybool", "kind": "Boolean", "default_value": False},
+                    {"name": "local_attr", "kind": "Number", "branch": BranchSupportType.LOCAL.value},
                 ],
                 "relationships": [
                     {
@@ -83,12 +100,19 @@ def schema_all_in_one():
                         "identifier": "primary_tag__criticality",
                         "optional": True,
                         "cardinality": "one",
+                        "branch": BranchSupportType.AGNOSTIC.value,
                     },
                     {
                         "name": "status",
                         "peer": "BuiltinStatus",
                         "optional": True,
                         "cardinality": "one",
+                    },
+                    {
+                        "name": "badges",
+                        "peer": "BuiltinBadge",
+                        "optional": True,
+                        "cardinality": "many",
                     },
                 ],
             },
@@ -106,7 +130,7 @@ def schema_all_in_one():
                 "default_filter": "name__value",
                 "order_by": ["name__value"],
                 "display_labels": ["label__value"],
-                "branch": True,
+                "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "label", "kind": "Text", "optional": True},
@@ -156,7 +180,7 @@ async def test_schema_branch_set():
     schema_branch = SchemaBranch(cache={}, name="test")
 
     schema_branch.set(name="schema1", schema=schema)
-    assert hash(schema) in schema_branch._cache
+    assert schema.get_hash() in schema_branch._cache
     assert len(schema_branch._cache) == 1
 
     schema_branch.set(name="schema2", schema=schema)
@@ -210,6 +234,26 @@ async def test_schema_branch_process_inheritance(schema_all_in_one):
     assert criticality.get_attribute(name="my_generic_name").inherited
 
     assert criticality.get_attribute(name="mybool")
+
+
+async def test_schema_branch_process_branch_support(schema_all_in_one):
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    schema.process_inheritance()
+    schema.process_branch_support()
+
+    criticality = schema.get(name="BuiltinCriticality")
+    assert criticality.get_attribute(name="name").branch == BranchSupportType.AGNOSTIC
+    assert criticality.get_attribute(name="level").branch == BranchSupportType.AWARE
+    assert criticality.get_attribute(name="local_attr").branch == BranchSupportType.LOCAL
+    assert criticality.get_relationship(name="tags").branch == BranchSupportType.AWARE
+    assert criticality.get_relationship(name="status").branch == BranchSupportType.AGNOSTIC
+    assert criticality.get_relationship(name="badges").branch == BranchSupportType.LOCAL
+
+    criticality = schema.get(name="BuiltinTag")
+    assert criticality.get_attribute(name="name").branch == BranchSupportType.AWARE
+    assert criticality.get_attribute(name="description").branch == BranchSupportType.AGNOSTIC
 
 
 async def test_schema_branch_process_default_values(schema_all_in_one):
@@ -298,7 +342,7 @@ async def test_schema_branch_generate_identifiers(schema_all_in_one):
     assert generic.relationships[1].identifier == "builtinstatus__infragenericinterface"
 
 
-async def test_schema_branch_load_schema_extension(session: AsyncSession, default_branch, helper):
+async def test_schema_branch_load_schema_extension(db: InfrahubDatabase, default_branch, helper):
     schema = SchemaRoot(**core_models)
 
     schema_branch = SchemaBranch(cache={}, name="test")
@@ -322,7 +366,7 @@ async def test_schema_branch_load_schema_extension(session: AsyncSession, defaul
 
 
 async def test_schema_branch_process_filters(
-    session, reset_registry, default_branch: Branch, register_internal_models_schema
+    db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
 ):
     FULL_SCHEMA = {
         "nodes": [
@@ -370,7 +414,36 @@ async def test_schema_branch_process_filters(
     criticality_dict = schema_branch.get("BuiltinCriticality").dict()
 
     expected_filters = [
-        {"name": "ids", "kind": FilterSchemaKind.LIST, "enum": None, "object_kind": None, "description": None},
+        {"name": "ids", "kind": FilterSchemaKind.TEXT, "enum": None, "object_kind": None, "description": None},
+        {"name": "name__value", "kind": FilterSchemaKind.TEXT, "enum": None, "object_kind": None, "description": None},
+        {
+            "name": "name__is_visible",
+            "kind": FilterSchemaKind.BOOLEAN,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {
+            "name": "name__is_protected",
+            "kind": FilterSchemaKind.BOOLEAN,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {
+            "name": "name__source__id",
+            "kind": FilterSchemaKind.TEXT,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {
+            "name": "name__owner__id",
+            "kind": FilterSchemaKind.TEXT,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
         {
             "name": "level__value",
             "kind": FilterSchemaKind.NUMBER,
@@ -379,14 +452,57 @@ async def test_schema_branch_process_filters(
             "description": None,
         },
         {
-            "name": "color__value",
+            "name": "level__is_visible",
+            "kind": FilterSchemaKind.BOOLEAN,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {
+            "name": "level__is_protected",
+            "kind": FilterSchemaKind.BOOLEAN,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {
+            "name": "level__source__id",
             "kind": FilterSchemaKind.TEXT,
             "enum": None,
             "object_kind": None,
             "description": None,
         },
         {
-            "name": "name__value",
+            "name": "level__owner__id",
+            "kind": FilterSchemaKind.TEXT,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {"name": "color__value", "kind": FilterSchemaKind.TEXT, "enum": None, "object_kind": None, "description": None},
+        {
+            "name": "color__is_visible",
+            "kind": FilterSchemaKind.BOOLEAN,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {
+            "name": "color__is_protected",
+            "kind": FilterSchemaKind.BOOLEAN,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {
+            "name": "color__source__id",
+            "kind": FilterSchemaKind.TEXT,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {
+            "name": "color__owner__id",
             "kind": FilterSchemaKind.TEXT,
             "enum": None,
             "object_kind": None,
@@ -399,13 +515,70 @@ async def test_schema_branch_process_filters(
             "object_kind": None,
             "description": None,
         },
+        {
+            "name": "description__is_visible",
+            "kind": FilterSchemaKind.BOOLEAN,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {
+            "name": "description__is_protected",
+            "kind": FilterSchemaKind.BOOLEAN,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {
+            "name": "description__source__id",
+            "kind": FilterSchemaKind.TEXT,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {
+            "name": "description__owner__id",
+            "kind": FilterSchemaKind.TEXT,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {"name": "any__value", "kind": FilterSchemaKind.TEXT, "enum": None, "object_kind": None, "description": None},
+        {
+            "name": "any__is_visible",
+            "kind": FilterSchemaKind.BOOLEAN,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {
+            "name": "any__is_protected",
+            "kind": FilterSchemaKind.BOOLEAN,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {
+            "name": "any__source__id",
+            "kind": FilterSchemaKind.TEXT,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {
+            "name": "any__owner__id",
+            "kind": FilterSchemaKind.TEXT,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
     ]
 
     assert not DeepDiff(criticality_dict["filters"], expected_filters, ignore_order=True)
 
 
 async def test_schema_branch_copy(
-    session: AsyncSession, reset_registry, default_branch: Branch, register_internal_models_schema
+    db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
 ):
     FULL_SCHEMA = {
         "nodes": [
@@ -450,14 +623,14 @@ async def test_schema_branch_copy(
     new_schema = schema_branch.duplicate()
 
     assert id(new_schema.nodes) != id(schema_branch.nodes)
-    assert hash(new_schema) == hash(schema_branch)
+    assert new_schema.get_hash() == schema_branch.get_hash()
 
     new_schema.process()
-    assert hash(new_schema) != hash(schema_branch)
+    assert new_schema.get_hash() != schema_branch.get_hash()
 
 
 async def test_schema_branch_diff(
-    session: AsyncSession, reset_registry, default_branch: Branch, register_internal_models_schema
+    db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
 ):
     FULL_SCHEMA = {
         "nodes": [
@@ -526,11 +699,11 @@ async def test_schema_manager_set():
     manager = SchemaManager()
 
     manager.set(name="schema1", schema=schema)
-    assert hash(schema) in manager._cache
-    assert len(manager._cache) == 1
+    assert len(manager._cache) > 0
+    cache_size = len(manager._cache)
 
     manager.set(name="schema2", schema=schema)
-    assert len(manager._cache) == 1
+    assert len(manager._cache) == cache_size
 
 
 async def test_schema_manager_get(default_branch: Branch):
@@ -548,16 +721,16 @@ async def test_schema_manager_get(default_branch: Branch):
     manager = SchemaManager()
 
     manager.set(name="schema1", schema=schema)
-    assert len(manager._cache) == 1
+    assert len(manager._cache) > 0
 
     schema11 = manager.get(name="schema1")
-    assert schema11 == schema
+    assert schema11.namespace == schema.namespace
 
 
 # -----------------------------------------------------------------
 
 
-async def test_load_node_to_db_node_schema(session: AsyncSession, default_branch: Branch):
+async def test_load_node_to_db_node_schema(db: InfrahubDatabase, default_branch: Branch):
     registry.schema = SchemaManager()
     registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
 
@@ -577,20 +750,18 @@ async def test_load_node_to_db_node_schema(session: AsyncSession, default_branch
     }
     node = NodeSchema(**SCHEMA)
 
-    await registry.schema.load_node_to_db(node=node, session=session, branch=default_branch)
+    await registry.schema.load_node_to_db(node=node, db=db, branch=default_branch)
 
     node2 = registry.schema.get(name=node.kind, branch=default_branch)
     assert node2.id
     assert node2.relationships[0].id
     assert node2.attributes[0].id
 
-    results = await SchemaManager.query(
-        schema="SchemaNode", filters={"kind__value": "TestCriticality"}, branch=default_branch, session=session
-    )
+    results = await SchemaManager.query(schema="SchemaNode", branch=default_branch, db=db)
     assert len(results) == 1
 
 
-async def test_load_node_to_db_generic_schema(session: AsyncSession, default_branch):
+async def test_load_node_to_db_generic_schema(db: InfrahubDatabase, default_branch):
     registry.schema = SchemaManager()
     registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
 
@@ -602,15 +773,15 @@ async def test_load_node_to_db_generic_schema(session: AsyncSession, default_bra
         ],
     }
     node = GenericSchema(**SCHEMA)
-    await registry.schema.load_node_to_db(node=node, session=session, branch=default_branch)
+    await registry.schema.load_node_to_db(node=node, db=db, branch=default_branch)
 
     results = await SchemaManager.query(
-        schema="SchemaGeneric", filters={"kind__value": "InfraGenericInterface"}, branch=default_branch, session=session
+        schema="SchemaGeneric", filters={"kind__value": "InfraGenericInterface"}, branch=default_branch, db=db
     )
     assert len(results) == 1
 
 
-async def test_load_node_to_db_group_schema(session: AsyncSession, default_branch: Branch):
+async def test_load_node_to_db_group_schema(db: InfrahubDatabase, default_branch: Branch):
     registry.schema = SchemaManager()
     registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
 
@@ -620,15 +791,15 @@ async def test_load_node_to_db_group_schema(session: AsyncSession, default_branc
     }
 
     node = GroupSchema(**SCHEMA)
-    await registry.schema.load_node_to_db(node=node, session=session, branch=default_branch)
+    await registry.schema.load_node_to_db(node=node, db=db, branch=default_branch)
 
     results = await SchemaManager.query(
-        schema="SchemaGroup", filters={"kind__value": "GenericGroup"}, branch=default_branch, session=session
+        schema="SchemaGroup", filters={"kind__value": "GenericGroup"}, branch=default_branch, db=db
     )
     assert len(results) == 1
 
 
-async def test_update_node_in_db_node_schema(session: AsyncSession, default_branch: Branch):
+async def test_update_node_in_db_node_schema(db: InfrahubDatabase, default_branch: Branch):
     SCHEMA = {
         "name": "Criticality",
         "namespace": "Builtin",
@@ -646,7 +817,7 @@ async def test_update_node_in_db_node_schema(session: AsyncSession, default_bran
 
     registry.schema = SchemaManager()
     registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
-    await registry.schema.load_node_to_db(node=NodeSchema(**SCHEMA), session=session, branch=default_branch)
+    await registry.schema.load_node_to_db(node=NodeSchema(**SCHEMA), db=db, branch=default_branch)
 
     node = registry.schema.get(name="BuiltinCriticality", branch=default_branch)
 
@@ -655,85 +826,83 @@ async def test_update_node_in_db_node_schema(session: AsyncSession, default_bran
     new_node.default_filter = "kind__value"
     new_node.attributes[0].unique = False
 
-    await registry.schema.update_node_in_db(node=new_node, session=session, branch=default_branch)
+    await registry.schema.update_node_in_db(node=new_node, db=db, branch=default_branch)
 
-    results = await SchemaManager.get_many(ids=[node.id, new_node.attributes[0].id], session=session)
+    results = await SchemaManager.get_many(ids=[node.id, new_node.attributes[0].id], db=db)
 
     assert results[new_node.id].default_filter.value == "kind__value"
     assert results[new_node.attributes[0].id].unique.value is False
 
 
-async def test_load_schema_to_db_internal_models(session: AsyncSession, default_branch: Branch):
+async def test_load_schema_to_db_internal_models(db: InfrahubDatabase, default_branch: Branch):
     schema = SchemaRoot(**internal_schema)
     new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
-    await registry.schema.load_schema_to_db(schema=new_schema, session=session, branch=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=new_schema, db=db, branch=default_branch.name)
 
     node_schema = registry.schema.get(name="SchemaNode", branch=default_branch)
-    results = await SchemaManager.query(schema=node_schema, session=session)
+    results = await SchemaManager.query(schema=node_schema, db=db)
     assert len(results) > 1
 
 
 async def test_load_schema_to_db_core_models(
-    session: AsyncSession, default_branch: Branch, register_internal_models_schema
+    db: InfrahubDatabase, default_branch: Branch, register_internal_models_schema
 ):
     schema = SchemaRoot(**core_models)
     new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
-    await registry.schema.load_schema_to_db(schema=new_schema, session=session)
+    await registry.schema.load_schema_to_db(schema=new_schema, db=db)
 
     node_schema = registry.get_schema(name="SchemaGeneric")
-    results = await SchemaManager.query(schema=node_schema, session=session)
+    results = await SchemaManager.query(schema=node_schema, db=db)
     assert len(results) > 1
 
 
 async def test_load_schema_to_db_simple_01(
-    session: AsyncSession,
+    db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
     helper,
 ):
     schema = SchemaRoot(**helper.schema_file("infra_simple_01.json"))
     new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
-    await registry.schema.load_schema_to_db(schema=new_schema, session=session, branch=default_branch)
+    await registry.schema.load_schema_to_db(schema=new_schema, db=db, branch=default_branch)
 
     node_schema = registry.schema.get(name="SchemaNode")
     results = await SchemaManager.query(
-        schema=node_schema, filters={"name__value": "Device"}, session=session, branch=default_branch
+        schema=node_schema, filters={"name__value": "Device"}, db=db, branch=default_branch
     )
     assert len(results) == 1
 
 
 async def test_load_schema_to_db_w_generics_01(
-    session: AsyncSession,
+    db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
     helper,
 ):
     schema = SchemaRoot(**helper.schema_file("infra_w_generics_01.json"))
     new_schema = registry.schema.register_schema(schema=schema, branch=default_branch.name)
-    await registry.schema.load_schema_to_db(schema=new_schema, session=session, branch=default_branch)
+    await registry.schema.load_schema_to_db(schema=new_schema, db=db, branch=default_branch)
 
     node_schema = registry.schema.get(name="SchemaNode")
     results = await SchemaManager.query(
-        schema=node_schema, filters={"name__value": "InterfaceL3"}, session=session, branch=default_branch
+        schema=node_schema, filters={"name__value": "InterfaceL3"}, db=db, branch=default_branch
     )
     assert len(results) == 1
 
 
-@pytest.mark.xfail(
-    reason="FIXME: Hash before and after should match, it's working if Criticality only has 2 attributes but not more"
-)
 async def test_load_schema_from_db(
-    session: AsyncSession, reset_registry, default_branch: Branch, register_internal_models_schema
+    db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
 ):
     FULL_SCHEMA = {
         "nodes": [
             {
-                "name": "criticality",
-                "kind": "Criticality",
+                "namespace": "Test",
+                "name": "Criticality",
                 "default_filter": "name__value",
                 "label": "Criticality",
+                "include_in_menu": True,
                 "attributes": [
                     {"name": "name", "kind": "Text", "label": "Name", "unique": True},
                     {"name": "level", "kind": "Number", "label": "Level"},
@@ -741,10 +910,10 @@ async def test_load_schema_from_db(
                     {"name": "description", "kind": "Text", "label": "Description", "optional": True},
                 ],
                 "relationships": [
-                    {"name": "tags", "peer": "Tag", "label": "Tags", "optional": True, "cardinality": "many"},
+                    {"name": "tags", "peer": "BuiltinTag", "label": "Tags", "optional": True, "cardinality": "many"},
                     {
                         "name": "primary_tag",
-                        "peer": "Tag",
+                        "peer": "BuiltinTag",
                         "label": "Primary Tag",
                         "identifier": "primary_tag__criticality",
                         "optional": True,
@@ -753,9 +922,10 @@ async def test_load_schema_from_db(
                 ],
             },
             {
-                "name": "tag",
-                "kind": "Tag",
+                "namespace": "Builtin",
+                "name": "Tag",
                 "label": "Tag",
+                "include_in_menu": False,
                 "default_filter": "name__value",
                 "attributes": [
                     {"name": "name", "kind": "Text", "label": "Name", "unique": True},
@@ -765,9 +935,10 @@ async def test_load_schema_from_db(
         ],
         "generics": [
             {
-                "name": "generic_interface",
-                "kind": "GenericInterface",
+                "namespace": "Test",
+                "name": "GenericInterface",
                 "label": "Generic Interface",
+                "include_in_menu": True,
                 "attributes": [
                     {"name": "my_generic_name", "kind": "Text", "label": "My Generic String"},
                 ],
@@ -782,15 +953,90 @@ async def test_load_schema_from_db(
     }
 
     schema1 = registry.schema.register_schema(schema=SchemaRoot(**FULL_SCHEMA), branch=default_branch.name)
-    await registry.schema.load_schema_to_db(schema=schema1, session=session, branch=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema1, db=db, branch=default_branch.name)
     schema11 = registry.schema.get_schema_branch(name=default_branch.name)
-    schema2 = await registry.schema.load_schema_from_db(session=session, branch=default_branch.name)
+    schema2 = await registry.schema.load_schema_from_db(db=db, branch=default_branch.name)
 
     assert len(schema2.nodes) == 7
     assert len(schema2.generics) == 1
     assert len(schema2.groups) == 1
 
-    assert hash(schema11.get(name="Criticality")) == hash(schema2.get(name="Criticality"))
-    assert hash(schema11.get(name="Tag")) == hash(schema2.get(name="Tag"))
-    assert hash(schema11.get(name="GenericInterface")) == hash(schema2.get(name="GenericInterface"))
-    assert hash(schema11.get(name="GenericGroup")) == hash(schema2.get(name="GenericGroup"))
+    assert schema11.get(name="TestCriticality").get_hash() == schema2.get(name="TestCriticality").get_hash()
+    assert schema11.get(name="BuiltinTag").get_hash() == schema2.get(name="BuiltinTag").get_hash()
+    assert schema11.get(name="TestGenericInterface").get_hash() == schema2.get(name="TestGenericInterface").get_hash()
+    assert schema11.get(name="GenericGroup").get_hash() == schema2.get(name="GenericGroup").get_hash()
+
+
+async def test_load_schema(
+    db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
+):
+    FULL_SCHEMA = {
+        "nodes": [
+            {
+                "namespace": "Test",
+                "name": "Criticality",
+                "default_filter": "name__value",
+                "label": "Criticality",
+                "include_in_menu": True,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                    {"name": "level", "kind": "Number", "label": "Level"},
+                    {"name": "color", "kind": "Text", "label": "Color", "default_value": "#444444"},
+                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
+                ],
+                "relationships": [
+                    {"name": "tags", "peer": "BuiltinTag", "label": "Tags", "optional": True, "cardinality": "many"},
+                    {
+                        "name": "primary_tag",
+                        "peer": "BuiltinTag",
+                        "label": "Primary Tag",
+                        "identifier": "primary_tag__criticality",
+                        "optional": True,
+                        "cardinality": "one",
+                    },
+                ],
+            },
+            {
+                "namespace": "Builtin",
+                "name": "Tag",
+                "label": "Tag",
+                "default_filter": "name__value",
+                "include_in_menu": True,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
+                ],
+            },
+        ],
+        "generics": [
+            {
+                "namespace": "Test",
+                "name": "GenericInterface",
+                "label": "Generic Interface",
+                "include_in_menu": True,
+                "attributes": [
+                    {"name": "my_generic_name", "kind": "Text", "label": "My Generic String"},
+                ],
+            },
+        ],
+        "groups": [
+            {
+                "name": "generic_group",
+                "kind": "GenericGroup",
+            },
+        ],
+    }
+
+    schema1 = registry.schema.register_schema(schema=SchemaRoot(**FULL_SCHEMA), branch=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema1, db=db, branch=default_branch.name)
+    schema11 = registry.schema.get_schema_branch(name=default_branch.name)
+    schema2 = await registry.schema.load_schema(db=db, branch=default_branch.name)
+
+    assert len(schema2.nodes) == 7
+    assert len(schema2.generics) == 1
+    assert len(schema2.groups) == 1
+
+    assert schema11.get(name="TestCriticality").get_hash() == schema2.get(name="TestCriticality").get_hash()
+    assert schema11.get(name="BuiltinTag").get_hash() == schema2.get(name="BuiltinTag").get_hash()
+    assert schema11.get(name="TestGenericInterface").get_hash() == schema2.get(name="TestGenericInterface").get_hash()
+    assert schema11.get(name="GenericGroup").get_hash() == schema2.get(name="GenericGroup").get_hash()

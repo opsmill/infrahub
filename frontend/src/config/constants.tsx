@@ -1,62 +1,3 @@
-import ArtifactsObjectItemDetailsPaginated from "../screens/artifacts/object-item-details-paginated";
-import { BrancheItemDetails } from "../screens/branches/branche-item-details";
-import { BranchesItems } from "../screens/branches/branches-items";
-import GroupItemDetails from "../screens/groups/group-details";
-import GroupItems from "../screens/groups/group-items";
-import ObjectItemDetailsPaginated from "../screens/object-item-details/object-item-details-paginated";
-import ObjectItemsPaginated from "../screens/object-items/object-items-paginated";
-import OpsObjects from "../screens/ops-objects/ops-objects";
-import { ProposedChangesDetails } from "../screens/proposed-changes/proposed-changes-details";
-import { ProposedChanges } from "../screens/proposed-changes/proposed-changes-items";
-import UserProfile from "../screens/user-profile/user-profile";
-
-export const MAIN_ROUTES = [
-  {
-    path: "/profile",
-    element: <UserProfile />,
-  },
-  {
-    path: "/objects/:objectname/:objectid",
-    element: <ObjectItemDetailsPaginated />,
-  },
-  {
-    path: "/objects/Artifact/:objectid",
-    element: <ArtifactsObjectItemDetailsPaginated />,
-  },
-  {
-    path: "/objects/:objectname",
-    element: <ObjectItemsPaginated />,
-  },
-  {
-    path: "/schema",
-    element: <OpsObjects />,
-  },
-  {
-    path: "/branches",
-    element: <BranchesItems />,
-  },
-  {
-    path: "/proposed-changes",
-    element: <ProposedChanges />,
-  },
-  {
-    path: "/proposed-changes/:proposedchange",
-    element: <ProposedChangesDetails />,
-  },
-  {
-    path: "/branches/:branchname",
-    element: <BrancheItemDetails />,
-  },
-  {
-    path: "/groups",
-    element: <GroupItems />,
-  },
-  {
-    path: "/groups/:groupname/:groupid",
-    element: <GroupItemDetails />,
-  },
-];
-
 export const ADMIN_MENU_ITEMS = [
   {
     path: "/schema",
@@ -85,33 +26,43 @@ export const ACCESS_TOKEN_KEY = "access_token";
 
 export const REFRESH_TOKEN_KEY = "refresh_token";
 
-export const ACCOUNT_OBJECT = "Account";
+export const NODE_OBJECT = "CoreNode";
 
-export const ACCOUNT_TOKEN_OBJECT = "AccountToken";
+export const DATA_CHECK_OBJECT = "CoreDataCheck";
 
-export const PROPOSED_CHANGES_OBJECT = "ProposedChange";
+export const ACCOUNT_OBJECT = "CoreAccount";
 
-export const PROPOSED_CHANGES_CHANGE_THREAD = "ChangeThread";
+export const ACCOUNT_TOKEN_OBJECT = "InternalAccountToken";
+
+export const ARTIFACT_DEFINITION_OBJECT = "CoreArtifactDefinition";
+
+export const PROPOSED_CHANGES_OBJECT = "CoreProposedChange";
+
+export const PROPOSED_CHANGES_THREAD_OBJECT = "CoreThread";
+
 export const PROPOSED_CHANGES_CHANGE_THREAD_OBJECT = "CoreChangeThread";
 
-export const PROPOSED_CHANGES_FILE_THREAD = "FileThread";
 export const PROPOSED_CHANGES_FILE_THREAD_OBJECT = "CoreFileThread";
 
-export const ARTIFACT_OBJECT = "Artifact";
-export const PROPOSED_CHANGES_ARTIFACT_THREAD = "ArtifactThread";
+export const PROPOSED_CHANGES_OBJECT_THREAD_OBJECT = "CoreObjectThread";
+
+export const ARTIFACT_OBJECT = "CoreArtifact";
+
 export const PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT = "CoreArtifactThread";
 
 export const PROPOSED_CHANGES_COMMENT_OBJECT = "CoreChangeComment";
 
 export const PROPOSED_CHANGES_THREAD_COMMENT_OBJECT = "CoreThreadComment";
 
-export const GROUP_OBJECT = "Group";
+export const PROPOSED_CHANGES_VALIDATOR_OBJECT = "CoreValidator";
+
+export const GROUP_OBJECT = "CoreGroup";
 
 export const WRITE_ROLES = ["admin", "read-write"];
 
 export const ADMIN_ROLES = ["admin"];
 
-export const MENU_BLACKLIST = [
+export const MENU_EXCLUDELIST = [
   "InternalAccountToken",
   "CoreChangeComment",
   "CoreChangeThread",
@@ -122,8 +73,59 @@ export const MENU_BLACKLIST = [
   "InternalRefreshToken",
   "CoreStandardGroup",
   "CoreThreadComment",
+  "CoreArtifactCheck",
+  "CoreStandardCheck",
+  "CoreDataCheck",
+  "CoreFileCheck",
+  "CoreSchemaCheck",
+  "CoreSchemaValidator",
+  "CoreDataValidator",
+  "CoreRepositoryValidator",
+  "CoreArtifactValidator",
 ];
 
-export const ATTRIBUTES_BLACKLIST = ["HashedPassword"];
+export const ATTRIBUTES_NAME_EXCLUDELIST = ["checksum", "storage_id"];
 
-export const COLUMNS_BLACKLIST = ["TextArea", "JSON"];
+export const ATTRIBUTES_EXCLUDELIST = ["HashedPassword"];
+
+export const COLUMNS_EXCLUDELIST = ["TextArea", "JSON", "Password"];
+
+export const NODE_PATH_EXCLUDELIST = ["property"];
+
+export const VALIDATION_STATES = {
+  QUEUED: "queued",
+  IN_PROGRESS: "in_progress",
+  COMPLETED: "completed",
+};
+
+export const VALIDATION_CONCLUSIONS = {
+  UNKNOWN: "unknown",
+  FAILURE: "failure",
+  SUCCESS: "success",
+};
+
+export const CHECK_SEVERITY = {
+  SUCCESS: "success",
+  INFO: "info",
+  WARNING: "warning",
+  ERROR: "error",
+  CRITICAL: "critical",
+};
+
+export const CHECK_CONCLUSIONS = {
+  UNKNOWN: "unknown",
+  FAILURE: "failure",
+  SUCCESS: "success",
+};
+
+["CoreArtifactValidator", "CoreDataValidator", "CoreRepositoryValidator", "CoreSchemaValidator"];
+
+export const VALIDATIONS_ENUM_MAP: { [key: string]: string } = {
+  CoreArtifactValidator: "ARTIFACT",
+  CoreDataValidator: "DATA",
+  CoreRepositoryValidator: "REPOSITORY",
+  CoreSchemaValidator: "SCHEMA",
+  all: "ALL",
+};
+
+export const MAX_VALUE_LENGTH_DISPLAY = 40;

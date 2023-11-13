@@ -1,31 +1,15 @@
-import { iSchemaKindNameMap } from "../state/atoms/schemaKindName.atom";
-
 const regex = /^Related/; // starts with Related
 
-export const getObjectDetailsUrl = (
-  nodeId: string,
-  nodeType: string,
-  schemaKindName: iSchemaKindNameMap
-): string => {
+export const getObjectDetailsUrl = (nodeId: string, nodeType: string): string => {
   const peerKind: string = nodeType?.replace(regex, "");
 
-  const peerName = schemaKindName[peerKind];
+  if (peerKind === "CoreStandardGroup") {
+    const url = `/groups/${peerKind}/${nodeId}`;
 
-  const url = `/objects/${peerName}/${nodeId}`;
+    return url;
+  }
 
-  return url;
-};
-
-export const getGroupDetailsUrl = (
-  nodeId: string,
-  nodeType: string,
-  schemaKindName: iSchemaKindNameMap
-): string => {
-  const peerKind: string = nodeType?.replace(regex, "");
-
-  const peerName = schemaKindName[peerKind];
-
-  const url = `/groups/${peerName}/${nodeId}`;
+  const url = `/objects/${peerKind}/${nodeId}`;
 
   return url;
 };

@@ -18,8 +18,6 @@
   },
   "experimental_features": {
     "pull_request": false,
-    "paginated": false,
-    "test": true,
-    "ignore_authentication_requirements": true
+    "paginated": false
   }
 }

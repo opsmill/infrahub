@@ -1,15 +1,8 @@
 import { gql, useReactiveVar } from "@apollo/client";
-import { CheckIcon } from "@heroicons/react/20/solid";
-import {
-  CircleStackIcon,
-  PlusIcon,
-  ShieldCheckIcon,
-  Square3Stack3DIcon,
-} from "@heroicons/react/24/outline";
+import { Icon } from "@iconify-icon/react";
 import { format, formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
-import { useCallback, useContext, useEffect, useState } from "react";
-import { toast } from "react-toastify";
+import { useCallback, useContext, useState } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "../config/qsp";
 import { AuthContext } from "../decorators/withAuth";
@@ -20,17 +13,16 @@ import { branchVar } from "../graphql/variables/branchVar";
 import { dateVar } from "../graphql/variables/dateVar";
 import { branchesState } from "../state/atoms/branches.atom";
 import { classNames, objectToString } from "../utils/common";
-import { ALERT_TYPES, Alert } from "./alert";
 import { BUTTON_TYPES, Button } from "./button";
 import { Input } from "./input";
-import { PopOver } from "./popover";
+import { POPOVER_SIZE, PopOver } from "./popover";
 import { Select } from "./select";
 import { SelectButton } from "./select-button";
 import { Switch } from "./switch";
 
 export default function BranchSelector() {
   const [branches] = useAtom(branchesState);
-  const [branchInQueryString, setBranchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
+  const [, setBranchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
   const auth = useContext(AuthContext);
@@ -42,32 +34,10 @@ export default function BranchSelector() {
   const [isDataOnly, setIsDataOnly] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
 
-  const getCurrentBranch = useCallback((): Branch => {
-    if (branch) {
-      return branch;
-    }
-
-    if (branchInQueryString) {
-      return branches.filter((b) => b.name === branchInQueryString.trim())[0];
-    } else {
-      return branches.filter((b) => b.is_default)[0];
-    }
-  }, [branch, branchInQueryString, branches]);
-
-  useEffect(() => {
-    // On page load, if no branch is set in reactive var. Fetching it from QSP and setting it in state.
-    if (!branch && branchInQueryString && branches.length) {
-      const selectedBranch = branches.find((b) => b.name === branchInQueryString);
-      if (selectedBranch) {
-        branchVar(selectedBranch);
-      }
-    }
-  }, [branch, branchInQueryString, branches]);
-
   const valueLabel = (
     <>
-      <Square3Stack3DIcon className="h-5 w-5" aria-hidden="true" />
-      <p className="ml-2.5 text-sm font-medium">{getCurrentBranch()?.name}</p>
+      <Icon icon={"mdi:layers-triple"} />
+      <p className="ml-2.5 text-sm font-medium">{branch?.name}</p>
     </>
   );
 
@@ -76,24 +46,38 @@ export default function BranchSelector() {
       disabled={!auth?.permissions?.write}
       buttonType={BUTTON_TYPES.MAIN}
       className="flex-1 rounded-r-md border border-transparent"
-      type="submit">
-      <PlusIcon className="h-5 w-5 text-custom-white" aria-hidden="true" />
+      type="submit"
+      data-cy="create-branch-button">
+      <Icon icon={"mdi:plus"} className="text-custom-white" />
     </Button>
   );
 
-  const branchesOptions = branches.map((branch) => ({
-    id: branch.name,
-    name: branch.name,
-  }));
+  const branchesOptions = branches.sort((branch1, branch2) => {
+    if (branch1.name === "main") {
+      return -1;
+    }
 
-  const defaultBranch = branches?.filter((b) => b.is_default)[0]?.name;
+    if (branch2.name === "main") {
+      return 1;
+    }
+
+    if (branch2.name === "main") {
+      return -1;
+    }
+
+    if (branch1.name > branch2.name) {
+      return 1;
+    }
+
+    return -1;
+  });
+
+  const defaultBranch = branches?.filter((b) => b.is_default)[0]?.id;
 
   /**
    * Update GraphQL client endpoint whenever branch changes
    */
   const onBranchChange = useCallback((branch: Branch) => {
-    branchVar(branch);
-
     if (branch?.is_default) {
       // undefined is needed to remove a parameter from the QSP
       setBranchInQueryString(undefined);
@@ -108,16 +92,18 @@ export default function BranchSelector() {
     <div className="flex relative flex-col">
       {option.is_data_only && (
         <div className="absolute bottom-0 right-0">
-          <CircleStackIcon
-            className={classNames("h-4 w-4", active ? "text-custom-white" : "text-gray-500")}
+          <Icon
+            icon={"mdi:database"}
+            className={classNames(active ? "text-custom-white" : "text-gray-500")}
           />
         </div>
       )}
 
       {option.is_default && (
         <div className="absolute bottom-0 right-0">
-          <ShieldCheckIcon
-            className={classNames("h-4 w-4", active ? "text-custom-white" : "text-gray-500")}
+          <Icon
+            icon={"mdi:shield-check"}
+            className={classNames(active ? "text-custom-white" : "text-gray-500")}
           />
         </div>
       )}
@@ -126,7 +112,7 @@ export default function BranchSelector() {
         <p className={selected ? "font-semibold" : "font-normal"}>{option.name}</p>
         {selected ? (
           <span className={active ? "text-custom-white" : "text-gray-500"}>
-            <CheckIcon className="h-5 w-5" aria-hidden="true" />
+            <Icon icon={"mdi:check"} />
           </span>
         ) : null}
       </div>
@@ -176,9 +162,6 @@ export default function BranchSelector() {
       window.location.reload();
     } catch (error) {
       console.error("Error while creating the branch: ", error);
-      toast(
-        <Alert type={ALERT_TYPES.ERROR} message={"An error occured while creating the branch"} />
-      );
 
       setIsLoading(false);
     }
@@ -194,17 +177,18 @@ export default function BranchSelector() {
   return (
     <div className="flex">
       <SelectButton
-        value={getCurrentBranch()}
+        value={branch}
         valueLabel={valueLabel}
         onChange={onBranchChange}
-        options={branches}
+        options={branchesOptions}
         renderOption={renderOption}
       />
       <PopOver
         disabled={!auth?.permissions?.write}
         buttonComponent={PopOverButton}
         className="right-0"
-        title={"Create a new branch"}>
+        title={"Create a new branch"}
+        height={POPOVER_SIZE.NONE}>
         {({ close }: any) => (
           <>
             <div className="flex flex-col">

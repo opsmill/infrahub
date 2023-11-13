@@ -12,37 +12,23 @@ interface Props {
   setValue: UseFormSetValue<FieldValues>;
   error?: FormFieldError;
   isProtected?: boolean;
+  isOptionnal?: boolean;
   disabled?: boolean;
 }
 
 export const OpsInputRegister = (props: Props) => {
-  const {
-    name,
-    value,
-    register,
-    setValue,
-    config,
-    label,
-    error,
-    inputType,
-    isProtected,
-    disabled,
-  } = props;
+  const { name, register, setValue, config, inputType, ...propsToPass } = props;
 
   const inputRegister = register(name, {
-    value: value ?? "",
+    value: props.value || "",
     ...config,
   });
 
   return (
     <OpsInput
+      {...propsToPass}
       type={inputType}
-      label={label}
-      value={value}
       onChange={(value) => setValue(inputRegister.name, value)}
-      error={error}
-      isProtected={isProtected}
-      disabled={disabled}
     />
   );
 };

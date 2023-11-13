@@ -3,7 +3,9 @@ from pathlib import Path
 from typing import Optional, Union
 
 from pydantic import BaseSettings
-from typing_extensions import Self
+
+from infrahub import config
+from infrahub.exceptions import NodeNotFound
 
 from .main import InfrahubObjectStorage
 
@@ -19,8 +21,7 @@ class LocalStorageSettings(BaseSettings):
 class InfrahubLocalStorage(InfrahubObjectStorage):
     settings: LocalStorageSettings
 
-    # pylint: disable=super-init-not-called
-    def __init__(self, settings: Optional[Union[dict, LocalStorageSettings]] = None) -> Self:
+    def __init__(self, settings: Optional[Union[dict, LocalStorageSettings]] = None) -> None:
         if isinstance(settings, LocalStorageSettings):
             self.settings = settings
         elif isinstance(settings, dict):
@@ -33,12 +34,18 @@ class InfrahubLocalStorage(InfrahubObjectStorage):
                 f"A valid directory must be provided for InfrahubLocalStorage, instead of {self.directory_root}"
             )
 
-    async def store(self, identifier: str, content: bytes):
+    async def store(self, identifier: str, content: bytes) -> None:
         fileh = Path(self.generate_path(identifier=identifier))
         fileh.write_bytes(data=content)
 
     async def retrieve(self, identifier: str, encoding: str = "utf-8") -> str:
         fileh = Path(self.generate_path(identifier=identifier))
+
+        if not fileh.exists():
+            raise NodeNotFound(
+                branch_name=config.SETTINGS.main.default_branch, node_type="StorageObject", identifier=identifier
+            )
+
         return fileh.read_text(encoding=encoding)
 
     @property
@@ -51,5 +58,5 @@ class InfrahubLocalStorage(InfrahubObjectStorage):
 
         return storage_directory
 
-    def generate_path(self, identifier: str):
+    def generate_path(self, identifier: str) -> str:
         return os.path.join(self.directory_root, identifier)

@@ -6,6 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from infrahub.core.branch import Branch
+from infrahub.database import InfrahubDatabase
 from infrahub.message_bus.rpc import InfrahubRpcClientTesting
 
 
@@ -17,7 +18,7 @@ def patch_rpc_client():
 
 
 async def test_file_upload(
-    session, helper, local_storage_dir: str, admin_headers, default_branch: Branch, authentication_base
+    db: InfrahubDatabase, helper, local_storage_dir: str, admin_headers, default_branch: Branch, authentication_base
 ):
     from infrahub.server import app
 
@@ -47,7 +48,7 @@ async def test_file_upload(
 
 
 async def test_content_upload(
-    session, helper, local_storage_dir: str, admin_headers, default_branch: Branch, authentication_base
+    db: InfrahubDatabase, helper, local_storage_dir: str, admin_headers, default_branch: Branch, authentication_base
 ):
     from infrahub.server import app
 

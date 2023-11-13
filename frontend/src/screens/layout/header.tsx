@@ -18,7 +18,6 @@ import { AuthContext } from "../../decorators/withAuth";
 import { getProfileDetails } from "../../graphql/queries/profile/getProfileDetails";
 import { dateVar } from "../../graphql/variables/dateVar";
 import useQuery from "../../hooks/useQuery";
-import { configState } from "../../state/atoms/config.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { classNames, parseJwt } from "../../utils/common";
 import LoadingScreen from "../loading-screen/loading-screen";
@@ -33,14 +32,13 @@ const customId = "profile-alert";
 export default function Header(props: Props) {
   const { setSidebarOpen } = props;
 
-  const [config] = useAtom(configState);
   const [qspDate, setQspDate] = useQueryParam(QSP.DATETIME, StringParam);
   const date = useReactiveVar(dateVar);
   const auth = useContext(AuthContext);
   const [schemaList] = useAtom(schemaState);
   const navigate = useNavigate();
 
-  const schema = schemaList.find((s) => s.name === ACCOUNT_OBJECT);
+  const schema = schemaList.find((s) => s.kind === ACCOUNT_OBJECT);
 
   const localToken = localStorage.getItem(ACCESS_TOKEN_KEY);
 
@@ -92,10 +90,14 @@ export default function Header(props: Props) {
   };
 
   if (loading || !schema) {
-    return <LoadingScreen />;
+    return (
+      <div className="z-10 flex h-16 flex-shrink-0 bg-custom-white shadow">
+        <LoadingScreen size={32} hideText />
+      </div>
+    );
   }
 
-  const profile = data?.account_profile;
+  const profile = data?.AccountProfile;
 
   if (!loading && auth?.accessToken && (error || !profile)) {
     toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading profile data" />, {
@@ -107,7 +109,9 @@ export default function Header(props: Props) {
       auth?.signOut();
     }
 
-    return navigate("/");
+    navigate("/");
+
+    return null;
   }
 
   return (
@@ -128,7 +132,7 @@ export default function Header(props: Props) {
             </label>
             <div className="relative w-full text-gray-400 focus-within:text-gray-600">
               <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center">
-                <MagnifyingGlassIcon className="h-5 w-5" aria-hidden="true" />
+                <MagnifyingGlassIcon className="w-4 h-4" aria-hidden="true" />
               </div>
               <input
                 onChange={() => {}}
@@ -149,23 +153,21 @@ export default function Header(props: Props) {
           <BranchSelector />
 
           {/* Profile dropdown */}
-          {!auth?.accessToken &&
-            !config?.experimental_features?.ignore_authentication_requirements && (
-              <Link
-                to={window.location.pathname}
-                className={
-                  "block ml-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-md"
-                }
-                onClick={() => auth?.displaySignIn()}>
-                Sign in
-              </Link>
-            )}
+          {!auth?.accessToken && (
+            <Link
+              to={window.location.pathname}
+              className={"block ml-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-md"}
+              onClick={() => auth?.displaySignIn && auth?.displaySignIn()}>
+              Sign in
+            </Link>
+          )}
 
           {auth?.accessToken && (
             <Menu as="div" className="relative ml-3">
               <div>
-                <Menu.Button className="flex max-w-xs items-center rounded-full bg-custom-white text-sm focus:outline-none focus:ring-2 focus:ring-custom-blue-500 focus:ring-offset-2">
-                  <span className="sr-only">Open user menu</span>
+                <Menu.Button
+                  className="flex max-w-xs items-center rounded-full bg-custom-white text-sm focus:outline-none focus:ring-2 focus:ring-custom-blue-500 focus:ring-offset-2"
+                  data-cy="current-user-avatar-button">
                   <Avatar
                     name={profile?.name?.value}
                     // image="https://shotkit.com/wp-content/uploads/2020/07/headshots_image002.jpg"
@@ -200,7 +202,7 @@ export default function Header(props: Props) {
                     <Link
                       to={"/"}
                       className={"block px-4 py-2 text-sm text-gray-700 hover:bg-gray-200"}
-                      onClick={() => auth?.signOut()}>
+                      onClick={() => auth?.signOut && auth?.signOut()}>
                       Sign out
                     </Link>
                   </Menu.Item>

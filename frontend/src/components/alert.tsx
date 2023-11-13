@@ -41,21 +41,21 @@ export const Alert = (props: AlertProps) => {
   const getIcon = () => {
     switch (type) {
       case ALERT_TYPES.SUCCESS: {
-        return <CheckCircleIcon className="h-5 w-5 text-green-400" aria-hidden="true" />;
+        return <CheckCircleIcon className="w-4 h-4 text-green-400" aria-hidden="true" />;
       }
       case ALERT_TYPES.INFO: {
         return (
-          <InformationCircleIcon className="h-5 w-5 text-custom-blue-500" aria-hidden="true" />
+          <InformationCircleIcon className="w-4 h-4 text-custom-blue-500" aria-hidden="true" />
         );
       }
       case ALERT_TYPES.WARNING: {
-        return <ExclamationTriangleIcon className="h-5 w-5 text-yellow-400" aria-hidden="true" />;
+        return <ExclamationTriangleIcon className="w-4 h-4 text-yellow-400" aria-hidden="true" />;
       }
       case ALERT_TYPES.ERROR: {
-        return <XCircleIcon className="h-5 w-5 text-red-400" aria-hidden="true" />;
+        return <XCircleIcon className="w-4 h-4 text-red-400" aria-hidden="true" />;
       }
       default: {
-        return <LightBulbIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />;
+        return <LightBulbIcon className="w-4 h-4 text-gray-400" aria-hidden="true" />;
       }
     }
   };
@@ -123,8 +123,8 @@ export const Alert = (props: AlertProps) => {
 
   return (
     <div className={classNames("rounded-m p-4", alertClasses.container)}>
-      <div className="flex">
-        <div className="flex-shrink-0 flex items-start pt-1">{getIcon()}</div>
+      <div className="flex items-center">
+        <div className="flex-shrink-0 flex items-start">{getIcon()}</div>
         <div className="ml-3">
           {details ? <Accordion title={alertMessage}>{alertDetails}</Accordion> : alertMessage}
         </div>
@@ -137,7 +137,7 @@ export const Alert = (props: AlertProps) => {
                 alertClasses?.button
               )}
               onClick={handleDismiss}>
-              <XMarkIcon className="h-5 w-5" aria-hidden="true" />
+              <XMarkIcon className="w-4 h-4" aria-hidden="true" />
             </button>
           </div>
         </div>

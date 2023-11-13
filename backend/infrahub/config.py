@@ -5,12 +5,11 @@ import os.path
 import sys
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import toml
+from infrahub_sdk import generate_uuid
 from pydantic import BaseSettings, Field, ValidationError
-
-from infrahub_client.utils import generate_uuid
 
 SETTINGS: Settings = None
 
@@ -25,6 +24,19 @@ class DatabaseType(str, Enum):
 
 class StorageDriver(str, Enum):
     LOCAL = "local"
+
+
+class TraceExporterType(str, Enum):
+    CONSOLE = "console"
+    OTLP = "otlp"
+    # JAEGER = "jaeger"
+    # ZIPKIN = "zipkin"
+
+
+class TraceTransportProtocol(str, Enum):
+    GRPC = "grpc"
+    HTTP_PROTOBUF = "http/protobuf"
+    # HTTP_JSON = "http/json"
 
 
 class MainSettings(BaseSettings):
@@ -44,7 +56,7 @@ class MainSettings(BaseSettings):
 
 class StorageSettings(BaseSettings):
     driver: StorageDriver = StorageDriver.LOCAL
-    settings: Optional[Dict[str, str]]
+    settings: Optional[Dict[str, str]] = Field(default=None)
 
     class Config:
         case_sensitive = False
@@ -60,21 +72,31 @@ class DatabaseSettings(BaseSettings):
     password: str = "admin"
     address: str = "localhost"
     port: int = 7687
-    database: str = Field(
-        default="infrahub", regex=VALID_DATABASE_NAME_REGEX, description="Name of the database in Neo4j"
+    database: Optional[str] = Field(default=None, regex=VALID_DATABASE_NAME_REGEX, description="Name of the database")
+    query_size_limit: int = Field(
+        default=5000,
+        description="The max number of records to fetch in a single query before performing internal pagination.",
+        min=1,
+        max=20000,
     )
 
     class Config:
         """Additional parameters to automatically map environment variables to some settings."""
 
         fields = {
+            "db_type": {"env": "INFRAHUB_DB_TYPE"},
             "protocol": {"env": "NEO4J_PROTOCOL"},
             "username": {"env": "NEO4J_USERNAME"},
             "password": {"env": "NEO4J_PASSWORD"},
             "address": {"env": "NEO4J_ADDRESS"},
             "port": {"env": "NEO4J_PORT"},
             "database": {"env": "NEO4J_DATABASE"},
+            "query_size_limit": {"env": "INFRAHUB_DB_QUERY_SIZE_LIMIT"},
         }
+
+    @property
+    def database_name(self) -> str:
+        return self.database or self.db_type.value
 
 
 class BrokerSettings(BaseSettings):
@@ -87,6 +109,9 @@ class BrokerSettings(BaseSettings):
         default=None, min=1, max=65535, description="Specified if running on a non default port."
     )
     namespace: str = "infrahub"
+    maximum_message_retries: int = Field(
+        default=10, description="The maximum number of retries that are attempted for failed messages"
+    )
 
     @property
     def service_port(self) -> int:
@@ -95,6 +120,24 @@ class BrokerSettings(BaseSettings):
 
     class Config:
         env_prefix = "INFRAHUB_BROKER_"
+        case_sensitive = False
+
+
+class CacheSettings(BaseSettings):
+    enable: bool = True
+    address: str = "localhost"
+    port: Optional[int] = Field(
+        default=None, min=1, max=65535, description="Specified if running on a non default port (6379)"
+    )
+    database: int = Field(default=0, min=0, max=15, description="Id of the database to use")
+
+    @property
+    def service_port(self) -> int:
+        default_ports: int = 6379
+        return self.port or default_ports
+
+    class Config:
+        env_prefix = "INFRAHUB_CACHE_"
         case_sensitive = False
 
 
@@ -111,6 +154,10 @@ class GitSettings(BaseSettings):
 
 class MiscellaneousSettings(BaseSettings):
     print_query_details: bool = False
+    start_background_runner: bool = True
+    maximum_validator_execution_time: int = Field(
+        default=1800, description="The maximum allowed time (in seconds) for a validator to run."
+    )
 
 
 class RemoteLoggingSettings(BaseSettings):
@@ -140,10 +187,6 @@ class AnalyticsSettings(BaseSettings):
 
 class ExperimentalFeaturesSettings(BaseSettings):
     pull_request: bool = False
-    ignore_authentication_requirements: bool = Field(
-        default=True,
-        description="If set to true operations that would have been denied due to lack of authentication still works.",
-    )
 
     class Config:
         env_prefix = "INFRAHUB_EXPERIMENTAL_"
@@ -168,6 +211,53 @@ class SecuritySettings(BaseSettings):
         case_sensitive = False
 
 
+class TraceSettings(BaseSettings):
+    enable: bool = Field(default=False)
+    insecure: bool = Field(
+        default=True, description="Use insecure connection (HTTP) if True, otherwise use secure connection (HTTPS)"
+    )
+    exporter_type: TraceExporterType = Field(
+        default=TraceExporterType.CONSOLE, description="Type of exporter to be used for tracing"
+    )
+    exporter_protocol: TraceTransportProtocol = Field(
+        default=TraceTransportProtocol.GRPC, description="Protocol to be used for exporting traces"
+    )
+    exporter_endpoint: str = Field(default=None, description="OTLP endpoint for exporting traces")
+    exporter_port: Optional[int] = Field(
+        default=None, min=1, max=65535, description="Specified if running on a non default port (4317)"
+    )
+
+    @property
+    def service_port(self) -> int:
+        if self.exporter_protocol == TraceTransportProtocol.GRPC:
+            default_port = 4317
+        elif self.exporter_protocol == TraceTransportProtocol.HTTP_PROTOBUF:
+            default_port = 4318
+        else:
+            default_port = 4317
+
+        return self.exporter_port or default_port
+
+    @property
+    def trace_endpoint(self) -> Optional[str]:
+        if not self.exporter_endpoint:
+            return None
+        if self.insecure:
+            scheme = "http://"
+        else:
+            scheme = "https://"
+        endpoint = str(self.exporter_endpoint) + ":" + str(self.service_port)
+
+        if self.exporter_protocol == TraceTransportProtocol.HTTP_PROTOBUF:
+            endpoint += "/v1/traces"
+
+        return scheme + endpoint
+
+    class Config:
+        env_prefix = "INFRAHUB_TRACE_"
+        case_sensitive = False
+
+
 class Settings(BaseSettings):
     """Main Settings Class for the project."""
 
@@ -176,15 +266,17 @@ class Settings(BaseSettings):
     git: GitSettings = GitSettings()
     database: DatabaseSettings = DatabaseSettings()
     broker: BrokerSettings = BrokerSettings()
+    cache: CacheSettings = CacheSettings()
     miscellaneous: MiscellaneousSettings = MiscellaneousSettings()
     logging: LoggingSettings = LoggingSettings()
     analytics: AnalyticsSettings = AnalyticsSettings()
     security: SecuritySettings = SecuritySettings()
     storage: StorageSettings = StorageSettings()
+    trace: TraceSettings = TraceSettings()
     experimental_features: ExperimentalFeaturesSettings = ExperimentalFeaturesSettings()
 
 
-def load(config_file_name="infrahub.toml", config_data=None):
+def load(config_file_name: str = "infrahub.toml", config_data: Optional[Dict[str, Any]] = None) -> None:
     """Load configuration.
 
     Configuration is loaded from a config file in toml format that contains the settings,
@@ -206,7 +298,7 @@ def load(config_file_name="infrahub.toml", config_data=None):
     SETTINGS = Settings()
 
 
-def load_and_exit(config_file_name="infrahub.toml", config_data=None):
+def load_and_exit(config_file_name: str = "infrahub.toml", config_data: Optional[Dict[str, Any]] = None) -> None:
     """Calls load, but wraps it in a try except block.
 
     This is done to handle a ValidationErorr which is raised when settings are specified but invalid.

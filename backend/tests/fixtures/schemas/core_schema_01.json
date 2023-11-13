@@ -13,7 +13,7 @@
                     "default_value": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false
                 },
                 {
@@ -24,7 +24,7 @@
                     "default_value": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true
                 },
                 {
@@ -35,7 +35,7 @@
                     "default_value": null,
                     "inherited": false,
                     "unique": true,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false
                 }
             ],
@@ -48,7 +48,7 @@
                     "identifier": "graphqlquery__tag",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -72,7 +72,7 @@
             "label": null,
             "inherit_from": [],
             "groups": [],
-            "branch": true,
+            "branch": "aware",
             "default_filter": "name__value",
             "filters": [
                 {
@@ -110,7 +110,7 @@
                     "default_value": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true
                 },
                 {
@@ -121,7 +121,7 @@
                     "default_value": "LOCAL",
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false
                 },
                 {
@@ -132,7 +132,7 @@
                     "default_value": null,
                     "inherited": false,
                     "unique": true,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false
                 },
                 {
@@ -143,7 +143,7 @@
                     "default_value": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true
                 },
                 {
@@ -154,7 +154,7 @@
                     "default_value": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true
                 },
                 {
@@ -165,7 +165,7 @@
                     "default_value": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false
                 },
                 {
@@ -176,7 +176,7 @@
                     "default_value": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true
                 },
                 {
@@ -187,7 +187,7 @@
                     "default_value": "main",
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false
                 }
             ],
@@ -200,7 +200,7 @@
                     "identifier": "repository__tag",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -228,7 +228,7 @@
                     "identifier": "graphqlquery__repository",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -260,7 +260,7 @@
                 "LineageSource"
             ],
             "groups": [],
-            "branch": true,
+            "branch": "aware",
             "default_filter": "name__value",
             "filters": [
                 {
@@ -323,7 +323,7 @@
                     "default_value": null,
                     "inherited": false,
                     "unique": true,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false
                 },
                 {
@@ -334,7 +334,7 @@
                     "default_value": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true
                 }
             ],
@@ -342,7 +342,7 @@
             "label": null,
             "inherit_from": [],
             "groups": [],
-            "branch": true,
+            "branch": "aware",
             "default_filter": "name__value",
             "filters": [
                 {

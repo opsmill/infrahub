@@ -4,7 +4,8 @@ import inspect
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Dict, Generator, List, Optional, Type, Union
-from uuid import UUID, uuid4
+
+from infrahub_sdk import UUIDT
 
 from infrahub.core.query import Query, QueryType
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
@@ -12,13 +13,15 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import element_id_to_id, extract_field_filters
 
 if TYPE_CHECKING:
-    from neo4j import AsyncSession
+    from uuid import UUID
+
     from neo4j.graph import Relationship as Neo4jRelationship
 
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
     from infrahub.core.relationship import Relationship
     from infrahub.core.schema import RelationshipSchema
+    from infrahub.database import InfrahubDatabase
 
 # pylint: disable=redefined-builtin
 
@@ -158,12 +161,13 @@ class RelationshipCreateQuery(RelationshipQuery):
 
         super().__init__(destination=destination, destination_id=destination_id, *args, **kwargs)
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         self.params["source_id"] = self.source_id
         self.params["destination_id"] = self.destination_id
         self.params["name"] = self.schema.identifier
+        self.params["branch_support"] = self.schema.branch.value
 
-        self.params["uuid"] = str(uuid4())
+        self.params["uuid"] = str(UUIDT())
 
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
@@ -181,7 +185,7 @@ class RelationshipCreateQuery(RelationshipQuery):
         self.query_add_all_node_property_match()
 
         query_create = """
-        CREATE (rl:Relationship { uuid: $uuid, name: $name})
+        CREATE (rl:Relationship { uuid: $uuid, name: $name, branch_support: $branch_support })
         CREATE (s)-[r1:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(rl)
         CREATE (d)-[r2:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null  }]->(rl)
         MERGE (ip:Boolean { value: $is_protected })
@@ -239,7 +243,7 @@ class RelationshipUpdatePropertyQuery(RelationshipQuery):
 
         super().__init__(*args, **kwargs)
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         self.params["rel_node_id"] = self.data.rel_node_id
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
@@ -319,7 +323,7 @@ class RelationshipDataDeleteQuery(RelationshipQuery):
         self.data = data
         super().__init__(*args, **kwargs)
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         self.params["source_id"] = self.source_id
         self.params["destination_id"] = self.data.peer_id
         self.params["rel_node_id"] = self.data.rel_node_id
@@ -380,7 +384,7 @@ class RelationshipDeleteQuery(RelationshipQuery):
         if inspect.isclass(self.rel):
             raise TypeError("An instance of Relationship must be provided to RelationshipDeleteQuery")
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         self.params["source_id"] = self.source_id
         self.params["destination_id"] = self.destination_id
         self.params["rel_id"] = self.rel.id
@@ -417,7 +421,7 @@ class RelationshipGetPeerQuery(RelationshipQuery):
 
         super().__init__(*args, **kwargs)
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):  # pylint: disable=too-many-statements
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):  # pylint: disable=too-many-statements
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
         self.order_by = []
@@ -476,7 +480,7 @@ class RelationshipGetPeerQuery(RelationshipQuery):
             field = peer_schema.get_field(filter_field_name)
 
             subquery, subquery_params, subquery_result_name = await build_subquery_filter(
-                session=session,
+                db=db,
                 node_alias="peer",
                 field=field,
                 name=filter_field_name,
@@ -542,7 +546,7 @@ class RelationshipGetPeerQuery(RelationshipQuery):
                 field = peer_schema.get_field(order_by_field_name)
 
                 subquery, subquery_params, subquery_result_name = await build_subquery_order(
-                    session=session,
+                    db=db,
                     field=field,
                     node_alias="peer",
                     name=order_by_field_name,
@@ -612,7 +616,7 @@ class RelationshipGetQuery(RelationshipQuery):
 
     type: QueryType = QueryType.READ
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         self.params["source_id"] = self.source_id
         self.params["destination_id"] = self.destination_id
         self.params["name"] = self.schema.identifier

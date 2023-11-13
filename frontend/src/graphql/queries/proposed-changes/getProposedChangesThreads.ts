@@ -9,6 +9,9 @@ query {
         __typename
         id
         display_label
+        label {
+          value
+        }
         resolved {
           value
         }

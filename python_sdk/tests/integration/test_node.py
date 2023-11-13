@@ -1,11 +1,13 @@
 import pytest
-from fastapi.testclient import TestClient
-
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub_client import InfrahubClient
-from infrahub_client.exceptions import NodeNotFound
-from infrahub_client.node import InfrahubNode
+from infrahub.database import InfrahubDatabase
+
+from infrahub_sdk import Config, InfrahubClient
+from infrahub_sdk.exceptions import NodeNotFound
+from infrahub_sdk.node import InfrahubNode
+
+from .conftest import InfrahubTestClient
 
 # pylint: disable=unused-argument
 
@@ -17,39 +19,56 @@ class TestInfrahubNode:
 
         from infrahub.server import app
 
-        return TestClient(app)
+        return InfrahubTestClient(app)
 
     @pytest.fixture
     async def client(self, test_client):
-        return await InfrahubClient.init(test_client=test_client)
+        config = Config(username="admin", password="infrahub", requester=test_client.async_request)
+        return await InfrahubClient.init(config=config)
 
     async def test_node_create(self, client: InfrahubClient, init_db_base, location_schema):
-        data = {"name": {"value": "JFK1"}, "description": {"value": "JFK Airport"}, "type": {"value": "SITE"}}
+        data = {
+            "name": {"value": "JFK1"},
+            "description": {"value": "JFK Airport"},
+            "type": {"value": "SITE"},
+        }
         node = InfrahubNode(client=client, schema=location_schema, data=data)
         await node.save()
 
         assert node.id is not None
 
-    async def test_node_delete_client(self, session, client: InfrahubClient, init_db_base, location_schema):
-        data = {"name": {"value": "ARN"}, "description": {"value": "Arlanda Airport"}, "type": {"value": "SITE"}}
+    async def test_node_delete_client(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        init_db_base,
+        location_schema,
+    ):
+        data = {
+            "name": {"value": "ARN"},
+            "description": {"value": "Arlanda Airport"},
+            "type": {"value": "SITE"},
+        }
         node = InfrahubNode(client=client, schema=location_schema, data=data)
         await node.save()
-        nodedb_pre_delete = await NodeManager.get_one(
-            id=node.id, session=session, include_owner=True, include_source=True
-        )
+        nodedb_pre_delete = await NodeManager.get_one(id=node.id, db=db, include_owner=True, include_source=True)
 
         await node.delete()
-        nodedb_post_delete = await NodeManager.get_one(
-            id=node.id, session=session, include_owner=True, include_source=True
-        )
+        nodedb_post_delete = await NodeManager.get_one(id=node.id, db=db, include_owner=True, include_source=True)
         assert nodedb_pre_delete
         assert nodedb_pre_delete.id
         assert not nodedb_post_delete
 
-    async def test_node_delete_node(self, session, client: InfrahubClient, init_db_base, location_schema):
-        obj = await Node.init(session=session, schema="CoreAccount")
-        await obj.new(session=session, name="delete-my-account", type="Git", password="delete-my-password")
-        await obj.save(session=session)
+    async def test_node_delete_node(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        init_db_base,
+        location_schema,
+    ):
+        obj = await Node.init(db=db, schema="CoreAccount")
+        await obj.new(db=db, name="delete-my-account", type="Git", password="delete-my-password")
+        await obj.save(db=db)
         node_pre_delete = await client.get(kind="CoreAccount", name__value="delete-my-account")
         assert node_pre_delete
         assert node_pre_delete.id
@@ -59,7 +78,7 @@ class TestInfrahubNode:
 
     async def test_node_create_with_relationships(
         self,
-        session,
+        db: InfrahubDatabase,
         client: InfrahubClient,
         init_db_base,
         tag_blue: Node,
@@ -72,7 +91,7 @@ class TestInfrahubNode:
             "template_path": {"value": "mytemplate.j2"},
             "query": gqlquery01.id,
             "repository": {"id": repo01.id},
-            "tags": [{"id": tag_blue.id}, tag_red.id],
+            "tags": [tag_blue.id, tag_red.id],
         }
 
         node = await client.create(kind="CoreRFile", data=data)
@@ -80,14 +99,14 @@ class TestInfrahubNode:
 
         assert node.id is not None
 
-        nodedb = await NodeManager.get_one(id=node.id, session=session, include_owner=True, include_source=True)
+        nodedb = await NodeManager.get_one(id=node.id, db=db, include_owner=True, include_source=True)
         assert nodedb.name.value == node.name.value  # type: ignore[attr-defined]
-        querydb = await nodedb.query.get_peer(session=session)
+        querydb = await nodedb.query.get_peer(db=db)
         assert node.query.id == querydb.id  # type: ignore[attr-defined]
 
     async def test_node_update_payload_with_relationships(
         self,
-        session,
+        db: InfrahubDatabase,
         client: InfrahubClient,
         init_db_base,
         tag_blue: Node,
@@ -100,6 +119,7 @@ class TestInfrahubNode:
             "template_path": "mytemplate.j2",
             "query": gqlquery01.id,
             "repository": repo01.id,
+            "tags": [tag_blue.id, tag_red.id],
         }
         schema = await client.schema.get(kind="CoreRFile", branch="main")
         create_payload = client.schema.generate_payload_create(
@@ -118,7 +138,7 @@ class TestInfrahubNode:
 
     async def test_node_create_with_properties(
         self,
-        session,
+        db: InfrahubDatabase,
         client: InfrahubClient,
         init_db_base,
         tag_blue: Node,
@@ -128,11 +148,16 @@ class TestInfrahubNode:
         first_account: Node,
     ):
         data = {
-            "name": {"value": "rfile02", "is_protected": True, "source": first_account.id, "owner": first_account.id},
+            "name": {
+                "value": "rfile02",
+                "is_protected": True,
+                "source": first_account.id,
+                "owner": first_account.id,
+            },
             "template_path": {"value": "mytemplate.j2"},
             "query": {"id": gqlquery01.id},  # "source": first_account.id, "owner": first_account.id},
             "repository": {"id": repo01.id},  # "source": first_account.id, "owner": first_account.id},
-            "tags": [{"id": tag_blue.id}, tag_red.id],
+            "tags": [tag_blue.id, tag_red.id],
         }
 
         node = await client.create(kind="CoreRFile", data=data)
@@ -140,12 +165,18 @@ class TestInfrahubNode:
 
         assert node.id is not None
 
-        nodedb = await NodeManager.get_one(id=node.id, session=session, include_owner=True, include_source=True)
+        nodedb = await NodeManager.get_one(id=node.id, db=db, include_owner=True, include_source=True)
         assert nodedb.name.value == node.name.value  # type: ignore[attr-defined]
         assert nodedb.name.is_protected is True
 
     async def test_node_update(
-        self, session, client: InfrahubClient, init_db_base, tag_blue: Node, tag_red: Node, repo99: Node
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        init_db_base,
+        tag_blue: Node,
+        tag_red: Node,
+        repo99: Node,
     ):
         node = await client.get(kind="CoreRepository", name__value="repo99")
         assert node.id is not None
@@ -155,14 +186,14 @@ class TestInfrahubNode:
         node.tags.add(tag_red.id)  # type: ignore[attr-defined]
         await node.save()
 
-        nodedb = await NodeManager.get_one(id=node.id, session=session, include_owner=True, include_source=True)
+        nodedb = await NodeManager.get_one(id=node.id, db=db, include_owner=True, include_source=True)
         assert nodedb.name.value == "repo95"
-        tags = await nodedb.tags.get(session=session)
+        tags = await nodedb.tags.get(db=db)
         assert len(tags) == 2
 
     async def test_node_update_2(
         self,
-        session,
+        db: InfrahubDatabase,
         client: InfrahubClient,
         init_db_base,
         tag_green: Node,
@@ -180,22 +211,57 @@ class TestInfrahubNode:
         node.tags.remove(tag_red.id)  # type: ignore[attr-defined]
         await node.save()
 
-        nodedb = await NodeManager.get_one(id=node.id, session=session, include_owner=True, include_source=True)
-        repodb = await nodedb.repository.get_peer(session=session)
+        nodedb = await NodeManager.get_one(id=node.id, db=db, include_owner=True, include_source=True)
+        repodb = await nodedb.repository.get_peer(db=db)
         assert repodb.id == repo99.id
 
-        tags = await nodedb.tags.get(session=session)
+        tags = await nodedb.tags.get(db=db)
         assert sorted([tag.peer_id for tag in tags]) == sorted([tag_green.id, tag_blue.id])
+
+    async def test_node_update_3_idempotency(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        init_db_base,
+        tag_green: Node,
+        tag_red: Node,
+        tag_blue: Node,
+        gqlquery03: Node,
+        repo99: Node,
+    ):
+        node = await client.get(kind="CoreGraphQLQuery", name__value="query03")
+        assert node.id is not None
+
+        updated_query = f"\n\n{node.query.value}"  # type: ignore[attr-defined]
+        node.name.value = "query031"  # type: ignore[attr-defined]
+        node.query.value = updated_query  # type: ignore[attr-defined]
+        first_update = node._generate_input_data(update=True)
+        await node.save()
+        nodedb = await NodeManager.get_one(id=node.id, db=db, include_owner=True, include_source=True)
+
+        node = await client.get(kind="CoreGraphQLQuery", name__value="query031")
+
+        node.name.value = "query031"  # type: ignore[attr-defined]
+        node.query.value = updated_query  # type: ignore[attr-defined]
+
+        second_update = node._generate_input_data(update=True)
+
+        assert nodedb.query.value == updated_query  # type: ignore[attr-defined]
+        assert "query" in first_update["data"]["data"]
+        assert "value" in first_update["data"]["data"]["query"]
+        assert first_update["variables"]
+        assert "query" not in second_update["data"]["data"]
+        assert not second_update["variables"]
 
     async def test_convert_node(
         self,
-        session,
+        db: InfrahubDatabase,
         client: InfrahubClient,
         location_schema,
         init_db_base,
         location_cdg: Node,
     ):
-        data = await location_cdg.to_graphql(session=session)
+        data = await location_cdg.to_graphql(db=db)
         node = InfrahubNode(client=client, schema=location_schema, data=data)
 
         # pylint: disable=no-member

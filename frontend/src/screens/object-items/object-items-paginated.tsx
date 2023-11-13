@@ -10,7 +10,7 @@ import ModalDelete from "../../components/modal-delete";
 import { Pagination } from "../../components/pagination";
 import { RoundedButton } from "../../components/rounded-button";
 import SlideOver from "../../components/slide-over";
-import { DEFAULT_BRANCH_NAME, MENU_BLACKLIST } from "../../config/constants";
+import { DEFAULT_BRANCH_NAME, MENU_EXCLUDELIST } from "../../config/constants";
 import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
@@ -22,7 +22,6 @@ import usePagination from "../../hooks/usePagination";
 import useQuery from "../../hooks/useQuery";
 import { iComboBoxFilter } from "../../state/atoms/filters.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
-import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
@@ -41,13 +40,16 @@ import ObjectItemCreate from "../object-item-create/object-item-create-paginated
 export default function ObjectItems(props: any) {
   const { objectname: objectnameFromParams } = useParams();
 
-  const { objectname: objectnameFromProps = "", filters: filtersFromProps = [] } = props;
+  const {
+    objectname: objectnameFromProps = "",
+    filters: filtersFromProps = [],
+    preventBlock,
+  } = props;
 
   const objectname = objectnameFromProps || objectnameFromParams;
 
   const auth = useContext(AuthContext);
 
-  const [schemaKindName] = useAtom(schemaKindNameState);
   const [schemaList] = useAtom(schemaState);
   const [genericList] = useAtom(genericsState);
   const branch = useReactiveVar(branchVar);
@@ -60,8 +62,8 @@ export default function ObjectItems(props: any) {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const navigate = useNavigate();
 
-  const schema = schemaList.filter((s) => s.name === objectname)[0];
-  const generic = genericList.filter((s) => s.name === objectname)[0];
+  const schema = schemaList.find((s) => s.kind === objectname);
+  const generic = genericList.find((s) => s.kind === objectname);
 
   const schemaData = schema || generic;
 
@@ -70,7 +72,7 @@ export default function ObjectItems(props: any) {
     navigate("/");
   }
 
-  if (schemaData && MENU_BLACKLIST.includes(schemaData.kind)) {
+  if (schemaData && MENU_EXCLUDELIST.includes(schemaData.kind) && !preventBlock) {
     navigate("/");
   }
 
@@ -78,7 +80,9 @@ export default function ObjectItems(props: any) {
   // This will not work if the type of filter value is not string.
   const filtersString = [
     // Add object filters
-    ...filters.map((row: iComboBoxFilter) => `${row.name}: "${row.value}"`),
+    ...filters.map((row: iComboBoxFilter) =>
+      typeof row.value === "string" ? `${row.name}: "${row.value}"` : `${row.name}: ${row.value}`
+    ),
     // Add pagination filters
     ...[
       { name: "offset", value: pagination?.offset },
@@ -107,7 +111,7 @@ export default function ObjectItems(props: any) {
 
   const { loading, error, data = {}, refetch } = useQuery(query, { skip: !schemaData });
 
-  const result = data ? data[schemaData?.kind] ?? {} : {};
+  const result = data && schemaData?.kind ? data[schemaData?.kind] ?? {} : {};
 
   const { count, edges } = result;
 
@@ -121,7 +125,7 @@ export default function ObjectItems(props: any) {
     setIsLoading(true);
 
     const mutationString = deleteObject({
-      kind: schemaData.kind,
+      kind: schemaData?.kind,
       data: stringifyWithoutQuotes({
         id: rowToDelete?.id,
       }),
@@ -150,28 +154,25 @@ export default function ObjectItems(props: any) {
   };
 
   if (error) {
-    console.log("Error while loading objects list: ", error);
-    return <ErrorScreen />;
+    return <ErrorScreen message="Something went wrong when fetching list." />;
   }
 
   return (
-    <div className="bg-custom-white flex-1 overflow-x-auto flex flex-col">
-      <div className="sm:flex sm:items-center py-4 px-4 sm:px-6 lg:px-8 w-full">
+    <div className="bg-custom-white flex-1 flex flex-col">
+      <div className="flex items-center p-4 w-full">
         {schemaData && (
           <div className="sm:flex-auto flex items-center">
-            <h1 className="text-xl font-semibold text-gray-900">
+            <h1 className="text-md font-semibold text-gray-900">
               {schemaData.name} ({count})
             </h1>
-            <p className="mt-2 text-sm text-gray-700 m-0 pl-2 mb-1">
-              A list of all the {schemaData.kind} in your infrastructure.
-            </p>
           </div>
         )}
 
         <RoundedButton
+          data-cy="create"
           disabled={!auth?.permissions?.write}
           onClick={() => setShowCreateDrawer(true)}>
-          <PlusIcon className="h-5 w-5" aria-hidden="true" />
+          <PlusIcon className="w-4 h-4" aria-hidden="true" />
         </RoundedButton>
       </div>
 
@@ -180,10 +181,10 @@ export default function ObjectItems(props: any) {
       {loading && !rows && <LoadingScreen />}
 
       {!loading && rows && (
-        <div className="mt-0 flex flex-col px-4 sm:px-6 lg:px-8 w-full overflow-x-auto flex-1">
+        <div className="mt-0 flex flex-col px-4 sm:px-6 lg:px-8 w-full flex-1">
           <div className="-my-2 -mx-4 sm:-mx-6 lg:-mx-8">
-            <div className="inline-block min-w-full pt-2 align-middle">
-              <div className="shadow-sm ring-1 ring-custom-black ring-opacity-5">
+            <div className="min-w-full pt-2 align-middle">
+              <div className="shadow-sm ring-1 ring-custom-black ring-opacity-5 overflow-x-auto">
                 <table className="min-w-full border-separate" style={{ borderSpacing: 0 }}>
                   <thead className="bg-gray-50">
                     <tr>
@@ -191,24 +192,20 @@ export default function ObjectItems(props: any) {
                         <th
                           key={attribute.name}
                           scope="col"
-                          className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter sm:pl-6 lg:pl-8">
+                          className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 px-4 py-2 text-left text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter">
                           {attribute.label}
                         </th>
                       ))}
                       <th
                         scope="col"
-                        className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter sm:pl-6 lg:pl-8"></th>
+                        className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 px-4 py-2 text-left text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter"></th>
                     </tr>
                   </thead>
                   <tbody className="bg-custom-white">
                     {rows?.map((row: any, index: number) => (
                       <tr
                         onClick={() =>
-                          navigate(
-                            constructPath(
-                              getObjectDetailsUrl(row.id, row.__typename, schemaKindName)
-                            )
-                          )
+                          navigate(constructPath(getObjectDetailsUrl(row.id, row.__typename)))
                         }
                         key={index}
                         className="hover:bg-gray-50 cursor-pointer">
@@ -217,7 +214,7 @@ export default function ObjectItems(props: any) {
                             key={row.id + "-" + attribute.name}
                             className={classNames(
                               index !== rows.length - 1 ? "border-b border-gray-200" : "",
-                              "whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8"
+                              "whitespace-wrap p-4 text-xs text-gray-900"
                             )}>
                             {getObjectItemDisplayValue(row, attribute)}
                           </td>
@@ -226,16 +223,17 @@ export default function ObjectItems(props: any) {
                         <td
                           className={classNames(
                             index !== rows.length - 1 ? "border-b border-gray-200" : "",
-                            "whitespace-nowrap py-3 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8 flex items-center justify-end"
+                            "whitespace-wrap text-xs text-gray-900"
                           )}>
                           <Button
+                            data-cy="delete"
                             disabled={!auth?.permissions?.write}
                             buttonType={BUTTON_TYPES.INVISIBLE}
                             onClick={() => {
                               setRowToDelete(row);
                               setDeleteModal(true);
                             }}>
-                            <TrashIcon className="w-6 h-6 text-red-500" />
+                            <TrashIcon className="w-4 h-4 text-red-500" />
                           </Button>
                         </td>
                       </tr>
@@ -243,7 +241,7 @@ export default function ObjectItems(props: any) {
                   </tbody>
                 </table>
 
-                {!rows?.length && <NoDataFound />}
+                {!rows?.length && <NoDataFound message="No items found." />}
 
                 <Pagination count={count} />
               </div>
@@ -259,7 +257,7 @@ export default function ObjectItems(props: any) {
               <span className="text-lg font-semibold mr-3">Create {objectname}</span>
               <div className="flex-1"></div>
               <div className="flex items-center">
-                <Square3Stack3DIcon className="w-5 h-5" />
+                <Square3Stack3DIcon className="w-4 h-4" />
                 <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
               </div>
             </div>

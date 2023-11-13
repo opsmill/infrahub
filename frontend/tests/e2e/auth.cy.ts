@@ -13,10 +13,10 @@ describe("Authentication", () => {
     cy.visit("/");
 
     // The branch creation button should not be disabled
-    cy.get("#headlessui-popover-button-\\:r8\\: > .py-1\\.5").should("not.be.disabled");
+    cy.get("[data-cy='create-branch-button']").should("not.be.disabled");
 
     // The avatar should have the intials
-    cy.get(".h-12").should("have.text", "CO");
+    cy.get("[data-cy='current-user-avatar-button'").should("have.text", "CO");
   });
 
   it("should login as read-only role and have read-only access", () => {
@@ -25,10 +25,10 @@ describe("Authentication", () => {
     cy.visit("/");
 
     // The branch creation button should be disabled
-    cy.get("#headlessui-popover-button-\\:r8\\: > .py-1\\.5").should("be.disabled");
+    cy.get("[data-cy='create-branch-button']").should("be.disabled");
 
     // The avatar should have the intials
-    cy.get(".h-12").should("have.text", "JB");
+    cy.get("[data-cy='current-user-avatar-button'").should("have.text", "JB");
   });
 
   it("should access the profile page as admin", () => {
@@ -37,10 +37,10 @@ describe("Authentication", () => {
     cy.visit("/");
 
     // Click on the avatar
-    cy.get(".h-12").click();
+    cy.get("[data-cy='current-user-avatar-button'").click();
 
     // Click on the profile button
-    cy.get("#headlessui-menu-item-\\:rc\\:").click();
+    cy.get("[href='/profile']").click();
 
     // The name in the header should be the one from the user auth
     cy.get(".text-base").should("have.text", "Admin");
@@ -58,10 +58,10 @@ describe("Authentication", () => {
     cy.visit("/");
 
     // Click on the avatar
-    cy.get(".h-12").click();
+    cy.get("[data-cy='current-user-avatar-button'").click();
 
     // Click on the profile button
-    cy.get("#headlessui-menu-item-\\:rc\\:").click();
+    cy.get("[href='/profile']").click();
 
     // The name in the header should be the one from the user auth
     cy.get(".text-base").should("have.text", READ_ONLY_CREDENTIALS.username);

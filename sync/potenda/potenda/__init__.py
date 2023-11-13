@@ -28,11 +28,18 @@ class Potenda:
         enable_console_logging(verbosity=1)
 
     def load(self):
-        self.source.load()
-        self.destination.load()
+        try:
+            print(f"Load: Importing data from {self.source}")
+            self.source.load()
+            print(f"Load: Importing data from {self.destination}")
+            self.destination.load()
+        except Exception as e:
+            raise Exception(f"An error occurred while loading the sync: {e}")
 
     def diff(self):
+        print(f"Diff: Comparing data from {self.source} to {self.destination}")
         return self.destination.diff_from(self.source, flags=self.flags)
 
     def sync(self, diff):
+        print(f"Sync: Importing data from {self.source} to {self.destination} based on Diff")
         return self.destination.sync_from(self.source, diff=diff, flags=self.flags)

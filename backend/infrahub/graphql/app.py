@@ -44,7 +44,7 @@ from starlette.requests import HTTPConnection, Request
 from starlette.responses import HTMLResponse, JSONResponse, Response
 from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 
-from infrahub.api.dependencies import api_key_scheme, jwt_scheme
+from infrahub.api.dependencies import api_key_scheme, cookie_auth_scheme, jwt_scheme
 from infrahub.auth import AccountSession, authentication_token
 from infrahub.exceptions import AuthorizationError, PermissionDeniedError
 
@@ -60,11 +60,12 @@ except ImportError:
 
     GraphQLFormattedError = Dict[str, Any]
 
+from infrahub_sdk.utils import str_to_bool
+
 import infrahub.config as config
 from infrahub.core import get_branch, registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFound
-from infrahub_client.utils import str_to_bool
 
 if TYPE_CHECKING:
     import graphene
@@ -72,10 +73,10 @@ if TYPE_CHECKING:
         DocumentNode,
         OperationDefinitionNode,
     )
-    from neo4j import AsyncSession
     from starlette.types import Receive, Scope, Send
 
     from infrahub.core.branch import Branch
+    from infrahub.database import InfrahubDatabase
 
 
 GQL_CONNECTION_ACK = "connection_ack"
@@ -95,16 +96,6 @@ RootValue = Any
 def make_graphiql_handler() -> Callable[[Request], Response]:
     def handler(request: Request) -> Response:
         return HTMLResponse(_GRAPHIQL_HTML)
-
-    return handler
-
-
-def make_playground_handler(playground_options: Optional[Dict[str, Any]] = None) -> Callable[[Request], Response]:
-    playground_options_str = json.dumps(playground_options or {})
-    content = _PLAYGROUND_HTML.replace("PLAYGROUND_OPTIONS", playground_options_str)
-
-    def handler(request: Request) -> Response:
-        return HTMLResponse(content)
 
     return handler
 
@@ -131,7 +122,7 @@ class InfrahubGraphQLApp:
         self.logger = logging.getLogger(logger_name or __name__)
 
         if playground and self.on_get is None:
-            self.on_get = make_playground_handler()
+            self.on_get = make_graphiql_handler()
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] == "http":
@@ -139,24 +130,29 @@ class InfrahubGraphQLApp:
             response: Optional[Response] = None
             jwt_auth = await jwt_scheme(request)
             api_key = await api_key_scheme(request)
+            cookie_auth = await cookie_auth_scheme(request)
 
-            async with request.app.state.db.session(database=config.SETTINGS.database.database) as session:
+            db: InfrahubDatabase = request.app.state.db
+
+            async with db.start_session() as db:
                 jwt_token = None
                 if jwt_auth:
                     jwt_token = jwt_auth.credentials
-                account_session = await authentication_token(jwt_token=jwt_token, api_key=api_key, session=session)
+                elif cookie_auth and not api_key:
+                    jwt_token = cookie_auth
+                account_session = await authentication_token(jwt_token=jwt_token, api_key=api_key, db=db)
 
                 # Retrieve the branch name from the request and validate that it exist in the database
                 try:
                     branch_name = request.path_params.get("branch_name", config.SETTINGS.main.default_branch)
-                    branch = await get_branch(session=session, branch=branch_name)
+                    branch = await get_branch(db=db, branch=branch_name)
                     branch.ephemeral_rebase = str_to_bool(request.query_params.get("rebase", False))
                 except BranchNotFound as exc:
                     response = JSONResponse({"errors": [exc.message]}, status_code=404)
 
                 if request.method == "POST" and not response:
                     response = await self._handle_http_request(
-                        request=request, session=session, branch=branch, account_session=account_session
+                        request=request, db=db, branch=branch, account_session=account_session
                     )
                 elif request.method == "GET" and not response:
                     response = await self._get_on_get(request)
@@ -188,25 +184,22 @@ class InfrahubGraphQLApp:
         return cast(Response, response)
 
     async def _get_context_value(
-        self, session: AsyncSession, request: HTTPConnection, branch: Branch, account_session: AccountSession
+        self, db: InfrahubDatabase, request: HTTPConnection, branch: Branch, account_session: AccountSession
     ) -> Dict:
-        # info.context["infrahub_account"] = account
-
         context_value = {
             "infrahub_branch": branch,
             "infrahub_at": Timestamp(request.query_params.get("at", None)),
             "request": request,
             "background": BackgroundTasks(),
-            "infrahub_database": request.app.state.db,
+            "infrahub_database": db,
             "infrahub_rpc_client": request.app.state.rpc_client,
-            "infrahub_session": session,
             "account_session": account_session,
         }
 
         return context_value
 
     async def _handle_http_request(
-        self, request: Request, session: AsyncSession, branch: Branch, account_session: AccountSession
+        self, request: Request, db: InfrahubDatabase, branch: Branch, account_session: AccountSession
     ) -> JSONResponse:
         try:
             operations = await _get_operation_from_request(request)
@@ -223,11 +216,11 @@ class InfrahubGraphQLApp:
         self._validate_authentication(account_session=account_session, query=query)
 
         context_value = await self._get_context_value(
-            session=session, request=request, branch=branch, account_session=account_session
+            request=request, db=db, branch=branch, account_session=account_session
         )
 
         schema_branch = registry.schema.get_schema_branch(name=branch.name)
-        graphql_schema = await schema_branch.get_graphql_schema(session=session)
+        graphql_schema = await schema_branch.get_graphql_schema(db=db)
 
         result = await graphql(
             schema=graphql_schema,
@@ -439,9 +432,6 @@ class InfrahubGraphQLApp:
 
     @staticmethod
     def _validate_authentication(account_session: AccountSession, query: str) -> None:
-        if config.SETTINGS.experimental_features.ignore_authentication_requirements:
-            # This feature will later be removed
-            return
         document = parse(query)
         query_type = document.definitions[0].operation.value
 
@@ -523,189 +513,94 @@ def _inject_file_to_operations(ops_tree: Any, _file: UploadFile, path: Sequence[
         _inject_file_to_operations(ops_tree[key], _file, path[1:])
 
 
-_PLAYGROUND_HTML = """
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset=utf-8/>
-  <meta name="viewport" content="user-scalable=no, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, minimal-ui">
-  <title>GraphQL Playground</title>
-  <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/graphql-playground-react/build/static/css/index.css" />
-  <link rel="shortcut icon" href="//cdn.jsdelivr.net/npm/graphql-playground-react/build/favicon.png" />
-  <script src="//cdn.jsdelivr.net/npm/graphql-playground-react/build/static/js/middleware.js"></script>
-</head>
-<body>
-  <div id="root">
+_GRAPHIQL_HTML = """
+<!--
+ *  Copyright (c) 2021 GraphQL Contributors
+ *  All rights reserved.
+ *
+ *  This source code is licensed under the license found in the
+ *  LICENSE file in the root directory of this source tree.
+-->
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>GraphiQL</title>
     <style>
       body {
-        background-color: rgb(23, 42, 58);
-        font-family: Open Sans, sans-serif;
-        height: 90vh;
-      }
-      #root {
         height: 100%;
+        margin: 0;
         width: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        overflow: hidden;
       }
-      .loading {
-        font-size: 32px;
-        font-weight: 200;
-        color: rgba(255, 255, 255, .6);
-        margin-left: 20px;
-      }
-      img {
-        width: 78px;
-        height: 78px;
-      }
-      .title {
-        font-weight: 400;
+
+      #graphiql {
+        height: 100vh;
       }
     </style>
-    <img src='//cdn.jsdelivr.net/npm/graphql-playground-react/build/logo.png' alt=''>
-    <div class="loading"> Loading
-      <span class="title">GraphQL Playground</span>
-    </div>
-  </div>
-  <script>window.addEventListener('load', function (event) {
-      GraphQLPlayground.init(document.getElementById('root'), PLAYGROUND_OPTIONS)
-    })</script>
-</body>
-</html>
-""".strip()  # noqa: B950
+    <!--
+      This GraphiQL example depends on Promise and fetch, which are available in
+      modern browsers, but can be "polyfilled" for older browsers.
+      GraphiQL itself depends on React DOM.
+      If you do not want to rely on a CDN, you can host these files locally or
+      include them directly in your favored resource bundler.
+    -->
+    <script
+      crossorigin
+      src="https://unpkg.com/react@18/umd/react.development.js"
+    ></script>
+    <script
+      crossorigin
+      src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"
+    ></script>
+    <!--
+      These two files can be found in the npm module, however you may wish to
+      copy them directly into your environment, or perhaps include them in your
+      favored resource bundler.
+     -->
+    <script
+      src="https://unpkg.com/graphiql/graphiql.min.js"
+      type="application/javascript"
+    ></script>
+    <link rel="stylesheet" href="https://unpkg.com/graphiql/graphiql.min.css" />
+    <!--
+      These are imports for the GraphIQL Explorer plugin.
+     -->
+    <script
+      src="https://unpkg.com/@graphiql/plugin-explorer/dist/index.umd.js"
+      crossorigin
+    ></script>
 
-_GRAPHIQL_HTML = """
-<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    html, body {
-      height: 100%;
-      margin: 0;
-      overflow: hidden;
-      width: 100%;
-    }
-    #graphiql {
-      height: 100vh;
-    }
-  </style>
-  <link href="//unpkg.com/graphiql/graphiql.css" rel="stylesheet"/>
-  <script src="//unpkg.com/react@16/umd/react.production.min.js"></script>
-  <script src="//unpkg.com/react-dom@16/umd/react-dom.production.min.js"></script>
-  <script src="//unpkg.com/subscriptions-transport-ws@0.7.0/browser/client.js"></script>
-  <script src="//unpkg.com/graphiql-subscriptions-fetcher@0.0.2/browser/client.js"></script>
-</head>
-<body>
-  <script src="//unpkg.com/graphiql/graphiql.min.js"></script>
-  <script>
-    // Parse the cookie value for a CSRF token
-    var csrftoken;
-    var cookies = ('; ' + document.cookie).split('; csrftoken=');
-    if (cookies.length == 2)
-      csrftoken = cookies.pop().split(';').shift();
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/@graphiql/plugin-explorer/dist/style.css"
+    />
+  </head>
 
-    // Collect the URL parameters
-    var parameters = {};
-    window.location.search.substr(1).split('&').forEach(function (entry) {
-      var eq = entry.indexOf('=');
-      if (eq >= 0) {
-        parameters[decodeURIComponent(entry.slice(0, eq))] =
-          decodeURIComponent(entry.slice(eq + 1));
-      }
-    });
-
-    // Produce a Location query string from a parameter object.
-    var graphqlParamNames = {
-      query: true,
-      variables: true,
-      operationName: true
-    };
-    var otherParams = {};
-    for (var k in parameters) {
-      if (parameters.hasOwnProperty(k) && graphqlParamNames[k] !== true) {
-        otherParams[k] = parameters[k];
-      }
-    }
-    var fetchURL = '?' + Object.keys(otherParams).map(function (key) {
-      return encodeURIComponent(key) + '=' +
-          encodeURIComponent(otherParams[key]);
-      }
-    ).join('&');
-
-    // Defines a GraphQL fetcher using the fetch API.
-    function graphQLFetcher(graphQLParams) {
-      var headers = {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      };
-      if (csrftoken) {
-        headers['X-CSRFToken'] = csrftoken;
-      }
-      return fetch(fetchURL, {
-        method: 'post',
-        headers: headers,
-        body: JSON.stringify(graphQLParams),
-        credentials: 'include',
-      }).then(function (response) {
-        return response.text();
-      }).then(function (responseBody) {
-        try {
-          return JSON.parse(responseBody);
-        } catch (error) {
-          return responseBody;
-        }
+  <body>
+    <div id="graphiql">Loading...</div>
+    <script>
+      const root = ReactDOM.createRoot(document.getElementById('graphiql'));
+      const fetcher = GraphiQL.createFetcher({
+        url: window.location,
       });
-    }
-
-    // if variables was provided, try to format it.
-    if (parameters.variables) {
-      try {
-        parameters.variables =
-          JSON.stringify(JSON.parse(parameters.variables), null, 2);
-      } catch (e) {
-        // Do nothing, we want to display the invalid JSON as a string, rather
-        // than present an error.
+      const explorerPlugin = GraphiQLPluginExplorer.explorerPlugin();
+      root.render(
+        React.createElement(GraphiQL, {
+          fetcher,
+          defaultEditorToolsVisibility: true,
+          plugins: [explorerPlugin],
+          query: `query GetTags {
+BuiltinTag {
+    edges {
+    node {
+        id
+        display_label
       }
     }
-
-    // When the query and variables string is edited, update the URL bar so
-    // that it can be easily shared
-    function onEditQuery(newQuery) {
-      parameters.query = newQuery;
-      updateURL();
-    }
-    function onEditVariables(newVariables) {
-      parameters.variables = newVariables;
-      updateURL();
-    }
-    function onEditOperationName(newOperationName) {
-      parameters.operationName = newOperationName;
-      updateURL();
-    }
-    function updateURL() {
-      history.replaceState(null, null, locationQuery(parameters));
-    }
-    var subscriptionsEndpoint = (location.protocol === 'http:' ? 'ws' : 'wss') + '://' + location.host + location.pathname;
-    var subscriptionsClient = new window.SubscriptionsTransportWs.SubscriptionClient(subscriptionsEndpoint, {
-      reconnect: true
-    });
-    var fetcher = window.GraphiQLSubscriptionsFetcher.graphQLFetcher(subscriptionsClient, graphQLFetcher);
-
-    // Render <GraphiQL /> into the body.
-    ReactDOM.render(
-      React.createElement(GraphiQL, {
-        fetcher: fetcher,
-        query: parameters.query,
-        variables: parameters.variables,
-        operationName: parameters.operationName,
-        onEditQuery: onEditQuery,
-        onEditVariables: onEditVariables,
-        onEditOperationName: onEditOperationName,
-      }),
-      document.body
-    );
-  </script>
-</body>
-</html>
-""".strip()  # noqa: B950
+  }
+}`
+        }),
+      );
+    </script>
+  </body>
+</html>""".strip()  # noqa: B950

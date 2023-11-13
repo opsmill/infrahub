@@ -2,7 +2,6 @@ import { gql, useReactiveVar } from "@apollo/client";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import {
   LockClosedIcon,
-  PencilIcon,
   PencilSquareIcon,
   RectangleGroupIcon,
   Square3Stack3DIcon,
@@ -17,7 +16,7 @@ import MetaDetailsTooltip from "../../components/meta-details-tooltips";
 import SlideOver from "../../components/slide-over";
 import { Tabs } from "../../components/tabs";
 import { CONFIG } from "../../config/config";
-import { ARTIFACT_OBJECT, DEFAULT_BRANCH_NAME, MENU_BLACKLIST } from "../../config/constants";
+import { ARTIFACT_OBJECT, DEFAULT_BRANCH_NAME, MENU_EXCLUDELIST } from "../../config/constants";
 import { QSP } from "../../config/qsp";
 import { AuthContext } from "../../decorators/withAuth";
 import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
@@ -44,6 +43,7 @@ import RelationshipDetails from "../object-item-details/relationship-details-pag
 import RelationshipsDetails from "../object-item-details/relationships-details-paginated";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
+import { Generate } from "./generate";
 
 export default function ObjectItemDetails() {
   const { objectid } = useParams();
@@ -58,8 +58,8 @@ export default function ObjectItemDetails() {
   const [schemaList] = useAtom(schemaState);
   const [schemaKindName] = useAtom(schemaKindNameState);
   const [genericList] = useAtom(genericsState);
-  const schema = schemaList.filter((s) => s.name === ARTIFACT_OBJECT)[0];
-  const generic = genericList.filter((s) => s.name === ARTIFACT_OBJECT)[0];
+  const schema = schemaList.find((s) => s.kind === ARTIFACT_OBJECT);
+  const generic = genericList.find((s) => s.kind === ARTIFACT_OBJECT);
   const navigate = useNavigate();
 
   const schemaData = generic || schema;
@@ -69,7 +69,7 @@ export default function ObjectItemDetails() {
     navigate("/");
   }
 
-  if (schemaData && MENU_BLACKLIST.includes(schemaData.kind)) {
+  if (schemaData && MENU_EXCLUDELIST.includes(schemaData.kind)) {
     navigate("/");
   }
 
@@ -97,8 +97,7 @@ export default function ObjectItemDetails() {
   const { loading, error, data, refetch } = useQuery(query, { skip: !schemaData });
 
   if (error) {
-    console.error("Error while loading the object details: ", error);
-    return <ErrorScreen />;
+    return <ErrorScreen message="Something went wrong when fetching object details." />;
   }
 
   if (loading || !schemaData) {
@@ -109,11 +108,7 @@ export default function ObjectItemDetails() {
     // Redirect to the main list if there is no item for this is
     // navigate(`/objects/${objectname}`);
 
-    return (
-      <div className="flex column justify-center">
-        <NoDataFound message="Sorry, no item found for that id" />
-      </div>
-    );
+    return <NoDataFound message="No item found for that id." />;
   }
 
   const objectDetailsData = data[schemaData.kind]?.edges[0]?.node;
@@ -141,7 +136,7 @@ export default function ObjectItemDetails() {
           {schemaData.name}
         </div>
         <ChevronRightIcon
-          className="h-5 w-5 mt-1 mx-2 flex-shrink-0 text-gray-400"
+          className="w-4 h-4 mt-1 mx-2 flex-shrink-0 text-gray-400"
           aria-hidden="true"
         />
         <p className="mt-1 max-w-2xl text-sm text-gray-500">{objectDetailsData.display_label}</p>
@@ -151,13 +146,11 @@ export default function ObjectItemDetails() {
         tabs={tabs}
         rightItems={
           <>
-            <Button
-              disabled={!auth?.permissions?.write}
-              onClick={() => setShowEditDrawer(true)}
-              className="mr-4">
-              Edit
-              <PencilIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
-            </Button>
+            <Generate
+              label="Re-generate"
+              artifactid={objectid}
+              definitionid={objectDetailsData?.definition?.node?.id}
+            />
 
             <Button
               disabled={!auth?.permissions?.write}
@@ -171,19 +164,26 @@ export default function ObjectItemDetails() {
       />
 
       {!qspTab && (
-        <div className="flex items-start">
-          <div className="flex-1">
-            <File url={fileUrl} />
+        <div className="flex flex-col-reverse xl:flex-row">
+          <div className="flex-2">
+            <File url={fileUrl} enableCopy />
           </div>
 
-          <div className="bg-custom-white p-4 overflow-auto max-w-xl">
+          <div className="flex-1 bg-custom-white p-4 min-w-[500px]">
             <dl className="sm:divide-y sm:divide-gray-200">
-              <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-3 sm:px-6">
+              <div className="p-4 px-3 grid grid-cols-3 gap-4">
                 <dt className="text-sm font-medium text-gray-500 flex items-center">ID</dt>
                 <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-                  {objectDetailsData.id}
+                  <a
+                    href={CONFIG.ARTIFACT_DETAILS_URL(objectDetailsData.id)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="cursor-pointer underline">
+                    {objectDetailsData.id}
+                  </a>
                 </dd>
               </div>
+
               {attributes?.map((attribute) => {
                 if (
                   !objectDetailsData[attribute.name] ||
@@ -193,9 +193,7 @@ export default function ObjectItemDetails() {
                 }
 
                 return (
-                  <div
-                    className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-3 sm:px-6"
-                    key={attribute.name}>
+                  <div className="p-4 px-3 grid grid-cols-3 gap-4" key={attribute.name}>
                     <dt className="text-sm font-medium text-gray-500 flex items-center">
                       {attribute.label}
                     </dt>
@@ -206,11 +204,25 @@ export default function ObjectItemDetails() {
                           "mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0"
                           // attribute.kind === "TextArea" ? "whitespace-pre-wrap mr-2" : ""
                         )}>
-                        {getObjectItemDisplayValue(objectDetailsData, attribute, schemaKindName)}
+                        {attribute.name === "storage_id" &&
+                          objectDetailsData[attribute.name]?.value && (
+                            <a
+                              href={CONFIG.STORAGE_DETAILS_URL(
+                                objectDetailsData[attribute.name].value
+                              )}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="cursor-pointer underline">
+                              {objectDetailsData[attribute.name].value}
+                            </a>
+                          )}
+
+                        {attribute.name !== "storage_id" &&
+                          getObjectItemDisplayValue(objectDetailsData, attribute, schemaKindName)}
                       </dd>
 
                       {objectDetailsData[attribute.name] && (
-                        <div className="p-2">
+                        <div className="px-2">
                           <MetaDetailsTooltip
                             items={[
                               {
@@ -253,7 +265,7 @@ export default function ObjectItemDetails() {
                               },
                             ]}
                             header={
-                              <div className="flex justify-between w-full py-4">
+                              <div className="flex justify-between items-center w-full p-4">
                                 <div className="font-semibold">{attribute.label}</div>
                                 <Button
                                   buttonType={BUTTON_TYPES.INVISIBLE}
@@ -265,8 +277,9 @@ export default function ObjectItemDetails() {
                                       label: attribute.label || attribute.name,
                                     });
                                     setShowMetaEditModal(true);
-                                  }}>
-                                  <PencilSquareIcon className="w-5 h-5 text-custom-blue-500" />
+                                  }}
+                                  data-cy="metadata-edit-button">
+                                  <PencilSquareIcon className="w-4 h-4 text-custom-blue-500" />
                                 </Button>
                               </div>
                             }
@@ -275,7 +288,7 @@ export default function ObjectItemDetails() {
                       )}
 
                       {objectDetailsData[attribute.name].is_protected && (
-                        <LockClosedIcon className="h-5 w-5 ml-2" />
+                        <LockClosedIcon className="w-4 h-4" />
                       )}
                     </div>
                   </div>
@@ -316,7 +329,7 @@ export default function ObjectItemDetails() {
               <span className="text-lg font-semibold mr-3">{objectDetailsData.display_label}</span>
               <div className="flex-1"></div>
               <div className="flex items-center">
-                <Square3Stack3DIcon className="w-5 h-5" />
+                <Square3Stack3DIcon className="w-4 h-4" />
                 <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
               </div>
             </div>
@@ -357,7 +370,7 @@ export default function ObjectItemDetails() {
               <span className="text-lg font-semibold mr-3">{objectDetailsData.display_label}</span>
               <div className="flex-1"></div>
               <div className="flex items-center">
-                <Square3Stack3DIcon className="w-5 h-5" />
+                <Square3Stack3DIcon className="w-4 h-4" />
                 <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
               </div>
             </div>
@@ -396,7 +409,7 @@ export default function ObjectItemDetails() {
               <span className="text-lg font-semibold mr-3">{metaEditFieldDetails?.label}</span>
               <div className="flex-1"></div>
               <div className="flex items-center">
-                <Square3Stack3DIcon className="w-5 h-5" />
+                <Square3Stack3DIcon className="w-4 h-4" />
                 <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
               </div>
             </div>

@@ -3,6 +3,7 @@ import pytest
 from deepdiff import DeepDiff
 from fastapi.testclient import TestClient
 
+from infrahub.database import InfrahubDatabase
 from infrahub.server import app
 from infrahub.test_data import dataset01 as ds01
 
@@ -58,7 +59,7 @@ QUERY_SPINE1_INTF = """
 
 BRANCH_CREATE = """
     mutation($branch: String!) {
-        branch_create(data: { name: $branch }) {
+        BranchCreate(data: { name: $branch }) {
             ok
             object {
                 id
@@ -70,7 +71,7 @@ BRANCH_CREATE = """
 
 BRANCH_MERGE = """
     mutation($branch: String!) {
-        branch_merge(data: { name: $branch }) {
+        BranchMerge(data: { name: $branch }) {
             ok
             object {
                 id
@@ -82,7 +83,7 @@ BRANCH_MERGE = """
 
 BRANCH_REBASE = """
     mutation($branch: String!) {
-        branch_rebase(data: { name: $branch }) {
+        BranchRebase(data: { name: $branch }) {
             ok
             object {
                 id
@@ -137,8 +138,8 @@ class TestUserWorkflow01:
         return client
 
     @pytest.fixture(scope="class")
-    async def dataset01(self, session, init_db_infra):
-        await ds01.load_data(session=session, nbr_devices=2)
+    async def dataset01(self, db: InfrahubDatabase, init_db_infra):
+        await ds01.load_data(db=db, nbr_devices=2)
 
     async def test_initialize_state(self):
         pytest.state = {
@@ -235,7 +236,7 @@ class TestUserWorkflow01:
         assert "errors" not in response.json()
         assert response.json()["data"] is not None
         result = response.json()["data"]
-        assert result["branch_create"]["ok"]
+        assert result["BranchCreate"]["ok"]
 
     async def test_update_intf_description_branch1(
         self,
@@ -337,75 +338,95 @@ class TestUserWorkflow01:
         result = response.json()
 
         expected_result_branch1 = {
-            "branch": "branch1",
-            "kind": "InfraInterfaceL3",
-            "id": "e435e984-5ad6-406d-81d7-99e50bb50462",
-            "summary": {"added": 0, "removed": 0, "updated": 1},
-            "display_label": "Loopback0",
-            "changed_at": None,
-            "action": "updated",
+            "action": {"branch1": "updated"},
+            "display_label": {"branch1": "Loopback0"},
             "elements": {
                 "description": {
-                    "type": "Attribute",
-                    "name": "description",
-                    "id": "fc0c1e6f-7473-4e1b-9d18-acad981002f1",
-                    "changed_at": None,
-                    "summary": {"added": 0, "removed": 0, "updated": 0},
-                    "action": "updated",
-                    "value": {
-                        "branch": "branch1",
-                        "type": "HAS_VALUE",
-                        "changed_at": "2023-05-04T18:28:39.138370Z",
+                    "change": {
                         "action": "updated",
-                        "value": {"new": "New description in branch1", "previous": "NULL"},
+                        "branches": ["branch1"],
+                        "id": "17915618-03d7-7f70-4356-1851b7247682",
+                        "properties": {},
+                        "summary": {"added": 0, "removed": 0, "updated": 1},
+                        "type": "Attribute",
+                        "value": {
+                            "changes": [
+                                {
+                                    "action": "updated",
+                                    "branch": "branch1",
+                                    "changed_at": "2023-10-25T11:26:48.387801Z",
+                                    "type": "HAS_VALUE",
+                                    "value": {"new": "New " "description " "in " "branch1", "previous": "NULL"},
+                                }
+                            ],
+                            "path": "data/17915618-03d5-2db0-4358-185140cb1203/description/value",
+                        },
                     },
-                    "properties": [],
+                    "name": "description",
+                    "path": "data/17915618-03d5-2db0-4358-185140cb1203/description",
+                    "type": "Attribute",
                 }
             },
+            "id": "17915618-03d5-2db0-4358-185140cb1203",
+            "kind": "InfraInterfaceL3",
+            "path": "data/17915618-03d5-2db0-4358-185140cb1203",
+            "summary": {"added": 0, "removed": 0, "updated": 1},
         }
 
         expected_result_main = {
-            "branch": "main",
-            "kind": "InfraInterfaceL3",
-            "id": "c2b0ceb6-15cf-4c0a-af21-e18001306f22",
-            "summary": {"added": 0, "removed": 0, "updated": 1},
-            "display_label": "Ethernet1",
-            "changed_at": None,
-            "action": "updated",
+            "action": {"main": "updated"},
+            "display_label": {"main": "Ethernet1"},
             "elements": {
                 "description": {
-                    "type": "Attribute",
-                    "name": "description",
-                    "id": "729d49fc-e691-4de5-8076-292e6d5d7673",
-                    "changed_at": None,
-                    "summary": {"added": 0, "removed": 0, "updated": 0},
-                    "action": "updated",
-                    "value": {
-                        "branch": "main",
-                        "type": "HAS_VALUE",
-                        "changed_at": "2023-05-04T18:28:41.723471Z",
+                    "change": {
                         "action": "updated",
-                        "value": {"new": "New description in main", "previous": "NULL"},
+                        "branches": ["main"],
+                        "id": "17915618-15e5-0ca0-435e-18516f4db7c8",
+                        "properties": {},
+                        "summary": {"added": 0, "removed": 0, "updated": 1},
+                        "type": "Attribute",
+                        "value": {
+                            "changes": [
+                                {
+                                    "action": "updated",
+                                    "branch": "main",
+                                    "changed_at": "2023-10-25T11:26:49.190014Z",
+                                    "type": "HAS_VALUE",
+                                    "value": {"new": "New " "description " "in " "main", "previous": "NULL"},
+                                }
+                            ],
+                            "path": "data/17915618-15e2-e1f0-435b-18517dcffdf5/description/value",
+                        },
                     },
-                    "properties": [],
+                    "name": "description",
+                    "path": "data/17915618-15e2-e1f0-435b-18517dcffdf5/description",
+                    "type": "Attribute",
                 }
             },
+            "id": "17915618-15e2-e1f0-435b-18517dcffdf5",
+            "kind": "InfraInterfaceL3",
+            "path": "data/17915618-15e2-e1f0-435b-18517dcffdf5",
+            "summary": {"added": 0, "removed": 0, "updated": 1},
         }
 
         paths_to_exclude = [
             "root['id']",
-            "root['elements']['description']['id']",
-            "root['elements']['description']['value']['changed_at']",
+            "root['path']",
+            "root['elements']['description']['change']['id']",
+            "root['elements']['description']['change']['value']['changes'][0]['changed_at']",
+            "root['elements']['description']['change']['value']['path']",
+            "root['elements']['description']['path']",
         ]
+
         assert (
             DeepDiff(
-                expected_result_branch1, result["branch1"][0], exclude_paths=paths_to_exclude, ignore_order=True
+                expected_result_branch1, result["diffs"][0], exclude_paths=paths_to_exclude, ignore_order=True
             ).to_dict()
             == {}
         )
         assert (
             DeepDiff(
-                expected_result_main, result["main"][0], exclude_paths=paths_to_exclude, ignore_order=True
+                expected_result_main, result["diffs"][1], exclude_paths=paths_to_exclude, ignore_order=True
             ).to_dict()
             == {}
         )
@@ -516,7 +537,7 @@ class TestUserWorkflow01:
         assert "errors" not in response.json()
         assert response.json()["data"] is not None
         result = response.json()["data"]
-        assert result["branch_create"]["ok"]
+        assert result["BranchCreate"]["ok"]
 
     async def test_update_intf_description_main_after_branch2(self, client, dataset01, integration_helper):
         assert pytest.state["spine1_eth1_id"]
@@ -609,7 +630,7 @@ class TestUserWorkflow01:
             )
             assert response.status_code == 200
             result = response.json()["data"]
-            assert result["branch_rebase"]["ok"]
+            assert result["BranchRebase"]["ok"]
 
             # Query the description in MAIN to check its value
             response = client.post(
@@ -738,7 +759,7 @@ class TestUserWorkflow01:
             assert response.status_code == 200
             assert "errors" not in response.json()
             assert response.json()["data"] is not None
-            assert response.json()["data"]["branch_merge"]["ok"] is True
+            assert response.json()["data"]["BranchMerge"]["ok"] is True
 
             # Query the new value in Main which should match the pervious version in branch1
             response = client.post(

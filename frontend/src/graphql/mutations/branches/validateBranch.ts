@@ -2,7 +2,7 @@ import Handlebars from "handlebars";
 
 export const validateBranch = Handlebars.compile(`
 mutation {
-  branch_validate (
+  BranchValidate (
     data: { {{{data}}} }
   ) {
       ok

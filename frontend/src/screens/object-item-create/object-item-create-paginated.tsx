@@ -1,5 +1,6 @@
 import { gql, useReactiveVar } from "@apollo/client";
 import { useAtom } from "jotai";
+import * as R from "ramda";
 import { useState } from "react";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/alert";
@@ -10,6 +11,7 @@ import { branchVar } from "../../graphql/variables/branchVar";
 import { dateVar } from "../../graphql/variables/dateVar";
 import useQuery from "../../hooks/useQuery";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
+import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdit";
 import getMutationDetailsFromFormData from "../../utils/getMutationDetailsFromFormData";
 import { stringifyWithoutQuotes } from "../../utils/string";
@@ -32,14 +34,15 @@ export default function ObjectItemCreate(props: iProps) {
   const { objectname, onCreate, onCancel, refetch, formStructure, customObject = {} } = props;
 
   const [schemaList] = useAtom(schemaState);
+  const [schemaKindName] = useAtom(schemaKindNameState);
   const [genericsList] = useAtom(genericsState);
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
   const [isLoading, setIsLoading] = useState(false);
 
-  const schema = schemaList.filter((s) => s.name === objectname)[0];
+  const schema = schemaList.find((s) => s.kind === objectname);
 
-  const peers = (schema.relationships || []).map((r) => r.peer).filter(Boolean);
+  const peers = R.uniq((schema?.relationships || []).map((r) => r.peer).filter(Boolean));
 
   const queryString = peers.length
     ? getDropdownOptionsForRelatedPeersPaginated({
@@ -56,7 +59,7 @@ export default function ObjectItemCreate(props: iProps) {
   const { loading, error, data } = useQuery(query, { skip: !schema || !peers.length });
 
   if (error) {
-    return <ErrorScreen />;
+    return <ErrorScreen message="Something went wrong when fetching dropdown options." />;
   }
 
   if (loading || !schema) {
@@ -64,7 +67,7 @@ export default function ObjectItemCreate(props: iProps) {
   }
 
   if (peers.length && !data) {
-    return <NoDataFound />;
+    return <NoDataFound message="No dropdown options found." />;
   }
 
   const objectDetailsData = data && data[schema.kind];
@@ -91,16 +94,15 @@ export default function ObjectItemCreate(props: iProps) {
 
   async function onSubmit(data: any) {
     setIsLoading(true);
-
-    const newObject = getMutationDetailsFromFormData(schema, data, "create");
-
-    if (!Object.keys(newObject).length) {
-      return;
-    }
-
     try {
+      const newObject = getMutationDetailsFromFormData(schema, data, "create");
+
+      if (!Object.keys(newObject).length) {
+        return;
+      }
+
       const mutationString = createObject({
-        kind: schema.kind,
+        kind: schema?.kind,
         data: stringifyWithoutQuotes({ ...newObject, ...customObject }),
       });
 
@@ -108,7 +110,7 @@ export default function ObjectItemCreate(props: iProps) {
         ${mutationString}
       `;
 
-      await graphqlClient.mutate({
+      const result = await graphqlClient.mutate({
         mutation,
         context: {
           branch: branch?.name,
@@ -116,10 +118,15 @@ export default function ObjectItemCreate(props: iProps) {
         },
       });
 
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema.kind} created`} />);
+      toast(
+        <Alert
+          type={ALERT_TYPES.SUCCESS}
+          message={`${schema?.kind && schemaKindName[schema?.kind]} created`}
+        />
+      );
 
       if (onCreate) {
-        onCreate();
+        onCreate(result?.data?.[`${schema?.kind}Create`]);
       }
 
       if (refetch) refetch();
@@ -128,13 +135,6 @@ export default function ObjectItemCreate(props: iProps) {
     } catch (error: any) {
       console.error("An error occured while creating the object: ", error);
 
-      toast(
-        <Alert
-          type={ALERT_TYPES.ERROR}
-          message={"An error occured while creating the object"}
-          details={error.message}
-        />
-      );
       setIsLoading(false);
     }
   }

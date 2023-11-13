@@ -3,27 +3,23 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import TYPE_CHECKING, Awaitable, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional
 
 import bcrypt
 import jwt
 from pydantic import BaseModel
-from starlette import authentication as auth
-from starlette.authentication import AuthenticationError
 
 from infrahub import config, models
 from infrahub.core import get_branch
-from infrahub.core.account import get_account, validate_token
+from infrahub.core.account import validate_token
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.exceptions import AuthorizationError, NodeNotFound
 
 if TYPE_CHECKING:
-    from neo4j import AsyncSession
-    from starlette.requests import HTTPConnection
+    from infrahub.database import InfrahubDatabase
 
 # from ..datatypes import AuthResult
-# from ..exceptions import InvalidCredentials
 
 
 class AuthType(str, Enum):
@@ -45,12 +41,12 @@ class AccountSession(BaseModel):
 
 
 async def authenticate_with_password(
-    session: AsyncSession, credentials: models.PasswordCredential, branch: Optional[str] = None
+    db: InfrahubDatabase, credentials: models.PasswordCredential, branch: Optional[str] = None
 ) -> models.UserToken:
-    selected_branch = await get_branch(session=session, branch=branch)
+    selected_branch = await get_branch(db=db, branch=branch)
     response = await NodeManager.query(
         schema="CoreAccount",
-        session=session,
+        db=db,
         branch=selected_branch,
         filters={"name__value": credentials.username},
         limit=1,
@@ -70,39 +66,39 @@ async def authenticate_with_password(
     now = datetime.now(tz=timezone.utc)
 
     refresh_expires = now + timedelta(seconds=config.SETTINGS.security.refresh_token_lifetime)
-    session_id = await create_db_refresh_token(session=session, account_id=account.id, expiration=refresh_expires)
+    session_id = await create_db_refresh_token(db=db, account_id=account.id, expiration=refresh_expires)
     access_token = generate_access_token(account_id=account.id, role=account.role.value, session_id=session_id)
     refresh_token = generate_refresh_token(account_id=account.id, session_id=session_id, expiration=refresh_expires)
 
     return models.UserToken(access_token=access_token, refresh_token=refresh_token)
 
 
-async def create_db_refresh_token(session: AsyncSession, account_id: str, expiration: datetime) -> uuid.UUID:
-    obj = await Node.init(session=session, schema="InternalRefreshToken")
+async def create_db_refresh_token(db: InfrahubDatabase, account_id: str, expiration: datetime) -> uuid.UUID:
+    obj = await Node.init(db=db, schema="InternalRefreshToken")
     await obj.new(
-        session=session,
+        db=db,
         account=account_id,
         expiration=expiration.isoformat(),
     )
-    await obj.save(session=session)
+    await obj.save(db=db)
     return uuid.UUID(obj.id)
 
 
 async def create_fresh_access_token(
-    session: AsyncSession, refresh_data: models.RefreshTokenData
+    db: InfrahubDatabase, refresh_data: models.RefreshTokenData
 ) -> models.AccessTokenResponse:
-    selected_branch = await get_branch(session=session)
+    selected_branch = await get_branch(db=db)
 
     refresh_token = await NodeManager.get_one(
         id=str(refresh_data.session_id),
-        session=session,
+        db=db,
     )
     if not refresh_token:
         raise AuthorizationError("The provided refresh token has been invalidated in the database")
 
     account = await NodeManager.get_one(
         id=refresh_data.account_id,
-        session=session,
+        db=db,
     )
     if not account:
         raise NodeNotFound(
@@ -154,10 +150,10 @@ def generate_refresh_token(account_id: str, session_id: uuid.UUID, expiration: d
 
 
 async def authentication_token(
-    session: AsyncSession, jwt_token: Optional[str] = None, api_key: Optional[str] = None
+    db: InfrahubDatabase, jwt_token: Optional[str] = None, api_key: Optional[str] = None
 ) -> AccountSession:
     if api_key:
-        return await validate_api_key(session=session, token=api_key)
+        return await validate_api_key(db=db, token=api_key)
     if jwt_token:
         return await validate_jwt_access_token(token=jwt_token)
 
@@ -197,8 +193,8 @@ def validate_jwt_refresh_token(token: str) -> models.RefreshTokenData:
     raise AuthorizationError("Invalid token, current token is not a refresh token")
 
 
-async def validate_api_key(session: AsyncSession, token: str) -> AccountSession:
-    account_id, role = await validate_token(token=token, session=session)
+async def validate_api_key(db: InfrahubDatabase, token: str) -> AccountSession:
+    account_id, role = await validate_token(token=token, db=db)
     if not account_id:
         raise AuthorizationError("Invalid token")
 
@@ -225,10 +221,6 @@ def _validate_update_account(account_session: AccountSession, node_id: str, fiel
 
 
 def validate_mutation_permissions(operation: str, account_session: AccountSession) -> None:
-    if config.SETTINGS.experimental_features.ignore_authentication_requirements:
-        # This feature will later be removed.
-        return
-
     validation_map: Dict[str, Callable[[AccountSession], None]] = {
         "AccountCreate": _validate_is_admin,
         "AccountDelete": _validate_is_admin,
@@ -240,10 +232,6 @@ def validate_mutation_permissions(operation: str, account_session: AccountSessio
 def validate_mutation_permissions_update_node(
     operation: str, node_id: str, account_session: AccountSession, fields: List[str]
 ) -> None:
-    if config.SETTINGS.experimental_features.ignore_authentication_requirements:
-        # This feature will later be removed.
-        return
-
     validation_map: Dict[str, Callable[[AccountSession, str, List[str]], None]] = {
         "AccountUpdate": _validate_update_account,
     }
@@ -252,114 +240,10 @@ def validate_mutation_permissions_update_node(
         validator(account_session, node_id, fields)
 
 
-async def invalidate_refresh_token(session: AsyncSession, token_id: str) -> None:
+async def invalidate_refresh_token(db: InfrahubDatabase, token_id: str) -> None:
     refresh_token = await NodeManager.get_one(
         id=token_id,
-        session=session,
+        db=db,
     )
     if refresh_token:
-        await refresh_token.delete(session)
-
-
-# Code copied from https://github.com/florimondmanca/starlette-auth-toolkit/
-
-
-class InvalidCredentials(AuthenticationError):
-    def __init__(
-        self,
-        message: str = "Could not authenticate with the provided credentials",
-    ):
-        super().__init__(message)
-
-
-class AuthBackend(auth.AuthenticationBackend):
-    async def authenticate(self, conn: HTTPConnection):  # -> AuthResult:
-        raise NotImplementedError
-
-
-class _BaseSchemeAuth(AuthBackend):
-    scheme: str
-
-    def get_credentials(self, conn: HTTPConnection) -> Optional[str]:
-        if "Authorization" not in conn.headers:
-            return None
-
-        authorization = conn.headers.get("Authorization")
-        scheme, _, credentials = authorization.partition(" ")
-        if scheme.lower() != self.scheme.lower():
-            return None
-
-        return credentials
-
-    def parse_credentials(self, credentials: str) -> List[str]:
-        return [credentials]
-
-    verify: Callable[..., Awaitable[Optional[auth.BaseUser]]]
-
-    async def authenticate(self, conn: HTTPConnection):
-        credentials = self.get_credentials(conn)
-        if credentials is None:
-            return None
-
-        parts = self.parse_credentials(credentials)
-
-        async with conn.app.state.db.session(database=config.SETTINGS.database.database) as session:
-            user = await self.verify(session=session, token=parts[0])
-
-        if user is None:
-            raise InvalidCredentials
-
-        return auth.AuthCredentials(["authenticated"]), user
-
-
-# class BaseBasicAuth(_BaseSchemeAuth):
-#     scheme = "Basic"
-
-#     def parse_credentials(self, credentials: str) -> typing.List[str]:
-#         try:
-#             decoded_credentials = base64.b64decode(credentials).decode("ascii")
-#         except (ValueError, UnicodeDecodeError, binascii.Error):
-#             raise InvalidCredentials
-
-#         try:
-#             username, password = decoded_credentials.split(":")
-#         except ValueError:
-#             raise InvalidCredentials
-
-#         return [username, password]
-
-#     async def find_user(self, username: str) -> typing.Optional[auth.BaseUser]:
-#         raise NotImplementedError
-
-#     async def verify_password(self, user: auth.BaseUser, password: str) -> bool:
-#         raise NotImplementedError
-
-#     async def verify(
-#         self, username: str, password: str
-#     ) -> typing.Optional[auth.BaseUser]:
-#         user = await self.find_user(username=username)
-
-#         if user is None:
-#             return None
-
-#         valid = await self.verify_password(user, password)
-#         if not valid:
-#             return None
-
-#         return user
-
-
-class BaseTokenAuth(_BaseSchemeAuth):
-    scheme = "Token"
-
-    def parse_credentials(self, credentials: str) -> List[str]:
-        token = credentials
-        return [token]
-
-    async def verify(self, session: AsyncSession, token: str) -> Optional[auth.BaseUser]:
-        account_name, _ = await validate_token(session=session, token=token)
-        if account_name:
-            account = await get_account(session=session, account=account_name)
-            return account
-
-        return False
+        await refresh_token.delete(db=db)

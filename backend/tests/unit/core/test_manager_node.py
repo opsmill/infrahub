@@ -1,6 +1,4 @@
-import uuid
-
-from neo4j import AsyncSession
+from infrahub_sdk import UUIDT
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -10,17 +8,18 @@ from infrahub.core.node import Node
 from infrahub.core.query.node import NodeToProcess
 from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
+from infrahub.database import InfrahubDatabase
 
 
-async def test_get_one_attribute(session: AsyncSession, default_branch: Branch, criticality_schema):
-    obj1 = await Node.init(session=session, schema=criticality_schema)
-    await obj1.new(session=session, name="low", level=4)
-    await obj1.save(session=session)
-    obj2 = await Node.init(session=session, schema=criticality_schema)
-    await obj2.new(session=session, name="medium", level=3, description="My desc", color="#333333")
-    await obj2.save(session=session)
+async def test_get_one_attribute(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+    obj1 = await Node.init(db=db, schema=criticality_schema)
+    await obj1.new(db=db, name="low", level=4)
+    await obj1.save(db=db)
+    obj2 = await Node.init(db=db, schema=criticality_schema)
+    await obj2.new(db=db, name="medium", level=3, description="My desc", color="#333333")
+    await obj2.save(db=db)
 
-    obj = await NodeManager.get_one(session=session, id=obj2.id)
+    obj = await NodeManager.get_one(db=db, id=obj2.id)
 
     assert obj.id == obj2.id
     assert obj.db_id == obj2.db_id
@@ -33,7 +32,7 @@ async def test_get_one_attribute(session: AsyncSession, default_branch: Branch, 
     assert obj.color.value == "#333333"
     assert obj.color.id
 
-    obj = await NodeManager.get_one(session=session, id=obj1.id)
+    obj = await NodeManager.get_one(db=db, id=obj1.id)
 
     assert obj.id == obj1.id
     assert obj.db_id == obj1.db_id
@@ -48,23 +47,23 @@ async def test_get_one_attribute(session: AsyncSession, default_branch: Branch, 
 
 
 async def test_get_one_attribute_with_node_property(
-    session, default_branch, criticality_schema, first_account, second_account
+    db: InfrahubDatabase, default_branch, criticality_schema, first_account, second_account
 ):
-    obj1 = await Node.init(session=session, schema=criticality_schema)
-    await obj1.new(session=session, name="low", level=4, _source=first_account)
-    await obj1.save(session=session)
-    obj2 = await Node.init(session=session, schema=criticality_schema)
+    obj1 = await Node.init(db=db, schema=criticality_schema)
+    await obj1.new(db=db, name="low", level=4, _source=first_account)
+    await obj1.save(db=db)
+    obj2 = await Node.init(db=db, schema=criticality_schema)
     await obj2.new(
-        session=session,
+        db=db,
         name="medium",
         level={"value": 3, "source": second_account.id},
         description="My desc",
         color="#333333",
         _source=first_account,
     )
-    await obj2.save(session=session)
+    await obj2.save(db=db)
 
-    obj = await NodeManager.get_one(session=session, id=obj2.id, include_source=True)
+    obj = await NodeManager.get_one(db=db, id=obj2.id, include_source=True)
 
     assert obj.id == obj2.id
     assert obj.db_id == obj2.db_id
@@ -83,15 +82,13 @@ async def test_get_one_attribute_with_node_property(
 
 
 async def test_get_one_attribute_with_flag_property(
-    session, default_branch, criticality_schema, first_account, second_account
+    db: InfrahubDatabase, default_branch, criticality_schema, first_account, second_account
 ):
-    obj1 = await Node.init(session=session, schema=criticality_schema)
-    await obj1.new(
-        session=session, name={"value": "low", "is_protected": True}, level={"value": 4, "is_visible": False}
-    )
-    await obj1.save(session=session)
+    obj1 = await Node.init(db=db, schema=criticality_schema)
+    await obj1.new(db=db, name={"value": "low", "is_protected": True}, level={"value": 4, "is_visible": False})
+    await obj1.save(db=db)
 
-    obj = await NodeManager.get_one(session=session, id=obj1.id, fields={"name": True, "level": True, "color": True})
+    obj = await NodeManager.get_one(db=db, id=obj1.id, fields={"name": True, "level": True, "color": True})
 
     assert obj.id == obj1.id
     assert obj.db_id == obj1.db_id
@@ -111,155 +108,151 @@ async def test_get_one_attribute_with_flag_property(
     assert obj.color.is_protected is False
 
 
-async def test_get_one_relationship(session: AsyncSession, default_branch: Branch, car_person_schema):
+async def test_get_one_relationship(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
     car = registry.get_schema(name="TestCar")
     person = registry.get_schema(name="TestPerson")
 
-    p1 = await Node.init(session=session, schema=person)
-    await p1.new(session=session, name="John", height=180)
-    await p1.save(session=session)
+    p1 = await Node.init(db=db, schema=person)
+    await p1.new(db=db, name="John", height=180)
+    await p1.save(db=db)
 
-    c1 = await Node.init(session=session, schema=car)
-    await c1.new(session=session, name="volt", nbr_seats=4, is_electric=True, owner=p1)
-    await c1.save(session=session)
-    c2 = await Node.init(session=session, schema=car)
-    await c2.new(session=session, name="accord", nbr_seats=5, is_electric=False, owner=p1.id)
-    await c2.save(session=session)
+    c1 = await Node.init(db=db, schema=car)
+    await c1.new(db=db, name="volt", nbr_seats=4, is_electric=True, owner=p1)
+    await c1.save(db=db)
+    c2 = await Node.init(db=db, schema=car)
+    await c2.new(db=db, name="accord", nbr_seats=5, is_electric=False, owner=p1.id)
+    await c2.save(db=db)
 
-    c11 = await NodeManager.get_one(session=session, id=c1.id)
+    c11 = await NodeManager.get_one(db=db, id=c1.id)
 
     assert c11.name.value == "volt"
     assert c11.nbr_seats.value == 4
     assert c11.is_electric.value is True
-    c11_peer = await c11.owner.get_peer(session=session)
+    c11_peer = await c11.owner.get_peer(db=db)
     assert c11_peer.id == p1.id
 
-    p11 = await NodeManager.get_one(session=session, id=p1.id)
+    p11 = await NodeManager.get_one(db=db, id=p1.id)
     assert p11.name.value == "John"
     assert p11.height.value == 180
-    assert len(list(await p11.cars.get(session=session))) == 2
+    assert len(list(await p11.cars.get(db=db))) == 2
 
 
-async def test_get_one_relationship_with_flag_property(
-    session: AsyncSession, default_branch: Branch, car_person_schema
-):
-    p1 = await Node.init(session=session, schema="TestPerson")
-    await p1.new(session=session, name="John", height=180)
-    await p1.save(session=session)
+async def test_get_one_relationship_with_flag_property(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
+    p1 = await Node.init(db=db, schema="TestPerson")
+    await p1.new(db=db, name="John", height=180)
+    await p1.save(db=db)
 
-    c1 = await Node.init(session=session, schema="TestCar")
+    c1 = await Node.init(db=db, schema="TestCar")
     await c1.new(
-        session=session,
+        db=db,
         name="volt",
         nbr_seats=4,
         is_electric=True,
         owner={"id": p1.id, "_relation__is_protected": True, "_relation__is_visible": False},
     )
-    await c1.save(session=session)
+    await c1.save(db=db)
 
-    c2 = await Node.init(session=session, schema="TestCar")
+    c2 = await Node.init(db=db, schema="TestCar")
     await c2.new(
-        session=session,
+        db=db,
         name="accord",
         nbr_seats=5,
         is_electric=False,
         owner={"id": p1.id, "_relation__is_visible": False},
     )
-    await c2.save(session=session)
+    await c2.save(db=db)
 
-    c11 = await NodeManager.get_one(session=session, id=c1.id)
+    c11 = await NodeManager.get_one(db=db, id=c1.id)
 
     assert c11.name.value == "volt"
     assert c11.nbr_seats.value == 4
     assert c11.is_electric.value is True
-    c11_peer = await c11.owner.get_peer(session=session)
+    c11_peer = await c11.owner.get_peer(db=db)
     assert c11_peer.id == p1.id
-    rel = await c11.owner.get(session=session)
+    rel = await c11.owner.get(db=db)
     assert rel.is_visible is False
     assert rel.is_protected is True
 
-    p11 = await NodeManager.get_one(session=session, id=p1.id)
+    p11 = await NodeManager.get_one(db=db, id=p1.id)
     assert p11.name.value == "John"
     assert p11.height.value == 180
 
-    rels = await p11.cars.get(session=session)
+    rels = await p11.cars.get(db=db)
     assert len(rels) == 2
     assert rels[0].is_visible is False
     assert rels[1].is_visible is False
 
 
 async def test_get_one_by_id_or_default_filter(
-    session: AsyncSession,
+    db: InfrahubDatabase,
     default_branch: Branch,
     criticality_schema: NodeSchema,
     criticality_low: Node,
     criticality_medium: Node,
 ):
     node1 = await NodeManager.get_one_by_id_or_default_filter(
-        session=session, id=criticality_low.id, schema_name=criticality_schema.kind
+        db=db, id=criticality_low.id, schema_name=criticality_schema.kind
     )
     assert isinstance(node1, Node)
     assert node1.id == criticality_low.id
 
     node2 = await NodeManager.get_one_by_id_or_default_filter(
-        session=session, id=criticality_low.name.value, schema_name=criticality_schema.kind
+        db=db, id=criticality_low.name.value, schema_name=criticality_schema.kind
     )
     assert isinstance(node2, Node)
     assert node2.id == criticality_low.id
 
 
-async def test_get_many(session: AsyncSession, default_branch: Branch, criticality_low, criticality_medium):
-    nodes = await NodeManager.get_many(session=session, ids=[criticality_low.id, criticality_medium.id])
+async def test_get_many(db: InfrahubDatabase, default_branch: Branch, criticality_low, criticality_medium):
+    nodes = await NodeManager.get_many(db=db, ids=[criticality_low.id, criticality_medium.id])
     assert len(nodes) == 2
 
 
-async def test_get_many_prefetch(session: AsyncSession, default_branch: Branch, person_jack_tags_main):
-    nodes = await NodeManager.get_many(session=session, ids=[person_jack_tags_main.id], prefetch_relationships=True)
+async def test_get_many_prefetch(db: InfrahubDatabase, default_branch: Branch, person_jack_tags_main):
+    nodes = await NodeManager.get_many(db=db, ids=[person_jack_tags_main.id], prefetch_relationships=True)
 
     assert len(nodes) == 1
     assert nodes[person_jack_tags_main.id]
-    tags = await nodes[person_jack_tags_main.id].tags.get(session=session)
+    tags = await nodes[person_jack_tags_main.id].tags.get(db=db)
     assert len(tags) == 2
     assert tags[0]._peer
     assert tags[1]._peer
 
 
 async def test_query_no_filter(
-    session: AsyncSession,
+    db: InfrahubDatabase,
     default_branch: Branch,
     criticality_schema: NodeSchema,
     criticality_low: Node,
     criticality_medium: Node,
     criticality_high: Node,
 ):
-    nodes = await NodeManager.query(session=session, schema=criticality_schema)
+    nodes = await NodeManager.query(db=db, schema=criticality_schema)
     assert len(nodes) == 3
 
 
 async def test_query_with_filter_string_int(
-    session: AsyncSession,
+    db: InfrahubDatabase,
     default_branch: Branch,
     criticality_schema,
     criticality_low: Node,
     criticality_medium: Node,
     criticality_high: Node,
 ):
-    nodes = await NodeManager.query(session=session, schema=criticality_schema, filters={"color__value": "#333333"})
+    nodes = await NodeManager.query(db=db, schema=criticality_schema, filters={"color__value": "#333333"})
     assert len(nodes) == 2
 
-    nodes = await NodeManager.query(
-        session=session, schema=criticality_schema, filters={"description__value": "My other desc"}
-    )
+    nodes = await NodeManager.query(db=db, schema=criticality_schema, filters={"description__value": "My other desc"})
     assert len(nodes) == 1
 
     nodes = await NodeManager.query(
-        session=session, schema=criticality_schema, filters={"level__value": 3, "color__value": "#333333"}
+        db=db, schema=criticality_schema, filters={"level__value": 3, "color__value": "#333333"}
     )
     assert len(nodes) == 1
 
 
 async def test_query_with_filter_bool_rel(
-    session: AsyncSession,
+    db: InfrahubDatabase,
     person_john_main,
     person_jane_main,
     car_accord_main,
@@ -271,16 +264,16 @@ async def test_query_with_filter_bool_rel(
     car = registry.get_schema(name="TestCar")
 
     # Check filter with a boolean
-    nodes = await NodeManager.query(session=session, schema=car, branch=branch, filters={"is_electric__value": False})
+    nodes = await NodeManager.query(db=db, schema=car, branch=branch, filters={"is_electric__value": False})
     assert len(nodes) == 3
 
     # Check filter with a relationship
-    nodes = await NodeManager.query(session=session, schema=car, branch=branch, filters={"owner__name__value": "John"})
+    nodes = await NodeManager.query(db=db, schema=car, branch=branch, filters={"owner__name__value": "John"})
     assert len(nodes) == 2
 
 
 async def test_query_non_default_class(
-    session: AsyncSession,
+    db: InfrahubDatabase,
     default_branch: Branch,
     criticality_schema: NodeSchema,
     criticality_low: Node,
@@ -292,28 +285,28 @@ async def test_query_non_default_class(
 
     registry.node["TestCriticality"] = TestCriticality
 
-    nodes = await NodeManager.query(session=session, schema=criticality_schema)
+    nodes = await NodeManager.query(db=db, schema=criticality_schema)
     assert len(nodes) == 2
     assert isinstance(nodes[0], TestCriticality)
     assert nodes[0].always_true()
 
 
 async def test_query_class_name(
-    session: AsyncSession,
+    db: InfrahubDatabase,
     default_branch: Branch,
     criticality_schema: NodeSchema,
     criticality_low: Node,
     criticality_medium: Node,
 ):
-    nodes = await NodeManager.query(session=session, schema="TestCriticality")
+    nodes = await NodeManager.query(db=db, schema="TestCriticality")
     assert len(nodes) == 2
 
 
-async def test_identify_node_class(session, car_schema, default_branch):
+async def test_identify_node_class(db: InfrahubDatabase, car_schema, default_branch):
     node = NodeToProcess(
         schema=car_schema,
         node_id=33,
-        node_uuid=str(uuid.uuid4()),
+        node_uuid=str(UUIDT()),
         updated_at=Timestamp().to_string(),
         branch=default_branch,
     )
@@ -338,18 +331,18 @@ async def test_identify_node_class(session, car_schema, default_branch):
 # ------------------------------------------------------------------------
 
 
-async def test_get_one_local_attribute_with_branch(session: AsyncSession, default_branch: Branch, criticality_schema):
-    obj1 = await Node.init(session=session, schema=criticality_schema)
-    await obj1.new(session=session, name="low", level=4)
-    await obj1.save(session=session)
+async def test_get_one_local_attribute_with_branch(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+    obj1 = await Node.init(db=db, schema=criticality_schema)
+    await obj1.new(db=db, name="low", level=4)
+    await obj1.save(db=db)
 
-    second_branch = await create_branch(branch_name="branch2", session=session)
+    second_branch = await create_branch(branch_name="branch2", db=db)
 
-    obj2 = await Node.init(session=session, schema=criticality_schema, branch=second_branch)
-    await obj2.new(session=session, name="medium", level=3, description="My desc", color="#333333")
-    await obj2.save(session=session)
+    obj2 = await Node.init(db=db, schema=criticality_schema, branch=second_branch)
+    await obj2.new(db=db, name="medium", level=3, description="My desc", color="#333333")
+    await obj2.save(db=db)
 
-    obj = await NodeManager.get_one(session=session, id=obj2.id, branch=second_branch)
+    obj = await NodeManager.get_one(db=db, id=obj2.id, branch=second_branch)
 
     assert obj.id == obj2.id
     assert obj.db_id == obj2.db_id
@@ -362,7 +355,7 @@ async def test_get_one_local_attribute_with_branch(session: AsyncSession, defaul
     assert obj.color.value == "#333333"
     assert obj.color.id
 
-    obj = await NodeManager.get_one(session=session, id=obj1.id, branch=second_branch)
+    obj = await NodeManager.get_one(db=db, id=obj1.id, branch=second_branch)
 
     assert obj.id == obj1.id
     assert obj.db_id == obj1.db_id
@@ -374,3 +367,26 @@ async def test_get_one_local_attribute_with_branch(session: AsyncSession, defaul
     assert obj.description.id
     assert obj.color.value == "#444444"
     assert obj.color.id
+
+
+# ------------------------------------------------------------------------
+# WITH BRANCH
+# ------------------------------------------------------------------------
+
+
+async def test_get_one_global(db: InfrahubDatabase, default_branch: Branch, base_dataset_12):
+    obj1 = await NodeManager.get_one(db=db, id="p1", branch="branch1")
+
+    assert obj1.id == "p1"
+    assert obj1.db_id
+    assert obj1.name.value == "John Doe"
+    assert obj1.height.value is None
+
+    obj2 = await NodeManager.get_one(db=db, id="c1", branch="branch1")
+
+    assert obj2.id == "c1"
+    assert obj2.db_id
+    assert obj2.name.value == "accord"
+    assert obj2.nbr_seats.value == 4
+    assert obj2.color.value == "#444444"
+    assert obj2.is_electric.value is True

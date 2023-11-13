@@ -1,26 +1,44 @@
 from invoke import Context, task
 
-from .shared import BUILD_NAME, build_test_compose_files_cmd, get_env_vars
-from .utils import REPO_BASE
+from .shared import (
+    AVAILABLE_SERVICES,
+    BUILD_NAME,
+    build_test_compose_files_cmd,
+    execute_command,
+    get_env_vars,
+)
+from .utils import ESCAPED_REPO_PATH
 
 
 @task
 def build(context: Context):
     """Start a local instance of Infrahub in debug mode."""
-    with context.cd(REPO_BASE):
+    with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_test_compose_files_cmd()
         exec_cmd = f"{get_env_vars(context=context)} docker compose {compose_files_cmd} -p {BUILD_NAME} build"
-        # exec_cmd = f"{ENV_VARS} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test bash"
 
-        return context.run(exec_cmd)
+        return execute_command(context=context, command=exec_cmd)
+
+
+@task(optional=["database"])
+def pull(context: Context, database: str = "memgraph"):
+    """Pull external containers from registry."""
+    with context.cd(ESCAPED_REPO_PATH):
+        compose_files_cmd = build_test_compose_files_cmd(database=database)
+
+        for service in AVAILABLE_SERVICES:
+            if "infrahub" in service:
+                continue
+            command = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} pull {service}"
+            execute_command(context=context, command=command)
 
 
 @task
 def destroy(context: Context):
-    """Start a local instance of Infrahub in debug mode."""
-    with context.cd(REPO_BASE):
+    """Destroy the test environment."""
+    with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_test_compose_files_cmd()
         exec_cmd = (
             f"{get_env_vars(context=context)} docker compose {compose_files_cmd} -p {BUILD_NAME} down --remove-orphans"
         )
-        return context.run(exec_cmd)
+        return execute_command(context=context, command=exec_cmd)

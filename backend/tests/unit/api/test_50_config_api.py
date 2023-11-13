@@ -1,4 +1,7 @@
-async def test_config_endpoint(session, client, client_headers, default_branch):
+from infrahub.database import InfrahubDatabase
+
+
+async def test_config_endpoint(db: InfrahubDatabase, client, client_headers, default_branch):
     with client:
         response = client.get(
             "/api/config",

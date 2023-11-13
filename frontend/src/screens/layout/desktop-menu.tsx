@@ -1,69 +1,68 @@
-import { LinkIcon, Square3Stack3DIcon, UserIcon } from "@heroicons/react/24/outline";
-import { useAtom } from "jotai";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ADMIN_MENU_ITEMS, BRANCHES_MENU_ITEMS, MENU_BLACKLIST } from "../../config/constants";
-import useFilters from "../../hooks/useFilters";
+import { toast } from "react-toastify";
+import { ALERT_TYPES, Alert } from "../../components/alert";
+import { CONFIG } from "../../config/config";
 import logo from "../../images/Infrahub-SVG-hori.svg";
-import { schemaState } from "../../state/atoms/schema.atom";
-import { constructPath } from "../../utils/fetch";
+import { fetchUrl } from "../../utils/fetch";
+import LoadingScreen from "../loading-screen/loading-screen";
 import DropDownMenuHeader from "./desktop-menu-header";
-import { DropDownMenuItem } from "./desktop-menu-item";
+import { Footer } from "./footer";
 
 export default function DesktopMenu() {
-  const [schema] = useAtom(schemaState);
-  const [, setFilters] = useFilters();
-  const onClickMenuItem = () => setFilters();
   const navigate = useNavigate();
 
-  const schemaItems = schema
-    .filter((item) => !MENU_BLACKLIST.includes(item.kind))
-    .map((item, index) => (
-      <DropDownMenuItem
-        key={index}
-        path={constructPath(`/objects/${item.name}`)}
-        label={item.label}
-        onClick={onClickMenuItem}
-      />
-    ));
+  const [isLoading, setIsLoading] = useState(false);
+  const [menu, setMenu] = useState([]);
 
-  const adminItems = ADMIN_MENU_ITEMS.map((item, index) => (
-    <DropDownMenuItem
-      key={index}
-      path={constructPath(item.path)}
-      label={item.label}
-      onClick={onClickMenuItem}
-    />
-  ));
+  const fecthMenu = async () => {
+    try {
+      setIsLoading(true);
 
-  const branchesItems = BRANCHES_MENU_ITEMS.map((item, index) => (
-    <DropDownMenuItem
-      key={index}
-      path={constructPath(item.path)}
-      label={item.label}
-      onClick={onClickMenuItem}
-    />
-  ));
+      const result = await fetchUrl(CONFIG.MENU_URL);
+
+      setMenu(result);
+
+      setIsLoading(false);
+    } catch (error) {
+      console.error("error: ", error);
+      toast(<Alert type={ALERT_TYPES.ERROR} message="Error while fetching the menu" />);
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fecthMenu();
+  }, []);
 
   return (
-    <div className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col">
-      <div className="flex flex-grow flex-col overflow-y-auto border-r border-gray-200 bg-custom-white pt-5">
-        <div
-          className="flex flex-shrink-0 items-center px-4 cursor-pointer"
-          onClick={() => navigate("/")}>
+    <div className="z-100 hidden w-64 md:visible md:inset-y-0 md:flex md:flex-col">
+      <div className="flex flex-grow flex-col overflow-y-auto border-r border-gray-200 bg-custom-white">
+        <div className="flex items-center cursor-pointer p-4" onClick={() => navigate("/")}>
           <img src={logo} />
         </div>
-        <div className="mt-5 flex flex-grow flex-col flex-1 overflow-auto py-2">
-          <nav className="flex-1 space-y-2 bg-custom-white px-2" aria-label="Sidebar">
-            <DropDownMenuHeader title={"Objects"} items={schemaItems} Icon={LinkIcon} />
-            <DropDownMenuHeader title={"Admin"} items={adminItems} Icon={UserIcon} />
-            <DropDownMenuHeader
-              title={"Branches"}
-              items={branchesItems}
-              Icon={Square3Stack3DIcon}
-            />
-          </nav>
+        <div className="flex flex-grow flex-col flex-1 overflow-auto">
+          {isLoading && <LoadingScreen size={32} hideText />}
+
+          {!isLoading && (
+            <nav
+              className="flex-1 bg-custom-white divide-y"
+              aria-label="Sidebar"
+              data-cy="sidebar-menu">
+              {menu.map((item: any, index: number) => (
+                <DropDownMenuHeader
+                  key={index}
+                  title={item.title}
+                  items={item.children}
+                  icon={item.icon}
+                />
+              ))}
+            </nav>
+          )}
         </div>
       </div>
+
+      <Footer />
     </div>
   );
 }

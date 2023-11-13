@@ -1,7 +1,15 @@
 from invoke import Context, task
 
-from .shared import BUILD_NAME, NBR_WORKERS, build_test_compose_files_cmd, get_env_vars
-from .utils import REPO_BASE
+from .shared import (
+    BUILD_NAME,
+    INFRAHUB_DATABASE,
+    NBR_WORKERS,
+    build_test_compose_files_cmd,
+    build_test_envs,
+    execute_command,
+    get_env_vars,
+)
+from .utils import ESCAPED_REPO_PATH
 
 MAIN_DIRECTORY = "backend"
 NAMESPACE = "BACKEND"
@@ -15,15 +23,15 @@ def generate_doc(context: Context):
     """Generate the documentation for infrahub cli using typer-cli."""
 
     CLI_COMMANDS = (
-        ("infrahub.cli.db", "infrahub db", "10_infrahub_db"),
-        ("infrahub.cli.server", "infrahub server", "20_infrahub_server"),
-        ("infrahub.cli.git_agent", "infrahub git-agent", "30_infrahub_git_agent"),
+        ("infrahub.cli.db", "infrahub db", "infrahub-db"),
+        ("infrahub.cli.server", "infrahub server", "infrahub-server"),
+        ("infrahub.cli.git_agent", "infrahub git-agent", "infrahub-git-agent"),
     )
 
     print(f" - [{NAMESPACE}] Generate CLI documentation")
-    with context.cd(REPO_BASE):
+    with context.cd(ESCAPED_REPO_PATH):
         for command in CLI_COMMANDS:
-            exec_cmd = f'typer {command[0]} utils docs --name "{command[1]}" --output docs/20_components/30_infrahub_cli/{command[2]}.md'
+            exec_cmd = f'typer {command[0]} utils docs --name "{command[1]}" --output docs/components/infrahub-cli/{command[2]}.md'
             context.run(exec_cmd)
 
 
@@ -36,7 +44,7 @@ def format_black(context: Context):
 
     print(f" - [{NAMESPACE}] Format code with black")
     exec_cmd = f"black {MAIN_DIRECTORY}/"
-    with context.cd(REPO_BASE):
+    with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
 
@@ -46,7 +54,7 @@ def format_autoflake(context: Context):
 
     print(f" - [{NAMESPACE}] Format code with autoflake")
     exec_cmd = f"autoflake --recursive --verbose --in-place --remove-all-unused-imports --remove-unused-variables {MAIN_DIRECTORY}"
-    with context.cd(REPO_BASE):
+    with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
 
@@ -56,7 +64,7 @@ def format_isort(context: Context):
 
     print(f" - [{NAMESPACE}] Format code with isort")
     exec_cmd = f"isort {MAIN_DIRECTORY}"
-    with context.cd(REPO_BASE):
+    with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
 
@@ -83,12 +91,10 @@ def black(context: Context, docker: bool = False):
 
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
-        exec_cmd = (
-            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
-        )
+        exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run  {build_test_envs()} infrahub-test {exec_cmd}"
         print(exec_cmd)
 
-    with context.cd(REPO_BASE):
+    with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
 
@@ -101,12 +107,10 @@ def isort(context: Context, docker: bool = False):
 
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
-        exec_cmd = (
-            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
-        )
+        exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run {build_test_envs()} infrahub-test {exec_cmd}"
         print(exec_cmd)
 
-    with context.cd(REPO_BASE):
+    with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
 
@@ -119,12 +123,10 @@ def mypy(context: Context, docker: bool = False):
 
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
-        exec_cmd = (
-            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
-        )
+        exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run {build_test_envs()} infrahub-test {exec_cmd}"
         print(exec_cmd)
 
-    with context.cd(REPO_BASE):
+    with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
 
@@ -137,12 +139,10 @@ def pylint(context: Context, docker: bool = False):
 
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
-        exec_cmd = (
-            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
-        )
+        exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run {build_test_envs()} infrahub-test {exec_cmd}"
         print(exec_cmd)
 
-    with context.cd(REPO_BASE):
+    with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
 
@@ -155,12 +155,10 @@ def ruff(context: Context, docker: bool = False):
 
     if docker:
         compose_files_cmd = build_test_compose_files_cmd(database=False)
-        exec_cmd = (
-            f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test {exec_cmd}"
-        )
+        exec_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run {build_test_envs()} infrahub-test {exec_cmd}"
         print(exec_cmd)
 
-    with context.cd(REPO_BASE):
+    with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
 
@@ -171,46 +169,45 @@ def lint(context: Context, docker: bool = False):
     black(context, docker=docker)
     isort(context, docker=docker)
     pylint(context, docker=docker)
-    # mypy(context)
+    mypy(context, docker=docker)
 
     print(f" - [{NAMESPACE}] All tests have passed!")
 
 
-@task
-def test_unit(context: Context):
-    with context.cd(REPO_BASE):
-        compose_files_cmd = build_test_compose_files_cmd()
-        base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test"
+@task(optional=["database"])
+def test_unit(context: Context, database: str = INFRAHUB_DATABASE):
+    with context.cd(ESCAPED_REPO_PATH):
+        compose_files_cmd = build_test_compose_files_cmd(database=database)
+        base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run {build_test_envs()} infrahub-test"
         exec_cmd = f"pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/unit"
-        print(exec_cmd)
-
-        return context.run(f"{base_cmd} {exec_cmd}")
+        if database == "neo4j":
+            exec_cmd += " --neo4j"
+        print(f"{base_cmd} {exec_cmd}")
+        return execute_command(context=context, command=f"{base_cmd} {exec_cmd}")
 
 
 @task(optional=["database"])
-def test_core(context: Context, database: str = "memgraph"):
-    with context.cd(REPO_BASE):
+def test_core(context: Context, database: str = INFRAHUB_DATABASE):
+    with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_test_compose_files_cmd(database=database)
-        base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run infrahub-test"
-        exec_cmd = f"pytest -n {NBR_WORKERS} -v {MAIN_DIRECTORY}/tests/unit/core"
+        base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run {build_test_envs()} infrahub-test"
+        exec_cmd = f"pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/unit/core"
         if database == "neo4j":
             exec_cmd += " --neo4j"
-
-        print(exec_cmd)
-
-        return context.run(f"{base_cmd} {exec_cmd}")
+        print(f"{base_cmd} {exec_cmd}")
+        return execute_command(context=context, command=f"{base_cmd} {exec_cmd}")
 
 
 @task(optional=["database"])
-def test_integration(context: Context, database: str = "memgraph"):
-    with context.cd(REPO_BASE):
+def test_integration(context: Context, database: str = INFRAHUB_DATABASE):
+    with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_test_compose_files_cmd(database=database)
-        base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run"
-        exec_cmd = f"infrahub-test pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/integration"
+        base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run {build_test_envs()} infrahub-test"
+        exec_cmd = f"pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/integration"
         if database == "neo4j":
             exec_cmd += " --neo4j"
-
-        return context.run(f"{base_cmd} {exec_cmd}")
+        print(f"{base_cmd} {exec_cmd}")
+        return execute_command(context=context, command=f"{base_cmd} {exec_cmd}")
 
 
 @task(default=True)

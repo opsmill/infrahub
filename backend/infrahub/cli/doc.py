@@ -13,17 +13,18 @@ DOCUMENTATION_DIRECTORY = "../../../docs"
 
 
 @app.command()
-def generate_schema():
+def generate_schema() -> None:
     """Generate documentation for the schema"""
 
-    schemas_to_generate = ["10_node", "20_attribute", "30_relationship", "40_generic"]
+    schemas_to_generate = ["node", "attribute", "relationship", "generic"]
     here = os.path.abspath(os.path.dirname(__file__))
 
     for schema_name in schemas_to_generate:
-        template_file = os.path.join(here, f"{DOCUMENTATION_DIRECTORY}/15_schema/{schema_name}.j2")
-        output_file = os.path.join(here, f"{DOCUMENTATION_DIRECTORY}/15_schema/{schema_name}.md")
+        template_file = os.path.join(here, f"{DOCUMENTATION_DIRECTORY}/schema/{schema_name}.j2")
+        output_file = os.path.join(here, f"{DOCUMENTATION_DIRECTORY}/schema/{schema_name}.md")
         if not os.path.exists(template_file):
-            raise typer.Exit(f"Unable to find the template file at {template_file}")
+            print(f"Unable to find the template file at {template_file}")
+            raise typer.Exit(1)
 
         template_text = Path(template_file).read_text(encoding="utf-8")
 

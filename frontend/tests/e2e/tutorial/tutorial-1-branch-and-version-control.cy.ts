@@ -1,12 +1,12 @@
 /// <reference types="cypress" />
 
 import {
-  ADMIN_ACCOUNT_LABEL,
-  ADMIN_ACCOUNT_NAME,
   MAIN_BRANCH_NAME,
-  NEW_ADMIN_ACCOUNT_LABEL,
   NEW_BRANCH_NAME,
-} from "../../mocks/e2e/accounts";
+  NEW_ORGANIZATION_DESCRIPTION,
+  ORGANIZATION_DESCRIPTION,
+  ORGANIZATION_NAME,
+} from "../../mocks/e2e/organizations";
 import { ADMIN_CREDENTIALS, SCREENSHOT_ENV_VARIABLE, screenshotConfig } from "../../utils";
 
 describe("Tutorial - Part 1", () => {
@@ -18,15 +18,46 @@ describe("Tutorial - Part 1", () => {
     this.screenshots = Cypress.env(SCREENSHOT_ENV_VARIABLE);
   });
 
+  it("should create a new organization", function () {
+    cy.visit("/");
+
+    // Select the Admin object in the menu
+    cy.get("[href='/objects/CoreOrganization'] > .group").click();
+
+    // Click on the + icon
+    cy.get("[data-cy='create']").click();
+
+    // Add organization name
+    cy.get(".grid > :nth-child(1) > .relative > .block").type(ORGANIZATION_NAME, {
+      delay: 0,
+      force: true,
+    });
+    cy.get(".grid > :nth-child(3) > .relative > .block").type(ORGANIZATION_DESCRIPTION, {
+      delay: 0,
+    });
+
+    if (this.screenshots) {
+      cy.screenshot("tutorial_1_organization_create", screenshotConfig);
+    }
+
+    cy.intercept("POST", "/graphql/main").as("Request");
+
+    cy.get(".flex-col > .justify-end").within(() => {
+      cy.contains("Create").click();
+
+      cy.wait("@Request");
+    });
+  });
+
   it("should create a new branch", function () {
     // The branch selector should contain the main branch name
     cy.get(":nth-child(1) > :nth-child(1) > .border").should("have.text", MAIN_BRANCH_NAME);
 
     // Click to open the branch creation form
-    cy.get("#headlessui-popover-button-\\:r8\\: > .py-1\\.5").click();
+    cy.get("[data-cy='create-branch-button']").click();
 
     // Fill the new branch name
-    cy.get(".flex-col > :nth-child(1) > .block").type(NEW_BRANCH_NAME);
+    cy.get(".flex-col > :nth-child(1) > .block").type(NEW_BRANCH_NAME, { delay: 0, force: true });
 
     if (this.screenshots) {
       cy.screenshot("tutorial_1_branch_creation", screenshotConfig);
@@ -39,66 +70,68 @@ describe("Tutorial - Part 1", () => {
     cy.get(":nth-child(1) > :nth-child(1) > .border").should("have.text", NEW_BRANCH_NAME);
   });
 
-  it("should update the Admin Account", function () {
+  it("should update the organization", function () {
     cy.visit(`/?branch=${NEW_BRANCH_NAME}`);
 
     // Select the Admin object in the menu
-    cy.get(`[href='/objects/Account?branch=${NEW_BRANCH_NAME}'] > .group`).click();
+    cy.get(`[href='/objects/CoreOrganization?branch=${NEW_BRANCH_NAME}'] > .group`).click();
 
-    // Loader should not exist
-    cy.contains("Just a moment").should("not.exist");
-
-    // Select the admin account
-    cy.contains(ADMIN_ACCOUNT_NAME).should("exist");
+    // Select the organization
+    cy.contains(ORGANIZATION_NAME).should("exist");
 
     if (this.screenshots) {
-      cy.screenshot("tutorial_1_accounts", screenshotConfig);
+      cy.screenshot("tutorial_1_organizations", screenshotConfig);
     }
 
-    cy.contains(ADMIN_ACCOUNT_NAME).click();
+    cy.contains(ORGANIZATION_NAME).click();
 
-    // Loader should not exist
-    cy.contains("Just a moment").should("not.exist");
+    cy.get(".bg-gray-500").should("not.exist");
 
     cy.get(".sm\\:divide-y > :nth-child(2) > div.flex > .mt-1").should(
       "have.text",
-      ADMIN_ACCOUNT_NAME
+      ORGANIZATION_NAME
     );
 
     if (this.screenshots) {
-      cy.screenshot("tutorial_1_account_details", screenshotConfig);
+      cy.screenshot("tutorial_1_organization_details", screenshotConfig);
     }
 
     // Open the edit panel
-    cy.get(".md\\:pl-64 > .flex-col > .bg-custom-white > :nth-child(2) > :nth-child(1)").click();
+    cy.contains("Edit").click();
 
     // Verify that the field is pre-populated
-    cy.get(".grid > :nth-child(1) > .relative > .block").should("have.value", ADMIN_ACCOUNT_NAME);
+    cy.get(".grid > :nth-child(1) > .relative > .block").should("have.value", ORGANIZATION_NAME);
 
     // Update the label
-    cy.get(":nth-child(3) > .relative > .block").should("have.value", ADMIN_ACCOUNT_LABEL);
+    cy.get(":nth-child(3) > .relative > .block").should("have.value", ORGANIZATION_DESCRIPTION);
     cy.get(":nth-child(3) > .relative > .block").clear();
-    cy.get(":nth-child(3) > .relative > .block").type(NEW_ADMIN_ACCOUNT_LABEL);
-
-    // Loader should not exist
-    cy.contains("Just a moment").should("not.exist");
+    cy.get(":nth-child(3) > .relative > .block").type(NEW_ORGANIZATION_DESCRIPTION, {
+      delay: 0,
+      force: true,
+    });
 
     if (this.screenshots) {
-      cy.screenshot("tutorial_1_account_edit", screenshotConfig);
+      cy.screenshot("tutorial_1_organization_edit", screenshotConfig);
     }
+
+    // Will intercept the mutation request
+    cy.intercept(`/graphql/${NEW_BRANCH_NAME}`).as("Request");
 
     // Submit the form
     cy.contains("Save").click();
 
+    // Wait for the mutation to succeed
+    cy.wait("@Request");
+
     // The new label should be saved
-    cy.get(":nth-child(3) > .relative > .block").should("have.value", NEW_ADMIN_ACCOUNT_LABEL);
+    cy.get(".sm\\:p-0 > :nth-child(1) > :nth-child(4)").within(() => {
+      cy.contains(NEW_ORGANIZATION_DESCRIPTION).should("exist");
+    });
   });
 
-  it("should access the Admin Account diff", function () {
+  it("should access the organzation diff", function () {
     // List the branches
     cy.get("[href='/branches'] > .group").click();
-
-    cy.contains("Just a moment").should("not.exist");
 
     if (this.screenshots) {
       cy.screenshot("tutorial_1_branch_list", screenshotConfig);
@@ -112,22 +145,23 @@ describe("Tutorial - Part 1", () => {
     }
 
     // The branch details should be ok
-    cy.get(".divide-y > :nth-child(1) > .flex").should("have.text", NEW_BRANCH_NAME);
+    cy.get(".border-t > .divide-y > :nth-child(1) > .flex").should("have.text", NEW_BRANCH_NAME);
 
     // Access to the branch diff
     cy.contains("Diff").click();
 
     // Open the tab to check the diff
-    cy.contains(NEW_ADMIN_ACCOUNT_LABEL).click();
+    cy.contains(ORGANIZATION_NAME, { matchCase: false }).click();
 
     if (this.screenshots) {
       cy.screenshot("tutorial_1_branch_diff", screenshotConfig);
     }
 
     // The old + new label should be displayed
-    cy.get(":nth-child(1) > .group\\/tooltip > .flex").should("have.text", ADMIN_ACCOUNT_LABEL);
-
-    cy.get(":nth-child(3) > .group\\/tooltip > .flex").should("have.text", NEW_ADMIN_ACCOUNT_LABEL);
+    cy.get(".text-xs > .shadow").within(() => {
+      cy.contains(ORGANIZATION_NAME, { matchCase: false }).should("exist");
+      cy.contains(NEW_ORGANIZATION_DESCRIPTION).should("exist");
+    });
 
     // Go back to details
     cy.get(".isolate > .bg-gray-100").click();
@@ -135,6 +169,6 @@ describe("Tutorial - Part 1", () => {
     // Merge the branch
     cy.get(".bg-green-500").click();
 
-    cy.contains("Branch merged successfuly!").should("exist");
+    cy.contains("Branch merged successfully!").should("exist");
   });
 });

@@ -1,18 +1,22 @@
-import uuid
-
 import pytest
+from infrahub_sdk import UUIDT
 
-from infrahub.core.attribute import Integer, String
+from infrahub.core.attribute import Integer, IPHost, IPNetwork, String
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
+from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
 
 
 async def test_init(
-    session, default_branch: Branch, criticality_schema: NodeSchema, first_account: Node, second_account: Node
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    criticality_schema: NodeSchema,
+    first_account: Node,
+    second_account: Node,
 ):
     schema = criticality_schema.get_attribute("name")
     attr = String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="mystring")
@@ -38,7 +42,49 @@ async def test_init(
     assert attr.source_id == second_account.id
 
 
-async def test_validate_format_string(session, default_branch: Branch, criticality_schema: NodeSchema):
+async def test_validate_format_ipnetwork_and_iphost(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+):
+    schema = criticality_schema.get_attribute("name")
+
+    # 1/ test with prefixlen
+    IPHost(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="192.0.2.0/32")
+    IPHost(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="2001:db8::/32")
+    IPNetwork(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="192.0.2.0/32")
+    IPNetwork(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="2001:db8::/32")
+
+    # 2/ test with netmask
+    IPHost(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="192.0.2.1/255.255.255.0")
+    IPNetwork(
+        name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="192.0.2.0/255.255.255.0"
+    )
+
+    # 3/ test without prefix or mask
+    IPHost(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="192.0.2.1")
+    IPHost(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="2001:db8::")
+    IPNetwork(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="192.0.2.1")
+    IPNetwork(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="2001:db8::")
+
+    with pytest.raises(ValidationError):
+        IPHost(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="192.0.2.0/33")
+
+    with pytest.raises(ValidationError):
+        IPHost(
+            name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="2001:db8::/ffff:ff00::"
+        )
+
+    with pytest.raises(ValidationError):
+        IPNetwork(
+            name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="192.0.2.1/255.255.255.0"
+        )
+
+    with pytest.raises(ValidationError):
+        IPNetwork(
+            name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="2001:db8::/ffff:ff00::"
+        )
+
+
+async def test_validate_format_string(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
     name_schema = criticality_schema.get_attribute("name")
 
     String(name="test", schema=name_schema, branch=default_branch, at=Timestamp(), node=None, data="five")
@@ -54,7 +100,7 @@ async def test_validate_format_string(session, default_branch: Branch, criticali
         )
 
 
-async def test_validate_format_integer(session, default_branch: Branch, criticality_schema: NodeSchema):
+async def test_validate_format_integer(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
     level_schema = criticality_schema.get_attribute("level")
 
     Integer(name="test", schema=level_schema, branch=default_branch, at=Timestamp(), node=None, data=88)
@@ -63,7 +109,7 @@ async def test_validate_format_integer(session, default_branch: Branch, critical
         Integer(name="test", schema=level_schema, branch=default_branch, at=Timestamp(), node=None, data="notaninteger")
 
 
-async def test_validate_enum(session, default_branch: Branch, criticality_schema: NodeSchema):
+async def test_validate_enum(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
     schema = criticality_schema.get_attribute("name")
 
     # 1/ there is no enum defined in the schema
@@ -78,7 +124,7 @@ async def test_validate_enum(session, default_branch: Branch, criticality_schema
         String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="five")
 
 
-async def test_validate_regex(session, default_branch: Branch, criticality_schema: NodeSchema):
+async def test_validate_regex(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
     schema = criticality_schema.get_attribute("name")
 
     # 1/ there is no regex defined in the schema
@@ -98,7 +144,7 @@ async def test_validate_regex(session, default_branch: Branch, criticality_schem
         String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="FIVE999")
 
 
-async def test_validate_length(session, default_branch: Branch, criticality_schema: NodeSchema):
+async def test_validate_length(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
     schema = criticality_schema.get_attribute("name")
 
     # 1/ there is no min_length or max_length defined in the schema
@@ -117,13 +163,13 @@ async def test_validate_length(session, default_branch: Branch, criticality_sche
         String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="thisstringistoolong")
 
 
-async def test_node_property_getter(session, default_branch: Branch, criticality_schema):
+async def test_node_property_getter(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
     schema = criticality_schema.get_attribute("name")
     attr = String(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="mystring")
 
-    obj1 = await Node.init(session=session, schema=criticality_schema)
-    await obj1.new(session=session, name="low", level=4)
-    await obj1.save(session=session)
+    obj1 = await Node.init(db=db, schema=criticality_schema)
+    await obj1.new(db=db, name="low", level=4)
+    await obj1.save(db=db)
 
     attr.source = "myuuid"
     assert attr._source is None
@@ -142,8 +188,10 @@ async def test_node_property_getter(session, default_branch: Branch, criticality
     assert attr.owner_id == "yetotheruuid"
 
 
-async def test_string_attr_query_filter(session, default_branch: Branch):
-    filters, params, matchs = String.get_query_filter(name="description", filter_name="value", filter_value="test")
+async def test_get_query_filter_string_value(db: InfrahubDatabase, default_branch: Branch):
+    filters, params, matchs = await String.get_query_filter(
+        name="description", filter_name="value", filter_value="test"
+    )
     expected_response = [
         "(n)",
         "[:HAS_ATTRIBUTE]",
@@ -155,7 +203,7 @@ async def test_string_attr_query_filter(session, default_branch: Branch):
     assert params == {"attr_description_name": "description", "attr_description_value": "test"}
     assert matchs == []
 
-    filters, params, matchs = String.get_query_filter(
+    filters, params, matchs = await String.get_query_filter(
         name="description", filter_name="value", filter_value="test", include_match=False
     )
     expected_response = [
@@ -169,16 +217,60 @@ async def test_string_attr_query_filter(session, default_branch: Branch):
     assert matchs == []
 
 
-async def test_base_serialization(session, default_branch: Branch, all_attribute_types_schema):
-    obj1 = await Node.init(session=session, schema="TestAllAttributeTypes")
-    await obj1.new(session=session, name="obj1", mystring="abc", mybool=False, myint=123, mylist=["1", 2, False])
-    await obj1.save(session=session)
+async def test_get_query_filter_any(db: InfrahubDatabase, default_branch: Branch):
+    filters, params, matchs = await String.get_query_filter(name="any", filter_name="value", filter_value="test")
+    expected_response = [
+        "(n)",
+        "[:HAS_ATTRIBUTE]",
+        "(i:Attribute)",
+        "[:HAS_VALUE]",
+        "(av:AttributeValue { value: $attr_any_value })",
+    ]
+    assert [str(item) for item in filters] == expected_response
+    assert params == {"attr_any_value": "test"}
+    assert matchs == []
 
-    obj2 = await Node.init(session=session, schema="TestAllAttributeTypes")
-    await obj2.new(session=session, name="obj2")
-    await obj2.save(session=session)
 
-    obj11 = await NodeManager.get_one(obj1.id, session=session)
+async def test_get_query_filter_flag_property(db: InfrahubDatabase, default_branch: Branch):
+    filters, params, matchs = await String.get_query_filter(
+        name="descr", filter_name="is_protected", filter_value=False
+    )
+    expected_response = [
+        "(n)",
+        "[:HAS_ATTRIBUTE]",
+        "(i:Attribute { name: $attr_descr_name })",
+        "[:IS_PROTECTED]",
+        "(ap:Boolean { value: $attr_descr_is_protected })",
+    ]
+    assert [str(item) for item in filters] == expected_response
+    assert params == {"attr_descr_name": "descr", "attr_descr_is_protected": False}
+    assert matchs == []
+
+
+async def test_get_query_filter_any_node_property(db: InfrahubDatabase, default_branch: Branch):
+    filters, params, matchs = await String.get_query_filter(name="any", filter_name="source__id", filter_value="abcdef")
+    expected_response = [
+        "(n)",
+        "[:HAS_ATTRIBUTE]",
+        "(i:Attribute)",
+        "[:HAS_SOURCE]",
+        "(ap:CoreNode { uuid: $attr_any_source_id })",
+    ]
+    assert [str(item) for item in filters] == expected_response
+    assert params == {"attr_any_source_id": "abcdef"}
+    assert matchs == []
+
+
+async def test_base_serialization(db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema):
+    obj1 = await Node.init(db=db, schema="TestAllAttributeTypes")
+    await obj1.new(db=db, name="obj1", mystring="abc", mybool=False, myint=123, mylist=["1", 2, False])
+    await obj1.save(db=db)
+
+    obj2 = await Node.init(db=db, schema="TestAllAttributeTypes")
+    await obj2.new(db=db, name="obj2")
+    await obj2.save(db=db)
+
+    obj11 = await NodeManager.get_one(id=obj1.id, db=db)
 
     assert obj11.mystring.value == obj1.mystring.value
     assert obj11.mybool.value == obj1.mybool.value
@@ -190,7 +282,7 @@ async def test_base_serialization(session, default_branch: Branch, all_attribute
     assert isinstance(obj11.myint.value, int)
     assert isinstance(obj11.mylist.value, list)
 
-    obj12 = await NodeManager.get_one(obj2.id, session=session)
+    obj12 = await NodeManager.get_one(obj2.id, db=db)
     assert obj12.mystring.value is None
     assert obj12.mybool.value is None
     assert obj12.myint.value is None
@@ -201,9 +293,9 @@ async def test_base_serialization(session, default_branch: Branch, all_attribute
     obj11.mybool.value = True
     obj11.myint.value = 456
     obj11.mylist.value = [True, 23, "qwerty"]
-    await obj11.save(session=session)
+    await obj11.save(db=db)
 
-    obj13 = await NodeManager.get_one(obj1.id, session=session)
+    obj13 = await NodeManager.get_one(obj1.id, db=db)
 
     assert obj13.mystring.value == obj11.mystring.value
     assert obj13.mybool.value == obj11.mybool.value
@@ -211,11 +303,11 @@ async def test_base_serialization(session, default_branch: Branch, all_attribute
     assert obj13.mylist.value == obj11.mylist.value
 
 
-async def test_to_graphql(session, default_branch: Branch, criticality_schema, first_account: Node):
+async def test_to_graphql(db: InfrahubDatabase, default_branch: Branch, criticality_schema, first_account: Node):
     schema = criticality_schema.get_attribute("name")
 
     attr1 = String(
-        id=str(uuid.uuid4()),
+        id=str(UUIDT()),
         name="test",
         schema=schema,
         branch=default_branch,
@@ -227,16 +319,16 @@ async def test_to_graphql(session, default_branch: Branch, criticality_schema, f
         "id": attr1.id,
         "value": "mystring",
     }
-    assert await attr1.to_graphql(session=session, fields={"value": None}) == expected_data
+    assert await attr1.to_graphql(db=db, fields={"value": None}) == expected_data
 
     expected_data = {
         "id": attr1.id,
         "is_visible": True,
     }
-    assert await attr1.to_graphql(session=session, fields={"id": None, "is_visible": None}) == expected_data
+    assert await attr1.to_graphql(db=db, fields={"id": None, "is_visible": None}) == expected_data
 
     attr2 = String(
-        id=str(uuid.uuid4()),
+        id=str(UUIDT()),
         name="test",
         schema=schema,
         branch=default_branch,
@@ -254,17 +346,16 @@ async def test_to_graphql(session, default_branch: Branch, criticality_schema, f
         },
         "value": "mystring",
     }
-    assert (
-        await attr2.to_graphql(session=session, fields={"value": None, "source": {"display_label": None}})
-        == expected_data
-    )
+    assert await attr2.to_graphql(db=db, fields={"value": None, "source": {"display_label": None}}) == expected_data
 
 
-async def test_to_graphql_no_fields(session, default_branch: Branch, criticality_schema, first_account: Node):
+async def test_to_graphql_no_fields(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema, first_account: Node
+):
     schema = criticality_schema.get_attribute("name")
 
     attr1 = String(
-        id=str(uuid.uuid4()),
+        id=str(UUIDT()),
         name="test",
         schema=schema,
         branch=default_branch,
@@ -281,10 +372,10 @@ async def test_to_graphql_no_fields(session, default_branch: Branch, criticality
         "source": None,
         "value": "mystring",
     }
-    assert await attr1.to_graphql(session=session) == expected_data
+    assert await attr1.to_graphql(db=db) == expected_data
 
     attr2 = String(
-        id=str(uuid.uuid4()),
+        id=str(UUIDT()),
         name="test",
         schema=schema,
         branch=default_branch,
@@ -307,4 +398,4 @@ async def test_to_graphql_no_fields(session, default_branch: Branch, criticality
         },
         "value": "mystring",
     }
-    assert await attr2.to_graphql(session=session) == expected_data
+    assert await attr2.to_graphql(db=db) == expected_data

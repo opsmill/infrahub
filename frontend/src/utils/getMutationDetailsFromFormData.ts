@@ -12,10 +12,10 @@ const getMutationDetailsFromFormData = (
   const updatedObject = R.clone(formData);
 
   schema.attributes?.forEach((attribute) => {
-    const updatedValue = updatedObject[attribute.name].value;
+    const updatedValue = updatedObject[attribute.name]?.value ?? attribute?.default_value;
 
     if (mode === "update" && existingObject) {
-      const existingValue = existingObject[attribute.name].value;
+      const existingValue = existingObject[attribute.name]?.value;
 
       if (mode === "update" && updatedValue === existingValue) {
         delete updatedObject[attribute.name];

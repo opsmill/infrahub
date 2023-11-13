@@ -1,41 +1,26 @@
 [tool.poetry]
 name = "infrahub"
-version = "0.6.1"
+version = "0.8.2"
 description = ""
 authors = ["OpsMill <info@opsmill.com>"]
 
 packages = [
     { include = "infrahub", from = "backend" },
-    { include = "infrahub_ctl", from = "ctl" },
-    { include = "infrahub_client", from = "python_sdk"},
     { include = "infrahub_sync", from = "sync/infrahub-sync"},
-    { include = "nornir_infrahub", from = "nornir_plugin"},
     { include = "potenda", from = "sync/potenda"},
 ]
 
 [tool.poetry.dependencies]
 python = "^3.8, < 3.12"
-rich = "^13.3"
-pendulum = "~2.1"
-typer = "^0.7"
-Jinja2 = "^3.1"
-httpx = "^0.24"
-toml = "^0.10.2"
-jsonlines = "^3.1"
-deepdiff = "^6.2"
-ujson = "^5.7"
-GitPython = "^3.1"
-pydantic = "^1.10"
-pyyaml = "^6.0"
+infrahub-sdk = {path = "python_sdk", develop=true}
 
 [tool.poetry.group.server.dependencies]
 fastapi = "~0.95"
 uvicorn = {version = "~0.21", extras = ["standard"]}
 gunicorn = "^20.1"
 graphene = "~3.2"
-neo4j = "~5.7"
+neo4j = "~5.12"
 starlette-exporter = "^0.12.0"
-GitPython = "^3.1"
 aio-pika = "^9"
 structlog = "^22.3.0"
 asgi-correlation-id = "4.2.0"
@@ -43,6 +28,12 @@ bcrypt = "4.0.1"
 pyjwt = "2.7.0"
 email-validator = "2.0.0"
 python-multipart = "^0.0.6"
+redis = { version = "^5.0.0", extras = ["hiredis"]}
+opentelemetry-api = "^1.16.0"
+opentelemetry-sdk = "^1.16.0"
+opentelemetry-instrumentation-fastapi = "^0.37b0"
+opentelemetry-exporter-otlp-proto-http = "^1.16.0"
+opentelemetry-exporter-otlp-proto-grpc = "^1.16.0"
 
 [tool.poetry.group.perf.dependencies]
 locust = "^2.13.1"
@@ -66,8 +57,10 @@ types-ujson = "*"
 types-pyyaml = "*"
 typer-cli = "*"
 pytest-cov = "^4.0.0"
-ruff = "0.0.265"
+ruff = "0.1.0"
 pytest-xdist = "^3.3.1"
+buildkite-test-collector = "^0.1.7"
+types-python-slugify = "^8.0.0.3"
 
 
 [tool.poetry.group.sync.dependencies]
@@ -75,16 +68,11 @@ dagster = "^1.1.19"
 dagit = "^1.1.19"
 structlog = "^22.3.0"
 pynetbox = "^7.0.1"
-pynautobot = "^1.4.0"
+pynautobot = "^1.5.0"
 diffsync = "^1.8.0"
-
-
-[tool.poetry.group.nornir.dependencies]
-nornir = "^3.3.0"
 
 [tool.poetry.scripts]
 infrahub = "infrahub.cli:app"
-infrahubctl = "infrahub_ctl.cli:app"
 infrahub-git-credential = "infrahub.git_credential.helper:app"
 infrahub-git-askpass = "infrahub.git_credential.askpass:app"
 infrahub-sync = "infrahub_sync.cli:app"
@@ -107,14 +95,15 @@ exclude = '''
 
 [tool.isort]
 profile = "black"
-known_first_party = [ "infrahub" , "infrahub_client", "infrahub_ctl" ]
+known_first_party = [ "infrahub" ]
 
 [tool.coverage.run]
 branch = true
 
 [tool.coverage.report]
 exclude_lines = [
-    "if TYPE_CHECKING:"
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError()"
 ]
 
 [tool.pylint.general]
@@ -177,14 +166,100 @@ addopts = "-vs --cov-report term-missing --cov-report xml --dist loadscope"
 [tool.mypy]
 pretty = true
 ignore_missing_imports = true
+exclude = "^backend/tests/"
 
 [[tool.mypy.overrides]]
-module = "infrahub_client.*"
+module = "infrahub.*"
 disallow_untyped_defs = true
 
 [[tool.mypy.overrides]]
-module = "infrahub_ctl.*"
-disallow_untyped_defs = true
+module = "infrahub.api.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.auth"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.checks"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.core.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.config"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.database"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.exceptions"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.git.repository"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.git_credential.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.lock"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.message_bus"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.message_bus.operations.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.message_bus.rpc"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.serve.log"
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "infrahub.server"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.storage.main"
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "infrahub.tasks.registry"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.test_data.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.trace"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.transforms"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.types"
+disallow_untyped_defs = false
+
 
 [tool.ruff]
 
@@ -193,15 +268,19 @@ select = [
     "DTZ",
     "E",
     "F",
+    "ICN",
     "TCH",
+    "T10",
+    "Q",
     "W",
+    "YTT",
 ]
 
 line-length = 170
 
 [tool.ruff.mccabe]
 # Target max-complexity=10
-max-complexity = 26
+max-complexity = 31
 
 [tool.ruff.per-file-ignores]
 

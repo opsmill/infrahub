@@ -1,0 +1,20 @@
+---
+version: "3.4"
+services:
+  message-queue:
+    image: "${MESSAGE_QUEUE_DOCKER_IMAGE:-rabbitmq:latest}"
+    environment:
+      - "RABBITMQ_DEFAULT_USER=infrahub"
+      - "RABBITMQ_DEFAULT_PASS=infrahub"
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 5s
+      timeout: 30s
+      retries: 3
+  cache:
+    image: "${CACHE_DOCKER_IMAGE:-redis:latest}"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 3

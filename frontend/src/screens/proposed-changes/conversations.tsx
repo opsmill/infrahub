@@ -8,7 +8,7 @@ import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/alert";
 import { AVATAR_SIZE, Avatar } from "../../components/avatar";
 import { Badge } from "../../components/badge";
-import { Button } from "../../components/button";
+import { BUTTON_TYPES, Button } from "../../components/button";
 import { AddComment } from "../../components/conversations/add-comment";
 import { Thread } from "../../components/conversations/thread";
 import { DateDisplay } from "../../components/date-display";
@@ -17,10 +17,10 @@ import { Tooltip } from "../../components/tooltip";
 import {
   ACCOUNT_OBJECT,
   DEFAULT_BRANCH_NAME,
-  PROPOSED_CHANGES_CHANGE_THREAD,
   PROPOSED_CHANGES_CHANGE_THREAD_OBJECT,
   PROPOSED_CHANGES_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
+  PROPOSED_CHANGES_THREAD_OBJECT,
 } from "../../config/constants";
 import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
@@ -32,16 +32,18 @@ import { branchVar } from "../../graphql/variables/branchVar";
 import { dateVar } from "../../graphql/variables/dateVar";
 import useQuery from "../../hooks/useQuery";
 import { branchesState } from "../../state/atoms/branches.atom";
+import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { constructPath } from "../../utils/fetch";
+import { getProposedChangesStateBadgeType } from "../../utils/proposed-changes";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 
-type tProposedChangesDetails = {
-  proposedChangesDetails?: any;
+type tConversations = {
+  refetch?: Function;
 };
 
 export const getFormStructure = (
@@ -93,54 +95,53 @@ export const getFormStructure = (
   },
 ];
 
-export const Conversations = (props: tProposedChangesDetails) => {
-  const { proposedChangesDetails } = props;
-
+export const Conversations = (props: tConversations) => {
+  const { refetch: detailsRefetch } = props;
   const { proposedchange } = useParams();
   const [branches] = useAtom(branchesState);
   const [schemaList] = useAtom(schemaState);
+  const [proposedChangesDetails] = useAtom(proposedChangedState);
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
   const auth = useContext(AuthContext);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingApprove, setIsLoadingApprove] = useState(false);
-  // const [isLoadingMerge, setIsLoadingMerge] = useState(false);
+  const [isLoadingMerge, setIsLoadingMerge] = useState(false);
+  const [isLoadingClose, setIsLoadingClose] = useState(false);
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const navigate = useNavigate();
 
-  const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_CHANGE_THREAD)[0];
-  const accountSchemaData = schemaList.filter((s) => s.name === ACCOUNT_OBJECT)[0];
+  const accountSchemaData = schemaList.find((s) => s.kind === ACCOUNT_OBJECT);
 
-  const queryString = schemaData
-    ? getProposedChangesThreads({
-        id: proposedchange,
-        kind: schemaData.kind,
-        accountKind: accountSchemaData.kind,
-      })
-    : // Empty query to make the gql parsing work
-      // TODO: Find another solution for queries while loading schemaData
-      "query { ok }";
+  const queryString = getProposedChangesThreads({
+    id: proposedchange,
+    kind: PROPOSED_CHANGES_THREAD_OBJECT,
+    accountKind: accountSchemaData.kind,
+  });
 
   const query = gql`
     ${queryString}
   `;
 
-  const { loading, error, data, refetch } = useQuery(query, { skip: !schemaData });
+  const { loading, error, data, refetch } = useQuery(query);
 
-  if (!schemaData || loading) {
+  if (loading) {
     return <LoadingScreen />;
   }
 
   if (error) {
-    return <ErrorScreen />;
+    return <ErrorScreen message="Something went wrong when fetching the conversations." />;
   }
 
-  const threads = data ? data[schemaData.kind]?.edges?.map((edge: any) => edge.node) : [];
+  const threads = data
+    ? data[PROPOSED_CHANGES_THREAD_OBJECT]?.edges?.map((edge: any) => edge.node)
+    : [];
   const reviewers = proposedChangesDetails?.reviewers?.edges.map((edge: any) => edge.node) ?? [];
   const approvers = proposedChangesDetails?.approved_by?.edges.map((edge: any) => edge.node) ?? [];
   const approverId = auth?.data?.sub;
   const canApprove = !approvers?.map((a: any) => a.id).includes(approverId);
   const path = constructPath("/proposed-changes");
+  const state = proposedChangesDetails?.state?.value;
 
   const handleSubmit = async (data: any, event: any) => {
     let threadId;
@@ -157,6 +158,9 @@ export const Conversations = (props: tProposedChangesDetails) => {
       const newThread = {
         change: {
           id: proposedchange,
+        },
+        label: {
+          value: "Conversation",
         },
         created_at: {
           value: newDate,
@@ -244,14 +248,6 @@ export const Conversations = (props: tProposedChangesDetails) => {
 
       console.error("An error occured while creating the comment: ", error);
 
-      toast(
-        <Alert
-          type={ALERT_TYPES.ERROR}
-          message={"An error occured while creating the comment"}
-          details={error.message}
-        />
-      );
-
       setIsLoading(false);
     }
   };
@@ -274,7 +270,7 @@ export const Conversations = (props: tProposedChangesDetails) => {
 
     try {
       const mutationString = updateObjectWithId({
-        kind: schemaData.kind,
+        kind: PROPOSED_CHANGES_OBJECT,
         data: stringifyWithoutQuotes({
           id: proposedchange,
           ...data,
@@ -298,49 +294,113 @@ export const Conversations = (props: tProposedChangesDetails) => {
 
       return;
     } catch (e) {
-      setIsLoading(false);
-      toast(
-        <Alert message="Something went wrong while updating the object" type={ALERT_TYPES.ERROR} />
-      );
       console.error("Something went wrong while updating the object:", e);
+
+      setIsLoading(false);
+
       return;
     }
   };
 
-  // const handleMerge = async () => {
-  //   if (!proposedChangesDetails?.source_branch?.value) return;
+  const handleMerge = async () => {
+    if (!proposedChangesDetails?.source_branch?.value) return;
 
-  //   try {
-  //     setIsLoadingMerge(true);
+    try {
+      setIsLoadingMerge(true);
 
-  //     const data = {
-  //       name: proposedChangesDetails?.source_branch?.value,
-  //     };
+      const stateData = {
+        state: {
+          value: "merged",
+        },
+      };
 
-  //     const mutationString = mergeBranch({ data: objectToString(data) });
+      const stateMutationString = updateObjectWithId({
+        kind: PROPOSED_CHANGES_OBJECT,
+        data: stringifyWithoutQuotes({
+          id: proposedchange,
+          ...stateData,
+        }),
+      });
 
-  //     const mutation = gql`
-  //       ${mutationString}
-  //     `;
+      const stateMutation = gql`
+        ${stateMutationString}
+      `;
 
-  //     await graphqlClient.mutate({
-  //       mutation,
-  //       context: {
-  //         date,
-  //       },
-  //     });
+      await graphqlClient.mutate({
+        mutation: stateMutation,
+        context: { branch: branch?.name, date },
+      });
 
-  //     toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Branch merged successfuly!"} />);
-  //   } catch (error: any) {
-  //     console.log("error: ", error);
+      if (detailsRefetch) {
+        detailsRefetch();
+      }
 
-  //     toast(
-  //       <Alert type={ALERT_TYPES.SUCCESS} message={"An error occured while merging the branch"} />
-  //     );
-  //   }
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Proposed changes merged successfully!"} />);
+    } catch (error: any) {
+      console.log("error: ", error);
 
-  //   setIsLoadingMerge(false);
-  // };
+      toast(
+        <Alert
+          type={ALERT_TYPES.SUCCESS}
+          message={"An error occured while merging the proposed changes"}
+        />
+      );
+    }
+
+    setIsLoadingMerge(false);
+  };
+
+  const handleClose = async () => {
+    setIsLoadingClose(true);
+
+    const newState = state === "closed" ? "open" : "closed";
+
+    const data = {
+      state: {
+        value: newState,
+      },
+    };
+
+    try {
+      const mutationString = updateObjectWithId({
+        kind: PROPOSED_CHANGES_OBJECT,
+        data: stringifyWithoutQuotes({
+          id: proposedchange,
+          ...data,
+        }),
+      });
+
+      const mutation = gql`
+        ${mutationString}
+      `;
+
+      await graphqlClient.mutate({
+        mutation,
+        context: { branch: branch?.name, date },
+      });
+
+      toast(
+        <Alert
+          type={ALERT_TYPES.SUCCESS}
+          message={`Proposed change ${state === "closed" ? "opened" : "closed"}`}
+        />
+      );
+
+      if (detailsRefetch) {
+        detailsRefetch();
+      }
+
+      setIsLoadingClose(false);
+
+      return;
+    } catch (e) {
+      console.error("Something went wrong while updating the object:", e);
+
+      setIsLoadingClose(false);
+
+      return;
+    }
+  };
 
   const branchesOptions: any[] = branches
     .filter((branch) => branch.name !== "main")
@@ -360,7 +420,7 @@ export const Conversations = (props: tProposedChangesDetails) => {
       <div className="flex-1 p-4 overflow-auto">
         <div>
           {threads.map((item: any, index: number) => (
-            <Thread key={index} thread={item} refetch={refetch} />
+            <Thread key={index} thread={item} refetch={refetch} displayContext />
           ))}
         </div>
 
@@ -399,33 +459,40 @@ export const Conversations = (props: tProposedChangesDetails) => {
 
           <div className="border-t border-gray-200 px-2 py-2 sm:p-0">
             <dl className="divide-y divide-gray-200">
-              <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
+              <div className="p-4 grid grid-cols-3 gap-4 items-center">
                 <dt className="text-sm font-medium text-gray-500">ID</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">{proposedchange}</dd>
               </div>
 
-              <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
+              <div className="p-4 grid grid-cols-3 gap-4 items-center">
                 <dt className="text-sm font-medium text-gray-500">Name</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
                   {proposedChangesDetails?.name.value}
                 </dd>
               </div>
 
-              <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
+              <div className="p-4 grid grid-cols-3 gap-4 items-center">
+                <dt className="text-sm font-medium text-gray-500">State</dt>
+                <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
+                  <Badge type={getProposedChangesStateBadgeType(state)}>{state}</Badge>
+                </dd>
+              </div>
+
+              <div className="p-4 grid grid-cols-3 gap-4 items-center">
                 <dt className="text-sm font-medium text-gray-500">Source branch</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
                   <Badge>{proposedChangesDetails?.source_branch.value}</Badge>
                 </dd>
               </div>
 
-              <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
+              <div className="p-4 grid grid-cols-3 gap-4 items-center">
                 <dt className="text-sm font-medium text-gray-500">Destination branch</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
                   <Badge>{proposedChangesDetails?.destination_branch.value}</Badge>
                 </dd>
               </div>
 
-              <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
+              <div className="p-4 grid grid-cols-3 gap-4 items-center">
                 <dt className="text-sm font-medium text-gray-500">Created by</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
                   <Tooltip message={proposedChangesDetails?.created_by?.node?.display_label}>
@@ -438,7 +505,7 @@ export const Conversations = (props: tProposedChangesDetails) => {
                 </dd>
               </div>
 
-              <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
+              <div className="p-4 grid grid-cols-3 gap-4 items-center">
                 <dt className="text-sm font-medium text-gray-500">Reviewers</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
                   {reviewers.map((reviewer: any, index: number) => (
@@ -453,7 +520,7 @@ export const Conversations = (props: tProposedChangesDetails) => {
                 </dd>
               </div>
 
-              <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
+              <div className="p-4 grid grid-cols-3 gap-4 items-center">
                 <dt className="text-sm font-medium text-gray-500">Approved by</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
                   {approvers.map((approver: any, index: number) => (
@@ -468,32 +535,40 @@ export const Conversations = (props: tProposedChangesDetails) => {
                 </dd>
               </div>
 
-              <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
+              <div className="p-4 grid grid-cols-3 gap-4 items-center">
                 <dt className="text-sm font-medium text-gray-500">Updated</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
                   <DateDisplay date={proposedChangesDetails?._updated_at} />
                 </dd>
               </div>
 
-              <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6 items-center">
+              <div className="p-4 grid grid-cols-3 gap-4 items-center">
                 <dt className="text-sm font-medium text-gray-500">Actions</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
                   <Button
                     onClick={handleApprove}
-                    // buttonType={BUTTON_TYPES.VALIDATE}
                     isLoading={isLoadingApprove}
                     disabled={!auth?.permissions?.write || !approverId || !canApprove}
                     className="mr-2">
                     Approve
                   </Button>
 
-                  {/* <Button
+                  <Button
                     onClick={handleMerge}
                     buttonType={BUTTON_TYPES.VALIDATE}
                     isLoading={isLoadingMerge}
-                    disabled={!auth?.permissions?.write}>
+                    disabled={!auth?.permissions?.write || state === "closed" || state === "merged"}
+                    className="mr-2">
                     Merge
-                  </Button> */}
+                  </Button>
+
+                  <Button
+                    onClick={handleClose}
+                    buttonType={BUTTON_TYPES.CANCEL}
+                    isLoading={isLoadingClose}
+                    disabled={!auth?.permissions?.write || state === "merged"}>
+                    {state === "closed" ? "Re-open" : "Close"}
+                  </Button>
                 </dd>
               </div>
             </dl>
@@ -510,7 +585,7 @@ export const Conversations = (props: tProposedChangesDetails) => {
               </span>
               <div className="flex-1"></div>
               <div className="flex items-center">
-                <Square3Stack3DIcon className="w-5 h-5" />
+                <Square3Stack3DIcon className="w-4 h-4" />
                 <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
               </div>
             </div>
@@ -521,7 +596,7 @@ export const Conversations = (props: tProposedChangesDetails) => {
                 aria-hidden="true">
                 <circle cx={3} cy={3} r={3} />
               </svg>
-              {schemaData.kind}
+              {PROPOSED_CHANGES_THREAD_OBJECT}
             </span>
             <div className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-custom-blue-500 ring-1 ring-inset ring-custom-blue-500/10 ml-3">
               <svg

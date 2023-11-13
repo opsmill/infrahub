@@ -1,13 +1,16 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, Union
+from typing import TYPE_CHECKING, Dict, List, Set, Union
 
+from graphene.types.definitions import GrapheneInterfaceType, GrapheneObjectType
 from graphql import (  # pylint: disable=no-name-in-module
     ExecutionContext,
     FieldNode,
     FragmentSpreadNode,
+    GraphQLList,
     GraphQLObjectType,
     GraphQLResolveInfo,
+    GraphQLSchema,
     InlineFragmentNode,
     SelectionSetNode,
 )
@@ -16,17 +19,21 @@ if TYPE_CHECKING:
     import abc
 
 
-# async def extract_global_kwargs(kwargs: dict) -> Tuple[Timestamp, Branch, Node]:
-#     """Extract the timestamp, the branch and the account from the kwargs from GraphQL"""
-#     at = Timestamp(kwargs.get("at", None))
+def calculate_dict_depth(data: dict, level: int = 1) -> int:
+    """Calculate the depth of a nested dictionnary recursively."""
+    if not isinstance(data, dict) or not data:
+        return level
+    return max(calculate_dict_depth(data=data[key], level=level + 1) for key in data)
 
-#     branch = get_branch(branch=kwargs.get("branch"))
-#     rebase = kwargs.get("rebase", False)s
-#     branch.ephemeral_rebase = rebase
 
-#     account = kwargs.get("account", None)
-
-#     return at, branch, account
+def calculate_dict_height(data: dict, cnt: int = 0) -> int:
+    """Calculate the number of fields (height) in a nested dictionnary recursively."""
+    for key in data:
+        if isinstance(data[key], dict):
+            cnt = calculate_dict_height(data=data[key], cnt=cnt + 1)
+        else:
+            cnt += 1
+    return cnt
 
 
 async def extract_fields(selection_set: SelectionSetNode) -> Dict[str, Dict]:
@@ -64,6 +71,53 @@ async def extract_fields(selection_set: SelectionSetNode) -> Dict[str, Dict]:
                     fields[sub_node.name.value].update(value)
 
     return fields
+
+
+def find_types_implementing_interface(
+    interface: GrapheneInterfaceType, root_schema: GraphQLSchema
+) -> List[GrapheneObjectType]:
+    results = []
+    for _, value in root_schema.type_map.items():
+        if not hasattr(value, "interfaces"):
+            continue
+
+        for item in value.interfaces:
+            if item.name == interface.name:
+                results.append(value)
+
+    return results
+
+
+async def extract_schema_models(fields: dict, schema: GrapheneObjectType, root_schema: GraphQLSchema) -> Set[str]:
+    response = set()
+    for field_name, value in fields.items():
+        if field_name not in schema.fields:
+            continue
+
+        if isinstance(schema.fields[field_name].type, GrapheneObjectType):
+            object_type = schema.fields[field_name].type
+        elif isinstance(schema.fields[field_name].type, GraphQLList):
+            object_type = schema.fields[field_name].type.of_type
+        elif isinstance(schema.fields[field_name].type, GrapheneInterfaceType):
+            object_type = schema.fields[field_name].type
+            sub_types = find_types_implementing_interface(interface=object_type, root_schema=root_schema)
+            for sub_type in sub_types:
+                response.add(sub_type.name)
+                response.update(await extract_schema_models(fields=value, schema=sub_type, root_schema=root_schema))
+        else:
+            continue
+
+        response.add(object_type.name)
+
+        if isinstance(value, dict):
+            response.update(await extract_schema_models(fields=value, schema=object_type, root_schema=root_schema))
+        elif isinstance(value, str) and value in schema.fields:
+            if isinstance(schema.fields[value].type, GrapheneObjectType):
+                response.add(schema.fields[value].type.name)
+            elif isinstance(schema.fields[value].type, GraphQLList):
+                response.add(schema.fields[value].type.of_type.name)
+
+    return response
 
 
 # --------------------------------------------------------------

@@ -1,8 +1,9 @@
 import logging
 
+from infrahub_sdk import InfrahubClient
+
+from infrahub import lock
 from infrahub.exceptions import RepositoryError
-from infrahub.lock import registry as lock_registry
-from infrahub_client import InfrahubClient
 
 from .repository import InfrahubRepository
 
@@ -14,7 +15,7 @@ async def sync_remote_repositories(client: InfrahubClient) -> None:
     repositories = await client.get_list_repositories(branches=branches)
 
     for repo_name, repository in repositories.items():
-        async with lock_registry.get(repo_name):
+        async with lock.registry.get(name=repo_name, namespace="repository"):
             init_failed = False
             try:
                 repo = await InfrahubRepository.init(

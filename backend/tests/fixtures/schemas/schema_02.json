@@ -26,7 +26,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": true,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 1000
                 },
@@ -43,7 +43,7 @@
                     "min_length": null,
                     "inherited": true,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 2000
                 },
@@ -60,7 +60,7 @@
                     "min_length": null,
                     "inherited": true,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 3000
                 }
@@ -75,7 +75,7 @@
                     "identifier": "group_member",
                     "inherited": true,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -97,7 +97,7 @@
                     "identifier": "group_subscriber",
                     "inherited": true,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -116,7 +116,7 @@
                 "CoreGroup"
             ],
             "groups": [],
-            "branch": true,
+            "branch": "aware",
             "filters": [
                 {
                     "name": "ids",
@@ -170,7 +170,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 1000
                 },
@@ -187,7 +187,7 @@
                     "min_length": null,
                     "inherited": true,
                     "unique": true,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 2000
                 },
@@ -204,7 +204,7 @@
                     "min_length": null,
                     "inherited": true,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 3000
                 },
@@ -221,7 +221,7 @@
                     "min_length": null,
                     "inherited": true,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 4000
                 }
@@ -236,7 +236,7 @@
                     "identifier": "person__car",
                     "inherited": true,
                     "cardinality": "one",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "filters": [
                         {
@@ -272,7 +272,7 @@
                     "identifier": "group_member",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -315,7 +315,7 @@
                     "identifier": "group_subscriber",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -355,7 +355,7 @@
                 "TestCar"
             ],
             "groups": [],
-            "branch": true,
+            "branch": "aware",
             "filters": [
                 {
                     "name": "ids",
@@ -416,7 +416,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 1000
                 },
@@ -433,7 +433,7 @@
                     "min_length": null,
                     "inherited": true,
                     "unique": true,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 2000
                 },
@@ -450,7 +450,7 @@
                     "min_length": null,
                     "inherited": true,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 3000
                 },
@@ -467,7 +467,7 @@
                     "min_length": null,
                     "inherited": true,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 4000
                 }
@@ -482,7 +482,7 @@
                     "identifier": "person__car",
                     "inherited": true,
                     "cardinality": "one",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "filters": [
                         {
@@ -518,7 +518,7 @@
                     "identifier": "group_member",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -561,7 +561,7 @@
                     "identifier": "group_subscriber",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -601,7 +601,7 @@
                 "TestCar"
             ],
             "groups": [],
-            "branch": true,
+            "branch": "aware",
             "filters": [
                 {
                     "name": "ids",
@@ -664,7 +664,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": true,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 1000
                 },
@@ -681,7 +681,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 2000
                 }
@@ -696,7 +696,7 @@
                     "identifier": "person__car",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -739,7 +739,7 @@
                     "identifier": "group_member",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -782,7 +782,7 @@
                     "identifier": "group_subscriber",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -820,7 +820,7 @@
             "label": null,
             "inherit_from": [],
             "groups": [],
-            "branch": true,
+            "branch": "aware",
             "filters": [
                 {
                     "name": "ids",
@@ -871,7 +871,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": true,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 1000
                 },
@@ -899,7 +899,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 2000
                 },
@@ -916,7 +916,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 3000
                 }
@@ -931,7 +931,7 @@
                     "identifier": "group_member",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -974,7 +974,7 @@
                     "identifier": "group_subscriber",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -1012,7 +1012,7 @@
             "label": "Criticality",
             "inherit_from": [],
             "groups": [],
-            "branch": true,
+            "branch": "aware",
             "filters": [
                 {
                     "name": "ids",
@@ -1081,7 +1081,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": true,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 1000
                 },
@@ -1098,7 +1098,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 2000
                 }
@@ -1113,7 +1113,7 @@
                     "identifier": "group_member",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -1156,7 +1156,7 @@
                     "identifier": "group_subscriber",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -1194,7 +1194,7 @@
             "label": "Tag",
             "inherit_from": [],
             "groups": [],
-            "branch": true,
+            "branch": "aware",
             "filters": [
                 {
                     "name": "ids",
@@ -1245,7 +1245,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": true,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 1000
                 },
@@ -1262,7 +1262,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 2000
                 },
@@ -1279,7 +1279,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 3000
                 }
@@ -1294,7 +1294,7 @@
                     "identifier": "builtintag__coreorganization",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -1330,7 +1330,7 @@
                     "identifier": "group_member",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -1373,7 +1373,7 @@
                     "identifier": "group_subscriber",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -1411,7 +1411,7 @@
             "label": "Organization",
             "inherit_from": [],
             "groups": [],
-            "branch": true,
+            "branch": "aware",
             "filters": [
                 {
                     "name": "ids",
@@ -1476,7 +1476,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": true,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 1000
                 },
@@ -1493,7 +1493,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 2000
                 },
@@ -1510,7 +1510,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 3000
                 },
@@ -1527,7 +1527,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 4000
                 },
@@ -1549,7 +1549,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 5000
                 },
@@ -1570,7 +1570,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 6000
                 }
@@ -1585,7 +1585,7 @@
                     "identifier": "coreaccount__internalaccounttoken",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -1621,7 +1621,7 @@
                     "identifier": "group_member",
                     "inherited": true,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -1664,7 +1664,7 @@
                     "identifier": "group_subscriber",
                     "inherited": true,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -1705,7 +1705,7 @@
                 "LineageSource"
             ],
             "groups": [],
-            "branch": true,
+            "branch": "aware",
             "filters": [
                 {
                     "name": "ids",
@@ -1784,7 +1784,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 1000
                 },
@@ -1801,7 +1801,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": true,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 2000
                 },
@@ -1818,7 +1818,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 3000
                 }
@@ -1833,7 +1833,7 @@
                     "identifier": "coreaccount__internalaccounttoken",
                     "inherited": false,
                     "cardinality": "one",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "filters": [
                         {
@@ -1899,7 +1899,7 @@
                     "identifier": "group_member",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -1942,7 +1942,7 @@
                     "identifier": "group_subscriber",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -1980,7 +1980,7 @@
             "label": "Account Token",
             "inherit_from": [],
             "groups": [],
-            "branch": true,
+            "branch": "aware",
             "filters": [
                 {
                     "name": "ids",
@@ -2027,7 +2027,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 1000
                 }
@@ -2042,7 +2042,7 @@
                     "identifier": "coreaccount__internalrefreshtoken",
                     "inherited": false,
                     "cardinality": "one",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "filters": [
                         {
@@ -2108,7 +2108,7 @@
                     "identifier": "group_member",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -2151,7 +2151,7 @@
                     "identifier": "group_subscriber",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -2189,7 +2189,7 @@
             "label": "Refresh Token",
             "inherit_from": [],
             "groups": [],
-            "branch": true,
+            "branch": "aware",
             "filters": [
                 {
                     "name": "ids",
@@ -2224,7 +2224,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 1000
                 },
@@ -2241,7 +2241,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 2000
                 },
@@ -2258,7 +2258,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 3000
                 }
@@ -2273,7 +2273,7 @@
                     "identifier": "coreaccount__proposedchange_approved_by",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -2339,7 +2339,7 @@
                     "identifier": "coreaccount__proposedchange_reviewed_by",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -2405,7 +2405,7 @@
                     "identifier": "coreaccount__proposedchange_created_by",
                     "inherited": false,
                     "cardinality": "one",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -2471,7 +2471,7 @@
                     "identifier": "corechangecomment__coreproposedchange",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -2493,7 +2493,7 @@
                     "identifier": "proposedchange__thread",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -2522,7 +2522,7 @@
                     "identifier": "group_member",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -2565,7 +2565,7 @@
                     "identifier": "group_subscriber",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -2603,7 +2603,7 @@
             "label": "Proposed Change",
             "inherit_from": [],
             "groups": [],
-            "branch": true,
+            "branch": "aware",
             "filters": [
                 {
                     "name": "ids",
@@ -2671,7 +2671,7 @@
                     "min_length": null,
                     "inherited": true,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 1000
                 },
@@ -2688,7 +2688,7 @@
                     "min_length": null,
                     "inherited": true,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 2000
                 }
@@ -2703,7 +2703,7 @@
                     "identifier": "proposedchange__thread",
                     "inherited": true,
                     "cardinality": "one",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "filters": [
                         {
@@ -2746,7 +2746,7 @@
                     "identifier": "thread__threadcomment",
                     "inherited": true,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -2768,7 +2768,7 @@
                     "identifier": "coreaccount__corethread",
                     "inherited": true,
                     "cardinality": "one",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -2834,7 +2834,7 @@
                     "identifier": "group_member",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -2877,7 +2877,7 @@
                     "identifier": "group_subscriber",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -2917,7 +2917,7 @@
                 "CoreThread"
             ],
             "groups": [],
-            "branch": true,
+            "branch": "aware",
             "filters": [
                 {
                     "name": "ids",
@@ -2964,7 +2964,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 1000
                 },
@@ -2981,7 +2981,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 2000
                 },
@@ -2998,7 +2998,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 3000
                 },
@@ -3015,7 +3015,7 @@
                     "min_length": null,
                     "inherited": true,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 4000
                 },
@@ -3032,7 +3032,7 @@
                     "min_length": null,
                     "inherited": true,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 5000
                 }
@@ -3047,7 +3047,7 @@
                     "identifier": "corefilethread__corerepository",
                     "inherited": false,
                     "cardinality": "one",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "filters": [
                         {
@@ -3118,7 +3118,7 @@
                     "identifier": "proposedchange__thread",
                     "inherited": true,
                     "cardinality": "one",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "filters": [
                         {
@@ -3161,7 +3161,7 @@
                     "identifier": "thread__threadcomment",
                     "inherited": true,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -3183,7 +3183,7 @@
                     "identifier": "coreaccount__corethread",
                     "inherited": true,
                     "cardinality": "one",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -3249,7 +3249,7 @@
                     "identifier": "group_member",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -3292,7 +3292,7 @@
                     "identifier": "group_subscriber",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -3332,7 +3332,7 @@
                 "CoreThread"
             ],
             "groups": [],
-            "branch": true,
+            "branch": "aware",
             "filters": [
                 {
                     "name": "ids",
@@ -3400,7 +3400,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 1000
                 },
@@ -3417,7 +3417,7 @@
                     "min_length": null,
                     "inherited": true,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 2000
                 },
@@ -3434,7 +3434,7 @@
                     "min_length": null,
                     "inherited": true,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 3000
                 }
@@ -3449,7 +3449,7 @@
                     "identifier": "proposedchange__thread",
                     "inherited": true,
                     "cardinality": "one",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "filters": [
                         {
@@ -3492,7 +3492,7 @@
                     "identifier": "thread__threadcomment",
                     "inherited": true,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -3514,7 +3514,7 @@
                     "identifier": "coreaccount__corethread",
                     "inherited": true,
                     "cardinality": "one",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -3580,7 +3580,7 @@
                     "identifier": "group_member",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -3623,7 +3623,7 @@
                     "identifier": "group_subscriber",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -3663,7 +3663,7 @@
                 "CoreThread"
             ],
             "groups": [],
-            "branch": true,
+            "branch": "aware",
             "filters": [
                 {
                     "name": "ids",
@@ -3719,7 +3719,7 @@
                     "min_length": null,
                     "inherited": true,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 1000
                 },
@@ -3736,7 +3736,7 @@
                     "min_length": null,
                     "inherited": true,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 2000
                 }
@@ -3751,7 +3751,7 @@
                     "identifier": "corechangecomment__coreproposedchange",
                     "inherited": false,
                     "cardinality": "one",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "filters": [
                         {
@@ -3794,7 +3794,7 @@
                     "identifier": "coreaccount__corecomment",
                     "inherited": true,
                     "cardinality": "one",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -3860,7 +3860,7 @@
                     "identifier": "group_member",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -3903,7 +3903,7 @@
                     "identifier": "group_subscriber",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -3943,7 +3943,7 @@
                 "CoreComment"
             ],
             "groups": [],
-            "branch": true,
+            "branch": "aware",
             "filters": [
                 {
                     "name": "ids",
@@ -3985,7 +3985,7 @@
                     "min_length": null,
                     "inherited": true,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 1000
                 },
@@ -4002,7 +4002,7 @@
                     "min_length": null,
                     "inherited": true,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 2000
                 }
@@ -4017,7 +4017,7 @@
                     "identifier": "thread__threadcomment",
                     "inherited": false,
                     "cardinality": "one",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "filters": [
                         {
@@ -4046,7 +4046,7 @@
                     "identifier": "coreaccount__corecomment",
                     "inherited": true,
                     "cardinality": "one",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -4112,7 +4112,7 @@
                     "identifier": "group_member",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -4155,7 +4155,7 @@
                     "identifier": "group_subscriber",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -4195,7 +4195,7 @@
                 "CoreComment"
             ],
             "groups": [],
-            "branch": true,
+            "branch": "aware",
             "filters": [
                 {
                     "name": "ids",
@@ -4239,7 +4239,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": true,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 1000
                 },
@@ -4256,7 +4256,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 2000
                 },
@@ -4273,7 +4273,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 3000
                 }
@@ -4288,7 +4288,7 @@
                     "identifier": "group_member",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -4331,7 +4331,7 @@
                     "identifier": "group_subscriber",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -4369,7 +4369,7 @@
             "label": "Status",
             "inherit_from": [],
             "groups": [],
-            "branch": true,
+            "branch": "aware",
             "filters": [
                 {
                     "name": "ids",
@@ -4427,7 +4427,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": true,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 1000
                 },
@@ -4444,7 +4444,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 2000
                 },
@@ -4461,7 +4461,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 3000
                 }
@@ -4476,7 +4476,7 @@
                     "identifier": "group_member",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -4519,7 +4519,7 @@
                     "identifier": "group_subscriber",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -4557,7 +4557,7 @@
             "label": "Role",
             "inherit_from": [],
             "groups": [],
-            "branch": true,
+            "branch": "aware",
             "filters": [
                 {
                     "name": "ids",
@@ -4615,7 +4615,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": true,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 1000
                 },
@@ -4632,7 +4632,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 2000
                 },
@@ -4649,7 +4649,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 3000
                 }
@@ -4664,7 +4664,7 @@
                     "identifier": "builtinlocation__builtintag",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -4700,7 +4700,7 @@
                     "identifier": "group_member",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -4743,7 +4743,7 @@
                     "identifier": "group_subscriber",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -4781,7 +4781,7 @@
             "label": "Location",
             "inherit_from": [],
             "groups": [],
-            "branch": true,
+            "branch": "aware",
             "filters": [
                 {
                     "name": "ids",
@@ -4846,7 +4846,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": true,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 1000
                 },
@@ -4863,7 +4863,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 2000
                 },
@@ -4880,7 +4880,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 3000
                 },
@@ -4897,7 +4897,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 4000
                 },
@@ -4914,7 +4914,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 5000
                 },
@@ -4931,7 +4931,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 6000
                 },
@@ -4948,7 +4948,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 7000
                 }
@@ -4963,7 +4963,7 @@
                     "identifier": "coreaccount__corerepository",
                     "inherited": false,
                     "cardinality": "one",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -5029,7 +5029,7 @@
                     "identifier": "builtintag__corerepository",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -5065,7 +5065,7 @@
                     "identifier": "repository__rfile",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -5129,7 +5129,7 @@
                     "identifier": "graphql_query__repository",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -5158,14 +5158,14 @@
                 },
                 {
                     "name": "checks",
-                    "peer": "CoreCheck",
+                    "peer": "CoreCheckDefinition",
                     "kind": "Generic",
                     "label": null,
                     "description": null,
                     "identifier": "check__repository",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -5229,7 +5229,7 @@
                     "identifier": "repository__transformation",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -5307,7 +5307,7 @@
                     "identifier": "group_member",
                     "inherited": true,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -5350,7 +5350,7 @@
                     "identifier": "group_subscriber",
                     "inherited": true,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -5391,7 +5391,7 @@
                 "LineageSource"
             ],
             "groups": [],
-            "branch": true,
+            "branch": "aware",
             "filters": [
                 {
                     "name": "ids",
@@ -5491,7 +5491,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 1000
                 },
@@ -5508,7 +5508,7 @@
                     "min_length": null,
                     "inherited": true,
                     "unique": true,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 2000
                 },
@@ -5525,7 +5525,7 @@
                     "min_length": null,
                     "inherited": true,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 3000
                 },
@@ -5542,7 +5542,7 @@
                     "min_length": null,
                     "inherited": true,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 4000
                 },
@@ -5559,7 +5559,7 @@
                     "min_length": null,
                     "inherited": true,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 5000
                 },
@@ -5576,7 +5576,7 @@
                     "min_length": null,
                     "inherited": true,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 6000
                 }
@@ -5591,7 +5591,7 @@
                     "identifier": "repository__transformation",
                     "inherited": true,
                     "cardinality": "one",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "filters": [
                         {
@@ -5662,7 +5662,7 @@
                     "identifier": "graphql_query__transformation",
                     "inherited": true,
                     "cardinality": "one",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "filters": [
                         {
@@ -5698,7 +5698,7 @@
                     "identifier": "builtintag__coretransformation",
                     "inherited": true,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -5734,7 +5734,7 @@
                     "identifier": "group_member",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -5777,7 +5777,7 @@
                     "identifier": "group_subscriber",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -5817,7 +5817,7 @@
                 "CoreTransformation"
             ],
             "groups": [],
-            "branch": true,
+            "branch": "aware",
             "filters": [
                 {
                     "name": "ids",
@@ -5893,7 +5893,7 @@
             "kind": "CoreRFile"
         },
         {
-            "name": "Check",
+            "name": "CheckDefinition",
             "namespace": "Core",
             "description": null,
             "default_filter": "name__value",
@@ -5917,7 +5917,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": true,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 1000
                 },
@@ -5934,7 +5934,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 2000
                 },
@@ -5951,7 +5951,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 3000
                 },
@@ -5968,7 +5968,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 4000
                 },
@@ -5985,7 +5985,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 5000
                 },
@@ -6002,9 +6002,14 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 6000
+                },
+                {
+                    "name": "parameters",
+                    "kind": "JSON",
+                    "optional": true
                 }
             ],
             "relationships": [
@@ -6017,7 +6022,7 @@
                     "identifier": "check__repository",
                     "inherited": false,
                     "cardinality": "one",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "filters": [
                         {
@@ -6088,7 +6093,7 @@
                     "identifier": "check__graphql_query",
                     "inherited": false,
                     "cardinality": "one",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -6121,10 +6126,10 @@
                     "kind": "Attribute",
                     "label": null,
                     "description": null,
-                    "identifier": "builtintag__corecheck",
+                    "identifier": "builtintag__corecheckdefinition",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -6160,7 +6165,7 @@
                     "identifier": "group_member",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -6203,7 +6208,7 @@
                     "identifier": "group_subscriber",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -6238,10 +6243,10 @@
                     "order_weight": 11000
                 }
             ],
-            "label": "Check",
+            "label": "Check Definition",
             "inherit_from": [],
             "groups": [],
-            "branch": true,
+            "branch": "aware",
             "filters": [
                 {
                     "name": "ids",
@@ -6314,7 +6319,7 @@
                     "description": null
                 }
             ],
-            "kind": "CoreCheck"
+            "kind": "CoreCheckDefinition"
         },
         {
             "name": "TransformPython",
@@ -6341,7 +6346,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 1000
                 },
@@ -6358,7 +6363,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 2000
                 },
@@ -6375,7 +6380,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 3000
                 },
@@ -6392,7 +6397,7 @@
                     "min_length": null,
                     "inherited": true,
                     "unique": true,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 4000
                 },
@@ -6409,7 +6414,7 @@
                     "min_length": null,
                     "inherited": true,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 5000
                 },
@@ -6426,7 +6431,7 @@
                     "min_length": null,
                     "inherited": true,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 6000
                 },
@@ -6443,7 +6448,7 @@
                     "min_length": null,
                     "inherited": true,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 7000
                 },
@@ -6460,7 +6465,7 @@
                     "min_length": null,
                     "inherited": true,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 8000
                 }
@@ -6475,7 +6480,7 @@
                     "identifier": "repository__transformation",
                     "inherited": false,
                     "cardinality": "one",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "filters": [
                         {
@@ -6546,7 +6551,7 @@
                     "identifier": "graphql_query__transform_python",
                     "inherited": false,
                     "cardinality": "one",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -6582,7 +6587,7 @@
                     "identifier": "builtintag__coretransformation",
                     "inherited": true,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -6618,7 +6623,7 @@
                     "identifier": "group_member",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -6661,7 +6666,7 @@
                     "identifier": "group_subscriber",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -6701,7 +6706,7 @@
                 "CoreTransformation"
             ],
             "groups": [],
-            "branch": true,
+            "branch": "aware",
             "filters": [
                 {
                     "name": "ids",
@@ -6815,7 +6820,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": true,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 1000
                 },
@@ -6832,7 +6837,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 2000
                 },
@@ -6849,7 +6854,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 3000
                 }
@@ -6864,7 +6869,7 @@
                     "identifier": "graphql_query__repository",
                     "inherited": false,
                     "cardinality": "one",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -6935,7 +6940,7 @@
                     "identifier": "builtintag__coregraphqlquery",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -6971,7 +6976,7 @@
                     "identifier": "group_member",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -7014,7 +7019,7 @@
                     "identifier": "group_subscriber",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -7052,7 +7057,7 @@
             "label": "GraphQL Query",
             "inherit_from": [],
             "groups": [],
-            "branch": true,
+            "branch": "aware",
             "filters": [
                 {
                     "name": "ids",
@@ -7117,7 +7122,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": true,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 1000
                 },
@@ -7137,7 +7142,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 2000
                 },
@@ -7154,7 +7159,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 3000
                 },
@@ -7171,7 +7176,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 3000
                 },
@@ -7188,7 +7193,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 4000
                 },
@@ -7205,7 +7210,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 5000
                 }
@@ -7220,7 +7225,7 @@
                     "identifier": "artifact__node",
                     "inherited": false,
                     "cardinality": "one",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "filters": [
                         {
@@ -7242,7 +7247,7 @@
                     "identifier": "artifact__artifact_definition",
                     "inherited": false,
                     "cardinality": "one",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "filters": [
                         {
@@ -7295,7 +7300,7 @@
                     "identifier": "builtintag__coreartifact",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -7331,7 +7336,7 @@
                     "identifier": "group_member",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -7374,7 +7379,7 @@
                     "identifier": "group_subscriber",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -7412,7 +7417,7 @@
             "label": "Artifact",
             "inherit_from": [],
             "groups": [],
-            "branch": true,
+            "branch": "aware",
             "filters": [
                 {
                     "name": "ids",
@@ -7494,7 +7499,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": true,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 1000
                 },
@@ -7511,7 +7516,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 2000
                 },
@@ -7528,7 +7533,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 3000
                 },
@@ -7545,7 +7550,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 4000
                 },
@@ -7565,7 +7570,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 5000
                 }
@@ -7580,7 +7585,7 @@
                     "identifier": "artifact_definition___group",
                     "inherited": false,
                     "cardinality": "one",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "filters": [
                         {
@@ -7623,7 +7628,7 @@
                     "identifier": "artifact_definition___transformation",
                     "inherited": false,
                     "cardinality": "one",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "filters": [
                         {
@@ -7680,7 +7685,7 @@
                     "identifier": "group_member",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -7723,7 +7728,7 @@
                     "identifier": "group_subscriber",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [
                         {
@@ -7761,7 +7766,7 @@
             "label": "Artifact Definition",
             "inherit_from": [],
             "groups": [],
-            "branch": true,
+            "branch": "aware",
             "filters": [
                 {
                     "name": "ids",
@@ -7843,7 +7848,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 2000
                 },
@@ -7860,7 +7865,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": true,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 1000
                 }
@@ -7875,7 +7880,7 @@
                     "identifier": "group_member",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [],
                     "order_weight": 3000
@@ -7889,13 +7894,13 @@
                     "identifier": "group_subscriber",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [],
                     "order_weight": 4000
                 }
             ],
-            "branch": true,
+            "branch": "aware",
             "label": "Owner",
             "used_by": [
                 "CoreAccount",
@@ -7926,7 +7931,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 2000
                 },
@@ -7943,7 +7948,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": true,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 1000
                 }
@@ -7958,7 +7963,7 @@
                     "identifier": "group_member",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [],
                     "order_weight": 3000
@@ -7972,13 +7977,13 @@
                     "identifier": "group_subscriber",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [],
                     "order_weight": 4000
                 }
             ],
-            "branch": true,
+            "branch": "aware",
             "label": "Source",
             "used_by": [
                 "CoreAccount",
@@ -8012,7 +8017,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": true,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 1000
                 },
@@ -8029,7 +8034,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 2000
                 },
@@ -8046,7 +8051,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 3000
                 }
@@ -8061,7 +8066,7 @@
                     "identifier": "person__car",
                     "inherited": false,
                     "cardinality": "one",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "filters": [],
                     "order_weight": 4000
@@ -8075,7 +8080,7 @@
                     "identifier": "group_member",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [],
                     "order_weight": 5000
@@ -8089,13 +8094,13 @@
                     "identifier": "group_subscriber",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [],
                     "order_weight": 6000
                 }
             ],
-            "branch": true,
+            "branch": "aware",
             "label": null,
             "used_by": [
                 "TestElectricCar",
@@ -8128,7 +8133,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 2000
                 },
@@ -8145,7 +8150,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 3000
                 },
@@ -8162,7 +8167,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": true,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 1000
                 }
@@ -8177,7 +8182,7 @@
                     "identifier": "group_member",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [],
                     "order_weight": 4000
@@ -8191,13 +8196,13 @@
                     "identifier": "group_subscriber",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [],
                     "order_weight": 5000
                 }
             ],
-            "branch": true,
+            "branch": "aware",
             "label": "Group",
             "used_by": [
                 "CoreStandardGroup"
@@ -8222,7 +8227,7 @@
                     "identifier": "group_member",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [],
                     "order_weight": 1000
@@ -8236,13 +8241,13 @@
                     "identifier": "group_subscriber",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [],
                     "order_weight": 2000
                 }
             ],
-            "branch": true,
+            "branch": "aware",
             "label": "Node",
             "used_by": [],
             "kind": "CoreNode"
@@ -8272,7 +8277,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 1000
                 },
@@ -8289,7 +8294,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 2000
                 }
@@ -8304,7 +8309,7 @@
                     "identifier": "coreaccount__corecomment",
                     "inherited": false,
                     "cardinality": "one",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [],
                     "order_weight": 3000
@@ -8318,7 +8323,7 @@
                     "identifier": "group_member",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [],
                     "order_weight": 4000
@@ -8332,13 +8337,13 @@
                     "identifier": "group_subscriber",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [],
                     "order_weight": 5000
                 }
             ],
-            "branch": true,
+            "branch": "aware",
             "label": "Comment",
             "used_by": [
                 "CoreChangeComment",
@@ -8371,7 +8376,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 1000
                 },
@@ -8388,7 +8393,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 2000
                 }
@@ -8403,7 +8408,7 @@
                     "identifier": "proposedchange__thread",
                     "inherited": false,
                     "cardinality": "one",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "filters": [],
                     "order_weight": 3000
@@ -8417,7 +8422,7 @@
                     "identifier": "thread__threadcomment",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [],
                     "order_weight": 4000
@@ -8431,7 +8436,7 @@
                     "identifier": "coreaccount__corethread",
                     "inherited": false,
                     "cardinality": "one",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [],
                     "order_weight": 5000
@@ -8445,7 +8450,7 @@
                     "identifier": "group_member",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [],
                     "order_weight": 6000
@@ -8459,13 +8464,13 @@
                     "identifier": "group_subscriber",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [],
                     "order_weight": 7000
                 }
             ],
-            "branch": true,
+            "branch": "aware",
             "label": "Thread",
             "used_by": [
                 "CoreChangeThread",
@@ -8499,7 +8504,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": true,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 1000
                 },
@@ -8516,7 +8521,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 2000
                 },
@@ -8533,7 +8538,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "order_weight": 3000
                 },
@@ -8550,7 +8555,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 4000
                 },
@@ -8567,7 +8572,7 @@
                     "min_length": null,
                     "inherited": false,
                     "unique": false,
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "order_weight": 5000
                 }
@@ -8582,7 +8587,7 @@
                     "identifier": "graphql_query__transformation",
                     "inherited": false,
                     "cardinality": "one",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": false,
                     "filters": [],
                     "order_weight": 6000
@@ -8596,7 +8601,7 @@
                     "identifier": "builtintag__coretransformation",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [],
                     "order_weight": 7000
@@ -8610,7 +8615,7 @@
                     "identifier": "group_member",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [],
                     "order_weight": 8000
@@ -8624,13 +8629,13 @@
                     "identifier": "group_subscriber",
                     "inherited": false,
                     "cardinality": "many",
-                    "branch": true,
+                    "branch": "aware",
                     "optional": true,
                     "filters": [],
                     "order_weight": 9000
                 }
             ],
-            "branch": true,
+            "branch": "aware",
             "label": "Transformation",
             "used_by": [
                 "CoreRFile",

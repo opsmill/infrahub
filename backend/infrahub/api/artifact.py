@@ -1,22 +1,24 @@
-from typing import TYPE_CHECKING, List, Optional
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, List
 
 from fastapi import APIRouter, Depends, Request, Response
-from neo4j import AsyncSession
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from infrahub import config
 from infrahub.api.dependencies import (
     BranchParams,
     get_branch_params,
     get_current_user,
-    get_session,
+    get_db,
 )
 from infrahub.core import registry
+from infrahub.database import InfrahubDatabase  # noqa: TCH001
 from infrahub.exceptions import NodeNotFound
 from infrahub.log import get_logger
+from infrahub.message_bus import messages
 
 if TYPE_CHECKING:
-    from infrahub.core.artifact import CoreArtifactDefinition
     from infrahub.message_bus.rpc import InfrahubRpcClient
 
 log = get_logger()
@@ -24,7 +26,7 @@ router = APIRouter(prefix="/artifact")
 
 
 class ArtifactGeneratePayload(BaseModel):
-    nodes: Optional[List[str]]
+    nodes: List[str] = Field(default_factory=list)
 
 
 class ArtifactGenerateResponse(BaseModel):
@@ -34,13 +36,11 @@ class ArtifactGenerateResponse(BaseModel):
 @router.get("/{artifact_id:str}")
 async def get_artifact(
     artifact_id: str,
-    session: AsyncSession = Depends(get_session),
+    db: InfrahubDatabase = Depends(get_db),
     branch_params: BranchParams = Depends(get_branch_params),
     _: str = Depends(get_current_user),
 ) -> Response:
-    artifact = await registry.manager.get_one(
-        session=session, id=artifact_id, branch=branch_params.branch, at=branch_params.at
-    )
+    artifact = await registry.manager.get_one(db=db, id=artifact_id, branch=branch_params.branch, at=branch_params.at)
     if not artifact:
         raise NodeNotFound(
             branch_name=config.SETTINGS.main.default_branch, node_type="CoreArtifact", identifier=artifact_id
@@ -55,26 +55,22 @@ async def get_artifact(
 async def generate_artifact(
     request: Request,
     artifact_definition_id: str,
-    payload: Optional[ArtifactGeneratePayload] = None,
-    session: AsyncSession = Depends(get_session),
+    payload: ArtifactGeneratePayload = ArtifactGeneratePayload(),
+    db: InfrahubDatabase = Depends(get_db),
     branch_params: BranchParams = Depends(get_branch_params),
     _: str = Depends(get_current_user),
-) -> ArtifactGenerateResponse:
-    artifact_definition: CoreArtifactDefinition = await registry.manager.get_one_by_id_or_default_filter(
-        session=session,
+) -> None:
+    # Verify that the artifact definition exists for the requested branch
+    artifact_definition = await registry.manager.get_one_by_id_or_default_filter(
+        db=db,
         id=artifact_definition_id,
         schema_name="CoreArtifactDefinition",
         branch=branch_params.branch,
-        at=branch_params.at,
     )
 
     rpc_client: InfrahubRpcClient = request.app.state.rpc_client
-
-    if not payload:
-        nodes = await artifact_definition.generate(session=session, rpc_client=rpc_client)
-    else:
-        nodes = await artifact_definition.generate(session=session, rpc_client=rpc_client, nodes=payload.nodes)
-
-    response_data = ArtifactGenerateResponse(nodes=nodes)
-
-    return response_data
+    await rpc_client.send(
+        message=messages.RequestArtifactDefinitionGenerate(
+            artifact_definition=artifact_definition.id, branch=branch_params.branch.name, limit=payload.nodes
+        )
+    )

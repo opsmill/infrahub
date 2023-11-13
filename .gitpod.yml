@@ -7,7 +7,6 @@ tasks:
       gp env INFRAHUB_SDK_API_TOKEN=06438eb2-8019-4776-878c-0941b1f1d1ec
     init: |
       cd /workspace/infrahub
-      cp development/docker-compose.gitpod-override.yml development/docker-compose.override.yml
       pyenv install 3.11 --skip-existing
       pyenv local 3.11
       pip install toml invoke
@@ -15,11 +14,11 @@ tasks:
       source $HOME/.bashrc
       poetry config virtualenvs.create false
       poetry install
-      poetry run invoke demo.build demo.init demo.start
+      poetry run invoke demo.build
     command: |
       cd /workspace/infrahub
       source $HOME/.bashrc
-      poetry run invoke demo.build demo.start demo.load-infra-schema demo.load-infra-data
+      poetry run invoke demo.destroy demo.start demo.load-infra-schema demo.load-infra-data
 
 # Ports to expose on workspace startup
 ports:
@@ -51,7 +50,7 @@ github:
     # enable for the default branch (defaults to true)
     master: true
     # enable for all branches in this repo (defaults to false)
-    branches: false
+    branches: true
     # enable for pull requests coming from this repo (defaults to true)
     pullRequests: true
     # enable for pull requests coming from forks (defaults to false)

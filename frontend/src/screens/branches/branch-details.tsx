@@ -47,7 +47,7 @@ export const BranchDetails = () => {
   const [detailsContent, setDetailsContent] = useState({});
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
 
-  const accountSchemaData = schemaList.filter((s) => s.name === ACCOUNT_OBJECT)[0];
+  const accountSchemaData = schemaList.find((s) => s.kind === ACCOUNT_OBJECT);
 
   const navigate = useNavigate();
 
@@ -98,7 +98,7 @@ export const BranchDetails = () => {
 
   const { loading, error, data } = useQuery(query, { skip: !accountSchemaData });
 
-  const branch = data?.branch?.filter((branch: any) => branch.name === branchname)[0];
+  const branch = data?.Branch?.filter((branch: any) => branch.name === branchname)[0];
 
   const customObject = {
     created_by: {
@@ -122,10 +122,10 @@ export const BranchDetails = () => {
   });
 
   return (
-    <div className="bg-custom-white p-6">
+    <div className="bg-custom-white">
       {loading && <LoadingScreen />}
 
-      {error && <ErrorScreen />}
+      {error && <ErrorScreen message="Something went wrong when fetching the branch details." />}
 
       {displayModal && (
         <ModalDelete
@@ -139,7 +139,7 @@ export const BranchDetails = () => {
           onCancel={() => setDisplayModal(false)}
           onDelete={async () => {
             await branchAction({
-              successMessage: "Branch deleted successfuly!",
+              successMessage: "Branch deleted successfully!",
               errorMessage: "An error occured while deleting the branch",
               request: deleteBranch,
               options: {
@@ -160,23 +160,23 @@ export const BranchDetails = () => {
         <>
           <div className="border-t border-b border-gray-200 px-2 py-2 sm:p-0 mb-6">
             <dl className="divide-y divide-gray-200">
-              <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6">
+              <div className="p-4 grid grid-cols-3 gap-4">
                 <dt className="text-sm font-medium text-gray-500">Name</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">{branch.name}</dd>
               </div>
-              <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6">
+              <div className="p-4 grid grid-cols-3 gap-4">
                 <dt className="text-sm font-medium text-gray-500">Origin branch</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
-                  <Badge>{branch.origin_branch}</Badge>
+                  <Badge className="text-sm">{branch.origin_branch}</Badge>
                 </dd>
               </div>
-              <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6">
+              <div className="p-4 grid grid-cols-3 gap-4">
                 <dt className="text-sm font-medium text-gray-500">Branched</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
                   <DateDisplay date={branch.branched_at} />
                 </dd>
               </div>
-              <div className="py-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5 sm:px-6">
+              <div className="p-4 grid grid-cols-3 gap-4">
                 <dt className="text-sm font-medium text-gray-500">Created</dt>
                 <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
                   <DateDisplay date={branch.created_at} />
@@ -187,7 +187,7 @@ export const BranchDetails = () => {
         </>
       )}
 
-      <div className="">
+      <div className="p-6">
         <div className="mb-6">
           {branch?.name && (
             <>
@@ -197,7 +197,7 @@ export const BranchDetails = () => {
                   className="mr-0 md:mr-3"
                   onClick={() =>
                     branchAction({
-                      successMessage: "Branch merged successfuly!",
+                      successMessage: "Branch merged successfully!",
                       errorMessage: "An error occured while merging the branch",
                       request: mergeBranch,
                       options: {
@@ -223,7 +223,7 @@ export const BranchDetails = () => {
                   className="mr-0 md:mr-3"
                   onClick={() =>
                     branchAction({
-                      successMessage: "Branch rebased successfuly!",
+                      successMessage: "Branch rebased successfully!",
                       errorMessage: "An error occured while rebasing the branch",
                       request: rebaseBranch,
                       options: {
@@ -283,10 +283,10 @@ export const BranchDetails = () => {
         title={
           <div className="space-y-2">
             <div className="flex items-center w-full">
-              <span className="text-lg font-semibold mr-3">Create {PROPOSED_CHANGES_OBJECT}</span>
+              <span className="text-lg font-semibold mr-3">Create Proposed Changes</span>
               <div className="flex-1"></div>
               <div className="flex items-center">
-                <Square3Stack3DIcon className="w-5 h-5" />
+                <Square3Stack3DIcon className="w-4 h-4" />
                 <div className="ml-1.5 pb-1">{branch?.name}</div>
               </div>
             </div>

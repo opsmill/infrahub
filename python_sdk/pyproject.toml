@@ -1,0 +1,186 @@
+[tool.poetry]
+name = "infrahub-sdk"
+version = "0.2.1"
+description = "Python Client to interact with Infrahub"
+authors = ["OpsMill <contact@opsmill.com>"]
+readme = "README.md"
+license = "Apache-2.0"
+homepage = "https://opsmill.io"
+repository = "https://opsmill.io"
+documentation = "https://opsmill.io"
+packages = [
+    {include = "infrahub_sdk"},
+    {include = "infrahub_ctl"}
+]
+classifiers = [
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+httpx = "^0.24.0"
+rich = "^13.3"
+pendulum = "~2.1"
+typer = "^0.7"
+Jinja2 = "^3.1"
+toml = "^0.10.2"
+jsonlines = "^3.1"
+deepdiff = "^6.2"
+ujson = "^5.7"
+pydantic = "^1.10"
+pyyaml = "^6.0"
+gitpython = "3.1.40"
+
+[tool.poetry.group.dev.dependencies]
+black = "*"
+pytest = "*"
+yamllint = "*"
+pylint = "*"
+mypy = "*"
+ipython = "*"
+pytest-asyncio = "*"
+requests = "*"
+pre-commit = "^2.20.0"
+isort = "*"
+autoflake = "*"
+pytest-clarity = "^1.0.1"
+pytest-httpx = "^0.22"
+types-toml = "*"
+types-ujson = "*"
+types-pyyaml = "*"
+typer-cli = "*"
+pytest-cov = "^4.0.0"
+ruff = "0.1.0"
+pytest-xdist = "^3.3.1"
+buildkite-test-collector = "^0.1.7"
+types-python-slugify = "^8.0.0.3"
+
+[tool.poetry.scripts]
+infrahub = "infrahub.cli:app"
+infrahubctl = "infrahub_ctl.cli:app"
+
+[tool.black]
+line-length = 120
+include = '\.pyi?$'
+exclude = '''
+        /(
+          \.git
+        | \.tox
+        | \.venv
+        | env/
+        | _build
+        | build
+        | dist
+        | examples
+        )/
+    '''
+
+[tool.isort]
+profile = "black"
+known_first_party = [ "infrahub_sdk", "infrahub_ctl" ]
+
+[tool.coverage.run]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError()"
+]
+
+[tool.pylint.general]
+extension-pkg-whitelist = [
+    "pydantic",
+    "ujson",
+]
+
+[tool.pylint.format]
+disable = "logging-fstring-interpolation"
+
+[tool.pylint.basic]
+# No docstrings required for private methods (Pylint default), or for test_ functions.
+no-docstring-rgx="^(_|test_)"
+
+[tool.pylint.messages_control]
+# Line length is enforced by Black, so pylint doesn't need to check it.
+# Pylint and Black disagree about how to format multi-line arrays; Black wins.
+disable = """,
+    line-too-long,
+    missing-module-docstring,
+    missing-function-docstring,
+    missing-class-docstring,
+    consider-using-from-import,
+    invalid-name,
+    too-many-arguments,
+    too-many-locals,
+    keyword-arg-before-vararg,
+    too-few-public-methods,
+    too-many-instance-attributes,
+    fixme,
+    consider-using-f-string,
+    protected-access,
+    import-self,
+    wrong-import-order,
+    """
+
+[tool.pylint.miscellaneous]
+notes = """,
+    FIXME,
+    XXX,
+    """
+
+[tool.pylint.similarities]
+min-similarity-lines = 20
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = [
+    "tests"
+]
+filterwarnings = [
+    "ignore:Module already imported so cannot be rewritten",
+    "ignore:the imp module is deprecated",
+    "ignore:Deprecated call to",
+]
+addopts = "-vs --cov-report term-missing --cov-report xml --dist loadscope"
+
+[tool.mypy]
+pretty = true
+ignore_missing_imports = true
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "infrahub_ctl.*"
+ignore_errors = true
+
+
+[tool.ruff]
+select = [
+    "C90",
+    "DTZ",
+    "E",
+    "F",
+    "ICN",
+    "TCH",
+    "T10",
+    "Q",
+    "W",
+    "YTT",
+]
+
+line-length = 170
+
+[tool.ruff.mccabe]
+# Target max-complexity=10
+max-complexity = 31
+
+[tool.ruff.per-file-ignores]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

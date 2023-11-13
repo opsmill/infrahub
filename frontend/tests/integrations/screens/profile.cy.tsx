@@ -56,7 +56,7 @@ describe("List screen", () => {
 
     cy.get(".h-12").should(
       "have.text",
-      initials(profileDetailsMocksData.account_profile.display_label)
+      initials(profileDetailsMocksData.AccountProfile.display_label)
     );
   });
 });

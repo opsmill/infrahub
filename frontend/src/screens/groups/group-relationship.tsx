@@ -114,7 +114,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
           <div className="mt-0 flex flex-col px-4 sm:px-6 lg:px-8 w-full flex-1">
             <div className="-my-2 -mx-4 sm:-mx-6 lg:-mx-8">
               <div className="inline-block min-w-full pt-2 align-middle">
-                <div className="shadow-sm ring-1 ring-custom-black ring-opacity-5">
+                <div className="shadow-sm ring-1 ring-custom-black ring-opacity-5 overflow-x-auto">
                   <table className="min-w-full border-separate" style={{ borderSpacing: 0 }}>
                     <thead className="bg-gray-50">
                       <tr>
@@ -122,13 +122,13 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                           <th
                             key={column.name}
                             scope="col"
-                            className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter sm:pl-6 lg:pl-8">
+                            className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 px-4 py-2 text-left text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter">
                             {column.label}
                           </th>
                         ))}
                         <th
                           scope="col"
-                          className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter sm:pl-6 lg:pl-8">
+                          className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 px-4 py-2 text-left text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter">
                           <span className="sr-only">Meta</span>
                         </th>
                       </tr>
@@ -136,9 +136,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                     <tbody className="bg-custom-white">
                       {relationshipsData?.map(({ node }: any, index: number) => (
                         <tr
-                          onClick={() =>
-                            navigate(getObjectDetailsUrl(node.id, node.__typename, schemaKindName))
-                          }
+                          onClick={() => navigate(getObjectDetailsUrl(node.id, node.__typename))}
                           key={index}
                           className="hover:bg-gray-50 cursor-pointer">
                           {columns?.map((column) => (
@@ -148,7 +146,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                 index !== relationshipsData.length - 1
                                   ? "border-b border-gray-200"
                                   : "",
-                                "whitespace-nowrap py-3 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8"
+                                "whitespace-nowrap p-4 text-sm font-medium text-gray-900"
                               )}>
                               {getObjectItemDisplayValue(node, column, schemaKindName)}
                             </td>
@@ -158,7 +156,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                               index !== relationshipsData.length - 1
                                 ? "border-b border-gray-200"
                                 : "",
-                              "whitespace-nowrap py-3 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 lg:pl-8 flex items-center justify-end"
+                              "whitespace-nowrap p-4 text-sm font-medium text-gray-900"
                             )}>
                             <Button
                               disabled={!auth?.permissions?.write}
@@ -166,7 +164,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                               onClick={() => {
                                 setRelatedObjectToEdit(node);
                               }}>
-                              <PencilSquareIcon className="w-6 h-6 text-gray-500" />
+                              <PencilSquareIcon className="w-4 h-4 text-gray-500" />
                             </Button>
 
                             <Button
@@ -175,7 +173,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                               onClick={() => {
                                 setRelatedRowToDelete(node);
                               }}>
-                              <img src={UnlinkIcon} className="w-6 h-6" />
+                              <img src={UnlinkIcon} className="w-4 h-4" />
                             </Button>
                           </td>
                         </tr>
@@ -183,7 +181,9 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                     </tbody>
                   </table>
 
-                  {relationshipsData && !relationshipsData.length && <NoDataFound />}
+                  {relationshipsData && !relationshipsData.length && (
+                    <NoDataFound message="No relationship found." />
+                  )}
                 </div>
               </div>
             </div>
@@ -225,7 +225,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                       </span>
                       <div className="flex-1"></div>
                       <div className="flex items-center">
-                        <Square3Stack3DIcon className="w-5 h-5" />
+                        <Square3Stack3DIcon className="w-4 h-4" />
                         <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
                       </div>
                     </div>

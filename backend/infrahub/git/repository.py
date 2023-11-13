@@ -8,7 +8,7 @@ import shutil
 import sys
 import types
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 from uuid import UUID
 
 import git
@@ -17,6 +17,14 @@ import ujson
 import yaml
 from git import Repo
 from git.exc import GitCommandError, InvalidGitRepositoryError
+from infrahub_sdk import (
+    GraphQLError,
+    InfrahubClient,
+    InfrahubNode,
+    InfrahubRepositoryConfig,
+    ValidationError,
+)
+from infrahub_sdk.utils import YamlFile, compare_lists
 from pydantic import BaseModel
 from pydantic import ValidationError as PydanticValidationError
 from pydantic import validator
@@ -33,9 +41,11 @@ from infrahub.exceptions import (
 )
 from infrahub.log import get_logger
 from infrahub.transforms import INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT
-from infrahub_client import GraphQLError, InfrahubClient, InfrahubNode, ValidationError
-from infrahub_client.utils import compare_lists
 
+if TYPE_CHECKING:
+    from infrahub_sdk.branch import BranchData
+
+    from infrahub.message_bus import messages
 # pylint: disable=too-few-public-methods,too-many-lines
 
 LOGGER = get_logger("infrahub.git")
@@ -111,7 +121,7 @@ class ArtifactDefinitionInformation(BaseModel):
     transformation: str
 
 
-class CheckInformation(BaseModel):
+class CheckDefinitionInformation(BaseModel):
     name: str
     """Name of the check"""
 
@@ -135,6 +145,9 @@ class CheckInformation(BaseModel):
 
     timeout: int
     """Timeout for the Check."""
+
+    parameters: Optional[dict] = None
+    """Additional Parameters to extract from each target (if targets is provided)"""
 
 
 class TransformPythonInformation(BaseModel):
@@ -265,11 +278,14 @@ class Worktree(BaseModel):
         if len(relative_paths) == 3:
             # this is the main worktree for the main branch
             identifier = relative_paths[2]
-        elif len(relative_paths) == 4:
+
+        elif len(relative_paths) == 4 and relative_paths[2] == COMMITS_DIRECTORY_NAME:
             # this is the either a commit or a branch worktree
             identifier = relative_paths[3]
+        elif len(relative_paths) == 4 and relative_paths[2] == BRANCHES_DIRECTORY_NAME and lines[2] != "detached":
+            identifier = lines[2].replace("branch refs/heads/", "")
         else:
-            raise Error("Unexpected directory path for a worktree.")
+            raise Error("Unexpected path for a worktree.")
 
         item = cls(
             identifier=identifier,
@@ -278,7 +294,7 @@ class Worktree(BaseModel):
         )
 
         if lines[2] != "detached":
-            item.branch = lines[1].replace("branch refs/heads", "")
+            item.branch = lines[2].replace("branch refs/heads/", "")
 
         return item
 
@@ -653,7 +669,9 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         return True
 
-    async def create_branch_in_git(self, branch_name: str, push_origin: bool = True) -> bool:
+    async def create_branch_in_git(
+        self, branch_name: str, branch_id: Optional[str] = None, push_origin: bool = True
+    ) -> bool:
         """Create new branch in the repository, assuming the branch has been created in the graph already."""
 
         repo = self.get_git_repo_main()
@@ -665,7 +683,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         # TODO Catch potential exceptions coming from repo.git.branch & repo.git.worktree
         repo.git.branch(branch_name)
-        self.create_branch_worktree(branch_name=branch_name)
+        self.create_branch_worktree(branch_name=branch_name, branch_id=branch_id or branch_name)
 
         # If there is not remote configured, we are done
         #  Since the branch is a match for the main branch we don't need to create a commit worktree
@@ -692,7 +710,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         return True
 
-    async def create_branch_in_graph(self, branch_name: str):
+    async def create_branch_in_graph(self, branch_name: str) -> BranchData:
         """Create a new branch in the graph.
 
         NOTE We need to validate that we are not gonna end up with a race condition
@@ -700,10 +718,10 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         """
 
         # TODO need to handle the exception properly
-        await self.client.branch.create(branch_name=branch_name, background_execution=True)
+        branch = await self.client.branch.create(branch_name=branch_name, background_execution=True)
 
         LOGGER.debug(f"{self.name} | Branch {branch_name} created in the Graph")
-        return True
+        return branch
 
     def create_commit_worktree(self, commit: str) -> Union[bool, Worktree]:
         """Create a new worktree for a given commit."""
@@ -728,7 +746,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 ) from exc
             raise RepositoryError(identifier=self.name, message=exc.stderr) from exc
 
-    def create_branch_worktree(self, branch_name: str) -> bool:
+    def create_branch_worktree(self, branch_name: str, branch_id: str) -> bool:
         """Create a new worktree for a given branch."""
 
         # Check if the worktree already exist
@@ -737,7 +755,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         try:
             repo = self.get_git_repo_main()
-            repo.git.worktree("add", os.path.join(self.directory_branches, branch_name), branch_name)
+            repo.git.worktree("add", os.path.join(self.directory_branches, branch_id), branch_name)
         except GitCommandError as exc:
             raise RepositoryError(identifier=self.name, message=exc.stderr) from exc
 
@@ -822,12 +840,13 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 continue
 
             try:
-                await self.create_branch_in_graph(branch_name=branch_name)
+                branch = await self.create_branch_in_graph(branch_name=branch_name)
             except GraphQLError as exc:
                 if "already exist" not in exc.errors[0]["message"]:
                     raise
+                branch = await self.client.branch.get(branch_name=branch_name)
 
-            await self.create_branch_in_git(branch_name=branch_name)
+            await self.create_branch_in_git(branch_name=branch.name, branch_id=branch.id)
 
             commit = self.get_commit_value(branch_name=branch_name, remote=False)
             self.create_commit_worktree(commit=commit)
@@ -925,6 +944,26 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         return commit_after
 
+    async def get_conflicts(self, source_branch: str, dest_branch: str) -> List[str]:
+        repo = self.get_git_repo_worktree(identifier=dest_branch)
+        if not repo:
+            raise ValueError(f"Unable to identify the worktree for the branch : {dest_branch}")
+
+        commit = self.get_commit_value(branch_name=source_branch, remote=False)
+        git_status = ""
+        try:
+            repo.git.merge(["--no-commit", "--no-ff", commit])
+            repo.git.merge("--abort")
+        except GitCommandError:
+            git_status = repo.git.status("-s")
+            if git_status:
+                repo.git.merge("--abort")
+
+        changed_files = git_status.splitlines()
+        conflict_files = [filename[3:] for filename in changed_files if filename.startswith("UU ")]
+
+        return conflict_files
+
     async def merge(self, source_branch: str, dest_branch: str, push_remote: bool = True) -> bool:
         """Merge the source branch into the destination branch.
 
@@ -940,6 +979,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         try:
             repo.git.merge(commit)
         except GitCommandError as exc:
+            repo.git.merge("--abort")
             raise RepositoryError(identifier=self.name, message=exc.stderr) from exc
 
         commit_after = str(repo.head.commit)
@@ -978,6 +1018,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         if not commit:
             commit = self.get_commit_value(branch_name=branch_name)
 
+        await self.import_schema_files(branch_name=branch_name, commit=commit)
         await self.import_all_graphql_query(branch_name=branch_name, commit=commit)
         await self.import_all_python_files(branch_name=branch_name, commit=commit)
         await self.import_all_yaml_files(branch_name=branch_name, commit=commit)
@@ -1162,6 +1203,113 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         await existing_artifact_definition.save()
 
+    async def get_repository_config(self, branch_name: str, commit: str) -> Optional[InfrahubRepositoryConfig]:
+        branch_wt = self.get_worktree(identifier=commit or branch_name)
+
+        config_file_name = ".infrahub.yml"
+        config_file = Path(os.path.join(branch_wt.directory, config_file_name))
+        if not config_file.is_file():
+            LOGGER.debug(f"{self.name} | Unable to find the configuration file {config_file_name}, skipping")
+            return
+
+        config_file_content = config_file.read_text(encoding="utf-8")
+        try:
+            data = yaml.safe_load(config_file_content)
+        except yaml.YAMLError as exc:
+            LOGGER.error(
+                f"{self.name} | Unable to load the configuration file in YAML format {config_file_name} : {exc}"
+            )
+            return
+
+        try:
+            return InfrahubRepositoryConfig(**data)
+        except PydanticValidationError as exc:
+            LOGGER.error(
+                f"{self.name} | Unable to load the configuration file {config_file_name}, the format is not valid  : {exc}"
+            )
+            return
+
+    async def import_schema_files(self, branch_name: str, commit: str) -> None:
+        # pylint: disable=too-many-branches
+        config_file = await self.get_repository_config(branch_name=branch_name, commit=commit)
+        branch_wt = self.get_worktree(identifier=commit or branch_name)
+
+        if not config_file:
+            return
+
+        schemas_data: List[YamlFile] = []
+
+        for schema in config_file.schemas:
+            full_schema = Path(os.path.join(branch_wt.directory, schema))
+            if not full_schema.exists():
+                LOGGER.warning(f"{self.name} | Unable to find the schema {schema}")
+                continue
+
+            if full_schema.is_file():
+                schema_file = YamlFile(identifier=str(schema), location=full_schema)
+                schema_file.load_content()
+                schemas_data.append(schema_file)
+            elif full_schema.is_dir():
+                files = await self.find_files(
+                    extension=["yaml", "yml", "json"],
+                    branch_name=branch_name,
+                    commit=commit,
+                    directory=full_schema,
+                    recursive=True,
+                )
+                for item in files:
+                    identifier = item.replace(branch_wt.directory, "")
+                    schema_file = YamlFile(identifier=identifier, location=item)
+                    schema_file.load_content()
+                    schemas_data.append(schema_file)
+
+        has_error = False
+        for schema_file in schemas_data:
+            if schema_file.valid:
+                continue
+            LOGGER.error(
+                f"{self.name} | Unable to load the file {schema_file.identifier}, {schema_file.error_message}",
+                commit=commit,
+            )
+            has_error = True
+
+        if has_error:
+            return
+
+        # Valid data format of content
+        for schema_file in schemas_data:
+            try:
+                self.client.schema.validate(schema_file.content)
+            except PydanticValidationError as exc:
+                LOGGER.error(
+                    f"{self.name} | Schema not valid, found '{len(exc.errors())}' error(s) in {schema_file.identifier} : {exc}",
+                    commit=commit,
+                )
+                has_error = True
+
+        if has_error:
+            return
+
+        _, errors = await self.client.schema.load(schemas=[item.content for item in schemas_data], branch=branch_name)
+
+        if errors:
+            error_messages = []
+
+            if "detail" in errors:
+                for error in errors.get("detail"):
+                    loc_str = [str(item) for item in error["loc"][1:]]
+                    error_messages.append(f"{'/'.join(loc_str)} | {error['msg']} ({error['type']})")
+            elif "error" in errors:
+                error_messages.append(f"{errors.get('error')}")
+            else:
+                error_messages.append(f"{errors}")
+
+            LOGGER.error(f"{self.name} | Unable to load the schema : {', '.join(error_messages)}", commit=commit)
+
+        else:
+            for schema_file in schemas_data:
+                LOGGER.info(f"{self.name} | schema '{schema_file.identifier}' loaded successfully!", commit=commit)
+
     async def import_all_graphql_query(self, branch_name: str, commit: str) -> None:
         """Search for all .gql file and import them as GraphQL query."""
 
@@ -1218,24 +1366,26 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         await obj.save()
         return obj
 
-    async def import_python_checks_from_module(
+    async def import_python_check_definitions_from_module(
         self, branch_name: str, commit: str, module: types.ModuleType, file_path: str
     ) -> None:
         if INFRAHUB_CHECK_VARIABLE_TO_IMPORT not in dir(module):
             return False
 
-        checks_in_graph = {
+        checks_definition_in_graph = {
             check.name.value: check
-            for check in await self.client.filters(kind="CoreCheck", branch=branch_name, repository__ids=[str(self.id)])
+            for check in await self.client.filters(
+                kind="CoreCheckDefinition", branch=branch_name, repository__ids=[str(self.id)]
+            )
         }
 
-        local_checks = {}
+        local_check_definitions = {}
         for check_class in getattr(module, INFRAHUB_CHECK_VARIABLE_TO_IMPORT):
             graphql_query = await self.client.get(
                 kind="CoreGraphQLQuery", branch=branch_name, id=str(check_class.query), populate_store=True
             )
             try:
-                item = CheckInformation(
+                item = CheckDefinitionInformation(
                     name=check_class.__name__,
                     repository=str(self.id),
                     class_name=check_class.__name__,
@@ -1245,41 +1395,45 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                     timeout=check_class.timeout,
                     rebase=check_class.rebase,
                 )
-                local_checks[item.name] = item
+                local_check_definitions[item.name] = item
             except Exception as exc:  # pylint: disable=broad-exception-caught
                 LOGGER.error(
-                    f"{self.name} | An error occured while processing the Check {check_class.__name__} from {file_path} : {exc} "
+                    f"{self.name} | An error occured while processing the CheckDefinition {check_class.__name__} from {file_path} : {exc} "
                 )
                 continue
 
         present_in_both, only_graph, only_local = compare_lists(
-            list1=list(checks_in_graph.keys()), list2=list(local_checks.keys())
+            list1=list(checks_definition_in_graph.keys()), list2=list(local_check_definitions.keys())
         )
 
         for check_name in only_local:
             LOGGER.info(
-                f"{self.name} | New Check '{check_name}' found on branch {branch_name} ({commit[:8]}), creating"
+                f"{self.name} | New CheckDefinition '{check_name}' found on branch {branch_name} ({commit[:8]}), creating"
             )
-            await self.create_python_check(branch_name=branch_name, check=local_checks[check_name])
+            await self.create_python_check_definition(
+                branch_name=branch_name, check=local_check_definitions[check_name]
+            )
 
         for check_name in present_in_both:
-            if not await self.compare_python_check(
-                check=local_checks[check_name],
-                existing_check=checks_in_graph[check_name],
+            if not await self.compare_python_check_definition(
+                check=local_check_definitions[check_name],
+                existing_check=checks_definition_in_graph[check_name],
             ):
                 LOGGER.info(
-                    f"{self.name} | New version of Check '{check_name}' found on branch {branch_name} ({commit[:8]}), updating"
+                    f"{self.name} | New version of CheckDefinition '{check_name}' found on branch {branch_name} ({commit[:8]}), updating"
                 )
-                await self.update_python_check(
-                    check=local_checks[check_name],
-                    existing_check=checks_in_graph[check_name],
+                await self.update_python_check_definition(
+                    check=local_check_definitions[check_name],
+                    existing_check=checks_definition_in_graph[check_name],
                 )
 
         for check_name in only_graph:
-            LOGGER.info(f"{self.name} | Check '{check_name}' not found locally in branch {branch_name}, deleting")
-            await checks_in_graph[check_name].delete()
+            LOGGER.info(
+                f"{self.name} | CheckDefinition '{check_name}' not found locally in branch {branch_name}, deleting"
+            )
+            await checks_definition_in_graph[check_name].delete()
 
-    async def create_python_check(self, branch_name: str, check: CheckInformation) -> InfrahubNode:
+    async def create_python_check_definition(self, branch_name: str, check: CheckDefinitionInformation) -> InfrahubNode:
         data = {
             "name": check.name,
             "repository": check.repository,
@@ -1288,9 +1442,10 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             "class_name": check.class_name,
             "rebase": check.rebase,
             "timeout": check.timeout,
+            "parameters": check.parameters,
         }
 
-        schema = await self.client.schema.get(kind="CoreCheck", branch=branch_name)
+        schema = await self.client.schema.get(kind="CoreCheckDefinition", branch=branch_name)
 
         create_payload = self.client.schema.generate_payload_create(
             schema=schema,
@@ -1298,14 +1453,14 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             source=self.id,
             is_protected=True,
         )
-        obj = await self.client.create(kind="CoreCheck", branch=branch_name, **create_payload)
+        obj = await self.client.create(kind="CoreCheckDefinition", branch=branch_name, **create_payload)
         await obj.save()
 
         return obj
 
-    async def update_python_check(
+    async def update_python_check_definition(
         self,
-        check: CheckInformation,
+        check: CheckDefinitionInformation,
         existing_check: InfrahubNode,
     ) -> None:
         if existing_check.query.id != check.query:
@@ -1320,19 +1475,25 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         if existing_check.timeout.value != check.timeout:
             existing_check.timeout.value = check.timeout
 
+        if existing_check.parameters.value != check.parameters:
+            existing_check.parameters.value = check.parameters
+
         await existing_check.save()
 
     @classmethod
-    async def compare_python_check(cls, check: CheckInformation, existing_check: InfrahubNode) -> bool:
+    async def compare_python_check_definition(
+        cls, check: CheckDefinitionInformation, existing_check: InfrahubNode
+    ) -> bool:
         """Compare an existing Python Check Object with a Check Class
         and identify if we need to update the object in the database."""
-
+        # pylint: disable=too-many-boolean-expressions
         if (
             existing_check.query.id != check.query
             or existing_check.file_path.value != check.file_path
             or existing_check.timeout.value != check.timeout
             or existing_check.rebase.value != check.rebase
             or existing_check.class_name.value != check.class_name
+            or existing_check.parameters.value != check.parameters
         ):
             return False
         return True
@@ -1457,7 +1618,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             return False
         return True
 
-    async def import_all_yaml_files(self, branch_name: str, commit: str):
+    async def import_all_yaml_files(self, branch_name: str, commit: str, exclude: Optional[List[str]] = None):
         yaml_files = await self.find_files(extension=["yml", "yaml"], commit=commit)
 
         for yaml_file in yaml_files:
@@ -1483,6 +1644,8 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             # Search for Valid object types
             # ------------------------------------------------------
             for key, data in data.items():
+                if exclude and key in exclude:
+                    continue
                 if not hasattr(self, f"import_objects_{key}"):
                     continue
 
@@ -1511,7 +1674,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 LOGGER.warning(f"{self.name} | Unable to load python file {python_file}")
                 continue
 
-            await self.import_python_checks_from_module(
+            await self.import_python_check_definitions_from_module(
                 branch_name=branch_name, commit=commit, module=module, file_path=file_info.relative_path_file
             )
             await self.import_python_transforms_from_module(
@@ -1523,6 +1686,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         extension: Union[str, List[str]],
         branch_name: Optional[str] = None,
         commit: Optional[str] = None,
+        directory: Optional[str] = None,
         recursive: bool = True,
     ) -> List[str]:
         """Return the absolute path of all files matching a specific extension in a given Branch or Commit."""
@@ -1530,15 +1694,18 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             raise ValueError("Either branch_name or commit must be provided.")
         branch_wt = self.get_worktree(identifier=commit or branch_name)
 
-        files = []
+        search_dir = branch_wt.directory
+        if directory:
+            search_dir = os.path.join(search_dir, directory)
 
+        files = []
         if isinstance(extension, str):
-            files.extend(glob.glob(f"{branch_wt.directory}/**/*.{extension}", recursive=recursive))
-            files.extend(glob.glob(f"{branch_wt.directory}/**/.*.{extension}", recursive=recursive))
+            files.extend(glob.glob(f"{search_dir}/**/*.{extension}", recursive=recursive))
+            files.extend(glob.glob(f"{search_dir}/**/.*.{extension}", recursive=recursive))
         elif isinstance(extension, list):
             for ext in extension:
-                files.extend(glob.glob(f"{branch_wt.directory}/**/*.{ext}", recursive=recursive))
-                files.extend(glob.glob(f"{branch_wt.directory}/**/.*.{ext}", recursive=recursive))
+                files.extend(glob.glob(f"{search_dir}/**/*.{ext}", recursive=recursive))
+                files.extend(glob.glob(f"{search_dir}/**/.*.{ext}", recursive=recursive))
         return files
 
     async def find_graphql_queries(self, commit: str) -> List[GraphQLQueryInformation]:
@@ -1737,6 +1904,52 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         artifact.status.value = "Ready"
         await artifact.save()
 
+        return ArtifactGenerateResult(changed=True, checksum=checksum, storage_id=storage_id, artifact_id=artifact.id)
+
+    async def render_artifact(
+        self, artifact: InfrahubNode, message: Union[messages.CheckArtifactCreate, messages.RequestArtifactGenerate]
+    ) -> ArtifactGenerateResult:
+        data = await self.client.execute_graphql(
+            query=message.query,
+            variables=message.variables,
+            tracker="artifact-query-graphql-data",
+            branch_name=message.branch_name,
+            rebase=message.rebase,
+            timeout=message.timeout,
+        )
+
+        if message.transform_type == "CoreRFile":
+            artifact_content = await self.render_jinja2_template(
+                commit=message.commit, location=message.transform_location, data={"data": data}
+            )
+        elif message.transform_type == "CoreTransformPython":
+            artifact_content = await self.execute_python_transform(
+                branch_name=message.branch_name,
+                commit=message.commit,
+                location=message.transform_location,
+                data=data,
+                client=self.client,
+            )
+
+        if message.content_type == "application/json":
+            artifact_content_str = ujson.dumps(artifact_content, indent=2)
+        elif message.content_type == "text/plain":
+            artifact_content_str = artifact_content
+
+        checksum = hashlib.md5(bytes(artifact_content_str, encoding="utf-8")).hexdigest()
+
+        if artifact.checksum.value == checksum:
+            return ArtifactGenerateResult(
+                changed=False, checksum=checksum, storage_id=artifact.storage_id.value, artifact_id=artifact.id
+            )
+
+        resp = await self.client.object_store.upload(content=artifact_content_str, tracker="artifact-upload-content")
+        storage_id = resp["identifier"]
+
+        artifact.checksum.value = checksum
+        artifact.storage_id.value = storage_id
+        artifact.status.value = "Ready"
+        await artifact.save()
         return ArtifactGenerateResult(changed=True, checksum=checksum, storage_id=storage_id, artifact_id=artifact.id)
 
     def validate_location(self, commit: str, worktree_directory: str, file_path: str) -> None:

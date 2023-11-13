@@ -9,7 +9,7 @@ import { schemaMocks } from "../../../tests/mocks/data/schema";
 import { TestProvider } from "../../../tests/mocks/jotai/atom";
 
 vi.mock("react-router-dom", () => ({
-  useParams: (): Readonly<Params<string>> => ({ objectname: "Account", objectid: accountId }),
+  useParams: (): Readonly<Params<string>> => ({ objectname: "CoreAccount", objectid: accountId }),
 }));
 
 const ObjectItemDetailsProvider = () => {

@@ -7,7 +7,7 @@ import { cleanTabsAndNewLines } from "../../utils/string";
 export default function ObjectItemDetails() {
   const { objectname, objectid } = useParams();
   const [schemaList] = useAtom(schemaState);
-  const schema = schemaList.filter((s) => s.name === objectname)[0];
+  const schema = schemaList.find((s) => s.kind === objectname);
 
   const relationships = schema?.relationships?.filter(
     (relationship) =>

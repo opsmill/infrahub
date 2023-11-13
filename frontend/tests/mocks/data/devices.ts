@@ -1,4 +1,7 @@
 export const deviceDetailsMocksId = "bd3110b9-5923-45e9-b643-776b8151c074";
+export const deviceSiteMocksId = "06c3ab9e-535e-41af-bf4b-ec9134cc4353";
+export const deviceSiteOwnerMocksId = "1790adb9-7030-259c-35c7-d8e28044d715";
+export const deviceSiteSourceMocksId = "1790adb9-7030-259c-35c7-d8e28044d715";
 export const deviceDetailsName = "atl1-edge1";
 export const deviceDetailsNewName = "awsome new device name";
 export const deviceDetailsMocksASNName = "AS64496 64496";
@@ -1046,7 +1049,7 @@ export const deviceDetailsMocksData = {
           },
           site: {
             node: {
-              id: "06c3ab9e-535e-41af-bf4b-ec9134cc4353",
+              id: deviceSiteMocksId,
               display_label: "atl1",
               __typename: "BuiltinLocation",
             },
@@ -3838,3 +3841,38 @@ export const deviceDetailsMocksDataAfterUpdate = {
     ],
   },
 };
+
+export const newDataForMetaEdit = {
+  owner: deviceSiteOwnerMocksId,
+  source: deviceSiteSourceMocksId,
+  is_visible: true,
+  is_protected: true,
+};
+
+export const updatedObjectForMetaEdit = {
+  id: deviceDetailsMocksId,
+  site: {
+    id: deviceSiteMocksId,
+    _relation__owner: deviceSiteOwnerMocksId,
+    _relation__source: deviceSiteSourceMocksId,
+    _relation__is_visible: true,
+    _relation__is_protected: true,
+  },
+};
+
+export const mutationStringForMetaEdit = `
+mutation InfraDeviceUpdate {
+  InfraDeviceUpdate (data: {
+    id: "${deviceDetailsMocksId}",
+    site: {
+        id: "${deviceSiteMocksId}",
+        _relation__owner: "${deviceSiteOwnerMocksId}",
+        _relation__source: "${deviceSiteSourceMocksId}",
+        _relation__is_visible: true,
+        _relation__is_protected: true
+    }
+}) {
+      ok
+  }
+}
+`;

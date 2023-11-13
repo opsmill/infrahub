@@ -9,16 +9,19 @@ interface Props {
   onChange: (value: boolean) => void;
   error?: FormFieldError;
   isProtected?: boolean;
+  isOptionnal?: boolean;
 }
 
 export default function OpsCheckbox(props: Props) {
-  const { label, onChange, value, error, isProtected } = props;
+  const { label, onChange, value, error, isProtected, isOptionnal } = props;
   const [enabled, setEnabled] = useState(value);
 
   return (
     <div className="flex flex-col relative">
       <div className="flex items-center">
-        <label className="block text-sm font-medium leading-6 text-gray-900"> {label} </label>
+        <label className="block text-sm font-medium leading-6 text-gray-900">
+          {label} {isOptionnal ? "" : "*"}
+        </label>
         <div className="ml-2"> {isProtected ? <LockClosedIcon className="w-4 h-4" /> : null} </div>
       </div>
       <div className="relative flex items-center">
@@ -31,7 +34,9 @@ export default function OpsCheckbox(props: Props) {
           disabled={isProtected}
         />
         {error?.message && (
-          <div className="absolute text-sm text-red-500 ml-4 pl-2">{error?.message}</div>
+          <div className="absolute text-sm text-red-500 ml-4 pl-2" data-cy="field-error-message">
+            {error?.message}
+          </div>
         )}
       </div>
     </div>

@@ -6,12 +6,13 @@ export enum BADGE_TYPES {
   CANCEL,
   WARNING,
   LIGHT,
+  DISABLED,
 }
 
 // type BadgeProps = {}
 
 const DEFAULT_CLASS = `
-  flex text-sm font-medium mr-2 px-2.5 py-0.5 rounded
+  flex font-medium mr-2 last:mr-0 px-2.5 py-0.5 rounded
 `;
 
 const getClasseName = (type: BADGE_TYPES, onClick: Function) => {
@@ -37,6 +38,12 @@ const getClasseName = (type: BADGE_TYPES, onClick: Function) => {
     case BADGE_TYPES.LIGHT: {
       return `
         bg-custom-white text-gray-800
+        ${onClick ? "cursor-pointer hover:bg-gray-50" : ""}
+      `;
+    }
+    case BADGE_TYPES.DISABLED: {
+      return `
+        bg-gray-300 text-gray-800
         ${onClick ? "cursor-pointer hover:bg-gray-50" : ""}
       `;
     }

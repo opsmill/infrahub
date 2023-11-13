@@ -1,14 +1,9 @@
 import pytest
-from deepdiff import DeepDiff
 from fastapi.testclient import TestClient
 
 from infrahub.core.node import Node
-from infrahub.message_bus.events import (
-    ArtifactMessageAction,
-    InfrahubRPCResponse,
-    MessageType,
-    RPCStatusCode,
-)
+from infrahub.database import InfrahubDatabase
+from infrahub.message_bus import messages
 from infrahub.message_bus.rpc import InfrahubRpcClientTesting
 
 
@@ -20,7 +15,7 @@ def patch_rpc_client():
 
 
 async def test_artifact_definition_endpoint(
-    session,
+    db: InfrahubDatabase,
     admin_headers,
     default_branch,
     patch_rpc_client,
@@ -32,13 +27,13 @@ async def test_artifact_definition_endpoint(
 
     client = TestClient(app)
 
-    g1 = await Node.init(session=session, schema="CoreStandardGroup")
-    await g1.new(session=session, name="group1", members=[car_person_data_generic["c1"], car_person_data_generic["c2"]])
-    await g1.save(session=session)
+    g1 = await Node.init(db=db, schema="CoreStandardGroup")
+    await g1.new(db=db, name="group1", members=[car_person_data_generic["c1"], car_person_data_generic["c2"]])
+    await g1.save(db=db)
 
-    t1 = await Node.init(session=session, schema="CoreTransformPython")
+    t1 = await Node.init(db=db, schema="CoreTransformPython")
     await t1.new(
-        session=session,
+        db=db,
         name="transform01",
         query=str(car_person_data_generic["q1"].id),
         url="mytransform",
@@ -47,11 +42,11 @@ async def test_artifact_definition_endpoint(
         class_name="Transform01",
         rebase=False,
     )
-    await t1.save(session=session)
+    await t1.save(db=db)
 
-    ad1 = await Node.init(session=session, schema="CoreArtifactDefinition")
+    ad1 = await Node.init(db=db, schema="CoreArtifactDefinition")
     await ad1.new(
-        session=session,
+        db=db,
         name="artifactdef01",
         targets=g1,
         transformation=t1,
@@ -59,34 +54,17 @@ async def test_artifact_definition_endpoint(
         artifact_name="myartifact",
         parameters='{"name": "name__value"}',
     )
-    await ad1.save(session=session)
+    await ad1.save(db=db)
 
     # Must execute in a with block to execute the startup/shutdown events
     with client:
-        mock_response = InfrahubRPCResponse(
-            status=RPCStatusCode.OK,
-            response={"artifact_id": "XXXXX", "changed": True, "checksum": "YYYYYY", "storage_id": "DDDDDDDDDD"},
-        )
-        await client.app.state.rpc_client.add_response(
-            response=mock_response, message_type=MessageType.ARTIFACT, action=ArtifactMessageAction.GENERATE
-        )
-        await client.app.state.rpc_client.add_response(
-            response=mock_response, message_type=MessageType.ARTIFACT, action=ArtifactMessageAction.GENERATE
-        )
-
         response = client.post(
             f"/api/artifact/generate/{ad1.id}",
             headers=admin_headers,
         )
 
     assert response.status_code == 200
-    assert response.json() is not None
-    result = response.json()
-
-    expected_result = {
-        "nodes": [
-            car_person_data_generic["c1"].id,
-            car_person_data_generic["c2"].id,
-        ]
-    }
-    assert DeepDiff(result, expected_result, ignore_order=True).to_dict() == {}
+    assert (
+        messages.RequestArtifactDefinitionGenerate(meta=None, artifact_definition=ad1.id, branch="main", limit=[])
+        in client.app.state.rpc_client.sent
+    )

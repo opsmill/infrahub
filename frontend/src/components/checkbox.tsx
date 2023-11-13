@@ -7,7 +7,7 @@ type CheckboxProps = {
 };
 
 export const Checkbox = (props: CheckboxProps) => {
-  const { enabled, onChange, disabled } = props;
+  const { enabled, onChange, disabled, ...propsToPass } = props;
 
   return (
     <input
@@ -18,6 +18,8 @@ export const Checkbox = (props: CheckboxProps) => {
       className={
         "w-4 h-4 text-custom-blue-800 disabled:text-gray-300 bg-gray-100 border-gray-300 rounded focus:ring-custom-blue-500 focus:ring-2 cursor-pointer disabled:cursor-not-allowed"
       }
+      data-cy="checkbox"
+      {...propsToPass}
     />
   );
 };

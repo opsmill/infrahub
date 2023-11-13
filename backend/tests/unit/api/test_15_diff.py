@@ -5,6 +5,7 @@ from infrahub.api.diff import get_display_labels, get_display_labels_per_kind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.database import InfrahubDatabase
 from infrahub.message_bus.rpc import InfrahubRpcClientTesting
 
 
@@ -15,392 +16,131 @@ def patch_rpc_client():
     infrahub.message_bus.rpc.InfrahubRpcClient = InfrahubRpcClientTesting
 
 
-async def test_get_display_labels_per_kind(session, default_branch, car_person_data):
-    persons_list = await NodeManager.query(session=session, schema="TestPerson", branch=default_branch)
+async def test_get_display_labels_per_kind(db: InfrahubDatabase, default_branch, car_person_data):
+    persons_list = await NodeManager.query(db=db, schema="TestPerson", branch=default_branch)
     person_ids = [item.id for item in persons_list]
     display_labels = await get_display_labels_per_kind(
-        kind="TestPerson", ids=person_ids, branch_name=default_branch.name, session=session
+        kind="TestPerson", ids=person_ids, branch_name=default_branch.name, db=db
     )
     assert len(display_labels) == len(person_ids)
 
 
-async def test_get_display_labels_per_kind_with_branch(session, default_branch, car_person_data):
-    branch2 = await create_branch(branch_name="branch2", session=session)
+async def test_get_display_labels_per_kind_with_branch(db: InfrahubDatabase, default_branch, car_person_data):
+    branch2 = await create_branch(branch_name="branch2", db=db)
 
     # Add a new Person
-    p3 = await Node.init(session=session, schema="TestPerson", branch=branch2)
-    await p3.new(session=session, name="Bill", height=160)
-    await p3.save(session=session)
+    p3 = await Node.init(db=db, schema="TestPerson", branch=branch2)
+    await p3.new(db=db, name="Bill", height=160)
+    await p3.save(db=db)
 
-    persons_list = await NodeManager.query(session=session, schema="TestPerson", branch=branch2)
+    persons_list = await NodeManager.query(db=db, schema="TestPerson", branch=branch2)
     person_ids = [item.id for item in persons_list]
 
     display_labels = await get_display_labels_per_kind(
-        kind="TestPerson", ids=person_ids, branch_name=branch2.name, session=session
+        kind="TestPerson", ids=person_ids, branch_name=branch2.name, db=db
     )
     assert len(display_labels) == len(person_ids)
 
 
-async def test_get_display_labels(session, default_branch, car_person_data):
-    persons_list = await NodeManager.query(session=session, schema="TestPerson", branch=default_branch)
+async def test_get_display_labels(db: InfrahubDatabase, default_branch, car_person_data):
+    persons_list = await NodeManager.query(db=db, schema="TestPerson", branch=default_branch)
     person_ids = [item.id for item in persons_list]
-    cars_list = await NodeManager.query(session=session, schema="TestCar", branch=default_branch)
+    cars_list = await NodeManager.query(db=db, schema="TestCar", branch=default_branch)
     car_ids = [item.id for item in cars_list]
 
-    display_labels = await get_display_labels(
-        nodes={"main": {"TestPerson": person_ids, "TestCar": car_ids}}, session=session
-    )
-    assert len(display_labels) == len(car_ids) + len(person_ids)
+    display_labels = await get_display_labels(nodes={"main": {"TestPerson": person_ids, "TestCar": car_ids}}, db=db)
+    assert len(display_labels["main"]) == len(car_ids) + len(person_ids)
 
 
-async def test_get_display_labels_with_branch(session, default_branch, car_person_data):
-    branch2 = await create_branch(branch_name="branch2", session=session)
+async def test_get_display_labels_with_branch(db: InfrahubDatabase, default_branch, car_person_data):
+    branch2 = await create_branch(branch_name="branch2", db=db)
 
-    persons_list = await NodeManager.query(session=session, schema="TestPerson", branch=branch2)
+    persons_list = await NodeManager.query(db=db, schema="TestPerson", branch=branch2)
     persons = {item.name.value: item for item in persons_list}
 
-    repos_list = await NodeManager.query(session=session, schema="CoreRepository", branch=branch2)
+    repos_list = await NodeManager.query(db=db, schema="CoreRepository", branch=branch2)
     repos = {item.name.value: item for item in repos_list}
 
-    cars_list = await NodeManager.query(session=session, schema="TestCar", branch=branch2)
+    cars_list = await NodeManager.query(db=db, schema="TestCar", branch=branch2)
     cars = {item.name.value: item for item in cars_list}
 
     # Add a new Person
-    p3 = await Node.init(session=session, schema="TestPerson", branch=branch2)
-    await p3.new(session=session, name="Bill", height=160)
-    await p3.save(session=session)
+    p3 = await Node.init(db=db, schema="TestPerson", branch=branch2)
+    await p3.new(db=db, name="Bill", height=160)
+    await p3.save(db=db)
     persons["Bill"] = p3
 
-    await cars["volt"].owner.update(data=p3, session=session)
-    await cars["volt"].save(session=session)
+    await cars["volt"].owner.update(data=p3, db=db)
+    await cars["volt"].save(db=db)
 
     repo01 = repos["repo01"]
     repo01.commit.value = "dddddddddd"
-    await repo01.save(session=session)
+    await repo01.save(db=db)
 
     # Update P1 height in main
-    p1 = await NodeManager.get_one(id=persons["John"].id, session=session)
+    p1 = await NodeManager.get_one(id=persons["John"].id, db=db)
     p1.height.value = 120
-    await p1.save(session=session)
+    await p1.save(db=db)
 
-    persons_list = await NodeManager.query(session=session, schema="TestPerson", branch=branch2)
+    persons_list = await NodeManager.query(db=db, schema="TestPerson", branch=branch2)
     person_ids = [item.id for item in persons_list]
-    cars_list = await NodeManager.query(session=session, schema="TestCar", branch=branch2)
+    cars_list = await NodeManager.query(db=db, schema="TestCar", branch=branch2)
     car_ids = [item.id for item in cars_list]
 
     display_labels = await get_display_labels(
-        nodes={branch2.name: {"TestPerson": person_ids, "TestCar": car_ids}}, session=session
+        nodes={branch2.name: {"TestPerson": person_ids, "TestCar": car_ids}}, db=db
     )
-    assert len(display_labels) == len(car_ids) + len(person_ids)
+    assert len(display_labels["branch2"]) == len(car_ids) + len(person_ids)
 
 
-async def test_diff_data_endpoint_branch_only_default(session, client, client_headers, car_person_data_generic_diff):
-    c1 = car_person_data_generic_diff["c1"]
-    c4 = car_person_data_generic_diff["c4"]
-    p1 = car_person_data_generic_diff["p1"]
-    p2 = car_person_data_generic_diff["p2"]
-    p3 = car_person_data_generic_diff["p3"]
-    r1 = car_person_data_generic_diff["r1"]
-
-    with client:
-        response = client.get(
-            "/api/diff/data?branch=branch2&branch_only=true",
-            headers=client_headers,
-        )
-
-    assert response.status_code == 200
-    data = response.json()
-    assert data is not None
-
-    assert list(data.keys()) == ["branch2"]
-    branch2 = {node["id"]: node for node in data["branch2"]}
-
-    assert branch2[p1]["display_label"] == "John"
-    assert branch2[p1]["kind"] == "TestPerson"
-    assert branch2[p1]["action"] == "updated"
-    assert branch2[p1]["summary"] == {"added": 0, "removed": 1, "updated": 0}
-    assert branch2[p1]["elements"]["cars"]["peers"][0]["peer"]["id"] == c1
-    assert branch2[p1]["elements"]["cars"]["peers"][0]["peer"]["kind"] == "TestElectricCar"
-
-    assert branch2[p2]["display_label"] == "Jane"
-    assert branch2[p2]["kind"] == "TestPerson"
-    assert branch2[p2]["action"] == "updated"
-    assert branch2[p2]["summary"] == {"added": 0, "removed": 1, "updated": 0}
-    assert branch2[p2]["elements"]["cars"]["peers"][0]["peer"]["id"] == c4
-    assert branch2[p2]["elements"]["cars"]["peers"][0]["peer"]["kind"] == "TestGazCar"
-
-    assert branch2[p3]["display_label"] == "Bill"
-    assert branch2[p3]["action"] == "added"
-    assert branch2[p3]["summary"] == {"added": 3, "removed": 0, "updated": 0}
-    assert branch2[p3]["elements"]["cars"]["peers"][0]["peer"]["id"] == c1
-    assert len(branch2[p3]["elements"]["name"]["properties"]) == 2
-
-    assert branch2[c1]["kind"] == "TestElectricCar"
-    assert branch2[c1]["action"] == "updated"
-    assert branch2[c1]["summary"] == {"added": 0, "removed": 0, "updated": 1}
-    assert branch2[c1]["elements"]["owner"]["peer"]["new"]["id"] == p3
-    assert branch2[c1]["elements"]["owner"]["peer"]["previous"]["id"] == p1
-    # assert branch2[c1]["elements"]["owner"]["summary"] = {'added': 0, 'removed': 0, 'updated': 0}
-
-    assert branch2[c4]["kind"] == "TestGazCar"
-    assert branch2[c4]["action"] == "removed"
-    assert branch2[c4]["summary"] == {"added": 0, "removed": 5, "updated": 0}
-    assert branch2[c4]["elements"]["owner"]["peer"]["previous"]["id"] == p2
-
-    assert branch2[r1]["kind"] == "CoreRepository"
-    assert branch2[r1]["action"] == "updated"
-    assert branch2[r1]["summary"] == {"added": 0, "removed": 0, "updated": 1}
-    assert branch2[r1]["elements"]["commit"]["value"]["value"]["new"] == "dddddddddd"
-    # assert branch2[r1]["elements"]["commit"]["value"]["value"]['previous'] == "aaaaaaaaa" FIXME
-    assert (
-        branch2[r1]["elements"]["commit"]["value"]["changed_at"]
-        == car_person_data_generic_diff["time21"].to_iso8601_string()
-    )
+# ----------------------------------------------------------------------
+# New API
+# ----------------------------------------------------------------------
 
 
-@pytest.mark.xfail(reason="Need to investigate, occasionally fails")
-async def test_diff_data_endpoint_branch_time_from(session, client, client_headers, car_person_data_generic_diff):
-    time20 = car_person_data_generic_diff["time20"]
+@pytest.fixture
+async def r1_update_01(data_diff_attribute):
+    r1 = data_diff_attribute["r1"]
 
-    c4 = car_person_data_generic_diff["c4"]
-    p2 = car_person_data_generic_diff["p2"]
-    r1 = car_person_data_generic_diff["r1"]
-
-    with client:
-        response = client.get(
-            f"/api/diff/data?branch=branch2&branch_only=true&time_from={time20.to_iso8601_string()}",
-            headers=client_headers,
-        )
-
-    assert response.status_code == 200
-    data = response.json()
-    assert data is not None
-    assert list(data.keys()) == ["branch2"]
-    assert len(data["branch2"]) == 3
-
-    branch2 = {node["id"]: node for node in data["branch2"]}
-
-    assert branch2[c4]["kind"] == "TestGazCar"
-    assert branch2[c4]["action"] == "removed"
-    assert branch2[c4]["summary"] == {"added": 0, "removed": 5, "updated": 0}
-    assert branch2[c4]["elements"]["owner"]["peer"]["previous"]["id"] == p2
-
-    assert branch2[p2]["display_label"] == "Jane"
-    assert branch2[p2]["kind"] == "TestPerson"
-    assert branch2[p2]["action"] == "updated"
-    assert branch2[p2]["summary"] == {"added": 0, "removed": 1, "updated": 0}
-    assert branch2[p2]["elements"]["cars"]["peers"][0]["peer"]["id"] == c4
-    assert branch2[p2]["elements"]["cars"]["peers"][0]["peer"]["kind"] == "GazCar"
-
-    assert branch2[r1]["kind"] == "CoreRepository"
-    assert branch2[r1]["action"] == "updated"
-    assert branch2[r1]["summary"] == {"added": 0, "removed": 0, "updated": 1}
-    assert branch2[r1]["elements"]["commit"]["value"]["value"]["new"] == "dddddddddd"
-    assert branch2[r1]["elements"]["commit"]["value"]["value"]["previous"] == "bbbbbbbbbbbbbbb"  # FIXME
-    assert (
-        branch2[r1]["elements"]["commit"]["value"]["changed_at"]
-        == car_person_data_generic_diff["time21"].to_iso8601_string()
-    )
+    expected_response = {
+        "kind": "CoreRepository",
+        "id": r1,
+        "path": f"data/{r1}",
+        "elements": {
+            "description": {
+                "type": "Attribute",
+                "name": "description",
+                "path": f"data/{r1}/description",
+                "change": {
+                    "type": "Attribute",
+                    "branches": ["branch2"],
+                    "id": "3dfe50e7-9dfb-490c-8c26-858a7c66b797",
+                    "summary": {"added": 0, "removed": 0, "updated": 1},
+                    "action": "updated",
+                    "value": {
+                        "path": f"data/{r1}/description/value",
+                        "changes": [
+                            {
+                                "branch": "branch2",
+                                "type": "HAS_VALUE",
+                                "changed_at": "2023-08-01T11:07:25.255688Z",
+                                "action": "updated",
+                                "value": {"new": "Second update in Branch", "previous": "NULL"},
+                            }
+                        ],
+                    },
+                    "properties": {},
+                },
+            }
+        },
+        "summary": {"added": 0, "removed": 0, "updated": 1},
+        "action": {"branch2": "updated"},
+        "display_label": {"branch2": "repo01"},
+    }
+    return expected_response
 
 
-async def test_diff_data_endpoint_branch_time_from_to(session, client, client_headers, car_person_data_generic_diff):
-    time0 = car_person_data_generic_diff["time0"]
-    time20 = car_person_data_generic_diff["time20"]
-
-    c1 = car_person_data_generic_diff["c1"]
-    p1 = car_person_data_generic_diff["p1"]
-    p3 = car_person_data_generic_diff["p3"]
-    r1 = car_person_data_generic_diff["r1"]
-
-    with client:
-        response = client.get(
-            f"/api/diff/data?branch=branch2&branch_only=true&time_from={time0.to_iso8601_string()}&time_to={time20.to_iso8601_string()}",
-            headers=client_headers,
-        )
-
-    assert response.status_code == 200
-    data = response.json()
-    assert data is not None
-    assert list(data.keys()) == ["branch2"]
-
-    branch2 = {node["id"]: node for node in data["branch2"]}
-
-    assert branch2[p1]["display_label"] == "John"
-    assert branch2[p1]["kind"] == "TestPerson"
-    assert branch2[p1]["action"] == "updated"
-    assert branch2[p1]["summary"] == {"added": 0, "removed": 1, "updated": 0}
-    assert branch2[p1]["elements"]["cars"]["peers"][0]["peer"]["id"] == c1
-    assert branch2[p1]["elements"]["cars"]["peers"][0]["peer"]["kind"] == "TestElectricCar"
-
-    assert branch2[p3]["display_label"] == "Bill"
-    assert branch2[p3]["action"] == "added"
-    assert branch2[p3]["summary"] == {"added": 3, "removed": 0, "updated": 0}
-    assert branch2[p3]["elements"]["cars"]["peers"][0]["peer"]["id"] == c1
-    assert len(branch2[p3]["elements"]["name"]["properties"]) == 2
-
-    assert branch2[c1]["kind"] == "TestElectricCar"
-    assert branch2[c1]["action"] == "updated"
-    assert branch2[c1]["summary"] == {"added": 0, "removed": 0, "updated": 1}
-    assert branch2[c1]["elements"]["owner"]["peer"]["new"]["id"] == p3
-    assert branch2[c1]["elements"]["owner"]["peer"]["previous"]["id"] == p1
-
-    assert branch2[r1]["kind"] == "CoreRepository"
-    assert branch2[r1]["action"] == "updated"
-    assert branch2[r1]["summary"] == {"added": 0, "removed": 0, "updated": 1}
-    assert branch2[r1]["elements"]["commit"]["value"]["value"]["new"] == "bbbbbbbbbbbbbbb"
-    # assert branch2[r1]["elements"]["commit"]["value"]["value"]['previous'] == "aaaaaaaaa" FIXME
-    assert (
-        branch2[r1]["elements"]["commit"]["value"]["changed_at"]
-        == car_person_data_generic_diff["time12"].to_iso8601_string()
-    )
-
-
-async def test_diff_data_endpoint_with_main_default(session, client, client_headers, car_person_data_generic_diff):
-    c2 = car_person_data_generic_diff["c2"]
-    p1 = car_person_data_generic_diff["p1"]
-
-    with client:
-        response = client.get(
-            "/api/diff/data?branch=branch2&branch_only=false",
-            headers=client_headers,
-        )
-
-    assert response.status_code == 200
-    data = response.json()
-    assert data is not None
-    assert sorted(data.keys()) == ["branch2", "main"]
-    assert len(data["branch2"]) == 5
-    assert len(data["main"]) == 2
-
-    # branch2 = { node["id"]: node for node in data["branch2"] }
-    main = {node["id"]: node for node in data["main"]}
-
-    assert main[p1]["kind"] == "TestPerson"
-    assert main[p1]["action"] == "updated"
-    assert main[p1]["summary"] == {"added": 0, "removed": 0, "updated": 1}
-    assert main[p1]["elements"]["height"]["value"]["value"]["new"] == 120
-    assert main[p1]["elements"]["height"]["value"]["value"]["previous"] == 180
-
-    assert main[c2]["kind"] == "TestElectricCar"
-    assert main[c2]["action"] == "updated"
-    assert main[c2]["summary"] == {"added": 0, "removed": 0, "updated": 1}
-    assert main[c2]["elements"]["nbr_seats"]["value"]["value"]["new"] == 4
-    assert main[c2]["elements"]["nbr_seats"]["value"]["value"]["previous"] == 2
-
-
-async def test_diff_data_endpoint_with_main_time_from(session, client, client_headers, car_person_data_generic_diff):
-    time20 = car_person_data_generic_diff["time20"]
-
-    c2 = car_person_data_generic_diff["c2"]
-    c4 = car_person_data_generic_diff["c4"]
-    p2 = car_person_data_generic_diff["p2"]
-    r1 = car_person_data_generic_diff["r1"]
-
-    with client:
-        response = client.get(
-            f"/api/diff/data?branch=branch2&branch_only=false&time_from={time20.to_iso8601_string()}",
-            headers=client_headers,
-        )
-
-    assert response.status_code == 200
-    data = response.json()
-    assert data is not None
-    assert sorted(data.keys()) == ["branch2", "main"]
-
-    branch2 = {node["id"]: node for node in data["branch2"]}
-    main = {node["id"]: node for node in data["main"]}
-
-    assert main[c2]["kind"] == "TestElectricCar"
-    assert main[c2]["action"] == "updated"
-    assert main[c2]["summary"] == {"added": 0, "removed": 0, "updated": 1}
-    assert main[c2]["elements"]["nbr_seats"]["value"]["value"]["new"] == 4
-    assert main[c2]["elements"]["nbr_seats"]["value"]["value"]["previous"] == 2
-
-    assert branch2[c4]["kind"] == "TestGazCar"
-    assert branch2[c4]["action"] == "removed"
-    assert branch2[c4]["summary"] == {"added": 0, "removed": 5, "updated": 0}
-    assert branch2[c4]["elements"]["owner"]["peer"]["previous"]["id"] == p2
-
-    assert branch2[p2]["display_label"] == "Jane"
-    assert branch2[p2]["kind"] == "TestPerson"
-    assert branch2[p2]["action"] == "updated"
-    assert branch2[p2]["summary"] == {"added": 0, "removed": 1, "updated": 0}
-    assert branch2[p2]["elements"]["cars"]["peers"][0]["peer"]["id"] == c4
-    assert branch2[p2]["elements"]["cars"]["peers"][0]["peer"]["kind"] == "TestGazCar"
-
-    assert branch2[r1]["kind"] == "CoreRepository"
-    assert branch2[r1]["action"] == "updated"
-    assert branch2[r1]["summary"] == {"added": 0, "removed": 0, "updated": 1}
-    assert branch2[r1]["elements"]["commit"]["value"]["value"]["new"] == "dddddddddd"
-    # assert branch2[r1]["elements"]["commit"]["value"]["value"]['previous'] == "bbbbbbbbbbbbbbb" FIXME
-    assert (
-        branch2[r1]["elements"]["commit"]["value"]["changed_at"]
-        == car_person_data_generic_diff["time21"].to_iso8601_string()
-    )
-
-
-async def test_diff_data_endpoint_with_main_time_from_to(session, client, client_headers, car_person_data_generic_diff):
-    time0 = car_person_data_generic_diff["time0"]
-    time20 = car_person_data_generic_diff["time20"]
-
-    c1 = car_person_data_generic_diff["c1"]
-    p1 = car_person_data_generic_diff["p1"]
-    p3 = car_person_data_generic_diff["p3"]
-    r1 = car_person_data_generic_diff["r1"]
-
-    with client:
-        response = client.get(
-            f"/api/diff/data?branch=branch2&branch_only=false&time_from={time0.to_iso8601_string()}&time_to={time20.to_iso8601_string()}",
-            headers=client_headers,
-        )
-
-    assert response.status_code == 200
-    data = response.json()
-    assert data is not None
-    assert sorted(data.keys()) == ["branch2", "main"]
-
-    branch2 = {node["id"]: node for node in data["branch2"]}
-    main = {node["id"]: node for node in data["main"]}
-
-    # assert branch2[p1]["display_label"] == "John"
-    # assert branch2[p1]["kind"] == "Person"
-    # assert branch2[p1]["action"] == "updated"
-    # assert branch2[p1]["summary"] == {'added': 0, 'removed': 1, 'updated': 0}
-    # assert branch2[p1]["elements"]["cars"]["peers"][0]["peer"]["id"] == c1
-    # assert branch2[p1]["elements"]["cars"]["peers"][0]["peer"]["kind"] == "ElectricCar"
-
-    assert branch2[p3]["display_label"] == "Bill"
-    assert branch2[p3]["action"] == "added"
-    assert branch2[p3]["summary"] == {"added": 3, "removed": 0, "updated": 0}
-    assert branch2[p3]["elements"]["cars"]["peers"][0]["peer"]["id"] == c1
-    assert len(branch2[p3]["elements"]["name"]["properties"]) == 2
-
-    assert branch2[c1]["kind"] == "TestElectricCar"
-    assert branch2[c1]["action"] == "updated"
-    assert branch2[c1]["summary"] == {"added": 0, "removed": 0, "updated": 1}
-    assert branch2[c1]["elements"]["owner"]["peer"]["new"]["id"] == p3
-    assert branch2[c1]["elements"]["owner"]["peer"]["previous"]["id"] == p1
-
-    assert branch2[r1]["kind"] == "CoreRepository"
-    assert branch2[r1]["action"] == "updated"
-    assert branch2[r1]["summary"] == {"added": 0, "removed": 0, "updated": 1}
-    assert branch2[r1]["elements"]["commit"]["value"]["value"]["new"] == "bbbbbbbbbbbbbbb"
-    # assert branch2[r1]["elements"]["commit"]["value"]["value"]['previous'] == "aaaaaaaaa" FIXME
-    assert (
-        branch2[r1]["elements"]["commit"]["value"]["changed_at"]
-        == car_person_data_generic_diff["time12"].to_iso8601_string()
-    )
-
-    assert main[p1]["kind"] == "TestPerson"
-    assert main[p1]["action"] == "updated"
-    assert main[p1]["summary"] == {"added": 0, "removed": 0, "updated": 1}
-    assert main[p1]["elements"]["height"]["value"]["value"]["new"] == 120
-    assert main[p1]["elements"]["height"]["value"]["value"]["previous"] == 180
-
-
-async def test_diff_artifact(
-    session, client, client_headers, register_core_models_schema, car_person_data_artifact_diff
-):
+async def test_diff_artifact(db: InfrahubDatabase, client, client_headers, car_person_data_artifact_diff):
     with client:
         response = client.get(
             "/api/diff/artifacts?branch=branch3",
@@ -414,8 +154,13 @@ async def test_diff_artifact(
         car_person_data_artifact_diff["art2"]: {
             "action": "added",
             "branch": "branch3",
-            "display_label": "myyartifact",
+            "display_label": "bolt #444444 - myyartifact",
             "id": car_person_data_artifact_diff["art2"],
+            "target": {
+                "id": car_person_data_artifact_diff["c2"],
+                "kind": "TestElectricCar",
+                "display_label": "bolt #444444",
+            },
             "item_new": {
                 "checksum": "zxcv9063c26263353de24e1b913e1e1c",
                 "storage_id": "qwertyui-073f-4173-aa4b-f50e1309f03c",
@@ -425,8 +170,13 @@ async def test_diff_artifact(
         car_person_data_artifact_diff["art1"]: {
             "action": "updated",
             "branch": "branch3",
-            "display_label": "myyartifact",
+            "display_label": "volt #444444 - myyartifact",
             "id": car_person_data_artifact_diff["art1"],
+            "target": {
+                "id": car_person_data_artifact_diff["c1"],
+                "kind": "TestElectricCar",
+                "display_label": "volt #444444",
+            },
             "item_new": {
                 "checksum": "zxcv9063c26263353de24e1b911z1x2c3v",
                 "storage_id": "azertyui-073f-4173-aa4b-f50e1309f03c",
@@ -434,6 +184,25 @@ async def test_diff_artifact(
             "item_previous": {
                 "checksum": "60d39063c26263353de24e1b913e1e1c",
                 "storage_id": "8caf6f89-073f-4173-aa4b-f50e1309f03c",
+            },
+        },
+        car_person_data_artifact_diff["art3"]: {
+            "action": "updated",
+            "branch": "branch3",
+            "display_label": "nolt #444444 - myyartifact",
+            "id": car_person_data_artifact_diff["art3"],
+            "target": {
+                "id": car_person_data_artifact_diff["c3"],
+                "kind": "TestGazCar",
+                "display_label": "nolt #444444",
+            },
+            "item_new": {
+                "checksum": "nhytgbvfredc9063c26263353de24e1b913e1e1c",
+                "storage_id": "lkjhgfds-073f-4173-aa4b-f50e1309f03c",
+            },
+            "item_previous": {
+                "checksum": "poiuytrewq9063c26263353de24e1b913e1e1c",
+                "storage_id": "mnbvcxza-073f-4173-aa4b-f50e1309f03c",
             },
         },
     }

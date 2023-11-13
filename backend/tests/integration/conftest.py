@@ -2,11 +2,10 @@ import asyncio
 import os
 from pathlib import Path
 from typing import Any, Dict, Optional
-from uuid import uuid4
 
 import pytest
 import yaml
-from neo4j import AsyncSession
+from infrahub_sdk import UUIDT
 
 import infrahub.config as config
 from infrahub.core import registry
@@ -15,7 +14,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.utils import delete_all_nodes
-from infrahub.database import get_db
+from infrahub.database import InfrahubDatabase, get_db
 from infrahub.utils import get_models_dir
 
 
@@ -29,24 +28,15 @@ def event_loop():
 
 
 @pytest.fixture(scope="module")
-async def db():
-    driver = await get_db(retry=1)
+async def db() -> InfrahubDatabase:
+    driver = InfrahubDatabase(driver=await get_db(retry=1))
 
     yield driver
 
     await driver.close()
 
 
-@pytest.fixture(scope="module")
-async def session(db):
-    session = db.session(database=config.SETTINGS.database.database)
-
-    yield session
-
-    await session.close()
-
-
-async def load_infrastructure_schema(session):
+async def load_infrastructure_schema(db: InfrahubDatabase):
     models_dir = get_models_dir()
 
     schema_txt = Path(os.path.join(models_dir, "infrastructure_base.yml")).read_text()
@@ -58,29 +48,27 @@ async def load_infrastructure_schema(session):
     tmp_schema.load_schema(schema=SchemaRoot(**infra_schema))
     tmp_schema.process()
 
-    await registry.schema.update_schema_branch(
-        schema=tmp_schema, session=session, branch=default_branch_name, update_db=True
-    )
+    await registry.schema.update_schema_branch(schema=tmp_schema, db=db, branch=default_branch_name, update_db=True)
 
 
 @pytest.fixture(scope="module")
-async def init_db_infra(session):
-    await delete_all_nodes(session=session)
-    await first_time_initialization(session=session)
-    await load_infrastructure_schema(session=session)
-    await initialization(session=session)
+async def init_db_infra(db: InfrahubDatabase):
+    await delete_all_nodes(db=db)
+    await first_time_initialization(db=db)
+    await load_infrastructure_schema(db=db)
+    await initialization(db=db)
 
 
 @pytest.fixture(scope="module")
-async def init_db_base(session):
-    await delete_all_nodes(session=session)
-    await first_time_initialization(session=session)
-    await initialization(session=session)
+async def init_db_base(db: InfrahubDatabase):
+    await delete_all_nodes(db=db)
+    await first_time_initialization(db=db)
+    await initialization(db=db)
 
 
 class IntegrationHelper:
-    def __init__(self, session: AsyncSession) -> None:
-        self.session = session
+    def __init__(self, db: InfrahubDatabase) -> None:
+        self.db = db
         self._admin_headers = {}
 
     async def admin_headers(self) -> Dict[str, Any]:
@@ -89,25 +77,25 @@ class IntegrationHelper:
         return self._admin_headers
 
     async def create_token(self, account_name: Optional[str] = None) -> str:
-        token = str(uuid4())
+        token = str(UUIDT())
         account_name = account_name or "admin"
         response = await NodeManager.query(
             schema="CoreAccount",
-            session=self.session,
+            db=self.db,
             filters={"name__value": account_name},
             limit=1,
         )
         account = response[0]
-        account_token = await Node.init(session=self.session, schema="InternalAccountToken")
+        account_token = await Node.init(db=self.db, schema="InternalAccountToken")
         await account_token.new(
-            session=self.session,
+            db=self.db,
             token=token,
             account=account,
         )
-        await account_token.save(session=self.session)
+        await account_token.save(db=self.db)
         return token
 
 
 @pytest.fixture(scope="class")
-def integration_helper(session) -> IntegrationHelper:
-    return IntegrationHelper(session=session)
+def integration_helper(db: InfrahubDatabase) -> IntegrationHelper:
+    return IntegrationHelper(db=db)

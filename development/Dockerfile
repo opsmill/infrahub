@@ -11,13 +11,12 @@ RUN mkdir /remote
 
 RUN apt-get update && \
     apt-get upgrade -y && \
-    apt-get install --no-install-recommends -y pkg-config build-essential && \
-    apt-get autoremove -y && \
-    apt-get clean all && \
+    apt-get install --no-install-recommends -y curl git pkg-config build-essential ca-certificates && \
+    curl -sSL https://install.python-poetry.org | python3 - && \
     rm -rf /var/lib/apt/lists/* && \
-    pip --no-cache-dir install --upgrade pip wheel
+    rm -rf /var/lib/apt/lists/* && \
+    pip --no-cache-dir install --no-compile --upgrade pip wheel
 
-RUN curl -sSL https://install.python-poetry.org | python3 -
 ENV PATH="${PATH}:/root/.local/bin"
 
 RUN poetry config virtualenvs.create false
@@ -29,14 +28,14 @@ FROM docker.io/node:16-slim AS frontend
 
 RUN mkdir /source
 
-RUN npm install -g npm@latest
+RUN npm install -g npm@v9.8.1
 COPY frontend/package.json  frontend/package-lock.json /source/
 
 WORKDIR /source
 
 RUN npm install --omit=dev
 COPY frontend/ /source/
-RUN npm run build
+RUN npm run build && npm cache clean --force
 
 # ****************************************************************
 # STAGE : Backend
@@ -46,21 +45,19 @@ FROM base AS backend
 # --------------------------------------------
 # Configure Git & Environment
 # --------------------------------------------
-RUN git config --global user.name "Infrahub"
-RUN git config --global user.email "infrahub@opsmill.com"
-RUN git config --global --add safe.directory '*'
-RUN git config --global credential.usehttppath true
-RUN git config --global credential.helper /usr/local/bin/infrahub-git-credential
+RUN git config --global user.name "Infrahub" && \
+    git config --global user.email "infrahub@opsmill.com" && \
+    git config --global --add safe.directory '*' && \
+    git config --global credential.usehttppath true && \
+    git config --global credential.helper /usr/local/bin/infrahub-git-credential
 
-RUN mkdir -p /opt/infrahub/git
-RUN mkdir -p /opt/infrahub/storage
+RUN mkdir -p /opt/infrahub/git /opt/infrahub/storage /opt/infrahub/source /opt/infrahub/frontend/dist
 
 WORKDIR /source
 
 # --------------------------------------------
 # Import Frontend Build
 # --------------------------------------------
-RUN mkdir -p /opt/infrahub/frontend/dist
 COPY --from=frontend /source/dist/ /opt/infrahub/frontend/dist
 
 # --------------------------------------------
@@ -68,13 +65,20 @@ COPY --from=frontend /source/dist/ /opt/infrahub/frontend/dist
 #   Copy in only pyproject.toml/poetry.lock to help with caching this layer if no updates to dependencies
 # --------------------------------------------
 COPY poetry.lock pyproject.toml /source/
-RUN poetry install --no-interaction --no-ansi --no-root
+RUN poetry install --no-interaction --no-ansi --no-root --no-directory
 
 # --------------------------------------------
 # Copy in the rest of the source code and install the project
 # --------------------------------------------
-COPY . /source
+COPY . ./
 RUN poetry install --no-interaction --no-ansi
+
+# --------------------------------------------
+# Purge & Cleanup
+# --------------------------------------------
+RUN apt-get autoremove -y && \
+    apt-get clean all && \
+    rm -rf /var/lib/apt/lists/*
 
 # ****************************************************************
 # STAGE : Gitpod

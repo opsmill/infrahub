@@ -1,4 +1,5 @@
 from .account import CoreAccountTokenCreate
+from .artifact_definition import InfrahubArtifactDefinitionMutation
 from .attribute import (
     AnyAttributeInput,
     BoolAttributeInput,
@@ -16,9 +17,15 @@ from .branch import (
     BranchMerge,
     BranchNameInput,
     BranchRebase,
+    BranchUpdate,
     BranchValidate,
 )
 from .main import InfrahubMutation, InfrahubMutationMixin, InfrahubMutationOptions
+from .proposed_change import (
+    InfrahubProposedChangeMutation,
+    ProposedChangeRequestRefreshArtifacts,
+    ProposedChangeRequestRunCheck,
+)
 from .relationship import RelationshipAdd, RelationshipRemove
 from .repository import InfrahubRepositoryMutation
 
@@ -32,15 +39,20 @@ __all__ = [
     "BranchDelete",
     "BranchMerge",
     "BranchNameInput",
+    "BranchUpdate",
     "CheckboxAttributeInput",
     "CoreAccountTokenCreate",
+    "InfrahubArtifactDefinitionMutation",
     "InfrahubRepositoryMutation",
     "InfrahubMutationOptions",
     "InfrahubMutation",
     "InfrahubMutationMixin",
+    "InfrahubProposedChangeMutation",
     "JSONAttributeInput",
     "ListAttributeInput",
     "NumberAttributeInput",
+    "ProposedChangeRequestRefreshArtifacts",
+    "ProposedChangeRequestRunCheck",
     "RelationshipAdd",
     "RelationshipRemove",
     "StringAttributeInput",

@@ -7,6 +7,7 @@ module.exports = {
     extend: {
       colors: {
         "custom-blue": {
+          10: "#a7d9e6",
           50: "#23a1c1",
           100: "#3babc8",
           200: "#54b6cf",
@@ -27,4 +28,9 @@ module.exports = {
     },
   },
   plugins: [require("@tailwindcss/forms")],
+  variants: {
+    extend: {
+      display: ["group-hover"],
+    },
+  },
 };

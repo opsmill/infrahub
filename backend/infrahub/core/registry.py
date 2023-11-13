@@ -5,13 +5,14 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Dict, Optional, Type, Union
 
 import infrahub.config as config
+from infrahub import lock
+from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.exceptions import (
     BranchNotFound,
     DataTypeNotFound,
     Error,
     InitializationError,
 )
-from infrahub.lock import registry as lock_registry
 
 if TYPE_CHECKING:
     import graphene
@@ -23,6 +24,7 @@ if TYPE_CHECKING:
     from infrahub.core.manager import NodeManager
     from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema
     from infrahub.core.schema_manager import SchemaManager
+    from infrahub.database import InfrahubDatabase
     from infrahub.graphql.mutations import BaseAttributeInput
     from infrahub.graphql.types import InfrahubObject
     from infrahub.storage.main import InfrahubObjectStorage
@@ -217,7 +219,12 @@ class Registry:
 
         raise BranchNotFound(identifier=branch)
 
-    async def get_branch(self, session: Optional[AsyncSession], branch: Optional[Union[Branch, str]] = None) -> Branch:
+    async def get_branch(
+        self,
+        session: Optional[AsyncSession] = None,
+        db: Optional[InfrahubDatabase] = None,
+        branch: Optional[Union[Branch, str]] = None,
+    ) -> Branch:
         """Return a branch object based on its name.
 
         First the function will check in the registry
@@ -239,26 +246,34 @@ class Registry:
             if self.branch_object.isinstance(branch) and not isinstance(branch, str):
                 return branch
 
+        if (self.branch_object.isinstance(branch) and branch.name == GLOBAL_BRANCH_NAME) or (
+            isinstance(branch, str) and branch == GLOBAL_BRANCH_NAME
+        ):
+            raise BranchNotFound(identifier=GLOBAL_BRANCH_NAME)
+
         if not branch or not isinstance(branch, str):
             branch = config.SETTINGS.main.default_branch
 
         try:
             return self.get_branch_from_registry(branch=branch)
         except BranchNotFound:
-            if not session:
+            if not session and not db:
                 raise
 
         if not self.branch_object:
             raise Error("Branch object not initialized")
 
-        async with lock_registry.get_branch_schema_update():
-            obj = await self.branch_object.get_by_name(name=branch, session=session)
+        async with lock.registry.local_schema_lock():
+            obj = await self.branch_object.get_by_name(name=branch, db=db)
             registry.branch[branch] = obj
 
             # Pull the schema for this branch
-            await registry.schema.load_schema_from_db(session=session, branch=obj)
+            await registry.schema.load_schema(db=db, branch=obj)
 
         return obj
+
+    def get_global_branch(self) -> Branch:
+        return self.get_branch_from_registry(branch=GLOBAL_BRANCH_NAME)
 
 
 registry = Registry()

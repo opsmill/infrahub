@@ -27,9 +27,9 @@ Cypress.Commands.add("login", (username: string, password: string) => {
     () => {
       cy.visit("/signin");
 
-      cy.get(":nth-child(1) > .relative > .block").type(username);
+      cy.get(":nth-child(1) > .relative > .block").type(username, { delay: 0, force: true });
 
-      cy.get(":nth-child(2) > .relative > .block").type(password);
+      cy.get(":nth-child(2) > .relative > .block").type(password, { delay: 0, force: true });
 
       cy.get(".justify-end > .rounded-md").click();
     },

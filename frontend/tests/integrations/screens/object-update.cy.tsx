@@ -2,13 +2,15 @@
 
 import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
+import { formatDistanceToNow } from "date-fns";
 import React from "react";
 import { Route, Routes } from "react-router-dom";
-import { getDateDisplay } from "../../../src/components/date-display";
+import { ACCESS_TOKEN_KEY } from "../../../src/config/constants";
 import { withAuth } from "../../../src/decorators/withAuth";
 import ObjectDetails from "../../../src/screens/object-item-details/object-item-details-paginated";
 import { configState } from "../../../src/state/atoms/config.atom";
 import { schemaState } from "../../../src/state/atoms/schema.atom";
+import { mockedToken } from "../../fixtures/auth";
 import {
   accountTokenDetailsMocksDataBis,
   accountTokenDetailsMocksDataWithDateBis,
@@ -34,8 +36,8 @@ import {
 import { TestProvider } from "../../mocks/jotai/atom";
 
 // URL for the current view
-const mockedUrl = `/objects/Device/${deviceDetailsMocksId}`;
-const mockedUrlToken = `/objects/AccountTokenBis/${accountTokenId}`;
+const mockedUrl = `/objects/InfraDevice/${deviceDetailsMocksId}`;
+const mockedUrlToken = `/objects/InternalAccountTokenBis/${accountTokenId}`;
 
 // Path that will match the route to display the component
 const mockedPath = "/objects/:objectname/:objectid";
@@ -164,6 +166,7 @@ describe("Object details", () => {
   beforeEach(function () {
     cy.fixture("device-detail-update-name").as("mutation");
     cy.fixture("account-token-update-date").as("mutationToken");
+    localStorage.setItem(ACCESS_TOKEN_KEY, mockedToken);
   });
 
   it("should fetch the object details, open the edit form and update the object name", function () {
@@ -194,7 +197,10 @@ describe("Object details", () => {
 
     // Clear and type the new name
     cy.get(".grid > :nth-child(1) > .relative > .block").clear();
-    cy.get(".grid > :nth-child(1) > .relative > .block").type(deviceDetailsNewName);
+    cy.get(".grid > :nth-child(1) > .relative > .block").type(deviceDetailsNewName, {
+      delay: 0,
+      force: true,
+    });
 
     // Verify that the name is correctly set
     cy.get(".grid > :nth-child(1) > .relative > .block").should("have.value", deviceDetailsNewName);
@@ -257,9 +263,9 @@ describe("Object details", () => {
     cy.wait("@mutate");
 
     // The date should be defined
-    cy.get(".mt-1 > :nth-child(1) > .flex-shrink-0").should(
+    cy.get(".text-xs").should(
       "have.text",
-      getDateDisplay(accountTokenNewDate)
+      formatDistanceToNow(new Date(accountTokenNewDate), { addSuffix: true })
     );
   });
 });

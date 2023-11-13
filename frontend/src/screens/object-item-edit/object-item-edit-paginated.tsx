@@ -11,9 +11,13 @@ import { branchVar } from "../../graphql/variables/branchVar";
 import { dateVar } from "../../graphql/variables/dateVar";
 import useQuery from "../../hooks/useQuery";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
+import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdit";
 import getMutationDetailsFromFormData from "../../utils/getMutationDetailsFromFormData";
-import { getSchemaRelationshipColumns } from "../../utils/getSchemaObjectColumns";
+import {
+  getSchemaAttributeColumns,
+  getSchemaRelationshipColumns,
+} from "../../utils/getSchemaObjectColumns";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
@@ -41,20 +45,23 @@ export default function ObjectItemEditComponent(props: Props) {
   const user = useContext(AuthContext);
 
   const [schemaList] = useAtom(schemaState);
+  const [schemaKindName] = useAtom(schemaKindNameState);
   const [genericsList] = useAtom(genericsState);
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
   const [isLoading, setIsLoading] = useState(false);
 
-  const schema = schemaList.filter((s) => s.name === objectname)[0];
+  const schema = schemaList.find((s) => s.kind === objectname);
 
+  const attributes = getSchemaAttributeColumns(schema, true);
   const relationships = getSchemaRelationshipColumns(schema);
 
-  const peers = (schema.relationships || []).map((r) => r.peer).filter(Boolean);
+  const peers = (schema?.relationships || []).map((r) => r.peer).filter(Boolean);
 
   const queryString = schema
     ? getObjectDetailsAndPeers({
         ...schema,
+        attributes,
         relationships,
         objectid,
         peers,
@@ -70,16 +77,7 @@ export default function ObjectItemEditComponent(props: Props) {
   const { loading, error, data } = useQuery(query, { skip: !schema });
 
   if (error) {
-    console.error("An error occured while retrieving the object details: ", error);
-
-    toast(
-      <Alert
-        message="An error occured while retrieving the object details"
-        type={ALERT_TYPES.ERROR}
-      />
-    );
-
-    return <ErrorScreen />;
+    return <ErrorScreen message="Something went wrong when fetching the object details." />;
   }
 
   if (loading || !schema) {
@@ -87,7 +85,7 @@ export default function ObjectItemEditComponent(props: Props) {
   }
 
   if (!data || (data && !data[schema.kind])) {
-    return <NoDataFound />;
+    return <NoDataFound message="No details found." />;
   }
 
   const objectDetailsData = data[schema.kind]?.edges[0]?.node;
@@ -137,7 +135,9 @@ export default function ObjectItemEditComponent(props: Props) {
           context: { branch: branch?.name, date },
         });
 
-        toast(<Alert type={ALERT_TYPES.SUCCESS} message={`${schema.name} updated`} />);
+        toast(
+          <Alert type={ALERT_TYPES.SUCCESS} message={`${schemaKindName[schema.kind]} updated`} />
+        );
 
         closeDrawer();
 
@@ -146,21 +146,17 @@ export default function ObjectItemEditComponent(props: Props) {
 
         return;
       } catch (e) {
-        setIsLoading(false);
-        toast(
-          <Alert
-            message="Something went wrong while updating the object"
-            type={ALERT_TYPES.ERROR}
-          />
-        );
         console.error("Something went wrong while updating the object:", e);
+
+        setIsLoading(false);
+
         return;
       }
     }
   }
 
   return (
-    <div className="bg-custom-white flex-1 overflow-auto flex flex-col">
+    <div className="bg-custom-white flex-1 overflow-auto flex flex-col" data-cy="object-item-edit">
       {formStructure && (
         <EditFormHookComponent
           onCancel={props.closeDrawer}

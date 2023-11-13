@@ -8,7 +8,7 @@ services:
       context: ../
       dockerfile: development/Dockerfile
       target: backend
-    image: "${IMAGE_NAME_BACKEND}:${IMAGE_VER}"
+    image: "${IMAGE_NAME}:${IMAGE_VER}"
     command: >
       gunicorn --config backend/infrahub/serve/gunicorn_config.py --logger-class infrahub.serve.log.GunicornLogger infrahub.server:app
     depends_on:
@@ -16,16 +16,18 @@ services:
         condition: service_healthy
       message-queue:
         condition: service_healthy
+      cache:
+        condition: service_healthy
     environment:
       - "INFRAHUB_CONFIG=/source/development/infrahub.toml"
       - "INFRAHUB_PRODUCTION=false"
       - "INFRAHUB_LOG_LEVEL=INFO"
       - "INFRAHUB_SECURITY_INITIAL_ADMIN_TOKEN=06438eb2-8019-4776-878c-0941b1f1d1ec"
       - "INFRAHUB_SECURITY_SECRET_KEY=327f747f-efac-42be-9e73-999f08f86b92"
-      - "INFRAHUB_EXPERIMENTAL_IGNORE_AUTHENTICATION_REQUIREMENTS=false"
       - "INFRAHUB_ALLOW_ANONYMOUS_ACCESS=true"
       - "PROMETHEUS_MULTIPROC_DIR=/prom_shared"
       - "INFRAHUB_FRONTEND_DIRECTORY=/opt/infrahub/frontend"
+      - "INFRAHUB_DB_TYPE=${INFRAHUB_DB_TYPE}"
     volumes:
       - ../:/source
       - "storage_data:/opt/infrahub/storage"
@@ -37,11 +39,14 @@ services:
       retries: 20
       start_period: 10s
   infrahub-git:
+    deploy:
+      mode: replicated
+      replicas: 2
     build:
       context: ../
       dockerfile: development/Dockerfile
       target: backend
-    image: "${IMAGE_NAME_BACKEND}:${IMAGE_VER}"
+    image: "${IMAGE_NAME}:${IMAGE_VER}"
     command: infrahub git-agent start --debug
     restart: unless-stopped
     depends_on:
@@ -52,10 +57,15 @@ services:
       - "INFRAHUB_PRODUCTION=false"
       - "INFRAHUB_LOG_LEVEL=DEBUG"
       - "INFRAHUB_SDK_API_TOKEN=06438eb2-8019-4776-878c-0941b1f1d1ec"
+      - "INFRAHUB_SDK_TIMEOUT=20"
+      - "INFRAHUB_DB_TYPE=${INFRAHUB_DB_TYPE}"
     volumes:
       - ../:/source
       - "git_data:/opt/infrahub/git"
+      - "git_remote_data:/remote"
     tty: true
+
 volumes:
   git_data:
+  git_remote_data:
   storage_data:

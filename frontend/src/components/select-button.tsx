@@ -1,5 +1,5 @@
 import { Listbox, Transition } from "@headlessui/react";
-import { ChevronDownIcon } from "@heroicons/react/24/outline";
+import { Icon } from "@iconify-icon/react";
 import { Fragment } from "react";
 import { classNames } from "../utils/common";
 import { BUTTON_TYPES, Button } from "./button";
@@ -24,7 +24,7 @@ export const SelectButton = (props: any) => {
                   className="rounded-none border border-transparent"
                   as={Button}
                   buttonType={BUTTON_TYPES.MAIN}>
-                  <ChevronDownIcon className="h-5 w-5 text-custom-white" aria-hidden="true" />
+                  <Icon icon="mdi:chevron-down" className="tetx-custom-white" />
                 </Listbox.Button>
               </div>
             </div>
@@ -34,7 +34,7 @@ export const SelectButton = (props: any) => {
               leave="transition ease-in duration-100"
               leaveFrom="opacity-100"
               leaveTo="opacity-0">
-              <Listbox.Options className="absolute right-0 z-20 mt-2 w-72 origin-top-right divide-y divide-gray-200 overflow-hidden bg-custom-white shadow-lg ring-1 ring-custom-black ring-opacity-5 focus:outline-none rounded-md">
+              <Listbox.Options className="absolute right-0 z-20 mt-2 w-72 origin-top-right divide-y divide-gray-200 overflow-hidden bg-custom-white shadow-lg ring-1 ring-custom-black ring-opacity-5 focus:outline-none rounded-md max-h-[500px] overflow-y-auto">
                 {options.map((option: any) => (
                   <Listbox.Option
                     key={option.name}

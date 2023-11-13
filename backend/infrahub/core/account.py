@@ -7,19 +7,20 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.query import Query
 
 if TYPE_CHECKING:
-    from neo4j import AsyncSession
-
     from infrahub.core.branch import Branch
+    from infrahub.database import InfrahubDatabase
 
 # pylint: disable=redefined-builtin
 
 
 class AccountTokenValidateQuery(Query):
+    name: str = "account_token_validate"
+
     def __init__(self, token, *args, **kwargs):
         self.token = token
         super().__init__(*args, **kwargs)
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         token_filter_perms, token_params = self.branch.get_query_filter_relationships(
             rel_labels=["r1", "r2"], at=self.at, include_outside_parentheses=True
         )
@@ -73,17 +74,17 @@ class AccountTokenValidateQuery(Query):
 
 
 async def validate_token(
-    token, session: AsyncSession, branch: Union[Branch, str] = None, at=None
+    token, db: InfrahubDatabase, branch: Union[Branch, str] = None, at=None
 ) -> Tuple[Optional[str], str]:
-    branch = await get_branch(session=session, branch=branch)
-    query = await AccountTokenValidateQuery.init(session=session, branch=branch, token=token, at=at)
-    await query.execute(session=session)
+    branch = await get_branch(db=db, branch=branch)
+    query = await AccountTokenValidateQuery.init(db=db, branch=branch, token=token, at=at)
+    await query.execute(db=db)
     return query.get_account_id(), query.get_account_role()
 
 
 async def get_account(
     account,
-    session: AsyncSession,
+    db: InfrahubDatabase,
     branch=None,
     at=None,
 ):
@@ -103,7 +104,7 @@ async def get_account(
     account_schema = registry.get_schema(name="CoreAccount")
 
     obj = await NodeManager.query(
-        account_schema, filters={account_schema.default_filter: account}, branch=branch, at=at, session=session
+        schema=account_schema, filters={account_schema.default_filter: account}, branch=branch, at=at, db=db
     )
     registry.account[account] = obj
 

@@ -5,6 +5,7 @@ from deepdiff import DeepDiff
 from pydantic.error_wrappers import ValidationError
 
 from infrahub.core import registry
+from infrahub.core.constants import BranchSupportType
 from infrahub.core.schema import (
     AttributeSchema,
     BaseSchemaModel,
@@ -14,6 +15,7 @@ from infrahub.core.schema import (
     core_models,
     internal_schema,
 )
+from infrahub.database import InfrahubDatabase
 
 
 def test_base_schema_model_sorting():
@@ -50,7 +52,7 @@ def test_base_schema_model_hashing():
         name="node1", subs=[MySubElement(name="apple"), MySubElement(name="orange"), MySubElement(name="coconut")]
     )
 
-    assert hash(node1) == hash(node2)
+    assert node1.get_hash() == node2.get_hash()
 
 
 def test_base_schema_model_hashing_dict():
@@ -71,7 +73,7 @@ def test_base_schema_model_hashing_dict():
         name="node1", subs=[MySubElement(name="orange", value1={"bob": "Alice"}), MySubElement(name="coconut")]
     )
 
-    assert hash(node1) == hash(node2)
+    assert node1.get_hash() == node2.get_hash()
 
 
 def test_base_schema_update():
@@ -125,7 +127,7 @@ def test_schema_root_no_generic():
                 "name": "Criticality",
                 "namespace": "Test",
                 "default_filter": "name__value",
-                "branch": True,
+                "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                 ],
@@ -141,7 +143,7 @@ def test_node_schema_unique_names():
         "name": "Criticality",
         "namespace": "Test",
         "default_filter": "name__value",
-        "branch": True,
+        "branch": BranchSupportType.AWARE.value,
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
             {"name": "name", "kind": "Text", "unique": True},
@@ -157,7 +159,7 @@ def test_node_schema_unique_names():
         "name": "Criticality",
         "namespace": "Test",
         "default_filter": "name__value",
-        "branch": True,
+        "branch": BranchSupportType.AWARE.value,
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
             {"name": "dupname", "kind": "Text"},
@@ -178,7 +180,7 @@ def test_node_schema_property_unique_attributes():
         "name": "Criticality",
         "namespace": "Test",
         "default_filter": "name__value",
-        "branch": True,
+        "branch": BranchSupportType.AWARE.value,
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
             {"name": "description", "kind": "Text"},
@@ -195,7 +197,7 @@ def test_node_schema_unique_identifiers():
         "name": "Criticality",
         "namespace": "Test",
         "default_filter": "name__value",
-        "branch": True,
+        "branch": BranchSupportType.AWARE.value,
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
         ],
@@ -214,7 +216,7 @@ def test_node_schema_unique_identifiers():
         "name": "Criticality",
         "namespace": "Test",
         "default_filter": "name__value",
-        "branch": True,
+        "branch": BranchSupportType.AWARE.value,
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
         ],
@@ -233,7 +235,7 @@ async def test_node_schema_hashable():
         "name": "Criticality",
         "namespace": "Test",
         "default_filter": "name__value",
-        "branch": True,
+        "branch": BranchSupportType.AWARE.value,
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
         ],
@@ -245,7 +247,7 @@ async def test_node_schema_hashable():
     schema = NodeSchema(**SCHEMA)
 
     assert isinstance(schema, Hashable)
-    assert hash(schema)
+    assert schema.get_hash()
 
 
 async def test_attribute_schema_hashable():
@@ -254,7 +256,7 @@ async def test_attribute_schema_hashable():
     schema = AttributeSchema(**SCHEMA)
 
     assert isinstance(schema, Hashable)
-    assert hash(schema)
+    assert schema.get_hash()
 
 
 async def test_relationship_schema_hashable():
@@ -263,7 +265,7 @@ async def test_relationship_schema_hashable():
     schema = RelationshipSchema(**SCHEMA)
 
     assert isinstance(schema, Hashable)
-    assert hash(schema)
+    assert schema.get_hash()
 
 
 async def test_node_schema_generate_fields_for_display_label():
@@ -272,7 +274,7 @@ async def test_node_schema_generate_fields_for_display_label():
         "namespace": "Test",
         "default_filter": "name__value",
         "display_labels": ["name__value", "level__value"],
-        "branch": True,
+        "branch": BranchSupportType.AWARE.value,
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
             {"name": "level", "kind": "Number"},
@@ -291,14 +293,12 @@ async def test_node_schema_generate_fields_for_display_label():
         schema.generate_fields_for_display_label()
 
 
-async def test_rel_schema_query_filter(session, default_branch, car_person_schema):
+async def test_rel_schema_query_filter(db: InfrahubDatabase, default_branch, car_person_schema):
     person = registry.get_schema(name="TestPerson")
     rel = person.relationships[0]
 
     # Filter relationships by NAME__VALUE
-    filters, params, matchs = await rel.get_query_filter(
-        session=session, filter_name="name__value", filter_value="alice"
-    )
+    filters, params, matchs = await rel.get_query_filter(db=db, filter_name="name__value", filter_value="alice")
     expected_response = [
         "(n)",
         "[r1:IS_RELATED]",
@@ -315,9 +315,7 @@ async def test_rel_schema_query_filter(session, default_branch, car_person_schem
     assert matchs == []
 
     # Filter relationship by ID
-    filters, params, matchs = await rel.get_query_filter(
-        session=session, name="bob", filter_name="id", filter_value="XXXX-YYYY"
-    )
+    filters, params, matchs = await rel.get_query_filter(db=db, name="bob", filter_name="id", filter_value="XXXX-YYYY")
     expected_response = [
         "(n)",
         "[r1:IS_RELATED]",
@@ -330,12 +328,12 @@ async def test_rel_schema_query_filter(session, default_branch, car_person_schem
     assert matchs == []
 
 
-async def test_rel_schema_query_filter_no_value(session, default_branch, car_person_schema):
+async def test_rel_schema_query_filter_no_value(db: InfrahubDatabase, default_branch, car_person_schema):
     person = registry.get_schema(name="TestPerson")
     rel = person.relationships[0]
 
     # Filter relationships by NAME__VALUE
-    filters, params, matchs = await rel.get_query_filter(session=session, filter_name="name__value")
+    filters, params, matchs = await rel.get_query_filter(db=db, filter_name="name__value")
     expected_response = [
         "(n)",
         "[r1:IS_RELATED]",
@@ -352,7 +350,7 @@ async def test_rel_schema_query_filter_no_value(session, default_branch, car_per
     assert matchs == []
 
     # Filter relationship by ID
-    filters, params, matchs = await rel.get_query_filter(session=session, name="bob", filter_name="id")
+    filters, params, matchs = await rel.get_query_filter(db=db, name="bob", filter_name="id")
     expected_response = [
         "(n)",
         "[r1:IS_RELATED]",

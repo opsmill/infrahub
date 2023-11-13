@@ -1,0 +1,26 @@
+{   "version": "1.0",
+    "nodes": [
+        {
+            "name": "Device",
+            "namespace": "Infra",
+            "default_filter": "name__value",
+            "branch": "aware",
+            "attributes": [
+                {
+                    "name": "name",
+                    "kind": "String",
+                    "unique": true
+                },
+                {
+                    "name": "description",
+                    "kind": "String",
+                    "optional": true
+                },
+                {
+                    "name": "type",
+                    "kind": "String"
+                }
+            ]
+        }
+    ]
+}

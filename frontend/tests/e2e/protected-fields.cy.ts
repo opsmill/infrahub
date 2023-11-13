@@ -12,21 +12,35 @@ describe("Protected fields", () => {
 
     cy.visit("/");
 
-    cy.contains("Device").click();
+    cy.contains("All Device(s)").click();
 
     cy.contains("atl1-edge1").click();
 
     // Open the metadata tooltip
-    cy.get(":nth-child(7) > .py-4 > .mt-1 > .p-2").click();
+    cy.get(".sm\\:p-0").within(() => {
+      cy.contains("Role")
+        .parent()
+        .within(() => {
+          cy.get("[data-cy='metadata-button']").click();
+        });
+    });
 
     // The owner should be the eng team
     cy.get(":nth-child(5) > .underline").should("have.text", ENG_TEAM_ONLY_CREDENTIALS.username);
 
     // Open the edit panel for the object
-    cy.get(".md\\:pl-64 > .flex-col > .bg-custom-white > :nth-child(2) > :nth-child(1)").click();
+    cy.contains("Edit").click();
 
-    // The input should be available
-    cy.get("#headlessui-combobox-input-\\:r1g\\:").should("not.be.disabled");
+    // Open the metadata tooltip
+    cy.get("[data-cy='object-item-edit'").within(() => {
+      cy.contains("Role")
+        .parent()
+        .parent()
+        .within(() => {
+          // The input should be available
+          cy.get("input").should("not.be.disabled");
+        });
+    });
   });
 
   it("should login and access the protected fields as owner", () => {
@@ -34,21 +48,35 @@ describe("Protected fields", () => {
 
     cy.visit("/");
 
-    cy.contains("Device").click();
+    cy.contains("All Device(s)").click();
 
     cy.contains("atl1-edge1").click();
 
     // Open the metadata tooltip
-    cy.get(":nth-child(7) > .py-4 > .mt-1 > .p-2").click();
+    cy.get(".sm\\:p-0").within(() => {
+      cy.contains("Role")
+        .parent()
+        .within(() => {
+          cy.get("[data-cy='metadata-button']").click();
+        });
+    });
 
     // The owner should be the eng team
     cy.get(":nth-child(5) > .underline").should("have.text", ENG_TEAM_ONLY_CREDENTIALS.username);
 
     // Open the edit panel for the object
-    cy.get(".md\\:pl-64 > .flex-col > .bg-custom-white > :nth-child(2) > :nth-child(1)").click();
+    cy.contains("Edit").click();
 
-    // The input should be available
-    cy.get("#headlessui-combobox-input-\\:r1g\\:").should("not.be.disabled");
+    // Open the metadata tooltip
+    cy.get("[data-cy='object-item-edit'").within(() => {
+      cy.contains("Role")
+        .parent()
+        .parent()
+        .within(() => {
+          // The input should be available
+          cy.get("input").should("not.be.disabled");
+        });
+    });
   });
 
   it("should login with write permissions but should not access the protecteed fields", () => {
@@ -56,20 +84,34 @@ describe("Protected fields", () => {
 
     cy.visit("/");
 
-    cy.contains("Device").click();
+    cy.contains("All Device(s)").click();
 
     cy.contains("atl1-edge1").click();
 
     // Open the metadata tooltip
-    cy.get(":nth-child(7) > .py-4 > .mt-1 > .p-2").click();
+    cy.get(".sm\\:p-0").within(() => {
+      cy.contains("Role")
+        .parent()
+        .within(() => {
+          cy.get("[data-cy='metadata-button']").click();
+        });
+    });
 
     // The owner should be the eng team
     cy.get(":nth-child(5) > .underline").should("have.text", ENG_TEAM_ONLY_CREDENTIALS.username);
 
     // Open the edit panel for the object
-    cy.get(".md\\:pl-64 > .flex-col > .bg-custom-white > :nth-child(2) > :nth-child(1)").click();
+    cy.contains("Edit").click();
 
-    // The input should be available
-    cy.get("#headlessui-combobox-input-\\:r1g\\:").should("be.disabled");
+    // Open the metadata tooltip
+    cy.get("[data-cy='object-item-edit'").within(() => {
+      cy.contains("Role")
+        .parent()
+        .parent()
+        .within(() => {
+          // The input should be available
+          cy.get("input").should("be.disabled");
+        });
+    });
   });
 });

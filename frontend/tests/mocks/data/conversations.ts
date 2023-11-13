@@ -214,13 +214,16 @@ export const conversationMocksSchema = [
 ];
 
 export const conversationMocksQuery = `query {
-  CoreChangeThread(change__ids: "${proposedChangesId}") {
+  CoreThread(change__ids: "${proposedChangesId}") {
     count
     edges {
       node {
         __typename
         id
         display_label
+        label {
+          value
+        }
         resolved {
           value
         }
@@ -264,7 +267,7 @@ export const conversationMocksQuery = `query {
 `;
 
 export const conversationMocksData = {
-  CoreChangeThread: {
+  CoreThread: {
     count: 1,
     edges: [
       {
@@ -272,6 +275,9 @@ export const conversationMocksData = {
           __typename: "CoreChangeThread",
           id: "25c4ffd2-b027-4d51-890f-6695953f99b5",
           display_label: "CoreChangeThread(ID: 25c4ffd2-b027-4d51-890f-6695953f99b5)",
+          label: {
+            value: "Conversation",
+          },
           resolved: { value: false, __typename: "CheckboxAttribute" },
           created_by: { node: null, __typename: "NestedEdgedCoreAccount" },
           comments: {

@@ -4,6 +4,7 @@ import graphene
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.database import InfrahubDatabase
 from infrahub.graphql.generator import (
     generate_filters,
     generate_graphql_mutation_create,
@@ -22,7 +23,7 @@ async def test_input_type_registration():
     assert registry.input_type is not {}
 
 
-async def test_generate_interface_object(session, default_branch: Branch, generic_vehicule_schema):
+async def test_generate_interface_object(db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema):
     load_attribute_types_in_registry(branch=default_branch)
     load_node_interface(branch=default_branch)
 
@@ -34,7 +35,7 @@ async def test_generate_interface_object(session, default_branch: Branch, generi
 
 
 async def test_generate_union_object(
-    session,
+    db: InfrahubDatabase,
     default_branch: Branch,
     data_schema,
     group_graphql,
@@ -59,7 +60,7 @@ async def test_generate_union_object(
     assert result._meta.schema == group_on_road_vehicule_schema
 
 
-async def test_generate_graphql_object(session, default_branch: Branch, group_graphql, criticality_schema):
+async def test_generate_graphql_object(db: InfrahubDatabase, default_branch: Branch, group_graphql, criticality_schema):
     result = generate_graphql_object(schema=criticality_schema, branch=default_branch)
     assert inspect.isclass(result)
     assert issubclass(result, InfrahubObject)
@@ -82,7 +83,7 @@ async def test_generate_graphql_object(session, default_branch: Branch, group_gr
 
 
 async def test_generate_graphql_object_with_interface(
-    session, default_branch: Branch, data_schema, group_graphql, generic_vehicule_schema, car_schema
+    db: InfrahubDatabase, default_branch: Branch, data_schema, group_graphql, generic_vehicule_schema, car_schema
 ):
     node_type = generate_interface_object(generic_vehicule_schema, branch=default_branch)
     registry.set_graphql_type(name=node_type._meta.name, graphql_type=node_type, branch=default_branch.name)
@@ -101,20 +102,26 @@ async def test_generate_graphql_object_with_interface(
     ]
 
 
-async def test_generate_graphql_mutation_create(session, default_branch: Branch, group_graphql, criticality_schema):
+async def test_generate_graphql_mutation_create(
+    db: InfrahubDatabase, default_branch: Branch, group_graphql, criticality_schema
+):
     result = generate_graphql_mutation_create(schema=criticality_schema, branch=default_branch)
     assert result._meta.name == "TestCriticalityCreate"
     assert sorted(list(result._meta.fields.keys())) == ["object", "ok"]
 
 
-async def test_generate_graphql_mutation_update(session, default_branch: Branch, group_graphql, criticality_schema):
+async def test_generate_graphql_mutation_update(
+    db: InfrahubDatabase, default_branch: Branch, group_graphql, criticality_schema
+):
     result = generate_graphql_mutation_update(schema=criticality_schema, branch=default_branch)
     assert result._meta.name == "TestCriticalityUpdate"
     assert sorted(list(result._meta.fields.keys())) == ["object", "ok"]
 
 
-async def test_generate_object_types(session, default_branch: Branch, data_schema, group_graphql, car_person_schema):
-    await generate_object_types(session=session, branch=default_branch)
+async def test_generate_object_types(
+    db: InfrahubDatabase, default_branch: Branch, data_schema, group_graphql, car_person_schema
+):
+    await generate_object_types(db=db, branch=default_branch)
 
     car = registry.get_graphql_type(name="TestCar", branch=default_branch)
     edged_car = registry.get_graphql_type(name="EdgedTestCar", branch=default_branch)
@@ -175,26 +182,51 @@ async def test_generate_object_types(session, default_branch: Branch, data_schem
 
 
 async def test_generate_filters(
-    session, default_branch: Branch, data_schema, group_graphql, car_person_schema_generics
+    db: InfrahubDatabase, default_branch: Branch, data_schema, group_graphql, car_person_schema_generics
 ):
     person = registry.get_schema(name="TestPerson")
-    filters = await generate_filters(session=session, schema=person, top_level=True)
+    filters = await generate_filters(db=db, schema=person, top_level=True)
     expected_filters = [
         "offset",
         "limit",
         "ids",
-        "name__value",
-        "height__value",
-        "cars__ids",
-        "cars__name__value",
-        "cars__nbr_seats__value",
+        "any__is_protected",
+        "any__is_visible",
+        "any__owner__id",
+        "any__source__id",
+        "any__value",
+        "cars__color__is_protected",
+        "cars__color__is_visible",
+        "cars__color__owner__id",
+        "cars__color__source__id",
         "cars__color__value",
-        "member_of_groups__ids",
+        "cars__ids",
+        "cars__name__is_protected",
+        "cars__name__is_visible",
+        "cars__name__owner__id",
+        "cars__name__source__id",
+        "cars__name__value",
+        "cars__nbr_seats__is_protected",
+        "cars__nbr_seats__is_visible",
+        "cars__nbr_seats__owner__id",
+        "cars__nbr_seats__source__id",
+        "cars__nbr_seats__value",
+        "height__is_protected",
+        "height__is_visible",
+        "height__owner__id",
+        "height__source__id",
+        "height__value",
         "member_of_groups__description__value",
+        "member_of_groups__ids",
         "member_of_groups__label__value",
         "member_of_groups__name__value",
-        "subscriber_of_groups__ids",
+        "name__is_protected",
+        "name__is_visible",
+        "name__owner__id",
+        "name__source__id",
+        "name__value",
         "subscriber_of_groups__description__value",
+        "subscriber_of_groups__ids",
         "subscriber_of_groups__label__value",
         "subscriber_of_groups__name__value",
     ]

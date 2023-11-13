@@ -5,13 +5,19 @@ import re
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 import ujson
+from infrahub_sdk import UUIDT
+from pydantic import BaseModel, Field
 
 from infrahub.core import registry
-from infrahub.core.constants import RelationshipStatus
-from infrahub.core.property import FlagPropertyMixin, NodePropertyMixin
+from infrahub.core.constants import BranchSupportType, RelationshipStatus
+from infrahub.core.property import (
+    FlagPropertyMixin,
+    NodePropertyData,
+    NodePropertyMixin,
+    ValuePropertyData,
+)
 from infrahub.core.query import QueryElement, QueryNode, QueryRel
 from infrahub.core.query.attribute import (
-    AttributeCreateQuery,
     AttributeGetQuery,
     AttributeUpdateFlagQuery,
     AttributeUpdateNodePropertyQuery,
@@ -26,13 +32,27 @@ from infrahub.helpers import hash_password
 if TYPE_CHECKING:
     from uuid import UUID
 
-    from neo4j import AsyncSession
-
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
     from infrahub.core.schema import AttributeSchema
+    from infrahub.database import InfrahubDatabase
 
 # pylint: disable=redefined-builtin,c-extension-no-member
+
+
+class AttributeCreateData(BaseModel):
+    uuid: str
+    name: str
+    type: str
+    branch: str
+    branch_level: int
+    branch_support: str
+    status: str
+    value: Any
+    is_protected: bool
+    is_visible: bool
+    source_prop: List[ValuePropertyData] = Field(default_factory=list)
+    owner_prop: List[NodePropertyData] = Field(default_factory=list)
 
 
 class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
@@ -94,6 +114,17 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         if self.is_visible is None:
             self.is_visible = True
+
+    def get_branch_based_on_support_type(self) -> Branch:
+        """If the attribute is branch aware, return the Branch object associated with this attribute
+        If the attribute is branch agnostic return the Global Branch
+
+        Returns:
+            Branch:
+        """
+        if self.schema.branch == BranchSupportType.AGNOSTIC:
+            return registry.get_global_branch()
+        return self.branch
 
     @classmethod
     def __init_subclass__(cls, **kwargs):
@@ -189,30 +220,31 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         """Deserialize the value coming from the database."""
         return value
 
-    async def save(self, session: AsyncSession, at: Optional[Timestamp] = None):
+    async def save(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> bool:
         """Create or Update the Attribute in the database."""
 
         save_at = Timestamp(at)
 
-        if self.id:
-            return await self._update(at=save_at, session=session)
+        if not self.id:
+            return False
 
-        return await self._create(at=save_at, session=session)
+        return await self._update(at=save_at, db=db)
 
-    async def delete(self, session: AsyncSession, at: Optional[Timestamp] = None) -> bool:
+    async def delete(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> bool:
         if not self.db_id:
             return False
 
         delete_at = Timestamp(at)
 
-        query = await AttributeGetQuery.init(session=session, attr=self)
-        await query.execute(session=session)
+        query = await AttributeGetQuery.init(db=db, attr=self)
+        await query.execute(db=db)
         results = query.get_results()
 
         if not results:
             return False
 
         properties_to_delete = []
+        branch = self.get_branch_based_on_support_type()
 
         # Check all the relationship and update the one that are in the same branch
         rel_ids_to_update = set()
@@ -223,45 +255,34 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 src_node_id=self.db_id,
                 dst_node_id=result.get("ap").element_id,
                 rel_type=result.get("r2").type,
-                branch_name=self.branch.name,
-                branch_level=self.branch.hierarchy_level,
+                branch_name=branch.name,
+                branch_level=branch.hierarchy_level,
                 at=delete_at,
                 status=RelationshipStatus.DELETED,
-                session=session,
+                db=db,
             )
 
             for rel in result.get_rels():
-                if rel.get("branch") == self.branch.name:
+                if rel.get("branch") == branch.name:
                     rel_ids_to_update.add(rel.element_id)
 
         if rel_ids_to_update:
-            await update_relationships_to(ids=list(rel_ids_to_update), to=delete_at, session=session)
+            await update_relationships_to(ids=list(rel_ids_to_update), to=delete_at, db=db)
 
         await add_relationship(
             src_node_id=self.node.db_id,
             dst_node_id=self.db_id,
             rel_type="HAS_ATTRIBUTE",
-            branch_name=self.branch.name,
-            branch_level=self.branch.hierarchy_level,
+            branch_name=branch.name,
+            branch_level=branch.hierarchy_level,
             at=delete_at,
             status=RelationshipStatus.DELETED,
-            session=session,
+            db=db,
         )
 
         return True
 
-    async def _create(self, session: AsyncSession, at: Optional[Timestamp] = None) -> bool:
-        create_at = Timestamp(at)
-
-        query = await AttributeCreateQuery.init(session=session, attr=self, branch=self.branch, at=create_at)
-        await query.execute(session=session)
-
-        self.id, self.db_id = query.get_new_ids()
-        self.at = create_at
-
-        return True
-
-    async def _update(self, session: AsyncSession, at: Optional[Timestamp] = None) -> bool:
+    async def _update(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> bool:
         """Update the attribute in the database.
 
         Get the current value
@@ -277,7 +298,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         self.validate(value=self.value, name=self.name, schema=self.schema)
 
         query = await NodeListGetAttributeQuery.init(
-            session=session,
+            db=db,
             ids=[self.node.id],
             fields={self.name: True},
             branch=self.branch,
@@ -285,21 +306,23 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             include_source=True,
             include_owner=True,
         )
-        await query.execute(session=session)
+        await query.execute(db=db)
         current_attr = query.get_result_by_id_and_name(self.node.id, self.name)
+
+        branch = self.get_branch_based_on_support_type()
 
         # ---------- Update the Value ----------
         current_value = self.from_db(current_attr.get("av").get("value"))
 
         if current_value != self.value:
             # Create the new AttributeValue and update the existing relationship
-            query = await AttributeUpdateValueQuery.init(session=session, attr=self, at=update_at)
-            await query.execute(session=session)
+            query = await AttributeUpdateValueQuery.init(db=db, attr=self, at=update_at)
+            await query.execute(db=db)
 
             # TODO check that everything went well
             rel = current_attr.get("r2")
-            if rel.get("branch") == self.branch.name:
-                await update_relationships_to([rel.element_id], to=update_at, session=session)
+            if rel.get("branch") == branch.name:
+                await update_relationships_to([rel.element_id], to=update_at, db=db)
 
         # ---------- Update the Flags ----------
         SUPPORTED_FLAGS = (
@@ -309,14 +332,12 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         for flag_name, node_name, rel_name in SUPPORTED_FLAGS:
             if current_attr.get(node_name).get("value") != getattr(self, flag_name):
-                query = await AttributeUpdateFlagQuery.init(
-                    session=session, attr=self, at=update_at, flag_name=flag_name
-                )
-                await query.execute(session=session)
+                query = await AttributeUpdateFlagQuery.init(db=db, attr=self, at=update_at, flag_name=flag_name)
+                await query.execute(db=db)
 
                 rel = current_attr.get(rel_name)
-                if rel.get("branch") == self.branch.name:
-                    await update_relationships_to([rel.element_id], to=update_at, session=session)
+                if rel.get("branch") == branch.name:
+                    await update_relationships_to([rel.element_id], to=update_at, db=db)
 
         # ---------- Update the Node Properties ----------
         for prop in self._node_properties:
@@ -324,25 +345,26 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 current_attr.get(prop) and current_attr.get(prop).get("uuid") == getattr(self, f"{prop}_id")
             ):
                 query = await AttributeUpdateNodePropertyQuery.init(
-                    session=session, attr=self, at=update_at, prop_name=prop, prop_id=getattr(self, f"{prop}_id")
+                    db=db, attr=self, at=update_at, prop_name=prop, prop_id=getattr(self, f"{prop}_id")
                 )
-                await query.execute(session=session)
+                await query.execute(db=db)
 
                 rel = current_attr.get(f"rel_{prop}")
-                if rel and rel.get("branch") == self.branch.name:
-                    await update_relationships_to([rel.element_id], to=update_at, session=session)
+                if rel and rel.get("branch") == branch.name:
+                    await update_relationships_to([rel.element_id], to=update_at, db=db)
 
         return True
 
     @classmethod
-    def get_query_filter(  # pylint: disable=unused-argument
+    async def get_query_filter(  # pylint: disable=unused-argument
         cls,
         name: str,
         filter_name: str,
-        branch=None,
+        branch: Optional[Branch] = None,
         filter_value: Optional[Union[str, int, bool]] = None,
         include_match: bool = True,
         param_prefix: Optional[str] = None,
+        db: Optional[InfrahubDatabase] = None,
     ) -> Tuple[List[QueryElement], Dict[str, Any], List[str]]:
         """Generate Query String Snippet to filter the right node."""
 
@@ -358,23 +380,56 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         if include_match:
             query_filter.append(QueryNode(name="n"))
 
-        query_filter.extend(
-            [
-                QueryRel(labels=[cls._rel_to_node_label]),
-                QueryNode(name="i", labels=["Attribute"], params={"name": f"${param_prefix}_name"}),
-                QueryRel(labels=["HAS_VALUE"]),
-                QueryNode(name="av", labels=["AttributeValue"]),
-            ]
-        )
-        query_params[f"{param_prefix}_name"] = name
+        query_filter.append(QueryRel(labels=[cls._rel_to_node_label]))
 
-        if filter_value is not None:
-            query_filter[-1].params = {"value": f"${param_prefix}_value"}
-            query_params[f"{param_prefix}_value"] = filter_value
+        if name in ["any", "attribute"]:
+            query_filter.append(QueryNode(name="i", labels=["Attribute"]))
+        else:
+            query_filter.append(QueryNode(name="i", labels=["Attribute"], params={"name": f"${param_prefix}_name"}))
+            query_params[f"{param_prefix}_name"] = name
+
+        if filter_name == "value":
+            query_filter.append(QueryRel(labels=["HAS_VALUE"]))
+
+            if filter_value is not None:
+                query_filter.append(
+                    QueryNode(name="av", labels=["AttributeValue"], params={"value": f"${param_prefix}_value"})
+                )
+                query_params[f"{param_prefix}_value"] = filter_value
+            else:
+                query_filter.append(QueryNode(name="av", labels=["AttributeValue"]))
+
+        elif filter_name in cls._flag_properties and filter_value is not None:
+            query_filter.append(QueryRel(labels=[filter_name.upper()]))
+            query_filter.append(
+                QueryNode(name="ap", labels=["Boolean"], params={"value": f"${param_prefix}_{filter_name}"})
+            )
+            query_params[f"{param_prefix}_{filter_name}"] = filter_value
+
+        elif "__" in filter_name and filter_value is not None:
+            filter_name_split = filter_name.split(sep="__", maxsplit=1)
+            property_name: str = filter_name_split[0]
+            property_attr: str = filter_name_split[1]
+
+            if property_name not in cls._node_properties:
+                raise ValueError(f"filter {filter_name}: {filter_value}, {property_name} is not a valid property")
+
+            if property_attr not in ["id"]:
+                raise ValueError(f"filter {filter_name}: {filter_value}, {property_attr} is supported")
+
+            clean_filter_name = f"{property_name}_{property_attr}"
+
+            query_filter.extend(
+                [
+                    QueryRel(labels=[f"HAS_{property_name.upper()}"]),
+                    QueryNode(name="ap", labels=["CoreNode"], params={"uuid": f"${param_prefix}_{clean_filter_name}"}),
+                ]
+            )
+            query_params[f"{param_prefix}_{clean_filter_name}"] = filter_value
 
         return query_filter, query_params, query_where
 
-    async def to_graphql(self, session: AsyncSession, fields: Optional[dict] = None) -> dict:
+    async def to_graphql(self, db: InfrahubDatabase, fields: Optional[dict] = None) -> dict:
         """Generate GraphQL Payload for this attribute."""
         # pylint: disable=too-many-branches
 
@@ -402,14 +457,14 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
             if field_name in ["source", "owner"]:
                 node_attr_getter = getattr(self, f"get_{field_name}")
-                node_attr = await node_attr_getter(session=session)
+                node_attr = await node_attr_getter(db=db)
                 if not node_attr:
                     response[field_name] = None
                 elif fields and isinstance(fields, dict):
-                    response[field_name] = await node_attr.to_graphql(session=session, fields=fields[field_name])
+                    response[field_name] = await node_attr.to_graphql(db=db, fields=fields[field_name])
                 else:
                     response[field_name] = await node_attr.to_graphql(
-                        session=session, fields={"id": None, "display_label": None, "__typename": None}
+                        db=db, fields={"id": None, "display_label": None, "__typename": None}
                     )
                 continue
 
@@ -422,6 +477,29 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 response[field_name] = field
 
         return response
+
+    def get_create_data(self) -> AttributeCreateData:
+        # pylint: disable=no-member
+        branch = self.get_branch_based_on_support_type()
+        data = AttributeCreateData(
+            uuid=str(UUIDT()),
+            name=self.name,
+            type=self.get_kind(),
+            branch=branch.name,
+            status="active",
+            branch_level=self.branch.hierarchy_level,
+            branch_support=self.schema.branch.value,
+            value=self.to_db(),
+            is_protected=self.is_protected,
+            is_visible=self.is_visible,
+        )
+        if self.source_id:
+            data.source_prop.append(NodePropertyData(name="source", peer_id=self.source_id))
+
+        if self.owner_id:
+            data.owner_prop.append(NodePropertyData(name="owner", peer_id=self.owner_id))
+
+        return data
 
 
 class AnyAttribute(BaseAttribute):
@@ -476,6 +554,12 @@ class IPNetwork(BaseAttribute):
         except ValueError as exc:
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"}) from exc
 
+    @classmethod
+    def serialize(cls, value: Any) -> Any:
+        """Serialize the value before storing it in the database."""
+
+        return ipaddress.ip_network(value).with_prefixlen
+
 
 class IPHost(BaseAttribute):
     type = str
@@ -498,6 +582,12 @@ class IPHost(BaseAttribute):
             ipaddress.ip_interface(value)
         except ValueError as exc:
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"}) from exc
+
+    @classmethod
+    def serialize(cls, value: Any) -> Any:
+        """Serialize the value before storing it in the database."""
+
+        return ipaddress.ip_interface(value).with_prefixlen
 
 
 class ListAttribute(BaseAttribute):

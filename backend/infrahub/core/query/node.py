@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import uuid
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Tuple
@@ -12,11 +11,12 @@ from infrahub.core.utils import extract_field_filters
 from infrahub.exceptions import QueryError
 
 if TYPE_CHECKING:
-    from neo4j import AsyncSession
-
+    from infrahub.core.attribute import AttributeCreateData, BaseAttribute
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
+    from infrahub.core.relationship import RelationshipCreateData, RelationshipManager
     from infrahub.core.schema import NodeSchema
+    from infrahub.database import InfrahubDatabase
 
 # pylint: disable=consider-using-f-string,redefined-builtin
 
@@ -69,11 +69,11 @@ class AttrToProcess:
 class NodeQuery(Query):
     def __init__(
         self,
-        node: Node = None,
+        node: Optional[Node] = None,
         node_id: Optional[str] = None,
         node_db_id: Optional[int] = None,
-        id=None,
-        branch: Branch = None,
+        id: Optional[str] = None,
+        branch: Optional[Branch] = None,
         *args,
         **kwargs,
     ):
@@ -89,39 +89,105 @@ class NodeQuery(Query):
         if not self.node_db_id and self.node:
             self.node_db_id = self.node.db_id
 
-        self.branch = branch or self.node._branch
+        self.branch = branch or self.node.get_branch_based_on_support_type()
 
         super().__init__(*args, **kwargs)
 
 
-class NodeCreateQuery(NodeQuery):
-    name = "node_create"
+class NodeCreateAllQuery(NodeQuery):
+    name = "node_create_all"
 
     type: QueryType = QueryType.WRITE
 
     raise_error_if_empty: bool = True
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
-        self.params["uuid"] = str(uuid.uuid4())
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+        at = self.at or self.node._at
+        self.params["uuid"] = self.node.id
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
         self.params["kind"] = self.node.get_kind()
+        self.params["branch_support"] = self.node._schema.branch
 
+        attributes: List[AttributeCreateData] = []
+        for attr_name in self.node._attributes:
+            attr: BaseAttribute = getattr(self.node, attr_name)
+            attributes.append(attr.get_create_data())
+
+        relationships: List[RelationshipCreateData] = []
+        for rel_name in self.node._relationships:
+            rel_manager: RelationshipManager = getattr(self.node, rel_name)
+            for rel in rel_manager._relationships:
+                relationships.append(await rel.get_create_data(db=db))
+
+        self.params["attrs"] = [attr.dict() for attr in attributes]
+        self.params["rels"] = [rel.dict() for rel in relationships]
+
+        self.params["node_prop"] = {
+            "uuid": self.node.id,
+            "kind": self.node.get_kind(),
+            "namespace": self.node._schema.namespace,
+            "branch_support": self.node._schema.branch,
+        }
+        self.params["node_branch_prop"] = {
+            "branch": self.branch.name,
+            "branch_level": self.branch.hierarchy_level,
+            "status": "active",
+            "from": at.to_string(),
+        }
         query = """
         MATCH (root:Root)
-        CREATE (n:Node:%s { uuid: $uuid, kind: $kind })
-        CREATE (n)-[r:IS_PART_OF { branch: $branch, branch_level: $branch_level, status: "active", from: $at }]->(root)
+        CREATE (n:Node:%s $node_prop )
+        CREATE (n)-[r:IS_PART_OF $node_branch_prop ]->(root)
+        WITH distinct n
+        FOREACH ( attr IN $attrs |
+            CREATE (a:Attribute:AttributeLocal { uuid: attr.uuid, name: attr.name, type: attr.type, branch_support: attr.branch_support })
+            CREATE (n)-[:HAS_ATTRIBUTE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(a)
+            MERGE (av:AttributeValue { type: attr.type, value: attr.value })
+            CREATE (a)-[:HAS_VALUE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(av)
+            MERGE (ip:Boolean { value: attr.is_protected })
+            MERGE (iv:Boolean { value: attr.is_visible })
+            CREATE (a)-[:IS_PROTECTED { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(ip)
+            CREATE (a)-[:IS_VISIBLE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(iv)
+            FOREACH ( prop IN attr.source_prop |
+                MERGE (peer:Node { uuid: prop.peer_id })
+                CREATE (a)-[:HAS_SOURCE { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(peer)
+            )
+            FOREACH ( prop IN attr.owner_prop |
+                MERGE (peer:Node { uuid: prop.peer_id })
+                CREATE (a)-[:HAS_OWNER { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(peer)
+            )
+        )
+        FOREACH ( rel IN $rels |
+            MERGE (d:Node { uuid: rel.destination_id })
+            CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
+            CREATE (n)-[:IS_RELATED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(rl)
+            CREATE (d)-[:IS_RELATED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null  }]->(rl)
+            MERGE (ip:Boolean { value: rel.is_protected })
+            MERGE (iv:Boolean { value: rel.is_visible })
+            CREATE (rl)-[:IS_PROTECTED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(ip)
+            CREATE (rl)-[:IS_VISIBLE { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(iv)
+            FOREACH ( prop IN rel.source_prop |
+                MERGE (peer:Node { uuid: prop.peer_id })
+                CREATE (rl)-[:HAS_SOURCE { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(peer)
+            )
+            FOREACH ( prop IN rel.owner_prop |
+                MERGE (peer:Node { uuid: prop.peer_id })
+                CREATE (rl)-[:HAS_OWNER { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(peer)
+            )
+        )
+        WITH distinct n
+        MATCH (n)-[:HAS_ATTRIBUTE|IS_RELATED]-(rn)-[:HAS_VALUE|IS_RELATED]-(rv)
         """ % ":".join(
             self.node.get_labels()
         )
 
-        at = self.at or self.node._at
         self.params["at"] = at.to_string()
 
         self.add_to_query(query)
-        self.return_labels = ["n"]
+        self.return_labels = ["n", "rn", "rv"]
 
-    def get_new_ids(self) -> Tuple[str, str]:
+    def get_self_ids(self) -> Tuple[str, str]:
         result = self.get_result()
         node = result.get("n")
 
@@ -129,6 +195,19 @@ class NodeCreateQuery(NodeQuery):
             raise QueryError(self.get_query(), self.params)
 
         return node["uuid"], node.element_id
+
+    def get_ids(self) -> Dict[str, Tuple[str, str]]:
+        data = {}
+        for result in self.get_results():
+            node = result.get("rn")
+            if "Relationship" in node.labels:
+                peer = result.get("rv")
+                name = f"{node.get('name')}::{peer.get('uuid')}"
+            elif "Attribute" in node.labels:
+                name = node.get("name")
+            data[name] = (node["uuid"], node.element_id)
+
+        return data
 
 
 class NodeDeleteQuery(NodeQuery):
@@ -138,7 +217,7 @@ class NodeDeleteQuery(NodeQuery):
 
     raise_error_if_empty: bool = True
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         self.params["uuid"] = self.node_id
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
@@ -155,6 +234,31 @@ class NodeDeleteQuery(NodeQuery):
         self.return_labels = ["n"]
 
 
+class NodeCheckIDQuery(Query):
+    name = "node_check_id"
+
+    type: QueryType = QueryType.READ
+
+    def __init__(
+        self,
+        node_id: str,
+        *args,
+        **kwargs,
+    ):
+        self.node_id = node_id
+        super().__init__(*args, **kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+        self.params["uuid"] = self.node_id
+
+        query = """
+        MATCH (root:Root)-[]-(n:Node { uuid: $uuid })
+        """
+
+        self.add_to_query(query)
+        self.return_labels = ["n"]
+
+
 class NodeListGetLocalAttributeValueQuery(Query):
     name: str = "node_list_get_local_attribute_value"
 
@@ -162,7 +266,7 @@ class NodeListGetLocalAttributeValueQuery(Query):
         self.ids = ids
         super().__init__(*args, **kwargs)
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         self.params["attrs_ids"] = self.ids
 
         rel_filter, rel_params = self.branch.get_query_filter_relationships(
@@ -214,9 +318,9 @@ class NodeListGetAttributeQuery(Query):
         self.include_source = include_source
         self.include_owner = include_owner
 
-        super().__init__(order_by=["a.name"], *args, **kwargs)
+        super().__init__(order_by=["n.uuid", "a.name"], *args, **kwargs)
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         self.params["ids"] = self.ids
 
         rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at)
@@ -296,8 +400,6 @@ class NodeListGetAttributeQuery(Query):
     #     self.return_labels.extend(["r5"])
 
     def get_attributes_group_by_node(self) -> Dict[str, Dict[str, AttrToProcess]]:
-        # TODO NEED TO REVISIT HOW TO INTEGRATE THE PERMISSION SYSTEM
-
         attrs_by_node = defaultdict(lambda: {"node": None, "attrs": None})
 
         for result in self.get_results_group_by(("n", "uuid"), ("a", "name")):
@@ -361,7 +463,7 @@ class NodeListGetRelationshipsQuery(Query):
 
         super().__init__(*args, **kwargs)
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         self.params["ids"] = self.ids
 
         rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at)
@@ -401,10 +503,7 @@ class NodeListGetInfoQuery(Query):
         self.ids = ids
         super().__init__(*args, **kwargs)
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
-        branches = list(self.branch.get_branches_and_times_to_query().keys())
-        self.params["branches"] = branches
-
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
@@ -445,7 +544,7 @@ class NodeGetListQuery(Query):
 
         super().__init__(*args, **kwargs)
 
-    async def query_init(self, session: AsyncSession, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
         filter_has_single_id = False
         self.order_by = []
 
@@ -495,44 +594,12 @@ class NodeGetListQuery(Query):
             return
 
         if self.filters:
-            # if Filters are provided
-            #  Go over all the fields, remove the first part of the query to identify the field
-            #  { "name__name": value }
+            filter_query, filter_params = await self.build_filters(
+                db=db, filters=self.filters, branch_filter=branch_filter
+            )
 
-            filter_cnt = 0
-            for field_name in self.schema.valid_input_names:
-                attr_filters = extract_field_filters(field_name=field_name, filters=self.filters)
-                if not attr_filters:
-                    continue
-
-                filter_cnt += 1
-
-                field = self.schema.get_field(field_name)
-
-                for field_attr_name, field_attr_value in attr_filters.items():
-                    subquery, subquery_params, subquery_result_name = await build_subquery_filter(
-                        session=session,
-                        field=field,
-                        name=field_name,
-                        filter_name=field_attr_name,
-                        filter_value=field_attr_value,
-                        branch_filter=branch_filter,
-                        branch=self.branch,
-                        subquery_idx=filter_cnt,
-                    )
-                    self.params.update(subquery_params)
-
-                    with_str = ", ".join(
-                        [
-                            f"{subquery_result_name} as {label}" if label == "n" else label
-                            for label in self.return_labels
-                        ]
-                    )
-
-                    self.add_to_query("CALL {")
-                    self.add_to_query(subquery)
-                    self.add_to_query("}")
-                    self.add_to_query(f"WITH {with_str}")
+            self.add_to_query(filter_query)
+            self.params.update(filter_params)
 
         if self.schema.order_by:
             order_cnt = 1
@@ -543,7 +610,7 @@ class NodeGetListQuery(Query):
                 field = self.schema.get_field(order_by_field_name)
 
                 subquery, subquery_params, subquery_result_name = await build_subquery_order(
-                    session=session,
+                    db=db,
                     field=field,
                     name=order_by_field_name,
                     order_by=order_by_next_name,
@@ -553,10 +620,6 @@ class NodeGetListQuery(Query):
                 )
                 self.order_by.append(subquery_result_name)
                 self.params.update(subquery_params)
-
-                with_str = ", ".join(
-                    [f"{subquery_result_name} as {label}" if label == "n" else label for label in self.return_labels]
-                )
 
                 self.add_to_query("CALL {")
                 self.add_to_query(subquery)
@@ -568,6 +631,48 @@ class NodeGetListQuery(Query):
             self.order_by.append("n.uuid")
 
         self.return_labels = final_return_labels
+
+    async def build_filters(
+        self, db: InfrahubDatabase, filters: Dict[str, Any], branch_filter: str
+    ) -> Tuple[List[str], Dict[str, Any]]:
+        filter_query: List[str] = []
+        filter_params: Dict[str, Any] = {}
+        filter_cnt = 0
+
+        INTERNAL_FILTERS: List[str] = ["any", "attribute", "relationship"]
+
+        for field_name in self.schema.valid_input_names + INTERNAL_FILTERS:
+            attr_filters = extract_field_filters(field_name=field_name, filters=filters)
+            if not attr_filters:
+                continue
+
+            filter_cnt += 1
+
+            field = self.schema.get_field(field_name, raise_on_error=False)
+
+            for field_attr_name, field_attr_value in attr_filters.items():
+                subquery, subquery_params, subquery_result_name = await build_subquery_filter(
+                    db=db,
+                    field=field,
+                    name=field_name,
+                    filter_name=field_attr_name,
+                    filter_value=field_attr_value,
+                    branch_filter=branch_filter,
+                    branch=self.branch,
+                    subquery_idx=filter_cnt,
+                )
+                filter_params.update(subquery_params)
+
+                with_str = ", ".join(
+                    [f"{subquery_result_name} as {label}" if label == "n" else label for label in self.return_labels]
+                )
+
+                filter_query.append("CALL {")
+                filter_query.append(subquery)
+                filter_query.append("}")
+                filter_query.append(f"WITH {with_str}")
+
+        return filter_query, filter_params
 
     def get_node_ids(self) -> List[str]:
         return [str(result.get("n.uuid")) for result in self.get_results()]

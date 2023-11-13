@@ -36,7 +36,7 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
 
-  const schema = schemaList.filter((s) => s.name === objectname)[0];
+  const schema = schemaList.find((s) => s.kind === objectname);
   const relationshipSchema = schema?.relationships?.find((r) => r?.name === relationshipTab);
   const columns = getAttributeColumnsFromNodeOrGenericSchema(
     schemaList,
@@ -70,13 +70,7 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
   }
 
   if (error) {
-    console.error(`Error while loading the ${relationshipTab}:`, error);
-
-    toast(
-      <Alert type={ALERT_TYPES.ERROR} message={`Error while loading the ${relationshipTab}`} />
-    );
-
-    return <ErrorScreen />;
+    return <ErrorScreen message="Something went wrong when fetching the relationships." />;
   }
 
   if (!data || !relationshipTab) {

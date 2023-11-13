@@ -1,6 +1,9 @@
 import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { PasswordDisplay } from "../components/PasswordDisplay";
 import { Badge } from "../components/badge";
+import { CodeEditor } from "../components/code-editor";
 import { DateDisplay } from "../components/date-display";
+import { MAX_VALUE_LENGTH_DISPLAY } from "../config/constants";
 
 export const getObjectItemDisplayValue = (row: any, attribute: any, schemaKindName?: any) => {
   if (!row) {
@@ -15,25 +18,26 @@ export const getObjectItemDisplayValue = (row: any, attribute: any, schemaKindNa
     return <CheckIcon className="h-4 w-4" />;
   }
 
-  // if (row[attribute?.name]?.__typename === "TextAttribute") {
-  //   return <pre>{row[attribute?.name]?.value}</pre>;
-  // }
-  //
-
   if (row[attribute?.name]?.__typename === "JSONAttribute") {
-    return <pre>{JSON.stringify(row[attribute?.name]?.value)}</pre>;
+    return <CodeEditor value={JSON.stringify(row[attribute?.name]?.value)} disabled />;
   }
 
   if (row[attribute?.name]?.edges) {
-    const items = row[attribute?.name]?.edges.map(
-      (edge: any) => edge?.node?.display_label ?? edge?.node?.value ?? "-"
-    );
+    const items = row[attribute?.name]?.edges
+      .map((edge: any) => edge?.node?.display_label ?? edge?.node?.value ?? "-")
+      .slice(0, 5);
+
+    const rest = row[attribute?.name]?.edges?.slice(5)?.length;
 
     return (
-      <div className="flex">
+      <div className="flex flex-wrap items-center">
         {items.map((item: string, index: number) => (
-          <Badge key={index}>{item}</Badge>
+          <Badge key={index} className="m-2">
+            {item}
+          </Badge>
         ))}
+
+        {items.length !== row[attribute?.name]?.edges?.length && <i>{`(${rest} more)`}</i>}
       </div>
     );
   }
@@ -47,12 +51,21 @@ export const getObjectItemDisplayValue = (row: any, attribute: any, schemaKindNa
     return schemaKindName[row[attribute?.name]] ?? "-";
   }
 
-  return (
+  const textValue =
     row[attribute?.name]?.value ??
     row[attribute?.name]?.node?.value ??
     row[attribute?.name]?.display_label ??
     row[attribute?.name]?.node?.display_label ??
     (typeof row[attribute?.name] === "string" ? row[attribute?.name] : "") ??
-    "-"
-  );
+    "-";
+
+  if (attribute?.kind === "Password") {
+    return <PasswordDisplay value={textValue} />;
+  }
+
+  if (textValue?.length > MAX_VALUE_LENGTH_DISPLAY) {
+    return `${textValue.substr(0, MAX_VALUE_LENGTH_DISPLAY)} ...`;
+  }
+
+  return textValue;
 };

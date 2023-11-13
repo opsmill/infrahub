@@ -4,8 +4,7 @@ from abc import abstractmethod
 from typing import Optional
 
 from git import Repo
-
-from infrahub_client import InfrahubClient
+from infrahub_sdk import InfrahubClient
 
 INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT = "INFRAHUB_TRANSFORMS"
 
@@ -39,7 +38,7 @@ class InfrahubTransform:
             raise ValueError("A url must be provided")
 
     @classmethod
-    async def init(cls, client=None, test_client=None, *args, **kwargs):
+    async def init(cls, client=None, *args, **kwargs):
         """Async init method, If an existing InfrahubClient client hasn't been provided, one will be created automatically."""
 
         item = cls(*args, **kwargs)
@@ -47,7 +46,7 @@ class InfrahubTransform:
         if client:
             item.client = client
         else:
-            item.client = await InfrahubClient.init(address=item.server_url, test_client=test_client)
+            item.client = await InfrahubClient.init(address=item.server_url)
 
         return item
 

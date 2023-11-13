@@ -1,4 +1,3 @@
-import { useReactiveVar } from "@apollo/client";
 import { useAtom } from "jotai";
 import * as R from "ramda";
 import { useCallback, useEffect } from "react";
@@ -8,11 +7,12 @@ import "react-toastify/dist/ReactToastify.css";
 import { StringParam, useQueryParam } from "use-query-params";
 import { ALERT_TYPES, Alert } from "./components/alert";
 import { CONFIG } from "./config/config";
-import { MAIN_ROUTES } from "./config/constants";
 import { QSP } from "./config/qsp";
+import { MAIN_ROUTES } from "./config/routes";
 import { withAuth } from "./decorators/withAuth";
 import { branchVar } from "./graphql/variables/branchVar";
 import Layout from "./screens/layout/layout";
+import { branchesState } from "./state/atoms/branches.atom";
 import {
   genericSchemaState,
   genericsState,
@@ -27,12 +27,12 @@ import { sortByOrderWeight } from "./utils/common";
 import { fetchUrl } from "./utils/fetch";
 
 function App() {
+  const [branches] = useAtom(branchesState);
   const [, setSchema] = useAtom(schemaState);
   const [, setGenerics] = useAtom(genericsState);
   const [, setGenericSchema] = useAtom(genericSchemaState);
   const [, setSchemaKindNameState] = useAtom(schemaKindNameState);
   const [branchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
-  const branch = useReactiveVar(branchVar);
 
   /**
    * Fetch schema from the backend, sort, and return them
@@ -40,7 +40,7 @@ function App() {
   const fetchSchema = useCallback(async () => {
     const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
     try {
-      const data = await fetchUrl(CONFIG.SCHEMA_URL(branchInQueryString ?? branch?.name));
+      const data = await fetchUrl(CONFIG.SCHEMA_URL(branchInQueryString));
 
       return {
         schema: sortByName(data.nodes || []),
@@ -59,7 +59,7 @@ function App() {
         generics: [],
       };
     }
-  }, [branch?.name, branchInQueryString]);
+  }, [branchInQueryString]);
 
   /**
    * Set schema in state atom
@@ -104,7 +104,23 @@ function App() {
 
   useEffect(() => {
     setSchemaInState();
-  }, [setSchemaInState, branch]);
+  }, [branches?.length, branchInQueryString]);
+
+  // useEffect(() => {
+  if (branches?.length) {
+    // For first load or navigation with branch change:
+    // We need to store the current branch in the state, from the QSP or the default branch
+    const selectedBranch = branches.find((b) =>
+      branchInQueryString ? b.name === branchInQueryString : b.is_default
+    );
+
+    if (selectedBranch?.name) {
+      // TODO: Fix the bad set state,
+      // TODO: mandatory for now to correctly define the apollo context
+      branchVar(selectedBranch);
+    }
+  }
+  // }, [branches?.length, branchInQueryString]);
 
   return (
     <Routes>

@@ -4,8 +4,8 @@ import { StringParam, useQueryParam } from "use-query-params";
 import { TabsButtons } from "../../components/tabs-buttons";
 import { QSP } from "../../config/qsp";
 import { constructPath } from "../../utils/fetch";
+import { Diff } from "../diff/diff";
 import { BranchDetails } from "./branch-details";
-import { Diff } from "./diff/diff";
 
 export const BRANCH_TABS = {
   DETAILS: "details",
@@ -51,7 +51,7 @@ export const BrancheItemDetails = () => {
             Branches
           </div>
           <ChevronRightIcon
-            className="h-5 w-5 mt-1 mx-2 flex-shrink-0 text-gray-400"
+            className="w-4 h-4 mt-1 mx-2 flex-shrink-0 text-gray-400"
             aria-hidden="true"
           />
 
@@ -61,7 +61,7 @@ export const BrancheItemDetails = () => {
 
       <TabsButtons tabs={tabs} qsp={QSP.BRANCH_TAB} />
 
-      {renderContent(qspTab)}
+      <div className="flex flex-col flex-1">{renderContent(qspTab)}</div>
     </>
   );
 };

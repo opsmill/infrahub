@@ -2,6 +2,7 @@ import { gql, useReactiveVar } from "@apollo/client";
 import { PlusIcon, Square3Stack3DIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useContext, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { RoundedButton } from "../../components/rounded-button";
 import SlideOver from "../../components/slide-over";
 import {
@@ -15,6 +16,7 @@ import { branchVar } from "../../graphql/variables/branchVar";
 import useQuery from "../../hooks/useQuery";
 import { branchesState } from "../../state/atoms/branches.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
+import { constructPath } from "../../utils/fetch";
 import { getSchemaRelationshipColumns } from "../../utils/getSchemaObjectColumns";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
@@ -25,20 +27,18 @@ import { ProposedChange } from "./proposed-changes-item";
 export const ProposedChanges = () => {
   const [schemaList] = useAtom(schemaState);
   const [branches] = useAtom(branchesState);
-
   const auth = useContext(AuthContext);
-
   const branch = useReactiveVar(branchVar);
-
+  const navigate = useNavigate();
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
 
-  const schemaData = schemaList.filter((s) => s.name === PROPOSED_CHANGES_OBJECT)[0];
-  const accountSchemaData = schemaList.filter((s) => s.name === ACCOUNT_OBJECT)[0];
+  const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_OBJECT);
+  const accountSchemaData = schemaList.find((s) => s.kind === ACCOUNT_OBJECT);
 
   const queryString = schemaData
     ? getProposedChanges({
         kind: schemaData.kind,
-        accountKind: accountSchemaData.kind,
+        accountKind: accountSchemaData?.kind,
         attributes: schemaData.attributes,
         relationships: getSchemaRelationshipColumns(schemaData),
       })
@@ -52,7 +52,7 @@ export const ProposedChanges = () => {
 
   const { loading, error, data = {}, refetch } = useQuery(query, { skip: !schemaData });
 
-  const result = data ? data[schemaData?.kind] ?? {} : {};
+  const result = data && schemaData?.kind ? data[schemaData?.kind] ?? {} : {};
 
   const { count, edges } = result;
 
@@ -69,40 +69,38 @@ export const ProposedChanges = () => {
   }
 
   if (error) {
-    return <ErrorScreen />;
+    return <ErrorScreen message="Something went wrong when fetching the proposed changes list." />;
   }
 
   const branchesOptions: any[] = branches
     .filter((branch) => branch.name !== "main")
     .map((branch) => ({ id: branch.name, name: branch.name }));
 
-  const reviewersOptions: any[] = data
-    ? data[accountSchemaData.kind]?.edges.map((edge: any) => ({
-        id: edge?.node.id,
-        name: edge?.node?.display_label,
-      }))
-    : [];
+  const reviewersOptions: any[] =
+    data && accountSchemaData?.kind
+      ? data[accountSchemaData.kind]?.edges.map((edge: any) => ({
+          id: edge?.node.id,
+          name: edge?.node?.display_label,
+        }))
+      : [];
 
   const formStructure = getFormStructure(branchesOptions, reviewersOptions);
 
   return (
     <div>
-      <div className="bg-white sm:flex sm:items-center py-4 px-4 sm:px-6 lg:px-8 w-full">
+      <div className="bg-white flex items-center p-4 w-full">
         {schemaData && (
           <div className="sm:flex-auto flex items-center">
-            <h1 className="text-xl font-semibold text-gray-900">
+            <h1 className="text-md font-semibold text-gray-900">
               {schemaData.name} ({count})
             </h1>
-            <p className="mt-2 text-sm text-gray-700 m-0 pl-2 mb-1">
-              A list of all the {schemaData.kind} in your infrastructure.
-            </p>
           </div>
         )}
 
         <RoundedButton
           disabled={!auth?.permissions?.write}
           onClick={() => setShowCreateDrawer(true)}>
-          <PlusIcon className="h-5 w-5" aria-hidden="true" />
+          <PlusIcon className="w-4 h-4" aria-hidden="true" />
         </RoundedButton>
       </div>
 
@@ -116,10 +114,10 @@ export const ProposedChanges = () => {
         title={
           <div className="space-y-2">
             <div className="flex items-center w-full">
-              <span className="text-lg font-semibold mr-3">Create {PROPOSED_CHANGES_OBJECT}</span>
+              <span className="text-lg font-semibold mr-3">Create Proposed Changes</span>
               <div className="flex-1"></div>
               <div className="flex items-center">
-                <Square3Stack3DIcon className="w-5 h-5" />
+                <Square3Stack3DIcon className="w-4 h-4" />
                 <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
               </div>
             </div>
@@ -139,7 +137,13 @@ export const ProposedChanges = () => {
         // title={`Create ${objectname}`}
       >
         <ObjectItemCreate
-          onCreate={() => setShowCreateDrawer(false)}
+          onCreate={(response: any) => {
+            setShowCreateDrawer(false);
+            if (response?.object?.id) {
+              const url = constructPath(`/proposed-changes/${response?.object?.id}`);
+              navigate(url);
+            }
+          }}
           onCancel={() => setShowCreateDrawer(false)}
           objectname={PROPOSED_CHANGES_OBJECT!}
           refetch={refetch}

@@ -1,6 +1,15 @@
-import aio_pika
+from typing import Any, Dict, Iterator, Optional, TypeVar
 
-import infrahub.config as config
+import aio_pika
+import aiormq
+from pydantic import BaseModel, Field
+
+from infrahub import config
+from infrahub.exceptions import Error, RPCError
+from infrahub.log import set_log_data
+from infrahub.message_bus.responses import RESPONSE_MAP
+
+ResponseClass = TypeVar("ResponseClass")
 
 
 class Broker:
@@ -35,3 +44,128 @@ async def get_broker() -> aio_pika.abc.AbstractRobustConnection:
         await connect_to_broker()
 
     return broker.client
+
+
+class Meta(BaseModel):
+    request_id: str = ""
+    correlation_id: Optional[str] = Field(default=None)
+    reply_to: Optional[str] = Field(default=None)
+    initiator_id: Optional[str] = Field(
+        default=None, description="The worker identity of the initial sender of this message"
+    )
+    retry_count: Optional[int] = Field(
+        default=None, description="Indicates how many times this message has been retried."
+    )
+    headers: Optional[Dict[str, Any]] = Field(default=None)
+    validator_execution_id: Optional[str] = Field(
+        default=None, description="Validator execution ID related to this message"
+    )
+    check_execution_id: Optional[str] = Field(default=None, description="Check execution ID related to this message")
+
+
+class InfrahubMessage(BaseModel, aio_pika.abc.AbstractMessage):
+    """Base Model for messages"""
+
+    meta: Optional[Meta] = None
+
+    def assign_meta(self, parent: "InfrahubMessage") -> None:
+        """Assign relevant meta properties from a parent message."""
+        self.meta = self.meta or Meta()
+        if parent.meta:
+            self.meta.request_id = parent.meta.request_id
+            self.meta.initiator_id = parent.meta.initiator_id
+
+    def assign_header(self, key: str, value: Any) -> None:
+        self.meta = self.meta or Meta()
+        self.meta.headers = self.meta.headers or {}
+        self.meta.headers[key] = value
+
+    def set_log_data(self, routing_key: str) -> None:
+        set_log_data(key="routing_key", value=routing_key)
+        if self.meta:
+            if self.meta.request_id:
+                set_log_data(key="request_id", value=self.meta.request_id)
+
+    def info(self) -> aio_pika.abc.MessageInfo:
+        raise NotImplementedError
+
+    @property
+    def reply_requested(self) -> bool:
+        if self.meta and self.meta.reply_to:
+            return True
+        return False
+
+    @property
+    def body(self) -> bytes:
+        return self.json(exclude={"meta": {"headers"}, "value": True}, exclude_none=True).encode("UTF-8")
+
+    @property
+    def locked(self) -> bool:
+        raise NotImplementedError
+
+    @property
+    def properties(self) -> aiormq.spec.Basic.Properties:
+        correlation_id = None
+        headers = None
+        if self.meta:
+            correlation_id = self.meta.correlation_id
+            headers = self.meta.headers
+        return aiormq.spec.Basic.Properties(
+            content_type="application/json", content_encoding="utf-8", correlation_id=correlation_id, headers=headers
+        )
+
+    def increase_retry_count(self, count: int = 1) -> None:
+        self.meta = self.meta or Meta()
+        current_retry = self.meta.retry_count or 0
+        self.meta.retry_count = current_retry + count
+
+    @property
+    def reached_max_retries(self) -> bool:
+        if self.meta and self.meta.retry_count:
+            return self.meta.retry_count <= config.SETTINGS.broker.maximum_message_retries
+        return False
+
+    def __iter__(self) -> Iterator[int]:
+        raise NotImplementedError
+
+    def lock(self) -> None:
+        raise NotImplementedError
+
+    def __copy__(self) -> aio_pika.Message:
+        correlation_id = None
+        headers = None
+        if self.meta:
+            correlation_id = self.meta.correlation_id
+            headers = self.meta.headers
+        return aio_pika.Message(
+            body=self.body,
+            content_type="application/json",
+            content_encoding="utf-8",
+            correlation_id=correlation_id,
+            headers=headers,
+        )
+
+
+class InfrahubResponse(InfrahubMessage):
+    """A response to an RPC request"""
+
+    passed: bool = True
+    response_class: str
+    response_data: dict
+
+    def raise_for_status(self) -> None:
+        if self.passed:
+            return
+
+        # Later we would load information about the error based on the response_class and response_data
+        raise RPCError(message=self.response_data.get("error", "Unknown Error"))
+
+    def parse(self, response_class: type[ResponseClass]) -> ResponseClass:
+        self.raise_for_status()
+        if self.response_class not in RESPONSE_MAP:
+            raise Error(f"Unable to find response_class: {self.response_class}")
+
+        if not isinstance(response_class, type(RESPONSE_MAP[self.response_class])):
+            raise Error(f"Invalid response class for response message: {self.response_class}")
+
+        return RESPONSE_MAP[self.response_class](**self.response_data)

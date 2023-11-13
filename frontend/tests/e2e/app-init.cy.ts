@@ -11,7 +11,7 @@ describe("Main application", () => {
 
   it("should load", () => {
     // The first item should be Account
-    cy.get("[href='/objects/Account'] > .group").should("have.text", "Account");
+    cy.get("[href='/objects/CoreAccount']").should("have.text", "Accounts");
 
     // The branch selector should display the main branch
     cy.get(".ml-2\\.5").should("have.text", "main");

@@ -1,7 +1,7 @@
 import hashlib
-import uuid
 
 from fastapi import APIRouter, Depends, File, Response, UploadFile
+from infrahub_sdk import UUIDT
 from pydantic import BaseModel
 
 from infrahub.api.dependencies import get_current_user
@@ -40,7 +40,7 @@ async def upload_content(
     # https://stackoverflow.com/questions/63048825/how-to-upload-file-using-fastapi
 
     file_content = bytes(item.content, encoding="utf-8")
-    identifier = str(uuid.uuid4())
+    identifier = str(UUIDT())
 
     checksum = hashlib.md5(file_content).hexdigest()
     await registry.storage.store(identifier=identifier, content=file_content)
@@ -57,7 +57,7 @@ async def upload_file(
     # https://stackoverflow.com/questions/63048825/how-to-upload-file-using-fastapi
 
     file_content = file.file.read()
-    identifier = str(uuid.uuid4())
+    identifier = str(UUIDT())
 
     checksum = hashlib.md5(file_content).hexdigest()
     await registry.storage.store(identifier=identifier, content=file_content)

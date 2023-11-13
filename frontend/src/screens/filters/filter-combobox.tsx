@@ -66,7 +66,6 @@ export default function FilterCombobox(props: Props) {
         {filter.name} {schema.name}
       </div>
     );
-    // return <ErrorScreen />;
   }
 
   if (isLoading) {
@@ -106,7 +105,7 @@ export default function FilterCombobox(props: Props) {
         />
 
         <Combobox.Button className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none">
-          <ChevronDownIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
+          <ChevronDownIcon className="w-4 h-4 text-gray-400" aria-hidden="true" />
         </Combobox.Button>
 
         {filteredRows && filteredRows?.length > 0 && (
@@ -133,7 +132,7 @@ export default function FilterCombobox(props: Props) {
                           "absolute inset-y-0 right-0 flex items-center pr-4",
                           active ? "text-custom-white" : "text-custom-blue-600"
                         )}>
-                        <CheckIcon className="h-5 w-5" aria-hidden="true" />
+                        <CheckIcon className="w-4 h-4" aria-hidden="true" />
                       </span>
                     )}
                   </>

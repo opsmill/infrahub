@@ -1,18 +1,22 @@
+from __future__ import annotations
+
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends
-from fastapi.logger import logger
-from neo4j import AsyncSession
+from fastapi import APIRouter, BackgroundTasks, Depends
 from pydantic import BaseModel, Field, root_validator
 from starlette.responses import JSONResponse
 
-from infrahub.api.dependencies import get_branch_dep, get_current_user, get_session
+from infrahub import config, lock
+from infrahub.api.dependencies import get_branch_dep, get_current_user, get_db
 from infrahub.core import registry
-from infrahub.core.branch import Branch
+from infrahub.core.branch import Branch  # noqa: TCH001
 from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
-from infrahub.exceptions import SchemaNotFound
-from infrahub.lock import registry as lock_registry
+from infrahub.database import InfrahubDatabase  # noqa: TCH001
+from infrahub.exceptions import PermissionDeniedError, SchemaNotFound
 from infrahub.log import get_logger
+from infrahub.message_bus import Meta, messages
+from infrahub.services import services
+from infrahub.worker import WORKER_IDENTITY
 
 log = get_logger()
 router = APIRouter(prefix="/schema")
@@ -53,6 +57,10 @@ class SchemaLoadAPI(SchemaRoot):
     version: str
 
 
+class SchemasLoadAPI(SchemaRoot):
+    schemas: List[SchemaLoadAPI]
+
+
 @router.get("")
 @router.get("/")
 async def get_schema(
@@ -70,19 +78,29 @@ async def get_schema(
 
 @router.post("/load")
 async def load_schema(
-    schema: SchemaLoadAPI,
-    session: AsyncSession = Depends(get_session),
+    schemas: SchemasLoadAPI,
+    background_tasks: BackgroundTasks,
+    db: InfrahubDatabase = Depends(get_db),
     branch: Branch = Depends(get_branch_dep),
     _: str = Depends(get_current_user),
 ) -> JSONResponse:
-    # TODO we need to replace this lock with a distributed lock
-    async with lock_registry.get_branch_schema_update():
+    log.info("load_request", branch=branch.name)
+
+    errors: List[str] = []
+    for schema in schemas.schemas:
+        errors += schema.validate_namespaces()
+
+    if errors:
+        raise PermissionDeniedError(", ".join(errors))
+
+    async with lock.registry.global_schema_lock():
         branch_schema = registry.schema.get_schema_branch(name=branch.name)
 
         # We create a copy of the existing branch schema to do some validation before loading it.
         tmp_schema = branch_schema.duplicate()
         try:
-            tmp_schema.load_schema(schema=schema)
+            for schema in schemas.schemas:
+                tmp_schema.load_schema(schema=schema)
             tmp_schema.process()
         except SchemaNotFound as exc:
             return JSONResponse(status_code=422, content={"error": exc.message})
@@ -92,11 +110,19 @@ async def load_schema(
         diff = tmp_schema.diff(branch_schema)
 
         if diff.all:
-            await registry.schema.update_schema_branch(
-                schema=tmp_schema, session=session, branch=branch.name, limit=diff.all, update_db=True
-            )
-            branch.update_schema_hash()
-            logger.info(f"{branch.name}: Schema has been updated, new hash {branch.schema_hash}")
-            await branch.save(session=session)
+            async with db.start_transaction() as db:
+                await registry.schema.update_schema_branch(
+                    schema=tmp_schema, db=db, branch=branch.name, limit=diff.all, update_db=True
+                )
+                branch.update_schema_hash()
+                log.info("Schema has been updated", branch=branch.name, hash=branch.schema_hash.main)
+                await branch.save(db=db)
 
-        return JSONResponse(status_code=202, content={})
+            if config.SETTINGS.broker.enable:
+                message = messages.EventSchemaUpdate(
+                    branch=branch.name,
+                    meta=Meta(initiator_id=WORKER_IDENTITY),
+                )
+                background_tasks.add_task(services.send, message)
+
+    return JSONResponse(status_code=202, content={})

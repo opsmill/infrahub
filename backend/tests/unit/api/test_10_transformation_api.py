@@ -3,12 +3,8 @@ from fastapi.testclient import TestClient
 
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.message_bus.events import (
-    InfrahubRPCResponse,
-    MessageType,
-    RPCStatusCode,
-    TransformMessageAction,
-)
+from infrahub.database import InfrahubDatabase
+from infrahub.message_bus import InfrahubResponse
 from infrahub.message_bus.rpc import InfrahubRpcClientTesting
 
 
@@ -20,18 +16,18 @@ def patch_rpc_client():
 
 
 async def test_transform_endpoint(
-    session, client_headers, default_branch, patch_rpc_client, register_core_models_schema, car_person_data
+    db: InfrahubDatabase, client_headers, default_branch, patch_rpc_client, register_core_models_schema, car_person_data
 ):
     from infrahub.server import app
 
     client = TestClient(app)
 
-    repositories = await NodeManager.query(session=session, schema="CoreRepository")
-    queries = await NodeManager.query(session=session, schema="CoreGraphQLQuery")
+    repositories = await NodeManager.query(db=db, schema="CoreRepository")
+    queries = await NodeManager.query(db=db, schema="CoreGraphQLQuery")
 
-    t1 = await Node.init(session=session, schema="CoreTransformPython")
+    t1 = await Node.init(db=db, schema="CoreTransformPython")
     await t1.new(
-        session=session,
+        db=db,
         name="transform01",
         query=str(queries[0].id),
         url="mytransform",
@@ -40,16 +36,15 @@ async def test_transform_endpoint(
         class_name="Transform01",
         rebase=False,
     )
-    await t1.save(session=session)
+    await t1.save(db=db)
 
     # Must execute in a with block to execute the startup/shutdown events
     with client:
-        mock_response = InfrahubRPCResponse(
-            status=RPCStatusCode.OK, response={"transformed_data": {"KEY1": "value1", "KEY2": "value2"}}
+        mock_response = InfrahubResponse(
+            response_class="transform_response",
+            response_data={"transformed_data": {"KEY1": "value1", "KEY2": "value2"}},
         )
-        await client.app.state.rpc_client.add_response(
-            response=mock_response, message_type=MessageType.TRANSFORMATION, action=TransformMessageAction.PYTHON
-        )
+        await client.app.state.rpc_client.add_mock_reply(response=mock_response)
 
         response = client.get(
             "/api/transform/mytransform",
@@ -63,17 +58,19 @@ async def test_transform_endpoint(
     assert result == {"KEY1": "value1", "KEY2": "value2"}
 
 
-async def test_transform_endpoint_path(session, client_headers, patch_rpc_client, default_branch, car_person_data):
+async def test_transform_endpoint_path(
+    db: InfrahubDatabase, client_headers, patch_rpc_client, default_branch, car_person_data
+):
     from infrahub.server import app
 
     client = TestClient(app)
 
-    repositories = await NodeManager.query(session=session, schema="CoreRepository")
-    queries = await NodeManager.query(session=session, schema="CoreGraphQLQuery")
+    repositories = await NodeManager.query(db=db, schema="CoreRepository")
+    queries = await NodeManager.query(db=db, schema="CoreGraphQLQuery")
 
-    t1 = await Node.init(session=session, schema="CoreTransformPython")
+    t1 = await Node.init(db=db, schema="CoreTransformPython")
     await t1.new(
-        session=session,
+        db=db,
         name="transform01",
         query=str(queries[0].id),
         url="my/transform/function",
@@ -82,16 +79,14 @@ async def test_transform_endpoint_path(session, client_headers, patch_rpc_client
         class_name="Transform01",
         rebase=False,
     )
-    await t1.save(session=session)
-
+    await t1.save(db=db)
     # Must execute in a with block to execute the startup/shutdown events
     with client:
-        mock_response = InfrahubRPCResponse(
-            status=RPCStatusCode.OK, response={"transformed_data": {"KEY1": "value1", "KEY2": "value2"}}
+        mock_response = InfrahubResponse(
+            response_class="transform_response",
+            response_data={"transformed_data": {"KEY1": "value1", "KEY2": "value2"}},
         )
-        await client.app.state.rpc_client.add_response(
-            response=mock_response, message_type=MessageType.TRANSFORMATION, action=TransformMessageAction.PYTHON
-        )
+        await client.app.state.rpc_client.add_mock_reply(response=mock_response)
 
         response = client.get(
             "/api/transform/my/transform/function",
@@ -103,3 +98,40 @@ async def test_transform_endpoint_path(session, client_headers, patch_rpc_client
     result = response.json()
 
     assert result == {"KEY1": "value1", "KEY2": "value2"}
+
+
+async def test_rfile_endpoint(
+    db: InfrahubDatabase, client_headers, default_branch, patch_rpc_client, register_core_models_schema, car_person_data
+):
+    from infrahub.server import app
+
+    client = TestClient(app)
+
+    repositories = await NodeManager.query(db=db, schema="CoreRepository")
+    queries = await NodeManager.query(db=db, schema="CoreGraphQLQuery")
+
+    t1 = await Node.init(db=db, schema="CoreRFile")
+    await t1.new(
+        db=db,
+        name="test-rfile",
+        query=str(queries[0].id),
+        repository=str(repositories[0].id),
+        template_path="templates/device_startup_config.tpl.j2",
+    )
+    await t1.save(db=db)
+
+    # Must execute in a with block to execute the startup/shutdown events
+    with client:
+        mock_response = InfrahubResponse(
+            response_class="template_response",
+            response_data={"rendered_template": "Rendered by a mocked agent"},
+        )
+        await client.app.state.rpc_client.add_mock_reply(response=mock_response)
+
+        response = client.get(
+            "/api/rfile/test-rfile",
+            headers=client_headers,
+        )
+
+    assert response.status_code == 200
+    assert response.text == "Rendered by a mocked agent"

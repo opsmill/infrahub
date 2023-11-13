@@ -40,7 +40,6 @@ export default function ObjectItemMetaEdit(props: Props) {
 
   const formStructure = getFormStructureForMetaEditPaginated(
     attributeOrRelationshipToEdit,
-    type,
     schemaList
   );
 
@@ -59,11 +58,8 @@ export default function ObjectItemMetaEdit(props: Props) {
     if (Object.keys(updatedObject).length) {
       try {
         const mutationString = updateObjectWithId({
-          name: schema.name,
-          data: stringifyWithoutQuotes({
-            id: row.id,
-            ...updatedObject,
-          }),
+          kind: schema.kind,
+          data: stringifyWithoutQuotes(updatedObject),
         });
 
         const mutation = gql`
@@ -85,16 +81,9 @@ export default function ObjectItemMetaEdit(props: Props) {
 
         return;
       } catch (e) {
-        setIsLoading(false);
-
-        toast(
-          <Alert
-            message="Something went wrong while updating the meetadata"
-            type={ALERT_TYPES.ERROR}
-          />
-        );
-
         console.error("Something went wrong while updating the meetadata", e);
+
+        setIsLoading(false);
 
         return;
       }

@@ -1,11 +1,11 @@
-import { parseISO } from "date-fns";
+import { isValid, parseISO } from "date-fns";
 import { SelectOption } from "../components/select";
 import { iPeerDropdownOptions } from "../graphql/queries/objects/dropdownOptionsForRelatedPeers";
 import {
   ControlType,
   DynamicFieldData,
-  getFormInputControlTypeFromSchemaAttributeKind,
   SchemaAttributeType,
+  getFormInputControlTypeFromSchemaAttributeKind,
 } from "../screens/edit-form-hook/dynamic-control-types";
 import { iGenericSchema, iNodeSchema } from "../state/atoms/schema.atom";
 
@@ -18,23 +18,51 @@ const getIsDisabled = (owner?: any, user?: any, isProtected?: boolean) => {
 };
 
 const getFieldValue = (row: any, attribute: any) => {
-  const value = row && row[attribute.name] ? row[attribute.name].value : attribute.default_value;
+  const value = row?.[attribute.name] ? row[attribute.name].value : attribute.default_value;
 
   if (attribute.kind === "DateTime") {
-    return parseISO(value);
+    if (isValid(value)) {
+      return value;
+    }
+
+    if (isValid(parseISO(value))) {
+      return parseISO(value);
+    }
+
+    return null;
   }
 
   return value;
 };
 
-const validate = (value: any, defaultValue?: any, optional?: boolean) => {
+const validate = (value: any, attribute: any = {}, optional?: boolean) => {
+  const { default_value: defaultValue } = attribute;
+
   // If optionnal, no validator is needed (we try to validate if the value is defined or not)
   if (optional) {
     return true;
   }
 
+  // If the attribute is of kind integer, then it should be a number
+  if (attribute.kind === "Integer" && Number.isInteger(value)) {
+    return true;
+  }
+
+  // If the attribute is a date, check if the date is valid
+  if (attribute.kind === "DateTime") {
+    if (!value) {
+      return "Required";
+    }
+
+    if (!isValid(value)) {
+      return "Invalid date";
+    }
+
+    return true;
+  }
+
   // The value is defined, then we can validate
-  if (value) {
+  if (Array.isArray(value) ? value.length : value) {
     return true;
   }
 
@@ -83,8 +111,9 @@ const getFormStructureForCreateEdit = (
         values: options,
       },
       config: {
-        validate: (value: any) => validate(value, attribute.default_value, attribute.optional),
+        validate: (value: any) => validate(value, attribute, attribute.optional),
       },
+      isOptionnal: attribute.optional,
       isProtected: getIsDisabled(
         row && row[attribute.name]?.owner,
         user,
@@ -159,8 +188,9 @@ const getFormStructureForCreateEdit = (
           values: options,
         },
         config: {
-          validate: (value: any) => validate(value, null, relationship.optional),
+          validate: (value: any) => validate(value, undefined, relationship.optional),
         },
+        isOptionnal: relationship.optional,
         isProtected: getIsDisabled(
           row && row[relationship.name]?.properties?.owner,
           user,
@@ -252,7 +282,6 @@ export const getFormStructureForMetaEdit = (
 
 export const getFormStructureForMetaEditPaginated = (
   row: any,
-  type: "attribute" | "relationship",
   schemaList: iNodeSchema[]
 ): DynamicFieldData[] => {
   const sourceOwnerFields = ["owner", "source"];
@@ -260,10 +289,10 @@ export const getFormStructureForMetaEditPaginated = (
   const booleanFields = ["is_visible", "is_protected"];
 
   const relatedObjects: { [key: string]: string } = {
-    source: "DataSource",
-    owner: "DataOwner",
-    _relation__source: "DataSource",
-    _relation__owner: "DataOwner",
+    source: "LineageSource",
+    owner: "LineageOwner",
+    _relation__source: "LineageSource",
+    _relation__owner: "LineageOwner",
   };
 
   const sourceOwnerFormFields: DynamicFieldData[] = sourceOwnerFields.map((field) => {
@@ -277,8 +306,8 @@ export const getFormStructureForMetaEditPaginated = (
           }
         })
         .map((schema) => ({
-          name: schema.kind,
-          id: schema.name,
+          name: schema.name,
+          id: schema.kind,
         })),
     ];
 
@@ -289,7 +318,7 @@ export const getFormStructureForMetaEditPaginated = (
       isRelationship: false,
       type: "select2step",
       label: field.split("_").filter(Boolean).join(" "),
-      value: row?.properties?.[field],
+      value: row?.[field],
       options: {
         values: schemaOptions,
       },
@@ -305,7 +334,7 @@ export const getFormStructureForMetaEditPaginated = (
       isRelationship: false,
       type: "checkbox",
       label: field.split("_").filter(Boolean).join(" "),
-      value: row?.properties?.[field],
+      value: row?.[field],
       options: {
         values: [],
       },

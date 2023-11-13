@@ -6,9 +6,11 @@ ignore: |
   /examples
   /repositories
   /frontend/node_modules
+  /node_modules
 
 rules:
   new-lines: disable
+  comments-indentation: disable
   line-length:
     max: 120
     allow-non-breakable-words: true

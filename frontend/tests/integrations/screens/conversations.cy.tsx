@@ -5,6 +5,7 @@ import { MockedProvider } from "@apollo/client/testing";
 import React from "react";
 import { Route, Routes } from "react-router-dom";
 import { Conversations } from "../../../src/screens/proposed-changes/conversations";
+import { proposedChangedState } from "../../../src/state/atoms/proposedChanges.atom";
 import { schemaState } from "../../../src/state/atoms/schema.atom";
 import { accountDetailsMocksSchema } from "../../mocks/data/account";
 import {
@@ -13,6 +14,7 @@ import {
   conversationMocksSchema,
   proposedChangesId,
 } from "../../mocks/data/conversations";
+import { proposedChangesDetails } from "../../mocks/data/proposedChanges";
 import { TestProvider } from "../../mocks/jotai/atom";
 
 const url = `/proposed-changes/${proposedChangesId}`;
@@ -36,14 +38,17 @@ const mocks: any[] = [
 const ConversationsProvider = () => {
   return (
     <TestProvider
-      initialValues={[[schemaState, [...conversationMocksSchema, ...accountDetailsMocksSchema]]]}>
+      initialValues={[
+        [schemaState, [...conversationMocksSchema, ...accountDetailsMocksSchema]],
+        [proposedChangedState, proposedChangesDetails],
+      ]}>
       <Conversations />
     </TestProvider>
   );
 };
 
 describe("List screen", () => {
-  it("should fetch object details and render a list of details", () => {
+  it("should display a conversation with comments", () => {
     cy.viewport(1920, 1080);
 
     // Mount the view with the default route and the mocked data

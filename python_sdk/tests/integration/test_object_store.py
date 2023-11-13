@@ -1,7 +1,8 @@
 import pytest
-from fastapi.testclient import TestClient
 
-from infrahub_client import InfrahubClient
+from infrahub_sdk import Config, InfrahubClient
+
+from .conftest import InfrahubTestClient
 
 FILE_CONTENT_01 = """
     any content
@@ -16,11 +17,12 @@ class TestObjectStore:
 
         from infrahub.server import app
 
-        return TestClient(app)
+        return InfrahubTestClient(app)
 
     @pytest.fixture
     async def client(self, test_client):
-        return await InfrahubClient.init(test_client=test_client)
+        config = Config(username="admin", password="infrahub", requester=test_client.async_request)
+        return await InfrahubClient.init(config=config)
 
     async def test_upload_and_get(self, client: InfrahubClient):
         response = await client.object_store.upload(content=FILE_CONTENT_01)

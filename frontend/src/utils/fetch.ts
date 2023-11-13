@@ -51,30 +51,36 @@ export const fetchStream = async (url: string, payload?: any) => {
 
 const QSP_TO_INCLUDE = [QSP.BRANCH];
 
+const getParams = (params: [string, string][], overrideParams?: [string, string][]) => {
+  if (overrideParams?.length) {
+    return overrideParams;
+  }
+
+  if (params?.length) {
+    return params;
+  }
+
+  return [];
+};
+
 // Construct link with path that contains all QSP
-export const constructPath = (path: string) => {
+export const constructPath = (path: string, overrideParams?: [string, string][]) => {
   const { href } = window.location;
 
-  const url = new URL(href);
+  const targetUrl = new URL(href);
 
-  const { searchParams } = url;
+  const { searchParams: targetParams } = targetUrl;
 
   // Get QSP as [ [ key, value ], ... ]
-  const params = Array.from(searchParams)
-    .filter(
-      ([k]) => QSP_TO_INCLUDE.includes(k) // Remove some QSP if not needed to be forwarded
-    )
-    .filter(
-      ([k]) => !path.includes(k) // If a QSP is already in the path, then we don't override it
-    );
+  const params: [string, string][] = Array.from(targetParams).filter(
+    ([k]) => QSP_TO_INCLUDE.includes(k) // Remove some QSP if not needed to be forwarded
+  );
 
   // Construct the new params as "?key=value&..."
-  const newParams = params.length
-    ? params.reduce(
-        (acc, [k, v], index) => `${acc}${k}=${v}${index === params.length - 1 ? "" : "&"}`,
-        "?"
-      )
-    : "";
+  const newParams = getParams(params, overrideParams).reduce(
+    (acc, [k, v], index) => `${acc}${k}=${v}${index === params.length - 1 ? "" : "&"}`,
+    "?"
+  );
 
   return `${path}${newParams}`;
 };
@@ -99,6 +105,16 @@ export const updateQsp = (qsp: string, newValue: string, setSearchParams: Functi
     {}
   );
 
-  console.log("newParams: ", newParams);
   return setSearchParams(newParams);
+};
+
+export const getUrlWithQsp = (url: string, options: any[]) => {
+  const qsp = new URLSearchParams(options);
+
+  if (url.includes("?")) {
+    // If the url already contains some QSP
+    return `${url}${options.length ? `&${qsp.toString()}` : ""}`;
+  }
+
+  return `${url}${options.length ? `?${qsp.toString()}` : ""}`;
 };

@@ -1,13 +1,12 @@
-import uuid
-
 import pytest
 from graphql import graphql
-from neo4j import AsyncDriver, AsyncSession
+from infrahub_sdk import UUIDT
 
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.utils import count_relationships
+from infrahub.database import InfrahubDatabase
 from infrahub.graphql import generate_graphql_schema
 
 
@@ -17,8 +16,7 @@ def load_graphql_requirements(group_graphql):
 
 
 async def test_relationship_add(
-    db: AsyncDriver,
-    session: AsyncSession,
+    db: InfrahubDatabase,
     person_jack_main: Node,
     tag_blue_main: Node,
     tag_red_main: Node,
@@ -27,7 +25,7 @@ async def test_relationship_add(
 ):
     query = """
     mutation {
-        relationship_add(data: {
+        RelationshipAdd(data: {
             id: "%s",
             name: "tags",
             nodes: [{id: "%s"}, {id: "%s"}],
@@ -42,18 +40,18 @@ async def test_relationship_add(
     )
 
     result = await graphql(
-        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=branch),
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": branch},
+        context_value={"infrahub_database": db, "infrahub_branch": branch},
         root_value=None,
         variable_values={},
     )
 
     assert result.errors is None
 
-    p1 = await NodeManager.get_one(session=session, id=person_jack_main.id, branch=branch)
+    p1 = await NodeManager.get_one(db=db, id=person_jack_main.id, branch=branch)
 
-    tags = await p1.tags.get(session=session)
+    tags = await p1.tags.get(db=db)
     assert sorted([tag.peer_id for tag in tags]) == sorted(
         [
             tag_blue_main.id,
@@ -66,7 +64,7 @@ async def test_relationship_add(
     # --------------------------------------
     query = """
     mutation {
-        relationship_add(data: {
+        RelationshipAdd(data: {
             id: "%s",
             name: "tags",
             nodes: [{id: "%s"}, {id: "%s"}],
@@ -81,18 +79,18 @@ async def test_relationship_add(
     )
 
     result = await graphql(
-        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=branch),
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": branch},
+        context_value={"infrahub_database": db, "infrahub_branch": branch},
         root_value=None,
         variable_values={},
     )
 
     assert result.errors is None
 
-    p1 = await NodeManager.get_one(session=session, id=person_jack_main.id, branch=branch)
+    p1 = await NodeManager.get_one(db=db, id=person_jack_main.id, branch=branch)
 
-    tags = await p1.tags.get(session=session)
+    tags = await p1.tags.get(db=db)
     assert sorted([tag.peer_id for tag in tags]) == sorted(
         [
             tag_blue_main.id,
@@ -103,8 +101,7 @@ async def test_relationship_add(
 
 
 async def test_relationship_remove(
-    db: AsyncDriver,
-    session: AsyncSession,
+    db: InfrahubDatabase,
     person_jack_tags_main: Node,
     tag_blue_main: Node,
     tag_red_main: Node,
@@ -113,7 +110,7 @@ async def test_relationship_remove(
 ):
     query = """
     mutation {
-        relationship_remove(data: {
+        RelationshipRemove(data: {
             id: "%s",
             name: "tags",
             nodes: [{id: "%s"}, {id: "%s"}],
@@ -128,18 +125,18 @@ async def test_relationship_remove(
     )
 
     result = await graphql(
-        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=branch),
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": branch},
+        context_value={"infrahub_database": db, "infrahub_branch": branch},
         root_value=None,
         variable_values={},
     )
 
     assert result.errors is None
 
-    p1 = await NodeManager.get_one(session=session, id=person_jack_tags_main.id, branch=branch)
+    p1 = await NodeManager.get_one(db=db, id=person_jack_tags_main.id, branch=branch)
 
-    tags = await p1.tags.get(session=session)
+    tags = await p1.tags.get(db=db)
     assert sorted([tag.peer_id for tag in tags]) == sorted(
         [
             tag_red_main.id,
@@ -151,7 +148,7 @@ async def test_relationship_remove(
     # --------------------------------------
     query = """
     mutation {
-        relationship_remove(data: {
+        RelationshipRemove(data: {
             id: "%s",
             name: "tags",
             nodes: [{id: "%s"}],
@@ -165,24 +162,23 @@ async def test_relationship_remove(
     )
 
     result = await graphql(
-        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=branch),
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": branch},
+        context_value={"infrahub_database": db, "infrahub_branch": branch},
         root_value=None,
         variable_values={},
     )
 
     assert result.errors is None
 
-    p1 = await NodeManager.get_one(session=session, id=person_jack_tags_main.id, branch=branch)
+    p1 = await NodeManager.get_one(db=db, id=person_jack_tags_main.id, branch=branch)
 
-    tags = await p1.tags.get(session=session)
+    tags = await p1.tags.get(db=db)
     assert [tag.peer_id for tag in tags] == sorted([])
 
 
 async def test_relationship_wrong_name(
-    db: AsyncDriver,
-    session: AsyncSession,
+    db: InfrahubDatabase,
     person_jack_main: Node,
     tag_blue_main: Node,
     tag_red_main: Node,
@@ -191,7 +187,7 @@ async def test_relationship_wrong_name(
 ):
     query = """
     mutation {
-        relationship_add(data: {
+        RelationshipAdd(data: {
             id: "%s",
             name: "notvalid",
             nodes: [{id: "%s"}],
@@ -205,9 +201,9 @@ async def test_relationship_wrong_name(
     )
 
     result = await graphql(
-        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=branch),
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": branch},
+        context_value={"infrahub_database": db, "infrahub_branch": branch},
         root_value=None,
         variable_values={},
     )
@@ -218,7 +214,7 @@ async def test_relationship_wrong_name(
     # Relationship existing relationship with the wrong cardinality
     query = """
     mutation {
-        relationship_add(data: {
+        RelationshipAdd(data: {
             id: "%s",
             name: "primary_tag",
             nodes: [{id: "%s"}],
@@ -232,9 +228,9 @@ async def test_relationship_wrong_name(
     )
 
     result = await graphql(
-        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=branch),
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": branch},
+        context_value={"infrahub_database": db, "infrahub_branch": branch},
         root_value=None,
         variable_values={},
     )
@@ -244,8 +240,7 @@ async def test_relationship_wrong_name(
 
 
 async def test_relationship_wrong_node(
-    db: AsyncDriver,
-    session: AsyncSession,
+    db: InfrahubDatabase,
     person_jack_main: Node,
     tag_blue_main: Node,
     tag_red_main: Node,
@@ -253,10 +248,10 @@ async def test_relationship_wrong_node(
     branch: Branch,
 ):
     # Non existing Node
-    bad_uuid = str(uuid.uuid4())
+    bad_uuid = str(UUIDT())
     query = """
     mutation {
-        relationship_add(data: {
+        RelationshipAdd(data: {
             id: "%s",
             name: "tags",
             nodes: [{id: "%s"}],
@@ -270,9 +265,9 @@ async def test_relationship_wrong_node(
     )
 
     result = await graphql(
-        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=branch),
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": branch},
+        context_value={"infrahub_database": db, "infrahub_branch": branch},
         root_value=None,
         variable_values={},
     )
@@ -283,7 +278,7 @@ async def test_relationship_wrong_node(
     # Wrong Kind
     query = """
     mutation {
-        relationship_add(data: {
+        RelationshipAdd(data: {
             id: "%s",
             name: "tags",
             nodes: [{id: "%s"}],
@@ -297,9 +292,9 @@ async def test_relationship_wrong_node(
     )
 
     result = await graphql(
-        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=branch),
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": branch},
+        context_value={"infrahub_database": db, "infrahub_branch": branch},
         root_value=None,
         variable_values={},
     )
@@ -308,23 +303,21 @@ async def test_relationship_wrong_node(
     assert result.errors[0].message == f"'{person_jack_main.id}' 'TestPerson' is not a valid peer for 'BuiltinTag'"
 
 
-async def test_relationship_groups_add(
-    db: AsyncDriver, session: AsyncSession, default_branch: Branch, car_person_generics_data
-):
+async def test_relationship_groups_add(db: InfrahubDatabase, default_branch: Branch, car_person_generics_data):
     c1 = car_person_generics_data["c1"]
     c2 = car_person_generics_data["c2"]
     c3 = car_person_generics_data["c3"]
 
-    g1 = await Node.init(session=session, schema="CoreStandardGroup")
-    await g1.new(session=session, name="group1", members=[c1])
-    await g1.save(session=session)
-    g2 = await Node.init(session=session, schema="CoreStandardGroup")
-    await g2.new(session=session, name="group2", members=[c2, c3])
-    await g2.save(session=session)
+    g1 = await Node.init(db=db, schema="CoreStandardGroup")
+    await g1.new(db=db, name="group1", members=[c1])
+    await g1.save(db=db)
+    g2 = await Node.init(db=db, schema="CoreStandardGroup")
+    await g2.new(db=db, name="group2", members=[c2, c3])
+    await g2.save(db=db)
 
     query = """
     mutation {
-        relationship_add(data: {
+        RelationshipAdd(data: {
             id: "%s",
             name: "members",
             nodes: [{id: "%s"}],
@@ -338,22 +331,22 @@ async def test_relationship_groups_add(
     )
 
     result = await graphql(
-        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
 
     assert result.errors is None
 
-    group1 = await NodeManager.get_one(session=session, id=g1.id, branch=default_branch)
-    members = await group1.members.get(session=session)
+    group1 = await NodeManager.get_one(db=db, id=g1.id, branch=default_branch)
+    members = await group1.members.get(db=db)
     assert len(members) == 2
 
     query = """
     mutation {
-        relationship_add(data: {
+        RelationshipAdd(data: {
             id: "%s",
             name: "member_of_groups",
             nodes: [{id: "%s"}, {id: "%s"}],
@@ -368,41 +361,39 @@ async def test_relationship_groups_add(
     )
 
     result = await graphql(
-        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
 
     assert result.errors is None
 
-    group1 = await NodeManager.get_one(session=session, id=g1.id, branch=default_branch)
-    members = await group1.members.get(session=session)
+    group1 = await NodeManager.get_one(db=db, id=g1.id, branch=default_branch)
+    members = await group1.members.get(db=db)
     assert len(members) == 3
 
-    group2 = await NodeManager.get_one(session=session, id=g2.id, branch=default_branch)
-    members = await group2.members.get(session=session)
+    group2 = await NodeManager.get_one(db=db, id=g2.id, branch=default_branch)
+    members = await group2.members.get(db=db)
     assert len(members) == 2
 
 
-async def test_relationship_groups_remove(
-    db: AsyncDriver, session: AsyncSession, default_branch: Branch, car_person_generics_data
-):
+async def test_relationship_groups_remove(db: InfrahubDatabase, default_branch: Branch, car_person_generics_data):
     c1 = car_person_generics_data["c1"]
     c2 = car_person_generics_data["c2"]
     c3 = car_person_generics_data["c3"]
 
-    g1 = await Node.init(session=session, schema="CoreStandardGroup")
-    await g1.new(session=session, name="group1", members=[c1])
-    await g1.save(session=session)
-    g2 = await Node.init(session=session, schema="CoreStandardGroup")
-    await g2.new(session=session, name="group2", members=[c2, c3])
-    await g2.save(session=session)
+    g1 = await Node.init(db=db, schema="CoreStandardGroup")
+    await g1.new(db=db, name="group1", members=[c1])
+    await g1.save(db=db)
+    g2 = await Node.init(db=db, schema="CoreStandardGroup")
+    await g2.new(db=db, name="group2", members=[c2, c3])
+    await g2.save(db=db)
 
     query = """
     mutation {
-        relationship_remove(data: {
+        RelationshipRemove(data: {
             id: "%s",
             name: "members",
             nodes: [{id: "%s"}],
@@ -416,22 +407,22 @@ async def test_relationship_groups_remove(
     )
 
     result = await graphql(
-        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
 
     assert result.errors is None
 
-    group1 = await NodeManager.get_one(session=session, id=g1.id, branch=default_branch)
-    members = await group1.members.get(session=session)
+    group1 = await NodeManager.get_one(db=db, id=g1.id, branch=default_branch)
+    members = await group1.members.get(db=db)
     assert len(members) == 0
 
     query = """
     mutation {
-        relationship_remove(data: {
+        RelationshipRemove(data: {
             id: "%s",
             name: "member_of_groups",
             nodes: [{id: "%s"}, {id: "%s"}],
@@ -446,42 +437,40 @@ async def test_relationship_groups_remove(
     )
 
     result = await graphql(
-        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
 
     assert result.errors is None
 
-    group1 = await NodeManager.get_one(session=session, id=g1.id, branch=default_branch)
-    members = await group1.members.get(session=session)
+    group1 = await NodeManager.get_one(db=db, id=g1.id, branch=default_branch)
+    members = await group1.members.get(db=db)
     assert len(members) == 0
 
-    group2 = await NodeManager.get_one(session=session, id=g2.id, branch=default_branch)
-    members = await group2.members.get(session=session)
+    group2 = await NodeManager.get_one(db=db, id=g2.id, branch=default_branch)
+    members = await group2.members.get(db=db)
     assert len(members) == 1
 
 
-async def test_relationship_groups_add_remove(
-    db: AsyncDriver, session: AsyncSession, default_branch: Branch, car_person_generics_data
-):
+async def test_relationship_groups_add_remove(db: InfrahubDatabase, default_branch: Branch, car_person_generics_data):
     c1 = car_person_generics_data["c1"]
     c2 = car_person_generics_data["c2"]
     c3 = car_person_generics_data["c3"]
 
-    g1 = await Node.init(session=session, schema="CoreStandardGroup")
-    await g1.new(session=session, name="group1", members=[c1])
-    await g1.save(session=session)
-    g2 = await Node.init(session=session, schema="CoreStandardGroup")
-    await g2.new(session=session, name="group2", members=[c2])
-    await g2.save(session=session)
+    g1 = await Node.init(db=db, schema="CoreStandardGroup")
+    await g1.new(db=db, name="group1", members=[c1])
+    await g1.save(db=db)
+    g2 = await Node.init(db=db, schema="CoreStandardGroup")
+    await g2.new(db=db, name="group2", members=[c2])
+    await g2.save(db=db)
 
-    nbr_rels_before = await count_relationships(session=session)
+    nbr_rels_before = await count_relationships(db=db)
     query = """
     mutation {
-        relationship_add(data: {
+        RelationshipAdd(data: {
             id: "%s",
             name: "member_of_groups",
             nodes: [{id: "%s"}, {id: "%s"}],
@@ -496,26 +485,26 @@ async def test_relationship_groups_add_remove(
     )
 
     result = await graphql(
-        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
 
     assert result.errors is None
 
-    nbr_rels_after = await count_relationships(session=session)
+    nbr_rels_after = await count_relationships(db=db)
     assert nbr_rels_after - nbr_rels_before == 8
 
-    group1 = await NodeManager.get_one(session=session, id=g1.id, branch=default_branch)
-    members = await group1.members.get(session=session)
+    group1 = await NodeManager.get_one(db=db, id=g1.id, branch=default_branch)
+    members = await group1.members.get(db=db)
     assert len(members) == 2
 
-    nbr_rels_before = await count_relationships(session=session)
+    nbr_rels_before = await count_relationships(db=db)
     query = """
     mutation {
-        relationship_remove(data: {
+        RelationshipRemove(data: {
             id: "%s",
             name: "member_of_groups",
             nodes: [{id: "%s"}, {id: "%s"}],
@@ -530,30 +519,30 @@ async def test_relationship_groups_add_remove(
     )
 
     result = await graphql(
-        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
 
     assert result.errors is None
 
-    nbr_rels_after = await count_relationships(session=session)
+    nbr_rels_after = await count_relationships(db=db)
     assert nbr_rels_after - nbr_rels_before == 4
 
-    group1 = await NodeManager.get_one(session=session, id=g1.id, branch=default_branch)
-    members = await group1.members.get(session=session)
+    group1 = await NodeManager.get_one(db=db, id=g1.id, branch=default_branch)
+    members = await group1.members.get(db=db)
     assert len(members) == 1
 
-    group2 = await NodeManager.get_one(session=session, id=g2.id, branch=default_branch)
-    members = await group2.members.get(session=session)
+    group2 = await NodeManager.get_one(db=db, id=g2.id, branch=default_branch)
+    members = await group2.members.get(db=db)
     assert len(members) == 1
 
-    nbr_rels_before = await count_relationships(session=session)
+    nbr_rels_before = await count_relationships(db=db)
     query = """
     mutation {
-        relationship_add(data: {
+        RelationshipAdd(data: {
             id: "%s",
             name: "member_of_groups",
             nodes: [{id: "%s"}, {id: "%s"}],
@@ -568,26 +557,26 @@ async def test_relationship_groups_add_remove(
     )
 
     result = await graphql(
-        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
 
     assert result.errors is None
 
-    nbr_rels_after = await count_relationships(session=session)
+    nbr_rels_after = await count_relationships(db=db)
     assert nbr_rels_after - nbr_rels_before == 8
 
-    group1 = await NodeManager.get_one(session=session, id=g1.id, branch=default_branch)
-    members = await group1.members.get(session=session)
+    group1 = await NodeManager.get_one(db=db, id=g1.id, branch=default_branch)
+    members = await group1.members.get(db=db)
     assert len(members) == 2
 
-    nbr_rels_before = await count_relationships(session=session)
+    nbr_rels_before = await count_relationships(db=db)
     query = """
     mutation {
-        relationship_remove(data: {
+        RelationshipRemove(data: {
             id: "%s",
             name: "member_of_groups",
             nodes: [{id: "%s"}, {id: "%s"}],
@@ -602,21 +591,21 @@ async def test_relationship_groups_add_remove(
     )
 
     result = await graphql(
-        schema=await generate_graphql_schema(session=session, include_subscription=False, branch=default_branch),
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_session": session, "infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
         root_value=None,
         variable_values={},
     )
 
     assert result.errors is None
-    nbr_rels_after = await count_relationships(session=session)
+    nbr_rels_after = await count_relationships(db=db)
     assert nbr_rels_after - nbr_rels_before == 4
 
-    group1 = await NodeManager.get_one(session=session, id=g1.id, branch=default_branch)
-    members = await group1.members.get(session=session)
+    group1 = await NodeManager.get_one(db=db, id=g1.id, branch=default_branch)
+    members = await group1.members.get(db=db)
     assert len(members) == 1
 
-    group2 = await NodeManager.get_one(session=session, id=g2.id, branch=default_branch)
-    members = await group2.members.get(session=session)
+    group2 = await NodeManager.get_one(db=db, id=g2.id, branch=default_branch)
+    members = await group2.members.get(db=db)
     assert len(members) == 1

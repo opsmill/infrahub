@@ -48,7 +48,7 @@ export const BranchesItems = () => {
                       </Tooltip>
 
                       <ChevronLeftIcon
-                        className="h-5 w-5 mx-2 flex-shrink-0 text-gray-400"
+                        className="w-4 h-4 mx-2 flex-shrink-0 text-gray-400"
                         aria-hidden="true"
                       />
 
@@ -67,13 +67,15 @@ export const BranchesItems = () => {
               </div>
 
               <div className="flex flex-col items-end">
-                <div>
-                  Branched: <DateDisplay date={branch.branched_from} />
+                <div className="flex items-center">
+                  <div className="mr-2">Branched:</div>
+                  <DateDisplay date={branch.branched_from} />
                 </div>
 
                 {!branch.is_default && (
-                  <div>
-                    Created: <DateDisplay date={branch.created_at} />
+                  <div className="flex items-center">
+                    <div className="mr-2">Created:</div>
+                    <DateDisplay date={branch.created_at} />
                   </div>
                 )}
               </div>

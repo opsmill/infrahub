@@ -1,8 +1,9 @@
 import os
-import uuid
 
 import pytest
 from git import Repo
+from infrahub_sdk import UUIDT, InfrahubNode
+from infrahub_sdk.branch import BranchData
 
 from infrahub.exceptions import (
     CheckError,
@@ -16,7 +17,7 @@ from infrahub.git import (
     COMMITS_DIRECTORY_NAME,
     TEMPORARY_DIRECTORY_NAME,
     ArtifactGenerateResult,
-    CheckInformation,
+    CheckDefinitionInformation,
     GraphQLQueryInformation,
     InfrahubRepository,
     RepoFileInformation,
@@ -24,12 +25,11 @@ from infrahub.git import (
     extract_repo_file_information,
 )
 from infrahub.utils import find_first_file_in_directory
-from infrahub_client import InfrahubNode
 
 
 async def test_directories_props(git_upstream_repo_01, git_repos_dir):
     repo = await InfrahubRepository.new(
-        id=uuid.uuid4(), name=git_upstream_repo_01["name"], location=git_upstream_repo_01["path"]
+        id=UUIDT.new(), name=git_upstream_repo_01["name"], location=git_upstream_repo_01["path"]
     )
 
     assert repo.directory_root == os.path.join(git_repos_dir, git_upstream_repo_01["name"])
@@ -40,7 +40,7 @@ async def test_directories_props(git_upstream_repo_01, git_repos_dir):
 
 async def test_new_empty_dir(git_upstream_repo_01, git_repos_dir):
     repo = await InfrahubRepository.new(
-        id=uuid.uuid4(), name=git_upstream_repo_01["name"], location=git_upstream_repo_01["path"]
+        id=UUIDT.new(), name=git_upstream_repo_01["name"], location=git_upstream_repo_01["path"]
     )
 
     # Check if all the directories are present
@@ -56,7 +56,7 @@ async def test_new_existing_directory(git_upstream_repo_01, git_repos_dir):
     open(os.path.join(git_repos_dir, git_upstream_repo_01["name"], "file1.txt"), mode="w").close()
 
     repo = await InfrahubRepository.new(
-        id=uuid.uuid4(), name=git_upstream_repo_01["name"], location=git_upstream_repo_01["path"]
+        id=UUIDT.new(), name=git_upstream_repo_01["name"], location=git_upstream_repo_01["path"]
     )
 
     # Check if all the directories are present
@@ -71,7 +71,7 @@ async def test_new_existing_file(git_upstream_repo_01, git_repos_dir):
     open(os.path.join(git_repos_dir, git_upstream_repo_01["name"]), mode="w").close()
 
     repo = await InfrahubRepository.new(
-        id=uuid.uuid4(), name=git_upstream_repo_01["name"], location=git_upstream_repo_01["path"]
+        id=UUIDT.new(), name=git_upstream_repo_01["name"], location=git_upstream_repo_01["path"]
     )
 
     # Check if all the directories are present
@@ -83,7 +83,7 @@ async def test_new_existing_file(git_upstream_repo_01, git_repos_dir):
 
 async def test_new_wrong_location(git_upstream_repo_01, git_repos_dir, tmp_path):
     with pytest.raises(RepositoryError) as exc:
-        await InfrahubRepository.new(id=uuid.uuid4(), name=git_upstream_repo_01["name"], location=str(tmp_path))
+        await InfrahubRepository.new(id=UUIDT.new(), name=git_upstream_repo_01["name"], location=str(tmp_path))
 
     assert "An error occured with GitRepository" in str(exc.value)
 
@@ -91,7 +91,7 @@ async def test_new_wrong_location(git_upstream_repo_01, git_repos_dir, tmp_path)
 async def test_new_wrong_branch(git_upstream_repo_01, git_repos_dir, tmp_path):
     with pytest.raises(RepositoryError) as exc:
         await InfrahubRepository.new(
-            id=uuid.uuid4(),
+            id=UUIDT.new(),
             name=git_upstream_repo_01["name"],
             location=git_upstream_repo_01["path"],
             default_branch_name="notvalid",
@@ -186,6 +186,17 @@ async def test_get_commit_worktree(git_repo_01: InfrahubRepository):
     assert repo.has_worktree(identifier=commit) is True
 
 
+async def test_get_branch_worktree(git_repo_01: InfrahubRepository, branch99: BranchData):
+    repo = git_repo_01
+    git_repo = repo.get_git_repo_main()
+
+    git_repo.git.branch(branch99.name)
+
+    assert repo.has_worktree(identifier=branch99.name) is False
+    repo.create_branch_worktree(branch_name=branch99.name, branch_id=branch99.id)
+    assert repo.has_worktree(identifier=branch99.name)
+
+
 async def test_get_branches_from_local(git_repo_01: InfrahubRepository):
     repo = git_repo_01
 
@@ -239,21 +250,21 @@ async def test_compare_remote_local_no_diff(git_repo_02: InfrahubRepository):
     assert updated_branches == []
 
 
-async def test_create_branch_in_git_present_remote(git_repo_01: InfrahubRepository):
+async def test_create_branch_in_git_present_remote(git_repo_01: InfrahubRepository, branch01: BranchData):
     repo = git_repo_01
-    await repo.create_branch_in_git(branch_name="branch01")
+    await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
     worktrees = repo.get_worktrees()
 
-    assert repo.get_commit_value(branch_name="branch01") == "92700512b5b16c0144f7fd2869669273577f1bd8"
+    assert repo.get_commit_value(branch_name=branch01.name) == "92700512b5b16c0144f7fd2869669273577f1bd8"
     assert len(worktrees) == 4
 
 
-async def test_create_branch_in_git_not_in_remote(git_repo_01: InfrahubRepository):
+async def test_create_branch_in_git_not_in_remote(git_repo_01: InfrahubRepository, branch99: BranchData):
     repo = git_repo_01
-    await repo.create_branch_in_git(branch_name="branch99")
+    await repo.create_branch_in_git(branch_name=branch99.name, branch_id=branch99.id)
     worktrees = repo.get_worktrees()
 
-    assert repo.get_commit_value(branch_name="branch99") == "0b341c0c64122bb2a7b208f7a9452146685bc7dd"
+    assert repo.get_commit_value(branch_name=branch99.name) == "0b341c0c64122bb2a7b208f7a9452146685bc7dd"
     assert len(worktrees) == 3
 
 
@@ -308,25 +319,25 @@ async def test_pull_main(git_repo_05: InfrahubRepository):
     assert response == str(commit2)
 
 
-async def test_merge_branch01_into_main(git_repo_01: InfrahubRepository):
+async def test_merge_branch01_into_main(git_repo_01: InfrahubRepository, branch01: BranchData):
     repo = git_repo_01
     await repo.fetch()
-    await repo.create_branch_in_git(branch_name="branch01")
+    await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
 
     commit_before = repo.get_commit_value(branch_name="main", remote=False)
 
-    response = await repo.merge(source_branch="branch01", dest_branch="main")
+    response = await repo.merge(source_branch=branch01.name, dest_branch="main")
 
     commit_after = repo.get_commit_value(branch_name="main", remote=False)
     assert str(commit_before) != str(commit_after)
     assert response == str(commit_after)
 
 
-async def test_rebase(git_repo_01: InfrahubRepository):
+async def test_rebase(git_repo_01: InfrahubRepository, branch01: BranchData):
     repo = git_repo_01
     await repo.fetch()
 
-    await repo.create_branch_in_git(branch_name="branch01")
+    await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
 
     # Add a new commit in the main branch to have something to rebase.
     git_repo = repo.get_git_repo_main()
@@ -336,10 +347,10 @@ async def test_rebase(git_repo_01: InfrahubRepository):
     git_repo.index.add([first_file])
     git_repo.index.commit("Change first file")
 
-    commit_before = repo.get_commit_value(branch_name="branch01", remote=False)
-    response = await repo.rebase(branch_name="branch01", source_branch="main")
+    commit_before = repo.get_commit_value(branch_name=branch01.name, remote=False)
+    response = await repo.rebase(branch_name=branch01.name, source_branch="main")
 
-    commit_after = repo.get_commit_value(branch_name="branch01", remote=False)
+    commit_after = repo.get_commit_value(branch_name=branch01.name, remote=False)
 
     assert str(commit_before) != str(commit_after)
     assert str(response) == str(commit_after)
@@ -650,6 +661,12 @@ async def test_find_files(git_repo_jinja: InfrahubRepository):
     yaml_files = await repo.find_files(extension=["yml", "j2"], branch_name="main")
     assert len(yaml_files) == 4
 
+    yaml_files = await repo.find_files(extension="yml", directory="test_files", branch_name="main")
+    assert len(yaml_files) == 2
+
+    yaml_files = await repo.find_files(extension="yml", directory="notpresent", branch_name="main")
+    assert len(yaml_files) == 0
+
 
 async def test_find_files_by_commit(git_repo_jinja: InfrahubRepository):
     repo = git_repo_jinja
@@ -676,14 +693,16 @@ async def test_find_graphql_queries(git_repo_10: InfrahubRepository):
     assert isinstance(queries[0], GraphQLQueryInformation)
 
 
-async def test_calculate_diff_between_commits(git_repo_01: InfrahubRepository):
+async def test_calculate_diff_between_commits(
+    git_repo_01: InfrahubRepository, branch01: BranchData, branch02: BranchData
+):
     repo = git_repo_01
 
-    await repo.create_branch_in_git(branch_name="branch01")
-    await repo.create_branch_in_git(branch_name="branch02")
+    await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
+    await repo.create_branch_in_git(branch_name=branch02.name, branch_id=branch02.id)
 
-    worktree = repo.get_worktree(identifier="branch01")
-    git_repo = repo.get_git_repo_worktree(identifier="branch01")
+    worktree = repo.get_worktree(identifier=branch01.name)
+    git_repo = repo.get_git_repo_worktree(identifier=branch01.name)
 
     # Add a file
     new_file = "mynewfile.txt"
@@ -724,8 +743,8 @@ async def test_calculate_diff_between_commits(git_repo_01: InfrahubRepository):
 
     # commit_main = repo.get_commit_value(branch_name="main", remote=False)
 
-    commit_branch01 = repo.get_commit_value(branch_name="branch01", remote=False)
-    commit_branch02 = repo.get_commit_value(branch_name="branch02", remote=False)
+    commit_branch01 = repo.get_commit_value(branch_name=branch01.name, remote=False)
+    commit_branch02 = repo.get_commit_value(branch_name=branch02.name, remote=False)
 
     changed, added, removed = await repo.calculate_diff_between_commits(
         first_commit=commit_branch01, second_commit=commit_branch02
@@ -763,7 +782,7 @@ def test_extract_repo_file_information():
     assert file_info.module_name == "dir2.dir3.myfile"
 
 
-async def test_create_python_check(
+async def test_create_python_check_definition(
     helper, git_repo_03_w_client: InfrahubRepository, mock_schema_query_01, gql_query_data_01, mock_check_create
 ):
     repo = git_repo_03_w_client
@@ -775,7 +794,7 @@ async def test_create_python_check(
 
     query = InfrahubNode(client=repo.client, schema=gql_schema, data=gql_query_data_01)
 
-    check = CheckInformation(
+    check = CheckDefinitionInformation(
         name=check_class.__name__,
         class_name=check_class.__name__,
         check_class=check_class,
@@ -785,7 +804,7 @@ async def test_create_python_check(
         timeout=check_class.timeout,
         rebase=check_class.rebase,
     )
-    obj = await repo.create_python_check(branch_name="main", check=check)
+    obj = await repo.create_python_check_definition(branch_name="main", check=check)
 
     assert isinstance(obj, InfrahubNode)
 
@@ -796,7 +815,7 @@ async def test_compare_python_check(
     mock_schema_query_01,
     gql_query_data_01,
     gql_query_data_02,
-    check_data_01,
+    check_definition_data_01,
 ):
     repo = git_repo_03_w_client
 
@@ -804,13 +823,13 @@ async def test_compare_python_check(
     check_class = getattr(module, "Check01")
 
     gql_schema = await repo.client.schema.get(kind="CoreGraphQLQuery")
-    check_schema = await repo.client.schema.get(kind="CoreCheck")
+    check_schema = await repo.client.schema.get(kind="CoreCheckDefinition")
 
     query_01 = InfrahubNode(client=repo.client, schema=gql_schema, data=gql_query_data_01)
     query_02 = InfrahubNode(client=repo.client, schema=gql_schema, data=gql_query_data_02)
-    existing_check = InfrahubNode(client=repo.client, schema=check_schema, data=check_data_01)
+    existing_check = InfrahubNode(client=repo.client, schema=check_schema, data=check_definition_data_01)
 
-    check01 = CheckInformation(
+    check01 = CheckDefinitionInformation(
         name=check_class.__name__,
         class_name=check_class.__name__,
         check_class=check_class,
@@ -821,9 +840,9 @@ async def test_compare_python_check(
         rebase=check_class.rebase,
     )
 
-    assert await repo.compare_python_check(existing_check=existing_check, check=check01) is True
+    assert await repo.compare_python_check_definition(existing_check=existing_check, check=check01) is True
 
-    check02 = CheckInformation(
+    check02 = CheckDefinitionInformation(
         name=check_class.__name__,
         class_name=check_class.__name__,
         check_class=check_class,
@@ -835,14 +854,14 @@ async def test_compare_python_check(
     )
 
     assert (
-        await repo.compare_python_check(
+        await repo.compare_python_check_definition(
             existing_check=existing_check,
             check=check02,
         )
         is False
     )
 
-    check03 = CheckInformation(
+    check03 = CheckDefinitionInformation(
         name=check_class.__name__,
         class_name=check_class.__name__,
         check_class=check_class,
@@ -853,4 +872,4 @@ async def test_compare_python_check(
         rebase=check_class.rebase,
     )
 
-    assert await repo.compare_python_check(check=check03, existing_check=existing_check) is False
+    assert await repo.compare_python_check_definition(check=check03, existing_check=existing_check) is False

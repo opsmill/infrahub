@@ -1043,7 +1043,7 @@ export const schemaMocks = [
         kind: "Attribute",
         label: "Tags",
         description: null,
-        identifier: "builtintag__corecheck",
+        identifier: "builtintag__corecheckdefinition",
         inherited: false,
         cardinality: "many",
         branch: true,
@@ -1102,7 +1102,7 @@ export const schemaMocks = [
         description: null,
       },
     ],
-    kind: "CoreCheck",
+    kind: "CoreCheckDefinition",
   },
   {
     id: "5f5ab864-73ee-4524-833a-e805182b9996",
@@ -3266,7 +3266,7 @@ export const schemaMocks = [
       {
         id: "18af8233-d51f-447c-bc64-8261142aebf8",
         name: "checks",
-        peer: "CoreCheck",
+        peer: "CoreCheckDefinition",
         kind: "Generic",
         label: "Checks",
         description: null,
