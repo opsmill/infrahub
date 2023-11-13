@@ -1,6 +1,7 @@
 import inspect
 
 import pytest
+
 from infrahub_sdk.branch import (
     BranchData,
     InfrahubBranchManager,

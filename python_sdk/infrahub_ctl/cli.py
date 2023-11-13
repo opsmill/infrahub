@@ -9,8 +9,6 @@ from typing import List, Optional, Tuple
 
 import jinja2
 import typer
-from infrahub_sdk.exceptions import GraphQLError
-from infrahub_sdk.schema import InfrahubRepositoryConfig
 from pydantic import ValidationError
 from rich.console import Console
 from rich.logging import RichHandler
@@ -31,6 +29,8 @@ from infrahub_ctl.utils import (
     parse_cli_vars,
 )
 from infrahub_ctl.validate import app as validate_app
+from infrahub_sdk.exceptions import GraphQLError
+from infrahub_sdk.schema import InfrahubRepositoryConfig
 
 app = typer.Typer(pretty_exceptions_show_locals=False)
 

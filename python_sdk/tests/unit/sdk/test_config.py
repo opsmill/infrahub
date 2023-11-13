@@ -1,6 +1,7 @@
 import pytest
-from infrahub_sdk.config import Config
 from pydantic.error_wrappers import ValidationError
+
+from infrahub_sdk.config import Config
 
 
 def test_combine_authentications():

@@ -1,6 +1,7 @@
 import inspect
 
 import pytest
+
 from infrahub_sdk import InfrahubClient, InfrahubClientSync, ValidationError
 from infrahub_sdk.schema import InfrahubSchema, InfrahubSchemaSync, NodeSchema
 

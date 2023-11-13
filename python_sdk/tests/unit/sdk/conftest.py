@@ -4,10 +4,11 @@ from pathlib import Path
 
 import pytest
 import ujson
+from pytest_httpx import HTTPXMock
+
 from infrahub_sdk import InfrahubClient, InfrahubClientSync
 from infrahub_sdk.schema import BranchSupportType, NodeSchema
 from infrahub_sdk.utils import get_fixtures_dir
-from pytest_httpx import HTTPXMock
 
 # pylint: disable=redefined-outer-name,unused-argument
 

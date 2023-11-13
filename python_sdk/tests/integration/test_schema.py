@@ -1,8 +1,8 @@
 import pytest
+from infrahub.core.schema import core_models
+
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.schema import NodeSchema
-
-from infrahub.core.schema import core_models
 
 from .conftest import InfrahubTestClient
 

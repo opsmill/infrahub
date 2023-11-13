@@ -3,10 +3,11 @@ from pathlib import Path
 
 import pytest
 import yaml
-from infrahub_ctl.schema import app
-from infrahub_ctl.utils import get_fixtures_dir
 from pytest_httpx import HTTPXMock
 from typer.testing import CliRunner
+
+from infrahub_ctl.schema import app
+from infrahub_ctl.utils import get_fixtures_dir
 
 runner = CliRunner()
 

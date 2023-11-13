@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Dict, Generator, List, Optional, Union
 
 import typer
-from infrahub_sdk import Error, GraphQLError
 from rich.console import Console
 from rich.console import group as rich_group
 from rich.panel import Panel
@@ -19,6 +18,7 @@ from infrahub_ctl.utils import (
     print_graphql_errors,
     render_action_rich,
 )
+from infrahub_sdk import Error, GraphQLError
 
 app = typer.Typer()
 

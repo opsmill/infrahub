@@ -1,6 +1,7 @@
 import asyncio
 
 import pytest
+
 from infrahub_ctl import config
 
 

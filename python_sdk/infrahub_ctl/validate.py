@@ -5,7 +5,6 @@ from typing import List, Optional
 
 import typer
 import yaml
-from infrahub_sdk.exceptions import GraphQLError
 from pydantic import ValidationError
 from rich.console import Console
 from ujson import JSONDecodeError
@@ -14,6 +13,7 @@ import infrahub_ctl.config as config
 from infrahub_ctl.client import initialize_client, initialize_client_sync
 from infrahub_ctl.exceptions import QueryNotFoundError
 from infrahub_ctl.utils import find_graphql_query, get_branch, parse_cli_vars
+from infrahub_sdk.exceptions import GraphQLError
 
 app = typer.Typer()
 
