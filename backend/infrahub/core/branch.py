@@ -50,6 +50,18 @@ if TYPE_CHECKING:
 # pylint: disable=redefined-builtin,too-many-statements,too-many-lines,too-many-branches,too-many-public-methods
 
 
+class DiffError(ValueError):
+    ...
+
+
+class DiffRangeValidationError(DiffError):
+    ...
+
+
+class DiffFromRequiredOnDefaultBranchError(DiffError):
+    ...
+
+
 class Branch(StandardNode):
     name: str = Field(
         max_length=32,
@@ -1035,7 +1047,9 @@ class Diff:
         self.branch_support = branch_support or [BranchSupportType.AWARE]
 
         if not diff_from and self.branch.is_default:
-            raise ValueError(f"diff_from is mandatory when diffing on the default branch `{self.branch.name}`.")
+            raise DiffFromRequiredOnDefaultBranchError(
+                f"diff_from is mandatory when diffing on the default branch `{self.branch.name}`."
+            )
 
         # If diff from hasn't been provided, we'll use the creation of the branch as the starting point
         if diff_from:
@@ -1047,7 +1061,7 @@ class Diff:
         self.diff_to = Timestamp(diff_to)
 
         if self.diff_to < self.diff_from:
-            raise ValueError("diff_to must be later than diff_from")
+            raise DiffRangeValidationError("diff_to must be later than diff_from")
 
         # Results organized by Branch
         self._results: Dict[str, dict] = defaultdict(
