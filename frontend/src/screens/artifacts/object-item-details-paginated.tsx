@@ -1,11 +1,7 @@
 import { gql, useReactiveVar } from "@apollo/client";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
-import {
-  LockClosedIcon,
-  PencilSquareIcon,
-  RectangleGroupIcon,
-  Square3Stack3DIcon,
-} from "@heroicons/react/24/outline";
+import { LockClosedIcon, PencilSquareIcon, RectangleGroupIcon } from "@heroicons/react/24/outline";
+import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { useContext, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -344,7 +340,7 @@ export default function ObjectItemDetails() {
               <div className="flex-1"></div>
 
               <div className="flex items-center">
-                <Square3Stack3DIcon className="w-4 h-4" />
+                <Icon icon={"mdi:layers-triple"} />
                 <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
               </div>
             </div>
@@ -401,7 +397,7 @@ export default function ObjectItemDetails() {
               <div className="flex-1"></div>
 
               <div className="flex items-center">
-                <Square3Stack3DIcon className="w-4 h-4" />
+                <Icon icon={"mdi:layers-triple"} />
                 <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
               </div>
             </div>
@@ -443,7 +439,7 @@ export default function ObjectItemDetails() {
               <span className="text-lg font-semibold mr-3">{metaEditFieldDetails?.label}</span>
               <div className="flex-1"></div>
               <div className="flex items-center">
-                <Square3Stack3DIcon className="w-4 h-4" />
+                <Icon icon={"mdi:layers-triple"} />
                 <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
               </div>
             </div>

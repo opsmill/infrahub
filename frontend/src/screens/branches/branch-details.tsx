@@ -1,11 +1,7 @@
 import { gql, useReactiveVar } from "@apollo/client";
 import { CheckIcon, ShieldCheckIcon } from "@heroicons/react/20/solid";
-import {
-  ArrowPathIcon,
-  PlusIcon,
-  Square3Stack3DIcon,
-  TrashIcon,
-} from "@heroicons/react/24/outline";
+import { ArrowPathIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { useContext, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -286,7 +282,7 @@ export const BranchDetails = () => {
               <span className="text-lg font-semibold mr-3">Create Proposed Changes</span>
               <div className="flex-1"></div>
               <div className="flex items-center">
-                <Square3Stack3DIcon className="w-4 h-4" />
+                <Icon icon={"mdi:layers-triple"} />
                 <div className="ml-1.5 pb-1">{branch?.name}</div>
               </div>
             </div>
