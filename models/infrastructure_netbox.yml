@@ -216,7 +216,7 @@ nodes:
         kind: Attribute
   - name: Circuit
     namespace: Infra
-    description: "A Circuit represent a single physical link between two location"
+    description: "A Circuit represent a single physical link between two locations"
     label: "Circuit"
     default_filter: circuit_id__value
     order_by:
