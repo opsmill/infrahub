@@ -23,7 +23,8 @@ export const SelectButton = (props: any) => {
                 <Listbox.Button
                   className="rounded-none border border-transparent"
                   as={Button}
-                  buttonType={BUTTON_TYPES.MAIN}>
+                  buttonType={BUTTON_TYPES.MAIN}
+                  data-cy="branch-list-display-button">
                   <Icon icon="mdi:chevron-down" className="tetx-custom-white" />
                 </Listbox.Button>
               </div>
@@ -34,7 +35,9 @@ export const SelectButton = (props: any) => {
               leave="transition ease-in duration-100"
               leaveFrom="opacity-100"
               leaveTo="opacity-0">
-              <Listbox.Options className="absolute right-0 z-20 mt-2 w-72 origin-top-right divide-y divide-gray-200 overflow-hidden bg-custom-white shadow-lg ring-1 ring-custom-black ring-opacity-5 focus:outline-none rounded-md max-h-[500px] overflow-y-auto">
+              <Listbox.Options
+                className="absolute right-0 z-20 mt-2 w-72 origin-top-right divide-y divide-gray-200 overflow-hidden bg-custom-white shadow-lg ring-1 ring-custom-black ring-opacity-5 focus:outline-none rounded-md max-h-[500px] overflow-y-auto"
+                data-cy="branch-list-dropdown">
                 {options.map((option: any) => (
                   <Listbox.Option
                     key={option.name}

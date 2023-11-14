@@ -175,7 +175,7 @@ export default function BranchSelector() {
   }
 
   return (
-    <div className="flex">
+    <div className="flex" data-cy="branch-select-menu">
       <SelectButton
         value={branch}
         valueLabel={valueLabel}
@@ -192,10 +192,14 @@ export default function BranchSelector() {
         {({ close }: any) => (
           <>
             <div className="flex flex-col">
-              Branch name:
-              <Input value={newBranchName} onChange={setNewBranchName} />
-              Branch description:
-              <Input value={newBranchDescription} onChange={setNewBranchDescription} />
+              <label htmlFor="new-branch-name">Branch name:</label>
+              <Input id="new-branch-name" value={newBranchName} onChange={setNewBranchName} />
+              <label htmlFor="new-branch-description">Branch description:</label>
+              <Input
+                id="new-branch-description"
+                value={newBranchDescription}
+                onChange={setNewBranchDescription}
+              />
               Branched from:
               <Select
                 disabled

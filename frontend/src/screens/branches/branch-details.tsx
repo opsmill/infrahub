@@ -151,8 +151,9 @@ export const BranchDetails = () => {
 
             window.location.reload();
           }}
-          open={!!displayModal}
+          open={displayModal}
           setOpen={() => setDisplayModal(false)}
+          data-cy="modal-branch-delete"
         />
       )}
 
