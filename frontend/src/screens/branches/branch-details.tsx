@@ -29,7 +29,6 @@ import useQuery from "../../hooks/useQuery";
 import { branchesState } from "../../state/atoms/branches.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { objectToString } from "../../utils/common";
-import { constructPath } from "../../utils/fetch";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
@@ -147,7 +146,7 @@ export const BranchDetails = () => {
               },
             });
 
-            navigate(constructPath("/branches"));
+            navigate("/branches");
 
             window.location.reload();
           }}
