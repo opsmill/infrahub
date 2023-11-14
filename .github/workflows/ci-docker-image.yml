@@ -1,0 +1,81 @@
+name: Build And Push Docker image
+
+# When calling this workflow, ensure you use
+#   secrets: inherit
+
+on:
+  workflow_call:
+    inputs:
+      publish:
+        type: boolean
+        description: Wether to publish the image to Infrahub Private Registry
+        required: false
+        default: false
+      version:
+        type: string
+        required: false
+        description: The string to extract semver labels from.
+        default: ''
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY_IMAGE: "${{ secrets.HARBOR_HOST }}/${{ github.repository }}"
+  DOCKERFILE: "development/Dockerfile"
+  PLATFORMS:  "linux/amd64,linux/arm64"
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.REGISTRY_IMAGE }}
+          tags: |
+            type=ref,value=${{ inputs.version }}
+            type=semver,pattern={{version}},value=${{ inputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ inputs.version }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') }}
+          labels: |
+            org.opencontainers.image.source=${{ github.repository }}
+            org.opencontainers.image.version=${{ github.ref_name }}
+            org.opencontainers.image.created=${{ steps.meta.outputs.created }}
+          flavor: |
+            latest=false
+      
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        if: ${{ inputs.publish }}
+        uses: docker/login-action@v3
+        id: login
+        with:
+          registry: ${{ secrets.HARBOR_HOST }}
+          username: ${{ secrets.HARBOR_USERNAME }}
+          password: ${{ secrets.HARBOR_PASSWORD }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        id: push
+        with:
+          context: .
+          file: ${{ env.DOCKERFILE }}
+          provenance: false # To avoid cross platform "unknown"
+          push: ${{ inputs.publish }}
+          platforms: ${{ env.PLATFORMS }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

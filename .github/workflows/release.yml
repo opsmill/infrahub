@@ -1,0 +1,15 @@
+name: New Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+
+  publish-docker-image:
+    uses: ./.github/workflows/reusable_docker-build-and-push.yaml
+    secrets: inherit
+    with:
+      publish: true
+      version: ${{ github.ref_name }}
