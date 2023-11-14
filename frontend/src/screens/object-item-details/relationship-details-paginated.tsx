@@ -247,7 +247,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
         {relationshipsData && (
           <>
             {relationshipSchema?.cardinality === "one" && (
-              <div className="p-4 px-3 grid grid-cols-3 gap-4">
+              <div className="p-4 grid grid-cols-3 gap-4">
                 <dt className="text-sm font-medium text-gray-500 flex items-center">
                   {relationshipSchema?.label}
                 </dt>
@@ -458,7 +458,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
             )}
 
             {relationshipSchema?.cardinality === "many" && mode === "DESCRIPTION-LIST" && (
-              <div className="p-4 px-3 grid grid-cols-3 gap-4">
+              <div className="p-4 grid grid-cols-3 gap-4">
                 <dt className="text-sm font-medium text-gray-500 flex items-center">
                   {relationshipSchema?.label}
                 </dt>
