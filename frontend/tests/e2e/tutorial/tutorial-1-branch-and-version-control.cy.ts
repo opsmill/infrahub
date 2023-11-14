@@ -51,13 +51,13 @@ describe("Tutorial - Part 1", () => {
 
   it("should create a new branch", function () {
     // The branch selector should contain the main branch name
-    cy.get(":nth-child(1) > :nth-child(1) > .border").should("have.text", MAIN_BRANCH_NAME);
+    cy.get("[data-cy='branch-select-menu']").should("have.text", MAIN_BRANCH_NAME);
 
     // Click to open the branch creation form
     cy.get("[data-cy='create-branch-button']").click();
 
     // Fill the new branch name
-    cy.get(".flex-col > :nth-child(1) > .block").type(NEW_BRANCH_NAME, { delay: 0, force: true });
+    cy.get("#new-branch-name").type(NEW_BRANCH_NAME, { delay: 0, force: true });
 
     if (this.screenshots) {
       cy.screenshot("tutorial_1_branch_creation", screenshotConfig);
@@ -67,7 +67,7 @@ describe("Tutorial - Part 1", () => {
     cy.get(".justify-center > .rounded-md").click();
 
     // Verify if the new branch is selected
-    cy.get(":nth-child(1) > :nth-child(1) > .border").should("have.text", NEW_BRANCH_NAME);
+    cy.get("[data-cy='branch-select-menu']").should("have.text", NEW_BRANCH_NAME);
   });
 
   it("should update the organization", function () {
