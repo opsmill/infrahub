@@ -288,9 +288,7 @@ class DiffRelationshipPropertyQuery(DiffQuery):
             r3.branch IN $branch_names AND r3.from >= $diff_from AND r3.from <= $diff_to
             AND ((r3.to >= $diff_from AND r3.to <= $diff_to) OR r3.to is NULL)
         )
-        """ % "\n AND ".join(
-            rels_filter
-        )
+        """ % "\n AND ".join(rels_filter)
 
         self.add_to_query(query)
         self.params["branch_names"] = self.branch_names
@@ -332,9 +330,7 @@ class DiffNodePropertiesByIDSRangeQuery(Query):
         MATCH (a) WHERE a.uuid IN $ids
         MATCH (a)-[r:IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER|HAS_VALUE]-(ap)
         WHERE %s
-        """ % (
-            "\n AND ".join(rels_filter),
-        )
+        """ % ("\n AND ".join(rels_filter),)
 
         self.add_to_query(query)
         self.return_labels = ["a", "ap", "r"]
@@ -386,9 +382,7 @@ class DiffNodePropertiesByIDSQuery(Query):
         MATCH (a) WHERE a.uuid IN $ids
         MATCH (a)-[r:IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER|HAS_VALUE]-(ap)
         WHERE %s
-        """ % (
-            "\n AND ".join(rels_filter),
-        )
+        """ % ("\n AND ".join(rels_filter),)
 
         self.add_to_query(query)
         self.return_labels = ["a", "ap", "r"]
@@ -444,9 +438,7 @@ class DiffRelationshipPropertiesByIDSRangeQuery(Query):
         MATCH (rl) WHERE rl.uuid IN $ids
         MATCH (rl)-[r:IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER]-(rp)
         WHERE %s
-        """ % (
-            "\n AND ".join(rels_filter),
-        )
+        """ % ("\n AND ".join(rels_filter),)
 
         self.params["at"] = self.at.to_string()
 

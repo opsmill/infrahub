@@ -4,6 +4,7 @@ script.py
 node_modules
 .venv
 .ruff_cache
+**/.ruff_cache
 .mypy_cache
 .pytest_cache
 *.env

@@ -30,7 +30,7 @@ def update_node(node: InfrahubNodeSync, attrs: dict):
                 new_peer_ids = [node._client.store.get(key=value, kind=rel.peer).id for value in list(attr_value)]
                 attr = getattr(node, attr_name)
                 existing_peer_ids = attr.peer_ids
-                in_both, existing_only, new_only = compare_lists(existing_peer_ids, new_peer_ids)
+                in_both, existing_only, new_only = compare_lists(existing_peer_ids, new_peer_ids)  # noqa: F841
 
                 for id in existing_only:
                     attr.remove(id)
@@ -90,7 +90,7 @@ class InfrahubAdapter(DiffSyncMixin, DiffSync):
                 # Is it the right place to do it or are we missing some de-serialize ?
                 # got a ValidationError from pydantic while trying to get the model(**data)
                 # for IPHost and IPInterface
-                if type(attr.value) != type(str) and attr.value:
+                if attr.value and not isinstance(attr.value, str):
                     data[attr_name] = str(attr.value)
                 else:
                     data[attr_name] = attr.value

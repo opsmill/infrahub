@@ -1,19 +1,23 @@
 """BaseStore module."""
-from typing import Dict, List, Mapping, Text, Tuple, Type, Union, TYPE_CHECKING, Optional, Set
+from typing import TYPE_CHECKING, Dict, List, Mapping, Optional, Set, Text, Tuple, Type, Union
+
 import structlog  # type: ignore
 
 from diffsync.exceptions import ObjectNotFound
 
 if TYPE_CHECKING:
-    from diffsync import DiffSyncModel
-    from diffsync import DiffSync
+    from diffsync import DiffSync, DiffSyncModel
 
 
 class BaseStore:
     """Reference store to be implemented in different backends."""
 
     def __init__(
-        self, *args, diffsync: Optional["DiffSync"] = None, name: str = "", **kwargs  # pylint: disable=unused-argument
+        self,
+        *args,
+        diffsync: Optional["DiffSync"] = None,
+        name: str = "",
+        **kwargs,  # pylint: disable=unused-argument
     ) -> None:
         """Init method for BaseStore."""
         self.diffsync = diffsync

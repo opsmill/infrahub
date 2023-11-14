@@ -28,6 +28,7 @@ env:
   BUILDKITE_COMMIT: ${{ github.sha }}
 
 jobs:
+   # ------------------------------------------ Check Files Changes  ------------------------------------------
   files-changed:
     name: Detect which file has changed
     runs-on: ubuntu-20.04
@@ -51,6 +52,7 @@ jobs:
           token: ${{ github.token }}
           filters: .github/file-filters.yml
 
+ # ------------------------------------------ All Linter  ------------------------------------------
   yaml-lint:
     if: needs.files-changed.outputs.yaml == 'true'
     needs: ["files-changed"]
@@ -72,6 +74,7 @@ jobs:
         run: "pip install yamllint==1.29.0"
       - name: "Linting: yamllint"
         run: "yamllint ."
+
   javascript-lint:
     if: needs.files-changed.outputs.javascript == 'true'
     needs: ["files-changed"]
@@ -92,6 +95,7 @@ jobs:
       - name: Run ESLint
         working-directory: ./frontend
         run: npm run eslint
+
   python-lint:
     if: needs.files-changed.outputs.python == 'true'
     needs: ["files-changed"]
@@ -101,11 +105,11 @@ jobs:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
       - name: "Setup environment"
-        run: "pip install black==23.1.0 ruff==0.0.265"
-      - name: "Linting: BLACK"
-        run: "black --check ."
-      - name: "Linting: ruff"
-        run: "ruff check ."
+        run: "pip install ruff==0.1.5"
+      - name: "Linting: ruff check"
+        run: "ruff check --diff ."
+      - name: "Linting: ruff format"
+        run: "ruff format --check --diff ."
 
   python-sdk-tests:
     if: |
@@ -127,10 +131,6 @@ jobs:
         run: "invoke test.build"
       - name: "Pull External Docker Images"
         run: "invoke test.pull"
-      - name: "Black Tests"
-        run: "invoke sdk.black --docker"
-      - name: "Isort Tests"
-        run: "invoke sdk.isort --docker"
       - name: "Pylint Tests"
         run: "invoke sdk.pylint --docker"
       - name: "Mypy Tests"
@@ -174,10 +174,6 @@ jobs:
         run: "pip install toml invoke"
       - name: "Build Test Image"
         run: "invoke test.build"
-      - name: "Black Tests"
-        run: "invoke sync.black --docker"
-      - name: "Isort Tests"
-        run: "invoke sync.isort --docker"
       - name: "Pylint Tests"
         run: "invoke sync.pylint --docker"
 
@@ -201,10 +197,6 @@ jobs:
         run: "invoke test.build"
       - name: "Pull External Docker Images"
         run: "invoke test.pull"
-      - name: "Black Tests"
-        run: "invoke backend.black --docker"
-      - name: "Isort Tests"
-        run: "invoke backend.isort --docker"
       - name: "Pylint Tests"
         run: "invoke backend.pylint --docker"
       - name: "Mypy Tests"
@@ -305,6 +297,7 @@ jobs:
           parallel: true
           file: frontend/coverage/lcov.info
 
+  # ------------------------------------------ E2E Tests  ------------------------------------------
   # E2E-testing-memgraph:
   #   needs: ["frontend-tests", "backend-tests-default", "python-sdk-tests"]
   #   if: |
@@ -433,6 +426,7 @@ jobs:
         if: failure()
         run: invoke demo.status
 
+  # ------------------------------------------ Coverall Report  ------------------------------------------
   coverall-report:
     needs: ["frontend-tests", "backend-tests-default", "python-sdk-tests"]
     if: |

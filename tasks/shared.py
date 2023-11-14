@@ -93,7 +93,13 @@ ENV_VARS_DICT = {
 PLATFORMS_PTY_ENABLE = ["Linux", "Darwin"]
 PLATFORMS_SUDO_DETECT = ["Linux"]
 
-VOLUME_NAMES = ["database_data", "database_logs", "git_data", "git_remote_data", "storage_data"]
+VOLUME_NAMES = [
+    "database_data",
+    "database_logs",
+    "git_data",
+    "git_remote_data",
+    "storage_data",
+]
 
 GITHUB_ENVS_TO_PASS = [
     "GITHUB_ACTION",

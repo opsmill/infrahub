@@ -17,12 +17,12 @@ limitations under the License.
 from inspect import isclass
 from typing import Callable, ClassVar, Dict, List, Mapping, Optional, Text, Tuple, Type, Union
 
-from pydantic import BaseModel, PrivateAttr
 import structlog  # type: ignore
+from pydantic import BaseModel, PrivateAttr
 
 from diffsync.diff import Diff
-from diffsync.enum import DiffSyncModelFlags, DiffSyncFlags, DiffSyncStatus
-from diffsync.exceptions import DiffClassMismatch, ObjectAlreadyExists, ObjectStoreWrongType, ObjectNotFound
+from diffsync.enum import DiffSyncFlags, DiffSyncModelFlags, DiffSyncStatus
+from diffsync.exceptions import DiffClassMismatch, ObjectAlreadyExists, ObjectNotFound, ObjectStoreWrongType
 from diffsync.helpers import DiffSyncDiffer, DiffSyncSyncer
 from diffsync.store import BaseStore
 from diffsync.store.local import LocalStore
