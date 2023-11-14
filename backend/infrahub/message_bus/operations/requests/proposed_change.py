@@ -1,6 +1,7 @@
 from typing import List
 
 from infrahub.core.branch import ObjectConflict
+from infrahub.core.constants import ProposedChangeState
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
@@ -37,6 +38,14 @@ async def _get_conflicts(db: InfrahubDatabase, proposed_change: Node) -> List[Ob
     source_branch = await registry.get_branch(db=db, branch=proposed_change.source_branch.value)
     diff = await source_branch.diff(db=db, branch_only=False)
     return await diff.get_conflicts_graph(db=db)
+
+
+async def cancel(message: messages.RequestProposedChangeDataIntegrity, service: InfrahubServices) -> None:
+    """Cancel a proposed change."""
+    log.info("Cancelling proposed change", id=message.proposed_change)
+    proposed_change = await service.client.get(kind="CoreProposedChange", id=message.proposed_change)
+    proposed_change.state.value = ProposedChangeState.CANCELED.value
+    await proposed_change.save()
 
 
 async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, service: InfrahubServices) -> None:
