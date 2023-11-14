@@ -142,7 +142,7 @@ export default function ObjectItemDetails(props: any) {
     <div className="bg-custom-white flex-1 overflow-auto flex flex-col">
       {!hideHeaders && (
         <>
-          <div className="px-4 py-5 sm:px-6 flex items-center">
+          <div className="px-4 py-5 flex items-center">
             <div
               onClick={() => navigate(constructPath(`/objects/${objectname}`))}
               className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline">
@@ -156,6 +156,8 @@ export default function ObjectItemDetails(props: any) {
               {objectDetailsData.display_label}
             </p>
           </div>
+
+          <div className="px-4 text-sm">{schemaData?.description}</div>
 
           <Tabs
             tabs={tabs}
@@ -320,13 +322,29 @@ export default function ObjectItemDetails(props: any) {
         title={
           <div className="space-y-2">
             <div className="flex items-center w-full">
-              <span className="text-lg font-semibold mr-3">{objectDetailsData.display_label}</span>
+              <div className="flex items-center">
+                <div className="text-base font-semibold leading-6 text-gray-900">
+                  {schemaData.label}
+                </div>
+                <ChevronRightIcon
+                  className="w-4 h-4 mt-1 mx-2 flex-shrink-0 text-gray-400"
+                  aria-hidden="true"
+                />
+                <p className="mt-1 max-w-2xl text-sm text-gray-500">
+                  {objectDetailsData.display_label}
+                </p>
+              </div>
+
               <div className="flex-1"></div>
+
               <div className="flex items-center">
                 <Square3Stack3DIcon className="w-4 h-4" />
                 <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
               </div>
             </div>
+
+            <div className="text-sm">{schemaData?.description}</div>
+
             <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
               <svg
                 className="h-1.5 w-1.5 mr-1 fill-yellow-500"
@@ -361,13 +379,29 @@ export default function ObjectItemDetails(props: any) {
         title={
           <div className="space-y-2">
             <div className="flex items-center w-full">
-              <span className="text-lg font-semibold mr-3">{objectDetailsData.display_label}</span>
+              <div className="flex items-center">
+                <div className="text-base font-semibold leading-6 text-gray-900">
+                  {schemaData.label}
+                </div>
+                <ChevronRightIcon
+                  className="w-4 h-4 mt-1 mx-2 flex-shrink-0 text-gray-400"
+                  aria-hidden="true"
+                />
+                <p className="mt-1 max-w-2xl text-sm text-gray-500">
+                  {objectDetailsData.display_label}
+                </p>
+              </div>
+
               <div className="flex-1"></div>
+
               <div className="flex items-center">
                 <Square3Stack3DIcon className="w-4 h-4" />
                 <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
               </div>
             </div>
+
+            <div className="text-sm">{schemaData?.description}</div>
+
             <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
               <svg
                 className="h-1.5 w-1.5 mr-1 fill-yellow-500"

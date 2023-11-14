@@ -162,9 +162,11 @@ export default function ObjectItems(props: any) {
       <div className="flex items-center p-4 w-full">
         {schemaData && (
           <div className="sm:flex-auto flex items-center">
-            <h1 className="text-md font-semibold text-gray-900">
-              {schemaData.name} ({count})
+            <h1 className="text-md font-semibold text-gray-900 mr-2">
+              {schemaData.label} ({count})
             </h1>
+
+            <div className="text-sm">{schemaData?.description}</div>
           </div>
         )}
 
@@ -254,13 +256,16 @@ export default function ObjectItems(props: any) {
         title={
           <div className="space-y-2">
             <div className="flex items-center w-full">
-              <span className="text-lg font-semibold mr-3">Create {objectname}</span>
+              <span className="text-lg font-semibold mr-3">Create {schemaData?.label}</span>
               <div className="flex-1"></div>
               <div className="flex items-center">
                 <Square3Stack3DIcon className="w-4 h-4" />
                 <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
               </div>
             </div>
+
+            <div className="text-sm">{schemaData?.description}</div>
+
             <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
               <svg
                 className="h-1.5 w-1.5 mr-1 fill-yellow-500"
