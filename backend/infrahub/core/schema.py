@@ -265,6 +265,7 @@ class AttributeSchema(BaseSchemaModel):
     regex: Optional[str]
     max_length: Optional[int]
     min_length: Optional[int]
+    read_only: bool = False
     inherited: bool = False
     unique: bool = False
     branch: Optional[BranchSupportType]
@@ -854,6 +855,7 @@ internal_schema = {
                 {"name": "min_length", "kind": "Number", "optional": True},
                 {"name": "label", "kind": "Text", "optional": True, "max_length": DEFAULT_NAME_MAX_LENGTH},
                 {"name": "description", "kind": "Text", "optional": True, "max_length": DEFAULT_DESCRIPTION_LENGTH},
+                {"name": "read_only", "kind": "Boolean", "default_value": False, "optional": True},
                 {"name": "unique", "kind": "Boolean", "default_value": False, "optional": True},
                 {"name": "optional", "kind": "Boolean", "default_value": True, "optional": True},
                 {
@@ -2012,12 +2014,14 @@ core_models = {
                     "name": "depth",
                     "kind": "Number",
                     "description": "number of nested levels in the query",
+                    "read_only": True,
                     "optional": True,
                 },
                 {
                     "name": "height",
                     "kind": "Number",
                     "description": "total number of fields requested in the query",
+                    "read_only": True,
                     "optional": True,
                 },
             ],
