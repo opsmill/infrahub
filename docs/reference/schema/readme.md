@@ -79,8 +79,8 @@ nodes:
 - `Group`: Indicate a relationship to a member or a subscriber of a group.
 
 ==- Attribute Kinds Behavior in the UI
-| Kind         | Display in  List View | Display in  Detailed View | { class="compact" }
-|--------------|-----------------------|---------------------------|
+| Kind         | Display in  List View | Display in  Detailed View | { class="compact" } |
+| ------------ | --------------------- | ------------------------- |
 | `ID`         | No                    | Yes                       |
 | `Text`       | Yes                   | Yes                       |
 | `Number`     | Yes                   | Yes                       |
@@ -101,16 +101,16 @@ nodes:
 
 ==- Relationship Kinds Behavior in the UI
 
-| ID        | cardinality | Display in  List View | Display in  Detailed View | Display in Tab | { class="compact" }
-|-----------|-------------|-----------------------|---------------------------|----------------|
-|  `Generic`  |     `one`     |           No          |            Yes            |       No       |
-|  `Generic` |     `many`    |           No          |             No            |       Yes      |
-| `Attribute` |     `one`     |          Yes          |            Yes            |       No       |
-| `Attribute` |     `many`    |          Yes          |            Yes            |       No       |
-| `Component` |     `one`     |           No          |            Yes            |       No       |
-| `Component` |     `many`    |           No          |             No            |       Yes      |
-|   `Parent`  |     `one`     |           No          |            Yes            |       No       |
-| `Parent`    |     `many`    |           No          |            Yes            |       No       |
+| ID          | cardinality | Display in  List View | Display in  Detailed View | Display in Tab | { class="compact" } |
+| ----------- | ----------- | --------------------- | ------------------------- | -------------- |
+| `Generic`   | `one`       | No                    | Yes                       | No             |
+| `Generic`   | `many`      | No                    | No                        | Yes            |
+| `Attribute` | `one`       | Yes                   | Yes                       | No             |
+| `Attribute` | `many`      | Yes                   | Yes                       | No             |
+| `Component` | `one`       | No                    | Yes                       | No             |
+| `Component` | `many`      | No                    | No                        | Yes            |
+| `Parent`    | `one`       | No                    | Yes                       | No             |
+| `Parent`    | `many`      | No                    | Yes                       | No             |
 
 ===
 
@@ -181,11 +181,11 @@ A model can also be configured as :
 
 ### Summary
 
-| Branch Support | Description                                                                        | Diff | Merge | Rebase |
-|--------------|--------------------------------------------------------------------------------------|------|-------|--------|
-| **Aware**    | All changes will be local to the branch and can be merged back into the main branch. | Yes  | Yes   | Yes    |
-| **Agnostic** | All changes will automatically be available in all branches                          | No   | No    | No     |
-| **Local**    | All changes will be local to the branch and will not be merged to other branches.    | No   | No    | Yes    |
+| Branch Support | Description                                                                          | Diff | Merge | Rebase |
+| -------------- | ------------------------------------------------------------------------------------ | ---- | ----- | ------ |
+| **Aware**      | All changes will be local to the branch and can be merged back into the main branch. | Yes  | Yes   | Yes    |
+| **Agnostic**   | All changes will automatically be available in all branches                          | No   | No    | No     |
+| **Local**      | All changes will be local to the branch and will not be merged to other branches.    | No   | No    | Yes    |
 
 
 ### Branch Agnostic
@@ -242,7 +242,7 @@ extensions:
 ```
 
 ==- Example of schema file that is defining new nodes and adding  a relationship to an existing one
-:::code source="../../models/infrastructure_extension_rack.yml" :::
+:::code source="../../../models/infrastructure_extension_rack.yml" :::
 ==-
 
 ### Load a Schema file

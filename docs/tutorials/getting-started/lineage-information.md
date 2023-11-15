@@ -25,7 +25,7 @@ If you navigate to the detailed page of any device you'll be able to see that:
 2. The **role** has been defined by the `pop-builder`, is owner by the `Engineering Team` and `is_protected` as well
 3. The **description** is neither protected nor does it has a source or a owner defined
 
-![](../media/tutorial/tutorial-4-data.cy.ts/tutorial_4_metadata.png)
+![](../../media/tutorial/tutorial-4-data.cy.ts/tutorial_4_metadata.png)
 
 ## Protected Field
 
@@ -35,4 +35,4 @@ When a field is marked as protected, all users that aren't listed as the owner w
 
 It's possible to update the metadata by selecting the pencil on the top right corner of each metadata panel 
 
-![](../media/tutorial/tutorial-4-data.cy.ts/tutorial_4_metadata_edit.png)
+![](../../media/tutorial/tutorial-4-data.cy.ts/tutorial_4_metadata_edit.png)

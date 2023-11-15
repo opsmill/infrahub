@@ -16,9 +16,9 @@ You can explore the current schema by visiting the schema page at the bottom of 
 
 [!ref Explore the current schema](http://localhost:8000/api/schema)
 
-![](../media/tutorial/tutorial-3-schema.cy.ts/tutorial_3_schema.png)
+![](../../media/tutorial/tutorial-3-schema.cy.ts/tutorial_3_schema.png)
 
-[!ref Check the schema documentation for more information](../schema/readme.md)
+[!ref Check the schema documentation for more information](../../reference/schema/readme.md)
 
 ## Extend the schema with some network related models
 
@@ -27,7 +27,7 @@ In order to model a simple network, we need to extend the current models to capt
 A schema extension with these type of models and more is available in the `models/` directory
 
 ==- Infrastructure Base Schema
-:::code source="../../models/infrastructure_base.yml" :::
+:::code source="../../../models/infrastructure_base.yml" :::
 ==-
 
 Use the following command to load these new models into Infrahub
@@ -58,7 +58,7 @@ Schema loaded successfully!
 
 In order to have more meaningful data to explore, we'll use a sample topology of 6 devices as presented below that is leveraging all the new models we just added to the schema.
 
-![](../media/demo_edge.excalidraw.svg)
+![](../../media/demo_edge.excalidraw.svg)
 
 
 Use the following command to load these new models into Infrahub
