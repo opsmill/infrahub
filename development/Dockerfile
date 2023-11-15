@@ -84,7 +84,7 @@ RUN apt-get autoremove -y && \
 # STAGE : Gitpod
 # ****************************************************************
 
-FROM backend as gitpod
+FROM backend AS gitpod
 
 # --------------------------------------------
 # Create new user and assign the right permissions

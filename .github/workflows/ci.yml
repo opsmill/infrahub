@@ -111,24 +111,6 @@ jobs:
       - name: "Linting: ruff format"
         run: "ruff format --check --diff ."
 
-  # ------------------------------------------ Build  Docker Image ------------------------------------------
-  # backend-build-docker:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Set up QEMU
-  #       uses: docker/setup-qemu-action@v2
-  #     - name: Set up Docker Buildx
-  #       uses: docker/setup-buildx-action@v2
-  #     - name: Build Backend Image
-  #       uses: docker/build-push-action@v4
-  #       with:
-  #         file: "development/Dockerfile-backend"
-  #         push: false
-  #         tags: "${{env.INFRAHUB_IMAGE_NAME}}:${{env.INFRAHUB_IMAGE_VER}}"
-  #         cache-from: type=gha
-  #         cache-to: type=gha,mode=max
-
-  # ------------------------------------------ Tests by Component  ------------------------------------------
   python-sdk-tests:
     if: |
       always() && !cancelled() &&
