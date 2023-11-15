@@ -35,6 +35,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       backend: ${{ steps.changes.outputs.backend_all }}
+      documentation: ${{ steps.changes.outputs.documentation_all }}
       frontend: ${{ steps.changes.outputs.frontend_all }}
       sdk: ${{ steps.changes.outputs.sdk_all }}
       sync: ${{ steps.changes.outputs.sync_all }}
@@ -314,6 +315,31 @@ jobs:
           flag-name: frontend-unit
           parallel: true
           file: frontend/coverage/lcov.info
+
+  documentation:
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.documentation == 'true'
+    needs: ["files-changed", "yaml-lint", "python-lint"]
+    runs-on: "ubuntu-20.04"
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v3"
+      - name: Install NodeJS
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+      - name: "Install dependencies"
+        run: npm install
+      - name: "Setup Python environment"
+        run: "pip install toml invoke"
+      - name: "Build website"
+        run: "invoke docs.build"
 
   # ------------------------------------------ E2E Tests  ------------------------------------------
   # E2E-testing-memgraph:
