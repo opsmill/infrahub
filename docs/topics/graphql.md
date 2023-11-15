@@ -1,7 +1,6 @@
 ---
 label: GraphQL Query
 layout: default
-order: 800
 ---
 # GraphQL
 

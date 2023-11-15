@@ -1,7 +1,6 @@
 ---
 label: Artifact
 layout: default
-order: 800
 ---
 
 # Artifact

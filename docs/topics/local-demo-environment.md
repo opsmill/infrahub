@@ -1,37 +1,36 @@
 ---
 label: Demo Environment
 layout: default
-order: 100
 ---
 # Local Demo Environment
 
 A local environment based on Docker Composed is available for demo and testing.
 It's designed to be controlled by `invoke` using a list of predefined commands
 
-| Command               | Description                                                  | { class="compact" }
-| --------------------- | ------------------------------------------------------------ |
-| `demo.build`          | Build an image with the provided name and python version.    |
-| `demo.init`           | (deprecated) Initialize Infrahub database before using it the first time. |
-| `demo.start`          | Start a local instance of Infrahub within docker compose.    |
-| `demo.stop`           | Stop the running instance of Infrahub.                       |
-| `demo.destroy`        | Destroy all containers and volumes.                          |
-| `demo.cli-git`        | Launch a bash shell inside the running Infrahub container.   |
-| `demo.cli-server`     | Launch a bash shell inside the running Infrahub container.   |
-| `demo.debug`          | Start a local instance of Infrahub in debug mode.            |
-| `demo.status`         | Display the status of all containers.                        |
-| `demo.load-infra-schema` | Load the infrastructure_base schema into Infrahub.   |
-| `demo.load-infra-data` | Generate some data representing a small networks with 6 devices.   |
+| Command                  | Description                                                               | { class="compact" } |
+| ------------------------ | ------------------------------------------------------------------------- |
+| `demo.build`             | Build an image with the provided name and python version.                 |
+| `demo.init`              | (deprecated) Initialize Infrahub database before using it the first time. |
+| `demo.start`             | Start a local instance of Infrahub within docker compose.                 |
+| `demo.stop`              | Stop the running instance of Infrahub.                                    |
+| `demo.destroy`           | Destroy all containers and volumes.                                       |
+| `demo.cli-git`           | Launch a bash shell inside the running Infrahub container.                |
+| `demo.cli-server`        | Launch a bash shell inside the running Infrahub container.                |
+| `demo.debug`             | Start a local instance of Infrahub in debug mode.                         |
+| `demo.status`            | Display the status of all containers.                                     |
+| `demo.load-infra-schema` | Load the infrastructure_base schema into Infrahub.                        |
+| `demo.load-infra-data`   | Generate some data representing a small networks with 6 devices.          |
 
 ## Topology
 
-| Container Name  | Image                    | Description                                            | { class="compact" }
-| --------------- | ------------------------ | ------------------------------------------------------ |
-| **database**        | memgraph/memgraph:2.11.0<br>or<br>neo4j:5.6-enterprise     | Graph Database   |
-| **message-queue**   | rabbitmq:3.12-management | Message bus based on RabbitMQ                          |
-| **cache**   | redis:7.2 | Cache based on Redis, mainly used for distributed lock                        |
-| **infrahub-server** | Dockerfile               | Instance of the API Server, running GraphQL            |
-| **infrahub-git**    | Dockerfile               | Instance of the Git Agent, managing the Git Repository |
-| **frontend**        | Dockerfile               | Instance of the Frontend                               |
+| Container Name      | Image                                                  | Description                                            | { class="compact" } |
+| ------------------- | ------------------------------------------------------ | ------------------------------------------------------ |
+| **database**        | memgraph/memgraph:2.11.0<br>or<br>neo4j:5.6-enterprise | Graph Database                                         |
+| **message-queue**   | rabbitmq:3.12-management                               | Message bus based on RabbitMQ                          |
+| **cache**           | redis:7.2                                              | Cache based on Redis, mainly used for distributed lock |
+| **infrahub-server** | Dockerfile                                             | Instance of the API Server, running GraphQL            |
+| **infrahub-git**    | Dockerfile                                             | Instance of the Git Agent, managing the Git Repository |
+| **frontend**        | Dockerfile                                             | Instance of the Frontend                               |
 
 [!ref Check the architecture diagram to have more information about each component](./architecture.md)
 

@@ -1,7 +1,6 @@
 ---
 label: User Management and Authentication
 layout: default
-order: 900
 ---
 
 ### User Management and Authentication
@@ -25,7 +24,7 @@ Infrahub supports two authentication methods
 > API token can be generated via the user profile page or via the Graphql interface.
 
 |                    | JWT  | TOKEN |
-|--------------------|------|-------|
+| ------------------ | ---- | ----- |
 | API / GraphQL      | Yes  | Yes   |
 | Frontend           | Yes  | No    |
 | Python SDK         | Soon | Yes   |

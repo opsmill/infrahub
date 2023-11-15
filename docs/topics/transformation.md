@@ -1,7 +1,6 @@
 ---
 label: Transformation
 layout: default
-order: 900
 ---
 
 # Transformation
@@ -31,22 +30,22 @@ The Transformation will automatically inherit the parameters (variables) defined
 
 ==- Common parameters
 
-| Name | Type | Default | Required | { class="compact" }
-| ------------------ | --------- | ----- | --- |
-| **name**           | `Text`    | -     | Yes |
-| **label**          | `Text`    | -     | No  |
-| **description**    | `Text`    | -     | No  |
-| **timeout**        | `Number`  | 10    | No  |
-| **rebase**         | `Boolean` | False | No  |
-| **query**          | `Relationship`<br> CoreGraphQLQuery    | -     | Yes |
-| **repository**     | `Relationship`<br> CoreRepository      | -     | Yes  |
+| Name            | Type                                | Default | Required | { class="compact" } |
+| --------------- | ----------------------------------- | ------- | -------- |
+| **name**        | `Text`                              | -       | Yes      |
+| **label**       | `Text`                              | -       | No       |
+| **description** | `Text`                              | -       | No       |
+| **timeout**     | `Number`                            | 10      | No       |
+| **rebase**      | `Boolean`                           | False   | No       |
+| **query**       | `Relationship`<br> CoreGraphQLQuery | -       | Yes      |
+| **repository**  | `Relationship`<br> CoreRepository   | -       | Yes      |
 
 ==-
 
 ## Available Transformation
 
 | Namespace | Transformation      | Description                            | Language | Output Format |
-|-----------|---------------------|----------------------------------------|----------|---------------|
+| --------- | ------------------- | -------------------------------------- | -------- | ------------- |
 | Core      | **RFile**           | A file rendered from a Jinja2 template | Jinja2   | Plain Text    |
 | Core      | **TransformPython** | A transform function written in Python | Python   | JSON          |
 

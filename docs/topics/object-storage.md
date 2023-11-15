@@ -1,7 +1,6 @@
 ---
 label: Object Storage
 layout: default
-order: 500
 ---
 
 Infrahub provides an interface to easily store and retrieve files in an object storage. The object storage interface is independent of the branches.
