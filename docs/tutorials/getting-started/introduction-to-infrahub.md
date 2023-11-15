@@ -9,7 +9,7 @@ Before starting this tutorial, let's take a moment to explore how Infrahub is or
 
 ## Infrahub Components
 
-![](../media/high_level_architecture.excalidraw.svg)
+![](../../media/high_level_architecture.excalidraw.svg)
 
 During this tutorial we'll mainly use the Frontend, the `infrahubctl` CLI and GraphQL via the API Server.
 

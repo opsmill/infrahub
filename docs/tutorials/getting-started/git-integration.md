@@ -29,7 +29,7 @@ Once you have created a fork in Github, you'll need a Personal Access Token to a
   3. Limit the scope of the token in **Repository Access** > **Only Select Repositories**
   4. Grant the token permission to `Read/Write` the **Content** of the repository
 
-  ![Fine-Grained Token](../media/github_fined_grain_access_token_setup.png)
+  ![Fine-Grained Token](../../media/github_fined_grain_access_token_setup.png)
 ==-
 
 
@@ -44,7 +44,7 @@ If other branches are present, it's recommanded to delete them for now.
   2. Select `View All Branches` at the bottom of the popup
   3. Delete all branches but the branch `main`, with the trash icon on the right of the screen
 
-  ![View all Branches](../media/github_view_all_branches.png)
+  ![View all Branches](../../media/github_view_all_branches.png)
 
 ==-
 

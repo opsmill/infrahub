@@ -1,6 +1,7 @@
 ---
 label: Configuration File
 layout: default
+icon: tools
 order: 900
 ---
 # Configuration File

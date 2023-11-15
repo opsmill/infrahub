@@ -1,12 +1,12 @@
-
-
-
-# Introduction
+---
+icon: terminal
+---
+# Installing Infrahub
 
 Infrahub is composed of multiple components, the backend is mostly written in Python and the frontend in React.
 
 The main components are:
-- **A Frontend** written in react
+- A **Frontend** written in react
 - An **API Server** written in Python with FastAPI
 - A **Git agent** to manage the interaction with external Git repositories
 - A **Graph Database** based on `Neo4j` 5.x or `memgraph`
@@ -26,7 +26,7 @@ The pre-requisites for this type of deployment are to have:
 
 ### Invoke
 
-On Mac OS Python is installed by default so you should be able to install `invoke` directly. 
+On Mac OS Python is installed by default so you should be able to install `invoke` directly.
 Invoke works best when you install it in the main Python but you can also install it in a virtual environment if you prefer.
 
 ```
@@ -78,7 +78,7 @@ Once docker desktop and invoke are properly installed you can build start Infrah
 invoke demo.build demo.start demo.load-infra-schema demo.load-infra-data
 ```
 
-[!ref Check the documentation of the demo environment for more information](../knowledge-base/local-demo-environment.md)
+[!ref Check the documentation of the demo environment for more information](../topics/local-demo-environment.md)
 
 ## GitPod
 

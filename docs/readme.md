@@ -1,3 +1,7 @@
+---
+label: "Home"
+icon: "home"
+---
 ![](./media/Infrahub-horizontal.svg)
 
 Infrahub is taking a new approach to Infrastructure Automation by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run.
