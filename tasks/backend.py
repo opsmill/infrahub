@@ -31,7 +31,7 @@ def generate_doc(context: Context):
     print(f" - [{NAMESPACE}] Generate CLI documentation")
     with context.cd(ESCAPED_REPO_PATH):
         for command in CLI_COMMANDS:
-            exec_cmd = f'typer {command[0]} utils docs --name "{command[1]}" --output docs/components/infrahub-cli/{command[2]}.md'
+            exec_cmd = f'typer {command[0]} utils docs --name "{command[1]}" --output docs/reference/infrahub-cli/{command[2]}.md'
             context.run(exec_cmd)
 
 
