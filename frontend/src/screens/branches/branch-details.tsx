@@ -33,6 +33,7 @@ import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
 import { getFormStructure } from "../proposed-changes/conversations";
+import { getCurrentQsp } from "../../utils/fetch";
 
 export const BranchDetails = () => {
   const { branchname } = useParams();
@@ -146,7 +147,14 @@ export const BranchDetails = () => {
               },
             });
 
-            navigate("/branches");
+            const queryStringParams = getCurrentQsp();
+            const isDeletedBranchSelected = queryStringParams.get("branch") === branch.name;
+
+            if (isDeletedBranchSelected) {
+              queryStringParams.delete("branch"); // back to main branch
+            }
+
+            navigate("/branches?" + queryStringParams.toString());
 
             window.location.reload();
           }}

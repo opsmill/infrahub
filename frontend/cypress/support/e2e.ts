@@ -40,3 +40,11 @@ Cypress.Commands.add("login", (username: string, password: string) => {
     }
   );
 });
+
+Cypress.Commands.add("createBranch", (name: string) => {
+  cy.visit("/");
+  cy.get("[data-cy='create-branch-button']").click();
+  cy.get("#new-branch-name").type(name);
+  cy.contains("button", "Create").click();
+  cy.get("[data-cy='branch-select-menu']").contains(name);
+});

@@ -65,11 +65,7 @@ const getParams = (params: [string, string][], overrideParams?: [string, string]
 
 // Construct link with path that contains all QSP
 export const constructPath = (path: string, overrideParams?: [string, string][]) => {
-  const { href } = window.location;
-
-  const targetUrl = new URL(href);
-
-  const { searchParams: targetParams } = targetUrl;
+  const targetParams = getCurrentQsp();
 
   // Get QSP as [ [ key, value ], ... ]
   const params: [string, string][] = Array.from(targetParams).filter(
@@ -84,6 +80,8 @@ export const constructPath = (path: string, overrideParams?: [string, string][])
 
   return `${path}${newParams}`;
 };
+
+export const getCurrentQsp = () => new URL(window.location.href).searchParams;
 
 // Update a QSP in the URL (add, update or remove it)
 export const updateQsp = (qsp: string, newValue: string, setSearchParams: Function) => {
