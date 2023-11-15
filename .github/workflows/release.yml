@@ -1,3 +1,5 @@
+---
+# yamllint disable rule:truthy
 name: New Release
 
 on:
@@ -6,7 +8,6 @@ on:
       - 'v*'
 
 jobs:
-
   publish-docker-image:
     uses: ./.github/workflows/reusable_docker-build-and-push.yaml
     secrets: inherit
