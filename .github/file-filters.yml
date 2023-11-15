@@ -49,7 +49,7 @@ backend_all:
   - *development_files
 
 documentation_all:
-  - *python_all
+  - *development_files
   - *doc_files
 
 sdk_all:
