@@ -53,7 +53,7 @@ describe("Branches creation and deletion", () => {
 
     cy.get("[data-cy='branch-select-menu']").contains("test123");
     cy.url().should("include", "/branches").and("include", "branch=test123");
-    cy.get("[data-cy='branch-list-display-button']").click({ force: true });
+    cy.get("[data-cy='branch-list-display-button']").click();
     cy.get("[data-cy='branch-list-dropdown']").contains("test123");
     cy.get("[data-cy='branch-list-dropdown']").contains("test456").should("not.exist");
   });
