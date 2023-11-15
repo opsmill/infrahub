@@ -106,7 +106,7 @@ Execute `invoke demo.cli-git` to start a shell session that will give you access
 
 ==- Merge a Branch using GraphQL
 
-Use the GraphQL query below to create a new branch named `cr1234`
+Use the GraphQL query below to merge the branch named `cr1234`
 
 ```graphql
 # Endpoint : http://127.0.0.1:8000/graphql/main
