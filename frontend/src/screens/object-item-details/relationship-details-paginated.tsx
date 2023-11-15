@@ -4,7 +4,6 @@ import {
   LockClosedIcon,
   PencilSquareIcon,
   PlusIcon,
-  Square3Stack3DIcon,
 } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useContext, useState } from "react";
@@ -24,6 +23,7 @@ import { updateObjectWithId } from "../../graphql/mutations/objects/updateObject
 import { branchVar } from "../../graphql/variables/branchVar";
 import { dateVar } from "../../graphql/variables/dateVar";
 // import { ReactComponent as UnlinkIcon } from "../../images/icons/unlink.svg";
+import { Icon } from "@iconify-icon/react";
 import { AuthContext } from "../../decorators/withAuth";
 import { addRelationship } from "../../graphql/mutations/relationships/addRelationship";
 import UnlinkIcon from "../../images/icons/unlink.svg";
@@ -247,7 +247,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
         {relationshipsData && (
           <>
             {relationshipSchema?.cardinality === "one" && (
-              <div className="p-4 px-3 grid grid-cols-3 gap-4">
+              <div className="p-4 grid grid-cols-3 gap-4">
                 <dt className="text-sm font-medium text-gray-500 flex items-center">
                   {relationshipSchema?.label}
                 </dt>
@@ -458,7 +458,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
             )}
 
             {relationshipSchema?.cardinality === "many" && mode === "DESCRIPTION-LIST" && (
-              <div className="p-4 px-3 grid grid-cols-3 gap-4">
+              <div className="p-4 grid grid-cols-3 gap-4">
                 <dt className="text-sm font-medium text-gray-500 flex items-center">
                   {relationshipSchema?.label}
                 </dt>
@@ -551,7 +551,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                 </span>
                 <div className="flex-1"></div>
                 <div className="flex items-center">
-                  <Square3Stack3DIcon className="w-4 h-4" />
+                  <Icon icon={"mdi:layers-triple"} />
                   <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
                 </div>
               </div>
@@ -588,7 +588,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                     </span>
                     <div className="flex-1"></div>
                     <div className="flex items-center">
-                      <Square3Stack3DIcon className="w-4 h-4" />
+                      <Icon icon={"mdi:layers-triple"} />
                       <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
                     </div>
                   </div>
@@ -649,7 +649,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                       </span>
                       <div className="flex-1"></div>
                       <div className="flex items-center">
-                        <Square3Stack3DIcon className="w-4 h-4" />
+                        <Icon icon={"mdi:layers-triple"} />
                         <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
                       </div>
                     </div>

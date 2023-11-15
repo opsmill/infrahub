@@ -5,9 +5,9 @@ import {
   LockClosedIcon,
   PencilIcon,
   PencilSquareIcon,
-  Square3Stack3DIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
+import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { useContext, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -139,7 +139,7 @@ export default function GroupItemDetails() {
       {!qspTab && (
         <div className="px-4 py-5 sm:p-0 flex-1 overflow-auto">
           <dl className="sm:divide-y sm:divide-gray-200">
-            <div className="p-4 px-3 grid grid-cols-3 gap-4">
+            <div className="p-4 grid grid-cols-3 gap-4">
               <dt className="text-sm font-medium text-gray-500 flex items-center">ID</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
                 {objectDetailsData.id}
@@ -154,7 +154,7 @@ export default function GroupItemDetails() {
               }
 
               return (
-                <div className="p-4 px-3 grid grid-cols-3 gap-4" key={attribute.name}>
+                <div className="p-4 grid grid-cols-3 gap-4" key={attribute.name}>
                   <dt className="text-sm font-medium text-gray-500 flex items-center">
                     {attribute.label}
                   </dt>
@@ -268,7 +268,7 @@ export default function GroupItemDetails() {
               <span className="text-lg font-semibold mr-3">{objectDetailsData.display_label}</span>
               <div className="flex-1"></div>
               <div className="flex items-center">
-                <Square3Stack3DIcon className="w-4 h-4" />
+                <Icon icon={"mdi:layers-triple"} />
                 <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
               </div>
             </div>
@@ -309,7 +309,7 @@ export default function GroupItemDetails() {
               <span className="text-lg font-semibold mr-3">{metaEditFieldDetails?.label}</span>
               <div className="flex-1"></div>
               <div className="flex items-center">
-                <Square3Stack3DIcon className="w-4 h-4" />
+                <Icon icon={"mdi:layers-triple"} />
                 <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
               </div>
             </div>

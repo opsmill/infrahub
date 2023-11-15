@@ -1,5 +1,5 @@
 import { useReactiveVar } from "@apollo/client";
-import { Square3Stack3DIcon } from "@heroicons/react/24/outline";
+import { Icon } from "@iconify-icon/react";
 import { DEFAULT_BRANCH_NAME } from "../config/constants";
 import { branchVar } from "../graphql/variables/branchVar";
 
@@ -21,7 +21,7 @@ export const SidePanelTitle = (props: tSidePanelTitle) => {
         <div className="flex-1"></div>
         {!hideBranch && (
           <div className="flex items-center">
-            <Square3Stack3DIcon className="w-4 h-4" />
+            <Icon icon={"mdi:layers-triple"} />
             <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
           </div>
         )}

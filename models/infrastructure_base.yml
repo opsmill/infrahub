@@ -277,7 +277,7 @@ nodes:
         kind: Attribute
   - name: Circuit
     namespace: Infra
-    description: "A Circuit represent a single physical link between two location"
+    description: "A Circuit represent a single physical link between two locations"
     label: "Circuit"
     icon: "mdi:cable-data"
     default_filter: circuit_id__value

@@ -2,6 +2,8 @@
 
 import { ADMIN_CREDENTIALS, SCREENSHOT_ENV_VARIABLE, screenshotConfig } from "../../utils";
 
+const DEVICE_NAME = "atl1-edge1";
+
 describe("Tutorial - Part 4", () => {
   beforeEach(function () {
     cy.login(ADMIN_CREDENTIALS.username, ADMIN_CREDENTIALS.password);
@@ -16,7 +18,7 @@ describe("Tutorial - Part 4", () => {
     cy.get("[href='/objects/InfraDevice'] > .group").click();
 
     // Click on a device
-    cy.contains("atl1-edge1").click();
+    cy.contains(DEVICE_NAME).click();
 
     cy.get(".sm\\:p-0 > :nth-child(1)").within(() => {
       // Click to open the metadata for the name
@@ -55,7 +57,7 @@ describe("Tutorial - Part 4", () => {
       cy.get(":nth-child(5) > .underline").should("have.text", "Engineering Team");
     });
 
-    cy.get(".px-4.sm\\:px-6").click(); // Close the popin
+    cy.contains(DEVICE_NAME).first().click(); // Close the popin
 
     cy.get(".sm\\:p-0 > :nth-child(1)").within(() => {
       // Click to open the metadata for a tag
@@ -63,6 +65,6 @@ describe("Tutorial - Part 4", () => {
       cy.get(":nth-child(5) > :nth-child(2)").should("have.text", "False");
     });
 
-    cy.get(".px-4.sm\\:px-6").click(); // Close the popin
+    cy.contains(DEVICE_NAME).first().click(); // Close the popin
   });
 });
