@@ -84,8 +84,6 @@ class BaseClient:
         """Sets the properties for each version of the client"""
 
     def _record(self, response: httpx.Response) -> None:
-        if not self.config.custom_recorder:
-            return
         self.config.custom_recorder.record(response)
 
 
@@ -98,7 +96,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         self.object_store = ObjectStore(self)
         self.store = NodeStore()
         self.concurrent_execution_limit = asyncio.Semaphore(self.max_concurrent_execution)
-        self._request: AsyncRequester = self.config.requester or self._default_request_method
+        self._request_method: AsyncRequester = self.config.requester or self._default_request_method
 
     @classmethod
     async def init(cls, *args: Any, **kwargs: Any) -> InfrahubClient:
@@ -420,6 +418,18 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
             timeout=timeout or self.default_timeout,
         )
 
+    async def _request(
+        self,
+        url: str,
+        method: HTTPMethod,
+        headers: Dict[str, Any],
+        timeout: int,
+        payload: Optional[Dict] = None,
+    ) -> httpx.Response:
+        response = await self._request_method(url=url, method=method, headers=headers, timeout=timeout, payload=payload)
+        self._record(response)
+        return response
+
     async def _default_request_method(
         self,
         url: str,
@@ -445,7 +455,6 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
             except httpx.ReadTimeout as exc:
                 raise ServerNotResponsiveError(url=url, timeout=timeout) from exc
 
-        self._record(response)
         return response
 
     async def login(self, refresh: bool = False) -> None:
@@ -568,7 +577,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         self.branch = InfrahubBranchManagerSync(self)
         self.object_store = ObjectStoreSync(self)
         self.store = NodeStoreSync()
-        self._request: SyncRequester = self.config.sync_requester or self._default_request_method
+        self._request_method: SyncRequester = self.config.sync_requester or self._default_request_method
 
     @classmethod
     def init(cls, *args: Any, **kwargs: Any) -> InfrahubClientSync:
@@ -919,6 +928,18 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             timeout=timeout or self.default_timeout,
         )
 
+    def _request(
+        self,
+        url: str,
+        method: HTTPMethod,
+        headers: Dict[str, Any],
+        timeout: int,
+        payload: Optional[Dict] = None,
+    ) -> httpx.Response:
+        response = self._request_method(url=url, method=method, headers=headers, timeout=timeout, payload=payload)
+        self._record(response)
+        return response
+
     def _default_request_method(
         self,
         url: str,
@@ -944,7 +965,6 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             except httpx.ReadTimeout as exc:
                 raise ServerNotResponsiveError(url=url, timeout=timeout) from exc
 
-        self._record(response)
         return response
 
     def login(self, refresh: bool = False) -> None:
