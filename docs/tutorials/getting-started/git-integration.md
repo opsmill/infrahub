@@ -5,10 +5,10 @@ tags: [tutorial]
 order: 500
 ---
 
-One of the 3 pillar Infrahub is built on is the idea of having **Unified Version Control for Data and Files** at the same time.
+One of the three pillars Infrahub is built on is the idea of having **Unified Version Control for Data and Files** at the same time.
 The data being stored in the Graph Database and the files in Git.
 
-When integrating a Git repository with Infrahub the Git Agent will ensure that both systems will stay in sync at any time.
+When integrating a Git repository with Infrahub, the Git Agent will ensure that both systems will stay in sync at any time.
 
 
 
@@ -34,8 +34,8 @@ Once you have created a fork in Github, you'll need a Personal Access Token to a
 
 
 !!!
-If you already cloned the repo in the past, ensure there only the main branch is present in Github.
-If other branches are present, it's recommanded to delete them for now.
+If you already cloned the repo in the past, ensure that only the main branch is present in Github.
+If other branches are present, we recommend deleting them for now.
 !!!
 
 ==- How to Delete a branch in Github
@@ -79,8 +79,8 @@ mutation {
 
 !!!success Validate that everything is correct
 In the UI, new objects that have been imported from the Git Repository should now be available:
-- The repository should be visible under [Objects / Repository](http://localhost:8000/objects/Repository/). If the repository you added doesn't have the commit property populated it means that the initial sync didn't work. Verify the location and credentials.
-- 2 Rfile under [Objects / RFile](http://localhost:8000/objects/RFile/)
+- The repository should be visible under [Unified Storage / Repository](http://localhost:8000/objects/CoreRepository/). If the repository you added doesn't have the commit property populated it means that the initial sync didn't work. Verify the location and credentials.
+- 2 [Rfiles](http://localhost:8000/objects/CoreRFile/)
 - 5 GraphQL Queries under [Objects / Graphql Query](http://localhost:8000/objects/GraphQLQuery/)
 !!!
 

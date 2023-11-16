@@ -22,8 +22,8 @@ Currently the list of metadata available is fixed but in the future it will be p
 The demo dataset that we loaded at the previous step, already has a lot of metadata defined for you to explore.
 If you navigate to the detailed page of any device you'll be able to see that:
 1. The **name** has been defined by the `pop-builder` script and `is_protected` to prevent any further changes
-2. The **role** has been defined by the `pop-builder`, is owner by the `Engineering Team` and `is_protected` as well
-3. The **description** is neither protected nor does it has a source or a owner defined
+2. The **role** has been defined by the `pop-builder`, is owned by the `Engineering Team` and `is_protected` as well
+3. The **description** is not protected and does not have a source or an owner defined
 
 ![](../../media/tutorial/tutorial-4-data.cy.ts/tutorial_4_metadata.png)
 

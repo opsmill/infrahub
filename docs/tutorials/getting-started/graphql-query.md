@@ -10,14 +10,14 @@ The GraphQL interface is accessible at [http://localhost:8000/graphql](http://lo
 
 ### Introduction to GraphQL
 
-GraphQL is the main interface to programatically interact with Infrahub. Via the GraphQL interface, it's possible to perform all the standard CRUD operations: Create, Read, Update and Delete any objects in the database.
+GraphQL is the main interface to programatically interact with Infrahub. Via the GraphQL interface, it's possible to perform all the standard CRUD operations (Create, Read, Update and Delete) on any objects in the database.
 
-In GraphQL terminology, a `query` reference any read operation and a `mutation` reference any write operation that may change the value of the data.
+In GraphQL terminology, a `query` references any read operation and a `mutation` references any write operation that may change the value of the data.
 Infrahub support both `query` and `mutation` for all objects.
 
 One of the main concepts behind GraphQL is the presence of a Schema that defines what type of information we have in the database and how these objects are related to each other, based on this schema, a user can execute queries that will return data.
 
-Unlike a REST API, the format of the response is not fixed in GraphQL, it depends on the query and you get back only that you asked for.
+Unlike a REST API, the format of the response is not fixed in GraphQL, it depends on the query and you get back only what you asked for.
 
 
 ### First Query
@@ -45,21 +45,16 @@ Query all interfaces and IP addresses for `ord1-edge`
 
 ```graphql # GraphQL query with a top level filter
 # Endpoint : http://127.0.0.1:8000/graphql/main
-query {
-  InfraDevice(name__value: "ord1-edge1") {
+query DeviceIPAddresses {
+  InfraInterfaceL3(device__name__value:"ord1-edge1") {
     edges {
       node {
-        name {
-          value
-        }
-        interfaces {
+        name { value }
+        description { value }
+        ip_addresses {
           edges {
             node {
-              id
-              name {
-                value
-              }
-              description {
+              address {
                 value
               }
             }
