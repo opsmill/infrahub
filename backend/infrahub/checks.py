@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import asyncio
 import json
 import os
 from abc import abstractmethod
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional
 
 from git.repo import Repo
 from infrahub_sdk import InfrahubClient
@@ -16,12 +18,12 @@ class InfrahubCheck:
     timeout: int = 10
     rebase: bool = True
 
-    def __init__(self, branch=None, root_directory=None, output=None):
+    def __init__(self, branch: str = "", root_directory: str = "", output: Optional[str] = None):
         self.data = None
-        self.git = None
+        self.git: Optional[Repo] = None
 
-        self.logs = []
-        self.passed = None
+        self.logs: List[Dict[str, Any]] = []
+        self.passed = False
 
         self.output = output
 
@@ -38,7 +40,7 @@ class InfrahubCheck:
             raise ValueError("A query must be provided")
 
     @classmethod
-    async def init(cls, client: Optional[InfrahubClient] = None, *args, **kwargs):
+    async def init(cls, client: Optional[InfrahubClient] = None, *args: Any, **kwargs: Any) -> InfrahubCheck:
         """Async init method, If an existing InfrahubClient client hasn't been provided, one will be created automatically."""
 
         instance = cls(*args, **kwargs)
@@ -47,11 +49,11 @@ class InfrahubCheck:
         return instance
 
     @property
-    def errors(self):
+    def errors(self) -> List[Dict[str, Any]]:
         return [log for log in self.logs if log["level"] == "ERROR"]
 
     def _write_log_entry(
-        self, message: Any, level: str, object_id: Optional[Any] = None, object_type: Optional[Any] = None
+        self, message: str, level: str, object_id: Optional[str] = None, object_type: Optional[str] = None
     ) -> None:
         log_message = {"level": level, "message": message, "branch": self.branch_name}
         if object_id:
@@ -63,10 +65,10 @@ class InfrahubCheck:
         if self.output == "stdout":
             print(json.dumps(log_message))
 
-    def log_error(self, message, object_id=None, object_type=None) -> None:
+    def log_error(self, message: str, object_id: Optional[str] = None, object_type: Optional[str] = None) -> None:
         self._write_log_entry(message=message, level="ERROR", object_id=object_id, object_type=object_type)
 
-    def log_info(self, message, object_id=None, object_type=None) -> None:
+    def log_info(self, message: str, object_id: Optional[str] = None, object_type: Optional[str] = None) -> None:
         self._write_log_entry(message=message, level="INFO", object_id=object_id, object_type=object_type)
 
     @property
@@ -97,10 +99,10 @@ class InfrahubCheck:
         return self.branch
 
     @abstractmethod
-    def validate(self):
+    def validate(self) -> None:
         """Code to validate the status of this check."""
 
-    async def collect_data(self):
+    async def collect_data(self) -> None:
         """Query the result of the GraphQL Query defined in sef.query and store the result in self.data"""
 
         data = await self.client.query_gql_query(name=self.query, branch_name=self.branch_name, rebase=self.rebase)
