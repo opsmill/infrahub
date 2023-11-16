@@ -25,6 +25,9 @@ import { schemaKindNameState } from "./state/atoms/schemaKindName.atom";
 import "./styles/index.css";
 import { sortByOrderWeight } from "./utils/common";
 import { fetchUrl } from "./utils/fetch";
+import mdiIcons from "@iconify-json/mdi/icons.json";
+import { addCollection } from "@iconify-icon/react";
+addCollection(mdiIcons);
 
 function App() {
   const [branches] = useAtom(branchesState);
