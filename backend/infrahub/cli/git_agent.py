@@ -45,7 +45,7 @@ def callback() -> None:
     """
 
 
-async def subscribe_rpcs_queue(client: InfrahubClient) -> None:
+async def subscribe_rpcs_queue(service: InfrahubServices) -> None:
     """Subscribe to the RPCs queue and execute the corresponding action when a valid RPC is received."""
     # TODO generate an exception if the broker is not properly configured
     # and return a proper message to the user
@@ -57,20 +57,6 @@ async def subscribe_rpcs_queue(client: InfrahubClient) -> None:
         f"{config.SETTINGS.broker.namespace}.rpcs", durable=True, arguments={"x-queue-type": "quorum"}
     )
     events_queue = await channel.declare_queue(name=f"worker-events-{WORKER_IDENTITY}", exclusive=True)
-
-    exchange = await channel.declare_exchange(f"{config.SETTINGS.broker.namespace}.events", type="topic", durable=True)
-    await events_queue.bind(exchange, routing_key="refresh.registry.*")
-    delayed_exchange = await channel.get_exchange(name=f"{config.SETTINGS.broker.namespace}.delayed")
-    driver = await get_db()
-    database = InfrahubDatabase(driver=driver)
-    service = InfrahubServices(
-        cache=RedisCache(),
-        client=client,
-        database=database,
-        message_bus=RabbitMQMessageBus(channel=channel, exchange=exchange, delayed_exchange=delayed_exchange),
-    )
-    async with service.database.start_session() as db:
-        await initialization(db=db)
 
     worker_callback = WorkerCallback(service=service)
     await events_queue.consume(worker_callback.run_command, no_ack=True)
@@ -93,19 +79,19 @@ async def subscribe_rpcs_queue(client: InfrahubClient) -> None:
                 log.exception("Processing error for message %r" % message)
 
 
-async def initialize_git_agent(client: InfrahubClient) -> None:
+async def initialize_git_agent(service: InfrahubServices) -> None:
     log.info("Initializing Git Agent ...")
     initialize_repositories_directory()
 
     # TODO Validate access to the GraphQL API with the proper credentials
-    await sync_remote_repositories(client=client)
+    await sync_remote_repositories(service=service)
 
 
-async def monitor_remote_activity(client: InfrahubClient, interval: int) -> None:
+async def monitor_remote_activity(service: InfrahubServices, interval: int) -> None:
     log.info("Monitoring remote repository for updates .. ")
 
     while True:
-        await sync_remote_repositories(client=client)
+        await sync_remote_repositories(service=service)
         await asyncio.sleep(interval)
 
 
@@ -128,11 +114,31 @@ async def _start(debug: bool, interval: int, port: int) -> None:
     # Initialize the lock
     initialize_lock()
 
-    await initialize_git_agent(client=client)
+    connection = await get_broker()
+
+    # Create a channel and subscribe to the incoming RPC queue
+    channel = await connection.channel()
+    events_queue = await channel.declare_queue(name=f"worker-events-{WORKER_IDENTITY}", exclusive=True)
+
+    exchange = await channel.declare_exchange(f"{config.SETTINGS.broker.namespace}.events", type="topic", durable=True)
+    await events_queue.bind(exchange, routing_key="refresh.registry.*")
+    delayed_exchange = await channel.get_exchange(name=f"{config.SETTINGS.broker.namespace}.delayed")
+    driver = await get_db()
+    database = InfrahubDatabase(driver=driver)
+    service = InfrahubServices(
+        cache=RedisCache(),
+        client=client,
+        database=database,
+        message_bus=RabbitMQMessageBus(channel=channel, exchange=exchange, delayed_exchange=delayed_exchange),
+    )
+    await initialize_git_agent(service=service)
+
+    async with service.database.start_session() as db:
+        await initialization(db=db)
 
     tasks = [
-        asyncio.create_task(subscribe_rpcs_queue(client=client)),
-        asyncio.create_task(monitor_remote_activity(client=client, interval=interval)),
+        asyncio.create_task(subscribe_rpcs_queue(service=service)),
+        asyncio.create_task(monitor_remote_activity(service=service, interval=interval)),
     ]
 
     await asyncio.gather(*tasks)
