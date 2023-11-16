@@ -185,6 +185,13 @@ class QueryError(Error):
         """
 
 
+class QueryValidationError(Error):
+    HTTP_CODE = 400
+
+    def __init__(self, message: str):
+        self.message = message
+
+
 class ValidationError(Error):
     def __init__(self, input_value):
         self.message: Optional[str] = None

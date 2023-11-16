@@ -7,19 +7,15 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.logger import logger
-from infrahub_sdk.timestamp import TimestampFormatError
 from infrahub_sdk.utils import compare_lists
 from pydantic import BaseModel, Extra, Field
 
 from infrahub import config
 from infrahub.api.dependencies import get_branch_dep, get_current_user, get_db
-from infrahub.api.exceptions import QueryValidationError
 from infrahub.core import get_branch, registry
 from infrahub.core.branch import (
     Branch,  # noqa: TCH001
     Diff,  # noqa: TCH001
-    DiffFromRequiredOnDefaultBranchError,
-    DiffRangeValidationError,
     NodeDiffElement,  # noqa: TCH001
     RelationshipDiffElement,  # noqa: TCH001
 )
@@ -30,8 +26,9 @@ from infrahub.core.constants import (
 )
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema_manager import INTERNAL_SCHEMA_NODE_KINDS
-from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
+
+from .validation_models import DiffQueryValidated
 
 if TYPE_CHECKING:
     from infrahub.message_bus.rpc import InfrahubRpcClient
@@ -936,21 +933,14 @@ async def get_diff_data(
     branch_only: bool = True,
     _: str = Depends(get_current_user),
 ) -> BranchDiff:
-    try:
-        diff_from = Timestamp(time_from) if time_from else None
-        diff_to = Timestamp(time_to) if time_to else None
-    except TimestampFormatError as exc:
-        raise QueryValidationError(str(exc)) from exc
-    try:
-        diff = await branch.diff(
-            db=db, diff_from=diff_from, diff_to=diff_to, branch_only=branch_only, namespaces_exclude=["Schema"]
-        )
-    except DiffFromRequiredOnDefaultBranchError as exc:
-        raise QueryValidationError(
-            f"time_from is mandatory when diffing on the default branch `{branch.name}`."
-        ) from exc
-    except DiffRangeValidationError as exc:
-        raise QueryValidationError("time_from and time_to are not a valid time range") from exc
+    query = DiffQueryValidated(branch=branch, time_from=time_from, time_to=time_to, branch_only=branch_only)
+    diff = await branch.diff(
+        db=db,
+        diff_from=query.time_from,
+        diff_to=query.time_to,
+        branch_only=query.branch_only,
+        namespaces_exclude=["Schema"],
+    )
     schema = registry.schema.get_full(branch=branch)
     diff_payload = DiffPayload(db=db, diff=diff, kinds_to_include=list(schema.keys()))
     return await diff_payload.generate_diff_payload()
@@ -965,8 +955,13 @@ async def get_diff_schema(
     branch_only: bool = True,
     _: str = Depends(get_current_user),
 ) -> BranchDiff:
+    query = DiffQueryValidated(branch=branch, time_from=time_from, time_to=time_to, branch_only=branch_only)
     diff = await branch.diff(
-        db=db, diff_from=time_from, diff_to=time_to, branch_only=branch_only, kinds_include=INTERNAL_SCHEMA_NODE_KINDS
+        db=db,
+        diff_from=query.time_from,
+        diff_to=query.time_to,
+        branch_only=query.branch_only,
+        kinds_include=INTERNAL_SCHEMA_NODE_KINDS,
     )
     diff_payload = DiffPayload(db=db, diff=diff)
     return await diff_payload.generate_diff_payload()
