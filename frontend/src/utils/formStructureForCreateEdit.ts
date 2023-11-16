@@ -9,7 +9,10 @@ import {
 } from "../screens/edit-form-hook/dynamic-control-types";
 import { iGenericSchema, iNodeSchema } from "../state/atoms/schema.atom";
 
-const getIsDisabled = (owner?: any, user?: any, isProtected?: boolean) => {
+const getIsDisabled = ({ owner, user, isProtected, isReadOnly }: any) => {
+  // Field is read only
+  if (isReadOnly) return true;
+
   // Field is available if there is no owner and if is_protected is not set to true
   if (!isProtected || !owner || user?.permissions?.isAdmin) return false;
 
@@ -114,11 +117,13 @@ const getFormStructureForCreateEdit = (
         validate: (value: any) => validate(value, attribute, attribute.optional),
       },
       isOptionnal: attribute.optional,
-      isProtected: getIsDisabled(
-        row && row[attribute.name]?.owner,
+      isReadOnly: attribute.read_only,
+      isProtected: getIsDisabled({
+        owner: row && row[attribute.name]?.owner,
         user,
-        row && row[attribute.name] && row[attribute.name].is_protected
-      ),
+        isProtected: row && row[attribute.name] && row[attribute.name].is_protected,
+        isReadOnly: attribute.read_only,
+      }),
     });
   });
 
@@ -191,11 +196,13 @@ const getFormStructureForCreateEdit = (
           validate: (value: any) => validate(value, undefined, relationship.optional),
         },
         isOptionnal: relationship.optional,
-        isProtected: getIsDisabled(
-          row && row[relationship.name]?.properties?.owner,
+        isProtected: getIsDisabled({
+          owner: row && row[relationship.name]?.properties?.owner,
           user,
-          row && row[relationship.name] && row[relationship.name]?.properties?.is_protected
-        ),
+          isProtected:
+            row && row[relationship.name] && row[relationship.name]?.properties?.is_protected,
+          isReadOnly: relationship.read_only,
+        }),
       });
     });
 
