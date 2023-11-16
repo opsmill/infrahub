@@ -111,7 +111,11 @@ jobs:
       - name: "Linting: ruff format"
         run: "ruff format --check --diff ."
 
-  python-sdk-tests:
+  python-sdk-unit-tests:
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11"]
+        pydantic-version: ["^1.10", "^2"]
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -125,8 +129,17 @@ jobs:
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
-      - name: "Install Invoke"
-        run: "pip install toml invoke"
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: "Setup environment"
+        run: |
+          pipx install poetry
+          pip install invoke toml
+      - name: Set Version of Pydantic
+        run: poetry install pydantic@${{ matrix.pydantic-version }}
+        working-directory: python_sdk/
       - name: "Build Test Image"
         run: "invoke test.build"
       - name: "Pull External Docker Images"
@@ -146,6 +159,30 @@ jobs:
         with:
           flag-name: python-sdk-unit
           parallel: true
+
+
+  python-sdk-integration-tests:
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.sdk == 'true'
+    needs: ["python-sdk-unit-tests"]
+    runs-on: "ubuntu-20.04"
+    timeout-minutes: 30
+    env:
+      INFRAHUB_DB_TYPE: memgraph
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v3"
+      - name: "Install Invoke"
+        run: "pip install toml invoke"
+      - name: "Build Test Image"
+        run: "invoke test.build"
+      - name: "Pull External Docker Images"
+        run: "invoke test.pull"
+      - name: "Pylint Tests"
+        run: "invoke sdk.pylint --docker"
       - name: "Integration Tests"
         run: "invoke sdk.test-integration"
         env:
@@ -428,7 +465,7 @@ jobs:
 
   # ------------------------------------------ Coverall Report  ------------------------------------------
   coverall-report:
-    needs: ["frontend-tests", "backend-tests-default", "python-sdk-tests"]
+    needs: ["frontend-tests", "backend-tests-default", "python-sdk-integration-tests"]
     if: |
       always() && !cancelled()
     runs-on: ubuntu-latest
