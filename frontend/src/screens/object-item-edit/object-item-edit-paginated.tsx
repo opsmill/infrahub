@@ -142,16 +142,13 @@ export default function ObjectItemEditComponent(props: Props) {
         closeDrawer();
 
         onUpdateComplete();
-        setIsLoading(false);
 
-        return;
+        setIsLoading(false);
       } catch (e) {
         console.error("Something went wrong while updating the object:", e);
-
-        setIsLoading(false);
-
-        return;
       }
+
+      setIsLoading(false);
     }
   }
 

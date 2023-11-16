@@ -74,6 +74,7 @@ export interface components {
     };
     /** AttributeSchema */
     AttributeSchema: {
+      read_only: boolean | undefined;
       /** Id */
       id?: string;
       /** Name */
@@ -411,6 +412,7 @@ export interface components {
     RelationshipKind: "Generic" | "Attribute" | "Component" | "Parent";
     /** RelationshipSchema */
     RelationshipSchema: {
+      read_only: any;
       /** Id */
       id?: string;
       /** Name */
