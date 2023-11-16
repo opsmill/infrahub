@@ -16,13 +16,13 @@ class DiffQueryValidated(BaseModel):
         arbitrary_types_allowed = True
 
     @validator("time_from", "time_to", pre=True)
-    def validate_time(cls, value: Optional[str]) -> Optional[Timestamp]:
+    def validate_time(cls, value: Optional[str]) -> Optional[Timestamp]:  # pylint: disable=no-self-argument
         if not value:
             return None
         return Timestamp(value)
 
     @root_validator(skip_on_failure=True)
-    def validate_time_from_if_required(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+    def validate_time_from_if_required(cls, values: Dict[str, Any]) -> Dict[str, Any]:  # pylint: disable=no-self-argument
         branch: Optional[Branch] = values.get("branch")
         time_from: Optional[Timestamp] = values.get("time_from")
         if getattr(branch, "is_default", False) and not time_from:
