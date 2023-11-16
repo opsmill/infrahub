@@ -33,7 +33,8 @@ import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
 import { getFormStructure } from "../proposed-changes/conversations";
-import { getCurrentQsp } from "../../utils/fetch";
+import { constructPath, getCurrentQsp } from "../../utils/fetch";
+import { QSP } from "../../config/qsp";
 
 export const BranchDetails = () => {
   const { branchname } = useParams();
@@ -148,13 +149,13 @@ export const BranchDetails = () => {
             });
 
             const queryStringParams = getCurrentQsp();
-            const isDeletedBranchSelected = queryStringParams.get("branch") === branch.name;
+            const isDeletedBranchSelected = queryStringParams.get(QSP.BRANCH) === branch.name;
 
-            if (isDeletedBranchSelected) {
-              queryStringParams.delete("branch"); // back to main branch
-            }
+            const path = isDeletedBranchSelected
+              ? constructPath("/branches", [{ name: QSP.BRANCH, exclude: true }])
+              : constructPath("/branches");
 
-            navigate("/branches?" + queryStringParams.toString());
+            navigate(path);
 
             window.location.reload();
           }}

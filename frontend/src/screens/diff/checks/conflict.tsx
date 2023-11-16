@@ -19,6 +19,7 @@ import { constructPath } from "../../../utils/fetch";
 import { getObjectDetailsUrl } from "../../../utils/objects";
 import { stringifyWithoutQuotes } from "../../../utils/string";
 import { getNodeClassName } from "../data-diff-node";
+import { QSP } from "../../../config/qsp";
 
 const renderConflict = {
   attribute_value: (name: string) => {
@@ -142,7 +143,9 @@ export const Conflict = (props: any) => {
             value: change,
           };
 
-          const url = constructPath(getObjectDetailsUrl(node_id, kind), [["branch", branch]]);
+          const url = constructPath(getObjectDetailsUrl(node_id, kind), [
+            { name: QSP.BRANCH, value: branch },
+          ]);
 
           const isSelected =
             (keep_branch?.value === "target" && branch === "main") ||
