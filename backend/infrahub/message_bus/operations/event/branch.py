@@ -22,7 +22,10 @@ async def create(message: messages.EventBranchCreate, service: InfrahubServices)
 async def delete(message: messages.EventBranchDelete, service: InfrahubServices) -> None:
     log.info("Branch was deleted", branch=message.branch)
 
-    events: List[InfrahubMessage] = [messages.RefreshRegistryBranches()]
+    events: List[InfrahubMessage] = [
+        messages.RefreshRegistryBranches(),
+        messages.TriggerProposedChangeCancel(branch=message.branch),
+    ]
 
     for event in events:
         event.assign_meta(parent=message)
