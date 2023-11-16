@@ -1,0 +1,226 @@
+{
+  "openconfig-interfaces:interface": [
+    {
+      "name": "Ethernet2",
+      "config": {
+        "enabled": true,
+        "description": "Connected to ord1-edge2 Ethernet2"
+      },
+      "subinterfaces": {
+        "subinterface": []
+      }
+    },
+    {
+      "name": "Ethernet3",
+      "config": {
+        "enabled": true
+      },
+      "subinterfaces": {
+        "subinterface": []
+      }
+    },
+    {
+      "name": "Ethernet12",
+      "config": {
+        "enabled": true
+      }
+    },
+    {
+      "name": "Ethernet4",
+      "config": {
+        "enabled": true
+      },
+      "subinterfaces": {
+        "subinterface": []
+      }
+    },
+    {
+      "name": "Ethernet6",
+      "config": {
+        "enabled": true
+      },
+      "subinterfaces": {
+        "subinterface": [
+          {
+            "index": 0,
+            "openconfig-if-ip:ipv4": {
+              "addresses": {
+                "address": [
+                  {
+                    "ip": "203.0.113.49",
+                    "config": {
+                      "ip": "203.0.113.49",
+                      "prefix-length": "29"
+                    }
+                  }
+                ]
+              },
+              "config": {
+                "enabled": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Ethernet10",
+      "config": {
+        "enabled": true
+      },
+      "subinterfaces": {
+        "subinterface": []
+      }
+    },
+    {
+      "name": "Ethernet1",
+      "config": {
+        "enabled": true,
+        "description": "Connected to ord1-edge2 Ethernet1"
+      },
+      "subinterfaces": {
+        "subinterface": []
+      }
+    },
+    {
+      "name": "Ethernet11",
+      "config": {
+        "enabled": true
+      }
+    },
+    {
+      "name": "Ethernet9",
+      "config": {
+        "enabled": true
+      },
+      "subinterfaces": {
+        "subinterface": [
+          {
+            "index": 0,
+            "openconfig-if-ip:ipv4": {
+              "addresses": {
+                "address": [
+                  {
+                    "ip": "203.0.113.81",
+                    "config": {
+                      "ip": "203.0.113.81",
+                      "prefix-length": "29"
+                    }
+                  }
+                ]
+              },
+              "config": {
+                "enabled": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Loopback0",
+      "config": {
+        "enabled": true
+      },
+      "subinterfaces": {
+        "subinterface": [
+          {
+            "index": 0,
+            "openconfig-if-ip:ipv4": {
+              "addresses": {
+                "address": [
+                  {
+                    "ip": "10.0.0.2",
+                    "config": {
+                      "ip": "10.0.0.2",
+                      "prefix-length": "32"
+                    }
+                  }
+                ]
+              },
+              "config": {
+                "enabled": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Ethernet5",
+      "config": {
+        "enabled": true
+      },
+      "subinterfaces": {
+        "subinterface": [
+          {
+            "index": 0,
+            "openconfig-if-ip:ipv4": {
+              "addresses": {
+                "address": [
+                  {
+                    "ip": "203.0.113.9",
+                    "config": {
+                      "ip": "203.0.113.9",
+                      "prefix-length": "29"
+                    }
+                  }
+                ]
+              },
+              "config": {
+                "enabled": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Ethernet7",
+      "config": {
+        "enabled": true
+      },
+      "subinterfaces": {
+        "subinterface": []
+      }
+    },
+    {
+      "name": "Management0",
+      "config": {
+        "enabled": true
+      },
+      "subinterfaces": {
+        "subinterface": [
+          {
+            "index": 0,
+            "openconfig-if-ip:ipv4": {
+              "addresses": {
+                "address": [
+                  {
+                    "ip": "172.20.20.18",
+                    "config": {
+                      "ip": "172.20.20.18",
+                      "prefix-length": "24"
+                    }
+                  }
+                ]
+              },
+              "config": {
+                "enabled": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Ethernet8",
+      "config": {
+        "enabled": true
+      },
+      "subinterfaces": {
+        "subinterface": []
+      }
+    }
+  ]
+}

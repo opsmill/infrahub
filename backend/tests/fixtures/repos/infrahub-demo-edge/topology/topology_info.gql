@@ -1,0 +1,36 @@
+query {
+  InfraDevice {
+    edges {
+      node {
+        name {
+          value
+        }
+        interfaces {
+          edges {
+            node {
+              id
+              role {
+                node {
+                  name {
+                    value
+                  }
+                }
+              }
+              ... on InfraInterfaceL3 {
+                ip_addresses {
+                  edges {
+                    node {
+                      address {
+                        value
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
