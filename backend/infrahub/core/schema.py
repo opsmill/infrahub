@@ -436,6 +436,7 @@ class BaseNodeSchema(BaseSchemaModel):
     include_in_menu: Optional[bool] = Field(default=None)
     menu_placement: Optional[str] = Field(default=None)
     icon: Optional[str] = Field(default=None)
+    label: Optional[str]
 
     _exclude_from_hash: List[str] = ["attributes", "relationships"]
     _sort_by: List[str] = ["name"]
@@ -445,6 +446,10 @@ class BaseNodeSchema(BaseSchemaModel):
         if self.namespace == "Attribute":
             return self.name
         return self.namespace + self.name
+
+    @property
+    def menu_title(self) -> str:
+        return self.label or self.name
 
     def __hash__(self):
         """Return a hash of the object.
@@ -576,12 +581,10 @@ class BaseNodeSchema(BaseSchemaModel):
 class GenericSchema(BaseNodeSchema):
     """A Generic can be either an Interface or a Union depending if there are some Attributes or Relationships defined."""
 
-    label: Optional[str]
     used_by: List[str] = Field(default_factory=list)
 
 
 class NodeSchema(BaseNodeSchema):
-    label: Optional[str]
     inherit_from: List[str] = Field(default_factory=list)
     groups: Optional[List[str]] = Field(default_factory=list)
 
@@ -1357,7 +1360,7 @@ core_models = {
             "description": "Group of nodes of any kind.",
             "include_in_menu": True,
             "icon": "mdi:account-group",
-            "label": "StandardGroup",
+            "label": "Standard Group",
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
