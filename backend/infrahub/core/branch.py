@@ -39,7 +39,12 @@ from infrahub.core.query.node import NodeDeleteQuery, NodeListGetInfoQuery
 from infrahub.core.registry import get_branch, registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import add_relationship, update_relationships_to
-from infrahub.exceptions import BranchNotFound, ValidationError
+from infrahub.exceptions import (
+    BranchNotFound,
+    DiffFromRequiredOnDefaultBranchError,
+    DiffRangeValidationError,
+    ValidationError,
+)
 from infrahub.message_bus import messages
 from infrahub.message_bus.responses import DiffNamesResponse
 
@@ -1035,7 +1040,9 @@ class Diff:
         self.branch_support = branch_support or [BranchSupportType.AWARE]
 
         if not diff_from and self.branch.is_default:
-            raise ValueError(f"diff_from is mandatory when diffing on the default branch `{self.branch.name}`.")
+            raise DiffFromRequiredOnDefaultBranchError(
+                f"diff_from is mandatory when diffing on the default branch `{self.branch.name}`."
+            )
 
         # If diff from hasn't been provided, we'll use the creation of the branch as the starting point
         if diff_from:
@@ -1047,7 +1054,7 @@ class Diff:
         self.diff_to = Timestamp(diff_to)
 
         if self.diff_to < self.diff_from:
-            raise ValueError("diff_to must be later than diff_from")
+            raise DiffRangeValidationError("diff_to must be later than diff_from")
 
         # Results organized by Branch
         self._results: Dict[str, dict] = defaultdict(
