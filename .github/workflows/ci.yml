@@ -388,7 +388,11 @@ jobs:
   #       run: invoke demo.status
 
   E2E-testing-neo4j:
-    needs: ["frontend-tests", "backend-tests-default", "python-sdk-tests"]
+    needs:
+      - javascript-lint
+      - files-changed
+      - yaml-lint
+      - python-lint
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
