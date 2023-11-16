@@ -134,7 +134,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
 
   const handleDeleteRelationship = async (id: string) => {
     if (onDeleteRelationship) {
-      await onDeleteRelationship(id);
+      await onDeleteRelationship(relationshipSchema.name, id);
 
       setShowAddDrawer(false);
 
@@ -148,7 +148,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
       .filter((item: any) => item.id !== id);
 
     const mutationString = updateObjectWithId({
-      name: schema.name,
+      kind: schema.kind,
       data: stringifyWithoutQuotes({
         id: objectid,
         [relationshipSchema.name]: newList,
@@ -615,6 +615,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
             }}
           />
         </SlideOver>
+
         {relatedRowToDelete && (
           <ModalDelete
             title="Delete"
