@@ -4,12 +4,14 @@ from infrahub_sdk import InfrahubClient
 
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import InitializationError
+from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubMessage, InfrahubResponse, Meta
 from infrahub.message_bus.messages import ROUTING_KEY_MAP
 from infrahub.message_bus.types import MessageTTL
 
 from .adapters.cache import InfrahubCache
 from .adapters.message_bus import InfrahubMessageBus
+from .protocols import InfrahubLogger
 
 
 class InfrahubServices:
@@ -19,11 +21,13 @@ class InfrahubServices:
         client: Optional[InfrahubClient] = None,
         database: Optional[InfrahubDatabase] = None,
         message_bus: Optional[InfrahubMessageBus] = None,
+        log: Optional[InfrahubLogger] = None,
     ):
         self.cache = cache or InfrahubCache()
         self._client = client
         self._database = database
         self.message_bus = message_bus or InfrahubMessageBus()
+        self.log = log or get_logger()
 
     @property
     def client(self) -> InfrahubClient:
