@@ -102,6 +102,11 @@ const getFormStructureForCreateEdit = (
       }));
     }
 
+    if (attribute.read_only) {
+      // Hide read-only attributes
+      return;
+    }
+
     formFields.push({
       name: attribute.name + ".value",
       kind: attribute.kind as SchemaAttributeType,
@@ -136,6 +141,11 @@ const getFormStructureForCreateEdit = (
         relationship.kind === "Parent"
     )
     .forEach((relationship) => {
+      if (relationship.read_only) {
+        // Hide read-only relationship
+        return;
+      }
+
       let options: SelectOption[] = [];
 
       const isInherited = generics.find((g) => g.kind === relationship.peer);
