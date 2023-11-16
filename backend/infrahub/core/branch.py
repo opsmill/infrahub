@@ -39,7 +39,12 @@ from infrahub.core.query.node import NodeDeleteQuery, NodeListGetInfoQuery
 from infrahub.core.registry import get_branch, registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import add_relationship, update_relationships_to
-from infrahub.exceptions import BranchNotFound, ValidationError
+from infrahub.exceptions import (
+    BranchNotFound,
+    DiffFromRequiredOnDefaultBranchError,
+    DiffRangeValidationError,
+    ValidationError,
+)
 from infrahub.message_bus import messages
 from infrahub.message_bus.responses import DiffNamesResponse
 
@@ -48,18 +53,6 @@ if TYPE_CHECKING:
     from infrahub.message_bus.rpc import InfrahubRpcClient
 
 # pylint: disable=redefined-builtin,too-many-statements,too-many-lines,too-many-branches,too-many-public-methods
-
-
-class DiffError(ValueError):
-    ...
-
-
-class DiffRangeValidationError(DiffError):
-    ...
-
-
-class DiffFromRequiredOnDefaultBranchError(DiffError):
-    ...
 
 
 class Branch(StandardNode):

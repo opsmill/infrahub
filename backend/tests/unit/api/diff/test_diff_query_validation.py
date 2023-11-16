@@ -1,5 +1,4 @@
 import pytest
-from infrahub_sdk.timestamp import Timestamp
 from pydantic import ValidationError
 
 from infrahub.api.diff.validation_models import DiffQueryValidated
@@ -10,9 +9,7 @@ class TestDiffQueryValidation:
     def setup_method(self):
         self.branch = Branch(name="abc")
         self.time_start_str = "2023-06-11"
-        self.time_start_stamp = Timestamp(self.time_start_str)
         self.time_end_str = "2023-06-13"
-        self.time_end_stamp = Timestamp(self.time_end_str)
 
     def test_valid_query(self):
         query = DiffQueryValidated(
@@ -20,8 +17,8 @@ class TestDiffQueryValidation:
         )
 
         assert query.branch == self.branch
-        assert query.time_from == self.time_start_stamp
-        assert query.time_to == self.time_end_stamp
+        assert query.time_from == self.time_start_str
+        assert query.time_to == self.time_end_str
         assert query.branch_only is True
 
     def test_invalid_time_from(self):

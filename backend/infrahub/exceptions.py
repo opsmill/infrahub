@@ -222,3 +222,18 @@ class ValidationError(Error):
             return ", ".join([f"{message} at {location}" for location, message in self.messages.items()])
 
         return f"{self.message} at {self.location or '<Undefined>'}"
+
+
+class DiffError(Error):
+    HTTP_CODE = 400
+
+    def __init__(self, message: str):
+        self.message = message
+
+
+class DiffRangeValidationError(DiffError):
+    ...
+
+
+class DiffFromRequiredOnDefaultBranchError(DiffError):
+    ...
