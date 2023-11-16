@@ -14,7 +14,7 @@ interface iProps {
 }
 
 export default function ModalDelete(props: iProps) {
-  const { title, description, onCancel, onDelete, open, setOpen, isLoading } = props;
+  const { title, description, onCancel, onDelete, open, setOpen, isLoading, ...otherProps } = props;
   const cancelButtonRef = useRef(null);
 
   return (
@@ -41,7 +41,9 @@ export default function ModalDelete(props: iProps) {
               leave="ease-in duration-200"
               leaveFrom="opacity-100 translate-y-0 sm:scale-100"
               leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
-              <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-custom-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
+              <Dialog.Panel
+                className="relative transform overflow-hidden rounded-lg bg-custom-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg"
+                {...otherProps}>
                 <div className="bg-custom-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
                   <div className="sm:flex sm:items-start">
                     <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">

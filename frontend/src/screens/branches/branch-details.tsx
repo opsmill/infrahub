@@ -25,11 +25,12 @@ import useQuery from "../../hooks/useQuery";
 import { branchesState } from "../../state/atoms/branches.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { objectToString } from "../../utils/common";
-import { constructPath } from "../../utils/fetch";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
 import { getFormStructure } from "../proposed-changes/conversations";
+import { constructPath, getCurrentQsp } from "../../utils/fetch";
+import { QSP } from "../../config/qsp";
 
 export const BranchDetails = () => {
   const { branchname } = useParams();
@@ -143,12 +144,20 @@ export const BranchDetails = () => {
               },
             });
 
-            navigate(constructPath("/branches"));
+            const queryStringParams = getCurrentQsp();
+            const isDeletedBranchSelected = queryStringParams.get(QSP.BRANCH) === branch.name;
+
+            const path = isDeletedBranchSelected
+              ? constructPath("/branches", [{ name: QSP.BRANCH, exclude: true }])
+              : constructPath("/branches");
+
+            navigate(path);
 
             window.location.reload();
           }}
-          open={!!displayModal}
+          open={displayModal}
           setOpen={() => setDisplayModal(false)}
+          data-cy="modal-branch-delete"
         />
       )}
 
