@@ -3,7 +3,11 @@ import json
 from typing import Protocol, runtime_checkable
 
 import httpx
-from pydantic import BaseSettings
+
+try:
+    from pydantic import v1 as pydantic
+except ImportError:
+    import pydantic  # type: ignore[no-redef]
 
 from infrahub_sdk.utils import generate_request_filename
 
@@ -19,7 +23,7 @@ class Recorder(Protocol):
         ...
 
 
-class JSONRecorder(BaseSettings):
+class JSONRecorder(pydantic.BaseSettings):
     directory: str = "."
     host: str = ""
 

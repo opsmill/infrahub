@@ -1,6 +1,9 @@
 from typing import Any, Dict, Optional
 
-from pydantic import BaseSettings, Field, root_validator, validator
+try:
+    from pydantic import v1 as pydantic
+except ImportError:
+    import pydantic  # type: ignore[no-redef]
 
 from infrahub_sdk.playback import JSONPlayback
 from infrahub_sdk.recorder import JSONRecorder, Recorder, RecorderType
@@ -8,25 +11,27 @@ from infrahub_sdk.types import AsyncRequester, RequesterTransport, SyncRequester
 from infrahub_sdk.utils import is_valid_url
 
 
-class Config(BaseSettings):
-    address: str = Field(
+class Config(pydantic.BaseSettings):
+    address: str = pydantic.Field(
         default="http://localhost:8000",
         description="The URL to use when connecting to Infrahub.",
     )
-    api_token: Optional[str] = Field(default=None, description="API token for authentication against Infrahub.")
-    username: Optional[str] = Field(default=None, description="Username for accessing Infrahub", min_length=1)
-    password: Optional[str] = Field(default=None, description="Password for accessing Infrahub", min_length=1)
-    recorder: RecorderType = Field(
+    api_token: Optional[str] = pydantic.Field(
+        default=None, description="API token for authentication against Infrahub."
+    )
+    username: Optional[str] = pydantic.Field(default=None, description="Username for accessing Infrahub", min_length=1)
+    password: Optional[str] = pydantic.Field(default=None, description="Password for accessing Infrahub", min_length=1)
+    recorder: RecorderType = pydantic.Field(
         default=RecorderType.NONE,
         description="Select builtin recorder for later replay.",
     )
-    custom_recorder: Optional[Recorder] = Field(
+    custom_recorder: Optional[Recorder] = pydantic.Field(
         default=None,
         description="Provides a way to record responses from the Infrahub API",
     )
     requester: Optional[AsyncRequester] = None
-    timeout: int = Field(default=10, description="Default connection timeout in seconds")
-    transport: RequesterTransport = Field(
+    timeout: int = pydantic.Field(default=10, description="Default connection timeout in seconds")
+    transport: RequesterTransport = pydantic.Field(
         default=RequesterTransport.HTTPX,
         description="Set an alternate transport using a predefined option",
     )
@@ -37,7 +42,8 @@ class Config(BaseSettings):
         case_sensitive = False
         validate_assignment = True
 
-    @root_validator(pre=True)
+    @pydantic.root_validator(pre=True)
+    @classmethod
     @classmethod
     def validate_credentials_input(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         has_username = "username" in values
@@ -46,14 +52,16 @@ class Config(BaseSettings):
             raise ValueError("Both 'username' and 'password' needs to be set")
         return values
 
-    @root_validator(pre=True)
+    @pydantic.root_validator(pre=True)
+    @classmethod
     @classmethod
     def set_custom_recorder(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         if values.get("recorder") == RecorderType.JSON and "custom_recorder" not in values:
             values["custom_recorder"] = JSONRecorder()
         return values
 
-    @root_validator(pre=True)
+    @pydantic.root_validator(pre=True)
+    @classmethod
     @classmethod
     def set_transport(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         if values.get("transport") == RequesterTransport.JSON:
@@ -65,14 +73,16 @@ class Config(BaseSettings):
 
         return values
 
-    @root_validator(pre=True)
+    @pydantic.root_validator(pre=True)
+    @classmethod
     @classmethod
     def validate_mix_authentication_schemes(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         if values.get("password") and values.get("api_token"):
             raise ValueError("Unable to combine password with token based authentication")
         return values
 
-    @validator("address")
+    @pydantic.validator("address")
+    @classmethod
     @classmethod
     def validate_address(cls, value: str) -> str:
         if is_valid_url(value):

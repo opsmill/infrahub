@@ -9,7 +9,12 @@ from typing import List, Optional, Tuple
 
 import jinja2
 import typer
-from pydantic import ValidationError
+
+try:
+    from pydantic import v1 as pydantic
+except ImportError:
+    import pydantic
+
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.syntax import Syntax
@@ -132,7 +137,7 @@ def render(  # pylint: disable=too-many-branches,too-many-statements
 
     try:
         data = InfrahubRepositoryConfig(**config_file_data)
-    except ValidationError as exc:
+    except pydantic.ValidationError as exc:
         console.print(f"[red]Repository config file not valid, found {len(exc.errors())} error(s)")
         for error in exc.errors():
             loc_str = [str(item) for item in error["loc"]]
