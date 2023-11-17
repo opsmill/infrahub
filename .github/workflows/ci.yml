@@ -138,7 +138,7 @@ jobs:
           pipx install poetry
           pip install invoke toml
       - name: Set Version of Pydantic
-        run: poetry install pydantic@${{ matrix.pydantic-version }}
+        run: poetry add pydantic@${{ matrix.pydantic-version }}
         working-directory: python_sdk/
       - name: "Build Test Image"
         run: "invoke test.build"
