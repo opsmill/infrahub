@@ -6,9 +6,9 @@ import toml
 import typer
 
 try:
-    from pydantic import v1 as pydantic
+    from pydantic import v1 as pydantic  # type: ignore[attr-defined]
 except ImportError:
-    import pydantic
+    import pydantic  # type: ignore[no-redef]
 
 DEFAULT_CONFIG_FILE = "infrahubctl.toml"
 ENVVAR_CONFIG_FILE = "INFRAHUBCTL_CONFIG"
