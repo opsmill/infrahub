@@ -2,7 +2,7 @@ import { gql, useReactiveVar } from "@apollo/client";
 import { Menu, Transition } from "@headlessui/react";
 import { MagnifyingGlassIcon } from "@heroicons/react/20/solid";
 import { Bars3BottomLeftIcon } from "@heroicons/react/24/outline";
-import { formatISO, isEqual } from "date-fns";
+import { formatISO, isEqual, isValid } from "date-fns";
 import { useAtom } from "jotai";
 import React, { Fragment, useContext, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -19,8 +19,7 @@ import { getProfileDetails } from "../../graphql/queries/profile/getProfileDetai
 import { dateVar } from "../../graphql/variables/dateVar";
 import useQuery from "../../hooks/useQuery";
 import { schemaState } from "../../state/atoms/schema.atom";
-import { classNames, parseJwt } from "../../utils/common";
-import LoadingScreen from "../loading-screen/loading-screen";
+import { classNames, debounce, parseJwt } from "../../utils/common";
 import { userNavigation } from "./navigation-list";
 
 interface Props {
@@ -60,6 +59,11 @@ export default function Header(props: Props) {
   const { error, loading, data } = useQuery(query, { skip: !schema || !accountId });
 
   useEffect(() => {
+    // Remove the date from the state
+    if (!qspDate || (qspDate && !isValid(new Date(qspDate)))) {
+      dateVar(null);
+    }
+
     if (qspDate) {
       const newQspDate = new Date(qspDate);
 
@@ -67,11 +71,6 @@ export default function Header(props: Props) {
       if (!date || (date && !isEqual(newQspDate, date))) {
         dateVar(newQspDate);
       }
-    }
-
-    // Remove the date from the state
-    if (!qspDate) {
-      dateVar(null);
     }
   }, [date, qspDate]);
 
@@ -84,18 +83,20 @@ export default function Header(props: Props) {
     }
   };
 
+  const debouncedHandleDateChange = debounce(handleDateChange);
+
   const handleClickNow = () => {
     // Undefined is needed to remove a parameter from the QSP
     setQspDate(undefined);
   };
 
-  if (loading || !schema) {
-    return (
-      <div className="z-10 flex h-16 flex-shrink-0 bg-custom-white shadow">
-        <LoadingScreen size={32} hideText />
-      </div>
-    );
-  }
+  // if (loading || !schema) {
+  //   return (
+  //     <div className="z-10 flex h-16 flex-shrink-0 bg-custom-white shadow">
+  //       <LoadingScreen size={32} hideText />
+  //     </div>
+  //   );
+  // }
 
   const profile = data?.AccountProfile;
 
@@ -147,7 +148,11 @@ export default function Header(props: Props) {
         </div>
         <div className="ml-4 flex items-center md:ml-6">
           <div className="mr-4">
-            <DatePicker date={date} onChange={handleDateChange} onClickNow={handleClickNow} />
+            <DatePicker
+              date={date}
+              onChange={debouncedHandleDateChange}
+              onClickNow={handleClickNow}
+            />
           </div>
 
           <BranchSelector />
