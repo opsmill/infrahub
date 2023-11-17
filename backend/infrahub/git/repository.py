@@ -1024,10 +1024,10 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         await self.import_schema_files(branch_name=branch_name, commit=commit)
         await self.import_all_graphql_query(branch_name=branch_name, commit=commit)
-        await self.import_all_yaml_files(branch_name=branch_name, commit=commit)
         config_file = await self.get_repository_config(branch_name=branch_name, commit=commit)
         if config_file:
             await self.import_all_python_files(branch_name=branch_name, commit=commit, config_file=config_file)
+        await self.import_all_yaml_files(branch_name=branch_name, commit=commit)
 
     async def import_objects_rfiles(self, branch_name: str, commit: str, data: List[dict]):
         LOGGER.debug(f"{self.name} | Importing all RFiles in branch {branch_name} ({commit}) ")
