@@ -362,7 +362,8 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                 )
                               }
                               key={index}
-                              className="hover:bg-gray-50 cursor-pointer">
+                              className="hover:bg-gray-50 cursor-pointer"
+                              data-cy="relationship-row">
                               {newColumns?.map((column) => (
                                 <td
                                   key={node.id + "-" + column.name}
@@ -440,7 +441,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                   onClick={() => {
                                     setRelatedRowToDelete(node);
                                   }}
-                                  data-cy="remove-relationship">
+                                  data-cy="relationship-delete-button">
                                   <img src={UnlinkIcon} className="w-4 h-4" />
                                 </Button>
                               </td>
@@ -538,7 +539,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
               disabled={!auth?.permissions?.write}
               onClick={() => setShowAddDrawer(true)}
               className="p-3 ml-2 bg-custom-blue-500 text-sm hover:bg-custom-blue-500 focus:ring-custom-blue-500 focus:ring-offset-gray-50 focus:ring-offset-2"
-              data-cy="add-new-relationship">
+              data-cy="open-relationship-form-button">
               <PlusIcon className="h-7 w-7 text-custom-white" aria-hidden="true" />
             </RoundedButton>
           </div>
