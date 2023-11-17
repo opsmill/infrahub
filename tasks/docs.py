@@ -7,7 +7,7 @@ from .utils import ESCAPED_REPO_PATH
 
 @task
 def build(context: Context):
-    """Run documentation server in development mode."""
+    """Build documentation website."""
     exec_cmd = "npx retype build docs"
     with context.cd(ESCAPED_REPO_PATH):
         output = context.run(exec_cmd)
