@@ -143,9 +143,9 @@ jobs:
       - name: "Install Package"
         run: "poetry install"
       - name: "Pylint Tests"
-        run: "invoke sdk.pylint"
+        run: "poetry run pylint infrahub_sdk/ infrahub_ctl/"
       - name: "Mypy Tests"
-        run: "invoke sdk.mypy"
+        run: "poetry run mypy --show-error-codes infrahub_sdk/ infrahub_ctl/"
       - name: "Unit Tests"
         run: "poetry run pytest -v --cov=infrahub_sdk tests/unit"
         env:
