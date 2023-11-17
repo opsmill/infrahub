@@ -399,7 +399,7 @@ jobs:
   #       run: invoke demo.status
 
   E2E-testing-neo4j:
-    needs: ["frontend-tests", "backend-tests-default", "python-sdk-tests"]
+    needs: ["frontend-tests", "backend-tests-default", "python-sdk-integration-tests"]
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
