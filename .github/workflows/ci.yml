@@ -140,16 +140,14 @@ jobs:
       - name: Set Version of Pydantic
         run: poetry add pydantic@${{ matrix.pydantic-version }}
         working-directory: python_sdk/
-      - name: "Build Test Image"
-        run: "invoke test.build"
-      - name: "Pull External Docker Images"
-        run: "invoke test.pull"
+      - name: "Install Package"
+        run: "poetry install"
       - name: "Pylint Tests"
-        run: "invoke sdk.pylint --docker"
+        run: "invoke sdk.pylint"
       - name: "Mypy Tests"
-        run: "invoke sdk.mypy --docker"
+        run: "invoke sdk.mypy"
       - name: "Unit Tests"
-        run: "invoke sdk.test-unit"
+        run: "poetry run pytest -v --cov=infrahub_sdk tests/unit"
         env:
           BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_SDK_UNIT }}
       - name: "Coveralls : Unit Tests"
