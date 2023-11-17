@@ -44,7 +44,6 @@ class Config(pydantic.BaseSettings):
 
     @pydantic.root_validator(pre=True)
     @classmethod
-    @classmethod
     def validate_credentials_input(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         has_username = "username" in values
         has_password = "password" in values
@@ -54,14 +53,12 @@ class Config(pydantic.BaseSettings):
 
     @pydantic.root_validator(pre=True)
     @classmethod
-    @classmethod
     def set_custom_recorder(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         if values.get("recorder") == RecorderType.JSON and "custom_recorder" not in values:
             values["custom_recorder"] = JSONRecorder()
         return values
 
     @pydantic.root_validator(pre=True)
-    @classmethod
     @classmethod
     def set_transport(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         if values.get("transport") == RequesterTransport.JSON:
@@ -75,14 +72,12 @@ class Config(pydantic.BaseSettings):
 
     @pydantic.root_validator(pre=True)
     @classmethod
-    @classmethod
     def validate_mix_authentication_schemes(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         if values.get("password") and values.get("api_token"):
             raise ValueError("Unable to combine password with token based authentication")
         return values
 
     @pydantic.validator("address")
-    @classmethod
     @classmethod
     def validate_address(cls, value: str) -> str:
         if is_valid_url(value):
