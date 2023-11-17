@@ -139,7 +139,7 @@ jobs:
       - name: "Setup environment"
         run: |
           pipx install poetry
-          poetry config virtualenvs.create false
+          poetry config virtualenvs.prefer-active-python true
           pip install invoke toml
       - name: Set Version of Pydantic
         run: poetry add pydantic@${{ matrix.pydantic-version }}
