@@ -1,8 +1,10 @@
+import { useReactiveVar } from "@apollo/client";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/alert";
 import { CONFIG } from "../../config/config";
+import { branchVar } from "../../graphql/variables/branchVar";
 import logo from "../../images/Infrahub-SVG-hori.svg";
 import { fetchUrl } from "../../utils/fetch";
 import LoadingScreen from "../loading-screen/loading-screen";
@@ -12,6 +14,8 @@ import { Footer } from "./footer";
 export default function DesktopMenu() {
   const navigate = useNavigate();
 
+  const branch = useReactiveVar(branchVar);
+
   const [isLoading, setIsLoading] = useState(false);
   const [menu, setMenu] = useState([]);
 
@@ -19,7 +23,7 @@ export default function DesktopMenu() {
     try {
       setIsLoading(true);
 
-      const result = await fetchUrl(CONFIG.MENU_URL);
+      const result = await fetchUrl(CONFIG.MENU_URL(branch?.name));
 
       setMenu(result);
 
@@ -33,7 +37,7 @@ export default function DesktopMenu() {
 
   useEffect(() => {
     fecthMenu();
-  }, []);
+  }, [branch?.name]);
 
   return (
     <div className="z-100 hidden w-64 md:visible md:inset-y-0 md:flex md:flex-col">
