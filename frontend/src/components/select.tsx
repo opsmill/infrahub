@@ -25,7 +25,7 @@ type SelectProps = {
 };
 
 export const Select = (props: SelectProps) => {
-  const { options, value, onChange, disabled, error, direction } = props;
+  const { options, value, onChange, disabled, error, direction, ...otherProps } = props;
 
   const [query, setQuery] = useState("");
 
@@ -55,7 +55,8 @@ export const Select = (props: SelectProps) => {
         setSelectedOption(item);
         onChange(item);
       }}
-      disabled={disabled}>
+      disabled={disabled}
+      {...otherProps}>
       <div className="relative mt-1">
         <Combobox.Input
           as={Input}

@@ -45,11 +45,12 @@ describe("Branches creation and deletion", () => {
     cy.visit("/branches/test456?branch=test123");
 
     cy.contains("button", "Delete").click();
-    cy.get("[data-cy='modal-branch-delete']").contains("h3", "Delete");
-    cy.get("[data-cy='modal-branch-delete']").contains(
-      "Are you sure you want to remove the the branch `test456`?"
-    );
-    cy.get("[data-cy='modal-branch-delete']").contains("button", "Delete").click();
+
+    cy.get("[data-cy='modal-delete']").within(() => {
+      cy.contains("h3", "Delete").should("be.visible");
+      cy.contains("Are you sure you want to remove the branch `test456`?").should("be.visible");
+      cy.contains("button", "Delete").click();
+    });
 
     cy.get("[data-cy='branch-select-menu']").contains("test123");
     cy.url().should("include", "/branches").and("include", "branch=test123");
@@ -63,11 +64,12 @@ describe("Branches creation and deletion", () => {
     cy.visit("/branches/test123?branch=test123");
 
     cy.contains("button", "Delete").click();
-    cy.get("[data-cy='modal-branch-delete']").contains("h3", "Delete");
-    cy.get("[data-cy='modal-branch-delete']").contains(
-      "Are you sure you want to remove the the branch `test123`?"
-    );
-    cy.get("[data-cy='modal-branch-delete']").contains("button", "Delete").click();
+
+    cy.get("[data-cy='modal-delete']").within(() => {
+      cy.contains("h3", "Delete").should("be.visible");
+      cy.contains("Are you sure you want to remove the branch `test123`?").should("be.visible");
+      cy.contains("button", "Delete").click();
+    });
 
     cy.get("[data-cy='branch-select-menu']").contains("main");
     cy.url().should("not.include", "branch=test123");

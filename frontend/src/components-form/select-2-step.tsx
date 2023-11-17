@@ -118,6 +118,7 @@ export const OpsSelect2Step = (props: Props) => {
             setSelectedLeft(options.filter((option) => option.id === value.id)[0]);
           }}
           isProtected={isProtected}
+          data-cy="select2step-1"
         />
       </div>
       <div className="sm:col-span-3 ml-2 mt-1">
@@ -137,6 +138,7 @@ export const OpsSelect2Step = (props: Props) => {
               });
             }}
             isProtected={isProtected}
+            data-cy="select2step-2"
           />
         )}
       </div>

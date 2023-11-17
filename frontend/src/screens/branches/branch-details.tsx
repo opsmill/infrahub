@@ -129,7 +129,7 @@ export const BranchDetails = () => {
           title="Delete"
           description={
             <>
-              Are you sure you want to remove the the branch
+              Are you sure you want to remove the branch
               <br /> <b>`{branch?.name}`</b>?
             </>
           }
@@ -157,7 +157,6 @@ export const BranchDetails = () => {
           }}
           open={displayModal}
           setOpen={() => setDisplayModal(false)}
-          data-cy="modal-branch-delete"
         />
       )}
 
