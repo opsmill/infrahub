@@ -126,6 +126,9 @@ jobs:
     timeout-minutes: 30
     env:
       INFRAHUB_DB_TYPE: memgraph
+    defaults:
+      run:
+        working-directory: python_sdk/
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v3"
@@ -139,7 +142,6 @@ jobs:
           pip install invoke toml
       - name: Set Version of Pydantic
         run: poetry add pydantic@${{ matrix.pydantic-version }}
-        working-directory: python_sdk/
       - name: "Install Package"
         run: "poetry install"
       - name: "Pylint Tests"
