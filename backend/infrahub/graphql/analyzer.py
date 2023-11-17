@@ -4,6 +4,7 @@ from graphql import (
     DocumentNode,
     GraphQLError,
     GraphQLSchema,
+    OperationDefinitionNode,
     OperationType,
     parse,
     validate,
@@ -49,7 +50,11 @@ class GraphQLQueryAnalyzer:
 
     @property
     def operations(self) -> Set[OperationType]:
-        return {definition.operation for definition in self.document.definitions}
+        return {
+            definition.operation
+            for definition in self.document.definitions
+            if isinstance(definition, OperationDefinitionNode)
+        }
 
     @property
     def contains_mutation(self) -> bool:
