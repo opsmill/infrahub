@@ -47,6 +47,7 @@ from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 from infrahub.api.dependencies import api_key_scheme, cookie_auth_scheme, jwt_scheme
 from infrahub.auth import AccountSession, authentication_token
 from infrahub.exceptions import AuthorizationError, PermissionDeniedError
+from infrahub.graphql.analyzer import GraphQLQueryAnalyzer
 
 # pylint: disable=no-name-in-module,unused-argument,ungrouped-imports,raise-missing-from
 
@@ -211,16 +212,16 @@ class InfrahubGraphQLApp:
 
         operation = operations
         query = operation["query"]
+        schema_branch = registry.schema.get_schema_branch(name=branch.name)
+        graphql_schema = await schema_branch.get_graphql_schema(db=db)
+        analyzed_query = GraphQLQueryAnalyzer(query=query, schema=graphql_schema, branch=branch)
+        self._validate_authentication(account_session=account_session, analyzed_query=analyzed_query)
+
         variable_values = operation.get("variables")
         operation_name = operation.get("operationName")
-        self._validate_authentication(account_session=account_session, query=query)
-
         context_value = await self._get_context_value(
             request=request, db=db, branch=branch, account_session=account_session
         )
-
-        schema_branch = registry.schema.get_schema_branch(name=branch.name)
-        graphql_schema = await schema_branch.get_graphql_schema(db=db)
 
         result = await graphql(
             schema=graphql_schema,
@@ -431,19 +432,15 @@ class InfrahubGraphQLApp:
             await websocket.send_json({"type": GQL_COMPLETE, "id": operation_id})
 
     @staticmethod
-    def _validate_authentication(account_session: AccountSession, query: str) -> None:
-        document = parse(query)
-        query_type = document.definitions[0].operation.value
-
+    def _validate_authentication(account_session: AccountSession, analyzed_query: GraphQLQueryAnalyzer) -> None:
         if account_session.authenticated:
             if not account_session.read_only:
                 return
-            if account_session.read_only and query_type != "mutation":
+            if account_session.read_only and not analyzed_query.contains_mutation:
                 return
-
             raise PermissionDeniedError("The current account is not authorized to perform this operation")
 
-        if config.SETTINGS.main.allow_anonymous_access and query_type != "mutation":
+        if config.SETTINGS.main.allow_anonymous_access and not analyzed_query.contains_mutation:
             return
 
         raise AuthorizationError("Authentication is required to perform this operation")

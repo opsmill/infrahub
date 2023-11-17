@@ -52,6 +52,10 @@ class GraphQLQueryAnalyzer:
         return {definition.operation for definition in self.document.definitions}
 
     @property
+    def contains_mutation(self) -> bool:
+        return OperationType.MUTATION in self.operations
+
+    @property
     def variables(self) -> List[GraphQLQueryVariable]:
         response = []
         for definition in self.document.definitions:
@@ -101,7 +105,7 @@ class GraphQLQueryAnalyzer:
         models = set()
 
         if not self.schema and not self.branch:
-            raise ValueError("Schema and Branch msut be provided to extract the models in use.")
+            raise ValueError("Schema and Branch must be provided to extract the models in use.")
 
         for definition in self.document.definitions:
             fields = await extract_fields(definition.selection_set)
