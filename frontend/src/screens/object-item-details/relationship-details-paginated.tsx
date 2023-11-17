@@ -439,7 +439,8 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                   buttonType={BUTTON_TYPES.INVISIBLE}
                                   onClick={() => {
                                     setRelatedRowToDelete(node);
-                                  }}>
+                                  }}
+                                  data-cy="remove-relationship">
                                   <img src={UnlinkIcon} className="w-4 h-4" />
                                 </Button>
                               </td>
@@ -536,7 +537,8 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
             <RoundedButton
               disabled={!auth?.permissions?.write}
               onClick={() => setShowAddDrawer(true)}
-              className="p-3 ml-2 bg-custom-blue-500 text-sm hover:bg-custom-blue-500 focus:ring-custom-blue-500 focus:ring-offset-gray-50 focus:ring-offset-2">
+              className="p-3 ml-2 bg-custom-blue-500 text-sm hover:bg-custom-blue-500 focus:ring-custom-blue-500 focus:ring-offset-gray-50 focus:ring-offset-2"
+              data-cy="add-new-relationship">
               <PlusIcon className="h-7 w-7 text-custom-white" aria-hidden="true" />
             </RoundedButton>
           </div>

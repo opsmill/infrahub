@@ -69,7 +69,8 @@ export default function ModalDelete(props: iProps) {
                     onClick={onDelete}
                     buttonType={BUTTON_TYPES.CANCEL}
                     className="ml-2"
-                    isLoading={isLoading}>
+                    isLoading={isLoading}
+                    data-cy="modal-delete-confirm">
                     Delete
                   </Button>
                   <Button onClick={onCancel} ref={cancelButtonRef}>
