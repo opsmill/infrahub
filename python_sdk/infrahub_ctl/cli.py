@@ -11,9 +11,9 @@ import jinja2
 import typer
 
 try:
-    from pydantic import v1 as pydantic
+    from pydantic import v1 as pydantic  # type: ignore[attr-defined]
 except ImportError:
-    import pydantic
+    import pydantic  # type: ignore[no-redef]
 
 from rich.console import Console
 from rich.logging import RichHandler

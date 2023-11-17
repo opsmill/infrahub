@@ -1,7 +1,7 @@
 from typing import Any, Dict, Optional
 
 try:
-    from pydantic import v1 as pydantic
+    from pydantic import v1 as pydantic  # type: ignore[attr-defined]
 except ImportError:
     import pydantic  # type: ignore[no-redef]
 
