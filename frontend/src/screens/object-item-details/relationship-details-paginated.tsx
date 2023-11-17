@@ -134,7 +134,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
 
   const handleDeleteRelationship = async (id: string) => {
     if (onDeleteRelationship) {
-      await onDeleteRelationship(id);
+      await onDeleteRelationship(relationshipSchema.name, id);
 
       setShowAddDrawer(false);
 
@@ -148,7 +148,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
       .filter((item: any) => item.id !== id);
 
     const mutationString = updateObjectWithId({
-      name: schema.name,
+      kind: schema.kind,
       data: stringifyWithoutQuotes({
         id: objectid,
         [relationshipSchema.name]: newList,
@@ -362,7 +362,8 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                 )
                               }
                               key={index}
-                              className="hover:bg-gray-50 cursor-pointer">
+                              className="hover:bg-gray-50 cursor-pointer"
+                              data-cy="relationship-row">
                               {newColumns?.map((column) => (
                                 <td
                                   key={node.id + "-" + column.name}
@@ -439,7 +440,8 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                   buttonType={BUTTON_TYPES.INVISIBLE}
                                   onClick={() => {
                                     setRelatedRowToDelete(node);
-                                  }}>
+                                  }}
+                                  data-cy="relationship-delete-button">
                                   <img src={UnlinkIcon} className="w-4 h-4" />
                                 </Button>
                               </td>
@@ -536,7 +538,8 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
             <RoundedButton
               disabled={!auth?.permissions?.write}
               onClick={() => setShowAddDrawer(true)}
-              className="p-3 ml-2 bg-custom-blue-500 text-sm hover:bg-custom-blue-500 focus:ring-custom-blue-500 focus:ring-offset-gray-50 focus:ring-offset-2">
+              className="p-3 ml-2 bg-custom-blue-500 text-sm hover:bg-custom-blue-500 focus:ring-custom-blue-500 focus:ring-offset-gray-50 focus:ring-offset-2"
+              data-cy="open-relationship-form-button">
               <PlusIcon className="h-7 w-7 text-custom-white" aria-hidden="true" />
             </RoundedButton>
           </div>
@@ -615,6 +618,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
             }}
           />
         </SlideOver>
+
         {relatedRowToDelete && (
           <ModalDelete
             title="Delete"

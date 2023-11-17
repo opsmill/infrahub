@@ -64,7 +64,7 @@ export const Form = ({
   };
 
   return (
-    <form className="flex-1 flex flex-col w-full" onSubmit={handleSubmit(submit)}>
+    <form className="flex-1 flex flex-col w-full" onSubmit={handleSubmit(submit)} data-cy="form">
       <FormProvider {...formMethods}>
         <div className="space-y-12 px-4 flex-1">
           <div className="">

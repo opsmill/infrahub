@@ -2,22 +2,25 @@ import asyncio
 import logging
 import os
 import time
+from functools import partial
 from typing import Awaitable, Callable
 
 from asgi_correlation_id import CorrelationIdMiddleware
 from asgi_correlation_id.context import correlation_id
 from fastapi import FastAPI, Request, Response
 from fastapi.logger import logger
-from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from infrahub_sdk.timestamp import TimestampFormatError
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from pydantic import ValidationError
 from starlette_exporter import PrometheusMiddleware, handle_metrics
 
 import infrahub.config as config
 from infrahub import __version__
 from infrahub.api import router as api
 from infrahub.api.background import BackgroundRunner
+from infrahub.api.exception_handlers import generic_api_exception_handler
 from infrahub.core.initialization import initialization
 from infrahub.database import InfrahubDatabase, InfrahubDatabaseMode, get_db
 from infrahub.exceptions import Error
@@ -129,18 +132,18 @@ async def add_process_time_header(request: Request, call_next):
     return response
 
 
+@app.middleware("http")
+async def add_telemetry_span_exception(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
+    try:
+        return await call_next(request)
+    except Exception as exc:
+        add_span_exception(exc)
+        raise
+
+
 app.add_middleware(CorrelationIdMiddleware)
-
-
-@app.exception_handler(Error)
-async def api_exception_handler_base_infrahub_error(_: Request, exc: Error) -> JSONResponse:
-    """Generic API Exception handler."""
-
-    error = exc.api_response()
-    add_span_exception(exc)
-    return JSONResponse(status_code=exc.HTTP_CODE, content=error)
-
-
 app.add_middleware(
     PrometheusMiddleware,
     app_name="infrahub",
@@ -150,6 +153,10 @@ app.add_middleware(
     skip_paths=["/health"],
 )
 app.add_middleware(InfrahubCORSMiddleware)
+
+app.add_exception_handler(Error, generic_api_exception_handler)
+app.add_exception_handler(TimestampFormatError, partial(generic_api_exception_handler, http_code=400))
+app.add_exception_handler(ValidationError, partial(generic_api_exception_handler, http_code=400))
 
 app.add_route(path="/metrics", route=handle_metrics)
 app.add_route(path="/graphql", route=InfrahubGraphQLApp(playground=True), methods=["GET", "POST", "OPTIONS"])

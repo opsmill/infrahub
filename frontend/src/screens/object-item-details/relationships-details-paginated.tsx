@@ -81,11 +81,11 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
 
   const relationships = result?.length ? result[0]?.node[relationshipTab]?.edges : null;
 
-  const handleDeleteRelationship = async (id: string) => {
+  const handleDeleteRelationship = async (name: string, id: string) => {
     const mutationString = removeRelationship({
       data: stringifyWithoutQuotes({
         id: objectid,
-        name: "members",
+        name,
         nodes: [
           {
             id,
