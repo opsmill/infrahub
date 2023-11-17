@@ -721,31 +721,31 @@ pytz = ">2021.1"
 
 [[package]]
 name = "dagit"
-version = "1.5.8"
+version = "1.5.9"
 description = "Web UI for dagster."
 optional = false
 python-versions = "*"
 files = [
-    {file = "dagit-1.5.8-py3-none-any.whl", hash = "sha256:7fac1f954c7634d8f094587d59514d600a086943258b9ae41fbf8e73e0aae872"},
-    {file = "dagit-1.5.8.tar.gz", hash = "sha256:66df7996cb8dbbc8574206d7f269e2c277930e23a10c81d4f37c61f4885bd715"},
+    {file = "dagit-1.5.9-py3-none-any.whl", hash = "sha256:a01b8439bf15340449514e612763dd9e16c3afba6990f2d57566a6af23f22d40"},
+    {file = "dagit-1.5.9.tar.gz", hash = "sha256:1a584e9bb82596861e1c0f20176f3310421c6e11754c87236080c64b3b60760e"},
 ]
 
 [package.dependencies]
-dagster-webserver = "1.5.8"
+dagster-webserver = "1.5.9"
 
 [package.extras]
-notebook = ["dagster-webserver[notebook] (==1.5.8)"]
-test = ["dagster-webserver[test] (==1.5.8)"]
+notebook = ["dagster-webserver[notebook] (==1.5.9)"]
+test = ["dagster-webserver[test] (==1.5.9)"]
 
 [[package]]
 name = "dagster"
-version = "1.5.8"
+version = "1.5.9"
 description = "Dagster is an orchestration platform for the development, production, and observation of data assets."
 optional = false
 python-versions = "*"
 files = [
-    {file = "dagster-1.5.8-py3-none-any.whl", hash = "sha256:d4aa3d3b76c8add5bdbe16a749c722bd5ef684138892084767610b1b87422b6f"},
-    {file = "dagster-1.5.8.tar.gz", hash = "sha256:98ad30e7bc45f6b04a3d0d4672270566d22d401ab43c0d2c647fb78864954ba2"},
+    {file = "dagster-1.5.9-py3-none-any.whl", hash = "sha256:3364c2d70bf5b361d5de988ae353420738ea43732013bb62c40cc14d8b414511"},
+    {file = "dagster-1.5.9.tar.gz", hash = "sha256:83016ec3e56ad65ee7fd4580c10b833f32eb425533d4c6b94dc00ec063080f83"},
 ]
 
 [package.dependencies]
@@ -753,13 +753,13 @@ alembic = ">=1.2.1,<1.6.3 || >1.6.3,<1.7.0 || >1.7.0,<1.11.0 || >1.11.0"
 click = ">=5.0"
 coloredlogs = ">=6.1,<=14.0"
 croniter = ">=0.3.34"
-dagster-pipes = "1.5.8"
+dagster-pipes = "1.5.9"
 docstring-parser = "*"
 grpcio = ">=1.44.0"
 grpcio-health-checking = ">=1.44.0"
 Jinja2 = "*"
 packaging = ">=20.9"
-pendulum = "<3"
+pendulum = ">=0.7.0,<3"
 protobuf = ">=3.20.0"
 psutil = {version = ">=1.0", markers = "platform_system == \"Windows\""}
 pydantic = ">1.10.0,<1.10.7 || >1.10.7"
@@ -788,17 +788,17 @@ test = ["buildkite-test-collector", "docker", "grpcio-tools (>=1.44.0)", "mock (
 
 [[package]]
 name = "dagster-graphql"
-version = "1.5.8"
+version = "1.5.9"
 description = "The GraphQL frontend to python dagster."
 optional = false
 python-versions = "*"
 files = [
-    {file = "dagster-graphql-1.5.8.tar.gz", hash = "sha256:04d67fb76db7d75e0d7e839c1191214543c983dcb7085d5e7ba3b9d5573c81f7"},
-    {file = "dagster_graphql-1.5.8-py3-none-any.whl", hash = "sha256:408d709e3c2c83e5abbf5416ef1bbde23adbdee93e6938fedd2681a566dd521b"},
+    {file = "dagster-graphql-1.5.9.tar.gz", hash = "sha256:2acd14f39eca5f07a202bb56d6c79c049d9160c6917575ccfaab0f5da518092c"},
+    {file = "dagster_graphql-1.5.9-py3-none-any.whl", hash = "sha256:46b13bdb7b39403b3bc7843a4700fb2bb713a95338dc8b98967915be23433c37"},
 ]
 
 [package.dependencies]
-dagster = "1.5.8"
+dagster = "1.5.9"
 gql = {version = ">=3.0.0", extras = ["requests"]}
 graphene = ">=3"
 requests = "*"
@@ -806,30 +806,30 @@ starlette = "*"
 
 [[package]]
 name = "dagster-pipes"
-version = "1.5.8"
+version = "1.5.9"
 description = "Toolkit for Dagster integrations with transform logic outside of Dagster"
 optional = false
 python-versions = "*"
 files = [
-    {file = "dagster-pipes-1.5.8.tar.gz", hash = "sha256:b632a5aad45f6fc788731c6ef3b0afb167299dd5910c1212fbedcf5595ca11ff"},
-    {file = "dagster_pipes-1.5.8-py3-none-any.whl", hash = "sha256:719201a63193a67294bde2936852ef848b97dbaadcd56e1316fa3eb08afef7e2"},
+    {file = "dagster-pipes-1.5.9.tar.gz", hash = "sha256:66019cb851b8a7866f6240b9d9e7ed57749bc7e76e8e780d3eb2dbce8b65a864"},
+    {file = "dagster_pipes-1.5.9-py3-none-any.whl", hash = "sha256:e59ba9aefa96bf1400660c0df8b9dab7401121fc3c54805601f2c8afedf42d0e"},
 ]
 
 [[package]]
 name = "dagster-webserver"
-version = "1.5.8"
+version = "1.5.9"
 description = "Web UI for dagster."
 optional = false
 python-versions = "*"
 files = [
-    {file = "dagster_webserver-1.5.8-py3-none-any.whl", hash = "sha256:5a9df81ea4417b0a22a7a2b7926c9ed4ce4513fe20ce43c1cd791ddaa2290329"},
-    {file = "dagster_webserver-1.5.8.tar.gz", hash = "sha256:e80576b9e18f0a8781c2cfee17ec4027c5a54f4f9edc87aa15f9e1a28e4d9cd0"},
+    {file = "dagster_webserver-1.5.9-py3-none-any.whl", hash = "sha256:d23f6fb7f2ab5605a5ef08c60d6f637d844766f4924d612848186a8f71779c1f"},
+    {file = "dagster_webserver-1.5.9.tar.gz", hash = "sha256:914f8ba897b0fb7b0862dad1b86610277ba257f15bc083484058e1c49f0ed268"},
 ]
 
 [package.dependencies]
 click = ">=7.0,<9.0"
-dagster = "1.5.8"
-dagster-graphql = "1.5.8"
+dagster = "1.5.9"
+dagster-graphql = "1.5.9"
 starlette = "*"
 uvicorn = {version = "*", extras = ["standard"]}
 
@@ -885,13 +885,13 @@ dev = ["PyTest", "PyTest-Cov", "bump2version (<1)", "sphinx (<2)", "tox"]
 
 [[package]]
 name = "diffsync"
-version = "1.9.0"
+version = "1.10.0"
 description = "Library to easily sync/diff/update 2 different data sources"
 optional = false
-python-versions = ">=3.7,<4.0"
+python-versions = ">=3.8,<4.0"
 files = [
-    {file = "diffsync-1.9.0-py3-none-any.whl", hash = "sha256:9abb7fbff9dfe2c7581d4e9700d16b158b454b3e4b1ef74a46c6ba27fe84958b"},
-    {file = "diffsync-1.9.0.tar.gz", hash = "sha256:fe0332436b395d69262ad0711c0c050d9400504bdb8628c12248a4819a6364d7"},
+    {file = "diffsync-1.10.0-py3-none-any.whl", hash = "sha256:f4368c97162d51eecc7a8e87026c731197a694026cabcf2ab4f16d18d7bdadbd"},
+    {file = "diffsync-1.10.0.tar.gz", hash = "sha256:a9d7cb8e8ce983b446bf858c1c5c82cf473fcf231db73c0855e8c59ee7cd8370"},
 ]
 
 [package.dependencies]
@@ -899,6 +899,7 @@ colorama = ">=0.4.3,<0.5.0"
 packaging = ">=21.3,<24.0"
 pydantic = ">=1.7.4,<1.8 || >1.8,<1.8.1 || >1.8.1,<2.0.0"
 structlog = ">=20.1.0,<23.0.0"
+typing-extensions = {version = ">=4.0.1", markers = "python_version < \"3.11\""}
 
 [package.extras]
 redis = ["redis (>=4.3,<5.0)"]
@@ -3168,6 +3169,24 @@ pytest = ">=4.6"
 testing = ["fields", "hunter", "process-tests", "pytest-xdist", "six", "virtualenv"]
 
 [[package]]
+name = "pytest-httpx"
+version = "0.21.3"
+description = "Send responses to httpx."
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "pytest_httpx-0.21.3-py3-none-any.whl", hash = "sha256:50b52b910f6f6cfb0aa65039d6f5bedb6ae3a0c02a98c4a7187543fe437c428a"},
+    {file = "pytest_httpx-0.21.3.tar.gz", hash = "sha256:edcb62baceffbd57753c1a7afc4656b0e71e91c7a512e143c0adbac762d979c1"},
+]
+
+[package.dependencies]
+httpx = "==0.23.*"
+pytest = ">=6.0,<8.0"
+
+[package.extras]
+testing = ["pytest-asyncio (==0.20.*)", "pytest-cov (==4.*)"]
+
+[[package]]
 name = "pytest-xdist"
 version = "3.4.0"
 description = "pytest xdist plugin for distributed testing, most importantly across multiple CPUs"
@@ -4666,4 +4685,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8, < 3.12"
-content-hash = "af3ae745d04c78b74b6f6f2b83f5bf9f52fae58deb21988a8ecfc46429940607"
+content-hash = "f1fa63228241738173abac806d7f5223fea4687a0e6facdc1201fd0f32dc0172"
