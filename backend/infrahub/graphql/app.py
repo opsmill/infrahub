@@ -46,7 +46,6 @@ from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 
 from infrahub.api.dependencies import api_key_scheme, cookie_auth_scheme, jwt_scheme
 from infrahub.auth import AccountSession, authentication_token
-from infrahub.exceptions import AuthorizationError, PermissionDeniedError
 from infrahub.graphql.analyzer import GraphQLQueryAnalyzer
 
 # pylint: disable=no-name-in-module,unused-argument,ungrouped-imports,raise-missing-from
@@ -78,6 +77,8 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+
+    from .auth.query_permission_checker.checker import GraphQLQueryPermissionChecker
 
 
 GQL_CONNECTION_ACK = "connection_ack"
@@ -113,6 +114,7 @@ class InfrahubGraphQLApp:
         logger_name: Optional[str] = None,
         execution_context_class: Optional[Type[ExecutionContext]] = None,
         playground: bool = False,  # Deprecating. Use on_get instead.
+        permission_checker: GraphQLQueryPermissionChecker,
     ):
         self._schema = schema
         self.on_get = on_get
@@ -121,6 +123,7 @@ class InfrahubGraphQLApp:
         self.middleware = middleware
         self.execution_context_class = execution_context_class
         self.logger = logging.getLogger(logger_name or __name__)
+        self.permission_checker = permission_checker
 
         if playground and self.on_get is None:
             self.on_get = make_graphiql_handler()
@@ -215,7 +218,7 @@ class InfrahubGraphQLApp:
         schema_branch = registry.schema.get_schema_branch(name=branch.name)
         graphql_schema = await schema_branch.get_graphql_schema(db=db)
         analyzed_query = GraphQLQueryAnalyzer(query=query, schema=graphql_schema, branch=branch)
-        self._validate_authentication(account_session=account_session, analyzed_query=analyzed_query)
+        await self.permission_checker.check(account_session=account_session, analyzed_query=analyzed_query)
 
         variable_values = operation.get("variables")
         operation_name = operation.get("operationName")
@@ -430,20 +433,6 @@ class InfrahubGraphQLApp:
 
         if WebSocketState.DISCONNECTED not in (websocket.client_state, websocket.application_state):
             await websocket.send_json({"type": GQL_COMPLETE, "id": operation_id})
-
-    @staticmethod
-    def _validate_authentication(account_session: AccountSession, analyzed_query: GraphQLQueryAnalyzer) -> None:
-        if account_session.authenticated:
-            if not account_session.read_only:
-                return
-            if account_session.read_only and not analyzed_query.contains_mutation:
-                return
-            raise PermissionDeniedError("The current account is not authorized to perform this operation")
-
-        if config.SETTINGS.main.allow_anonymous_access and not analyzed_query.contains_mutation:
-            return
-
-        raise AuthorizationError("Authentication is required to perform this operation")
 
 
 async def _get_operation_from_request(

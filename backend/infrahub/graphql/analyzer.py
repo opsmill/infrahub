@@ -109,15 +109,16 @@ class GraphQLQueryAnalyzer:
         graphql_types = set()
         models = set()
 
-        if not self.schema and not self.branch:
+        if not (self.schema and self.branch):
             raise ValueError("Schema and Branch must be provided to extract the models in use.")
 
         for definition in self.document.definitions:
             fields = await extract_fields(definition.selection_set)
 
-            if definition.operation == OperationType.QUERY:
+            operation = getattr(definition, "operation", None)
+            if operation == OperationType.QUERY:
                 schema = self.schema.query_type
-            elif definition.operation == OperationType.MUTATION:
+            elif operation == OperationType.MUTATION:
                 schema = self.schema.mutation_type
             else:
                 # Subscription not supported right now
