@@ -40,6 +40,7 @@ from infrahub.exceptions import (
     TransformError,
 )
 from infrahub.log import get_logger
+from infrahub.services import InfrahubServices
 
 if TYPE_CHECKING:
     from infrahub_sdk.branch import BranchData
@@ -340,6 +341,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
     client: Optional[InfrahubClient]
 
     cache_repo: Optional[Repo]
+    service: InfrahubServices
 
     class Config:
         arbitrary_types_allowed = True
@@ -513,15 +515,17 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         return True
 
     @classmethod
-    async def new(cls, **kwargs):
-        self = cls(**kwargs)
+    async def new(cls, service: Optional[InfrahubServices] = None, **kwargs):
+        service = service or InfrahubServices()
+        self = cls(service=service, **kwargs)
         await self.create_locally()
         LOGGER.info(f"{self.name} | Created the new project locally.")
         return self
 
     @classmethod
-    async def init(cls, **kwargs):
-        self = cls(**kwargs)
+    async def init(cls, service: Optional[InfrahubServices] = None, **kwargs):
+        service = service or InfrahubServices()
+        self = cls(service=service, **kwargs)
         self.validate_local_directories()
         LOGGER.debug(f"{self.name} | Initiated the object on an existing directory.")
         return self
