@@ -1,0 +1,4 @@
+.vscode/*
+*.pyc
+*.tar.gz
+.DS_Store

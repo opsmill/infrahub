@@ -1024,7 +1024,9 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         await self.import_schema_files(branch_name=branch_name, commit=commit)
         await self.import_all_graphql_query(branch_name=branch_name, commit=commit)
-        await self.import_all_python_files(branch_name=branch_name, commit=commit)
+        config_file = await self.get_repository_config(branch_name=branch_name, commit=commit)
+        if config_file:
+            await self.import_all_python_files(branch_name=branch_name, commit=commit, config_file=config_file)
         await self.import_all_yaml_files(branch_name=branch_name, commit=commit)
 
     async def import_objects_rfiles(self, branch_name: str, commit: str, data: List[dict]):
@@ -1370,44 +1372,51 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         await obj.save()
         return obj
 
-    async def import_python_check_definitions_from_module(
-        self, branch_name: str, commit: str, module: types.ModuleType, file_path: str
+    async def import_python_check_definitions(
+        self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
     ) -> None:
-        if INFRAHUB_CHECK_VARIABLE_TO_IMPORT not in dir(module):
-            return False
+        commit_wt = self.get_worktree(identifier=commit)
+        branch_wt = self.get_worktree(identifier=commit or branch_name)
 
-        checks_definition_in_graph = {
+        # Ensure the path for this repository is present in sys.path
+        if self.directory_root not in sys.path:
+            sys.path.append(self.directory_root)
+
+        checks = []
+        for check in config_file.check_definitions:
+            LOGGER.debug(self.name, import_type="check_definition", file=check.file_path)
+
+            file_info = extract_repo_file_information(
+                full_filename=os.path.join(branch_wt.directory, check.file_path.as_posix()),
+                repo_directory=self.directory_root,
+                worktree_directory=commit_wt.directory,
+            )
+            try:
+                module = importlib.import_module(file_info.module_name)
+            except ModuleNotFoundError as exc:
+                LOGGER.warning(
+                    self.name, import_type="check_definition", file=check.file_path.as_posix(), error=str(exc)
+                )
+                continue
+
+            checks.extend(
+                await self.get_check_definitions(
+                    branch_name=branch_name,
+                    module=module,
+                    file_path=file_info.relative_path_file,
+                )
+            )
+
+        local_check_definitions = {check.name: check for check in checks}
+        check_definition_in_graph = {
             check.name.value: check
             for check in await self.client.filters(
                 kind="CoreCheckDefinition", branch=branch_name, repository__ids=[str(self.id)]
             )
         }
 
-        local_check_definitions = {}
-        for check_class in getattr(module, INFRAHUB_CHECK_VARIABLE_TO_IMPORT):
-            graphql_query = await self.client.get(
-                kind="CoreGraphQLQuery", branch=branch_name, id=str(check_class.query), populate_store=True
-            )
-            try:
-                item = CheckDefinitionInformation(
-                    name=check_class.__name__,
-                    repository=str(self.id),
-                    class_name=check_class.__name__,
-                    check_class=check_class,
-                    file_path=file_path,
-                    query=str(graphql_query.id),
-                    timeout=check_class.timeout,
-                    rebase=check_class.rebase,
-                )
-                local_check_definitions[item.name] = item
-            except Exception as exc:  # pylint: disable=broad-exception-caught
-                LOGGER.error(
-                    f"{self.name} | An error occured while processing the CheckDefinition {check_class.__name__} from {file_path} : {exc} "
-                )
-                continue
-
         present_in_both, only_graph, only_local = compare_lists(
-            list1=list(checks_definition_in_graph.keys()), list2=list(local_check_definitions.keys())
+            list1=list(check_definition_in_graph.keys()), list2=list(local_check_definitions.keys())
         )
 
         for check_name in only_local:
@@ -1421,21 +1430,53 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         for check_name in present_in_both:
             if not await self.compare_python_check_definition(
                 check=local_check_definitions[check_name],
-                existing_check=checks_definition_in_graph[check_name],
+                existing_check=check_definition_in_graph[check_name],
             ):
                 LOGGER.info(
                     f"{self.name} | New version of CheckDefinition '{check_name}' found on branch {branch_name} ({commit[:8]}), updating"
                 )
                 await self.update_python_check_definition(
                     check=local_check_definitions[check_name],
-                    existing_check=checks_definition_in_graph[check_name],
+                    existing_check=check_definition_in_graph[check_name],
                 )
 
         for check_name in only_graph:
             LOGGER.info(
                 f"{self.name} | CheckDefinition '{check_name}' not found locally in branch {branch_name}, deleting"
             )
-            await checks_definition_in_graph[check_name].delete()
+            await check_definition_in_graph[check_name].delete()
+
+    async def get_check_definitions(
+        self, branch_name: str, module: types.ModuleType, file_path: str
+    ) -> List[CheckDefinitionInformation]:
+        if INFRAHUB_CHECK_VARIABLE_TO_IMPORT not in dir(module):
+            return []
+
+        checks = []
+        for check_class in getattr(module, INFRAHUB_CHECK_VARIABLE_TO_IMPORT):
+            graphql_query = await self.client.get(
+                kind="CoreGraphQLQuery", branch=branch_name, id=str(check_class.query), populate_store=True
+            )
+            try:
+                checks.append(
+                    CheckDefinitionInformation(
+                        name=check_class.__name__,
+                        repository=str(self.id),
+                        class_name=check_class.__name__,
+                        check_class=check_class,
+                        file_path=file_path,
+                        query=str(graphql_query.id),
+                        timeout=check_class.timeout,
+                        rebase=check_class.rebase,
+                    )
+                )
+
+            except Exception as exc:  # pylint: disable=broad-exception-caught
+                LOGGER.error(
+                    f"{self.name} | An error occured while processing the CheckDefinition {check_class.__name__} from {file_path} : {exc} "
+                )
+                continue
+        return checks
 
     async def create_python_check_definition(self, branch_name: str, check: CheckDefinitionInformation) -> InfrahubNode:
         data = {
@@ -1656,7 +1697,8 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 method = getattr(self, f"import_objects_{key}")
                 await method(branch_name=branch_name, commit=commit, data=data)
 
-    async def import_all_python_files(self, branch_name: str, commit: str):
+    async def import_all_python_files(self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig):
+        await self.import_python_check_definitions(branch_name=branch_name, commit=commit, config_file=config_file)
         commit_wt = self.get_worktree(identifier=commit)
 
         python_files = await self.find_files(extension=["py"], commit=commit)
@@ -1678,9 +1720,6 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 LOGGER.warning(f"{self.name} | Unable to load python file {python_file}")
                 continue
 
-            await self.import_python_check_definitions_from_module(
-                branch_name=branch_name, commit=commit, module=module, file_path=file_info.relative_path_file
-            )
             await self.import_python_transforms_from_module(
                 branch_name=branch_name, commit=commit, module=module, file_path=file_info.relative_path_file
             )
@@ -1778,7 +1817,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
             module = importlib.import_module(file_info.module_name)
 
-            check_class = getattr(module, class_name)
+            check_class: InfrahubCheck = getattr(module, class_name)
 
             check = await check_class.init(root_directory=commit_worktree.directory, branch=branch_name, client=client)
             await check.run()

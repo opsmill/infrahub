@@ -1,8 +1,9 @@
 import os
-import tarfile
+import shutil
 from typing import Dict
 
 import pytest
+from git.repo import Repo
 
 import infrahub.config as config
 
@@ -33,11 +34,12 @@ def git_upstream_repo_10(helper, git_sources_dir) -> Dict[str, str]:
 
     name = "infrahub-demo-edge"
     fixtures_dir = helper.get_fixtures_dir()
-    fixture_repo = os.path.join(fixtures_dir, "infrahub-demo-edge-cff6665.tar.gz")
 
-    # Extract the fixture package in the source directory
-    file = tarfile.open(fixture_repo)
-    file.extractall(git_sources_dir)
-    file.close()
+    test_base = os.path.join(fixtures_dir, f"repos/{name}")
+    shutil.copytree(test_base, f"{git_sources_dir}/{name}")
+    origin = Repo.init(f"{git_sources_dir}/{name}", initial_branch="main")
+    for untracked in origin.untracked_files:
+        origin.index.add(untracked)
+    origin.index.commit("First commit")
 
     return dict(name=name, path=str(os.path.join(git_sources_dir, name)))

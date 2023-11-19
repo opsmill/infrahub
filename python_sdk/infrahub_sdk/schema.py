@@ -37,9 +37,14 @@ class InfrahubRepositoryRFileConfig(pydantic.BaseModel):
     template_path: Path
 
 
+class InfrahubCheckDefinitionConfig(pydantic.BaseModel):
+    file_path: Path = pydantic.Field(..., description="The file within the repo with the check code.")
+
+
 class InfrahubRepositoryConfig(pydantic.BaseModel):
+    check_definitions: List[InfrahubCheckDefinitionConfig] = pydantic.Field(default_factory=list)
     schemas: List[Path] = pydantic.Field(default_factory=list)
-    rfiles: Optional[List[InfrahubRepositoryRFileConfig]] = pydantic.Field(default_factory=list)
+    rfiles: List[InfrahubRepositoryRFileConfig] = pydantic.Field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------------
