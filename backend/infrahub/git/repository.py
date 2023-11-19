@@ -24,12 +24,13 @@ from infrahub_sdk import (
     InfrahubRepositoryConfig,
     ValidationError,
 )
+from infrahub_sdk.checks import INFRAHUB_CHECK_VARIABLE_TO_IMPORT, InfrahubCheck
+from infrahub_sdk.transforms import INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT
 from infrahub_sdk.utils import YamlFile, compare_lists
 from pydantic import BaseModel, validator
 from pydantic import ValidationError as PydanticValidationError
 
 import infrahub.config as config
-from infrahub.checks import INFRAHUB_CHECK_VARIABLE_TO_IMPORT, InfrahubCheck
 from infrahub.exceptions import (
     CheckError,
     CommitNotFoundError,
@@ -39,7 +40,6 @@ from infrahub.exceptions import (
     TransformError,
 )
 from infrahub.log import get_logger
-from infrahub.transforms import INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT
 
 if TYPE_CHECKING:
     from infrahub_sdk.branch import BranchData

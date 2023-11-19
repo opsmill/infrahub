@@ -4,8 +4,8 @@ label: Custom API Endpoint
 tags: [tutorial]
 order: 300
 ---
-As powerful as Jinja templates are, sometimes it’s both cleaner and simpler to work directly in code. The Infrahub transform endpoint lets you do just that. Where an `RFile` combines a GraphQL query together with a Jinja template, the Transform operation combines a GraphQL query with code. A scenario where use a Transform instead of an `RFile` is when you need to return structured data as opposed to a classic text-based configuration file.
-In the example repository `infrahub-demo-edge` we use a Transform to render configuration in the Openconfig format. In this example, we want to generate Openconfig interface data. The URL to target looks like this:
+As powerful as Jinja templates are, sometimes it’s both cleaner and simpler to work directly in code. The Infrahub transform endpoint lets you do just that. Where an `RFile` combines a GraphQL query together with a Jinja template, the Transform operation combines a GraphQL query with code. You might use a Transform instead of an `RFile` when you need to return structured data as opposed to a classic text-based configuration file.
+In the example repository `infrahub-demo-edge` we use a Transform to render a configuration in the Openconfig format. In this example, we want to generate Openconfig interface data. The URL to target looks like this:
 
 http://localhost:8000/api/transform/openconfig/interfaces?device=ord1-edge1&branch=cr1234
 

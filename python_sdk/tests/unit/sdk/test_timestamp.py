@@ -1,7 +1,7 @@
 import pendulum
 import pytest
 
-from infrahub_sdk.timestamp import Timestamp
+from infrahub_sdk.timestamp import Timestamp, TimestampFormatError
 
 
 def test_init_empty():
@@ -49,3 +49,9 @@ def test_compare():
     assert t11 <= t12
     assert t11 >= t12
     assert t11 == t12
+
+
+@pytest.mark.parametrize("invalid_str", ["blurple", "1122334455667788", "2023-45-99"])
+def test_invalid_raises_correct_error(invalid_str):
+    with pytest.raises(TimestampFormatError):
+        Timestamp(invalid_str)

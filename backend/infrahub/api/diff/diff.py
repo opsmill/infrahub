@@ -28,6 +28,8 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.schema_manager import INTERNAL_SCHEMA_NODE_KINDS
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
 
+from .validation_models import DiffQueryValidated
+
 if TYPE_CHECKING:
     from infrahub.message_bus.rpc import InfrahubRpcClient
 
@@ -931,8 +933,13 @@ async def get_diff_data(
     branch_only: bool = True,
     _: str = Depends(get_current_user),
 ) -> BranchDiff:
+    query = DiffQueryValidated(branch=branch, time_from=time_from, time_to=time_to, branch_only=branch_only)
     diff = await branch.diff(
-        db=db, diff_from=time_from, diff_to=time_to, branch_only=branch_only, namespaces_exclude=["Schema"]
+        db=db,
+        diff_from=query.time_from,
+        diff_to=query.time_to,
+        branch_only=query.branch_only,
+        namespaces_exclude=["Schema"],
     )
     schema = registry.schema.get_full(branch=branch)
     diff_payload = DiffPayload(db=db, diff=diff, kinds_to_include=list(schema.keys()))
@@ -948,8 +955,13 @@ async def get_diff_schema(
     branch_only: bool = True,
     _: str = Depends(get_current_user),
 ) -> BranchDiff:
+    query = DiffQueryValidated(branch=branch, time_from=time_from, time_to=time_to, branch_only=branch_only)
     diff = await branch.diff(
-        db=db, diff_from=time_from, diff_to=time_to, branch_only=branch_only, kinds_include=INTERNAL_SCHEMA_NODE_KINDS
+        db=db,
+        diff_from=query.time_from,
+        diff_to=query.time_to,
+        branch_only=query.branch_only,
+        kinds_include=INTERNAL_SCHEMA_NODE_KINDS,
     )
     diff_payload = DiffPayload(db=db, diff=diff)
     return await diff_payload.generate_diff_payload()

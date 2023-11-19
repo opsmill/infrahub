@@ -141,7 +141,7 @@ Each TransformPython must also define as Class level variables:
 - `url` : The URL where this TransformPython will be exposed via the REST API
 
 ```python
-from infrahub.transforms import InfrahubTransform
+from infrahub_sdk.transforms import InfrahubTransform
 
 class MyPythonTransformation(InfrahubTransform):
 

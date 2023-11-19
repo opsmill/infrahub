@@ -6,7 +6,7 @@ except ImportError:
     import pydantic  # type: ignore[no-redef]
 
 from infrahub_sdk.playback import JSONPlayback
-from infrahub_sdk.recorder import JSONRecorder, Recorder, RecorderType
+from infrahub_sdk.recorder import JSONRecorder, NoRecorder, Recorder, RecorderType
 from infrahub_sdk.types import AsyncRequester, RequesterTransport, SyncRequester
 from infrahub_sdk.utils import is_valid_url
 
@@ -25,8 +25,8 @@ class Config(pydantic.BaseSettings):
         default=RecorderType.NONE,
         description="Select builtin recorder for later replay.",
     )
-    custom_recorder: Optional[Recorder] = pydantic.Field(
-        default=None,
+    custom_recorder: Recorder = pydantic.Field(
+        default_factory=NoRecorder.default,
         description="Provides a way to record responses from the Infrahub API",
     )
     requester: Optional[AsyncRequester] = None
@@ -54,7 +54,9 @@ class Config(pydantic.BaseSettings):
     @pydantic.root_validator(pre=True)
     @classmethod
     def set_custom_recorder(cls, values: Dict[str, Any]) -> Dict[str, Any]:
-        if values.get("recorder") == RecorderType.JSON and "custom_recorder" not in values:
+        if values.get("recorder") == RecorderType.NONE and "custom_recorder" not in values:
+            values["custom_recorder"] = NoRecorder()
+        elif values.get("recorder") == RecorderType.JSON and "custom_recorder" not in values:
             values["custom_recorder"] = JSONRecorder()
         return values
 

@@ -94,5 +94,6 @@ export interface DynamicFieldData {
   error?: FormFieldError;
   isProtected?: boolean;
   isOptionnal?: boolean;
+  isReadOnly?: boolean;
   disabled?: boolean;
 }

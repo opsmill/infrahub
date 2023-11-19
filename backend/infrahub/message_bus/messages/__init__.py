@@ -21,18 +21,16 @@ from .request_artifact_generate import RequestArtifactGenerate
 from .request_artifactdefinition_check import RequestArtifactDefinitionCheck
 from .request_artifactdefinition_generate import RequestArtifactDefinitionGenerate
 from .request_git_createbranch import RequestGitCreateBranch
+from .request_proposed_change_cancel import RequestProposedChangeCancel
 from .request_proposedchange_dataintegrity import RequestProposedChangeDataIntegrity
-from .request_proposedchange_refreshartifacts import (
-    RequestProposedChangeRefreshArtifacts,
-)
-from .request_proposedchange_repositorychecks import (
-    RequestProposedChangeRepositoryChecks,
-)
+from .request_proposedchange_refreshartifacts import RequestProposedChangeRefreshArtifacts
+from .request_proposedchange_repositorychecks import RequestProposedChangeRepositoryChecks
 from .request_proposedchange_schemaintegrity import RequestProposedChangeSchemaIntegrity
 from .request_repository_checks import RequestRepositoryChecks
 from .transform_jinja_template import TransformJinjaTemplate
 from .transform_python_data import TransformPythonData
 from .trigger_artifact_definition_generate import TriggerArtifactDefinitionGenerate
+from .trigger_proposed_change_cancel import TriggerProposedChangeCancel
 
 MESSAGE_MAP: Dict[str, Type[InfrahubMessage]] = {
     "check.artifact.create": CheckArtifactCreate,
@@ -54,6 +52,7 @@ MESSAGE_MAP: Dict[str, Type[InfrahubMessage]] = {
     "request.artifact.generate": RequestArtifactGenerate,
     "request.artifact_definition.check": RequestArtifactDefinitionCheck,
     "request.artifact_definition.generate": RequestArtifactDefinitionGenerate,
+    "request.proposed_change.cancel": RequestProposedChangeCancel,
     "request.proposed_change.data_integrity": RequestProposedChangeDataIntegrity,
     "request.proposed_change.refresh_artifacts": RequestProposedChangeRefreshArtifacts,
     "request.proposed_change.repository_checks": RequestProposedChangeRepositoryChecks,
@@ -62,6 +61,7 @@ MESSAGE_MAP: Dict[str, Type[InfrahubMessage]] = {
     "transform.jinja.template": TransformJinjaTemplate,
     "transform.python.data": TransformPythonData,
     "trigger.artifact_definition.generate": TriggerArtifactDefinitionGenerate,
+    "trigger.proposed_change.cancel": TriggerProposedChangeCancel,
 }
 
 

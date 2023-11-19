@@ -20,7 +20,7 @@ An `RFile` is an internal concept that represents a Jinja Template coupled with 
 
 The rendered configuration is available via the REST API under `/api/rfile/<rfile_name>` followed by any additional parameters expected in the GraphQL query.
 
-The `rfile` **device_startup** present in the repository, expect the name of the device as a parameter `/api/rfile/<rfile_name>?device=<device_name>`, as an example, below is the URL for couple of devices:
+The `rfile` **device_startup** present in the repository, expects the name of the device as a parameter `/api/rfile/<rfile_name>?device=<device_name>`, as an example, below is the URL for couple of devices:
 
 - [Config for `ord1-edge1` (/api/rfile/device_startup?device=ord1-edge1)](http://localhost:8000/api/rfile/device_startup?device=ord1-edge1)
 - [Config for `atl1-edge2` (/api/rfile/device_startup?device=atl1-edge2)](http://localhost:8000/api/rfile/device_startup?device=atl1-edge2)
@@ -31,7 +31,7 @@ Next, we'll create a new branch, and make modifications both in the data and in 
 
 #### 1. Create a new branch `update-ethernet1`
 
-From the frontend, create a new branch named `update-ethernet1` and be sure to uncheck the toggle `is Data Only` in the UI.
+From the frontend, create a new branch named `update-ethernet1` and be sure to uncheck the toggle `Is data only` in the UI.
 
 ![Create a new branch (not with Data Only)](../../media/tutorial/tutorial-6-git-integration.cy.ts/tutorial_6_branch_creation.png)
 
@@ -40,9 +40,9 @@ From the frontend, create a new branch named `update-ethernet1` and be sure to u
 Now we'll make a change in the branch `update-ethernet1` that will be reflected in the rendered template, like updating the documentation.
 
 1. Navigate to the device `atl1-edge1` in the frontend and
-2. Navigate to the list of its interfaces in the `interfaces` Tab.
+2. Navigate to the list of its interfaces in the `Interfaces` Tab.
 3. Select the interface `Ethernet1`
-4. Edit the interface `Ethernet` and
+4. Edit `Interface L3` using the `Edit` button
 5. Update its description to `New description in the branch`
 6. Save your change
 
@@ -55,7 +55,7 @@ The final step is to modify the Jinja template directly from Github
 In Github:
 - Navigate to your clone
 - Select the new branch in the branch menu dropdown
-- Select the file `device_startup_config.tpl.j2` at the root of the repository
+- Select the file `templates` / `device_startup_config.tpl.j2`
 - Edit the file with the `pen` in the top right corner
 - Delete the lines 77 and 78 (i.e. the last two lines of 'ip prefix-list BOGON-Prefixes')
 - Commit your changes in the branch `update-ethernet1` directly from github
@@ -64,10 +64,10 @@ In Github:
 
 
 !!!success Validate that everything is correct
-After making these changes, you should be able to render the RFIle for the branch `update-ethernet1` and see the changes made to the data AND to the schema at the same time at the address 
-[`/rfile/device_startup?device=ord1-edge1&branch=update-ethernet1`](http://localhost:8000/api/rfile/device_startup?device=ord1-edge1&branch=update-ethernet1)
+After making these changes, you should be able to render the RFile for the branch `update-ethernet1` and see the changes made to the data AND to the schema at the same time at the address 
+[`/rfile/device_startup?device=atl1-edge1&branch=update-ethernet1`](http://localhost:8000/api/rfile/device_startup?device=atl1-edge1&branch=update-ethernet1)
 !!!
 
 #### 4. Merge the Branch `update-ethernet1`
 
-After merging the branch `update-ethernet1`, regenerate the configuration for `ord1-edge1` in `main` and validate that the 2 changes are now available in `main`
+After merging the branch `update-ethernet1`, regenerate the configuration for `atl1-edge1` in `main` and validate that the 2 changes are now available in `main`

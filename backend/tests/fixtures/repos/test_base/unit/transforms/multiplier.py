@@ -1,6 +1,6 @@
 from typing import Any, Dict
 
-from infrahub.transforms import InfrahubTransform
+from infrahub_sdk.transforms import InfrahubTransform
 
 
 class Multiplier(InfrahubTransform):

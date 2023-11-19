@@ -125,33 +125,40 @@ export default function ObjectItems(props: any) {
 
     setIsLoading(true);
 
-    const mutationString = deleteObject({
-      kind: schemaData?.kind,
-      data: stringifyWithoutQuotes({
-        id: rowToDelete?.id,
-      }),
-    });
+    try {
+      const mutationString = deleteObject({
+        kind: rowToDelete.__typename,
+        data: stringifyWithoutQuotes({
+          id: rowToDelete?.id,
+        }),
+      });
 
-    const mutation = gql`
-      ${mutationString}
-    `;
+      const mutation = gql`
+        ${mutationString}
+      `;
 
-    await graphqlClient.mutate({
-      mutation,
-      context: { branch: branch?.name, date },
-    });
+      await graphqlClient.mutate({
+        mutation,
+        context: { branch: branch?.name, date },
+      });
 
-    refetch();
+      refetch();
 
-    setDeleteModal(false);
+      setDeleteModal(false);
+
+      setRowToDelete(undefined);
+
+      toast(
+        <Alert
+          type={ALERT_TYPES.SUCCESS}
+          message={`Object ${rowToDelete?.display_label} deleted`}
+        />
+      );
+    } catch (error) {
+      console.error("Error while deleting object: ", error);
+    }
 
     setIsLoading(false);
-
-    setRowToDelete(undefined);
-
-    toast(
-      <Alert type={ALERT_TYPES.SUCCESS} message={`Object ${rowToDelete?.display_label} deleted`} />
-    );
   };
 
   if (error) {

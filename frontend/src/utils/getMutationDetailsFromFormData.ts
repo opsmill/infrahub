@@ -14,6 +14,11 @@ const getMutationDetailsFromFormData = (
   schema.attributes?.forEach((attribute) => {
     const updatedValue = updatedObject[attribute.name]?.value ?? attribute?.default_value;
 
+    if (attribute.read_only) {
+      // Delete the attribute if it's read-only
+      delete updatedObject[attribute.name];
+    }
+
     if (mode === "update" && existingObject) {
       const existingValue = existingObject[attribute.name]?.value;
 

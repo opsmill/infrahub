@@ -162,10 +162,6 @@ module = "infrahub.auth"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.checks"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.core.*"
 ignore_errors = true
 
@@ -231,10 +227,6 @@ ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = "infrahub.trace"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.transforms"
 ignore_errors = true
 
 [[tool.mypy.overrides]]

@@ -265,6 +265,7 @@ class AttributeSchema(BaseSchemaModel):
     regex: Optional[str]
     max_length: Optional[int]
     min_length: Optional[int]
+    read_only: bool = False
     inherited: bool = False
     unique: bool = False
     branch: Optional[BranchSupportType]
@@ -435,6 +436,7 @@ class BaseNodeSchema(BaseSchemaModel):
     include_in_menu: Optional[bool] = Field(default=None)
     menu_placement: Optional[str] = Field(default=None)
     icon: Optional[str] = Field(default=None)
+    label: Optional[str]
 
     _exclude_from_hash: List[str] = ["attributes", "relationships"]
     _sort_by: List[str] = ["name"]
@@ -444,6 +446,10 @@ class BaseNodeSchema(BaseSchemaModel):
         if self.namespace == "Attribute":
             return self.name
         return self.namespace + self.name
+
+    @property
+    def menu_title(self) -> str:
+        return self.label or self.name
 
     def __hash__(self):
         """Return a hash of the object.
@@ -575,12 +581,10 @@ class BaseNodeSchema(BaseSchemaModel):
 class GenericSchema(BaseNodeSchema):
     """A Generic can be either an Interface or a Union depending if there are some Attributes or Relationships defined."""
 
-    label: Optional[str]
     used_by: List[str] = Field(default_factory=list)
 
 
 class NodeSchema(BaseNodeSchema):
-    label: Optional[str]
     inherit_from: List[str] = Field(default_factory=list)
     groups: Optional[List[str]] = Field(default_factory=list)
 
@@ -854,6 +858,7 @@ internal_schema = {
                 {"name": "min_length", "kind": "Number", "optional": True},
                 {"name": "label", "kind": "Text", "optional": True, "max_length": DEFAULT_NAME_MAX_LENGTH},
                 {"name": "description", "kind": "Text", "optional": True, "max_length": DEFAULT_DESCRIPTION_LENGTH},
+                {"name": "read_only", "kind": "Boolean", "default_value": False, "optional": True},
                 {"name": "unique", "kind": "Boolean", "default_value": False, "optional": True},
                 {"name": "optional", "kind": "Boolean", "default_value": True, "optional": True},
                 {
@@ -1355,7 +1360,7 @@ core_models = {
             "description": "Group of nodes of any kind.",
             "include_in_menu": True,
             "icon": "mdi:account-group",
-            "label": "StandardGroup",
+            "label": "Standard Group",
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
@@ -2012,12 +2017,14 @@ core_models = {
                     "name": "depth",
                     "kind": "Number",
                     "description": "number of nested levels in the query",
+                    "read_only": True,
                     "optional": True,
                 },
                 {
                     "name": "height",
                     "kind": "Number",
                     "description": "total number of fields requested in the query",
+                    "read_only": True,
                     "optional": True,
                 },
             ],

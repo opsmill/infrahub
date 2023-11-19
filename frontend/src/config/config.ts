@@ -35,5 +35,6 @@ export const CONFIG = {
   FILES_CONTENT_URL: (repositoryId: string, location: string) =>
     `${INFRAHUB_API_SERVER_URL}/api/file/${repositoryId}/${encodeURIComponent(location)}`,
   STORAGE_DETAILS_URL: (id: string) => `${INFRAHUB_API_SERVER_URL}/api/storage/object/${id}`,
-  MENU_URL: `${INFRAHUB_API_SERVER_URL}/api/menu`,
+  MENU_URL: (branch?: string) =>
+    `${INFRAHUB_API_SERVER_URL}/api/menu${branch ? `?branch=${branch}` : ""}`,
 };

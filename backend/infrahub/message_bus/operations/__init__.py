@@ -2,16 +2,7 @@ import json
 
 from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubResponse, messages
-from infrahub.message_bus.operations import (
-    check,
-    event,
-    finalize,
-    git,
-    refresh,
-    requests,
-    transform,
-    trigger,
-)
+from infrahub.message_bus.operations import check, event, finalize, git, refresh, requests, transform, trigger
 from infrahub.message_bus.types import MessageTTL
 from infrahub.services import InfrahubServices
 from infrahub.tasks.check import set_check_status
@@ -38,6 +29,7 @@ COMMAND_MAP = {
     "request.artifact.generate": requests.artifact.generate,
     "request.artifact_definition.check": requests.artifact_definition.check,
     "request.artifact_definition.generate": requests.artifact_definition.generate,
+    "request.proposed_change.cancel": requests.proposed_change.cancel,
     "request.proposed_change.data_integrity": requests.proposed_change.data_integrity,
     "request.proposed_change.refresh_artifacts": requests.proposed_change.refresh_artifacts,
     "request.proposed_change.repository_checks": requests.proposed_change.repository_checks,
@@ -46,6 +38,7 @@ COMMAND_MAP = {
     "transform.jinja.template": transform.jinja.template,
     "transform.python.data": transform.python.data,
     "trigger.artifact_definition.generate": trigger.artifact_definition.generate,
+    "trigger.proposed_change.cancel": trigger.proposed_change.cancel,
 }
 
 

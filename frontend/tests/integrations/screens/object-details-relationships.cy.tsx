@@ -110,7 +110,7 @@ describe("List screen", () => {
         </Routes>
       </MockedProvider>,
       {
-        // Add iniital route for the app router, to display the current items view
+        // Add initial route for the app router, to display the current items view
         routerProps: {
           initialEntries: [graphqlQueryItemsUrl],
         },
