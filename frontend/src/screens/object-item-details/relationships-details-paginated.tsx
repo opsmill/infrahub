@@ -23,10 +23,11 @@ import RelationshipDetails from "./relationship-details-paginated";
 interface RelationshipsDetailsProps {
   parentNode: any;
   parentSchema: iNodeSchema;
+  refetchObjectDetails: Function;
 }
 
 export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
-  const { parentNode, parentSchema } = props;
+  const { parentNode, parentSchema, refetchObjectDetails } = props;
 
   const { objectname, objectid } = useParams();
   const [relationshipTab] = useQueryParam(QSP.TAB, StringParam);
@@ -103,6 +104,7 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
       context: { branch: branch?.name, date },
     });
 
+    refetchObjectDetails();
     refetch();
 
     toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Item removed from the group"} />);
@@ -116,7 +118,7 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
         parentSchema={parentSchema}
         relationshipsData={relationships}
         relationshipSchema={relationshipSchema}
-        refetch={refetch}
+        refetch={() => Promise.all([refetch(), refetchObjectDetails()])}
         onDeleteRelationship={handleDeleteRelationship}
       />
 

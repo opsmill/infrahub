@@ -218,8 +218,6 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
       setIsLoading(false);
 
       setShowAddDrawer(false);
-
-      refetch && refetch();
     }
   };
 

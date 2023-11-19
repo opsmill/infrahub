@@ -10,11 +10,11 @@ describe("Relationship Page", () => {
     cy.contains("button", "Edit").should("be.disabled");
     cy.contains("button", "Manage groups").should("be.disabled");
 
-    cy.contains("Artifacts").click();
+    cy.contains("Artifacts2").click();
     cy.url().should("include", "tab=artifacts");
     cy.get("[data-cy='relationship-row']").should("have.length", 2);
 
-    cy.contains("Interfaces").click();
+    cy.contains("Interfaces14").click();
     cy.url().should("include", "tab=interfaces");
     cy.get("[data-cy='relationship-row']").should("have.length", 10);
     cy.contains("Showing 1 to 10 of 14 results").should("exist");
@@ -39,7 +39,10 @@ describe("Relationship Page", () => {
       cy.get("[data-cy='select2step-1']").type("Int");
       cy.contains("InterfaceL2").click();
 
-      // fill 2md select with click only
+      // fill 2nd select with click only
+      // /!\ Is SUPER FLAKY !
+      //  1. No easy visual way to differentiate each relationship "Ethernet11"
+      //  2. Order of "Ethernet11" is not guaranteed to be the same each time
       cy.get("[data-cy='select2step-2']").should("be.visible");
       cy.get("[data-cy='select2step-2'] button").click();
       cy.contains("Ethernet11").click();
@@ -49,6 +52,8 @@ describe("Relationship Page", () => {
 
     cy.contains("Association with InfraInterface added").should("be.visible");
     cy.get("[data-cy='relationship-row']").contains("Ethernet11").should("be.visible");
+    cy.contains("Showing 1 to 10 of 15 results").should("exist");
+    cy.contains("Interfaces15").should("exist");
   });
 
   it("should delete the newly created relationship", () => {
@@ -58,6 +63,9 @@ describe("Relationship Page", () => {
     cy.contains("Interfaces").click();
 
     // get delete button from row containing Ethernet11
+    // /!\ Is SUPER FLAKY !
+    //  1. No easy visual way to differentiate each relationship "Ethernet11"
+    //  2. Order of "Ethernet11" is not guaranteed to be the same each time
     cy.get("[data-cy='relationship-row']")
       .contains(/^Ethernet11$/)
       .parent()
@@ -75,6 +83,8 @@ describe("Relationship Page", () => {
 
     // after delete
     cy.contains("Item removed from the group").should("be.visible");
+    cy.contains("Showing 1 to 10 of 14 results").should("exist");
+    cy.contains("Interfaces14").should("exist");
     cy.get("[data-cy='modal-delete']").should("not.exist");
     cy.get("[data-cy='relationship-row']").should("not.contain", /^Ethernet11$/);
   });
