@@ -13,6 +13,7 @@ packages = [
 [tool.poetry.dependencies]
 python = "^3.8, < 3.12"
 infrahub-sdk = {path = "python_sdk", develop=true}
+pydantic = "^1.10"
 
 [tool.poetry.group.server.dependencies]
 fastapi = "~0.95"
@@ -49,12 +50,12 @@ requests = "*"
 pre-commit = "^2.20.0"
 autoflake = "*"
 pytest-clarity = "^1.0.1"
-pytest-httpx = "^0.22"
 types-toml = "*"
 types-ujson = "*"
 types-pyyaml = "*"
 typer-cli = "*"
 pytest-cov = "^4.0.0"
+pytest-httpx = "*"
 ruff = "^0.1.5"
 pytest-xdist = "^3.3.1"
 buildkite-test-collector = "^0.1.7"

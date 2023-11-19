@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, Optional, Union
 
-from pydantic import BaseModel
+try:
+    from pydantic import v1 as pydantic  # type: ignore[attr-defined]
+except ImportError:
+    import pydantic  # type: ignore[no-redef]
 
 from infrahub_sdk.exceptions import BranchNotFound
 from infrahub_sdk.graphql import Mutation
@@ -12,13 +15,13 @@ if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient, InfrahubClientSync
 
 
-class BranchData(BaseModel):
+class BranchData(pydantic.BaseModel):
     id: str
     name: str
-    description: Optional[str]
+    description: Optional[str] = None
     is_data_only: bool
     is_default: bool
-    origin_branch: Optional[str]
+    origin_branch: Optional[str] = None
     branched_from: str
 
 

@@ -14,7 +14,10 @@ from typing import (
     Union,
 )
 
-from pydantic import BaseModel, Field
+try:
+    from pydantic import v1 as pydantic  # type: ignore[attr-defined]
+except ImportError:
+    import pydantic  # type: ignore[no-redef]
 
 from infrahub_sdk.exceptions import SchemaNotFound, ValidationError
 
@@ -27,25 +30,25 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------------
 # Repository Configuration file
 # ---------------------------------------------------------------------------------
-class InfrahubRepositoryRFileConfig(BaseModel):
+class InfrahubRepositoryRFileConfig(pydantic.BaseModel):
     name: str
     query: str
     repository: str
     template_path: Path
 
 
-class InfrahubRepositoryConfig(BaseModel):
-    schemas: List[Path] = Field(default_factory=list)
-    rfiles: Optional[List[InfrahubRepositoryRFileConfig]]
+class InfrahubRepositoryConfig(pydantic.BaseModel):
+    schemas: List[Path] = pydantic.Field(default_factory=list)
+    rfiles: Optional[List[InfrahubRepositoryRFileConfig]] = pydantic.Field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------------
 # Main Infrahub Schema File
 # ---------------------------------------------------------------------------------
-class FilterSchema(BaseModel):
+class FilterSchema(pydantic.BaseModel):
     name: str
     kind: str
-    description: Optional[str]
+    description: Optional[str] = None
 
 
 class RelationshipCardinality(str, Enum):
@@ -67,40 +70,40 @@ class RelationshipKind(str, Enum):
     GROUP = "Group"
 
 
-class AttributeSchema(BaseModel):
+class AttributeSchema(pydantic.BaseModel):
     name: str
     kind: str
-    label: Optional[str]
-    description: Optional[str]
-    default_value: Optional[Any]
+    label: Optional[str] = None
+    description: Optional[str] = None
+    default_value: Optional[Any] = None
     inherited: bool = False
     unique: bool = False
-    branch: Optional[BranchSupportType]
+    branch: Optional[BranchSupportType] = None
     optional: bool = False
 
 
-class RelationshipSchema(BaseModel):
+class RelationshipSchema(pydantic.BaseModel):
     name: str
     peer: str
     kind: RelationshipKind = RelationshipKind.GENERIC
-    label: Optional[str]
-    description: Optional[str]
-    identifier: Optional[str]
+    label: Optional[str] = None
+    description: Optional[str] = None
+    identifier: Optional[str] = None
     inherited: bool = False
     cardinality: str = "many"
-    branch: Optional[BranchSupportType]
+    branch: Optional[BranchSupportType] = None
     optional: bool = True
-    filters: List[FilterSchema] = Field(default_factory=list)
+    filters: List[FilterSchema] = pydantic.Field(default_factory=list)
 
 
-class BaseNodeSchema(BaseModel):
+class BaseNodeSchema(pydantic.BaseModel):
     name: str
-    label: Optional[str]
+    label: Optional[str] = None
     namespace: str
-    description: Optional[str]
-    attributes: List[AttributeSchema] = Field(default_factory=list)
-    relationships: List[RelationshipSchema] = Field(default_factory=list)
-    filters: List[FilterSchema] = Field(default_factory=list)
+    description: Optional[str] = None
+    attributes: List[AttributeSchema] = pydantic.Field(default_factory=list)
+    relationships: List[RelationshipSchema] = pydantic.Field(default_factory=list)
+    filters: List[FilterSchema] = pydantic.Field(default_factory=list)
 
     @property
     def kind(self) -> str:
@@ -184,41 +187,41 @@ class BaseNodeSchema(BaseModel):
 class GenericSchema(BaseNodeSchema):
     """A Generic can be either an Interface or a Union depending if there are some Attributes or Relationships defined."""
 
-    used_by: List[str] = Field(default_factory=list)
+    used_by: List[str] = pydantic.Field(default_factory=list)
 
 
 class NodeSchema(BaseNodeSchema):
-    inherit_from: List[str] = Field(default_factory=list)
-    groups: List[str] = Field(default_factory=list)
-    branch: Optional[BranchSupportType]
-    default_filter: Optional[str]
+    inherit_from: List[str] = pydantic.Field(default_factory=list)
+    groups: List[str] = pydantic.Field(default_factory=list)
+    branch: Optional[BranchSupportType] = None
+    default_filter: Optional[str] = None
 
 
-class NodeExtensionSchema(BaseModel):
-    name: Optional[str]
+class NodeExtensionSchema(pydantic.BaseModel):
+    name: Optional[str] = None
     kind: str
-    description: Optional[str]
-    label: Optional[str]
-    inherit_from: List[str] = Field(default_factory=list)
-    groups: List[str] = Field(default_factory=list)
-    branch: Optional[BranchSupportType]
-    default_filter: Optional[str]
-    attributes: List[AttributeSchema] = Field(default_factory=list)
-    relationships: List[RelationshipSchema] = Field(default_factory=list)
+    description: Optional[str] = None
+    label: Optional[str] = None
+    inherit_from: List[str] = pydantic.Field(default_factory=list)
+    groups: List[str] = pydantic.Field(default_factory=list)
+    branch: Optional[BranchSupportType] = None
+    default_filter: Optional[str] = None
+    attributes: List[AttributeSchema] = pydantic.Field(default_factory=list)
+    relationships: List[RelationshipSchema] = pydantic.Field(default_factory=list)
 
 
-class GroupSchema(BaseModel):
+class GroupSchema(pydantic.BaseModel):
     name: str
     kind: str
-    description: Optional[str]
+    description: Optional[str] = None
 
 
-class SchemaRoot(BaseModel):
+class SchemaRoot(pydantic.BaseModel):
     version: str
-    generics: List[GenericSchema] = Field(default_factory=list)
-    nodes: List[NodeSchema] = Field(default_factory=list)
-    groups: List[GroupSchema] = Field(default_factory=list)
-    # node_extensions: List[NodeExtensionSchema] = Field(default_factory=list)
+    generics: List[GenericSchema] = pydantic.Field(default_factory=list)
+    nodes: List[NodeSchema] = pydantic.Field(default_factory=list)
+    groups: List[GroupSchema] = pydantic.Field(default_factory=list)
+    # node_extensions: List[NodeExtensionSchema] = pydantic.Field(default_factory=list)
 
 
 class InfrahubSchemaBase:
