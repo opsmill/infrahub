@@ -12,6 +12,7 @@ type OpsInputProps = {
   type: string;
   isProtected?: boolean;
   isOptionnal?: boolean;
+  isUnique?: boolean;
   disabled?: boolean;
 };
 

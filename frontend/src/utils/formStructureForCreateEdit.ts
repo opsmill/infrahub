@@ -123,6 +123,7 @@ const getFormStructureForCreateEdit = (
       },
       isOptionnal: attribute.optional,
       isReadOnly: attribute.read_only,
+      isUnique: attribute.unique,
       isProtected: getIsDisabled({
         owner: row && row[attribute.name]?.owner,
         user,
