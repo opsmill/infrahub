@@ -202,16 +202,18 @@ class AttributeGetQuery(AttributeQuery):
         at = self.at or self.attr.at
         self.params["at"] = at.to_string()
 
-        rels_filter, rel_params = self.branch.get_query_filter_relationships(rel_labels=["r1", "r2"], at=at.to_string())
-        self.params.update(rel_params)
+        rels_filter, rels_params = self.branch.get_query_filter_path(at=at.to_string())
+        self.params.update(rels_params)
 
-        query = """
-        MATCH (n { uuid: $node_uuid })
-        MATCH (a { uuid: $attr_uuid })
-        MATCH (n)-[r1]-(a)-[r2:HAS_VALUE|IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER]-(ap)
-        WHERE %s
-        """ % ("\n AND ".join(rels_filter),)
+        query = (
+            """
+        MATCH (a:Attribute { uuid: $attr_uuid })
+        MATCH p = ((a)-[r2:HAS_VALUE|IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER]->(ap))
+        WHERE all(r IN relationships(p) WHERE ( %s))
+        """
+            % rels_filter
+        )
 
         self.add_to_query(query)
 
-        self.return_labels = ["n", "a", "ap", "r1", "r2"]
+        self.return_labels = ["a", "ap", "r2"]
