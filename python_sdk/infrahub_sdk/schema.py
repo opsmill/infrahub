@@ -54,7 +54,7 @@ class InfrahubRepositoryRFileConfig(pydantic.BaseModel):
 
     @property
     def template_path_value(self) -> str:
-        return self.template_path.as_posix()
+        return str(self.template_path)
 
     @property
     def payload(self) -> Dict[str, str]:
