@@ -803,6 +803,7 @@ export const accountTokenFormStructure = [
     config: {},
     isOptionnal: true,
     isProtected: false,
+    isUnique: false,
   },
   {
     name: "token.value",
@@ -814,6 +815,7 @@ export const accountTokenFormStructure = [
     config: {},
     isOptionnal: false,
     isProtected: false,
+    isUnique: true,
   },
   {
     name: "expiration.value",
@@ -825,6 +827,7 @@ export const accountTokenFormStructure = [
     config: {},
     isOptionnal: true,
     isProtected: false,
+    isUnique: false,
   },
   {
     name: "account.id",
