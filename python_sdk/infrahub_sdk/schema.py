@@ -67,11 +67,16 @@ class InfrahubCheckDefinitionConfig(pydantic.BaseModel):
     file_path: Path = pydantic.Field(..., description="The file within the repo with the check code.")
 
 
+class InfrahubPythonTransformConfig(pydantic.BaseModel):
+    file_path: Path = pydantic.Field(..., description="The file within the repo with the transform code.")
+
+
 class InfrahubRepositoryConfig(pydantic.BaseModel):
     check_definitions: List[InfrahubCheckDefinitionConfig] = pydantic.Field(default_factory=list)
     schemas: List[Path] = pydantic.Field(default_factory=list)
     rfiles: List[InfrahubRepositoryRFileConfig] = pydantic.Field(default_factory=list)
     artifact_definitions: List[InfrahubRepositoryArtifactDefinitionConfig] = pydantic.Field(default_factory=list)
+    python_transforms: List[InfrahubPythonTransformConfig] = pydantic.Field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------------
