@@ -30,11 +30,37 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------------
 # Repository Configuration file
 # ---------------------------------------------------------------------------------
+
+
+class InfrahubRepositoryArtifactDefinitionConfig(pydantic.BaseModel):
+    name: str = pydantic.Field(..., description="The name of the artifact definition")
+    artifact_name: Optional[str] = pydantic.Field(
+        default=None, description="Name of the artifact created from this definition"
+    )
+    parameters: Dict[str, Any] = pydantic.Field(
+        ..., description="The input parameters required to render this artifact"
+    )
+    content_type: str = pydantic.Field(..., description="The content type of the rendered artifact")
+    targets: str = pydantic.Field(..., description="The group to target when creating artifacts")
+    transformation: str = pydantic.Field(..., description="The transformation to use.")
+
+
 class InfrahubRepositoryRFileConfig(pydantic.BaseModel):
-    name: str
-    query: str
-    repository: str
-    template_path: Path
+    name: str = pydantic.Field(..., description="The name of the RFile")
+    query: str = pydantic.Field(..., description="The name of the GraphQL Query")
+    repository: str = pydantic.Field(default="self", description="The repository")
+    template_path: Path = pydantic.Field(..., description="The path within the repository of the template file")
+    description: Optional[str] = pydantic.Field(default=None, description="Description for this rfile")
+
+    @property
+    def template_path_value(self) -> str:
+        return str(self.template_path)
+
+    @property
+    def payload(self) -> Dict[str, str]:
+        data = self.dict(exclude_none=True)
+        data["template_path"] = self.template_path_value
+        return data
 
 
 class InfrahubCheckDefinitionConfig(pydantic.BaseModel):
@@ -45,6 +71,7 @@ class InfrahubRepositoryConfig(pydantic.BaseModel):
     check_definitions: List[InfrahubCheckDefinitionConfig] = pydantic.Field(default_factory=list)
     schemas: List[Path] = pydantic.Field(default_factory=list)
     rfiles: List[InfrahubRepositoryRFileConfig] = pydantic.Field(default_factory=list)
+    artifact_definitions: List[InfrahubRepositoryArtifactDefinitionConfig] = pydantic.Field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------------

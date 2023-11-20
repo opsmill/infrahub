@@ -44,6 +44,7 @@ from infrahub.services import InfrahubServices
 
 if TYPE_CHECKING:
     from infrahub_sdk.branch import BranchData
+    from infrahub_sdk.schema import InfrahubRepositoryArtifactDefinitionConfig, InfrahubRepositoryRFileConfig
 
     from infrahub.message_bus import messages
 # pylint: disable=too-few-public-methods,too-many-lines
@@ -91,34 +92,6 @@ class GraphQLQueryInformation(BaseModel):
 
     query: str
     """Query in string format"""
-
-
-class RFileInformation(BaseModel):
-    name: str
-    """Name of the RFile"""
-
-    description: Optional[str]
-    """Description of the RFile"""
-
-    query: str
-    """ID or name of the GraphQL Query associated with this RFile"""
-
-    repository: str = "self"
-    """ID of the associated repository or self"""
-
-    template_path: str
-    """Path to the template file within the repo"""
-
-
-class ArtifactDefinitionInformation(BaseModel):
-    name: str
-    """Name of the Artifact Definition"""
-
-    artifact_name: Optional[str]
-    parameters: dict
-    content_type: str
-    targets: str
-    transformation: str
 
 
 class CheckDefinitionInformation(BaseModel):
@@ -1022,14 +995,21 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         if not commit:
             commit = self.get_commit_value(branch_name=branch_name)
 
-        await self.import_schema_files(branch_name=branch_name, commit=commit)
-        await self.import_all_graphql_query(branch_name=branch_name, commit=commit)
         config_file = await self.get_repository_config(branch_name=branch_name, commit=commit)
+
+        if config_file:
+            await self.import_schema_files(branch_name=branch_name, commit=commit, config_file=config_file)
+
+        await self.import_all_graphql_query(branch_name=branch_name, commit=commit)
+
         if config_file:
             await self.import_all_python_files(branch_name=branch_name, commit=commit, config_file=config_file)
-        await self.import_all_yaml_files(branch_name=branch_name, commit=commit)
 
-    async def import_objects_rfiles(self, branch_name: str, commit: str, data: List[dict]):
+        if config_file:
+            await self.import_rfiles(branch_name=branch_name, commit=commit, config_file=config_file)
+            await self.import_artifact_definitions(branch_name=branch_name, commit=commit, config_file=config_file)
+
+    async def import_rfiles(self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig):
         LOGGER.debug(f"{self.name} | Importing all RFiles in branch {branch_name} ({commit}) ")
 
         schema = await self.client.schema.get(kind="CoreRFile", branch=branch_name)
@@ -1042,10 +1022,9 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         local_rfiles = {}
 
         # Process the list of local RFile to organize them by name
-        for rfile in data:
+        for rfile in config_file.rfiles:
             try:
-                item = RFileInformation(**rfile)
-                self.client.schema.validate_data_against_schema(schema=schema, data=rfile)
+                self.client.schema.validate_data_against_schema(schema=schema, data=rfile.dict(exclude_none=True))
             except PydanticValidationError as exc:
                 for error in exc.errors():
                     LOGGER.error(f"  {'/'.join(error['loc'])} | {error['msg']} ({error['type']})")
@@ -1055,16 +1034,16 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 continue
 
             # Insert the ID of the current repository if required
-            if item.repository == "self":
-                item.repository = self.id
+            if rfile.repository == "self":
+                rfile.repository = self.id
 
             # Query the GraphQL query and (eventually) replace the name with the ID
             graphql_query = await self.client.get(
-                kind="CoreGraphQLQuery", branch=branch_name, id=str(item.query), populate_store=True
+                kind="CoreGraphQLQuery", branch=branch_name, id=str(rfile.query), populate_store=True
             )
-            item.query = graphql_query.id
+            rfile.query = graphql_query.id
 
-            local_rfiles[item.name] = item
+            local_rfiles[rfile.name] = rfile
 
         present_in_both, only_graph, only_local = compare_lists(
             list1=list(rfiles_in_graph.keys()), list2=list(local_rfiles.keys())
@@ -1089,17 +1068,17 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             LOGGER.info(f"{self.name} | RFile '{rfile_name}' not found locally in branch {branch_name}, deleting")
             await rfiles_in_graph[rfile_name].delete()
 
-    async def create_rfile(self, branch_name: str, data: RFileInformation) -> InfrahubNode:
+    async def create_rfile(self, branch_name: str, data: InfrahubRepositoryRFileConfig) -> InfrahubNode:
         schema = await self.client.schema.get(kind="CoreRFile", branch=branch_name)
         create_payload = self.client.schema.generate_payload_create(
-            schema=schema, data=data.dict(), source=self.id, is_protected=True
+            schema=schema, data=data.payload, source=self.id, is_protected=True
         )
         obj = await self.client.create(kind="CoreRFile", branch=branch_name, **create_payload)
         await obj.save()
         return obj
 
     @classmethod
-    async def compare_rfile(cls, existing_rfile: InfrahubNode, local_rfile: RFileInformation) -> bool:
+    async def compare_rfile(cls, existing_rfile: InfrahubNode, local_rfile: InfrahubRepositoryRFileConfig) -> bool:
         # pylint: disable=no-member
         if (
             existing_rfile.description.value != local_rfile.description
@@ -1110,7 +1089,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         return True
 
-    async def update_rfile(self, existing_rfile: InfrahubNode, local_rfile: RFileInformation) -> None:
+    async def update_rfile(self, existing_rfile: InfrahubNode, local_rfile: InfrahubRepositoryRFileConfig) -> None:
         # pylint: disable=no-member
         if existing_rfile.description.value != local_rfile.description:
             existing_rfile.description.value = local_rfile.description
@@ -1118,12 +1097,12 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         if existing_rfile.query.id != local_rfile.query:
             existing_rfile.query = {"id": local_rfile.query, "source": str(self.id), "is_protected": True}
 
-        if existing_rfile.template_path.value != local_rfile.template_path:
-            existing_rfile.template_path.value = local_rfile.template_path
+        if existing_rfile.template_path.value != local_rfile.template_path_value:
+            existing_rfile.template_path.value = local_rfile.template_path_value
 
         await existing_rfile.save()
 
-    async def import_objects_artifact_definitions(self, branch_name: str, commit: str, data: List[dict]):
+    async def import_artifact_definitions(self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig):
         LOGGER.debug(f"{self.name} | Importing all Artifact Definitions in branch {branch_name} ({commit}) ")
 
         schema = await self.client.schema.get(kind="CoreArtifactDefinition", branch=branch_name)
@@ -1133,13 +1112,12 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             for artdef in await self.client.filters(kind="CoreArtifactDefinition", branch=branch_name)
         }
 
-        local_artifact_defs = {}
+        local_artifact_defs: Dict[str, InfrahubRepositoryArtifactDefinitionConfig] = {}
 
         # Process the list of local RFile to organize them by name
-        for artdef in data:
+        for artdef in config_file.artifact_definitions:
             try:
-                item = ArtifactDefinitionInformation(**artdef)
-                self.client.schema.validate_data_against_schema(schema=schema, data=artdef)
+                self.client.schema.validate_data_against_schema(schema=schema, data=artdef.dict(exclude_none=True))
             except PydanticValidationError as exc:
                 for error in exc.errors():
                     LOGGER.error(f"  {'/'.join(error['loc'])} | {error['msg']} ({error['type']})")
@@ -1148,7 +1126,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 LOGGER.error(exc.message)
                 continue
 
-            local_artifact_defs[item.name] = item
+            local_artifact_defs[artdef.name] = artdef
 
         present_in_both, _, only_local = compare_lists(
             list1=list(artifact_defs_in_graph.keys()), list2=list(local_artifact_defs.keys())
@@ -1173,7 +1151,9 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                     local_artifact_definition=local_artifact_defs[artdef_name],
                 )
 
-    async def create_artifact_definition(self, branch_name: str, data: ArtifactDefinitionInformation) -> InfrahubNode:
+    async def create_artifact_definition(
+        self, branch_name: str, data: InfrahubRepositoryArtifactDefinitionConfig
+    ) -> InfrahubNode:
         schema = await self.client.schema.get(kind="CoreArtifactDefinition", branch=branch_name)
         create_payload = self.client.schema.generate_payload_create(
             schema=schema, data=data.dict(), source=self.id, is_protected=True
@@ -1184,7 +1164,9 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
     @classmethod
     async def compare_artifact_definition(
-        cls, existing_artifact_definition: InfrahubNode, local_artifact_definition: RFileInformation
+        cls,
+        existing_artifact_definition: InfrahubNode,
+        local_artifact_definition: InfrahubRepositoryArtifactDefinitionConfig,
     ) -> bool:
         # pylint: disable=no-member
         if (
@@ -1194,8 +1176,12 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         ):
             return False
 
+        return True
+
     async def update_artifact_definition(
-        self, existing_artifact_definition: InfrahubNode, local_artifact_definition: RFileInformation
+        self,
+        existing_artifact_definition: InfrahubNode,
+        local_artifact_definition: InfrahubRepositoryArtifactDefinitionConfig,
     ) -> None:
         # pylint: disable=no-member
         if existing_artifact_definition.artifact_name.value != local_artifact_definition.artifact_name:
@@ -1235,13 +1221,9 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             )
             return
 
-    async def import_schema_files(self, branch_name: str, commit: str) -> None:
+    async def import_schema_files(self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig) -> None:
         # pylint: disable=too-many-branches
-        config_file = await self.get_repository_config(branch_name=branch_name, commit=commit)
         branch_wt = self.get_worktree(identifier=commit or branch_name)
-
-        if not config_file:
-            return
 
         schemas_data: List[YamlFile] = []
 
@@ -1631,7 +1613,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
     async def update_python_transform(
         self, existing_transform: InfrahubNode, local_transform: TransformPythonInformation
-    ) -> bool:
+    ) -> None:
         if existing_transform.query.id != local_transform.query:
             existing_transform.query = {"id": local_transform.query, "source": str(self.id), "is_protected": True}
 
@@ -1662,40 +1644,6 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         ):
             return False
         return True
-
-    async def import_all_yaml_files(self, branch_name: str, commit: str, exclude: Optional[List[str]] = None):
-        yaml_files = await self.find_files(extension=["yml", "yaml"], commit=commit)
-
-        for yaml_file in yaml_files:
-            LOGGER.debug(f"{self.name} | Checking {yaml_file}")
-
-            # ------------------------------------------------------
-            # Import Yaml
-            # ------------------------------------------------------
-            with open(yaml_file, "r", encoding="UTF-8") as file_data:
-                yaml_data = file_data.read()
-
-            try:
-                data = yaml.safe_load(yaml_data)
-            except yaml.YAMLError as exc:
-                LOGGER.warning(f"{self.name} | Unable to load YAML file {yaml_file} : {exc}")
-                continue
-
-            if not isinstance(data, dict):
-                LOGGER.debug(f"{self.name} | {yaml_file} : payload is not a dictionnary .. SKIPPING")
-                continue
-
-            # ------------------------------------------------------
-            # Search for Valid object types
-            # ------------------------------------------------------
-            for key, data in data.items():
-                if exclude and key in exclude:
-                    continue
-                if not hasattr(self, f"import_objects_{key}"):
-                    continue
-
-                method = getattr(self, f"import_objects_{key}")
-                await method(branch_name=branch_name, commit=commit, data=data)
 
     async def import_all_python_files(self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig):
         await self.import_python_check_definitions(branch_name=branch_name, commit=commit, config_file=config_file)
