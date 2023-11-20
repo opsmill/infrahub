@@ -5,7 +5,12 @@ from typing import List, Optional
 
 import typer
 import yaml
-from pydantic import BaseModel, ValidationError
+
+try:
+    from pydantic import v1 as pydantic  # type: ignore[attr-defined]
+except ImportError:
+    import pydantic  # type: ignore[no-redef]
+
 from rich.console import Console
 from rich.logging import RichHandler
 
@@ -23,7 +28,7 @@ def callback() -> None:
     """
 
 
-class SchemaFile(BaseModel):
+class SchemaFile(pydantic.BaseModel):
     location: Path
     content: Optional[dict] = None
     valid: bool = True
@@ -71,7 +76,7 @@ async def _load(schemas: List[Path], branch: str, log: logging.Logger) -> None: 
     for schema_file in schemas_data:
         try:
             client.schema.validate(schema_file.content)
-        except ValidationError as exc:
+        except pydantic.ValidationError as exc:
             console.print(f"[red]Schema not valid, found '{len(exc.errors())}' error(s) in {schema_file.location}")
             has_error = True
             for error in exc.errors():

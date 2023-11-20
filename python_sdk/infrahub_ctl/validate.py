@@ -5,7 +5,12 @@ from typing import List, Optional
 
 import typer
 import yaml
-from pydantic import ValidationError
+
+try:
+    from pydantic import v1 as pydantic  # type: ignore[attr-defined]
+except ImportError:
+    import pydantic  # type: ignore[no-redef]
+
 from rich.console import Console
 from ujson import JSONDecodeError
 
@@ -38,7 +43,7 @@ async def _schema(schema: Path) -> None:
 
     try:
         client.schema.validate(schema_data)
-    except ValidationError as exc:
+    except pydantic.ValidationError as exc:
         console.print(f"[red]Schema not valid, found '{len(exc.errors())}' error(s)")
         for error in exc.errors():
             loc_str = [str(item) for item in error["loc"]]

@@ -4,14 +4,18 @@ from typing import Any, Dict, Optional, Union
 
 import toml
 import typer
-from pydantic import BaseSettings, ValidationError, root_validator
+
+try:
+    from pydantic import v1 as pydantic  # type: ignore[attr-defined]
+except ImportError:
+    import pydantic  # type: ignore[no-redef]
 
 DEFAULT_CONFIG_FILE = "infrahubctl.toml"
 ENVVAR_CONFIG_FILE = "INFRAHUBCTL_CONFIG"
 INFRAHUB_REPO_CONFIG_FILE = ".infrahub.yml"
 
 
-class Settings(BaseSettings):
+class Settings(pydantic.BaseSettings):
     """Main Settings Class for the project."""
 
     server_address: str = "http://localhost:8000"
@@ -27,7 +31,7 @@ class Settings(BaseSettings):
             "default_branch": {"env": "INFRAHUB_DEFAULT_BRANCH"},
         }
 
-    @root_validator
+    @pydantic.root_validator
     def cleanup_server_address(cls, values: Dict[str, Any]) -> Dict[str, Any]:  # pylint: disable=no-self-argument
         values["server_address"] = values["server_address"].rstrip("/")
         return values
@@ -76,7 +80,7 @@ def load_and_exit(
     """
     try:
         load(config_file=config_file, config_data=config_data)
-    except ValidationError as exc:
+    except pydantic.ValidationError as exc:
         print(f"Configuration not valid, found {len(exc.errors())} error(s)")
         for error in exc.errors():
             loc_str = [str(item) for item in error["loc"]]

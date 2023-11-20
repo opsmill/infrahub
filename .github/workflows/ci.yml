@@ -31,7 +31,7 @@ jobs:
    # ------------------------------------------ Check Files Changes  ------------------------------------------
   files-changed:
     name: Detect which file has changed
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
       backend: ${{ steps.changes.outputs.backend_all }}
@@ -112,14 +112,65 @@ jobs:
       - name: "Linting: ruff format"
         run: "ruff format --check --diff ."
 
-  python-sdk-tests:
+  python-sdk-unit-tests:
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11"]
+        pydantic-version: ["^1.10", "^2"]
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.sdk == 'true'
     needs: ["files-changed", "yaml-lint", "python-lint"]
-    runs-on: "ubuntu-20.04"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      INFRAHUB_DB_TYPE: memgraph
+    defaults:
+      run:
+        working-directory: python_sdk/
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v3"
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: "Setup environment"
+        run: |
+          pipx install poetry
+          poetry config virtualenvs.prefer-active-python true
+          pip install invoke toml
+      - name: Set Version of Pydantic
+        run: poetry add pydantic@${{ matrix.pydantic-version }}
+      - name: "Install Package"
+        run: "poetry install"
+      - name: "Pylint Tests"
+        run: "poetry run pylint infrahub_sdk/ infrahub_ctl/"
+      - name: "Mypy Tests"
+        run: "poetry run mypy --show-error-codes infrahub_sdk/ infrahub_ctl/"
+      - name: "Unit Tests"
+        run: "poetry run pytest -v --cov=infrahub_sdk tests/unit"
+        env:
+          BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_SDK_UNIT }}
+      - name: "Coveralls : Unit Tests"
+        uses: coverallsapp/github-action@v2.0.0
+        env:
+          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+        with:
+          flag-name: python-sdk-unit
+          parallel: true
+
+
+  python-sdk-integration-tests:
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.sdk == 'true'
+    needs: ["python-sdk-unit-tests"]
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
       INFRAHUB_DB_TYPE: memgraph
@@ -132,21 +183,6 @@ jobs:
         run: "invoke test.build"
       - name: "Pull External Docker Images"
         run: "invoke test.pull"
-      - name: "Pylint Tests"
-        run: "invoke sdk.pylint --docker"
-      - name: "Mypy Tests"
-        run: "invoke sdk.mypy --docker"
-      - name: "Unit Tests"
-        run: "invoke sdk.test-unit"
-        env:
-          BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_SDK_UNIT }}
-      - name: "Coveralls : Unit Tests"
-        uses: coverallsapp/github-action@v2.0.0
-        env:
-          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
-        with:
-          flag-name: python-sdk-unit
-          parallel: true
       - name: "Integration Tests"
         run: "invoke sdk.test-integration"
         env:
@@ -166,7 +202,7 @@ jobs:
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.sync == 'true'
     needs: ["files-changed", "yaml-lint", "python-lint"]
-    runs-on: "ubuntu-20.04"
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: "Check out repository code"
@@ -388,7 +424,11 @@ jobs:
   #       run: invoke demo.status
 
   E2E-testing-neo4j:
-    needs: ["frontend-tests", "backend-tests-default", "python-sdk-tests"]
+    needs:
+      - javascript-lint
+      - files-changed
+      - yaml-lint
+      - python-lint
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -454,7 +494,7 @@ jobs:
 
   # ------------------------------------------ Coverall Report  ------------------------------------------
   coverall-report:
-    needs: ["frontend-tests", "backend-tests-default", "python-sdk-tests"]
+    needs: ["frontend-tests", "backend-tests-default", "python-sdk-integration-tests"]
     if: |
       always() && !cancelled()
     runs-on: ubuntu-latest
