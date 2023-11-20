@@ -214,10 +214,6 @@ module = "infrahub.server"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.storage.main"
-disallow_untyped_defs = false
-
-[[tool.mypy.overrides]]
 module = "infrahub.tasks.registry"
 ignore_errors = true
 
