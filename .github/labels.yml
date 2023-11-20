@@ -142,7 +142,7 @@
   description: "The redaction of the issue is still a work in progress"
   color: "dcb518"
 
-- name: "state/referenced"
+- name: "state/ref"
   description: "This issue is referenced in our internal tooling"
   color: "c9510c"
 
