@@ -331,7 +331,7 @@ class NodeManager:
         # Query list of all Attributes
         query = await NodeListGetAttributeQuery.init(
             db=db,
-            ids=ids,
+            ids=list(nodes_info_by_id.keys()),
             fields=fields,
             branch=branch,
             include_source=include_source,
