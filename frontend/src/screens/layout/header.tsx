@@ -20,6 +20,7 @@ import { dateVar } from "../../graphql/variables/dateVar";
 import useQuery from "../../hooks/useQuery";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { classNames, debounce, parseJwt } from "../../utils/common";
+import LoadingScreen from "../loading-screen/loading-screen";
 import { userNavigation } from "./navigation-list";
 
 interface Props {
@@ -90,13 +91,13 @@ export default function Header(props: Props) {
     setQspDate(undefined);
   };
 
-  // if (loading || !schema) {
-  //   return (
-  //     <div className="z-10 flex h-16 flex-shrink-0 bg-custom-white shadow">
-  //       <LoadingScreen size={32} hideText />
-  //     </div>
-  //   );
-  // }
+  if (loading || !schema) {
+    return (
+      <div className="z-10 flex h-16 flex-shrink-0 bg-custom-white shadow">
+        <LoadingScreen size={32} hideText />
+      </div>
+    );
+  }
 
   const profile = data?.AccountProfile;
 
