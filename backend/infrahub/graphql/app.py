@@ -41,7 +41,7 @@ from graphql.utilities import (  # pylint: disable=no-name-in-module,import-erro
 from starlette.background import BackgroundTasks
 from starlette.datastructures import UploadFile
 from starlette.requests import HTTPConnection, Request
-from starlette.responses import HTMLResponse, JSONResponse, Response
+from starlette.responses import JSONResponse, Response
 from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 
 from infrahub.api.dependencies import api_key_scheme, cookie_auth_scheme, jwt_scheme
@@ -95,16 +95,10 @@ ContextValue = Union[Any, Callable[[HTTPConnection], Any]]
 RootValue = Any
 
 
-def make_graphiql_handler() -> Callable[[Request], Response]:
-    def handler(request: Request) -> Response:
-        return HTMLResponse(_GRAPHIQL_HTML)
-
-    return handler
-
-
 class InfrahubGraphQLApp:
     def __init__(
         self,
+        permission_checker: GraphQLQueryPermissionChecker,
         schema: graphene.Schema = None,
         *,
         on_get: Optional[Callable[[Request], Union[Response, Awaitable[Response]]]] = None,
@@ -113,8 +107,6 @@ class InfrahubGraphQLApp:
         error_formatter: Callable[[GraphQLError], GraphQLFormattedError] = format_error,
         logger_name: Optional[str] = None,
         execution_context_class: Optional[Type[ExecutionContext]] = None,
-        playground: bool = False,  # Deprecating. Use on_get instead.
-        permission_checker: GraphQLQueryPermissionChecker,
     ):
         self._schema = schema
         self.on_get = on_get
@@ -124,9 +116,6 @@ class InfrahubGraphQLApp:
         self.execution_context_class = execution_context_class
         self.logger = logging.getLogger(logger_name or __name__)
         self.permission_checker = permission_checker
-
-        if playground and self.on_get is None:
-            self.on_get = make_graphiql_handler()
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] == "http":
@@ -497,96 +486,3 @@ def _inject_file_to_operations(ops_tree: Any, _file: UploadFile, path: Sequence[
             ops_tree[key] = _file
     else:
         _inject_file_to_operations(ops_tree[key], _file, path[1:])
-
-
-_GRAPHIQL_HTML = """
-<!--
- *  Copyright (c) 2021 GraphQL Contributors
- *  All rights reserved.
- *
- *  This source code is licensed under the license found in the
- *  LICENSE file in the root directory of this source tree.
--->
-<!doctype html>
-<html lang="en">
-  <head>
-    <title>GraphiQL</title>
-    <style>
-      body {
-        height: 100%;
-        margin: 0;
-        width: 100%;
-        overflow: hidden;
-      }
-
-      #graphiql {
-        height: 100vh;
-      }
-    </style>
-    <!--
-      This GraphiQL example depends on Promise and fetch, which are available in
-      modern browsers, but can be "polyfilled" for older browsers.
-      GraphiQL itself depends on React DOM.
-      If you do not want to rely on a CDN, you can host these files locally or
-      include them directly in your favored resource bundler.
-    -->
-    <script
-      crossorigin
-      src="https://unpkg.com/react@18/umd/react.development.js"
-    ></script>
-    <script
-      crossorigin
-      src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"
-    ></script>
-    <!--
-      These two files can be found in the npm module, however you may wish to
-      copy them directly into your environment, or perhaps include them in your
-      favored resource bundler.
-     -->
-    <script
-      src="https://unpkg.com/graphiql/graphiql.min.js"
-      type="application/javascript"
-    ></script>
-    <link rel="stylesheet" href="https://unpkg.com/graphiql/graphiql.min.css" />
-    <!--
-      These are imports for the GraphIQL Explorer plugin.
-     -->
-    <script
-      src="https://unpkg.com/@graphiql/plugin-explorer/dist/index.umd.js"
-      crossorigin
-    ></script>
-
-    <link
-      rel="stylesheet"
-      href="https://unpkg.com/@graphiql/plugin-explorer/dist/style.css"
-    />
-  </head>
-
-  <body>
-    <div id="graphiql">Loading...</div>
-    <script>
-      const root = ReactDOM.createRoot(document.getElementById('graphiql'));
-      const fetcher = GraphiQL.createFetcher({
-        url: window.location,
-      });
-      const explorerPlugin = GraphiQLPluginExplorer.explorerPlugin();
-      root.render(
-        React.createElement(GraphiQL, {
-          fetcher,
-          defaultEditorToolsVisibility: true,
-          plugins: [explorerPlugin],
-          query: `query GetTags {
-BuiltinTag {
-    edges {
-    node {
-        id
-        display_label
-      }
-    }
-  }
-}`
-        }),
-      );
-    </script>
-  </body>
-</html>""".strip()  # noqa: B950

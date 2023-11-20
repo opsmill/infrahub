@@ -34,7 +34,7 @@ class GraphQLQueryAnalyzer:
         self.schema: Optional[GraphQLSchema] = schema
         self.branch: Optional[Branch] = branch
         self.document: DocumentNode = parse(self.query)
-        self._fields: Dict = None
+        self._fields: Optional[Dict] = None
 
     @property
     def is_valid(self) -> Tuple[bool, Optional[List[GraphQLError]]]:
