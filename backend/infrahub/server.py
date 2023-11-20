@@ -16,8 +16,7 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from pydantic import ValidationError
 from starlette_exporter import PrometheusMiddleware, handle_metrics
 
-import infrahub.config as config
-from infrahub import __version__
+from infrahub import __version__, config
 from infrahub.api import router as api
 from infrahub.api.background import BackgroundRunner
 from infrahub.api.exception_handlers import generic_api_exception_handler
@@ -30,7 +29,8 @@ from infrahub.log import clear_log_context, get_logger, set_log_data
 from infrahub.message_bus import close_broker_connection, connect_to_broker
 from infrahub.message_bus.rpc import InfrahubRpcClient
 from infrahub.middleware import InfrahubCORSMiddleware
-from infrahub.services import services
+from infrahub.services import InfrahubServices, services
+from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.trace import add_span_exception, configure_trace, get_traceid, get_tracer
 
 # pylint: disable=too-many-locals
@@ -81,7 +81,7 @@ async def app_initialization():
         )
 
     # Initialize database Driver and load local registry
-    app.state.db = InfrahubDatabase(mode=InfrahubDatabaseMode.DRIVER, driver=await get_db())
+    database = app.state.db = InfrahubDatabase(mode=InfrahubDatabaseMode.DRIVER, driver=await get_db())
 
     initialize_lock()
 
@@ -90,7 +90,9 @@ async def app_initialization():
 
     # Initialize RPC Client
     app.state.rpc_client = await InfrahubRpcClient().connect()
-    services.prepare(service=app.state.rpc_client.service)
+    service = InfrahubServices(cache=RedisCache(), database=database)
+    service.message_bus = app.state.rpc_client.rabbitmq
+    services.prepare(service=service)
 
     async with app.state.db.start_session() as db:
         await initialization(db=db)

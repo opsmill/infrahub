@@ -8,11 +8,11 @@ from typing import TYPE_CHECKING, List, MutableMapping
 from infrahub_sdk import UUIDT
 
 from infrahub import config
-from infrahub.database import InfrahubDatabase, get_db
 from infrahub.log import clear_log_context, get_log_data, get_logger
 from infrahub.message_bus import messages
 from infrahub.message_bus.operations import execute_message
-from infrahub.services import InfrahubServices
+from infrahub.services import services
+from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
 from infrahub.worker import WORKER_IDENTITY
 
@@ -45,7 +45,7 @@ class InfrahubRpcClientBase:
     def __init__(self) -> None:
         self.futures: MutableMapping[str, asyncio.Future] = {}
         self.loop = asyncio.get_running_loop()
-        self.service: InfrahubServices = InfrahubServices()
+        self.rabbitmq: InfrahubMessageBus = InfrahubMessageBus()
 
     async def connect(self) -> InfrahubRpcClient:
         self.connection = await get_broker()
@@ -103,12 +103,8 @@ class InfrahubRpcClientBase:
 
         await self.events_queue.bind(self.exchange, routing_key="refresh.registry.*")
 
-        db = InfrahubDatabase(driver=await get_db())
-        self.service = InfrahubServices(
-            database=db,
-            message_bus=RabbitMQMessageBus(
-                channel=self.channel, exchange=self.exchange, delayed_exchange=self.delayed_exchange
-            ),
+        self.rabbitmq = RabbitMQMessageBus(
+            channel=self.channel, exchange=self.exchange, delayed_exchange=self.delayed_exchange
         )
 
         return self
@@ -123,7 +119,7 @@ class InfrahubRpcClientBase:
 
         clear_log_context()
         if message.routing_key in messages.MESSAGE_MAP:
-            await execute_message(routing_key=message.routing_key, message_body=message.body, service=self.service)
+            await execute_message(routing_key=message.routing_key, message_body=message.body, service=services.service)
         else:
             log.error("Invalid message received", message=f"{message!r}")
 
