@@ -28,13 +28,8 @@ describe("Tutorial - Part 1", () => {
     cy.get("[data-cy='create']").click();
 
     // Add organization name
-    cy.get(".grid > :nth-child(1) > .relative > .block").type(ORGANIZATION_NAME, {
-      delay: 0,
-      force: true,
-    });
-    cy.get(".grid > :nth-child(3) > .relative > .block").type(ORGANIZATION_DESCRIPTION, {
-      delay: 0,
-    });
+    cy.get("#Name").type(ORGANIZATION_NAME);
+    cy.get("#Description").type(ORGANIZATION_DESCRIPTION);
 
     if (this.screenshots) {
       cy.screenshot("tutorial_1_organization_create", screenshotConfig);
