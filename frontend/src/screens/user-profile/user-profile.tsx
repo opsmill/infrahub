@@ -114,7 +114,7 @@ export default function UserProfile() {
         <Tabs tabs={tabs} />
       </div>
 
-      {renderContent(qspTab)}
+      <div data-cy="user-details">{renderContent(qspTab)}</div>
     </div>
   );
 }
