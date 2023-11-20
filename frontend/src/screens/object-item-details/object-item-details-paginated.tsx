@@ -316,7 +316,13 @@ export default function ObjectItemDetails(props: any) {
         </div>
       )}
 
-      {qspTab && <RelationshipsDetails parentNode={objectDetailsData} parentSchema={schemaData} />}
+      {qspTab && (
+        <RelationshipsDetails
+          parentNode={objectDetailsData}
+          parentSchema={schemaData}
+          refetchObjectDetails={refetch}
+        />
+      )}
 
       <SlideOver
         title={
