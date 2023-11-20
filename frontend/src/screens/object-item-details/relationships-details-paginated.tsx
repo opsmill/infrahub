@@ -66,6 +66,10 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
 
   const { loading, error, data, refetch } = useQuery(query, { skip: !relationshipTab });
 
+  const updatePageData = () => {
+    return Promise.all([refetch(), refetchObjectDetails()]);
+  };
+
   if (loading) {
     return <LoadingScreen />;
   }
@@ -104,8 +108,7 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
       context: { branch: branch?.name, date },
     });
 
-    refetchObjectDetails();
-    refetch();
+    updatePageData();
 
     toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Item removed from the group"} />);
   };
@@ -118,7 +121,7 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
         parentSchema={parentSchema}
         relationshipsData={relationships}
         relationshipSchema={relationshipSchema}
-        refetch={() => Promise.all([refetch(), refetchObjectDetails()])}
+        refetch={updatePageData}
         onDeleteRelationship={handleDeleteRelationship}
       />
 

@@ -56,7 +56,7 @@ describe("Relationship Page", () => {
     cy.contains("Interfaces15").should("exist");
   });
 
-  it("should delete the newly created relationship", () => {
+  it("should update the new relationship", () => {
     cy.login(ADMIN_CREDENTIALS.username, ADMIN_CREDENTIALS.password);
     cy.visit("/objects/InfraDevice");
     cy.contains("atl1-edge1").click();
@@ -68,6 +68,33 @@ describe("Relationship Page", () => {
     //  2. Order of "Ethernet11" is not guaranteed to be the same each time
     cy.get("[data-cy='relationship-row']")
       .contains(/^Ethernet11$/)
+      .parent()
+      .within(() => {
+        cy.get("[data-cy='metadata-edit-button']").click();
+      });
+
+    cy.get("[data-cy='form']").within(() => {
+      cy.get("#Description").type("Test description");
+      cy.contains("Save").click();
+    });
+
+    cy.contains("InterfaceL2 updated").should("be.visible");
+    cy.get("[data-cy='relationship-row']")
+      .contains(/^Ethernet11$/)
+      .parent()
+      .within(() => {
+        cy.contains("Test description").should("be.visible");
+      });
+  });
+
+  it("should delete the newly created relationship", () => {
+    cy.login(ADMIN_CREDENTIALS.username, ADMIN_CREDENTIALS.password);
+    cy.visit("/objects/InfraDevice");
+    cy.contains("atl1-edge1").click();
+    cy.contains("Interfaces").click();
+
+    cy.get("[data-cy='relationship-row']")
+      .contains(/^Test description$/)
       .parent()
       .within(() => {
         cy.get("[data-cy='relationship-delete-button']").click();
