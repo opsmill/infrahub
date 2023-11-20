@@ -104,7 +104,7 @@ def identify_faulty_jinja_code(traceback: Traceback, nbr_context_lines: int = 3)
     return response
 
 
-@app.command()
+@app.command(name="render")
 def render(  # pylint: disable=too-many-branches,too-many-statements
     rfile: str,
     variables: Optional[List[str]] = typer.Argument(
@@ -220,7 +220,7 @@ def render(  # pylint: disable=too-many-branches,too-many-statements
     print(rendered_tpl)
 
 
-@app.command()
+@app.command(name="run")
 def run(
     script: Path,
     method: str = "run",

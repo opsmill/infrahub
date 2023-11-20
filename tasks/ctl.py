@@ -20,16 +20,17 @@ NAMESPACE = "CTL"
 @task
 def generate_doc(context: Context):
     """Generate the documentation for infrahubctl using typer-cli."""
+    from infrahub_ctl.cli import app
 
-    CLI_COMMANDS = (
-        ("infrahub_ctl.branch", "infrahubctl branch", "infrahubctl-branch"),
-        ("infrahub_ctl.schema", "infrahubctl schema", "infrahubctl-schema"),
-        ("infrahub_ctl.validate", "infrahubctl validate", "infrahubctl-validate"),
-        ("infrahub_ctl.check", "infrahubctl check", "infrahubctl-check"),
-    )
     print(f" - [{NAMESPACE}] Generate CLI documentation")
-    for command in CLI_COMMANDS:
-        exec_cmd = f'typer  {command[0]} utils docs --name "{command[1]}" --output docs/infrahubctl/{command[2]}.md'
+    for cmd in app.registered_commands:
+        exec_cmd = f'typer --func {cmd.name} infrahub_ctl.cli utils docs --name "infrahubctl {cmd.name}"'
+        exec_cmd += f" --output docs/infrahubctl/infrahubctl-{cmd.name}.md"
+        with context.cd(ESCAPED_REPO_PATH):
+            context.run(exec_cmd)
+
+    for cmd in app.registered_groups:
+        exec_cmd = f'typer infrahub_ctl.{cmd.name} utils docs --name "infrahubctl {cmd.name}" --output docs/infrahubctl/infrahubctl-{cmd.name}.md'
         with context.cd(ESCAPED_REPO_PATH):
             context.run(exec_cmd)
 
