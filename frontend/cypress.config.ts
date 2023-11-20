@@ -22,7 +22,7 @@ export default defineConfig({
     },
     specPattern: "tests/integrations/**/*.cy.{js,jsx,ts,tsx}",
     reporter: "spec",
-    video: true,
+    video: false,
     viewportHeight: 720,
     viewportWidth: 1280,
   },
