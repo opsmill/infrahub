@@ -33,3 +33,6 @@ artifact_definitions:
 
 check_definitions:
   - file_path: "checks/check_backbone_link_redundancy.py"
+
+python_transforms:
+  - file_path: "transforms/openconfig.py"

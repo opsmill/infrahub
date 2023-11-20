@@ -1004,8 +1004,6 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         if config_file:
             await self.import_all_python_files(branch_name=branch_name, commit=commit, config_file=config_file)
-
-        if config_file:
             await self.import_rfiles(branch_name=branch_name, commit=commit, config_file=config_file)
             await self.import_artifact_definitions(branch_name=branch_name, commit=commit, config_file=config_file)
 
@@ -1428,6 +1426,80 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             )
             await check_definition_in_graph[check_name].delete()
 
+    async def import_python_transforms(
+        self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
+    ) -> None:
+        commit_wt = self.get_worktree(identifier=commit)
+        branch_wt = self.get_worktree(identifier=commit or branch_name)
+
+        # Ensure the path for this repository is present in sys.path
+        if self.directory_root not in sys.path:
+            sys.path.append(self.directory_root)
+
+        transforms = []
+        for transform in config_file.python_transforms:
+            LOGGER.debug(self.name, import_type="python_transform", file=transform.file_path)
+
+            file_info = extract_repo_file_information(
+                full_filename=os.path.join(branch_wt.directory, transform.file_path.as_posix()),
+                repo_directory=self.directory_root,
+                worktree_directory=commit_wt.directory,
+            )
+            try:
+                module = importlib.import_module(file_info.module_name)
+            except ModuleNotFoundError as exc:
+                LOGGER.warning(
+                    self.name, import_type="python_transform", file=transform.file_path.as_posix(), error=str(exc)
+                )
+                continue
+
+            transforms.extend(
+                await self.get_python_transforms(
+                    branch_name=branch_name,
+                    module=module,
+                    file_path=file_info.relative_path_file,
+                )
+            )
+
+        local_transform_definitions = {transform.name: transform for transform in transforms}
+        transform_definition_in_graph = {
+            transform.name.value: transform
+            for transform in await self.client.filters(
+                kind="CoreTransformPython", branch=branch_name, repository__ids=[str(self.id)]
+            )
+        }
+
+        present_in_both, only_graph, only_local = compare_lists(
+            list1=list(transform_definition_in_graph.keys()), list2=list(local_transform_definitions.keys())
+        )
+
+        for transform_name in only_local:
+            LOGGER.info(
+                f"{self.name} | New TransformPython '{transform_name}' found on branch {branch_name} ({commit[:8]}), creating"
+            )
+            await self.create_python_transform(
+                branch_name=branch_name, transform=local_transform_definitions[transform_name]
+            )
+
+        for transform_name in present_in_both:
+            if not await self.compare_python_transform(
+                local_transform=local_transform_definitions[transform_name],
+                existing_transform=transform_definition_in_graph[transform_name],
+            ):
+                LOGGER.info(
+                    f"{self.name} | New version of TransformPython '{transform_name}' found on branch {branch_name} ({commit[:8]}), updating"
+                )
+                await self.update_python_transform(
+                    local_transform=local_transform_definitions[transform_name],
+                    existing_transform=transform_definition_in_graph[transform_name],
+                )
+
+        for transform_name in only_graph:
+            LOGGER.info(
+                f"{self.name} | TransformPython '{transform_name}' not found locally in branch {branch_name}, deleting"
+            )
+            await transform_definition_in_graph[transform_name].delete()
+
     async def get_check_definitions(
         self, branch_name: str, module: types.ModuleType, file_path: str
     ) -> List[CheckDefinitionInformation]:
@@ -1459,6 +1531,39 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 )
                 continue
         return checks
+
+    async def get_python_transforms(
+        self, branch_name: str, module: types.ModuleType, file_path: str
+    ) -> List[TransformPythonInformation]:
+        if INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT not in dir(module):
+            return []
+
+        transforms = []
+        for transform_class in getattr(module, INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT):
+            graphql_query = await self.client.get(
+                kind="CoreGraphQLQuery", branch=branch_name, id=str(transform_class.query), populate_store=True
+            )
+            try:
+                transforms.append(
+                    TransformPythonInformation(
+                        name=transform_class.__name__,
+                        repository=str(self.id),
+                        class_name=transform_class.__name__,
+                        transform_class=transform_class,
+                        file_path=file_path,
+                        query=str(graphql_query.id),
+                        timeout=transform_class.timeout,
+                        rebase=transform_class.rebase,
+                        url=transform_class.url,
+                    )
+                )
+
+            except Exception as exc:  # pylint: disable=broad-exception-caught
+                LOGGER.error(
+                    f"{self.name} | An error occured while processing the PythonTransform {transform_class.__name__} from {file_path} : {exc} "
+                )
+                continue
+        return transforms
 
     async def create_python_check_definition(self, branch_name: str, check: CheckDefinitionInformation) -> InfrahubNode:
         data = {
@@ -1525,70 +1630,6 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             return False
         return True
 
-    async def import_python_transforms_from_module(self, branch_name: str, commit: str, module, file_path: str):
-        # TODO add function to validate if a check is valid
-
-        if INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT not in dir(module):
-            return False
-
-        transforms_in_graph = {
-            transform.name.value: transform
-            for transform in await self.client.filters(
-                kind="CoreTransformPython", branch=branch_name, repository__ids=[str(self.id)]
-            )
-        }
-
-        local_transforms = {}
-
-        for transform_class in getattr(module, INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT):
-            transform = transform_class()
-
-            # Query the GraphQL query and (eventually) replace the name with the ID
-            graphql_query = await self.client.get(
-                kind="CoreGraphQLQuery", branch=branch_name, id=str(transform.query), populate_store=True
-            )
-
-            item = TransformPythonInformation(
-                name=transform.name,
-                repository=str(self.id),
-                query=str(graphql_query.id),
-                file_path=file_path,
-                url=transform.url,
-                transform_class=transform,
-                class_name=transform_class.__name__,
-                rebase=transform.rebase,
-                timeout=transform.timeout,
-            )
-            local_transforms[item.name] = item
-
-        present_in_both, only_graph, only_local = compare_lists(
-            list1=list(transforms_in_graph.keys()), list2=list(local_transforms.keys())
-        )
-
-        for transform_name in only_local:
-            LOGGER.info(
-                f"{self.name} | New Python Transform '{transform_name}' found on branch {branch_name} ({commit[:8]}), creating"
-            )
-            await self.create_python_transform(branch_name=branch_name, transform=local_transforms[transform_name])
-
-        for transform_name in present_in_both:
-            if not await self.compare_python_transform(
-                existing_transform=transforms_in_graph[transform_name], local_transform=local_transforms[transform_name]
-            ):
-                LOGGER.info(
-                    f"{self.name} | New version of the Python Transform '{transform_name}' found on branch {branch_name} ({commit[:8]}), updating"
-                )
-                await self.update_python_transform(
-                    existing_transform=transforms_in_graph[transform_name],
-                    local_transform=local_transforms[transform_name],
-                )
-
-        for transform_name in only_graph:
-            LOGGER.info(
-                f"{self.name} | Python Transform '{transform_name}' not found locally in branch {branch_name} ({commit[:8]}), deleting"
-            )
-            await transforms_in_graph[transform_name].delete()
-
     async def create_python_transform(self, branch_name: str, transform: TransformPythonInformation) -> InfrahubNode:
         schema = await self.client.schema.get(kind="CoreTransformPython", branch=branch_name)
         data = {
@@ -1647,30 +1688,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
     async def import_all_python_files(self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig):
         await self.import_python_check_definitions(branch_name=branch_name, commit=commit, config_file=config_file)
-        commit_wt = self.get_worktree(identifier=commit)
-
-        python_files = await self.find_files(extension=["py"], commit=commit)
-
-        # Ensure the path for this repository is present in sys.path
-        if self.directory_root not in sys.path:
-            sys.path.append(self.directory_root)
-
-        for python_file in python_files:
-            LOGGER.debug(f"{self.name} | Checking {python_file}")
-
-            file_info = extract_repo_file_information(
-                full_filename=python_file, repo_directory=self.directory_root, worktree_directory=commit_wt.directory
-            )
-
-            try:
-                module = importlib.import_module(file_info.module_name)
-            except ModuleNotFoundError:
-                LOGGER.warning(f"{self.name} | Unable to load python file {python_file}")
-                continue
-
-            await self.import_python_transforms_from_module(
-                branch_name=branch_name, commit=commit, module=module, file_path=file_info.relative_path_file
-            )
+        await self.import_python_transforms(branch_name=branch_name, commit=commit, config_file=config_file)
 
     async def find_files(
         self,
