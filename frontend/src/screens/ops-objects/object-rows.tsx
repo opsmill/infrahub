@@ -1,10 +1,6 @@
-import {
-  ChevronDoubleRightIcon,
-  ChevronRightIcon,
-  ShieldCheckIcon,
-  StarIcon,
-} from "@heroicons/react/24/outline";
 import { iNodeSchema } from "../../state/atoms/schema.atom";
+import { Icon } from "@iconify-icon/react";
+import { Tooltip } from "../../components/tooltip";
 
 interface Props {
   schema: iNodeSchema;
@@ -59,10 +55,14 @@ export default function ObjectRows(props: Props) {
                       </div>
                       <div className="ml-4 flex-shrink-0 flex space-x-2">
                         {(attribute?.optional === false || attribute?.unique) && (
-                          <ShieldCheckIcon className="w-4 h-4" />
+                          <Tooltip message="Attribute is protected">
+                            <Icon icon="mdi:lock-outline" height="22" width="22" />
+                          </Tooltip>
                         )}
                         {(attribute?.unique === true || attribute?.unique) && (
-                          <StarIcon className="w-4 h-4" />
+                          <Tooltip message="Attribute value is unique">
+                            <Icon icon="mdi:key-outline" height="22" width="22" />
+                          </Tooltip>
                         )}
                       </div>
                     </li>
@@ -83,10 +83,10 @@ export default function ObjectRows(props: Props) {
                       </div>
                       <div>
                         {relationship.cardinality === "one" && (
-                          <ChevronRightIcon className="w-4 h-4" />
+                          <Icon icon="mdi:chevron-right" height="32" width="32" />
                         )}
                         {relationship.cardinality === "many" && (
-                          <ChevronDoubleRightIcon className="w-4 h-4" />
+                          <Icon icon="mdi:chevron-triple-right" height="32" width="32" />
                         )}
                       </div>
                       <div className="ml-4 flex-shrink-0 flex space-x-2 flex-1 justify-end">

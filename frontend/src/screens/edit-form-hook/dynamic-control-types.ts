@@ -95,5 +95,6 @@ export interface DynamicFieldData {
   isProtected?: boolean;
   isOptionnal?: boolean;
   isReadOnly?: boolean;
+  isUnique?: boolean;
   disabled?: boolean;
 }

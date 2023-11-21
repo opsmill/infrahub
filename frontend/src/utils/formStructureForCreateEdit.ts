@@ -129,6 +129,7 @@ const getFormStructureForCreateEdit = (
         isProtected: row && row[attribute.name] && row[attribute.name].is_protected,
         isReadOnly: attribute.read_only,
       }),
+      isUnique: attribute.unique,
     });
   });
 
