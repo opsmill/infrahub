@@ -22,7 +22,7 @@ The pre-requisites for this type of deployment are to have:
 - [Invoke](https://www.pyinvoke.org) (version 2 minimum) and TOML
 - [Docker](https://docs.docker.com/engine/install/) (version 24.x minimum)
 
-+++ Mac OS
++++ MacOS
 
 ### Invoke
 
