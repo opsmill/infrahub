@@ -54,7 +54,6 @@ infrahubGit:
       infrahubSdkTimeout: "20"
     image:
       repository: 9r2s1098.c1.gra9.container-registry.ovh.net/opsmill/infrahub
-      # tag: 0.8.2
     imagePullPolicy: Always
   replicas: 2
   waitForInfrahubServer:
@@ -83,7 +82,6 @@ infrahubServer:
       prometheusMultiprocDir: /prom_shared
     image:
       repository: 9r2s1098.c1.gra9.container-registry.ovh.net/opsmill/infrahub
-      # tag: 0.8.2
     imagePullPolicy: Always
   ports:
   - name: "infrahub-gui"
@@ -111,7 +109,6 @@ infrahubServerDbInitJob:
       infrahubConfig: /config/infrahub.toml
     image:
       repository: 9r2s1098.c1.gra9.container-registry.ovh.net/opsmill/infrahub
-      # tag: 0.8.2
   waitForDatabase:
     image:
       repository: busybox
