@@ -7,11 +7,11 @@ Infrahub is composed of multiple components. The backend is mostly written in Py
 
 The main components are:
 
-- A **Frontend** written in react
-- An **API Server** written in Python with FastAPI
-- A **Git agent** to manage the interaction with external Git repositories
-- A **Graph Database** based on `Neo4j` 5.x or `memgraph`
-- A **Message Bus** based on `RabbitMQ`
+- A **Frontend** written in react.
+- An **API server** written in Python with FastAPI.
+- A **Git agent** to manage the interaction with external Git repositories.
+- A **Graph database** based on `Neo4j` 5.x or `memgraph`.
+- A **Message bus** based on `RabbitMQ`.
 
 ## Docker Compose
 
@@ -54,15 +54,15 @@ On Ubuntu, depending on which distribution you're running, there is a good chanc
 
 ### Invoke
 
-Invoke is a Python package commonly installed with `pip install invoke toml`.
-If Python is not already installed on your system you'll need to install it first with `sudo apt install python3-pip`
+Invoke is a Python package commonly installed by running `pip install invoke toml`.
+If Python is not already installed on your system, install it first with `sudo apt install python3-pip`.
 
 ### Docker
 
-You can check if docker is installed and which version of docker is installed with `docker --version`
-The version should be at least `24.x`. if the version is `20.x` it's recommended to upgrade.
+Check if Docker is installed and which version is installed with `docker --version`
+The version should be at least `24.x`. If the version is `20.x`, it's recommended to upgrade.
 
-[This tutorial (for Ubuntu 22.04) explains how to install the latest version of docker on Ubuntu](https://www.digitalocean.com/community/tutorials/how-to-install-and-use-docker-on-ubuntu-22-04)
+[This tutorial (for Ubuntu 22.04) explains how to install the latest version of docker on Ubuntu](https://www.digitalocean.com/community/tutorials/how-to-install-and-use-docker-on-ubuntu-22-04).
 
 +++ Other
 
@@ -72,7 +72,7 @@ Please reach out if you need some help and feel free to send a PR with the insta
 
 +++
 
-Once docker desktop and invoke are properly installed you can build, start, and initialize the Infrahub demo environment with the following command:
+Once docker desktop and invoke are installed you can build, start, and initialize the Infrahub demo environment with the following command:
 
 ```sh
 invoke demo.build demo.start demo.load-infra-schema demo.load-infra-data

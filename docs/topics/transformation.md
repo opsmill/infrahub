@@ -5,32 +5,34 @@ layout: default
 
 # Transformation
 
-A `Transformation` is a generic plugin to transform a dataset into a different format to simplify it's ingestion by a third party systems.
+A `Transformation` is a generic plugin to transform a dataset into a different format to simplify it's ingestion by third-party systems.
 
 The output of a transformation can be either in JSON format or in plain text.
-*Currently transformation must be written in Python but in the future more languages could be supported.*
+>*Currently transformations must be written in Python, but in the future more languages could be supported.*
 
 !!!success Examples
+
 - With the `Jinja Plugin` it's possible to generate any configuration files, in plain text format.
-- With the `Python Plugin` its's possible to generate the payload expected by CloudFormation to configure a resource in AWS.
+- With the `Python Plugin` it's possible to generate the payload expected by CloudFormation to configure a resource in AWS.
+
 !!!
 
 ## High level design
 
-A Transformation is composed of 2 main components:
-- A **GraphQL Query** that will define what is the input data
+A transformation is composed of 2 main components:
+
+- A **GraphQL query** that will define what the input data.
 - A **Transformation logic** that will process the data and transform it.
 
 ![](../media/transformation.excalidraw.svg)
 
-
 !!!
-The Transformation will automatically inherit the parameters (variables) defined by the GraphQL query. Depending on how the GraphQL query has been constructed, a transformation can be static or work for multiple objects.
+The transformation will automatically inherit the parameters (variables) defined by the GraphQL query. Depending on how the GraphQL query has been constructed, a transformation can be static or work for multiple objects.
 !!!
 
 ==- Common parameters
-
-| Name            | Type                                | Default | Required | { class="compact" } |
+{ class="compact" } 
+| Name            | Type                                | Default | Required |
 | --------------- | ----------------------------------- | ------- | -------- |
 | **name**        | `Text`                              | -       | Yes      |
 | **label**       | `Text`                              | -       | No       |
@@ -42,8 +44,9 @@ The Transformation will automatically inherit the parameters (variables) defined
 
 ==-
 
-## Available Transformation
+## Available transformations
 
+{ class="compact" } 
 | Namespace | Transformation      | Description                            | Language | Output Format |
 | --------- | ------------------- | -------------------------------------- | -------- | ------------- |
 | Core      | **RFile**           | A file rendered from a Jinja2 template | Jinja2   | Plain Text    |
@@ -52,7 +55,7 @@ The Transformation will automatically inherit the parameters (variables) defined
 
 ### RFile (Jinja2 Plugin)
 
-An RFile is a Transformation plugin for Jinja2, it can generate any file in plain text format and must be composed of 1 main Jinja2 template and 1 GraphQL Query.
+An RFile is a transformation plugin for Jinja2, it can generate any file in plain text format and must be composed of 1 main Jinja2 template and 1 GraphQL query.
 
 #### Create an RFile
 
@@ -76,30 +79,35 @@ rfiles:
 #### Render an RFile
 
 An RFile can be rendered with 3 different methods:
+
 - On demand via the REST API
-- As part of an [Artifact](./artifact.md)
+- As part of an [artifact](./artifact.md)
 - In CLI for development and troubleshooting
 
 ##### From the REST API
 
-A RFile can be rendered on demand via the REST API with the endpoint : `https://<host>/api/rfile/<rfile name or ID>`
+An RFile can be rendered on demand via the REST API with the endpoint: `https://<host>/api/rfile/<rfile name or ID>`
 
-This endpoint is branch aware and it accept the name of the branch and/or the time in as a URL parameters
+This endpoint is branch-aware and it accepts the name of the branch and/or the time as URL parameters.
+
 - `https://<host>/api/rfile/<rfile name or ID>?branch=branch33`
 - `https://<host>/api/rfile/<rfile name or ID>?branch=branch33&at=<time of your choice>`
 
 !!!info
-The name of the branch used in the query will be used to retrieve the right Jinja Template and to execute the GraphQL Query
+The name of the branch used in the query will be used to retrieve the right Jinja template and to execute the GraphQL query.
 !!!
 
-If the GraphQL Query accept some parameters, they can be passed directly as URL parameters
-- `https://<host>/api/rfile/<rfile name or ID>?branch=branch33&my-param=XXXXX&my-other-param=YYYYY`
+If the GraphQL query accepts parameters, they can be passed directly as URL parameters:
+
+```txt
+https://<host>/api/rfile/<rfile name or ID>?branch=branch33&my-param=XXXXX&my-other-param=YYYYY
+```
 
 ##### From the CLI for development and troubleshooting
 
-The CLI command `infrahubctl` is able to find your local Rfile and render them for development and troubleshooting purposes.
+The CLI command `infrahubctl` is able to find your local Rfile(s) and render them for development and troubleshooting purposes.
 
-```
+```sh
  Usage: infrahubctl render [OPTIONS] RFILE [VARIABLES]...
 
  Render a local Jinja Template (RFile) for debugging purpose.
@@ -119,25 +127,27 @@ The CLI command `infrahubctl` is able to find your local Rfile and render them f
 ```
 
 Examples
-```
+
+```sh
 infrahubctl render <rfile name or ID> my-param=XXXXX my-other-param=YYYYY
 ```
 
 !!!info
-If `--branch` is not provided it will automatically use the name of the local branch
+If `--branch` is not provided it will automatically use the name of the local branch.
 !!!
 
 ### TransformPython (Python Plugin)
 
-A `TransformaPython` is a Transformation Plugin written in Python, it can generate any dataset in JSON format and must be composed of 1 main Python Class and 1 GraphQL Query.
+A `TransformaPython` is a transformation plugin written in Python. It can generate any dataset in JSON format and must be composed of 1 main Python Class and 1 GraphQL Query.
 
 #### Create a TransformPython
 
-A TransformPython must be written as a Python Class that inherit from `InfrahubTransform` and it must implement one `transform` method. The transform method must accept a dict and return one.
+A TransformPython must be written as a Python class that inherits from `InfrahubTransform` and it must implement one `transform` method. The transform method must accept a dict and return one.
 
-Each TransformPython must also define as Class level variables:
-- `query` : The ID or the name of the query to use
-- `url` : The URL where this TransformPython will be exposed via the REST API
+Each TransformPython must also define the following class-level variables:
+
+- `query`: The ID or the name of the query to use.
+- `url`: The URL where this TransformPython will be exposed via the REST API.
 
 ```python
 from infrahub_sdk.transforms import InfrahubTransform
@@ -152,19 +162,21 @@ class MyPythonTransformation(InfrahubTransform):
         return data
 ```
 
-The Git Agent will automatically locate and import all `PythonTransform` in a Git Repository.
+The Git agent will automatically locate and import all `PythonTransform` in a Git repository.
 
 #### Render a TransformPython
 
 An TransformPython can be rendered with 2 different methods:
+
 - On demand via the REST API
 - As part of an [Artifact](./artifact.md)
 
 ##### From the REST API
 
-A TransformPython can be rendered on demand via the REST API with the endpoint : `https://<host>/api/transform/<url defined by the TransformPython>`
+A TransformPython can be rendered on demand via the REST API with the endpoint: `https://<host>/api/transform/<url defined by the TransformPython>`
 
-This endpoint is branch aware and it accept the name of the branch and/or the time in as a URL parameters
+This endpoint is branch-aware and it accepts the name of the branch and/or the time as URL parameters.
+
 - `https://<host>/api/transform/my/custom/url?branch=branch33`
 - `https://<host>/api/transform/my/custom/url?branch=branch33&at=<time of your choice>`
 
@@ -172,8 +184,11 @@ This endpoint is branch aware and it accept the name of the branch and/or the ti
 The name of the branch used in the query will be used to retrieve the right Jinja Template and to execute the GraphQL Query
 !!!
 
-If the GraphQL Query accept some parameters, they can be passed directly as URL parameters
-- `https://<host>/api/transform/my/custom/url?branch=branch33&my-param=XXXXX&my-other-param=YYYYY`
+If the GraphQL query accept some parameters, they can be passed directly as URL parameters
+
+```txt
+https://<host>/api/transform/my/custom/url?branch=branch33&my-param=XXXXX&my-other-param=YYYYY
+```
 
 ## Unit testing for Transformation
 
