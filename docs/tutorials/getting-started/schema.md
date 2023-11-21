@@ -4,11 +4,11 @@ label: Extend the Schema
 tags: [tutorial]
 order: 650
 ---
+# Extend the schema
 
-Infrahub can be easily extended by providing your own schema (or models). The version of infrahub we currently use for the demo is barebone and doesn't include many models.
+Infrahub can be extended by providing your own schema (or models). The version of Infrahub we currently use for the demo is bare-bones and doesn't include many models.
 
 ## Visualize the active Schema
-
 
 The default schema is composed of 18+ models that are either mandatory for Infrahub to function like `Account`, `Group`, `Repository` or that are very generic like `Status`, `Role`, `Location`.
 
@@ -22,21 +22,23 @@ You can explore the current schema by visiting the schema page at the bottom of 
 
 ## Extend the schema with some network related models
 
-In order to model a simple network, we need to extend the current models to capture more information like : `Device`, `Interface`, `IPAddress`, `BGPSession` etc ..
+In order to model a simple network, we need to extend the current models to capture more information like: `Device`, `Interface`, `IPAddress`, `BGPSession`, etc.
 
-A schema extension with these type of models and more is available in the `models/` directory
+A schema extension with these types of models and more is available in the `models/` directory
 
 ==- Infrastructure Base Schema
 :::code source="../../../models/infrastructure_base.yml" :::
 ==-
 
 Use the following command to load these new models into Infrahub
-```
+
+```sh
 invoke demo.load-infra-schema
 ```
 
 ==- Expected Results
-```
+
+```sh
 ▶ invoke demo.load-infra-schema
 !! Found an override file for docker compose !!
 [+] Running 2/2
@@ -47,28 +49,28 @@ Schema loaded successfully!
 [+] Restarting 1/1
  ⠿ Container infrahub-dev-infrahub-server-1  Started                                                                                   1.0s
  ```
+
 ==-
 
-
 !!!success Validate that everything is correct
-**Reload the frontend** to see the new menu corresponding to the new models we just added to the schema.
+**Reload the frontend** to see the new menu corresponding to the new models we added to the schema.
 !!!
 
 ## Load some real data into the database
 
-In order to have more meaningful data to explore, we'll use a sample topology of 6 devices as presented below that is leveraging all the new models we just added to the schema.
+In order to have more meaningful data to explore, we'll use a sample topology of 6 devices as presented below that is leveraging all the new models we added to the schema.
 
 ![](../../media/demo_edge.excalidraw.svg)
 
-
 Use the following command to load these new models into Infrahub
-```
+
+```sh
 invoke demo.load-infra-data
 ```
 
-
 ==- Expected Results
-```
+
+```sh
 ▶ invoke demo.load-infra-data
 !! Found an override file for docker compose !!
 [+] Running 3/0
@@ -221,6 +223,7 @@ invoke demo.load-infra-data
            INFO     Connected  'jfk1-edge2::Ethernet4' <> 'ord1-edge2::Ethernet4'                                 infrastructure_edge.py:518
 (infrahub-5zZD-XQa-py3.9)
 ```
+
 ==-
 
 !!!success Validate that everything is correct

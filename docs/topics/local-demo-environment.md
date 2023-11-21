@@ -111,6 +111,6 @@ export INVOKE_PTY=0 to disable it completely
 It's recommended to check if all containers are still running using `invoke demo.status`. The 5 containers should be running and be present.
 
 - If one is not running, you can try to restart it with `invoke demo.start`.
-- If the container is still not coming up, you can watch the logs with `docker logs <container name>` (the container name will include the name of the project and a number, e.g., `infrahub-dev-infrahub-git-1` ).
+- If the container is still not coming up, you can watch the logs with `docker logs <container name>` (the container name will include the name of the project and a number, i.e., `infrahub-dev-infrahub-git-1` ).
 
 If some containers are still not coming up, it's recommended to start from a fresh install with `invoke demo.destroy`.
