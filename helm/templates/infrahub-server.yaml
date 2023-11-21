@@ -1,0 +1,161 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "infrahub-helm.fullname" . }}-infrahub-server
+  labels:
+    io.kompose.service: infrahub-server
+  {{- include "infrahub-helm.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.infrahubServer.replicas }}
+  selector:
+    matchLabels:
+      io.kompose.service: infrahub-server
+    {{- include "infrahub-helm.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        io.kompose.service: infrahub-server
+      {{- include "infrahub-helm.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+      - args: {{- toYaml .Values.infrahubServer.infrahubServer.args | nindent 8 }}
+        env:
+        - name: INFRAHUB_ALLOW_ANONYMOUS_ACCESS
+          value: {{ quote .Values.infrahubServer.infrahubServer.env.infrahubAllowAnonymousAccess }}
+        - name: INFRAHUB_CACHE_PORT
+          value: {{ quote .Values.infrahubServer.infrahubServer.env.infrahubCachePort }}
+        - name: INFRAHUB_CONFIG
+          value: {{ quote .Values.infrahubServer.infrahubServer.env.infrahubConfig }}
+        - name: INFRAHUB_DB_TYPE
+          value: {{ quote .Values.infrahubServer.infrahubServer.env.infrahubDbType }}
+        - name: INFRAHUB_FRONTEND_DIRECTORY
+          value: {{ quote .Values.infrahubServer.infrahubServer.env.infrahubFrontendDirectory }}
+        - name: INFRAHUB_LOG_LEVEL
+          value: {{ quote .Values.infrahubServer.infrahubServer.env.infrahubLogLevel }}
+        - name: INFRAHUB_PRODUCTION
+          value: {{ quote .Values.infrahubServer.infrahubServer.env.infrahubProduction }}
+        - name: INFRAHUB_SECURITY_INITIAL_ADMIN_TOKEN
+          value: {{ quote .Values.infrahubServer.infrahubServer.env.infrahubSecurityInitialAdminToken }}
+        - name: INFRAHUB_SECURITY_SECRET_KEY
+          value: {{ quote .Values.infrahubServer.infrahubServer.env.infrahubSecuritySecretKey }}
+        - name: PROMETHEUS_MULTIPROC_DIR
+          value: {{ quote .Values.infrahubServer.infrahubServer.env.prometheusMultiprocDir }}
+        - name: KUBERNETES_CLUSTER_DOMAIN
+          value: {{ .Values.kubernetesClusterDomain }}
+        image: {{ .Values.infrahubServer.infrahubServer.image.repository }}:{{ .Values.infrahubServer.infrahubServer.image.tag | default .Chart.AppVersion }}
+        imagePullPolicy: {{ .Values.infrahubServer.infrahubServer.imagePullPolicy }}
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - wget -O /dev/null http://localhost:{{ (index .Values.infrahubServer.ports 0).port }}/api/schema || exit 1
+          failureThreshold: 20
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 5
+        name: infrahub-server
+        ports:
+        {{- range .Values.infrahubServer.ports }}
+        {{- if eq .name "infrahub-gui" }}
+        - containerPort: {{ .targetPort }}
+          hostPort: {{ .port }}
+          protocol: TCP
+        {{- end }}
+        {{- end }}
+        resources: {}
+        tty: true
+        volumeMounts:
+        - mountPath: /opt/infrahub/storage
+          name: infrahub-server-storage-data
+        - name: infrahub-config-volume
+          mountPath: /config
+      initContainers:
+      - command:
+        - sh
+        - -c
+        - until nslookup {{ include "infrahub-helm.fullname" . }}-database.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.{{ .Values.kubernetesClusterDomain }};
+          do echo waiting for {{ include "infrahub-helm.fullname" . }}-database; sleep 2; done;
+        env:
+        - name: KUBERNETES_CLUSTER_DOMAIN
+          value: {{ quote .Values.kubernetesClusterDomain }}
+        image: {{ .Values.infrahubServer.waitForDatabase.image.repository }}:{{ .Values.infrahubServer.waitForDatabase.image.tag | default .Chart.AppVersion }}
+        name: wait-for-database
+        resources: {}
+      - command:
+        - sh
+        - -c
+        - until nslookup {{ include "infrahub-helm.fullname" . }}-message-queue.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.{{ .Values.kubernetesClusterDomain }};
+          do echo waiting for {{ include "infrahub-helm.fullname" . }}-message-queue; sleep 2; done;
+        env:
+        - name: KUBERNETES_CLUSTER_DOMAIN
+          value: {{ quote .Values.kubernetesClusterDomain }}
+        image: {{ .Values.infrahubServer.waitForMessageQueue.image.repository }}:{{ .Values.infrahubServer.waitForMessageQueue.image.tag | default .Chart.AppVersion }}
+        name: wait-for-message-queue
+        resources: {}
+      - command:
+        - sh
+        - -c
+        - until nslookup {{ include "infrahub-helm.fullname" . }}-cache.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.{{ .Values.kubernetesClusterDomain }};
+          do echo waiting for {{ include "infrahub-helm.fullname" . }}-cache; sleep 2; done;
+        env:
+        - name: KUBERNETES_CLUSTER_DOMAIN
+          value: {{ quote .Values.kubernetesClusterDomain }}
+        image: {{ .Values.infrahubServer.waitForCache.image.repository }}:{{ .Values.infrahubServer.waitForCache.image.tag | default .Chart.AppVersion }}
+        name: wait-for-cache
+        resources: {}
+      restartPolicy: Always
+      volumes:
+      - hostPath:
+          path: /tmp/infrahub-helm
+        name: infrahub-server-storage-data
+      - name: infrahub-config-volume
+        configMap:
+          name: {{ .Chart.Name }}-{{ .Chart.AppVersion }}-configmap
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "infrahub-helm.fullname" . }}-infrahub-server
+  labels:
+    io.kompose.service: infrahub-server
+  {{- include "infrahub-helm.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.infrahubServer.type }}
+  selector:
+    io.kompose.service: infrahub-server
+  {{- include "infrahub-helm.selectorLabels" . | nindent 4 }}
+  ports:
+	{{- .Values.infrahubServer.ports | toYaml | nindent 2 }}
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "infrahub-helm.fullname" . }}-infrahub-server-claim1
+  labels:
+    io.kompose.service: infrahub-server-claim1
+  {{- include "infrahub-helm.labels" . | nindent 4 }}
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.pvc.infrahubServerClaim1.storageRequest | quote }}
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "infrahub-helm.fullname" . }}-infrahub-server-storage-data
+  labels:
+    io.kompose.service: infrahub-server-storage-data
+  {{- include "infrahub-helm.labels" . | nindent 4 }}
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.pvc.infrahubServerStorageData.storageRequest | quote }}

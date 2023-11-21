@@ -1,0 +1,51 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "infrahub-helm.fullname" . }}-infrahub-server-db-init-job
+  labels:
+  {{- include "infrahub-helm.labels" . | nindent 4 }}
+spec:
+  backoffLimit: {{ .Values.infrahubServerDbInitJob.backoffLimit }}
+  template:
+    spec:
+      containers:
+      - command:
+        - sh
+        - -c
+        - infrahub db init
+        env:
+        - name: INFRAHUB_CACHE_PORT
+          value: {{ quote .Values.infrahubServer.infrahubServer.env.infrahubCachePort }}
+        - name: INFRAHUB_CONFIG
+          value: {{ quote .Values.infrahubServerDbInitJob.infrahubServerDbInitJob.env.infrahubConfig }}
+        - name: KUBERNETES_CLUSTER_DOMAIN
+          value: {{ quote .Values.kubernetesClusterDomain }}
+        image: {{ .Values.infrahubServerDbInitJob.infrahubServerDbInitJob.image.repository }}:{{ .Values.infrahubServerDbInitJob.infrahubServerDbInitJob.image.tag | default .Chart.AppVersion }}
+        name: infrahub-server-db-init-job
+        resources: {}
+        volumeMounts:
+        - name: infrahub-config-volume
+          mountPath: /config
+      initContainers:
+      - command:
+        - sh
+        - -c
+        - until nslookup {{ include "infrahub-helm.fullname" . }}-database.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.{{ .Values.kubernetesClusterDomain }};
+          do echo waiting for {{ include "infrahub-helm.fullname" . }}-database; sleep 2; done;
+        env:
+        - name: KUBERNETES_CLUSTER_DOMAIN
+          value: {{ quote .Values.kubernetesClusterDomain }}
+        image: {{ .Values.infrahubServerDbInitJob.waitForDatabase.image.repository }}:{{ .Values.infrahubServerDbInitJob.waitForDatabase.image.tag | default .Chart.AppVersion }}
+        name: wait-for-database
+        resources: {}
+      restartPolicy: Never
+      volumes:
+      - hostPath:
+          path: /tmp/infrahub-helm
+        name: git-data
+      - hostPath:
+          path: /tmp/infrahub-helm
+        name: git-remote-data
+      - name: infrahub-config-volume
+        configMap:
+          name: {{ .Chart.Name }}-{{ .Chart.AppVersion }}-configmap
