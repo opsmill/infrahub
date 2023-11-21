@@ -45,6 +45,16 @@ class TextAttributeType(BaseAttribute):
         interfaces = {AttributeInterface}
 
 
+class IPHostType(BaseAttribute):
+    value = Field(String)
+    ip = Field(String)
+
+    class Meta:
+        description = "Attribute of type Text"
+        name = "IPHost"
+        interfaces = {AttributeInterface}
+
+
 class NumberAttributeType(BaseAttribute):
     value = Field(Int)
 

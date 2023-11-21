@@ -564,6 +564,11 @@ class IPNetwork(BaseAttribute):
 class IPHost(BaseAttribute):
     type = str
 
+    @property
+    def ip(self) -> str:
+        """Return the ip adress without a prefix or subnet mask."""
+        return str(ipaddress.ip_interface(str(self.value)).ip)
+
     @classmethod
     def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
         """Validate the format of the attribute.
