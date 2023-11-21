@@ -5,6 +5,8 @@ tags: [tutorial]
 order: 100
 ---
 
+# Make changes using GraphQL
+
 GraphQL Mutations are available to create, update or delete any objects in the database. In a REST API they are the equivalent of a the methods POST, PUT or DELETE.
 
 !!!
@@ -29,9 +31,10 @@ mutation {
 }
 ```
 
-### Add a new interface and a new IP address in the Graph
+## Add a new interface and a new IP address in the Graph
 
-Add a new interface `Ethernet9` to the device `ord1-edge1`
+Add a new interface `Ethernet9` to the device `ord1-edge1`.
+
 ```graphql
 # Endpoint : http://127.0.0.1:8000/graphql/cr1234
 mutation {
@@ -59,9 +62,10 @@ mutation {
   }
 }
 ```
+
 > Copy the ID of the newly created interface, we'll need it for the next query
 
-Add a new IP address connected to the new interface
+Add a new IP address connected to the new interface.
 
 ```graphql
 # Endpoint : http://127.0.0.1:8000/graphql/cr1234

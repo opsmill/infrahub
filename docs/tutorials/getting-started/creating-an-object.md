@@ -4,6 +4,8 @@ label: Creating an object
 tags: [tutorial]
 order: 850
 ---
+# Create a new organization
+
 We need to create an object in Infrahub that will be used later in the tutorial.
 Navigate to the Organization object in the left sidebar of the frontend.
 
@@ -16,7 +18,7 @@ that has at least write access you will be able to add objects.
 
 Click on the plus icon and create a new organization using the values below.
 
-```
+```txt
 Name: my-first-org
 Description: Testing Infrahub
 ```

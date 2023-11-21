@@ -5,5 +5,5 @@
 - [Authentication](./auth.md)
 - [Artifact](./artifact.md)
 - [Object Storage](./object-storage.md)
-- [Proposed Changes](./proposed-change.md)
+- [Proposed Change](./proposed-change.md)
 - [Demo Environment](./local-demo-environment.md)
