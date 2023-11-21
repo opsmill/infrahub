@@ -1,8 +1,7 @@
+import { LockClosedIcon } from "@heroicons/react/24/outline";
 import { Input } from "../components/input";
 import { FormFieldError } from "../screens/edit-form-hook/form";
 import { classNames } from "../utils/common";
-import { Icon } from "@iconify-icon/react";
-import { Tooltip } from "../components/tooltip";
 
 type OpsInputProps = {
   label: string;
@@ -19,12 +18,6 @@ type OpsInputProps = {
 
 const InputUniqueTips = () => <span className="text-xs text-gray-600 italic">must be unique</span>;
 
-const InputProtectedTooltip = () => (
-  <Tooltip message="you are not allowed to update this field">
-    <Icon icon="mdi:lock-outline" height="20" width="20" />
-  </Tooltip>
-);
-
 export const OpsInput = (props: OpsInputProps) => {
   const { className, onChange, value, label, error, isProtected, isOptionnal, isUnique, disabled } =
     props;
@@ -35,7 +28,7 @@ export const OpsInput = (props: OpsInputProps) => {
         <label htmlFor={label} className="text-sm font-medium leading-6 text-gray-900">
           {label} {!isOptionnal && "*"}
         </label>
-        {isProtected && <InputProtectedTooltip />}
+        {isProtected && <LockClosedIcon className="w-4 h-4" />}
         {isUnique && <InputUniqueTips />}
       </div>
       <Input
