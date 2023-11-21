@@ -1,3 +1,4 @@
+---
 apiVersion: v2
 name: infrahub
 description: A Helm chart to deploy Infrahub on Kubernetes

@@ -1,15 +1,16 @@
+---
 cache:
   cache:
     image:
       repository: redis
       tag: "7.2"
   ports:
-  - name: "client"
-    port: 6379
-    targetPort: 6379
-  - name: "gossip"
-    port: 16379
-    targetPort: 16379
+    - name: "client"
+      port: 6379
+      targetPort: 6379
+    - name: "gossip"
+      port: 16379
+      targetPort: 16379
   replicas: 1
   type: ClusterIP
 database:
@@ -25,24 +26,24 @@ database:
       repository: neo4j
       tag: 5.11-enterprise
   ports:
-  - name: "metrics"
-    port: 2004
-    targetPort: 2004
-  - name: "interface"
-    port: 7474
-    targetPort: 7474
-  - name: "bolt"
-    port: 7687
-    targetPort: 7687
+    - name: "metrics"
+      port: 2004
+      targetPort: 2004
+    - name: "interface"
+      port: 7474
+      targetPort: 7474
+    - name: "bolt"
+      port: 7687
+      targetPort: 7687
   replicas: 1
   type: ClusterIP
 infrahubGit:
   infrahubGit:
     args:
-    - infrahub
-    - git-agent
-    - start
-    - --debug
+      - infrahub
+      - git-agent
+      - start
+      - --debug
     env:
       infrahubAddress: http://infrahub-server:8000
       infrahubCachePort: 6379
@@ -63,12 +64,12 @@ infrahubGit:
 infrahubServer:
   infrahubServer:
     args:
-    - gunicorn
-    - --config
-    - /source/backend/infrahub/serve/gunicorn_config.py
-    - --logger-class
-    - infrahub.serve.log.GunicornLogger
-    - infrahub.server:app
+      - gunicorn
+      - --config
+      - /source/backend/infrahub/serve/gunicorn_config.py
+      - --logger-class
+      - infrahub.serve.log.GunicornLogger
+      - infrahub.server:app
     env:
       infrahubAllowAnonymousAccess: "true"
       infrahubCachePort: 6379
@@ -84,9 +85,9 @@ infrahubServer:
       repository: 9r2s1098.c1.gra9.container-registry.ovh.net/opsmill/infrahub
     imagePullPolicy: Always
   ports:
-  - name: "infrahub-gui"
-    port: 8000
-    targetPort: 8000
+    - name: "infrahub-gui"
+      port: 8000
+      targetPort: 8000
   replicas: 1
   type: ClusterIP
   waitForCache:
@@ -123,30 +124,30 @@ messageQueue:
       repository: rabbitmq
       tag: 3.12-management
   ports:
-  - name: "4369"
-    port: 4369
-    targetPort: 4369
-  - name: "5671"
-    port: 5671
-    targetPort: 5671
-  - name: "5672"
-    port: 5672
-    targetPort: 5672
-  - name: "15671"
-    port: 15671
-    targetPort: 15671
-  - name: "15672"
-    port: 15672
-    targetPort: 15672
-  - name: "15691"
-    port: 15691
-    targetPort: 15691
-  - name: "15692"
-    port: 15692
-    targetPort: 15692
-  - name: "2567"
-    port: 2567
-    targetPort: 2567
+    - name: "4369"
+      port: 4369
+      targetPort: 4369
+    - name: "5671"
+      port: 5671
+      targetPort: 5671
+    - name: "5672"
+      port: 5672
+      targetPort: 5672
+    - name: "15671"
+      port: 15671
+      targetPort: 15671
+    - name: "15672"
+      port: 15672
+      targetPort: 15672
+    - name: "15691"
+      port: 15691
+      targetPort: 15691
+    - name: "15692"
+      port: 15692
+      targetPort: 15692
+    - name: "2567"
+      port: 2567
+      targetPort: 2567
   replicas: 1
   type: ClusterIP
 pvc:
