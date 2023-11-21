@@ -5,7 +5,7 @@ from starlette.responses import HTMLResponse, Response
 
 
 def make_graphiql_handler() -> Callable[[Request], Response]:
-    def handler(request: Request) -> Response:
+    def handler(_: Request) -> Response:
         return HTMLResponse(_GRAPHIQL_HTML)
 
     return handler
