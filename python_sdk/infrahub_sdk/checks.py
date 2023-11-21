@@ -10,7 +10,20 @@ from git.repo import Repo
 
 from infrahub_sdk import InfrahubClient
 
+try:
+    from pydantic import v1 as pydantic  # type: ignore[attr-defined]
+except ImportError:
+    import pydantic  # type: ignore[no-redef]
+
 INFRAHUB_CHECK_VARIABLE_TO_IMPORT = "INFRAHUB_CHECKS"
+
+
+class InfrahubCheckInitializer(pydantic.BaseModel):
+    """Information about the originator of the check."""
+
+    proposed_change_id: str = pydantic.Field(
+        default="", description="If available the ID of the proposed change that requested the check"
+    )
 
 
 class InfrahubCheck:
@@ -19,9 +32,16 @@ class InfrahubCheck:
     timeout: int = 10
     rebase: bool = True
 
-    def __init__(self, branch: str = "", root_directory: str = "", output: Optional[str] = None):
+    def __init__(
+        self,
+        branch: str = "",
+        root_directory: str = "",
+        output: Optional[str] = None,
+        initializer: Optional[InfrahubCheckInitializer] = None,
+    ):
         self.data: Dict = {}
         self.git: Optional[Repo] = None
+        self.initializer = initializer or InfrahubCheckInitializer()
 
         self.logs: List[Dict[str, Any]] = []
         self.passed = False

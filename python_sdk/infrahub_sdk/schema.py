@@ -65,6 +65,12 @@ class InfrahubRepositoryRFileConfig(pydantic.BaseModel):
 
 class InfrahubCheckDefinitionConfig(pydantic.BaseModel):
     file_path: Path = pydantic.Field(..., description="The file within the repo with the check code.")
+    parameters: Dict[str, Any] = pydantic.Field(
+        default_factory=dict, description="The input parameters required to run this check"
+    )
+    targets: Optional[str] = pydantic.Field(
+        default=None, description="The group to target when running this check, leave blank for global checks"
+    )
 
 
 class InfrahubPythonTransformConfig(pydantic.BaseModel):
