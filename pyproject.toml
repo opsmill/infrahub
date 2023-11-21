@@ -205,9 +205,6 @@ ignore_errors = true
 module = "infrahub.message_bus.rpc"
 ignore_errors = true
 
-[[tool.mypy.overrides]]
-module = "infrahub.serve.log"
-disallow_untyped_defs = false
 
 [[tool.mypy.overrides]]
 module = "infrahub.server"
