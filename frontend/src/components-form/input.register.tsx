@@ -12,7 +12,7 @@ interface Props {
   setValue: UseFormSetValue<FieldValues>;
   error?: FormFieldError;
   isProtected?: boolean;
-  isOptionnal?: boolean;
+  isOptional?: boolean;
   disabled?: boolean;
 }
 

@@ -22,11 +22,11 @@ interface Props {
   onChange: (value: iTwoStepDropdownData) => void;
   error?: FormFieldError;
   isProtected?: boolean;
-  isOptionnal?: boolean;
+  isOptional?: boolean;
 }
 
 export const OpsSelect2Step = (props: Props) => {
-  const { label, options, value, error, onChange, isProtected, isOptionnal } = props;
+  const { label, options, value, error, onChange, isProtected, isOptional } = props;
 
   const { objectid } = useParams();
   const branch = useReactiveVar(branchVar);
@@ -104,7 +104,7 @@ export const OpsSelect2Step = (props: Props) => {
     <div className={classNames("grid grid-cols-6")}>
       <div className="sm:col-span-6">
         <label className="block text-sm font-medium leading-6 text-gray-900 capitalize">
-          {label} {isOptionnal ? "" : "*"}
+          {label} {isOptional ? "" : "*"}
         </label>
       </div>
       <div className="sm:col-span-3 mr-2 mt-1">
