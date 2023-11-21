@@ -16,26 +16,6 @@ NAMESPACE = "BACKEND"
 
 
 # ----------------------------------------------------------------------------
-# Documentation
-# ----------------------------------------------------------------------------
-@task
-def generate_doc(context: Context):
-    """Generate the documentation for infrahub cli using typer-cli."""
-
-    CLI_COMMANDS = (
-        ("infrahub.cli.db", "infrahub db", "infrahub-db"),
-        ("infrahub.cli.server", "infrahub server", "infrahub-server"),
-        ("infrahub.cli.git_agent", "infrahub git-agent", "infrahub-git-agent"),
-    )
-
-    print(f" - [{NAMESPACE}] Generate CLI documentation")
-    with context.cd(ESCAPED_REPO_PATH):
-        for command in CLI_COMMANDS:
-            exec_cmd = f'typer {command[0]} utils docs --name "{command[1]}" --output docs/reference/infrahub-cli/{command[2]}.md'
-            context.run(exec_cmd)
-
-
-# ----------------------------------------------------------------------------
 # Formatting tasks
 # ----------------------------------------------------------------------------
 @task
