@@ -17,18 +17,10 @@ type OpsInputProps = {
   disabled?: boolean;
 };
 
-type InputTooltip = {
-  label: string;
-};
+const InputUniqueTips = () => <span className="text-xs text-gray-600 italic">must be unique</span>;
 
-const InputUniqueTooltip = ({ label = "This field" }: InputTooltip) => (
-  <Tooltip message={label + " must be unique"}>
-    <Icon icon="mdi:key-outline" height="20" width="20" />
-  </Tooltip>
-);
-
-const InputProtectedTooltip = ({ label = "This field" }: InputTooltip) => (
-  <Tooltip message={label + " is protected"}>
+const InputProtectedTooltip = () => (
+  <Tooltip message="you are not allowed to update this field">
     <Icon icon="mdi:lock-outline" height="20" width="20" />
   </Tooltip>
 );
@@ -43,8 +35,8 @@ export const OpsInput = (props: OpsInputProps) => {
         <label htmlFor={label} className="text-sm font-medium leading-6 text-gray-900">
           {label} {!isOptionnal && "*"}
         </label>
-        {isUnique && <InputUniqueTooltip label={label} />}
-        {isProtected && <InputProtectedTooltip label={label} />}
+        {isProtected && <InputProtectedTooltip />}
+        {isUnique && <InputUniqueTips />}
       </div>
       <Input
         id={label}
