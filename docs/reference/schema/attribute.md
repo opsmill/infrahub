@@ -99,6 +99,16 @@ Below is the list of all available options to define an Attribute in the schema
 | **Constraints** | <br> Length: min -, max - |
 
 
+## read_only
+
+| -- | -- | { class="compact" }
+| ---- | --------------- |
+| **Name** | read_only |
+| **Kind** | `Boolean` |
+| **Description** |  |
+| **Constraints** |  |
+
+
 ## unique
 
 | -- | -- | { class="compact" }

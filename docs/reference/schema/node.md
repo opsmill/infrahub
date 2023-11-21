@@ -77,6 +77,36 @@ Below is the list of all available options to define a node in the schema
 | **Constraints** |  |
 
 
+## include_in_menu
+
+| -- | -- | { class="compact" }
+| ---- | --------------- |
+| **Name** | include_in_menu |
+| **Kind** | `Boolean` |
+| **Description** | Defines if objects of this kind should be included in the menu. |
+| **Constraints** |  |
+
+
+## menu_placement
+
+| -- | -- | { class="compact" }
+| ---- | --------------- |
+| **Name** | menu_placement |
+| **Kind** | `Text` |
+| **Description** | Defines where in the menu this object should be placed. |
+| **Constraints** |  |
+
+
+## icon
+
+| -- | -- | { class="compact" }
+| ---- | --------------- |
+| **Name** | icon |
+| **Kind** | `Text` |
+| **Description** | Defines the icon to be used for this object type. |
+| **Constraints** |  |
+
+
 ## order_by
 
 | -- | -- | { class="compact" }
