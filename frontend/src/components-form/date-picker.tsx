@@ -8,16 +8,16 @@ type OpsDatePickerProps = {
   onChange: (value?: Date) => void;
   className?: string;
   error?: FormFieldError;
-  isOptionnal?: boolean;
+  isOptional?: boolean;
 };
 
 export const OpsDatePicker = (props: OpsDatePickerProps) => {
-  const { className, onChange, value, label, error, isOptionnal } = props;
+  const { className, onChange, value, label, error, isOptional } = props;
 
   return (
     <>
       <label className="block text-sm font-medium leading-6 text-gray-900">
-        {label} {isOptionnal ? "" : "*"}
+        {label} {isOptional ? "" : "*"}
       </label>
       <DatePicker
         onChange={onChange}

@@ -93,7 +93,7 @@ export interface DynamicFieldData {
   config?: RegisterOptions;
   error?: FormFieldError;
   isProtected?: boolean;
-  isOptionnal?: boolean;
+  isOptional?: boolean;
   isReadOnly?: boolean;
   isUnique?: boolean;
   disabled?: boolean;
