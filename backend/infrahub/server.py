@@ -161,7 +161,7 @@ app.add_exception_handler(TimestampFormatError, partial(generic_api_exception_ha
 app.add_exception_handler(ValidationError, partial(generic_api_exception_handler, http_code=400))
 
 app.add_route(path="/metrics", route=handle_metrics)
-app.include_router(graphql_router, prefix="/graphql")
+app.include_router(graphql_router)
 
 if os.path.exists(FRONTEND_ASSET_DIRECTORY) and os.path.isdir(FRONTEND_ASSET_DIRECTORY):
     app.mount("/assets", StaticFiles(directory=FRONTEND_ASSET_DIRECTORY), "assets")
