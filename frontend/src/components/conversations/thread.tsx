@@ -151,18 +151,19 @@ export const Thread = (props: tThread) => {
   const comments = thread?.comments?.edges?.map((comment: any) => comment.node) ?? [];
   const sortedComments = sortByDate(comments);
   const isResolved = thread?.resolved?.value;
+  const idForLabel = `checkbox-resolve-thread${thread.id}`;
 
   const MarkAsResolved = (
-    <div className="flex items-center">
-      <Button onClick={() => setConfirmModal(true)} disabled={isResolved}>
-        <div className="mr-2">Resolved: </div>
-
-        <Checkbox
-          disabled={isResolved}
-          enabled={isResolved || markAsResolved}
-          onChange={() => setConfirmModal(true)}
-        />
-      </Button>
+    <div className="flex items-center gap-2">
+      <Checkbox
+        id={idForLabel}
+        disabled={isResolved}
+        enabled={isResolved || markAsResolved}
+        onChange={() => setConfirmModal(true)}
+      />
+      <label htmlFor={idForLabel} className="cursor-pointer">
+        {isResolved ? "Resolved" : "Resolve thread"}
+      </label>
     </div>
   );
 
