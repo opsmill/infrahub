@@ -34,9 +34,11 @@ The ConfigMap is structured as follows:
 - PV provisioner support in the underlying infrastructure (if persistence is required)
 
 ## Installing the Chart
-To install the chart with the release name `my-infrahub-release`:
+To install the chart with the release name `infrahub`:
 
-helm install my-infrahub-release path/to/infrahub/chart
+```
+helm install infrahub path/to/infrahub/chart
+```
 
 ## Configuration
 The following table lists the configurable parameters in the `values.yaml` file and their default values.
@@ -58,12 +60,16 @@ For more detailed configuration and additional parameters, refer to the `values.
 ## Upgrading the Chart
 To upgrade the chart to a new version:
 
-helm upgrade my-infrahub-release path/to/infrahub/chart
+```
+helm upgrade infrahub path/to/infrahub/chart
+```
 
 ## Uninstalling the Chart
-To uninstall/delete the `my-infrahub-release` deployment:
+To uninstall/delete the `infrahub` deployment:
 
-helm delete my-infrahub-release
+```
+helm delete infrahub
+```
 
 ## Persistence
 The chart offers the ability to configure persistence for the database and other components. Check the `pvc` section in `values.yaml` for more details.
