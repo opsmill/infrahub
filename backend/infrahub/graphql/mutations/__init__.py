@@ -1,4 +1,4 @@
-from .account import CoreAccountTokenCreate
+from .account import CoreAccountSelfUpdate, CoreAccountTokenCreate
 from .artifact_definition import InfrahubArtifactDefinitionMutation
 from .attribute import (
     AnyAttributeInput,
@@ -41,6 +41,7 @@ __all__ = [
     "BranchNameInput",
     "BranchUpdate",
     "CheckboxAttributeInput",
+    "CoreAccountSelfUpdate",
     "CoreAccountTokenCreate",
     "InfrahubArtifactDefinitionMutation",
     "InfrahubRepositoryMutation",

@@ -2,6 +2,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 from graphql import (
     DocumentNode,
+    FieldNode,
     GraphQLError,
     GraphQLSchema,
     OperationDefinitionNode,
@@ -28,6 +29,11 @@ class GraphQLQueryVariable(BaseModel):
     default_value: Optional[Any] = None
 
 
+class GraphQLOperation(BaseModel):
+    name: Optional[str]
+    operation_type: OperationType
+
+
 class GraphQLQueryAnalyzer:
     def __init__(self, query: str, schema: Optional[GraphQLSchema] = None, branch: Optional[Branch] = None):
         self.query: str = query
@@ -49,16 +55,21 @@ class GraphQLQueryAnalyzer:
         return len(self.document.definitions)
 
     @property
-    def operations(self) -> Set[OperationType]:
-        return {
-            definition.operation
-            for definition in self.document.definitions
-            if isinstance(definition, OperationDefinitionNode)
-        }
+    def operations(self) -> List[GraphQLOperation]:
+        operations = []
+        for definition in self.document.definitions:
+            if not isinstance(definition, OperationDefinitionNode):
+                continue
+            operation_type = definition.operation
+            for field_node in definition.selection_set.selections:
+                if not isinstance(field_node, FieldNode):
+                    continue
+                operations.append(GraphQLOperation(operation_type=operation_type, name=field_node.name.value))
+        return operations
 
     @property
     def contains_mutation(self) -> bool:
-        return OperationType.MUTATION in self.operations
+        return any([op.operation_type == OperationType.MUTATION for op in self.operations])
 
     @property
     def variables(self) -> List[GraphQLQueryVariable]:
