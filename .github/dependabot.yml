@@ -13,3 +13,4 @@ updates:
     target-branch: develop
     labels:
       - "type/housekeeping"
+      - "ci/skip-changelog"
