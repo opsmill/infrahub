@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional, Union
 
 from fastapi import APIRouter, BackgroundTasks, Depends
 from pydantic import BaseModel, Field, root_validator
@@ -10,7 +10,7 @@ from infrahub import config, lock
 from infrahub.api.dependencies import get_branch_dep, get_current_user, get_db
 from infrahub.core import registry
 from infrahub.core.branch import Branch  # noqa: TCH001
-from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
+from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema, SchemaRoot
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
 from infrahub.exceptions import PermissionDeniedError, SchemaNotFound
 from infrahub.log import get_logger
@@ -18,12 +18,26 @@ from infrahub.message_bus import Meta, messages
 from infrahub.services import services
 from infrahub.worker import WORKER_IDENTITY
 
+if TYPE_CHECKING:
+    from typing_extensions import Self
+
+    from infrahub.core.models import SchemaBranchHash
+
 log = get_logger()
 router = APIRouter(prefix="/schema")
 
 
-class APINodeSchema(NodeSchema):
+class APISchemaMixin:
+    @classmethod
+    def from_schema(cls, schema: NodeSchema) -> Self:
+        data = schema.dict()
+        data["hash"] = schema.get_hash()
+        return cls(**data)
+
+
+class APINodeSchema(NodeSchema, APISchemaMixin):
     api_kind: Optional[str] = Field(default=None, alias="kind")
+    hash: str
 
     @root_validator(pre=True)
     @classmethod
@@ -35,8 +49,9 @@ class APINodeSchema(NodeSchema):
         return values
 
 
-class APIGenericSchema(GenericSchema):
+class APIGenericSchema(GenericSchema, APISchemaMixin):
     api_kind: Optional[str] = Field(default=None, alias="kind")
+    hash: str
 
     @root_validator(pre=True)
     @classmethod
@@ -49,8 +64,8 @@ class APIGenericSchema(GenericSchema):
 
 
 class SchemaReadAPI(BaseModel):
-    nodes: List[APINodeSchema]
-    generics: List[APIGenericSchema]
+    nodes: List[APINodeSchema] = Field(default_factory=list)
+    generics: List[APIGenericSchema] = Field(default_factory=list)
 
 
 class SchemaLoadAPI(SchemaRoot):
@@ -71,9 +86,40 @@ async def get_schema(
     full_schema = registry.schema.get_full(branch=branch)
 
     return SchemaReadAPI(
-        nodes=[value.dict() for value in full_schema.values() if isinstance(value, NodeSchema)],
-        generics=[value.dict() for value in full_schema.values() if isinstance(value, GenericSchema)],
+        nodes=[APINodeSchema.from_schema(value) for value in full_schema.values() if isinstance(value, NodeSchema)],
+        generics=[
+            APIGenericSchema.from_schema(value) for value in full_schema.values() if isinstance(value, GenericSchema)
+        ],
     )
+
+
+@router.get("/summary")
+async def get_schema_summary(
+    branch: Branch = Depends(get_branch_dep),
+) -> SchemaBranchHash:
+    log.info("schema_request", branch=branch.name)
+    schema_branch = registry.schema.get_schema_branch(name=branch.name)
+    return schema_branch.get_hash_full()
+
+
+@router.get("/{schema_kind}")
+async def get_schema_by_hash(
+    schema_kind: str,
+    branch: Branch = Depends(get_branch_dep),
+) -> Union[APINodeSchema, APIGenericSchema]:
+    log.info("schema_request", branch=branch.name)
+
+    try:
+        schema = registry.schema.get(name=schema_kind, branch=branch)
+    except SchemaNotFound as exc:
+        return JSONResponse(status_code=422, content={"error": exc.message})
+
+    if isinstance(schema, GroupSchema):
+        return JSONResponse(status_code=422, content={"error": "GroupSchema aren't supported via this endpoint"})
+    if isinstance(schema, NodeSchema):
+        return APINodeSchema.from_schema(schema=schema)
+    if isinstance(schema, GenericSchema):
+        return APIGenericSchema.from_schema(schema=schema)
 
 
 @router.post("/load")

@@ -82,6 +82,73 @@ async def test_schema_read_endpoint_wrong_branch(
     assert response.json() is not None
 
 
+async def test_schema_summary_default_branch(
+    db: InfrahubDatabase,
+    client,
+    client_headers,
+    default_branch: Branch,
+    car_person_schema_generics: SchemaRoot,
+    car_person_data_generic,
+):
+    with client:
+        response = client.get(
+            "/api/schema/summary",
+            headers=client_headers,
+        )
+
+    assert response.status_code == 200
+    assert response.json() is not None
+
+    schema = response.json()
+
+    assert "nodes" in schema
+    assert "generics" in schema
+    assert isinstance(schema["nodes"]["BuiltinTag"], str)
+
+
+async def test_schema_kind_default_branch(
+    db: InfrahubDatabase,
+    client,
+    client_headers,
+    default_branch: Branch,
+    car_person_schema_generics: SchemaRoot,
+    car_person_data_generic,
+):
+    with client:
+        response = client.get(
+            "/api/schema/BuiltinTag",
+            headers=client_headers,
+        )
+
+    assert response.status_code == 200
+    assert response.json() is not None
+
+    schema = response.json()
+
+    assert "id" in schema
+    assert "hash" in schema
+    assert "filters" in schema
+    assert "relationships" in schema
+
+
+async def test_schema_kind_not_valid(
+    db: InfrahubDatabase,
+    client,
+    client_headers,
+    default_branch: Branch,
+    car_person_schema_generics: SchemaRoot,
+    car_person_data_generic,
+):
+    with client:
+        response = client.get(
+            "/api/schema/NotPresent",
+            headers=client_headers,
+        )
+
+    assert response.status_code == 422
+    assert response.json()["error"] == "Unable to find the schema 'NotPresent' in the registry"
+
+
 async def test_schema_load_endpoint_valid_simple(
     db: InfrahubDatabase,
     client: TestClient,
