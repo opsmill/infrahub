@@ -9,9 +9,9 @@
 .markdown,
 .markdown p,
 .markdown blockquote,
-.markdown>ul,
-.markdown>ol,
-.markdown>dl,
+.markdown > ul,
+.markdown > ol,
+.markdown > dl,
 .markdown table,
 .markdown pre,
 .markdown details {
@@ -40,16 +40,16 @@
 }
 
 .markdown h1 {
-  margin: .67em 0;
-  padding-bottom: .3em;
+  margin: 0.67em 0;
+  padding-bottom: 0.3em;
   font-size: 2rem;
-  border-bottom: 1px solid hsla(210,18%,87%,1);
+  border-bottom: 1px solid hsla(210, 18%, 87%, 1);
 }
 
 .markdown h2 {
-  padding-bottom: .3em;
+  padding-bottom: 0.3em;
   font-size: 1.5rem;
-  border-bottom: 1px solid hsla(210,18%,87%,1);
+  border-bottom: 1px solid hsla(210, 18%, 87%, 1);
 }
 
 .markdown h3 {
@@ -61,37 +61,37 @@
 }
 
 .markdown h5 {
-  font-size: .875rem;
+  font-size: 0.875rem;
 }
 
 .markdown h6 {
-  font-size: .85rem;
+  font-size: 0.85rem;
   color: #656d76;
 }
 
 .markdown hr {
   box-sizing: content-box;
   overflow: hidden;
-  border-bottom: 1px solid hsla(210,18%,87%,1);
-  height: .25em;
+  border-bottom: 1px solid hsla(210, 18%, 87%, 1);
+  height: 0.25em;
   margin: 24px 0;
   background-color: #e5e7eb;
 }
 
 .markdown blockquote {
   color: #656d76;
-  border-left: .25em solid #e5e7eb;
+  border-left: 0.25em solid #e5e7eb;
   padding: 0 1em;
 }
 
-.markdown blockquote>:last-child {
+.markdown blockquote > :last-child {
   margin-bottom: 0;
 }
 
 .markdown pre {
   padding: 16px;
   overflow: auto;
-  color: #1F2328;
+  color: #1f2328;
   background-color: #f6f8fa;
   border-radius: 6px;
 }
@@ -136,7 +136,7 @@
 /* Miscellaneous */
 .markdown mark {
   background-color: #fff8c5;
-  color: #1F2328;
+  color: #1f2328;
 }
 
 .markdown small {
