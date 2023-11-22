@@ -60,6 +60,7 @@ ruff = "^0.1.6"
 pytest-xdist = "^3.3.1"
 buildkite-test-collector = "^0.1.7"
 types-python-slugify = "^8.0.0.3"
+invoke = "2.2.0"
 
 
 [tool.poetry.group.sync.dependencies]

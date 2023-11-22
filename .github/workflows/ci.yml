@@ -359,6 +359,29 @@ jobs:
       - name: "Build website"
         run: "invoke docs.build"
 
+  validate_generated_documentation:
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.python == 'true'
+    needs: ["files-changed", "yaml-lint", "python-lint"]
+    runs-on: "ubuntu-22.04"
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v4"
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - name: "Setup environment"
+        run: "pip install invoke toml"
+      - name: "Build Test Image"
+        run: "invoke test.build"
+      - name: "Validate generated documentation"
+        run: "invoke docs.validate --docker"
+
   # ------------------------------------------ E2E Tests  ------------------------------------------
   E2E-testing:
     needs:
