@@ -1,7 +1,8 @@
 import { classNames } from "../../utils/common";
-import { displayTextWithNewLines } from "../../utils/string";
 import { AVATAR_SIZE, Avatar } from "../avatar";
 import { DateDisplay } from "../date-display";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 export const Comment = (props: any) => {
   const { comment, className } = props;
@@ -25,7 +26,9 @@ export const Comment = (props: any) => {
         </div>
       </div>
 
-      <div className="py-4">{displayTextWithNewLines(commentContent)}</div>
+      <Markdown remarkPlugins={[remarkGfm]} className="markdown">
+        {commentContent}
+      </Markdown>
     </div>
   );
 };
