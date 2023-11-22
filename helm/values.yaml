@@ -1,5 +1,10 @@
 ---
+kubernetesClusterDomain: cluster.local
+
+# ----------- Cache -----------
 cache:
+  type: ClusterIP
+  replicas: 1
   cache:
     image:
       repository: redis
@@ -11,9 +16,11 @@ cache:
     - name: "gossip"
       port: 16379
       targetPort: 16379
-  replicas: 1
-  type: ClusterIP
+
+# ----------- Databse -----------
 database:
+  type: ClusterIP
+  replicas: 1
   database:
     env:
       neo4JAcceptLicenseAgreement: "yes"
@@ -35,9 +42,11 @@ database:
     - name: "bolt"
       port: 7687
       targetPort: 7687
-  replicas: 1
-  type: ClusterIP
+
+
+# ----------- Infrahub GIT -----------
 infrahubGit:
+  replicas: 2
   infrahubGit:
     args:
       - infrahub
@@ -56,12 +65,15 @@ infrahubGit:
     image:
       repository: 9r2s1098.c1.gra9.container-registry.ovh.net/opsmill/infrahub
     imagePullPolicy: Always
-  replicas: 2
   waitForInfrahubServer:
     image:
       repository: busybox
       tag: latest
+
+# ----------- Infrahub Server -----------
 infrahubServer:
+  type: ClusterIP
+  replicas: 1
   infrahubServer:
     args:
       - gunicorn
@@ -85,11 +97,9 @@ infrahubServer:
       repository: 9r2s1098.c1.gra9.container-registry.ovh.net/opsmill/infrahub
     imagePullPolicy: Always
   ports:
-    - name: "infrahub-gui"
+    - name: "interface"
       port: 8000
       targetPort: 8000
-  replicas: 1
-  type: ClusterIP
   waitForCache:
     image:
       repository: busybox
@@ -114,8 +124,11 @@ infrahubServerDbInitJob:
     image:
       repository: busybox
       tag: latest
-kubernetesClusterDomain: cluster.local
+
+# ----------- Mesage Queue (Rabbit MQ) -----------
 messageQueue:
+  type: ClusterIP
+  replicas: 1
   messageQueue:
     env:
       rabbitmqDefaultPass: infrahub
@@ -124,32 +137,32 @@ messageQueue:
       repository: rabbitmq
       tag: 3.12-management
   ports:
-    - name: "4369"
+    - name: "epmd"
       port: 4369
       targetPort: 4369
-    - name: "5671"
+    - name: "amqp-5671"
       port: 5671
       targetPort: 5671
-    - name: "5672"
+    - name: "amqp-5672"
       port: 5672
       targetPort: 5672
-    - name: "15671"
+    - name: "api-15671"
       port: 15671
       targetPort: 15671
-    - name: "15672"
+    - name: "api-15672"
       port: 15672
       targetPort: 15672
-    - name: "15691"
+    - name: "prom-15691"
       port: 15691
       targetPort: 15691
-    - name: "15692"
+    - name: "prom-15692"
       port: 15692
       targetPort: 15692
-    - name: "2567"
-      port: 2567
-      targetPort: 2567
-  replicas: 1
-  type: ClusterIP
+    - name: "inter-nodes"
+      port: 25672
+      targetPort: 25672
+
+# ----------- Persistent Storage -----------
 pvc:
   databaseClaim0:
     storageRequest: 100Mi

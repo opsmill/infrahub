@@ -19,61 +19,66 @@ spec:
       {{- include "infrahub-helm.selectorLabels" . | nindent 8 }}
     spec:
       containers:
-      - args: {{- toYaml .Values.infrahubGit.infrahubGit.args | nindent 8 }}
-        env:
-        - name: INFRAHUB_ADDRESS
-          value: {{ quote .Values.infrahubGit.infrahubGit.env.infrahubAddress }}
-        - name: INFRAHUB_CACHE_PORT
-          value: {{ quote .Values.infrahubServer.infrahubServer.env.infrahubCachePort }}
-        - name: INFRAHUB_CONFIG
-          value: {{ quote .Values.infrahubGit.infrahubGit.env.infrahubConfig }}
-        - name: INFRAHUB_DB_TYPE
-          value: {{ quote .Values.infrahubGit.infrahubGit.env.infrahubDbType }}
-        - name: INFRAHUB_LOG_LEVEL
-          value: {{ quote .Values.infrahubGit.infrahubGit.env.infrahubLogLevel }}
-        - name: INFRAHUB_PRODUCTION
-          value: {{ quote .Values.infrahubGit.infrahubGit.env.infrahubProduction }}
-        - name: INFRAHUB_SDK_API_TOKEN
-          value: {{ quote .Values.infrahubGit.infrahubGit.env.infrahubSdkApiToken }}
-        - name: INFRAHUB_SDK_TIMEOUT
-          value: {{ quote .Values.infrahubGit.infrahubGit.env.infrahubSdkTimeout }}
-        - name: KUBERNETES_CLUSTER_DOMAIN
-          value: {{ quote .Values.kubernetesClusterDomain }}
-        image: {{ .Values.infrahubGit.infrahubGit.image.repository }}:{{ .Values.infrahubGit.infrahubGit.image.tag | default .Chart.AppVersion }}
-        imagePullPolicy: {{ .Values.infrahubGit.infrahubGit.imagePullPolicy }}
-        name: infrahub-git
-        resources: {}
-        tty: true
-        volumeMounts:
-        - mountPath: /opt/infrahub/git
-          name: git-data
-        - mountPath: /remote
-          name: git-remote-data
-        - name: infrahub-config-volume
-          mountPath: /config
+        - args: {{- toYaml .Values.infrahubGit.infrahubGit.args | nindent 12 }}
+          env:
+            - name: INFRAHUB_ADDRESS
+              value: {{ quote .Values.infrahubGit.infrahubGit.env.infrahubAddress }}
+            - name: INFRAHUB_CACHE_PORT
+              value: {{ quote .Values.infrahubServer.infrahubServer.env.infrahubCachePort }}
+            - name: INFRAHUB_CONFIG
+              value: {{ quote .Values.infrahubGit.infrahubGit.env.infrahubConfig }}
+            - name: INFRAHUB_DB_TYPE
+              value: {{ quote .Values.infrahubGit.infrahubGit.env.infrahubDbType }}
+            - name: INFRAHUB_LOG_LEVEL
+              value: {{ quote .Values.infrahubGit.infrahubGit.env.infrahubLogLevel }}
+            - name: INFRAHUB_PRODUCTION
+              value: {{ quote .Values.infrahubGit.infrahubGit.env.infrahubProduction }}
+            - name: INFRAHUB_SDK_API_TOKEN
+              value: {{ quote .Values.infrahubGit.infrahubGit.env.infrahubSdkApiToken }}
+            - name: INFRAHUB_SDK_TIMEOUT
+              value: {{ quote .Values.infrahubGit.infrahubGit.env.infrahubSdkTimeout }}
+            - name: KUBERNETES_CLUSTER_DOMAIN
+              value: {{ quote .Values.kubernetesClusterDomain }}
+          image: {{ .Values.infrahubGit.infrahubGit.image.repository }}:{{ .Values.infrahubGit.infrahubGit.image.tag | default .Chart.AppVersion }}
+          imagePullPolicy: {{ .Values.infrahubGit.infrahubGit.imagePullPolicy }}
+          name: infrahub-git
+          resources: {}
+          tty: true
+          volumeMounts:
+            - mountPath: /opt/infrahub/git
+              name: git-data
+            - mountPath: /remote
+              name: git-remote-data
+            - name: infrahub-config-volume
+              mountPath: /config
       initContainers:
-      - command:
-        - sh
-        - -c
-        - until nslookup {{ include "infrahub-helm.fullname" . }}-infrahub-server.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.{{ .Values.kubernetesClusterDomain }};
-          do echo waiting for {{ include "infrahub-helm.fullname" . }}-infrahub-server; sleep 2; done;
-        env:
-        - name: KUBERNETES_CLUSTER_DOMAIN
-          value: {{ quote .Values.kubernetesClusterDomain }}
-        image: {{ .Values.infrahubGit.waitForInfrahubServer.image.repository }}:{{ .Values.infrahubGit.waitForInfrahubServer.image.tag | default .Chart.AppVersion }}
-        name: wait-for-infrahub-server
-        resources: {}
+        - command:
+            - sh
+            - -c
+            - >
+              until nslookup {{ include "infrahub-helm.fullname" . }}-infrahub-server.$(cat \
+              /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local;
+              do
+                echo waiting for {{ include "infrahub-helm.fullname" . }}-infrahub-server
+                sleep 2
+              done
+          env:
+            - name: KUBERNETES_CLUSTER_DOMAIN
+              value: {{ quote .Values.kubernetesClusterDomain }}
+          image: {{ .Values.infrahubGit.waitForInfrahubServer.image.repository }}:{{ .Values.infrahubGit.waitForInfrahubServer.image.tag | default .Chart.AppVersion }}
+          name: wait-for-infrahub-server
+          resources: {}
       restartPolicy: Always
       volumes:
-      - hostPath:
-          path: /tmp/infrahub-helm
-        name: git-data
-      - hostPath:
-          path: /tmp/infrahub-helm
-        name: git-remote-data
-      - name: infrahub-config-volume
-        configMap:
-          name: {{ .Chart.Name }}-{{ .Chart.AppVersion }}-configmap
+        - hostPath:
+            path: /tmp/infrahub-helm
+          name: git-data
+        - hostPath:
+            path: /tmp/infrahub-helm
+          name: git-remote-data
+        - name: infrahub-config-volume
+          configMap:
+            name: {{ .Chart.Name }}-{{ .Chart.AppVersion }}-configmap
 
 ---
 apiVersion: v1
@@ -85,7 +90,7 @@ metadata:
   {{- include "infrahub-helm.labels" . | nindent 4 }}
 spec:
   accessModes:
-  - ReadWriteOnce
+    - ReadWriteOnce
   resources:
     requests:
       storage: {{ .Values.pvc.gitData.storageRequest | quote }}
@@ -100,7 +105,7 @@ metadata:
   {{- include "infrahub-helm.labels" . | nindent 4 }}
 spec:
   accessModes:
-  - ReadWriteOnce
+    - ReadWriteOnce
   resources:
     requests:
       storage: {{ .Values.pvc.gitRemoteData.storageRequest | quote }}
@@ -115,7 +120,7 @@ metadata:
   {{- include "infrahub-helm.labels" . | nindent 4 }}
 spec:
   accessModes:
-  - ReadWriteOnce
+    - ReadWriteOnce
   resources:
     requests:
       storage: {{ .Values.pvc.infrahubGitClaim2.storageRequest | quote }}

@@ -19,26 +19,26 @@ spec:
       {{- include "infrahub-helm.selectorLabels" . | nindent 8 }}
     spec:
       containers:
-      - env:
-        - name: KUBERNETES_CLUSTER_DOMAIN
-          value: {{ quote .Values.kubernetesClusterDomain }}
-        image: {{ .Values.cache.cache.image.repository }}:{{ .Values.cache.cache.image.tag }}
-        livenessProbe:
-          exec:
-            command:
-            - sh
-            - -c
-            - redis-cli -a ping
-          failureThreshold: 3
-          periodSeconds: 5
-          timeoutSeconds: 5
-        name: cache
-        ports:
-        {{- range .Values.cache.ports }}
-        - containerPort: {{ .targetPort }}
-          hostPort: {{ .port }}
-        {{- end }}
-        resources: {}
+        - env:
+            - name: KUBERNETES_CLUSTER_DOMAIN
+              value: {{ .Values.kubernetesClusterDomain }}
+          image: {{ .Values.cache.cache.image.repository }}:{{ .Values.cache.cache.image.tag }}
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - redis-cli -a ping
+            failureThreshold: 3
+            periodSeconds: 5
+            timeoutSeconds: 5
+          name: cache
+          ports:
+          {{- range .Values.cache.ports }}
+            - containerPort: {{ .targetPort }}
+              hostPort: {{ .port }}
+          {{- end }}
+          resources: {}
       restartPolicy: Always
 
 ---
@@ -55,4 +55,4 @@ spec:
     io.kompose.service: cache
   {{- include "infrahub-helm.selectorLabels" . | nindent 4 }}
   ports:
-	{{- .Values.cache.ports | toYaml | nindent 2 }}
+	  {{- .Values.cache.ports | toYaml | nindent 4 }}

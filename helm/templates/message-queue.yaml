@@ -19,52 +19,31 @@ spec:
       {{- include "infrahub-helm.selectorLabels" . | nindent 8 }}
     spec:
       containers:
-      - env:
-        - name: RABBITMQ_DEFAULT_PASS
-          value: {{ quote .Values.messageQueue.messageQueue.env.rabbitmqDefaultPass }}
-        - name: RABBITMQ_DEFAULT_USER
-          value: {{ quote .Values.messageQueue.messageQueue.env.rabbitmqDefaultUser }}
-        - name: KUBERNETES_CLUSTER_DOMAIN
-          value: {{ quote .Values.kubernetesClusterDomain }}
-        image: {{ .Values.messageQueue.messageQueue.image.repository }}:{{ .Values.messageQueue.messageQueue.image.tag }}
-        livenessProbe:
-          exec:
-            command:
-            - sh
-            - -c
-            - rabbitmq-diagnostics -q ping
-          failureThreshold: 3
-          periodSeconds: 5
-          timeoutSeconds: 30
-        name: message-queue
-        ports:
-        - containerPort: 4369
-          hostPort: 4369
-          protocol: TCP
-        - containerPort: 5671
-          hostPort: 5671
-          protocol: TCP
-        - containerPort: 5672
-          hostPort: 5672
-          protocol: TCP
-        - containerPort: 15671
-          hostPort: 15671
-          protocol: TCP
-        - containerPort: 15672
-          hostPort: 15672
-          name: management
-          protocol: TCP
-        - containerPort: 15691
-          hostPort: 15691
-          protocol: TCP
-        - containerPort: 15692
-          hostPort: 15692
-          name: metrics
-          protocol: TCP
-        - containerPort: 2567
-          hostPort: 2567
-          protocol: TCP
-        resources: {}
+        - env:
+            - name: RABBITMQ_DEFAULT_PASS
+              value: {{ quote .Values.messageQueue.messageQueue.env.rabbitmqDefaultPass }}
+            - name: RABBITMQ_DEFAULT_USER
+              value: {{ quote .Values.messageQueue.messageQueue.env.rabbitmqDefaultUser }}
+            - name: KUBERNETES_CLUSTER_DOMAIN
+              value: {{ quote .Values.kubernetesClusterDomain }}
+          image: {{ .Values.messageQueue.messageQueue.image.repository }}:{{ .Values.messageQueue.messageQueue.image.tag }}
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - rabbitmq-diagnostics -q ping
+            failureThreshold: 3
+            periodSeconds: 5
+            timeoutSeconds: 30
+          name: message-queue
+          ports:
+          {{- range .Values.messageQueue.ports }}
+            - containerPort: {{ .targetPort }}
+              hostPort: {{ .port }}
+              protocol: TCP
+              name: {{ quote .name }}
+          {{- end }}
       restartPolicy: Always
 
 ---
@@ -81,4 +60,4 @@ spec:
     io.kompose.service: message-queue
   {{- include "infrahub-helm.selectorLabels" . | nindent 4 }}
   ports:
-	{{- .Values.messageQueue.ports | toYaml | nindent 2 -}}
+	{{- .Values.messageQueue.ports | toYaml | nindent 4 }}

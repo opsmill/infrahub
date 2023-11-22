@@ -19,61 +19,57 @@ spec:
       {{- include "infrahub-helm.selectorLabels" . | nindent 8 }}
     spec:
       containers:
-      - env:
-        - name: NEO4J_ACCEPT_LICENSE_AGREEMENT
-          value: {{ quote .Values.database.database.env.neo4JAcceptLicenseAgreement }}
-        - name: NEO4J_AUTH
-          value: {{ quote .Values.database.database.env.neo4JAuth }}
-        - name: NEO4J_dbms_security_auth__minimum__password__length
-          value: {{ quote .Values.database.database.env.neo4JDbmsSecurityAuthMinimumPasswordLength
-            }}
-        - name: NEO4J_dbms_security_procedures_unrestricted
-          value: {{ quote .Values.database.database.env.neo4JDbmsSecurityProceduresUnrestricted
-            }}
-        - name: NEO4J_server_metrics_prometheus_enabled
-          value: {{ quote .Values.database.database.env.neo4JServerMetricsPrometheusEnabled
-            }}
-        - name: NEO4J_server_metrics_prometheus_endpoint
-          value: {{ quote .Values.database.database.env.neo4JServerMetricsPrometheusEndpoint
-            }}
-        - name: KUBERNETES_CLUSTER_DOMAIN
-          value: {{ quote .Values.kubernetesClusterDomain }}
-        image: {{ .Values.database.database.image.repository }}:{{ .Values.database.database.image.tag }}
-        livenessProbe:
-          tcpSocket:
-            port: {{ (index .Values.database.ports 1).port }}
-          failureThreshold: 20
-          initialDelaySeconds: 3
-          periodSeconds: 2
-          timeoutSeconds: 10
-        name: database
-        ports:
-        {{- range .Values.database.ports }}
-        - containerPort: {{ .targetPort }}
-          hostPort: {{ .port }}
-          protocol: TCP
-          name: {{ .name }}
-        {{- end }}
-        resources: {}
-        volumeMounts:
-        - mountPath: /plugins
-          name: database-hostpath0
-          readOnly: true
-        - mountPath: /data
-          name: database-data
-        - mountPath: /logs
-          name: database-logs
+        - env:
+            - name: NEO4J_ACCEPT_LICENSE_AGREEMENT
+              value: {{ quote .Values.database.database.env.neo4JAcceptLicenseAgreement }}
+            - name: NEO4J_AUTH
+              value: {{ quote .Values.database.database.env.neo4JAuth }}
+            - name: NEO4J_dbms_security_auth__minimum__password__length
+              value: {{ quote .Values.database.database.env.neo4JDbmsSecurityAuthMinimumPasswordLength }}
+            - name: NEO4J_dbms_security_procedures_unrestricted
+              value: {{ quote .Values.database.database.env.neo4JDbmsSecurityProceduresUnrestricted }}
+            - name: NEO4J_server_metrics_prometheus_enabled
+              value: {{ quote .Values.database.database.env.neo4JServerMetricsPrometheusEnabled }}
+            - name: NEO4J_server_metrics_prometheus_endpoint
+              value: {{ quote .Values.database.database.env.neo4JServerMetricsPrometheusEndpoint }}
+            - name: KUBERNETES_CLUSTER_DOMAIN
+              value: {{ quote .Values.kubernetesClusterDomain }}
+          image: {{ .Values.database.database.image.repository }}:{{ .Values.database.database.image.tag }}
+          livenessProbe:
+            tcpSocket:
+              port: {{ (index .Values.database.ports 1).port }}
+            failureThreshold: 20
+            initialDelaySeconds: 3
+            periodSeconds: 2
+            timeoutSeconds: 10
+          name: database
+          ports:
+          {{- range .Values.database.ports }}
+            - containerPort: {{ .targetPort }}
+              hostPort: {{ .port }}
+              protocol: TCP
+              name: {{ quote .name }}
+          {{- end }}
+          resources: {}
+          volumeMounts:
+            - mountPath: /plugins
+              name: database-hostpath0
+              readOnly: true
+            - mountPath: /data
+              name: database-data
+            - mountPath: /logs
+              name: database-logs
       restartPolicy: Always
       volumes:
-      - hostPath:
-          path: /tmp/plugins
-        name: database-hostpath0
-      - hostPath:
-          path: /tmp/infrahub-helm
-        name: database-data
-      - hostPath:
-          path: /tmp/infrahub-helm
-        name: database-logs
+        - hostPath:
+            path: /tmp/plugins
+          name: database-hostpath0
+        - hostPath:
+            path: /tmp/infrahub-helm
+          name: database-data
+        - hostPath:
+            path: /tmp/infrahub-helm
+          name: database-logs
 
 ---
 apiVersion: v1
@@ -89,7 +85,7 @@ spec:
     io.kompose.service: database
   {{- include "infrahub-helm.selectorLabels" . | nindent 4 }}
   ports:
-	{{- .Values.database.ports | toYaml | nindent 2 }}
+	  {{- .Values.database.ports | toYaml | nindent 4 }}
 
 ---
 apiVersion: v1
@@ -101,7 +97,7 @@ metadata:
   {{- include "infrahub-helm.labels" . | nindent 4 }}
 spec:
   accessModes:
-  - ReadWriteOnce
+    - ReadWriteOnce
   resources:
     requests:
       storage: {{ .Values.pvc.databaseClaim0.storageRequest | quote }}
@@ -116,7 +112,7 @@ metadata:
   {{- include "infrahub-helm.labels" . | nindent 4 }}
 spec:
   accessModes:
-  - ReadWriteOnce
+    - ReadWriteOnce
   resources:
     requests:
       storage: {{ .Values.pvc.databaseData.storageRequest | quote }}
@@ -131,7 +127,7 @@ metadata:
   {{- include "infrahub-helm.labels" . | nindent 4 }}
 spec:
   accessModes:
-  - ReadWriteOnce
+    - ReadWriteOnce
   resources:
     requests:
       storage: {{ .Values.pvc.databaseLogs.storageRequest | quote }}
