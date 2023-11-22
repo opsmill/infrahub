@@ -46,7 +46,7 @@ The following table lists the configurable parameters in the `values.yaml` file 
 | `cache.cache.image.repository` | The Redis image repository | `redis` |
 | `cache.cache.image.tag` | The Redis image tag | `"7.2"` |
 | `database.database.image.repository` | The Neo4j image repository | `neo4j` |
-| `database.database.image.tag` | The Neo4j image tag | `5.11-enterprise` |
+| `database.database.image.tag` | The Neo4j image tag | `5.13-community` |
 | `infrahubGit.infrahubGit.image.repository` | The Infrahub Git image repository | `9r2s1098.c1.gra9.container-registry.ovh.net/opsmill/infrahub` |
 | `infrahubServer.infrahubServer.image.repository` | The Infrahub Server image repository | `9r2s1098.c1.gra9.container-registry.ovh.net/opsmill/infrahub` |
 | `messageQueue.messageQueue.image.repository` | The RabbitMQ image repository | `rabbitmq` |
