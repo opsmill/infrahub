@@ -85,21 +85,6 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ include "infrahub-helm.fullname" . }}-database-claim0
-  labels:
-    service: database-claim0
-  {{- include "infrahub-helm.labels" . | nindent 4 }}
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: {{ .Values.pvc.databaseClaim0.storageRequest | quote }}
-
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
   name: {{ include "infrahub-helm.fullname" . }}-database-data
   labels:
     service: database-data

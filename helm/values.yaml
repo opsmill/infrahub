@@ -156,15 +156,16 @@ messageQueue:
 
 # ----------- Persistent Storage -----------
 pvc:
-  databaseClaim0:
-    storageRequest: 100Mi
+  # Database
   databaseData:
     storageRequest: 100Mi
   databaseLogs:
     storageRequest: 100Mi
+  # Infrahub Git
   gitData:
     storageRequest: 100Mi
   gitRemoteData:
     storageRequest: 100Mi
+  # Infrahub Server
   infrahubServerStorageData:
     storageRequest: 100Mi
