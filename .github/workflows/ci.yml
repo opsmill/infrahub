@@ -106,7 +106,7 @@ jobs:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
       - name: "Setup environment"
-        run: "pip install ruff==0.1.5"
+        run: "pip install ruff==0.1.6"
       - name: "Linting: ruff check"
         run: "ruff check --diff ."
       - name: "Linting: ruff format"
@@ -155,7 +155,7 @@ jobs:
         env:
           BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_SDK_UNIT }}
       - name: "Coveralls : Unit Tests"
-        uses: coverallsapp/github-action@v2.0.0
+        uses: coverallsapp/github-action@v2
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
@@ -188,7 +188,7 @@ jobs:
         env:
           BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_SDK_INTEGRATION }}
       - name: "Coveralls : Integration Tests"
-        uses: coverallsapp/github-action@v2.0.0
+        uses: coverallsapp/github-action@v2
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
@@ -243,7 +243,7 @@ jobs:
         env:
           BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_BACKEND_UNIT_DEFAULT }}
       - name: "Coveralls : Unit Tests"
-        uses: coverallsapp/github-action@v2.0.0
+        uses: coverallsapp/github-action@v2
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
@@ -254,7 +254,7 @@ jobs:
         env:
           BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_BACKEND_INTEGRATION }}
       - name: "Coveralls : Integration Tests"
-        uses: coverallsapp/github-action@v2.0.0
+        uses: coverallsapp/github-action@v2
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
@@ -326,7 +326,7 @@ jobs:
           name: screenshots
           path: frontend/cypress/videos/*
       - name: "Coveralls : Unit Tests"
-        uses: coverallsapp/github-action@v2.0.0
+        uses: coverallsapp/github-action@v2
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
