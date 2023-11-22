@@ -4,18 +4,18 @@ kind: Deployment
 metadata:
   name: {{ include "infrahub-helm.fullname" . }}-cache
   labels:
-    io.kompose.service: cache
+    service: cache
   {{- include "infrahub-helm.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.cache.replicas }}
   selector:
     matchLabels:
-      io.kompose.service: cache
+      service: cache
     {{- include "infrahub-helm.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        io.kompose.service: cache
+        service: cache
       {{- include "infrahub-helm.selectorLabels" . | nindent 8 }}
     spec:
       containers:
@@ -47,12 +47,12 @@ kind: Service
 metadata:
   name: {{ include "infrahub-helm.fullname" . }}-cache
   labels:
-    io.kompose.service: cache
+    service: cache
   {{- include "infrahub-helm.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.cache.type }}
   selector:
-    io.kompose.service: cache
+    service: cache
   {{- include "infrahub-helm.selectorLabels" . | nindent 4 }}
   ports:
 	  {{- .Values.cache.ports | toYaml | nindent 4 }}

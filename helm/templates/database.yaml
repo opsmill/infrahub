@@ -4,34 +4,28 @@ kind: Deployment
 metadata:
   name: {{ include "infrahub-helm.fullname" . }}-database
   labels:
-    io.kompose.service: database
+    service: database
   {{- include "infrahub-helm.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.database.replicas }}
   selector:
     matchLabels:
-      io.kompose.service: database
+      service: database
     {{- include "infrahub-helm.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        io.kompose.service: database
+        service: database
       {{- include "infrahub-helm.selectorLabels" . | nindent 8 }}
     spec:
       containers:
         - env:
-            - name: NEO4J_ACCEPT_LICENSE_AGREEMENT
-              value: {{ quote .Values.database.database.env.neo4JAcceptLicenseAgreement }}
             - name: NEO4J_AUTH
               value: {{ quote .Values.database.database.env.neo4JAuth }}
             - name: NEO4J_dbms_security_auth__minimum__password__length
               value: {{ quote .Values.database.database.env.neo4JDbmsSecurityAuthMinimumPasswordLength }}
             - name: NEO4J_dbms_security_procedures_unrestricted
               value: {{ quote .Values.database.database.env.neo4JDbmsSecurityProceduresUnrestricted }}
-            - name: NEO4J_server_metrics_prometheus_enabled
-              value: {{ quote .Values.database.database.env.neo4JServerMetricsPrometheusEnabled }}
-            - name: NEO4J_server_metrics_prometheus_endpoint
-              value: {{ quote .Values.database.database.env.neo4JServerMetricsPrometheusEndpoint }}
             - name: KUBERNETES_CLUSTER_DOMAIN
               value: {{ quote .Values.kubernetesClusterDomain }}
           image: {{ .Values.database.database.image.repository }}:{{ .Values.database.database.image.tag }}
@@ -77,12 +71,12 @@ kind: Service
 metadata:
   name: {{ include "infrahub-helm.fullname" . }}-database
   labels:
-    io.kompose.service: database
+    service: database
   {{- include "infrahub-helm.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.database.type }}
   selector:
-    io.kompose.service: database
+    service: database
   {{- include "infrahub-helm.selectorLabels" . | nindent 4 }}
   ports:
 	  {{- .Values.database.ports | toYaml | nindent 4 }}
@@ -93,7 +87,7 @@ kind: PersistentVolumeClaim
 metadata:
   name: {{ include "infrahub-helm.fullname" . }}-database-claim0
   labels:
-    io.kompose.service: database-claim0
+    service: database-claim0
   {{- include "infrahub-helm.labels" . | nindent 4 }}
 spec:
   accessModes:
@@ -108,7 +102,7 @@ kind: PersistentVolumeClaim
 metadata:
   name: {{ include "infrahub-helm.fullname" . }}-database-data
   labels:
-    io.kompose.service: database-data
+    service: database-data
   {{- include "infrahub-helm.labels" . | nindent 4 }}
 spec:
   accessModes:
@@ -123,7 +117,7 @@ kind: PersistentVolumeClaim
 metadata:
   name: {{ include "infrahub-helm.fullname" . }}-database-logs
   labels:
-    io.kompose.service: database-logs
+    service: database-logs
   {{- include "infrahub-helm.labels" . | nindent 4 }}
 spec:
   accessModes:

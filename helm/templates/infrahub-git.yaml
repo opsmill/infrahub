@@ -4,18 +4,18 @@ kind: Deployment
 metadata:
   name: {{ include "infrahub-helm.fullname" . }}-infrahub-git
   labels:
-    io.kompose.service: infrahub-git
+    service: infrahub-git
   {{- include "infrahub-helm.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.infrahubGit.replicas }}
   selector:
     matchLabels:
-      io.kompose.service: infrahub-git
+      service: infrahub-git
     {{- include "infrahub-helm.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        io.kompose.service: infrahub-git
+        service: infrahub-git
       {{- include "infrahub-helm.selectorLabels" . | nindent 8 }}
     spec:
       containers:
@@ -39,7 +39,7 @@ spec:
               value: {{ quote .Values.infrahubGit.infrahubGit.env.infrahubSdkTimeout }}
             - name: KUBERNETES_CLUSTER_DOMAIN
               value: {{ quote .Values.kubernetesClusterDomain }}
-          image: {{ .Values.infrahubGit.infrahubGit.image.repository }}:{{ .Values.infrahubGit.infrahubGit.image.tag | default .Chart.AppVersion }}
+          image: {{ .Values.infrahubRepository }}:{{ .Values.infrahubTag | default .Chart.AppVersion }}
           imagePullPolicy: {{ .Values.infrahubGit.infrahubGit.imagePullPolicy }}
           name: infrahub-git
           resources: {}
@@ -51,23 +51,6 @@ spec:
               name: git-remote-data
             - name: infrahub-config-volume
               mountPath: /config
-      initContainers:
-        - command:
-            - sh
-            - -c
-            - >
-              until nslookup {{ include "infrahub-helm.fullname" . }}-infrahub-server.$(cat \
-              /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local;
-              do
-                echo waiting for {{ include "infrahub-helm.fullname" . }}-infrahub-server
-                sleep 2
-              done
-          env:
-            - name: KUBERNETES_CLUSTER_DOMAIN
-              value: {{ quote .Values.kubernetesClusterDomain }}
-          image: {{ .Values.infrahubGit.waitForInfrahubServer.image.repository }}:{{ .Values.infrahubGit.waitForInfrahubServer.image.tag | default .Chart.AppVersion }}
-          name: wait-for-infrahub-server
-          resources: {}
       restartPolicy: Always
       volumes:
         - hostPath:
@@ -86,7 +69,7 @@ kind: PersistentVolumeClaim
 metadata:
   name: {{ include "infrahub-helm.fullname" . }}-git-data
   labels:
-    io.kompose.service: git-data
+    service: git-data
   {{- include "infrahub-helm.labels" . | nindent 4 }}
 spec:
   accessModes:
@@ -101,7 +84,7 @@ kind: PersistentVolumeClaim
 metadata:
   name: {{ include "infrahub-helm.fullname" . }}-git-remote-data
   labels:
-    io.kompose.service: git-remote-data
+    service: git-remote-data
   {{- include "infrahub-helm.labels" . | nindent 4 }}
 spec:
   accessModes:
@@ -109,18 +92,3 @@ spec:
   resources:
     requests:
       storage: {{ .Values.pvc.gitRemoteData.storageRequest | quote }}
-
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: {{ include "infrahub-helm.fullname" . }}-infrahub-git-claim2
-  labels:
-    io.kompose.service: infrahub-git-claim2
-  {{- include "infrahub-helm.labels" . | nindent 4 }}
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: {{ .Values.pvc.infrahubGitClaim2.storageRequest | quote }}

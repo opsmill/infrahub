@@ -21,29 +21,12 @@ spec:
               value: {{ quote .Values.infrahubServerDbInitJob.infrahubServerDbInitJob.env.infrahubConfig }}
             - name: KUBERNETES_CLUSTER_DOMAIN
               value: {{ quote .Values.kubernetesClusterDomain }}
-          image: {{ .Values.infrahubServerDbInitJob.infrahubServerDbInitJob.image.repository }}:{{ .Values.infrahubServerDbInitJob.infrahubServerDbInitJob.image.tag | default .Chart.AppVersion }}
+          image: {{ .Values.infrahubRepository }}:{{ .Values.infrahubTag | default .Chart.AppVersion }}
           name: infrahub-server-db-init-job
           resources: {}
           volumeMounts:
             - name: infrahub-config-volume
               mountPath: /config
-      initContainers:
-        - command:
-            - sh
-            - -c
-            - >
-              until nslookup {{ include "infrahub-helm.fullname" . }}-database.$(cat \
-              /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local;
-              do
-                echo waiting for {{ include "infrahub-helm.fullname" . }}-database
-                sleep 2
-              done
-          env:
-            - name: KUBERNETES_CLUSTER_DOMAIN
-              value: {{ quote .Values.kubernetesClusterDomain }}
-          image: {{ .Values.infrahubServerDbInitJob.waitForDatabase.image.repository }}:{{ .Values.infrahubServerDbInitJob.waitForDatabase.image.tag | default .Chart.AppVersion }}
-          name: wait-for-database
-          resources: {}
       restartPolicy: Never
       volumes:
         - hostPath:

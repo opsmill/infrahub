@@ -1,5 +1,6 @@
 ---
 kubernetesClusterDomain: cluster.local
+infrahubRepository: 9r2s1098.c1.gra9.container-registry.ovh.net/opsmill/infrahub
 
 # ----------- Cache -----------
 cache:
@@ -23,15 +24,12 @@ database:
   replicas: 1
   database:
     env:
-      neo4JAcceptLicenseAgreement: "yes"
       neo4JAuth: neo4j/admin
       neo4JDbmsSecurityAuthMinimumPasswordLength: "4"
       neo4JDbmsSecurityProceduresUnrestricted: apoc.*
-      neo4JServerMetricsPrometheusEnabled: "true"
-      neo4JServerMetricsPrometheusEndpoint: 0.0.0.0:2004
     image:
       repository: neo4j
-      tag: 5.11-enterprise
+      tag: 5.13-community
   ports:
     - name: "metrics"
       port: 2004
@@ -62,8 +60,6 @@ infrahubGit:
       infrahubProduction: "false"
       infrahubSdkApiToken: 06438eb2-8019-4776-878c-0941b1f1d1ec
       infrahubSdkTimeout: "20"
-    image:
-      repository: 9r2s1098.c1.gra9.container-registry.ovh.net/opsmill/infrahub
     imagePullPolicy: Always
   waitForInfrahubServer:
     image:
@@ -93,8 +89,6 @@ infrahubServer:
       infrahubSecurityInitialAdminToken: 06438eb2-8019-4776-878c-0941b1f1d1ec
       infrahubSecuritySecretKey: 327f747f-efac-42be-9e73-999f08f86b92
       prometheusMultiprocDir: /prom_shared
-    image:
-      repository: 9r2s1098.c1.gra9.container-registry.ovh.net/opsmill/infrahub
     imagePullPolicy: Always
   ports:
     - name: "interface"
@@ -118,8 +112,6 @@ infrahubServerDbInitJob:
     env:
       infrahubCachePort: 6379
       infrahubConfig: /config/infrahub.toml
-    image:
-      repository: 9r2s1098.c1.gra9.container-registry.ovh.net/opsmill/infrahub
   waitForDatabase:
     image:
       repository: busybox
@@ -173,10 +165,6 @@ pvc:
   gitData:
     storageRequest: 100Mi
   gitRemoteData:
-    storageRequest: 100Mi
-  infrahubGitClaim2:
-    storageRequest: 100Mi
-  infrahubServerClaim1:
     storageRequest: 100Mi
   infrahubServerStorageData:
     storageRequest: 100Mi
