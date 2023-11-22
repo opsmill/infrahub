@@ -182,7 +182,13 @@ export const Thread = (props: tThread) => {
 
       <div className="">
         {sortedComments.map((comment: any, index: number) => (
-          <Comment key={index} comment={comment} className={"border border-gray-200"} />
+          <Comment
+            key={index}
+            author={comment?.created_by?.node?.display_label ?? "Anonymous"}
+            createdAt={comment?.created_at?.value}
+            content={comment?.text?.value ?? ""}
+            className={"border border-gray-200"}
+          />
         ))}
       </div>
 
