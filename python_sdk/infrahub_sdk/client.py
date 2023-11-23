@@ -43,6 +43,7 @@ from infrahub_sdk.utils import is_valid_uuid
 
 # pylint: disable=redefined-builtin  disable=too-many-lines
 
+
 class BaseClient:
     """Base class for InfrahubClient and InfrahubClientSync"""
 
