@@ -19,7 +19,7 @@ def test_schema_load_one_valid(httpx_mock: HTTPXMock):
     result = runner.invoke(app=app, args=["load", fixture_file])
 
     assert result.exit_code == 0
-    assert f"schema '{fixture_file}' loaded successfully!" in result.stdout.replace("\n", "")
+    assert f"schema '{fixture_file}' loaded successfully" in result.stdout.replace("\n", "")
 
     content = httpx_mock.get_requests()[0].content.decode("utf8")
     content_json = yaml.safe_load(content)
@@ -38,8 +38,8 @@ def test_schema_load_multiple(httpx_mock: HTTPXMock):
     result = runner.invoke(app=app, args=["load", fixture_file1, fixture_file2])
 
     assert result.exit_code == 0
-    assert f"schema '{fixture_file1}' loaded successfully!" in result.stdout.replace("\n", "")
-    assert f"schema '{fixture_file2}' loaded successfully!" in result.stdout.replace("\n", "")
+    assert f"schema '{fixture_file1}' loaded successfully" in result.stdout.replace("\n", "")
+    assert f"schema '{fixture_file2}' loaded successfully" in result.stdout.replace("\n", "")
 
     content = httpx_mock.get_requests()[0].content.decode("utf8")
     content_json = yaml.safe_load(content)
