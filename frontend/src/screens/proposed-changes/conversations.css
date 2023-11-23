@@ -187,6 +187,10 @@
   list-style-type: lower-alpha;
 }
 
+.markdown li > p {
+  margin: 0;
+}
+
 .cm-gutters {
   display: none !important;
 }
@@ -195,6 +199,7 @@
   padding: 12px !important;
 }
 
-.cm-editor, .cm-activeLine {
+.cm-editor,
+.cm-activeLine {
   background: transparent !important;
 }
