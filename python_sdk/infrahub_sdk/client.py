@@ -5,7 +5,7 @@ import copy
 import logging
 from logging import Logger
 from time import sleep
-from typing import Any, Dict, List, MutableMapping, Optional, Union
+from typing import Any, Dict, List, MutableMapping, Optional, Tuple, Union
 
 import httpx
 
@@ -25,7 +25,14 @@ from infrahub_sdk.exceptions import (
     ServerNotResponsiveError,
 )
 from infrahub_sdk.graphql import Query
-from infrahub_sdk.node import InfrahubNode, InfrahubNodeSync
+from infrahub_sdk.node import (
+    InfrahubNode,
+    InfrahubNodeSync,
+    RelatedNode,
+    RelatedNodeSync,
+    RelationshipManager,
+    RelationshipManagerSync,
+)
 from infrahub_sdk.object_store import ObjectStore, ObjectStoreSync
 from infrahub_sdk.queries import MUTATION_COMMIT_UPDATE, QUERY_ALL_REPOSITORIES
 from infrahub_sdk.schema import InfrahubSchema, InfrahubSchemaSync, NodeSchema
@@ -34,8 +41,7 @@ from infrahub_sdk.timestamp import Timestamp
 from infrahub_sdk.types import AsyncRequester, HTTPMethod, SyncRequester
 from infrahub_sdk.utils import is_valid_uuid
 
-# pylint: disable=redefined-builtin
-
+# pylint: disable=redefined-builtin  disable=too-many-lines
 
 class BaseClient:
     """Base class for InfrahubClient and InfrahubClientSync"""
@@ -127,6 +133,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         exclude: Optional[List[str]] = None,
         populate_store: bool = False,
         fragment: bool = False,
+        prefetch_relationships: bool = False,
         **kwargs: Any,
     ) -> InfrahubNode:
         branch = branch or self.default_branch
@@ -152,6 +159,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
             include=include,
             exclude=exclude,
             fragment=fragment,
+            prefetch_relationships=prefetch_relationships,
             **filters,
         )  # type: ignore[arg-type]
 
@@ -161,6 +169,60 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
             raise IndexError("More than 1 node returned")
 
         return results[0]
+
+    async def process_nodes_and_relationships(
+        self, response: Dict[str, Any], schema_kind: str, branch: str, prefetch_relationships: bool
+    ) -> Tuple[List[InfrahubNode], List[InfrahubNode]]:
+        """Processes InfrahubNode and their Relationships from the GraphQL query response.
+
+        Args:
+            response (Dict[str, Any]): The response from the GraphQL query.
+            schema_kind (str): The kind of schema being queried.
+            branch (str): The branch name.
+            prefetch_relationships (bool): Flag to indicate whether to prefetch relationship data.
+
+        Returns:
+            Tuple[List[InfrahubNode], List[InfrahubNode]]: A tuple containing two lists:
+                - The first list contains the nodes processed.
+                - The second list contains related nodes if prefetch_relationships is True.
+        """
+
+        nodes = []
+        related_nodes = []
+
+        for item in response[schema_kind]["edges"]:
+            node = await InfrahubNode.from_graphql(client=self, branch=branch, data=item)
+            nodes.append(node)
+
+            if prefetch_relationships:
+                self.process_relationships(node, item, branch, related_nodes)
+
+        return nodes, related_nodes
+
+    async def process_relationships(
+        self, node: InfrahubNode, item: Dict[str, Any], branch: str, related_nodes: List[InfrahubNode]
+    ) -> None:
+        """Processes the Relationships of a InfrahubNode and add Related Nodes to a list.
+
+        Args:
+            node (InfrahubNode): The current node whose relationships are being processed.
+            item (Dict[str, Any]): The item from the GraphQL response corresponding to the node.
+            branch (str): The branch name.
+            related_nodes (List[InfrahubNode]): The list to which related nodes will be appended.
+        """
+        for rel_name in node._relationships:
+            rel = getattr(node, rel_name)
+            if rel and isinstance(rel, RelatedNode):
+                related_node = await InfrahubNode.from_graphql(
+                    client=self, branch=branch, data=item["node"].get(rel_name)
+                )
+                related_nodes.append(related_node)
+            elif rel and isinstance(rel, RelationshipManager):
+                peers = item["node"].get(rel_name)
+                if peers:
+                    for peer in peers["edges"]:
+                        related_node = await InfrahubNode.from_graphql(client=self, branch=branch, data=peer)
+                        related_nodes.append(related_node)
 
     async def all(
         self,
@@ -173,6 +235,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         include: Optional[List[str]] = None,
         exclude: Optional[List[str]] = None,
         fragment: bool = False,
+        prefetch_relationships: bool = False,
     ) -> List[InfrahubNode]:
         """Retrieve all nodes of a given kind
 
@@ -180,6 +243,13 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
             kind (str): kind of the nodes to query
             at (Timestamp, optional): Time of the query. Defaults to Now.
             branch (str, optional): Name of the branch to query from. Defaults to default_branch.
+            populate_store (bool, optional): Flag to indicate whether to populate the store with the retrieved nodes.
+            offset (int, optional): The offset for pagination.
+            limit (int, optional): The limit for pagination.
+            include (List[str], optional): List of attributes or relationships to include in the query.
+            exclude (List[str], optional): List of attributes or relationships to exclude from the query.
+            fragment (bool, optional): Flag to use GraphQL fragments for generic schemas.
+            prefetch_relationships (bool, optional): Flag to indicate whether to prefetch related node data.
 
         Returns:
             List[InfrahubNode]: List of Nodes
@@ -194,6 +264,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
             include=include,
             exclude=exclude,
             fragment=fragment,
+            prefetch_relationships=prefetch_relationships,
         )
 
     async def filters(
@@ -207,8 +278,27 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         include: Optional[List[str]] = None,
         exclude: Optional[List[str]] = None,
         fragment: bool = False,
+        prefetch_relationships: bool = False,
         **kwargs: Any,
     ) -> List[InfrahubNode]:
+        """Retrieve nodes of a given kind based on provided filters.
+
+        Args:
+            kind (str): kind of the nodes to query
+            at (Timestamp, optional): Time of the query. Defaults to Now.
+            branch (str, optional): Name of the branch to query from. Defaults to default_branch.
+            populate_store (bool, optional): Flag to indicate whether to populate the store with the retrieved nodes.
+            offset (int, optional): The offset for pagination.
+            limit (int, optional): The limit for pagination.
+            include (List[str], optional): List of attributes or relationships to include in the query.
+            exclude (List[str], optional): List of attributes or relationships to exclude from the query.
+            fragment (bool, optional): Flag to use GraphQL fragments for generic schemas.
+            prefetch_relationships (bool, optional): Flag to indicate whether to prefetch related node data.
+            **kwargs (Any): Additional filter criteria for the query.
+
+        Returns:
+            List[InfrahubNodeSync]: List of Nodes that match the given filters.
+        """
         schema = await self.schema.get(kind=kind)
 
         branch = branch or self.default_branch
@@ -232,6 +322,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
                 include=include,
                 exclude=exclude,
                 fragment=fragment,
+                prefetch_relationships=prefetch_relationships,
             )
             query = Query(query=query_data)
             response = await self.execute_graphql(
@@ -241,10 +332,10 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
                 tracker=f"query-{str(schema.kind).lower()}-page1",
             )
 
-            nodes = [
-                await InfrahubNode.from_graphql(client=self, branch=branch, data=item)
-                for item in response[schema.kind]["edges"]
-            ]
+            nodes, related_nodes = await self.process_nodes_and_relationships(
+                response=response, schema_kind=schema.kind, branch=branch, prefetch_relationships=prefetch_relationships
+            )
+
         else:
             has_remaining_items = True
             page_number = 1
@@ -258,6 +349,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
                     include=include,
                     exclude=exclude,
                     fragment=fragment,
+                    prefetch_relationships=prefetch_relationships,
                 )
                 query = Query(query=query_data)
                 response = await self.execute_graphql(
@@ -266,12 +358,11 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
                     at=at,
                     tracker=f"query-{str(schema.kind).lower()}-page{page_number}",
                 )
-
-                nodes.extend(
-                    [
-                        await InfrahubNode.from_graphql(client=self, branch=branch, data=item)
-                        for item in response[schema.kind]["edges"]
-                    ]
+                nodes, related_nodes = await self.process_nodes_and_relationships(
+                    response=response,
+                    schema_kind=schema.kind,
+                    branch=branch,
+                    prefetch_relationships=prefetch_relationships,
                 )
 
                 remaining_items = response[schema.kind].get("count", 0) - (page_offset + self.pagination_size)
@@ -284,6 +375,11 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
             for node in nodes:
                 if node.id:
                     self.store.set(key=node.id, node=node)
+            related_nodes = list(set(related_nodes))
+            for node in related_nodes:
+                if node.id:
+                    self.store.set(key=node.id, node=node)
+
         return nodes
 
     async def execute_graphql(  # pylint: disable=too-many-branches
@@ -688,6 +784,60 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
 
         # TODO add a special method to execute mutation that will check if the method returned OK
 
+    def process_nodes_and_relationships(
+        self, response: Dict[str, Any], schema_kind: str, branch: str, prefetch_relationships: bool
+    ) -> Tuple[List[InfrahubNodeSync], List[InfrahubNodeSync]]:
+        """Processes InfrahubNodeSync and their Relationships from the GraphQL query response.
+
+        Args:
+            response (Dict[str, Any]): The response from the GraphQL query.
+            schema_kind (str): The kind of schema being queried.
+            branch (str): The branch name.
+            prefetch_relationships (bool): Flag to indicate whether to prefetch relationship data.
+
+        Returns:
+            Tuple[List[InfrahubNodeSync], List[InfrahubNodeSync]]: A tuple containing two lists:
+                - The first list contains the nodes processed.
+                - The second list contains related nodes if prefetch_relationships is True.
+        """
+
+        nodes = []
+        related_nodes = []
+
+        for item in response[schema_kind]["edges"]:
+            node = InfrahubNodeSync.from_graphql(client=self, branch=branch, data=item)
+            nodes.append(node)
+
+            if prefetch_relationships:
+                self.process_relationships(node, item, branch, related_nodes)
+
+        return nodes, related_nodes
+
+    def process_relationships(
+        self, node: InfrahubNodeSync, item: Dict[str, Any], branch: str, related_nodes: List[InfrahubNodeSync]
+    ) -> None:
+        """Processes the Relationships of a InfrahubNodeSync and add Related Nodes to a list.
+
+        Args:
+            node (InfrahubNodeSync): The current node whose relationships are being processed.
+            item (Dict[str, Any]): The item from the GraphQL response corresponding to the node.
+            branch (str): The branch name.
+            related_nodes (List[InfrahubNodeSync]): The list to which related nodes will be appended.
+        """
+        for rel_name in node._relationships:
+            rel = getattr(node, rel_name)
+            if rel and isinstance(rel, RelatedNodeSync):
+                related_node = InfrahubNodeSync.from_graphql(
+                    client=self, branch=branch, data=item["node"].get(rel_name)
+                )
+                related_nodes.append(related_node)
+            elif rel and isinstance(rel, RelationshipManagerSync):
+                peers = item["node"].get(rel_name)
+                if peers:
+                    for peer in peers["edges"]:
+                        related_node = InfrahubNodeSync.from_graphql(client=self, branch=branch, data=peer)
+                        related_nodes.append(related_node)
+
     def all(
         self,
         kind: str,
@@ -699,6 +849,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         include: Optional[List[str]] = None,
         exclude: Optional[List[str]] = None,
         fragment: bool = False,
+        prefetch_relationships: bool = False,
     ) -> List[InfrahubNodeSync]:
         """Retrieve all nodes of a given kind
 
@@ -706,11 +857,17 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             kind (str): kind of the nodes to query
             at (Timestamp, optional): Time of the query. Defaults to Now.
             branch (str, optional): Name of the branch to query from. Defaults to default_branch.
+            populate_store (bool, optional): Flag to indicate whether to populate the store with the retrieved nodes.
+            offset (int, optional): The offset for pagination.
+            limit (int, optional): The limit for pagination.
+            include (List[str], optional): List of attributes or relationships to include in the query.
+            exclude (List[str], optional): List of attributes or relationships to exclude from the query.
+            fragment (bool, optional): Flag to use GraphQL fragments for generic schemas.
+            prefetch_relationships (bool, optional): Flag to indicate whether to prefetch related node data.
 
         Returns:
             List[InfrahubNodeSync]: List of Nodes
         """
-
         return self.filters(
             kind=kind,
             at=at,
@@ -721,6 +878,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             include=include,
             exclude=exclude,
             fragment=fragment,
+            prefetch_relationships=prefetch_relationships,
         )
 
     def filters(
@@ -734,8 +892,27 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         include: Optional[List[str]] = None,
         exclude: Optional[List[str]] = None,
         fragment: bool = False,
+        prefetch_relationships: bool = False,
         **kwargs: Any,
     ) -> List[InfrahubNodeSync]:
+        """Retrieve nodes of a given kind based on provided filters.
+
+        Args:
+            kind (str): kind of the nodes to query
+            at (Timestamp, optional): Time of the query. Defaults to Now.
+            branch (str, optional): Name of the branch to query from. Defaults to default_branch.
+            populate_store (bool, optional): Flag to indicate whether to populate the store with the retrieved nodes.
+            offset (int, optional): The offset for pagination.
+            limit (int, optional): The limit for pagination.
+            include (List[str], optional): List of attributes or relationships to include in the query.
+            exclude (List[str], optional): List of attributes or relationships to exclude from the query.
+            fragment (bool, optional): Flag to use GraphQL fragments for generic schemas.
+            prefetch_relationships (bool, optional): Flag to indicate whether to prefetch related node data.
+            **kwargs (Any): Additional filter criteria for the query.
+
+        Returns:
+            List[InfrahubNodeSync]: List of Nodes that match the given filters.
+        """
         schema = self.schema.get(kind=kind)
 
         branch = branch or self.default_branch
@@ -749,6 +926,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             node.validate_filters(filters=filters)
 
         nodes = []
+        related_nodes = []
         # If Offset or Limit was provided we just query as it
         # If not, we'll query all nodes based on the size of the batch
         if offset or limit:
@@ -759,6 +937,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
                 include=include,
                 exclude=exclude,
                 fragment=fragment,
+                prefetch_relationships=prefetch_relationships,
             )
             query = Query(query=query_data)
             response = self.execute_graphql(
@@ -767,11 +946,9 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
                 at=at,
                 tracker=f"query-{str(schema.kind).lower()}-page1",
             )
-
-            nodes = [
-                InfrahubNodeSync.from_graphql(client=self, branch=branch, data=item)
-                for item in response[schema.kind]["edges"]
-            ]
+            nodes, related_nodes = self.process_nodes_and_relationships(
+                response=response, schema_kind=schema.kind, branch=branch, prefetch_relationships=prefetch_relationships
+            )
 
         else:
             has_remaining_items = True
@@ -786,6 +963,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
                     include=include,
                     exclude=exclude,
                     fragment=fragment,
+                    prefetch_relationships=prefetch_relationships,
                 )
                 query = Query(query=query_data)
                 response = self.execute_graphql(
@@ -795,11 +973,11 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
                     tracker=f"query-{str(schema.kind).lower()}-page{page_number}",
                 )
 
-                nodes.extend(
-                    [
-                        InfrahubNodeSync.from_graphql(client=self, branch=branch, data=item)
-                        for item in response[schema.kind]["edges"]
-                    ]
+                nodes, related_nodes = self.process_nodes_and_relationships(
+                    response=response,
+                    schema_kind=schema.kind,
+                    branch=branch,
+                    prefetch_relationships=prefetch_relationships,
                 )
 
                 remaining_items = response[schema.kind].get("count", 0) - (page_offset + self.pagination_size)
@@ -810,6 +988,10 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
 
         if populate_store:
             for node in nodes:
+                if node.id:
+                    self.store.set(key=node.id, node=node)
+            related_nodes = list(set(related_nodes))
+            for node in related_nodes:
                 if node.id:
                     self.store.set(key=node.id, node=node)
 
@@ -825,6 +1007,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         exclude: Optional[List[str]] = None,
         populate_store: bool = False,
         fragment: bool = False,
+        prefetch_relationships: bool = False,
         **kwargs: Any,
     ) -> InfrahubNodeSync:
         branch = branch or self.default_branch
@@ -850,6 +1033,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             include=include,
             exclude=exclude,
             fragment=fragment,
+            prefetch_relationships=prefetch_relationships,
             **filters,
         )  # type: ignore[arg-type]
 
