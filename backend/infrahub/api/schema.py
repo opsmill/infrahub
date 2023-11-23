@@ -63,7 +63,7 @@ class APIGenericSchema(GenericSchema, APISchemaMixin):
 
 
 class SchemaReadAPI(BaseModel):
-    hash: str
+    main: str = Field(description="Main hash for the entire schema")
     nodes: List[APINodeSchema] = Field(default_factory=list)
     generics: List[APIGenericSchema] = Field(default_factory=list)
 
@@ -87,7 +87,7 @@ async def get_schema(
     full_schema = schema_branch.get_all()
 
     return SchemaReadAPI(
-        hash=registry.schema.get_schema_branch(name=branch.name).get_hash(),
+        main=registry.schema.get_schema_branch(name=branch.name).get_hash(),
         nodes=[APINodeSchema.from_schema(value) for value in full_schema.values() if isinstance(value, NodeSchema)],
         generics=[
             APIGenericSchema.from_schema(value) for value in full_schema.values() if isinstance(value, GenericSchema)
