@@ -161,7 +161,7 @@ export const Thread = (props: tThread) => {
         enabled={isResolved || markAsResolved}
         onChange={() => setConfirmModal(true)}
       />
-      <label htmlFor={idForLabel} className="cursor-pointer">
+      <label htmlFor={idForLabel} className={isResolved ? "cursor-default" : "cursor-pointer"}>
         {isResolved ? "Resolved" : "Resolve thread"}
       </label>
     </div>
@@ -178,7 +178,8 @@ export const Thread = (props: tThread) => {
       className={classNames(
         isResolved ? "bg-gray-200" : "bg-custom-white",
         "p-4 m-4 rounded-lg relative"
-      )}>
+      )}
+      data-cy="thread">
       {displayContext && getThreadTitle(thread)}
 
       <div className="">

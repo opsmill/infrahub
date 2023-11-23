@@ -23,17 +23,10 @@ describe("Main application", () => {
     cy.contains("Proposed Changes").click();
 
     // Open the creat panel
-    cy.get(".bg-white > .p-2").click();
+    cy.get("[data-cy='add-proposed-changes-button']").click();
 
     // Type the PC name
-    cy.get(".grid > :nth-child(1) > .relative > .block").type(PROPOSED_CHANGES_NAME, {
-      delay: 0,
-      force: true,
-    });
-    cy.get(".grid > :nth-child(1) > .relative > .block").should(
-      "have.value",
-      PROPOSED_CHANGES_NAME
-    );
+    cy.get("#Name").type(PROPOSED_CHANGES_NAME);
 
     // Open the branch selector
     cy.get(".space-y-12 > :nth-child(1) > .grid > :nth-child(2)").within(() => {
@@ -111,45 +104,47 @@ describe("Main application", () => {
     cy.wait("@CreateComment1");
 
     // Check if the thread has been created
-    cy.get(".m-4").within(() => {
-      // The "created by" should be correct
-      cy.contains("Admin").should("exist");
+    cy.get("[data-cy='thread']")
+      .first()
+      .within(() => {
+        // The "created by" should be correct
+        cy.contains("Admin").should("exist");
 
-      // The comment should be displayed
-      cy.contains(PROPOSED_CHANGE_COMMENT_1).should("exist");
+        // The comment should be displayed
+        cy.contains(PROPOSED_CHANGE_COMMENT_1).should("exist");
 
-      // Add reply
-      cy.contains("Reply").click();
+        // Add reply
+        cy.contains("Reply").click();
 
-      cy.get("textarea").first().type(PROPOSED_CHANGE_COMMENT_2, { delay: 0, force: true });
-      cy.get("textarea").first().should("have.value", PROPOSED_CHANGE_COMMENT_2);
+        cy.get("textarea").first().type(PROPOSED_CHANGE_COMMENT_2, { delay: 0, force: true });
+        cy.get("textarea").first().should("have.value", PROPOSED_CHANGE_COMMENT_2);
 
-      cy.intercept("/graphql/main").as("CreateComment2");
+        cy.intercept("/graphql/main").as("CreateComment2");
 
-      // Send request
-      cy.get("[data-cy='submit-form']").click();
+        // Send request
+        cy.get("[data-cy='submit-form']").click();
 
-      cy.wait("@CreateComment2");
+        cy.wait("@CreateComment2");
 
-      // Comment should exist
-      cy.contains(PROPOSED_CHANGE_COMMENT_2).should("exist");
+        // Comment should exist
+        cy.contains(PROPOSED_CHANGE_COMMENT_2).should("exist");
 
-      if (this.screenshots) {
-        cy.screenshot("proposed-changes-3-comments", screenshotConfig);
-      }
+        if (this.screenshots) {
+          cy.screenshot("proposed-changes-3-comments", screenshotConfig);
+        }
 
-      // Add third comment
-      cy.get("textarea").should("have.value", "");
-      cy.get("textarea").type(PROPOSED_CHANGE_COMMENT_3, { delay: 0, force: true });
-      cy.get("textarea").should("have.value", PROPOSED_CHANGE_COMMENT_3);
+        // Add third comment
+        cy.get("textarea").should("have.value", "");
+        cy.get("textarea").type(PROPOSED_CHANGE_COMMENT_3, { delay: 0, force: true });
+        cy.get("textarea").should("have.value", PROPOSED_CHANGE_COMMENT_3);
 
-      // Mark as resolved once commented
-      cy.contains("Resolved").click();
+        // Mark as resolved once commented
+        cy.contains("Resolve thread").click();
 
-      if (this.screenshots) {
-        cy.screenshot("proposed-changes-4-comments-confirm-resolution", screenshotConfig);
-      }
-    });
+        if (this.screenshots) {
+          cy.screenshot("proposed-changes-4-comments-confirm-resolution", screenshotConfig);
+        }
+      });
 
     cy.intercept("/graphql/main").as("CreateComment3");
 
@@ -166,7 +161,8 @@ describe("Main application", () => {
     // Add third comment
     cy.contains(PROPOSED_CHANGE_COMMENT_3).should("exist");
 
-    cy.contains("Resolved").should("be.disabled");
+    cy.contains("Resolved").should("not.have.class", "cursor-pointer");
+    cy.get("[data-cy='checkbox']").should("be.disabled");
 
     if (this.screenshots) {
       cy.screenshot("proposed-changes-5-comments-resolved", screenshotConfig);
