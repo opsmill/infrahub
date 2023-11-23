@@ -195,7 +195,7 @@ export const Thread = (props: tThread) => {
       </div>
 
       <div className="flex">
-        {displayAddComment && (
+        {displayAddComment ? (
           <div className="flex-1">
             <AddComment
               onSubmit={handleSubmit}
@@ -205,9 +205,7 @@ export const Thread = (props: tThread) => {
               additionalButtons={MarkAsResolvedWithTooltip}
             />
           </div>
-        )}
-
-        {!displayAddComment && (
+        ) : (
           <div className="flex flex-1 justify-between">
             {MarkAsResolved}
 
@@ -223,7 +221,7 @@ export const Thread = (props: tThread) => {
         description={"Are you sure you want to mark this thread as resolved?"}
         onCancel={() => setConfirmModal(false)}
         onConfirm={handleResolve}
-        open={!!confirmModal}
+        open={confirmModal}
         setOpen={() => setConfirmModal(false)}
         isLoading={isLoading}
       />
