@@ -10,6 +10,7 @@ from infrahub import config, lock
 from infrahub.api.dependencies import get_branch_dep, get_current_user, get_db
 from infrahub.core import registry
 from infrahub.core.branch import Branch  # noqa: TCH001
+from infrahub.core.models import SchemaBranchHash  # noqa: TCH001
 from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema, SchemaRoot
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
 from infrahub.exceptions import PermissionDeniedError, SchemaNotFound
@@ -20,8 +21,6 @@ from infrahub.worker import WORKER_IDENTITY
 
 if TYPE_CHECKING:
     from typing_extensions import Self
-
-    from infrahub.core.models import SchemaBranchHash
 
 log = get_logger()
 router = APIRouter(prefix="/schema")
@@ -64,6 +63,7 @@ class APIGenericSchema(GenericSchema, APISchemaMixin):
 
 
 class SchemaReadAPI(BaseModel):
+    hash: str
     nodes: List[APINodeSchema] = Field(default_factory=list)
     generics: List[APIGenericSchema] = Field(default_factory=list)
 
@@ -83,9 +83,11 @@ async def get_schema(
 ) -> SchemaReadAPI:
     log.info("schema_request", branch=branch.name)
 
-    full_schema = registry.schema.get_full(branch=branch)
+    schema_branch = registry.schema.get_schema_branch(name=branch.name)
+    full_schema = schema_branch.get_all()
 
     return SchemaReadAPI(
+        hash=registry.schema.get_schema_branch(name=branch.name).get_hash(),
         nodes=[APINodeSchema.from_schema(value) for value in full_schema.values() if isinstance(value, NodeSchema)],
         generics=[
             APIGenericSchema.from_schema(value) for value in full_schema.values() if isinstance(value, GenericSchema)
@@ -103,7 +105,7 @@ async def get_schema_summary(
 
 
 @router.get("/{schema_kind}")
-async def get_schema_by_hash(
+async def get_schema_by_kind(
     schema_kind: str,
     branch: Branch = Depends(get_branch_dep),
 ) -> Union[APINodeSchema, APIGenericSchema]:
