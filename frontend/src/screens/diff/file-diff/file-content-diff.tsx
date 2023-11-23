@@ -331,7 +331,7 @@ export const FileContentDiff = (props: any) => {
       if (shouldDisplayAddComment(displayAddComment, change)) {
         return {
           ...widgets,
-          [changeKey]: <AddComment onSubmit={handleSubmitComment} onClose={handleCloseComment} />,
+          [changeKey]: <AddComment onSubmit={handleSubmitComment} onCancel={handleCloseComment} />,
         };
       }
 

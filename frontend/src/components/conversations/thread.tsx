@@ -199,7 +199,7 @@ export const Thread = (props: tThread) => {
             <AddComment
               onSubmit={handleSubmit}
               isLoading={isLoading}
-              onClose={() => setDisplayAddComment(false)}
+              onCancel={() => setDisplayAddComment(false)}
               disabled={!auth?.permissions?.write}
               additionalButtons={MarkAsResolvedWithTooltip}
             />

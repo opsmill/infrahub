@@ -6,7 +6,7 @@ import { Form } from "../../screens/edit-form-hook/form";
 type tAddComment = {
   onSubmit: SubmitHandler<FieldValues>;
   isLoading?: boolean;
-  onClose?: Function;
+  onCancel?: Function;
   disabled?: boolean;
   additionalButtons?: ReactElement;
 };
@@ -24,7 +24,7 @@ const fields: DynamicFieldData[] = [
 ];
 
 export const AddComment = (props: tAddComment) => {
-  const { onSubmit, isLoading, onClose, disabled, additionalButtons } = props;
+  const { onSubmit, isLoading, onCancel, disabled, additionalButtons } = props;
 
   return (
     <div className="mb-6">
@@ -34,7 +34,7 @@ export const AddComment = (props: tAddComment) => {
           fields={fields}
           submitLabel={"Comment"}
           isLoading={isLoading}
-          onCancel={onClose}
+          onCancel={onCancel}
           disabled={disabled}
           additionalButtons={additionalButtons}
         />
