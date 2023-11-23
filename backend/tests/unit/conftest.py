@@ -1762,6 +1762,15 @@ async def criticality_schema(db: InfrahubDatabase, default_branch: Branch, group
             {"name": "json_no_default", "kind": "JSON", "optional": True},
             {"name": "json_default", "kind": "JSON", "default_value": {"value": "bob"}},
             {"name": "description", "kind": "Text", "optional": True},
+            {
+                "name": "status",
+                "kind": "Dropdown",
+                "optional": True,
+                "choices": [
+                    {"name": "active", "color": "#00ff00", "description": "Online things"},
+                    {"name": "passive", "label": "Redundancy nodes not in the active path"},
+                ],
+            },
         ],
     }
 

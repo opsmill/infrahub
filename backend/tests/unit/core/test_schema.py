@@ -9,6 +9,7 @@ from infrahub.core.constants import BranchSupportType
 from infrahub.core.schema import (
     AttributeSchema,
     BaseSchemaModel,
+    DropdownChoice,
     NodeSchema,
     RelationshipSchema,
     SchemaRoot,
@@ -369,3 +370,38 @@ def test_core_models():
 
 def test_internal_schema():
     assert SchemaRoot(**internal_schema)
+
+
+async def test_attribute_schema_choices_invalid_kind():
+    SCHEMA = {"name": "name", "kind": "Text", "choices": [DropdownChoice(name="active", color="#AAbb0f")]}
+
+    with pytest.raises(ValidationError) as exc:
+        AttributeSchema(**SCHEMA)
+
+    assert "Can only specify 'choices' for kind=Dropdown" in str(exc.value)
+
+
+async def test_attribute_schema_dropdown_missing_choices():
+    SCHEMA = {"name": "name", "kind": "Dropdown"}
+
+    with pytest.raises(ValidationError) as exc:
+        AttributeSchema(**SCHEMA)
+
+    assert "The property 'choices' is required for kind=Dropdown" in str(exc.value)
+
+
+def test_dropdown_choice_colors():
+    active = DropdownChoice(name="active", color="#AAbb0f")
+    assert active.color == "#aabb0f"
+    with pytest.raises(ValidationError) as exc:
+        DropdownChoice(name="active", color="off-white")
+
+    assert "Color must be a valid HTML color code" in str(exc.value)
+
+
+def test_dropdown_choice_sort():
+    active = DropdownChoice(name="active", color="#AAbb0f")
+    passive = DropdownChoice(name="passive", color="#AAbb0f")
+    assert active < passive
+    with pytest.raises(NotImplementedError):
+        assert not active < object

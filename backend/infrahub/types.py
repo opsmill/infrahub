@@ -181,6 +181,15 @@ class Color(InfrahubDataType):
     infrahub = "String"
 
 
+class Dropdown(InfrahubDataType):
+    label: str = "Color"
+    graphql = graphene.String
+    graphql_query = "DropdownType"
+    graphql_input = "TextAttributeInput"
+    graphql_filter = graphene.String
+    infrahub = "Dropdown"
+
+
 class Number(InfrahubDataType):
     label: str = "Number"
     graphql = graphene.Int
@@ -285,6 +294,7 @@ class Boolean(InfrahubDataType):
 
 ATTRIBUTE_TYPES: Dict[str, Type[InfrahubDataType]] = {
     "ID": ID,
+    "Dropdown": Dropdown,
     "Text": Text,
     "TextArea": TextArea,
     "DateTime": DateTime,

@@ -593,7 +593,7 @@ class SchemaManager(NodeManager):
 
         self._branches[branch.name] = updated_schema
 
-    def register_schema(self, schema: SchemaRoot, branch: str = None) -> SchemaBranch:
+    def register_schema(self, schema: SchemaRoot, branch: Optional[str] = None) -> SchemaBranch:
         """Register all nodes, generics & groups from a SchemaRoot object into the registry."""
 
         branch = branch or config.SETTINGS.main.default_branch

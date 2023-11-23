@@ -532,6 +532,50 @@ class Boolean(BaseAttribute):
     type = bool
 
 
+class Dropdown(BaseAttribute):
+    type = str
+
+    @property
+    def color(self) -> str:
+        """Return the color for the current value"""
+        color = ""
+        if self.schema.choices:
+            selected = [choice for choice in self.schema.choices if choice.name == self.value]
+            if selected:
+                color = selected[0].color
+
+        return color
+
+    @property
+    def description(self) -> str:
+        """Return the description for the current value"""
+        if self.schema.choices:
+            selected = [choice for choice in self.schema.choices if choice.name == self.value]
+            if selected:
+                return selected[0].description
+
+        return ""
+
+    @property
+    def label(self) -> str:
+        """Return the label for the current value"""
+        label = ""
+        if self.schema.choices:
+            selected = [choice for choice in self.schema.choices if choice.name == self.value]
+            if selected:
+                label = selected[0].label
+
+        return label or str(self.value)
+
+    @classmethod
+    def validate_content(cls, value: Any, name: str, schema: AttributeSchema) -> None:
+        """Validate the content of the dropdown."""
+        super().validate_content(value=value, name=name, schema=schema)
+        values = [choice.name for choice in schema.choices]
+        if value not in values:
+            raise ValidationError({name: f"{value} must be one of {', '.join(sorted(values))!r}"})
+
+
 class IPNetwork(BaseAttribute):
     type = str
 

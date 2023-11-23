@@ -1,7 +1,7 @@
 import pytest
 from infrahub_sdk import UUIDT
 
-from infrahub.core.attribute import Integer, IPHost, IPNetwork, String
+from infrahub.core.attribute import Dropdown, Integer, IPHost, IPNetwork, String
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -82,6 +82,32 @@ async def test_validate_format_ipnetwork_and_iphost(
         IPNetwork(
             name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="2001:db8::/ffff:ff00::"
         )
+
+
+async def test_validate_content_dropdown(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
+    schema = criticality_schema.get_attribute("status")
+    Dropdown(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="active")
+
+    with pytest.raises(ValidationError) as exc:
+        Dropdown(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="invalid-choice")
+    assert "invalid-choice must be one of" in str(exc.value)
+
+
+async def test_dropdown_properties(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
+    schema = criticality_schema.get_attribute("status")
+    active = Dropdown(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="active")
+    passive = Dropdown(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="passive")
+
+    assert active.value == "active"
+    assert active.description == "Online things"
+    assert active.label == "active"
+    # The color of the active choice is hardoced within criticality_schema
+    assert active.color == "#00ff00"
+    assert passive.value == "passive"
+    assert passive.description == ""
+    assert passive.label == "Redundancy nodes not in the active path"
+    # The color of the passive choice comes from the color selector in infrahub.visuals
+    assert passive.color == "#0b6581"
 
 
 async def test_validate_format_string(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
