@@ -2,7 +2,7 @@ import logging
 from asyncio import run as aiorun
 from pathlib import Path
 from typing import List, Optional
-
+import time
 import typer
 import yaml
 
@@ -86,7 +86,9 @@ async def _load(schemas: List[Path], branch: str, log: logging.Logger) -> None: 
     if has_error:
         raise typer.Exit(2)
 
+    start_time = time.time()
     _, errors = await client.schema.load(schemas=[item.content for item in schemas_data], branch=branch)
+    loading_time = time.time() - start_time
 
     if errors:
         console.print("[red]Unable to load the schema:")
@@ -100,7 +102,7 @@ async def _load(schemas: List[Path], branch: str, log: logging.Logger) -> None: 
             console.print(f"  '{errors}'")
     else:
         for schema_file in schemas_data:
-            console.print(f"[green] schema '{schema_file.location}' loaded successfully!")
+            console.print(f"[green] schema '{schema_file.location}' loaded successfully in {loading_time:.3f} sec!")
 
 
 @app.command()
