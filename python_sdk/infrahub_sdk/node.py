@@ -1257,7 +1257,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
         limit: Optional[int] = None,
         include: Optional[List[str]] = None,
         exclude: Optional[List[str]] = None,
-        fragment: bool = True,
+        fragment: bool = False,
         prefetch_relationships: bool = False,
     ) -> Dict[str, Union[Any, Dict]]:
         data = self.generate_query_data_init(
