@@ -1,8 +1,9 @@
 import logging
+import time
 from asyncio import run as aiorun
 from pathlib import Path
 from typing import List, Optional
-import time
+
 import typer
 import yaml
 
