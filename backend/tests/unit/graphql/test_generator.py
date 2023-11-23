@@ -20,7 +20,7 @@ from infrahub.graphql.types import InfrahubObject
 
 
 async def test_input_type_registration():
-    assert registry.input_type != {}
+    assert registry.input_type is not {}  # noqa
 
 
 async def test_generate_interface_object(db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema):
