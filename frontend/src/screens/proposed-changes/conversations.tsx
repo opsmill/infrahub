@@ -145,15 +145,11 @@ export const Conversations = (props: tConversations) => {
   const path = constructPath("/proposed-changes");
   const state = proposedChangesDetails?.state?.value;
 
-  const handleSubmit = async (data: any, event: any) => {
+  const handleSubmit = async (data: string) => {
     let threadId;
 
     try {
-      event.target.reset();
-
-      if (!data || !approverId) {
-        return;
-      }
+      if (!approverId) return;
 
       const newDate = formatISO(new Date());
 
@@ -193,7 +189,7 @@ export const Conversations = (props: tConversations) => {
 
       const newComment = {
         text: {
-          value: data.comment,
+          value: data,
         },
         created_by: {
           id: approverId,
@@ -426,7 +422,7 @@ export const Conversations = (props: tConversations) => {
           ))}
         </div>
 
-        <div>
+        <div className="bg-custom-white p-4 m-4 rounded-lg relative">
           <AddComment
             onSubmit={handleSubmit}
             isLoading={isLoading}

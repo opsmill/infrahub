@@ -186,3 +186,15 @@
 .markdown ol ol ol {
   list-style-type: lower-alpha;
 }
+
+.cm-gutters {
+  display: none !important;
+}
+
+.cm-content {
+  padding: 12px !important;
+}
+
+.cm-editor, .cm-activeLine {
+  background: transparent !important;
+}

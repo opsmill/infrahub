@@ -49,15 +49,11 @@ export const Thread = (props: tThread) => {
   const [confirmModal, setConfirmModal] = useState(false);
   const [markAsResolved, setMarkAsResolved] = useState(false);
 
-  const handleSubmit = async (data: any) => {
+  const handleSubmit = async (data: string) => {
     try {
-      if (!data) {
-        return;
-      }
-
       const newObject = {
         text: {
-          value: data.comment,
+          value: data,
         },
         thread: {
           id: thread.id,
