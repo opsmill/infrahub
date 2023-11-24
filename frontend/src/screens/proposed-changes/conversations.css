@@ -191,6 +191,10 @@
   margin: 0;
 }
 
+[role="toolbar"] {
+  border-radius: 0.5rem 0.5rem 0 0;
+}
+
 .cm-gutters {
   display: none !important;
 }

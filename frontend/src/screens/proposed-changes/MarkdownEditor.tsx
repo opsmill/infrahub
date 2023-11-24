@@ -21,16 +21,23 @@ import {
 } from "@mdxeditor/editor";
 
 import "@mdxeditor/editor/style.css";
-import { forwardRef } from "react";
+import React, { forwardRef, Suspense } from "react";
 
-export const ViewModeToggle = () => {
+export const ViewModeToggle: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [viewMode] = diffSourcePluginHooks.useEmitterValues("viewMode");
   const changeViewMode = diffSourcePluginHooks.usePublisher("viewMode");
 
   return viewMode === "source" ? (
-    <MdxButton onClick={() => changeViewMode("rich-text")}>Live edit</MdxButton>
+    <MdxButton onClick={() => changeViewMode("rich-text")} className="whitespace-nowrap">
+      Return to rich text editing
+    </MdxButton>
   ) : (
-    <MdxButton onClick={() => changeViewMode("source")}>Source edit</MdxButton>
+    <>
+      <MdxButton onClick={() => changeViewMode("source")} className="whitespace-nowrap">
+        Source
+      </MdxButton>
+      {children}
+    </>
   );
 };
 
@@ -54,20 +61,21 @@ export const MarkdownEditor = forwardRef<MDXEditorMethods>(function MarkdownEdit
         markdownShortcutPlugin(),
         toolbarPlugin({
           toolbarContents: () => (
-            <>
-              <ViewModeToggle />
-              <Separator />
+            <Suspense fallback={<div>loading...</div>}>
+              <ViewModeToggle>
+                <Separator />
 
-              <UndoRedo />
-              <BoldItalicUnderlineToggles />
+                <UndoRedo />
+                <BoldItalicUnderlineToggles />
 
-              <Separator />
-              <ListsToggle />
-              <Separator />
+                <Separator />
+                <ListsToggle />
+                <Separator />
 
-              <InsertTable />
-              <InsertThematicBreak />
-            </>
+                <InsertTable />
+                <InsertThematicBreak />
+              </ViewModeToggle>
+            </Suspense>
           ),
         }),
       ]}

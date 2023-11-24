@@ -192,27 +192,25 @@ export const Thread = (props: tThread) => {
         ))}
       </div>
 
-      <div className="flex">
-        {displayAddComment ? (
-          <div className="flex-1">
-            <AddComment
-              onSubmit={handleSubmit}
-              isLoading={isLoading}
-              onCancel={() => setDisplayAddComment(false)}
-              disabled={isLoading || !auth?.permissions?.write}
-              additionalButtons={MarkAsResolvedWithTooltip}
-            />
-          </div>
-        ) : (
-          <div className="flex flex-1 justify-between">
-            {MarkAsResolved}
+      {displayAddComment ? (
+        <div className="flex-1">
+          <AddComment
+            onSubmit={handleSubmit}
+            isLoading={isLoading}
+            onCancel={() => setDisplayAddComment(false)}
+            disabled={isLoading || !auth?.permissions?.write}
+            additionalButtons={MarkAsResolvedWithTooltip}
+          />
+        </div>
+      ) : (
+        <div className="flex flex-1 justify-between">
+          {MarkAsResolved}
 
-            <Button onClick={() => setDisplayAddComment(true)} disabled={!auth?.permissions?.write}>
-              Reply
-            </Button>
-          </div>
-        )}
-      </div>
+          <Button onClick={() => setDisplayAddComment(true)} disabled={!auth?.permissions?.write}>
+            Reply
+          </Button>
+        </div>
+      )}
 
       <ModalConfirm
         title="Confirm"

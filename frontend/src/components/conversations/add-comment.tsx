@@ -16,7 +16,7 @@ export const AddComment = (props: tAddComment) => {
   const ref = useRef<MDXEditorMethods>(null);
 
   return (
-    <div>
+    <>
       <MarkdownEditor ref={ref} />
 
       <div className="flex items-center justify-end gap-3 pt-3">
@@ -36,6 +36,6 @@ export const AddComment = (props: tAddComment) => {
           Comment
         </Button>
       </div>
-    </div>
+    </>
   );
 };
