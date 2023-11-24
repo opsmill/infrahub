@@ -156,6 +156,8 @@ class ProcessingError(Error):
 
 
 class SchemaNotFound(Error):
+    HTTP_CODE: int = 422
+
     def __init__(self, branch_name, identifier, message=None):
         self.branch_name = branch_name
         self.identifier = identifier
