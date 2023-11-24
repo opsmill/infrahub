@@ -110,6 +110,7 @@ async def load_schema(
         diff = tmp_schema.diff(branch_schema)
 
         if diff.all:
+            log.info(f"Schema has diff, will need to be updated {diff.all}", branch=branch.name)
             async with db.start_transaction() as db:
                 await registry.schema.update_schema_branch(
                     schema=tmp_schema, db=db, branch=branch.name, limit=diff.all, update_db=True
