@@ -51,6 +51,7 @@ export const Thread = (props: tThread) => {
 
   const handleSubmit = async (data: string) => {
     try {
+      setIsLoading(true);
       const newObject = {
         text: {
           value: data,
@@ -93,6 +94,7 @@ export const Thread = (props: tThread) => {
       }
 
       setIsLoading(false);
+      setDisplayAddComment(false);
     } catch (error: any) {
       console.error("An error occured while creating the comment: ", error);
 
