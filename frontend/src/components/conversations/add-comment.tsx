@@ -28,6 +28,7 @@ export const AddComment = (props: tAddComment) => {
           onClick={async () => {
             const markdown = ref.current?.getMarkdown();
             if (markdown) await onSubmit(markdown);
+            ref.current?.setMarkdown("");
           }}
           buttonType={BUTTON_TYPES.MAIN}
           isLoading={isLoading}
