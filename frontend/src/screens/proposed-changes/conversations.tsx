@@ -1,4 +1,4 @@
-import { gql, useReactiveVar } from "@apollo/client";
+import { gql, NetworkStatus, useReactiveVar } from "@apollo/client";
 import { PencilIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { formatISO } from "date-fns";
@@ -6,10 +6,10 @@ import { useAtom } from "jotai";
 import { useContext, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import { ALERT_TYPES, Alert } from "../../components/alert";
-import { AVATAR_SIZE, Avatar } from "../../components/avatar";
+import { Alert, ALERT_TYPES } from "../../components/alert";
+import { Avatar, AVATAR_SIZE } from "../../components/avatar";
 import { Badge } from "../../components/badge";
-import { BUTTON_TYPES, Button } from "../../components/button";
+import { Button, BUTTON_TYPES } from "../../components/button";
 import { AddComment } from "../../components/conversations/add-comment";
 import { Thread } from "../../components/conversations/thread";
 import { DateDisplay } from "../../components/date-display";
@@ -106,7 +106,6 @@ export const Conversations = (props: tConversations) => {
   const branch = useReactiveVar(branchVar);
   const date = useReactiveVar(dateVar);
   const auth = useContext(AuthContext);
-  const [isLoading, setIsLoading] = useState(false);
   const [isLoadingApprove, setIsLoadingApprove] = useState(false);
   const [isLoadingMerge, setIsLoadingMerge] = useState(false);
   const [isLoadingClose, setIsLoadingClose] = useState(false);
@@ -125,9 +124,15 @@ export const Conversations = (props: tConversations) => {
     ${queryString}
   `;
 
-  const { loading, error, data, refetch } = useQuery(query);
+  const { error, data, refetch, networkStatus } = useQuery(query, {
+    notifyOnNetworkStatusChange: true,
+  });
 
-  if (loading) {
+  const isGetProposedChangesThreadsLoadingForthFistTime = () =>
+    networkStatus === NetworkStatus.loading;
+  const isGetProposedChangesThreadsReloading = () => networkStatus === NetworkStatus.refetch;
+
+  if (isGetProposedChangesThreadsLoadingForthFistTime()) {
     return <LoadingScreen />;
   }
 
@@ -221,9 +226,7 @@ export const Conversations = (props: tConversations) => {
 
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Comment added"} />);
 
-      refetch();
-
-      setIsLoading(false);
+      await refetch();
     } catch (error: any) {
       if (threadId) {
         const mutationString = deleteObject({
@@ -245,8 +248,6 @@ export const Conversations = (props: tConversations) => {
       }
 
       console.error("An error occured while creating the comment: ", error);
-
-      setIsLoading(false);
     }
   };
 
@@ -293,8 +294,6 @@ export const Conversations = (props: tConversations) => {
       return;
     } catch (e) {
       console.error("Something went wrong while updating the object:", e);
-
-      setIsLoading(false);
 
       return;
     }
@@ -425,8 +424,8 @@ export const Conversations = (props: tConversations) => {
         <div className="bg-custom-white p-4 m-4 rounded-lg relative">
           <AddComment
             onSubmit={handleSubmit}
-            isLoading={isLoading}
-            disabled={!auth?.permissions?.write}
+            isLoading={isGetProposedChangesThreadsReloading()}
+            disabled={isGetProposedChangesThreadsReloading() || !auth?.permissions?.write}
           />
         </div>
       </div>

@@ -90,7 +90,7 @@ export const Thread = (props: tThread) => {
       }
 
       if (refetch) {
-        refetch();
+        await refetch();
       }
 
       setIsLoading(false);
@@ -199,7 +199,7 @@ export const Thread = (props: tThread) => {
               onSubmit={handleSubmit}
               isLoading={isLoading}
               onCancel={() => setDisplayAddComment(false)}
-              disabled={!auth?.permissions?.write}
+              disabled={isLoading || !auth?.permissions?.write}
               additionalButtons={MarkAsResolvedWithTooltip}
             />
           </div>
