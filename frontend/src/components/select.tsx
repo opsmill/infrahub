@@ -5,7 +5,6 @@ import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
 import { DEFAULT_BRANCH_NAME } from "../config/constants";
 import { branchVar } from "../graphql/variables/branchVar";
 import { FormFieldError } from "../screens/edit-form-hook/form";
@@ -47,7 +46,6 @@ export const Select = (props: SelectProps) => {
     direction,
     peer,
     preventObjectsCreation,
-    name,
     ...otherProps
   } = props;
 
@@ -60,7 +58,6 @@ export const Select = (props: SelectProps) => {
   const [selectedOption, setSelectedOption] = useState(
     options.find((option: any) => option?.id === value)
   );
-  const { setValue } = useForm();
 
   const schemaData = schemaList.find((s) => s.kind === peer);
 
@@ -77,13 +74,11 @@ export const Select = (props: SelectProps) => {
   };
 
   const handleChange = (item: any) => {
-    console.log("item: ", item);
     if (item.id === addOption.id) {
       setOpen(true);
       return;
     }
 
-    setValue(name, item.id);
     setSelectedOption(item);
     setQuery("");
     setOpen(false);
