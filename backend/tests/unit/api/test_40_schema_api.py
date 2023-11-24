@@ -146,7 +146,7 @@ async def test_schema_kind_not_valid(
         )
 
     assert response.status_code == 422
-    assert response.json()["error"] == "Unable to find the schema 'NotPresent' in the registry"
+    assert response.json()["errors"][0]["message"] == "Unable to find the schema 'NotPresent' in the registry"
 
 
 async def test_schema_load_endpoint_valid_simple(
