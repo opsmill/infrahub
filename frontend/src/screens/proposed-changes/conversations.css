@@ -191,19 +191,19 @@
   margin: 0;
 }
 
-[role="toolbar"] {
+.markdown-editor [role="toolbar"] {
   border-radius: 0.5rem 0.5rem 0 0;
 }
 
-.cm-gutters {
+.markdown-editor-content .cm-gutters {
   display: none !important;
 }
 
-.cm-content {
+.markdown-editor-content .cm-content {
   padding: 12px !important;
 }
 
-.cm-editor,
-.cm-activeLine {
+.markdown-editor-content .cm-editor,
+.markdown-editor-content .cm-activeLine {
   background: transparent !important;
 }

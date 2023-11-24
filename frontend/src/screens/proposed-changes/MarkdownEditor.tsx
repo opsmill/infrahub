@@ -45,8 +45,8 @@ export const MarkdownEditor = forwardRef<MDXEditorMethods>(function MarkdownEdit
   return (
     <MDXEditor
       ref={ref}
-      className="rounded-lg border border-gray-200 bg-custom-white"
-      contentEditableClassName="m-0 markdown"
+      className="markdown-editor rounded-lg border border-gray-200 bg-custom-white"
+      contentEditableClassName="markdown-editor-content markdown m-0"
       placeholder="Add your comment here..."
       markdown=""
       {...props}

@@ -32,7 +32,8 @@ export const AddComment = (props: tAddComment) => {
           }}
           buttonType={BUTTON_TYPES.MAIN}
           isLoading={isLoading}
-          disabled={disabled}>
+          disabled={disabled}
+          data-cy="add-new-comment-button">
           Comment
         </Button>
       </div>

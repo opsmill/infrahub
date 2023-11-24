@@ -55,7 +55,7 @@ describe("Main application", () => {
     cy.contains(PROPOSED_CHANGES_NAME).should("exist");
 
     // We should see the comment section
-    cy.contains("Add a comment").should("exist");
+    cy.contains("Add your comment here...").should("exist");
   });
 
   it("should access the Proposed Changes details", function () {
@@ -93,13 +93,12 @@ describe("Main application", () => {
     cy.contains("Just a moment").should("not.exist");
 
     // Type the first comment in the add comment section
-    cy.get("textarea").first().type(PROPOSED_CHANGE_COMMENT_1, { delay: 0, force: true });
-    cy.get("textarea").first().should("have.value", PROPOSED_CHANGE_COMMENT_1);
+    cy.get(".markdown-editor-content").first().type(PROPOSED_CHANGE_COMMENT_1);
 
     cy.intercept("/graphql/main").as("CreateComment1");
 
     // Send request
-    cy.get("[data-cy='submit-form']").click();
+    cy.get("[data-cy='add-new-comment-button']").click();
 
     cy.wait("@CreateComment1");
 
@@ -116,13 +115,12 @@ describe("Main application", () => {
         // Add reply
         cy.contains("Reply").click();
 
-        cy.get("textarea").first().type(PROPOSED_CHANGE_COMMENT_2, { delay: 0, force: true });
-        cy.get("textarea").first().should("have.value", PROPOSED_CHANGE_COMMENT_2);
+        cy.get(".markdown-editor-content").first().type(PROPOSED_CHANGE_COMMENT_2);
 
         cy.intercept("/graphql/main").as("CreateComment2");
 
         // Send request
-        cy.get("[data-cy='submit-form']").click();
+        cy.get("[data-cy='add-new-comment-button']").click();
 
         cy.wait("@CreateComment2");
 
@@ -134,9 +132,8 @@ describe("Main application", () => {
         }
 
         // Add third comment
-        cy.get("textarea").should("have.value", "");
-        cy.get("textarea").type(PROPOSED_CHANGE_COMMENT_3, { delay: 0, force: true });
-        cy.get("textarea").should("have.value", PROPOSED_CHANGE_COMMENT_3);
+        cy.contains("button", "Reply").click();
+        cy.get(".markdown-editor-content").first().type(PROPOSED_CHANGE_COMMENT_3);
 
         // Mark as resolved once commented
         cy.contains("Resolve thread").click();
@@ -154,7 +151,7 @@ describe("Main application", () => {
     });
 
     // Send request
-    cy.get("[data-cy='submit-form']").first().click();
+    cy.get("[data-cy=\"add-new-comment-button\"]").first().click();
 
     cy.wait("@CreateComment3");
 
