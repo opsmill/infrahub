@@ -81,8 +81,7 @@ class SchemasLoadAPI(SchemaRoot):
 async def get_schema(
     branch: Branch = Depends(get_branch_dep),
 ) -> SchemaReadAPI:
-    log.info("schema_request", branch=branch.name)
-
+    log.debug("schema_request", branch=branch.name)
     schema_branch = registry.schema.get_schema_branch(name=branch.name)
     full_schema = schema_branch.get_all()
 
@@ -99,7 +98,7 @@ async def get_schema(
 async def get_schema_summary(
     branch: Branch = Depends(get_branch_dep),
 ) -> SchemaBranchHash:
-    log.info("schema_request", branch=branch.name)
+    log.debug("schema_summary_request", branch=branch.name)
     schema_branch = registry.schema.get_schema_branch(name=branch.name)
     return schema_branch.get_hash_full()
 
@@ -109,12 +108,9 @@ async def get_schema_by_kind(
     schema_kind: str,
     branch: Branch = Depends(get_branch_dep),
 ) -> Union[APINodeSchema, APIGenericSchema]:
-    log.info("schema_request", branch=branch.name)
+    log.debug("schema_kind_request", branch=branch.name)
 
-    try:
-        schema = registry.schema.get(name=schema_kind, branch=branch)
-    except SchemaNotFound as exc:
-        return JSONResponse(status_code=422, content={"error": exc.message})
+    schema = registry.schema.get(name=schema_kind, branch=branch)
 
     if isinstance(schema, GroupSchema):
         return JSONResponse(status_code=422, content={"error": "GroupSchema aren't supported via this endpoint"})
@@ -132,7 +128,7 @@ async def load_schema(
     branch: Branch = Depends(get_branch_dep),
     _: str = Depends(get_current_user),
 ) -> JSONResponse:
-    log.info("load_request", branch=branch.name)
+    log.info("schema_load_request", branch=branch.name)
 
     errors: List[str] = []
     for schema in schemas.schemas:
