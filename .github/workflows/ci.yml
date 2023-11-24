@@ -167,8 +167,7 @@ jobs:
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.sdk == 'true'
+      !contains(needs.*.result, 'cancelled')
     needs: ["python-sdk-unit-tests"]
     runs-on: ubuntu-latest
     timeout-minutes: 30
