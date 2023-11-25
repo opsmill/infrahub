@@ -213,7 +213,7 @@ jobs:
       - name: "Pylint Tests"
         run: "invoke sync.pylint --docker"
 
-  backend-tests-default:
+  backend-tests-unit:
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -233,10 +233,6 @@ jobs:
         run: "invoke test.build"
       - name: "Pull External Docker Images"
         run: "invoke test.pull"
-      - name: "Pylint Tests"
-        run: "invoke backend.pylint --docker"
-      - name: "Mypy Tests"
-        run: "invoke backend.mypy --docker"
       - name: "Unit Tests"
         run: "invoke backend.test-unit"
         env:
@@ -248,6 +244,31 @@ jobs:
         with:
           flag-name: backend-unit
           parallel: true
+
+  backend-tests-integration:
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.backend == 'true'
+    needs: ["files-changed", "yaml-lint", "python-lint"]
+    runs-on: "runner-ubuntu-4-16"
+    timeout-minutes: 30
+    env:
+      INFRAHUB_DB_TYPE: memgraph
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v4"
+      - name: "Setup Python environment"
+        run: "pip install toml invoke"
+      - name: "Build Test Image"
+        run: "invoke test.build"
+      - name: "Pull External Docker Images"
+        run: "invoke test.pull"
+      - name: "Pylint Tests"
+        run: "invoke backend.pylint --docker"
+      - name: "Mypy Tests"
+        run: "invoke backend.mypy --docker"
       - name: "Integration Tests"
         run: "invoke backend.test-integration"
         env:
@@ -456,7 +477,11 @@ jobs:
 
   # ------------------------------------------ Coverall Report  ------------------------------------------
   coverall-report:
-    needs: ["frontend-tests", "backend-tests-default", "python-sdk-integration-tests"]
+    needs:
+      - backend-tests-integration
+      - backend-tests-unit
+      - frontend-tests
+      - python-sdk-integration-tests
     if: |
       always() && !cancelled()
     runs-on: ubuntu-latest
