@@ -1,21 +1,27 @@
 ---
-title: Documentation Guide
+title: Documentation guide
 icon: pencil
 ---
 
-# Documentation Guide
+# Documentation guide
 
 Welcome to the Infrahub documentation guide. This document aims to answer any questions that may come up when creating or updating documentation.
 
 ## Generating the docs site
 
-The documentation runs on [Retype](). The easiest way to run the docs locally is with `npx`. You'll need Node.JS and NPM installed, then navigate to the Infrahub project locally and run:
+The documentation runs on [Retype](https://retype.com). That said, the preferred way to run and build the docs locally is with Infrahub's suite of `invoke`-driven tasks.
+
+In addition to `python` and `invoke`, you'll need Node.JS and NPM installed. Once these requirements are met, you'll have access to the doc task list.
 
 ```sh
-npx retypeapp start docs/
-```
+invoke -l docs
 
-(Additional details coming soon...)
+Available 'docs' tasks:
+
+  .build      Build documentation website.
+  .generate   Generate documentation output from code.
+  .serve      Run documentation server in development mode.
+```
 
 ## Linting and automation
 
@@ -114,6 +120,7 @@ General tips:
 - If a sentence looks too long, it probably is. Try and simplify it or break it into multiple sentences.
 - Avoid jargon unless you are sure the reader knows the term.
 - Don't hesitate to link between pages and concepts.
+- Avoid repeating information when possible, and instead link out to topic or reference pages.
 
 ### Language
 
@@ -217,4 +224,3 @@ Refer to external brand guidelines for capitalizations. Here are some common spe
 - GraphQL
 - MacOS
 - Linux
-
