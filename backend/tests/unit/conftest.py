@@ -1133,7 +1133,7 @@ async def car_person_schema(db: InfrahubDatabase, default_branch: Branch, node_g
                     {"name": "is_electric", "kind": "Boolean"},
                 ],
                 "relationships": [
-                    {"name": "owner", "peer": "TestPerson", "optional": False, "cardinality": "one"},
+                    {"name": "owner", "peer": "TestPerson", "optional": False, "cardinality": "one", "side": "source"},
                 ],
             },
             {
@@ -1146,7 +1146,7 @@ async def car_person_schema(db: InfrahubDatabase, default_branch: Branch, node_g
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "height", "kind": "Number", "optional": True},
                 ],
-                "relationships": [{"name": "cars", "peer": "TestCar", "cardinality": "many"}],
+                "relationships": [{"name": "cars", "peer": "TestCar", "cardinality": "many", "side": "destination"}],
             },
         ],
     }
@@ -1679,6 +1679,85 @@ async def person_jack_tags_main(
     await obj.new(db=db, firstname="Jake", lastname="Russell", tags=[tag_blue_main, tag_red_main])
     await obj.save(db=db)
     return obj
+
+
+@pytest.fixture
+async def location_schema(db: InfrahubDatabase, default_branch: Branch, data_schema) -> None:
+    SCHEMA = {
+        "generics": [
+            {
+                "name": "Location",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "display_labels": ["name__value", "color__value"],
+                "order_by": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+            },
+            # {
+            #     "name": "Group",
+            #     "namespace": "Core",
+            #     "description": "Generic Group Object.",
+            #     "label": "Group",
+            #     "default_filter": "name__value",
+            #     "order_by": ["name__value"],
+            #     "display_labels": ["label__value"],
+            #     "branch": BranchSupportType.AWARE.value,
+            #     "attributes": [
+            #         {"name": "name", "kind": "Text", "unique": True},
+            #         {"name": "label", "kind": "Text", "optional": True},
+            #         {"name": "description", "kind": "Text", "optional": True},
+            #     ],
+            #     "relationships": [
+            #         {
+            #             "name": "members",
+            #             "peer": "CoreNode",
+            #             "optional": True,
+            #             "identifier": "group_member",
+            #             "cardinality": "many",
+            #         },
+            #         {
+            #             "name": "subscribers",
+            #             "peer": "CoreNode",
+            #             "optional": True,
+            #             "identifier": "group_subscriber",
+            #             "cardinality": "many",
+            #         },
+            #     ],
+            # },
+            # {
+            #     "name": "Node",
+            #     "namespace": "Core",
+            #     "description": "Base Node in Infrahub.",
+            #     "label": "Node",
+            # },
+        ],
+        "nodes": [
+            {
+                "name": "Country",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "inherit_from": ["TestLocation"],
+                "attributes": [
+                    {"name": "population", "kind": "Number", "optional": True},
+                ],
+            },
+            {
+                "name": "Region",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "inherit_from": ["TestLocation"],
+                # "attributes": [
+                #     {"name": "firstname", "kind": "Text"},
+                #     {"name": "lastname", "kind": "Text"},
+                # ],
+            },
+        ],
+    }
+
+    schema = SchemaRoot(**SCHEMA)
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
 
 @pytest.fixture

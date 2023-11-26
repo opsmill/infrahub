@@ -376,6 +376,16 @@ class RelationshipSchema(BaseSchemaModel):
     async def get_peer_schema(self, branch: Optional[Union[Branch, str]] = None):
         return registry.schema.get(name=self.peer, branch=branch)
 
+    def get_query_arrows(self) -> Tuple[str, str, str, str]:
+        """Return (in 4 parts) the 2 arrows for the relationship R1 and R2 based on the direction of the relationship."""
+
+        if self.side == RelationshipSide.SOURCE:
+            return ("-", "->", "-", "->")
+        if self.side == RelationshipSide.DESTINATION:
+            return ("<-", "-", "<-", "-")
+
+        return ("-", "->", "<-", "-")
+
     async def get_query_filter(
         self,
         db: InfrahubDatabase,
