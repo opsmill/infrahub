@@ -4,34 +4,76 @@ layout: default
 order: 800
 ---
 {% macro attribute_constraints(attr) -%}
-{% if attr.regex %} Regex: `{{attr.regex}}`{% endif %}{% if attr.regex or attr.min_length or attr.max_length %}<br>{% endif %}{% if attr.min_length or attr.max_length %} Length: min {{attr.min_length | default("-")}}, max {{attr.min_length | default("-")}}{% endif %}
+{% if attr.regex %} Regex: `{{attr.regex}}`{% endif %}{% if attr.regex and (attr.min_length or attr.max_length) %}<br>{% endif %}{% if attr.min_length or attr.max_length %} Length: min {{attr.min_length | default("-")}}, max {{attr.max_length | default("-")}}{% endif %}
+{%- endmacro %}
+{% macro bool_to_str(value) -%}
+{% if value == true %}True{% else %}False{% endif %}
 {%- endmacro %}
 # Attribute
 
-In a schema file, an attribute can be defined inside a `node` or inside a `node extension`.
+In a schema file, an attribute can be defined inside a `node`, a `generic` or a `node extension`.
+
+## Summary
 
 Below is the list of all available options to define an Attribute in the schema
-{% for attr in schema.nodes[1].attributes -%}
-## {{ attr.name }}
 
-| -- | -- | { class="compact" }
+| Name | Type | Optional | { class="compact" }
+| ---- | ---- | --------- |
+{%- for attr in schema.nodes[1].attributes %}
+{%-  if attr.name not in ["inherited"] %}
+| [**{{ attr.name }}**](#{{ attr.name }}) | {{ attr.description }} | {{ bool_to_str(attr.optional) }} |
+{%- endif %}
+{%- endfor %}
+
+## Example
+
+```yaml
+nodes:
+  - name: Rack
+    attributes:
+      - name: name
+        kind: Text
+        unique: True
+        description: Unique identifier for the rack
+extensions:
+  nodes:
+    - kind: CoreProposedChange
+      attribute:
+        - name: ticket_id
+            kind: Text
+            unique: True
+            optional: False
+            description: Internal Ticket ID from Service Now
+```
+
+## Reference Guide
+{% for attr in schema.nodes[1].attributes -%}
+{%  if attr.name not in ["inherited"] %}
+### {{ attr.name }}
+
+| Key | Value | { class="compact" }
 | ---- | --------------- |
 | **Name** | {{ attr.name }} |
 | **Kind** | `{{ attr.kind }}` |
 | **Description** | {{ attr.description }} |
+| **Optional**  | {{ bool_to_str(attr.optional) }} |
+| **Default Value** | {{ attr.default_value }} |
 | **Constraints** | {{attribute_constraints(attr)}} |
 {% if attr.enum -%}
 | **Accepted Values** | {% for value in  attr.enum %}`{{ value }}` {% endfor %} |
 {%- endif %}
 
+{%- endif %}
 {% endfor %}
 {% for rel in schema.nodes[1].relationships -%}
-## {{ rel.name }}
+{%  if rel.name not in ["node"] %}
+### {{ rel.name }}
 
-| -- | -- | { class="compact" }
+| Key | Value | { class="compact" }
 | ---- | --------------- |
 | **Name** | {{ rel.name }} |
 | **Kind** | {% if rel.cardinality == "one" %}`Object`{%else%}`List`{%endif%} |
 | **Description** | {{ rel.description }} |
 
+{%- endif %}
 {% endfor %}
