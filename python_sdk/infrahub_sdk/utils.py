@@ -96,7 +96,8 @@ def duplicates(input_list: list) -> list:
 
     dups = []
 
-    for x, y in groupby(sorted(input_list)):
+    clean_input_list = [item for item in input_list or [] if item is not None]
+    for x, y in groupby(sorted(clean_input_list)):
         #  list(y) returns all the occurences of item x
         if len(list(y)) > 1:
             dups.append(x)
