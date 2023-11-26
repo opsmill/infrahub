@@ -8,7 +8,7 @@ import re
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
 from infrahub_sdk.utils import duplicates, intersection
-from pydantic import BaseModel, Extra, Field, root_validator, validator
+from pydantic import BaseModel, Extra, Field, validator
 
 from infrahub.core import registry
 from infrahub.core.constants import (
@@ -642,38 +642,6 @@ class GenericSchema(BaseNodeSchema):
 class NodeSchema(BaseNodeSchema):
     inherit_from: List[str] = Field(default_factory=list)
     groups: Optional[List[str]] = Field(default_factory=list)
-
-    @root_validator
-    def unique_names(cls, values):
-        attr_names = [attr.name for attr in values.get("attributes", [])]
-        rel_names = [rel.name for rel in values.get("relationships", [])]
-
-        if names_dup := duplicates(attr_names + rel_names):
-            raise ValueError(f"Names of attributes and relationships must be unique : {names_dup}")
-        return values
-
-    @root_validator(pre=True)
-    def generate_identifier(
-        cls,
-        values,
-    ):
-        for rel in values.get("relationships", []):
-            if not rel.get("identifier", None) and values.get("namespace") and rel.get("peer"):
-                identifier = "__".join(sorted([f'{values.get("namespace")}{values.get("name")}', rel.get("peer")]))
-                rel["identifier"] = identifier.lower()
-
-        return values
-
-    @root_validator(pre=False)
-    def unique_identifiers(
-        cls,
-        values,
-    ):
-        identifiers = [rel.identifier for rel in values.get("relationships", [])]
-        if identifier_dup := duplicates(identifiers):
-            raise ValueError(f"Identifier of relationships must be unique : {identifier_dup}")
-
-        return values
 
     def inherit_from_interface(self, interface: GenericSchema) -> NodeSchema:
         existing_inherited_attributes = {item.name: idx for idx, item in enumerate(self.attributes) if item.inherited}
