@@ -15,7 +15,7 @@ Below is the list of all available options to define a Generic in the schema
 | **Name** | name |
 | **Kind** | `Text` |
 | **Description** |  |
-| **Constraints** | <br> Length: min 3, max 3 |
+| **Constraints** |  Regex: `^[a-z0-9\_]+$`<br> Length: min 3, max 3 |
 
 
 ## peer
@@ -54,7 +54,7 @@ Below is the list of all available options to define a Generic in the schema
 | ---- | --------------- |
 | **Name** | description |
 | **Kind** | `Text` |
-| **Description** |  |
+| **Description** | Short description of the attribute. |
 | **Constraints** | <br> Length: min -, max - |
 
 

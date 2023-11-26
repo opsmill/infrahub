@@ -13,8 +13,8 @@ Below is the list of all available options to define a node in the schema
 | ---- | --------------- |
 | **Name** | name |
 | **Kind** | `Text` |
-| **Description** | Node name, must be unique and must be all lowercase. |
-| **Constraints** | <br> Length: min 2, max 2 |
+| **Description** | Node name, must be unique within a namespace and must be all lowercase. |
+| **Constraints** |  Regex: `^[a-z0-9\_]+$`<br> Length: min 2, max 2 |
 
 
 ## namespace
@@ -23,7 +23,7 @@ Below is the list of all available options to define a node in the schema
 | ---- | --------------- |
 | **Name** | namespace |
 | **Kind** | `Text` |
-| **Description** |  |
+| **Description** | Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions. |
 | **Constraints** |  Regex: `^[A-Z][a-zA-Z0-9]+$`<br> Length: min 3, max 3 |
 
 
@@ -43,7 +43,7 @@ Below is the list of all available options to define a node in the schema
 | ---- | --------------- |
 | **Name** | description |
 | **Kind** | `Text` |
-| **Description** |  |
+| **Description** | Short description of the model, will be visible in the frontend. |
 | **Constraints** | <br> Length: min -, max - |
 
 
@@ -53,7 +53,7 @@ Below is the list of all available options to define a node in the schema
 | ---- | --------------- |
 | **Name** | branch |
 | **Kind** | `Text` |
-| **Description** |  |
+| **Description** | Type of branch support for the model. |
 | **Constraints** |  |
 | **Accepted Values** | `aware` `agnostic` `local`  |
 
