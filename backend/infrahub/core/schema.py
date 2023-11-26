@@ -51,7 +51,7 @@ AttributeKind = enum.Enum("AttributeKind", dict(attribute_dict))
 RELATIONSHIPS_MAPPING = {"Relationship": Relationship}
 
 NODE_KIND_REGEX = r"^[A-Z][a-zA-Z0-9]+$"
-NODE_NAME_REGEX = r""
+NODE_NAME_REGEX = r"^[a-z0-9\_]+$"
 
 DEFAULT_NAME_MIN_LENGTH = 2
 DEFAULT_NAME_MAX_LENGTH = 32
@@ -742,7 +742,7 @@ internal_schema = {
                 {
                     "name": "name",
                     "kind": "Text",
-                    "description": "Node name, must be unique and must be all lowercase.",
+                    "description": "Node name, must be unique within a namespace and must be all lowercase.",
                     "unique": True,
                     "regex": str(NODE_NAME_REGEX),
                     "min_length": DEFAULT_NAME_MIN_LENGTH,
@@ -751,6 +751,7 @@ internal_schema = {
                 {
                     "name": "namespace",
                     "kind": "Text",
+                    "description": "Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.",
                     "regex": str(NODE_KIND_REGEX),
                     "min_length": DEFAULT_KIND_MIN_LENGTH,
                     "max_length": DEFAULT_KIND_MAX_LENGTH,
@@ -765,13 +766,14 @@ internal_schema = {
                 {
                     "name": "description",
                     "kind": "Text",
-                    #  "description": "",
+                    "description": "Short description of the model, will be visible in the frontend.",
                     "optional": True,
                     "max_length": DEFAULT_DESCRIPTION_LENGTH,
                 },
                 {
                     "name": "branch",
                     "kind": "Text",
+                    "description": "Type of branch support for the model.",
                     "enum": BranchSupportType.available_types(),
                     "default_value": BranchSupportType.AWARE.value,
                     "optional": True,
@@ -856,49 +858,111 @@ internal_schema = {
             "attributes": [
                 {
                     "name": "name",
+                    "description": "Attribute name, must be unique within a model and must be all lowercase.",
                     "kind": "Text",
                     "regex": str(NODE_NAME_REGEX),
                     "min_length": DEFAULT_KIND_MIN_LENGTH,
                     "max_length": DEFAULT_KIND_MAX_LENGTH,
                 },
                 {
-                    "name": "namespace",
-                    "kind": "Text",
-                    "regex": str(NODE_KIND_REGEX),
-                    "min_length": DEFAULT_KIND_MIN_LENGTH,
-                    "max_length": DEFAULT_KIND_MAX_LENGTH,
-                    "optional": True,
-                },
-                {
                     "name": "kind",
                     "kind": "Text",
+                    "description": "Defines the type of the attribute.",
                     "enum": ATTRIBUTE_KIND_LABELS,
                     "min_length": DEFAULT_KIND_MIN_LENGTH,
                     "max_length": DEFAULT_KIND_MAX_LENGTH,
                 },
-                {"name": "enum", "kind": "List", "optional": True},
-                {"name": "choices", "kind": "List", "optional": True},
-                {"name": "regex", "kind": "Text", "optional": True},
-                {"name": "max_length", "kind": "Number", "optional": True},
-                {"name": "min_length", "kind": "Number", "optional": True},
-                {"name": "label", "kind": "Text", "optional": True, "max_length": DEFAULT_NAME_MAX_LENGTH},
-                {"name": "description", "kind": "Text", "optional": True, "max_length": DEFAULT_DESCRIPTION_LENGTH},
-                {"name": "read_only", "kind": "Boolean", "default_value": False, "optional": True},
-                {"name": "unique", "kind": "Boolean", "default_value": False, "optional": True},
-                {"name": "optional", "kind": "Boolean", "default_value": True, "optional": True},
+                {
+                    "name": "enum",
+                    "kind": "List",
+                    "description": "Define a list of valid values for the attribute.",
+                    "optional": True,
+                },
+                {
+                    "name": "choices",
+                    "kind": "List",
+                    "description": "Define a list of valid choices for a dropdown attribute.",
+                    "optional": True
+                },
+                {
+                    "name": "regex",
+                    "kind": "Text",
+                    "description": "Regex uses to limit limit the characters allowed in for the attributes.",
+                    "optional": True,
+                },
+                {
+                    "name": "max_length",
+                    "kind": "Number",
+                    "description": "Set a maximum number of characters allowed for a given attribute.",
+                    "optional": True,
+                },
+                {
+                    "name": "min_length",
+                    "kind": "Number",
+                    "description": "Set a minimum number of characters allowed for a given attribute.",
+                    "optional": True,
+                },
+                {
+                    "name": "label",
+                    "kind": "Text",
+                    "optional": True,
+                    "description": "Human friendly representation of the name",
+                    "max_length": DEFAULT_NAME_MAX_LENGTH,
+                },
+                {
+                    "name": "description",
+                    "kind": "Text",
+                    "optional": True,
+                    "description": "Short description of the aattribute.",
+                    "max_length": DEFAULT_DESCRIPTION_LENGTH,
+                },
+                {
+                    "name": "read_only",
+                    "kind": "Boolean",
+                    "description": "Set the attribute as Read-Only, users won't be able to change its value.",
+                    "default_value": False,
+                    "optional": True,
+                },
+                {
+                    "name": "unique",
+                    "kind": "Boolean",
+                    "description": "Indicate if the value of this attribute but be unique in the database for a given model.",
+                    "default_value": False,
+                    "optional": True,
+                },
+                {
+                    "name": "optional",
+                    "kind": "Boolean",
+                    "description": "Indicate this attribute is mandatory or it is optional.",
+                    "default_value": True,
+                    "optional": True,
+                },
                 {
                     "name": "branch",
                     "kind": "Text",
+                    "description": "Type of branch support for the attribute, if not defined it will be inherited from the node.",
                     "enum": BranchSupportType.available_types(),
                     "optional": True,
                 },
-                {"name": "order_weight", "kind": "Number", "optional": True},
+                {
+                    "name": "order_weight",
+                    "kind": "Number",
+                    "description": "Number used to order the attribute in the frontend (table and view).",
+                    "optional": True,
+                },
                 {
                     "name": "default_value",
                     "kind": "Any",
+                    "description": "Default value of the attribute.",
                     "optional": True,
                 },
-                {"name": "inherited", "kind": "Boolean", "default_value": False, "optional": True},
+                {
+                    "name": "inherited",
+                    "kind": "Boolean",
+                    "default_value": False,
+                    "description": "Internal value to indicate if the attribute was inherited from a Generic node.",
+                    "optional": True,
+                },
             ],
             "relationships": [
                 {
@@ -940,7 +1004,13 @@ internal_schema = {
                     "default_value": "Generic",
                 },
                 {"name": "label", "kind": "Text", "optional": True, "max_length": DEFAULT_NAME_MAX_LENGTH},
-                {"name": "description", "kind": "Text", "optional": True, "max_length": DEFAULT_DESCRIPTION_LENGTH},
+                {
+                    "name": "description",
+                    "kind": "Text",
+                    "optional": True,
+                    "description": "Short description of the attribute.",
+                    "max_length": DEFAULT_DESCRIPTION_LENGTH,
+                },
                 {"name": "identifier", "kind": "Text", "max_length": DEFAULT_REL_IDENTIFIER_LENGTH, "optional": True},
                 {"name": "cardinality", "kind": "Text", "enum": RelationshipCardinality.available_types()},
                 {"name": "order_weight", "kind": "Number", "optional": True},
