@@ -163,6 +163,12 @@ class RelationshipStatus(InfrahubStringEnum):
     DELETED = "deleted"
 
 
+class RelationshipSide(InfrahubStringEnum):
+    BOTH = "both"
+    SOURCE = "source"
+    DESTINATION = "destination"
+
+
 class Severity(InfrahubStringEnum):
     SUCCESS = "success"
     INFO = "info"

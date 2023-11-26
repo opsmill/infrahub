@@ -24,11 +24,12 @@ from infrahub.core.constants import (
     ProposedChangeState,
     RelationshipCardinality,
     RelationshipKind,
+    RelationshipSide,
     Severity,
     ValidatorConclusion,
     ValidatorState,
 )
-from infrahub.core.query import QueryNode, QueryRel
+from infrahub.core.query import QueryNode, QueryRel, QueryRelDirection
 from infrahub.core.relationship import Relationship
 from infrahub.types import ATTRIBUTE_TYPES
 from infrahub.visuals import select_color
@@ -355,6 +356,7 @@ class RelationshipSchema(BaseSchemaModel):
     name: str = Field(regex=NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
     peer: str = Field(regex=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH)
     kind: RelationshipKind = RelationshipKind.GENERIC
+    side: RelationshipSide = RelationshipSide.BOTH
     label: Optional[str]
     description: Optional[str] = Field(max_length=DEFAULT_DESCRIPTION_LENGTH)
     identifier: Optional[str] = Field(max_length=DEFAULT_REL_IDENTIFIER_LENGTH)
@@ -400,12 +402,28 @@ class RelationshipSchema(BaseSchemaModel):
         if include_match:
             query_filter.append(QueryNode(name="n"))
 
+        # Determine in which direction the relationships should point based on the side of the query
+        rels_direction = {
+            "r1": QueryRelDirection.RIGHT,
+            "r2": QueryRelDirection.LEFT,
+        }
+        if self.side == RelationshipSide.SOURCE:
+            rels_direction = {
+                "r1": QueryRelDirection.RIGHT,
+                "r2": QueryRelDirection.RIGHT,
+            }
+        if self.side == RelationshipSide.DESTINATION:
+            rels_direction = {
+                "r1": QueryRelDirection.LEFT,
+                "r2": QueryRelDirection.LEFT,
+            }
+
         if filter_name == "id":
             query_filter.extend(
                 [
-                    QueryRel(name="r1", labels=[rel_type]),
+                    QueryRel(name="r1", labels=[rel_type], direction=rels_direction["r1"]),
                     QueryNode(name="rl", labels=["Relationship"], params={"name": f"${prefix}_rel_name"}),
-                    QueryRel(name="r2", labels=[rel_type]),
+                    QueryRel(name="r2", labels=[rel_type], direction=rels_direction["r2"]),
                     QueryNode(name="peer", labels=["Node"]),
                 ]
             )
@@ -419,9 +437,9 @@ class RelationshipSchema(BaseSchemaModel):
         if filter_name == "ids":
             query_filter.extend(
                 [
-                    QueryRel(name="r1", labels=[rel_type]),
+                    QueryRel(name="r1", labels=[rel_type], direction=rels_direction["r1"]),
                     QueryNode(name="rl", labels=["Relationship"], params={"name": f"${prefix}_rel_name"}),
-                    QueryRel(name="r2", labels=[rel_type]),
+                    QueryRel(name="r2", labels=[rel_type], direction=rels_direction["r2"]),
                     QueryNode(name="peer", labels=["Node"]),
                 ]
             )
@@ -445,9 +463,9 @@ class RelationshipSchema(BaseSchemaModel):
 
         query_filter.extend(
             [
-                QueryRel(name="r1", labels=[rel_type]),
+                QueryRel(name="r1", labels=[rel_type], direction=rels_direction["r1"]),
                 QueryNode(name="rl", labels=["Relationship"], params={"name": f"${prefix}_rel_name"}),
-                QueryRel(name="r2", labels=[rel_type]),
+                QueryRel(name="r2", labels=[rel_type], direction=rels_direction["r2"]),
                 QueryNode(name="peer", labels=["Node"]),
             ]
         )
@@ -1066,6 +1084,13 @@ internal_schema = {
                     "kind": "Boolean",
                     "description": "Internal value to indicate if the relationship was inherited from a Generic node.",
                     "default_value": False,
+                    "optional": True,
+                },
+                {
+                    "name": "side",
+                    "kind": "Text",
+                    "enum": RelationshipSide.available_types(),
+                    "default_value": RelationshipSide.BOTH.value,
                     "optional": True,
                 },
             ],
