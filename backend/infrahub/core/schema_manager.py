@@ -55,8 +55,6 @@ SUPPORTED_SCHEMA_NODE_TYPE = [
 ]
 SUPPORTED_SCHEMA_EXTENSION_TYPE = ["NodeExtensionSchema"]
 
-INTERNAL_KINDS_INHERITANCE = ["CoreGroup", "LineageOwner", "LineageSource"]
-
 KIND_FILTER_MAP = {
     "Text": FilterSchemaKind.TEXT,
     "String": FilterSchemaKind.TEXT,
@@ -294,20 +292,16 @@ class SchemaBranch:
         for name in list(self.nodes.keys()):
             node = self.get(name=name)
 
-            # for generic_kind in node.inherit_from:
-
-            #     if generic_kind in INTERNAL_KINDS_INHERITANCE:
-            #         continue
-
-            #     if generic := self.has(generic_kind):
-            #         if not isinstance(generic, GenericSchema):
-            #             raise ValueError(
-            #                 f"{node.kind}: Only generic model can be used as part of inherit_from, {generic_kind} is not a valid entry."
-            #             ) from None
-            #     else:
-            #         raise ValueError(
-            #             f"{node.kind}: {generic_kind} is not a invalid Generic to inherit from"
-            #         ) from None
+            for generic_kind in node.inherit_from:
+                if self.has(name=generic_kind):
+                    if not isinstance(self.get(name=generic_kind), GenericSchema):
+                        raise ValueError(
+                            f"{node.kind}: Only generic model can be used as part of inherit_from, {generic_kind!r} is not a valid entry."
+                        ) from None
+                else:
+                    raise ValueError(
+                        f"{node.kind}: {generic_kind!r} is not a invalid Generic to inherit from"
+                    ) from None
 
             for rel in node.relationships:
                 if rel.peer in ["CoreGroup"]:

@@ -431,7 +431,7 @@ async def test_schema_branch_validate_identifiers():
     schema.validate_identifiers()
 
 
-async def test_schema_branch_validate_kinds():
+async def test_schema_branch_validate_kinds_peer():
     SCHEMA1 = {
         "name": "Criticality",
         "namespace": "Test",
@@ -454,12 +454,66 @@ async def test_schema_branch_validate_kinds():
     assert str(exc.value) == "TestCriticality: Relationship 'first' is referencing an invalid peer 'TestNotPresent'"
 
 
+async def test_schema_branch_validate_kinds_inherit():
+    SCHEMA1 = {
+        "name": "Criticality",
+        "namespace": "Test",
+        "default_filter": "name__value",
+        "branch": BranchSupportType.AWARE.value,
+        "inherit_from": ["TestNotPresent"],
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True},
+        ],
+    }
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(nodes=[SCHEMA1]))
+
+    with pytest.raises(ValueError) as exc:
+        schema.validate_kinds()
+
+    assert str(exc.value) == "TestCriticality: 'TestNotPresent' is not a invalid Generic to inherit from"
+
+    SCHEMA2 = {
+        "name": "Criticality",
+        "namespace": "Test",
+        "default_filter": "name__value",
+        "branch": BranchSupportType.AWARE.value,
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True},
+        ],
+    }
+
+    SCHEMA3 = {
+        "name": "Other",
+        "namespace": "Test",
+        "default_filter": "name__value",
+        "branch": BranchSupportType.AWARE.value,
+        "inherit_from": ["TestCriticality"],
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True},
+        ],
+    }
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(nodes=[SCHEMA2, SCHEMA3]))
+
+    with pytest.raises(ValueError) as exc:
+        schema.validate_kinds()
+
+    assert (
+        str(exc.value)
+        == "TestOther: Only generic model can be used as part of inherit_from, 'TestCriticality' is not a valid entry."
+    )
+
+
 async def test_schema_branch_validate_kinds_core(register_core_models_schema: SchemaBranch):
     SCHEMA1 = {
         "name": "Criticality",
         "namespace": "Test",
         "default_filter": "name__value",
         "branch": BranchSupportType.AWARE.value,
+        "inherit_from": ["LineageOwner"],
         "attributes": [
             {"name": "name", "kind": "Text", "unique": True},
         ],
@@ -472,7 +526,7 @@ async def test_schema_branch_validate_kinds_core(register_core_models_schema: Sc
     register_core_models_schema.validate_kinds()
 
 
-async def test_schema_menu_placement_errors():
+async def test_schema_branch_validate_menu_placement():
     """Validate that menu placements points to objects that exists in the schema."""
     FULL_SCHEMA = {
         "version": "1.0",
@@ -503,7 +557,7 @@ async def test_schema_menu_placement_errors():
     schema.load_schema(schema=SchemaRoot(**FULL_SCHEMA))
 
     with pytest.raises(ValueError) as exc:
-        schema.process()
+        schema.validate_menu_placements()
 
     assert str(exc.value) == "TestSubObject: NoSuchObject is not a valid menu placement"
 
