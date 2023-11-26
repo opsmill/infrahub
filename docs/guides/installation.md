@@ -93,7 +93,7 @@ GitPod has a generous free tier of 50/hours per month for free.
 
 [!ref Check Infrahub in GitPod](https://gitpod.io/#/github.com/opsmill/infrahub)
 
-## K8s with Helm Chart
+## K8s with Helm charts
 
 Support for K8s is not yet available, but we are actively tracking this effort in our short/mid-term roadmap. You can follow [this issue for updates](https://github.com/opsmill/infrahub/issues/506).
 

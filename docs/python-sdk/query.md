@@ -1,8 +1,9 @@
 ---
-label: Query Data from Infrahub
+label: Query data from Infrahub
 layout: default
 order: 800
 ---
+# Query data from Infrahub
 
 The Python SDK has 3 main methods to query data from Infrahub
 
@@ -12,51 +13,59 @@ The Python SDK has 3 main methods to query data from Infrahub
 
 > It's also possible to execute a GraphQL query directly with `client.execute_graphql()`
 
-
 +++ Async
+
 ```python
 from infrahub_sdk import InfrahubClient
 
 client = await InfrahubClient.init(address="http://localhost:8000")
 accounts = await client.all(kind="CoreAccount")
 ```
+
 ```python
 from infrahub_sdk import InfrahubClient
 
 client = await InfrahubClient.init(address="http://localhost:8000")
 accounts = await client.get(kind="CoreAccount", id="XXX")
 ```
+
 ```python
 from infrahub_sdk import InfrahubClient
 
 client = await InfrahubClient.init(address="http://localhost:8000")
 accounts = await client.filters(kind="CoreAccount", name__value="admin")
 ```
+
 +++ Sync
+
 ```python
 from infrahub_sdk import InfrahubClientSync
 
 client = InfrahubClientSync.init(address="http://localhost:8000")
 accounts = client.all(kind="CoreAccount")
 ```
+
 ```python
 from infrahub_sdk import InfrahubClientSync
 
 client = InfrahubClientSync.init(address="http://localhost:8000")
 accounts = client.get(kind="CoreAccount", id="XXX")
 ```
+
 ```python
 from infrahub_sdk import InfrahubClientSync
 
 client = InfrahubClientSync.init(address="http://localhost:8000")
 accounts = client.filters(kind="CoreAccount", name__value="admin")
 ```
+
 +++
 
 All 3 methods will return an `InfrahubNode` object or a list of `InfrahubNode` objects.
 All Attributes and Relationships defined in the schema will be automatically built into the object when it's being initialized.
 
 +++ Async
+
 ```python
 from infrahub_sdk import InfrahubClient
 
@@ -64,7 +73,9 @@ client = await InfrahubClient.init(address="http://localhost:8000")
 account = await client.get(kind="CoreRepository", id="XXX")
 print(account.name.value)
 ```
+
 +++ Sync
+
 ```python
 from infrahub_sdk import InfrahubClientSync
 
@@ -72,8 +83,8 @@ client = InfrahubClientSync.init(address="http://localhost:8000")
 account = client.get(kind="CoreRepository", id="XXX")
 print(account.name.value)
 ```
-+++
 
++++
 
 ## Control what will be queried
 
@@ -83,24 +94,27 @@ By default the query will include, the attributes, the relationships of cardinal
 
 it's possible to add or remove some attributes and/or relationships from the query with `include` and `exclude`
 
-
 +++ Async
+
 ```python
 from infrahub_sdk import InfrahubClient
 
 client = await InfrahubClient.init(address="http://localhost:8000")
 accounts = await client.all(kind="CoreRepository", exclude=["tags"], include=["queries"])
 ```
+
 +++ Sync
+
 ```python
 from infrahub_sdk import InfrahubClientSync
 
 client = InfrahubClientSync.init(address="http://localhost:8000")
 accounts = client.all(kind="CoreRepository", exclude=["tags"], include=["queries"])
 ```
+
 +++
 
-## Managing Relationships
+## Managing relationships
 
 There are situations to consider while managing relationships via the SDK, depending if the relationship was included in the query or not.
 
@@ -109,6 +123,7 @@ Relationships that are included in a query will be automatically `initialized` w
 In both cases, you can `fetch()` all the peers of a relationship
 
 +++ Async
+
 ```python
 from infrahub_sdk import InfrahubClient, InfrahubNode
 
@@ -117,7 +132,9 @@ account: InfrahubNode = await client.get(kind="CoreRepository", id="XXXX")
 await account.tags.fetch()
 tags: List[InfrahubNode]  = [ tag.peer for tag in account.tags ]
 ```
+
 +++ Sync
+
 ```python
 from infrahub_sdk import InfrahubClientSync, InfrahubNodeSync
 
@@ -126,4 +143,5 @@ account: InfrahubNodeSync = client.get(kind="CoreRepository", id="XXXX")
 account.tags.fetch()
 tags: List[InfrahubNodeSync] = [ tag.peer for tag in account.tags ]
 ```
+
 +++

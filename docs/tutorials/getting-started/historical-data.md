@@ -1,5 +1,5 @@
 ---
-label: Immutable Graph and historical data
+label: Immutable graph and historical data
 # icon: file-directory
 tags: [tutorial]
 order: 700
@@ -8,7 +8,7 @@ order: 700
 
 Infrahub is built around an immutable storage engine which means that past values of the graph remain intact and it's always possible to go back in time to view a previous state.
 
-## Query the Admin account object before the merge.
+## Query the admin account object before the merge
 
 Using the time selection menu, next to the branch selection drop down, select a time (in UTC) before the branch `cr1234` has been merged.
 

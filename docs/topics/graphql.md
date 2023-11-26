@@ -1,5 +1,5 @@
 ---
-label: GraphQL Query
+label: GraphQL queries
 layout: default
 ---
 # GraphQL
@@ -14,6 +14,7 @@ To interact with a branch the URL must include the name of the branch, such as `
 For each model in the schema, a GraphQL query and 3 mutations will be generated based on the namespace and the name of the model.
 
 For example, for the model `CoreRepository` the following query and mutations have been generated:
+
 - `Query` : **CoreRepository**
 - `Mutation` : **CoreRepositoryCreate**
 - `Mutation` : **CoreRepositoryUpdate**
@@ -42,10 +43,12 @@ query {
 All list of objects will be nested under `edges` & `node` to make it possible to control the pagination and access the attribute `count`.
 !!!
 
-##### `ID` and `display_label`
+#### `ID` and `display_label`
+
 For all nodes, the attribute `id` and `display_label` are automatically available. The value used to generate the `display_label` can be defined for each model in the schema. If no value has been provided a generic display label with the kind and the ID of the Node will be generated.
 
 At the object level, there are mainly 3 types of resources that can be accessed, each with a different format:
+
 - `Attribute`
 - `Relationship` of `Cardinality One`
 - `Relationship` of `Cardinality Many`
@@ -54,7 +57,7 @@ At the object level, there are mainly 3 types of resources that can be accessed,
 
 Each attribute is its own object in GraphQL to expose the value and all the metadata.
 
-In the query below, to access the attribute **name** of the object the query must be `CoreRepository` > `edges` > `node` > `name` > `value`. 
+In the query below, to access the attribute **name** of the object the query must be `CoreRepository` > `edges` > `node` > `name` > `value`.
 At the same level all the metadata of the attribute are also available example : `is_protected`, `is_visible`, `source` & `owner`
 
 ```graphql #6-14 Example query to access the value and the properties of the attribute 'name'
@@ -160,8 +163,8 @@ mutation {
   CoreRepositoryCreate(
     data: {
       name: { value: "myrepop" },           # Attribute
-      location: { value: "myrepop" },		# Attribute
-      account: { id: "myaccount" }, 		# Relationship One
+      location: { value: "myrepop" },       # Attribute
+      account: { id: "myaccount" },         # Relationship One
       tags: [ { id: "my_id" } ]}            # Relationship Many
   ) {
     ok
@@ -183,7 +186,6 @@ In addition to the queries and the mutations automatically generated based on th
 - **Mutation**: `BranchRebase`, Rebase an existing branch with the main branch
 - **Mutation**: `BranchMerge`, Merge a branch into main
 - **Mutation**: `BranchValidate`, Validate if a branch has some conflicts
-
 
 ## GraphQLQuery
 

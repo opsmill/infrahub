@@ -12,15 +12,16 @@ This tutorial will get you started with Infrahub and it will help you get famili
 - How to modify data via the REST API.
 - How to query for past state via the GraphQL interface.
 
-> This tutorial doesn't require any prior knowledge, but knowledge of Git, GraphQL and Python will make things easier to understand.
+> This tutorial doesn't require any prior knowledge, but knowledge of Git, GraphQL, and Python will make things easier to understand.
 
 The tutorial is meant to be executed in order, as we'll be making some changes along the way that might be required later.
 
-## Prepare the Demo Environment
+## Prepare the demo environment
 
-### Pre-Requisite
+### Pre-requisites
 
 In order to run the demo environment, the following applications must be installed on the systems:
+
 - [pyinvoke](https://www.pyinvoke.org/)
 - Docker & Docker Compose
 
@@ -54,7 +55,6 @@ invoke demo.load-infra-data
 - `invoke demo.start` : Start all the containers in detached mode.
 - `invoke demo.stop` : Stop All the containers
 - `invoke demo.destroy` : Destroy all containers and volumes.
-
 
 !!!
 `invoke demo.debug` can be used as an alternative to `invoke demo.start`, the main difference is that it will stay *attached* to the containers and all the logs will be displayed in real time in the CLI.

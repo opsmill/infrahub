@@ -9,7 +9,7 @@ order: 900
 
 Before starting this tutorial, let's take a moment to explore how Infrahub is organized as an application and how we can interact with it.
 
-## Infrahub Components
+## Infrahub components
 
 ![](../../media/high_level_architecture.excalidraw.svg)
 

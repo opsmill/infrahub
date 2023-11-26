@@ -1,8 +1,8 @@
 ---
-label: Demo Environment
+label: Demo environment
 layout: default
 ---
-# Local Demo Environment
+# Local demo environment
 
 A local environment based on Docker Compose is available for demo and testing.
 It's designed to be controlled by `invoke` using a list of predefined commands.

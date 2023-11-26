@@ -1,9 +1,11 @@
 ---
 order: 070
 ---
-## Main Changes
 
-### Proposed Change
+# Main changes
+<!-- vale off -->
+<!-- markdownlint-disable -->
+## Proposed change
 
 A Proposed Change provides a single workflow to integrate the changes from a given branch into the main branch.
 It is the equivalent of a Pull Request or a Merge Request for Infrahub.
@@ -11,6 +13,7 @@ It is the equivalent of a Pull Request or a Merge Request for Infrahub.
 When a user is ready to integrate their change into the main branch, they can create a Proposed Change.
 The Proposed Change panel groups all information related to the change and it will allow other members of the team to review and comment the changes as needed.
 Information related to a change:
+
 - Data changes (diff)
 - Files changes (diff)
 - Artifacts changes (diff)
@@ -19,60 +22,62 @@ Information related to a change:
 - Peer Review
 - Discussions
 
-### Artifacts
+## Artifacts
 
 An artifact is the result of a Transformation for a specific context and/or object, it can have different format either in plain text or JSON.
 
 An artifact improve the Transformation by providing the following additional features:
+
 - **Caching** : Generated Artifact are stored in the internal object storage. For a resource intensive Transformation, it will significantly reduce the load of the system if an artifact can be serve from the cache instead of regenerating each time.
 - **Traceability** : Past values of an artifact remains available. In a future release, it will be possible to compare the value of an artifact over time.
 - **Peer Review** : Artifacts are automatically part of the Proposed Change review process
 
 While the content of an artifact can change, its identifier will remain the same over time.
 
-### Support for branch agnostic and branch local models
+## Support for branch agnostic and branch local models
 
 It's now possible to define in the schema how a given model, attribute or relationship should behave regarding the branches.
 
 By default, all models defined in the schema will be **branch aware** which means that any changes to an object based on a **branch aware** model will be applied only to the branch and can be integrated into the main branch via a Propose Change.
-It's now possible to also configure a model, an attribute or a relationship as :
+It's now possible to also configure a model, an attribute or a relationship as:
+
 - **branch agnostic**: All changes to an object based on a **branch agnostic** model will automatically be available in all branches.
 - **branch local**:  All changes will stay local to the branch. A model in **branch local** mode will not be affected by the Diff and the Merge.
 
-
-### Object Storage
+## Object storage
 
 A new object store has been introduced to easily store and retrieve files in an object storage. The object storage interface is independent of the branches.
 
 Currently only a local backend is supported but the goal over time is to support multiple backend like AWS S3 to allow users to select where they would like their files to be stored.
 
 
-### Python SDK
+## Python SDK
 
 The Python SDK now support more granular queries by introducing the support for `include` and `exclude` parameters on all methods to query objects from Infrahub.
 
 
-### Architecture Change
+## Architecture change
 
 Several changes to the Architecture have been introduced to prepare the deployment of Infrahub in a production environment:
+
 - The frontend container has been removed and the frontend is now being served from the same endpoint as the backend (http://localhost:8000 by default).
 - It's now possible to run multiple Git Agents, to increase the number of asynchronous tasks that Infrahub can process at the same time. To support that a new cache container has been introduced.
 
-### Other Changes
+## Other changes
 
 - Add OpenTelemetry
 - Add GraphQL Query Analyzer @dgarros (#966)
-- Replace graphql playground with Graphiql @morganpartee (#1024)
+- Replace GraphQL playground with Graphiql @morganpartee (#1024)
 - Add Links in the footer
 - Convert all UUID to Temporal UUID @dgarros (#936)
 
-## Migration Guide
+## Migration guide
 
 ### Rebuild the demo environment
 
 It's mandatory to completely rebuild your demo environment with the following commands.
 
-```
+```sh
 invoke demo.destroy demo.build demo.init demo.start
 invoke demo.load-infra-schema
 invoke demo.load-infra-data
@@ -113,18 +118,18 @@ it's recommend to pull the latest changes into your fork.
 
 ### 🐛 Bug Fixes
 
-- Fix tooltips display + delay @pa-lem (#1029)
+- Fix tool-tips display + delay @pa-lem (#1029)
 - Remove disclosure component and use custom one @pa-lem (#1023)
 - Diff responsive UI @pa-lem (#1011)
 - Fix approve mutation + add merge button @pa-lem (#1004)
-- Artifacts diff url @pa-lem (#1005)
+- Artifacts diff URL @pa-lem (#1005)
 - Abort merge if the operation wasn't successful @ogenstad (#980)
 - Validate values during creation of attributes @ogenstad (#942)
 
 ### 🧰 Maintenance
 
 - Modify Data Integrity check to report progress @ogenstad (#1041)
-- Change rpc callback function to be async @ogenstad (#1016)
+- Change RPC callback function to be async @ogenstad (#1016)
 - Restrict available namespaces for user schemas @ogenstad (#995)
 - Exclude Checks and Validators from the menu and rename Blacklist to Excludelist @dgarros (#984)
 - Remove test\_client argument and functionality from SDK @ogenstad (#986)

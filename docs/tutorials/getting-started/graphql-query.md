@@ -1,17 +1,17 @@
 ---
-label: Introduction & GraphQL Query
+label: Introduction & GraphQL queries
 # icon: file-directory
 tags: [tutorial]
 order: 200
 ---
 
-# Explore the GraphQL Interface
+# Explore the GraphQL interface
 
 The GraphQL interface is accessible at [http://localhost:8000/graphql](http://localhost:8000/graphql)
 
 ## Introduction to GraphQL
 
-GraphQL is the main interface to programmatically interact with Infrahub. With the GraphQL interface, it's possible to perform all the standard CRUD operations (Create, Read, Update and Delete) on any objects in the database.
+GraphQL is the main interface to programmatically interact with Infrahub. With the GraphQL interface, it's possible to perform all the standard CRUD operations (Create, Read, Update, and Delete) on any objects in the database.
 
 In GraphQL terminology, a `query` references any read operation and a `mutation` references any write operation that may change the value of the data. Infrahub support both `query` and `mutation` for all objects.
 
@@ -19,7 +19,7 @@ One of the main concepts behind GraphQL is the presence of a schema that defines
 
 Unlike a REST API, the format of the response is not fixed in GraphQL. It depends on the query, which ensures you get back only that you asked for.
 
-## First Query
+## First query
 
 The following query will return the name of the all the devices in the database.
 

@@ -1,15 +1,15 @@
 ---
-label: Configuration File
+label: Configuration file
 layout: default
 icon: tools
 order: 900
 ---
-# Configuration File
+# Configuration file
 
 !!!warning Under Construction
 
 This page is still under construction and is not available yet.<br>
-Please reach out in Slack if you have some questions about the **Configuration File**
+Please reach out in Slack if you have some questions about the **Configuration file**
 
 !!!
 

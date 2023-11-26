@@ -31,7 +31,7 @@ The transformation will automatically inherit the parameters (variables) defined
 !!!
 
 ==- Common parameters
-{ class="compact" } 
+{ class="compact" }
 | Name            | Type                                | Default | Required |
 | --------------- | ----------------------------------- | ------- | -------- |
 | **name**        | `Text`                              | -       | Yes      |
@@ -46,20 +46,20 @@ The transformation will automatically inherit the parameters (variables) defined
 
 ## Available transformations
 
-{ class="compact" } 
+{ class="compact" }
 | Namespace | Transformation      | Description                            | Language | Output Format |
 | --------- | ------------------- | -------------------------------------- | -------- | ------------- |
 | Core      | **RFile**           | A file rendered from a Jinja2 template | Jinja2   | Plain Text    |
 | Core      | **TransformPython** | A transform function written in Python | Python   | JSON          |
 
-
-### RFile (Jinja2 Plugin)
+### RFile (Jinja2 plugin)
 
 An RFile is a transformation plugin for Jinja2, it can generate any file in plain text format and must be composed of 1 main Jinja2 template and 1 GraphQL query.
 
 #### Create an RFile
 
 The recommended way to create an RFile is to import it from a Git Repository.
+
 - The main Jinja2 template can be in any directory in the repository
 - The GraphQL Query can be imported as well from the Git Repository or can be already existing in the database.
 
@@ -105,7 +105,7 @@ https://<host>/api/rfile/<rfile name or ID>?branch=branch33&my-param=XXXXX&my-ot
 
 ##### From the CLI for development and troubleshooting
 
-The CLI command `infrahubctl` is able to find your local Rfile(s) and render them for development and troubleshooting purposes.
+The CLI command `infrahubctl` is able to find your local RFile(s) and render them for development and troubleshooting purposes.
 
 ```sh
  Usage: infrahubctl render [OPTIONS] RFILE [VARIABLES]...
@@ -136,7 +136,7 @@ infrahubctl render <rfile name or ID> my-param=XXXXX my-other-param=YYYYY
 If `--branch` is not provided it will automatically use the name of the local branch.
 !!!
 
-### TransformPython (Python Plugin)
+### TransformPython (Python plugin)
 
 A `TransformaPython` is a transformation plugin written in Python. It can generate any dataset in JSON format and must be composed of 1 main Python Class and 1 GraphQL Query.
 
@@ -190,7 +190,7 @@ If the GraphQL query accept some parameters, they can be passed directly as URL 
 https://<host>/api/transform/my/custom/url?branch=branch33&my-param=XXXXX&my-other-param=YYYYY
 ```
 
-## Unit testing for Transformation
+## Unit testing for transformation
 
 !!!warning
 Coming Soon

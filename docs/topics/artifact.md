@@ -60,7 +60,7 @@ You can access an artifact via the frontend or GraphQL, but you shouldn't manual
 
 ### Startup configuration for edge devices
 
-The project [infrahub-demo-edge](https://github.com/opsmill/infrahub-demo-edge) includes most elements required to generate the startup configuration of all edge devices.
+The project [`infrahub-demo-edge`](https://github.com/opsmill/infrahub-demo-edge) includes most elements required to generate the startup configuration of all edge devices.
 
 In the `.infrahub.yml` the artifact definition is configured as follows:
 
