@@ -4,7 +4,7 @@ level: error
 ignorecase: false
 swap:
   (?i:Github): GitHub
-  (?i:infrahub): Infrahub
+  infrahub(?:\s|$): Infrahub
   (?i:Openconfig): OpenConfig
   "[Rr]file": RFile
   (?i:Graphql): GraphQL

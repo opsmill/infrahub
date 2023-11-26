@@ -10,6 +10,7 @@ Infrahub's
 infrahubctl
 jinja
 namespace
+namespaces
 o'brian
 openconfig
 rebase
@@ -34,3 +35,11 @@ IPNetwork
 IPHost
 sdk
 dev
+kbps
+yamllint
+autoflake
+isort
+eslint
+e2e
+excalidraw
+toml

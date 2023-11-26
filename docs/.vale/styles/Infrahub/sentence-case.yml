@@ -12,6 +12,7 @@ match: $sentence
 exceptions:
   - Git
   - GitHub
+  - GitLab
   - Infrahub
   - RFile
   - Jinja
@@ -25,6 +26,13 @@ exceptions:
   - Namespace
   - Node
   - Attributes
-  - Relationships
   - Generics
   - SDK
+  - Helm
+  - Jinja2
+  - TransformPython
+  - Python
+  - JavaScript
+  - VS Code
+  - E2E
+  - infrahubctl

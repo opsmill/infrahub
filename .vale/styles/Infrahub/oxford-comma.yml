@@ -1,5 +1,0 @@
-extends: existence
-message: "Use a comma before the last 'and' or 'or' in a list of items."
-level: error
-raw:
-  - '(?:[\w-_` ]+,){2,}(?:[\w-_` ]+) (and |or )'

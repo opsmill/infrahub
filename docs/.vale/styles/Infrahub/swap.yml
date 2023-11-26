@@ -4,4 +4,4 @@ level: error
 ignorecase: true
 swap:
   repo: repository
-  config: configuration
+  config\b(?!\.\w): configuration
