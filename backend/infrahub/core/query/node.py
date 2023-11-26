@@ -4,6 +4,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Tuple
 
+from infrahub.core.constants import RelationshipSide
 from infrahub.core.query import Query, QueryResult, QueryType
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
 from infrahub.core.query.utils import find_node_schema
@@ -121,7 +122,11 @@ class NodeCreateAllQuery(NodeQuery):
                 relationships.append(await rel.get_create_data(db=db))
 
         self.params["attrs"] = [attr.dict() for attr in attributes]
-        self.params["rels"] = [rel.dict() for rel in relationships]
+        self.params["rels_bidir"] = [rel.dict() for rel in relationships if rel.side == RelationshipSide.BOTH.value]
+        self.params["rels_src"] = [rel.dict() for rel in relationships if rel.side == RelationshipSide.SOURCE.value]
+        self.params["rels_dst"] = [
+            rel.dict() for rel in relationships if rel.side == RelationshipSide.DESTINATION.value
+        ]
 
         self.params["node_prop"] = {
             "uuid": self.node.id,
@@ -158,10 +163,46 @@ class NodeCreateAllQuery(NodeQuery):
                 CREATE (a)-[:HAS_OWNER { branch: attr.branch, branch_level: attr.branch_level, status: attr.status, from: $at, to: null }]->(peer)
             )
         )
-        FOREACH ( rel IN $rels |
+        FOREACH ( rel IN $rels_bidir |
             MERGE (d:Node { uuid: rel.destination_id })
             CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
             CREATE (n)-[:IS_RELATED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(rl)
+            CREATE (d)-[:IS_RELATED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null  }]->(rl)
+            MERGE (ip:Boolean { value: rel.is_protected })
+            MERGE (iv:Boolean { value: rel.is_visible })
+            CREATE (rl)-[:IS_PROTECTED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(ip)
+            CREATE (rl)-[:IS_VISIBLE { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(iv)
+            FOREACH ( prop IN rel.source_prop |
+                MERGE (peer:Node { uuid: prop.peer_id })
+                CREATE (rl)-[:HAS_SOURCE { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(peer)
+            )
+            FOREACH ( prop IN rel.owner_prop |
+                MERGE (peer:Node { uuid: prop.peer_id })
+                CREATE (rl)-[:HAS_OWNER { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(peer)
+            )
+        )
+        FOREACH ( rel IN $rels_src |
+            MERGE (d:Node { uuid: rel.destination_id })
+            CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
+            CREATE (n)-[:IS_RELATED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(rl)
+            CREATE (d)<-[:IS_RELATED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null  }]-(rl)
+            MERGE (ip:Boolean { value: rel.is_protected })
+            MERGE (iv:Boolean { value: rel.is_visible })
+            CREATE (rl)-[:IS_PROTECTED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(ip)
+            CREATE (rl)-[:IS_VISIBLE { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(iv)
+            FOREACH ( prop IN rel.source_prop |
+                MERGE (peer:Node { uuid: prop.peer_id })
+                CREATE (rl)-[:HAS_SOURCE { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(peer)
+            )
+            FOREACH ( prop IN rel.owner_prop |
+                MERGE (peer:Node { uuid: prop.peer_id })
+                CREATE (rl)-[:HAS_OWNER { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(peer)
+            )
+        )
+        FOREACH ( rel IN $rels_dst |
+            MERGE (d:Node { uuid: rel.destination_id })
+            CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
+            CREATE (n)<-[:IS_RELATED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]-(rl)
             CREATE (d)-[:IS_RELATED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null  }]->(rl)
             MERGE (ip:Boolean { value: rel.is_protected })
             MERGE (iv:Boolean { value: rel.is_visible })
