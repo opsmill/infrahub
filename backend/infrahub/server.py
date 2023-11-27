@@ -23,7 +23,7 @@ from infrahub.api.exception_handlers import generic_api_exception_handler
 from infrahub.core.initialization import initialization
 from infrahub.database import InfrahubDatabase, InfrahubDatabaseMode, get_db
 from infrahub.exceptions import Error
-from infrahub.graphql.app import InfrahubGraphQLApp
+from infrahub.graphql.api.endpoints import router as graphql_router
 from infrahub.lock import initialize_lock
 from infrahub.log import clear_log_context, get_logger, set_log_data
 from infrahub.message_bus import close_broker_connection, connect_to_broker
@@ -161,12 +161,7 @@ app.add_exception_handler(TimestampFormatError, partial(generic_api_exception_ha
 app.add_exception_handler(ValidationError, partial(generic_api_exception_handler, http_code=400))
 
 app.add_route(path="/metrics", route=handle_metrics)
-app.add_route(path="/graphql", route=InfrahubGraphQLApp(playground=True), methods=["GET", "POST", "OPTIONS"])
-app.add_route(
-    path="/graphql/{branch_name:path}", route=InfrahubGraphQLApp(playground=True), methods=["GET", "POST", "OPTIONS"]
-)
-# app.add_websocket_route(path="/graphql", route=InfrahubGraphQLApp())
-# app.add_websocket_route(path="/graphql/{branch_name:str}", route=InfrahubGraphQLApp())
+app.include_router(graphql_router)
 
 if os.path.exists(FRONTEND_ASSET_DIRECTORY) and os.path.isdir(FRONTEND_ASSET_DIRECTORY):
     app.mount("/assets", StaticFiles(directory=FRONTEND_ASSET_DIRECTORY), "assets")

@@ -49,6 +49,7 @@ async def test_is_valid_simple_schema(
     query_02: str,
     query_03: str,
     query_04: str,
+    query_introspection: str,
     car_person_schema_generics,
 ):
     schema = await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch)
@@ -69,6 +70,11 @@ async def test_is_valid_simple_schema(
     assert is_valid is True
 
     gqa = GraphQLQueryAnalyzer(query=query_04, schema=schema, branch=default_branch)
+    is_valid, errors = gqa.is_valid
+    assert errors is None
+    assert is_valid is True
+
+    gqa = GraphQLQueryAnalyzer(query=query_introspection, schema=schema, branch=default_branch)
     is_valid, errors = gqa.is_valid
     assert errors is None
     assert is_valid is True
