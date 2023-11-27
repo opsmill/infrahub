@@ -171,7 +171,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
 
         return results[0]
 
-    async def process_nodes_and_relationships(
+    async def _process_nodes_and_relationships(
         self, response: Dict[str, Any], schema_kind: str, branch: str, prefetch_relationships: bool
     ) -> Tuple[List[InfrahubNode], List[InfrahubNode]]:
         """Processes InfrahubNode and their Relationships from the GraphQL query response.
@@ -196,11 +196,11 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
             nodes.append(node)
 
             if prefetch_relationships:
-                await self.process_relationships(node, item, branch, related_nodes)
+                await self._process_relationships(node, item, branch, related_nodes)
 
         return nodes, related_nodes
 
-    async def process_relationships(
+    async def _process_relationships(
         self, node: InfrahubNode, item: Dict[str, Any], branch: str, related_nodes: List[InfrahubNode]
     ) -> None:
         """Processes the Relationships of a InfrahubNode and add Related Nodes to a list.
@@ -312,6 +312,8 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         if filters:
             node.validate_filters(filters=filters)
 
+        nodes: List[InfrahubNode] = []
+        related_nodes: List[InfrahubNode] = []
         # If Offset or Limit was provided we just query as it
         # If not, we'll query all nodes based on the size of the batch
         if offset or limit:
@@ -332,7 +334,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
                 tracker=f"query-{str(schema.kind).lower()}-page1",
             )
 
-            nodes, related_nodes = await self.process_nodes_and_relationships(
+            nodes, related_nodes = await self._process_nodes_and_relationships(
                 response=response, schema_kind=schema.kind, branch=branch, prefetch_relationships=prefetch_relationships
             )
 
@@ -358,12 +360,14 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
                     at=at,
                     tracker=f"query-{str(schema.kind).lower()}-page{page_number}",
                 )
-                nodes, related_nodes = await self.process_nodes_and_relationships(
+                _nodes, _related_nodes = await self._process_nodes_and_relationships(
                     response=response,
                     schema_kind=schema.kind,
                     branch=branch,
                     prefetch_relationships=prefetch_relationships,
                 )
+                nodes.extend(_nodes)
+                related_nodes.extend(_related_nodes)
 
                 remaining_items = response[schema.kind].get("count", 0) - (page_offset + self.pagination_size)
                 if remaining_items < 0:
@@ -784,7 +788,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
 
         # TODO add a special method to execute mutation that will check if the method returned OK
 
-    def process_nodes_and_relationships(
+    def _process_nodes_and_relationships(
         self, response: Dict[str, Any], schema_kind: str, branch: str, prefetch_relationships: bool
     ) -> Tuple[List[InfrahubNodeSync], List[InfrahubNodeSync]]:
         """Processes InfrahubNodeSync and their Relationships from the GraphQL query response.
@@ -809,11 +813,11 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             nodes.append(node)
 
             if prefetch_relationships:
-                self.process_relationships(node, item, branch, related_nodes)
+                self._process_relationships(node, item, branch, related_nodes)
 
         return nodes, related_nodes
 
-    def process_relationships(
+    def _process_relationships(
         self, node: InfrahubNodeSync, item: Dict[str, Any], branch: str, related_nodes: List[InfrahubNodeSync]
     ) -> None:
         """Processes the Relationships of a InfrahubNodeSync and add Related Nodes to a list.
@@ -925,6 +929,8 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         if filters:
             node.validate_filters(filters=filters)
 
+        nodes: List[InfrahubNodeSync] = []
+        related_nodes: List[InfrahubNodeSync] = []
         # If Offset or Limit was provided we just query as it
         # If not, we'll query all nodes based on the size of the batch
         if offset or limit:
@@ -944,7 +950,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
                 at=at,
                 tracker=f"query-{str(schema.kind).lower()}-page1",
             )
-            nodes, related_nodes = self.process_nodes_and_relationships(
+            nodes, related_nodes = self._process_nodes_and_relationships(
                 response=response, schema_kind=schema.kind, branch=branch, prefetch_relationships=prefetch_relationships
             )
 
@@ -971,12 +977,14 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
                     tracker=f"query-{str(schema.kind).lower()}-page{page_number}",
                 )
 
-                nodes, related_nodes = self.process_nodes_and_relationships(
+                _nodes, _related_nodes = self._process_nodes_and_relationships(
                     response=response,
                     schema_kind=schema.kind,
                     branch=branch,
                     prefetch_relationships=prefetch_relationships,
                 )
+                nodes.extend(_nodes)
+                related_nodes.extend(_related_nodes)
 
                 remaining_items = response[schema.kind].get("count", 0) - (page_offset + self.pagination_size)
                 if remaining_items < 0:

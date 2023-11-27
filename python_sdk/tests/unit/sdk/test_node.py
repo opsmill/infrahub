@@ -251,11 +251,13 @@ async def test_query_data_no_filters(client, location_schema, client_type):
 async def test_query_data_node(client, location_schema, client_type):
     if client_type == "standard":
         node = InfrahubNode(client=client, schema=location_schema)
+        results = await node.generate_query_data_node()
 
     else:
         node = InfrahubNodeSync(client=client, schema=location_schema)
+        results = node.generate_query_data_node()
 
-    assert node.generate_query_data_node() == {
+    assert results == {
         "name": {
             "is_protected": None,
             "is_visible": None,
