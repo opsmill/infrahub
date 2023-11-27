@@ -1,6 +1,8 @@
 import {
   BoldItalicUnderlineToggles,
   Button as MdxButton,
+  CodeBlockEditorDescriptor,
+  codeBlockPlugin,
   diffSourcePlugin,
   diffSourcePluginHooks,
   headingsPlugin,
@@ -41,6 +43,18 @@ export const ViewModeToggle: React.FC<{ children: React.ReactNode }> = ({ childr
   );
 };
 
+const PlainTextCodeEditorDescriptor: CodeBlockEditorDescriptor = {
+  match: () => true,
+  priority: 0,
+  Editor: ({ code }: { code: string }) => {
+    return (
+      <pre>
+        <code>{code}</code>
+      </pre>
+    );
+  },
+};
+
 export const MarkdownEditor = forwardRef<MDXEditorMethods>(function MarkdownEditor(props, ref) {
   return (
     <MDXEditor
@@ -59,6 +73,10 @@ export const MarkdownEditor = forwardRef<MDXEditorMethods>(function MarkdownEdit
         thematicBreakPlugin(),
         quotePlugin(),
         markdownShortcutPlugin(),
+        codeBlockPlugin({
+          codeBlockEditorDescriptors: [PlainTextCodeEditorDescriptor],
+          defaultCodeBlockLanguage: "txt",
+        }),
         toolbarPlugin({
           toolbarContents: () => (
             <Suspense fallback={<div>loading...</div>}>
