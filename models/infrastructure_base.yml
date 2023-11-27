@@ -118,6 +118,19 @@ nodes:
         optional: true
       - name: type
         kind: Text
+      - name: operational_status
+        kind: Dropdown
+        optional: true
+        choices:
+          - name: active
+            label: Active
+            color: "#0c0c0c"
+          - name: drained
+            label: Drained
+          - name: maintenance
+            label: Maintenance
+          - name: provisioning
+            label: Provisioning
     relationships:
       - name: site
         peer: BuiltinLocation

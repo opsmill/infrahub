@@ -45,6 +45,18 @@ class TextAttributeType(BaseAttribute):
         interfaces = {AttributeInterface}
 
 
+class DropdownType(BaseAttribute):
+    value = Field(String)
+    label = Field(String)
+    color = Field(String)
+    description = Field(String)
+
+    class Meta:
+        description = "Attribute of type Dropdown"
+        name = "Dropdown"
+        interfaces = {AttributeInterface}
+
+
 class IPHostType(BaseAttribute):
     value = Field(String)
     ip = Field(String)

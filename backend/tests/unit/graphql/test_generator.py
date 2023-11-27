@@ -79,6 +79,7 @@ async def test_generate_graphql_object(db: InfrahubDatabase, default_branch: Bra
         "level",
         "mylist",
         "name",
+        "status",
     ]
 
 

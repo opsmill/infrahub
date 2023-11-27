@@ -4,6 +4,7 @@ import copy
 import enum
 import hashlib
 import keyword
+import re
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
 from infrahub_sdk.utils import duplicates, intersection
@@ -30,6 +31,7 @@ from infrahub.core.constants import (
 from infrahub.core.query import QueryNode, QueryRel
 from infrahub.core.relationship import Relationship
 from infrahub.types import ATTRIBUTE_TYPES
+from infrahub.visuals import select_color
 
 if TYPE_CHECKING:
     from typing_extensions import Self
@@ -57,6 +59,8 @@ DEFAULT_KIND_MIN_LENGTH = 3
 DEFAULT_KIND_MAX_LENGTH = 32
 DEFAULT_DESCRIPTION_LENGTH = 128
 DEFAULT_REL_IDENTIFIER_LENGTH = 128
+
+HTML_COLOR = re.compile(r"#[0-9a-fA-F]{6}\b")
 
 
 class BaseSchemaModel(BaseModel):
@@ -253,6 +257,25 @@ class FilterSchema(BaseSchemaModel):
     _sort_by: List[str] = ["name"]
 
 
+class DropdownChoice(BaseSchemaModel):
+    name: str
+    description: str = ""
+    color: str = ""
+    label: str = ""
+
+    _sort_by: List[str] = ["name"]
+
+    @validator("color")
+    def kind_options(
+        cls,
+        v: str,
+    ) -> str:
+        if HTML_COLOR.match(v):
+            return v.lower()
+
+        raise ValueError("Color must be a valid HTML color code")
+
+
 class AttributeSchema(BaseSchemaModel):
     id: Optional[str]
     name: str = Field(regex=NODE_NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
@@ -271,8 +294,29 @@ class AttributeSchema(BaseSchemaModel):
     branch: Optional[BranchSupportType]
     optional: bool = False
     order_weight: Optional[int]
+    choices: Optional[List[DropdownChoice]] = Field(
+        default=None, description="The available choices if the kind is Dropdown."
+    )
 
     _sort_by: List[str] = ["name"]
+
+    @validator("choices")
+    def assign_colors(
+        cls,
+        choices: Optional[List[DropdownChoice]] = None,
+    ) -> Optional[List[DropdownChoice]]:
+        if not choices:
+            return None
+        defined_colors = [choice.color for choice in choices if choice.color]
+        assigned_choices: List[DropdownChoice] = []
+        for choice in choices:
+            if choice.color:
+                assigned_choices.append(choice)
+            else:
+                choice.color = select_color(defined_colors)
+                assigned_choices.append(choice)
+
+        return assigned_choices
 
     @validator("kind")
     def kind_options(
@@ -282,6 +326,17 @@ class AttributeSchema(BaseSchemaModel):
         if v not in ATTRIBUTE_KIND_LABELS:
             raise ValueError(f"Only valid Attribute Kind are : {ATTRIBUTE_KIND_LABELS} ")
         return v
+
+    @root_validator
+    def validate_dropdown_choices(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        """Validate that choices are defined for a dropdown but not for other kinds."""
+        if values.get("kind") != "Dropdown" and values.get("choices"):
+            raise ValueError(f"Can only specify 'choices' for kind=Dropdown: {values['kind'] }")
+
+        if values.get("kind") == "Dropdown" and not values.get("choices"):
+            raise ValueError("The property 'choices' is required for kind=Dropdown")
+
+        return values
 
     def get_class(self):
         return ATTRIBUTE_TYPES[self.kind].get_infrahub_class()
@@ -675,7 +730,7 @@ class SchemaExtension(BaseSchemaModel):
 
 
 class SchemaRoot(BaseModel):
-    version: Optional[str]
+    version: Optional[str] = Field(default=None)
     generics: List[GenericSchema] = Field(default_factory=list)
     nodes: List[NodeSchema] = Field(default_factory=list)
     groups: List[GroupSchema] = Field(default_factory=list)
@@ -707,6 +762,7 @@ class SchemaRoot(BaseModel):
 # TODO need to investigate how we could generate the internal schema
 # directly from the Pydantic Models to avoid the duplication of effort
 internal_schema = {
+    "version": None,
     "nodes": [
         {
             "name": "Node",
@@ -853,6 +909,7 @@ internal_schema = {
                     "max_length": DEFAULT_KIND_MAX_LENGTH,
                 },
                 {"name": "enum", "kind": "List", "optional": True},
+                {"name": "choices", "kind": "List", "optional": True},
                 {"name": "regex", "kind": "Text", "optional": True},
                 {"name": "max_length", "kind": "Number", "optional": True},
                 {"name": "min_length", "kind": "Number", "optional": True},
@@ -1074,7 +1131,7 @@ internal_schema = {
                 {"name": "description", "kind": "Text", "optional": True, "max_length": DEFAULT_DESCRIPTION_LENGTH},
             ],
         },
-    ]
+    ],
 }
 
 core_models = {
