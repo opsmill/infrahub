@@ -184,17 +184,28 @@ class RelationshipCreateQuery(RelationshipQuery):
 
         self.query_add_all_node_property_match()
 
+        self.params["rel_prop"] = {
+            "branch": self.branch.name,
+            "branch_level": self.branch.hierarchy_level,
+            "status": "active",
+            "from": self.at.to_string(),
+            "to": None,
+        }
+        arrows = self.schema.get_query_arrows()
+        r1 = f"{arrows[0]}[r1:{self.rel_type} $rel_prop ]{arrows[1]}"
+        r2 = f"{arrows[2]}[r2:{self.rel_type} $rel_prop ]{arrows[3]}"
+
         query_create = """
         CREATE (rl:Relationship { uuid: $uuid, name: $name, branch_support: $branch_support })
-        CREATE (s)-[r1:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(rl)
-        CREATE (d)-[r2:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null  }]->(rl)
+        CREATE (s)%s(rl)
+        CREATE (rl)%s(d)
         MERGE (ip:Boolean { value: $is_protected })
         MERGE (iv:Boolean { value: $is_visible })
-        CREATE (rl)-[r3:IS_PROTECTED { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(ip)
-        CREATE (rl)-[r4:IS_VISIBLE { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(iv)
+        CREATE (rl)-[r3:IS_PROTECTED $rel_prop ]->(ip)
+        CREATE (rl)-[r4:IS_VISIBLE $rel_prop ]->(iv)
         """ % (
-            self.rel_type,
-            self.rel_type,
+            r1,
+            r2,
         )
 
         self.add_to_query(query_create)
@@ -365,7 +376,7 @@ class RelationshipDataDeleteQuery(RelationshipQuery):
         # -----------------------------------------------------------------------
         query = """
         CREATE (s)%s(rl)
-        CREATE (d)%s(rl)
+        CREATE (rl)%s(d)
         """ % (
             r1,
             r2,
@@ -416,7 +427,7 @@ class RelationshipDeleteQuery(RelationshipQuery):
         query = """
         MATCH (s { uuid: $source_id })-[]-(rl:Relationship {uuid: $rel_id})-[]-(d { uuid: $destination_id })
         CREATE (s)%s(rl)
-        CREATE (d)%s(rl)
+        CREATE (rl)%s(d)
         """ % (
             r1,
             r2,
