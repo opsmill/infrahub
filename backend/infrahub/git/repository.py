@@ -25,6 +25,7 @@ from infrahub_sdk import (
     ValidationError,
 )
 from infrahub_sdk.checks import INFRAHUB_CHECK_VARIABLE_TO_IMPORT, InfrahubCheck
+from infrahub_sdk.schema import InfrahubRepositoryRFileConfig
 from infrahub_sdk.transforms import INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT
 from infrahub_sdk.utils import YamlFile, compare_lists
 from pydantic import BaseModel, validator
@@ -44,7 +45,7 @@ from infrahub.services import InfrahubServices
 
 if TYPE_CHECKING:
     from infrahub_sdk.branch import BranchData
-    from infrahub_sdk.schema import InfrahubRepositoryArtifactDefinitionConfig, InfrahubRepositoryRFileConfig
+    from infrahub_sdk.schema import InfrahubRepositoryArtifactDefinitionConfig
 
     from infrahub.message_bus import messages
 # pylint: disable=too-few-public-methods,too-many-lines
@@ -121,6 +122,10 @@ class CheckDefinitionInformation(BaseModel):
 
     parameters: Optional[dict] = None
     """Additional Parameters to extract from each target (if targets is provided)"""
+
+
+class InfrahubRepositoryRFile(InfrahubRepositoryRFileConfig):
+    repository: str
 
 
 class TransformPythonInformation(BaseModel):
@@ -1017,12 +1022,14 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             for rfile in await self.client.filters(kind="CoreRFile", branch=branch_name, repository__ids=[str(self.id)])
         }
 
-        local_rfiles = {}
+        local_rfiles: Dict[str, InfrahubRepositoryRFile] = {}
 
         # Process the list of local RFile to organize them by name
-        for rfile in config_file.rfiles:
+        for config_rfile in config_file.rfiles:
             try:
-                self.client.schema.validate_data_against_schema(schema=schema, data=rfile.dict(exclude_none=True))
+                self.client.schema.validate_data_against_schema(
+                    schema=schema, data=config_rfile.dict(exclude_none=True)
+                )
             except PydanticValidationError as exc:
                 for error in exc.errors():
                     LOGGER.error(f"  {'/'.join(error['loc'])} | {error['msg']} ({error['type']})")
@@ -1031,7 +1038,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 LOGGER.error(exc.message)
                 continue
 
-            rfile.repository = self.id
+            rfile = InfrahubRepositoryRFile(repository=str(self.id), **config_rfile.dict())
 
             # Query the GraphQL query and (eventually) replace the name with the ID
             graphql_query = await self.client.get(
@@ -1064,7 +1071,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             LOGGER.info(f"{self.name} | RFile '{rfile_name}' not found locally in branch {branch_name}, deleting")
             await rfiles_in_graph[rfile_name].delete()
 
-    async def create_rfile(self, branch_name: str, data: InfrahubRepositoryRFileConfig) -> InfrahubNode:
+    async def create_rfile(self, branch_name: str, data: InfrahubRepositoryRFile) -> InfrahubNode:
         schema = await self.client.schema.get(kind="CoreRFile", branch=branch_name)
         create_payload = self.client.schema.generate_payload_create(
             schema=schema, data=data.payload, source=self.id, is_protected=True
@@ -1074,7 +1081,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         return obj
 
     @classmethod
-    async def compare_rfile(cls, existing_rfile: InfrahubNode, local_rfile: InfrahubRepositoryRFileConfig) -> bool:
+    async def compare_rfile(cls, existing_rfile: InfrahubNode, local_rfile: InfrahubRepositoryRFile) -> bool:
         # pylint: disable=no-member
         if (
             existing_rfile.description.value != local_rfile.description
@@ -1085,7 +1092,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         return True
 
-    async def update_rfile(self, existing_rfile: InfrahubNode, local_rfile: InfrahubRepositoryRFileConfig) -> None:
+    async def update_rfile(self, existing_rfile: InfrahubNode, local_rfile: InfrahubRepositoryRFile) -> None:
         # pylint: disable=no-member
         if existing_rfile.description.value != local_rfile.description:
             existing_rfile.description.value = local_rfile.description
