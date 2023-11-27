@@ -39,10 +39,9 @@ async def test_query_types(query_01: str, query_03: str, query_introspection: st
     assert gqa.operations == [GraphQLOperation(name="TestPerson", operation_type=OperationType.QUERY)]
 
     gqa = GraphQLQueryAnalyzer(query=query_03)
-    operations = gqa.operations
-    assert len(operations) == 2
-    assert GraphQLOperation(name="TestPerson", operation_type=OperationType.QUERY) in operations
-    assert GraphQLOperation(name="TestPersonCreate", operation_type=OperationType.MUTATION) in operations
+    assert len(gqa.operations) == 2
+    assert GraphQLOperation(name="TestPerson", operation_type=OperationType.QUERY) in gqa.operations
+    assert GraphQLOperation(name="TestPersonCreate", operation_type=OperationType.MUTATION) in gqa.operations
 
     gqa = GraphQLQueryAnalyzer(query=query_introspection)
     assert gqa.operations == [GraphQLOperation(name="__schema", operation_type=OperationType.QUERY)]
