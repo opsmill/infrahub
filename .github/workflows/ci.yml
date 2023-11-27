@@ -450,8 +450,7 @@ jobs:
       - name: Run End to End Tests
         working-directory: ./frontend
         run: npm run cypress:run:e2e
-      - name: Containers after failure
-        if: failure()
+      - name: Containers after tests
         run: docker ps -a
       - name: Upload cypress screenshots
         if: failure()
@@ -460,19 +459,14 @@ jobs:
           name: screenshots
           path: docs/media/*
       - name: Display server logs
-        if: failure()
         run: docker logs infrahub-infrahub-server-1
       - name: Display git 1 logs
-        if: failure()
         run: docker logs infrahub-infrahub-git-1
       - name: Display git 2 logs
-        if: failure()
         run: docker logs infrahub-infrahub-git-2
       - name: Display database logs
-        if: failure()
         run: docker logs infrahub-database-1
       - name: Display server status
-        if: failure()
         run: invoke demo.status
 
   # ------------------------------------------ Coverall Report  ------------------------------------------
