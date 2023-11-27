@@ -15,6 +15,14 @@ export const AddComment = (props: tAddComment) => {
   const { onSubmit, isLoading, onCancel, disabled, additionalButtons } = props;
   const ref = useRef<MDXEditorMethods>(null);
 
+  const handleCommentSubmit = async () => {
+    const markdown = ref.current?.getMarkdown();
+    if (markdown) {
+      await onSubmit(markdown);
+      ref.current?.setMarkdown("");
+    }
+  };
+
   return (
     <>
       <MarkdownEditor ref={ref} />
@@ -25,11 +33,7 @@ export const AddComment = (props: tAddComment) => {
         {onCancel && <Button onClick={onCancel}>Cancel</Button>}
 
         <Button
-          onClick={async () => {
-            const markdown = ref.current?.getMarkdown();
-            if (markdown) await onSubmit(markdown);
-            ref.current?.setMarkdown("");
-          }}
+          onClick={handleCommentSubmit}
           buttonType={BUTTON_TYPES.MAIN}
           isLoading={isLoading}
           disabled={disabled}

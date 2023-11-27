@@ -17,3 +17,9 @@ export const stringifyWithoutQuotes = (obj: object): string => {
 export const cleanTabsAndNewLines = (string: string) => {
   return string.replaceAll(/\t*\n*/g, "").replaceAll(/\s+/g, " ");
 };
+
+export const capitalizeFirstLetter = (string: string) => {
+  return string.charAt(0).toUpperCase() + string.slice(1);
+};
+
+export const concatString = (acc: string, elem: string) => `${acc}${elem}`;
