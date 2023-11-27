@@ -6,12 +6,10 @@ rfiles:
   - name: device_startup
     description: "Template to generate startup configuration for network devices"
     query: "device_startup_info"
-    repository: "self"
     template_path: "templates/device_startup_config.tpl.j2"
 
   - name: clab_topology
     query: "topology_info"
-    repository: "self"
     template_path: "topology/topology.tpl.j2"
 
 artifact_definitions:

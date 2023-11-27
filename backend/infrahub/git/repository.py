@@ -1031,9 +1031,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 LOGGER.error(exc.message)
                 continue
 
-            # Insert the ID of the current repository if required
-            if rfile.repository == "self":
-                rfile.repository = self.id
+            rfile.repository = self.id
 
             # Query the GraphQL query and (eventually) replace the name with the ID
             graphql_query = await self.client.get(
