@@ -232,7 +232,7 @@ class RelatedNodeBase:
         return data
 
     @classmethod
-    def _generate_query_data(cls, peer_data: Dict[str, Any] = None) -> Dict:
+    def _generate_query_data(cls, peer_data: Optional[Dict[str, Any]] = None) -> Dict:
         """Generates the basic structure of a GraphQL query for a single relationship.
 
         Args:
@@ -389,7 +389,7 @@ class RelationshipManagerBase:
         return [peer._generate_input_data() for peer in self.peers]
 
     @classmethod
-    def _generate_query_data(cls, peer_data: Dict[str, Any] = None) -> Dict:
+    def _generate_query_data(cls, peer_data: Optional[Dict[str, Any]] = None) -> Dict:
         """Generates the basic structure of a GraphQL query for relationships with multiple nodes.
 
         Args:
@@ -632,8 +632,6 @@ class RelationshipManagerSync(RelationshipManagerBase):
 class InfrahubNodeBase:
     """Base class for InfrahubNode and InfrahubNodeSync"""
 
-    _client: Union[InfrahubClient, InfrahubClientSync]
-
     def __init__(
         self,
         schema: Union[NodeSchema, GenericSchema],
@@ -863,86 +861,6 @@ class InfrahubNodeBase:
 
         return data
 
-    def generate_query_data_node(
-        self,
-        include: Optional[List[str]] = None,
-        exclude: Optional[List[str]] = None,
-        inherited: bool = True,
-        insert_alias: bool = False,
-        prefetch_relationships: bool = False,
-    ) -> Dict[str, Union[Any, Dict]]:
-        """Generate the node part of a GraphQL Query with attributes and nodes.
-
-        Args:
-            include (Optional[List[str]], optional): List of attributes or relationships to include. Defaults to None.
-            exclude (Optional[List[str]], optional): List of attributes or relationships to exclude. Defaults to None.
-            inherited (bool, optional): Indicated of the attributes and the relationships inherited from generics should be included as well.
-                                        Defaults to True.
-            insert_alias (bool, optional): If True, inserts aliases in the query for each attribute or relationship.
-            prefetch_relationships (bool, optional): If True, pre-fetches relationship data as part of the query.
-
-        Returns:
-            Dict[str, Union[Any, Dict]]: GraphQL query in dictionary format
-        """
-        # pylint: disable=too-many-branches
-
-        data: Dict[str, Any] = {}
-
-        for attr_name in self._attributes:
-            if exclude and attr_name in exclude:
-                continue
-
-            attr: Attribute = getattr(self, attr_name)
-
-            if not inherited and attr._schema.inherited:
-                continue
-
-            attr_data = attr._generate_query_data()
-            if attr_data:
-                data[attr_name] = attr_data
-                if insert_alias:
-                    data[attr_name]["@alias"] = f"__alias__{self._schema.kind}__{attr_name}"
-            elif insert_alias:
-                if insert_alias:
-                    data[attr_name] = {"@alias": f"__alias__{self._schema.kind}__{attr_name}"}
-
-        for rel_name in self._relationships:
-            if exclude and rel_name in exclude:
-                continue
-
-            rel_schema = self._schema.get_relationship(name=rel_name)
-
-            if not rel_schema or (not inherited and rel_schema.inherited):
-                continue
-
-            if (
-                rel_schema.cardinality == RelationshipCardinality.MANY  # type: ignore[union-attr]
-                and rel_schema.kind not in [RelationshipKind.ATTRIBUTE, RelationshipKind.PARENT]  # type: ignore[union-attr]
-                and not (include and rel_name in include)
-            ):
-                continue
-
-            peer_data: Dict[str, Any] = None
-            if prefetch_relationships:
-                rel_schema = self._schema.get_relationship(name=rel_name)
-                peer_schema = self._client.schema.get(kind=rel_schema.peer)
-                peer_node = InfrahubNodeBase(schema=peer_schema, branch=self._branch)
-                peer_data = peer_node.generate_query_data_node(
-                    include=include, exclude=exclude, inherited=False, prefetch_relationships=False
-                )
-
-            if rel_schema and rel_schema.cardinality == "one":
-                rel_data = RelatedNodeBase._generate_query_data(peer_data=peer_data)
-            elif rel_schema and rel_schema.cardinality == "many":
-                rel_data = RelationshipManagerBase._generate_query_data(peer_data=peer_data)
-
-            data[rel_name] = rel_data
-
-            if insert_alias:
-                data[rel_name]["@alias"] = f"__alias__{self._schema.kind}__{rel_name}"
-
-        return data
-
     def validate_filters(self, filters: Optional[Dict[str, Any]] = None) -> bool:
         if not filters:
             return True
@@ -971,11 +889,13 @@ class InfrahubNodeBase:
 
         return result
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.id)
 
-    def __eq__(self, other_node: Union[InfrahubNode, InfrahubNodeSync]) -> bool:
-        return isinstance(other_node, (InfrahubNode, InfrahubNodeSync)) and self.id == other_node.id
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, (InfrahubNode, InfrahubNodeSync)):
+            return NotImplemented
+        return self.id == other.id
 
 
 class InfrahubNode(InfrahubNodeBase):
@@ -1089,8 +1009,11 @@ class InfrahubNode(InfrahubNodeBase):
             exclude=exclude,
         )
         data["edges"]["node"].update(
-            self.generate_query_data_node(
-                include=include, exclude=exclude, prefetch_relationships=prefetch_relationships, inherited=True
+            await self.generate_query_data_node(
+                include=include,
+                exclude=exclude,
+                prefetch_relationships=prefetch_relationships,
+                inherited=True,
             )
         )
 
@@ -1107,7 +1030,7 @@ class InfrahubNode(InfrahubNodeBase):
                 if exclude:
                     exclude_child += exclude
 
-                child_data = child_node.generate_query_data_node(
+                child_data = await child_node.generate_query_data_node(
                     include=include,
                     exclude=exclude_child,
                     prefetch_relationships=prefetch_relationships,
@@ -1119,6 +1042,88 @@ class InfrahubNode(InfrahubNodeBase):
                     data["edges"]["node"][f"...on {child}"] = child_data
 
         return {self._schema.kind: data}
+
+    async def generate_query_data_node(
+        self,
+        include: Optional[List[str]] = None,
+        exclude: Optional[List[str]] = None,
+        inherited: bool = True,
+        insert_alias: bool = False,
+        prefetch_relationships: bool = False,
+    ) -> Dict[str, Union[Any, Dict]]:
+        """Generate the node part of a GraphQL Query with attributes and nodes.
+
+        Args:
+            include (Optional[List[str]], optional): List of attributes or relationships to include. Defaults to None.
+            exclude (Optional[List[str]], optional): List of attributes or relationships to exclude. Defaults to None.
+            inherited (bool, optional): Indicated of the attributes and the relationships inherited from generics should be included as well.
+                                        Defaults to True.
+            insert_alias (bool, optional): If True, inserts aliases in the query for each attribute or relationship.
+            prefetch_relationships (bool, optional): If True, pre-fetches relationship data as part of the query.
+
+        Returns:
+            Dict[str, Union[Any, Dict]]: GraphQL query in dictionary format
+        """
+        # pylint: disable=too-many-branches
+
+        data: Dict[str, Any] = {}
+
+        for attr_name in self._attributes:
+            if exclude and attr_name in exclude:
+                continue
+
+            attr: Attribute = getattr(self, attr_name)
+
+            if not inherited and attr._schema.inherited:
+                continue
+
+            attr_data = attr._generate_query_data()
+            if attr_data:
+                data[attr_name] = attr_data
+                if insert_alias:
+                    data[attr_name]["@alias"] = f"__alias__{self._schema.kind}__{attr_name}"
+            elif insert_alias:
+                if insert_alias:
+                    data[attr_name] = {"@alias": f"__alias__{self._schema.kind}__{attr_name}"}
+
+        for rel_name in self._relationships:
+            if exclude and rel_name in exclude:
+                continue
+
+            rel_schema = self._schema.get_relationship(name=rel_name)
+
+            if not rel_schema or (not inherited and rel_schema.inherited):
+                continue
+
+            if (
+                rel_schema.cardinality == RelationshipCardinality.MANY  # type: ignore[union-attr]
+                and rel_schema.kind not in [RelationshipKind.ATTRIBUTE, RelationshipKind.PARENT]  # type: ignore[union-attr]
+                and not (include and rel_name in include)
+            ):
+                continue
+
+            peer_data: Dict[str, Any] = {}
+            if prefetch_relationships:
+                rel_schema = self._schema.get_relationship(name=rel_name)
+                if not rel_schema:
+                    continue
+                peer_schema = await self._client.schema.get(kind=rel_schema.peer)
+                peer_node = InfrahubNode(client=self._client, schema=peer_schema, branch=self._branch)
+                peer_data = await peer_node.generate_query_data_node(
+                    include=include, exclude=exclude, inherited=False, prefetch_relationships=False
+                )
+
+            if rel_schema and rel_schema.cardinality == "one":
+                rel_data = RelatedNode._generate_query_data(peer_data=peer_data)
+            elif rel_schema and rel_schema.cardinality == "many":
+                rel_data = RelationshipManager._generate_query_data(peer_data=peer_data)
+
+            data[rel_name] = rel_data
+
+            if insert_alias:
+                data[rel_name]["@alias"] = f"__alias__{self._schema.kind}__{rel_name}"
+
+        return data
 
     async def _create(self, at: Timestamp) -> None:
         input_data = self._generate_input_data()
@@ -1300,6 +1305,88 @@ class InfrahubNodeSync(InfrahubNodeBase):
                     data["edges"]["node"][f"...on {child}"] = child_data
 
         return {self._schema.kind: data}
+
+    def generate_query_data_node(
+        self,
+        include: Optional[List[str]] = None,
+        exclude: Optional[List[str]] = None,
+        inherited: bool = True,
+        insert_alias: bool = False,
+        prefetch_relationships: bool = False,
+    ) -> Dict[str, Union[Any, Dict]]:
+        """Generate the node part of a GraphQL Query with attributes and nodes.
+
+        Args:
+            include (Optional[List[str]], optional): List of attributes or relationships to include. Defaults to None.
+            exclude (Optional[List[str]], optional): List of attributes or relationships to exclude. Defaults to None.
+            inherited (bool, optional): Indicated of the attributes and the relationships inherited from generics should be included as well.
+                                        Defaults to True.
+            insert_alias (bool, optional): If True, inserts aliases in the query for each attribute or relationship.
+            prefetch_relationships (bool, optional): If True, pre-fetches relationship data as part of the query.
+
+        Returns:
+            Dict[str, Union[Any, Dict]]: GraphQL query in dictionary format
+        """
+        # pylint: disable=too-many-branches
+
+        data: Dict[str, Any] = {}
+
+        for attr_name in self._attributes:
+            if exclude and attr_name in exclude:
+                continue
+
+            attr: Attribute = getattr(self, attr_name)
+
+            if not inherited and attr._schema.inherited:
+                continue
+
+            attr_data = attr._generate_query_data()
+            if attr_data:
+                data[attr_name] = attr_data
+                if insert_alias:
+                    data[attr_name]["@alias"] = f"__alias__{self._schema.kind}__{attr_name}"
+            elif insert_alias:
+                if insert_alias:
+                    data[attr_name] = {"@alias": f"__alias__{self._schema.kind}__{attr_name}"}
+
+        for rel_name in self._relationships:
+            if exclude and rel_name in exclude:
+                continue
+
+            rel_schema = self._schema.get_relationship(name=rel_name)
+
+            if not rel_schema or (not inherited and rel_schema.inherited):
+                continue
+
+            if (
+                rel_schema.cardinality == RelationshipCardinality.MANY  # type: ignore[union-attr]
+                and rel_schema.kind not in [RelationshipKind.ATTRIBUTE, RelationshipKind.PARENT]  # type: ignore[union-attr]
+                and not (include and rel_name in include)
+            ):
+                continue
+
+            peer_data: Dict[str, Any] = {}
+            if prefetch_relationships:
+                rel_schema = self._schema.get_relationship(name=rel_name)
+                if not rel_schema:
+                    continue
+                peer_schema = self._client.schema.get(kind=rel_schema.peer)
+                peer_node = InfrahubNodeSync(client=self._client, schema=peer_schema, branch=self._branch)
+                peer_data = peer_node.generate_query_data_node(
+                    include=include, exclude=exclude, inherited=False, prefetch_relationships=False
+                )
+
+            if rel_schema and rel_schema.cardinality == "one":
+                rel_data = RelatedNodeSync._generate_query_data(peer_data=peer_data)
+            elif rel_schema and rel_schema.cardinality == "many":
+                rel_data = RelationshipManagerSync._generate_query_data(peer_data=peer_data)
+
+            data[rel_name] = rel_data
+
+            if insert_alias:
+                data[rel_name]["@alias"] = f"__alias__{self._schema.kind}__{rel_name}"
+
+        return data
 
     def _create(self, at: Timestamp) -> None:
         input_data = self._generate_input_data()

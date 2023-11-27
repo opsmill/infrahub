@@ -188,15 +188,15 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
                 - The second list contains related nodes if prefetch_relationships is True.
         """
 
-        nodes = []
-        related_nodes = []
+        nodes: List[InfrahubNode] = []
+        related_nodes: List[InfrahubNode] = []
 
         for item in response[schema_kind]["edges"]:
             node = await InfrahubNode.from_graphql(client=self, branch=branch, data=item)
             nodes.append(node)
 
             if prefetch_relationships:
-                self.process_relationships(node, item, branch, related_nodes)
+                await self.process_relationships(node, item, branch, related_nodes)
 
         return nodes, related_nodes
 
@@ -312,7 +312,6 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         if filters:
             node.validate_filters(filters=filters)
 
-        nodes = []
         # If Offset or Limit was provided we just query as it
         # If not, we'll query all nodes based on the size of the batch
         if offset or limit:
@@ -802,8 +801,8 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
                 - The second list contains related nodes if prefetch_relationships is True.
         """
 
-        nodes = []
-        related_nodes = []
+        nodes: List[InfrahubNodeSync] = []
+        related_nodes: List[InfrahubNodeSync] = []
 
         for item in response[schema_kind]["edges"]:
             node = InfrahubNodeSync.from_graphql(client=self, branch=branch, data=item)
@@ -926,8 +925,6 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         if filters:
             node.validate_filters(filters=filters)
 
-        nodes = []
-        related_nodes = []
         # If Offset or Limit was provided we just query as it
         # If not, we'll query all nodes based on the size of the batch
         if offset or limit:
