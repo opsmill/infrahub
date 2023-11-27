@@ -257,17 +257,13 @@ class FilterSchema(BaseSchemaModel):
     _sort_by: List[str] = ["name"]
 
 
-class DropdownChoice(BaseModel):
+class DropdownChoice(BaseSchemaModel):
     name: str
     description: str = ""
     color: str = ""
     label: str = ""
 
-    def __lt__(self, other) -> bool:
-        if not isinstance(other, DropdownChoice):
-            raise NotImplementedError
-
-        return self.name < other.name
+    _sort_by: List[str] = ["name"]
 
     @validator("color")
     def kind_options(

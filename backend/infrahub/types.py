@@ -182,7 +182,7 @@ class Color(InfrahubDataType):
 
 
 class Dropdown(InfrahubDataType):
-    label: str = "Color"
+    label: str = "Dropdown"
     graphql = graphene.String
     graphql_query = "DropdownType"
     graphql_input = "TextAttributeInput"

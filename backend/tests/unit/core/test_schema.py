@@ -403,5 +403,3 @@ def test_dropdown_choice_sort():
     active = DropdownChoice(name="active", color="#AAbb0f")
     passive = DropdownChoice(name="passive", color="#AAbb0f")
     assert active < passive
-    with pytest.raises(NotImplementedError):
-        assert not active < object
