@@ -51,6 +51,8 @@ export const Select = (props: SelectProps) => {
     ...otherProps
   } = props;
 
+  const { multiple } = props;
+
   const [schemaList] = useAtom(schemaState);
   const [schemaKindName] = useAtom(schemaKindNameState);
   const branch = useReactiveVar(branchVar);
@@ -58,7 +60,7 @@ export const Select = (props: SelectProps) => {
   const [open, setOpen] = useState(false);
   const [localOptions, setLocalOptions] = useState(options);
   const [selectedOption, setSelectedOption] = useState(
-    props.multiple ? value : options.find((option: any) => option?.id === value)
+    multiple ? value : options.find((option: any) => option?.id === value)
   );
 
   const schemaData = schemaList.find((s) => s.kind === peer);
@@ -80,6 +82,20 @@ export const Select = (props: SelectProps) => {
       return;
     }
 
+    if (multiple) {
+      const includesNewItemCreation = item.find((i) => i.id === addOption.id);
+
+      if (!includesNewItemCreation) {
+        setSelectedOption(item);
+        setOpen(false);
+        onChange(item);
+        return;
+      }
+
+      setOpen(true);
+      return;
+    }
+
     setSelectedOption(item);
     setQuery("");
     setOpen(false);
@@ -94,11 +110,17 @@ export const Select = (props: SelectProps) => {
 
     setLocalOptions([...localOptions, newItem]);
 
+    if (multiple) {
+      handleChange([...value, newItem]);
+
+      return;
+    }
+
     handleChange(newItem);
   };
 
   const handleInputChange = (value: any) => {
-    if (props.multiple) {
+    if (multiple) {
       setSelectedOption(value);
       return;
     }
@@ -109,7 +131,7 @@ export const Select = (props: SelectProps) => {
   };
 
   const getInputValue = () => {
-    if (props.multiple) {
+    if (multiple) {
       return selectedOption;
     }
 
@@ -130,7 +152,7 @@ export const Select = (props: SelectProps) => {
         {...otherProps}>
         <div className="relative mt-1">
           <Combobox.Input
-            as={props.multiple ? MultipleInput : Input}
+            as={multiple ? MultipleInput : Input}
             value={getInputValue()}
             onChange={handleInputChange}
             disabled={disabled}
