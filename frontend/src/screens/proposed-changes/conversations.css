@@ -195,15 +195,15 @@
   border-radius: 0.5rem 0.5rem 0 0;
 }
 
-.markdown-editor-content .cm-gutters {
+.cm-gutters {
   display: none !important;
 }
 
-.markdown-editor-content .cm-content {
+.cm-content {
   padding: 12px !important;
 }
 
-.markdown-editor-content .cm-editor,
-.markdown-editor-content .cm-activeLine {
+.cm-editor,
+.cm-activeLine {
   background: transparent !important;
 }
