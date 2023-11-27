@@ -90,9 +90,6 @@ Below is the list of all available options to define a Relationship in the schem
 | **Default Value** | False |
 | **Constraints** |  |
 
-
-### kind
-
 | Key | Value | { class="compact" }
 | ---- | --------------- |
 | **Name** | kind |

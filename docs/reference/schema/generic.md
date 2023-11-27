@@ -175,6 +175,16 @@ Below is the list of all available options to define a Generic in the schema
 | **Constraints** |  |
 
 
+## side
+
+| -- | -- | { class="compact" }
+| ---- | --------------- |
+| **Name** | side |
+| **Kind** | `Text` |
+| **Description** |  |
+| **Constraints** |  |
+| **Accepted Values** | `both` `source` `destination`  |
+
 
 ## attributes
 
