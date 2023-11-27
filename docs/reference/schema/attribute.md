@@ -18,6 +18,7 @@ Below is the list of all available options to define an Attribute in the schema
 | [**name**](#name) | Attribute name, must be unique within a model and must be all lowercase. | False |
 | [**kind**](#kind) | Defines the type of the attribute. | False |
 | [**enum**](#enum) | Define a list of valid values for the attribute. | True |
+| [**choices**](#choices) | Define a list of valid choices for a dropdown attribute. | True |
 | [**regex**](#regex) | Regex uses to limit limit the characters allowed in for the attributes. | True |
 | [**max_length**](#max_length) | Set a maximum number of characters allowed for a given attribute. | True |
 | [**min_length**](#min_length) | Set a minimum number of characters allowed for a given attribute. | True |
@@ -71,17 +72,11 @@ extensions:
 | ---- | --------------- |
 | **Name** | kind |
 | **Kind** | `Text` |
-<<<<<<< HEAD
-| **Description** |  |
-| **Constraints** | <br> Length: min 3, max 3 |
-| **Accepted Values** | `ID` `Dropdown` `Text` `TextArea` `DateTime` `Email` `Password` `HashedPassword` `URL` `File` `MacAddress` `Color` `Number` `Bandwidth` `IPHost` `IPNetwork` `Checkbox` `List` `JSON` `Any` `String` `Integer` `Boolean`  |
-=======
 | **Description** | Defines the type of the attribute. |
 | **Optional**  | False |
 | **Default Value** |  |
 | **Constraints** |  Length: min 3, max 32 |
-| **Accepted Values** | `ID` `Text` `TextArea` `DateTime` `Email` `Password` `HashedPassword` `URL` `File` `MacAddress` `Color` `Number` `Bandwidth` `IPHost` `IPNetwork` `Checkbox` `List` `JSON` `Any` `String` `Integer` `Boolean`  |
->>>>>>> efa30d1b (Update Schema Attribute page in docs)
+| **Accepted Values** | `ID` `Dropdown` `Text` `TextArea` `DateTime` `Email` `Password` `HashedPassword` `URL` `File` `MacAddress` `Color` `Number` `Bandwidth` `IPHost` `IPNetwork` `Checkbox` `List` `JSON` `Any` `String` `Integer` `Boolean`  |
 
 ### enum
 
@@ -95,21 +90,19 @@ extensions:
 | **Constraints** |  |
 
 
-<<<<<<< HEAD
-## choices
+### choices
 
-| -- | -- | { class="compact" }
+| Key | Value | { class="compact" }
 | ---- | --------------- |
 | **Name** | choices |
 | **Kind** | `List` |
-| **Description** |  |
+| **Description** | Define a list of valid choices for a dropdown attribute. |
+| **Optional**  | True |
+| **Default Value** |  |
 | **Constraints** |  |
 
 
-## regex
-=======
 ### regex
->>>>>>> efa30d1b (Update Schema Attribute page in docs)
 
 | Key | Value | { class="compact" }
 | ---- | --------------- |
