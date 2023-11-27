@@ -34,12 +34,18 @@ async def test_nbr_queries(query_01: str, query_03: str):
     assert gqa.nbr_queries == 2
 
 
-async def test_query_types(query_01: str, query_03: str):
+async def test_query_types(query_01: str, query_03: str, query_introspection: str):
     gqa = GraphQLQueryAnalyzer(query=query_01)
     assert gqa.operations == [GraphQLOperation(name="TestPerson", operation_type=OperationType.QUERY)]
 
     gqa = GraphQLQueryAnalyzer(query=query_03)
-    assert gqa.operations == {OperationType.QUERY, OperationType.MUTATION}
+    operations = gqa.operations
+    assert len(operations) == 2
+    assert GraphQLOperation(name="TestPerson", operation_type=OperationType.QUERY) in operations
+    assert GraphQLOperation(name="TestPersonCreate", operation_type=OperationType.MUTATION) in operations
+
+    gqa = GraphQLQueryAnalyzer(query=query_introspection)
+    assert gqa.operations == [GraphQLOperation(name="__schema", operation_type=OperationType.QUERY)]
 
 
 async def test_is_valid_simple_schema(
