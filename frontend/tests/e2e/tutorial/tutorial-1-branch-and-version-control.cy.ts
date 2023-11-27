@@ -29,8 +29,8 @@ describe("Tutorial - Part 1", () => {
 
     // Add organization name
     cy.contains("Name").should("exist"); // Assert that the form is ready
-    cy.get("#Name").type(ORGANIZATION_NAME);
-    cy.get("#Description").type(ORGANIZATION_DESCRIPTION);
+    cy.get("#Name").type(ORGANIZATION_NAME, { delay: 0, force: true });
+    cy.get("#Description").type(ORGANIZATION_DESCRIPTION, { delay: 0, force: true });
 
     if (this.screenshots) {
       cy.screenshot("tutorial_1_organization_create", screenshotConfig);
