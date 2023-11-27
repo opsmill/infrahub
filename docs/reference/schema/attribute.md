@@ -37,13 +37,23 @@ Below is the list of all available options to define an Attribute in the schema
 | **Kind** | `Text` |
 | **Description** |  |
 | **Constraints** | <br> Length: min 3, max 3 |
-| **Accepted Values** | `ID` `Text` `TextArea` `DateTime` `Email` `Password` `HashedPassword` `URL` `File` `MacAddress` `Color` `Number` `Bandwidth` `IPHost` `IPNetwork` `Checkbox` `List` `JSON` `Any` `String` `Integer` `Boolean`  |
+| **Accepted Values** | `ID` `Dropdown` `Text` `TextArea` `DateTime` `Email` `Password` `HashedPassword` `URL` `File` `MacAddress` `Color` `Number` `Bandwidth` `IPHost` `IPNetwork` `Checkbox` `List` `JSON` `Any` `String` `Integer` `Boolean`  |
 
 ## enum
 
 | -- | -- | { class="compact" }
 | ---- | --------------- |
 | **Name** | enum |
+| **Kind** | `List` |
+| **Description** |  |
+| **Constraints** |  |
+
+
+## choices
+
+| -- | -- | { class="compact" }
+| ---- | --------------- |
+| **Name** | choices |
 | **Kind** | `List` |
 | **Description** |  |
 | **Constraints** |  |

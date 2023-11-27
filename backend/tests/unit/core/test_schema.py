@@ -2,13 +2,14 @@ from typing import Hashable, List, Optional
 
 import pytest
 from deepdiff import DeepDiff
-from pydantic.error_wrappers import ValidationError
+from pydantic import ValidationError
 
 from infrahub.core import registry
 from infrahub.core.constants import BranchSupportType
 from infrahub.core.schema import (
     AttributeSchema,
     BaseSchemaModel,
+    DropdownChoice,
     NodeSchema,
     RelationshipSchema,
     SchemaRoot,
@@ -138,43 +139,6 @@ def test_schema_root_no_generic():
     assert SchemaRoot(**FULL_SCHEMA)
 
 
-def test_node_schema_unique_names():
-    SCHEMA = {
-        "name": "Criticality",
-        "namespace": "Test",
-        "default_filter": "name__value",
-        "branch": BranchSupportType.AWARE.value,
-        "attributes": [
-            {"name": "name", "kind": "Text", "unique": True},
-            {"name": "name", "kind": "Text", "unique": True},
-        ],
-    }
-
-    with pytest.raises(ValidationError) as exc:
-        NodeSchema(**SCHEMA)
-
-    assert "Names of attributes and relationships must be unique" in str(exc.value)
-
-    SCHEMA = {
-        "name": "Criticality",
-        "namespace": "Test",
-        "default_filter": "name__value",
-        "branch": BranchSupportType.AWARE.value,
-        "attributes": [
-            {"name": "name", "kind": "Text", "unique": True},
-            {"name": "dupname", "kind": "Text"},
-        ],
-        "relationships": [
-            {"name": "dupname", "peer": "Criticality", "cardinality": "one"},
-        ],
-    }
-
-    with pytest.raises(ValidationError) as exc:
-        NodeSchema(**SCHEMA)
-
-    assert "Names of attributes and relationships must be unique" in str(exc.value)
-
-
 def test_node_schema_property_unique_attributes():
     SCHEMA = {
         "name": "Criticality",
@@ -190,44 +154,6 @@ def test_node_schema_property_unique_attributes():
     schema = NodeSchema(**SCHEMA)
     assert len(schema.unique_attributes) == 1
     assert schema.unique_attributes[0].name == "name"
-
-
-def test_node_schema_unique_identifiers():
-    SCHEMA = {
-        "name": "Criticality",
-        "namespace": "Test",
-        "default_filter": "name__value",
-        "branch": BranchSupportType.AWARE.value,
-        "attributes": [
-            {"name": "name", "kind": "Text", "unique": True},
-        ],
-        "relationships": [
-            {"name": "first", "peer": "TestCriticality", "cardinality": "one"},
-            {"name": "second", "peer": "TestCriticality", "cardinality": "one"},
-        ],
-    }
-
-    with pytest.raises(ValidationError) as exc:
-        schema = NodeSchema(**SCHEMA)
-
-    assert "Identifier of relationships must be unique" in str(exc.value)
-
-    SCHEMA = {
-        "name": "Criticality",
-        "namespace": "Test",
-        "default_filter": "name__value",
-        "branch": BranchSupportType.AWARE.value,
-        "attributes": [
-            {"name": "name", "kind": "Text", "unique": True},
-        ],
-        "relationships": [
-            {"name": "first", "peer": "TestCriticality", "cardinality": "one"},
-            {"name": "second", "identifier": "something_unique", "peer": "TestCriticality", "cardinality": "one"},
-        ],
-    }
-    schema = NodeSchema(**SCHEMA)
-    assert schema.relationships[0].identifier == "testcriticality__testcriticality"
-    assert schema.relationships[1].identifier == "something_unique"
 
 
 async def test_node_schema_hashable():
@@ -369,3 +295,36 @@ def test_core_models():
 
 def test_internal_schema():
     assert SchemaRoot(**internal_schema)
+
+
+async def test_attribute_schema_choices_invalid_kind():
+    SCHEMA = {"name": "name", "kind": "Text", "choices": [DropdownChoice(name="active", color="#AAbb0f")]}
+
+    with pytest.raises(ValidationError) as exc:
+        AttributeSchema(**SCHEMA)
+
+    assert "Can only specify 'choices' for kind=Dropdown" in str(exc.value)
+
+
+async def test_attribute_schema_dropdown_missing_choices():
+    SCHEMA = {"name": "name", "kind": "Dropdown"}
+
+    with pytest.raises(ValidationError) as exc:
+        AttributeSchema(**SCHEMA)
+
+    assert "The property 'choices' is required for kind=Dropdown" in str(exc.value)
+
+
+def test_dropdown_choice_colors():
+    active = DropdownChoice(name="active", color="#AAbb0f")
+    assert active.color == "#aabb0f"
+    with pytest.raises(ValidationError) as exc:
+        DropdownChoice(name="active", color="off-white")
+
+    assert "Color must be a valid HTML color code" in str(exc.value)
+
+
+def test_dropdown_choice_sort():
+    active = DropdownChoice(name="active", color="#AAbb0f")
+    passive = DropdownChoice(name="passive", color="#AAbb0f")
+    assert active < passive

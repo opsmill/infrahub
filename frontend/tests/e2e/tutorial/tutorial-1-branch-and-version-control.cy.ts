@@ -28,6 +28,7 @@ describe("Tutorial - Part 1", () => {
     cy.get("[data-cy='create']").click();
 
     // Add organization name
+    cy.contains("Name").should("exist"); // Assert that the form is ready
     cy.get("#Name").type(ORGANIZATION_NAME);
     cy.get("#Description").type(ORGANIZATION_DESCRIPTION);
 
@@ -52,6 +53,7 @@ describe("Tutorial - Part 1", () => {
     cy.get("[data-cy='create-branch-button']").click();
 
     // Fill the new branch name
+    cy.contains("Branch name").should("exist"); // Assert that the form is ready
     cy.get("#new-branch-name").type(NEW_BRANCH_NAME, { delay: 0, force: true });
 
     if (this.screenshots) {
@@ -95,12 +97,13 @@ describe("Tutorial - Part 1", () => {
     cy.contains("Edit").click();
 
     // Verify that the field is pre-populated
-    cy.get(".grid > :nth-child(1) > .relative > .block").should("have.value", ORGANIZATION_NAME);
+    cy.contains("Name").should("exist"); // Assert that the form is ready
+    cy.get("#Name").should("have.value", ORGANIZATION_NAME);
 
     // Update the label
-    cy.get(":nth-child(3) > .relative > .block").should("have.value", ORGANIZATION_DESCRIPTION);
-    cy.get(":nth-child(3) > .relative > .block").clear();
-    cy.get(":nth-child(3) > .relative > .block").type(NEW_ORGANIZATION_DESCRIPTION, {
+    cy.get("#Description").should("have.value", ORGANIZATION_DESCRIPTION);
+    cy.get("#Description").clear();
+    cy.get("#Description").type(NEW_ORGANIZATION_DESCRIPTION, {
       delay: 0,
       force: true,
     });
