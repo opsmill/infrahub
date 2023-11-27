@@ -69,7 +69,7 @@ class GraphQLQueryAnalyzer:
 
     @property
     def contains_mutation(self) -> bool:
-        return any([op.operation_type == OperationType.MUTATION for op in self.operations])
+        return any(op.operation_type == OperationType.MUTATION for op in self.operations)
 
     @property
     def variables(self) -> List[GraphQLQueryVariable]:
