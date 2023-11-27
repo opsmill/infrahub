@@ -51,7 +51,8 @@ AttributeKind = enum.Enum("AttributeKind", dict(attribute_dict))
 RELATIONSHIPS_MAPPING = {"Relationship": Relationship}
 
 NODE_KIND_REGEX = r"^[A-Z][a-zA-Z0-9]+$"
-NODE_NAME_REGEX = r"^[a-z0-9\_]+$"
+NODE_NAME_REGEX = r"^[A-Z][a-zA-Z0-9]+$"
+NAME_REGEX = r"^[a-z0-9\_]+$"
 
 DEFAULT_NAME_MIN_LENGTH = 2
 DEFAULT_NAME_MAX_LENGTH = 32
@@ -781,6 +782,7 @@ internal_schema = {
                 {
                     "name": "default_filter",
                     "kind": "Text",
+                    "regex": str(NAME_REGEX),
                     "description": "Default filter used to search for a node in addition to its ID.",
                     "optional": True,
                 },
@@ -860,7 +862,7 @@ internal_schema = {
                     "name": "name",
                     "description": "Attribute name, must be unique within a model and must be all lowercase.",
                     "kind": "Text",
-                    "regex": str(NODE_NAME_REGEX),
+                    "regex": str(NAME_REGEX),
                     "min_length": DEFAULT_KIND_MIN_LENGTH,
                     "max_length": DEFAULT_KIND_MAX_LENGTH,
                 },
@@ -986,7 +988,7 @@ internal_schema = {
                 {
                     "name": "name",
                     "kind": "Text",
-                    "regex": str(NODE_NAME_REGEX),
+                    "regex": str(NAME_REGEX),
                     "min_length": DEFAULT_KIND_MIN_LENGTH,
                     "max_length": DEFAULT_KIND_MAX_LENGTH,
                 },
@@ -1011,7 +1013,12 @@ internal_schema = {
                     "description": "Short description of the attribute.",
                     "max_length": DEFAULT_DESCRIPTION_LENGTH,
                 },
-                {"name": "identifier", "kind": "Text", "max_length": DEFAULT_REL_IDENTIFIER_LENGTH, "optional": True},
+                {
+                    "name": "identifier",
+                    "kind": "Text",
+                    "regex": str(NAME_REGEX),
+                    "max_length": DEFAULT_REL_IDENTIFIER_LENGTH,
+                    "optional": True},
                 {"name": "cardinality", "kind": "Text", "enum": RelationshipCardinality.available_types()},
                 {"name": "order_weight", "kind": "Number", "optional": True},
                 {
