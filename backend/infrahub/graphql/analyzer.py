@@ -64,9 +64,10 @@ class GraphQLQueryAnalyzer:
     def variables(self) -> List[GraphQLQueryVariable]:
         response = []
         for definition in self.document.definitions:
-            if not definition.variable_definitions:
+            variable_definitions = getattr(definition, "variable_definitions", None)
+            if not variable_definitions:
                 continue
-            for variable in definition.variable_definitions:
+            for variable in variable_definitions:
                 data = {"name": variable.variable.name.value}
                 non_null = False
                 if variable.type.kind == "non_null_type":
