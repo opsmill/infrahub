@@ -232,7 +232,7 @@ class RelatedNodeBase:
         return data
 
     @classmethod
-    def _generate_query_data(cls, peer_data: Dict[str, Any | Dict] = None) -> Dict:
+    def _generate_query_data(cls, peer_data: Dict[str, Any] = None) -> Dict:
         """Generates the basic structure of a GraphQL query for a single relationship.
 
         Args:
@@ -389,7 +389,7 @@ class RelationshipManagerBase:
         return [peer._generate_input_data() for peer in self.peers]
 
     @classmethod
-    def _generate_query_data(cls, peer_data: Dict[str, Any | Dict] = None) -> Dict:
+    def _generate_query_data(cls, peer_data: Dict[str, Any] = None) -> Dict:
         """Generates the basic structure of a GraphQL query for relationships with multiple nodes.
 
         Args:
@@ -922,7 +922,7 @@ class InfrahubNodeBase:
             ):
                 continue
 
-            peer_data: Dict[str, Any | Dict] = None
+            peer_data: Dict[str, Any] = None
             if prefetch_relationships:
                 rel_schema = self._schema.get_relationship(name=rel_name)
                 peer_schema = self._client.schema.get(kind=rel_schema.peer)

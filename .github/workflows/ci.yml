@@ -45,7 +45,7 @@ jobs:
       yaml: ${{ steps.changes.outputs.yaml_all }}
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v3"
+        uses: "actions/checkout@v4"
       - name: Check for file changes
         uses: dorny/paths-filter@v2
         id: changes
@@ -61,7 +61,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v3"
+        uses: "actions/checkout@v4"
       - name: "Identify which files have changed"
         uses: dorny/paths-filter@v2
         id: changes
@@ -72,7 +72,7 @@ jobs:
               - '**.yaml'
               - 'development/workflows/ci.yml'
       - name: "Setup environment"
-        run: "pip install yamllint==1.29.0"
+        run: "pip install yamllint==1.33.0"
       - name: "Linting: yamllint"
         run: "yamllint ."
 
@@ -83,9 +83,9 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v3"
+        uses: "actions/checkout@v4"
       - name: Install NodeJS
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 16
           cache: 'npm'
@@ -104,9 +104,9 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v3"
+        uses: "actions/checkout@v4"
       - name: "Setup environment"
-        run: "pip install ruff==0.1.5"
+        run: "pip install ruff==0.1.6"
       - name: "Linting: ruff check"
         run: "ruff check --diff ."
       - name: "Linting: ruff format"
@@ -132,7 +132,7 @@ jobs:
         working-directory: python_sdk/
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v3"
+        uses: "actions/checkout@v4"
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
@@ -155,7 +155,7 @@ jobs:
         env:
           BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_SDK_UNIT }}
       - name: "Coveralls : Unit Tests"
-        uses: coverallsapp/github-action@v2.0.0
+        uses: coverallsapp/github-action@v2
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
@@ -167,8 +167,7 @@ jobs:
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.sdk == 'true'
+      !contains(needs.*.result, 'cancelled')
     needs: ["python-sdk-unit-tests"]
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -176,7 +175,7 @@ jobs:
       INFRAHUB_DB_TYPE: memgraph
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v3"
+        uses: "actions/checkout@v4"
       - name: "Install Invoke"
         run: "pip install toml invoke"
       - name: "Build Test Image"
@@ -188,7 +187,7 @@ jobs:
         env:
           BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_SDK_INTEGRATION }}
       - name: "Coveralls : Integration Tests"
-        uses: coverallsapp/github-action@v2.0.0
+        uses: coverallsapp/github-action@v2
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
@@ -206,7 +205,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v3"
+        uses: "actions/checkout@v4"
       - name: "Install Invoke"
         run: "pip install toml invoke"
       - name: "Build Test Image"
@@ -214,7 +213,7 @@ jobs:
       - name: "Pylint Tests"
         run: "invoke sync.pylint --docker"
 
-  backend-tests-default:
+  backend-tests-unit:
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -227,7 +226,39 @@ jobs:
       INFRAHUB_DB_TYPE: memgraph
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v3"
+        uses: "actions/checkout@v4"
+      - name: "Setup Python environment"
+        run: "pip install toml invoke"
+      - name: "Build Test Image"
+        run: "invoke test.build"
+      - name: "Pull External Docker Images"
+        run: "invoke test.pull"
+      - name: "Unit Tests"
+        run: "invoke backend.test-unit"
+        env:
+          BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_BACKEND_UNIT_DEFAULT }}
+      - name: "Coveralls : Unit Tests"
+        uses: coverallsapp/github-action@v2
+        env:
+          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+        with:
+          flag-name: backend-unit
+          parallel: true
+
+  backend-tests-integration:
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.backend == 'true'
+    needs: ["files-changed", "yaml-lint", "python-lint"]
+    runs-on: "runner-ubuntu-4-16"
+    timeout-minutes: 30
+    env:
+      INFRAHUB_DB_TYPE: memgraph
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v4"
       - name: "Setup Python environment"
         run: "pip install toml invoke"
       - name: "Build Test Image"
@@ -238,23 +269,12 @@ jobs:
         run: "invoke backend.pylint --docker"
       - name: "Mypy Tests"
         run: "invoke backend.mypy --docker"
-      - name: "Unit Tests"
-        run: "invoke backend.test-unit"
-        env:
-          BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_BACKEND_UNIT_DEFAULT }}
-      - name: "Coveralls : Unit Tests"
-        uses: coverallsapp/github-action@v2.0.0
-        env:
-          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
-        with:
-          flag-name: backend-unit
-          parallel: true
       - name: "Integration Tests"
         run: "invoke backend.test-integration"
         env:
           BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_BACKEND_INTEGRATION }}
       - name: "Coveralls : Integration Tests"
-        uses: coverallsapp/github-action@v2.0.0
+        uses: coverallsapp/github-action@v2
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
@@ -274,7 +294,7 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v3"
+        uses: "actions/checkout@v4"
       - name: "Setup Python environment"
         run: "pip install toml invoke"
       - name: "Build Test Image"
@@ -293,13 +313,13 @@ jobs:
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.frontend == 'true'
     needs: ["files-changed", "yaml-lint", "javascript-lint"]
-    runs-on: "ubuntu-20.04"
+    runs-on: "ubuntu-22.04"
     timeout-minutes: 30
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v3"
+        uses: "actions/checkout@v4"
       - name: Install NodeJS
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 16
           cache: 'npm'
@@ -326,7 +346,7 @@ jobs:
           name: screenshots
           path: frontend/cypress/videos/*
       - name: "Coveralls : Unit Tests"
-        uses: coverallsapp/github-action@v2.0.0
+        uses: coverallsapp/github-action@v2
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
@@ -341,13 +361,13 @@ jobs:
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.documentation == 'true'
     needs: ["files-changed", "yaml-lint", "python-lint"]
-    runs-on: "ubuntu-20.04"
+    runs-on: "ubuntu-22.04"
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v3"
+        uses: "actions/checkout@v4"
       - name: Install NodeJS
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 18
           cache: 'npm'
@@ -358,6 +378,29 @@ jobs:
         run: "pip install toml invoke"
       - name: "Build website"
         run: "invoke docs.build"
+
+  validate_generated_documentation:
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.python == 'true'
+    needs: ["files-changed", "yaml-lint", "python-lint"]
+    runs-on: "ubuntu-22.04"
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v4"
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - name: "Setup environment"
+        run: "pip install invoke toml"
+      - name: "Build Test Image"
+        run: "invoke test.build"
+      - name: "Validate generated documentation"
+        run: "invoke docs.validate --docker"
 
   # ------------------------------------------ E2E Tests  ------------------------------------------
   E2E-testing:
@@ -379,9 +422,9 @@ jobs:
       INFRAHUB_DB_TYPE: ${{ matrix.python-version }}
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v3"
+        uses: "actions/checkout@v4"
       - name: Install NodeJS
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 16
           cache: 'npm'
@@ -434,7 +477,11 @@ jobs:
 
   # ------------------------------------------ Coverall Report  ------------------------------------------
   coverall-report:
-    needs: ["frontend-tests", "backend-tests-default", "python-sdk-integration-tests"]
+    needs:
+      - backend-tests-integration
+      - backend-tests-unit
+      - frontend-tests
+      - python-sdk-integration-tests
     if: |
       always() && !cancelled()
     runs-on: ubuntu-latest
