@@ -49,15 +49,12 @@ export const Thread = (props: tThread) => {
   const [confirmModal, setConfirmModal] = useState(false);
   const [markAsResolved, setMarkAsResolved] = useState(false);
 
-  const handleSubmit = async (data: any) => {
+  const handleSubmit = async (data: string) => {
     try {
-      if (!data) {
-        return;
-      }
-
+      setIsLoading(true);
       const newObject = {
         text: {
-          value: data.comment,
+          value: data,
         },
         thread: {
           id: thread.id,
@@ -93,10 +90,11 @@ export const Thread = (props: tThread) => {
       }
 
       if (refetch) {
-        refetch();
+        await refetch();
       }
 
       setIsLoading(false);
+      setDisplayAddComment(false);
     } catch (error: any) {
       console.error("An error occured while creating the comment: ", error);
 
@@ -151,18 +149,19 @@ export const Thread = (props: tThread) => {
   const comments = thread?.comments?.edges?.map((comment: any) => comment.node) ?? [];
   const sortedComments = sortByDate(comments);
   const isResolved = thread?.resolved?.value;
+  const idForLabel = `checkbox-resolve-thread${thread.id}`;
 
   const MarkAsResolved = (
-    <div className="flex items-center">
-      <Button onClick={() => setConfirmModal(true)} disabled={isResolved}>
-        <div className="mr-2">Resolved: </div>
-
-        <Checkbox
-          disabled={isResolved}
-          enabled={isResolved || markAsResolved}
-          onChange={() => setConfirmModal(true)}
-        />
-      </Button>
+    <div className="flex items-center gap-2">
+      <Checkbox
+        id={idForLabel}
+        disabled={isResolved}
+        enabled={isResolved || markAsResolved}
+        onChange={() => setConfirmModal(true)}
+      />
+      <label htmlFor={idForLabel} className={isResolved ? "cursor-default" : "cursor-pointer"}>
+        {isResolved ? "Resolved" : "Resolve thread"}
+      </label>
     </div>
   );
 
@@ -177,45 +176,48 @@ export const Thread = (props: tThread) => {
       className={classNames(
         isResolved ? "bg-gray-200" : "bg-custom-white",
         "p-4 m-4 rounded-lg relative"
-      )}>
+      )}
+      data-cy="thread">
       {displayContext && getThreadTitle(thread)}
 
       <div className="">
         {sortedComments.map((comment: any, index: number) => (
-          <Comment key={index} comment={comment} className={"border border-gray-200"} />
+          <Comment
+            key={index}
+            author={comment?.created_by?.node?.display_label ?? "Anonymous"}
+            createdAt={comment?.created_at?.value}
+            content={comment?.text?.value ?? ""}
+            className={"border border-gray-200"}
+          />
         ))}
       </div>
 
-      <div className="flex">
-        {displayAddComment && (
-          <div className="flex-1">
-            <AddComment
-              onSubmit={handleSubmit}
-              isLoading={isLoading}
-              onClose={() => setDisplayAddComment(false)}
-              disabled={!auth?.permissions?.write}
-              additionalButtons={MarkAsResolvedWithTooltip}
-            />
-          </div>
-        )}
+      {displayAddComment ? (
+        <div className="flex-1">
+          <AddComment
+            onSubmit={handleSubmit}
+            isLoading={isLoading}
+            onCancel={() => setDisplayAddComment(false)}
+            disabled={isLoading || !auth?.permissions?.write}
+            additionalButtons={MarkAsResolvedWithTooltip}
+          />
+        </div>
+      ) : (
+        <div className="flex flex-1 justify-between">
+          {MarkAsResolved}
 
-        {!displayAddComment && (
-          <div className="flex flex-1 justify-between">
-            {MarkAsResolved}
-
-            <Button onClick={() => setDisplayAddComment(true)} disabled={!auth?.permissions?.write}>
-              Reply
-            </Button>
-          </div>
-        )}
-      </div>
+          <Button onClick={() => setDisplayAddComment(true)} disabled={!auth?.permissions?.write}>
+            Reply
+          </Button>
+        </div>
+      )}
 
       <ModalConfirm
         title="Confirm"
         description={"Are you sure you want to mark this thread as resolved?"}
         onCancel={() => setConfirmModal(false)}
         onConfirm={handleResolve}
-        open={!!confirmModal}
+        open={confirmModal}
         setOpen={() => setConfirmModal(false)}
         isLoading={isLoading}
       />

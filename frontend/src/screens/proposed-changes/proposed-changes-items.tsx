@@ -100,7 +100,8 @@ export const ProposedChanges = () => {
 
         <RoundedButton
           disabled={!auth?.permissions?.write}
-          onClick={() => setShowCreateDrawer(true)}>
+          onClick={() => setShowCreateDrawer(true)}
+          data-cy="add-proposed-changes-button">
           <PlusIcon className="w-4 h-4" aria-hidden="true" />
         </RoundedButton>
       </div>

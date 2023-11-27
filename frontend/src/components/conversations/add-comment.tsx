@@ -1,44 +1,46 @@
-import { ReactElement } from "react";
-import { FieldValues, SubmitHandler } from "react-hook-form";
-import { DynamicFieldData } from "../../screens/edit-form-hook/dynamic-control-types";
-import { Form } from "../../screens/edit-form-hook/form";
+import { ReactElement, useRef } from "react";
+import { MarkdownEditor } from "../../screens/proposed-changes/MarkdownEditor";
+import { Button, BUTTON_TYPES } from "../button";
+import { MDXEditorMethods } from "@mdxeditor/editor";
 
 type tAddComment = {
-  onSubmit: SubmitHandler<FieldValues>;
+  onSubmit: (data: string) => Promise<void>;
   isLoading?: boolean;
-  onClose?: Function;
+  onCancel?: Function;
   disabled?: boolean;
   additionalButtons?: ReactElement;
 };
 
-const fields: DynamicFieldData[] = [
-  {
-    name: "comment",
-    label: "Add a comment",
-    type: "textarea",
-    value: "",
-    config: {
-      required: "Required",
-    },
-  },
-];
-
 export const AddComment = (props: tAddComment) => {
-  const { onSubmit, isLoading, onClose, disabled, additionalButtons } = props;
+  const { onSubmit, isLoading, onCancel, disabled, additionalButtons } = props;
+  const ref = useRef<MDXEditorMethods>(null);
+
+  const handleCommentSubmit = async () => {
+    const markdown = ref.current?.getMarkdown();
+    if (markdown) {
+      await onSubmit(markdown);
+      ref.current?.setMarkdown("");
+    }
+  };
 
   return (
-    <div className="mb-6">
-      <div className="bg-white rounded-lg rounded-t-lg border border-gray-200 relative">
-        <Form
-          onSubmit={onSubmit}
-          fields={fields}
-          submitLabel={"Comment"}
+    <>
+      <MarkdownEditor ref={ref} />
+
+      <div className="flex items-center justify-end gap-3 pt-3">
+        {additionalButtons && <div className="mr-auto">{additionalButtons}</div>}
+
+        {onCancel && <Button onClick={onCancel}>Cancel</Button>}
+
+        <Button
+          onClick={handleCommentSubmit}
+          buttonType={BUTTON_TYPES.MAIN}
           isLoading={isLoading}
-          onCancel={onClose}
           disabled={disabled}
-          additionalButtons={additionalButtons}
-        />
+          data-cy="add-new-comment-button">
+          Comment
+        </Button>
       </div>
-    </div>
+    </>
   );
 };
