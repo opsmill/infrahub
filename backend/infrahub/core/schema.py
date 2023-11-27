@@ -8,7 +8,7 @@ import re
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
 from infrahub_sdk.utils import duplicates, intersection
-from pydantic import BaseModel, Extra, Field, validator
+from pydantic import BaseModel, Extra, Field, root_validator, validator
 
 from infrahub.core import registry
 from infrahub.core.constants import (

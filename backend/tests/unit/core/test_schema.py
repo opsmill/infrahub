@@ -2,6 +2,7 @@ from typing import Hashable, List, Optional
 
 import pytest
 from deepdiff import DeepDiff
+from pydantic import ValidationError
 
 from infrahub.core import registry
 from infrahub.core.constants import BranchSupportType
