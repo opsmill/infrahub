@@ -2,7 +2,7 @@ from typing import Hashable, List, Optional
 
 import pytest
 from deepdiff import DeepDiff
-from pydantic.error_wrappers import ValidationError
+from pydantic import ValidationError
 
 from infrahub.core import registry
 from infrahub.core.constants import BranchSupportType
@@ -139,43 +139,6 @@ def test_schema_root_no_generic():
     assert SchemaRoot(**FULL_SCHEMA)
 
 
-def test_node_schema_unique_names():
-    SCHEMA = {
-        "name": "Criticality",
-        "namespace": "Test",
-        "default_filter": "name__value",
-        "branch": BranchSupportType.AWARE.value,
-        "attributes": [
-            {"name": "name", "kind": "Text", "unique": True},
-            {"name": "name", "kind": "Text", "unique": True},
-        ],
-    }
-
-    with pytest.raises(ValidationError) as exc:
-        NodeSchema(**SCHEMA)
-
-    assert "Names of attributes and relationships must be unique" in str(exc.value)
-
-    SCHEMA = {
-        "name": "Criticality",
-        "namespace": "Test",
-        "default_filter": "name__value",
-        "branch": BranchSupportType.AWARE.value,
-        "attributes": [
-            {"name": "name", "kind": "Text", "unique": True},
-            {"name": "dupname", "kind": "Text"},
-        ],
-        "relationships": [
-            {"name": "dupname", "peer": "Criticality", "cardinality": "one"},
-        ],
-    }
-
-    with pytest.raises(ValidationError) as exc:
-        NodeSchema(**SCHEMA)
-
-    assert "Names of attributes and relationships must be unique" in str(exc.value)
-
-
 def test_node_schema_property_unique_attributes():
     SCHEMA = {
         "name": "Criticality",
@@ -191,44 +154,6 @@ def test_node_schema_property_unique_attributes():
     schema = NodeSchema(**SCHEMA)
     assert len(schema.unique_attributes) == 1
     assert schema.unique_attributes[0].name == "name"
-
-
-def test_node_schema_unique_identifiers():
-    SCHEMA = {
-        "name": "Criticality",
-        "namespace": "Test",
-        "default_filter": "name__value",
-        "branch": BranchSupportType.AWARE.value,
-        "attributes": [
-            {"name": "name", "kind": "Text", "unique": True},
-        ],
-        "relationships": [
-            {"name": "first", "peer": "TestCriticality", "cardinality": "one"},
-            {"name": "second", "peer": "TestCriticality", "cardinality": "one"},
-        ],
-    }
-
-    with pytest.raises(ValidationError) as exc:
-        schema = NodeSchema(**SCHEMA)
-
-    assert "Identifier of relationships must be unique" in str(exc.value)
-
-    SCHEMA = {
-        "name": "Criticality",
-        "namespace": "Test",
-        "default_filter": "name__value",
-        "branch": BranchSupportType.AWARE.value,
-        "attributes": [
-            {"name": "name", "kind": "Text", "unique": True},
-        ],
-        "relationships": [
-            {"name": "first", "peer": "TestCriticality", "cardinality": "one"},
-            {"name": "second", "identifier": "something_unique", "peer": "TestCriticality", "cardinality": "one"},
-        ],
-    }
-    schema = NodeSchema(**SCHEMA)
-    assert schema.relationships[0].identifier == "testcriticality__testcriticality"
-    assert schema.relationships[1].identifier == "something_unique"
 
 
 async def test_node_schema_hashable():

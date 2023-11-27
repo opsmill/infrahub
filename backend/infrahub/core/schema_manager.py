@@ -5,7 +5,7 @@ import hashlib
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
-from infrahub_sdk.utils import intersection
+from infrahub_sdk.utils import duplicates, intersection
 from pydantic import BaseModel, Field
 
 import infrahub.config as config
@@ -214,12 +214,23 @@ class SchemaBranch:
             self.set(name=node_extension.kind, schema=new_item)
 
     def process(self) -> None:
+        self.process_pre_validation()
+        self.process_validate()
+        self.process_post_validation()
+
+    def process_pre_validation(self) -> None:
         self.generate_identifiers()
-        self.validate_names()
-        self.validate_menu_placements()
         self.process_default_values()
         self.process_inheritance()
         self.process_branch_support()
+
+    def process_validate(self) -> None:
+        self.validate_names()
+        self.validate_menu_placements()
+        self.validate_identifiers()
+        self.validate_kinds()
+
+    def process_post_validation(self) -> None:
         self.add_groups()
         self.process_filters()
         self.generate_weight()
@@ -238,9 +249,25 @@ class SchemaBranch:
 
             self.set(name=name, schema=node)
 
+    def validate_identifiers(self) -> None:
+        """Validate that all relationships have a unique identifier for a given model."""
+        for name in list(self.nodes.keys()) + list(self.generics.keys()):
+            node = self.get(name=name)
+
+            identifiers = [rel.identifier for rel in node.relationships]
+            if identifier_dup := duplicates(identifiers):
+                raise ValueError(
+                    f"{node.kind}: Identifier of relationships must be unique : {identifier_dup}"
+                ) from None
+
     def validate_names(self) -> None:
         for name in list(self.nodes.keys()) + list(self.generics.keys()):
             node = self.get(name=name)
+
+            if names_dup := duplicates(node.attribute_names + node.relationship_names):
+                raise ValueError(
+                    f"{node.kind}: Names of attributes and relationships must be unique : {names_dup}"
+                ) from None
 
             if node.kind in INTERNAL_SCHEMA_NODE_KINDS:
                 continue
@@ -260,6 +287,29 @@ class SchemaBranch:
                     self.get(name=node.menu_placement)
                 except SchemaNotFound:
                     raise ValueError(f"{node.kind}: {node.menu_placement} is not a valid menu placement") from None
+
+    def validate_kinds(self) -> None:
+        for name in list(self.nodes.keys()):
+            node = self.get(name=name)
+
+            for generic_kind in node.inherit_from:
+                if self.has(name=generic_kind):
+                    if not isinstance(self.get(name=generic_kind), GenericSchema):
+                        raise ValueError(
+                            f"{node.kind}: Only generic model can be used as part of inherit_from, {generic_kind!r} is not a valid entry."
+                        ) from None
+                else:
+                    raise ValueError(
+                        f"{node.kind}: {generic_kind!r} is not a invalid Generic to inherit from"
+                    ) from None
+
+            for rel in node.relationships:
+                if rel.peer in ["CoreGroup"]:
+                    continue
+                if not self.has(rel.peer):
+                    raise ValueError(
+                        f"{node.kind}: Relationship {rel.name!r} is referencing an invalid peer {rel.peer!r}"
+                    ) from None
 
     def process_labels(self) -> None:
         for name in list(self.nodes.keys()) + list(self.generics.keys()):
