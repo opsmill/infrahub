@@ -4,119 +4,143 @@ layout: default
 order: 700
 ---
 
+
 # Relationship
 
 In a schema file, a relationship can be defined inside a `node` or inside a `node extension`.
 
 Below is the list of all available options to define a Relationship in the schema
 
-## name
+## Reference Guide
+### name
 
-| -- | -- | { class="compact" }
+| Key | Value | { class="compact" }
 | ---- | --------------- |
 | **Name** | name |
 | **Kind** | `Text` |
 | **Description** |  |
-| **Constraints** |  Regex: `^[a-z0-9\_]+$`<br> Length: min 3, max 3 |
+| **Optional** | False |
+| **Default Value** |  |
+| **Constraints** |  Regex: `^[a-z0-9\_]+$`<br> Length: min 3, max 32 |
 
 
-## peer
+### peer
 
-| -- | -- | { class="compact" }
+| Key | Value | { class="compact" }
 | ---- | --------------- |
 | **Name** | peer |
 | **Kind** | `Text` |
 | **Description** |  |
-| **Constraints** |  Regex: `^[A-Z][a-zA-Z0-9]+$`<br> Length: min 3, max 3 |
+| **Optional** | False |
+| **Default Value** |  |
+| **Constraints** |  Regex: `^[A-Z][a-zA-Z0-9]+$`<br> Length: min 3, max 32 |
 
 
-## kind
+### kind
 
-| -- | -- | { class="compact" }
+| Key | Value | { class="compact" }
 | ---- | --------------- |
 | **Name** | kind |
 | **Kind** | `Text` |
 | **Description** |  |
+| **Optional** | False |
+| **Default Value** | Generic |
 | **Constraints** |  |
 | **Accepted Values** | `Generic` `Attribute` `Component` `Parent` `Group`  |
 
-## label
+### label
 
-| -- | -- | { class="compact" }
+| Key | Value | { class="compact" }
 | ---- | --------------- |
 | **Name** | label |
 | **Kind** | `Text` |
 | **Description** |  |
-| **Constraints** | <br> Length: min -, max - |
+| **Optional** | True |
+| **Default Value** |  |
+| **Constraints** |  Length: min -, max 32 |
 
 
-## description
+### description
 
-| -- | -- | { class="compact" }
+| Key | Value | { class="compact" }
 | ---- | --------------- |
 | **Name** | description |
 | **Kind** | `Text` |
 | **Description** | Short description of the attribute. |
-| **Constraints** | <br> Length: min -, max - |
+| **Optional** | True |
+| **Default Value** |  |
+| **Constraints** |  Length: min -, max 128 |
 
 
-## identifier
+### identifier
 
-| -- | -- | { class="compact" }
+| Key | Value | { class="compact" }
 | ---- | --------------- |
 | **Name** | identifier |
 | **Kind** | `Text` |
 | **Description** |  |
-| **Constraints** | <br> Length: min -, max - |
+| **Optional** | True |
+| **Default Value** |  |
+| **Constraints** |  Regex: `^[a-z0-9\_]+$`<br> Length: min -, max 128 |
 
 
-## cardinality
+### cardinality
 
-| -- | -- | { class="compact" }
+| Key | Value | { class="compact" }
 | ---- | --------------- |
 | **Name** | cardinality |
 | **Kind** | `Text` |
 | **Description** |  |
+| **Optional** | False |
+| **Default Value** |  |
 | **Constraints** |  |
 | **Accepted Values** | `one` `many`  |
 
-## order_weight
+### order_weight
 
-| -- | -- | { class="compact" }
+| Key | Value | { class="compact" }
 | ---- | --------------- |
 | **Name** | order_weight |
 | **Kind** | `Number` |
 | **Description** |  |
+| **Optional** | True |
+| **Default Value** |  |
 | **Constraints** |  |
 
 
-## optional
+### optional
 
-| -- | -- | { class="compact" }
+| Key | Value | { class="compact" }
 | ---- | --------------- |
 | **Name** | optional |
 | **Kind** | `Boolean` |
 | **Description** |  |
+| **Optional** | True |
+| **Default Value** | False |
 | **Constraints** |  |
 
 
-## branch
+### branch
 
-| -- | -- | { class="compact" }
+| Key | Value | { class="compact" }
 | ---- | --------------- |
 | **Name** | branch |
 | **Kind** | `Text` |
 | **Description** |  |
+| **Optional** | True |
+| **Default Value** |  |
 | **Constraints** |  |
 | **Accepted Values** | `aware` `agnostic` `local`  |
 
-## inherited
+### inherited
 
-| -- | -- | { class="compact" }
+| Key | Value | { class="compact" }
 | ---- | --------------- |
 | **Name** | inherited |
 | **Kind** | `Boolean` |
 | **Description** |  |
+| **Optional** | True |
+| **Default Value** | False |
 | **Constraints** |  |
 
 
