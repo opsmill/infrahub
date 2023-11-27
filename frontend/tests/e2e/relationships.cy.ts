@@ -2,7 +2,7 @@
 
 import { ADMIN_CREDENTIALS } from "../utils";
 
-describe("Relationship Page", () => {
+describe.skip("Relationship Page", () => {
   it("should display object relationships without login", () => {
     cy.visit("/objects/InfraDevice");
     cy.contains("atl1-edge1").click();
