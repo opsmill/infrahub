@@ -13,6 +13,7 @@ import { schemaState } from "../state/atoms/schema.atom";
 import { schemaKindNameState } from "../state/atoms/schemaKindName.atom";
 import { classNames } from "../utils/common";
 import { Input } from "./input";
+import { MultipleInput } from "./multiple-input";
 import SlideOver from "./slide-over";
 
 export type SelectOption = {
@@ -25,15 +26,16 @@ export enum SelectDirection {
 }
 
 type SelectProps = {
-  value?: string | number;
+  value?: string | number | SelectOption[];
   name: string;
   peer?: string;
   options: SelectOption[];
-  onChange: (value: SelectOption) => void;
+  onChange: (value: SelectOption | SelectOption[]) => void;
   disabled?: boolean;
   error?: FormFieldError;
   direction?: SelectDirection;
   preventObjectsCreation?: boolean;
+  multiple?: true | undefined;
 };
 
 export const Select = (props: SelectProps) => {
@@ -56,17 +58,16 @@ export const Select = (props: SelectProps) => {
   const [open, setOpen] = useState(false);
   const [localOptions, setLocalOptions] = useState(options);
   const [selectedOption, setSelectedOption] = useState(
-    options.find((option: any) => option?.id === value)
+    props.multiple ? value : options.find((option: any) => option?.id === value)
   );
 
   const schemaData = schemaList.find((s) => s.kind === peer);
 
-  const filteredOptions =
-    query === ""
-      ? localOptions
-      : localOptions.filter((option: any) =>
-          option?.name?.toString().toLowerCase().includes(query.toLowerCase())
-        );
+  const filteredOptions = !query
+    ? localOptions
+    : localOptions.filter((option: any) =>
+        option?.name?.toString().toLowerCase().includes(query.toLowerCase())
+      );
 
   const addOption = {
     name: "Add option",
@@ -96,6 +97,29 @@ export const Select = (props: SelectProps) => {
     handleChange(newItem);
   };
 
+  const handleInputChange = (value: any) => {
+    if (props.multiple) {
+      setSelectedOption(value);
+      return;
+    }
+
+    // Remove the selected option and update query (allow empty query)
+    setSelectedOption(undefined);
+    setQuery(value);
+  };
+
+  const getInputValue = () => {
+    if (props.multiple) {
+      return selectedOption;
+    }
+
+    if (query) {
+      return query;
+    }
+
+    return selectedOption?.name;
+  };
+
   return (
     <>
       <Combobox
@@ -106,13 +130,9 @@ export const Select = (props: SelectProps) => {
         {...otherProps}>
         <div className="relative mt-1">
           <Combobox.Input
-            as={Input}
-            value={query ? query : selectedOption?.name ?? ""}
-            onChange={(value: any) => {
-              // Remove the selected option and update query (allow empty query)
-              setSelectedOption(undefined);
-              setQuery(value);
-            }}
+            as={props.multiple ? MultipleInput : Input}
+            value={getInputValue()}
+            onChange={handleInputChange}
             disabled={disabled}
             error={error}
             className={"pr-8"}

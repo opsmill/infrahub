@@ -1,5 +1,4 @@
-import { MultiSelect } from "../components/multi-select";
-import { SelectOption } from "../components/select";
+import { Select, SelectOption } from "../components/select";
 import { FormFieldError } from "../screens/edit-form-hook/form";
 
 type OpsMultiSelectProps = {
@@ -17,12 +16,13 @@ export default function OpsMultiSelect(props: OpsMultiSelectProps) {
   return (
     <>
       <label className="block text-sm font-medium leading-6 text-gray-900">{label}</label>
-      <MultiSelect
+      <Select
         value={value}
         options={options}
         onChange={onChange}
         error={error}
         disabled={isProtected}
+        multiple
       />
     </>
   );
