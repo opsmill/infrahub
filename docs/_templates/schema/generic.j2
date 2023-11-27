@@ -4,20 +4,25 @@ layout: default
 order: 600
 ---
 {% macro attribute_constraints(attr) -%}
-{% if attr.regex %} Regex: `{{attr.regex}}`{% endif %}{% if attr.regex or attr.min_length or attr.max_length %}<br>{% endif %}{% if attr.min_length or attr.max_length %} Length: min {{attr.min_length | default("-")}}, max {{attr.min_length | default("-")}}{% endif %}
+{% if attr.regex %} Regex: `{{attr.regex}}`{% endif %}{% if attr.regex and (attr.min_length or attr.max_length) %}<br>{% endif %}{% if attr.min_length or attr.max_length %} Length: min {{attr.min_length | default("-")}}, max {{attr.max_length | default("-")}}{% endif %}
+{%- endmacro %}
+{% macro bool_to_str(value) -%}
+{% if value == true %}True{% else %}False{% endif %}
 {%- endmacro %}
 # Generic
 
 Below is the list of all available options to define a Generic in the schema
 
 {% for attr in schema.nodes[2].attributes -%}
-## {{ attr.name }}
+### {{ attr.name }}
 
-| -- | -- | { class="compact" }
+| Key | Value | { class="compact" }
 | ---- | --------------- |
 | **Name** | {{ attr.name }} |
 | **Kind** | `{{ attr.kind }}` |
 | **Description** | {{ attr.description }} |
+| **Optional** | {{ bool_to_str(attr.optional) }} |
+| **Default Value** | {{ attr.default_value }} |
 | **Constraints** | {{attribute_constraints(attr)}} |
 {% if attr.enum -%}
 | **Accepted Values** | {% for value in  attr.enum %}`{{ value }}` {% endfor %} |

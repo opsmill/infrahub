@@ -4,19 +4,36 @@ layout: default
 order: 900
 ---
 {% macro attribute_constraints(attr) -%}
-{% if attr.regex %} Regex: `{{attr.regex}}`{% endif %}{% if attr.regex or attr.min_length or attr.max_length %}<br>{% endif %}{% if attr.min_length or attr.max_length %} Length: min {{attr.min_length | default("-")}}, max {{attr.min_length | default("-")}}{% endif %}
+{% if attr.regex %} Regex: `{{attr.regex}}`{% endif %}{% if attr.regex and (attr.min_length or attr.max_length) %}<br>{% endif %}{% if attr.min_length or attr.max_length %} Length: min {{attr.min_length | default("-")}}, max {{attr.max_length | default("-")}}{% endif %}
+{%- endmacro %}
+{% macro bool_to_str(value) -%}
+{% if value == true %}True{% else %}False{% endif %}
 {%- endmacro %}
 # Node
 
-Below is the list of all available options to define a node in the schema
-{% for attr in schema.nodes[0].attributes -%}
-## {{ attr.name }}
+## Summary
 
-| -- | -- | { class="compact" }
+Below is the list of all available options to define a Node in the schema
+
+| Name | Type | Optional | { class="compact" }
+| ---- | ---- | --------- |
+{%- for attr in schema.nodes[0].attributes %}
+{%-  if attr.name not in ["inherited"] %}
+| [**{{ attr.name }}**](#{{ attr.name }}) | {{ attr.description }} | {{ bool_to_str(attr.optional) }} |
+{%- endif %}
+{%- endfor %}
+
+## Reference Guide
+{% for attr in schema.nodes[0].attributes -%}
+### {{ attr.name }}
+
+| Key | Value | { class="compact" }
 | ---- | --------------- |
 | **Name** | {{ attr.name }} |
 | **Kind** | `{{ attr.kind }}` |
 | **Description** | {{ attr.description }} |
+| **Optional**  | {{ bool_to_str(attr.optional) }} |
+| **Default Value** | {{ attr.default_value }} |
 | **Constraints** | {{attribute_constraints(attr)}} |
 {% if attr.enum -%}
 | **Accepted Values** | {% for value in  attr.enum %}`{{ value }}` {% endfor %} |
@@ -26,7 +43,7 @@ Below is the list of all available options to define a node in the schema
 {% for rel in schema.nodes[0].relationships -%}
 ## {{ rel.name }}
 
-| -- | -- | { class="compact" }
+| Key | Value | { class="compact" }
 | ---- | --------------- |
 | **Name** | {{ rel.name }} |
 | **Kind** | {% if rel.cardinality == "one" %}`Object`{%else%}`List`{%endif%} |
