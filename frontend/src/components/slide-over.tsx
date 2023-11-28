@@ -31,7 +31,10 @@ export default function SlideOver(props: Props) {
           leave="ease-in-out duration-500"
           leaveFrom="opacity-100"
           leaveTo="opacity-0">
-          <div className="fixed inset-0 bg-black bg-opacity-40 transition-opacity" />
+          <div
+            className="fixed inset-0 bg-black bg-opacity-40 transition-opacity"
+            data-cy="side-panel-background"
+          />
         </Transition.Child>
 
         <div className="before:fixed inset-0 overflow-hidden">

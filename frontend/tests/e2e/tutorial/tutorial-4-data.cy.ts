@@ -44,7 +44,7 @@ describe("Tutorial - Part 4", () => {
       cy.screenshot("tutorial_4_metadata_edit", screenshotConfig);
     }
 
-    cy.get(".bg-gray-500").click(); // Close the popin
+    cy.get("[data-cy='side-panel-background']").click(); // Close the popin
 
     // Click to open the metadata for the role
     cy.get(".sm\\:p-0 > :nth-child(1)").within(() => {

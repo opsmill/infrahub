@@ -51,7 +51,7 @@ describe("Object update", () => {
     cy.contains("Save").click();
 
     // Wait for the panel to be closed
-    cy.get(".bg-gray-500").should("not.exist");
+    cy.get("[data-cy='side-panel-background']").should("not.exist");
 
     // The name should be the original one
     cy.get(":nth-child(2) > div.items-center > .mt-1").should("have.text", ETHERNET_NEW_NAME);
