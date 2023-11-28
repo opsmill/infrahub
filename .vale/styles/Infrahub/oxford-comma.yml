@@ -1,3 +1,4 @@
+---
 extends: existence
 message: "Use a comma before the last 'and' or 'or' in a list of items."
 level: suggestion

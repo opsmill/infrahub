@@ -1,7 +1,10 @@
+---
 extends: substitution
 message: "Use '%s' instead of '%s'"
 level: error
 ignorecase: true
+action:
+  name: replace
 swap:
-  repo: repository
   config\b(?!\.\w): configuration
+  repo: repository
