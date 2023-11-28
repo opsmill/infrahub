@@ -19,9 +19,6 @@ password = "infrahub"
 [cache]
 address = "cache"
 
-[api]
-cors_allow_origins = ["*"]
-
 [storage.settings]
 directory = "/opt/infrahub/storage"
 

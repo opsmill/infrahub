@@ -7,7 +7,7 @@ metadata:
     service: message-queue
   {{- include "infrahub-helm.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.messageQueue.replicas }}
+  rreplicas: {{ .Values.messageQueue.replicas | default 1 }}
   selector:
     matchLabels:
       service: message-queue
@@ -20,22 +20,27 @@ spec:
     spec:
       containers:
         - env:
-            - name: RABBITMQ_DEFAULT_PASS
-              value: {{ quote .Values.messageQueue.messageQueue.env.rabbitmqDefaultPass }}
-            - name: RABBITMQ_DEFAULT_USER
-              value: {{ quote .Values.messageQueue.messageQueue.env.rabbitmqDefaultUser }}
+            - name: RABBITMQ_USERNAME
+              value: {{ .Values.messageQueue.auth.username | quote }}
+            - name: RABBITMQ_PASSWORD
+              value: {{ .Values.messageQueue.auth.password | quote }}
             - name: KUBERNETES_CLUSTER_DOMAIN
-              value: {{ quote .Values.kubernetesClusterDomain }}
+              value: {{ quote .Values.globalkubernetesClusterDomain }}
           image: {{ .Values.messageQueue.messageQueue.image.repository }}:{{ .Values.messageQueue.messageQueue.image.tag }}
+          imagePullPolicy: {{ default .Values.global.imagePullPolicy .Values.messageQueue.messageQueue.imagePullPolicy }}
+          {{- if .Values.messageQueue.livenessProbe.enabled }}
           livenessProbe:
             exec:
               command:
                 - sh
                 - -c
                 - rabbitmq-diagnostics -q ping
-            failureThreshold: 3
-            periodSeconds: 5
-            timeoutSeconds: 30
+            initialDelaySeconds: {{ .Values.messageQueue.livenessProbe.initialDelaySeconds }}
+            timeoutSeconds: {{ .Values.messageQueue.livenessProbe.timeoutSeconds }}
+            periodSeconds: {{ .Values.messageQueue.livenessProbe.periodSeconds }}
+            failureThreshold: {{ .Values.messageQueue.livenessProbe.failureThreshold }}
+            successThreshold: {{ .Values.messageQueue.livenessProbe.successThreshold }}
+          {{- end }}
           name: message-queue
           ports:
           {{- range .Values.messageQueue.ports }}
@@ -44,7 +49,17 @@ spec:
               protocol: TCP
               name: {{ quote .name }}
           {{- end }}
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/rabbitmq
       restartPolicy: Always
+      volumes:
+        - name: config-volume
+          configMap:
+            name: {{ include "infrahub-helm.fullname" . }}-message-queue-config
+            items:
+              - key: rabbitmq.conf
+                path: rabbitmq.conf
 
 ---
 apiVersion: v1

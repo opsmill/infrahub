@@ -7,7 +7,7 @@ metadata:
     service: database
   {{- include "infrahub-helm.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.database.replicas }}
+  replicas: {{ .Values.database.replicas | default 1 }}
   selector:
     matchLabels:
       service: database
@@ -27,8 +27,9 @@ spec:
             - name: NEO4J_dbms_security_procedures_unrestricted
               value: {{ quote .Values.database.database.env.neo4JDbmsSecurityProceduresUnrestricted }}
             - name: KUBERNETES_CLUSTER_DOMAIN
-              value: {{ quote .Values.kubernetesClusterDomain }}
+              value: {{ quote .Values.global.kubernetesClusterDomain }}
           image: {{ .Values.database.database.image.repository }}:{{ .Values.database.database.image.tag }}
+          imagePullPolicy: {{ default .Values.global.imagePullPolicy .Values.messageQueue.messageQueue.imagePullPolicy }}
           livenessProbe:
             tcpSocket:
               port: {{ (index .Values.database.ports 1).port }}

@@ -6,8 +6,11 @@ FROM docker.io/python:${PYTHON_VER} AS base
 
 ENV PYTHONUNBUFFERED 1
 
-RUN mkdir /prom_shared
-RUN mkdir /remote
+ENV PATH="${PATH}:/root/.local/bin" \
+    PROMETHEUS_MULTIPROC_DIR="/prom_shared" \
+    INFRAHUB_FRONTEND_DIRECTORY="/opt/infrahub/frontend"
+
+RUN mkdir /prom_shared /remote
 
 RUN apt-get update && \
     apt-get upgrade -y && \
@@ -16,8 +19,6 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/* && \
     rm -rf /var/lib/apt/lists/* && \
     pip --no-cache-dir install --no-compile --upgrade pip wheel
-
-ENV PATH="${PATH}:/root/.local/bin"
 
 RUN poetry config virtualenvs.create false
 

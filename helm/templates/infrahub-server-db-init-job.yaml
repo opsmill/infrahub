@@ -20,12 +20,12 @@ spec:
             - name: INFRAHUB_CONFIG
               value: {{ quote .Values.infrahubServerDbInitJob.infrahubServerDbInitJob.env.infrahubConfig }}
             - name: KUBERNETES_CLUSTER_DOMAIN
-              value: {{ quote .Values.kubernetesClusterDomain }}
-          image: {{ .Values.infrahubRepository }}:{{ .Values.infrahubTag | default .Chart.AppVersion }}
+              value: {{ quote .Values.global.kubernetesClusterDomain }}
+          image: {{ .Values.global.imageRegistry }}/{{ .Values.global.infrahubRepository }}:{{ .Values.global.infrahubTag | default .Chart.AppVersion }}
           name: infrahub-server-db-init-job
           resources: {}
           volumeMounts:
-            - name: infrahub-config-volume
+            - name: config-volume
               mountPath: /config
       restartPolicy: Never
       volumes:
@@ -35,6 +35,6 @@ spec:
         - hostPath:
             path: /tmp/infrahub-helm
           name: git-remote-data
-        - name: infrahub-config-volume
+        - name: config-volume
           configMap:
-            name: {{ .Chart.Name }}-{{ .Chart.AppVersion }}-configmap
+            name: {{ include "infrahub-helm.fullname" . }}-infrahub-config

@@ -7,7 +7,7 @@ metadata:
     service: infrahub-git
   {{- include "infrahub-helm.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.infrahubGit.replicas }}
+  replicas: {{ .Values.infrahubGit.replicas | default 1 }}
   selector:
     matchLabels:
       service: infrahub-git
@@ -38,30 +38,25 @@ spec:
             - name: INFRAHUB_SDK_TIMEOUT
               value: {{ quote .Values.infrahubGit.infrahubGit.env.infrahubSdkTimeout }}
             - name: KUBERNETES_CLUSTER_DOMAIN
-              value: {{ quote .Values.kubernetesClusterDomain }}
-          image: {{ .Values.infrahubRepository }}:{{ .Values.infrahubTag | default .Chart.AppVersion }}
-          imagePullPolicy: {{ .Values.infrahubGit.infrahubGit.imagePullPolicy }}
+              value: {{ quote .Values.global.kubernetesClusterDomain }}
+          image: {{ .Values.global.imageRegistry }}/{{ .Values.global.infrahubRepository }}:{{ .Values.global.infrahubTag | default .Chart.AppVersion }}
+          imagePullPolicy: {{ default .Values.global.imagePullPolicy .Values.messageQueue.messageQueue.imagePullPolicy }}
           name: infrahub-git
           resources: {}
           tty: true
           volumeMounts:
             - mountPath: /opt/infrahub/git
               name: git-data
-            - mountPath: /remote
-              name: git-remote-data
-            - name: infrahub-config-volume
+            - name: config-volume
               mountPath: /config
       restartPolicy: Always
       volumes:
         - hostPath:
             path: /tmp/infrahub-helm
           name: git-data
-        - hostPath:
-            path: /tmp/infrahub-helm
-          name: git-remote-data
-        - name: infrahub-config-volume
+        - name: config-volume
           configMap:
-            name: {{ .Chart.Name }}-{{ .Chart.AppVersion }}-configmap
+            name: {{ include "infrahub-helm.fullname" . }}-infrahub-config
 
 ---
 apiVersion: v1
@@ -77,18 +72,3 @@ spec:
   resources:
     requests:
       storage: {{ .Values.pvc.gitData.storageRequest | quote }}
-
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: {{ include "infrahub-helm.fullname" . }}-git-remote-data
-  labels:
-    service: git-remote-data
-  {{- include "infrahub-helm.labels" . | nindent 4 }}
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: {{ .Values.pvc.gitRemoteData.storageRequest | quote }}

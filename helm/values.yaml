@@ -1,11 +1,14 @@
 ---
-kubernetesClusterDomain: cluster.local
-infrahubRepository: 9r2s1098.c1.gra9.container-registry.ovh.net/opsmill/infrahub
+global:
+  kubernetesClusterDomain: cluster.local
+  imageRegistry: 9r2s1098.c1.gra9.container-registry.ovh.net
+  infrahubRepository: opsmill/infrahub-py3.11
+  infrahubTag: "0.8.2-helm"
+  imagePullPolicy: IfNotPresent
 
 # ----------- Cache -----------
 cache:
   type: ClusterIP
-  replicas: 1
   cache:
     image:
       repository: redis
@@ -21,7 +24,6 @@ cache:
 # ----------- Databse -----------
 database:
   type: ClusterIP
-  replicas: 1
   database:
     env:
       neo4JAuth: neo4j/admin
@@ -69,7 +71,6 @@ infrahubGit:
 # ----------- Infrahub Server -----------
 infrahubServer:
   type: ClusterIP
-  replicas: 1
   infrahubServer:
     args:
       - gunicorn
@@ -83,12 +84,10 @@ infrahubServer:
       infrahubCachePort: 6379
       infrahubConfig: /config/infrahub.toml
       infrahubDbType: neo4j
-      infrahubFrontendDirectory: /opt/infrahub/frontend
       infrahubLogLevel: INFO
       infrahubProduction: "false"
       infrahubSecurityInitialAdminToken: 06438eb2-8019-4776-878c-0941b1f1d1ec
       infrahubSecuritySecretKey: 327f747f-efac-42be-9e73-999f08f86b92
-      prometheusMultiprocDir: /prom_shared
     imagePullPolicy: Always
   ports:
     - name: "interface"
@@ -120,11 +119,7 @@ infrahubServerDbInitJob:
 # ----------- Mesage Queue (Rabbit MQ) -----------
 messageQueue:
   type: ClusterIP
-  replicas: 1
   messageQueue:
-    env:
-      rabbitmqDefaultPass: infrahub
-      rabbitmqDefaultUser: infrahub
     image:
       repository: rabbitmq
       tag: 3.12-management
@@ -132,27 +127,34 @@ messageQueue:
     - name: "epmd"
       port: 4369
       targetPort: 4369
-    - name: "amqp-5671"
+    - name: "amqptls"
       port: 5671
       targetPort: 5671
-    - name: "amqp-5672"
+    - name: "amqp"
       port: 5672
       targetPort: 5672
-    - name: "api-15671"
-      port: 15671
-      targetPort: 15671
-    - name: "api-15672"
+    - name: "manager"
       port: 15672
       targetPort: 15672
-    - name: "prom-15691"
-      port: 15691
-      targetPort: 15691
-    - name: "prom-15692"
+    - name: "metrics"
       port: 15692
       targetPort: 15692
-    - name: "inter-nodes"
+    - name: "dist"
       port: 25672
       targetPort: 25672
+  # storageSize: 10Gi
+  auth:
+    username: infrahub
+    password: infrahub
+  metrics:
+    enabled: true
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 120
+    timeoutSeconds: 20
+    periodSeconds: 30
+    failureThreshold: 6
+    successThreshold: 1
 
 # ----------- Persistent Storage -----------
 pvc:
@@ -163,8 +165,6 @@ pvc:
     storageRequest: 100Mi
   # Infrahub Git
   gitData:
-    storageRequest: 100Mi
-  gitRemoteData:
     storageRequest: 100Mi
   # Infrahub Server
   infrahubServerStorageData:
