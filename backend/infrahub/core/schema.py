@@ -279,7 +279,7 @@ class DropdownChoice(BaseSchemaModel):
 
 class AttributeSchema(BaseSchemaModel):
     id: Optional[str]
-    name: str = Field(regex=NODE_NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
+    name: str = Field(regex=NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
     kind: str  # AttributeKind
     namespace: str = "Attribute"
     label: Optional[str]
@@ -353,7 +353,7 @@ class AttributeSchema(BaseSchemaModel):
 
 class RelationshipSchema(BaseSchemaModel):
     id: Optional[str]
-    name: str = Field(regex=NODE_NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
+    name: str = Field(regex=NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
     peer: str = Field(regex=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH)
     kind: RelationshipKind = RelationshipKind.GENERIC
     label: Optional[str]
@@ -937,7 +937,7 @@ internal_schema = {
                 {
                     "name": "optional",
                     "kind": "Boolean",
-                    "description": "Indicate if this attribute is mandatory or it's optional.",
+                    "description": "Indicate if this attribute is mandatory or optional.",
                     "default_value": True,
                     "optional": True,
                 },
@@ -1008,7 +1008,7 @@ internal_schema = {
                     "kind": "Text",
                     "description": "Defines the type of the relationship.",
                     "enum": RelationshipKind.available_types(),
-                    "default_value": "Generic",
+                    "default_value": RelationshipKind.GENERIC.value,
                 },
                 {
                     "name": "label",
@@ -1038,6 +1038,7 @@ internal_schema = {
                     "kind": "Text",
                     "description": "Defines how many objects are expected on the other side of the relationship.",
                     "enum": RelationshipCardinality.available_types(),
+                    "default_value": RelationshipCardinality.MANY.value,
                 },
                 {
                     "name": "order_weight",
@@ -1048,21 +1049,21 @@ internal_schema = {
                 {
                     "name": "optional",
                     "kind": "Boolean",
-                    "description": "Indicate if this relationship is mandatory or if it's optional.",
+                    "description": "Indicate if this relationship is mandatory or optional.",
                     "default_value": False,
                     "optional": True,
                 },
                 {
                     "name": "branch",
                     "kind": "Text",
-                    "description": "xx.",
+                    "description": "Type of branch support for the relatioinship, if not defined it will be determine based both peers.",
                     "enum": BranchSupportType.available_types(),
                     "optional": True,
                 },
                 {
                     "name": "inherited",
                     "kind": "Boolean",
-                    "description": "xx.",
+                    "description": "Internal value to indicate if the relationship was inherited from a Generic node.",
                     "default_value": False,
                     "optional": True,
                 },
@@ -1089,6 +1090,7 @@ internal_schema = {
                 {
                     "name": "name",
                     "kind": "Text",
+                    "description": "Generic name, must be unique within a namespace and must be all lowercase.",
                     "unique": True,
                     "regex": str(NODE_NAME_REGEX),
                     "min_length": DEFAULT_NAME_MIN_LENGTH,
@@ -1097,6 +1099,7 @@ internal_schema = {
                 {
                     "name": "namespace",
                     "kind": "Text",
+                    "description": "Generic Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.",
                     "regex": str(NODE_KIND_REGEX),
                     "min_length": DEFAULT_KIND_MIN_LENGTH,
                     "max_length": DEFAULT_KIND_MAX_LENGTH,
@@ -1104,12 +1107,14 @@ internal_schema = {
                 {
                     "name": "label",
                     "kind": "Text",
+                    "description": "Human friendly representation of the name/kind",
                     "optional": True,
                     "max_length": 32,
                 },
                 {
                     "name": "branch",
                     "kind": "Text",
+                    "description": "Type of branch support for the model.",
                     "enum": BranchSupportType.available_types(),
                     "default_value": BranchSupportType.AWARE.value,
                     "optional": True,
@@ -1118,6 +1123,7 @@ internal_schema = {
                     "name": "default_filter",
                     "kind": "Text",
                     "description": "Default filter used to search for a node in addition to its ID.",
+                    "regex": str(NAME_REGEX),
                     "optional": True,
                 },
                 {
@@ -1151,7 +1157,13 @@ internal_schema = {
                     "description": "Defines the icon to be used for this object type.",
                     "optional": True,
                 },
-                {"name": "description", "kind": "Text", "optional": True, "max_length": DEFAULT_DESCRIPTION_LENGTH},
+                {
+                    "name": "description",
+                    "kind": "Text",
+                    "optional": True,
+                    "description": "Short description of the Generic.",
+                    "max_length": DEFAULT_DESCRIPTION_LENGTH,
+                },
                 {
                     "name": "used_by",
                     "kind": "List",
@@ -1189,7 +1201,6 @@ internal_schema = {
                     "name": "name",
                     "kind": "Text",
                     "unique": True,
-                    "regex": str(NODE_NAME_REGEX),
                     "min_length": DEFAULT_NAME_MIN_LENGTH,
                     "max_length": DEFAULT_NAME_MAX_LENGTH,
                 },
@@ -1200,7 +1211,13 @@ internal_schema = {
                     "min_length": DEFAULT_KIND_MIN_LENGTH,
                     "max_length": DEFAULT_KIND_MAX_LENGTH,
                 },
-                {"name": "description", "kind": "Text", "optional": True, "max_length": DEFAULT_DESCRIPTION_LENGTH},
+                {
+                    "name": "description",
+                    "kind": "Text",
+                    "description": "Short description of the Group.",
+                    "optional": True,
+                    "max_length": DEFAULT_DESCRIPTION_LENGTH,
+                },
             ],
         },
     ],

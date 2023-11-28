@@ -191,7 +191,7 @@ Below is the list of all available options to define a Node in the schema
 | ---- | --------------- |
 | **Name** | attributes |
 | **Kind** | `List` |
-| **Description** |  |
+| **Description** | List of Attributes supported for the Schema |
 
 ## relationships
 
@@ -199,5 +199,5 @@ Below is the list of all available options to define a Node in the schema
 | ---- | --------------- |
 | **Name** | relationships |
 | **Kind** | `List` |
-| **Description** |  |
+| **Description** | List of Relationships supported for the Schema |
 
