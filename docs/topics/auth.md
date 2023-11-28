@@ -1,9 +1,9 @@
 ---
-label: User Management and Authentication
+label: User management and authentication
 layout: default
 ---
 
-### User management and authentication
+# User management and authentication
 
 Infrahub now supports standard user management and authentication systems.
 
@@ -15,14 +15,14 @@ A user account can have 3 levels of permissions
 
 By default, Infrahub will allow anonymous access in read-only. It's possible to disable this via the configuration `main.allow_anonymous_access` or via the environment variable `INFRAHUB_ALLOW_ANONYMOUS_ACCESS`.
 
-#### Authentication mechanisms
+## Authentication mechanisms
 
 Infrahub supports two authentication methods
 
 - JWT token: Short life tokens generated on demand from the API.
 - API Token: Long life tokens generated ahead of time.
 
-> API tokens can be generated via the user profile page or via the Graphql interface.
+> API tokens can be generated via the user profile page or via the GraphQL interface.
 
 |                    | JWT  | TOKEN |
 | ------------------ | ---- | ----- |

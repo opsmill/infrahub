@@ -2,7 +2,9 @@
 order: 060
 ---
 
-## Main Changes
+# Main changes
+<!-- markdownlint-disable -->
+<!-- vale off -->
 
 ### New Logo and refresh of the frontend
 
@@ -32,7 +34,7 @@ Infrahub supports two authentication methods
 > API token can be generated via the user profile page or via the Graphql interface.
 
 |                    | JWT  | TOKEN |
-|--------------------|------|-------|
+| ------------------ | ---- | ----- |
 | API / GraphQL      | Yes  | Yes   |
 | Frontend           | Yes  | No    |
 | Python SDK         | Soon | Yes   |

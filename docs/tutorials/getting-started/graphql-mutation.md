@@ -1,5 +1,5 @@
 ---
-label: GraphQL Mutation
+label: GraphQL mutation
 # icon: file-directory
 tags: [tutorial]
 order: 100

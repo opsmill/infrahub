@@ -1,5 +1,5 @@
 ---
-label: Object Storage
+label: Object storage
 layout: default
 ---
 # Object storage

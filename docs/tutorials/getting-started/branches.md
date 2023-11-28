@@ -1,12 +1,12 @@
 ---
-label: Branches and Version Control
+label: Branches and version control
 # icon: file-directory
 tags: [tutorial]
 order: 800
 ---
 # Manage changes with branching and version control
 
-In Infrahub, version control is natively integrated into the graph database which opens up some new capabilities like branching, diffing and merging data directly in the database.
+In Infrahub, version control is natively integrated into the graph database which opens up some new capabilities like branching, diffing, and merging data directly in the database.
 
 The default branch is called `main`.
 
@@ -20,7 +20,7 @@ Branch names are fairly permissive, but must conform to [git ref format](https:/
 
 ![](../../media/tutorial/tutorial-1-branch-and-version-control.cy.ts/tutorial_1_branch_creation.png)
 
-##### Other options available
+### Other options available
 
 ==- Create a new branch with `infrahubctl`
 
@@ -55,7 +55,7 @@ mutation {
 > You'll need to provide a header to execute this operation > `{"X-INFRAHUB-KEY":"06438eb2-8019-4776-878c-0941b1f1d1ec"}`
 ==-
 
-### Modify an organization via the UI
+## Modify an organization via the UI
 
 > The name of the active branch in the top right corner should now be `cr1234`
 
@@ -75,7 +75,7 @@ Go back to the detailed page for the Organization `my-first-org` and try to swit
 **You should be able to see the value of the label change when you change the branch.**
 !!!
 
-### View the Diff and Merge the branch cr1234 into main
+## View the Diff and Merge the branch cr1234 into main
 
 Now that we have modified some data in a controlled environment, and after validating that everything is right, we can integrate these changes in the `main` branch by merging the branch `cr1234` into main.
 
@@ -95,8 +95,7 @@ To view changes and merge a branch you need to:
 
 ![Branch details](../../media/tutorial/tutorial-1-branch-and-version-control.cy.ts/tutorial_1_branch_details.png)
 
-
-##### Other options available
+### Other options available
 
 ==- Merge a Branch with `infrahubctl`
 

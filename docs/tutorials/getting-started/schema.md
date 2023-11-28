@@ -1,5 +1,5 @@
 ---
-label: Extend the Schema
+label: Extend the schema
 # icon: file-directory
 tags: [tutorial]
 order: 650
@@ -8,7 +8,7 @@ order: 650
 
 Infrahub can be extended by providing your own schema (or models). The version of Infrahub we currently use for the demo is bare-bones and doesn't include many models.
 
-## Visualize the active Schema
+## Visualize the active schema
 
 The default schema is composed of 18+ models that are either mandatory for Infrahub to function like `Account`, `Group`, `Repository` or that are very generic like `Status`, `Role`, `Location`.
 

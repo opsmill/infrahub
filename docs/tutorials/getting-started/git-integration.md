@@ -13,15 +13,15 @@ When integrating a Git repository with Infrahub, the Git agent will ensure that 
 
 ## Fork & Clone the repository for the demo
 
-Create a fork of the repository https://github.com/opsmill/infrahub-demo-edge
+Create a fork of the repository `https://github.com/opsmill/infrahub-demo-edge`
 
 !!!info
-The goal is to have a copy of this repo under your name. This way your demo won't influence others.
+The goal is to have a copy of this repository under your name. This way your demo won't influence others.
 !!!
 
 Once you have created a fork in GitHub, you'll need a Personal Access Token to authorize Infrahub to access this repository.
 
-==- How to create a Personal Access Token in Github
+==- How to create a Personal Access Token in GitHub
 
   1. Go to settings > Developer Settings > Personal access tokens
   2. Select Fine-grained tokens
@@ -32,7 +32,7 @@ Once you have created a fork in GitHub, you'll need a Personal Access Token to a
 ==-
 
 !!!
-If you already cloned the repo in the past, ensure only the main branch is present in GitHub.
+If you already cloned the repository in the past, ensure only the main branch is present in GitHub.
 If other branches are present, it's recommended that you delete them for now.
 !!!
 
@@ -51,7 +51,7 @@ If other branches are present, it's recommended that you delete them for now.
 Currently the easiest way to add a repository is to use the GraphQL interface.
 
 !!!info
-Before moving to the next step, you'll need your personal access token previously generated in Github.
+Before moving to the next step, you'll need your personal access token previously generated in GitHub.
 !!!
 
 [!ref Open the GraphQL Interface](http://127.0.0.1:8000/graphql/main)

@@ -1,5 +1,5 @@
 ---
-label: Data Lineage & Metadata
+label: Data lineage & metadata
 # icon: file-directory
 tags: [tutorial]
 order: 600
@@ -7,7 +7,7 @@ order: 600
 
 # Data lineage and metadata
 
-One of the core features of Infrahub is that we can define `metadata` on all datapoints: attributes and relationships.
+One of the core features of Infrahub is that we can define `metadata` on all data points: attributes and relationships.
 
 The current supported metadata are:
 
@@ -31,7 +31,7 @@ If you navigate to the detailed page of any device you'll be able to see that:
 
 ![](../../media/tutorial/tutorial-4-data.cy.ts/tutorial_4_metadata.png)
 
-## Protected Field
+## Protected fields
 
 When a field is marked as protected, all users that aren't listed as the owner won't be able to modify this specific attribute when trying to edit the object. They will still be able to modify the other attributes.
 

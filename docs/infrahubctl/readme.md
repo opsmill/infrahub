@@ -4,6 +4,7 @@
 It's meant to run on any laptop or server and it communicates with a remote Infrahub server over the network.
 
 `infrahubctl` can help you to:
+
 - Manage the branches in Infrahub: List, Create, Merge, Rebase, Delete.
 - Manage the schema and load new schema files into Infrahub.
 - Execute any Python script that requires access to the Python SDK.

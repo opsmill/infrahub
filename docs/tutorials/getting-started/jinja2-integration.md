@@ -22,12 +22,12 @@ An `RFile` is an internal concept that represents a Jinja Template coupled with 
 
 The rendered configuration is available via the REST API under `/api/rfile/<rfile_name>` followed by any additional parameters expected in the GraphQL query.
 
-The `rfile` **device_startup** present in the repository, expects the name of the device as a parameter `/api/rfile/<rfile_name>?device=<device_name>`, as an example, below is the URL for couple of devices:
+The `rfile`, `device_startup`, present in the repository expects the name of the device as a parameter `/api/rfile/<rfile_name>?device=<device_name>`. As an example, below is the URL for couple of devices:
 
-- [Config for `ord1-edge1` (/api/rfile/device_startup?device=ord1-edge1)](http://localhost:8000/api/rfile/device_startup?device=ord1-edge1)
-- [Config for `atl1-edge2` (/api/rfile/device_startup?device=atl1-edge2)](http://localhost:8000/api/rfile/device_startup?device=atl1-edge2)
+- [Configuration for `ord1-edge1` (`/api/rfile/device_startup?device=ord1-edge1`)](http://localhost:8000/api/rfile/device_startup?device=ord1-edge1)
+- [Configuration for `atl1-edge2` (`/api/rfile/device_startup?device=atl1-edge2`)](http://localhost:8000/api/rfile/device_startup?device=atl1-edge2)
 
-In these examples `device_startup` is the name of an rfile defined in the `infrahub-demo-edge` repository. The query string `?device=atl1-edge2` includes all the arguments that are required by the GraphQL query associated with this rfile.
+In these examples `device_startup` is the name of an RFile defined in the `infrahub-demo-edge` repository. The query string `?device=atl1-edge2` includes all the arguments that are required by the GraphQL query associated with this RFile.
 
 ## Create a new branch, then change the data AND the template
 

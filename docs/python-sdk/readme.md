@@ -8,14 +8,13 @@ A Python SDK for Infrahub greatly simplifies how we can interact with Infrahub p
 
 For now, the recommendation is to clone the main Infrahub repository on your file system and to install the entire Infrahub package in your own repository using a relative path with the `--editable` flag.
 
-```
+```sh
 poetry add --editable <path to the Infrahub repository on disk>
 ```
 
 ## Getting started
 
 The SDK supports both synchronous and asynchronous Python. The default asynchronous version is provided by the `InfrahubClient` class while the synchronous version uses the `InfrahubClientSync` class.
-
 
 ### Dynamic schema discovery
 
