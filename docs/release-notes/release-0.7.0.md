@@ -1,11 +1,12 @@
 ---
 order: 070
 ---
+# Release 0.7.0
 
-# Main changes
+## Main changes
 <!-- vale off -->
 <!-- markdownlint-disable -->
-## Proposed change
+### Proposed change
 
 A Proposed Change provides a single workflow to integrate the changes from a given branch into the main branch.
 It is the equivalent of a Pull Request or a Merge Request for Infrahub.
@@ -22,7 +23,7 @@ Information related to a change:
 - Peer Review
 - Discussions
 
-## Artifacts
+### Artifacts
 
 An artifact is the result of a Transformation for a specific context and/or object, it can have different format either in plain text or JSON.
 
@@ -34,7 +35,7 @@ An artifact improve the Transformation by providing the following additional fea
 
 While the content of an artifact can change, its identifier will remain the same over time.
 
-## Support for branch agnostic and branch local models
+### Support for branch agnostic and branch local models
 
 It's now possible to define in the schema how a given model, attribute or relationship should behave regarding the branches.
 
@@ -44,19 +45,19 @@ It's now possible to also configure a model, an attribute or a relationship as:
 - **branch agnostic**: All changes to an object based on a **branch agnostic** model will automatically be available in all branches.
 - **branch local**:  All changes will stay local to the branch. A model in **branch local** mode will not be affected by the Diff and the Merge.
 
-## Object storage
+### Object storage
 
 A new object store has been introduced to easily store and retrieve files in an object storage. The object storage interface is independent of the branches.
 
 Currently only a local backend is supported but the goal over time is to support multiple backend like AWS S3 to allow users to select where they would like their files to be stored.
 
 
-## Python SDK
+### Python SDK
 
 The Python SDK now support more granular queries by introducing the support for `include` and `exclude` parameters on all methods to query objects from Infrahub.
 
 
-## Architecture change
+### Architecture change
 
 Several changes to the Architecture have been introduced to prepare the deployment of Infrahub in a production environment:
 
