@@ -1,9 +1,12 @@
 # Topics
 
+Topics explain the concepts of Infrahub and how it works.
+
 - [Architecture](./architecture.md)
-- [Transformation](./transformation.md)
-- [Authentication](./auth.md)
 - [Artifact](./artifact.md)
-- [Object Storage](./object-storage.md)
-- [Proposed Change](./proposed-change.md)
-- [Demo Environment](./local-demo-environment.md)
+- [Demo environment](./local-demo-environment.md)
+- [GraphQL queries](./graphql.md)
+- [Object storage](./object-storage.md)
+- [Proposed change](./proposed-change.md)
+- [Transformation](./transformation.md)
+- [User management and authentication](./auth.md)
