@@ -281,7 +281,6 @@ class AttributeSchema(BaseSchemaModel):
     id: Optional[str]
     name: str = Field(regex=NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
     kind: str  # AttributeKind
-    namespace: str = "Attribute"
     label: Optional[str]
     description: Optional[str] = Field(max_length=DEFAULT_DESCRIPTION_LENGTH)
     default_value: Optional[Any]
@@ -674,7 +673,7 @@ class NodeSchema(BaseNodeSchema):
 
 class GroupSchema(BaseSchemaModel):
     id: Optional[str]
-    name: str = Field(regex=NODE_NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
+    name: str = Field(regex=NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
     kind: str = Field(regex=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH)
     description: Optional[str] = Field(max_length=DEFAULT_DESCRIPTION_LENGTH)
 
