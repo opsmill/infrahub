@@ -1,0 +1,14 @@
+---
+extends: substitution
+message: Use '%s' instead of '%s'
+level: error
+ignorecase: false
+action:
+  name: replace
+swap:
+  (?i:Github): GitHub
+  (?i:gitpod): GitPod
+  (?i:Graphql): GraphQL
+  infrahub(?:\s|$): Infrahub
+  (?i:Openconfig): OpenConfig
+  "[Rr]file": RFile
