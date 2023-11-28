@@ -219,12 +219,13 @@ def render(  # pylint: disable=too-many-branches,too-many-statements
 
     print(rendered_tpl)
 
+
 @app.command(name="transform")
 def transform(  # pylint: disable=too-many-branches,too-many-statements
     transform_script: str = typer.Argument(
         ...,
         help="The path to a Python script containing a class for data transformation. "
-             "The format should be: filename:class (e.g., my_transform:MyTransformer).",
+        "The format should be: filename:class (e.g., my_transform:MyTransformer).",
     ),
     variables: Optional[List[str]] = typer.Argument(
         None, help="Variables to pass along with the query. Format key=value key=value."
@@ -247,19 +248,19 @@ def transform(  # pylint: disable=too-many-branches,too-many-statements
     # ------------------------------------------------------------------
 
     try:
-            # Split the input into filename and class name
-            filename, class_name = transform_script.split(":")
-            
-            # Dynamically import the specified module
-            spec = importlib.util.spec_from_file_location(filename, filename + ".py")
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
+        # Split the input into filename and class name
+        filename, class_name = transform_script.split(":")
 
-            # Get the specified class from the module
-            transform_class = getattr(module, class_name)
+        # Dynamically import the specified module
+        spec = importlib.util.spec_from_file_location(filename, filename + ".py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
 
-            # Create an instance of the class
-            transform_instance = transform_class()
+        # Get the specified class from the module
+        transform_class = getattr(module, class_name)
+
+        # Create an instance of the class
+        transform_instance = transform_class()
 
     except Exception as exc:
         console.print(f"[red]Error loading {transform_script}: {exc}")
@@ -303,7 +304,7 @@ def transform(  # pylint: disable=too-many-branches,too-many-statements
     # Finally, render the transform
     # ------------------------------------------------------------------
     rendered = aiorun(transform_instance.transform(response))
-    
+
     print(rendered)
 
 
@@ -345,6 +346,7 @@ def run(
             timeout=timeout,
         )
     )
+
 
 if __name__ == "__main__":
     app()
