@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 
 import jinja2
+import json
 import typer
 
 try:
@@ -304,8 +305,10 @@ def transform(  # pylint: disable=too-many-branches,too-many-statements
     # Finally, render the transform
     # ------------------------------------------------------------------
     rendered = aiorun(transform_instance.transform(response))
+    
+    rendered_json = json.dumps(rendered, indent=2)
 
-    print(rendered)
+    print(rendered_json)
 
 
 @app.command(name="run")
