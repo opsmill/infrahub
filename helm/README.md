@@ -9,7 +9,8 @@ The chart includes the following files and directories:
 - `templates/`: Contains the template files for Kubernetes resources.
   - `_helpers.tpl`: Template helpers/definitions.
   - `cache.yaml`: Defines the cache (Redis) deployment, service, and PVC.
-  - `configmap.yaml`: ConfigMap for application configuration.
+  - `infrahub-configmap.yaml`: ConfigMap for Infrahub configuration.
+  - `message-queue-configmap.yaml`: ConfigMap for RabbitMQ configuration.
   - `database.yaml`: Database (Neo4j) deployment, service, and PVC.
   - `infrahub-git.yaml`: Infrahub Git service deployment and service.
   - `infrahub-server-db-init-job.yaml`: Initialization jobs for Infrahub Server.
@@ -45,12 +46,17 @@ The following table lists the configurable parameters in the `values.yaml` file 
 
 | Parameter | Description | Default |
 | --------- | ----------- | ------- |
+| `global.kubernetesClusterDomain` | Kubernetes cluster domain | `cluster.local`  |
+| `global.imageRegistry` | Image registry for pulling images | `9r2s1098.c1.gra9.container-registry.ovh.net`  |
+| `global.infrahubRepository` | Repository for Infrahub images | ` opsmill/infrahub-py3.11`  |
+| `global.infrahubTag` | Tag for Infrahub images | `"0.8.2-helm"`  |
+| `global.imagePullPolicy` | Default image pull policy | `IfNotPresent`  |
+| `cache.type` | Service type for cache | `ClusterIP`  |
 | `cache.cache.image.repository` | The Redis image repository | `redis` |
 | `cache.cache.image.tag` | The Redis image tag | `"7.2"` |
+| `database.type` | Service type for cache | `ClusterIP`  |
 | `database.database.image.repository` | The Neo4j image repository | `neo4j` |
 | `database.database.image.tag` | The Neo4j image tag | `5.13-community` |
-| `infrahubGit.infrahubGit.image.repository` | The Infrahub Git image repository | `9r2s1098.c1.gra9.container-registry.ovh.net/opsmill/infrahub` |
-| `infrahubServer.infrahubServer.image.repository` | The Infrahub Server image repository | `9r2s1098.c1.gra9.container-registry.ovh.net/opsmill/infrahub` |
 | `messageQueue.messageQueue.image.repository` | The RabbitMQ image repository | `rabbitmq` |
 | `messageQueue.messageQueue.image.tag` | The RabbitMQ image tag | `3.12-management` |
 | ... | ... | ... |
