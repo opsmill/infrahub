@@ -2,7 +2,9 @@
 order: 060
 ---
 
-# Main changes
+# Release 0.6.0
+
+## Main changes
 <!-- markdownlint-disable -->
 <!-- vale off -->
 
