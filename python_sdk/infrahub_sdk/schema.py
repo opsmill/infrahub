@@ -48,7 +48,6 @@ class InfrahubRepositoryArtifactDefinitionConfig(pydantic.BaseModel):
 class InfrahubRepositoryRFileConfig(pydantic.BaseModel):
     name: str = pydantic.Field(..., description="The name of the RFile")
     query: str = pydantic.Field(..., description="The name of the GraphQL Query")
-    repository: str = pydantic.Field(default="self", description="The repository")
     template_path: Path = pydantic.Field(..., description="The path within the repository of the template file")
     description: Optional[str] = pydantic.Field(default=None, description="Description for this rfile")
 
