@@ -27,7 +27,6 @@ class CoreAccountTokenCreateInput(InputObjectType):
 
 class CoreAccountUpdateSelfInput(InputObjectType):
     password = InputField(String(required=False), description="The new password")
-    name = InputField(String(required=False), description="The new name")
     description = InputField(String(required=False), description="The new description")
 
 
@@ -82,7 +81,7 @@ class AccountMixin:
 
     @classmethod
     async def update_self(cls, db: InfrahubDatabase, account: Node, data: Dict, info: GraphQLResolveInfo):
-        for field in ("name", "password", "description"):
+        for field in ("password", "description"):
             if value := data.get(field):
                 getattr(account, field).value = value
 
