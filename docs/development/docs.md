@@ -15,17 +15,49 @@ In addition to `python` and `invoke`, you'll need Node.JS and NPM installed. Onc
 
 ```sh
 invoke -l docs
-
-Available 'docs' tasks:
-
-  .build      Build documentation website.
-  .generate   Generate documentation output from code.
-  .serve      Run documentation server in development mode.
 ```
 
 ## Linting and automation
 
-(Coming soon...)
+Infrahub used [Vale](https://vale.sh) to check grammar, style, and word usage. You can find Vale's configuration in `.vale.ini`, and the Infrahub styles located in `.vale/styles/Infrahub`.
+
+[Markdownlint](https://github.com/DavidAnson/markdownlint) is used to encourage consistent markdown files, and Infrahub's configuration is located at `.markdownlint.yaml`.
+
+Most Vale warnings match up with the [style guide](#style-guide) explanations below. Other warnings often fall into the `Infrahub.spelling` rule. These are caused by misspellings, product names, names of people, or otherwise unknown technical terms. See the [procedures for updating rules](#spelling-errors) below for details on adding terms to the approved list.
+
+### Install linters locally
+
+The preferred way to work on the documentation with Vale and markdownlint is directly in an editor. Install the [Vale](https://marketplace.visualstudio.com/items?itemName=chrischinchilla.vale-vscode) and [markdownlint](https://marketplace.visualstudio.com/items?itemName=DavidAnson.vscode-markdownlint) VS Code plugins to enable in-editor warnings.
+
+### Disabling Vale and markdownlint
+
+You can disable Vale and markdownlint in-line with the following markdown comments:
+
+```md
+<!-- vale off -->
+Ignored Specialized Phrase ignored by vale
+<!-- vale on -->
+
+<!-- markdownlint-disable -->
+## Ignored markdown line
+<!-- markdownlint-restore -->
+```
+
+This is useful in situations where specific style choices or markdown quirks force the use of an otherwise conflicting rule. In general, it is better to update existing configurations or create new rules rather than disable scanning of individual files.
+
+### Creating new Vale rules
+
+For questions regarding how to add to or update an existing rule, see the [Vale styles documentation](https://vale.sh/docs/topics/styles/). A wealth of examples are also available in [GitLab's vale configuration](https://gitlab.com/gitlab-org/gitlab/-/tree/master/doc/.vale/gitlab).
+
+#### Spelling errors
+
+If Vale warns of a spelling mistake and the word is valid, you can fix it by updating the `spelling-exceptions.txt` file in the `.vale/styles/` directory. When adding a new term, update and alphabetize the list to make future scanning easier.
+
+#### Common replacement words
+
+Add common shorthand words and phrases that have better alternatives to the `swap.yml` rule. For example, `repo` becomes `repository`.
+
+Add special case capitalization words to the `branded-terms-case-swap.yml` rule. For example, `Github` becomes `GitHub`.
 
 ## Writing markdown
 
@@ -110,7 +142,11 @@ Reference docs serve a single purpose. To provide quick, clear information when 
 
 For a deeper dive into reference docs, refer to the [diátaxis reference page](https://diataxis.fr/reference/).
 
-## Style Guide
+## Creating application screenshots
+
+In an effort to keep application screenshots up to date, use [Cypress](https://docs.cypress.io/guides/overview/why-cypress) to generate images whenever possible. Refer to the [E2E tests section](/development/#e2e-tests) of the development docs for details, and reference `frontend/tests/e2e/tutorial` for examples from the [getting started](/tutorials/getting-started/) tutorial.
+
+## Style guide
 
 As a general rule, prefer consistency and simplicity when possible. This guide should help in making choices, but it is a living document and should evolve as the needs of the project evolve. For anything not answered below, reference the [Microsoft Style Guide](https://learn.microsoft.com/en-us/style-guide/welcome/).
 
@@ -126,7 +162,7 @@ General tips:
 
 We use American English for most standard text. Unique technical terms are [included below](#common-external-words), or in the [Microsoft A-Z word list](https://learn.microsoft.com/en-us/style-guide/welcome/).
 
-### Trailing Commas
+### Trailing commas
 
 Use a trailing comma when listing multiple items. This is commonly known as the Oxford comma or serial comma.
 
@@ -193,13 +229,13 @@ Feature: Explanation of feature
 ### Code blocks
 
 When creating a code block or snippet with three backticks, make sure to include a language designation.
-
+<!-- markdownlint-disable -->
 ~~~md
 ```sh
 this is a shell script
 ```
 ~~~
-
+<!-- markdownlint-restore -->
 
 ### Marking code items
 
@@ -215,7 +251,7 @@ It's also acceptable to use "for example" or "such as".
 
 ### Common external words
 
-Refer to external brand guidelines for capitalizations. Here are some common spellings and uses for brands found in the Infrahub docs.
+Refer to external brand guidelines for capitalization rules. Here are some common spellings and uses for brands found in the Infrahub docs. Additional terms can be found in `.vale/styles/Infrahub/branded-terms-case-swap.yml`.
 
 - GitHub
 - GitLab
@@ -224,3 +260,14 @@ Refer to external brand guidelines for capitalizations. Here are some common spe
 - GraphQL
 - MacOS
 - Linux
+
+## Documentation release checklist
+
+- [ ] Generate output files for automated pages, `invoke docs.generate`.
+  - [ ] Confirm build of `infrahubctl` pages.
+  - [ ] Confirm build of `infrahub-cli` pages.
+  - [ ] Confirm build of schema pages.
+- [ ] [Generate application screenshots](#creating-application-screenshots).
+- [ ] If app version update, create new release notes file in `docs/release-notes`.
+- [ ] Run [linters](#linting-and-automation) and fix valid errors on all source files.
+- [ ] Perform test build of docs, `invoke docs.build`.

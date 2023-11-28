@@ -1,4 +1,5 @@
 agent
+APIs
 async
 autoflake
 config
@@ -18,6 +19,7 @@ github
 graphene
 graphiql
 graphql
+greymatter
 Infrahub
 Infrahub's
 infrahubctl
@@ -27,6 +29,7 @@ IPNetwork
 isort
 jinja
 kbps
+markdownlint
 memgraph
 namespace
 namespaces
