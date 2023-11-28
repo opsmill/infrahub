@@ -121,7 +121,7 @@ export const Select = (props: SelectProps) => {
 
   const handleInputChange = (value: any) => {
     if (multiple) {
-      setSelectedOption(value);
+      handleChange(value);
       return;
     }
 
