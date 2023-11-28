@@ -2,8 +2,8 @@
     "version": "1.0",
     "nodes": [
         {
-            "name": "class",
-            "kind": "Class",
+            "name": "None",
+            "namespace": "Test",
             "default_filter": "name__value",
             "display_labels": [
                 "name__value"
