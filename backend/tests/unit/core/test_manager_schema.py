@@ -408,7 +408,7 @@ async def test_schema_branch_validate_identifiers():
         schema.validate_identifiers()
 
     assert (
-        str(exc.value) == "TestCriticality: Identifier of relationships must be unique within a side >"
+        str(exc.value) == "TestCriticality: Identifier of relationships must be unique within a side > "
         "'testcriticality__testcriticality' : [('first', 'both'), ('second', 'both')]"
     )
 
