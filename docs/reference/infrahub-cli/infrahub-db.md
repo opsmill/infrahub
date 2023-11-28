@@ -36,7 +36,7 @@ $ infrahub db init [OPTIONS]
 
 ## `infrahub db load-test-data`
 
-Load test data into the database from the test_data directory.
+Load test data into the database from the `test_data` directory.
 
 **Usage**:
 

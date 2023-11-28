@@ -26,6 +26,7 @@ env:
   BUILDKITE_ANALYTICS_BRANCH: ${{ github.ref }}
   BUILDKITE_BRANCH: ${{ github.ref }}
   BUILDKITE_COMMIT: ${{ github.sha }}
+  VALE_VERSION: "2.29.7"
 
 jobs:
    # ------------------------------------------ Check Files Changes  ------------------------------------------
@@ -402,6 +403,28 @@ jobs:
       - name: "Validate generated documentation"
         run: "invoke docs.validate --docker"
 
+  validate_documentation_style:
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.documentation == 'true'
+    needs: ["files-changed", "yaml-lint", "python-lint"]
+    runs-on: "ubuntu-22.04"
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v4"
+      # The official GitHub Action for Vale doesn't work, installing manually instead:
+      # https://github.com/errata-ai/vale-action/issues/103
+      - name: Download Vale
+        run: |
+          curl -sL "https://github.com/errata-ai/vale/releases/download/v${VALE_VERSION}/vale_${VALE_VERSION}_Linux_64-bit.tar.gz" -o vale.tar.gz
+          tar -xzf vale.tar.gz
+        env:
+          VALE_VERSION: ${{ env.VALE_VERSION }}
+      - name: "Validate documentation style"
+        run: "./vale ."
   # ------------------------------------------ E2E Tests  ------------------------------------------
   E2E-testing:
     needs:

@@ -1,3 +1,4 @@
+<!-- vale off -->
 ---
 label: Node
 layout: default

@@ -48,7 +48,7 @@ Language: React
 
 ### Graph database
 
-The Graph database is based on Bolt and Cyper. Currently, we have validated both Neo4j 5.x and Memgraph as possible options.
+The Graph database is based on Bolt and Cypher. Currently, we have validated both Neo4j 5.x and Memgraph as possible options.
 Neo4j is a production grade, battle tested graph database that is used in thousands of deployments around the world.
 Memgraph is a lightweight, very fast, in-memory database that works great for testing and demos.
 

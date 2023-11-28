@@ -119,7 +119,7 @@ The CLI command `infrahubctl` is able to find your local RFile(s) and render the
 │                                     [default: None]                                               │
 ╰───────────────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ─────────────────────────────────────────────────────────────────────────────────────────╮
-│ --branch                       TEXT  Branch on which to rendre the RFile. [default: None]         │
+│ --branch                       TEXT  Branch on which to render the RFile. [default: None]         │
 │ --debug          --no-debug          [default: no-debug]                                          │
 │ --config-file                  TEXT  [env var: INFRAHUBCTL_CONFIG] [default: infrahubctl.toml]    │
 │ --help                               Show this message and exit.                                  │
