@@ -1,3 +1,4 @@
+<!-- vale off -->
 ---
 label: Generic
 layout: default

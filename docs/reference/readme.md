@@ -1,6 +1,6 @@
 # Reference
 
-Technical reference documents for Infrahub APIs and components.
+Technical reference documents for Infrahub API and components.
 
 - [Schema](schema/)
 - [Infrahub CLI](infrahub-cli/infrahub-db/)

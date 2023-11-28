@@ -15,7 +15,7 @@ $ infrahubctl render [OPTIONS] RFILE [VARIABLES]...
 
 **Options**:
 
-* `--branch TEXT`: Branch on which to rendre the RFile.
+* `--branch TEXT`: Branch on which to render the RFile.
 * `--debug / --no-debug`: [default: no-debug]
 * `--config-file TEXT`: [env var: INFRAHUBCTL_CONFIG; default: infrahubctl.toml]
 * `--install-completion`: Install completion for the current shell.

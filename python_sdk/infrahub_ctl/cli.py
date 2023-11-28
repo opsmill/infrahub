@@ -110,7 +110,7 @@ def render(  # pylint: disable=too-many-branches,too-many-statements
     variables: Optional[List[str]] = typer.Argument(
         None, help="Variables to pass along with the query. Format key=value key=value."
     ),
-    branch: str = typer.Option(None, help="Branch on which to rendre the RFile."),
+    branch: str = typer.Option(None, help="Branch on which to render the RFile."),
     debug: bool = False,
     config_file: str = typer.Option(config.DEFAULT_CONFIG_FILE, envvar=config.ENVVAR_CONFIG_FILE),
 ) -> None:
@@ -229,7 +229,7 @@ def run(
     branch: str = typer.Option("main", help="Branch on which to run the script."),
     concurrent: int = typer.Option(
         4,
-        help="Maximum number of requets to execute at the same time.",
+        help="Maximum number of requests to execute at the same time.",
         envvar="INFRAHUBCTL_CONCURRENT_EXECUTION",
     ),
     timeout: int = typer.Option(60, help="Timeout in sec", envvar="INFRAHUBCTL_TIMEOUT"),
