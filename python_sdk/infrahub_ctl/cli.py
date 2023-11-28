@@ -219,6 +219,93 @@ def render(  # pylint: disable=too-many-branches,too-many-statements
 
     print(rendered_tpl)
 
+@app.command(name="transform")
+def transform(  # pylint: disable=too-many-branches,too-many-statements
+    transform_script: str = typer.Argument(
+        ...,
+        help="The path to a Python script containing a class for data transformation. "
+             "The format should be: filename:class (e.g., my_transform:MyTransformer).",
+    ),
+    variables: Optional[List[str]] = typer.Argument(
+        None, help="Variables to pass along with the query. Format key=value key=value."
+    ),
+    branch: str = typer.Option(None, help="Branch on which to render the RFile."),
+    debug: bool = False,
+    config_file: str = typer.Option(config.DEFAULT_CONFIG_FILE, envvar=config.ENVVAR_CONFIG_FILE),
+) -> None:
+    """Render a local transform (TransformPython) for debugging purpose."""
+
+    if not config.SETTINGS:
+        config.load_and_exit(config_file=config_file)
+
+    branch = get_branch(branch)
+
+    console = Console()
+
+    # ------------------------------------------------------------------
+    # Find the GraphQL Query and Retrieve its data
+    # ------------------------------------------------------------------
+
+    try:
+            # Split the input into filename and class name
+            filename, class_name = transform_script.split(":")
+            
+            # Dynamically import the specified module
+            spec = importlib.util.spec_from_file_location(filename, filename + ".py")
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+
+            # Get the specified class from the module
+            transform_class = getattr(module, class_name)
+
+            # Create an instance of the class
+            transform_instance = transform_class()
+
+    except Exception as exc:
+        console.print(f"[red]Error loading {transform_script}: {exc}")
+        raise typer.Exit(1)
+
+    try:
+        query_str = find_graphql_query(transform_instance.query)
+    except QueryNotFoundError as exc:
+        console.print(f"[red]Unable to find query : {exc}")
+        raise typer.Exit(1) from exc
+
+    variables_dict = parse_cli_vars(variables)
+
+    client = initialize_client_sync()
+    try:
+        response = client.execute_graphql(
+            query=query_str,
+            branch_name=branch,
+            variables=variables_dict,
+            raise_for_error=False,
+        )
+
+    except GraphQLError as exc:
+        console.print(f"[red]{len(exc.errors)} error(s) occured while executing the query")
+        for error in exc.errors:
+            if isinstance(error, dict) and "message" in error and "locations" in error:
+                console.print(f"[yellow] - Message: {error['message']}")  # type: ignore[typeddict-item]
+                console.print(f"[yellow]   Location: {error['locations']}")  # type: ignore[typeddict-item]
+            elif isinstance(error, str) and "Branch:" in error:
+                console.print(f"[yellow] - {error}")
+                console.print("[yellow]   you can specify a different branch with --branch")
+        raise typer.Abort()
+
+    if debug:
+        console.print("-" * 40)
+        console.print(f"Response for GraphQL Query {transform_instance.query}")
+        console.print(response)
+        console.print("-" * 40)
+
+    # ------------------------------------------------------------------
+    # Finally, render the transform
+    # ------------------------------------------------------------------
+    rendered = aiorun(transform_instance.transform(response))
+    
+    print(rendered)
+
 
 @app.command(name="run")
 def run(
@@ -258,3 +345,6 @@ def run(
             timeout=timeout,
         )
     )
+
+if __name__ == "__main__":
+    app()
