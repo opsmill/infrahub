@@ -1521,12 +1521,13 @@ async def person_tag_schema(db: InfrahubDatabase, default_branch: Branch, data_s
                     {"name": "lastname", "kind": "Text"},
                 ],
                 "relationships": [
-                    {"name": "tags", "peer": "BuiltinTag", "cardinality": "many"},
+                    {"name": "tags", "peer": "BuiltinTag", "cardinality": "many", "side": "destination"},
                     {
                         "name": "primary_tag",
                         "peer": "BuiltinTag",
                         "identifier": "person_primary_tag",
                         "cardinality": "one",
+                        "side": "source",
                     },
                 ],
             },

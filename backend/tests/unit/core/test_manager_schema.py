@@ -408,8 +408,8 @@ async def test_schema_branch_validate_identifiers():
         schema.validate_identifiers()
 
     assert (
-        str(exc.value)
-        == "TestCriticality: Identifier of relationships must be unique : ['testcriticality__testcriticality']"
+        str(exc.value) == "TestCriticality: Identifier of relationships must be unique within a side >"
+        "'testcriticality__testcriticality' : [('first', 'both'), ('second', 'both')]"
     )
 
     SCHEMA2 = {
@@ -429,6 +429,52 @@ async def test_schema_branch_validate_identifiers():
     schema.load_schema(schema=SchemaRoot(nodes=[SCHEMA2]))
     schema.generate_identifiers()
     schema.validate_identifiers()
+
+
+async def test_schema_branch_validate_identifiers_side():
+    SCHEMA1 = {
+        "name": "Criticality",
+        "namespace": "Test",
+        "default_filter": "name__value",
+        "branch": BranchSupportType.AWARE.value,
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True},
+        ],
+        "relationships": [
+            {"name": "first", "peer": "TestCriticality", "cardinality": "one", "side": "source"},
+            {"name": "second", "peer": "TestCriticality", "cardinality": "one", "side": "destination"},
+        ],
+    }
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(nodes=[SCHEMA1]))
+    schema.generate_identifiers()
+    schema.validate_identifiers()
+
+    SCHEMA2 = {
+        "name": "Criticality",
+        "namespace": "Test",
+        "default_filter": "name__value",
+        "branch": BranchSupportType.AWARE.value,
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True},
+        ],
+        "relationships": [
+            {"name": "first", "peer": "TestCriticality", "cardinality": "one", "side": "both"},
+            {"name": "second", "peer": "TestCriticality", "cardinality": "one", "side": "destination"},
+        ],
+    }
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(nodes=[SCHEMA2]))
+    schema.generate_identifiers()
+    with pytest.raises(ValueError) as exc:
+        schema.validate_identifiers()
+
+    assert (
+        str(exc.value) == "TestCriticality: Identifier of relationships must be unique within a side > "
+        "'testcriticality__testcriticality' : [('first', 'both'), ('second', 'destination')]"
+    )
 
 
 async def test_schema_branch_validate_kinds_peer():

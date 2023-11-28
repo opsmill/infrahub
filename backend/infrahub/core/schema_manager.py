@@ -254,10 +254,18 @@ class SchemaBranch:
         for name in list(self.nodes.keys()) + list(self.generics.keys()):
             node = self.get(name=name)
 
-            identifiers = [rel.identifier for rel in node.relationships]
-            if identifier_dup := duplicates(identifiers):
+            rels_per_identifier: Dict[str, List[RelationshipSchema]] = defaultdict(list)
+            for rel in node.relationships:
+                rels_per_identifier[rel.identifier].append(rel)
+
+            for identifier, rels in rels_per_identifier.items():
+                sides = sorted([rel.side.value for rel in rels])
+                if len(rels) == 1 or len(rels) == 2 and sides == ["destination", "source"]:
+                    continue
+
+                names_sides = [(rel.name, rel.side.value) for rel in rels]
                 raise ValueError(
-                    f"{node.kind}: Identifier of relationships must be unique : {identifier_dup}"
+                    f"{node.kind}: Identifier of relationships must be unique within a side > {identifier!r} : {names_sides}"
                 ) from None
 
     def validate_names(self) -> None:
