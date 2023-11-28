@@ -55,7 +55,7 @@ class Registry:
     @property
     def schema(self) -> SchemaManager:
         if not self._schema:
-            raise InitializationError
+            raise InitializationError()
 
         return self._schema
 

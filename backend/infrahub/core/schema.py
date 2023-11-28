@@ -2043,14 +2043,12 @@ core_models = {
                     "kind": "Number",
                     "description": "number of nested levels in the query",
                     "read_only": True,
-                    "optional": True,
                 },
                 {
                     "name": "height",
                     "kind": "Number",
                     "description": "total number of fields requested in the query",
                     "read_only": True,
-                    "optional": True,
                 },
             ],
             "relationships": [
