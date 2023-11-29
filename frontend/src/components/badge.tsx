@@ -15,7 +15,7 @@ const DEFAULT_CLASS = `
   flex font-medium mr-2 last:mr-0 px-2.5 py-0.5 rounded
 `;
 
-const getClasseName = (type: BADGE_TYPES, onClick: Function, disabled?: boolean) => {
+const getClassName = (type: BADGE_TYPES, onClick: Function, disabled?: boolean) => {
   switch (type) {
     case BADGE_TYPES.VALIDATE: {
       return `
@@ -64,7 +64,7 @@ const getClasseName = (type: BADGE_TYPES, onClick: Function, disabled?: boolean)
 export const Badge = (props: any) => {
   const { type, className, children, onDelete, value, onClick, disabled } = props;
 
-  const customClassName = getClasseName(type, onClick || onDelete, disabled);
+  const customClassName = getClassName(type, onClick || onDelete, disabled);
 
   const handleClick = (event: any) => {
     event.stopPropagation();
