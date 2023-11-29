@@ -594,6 +594,8 @@ class InfrahubNodeBase:
         variables = {}
         for item_name in self._attributes:
             attr: Attribute = getattr(self, item_name)
+            if getattr(attr, "read_only", False):
+                continue
             attr_data = attr._generate_input_data()
 
             # NOTE, this code has been inherited when we splitted attributes and relationships
