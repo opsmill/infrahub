@@ -9,14 +9,36 @@ order: 700
 {% macro bool_to_str(value) -%}
 {% if value == true %}True{% else %}False{% endif %}
 {%- endmacro %}
+{% macro reverse_bool_to_str(value) -%}
+{% if value == true %}False{% else %}True{% endif %}
+{%- endmacro %}
+{% set ns = namespace(node=none) -%}
+{% for node in schema.nodes -%}
+{%   if node.name == "Relationship" -%}
+{%     set ns.node = node -%}
+{%   endif -%}
+{% endfor -%}
+
 # Relationship
 
-In a schema file, a relationship can be defined inside a `node` or inside a `node extension`.
+In a schema file, a relationship can be defined inside a `node`, a `generic` or a `node extension`.
+
+## Summary
 
 Below is the list of all available options to define a Relationship in the schema
 
+
+
+| Name | Type | Description | Mandatory | { class="compact" }
+| ---- | ---- | ---- | --------- |
+{%- for attr in ns.node.attributes %}
+{%-  if attr.name not in ["inherited"] %}
+| [**{{ attr.name }}**](#{{ attr.name }}) | Attribute | {{ attr.description }} | {{ reverse_bool_to_str(attr.optional) }} |
+{%- endif %}
+{%- endfor %}
+
 ## Reference Guide
-{% for attr in schema.nodes[2].attributes -%}
+{% for attr in ns.node.attributes -%}
 ### {{ attr.name }}
 
 | Key | Value | { class="compact" }
@@ -32,7 +54,8 @@ Below is the list of all available options to define a Relationship in the schem
 {%- endif %}
 
 {% endfor %}
-{% for rel in schema.nodes[2].relationships -%}
+{% for rel in ns.node.relationships -%}
+{%  if rel.name not in ["node"] %}
 ## {{ rel.name }}
 
 | -- | -- | { class="compact" }
@@ -41,4 +64,5 @@ Below is the list of all available options to define a Relationship in the schem
 | **Kind** | {% if rel.cardinality == "one" %}`Object`{%else%}`List`{%endif%} |
 | **Description** | {{ rel.description }} |
 
+{%- endif %}
 {% endfor %}

@@ -5,27 +5,30 @@ order: 900
 ---
 
 
+
 # Node
 
 ## Summary
 
 Below is the list of all available options to define a Node in the schema
 
-| Name | Type | Optional | { class="compact" }
-| ---- | ---- | --------- |
-| [**name**](#name) | Node name, must be unique within a namespace and must be all lowercase. | False |
-| [**namespace**](#namespace) | Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions. | False |
-| [**label**](#label) | Human friendly representation of the name/kind | True |
-| [**description**](#description) | Short description of the model, will be visible in the frontend. | True |
-| [**branch**](#branch) | Type of branch support for the model. | True |
-| [**default_filter**](#default_filter) | Default filter used to search for a node in addition to its ID. | True |
-| [**display_labels**](#display_labels) | List of attributes to use to generate the display label | True |
-| [**include_in_menu**](#include_in_menu) | Defines if objects of this kind should be included in the menu. | True |
-| [**menu_placement**](#menu_placement) | Defines where in the menu this object should be placed. | True |
-| [**icon**](#icon) | Defines the icon to be used for this object type. | True |
-| [**order_by**](#order_by) | List of attributes to use to order the results by default | True |
-| [**inherit_from**](#inherit_from) | List of Generic Kind that this node is inheriting from | True |
-| [**groups**](#groups) | List of Group that this node is part of | True |
+| Name | Type | Description | Mandatory | { class="compact" }
+| ---- | ---- | ----------- | --------- |
+| [**name**](#name) | Attribute | Node name, must be unique within a namespace and must be all lowercase. | True |
+| [**namespace**](#namespace) | Attribute | Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions. | True |
+| [**label**](#label) | Attribute | Human friendly representation of the name/kind | False |
+| [**description**](#description) | Attribute | Short description of the model, will be visible in the frontend. | False |
+| [**branch**](#branch) | Attribute | Type of branch support for the model. | False |
+| [**default_filter**](#default_filter) | Attribute | Default filter used to search for a node in addition to its ID. | False |
+| [**display_labels**](#display_labels) | Attribute | List of attributes to use to generate the display label | False |
+| [**include_in_menu**](#include_in_menu) | Attribute | Defines if objects of this kind should be included in the menu. | False |
+| [**menu_placement**](#menu_placement) | Attribute | Defines where in the menu this object should be placed. | False |
+| [**icon**](#icon) | Attribute | Defines the icon to be used for this object type. | False |
+| [**order_by**](#order_by) | Attribute | List of attributes to use to order the results by default | False |
+| [**inherit_from**](#inherit_from) | Attribute | List of Generic Kind that this node is inheriting from | False |
+| [**groups**](#groups) | Attribute | List of Group that this Node is part of. | False |
+| [**attributes**](#attributes) | Relationship | List of supported Attributes for the Node. | False |
+| [**relationships**](#relationships) | Relationship | List of supported Relationships for the Node. | False |
 
 ## Reference Guide
 ### name
@@ -178,7 +181,7 @@ Below is the list of all available options to define a Node in the schema
 | ---- | --------------- |
 | **Name** | groups |
 | **Kind** | `List` |
-| **Description** | List of Group that this node is part of |
+| **Description** | List of Group that this Node is part of. |
 | **Optional**  | True |
 | **Default Value** |  |
 | **Constraints** |  |
@@ -191,7 +194,7 @@ Below is the list of all available options to define a Node in the schema
 | ---- | --------------- |
 | **Name** | attributes |
 | **Kind** | `List` |
-| **Description** | List of Attributes supported for the Schema |
+| **Description** | List of supported Attributes for the Node. |
 
 ## relationships
 
@@ -199,5 +202,5 @@ Below is the list of all available options to define a Node in the schema
 | ---- | --------------- |
 | **Name** | relationships |
 | **Kind** | `List` |
-| **Description** | List of Relationships supported for the Schema |
+| **Description** | List of supported Relationships for the Node. |
 

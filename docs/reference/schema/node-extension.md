@@ -8,28 +8,40 @@ order: 850
 
 Below is the list of all available options to define a node extension in the schema
 
-## kind
 
-| -- | -- | { class="compact" }
+## Summary
+
+Below is the list of all available options to define a Node in the schema
+
+| Name | Type | Description | Mandatory | { class="compact" }
+| ---- | ---- | ----------- | --------- |
+| [**kind**](#kind) | Attribute | Node to extend. | True |
+| [**attributes**](#attributes) | Relationship | List of Attribute to add to the Node. | True |
+| [**relationships**](#relationships) | Relationship | List of Relationship to add to the Node.  | True |
+
+## Reference Guide
+### kind
+
+| Key | Value |  { class="compact" }
 | ---- | --------------- |
 | **Name** | kind |
 | **Kind** | `Text` |
-| **Description** | Node kind, must be unique and must be in CamelCase |
-| **Constraints** |  Regex: `^[A-Z][a-zA-Z0-9]+$`<br> Lenght: min 3, max 3 |
+| **Description** | Node kind, must exist in the schema and must be in CamelCase |
+| **Optional**  | False |
+| **Constraints** |  Regex: `^[A-Z][a-zA-Z0-9]+$`<br> Length: min 2, max 32 |
 
-## attributes
+### attributes
 
-| -- | -- | { class="compact" }
+| Key | Value |  { class="compact" }
 | ---- | --------------- |
 | **Name** | attributes |
 | **Kind** | `List` |
-| **Description** |  |
+| **Description** | List of Attribute to add to the Node. |
 
-## relationships
+### relationships
 
-| -- | -- | { class="compact" }
+| Key | Value |  { class="compact" }
 | ---- | --------------- |
 | **Name** | relationships |
 | **Kind** | `List` |
-| **Description** |  |
-
+| **Description** | List of Relationship to add to the Node. |

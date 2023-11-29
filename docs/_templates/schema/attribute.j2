@@ -9,6 +9,15 @@ order: 800
 {% macro bool_to_str(value) -%}
 {% if value == true %}True{% else %}False{% endif %}
 {%- endmacro %}
+{% macro reverse_bool_to_str(value) -%}
+{% if value == true %}False{% else %}True{% endif %}
+{%- endmacro %}
+{% set ns = namespace(node=none) -%}
+{% for node in schema.nodes -%}
+{%   if node.name == "Attribute" -%}
+{%     set ns.node = node -%}
+{%   endif -%}
+{% endfor -%}
 # Attribute
 
 In a schema file, an attribute can be defined inside a `node`, a `generic` or a `node extension`.
@@ -17,11 +26,11 @@ In a schema file, an attribute can be defined inside a `node`, a `generic` or a 
 
 Below is the list of all available options to define an Attribute in the schema
 
-| Name | Type | Optional | { class="compact" }
-| ---- | ---- | --------- |
-{%- for attr in schema.nodes[1].attributes %}
+| Name | Type | Description | Mandatory | { class="compact" }
+| ---- | ---- | ---- | --------- |
+{%- for attr in ns.node.attributes %}
 {%-  if attr.name not in ["inherited"] %}
-| [**{{ attr.name }}**](#{{ attr.name }}) | {{ attr.description }} | {{ bool_to_str(attr.optional) }} |
+| [**{{ attr.name }}**](#{{ attr.name }}) | Attribute | {{ attr.description }} | {{ reverse_bool_to_str(attr.optional) }} |
 {%- endif %}
 {%- endfor %}
 
@@ -47,7 +56,7 @@ extensions:
 ```
 
 ## Reference Guide
-{% for attr in schema.nodes[1].attributes -%}
+{% for attr in ns.node.attributes -%}
 {%  if attr.name not in ["inherited"] %}
 ### {{ attr.name }}
 
@@ -65,7 +74,7 @@ extensions:
 
 {%- endif %}
 {% endfor %}
-{% for rel in schema.nodes[1].relationships -%}
+{% for rel in ns.node.relationships -%}
 {%  if rel.name not in ["node"] %}
 ### {{ rel.name }}
 
