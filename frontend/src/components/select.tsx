@@ -60,14 +60,14 @@ export const Select = (props: SelectProps) => {
   const [open, setOpen] = useState(false);
   const [localOptions, setLocalOptions] = useState(options);
   const [selectedOption, setSelectedOption] = useState(
-    multiple ? value : options.find((option: any) => option?.id === value)
+    multiple ? value : options.find((option) => option?.id === value)
   );
 
   const schemaData = schemaList.find((s) => s.kind === peer);
 
   const filteredOptions = !query
     ? localOptions
-    : localOptions.filter((option: any) =>
+    : localOptions.filter((option) =>
         option?.name?.toString().toLowerCase().includes(query.toLowerCase())
       );
 
@@ -169,7 +169,7 @@ export const Select = (props: SelectProps) => {
                 "absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-custom-white text-base shadow-lg ring-1 ring-custom-black ring-opacity-5 focus:outline-none sm:text-sm",
                 direction === SelectDirection.OVER ? "bottom-0" : ""
               )}>
-              {filteredOptions.map((option: any) => (
+              {filteredOptions.map((option) => (
                 <Combobox.Option
                   key={option.id}
                   value={option}
