@@ -7,11 +7,13 @@ from typing import TYPE_CHECKING, Dict, Optional, Type, Union
 import infrahub.config as config
 from infrahub import lock
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
+from infrahub.core.schema import NodeSchema
 from infrahub.exceptions import (
     BranchNotFound,
     DataTypeNotFound,
     Error,
     InitializationError,
+    SchemaInvalidError,
 )
 
 if TYPE_CHECKING:
@@ -22,10 +24,10 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.definitions import Brancher
     from infrahub.core.manager import NodeManager
-    from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema
+    from infrahub.core.schema import GenericSchema, GroupSchema
     from infrahub.core.schema_manager import SchemaManager
     from infrahub.database import InfrahubDatabase
-    from infrahub.graphql.mutations import BaseAttributeInput
+    from infrahub.graphql.mutations.attribute import BaseAttributeInput
     from infrahub.graphql.types import InfrahubObject
     from infrahub.storage.main import InfrahubObjectStorage
     from infrahub.types import InfrahubDataType
@@ -60,7 +62,7 @@ class Registry:
         return self._schema
 
     @schema.setter
-    def schema(self, value: SchemaManager):
+    def schema(self, value: SchemaManager) -> None:
         self._schema = value
 
     @property
@@ -71,7 +73,7 @@ class Registry:
         return self._manager
 
     @manager.setter
-    def manager(self, value: Type[NodeManager]):
+    def manager(self, value: Type[NodeManager]) -> None:
         self._manager = value
 
     @property
@@ -82,7 +84,7 @@ class Registry:
         return self._storage
 
     @storage.setter
-    def storage(self, value: Type[InfrahubObjectStorage]):
+    def storage(self, value: Type[InfrahubObjectStorage]) -> None:
         self._storage = value
 
     def schema_has_been_initialized(self) -> bool:
@@ -90,19 +92,27 @@ class Registry:
             return True
         return False
 
-    def set_item(self, kind: str, name: str, item, branch: Optional[str] = None) -> bool:
+    def set_item(
+        self,
+        kind: str,
+        name: str,
+        item: Union[Type[InfrahubObject], Type[graphene.Interface], Type[graphene.ObjectType]],
+        branch: Optional[str] = None,
+    ) -> bool:
         branch = branch or config.SETTINGS.main.default_branch
         getattr(self, kind)[branch][name] = item
         return True
 
-    def has_item(self, kind: str, name: str, branch=None) -> bool:
+    def has_item(self, kind: str, name: str, branch: Optional[Union[Branch, str]] = None) -> bool:
         try:
             self.get_item(kind=kind, name=name, branch=branch)
             return True
         except ValueError:
             return False
 
-    def get_item(self, kind: str, name: str, branch: Optional[Union[Branch, str]] = None):
+    def get_item(
+        self, kind: str, name: str, branch: Optional[Union[Branch, str]] = None
+    ) -> Union[Type[InfrahubObject], Type[graphene.Interface], Type[graphene.ObjectType]]:
         branch = get_branch_from_registry(branch=branch)
 
         attr = getattr(self, kind)
@@ -143,7 +153,11 @@ class Registry:
         return self.schema.get(name=name, branch=branch)
 
     def get_node_schema(self, name: str, branch: Optional[Union[Branch, str]] = None) -> NodeSchema:
-        return self.schema.get(name=name, branch=branch)
+        node_schema = self.schema.get(name=name, branch=branch)
+        if isinstance(node_schema, NodeSchema):
+            return node_schema
+
+        raise SchemaInvalidError(f"{name} is not a NodeSchema")
 
     def get_data_type(
         self,
@@ -177,7 +191,7 @@ class Registry:
         """Return all the graphql_type for a given branch."""
         return self.get_all_item(kind="graphql_type", branch=branch)
 
-    def delete_all(self):
+    def delete_all(self) -> None:
         self.branch = {}
         self.node = {}
         self.schema = None

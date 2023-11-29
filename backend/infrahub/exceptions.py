@@ -155,6 +155,10 @@ class ProcessingError(Error):
         super().__init__(self.message)
 
 
+class SchemaInvalidError(Error):
+    HTTP_CODE: int = 422
+
+
 class SchemaNotFound(Error):
     HTTP_CODE: int = 422
 
