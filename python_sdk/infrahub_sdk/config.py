@@ -29,6 +29,9 @@ class Config(pydantic.BaseSettings):
         default_factory=NoRecorder.default,
         description="Provides a way to record responses from the Infrahub API",
     )
+    default_branch: str = pydantic.Field(
+        default="main", description="Default branch to target if not specified for each request."
+    )
     requester: Optional[AsyncRequester] = None
     timeout: int = pydantic.Field(default=10, description="Default connection timeout in seconds")
     transport: RequesterTransport = pydantic.Field(
