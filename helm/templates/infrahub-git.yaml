@@ -1,0 +1,74 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "infrahub-helm.fullname" . }}-infrahub-git
+  labels:
+    service: infrahub-git
+  {{- include "infrahub-helm.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.infrahubGit.replicas | default 1 }}
+  selector:
+    matchLabels:
+      service: infrahub-git
+    {{- include "infrahub-helm.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        service: infrahub-git
+      {{- include "infrahub-helm.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - args: {{- toYaml .Values.infrahubGit.infrahubGit.args | nindent 12 }}
+          env:
+            - name: INFRAHUB_ADDRESS
+              value: {{ quote .Values.infrahubGit.infrahubGit.env.infrahubAddress }}
+            - name: INFRAHUB_CACHE_PORT
+              value: {{ quote .Values.infrahubServer.infrahubServer.env.infrahubCachePort }}
+            - name: INFRAHUB_CONFIG
+              value: {{ quote .Values.infrahubGit.infrahubGit.env.infrahubConfig }}
+            - name: INFRAHUB_DB_TYPE
+              value: {{ quote .Values.infrahubGit.infrahubGit.env.infrahubDbType }}
+            - name: INFRAHUB_LOG_LEVEL
+              value: {{ quote .Values.infrahubGit.infrahubGit.env.infrahubLogLevel }}
+            - name: INFRAHUB_PRODUCTION
+              value: {{ quote .Values.infrahubGit.infrahubGit.env.infrahubProduction }}
+            - name: INFRAHUB_SDK_API_TOKEN
+              value: {{ quote .Values.infrahubGit.infrahubGit.env.infrahubSdkApiToken }}
+            - name: INFRAHUB_SDK_TIMEOUT
+              value: {{ quote .Values.infrahubGit.infrahubGit.env.infrahubSdkTimeout }}
+            - name: KUBERNETES_CLUSTER_DOMAIN
+              value: {{ quote .Values.global.kubernetesClusterDomain }}
+          image: {{ .Values.global.imageRegistry }}/{{ .Values.global.infrahubRepository }}:{{ .Values.global.infrahubTag | default .Chart.AppVersion }}
+          imagePullPolicy: {{ default .Values.global.imagePullPolicy .Values.messageQueue.messageQueue.imagePullPolicy }}
+          name: infrahub-git
+          resources: {}
+          tty: true
+          volumeMounts:
+            - mountPath: /opt/infrahub/git
+              name: git-data
+            - name: config-volume
+              mountPath: /config
+      restartPolicy: Always
+      volumes:
+        - hostPath:
+            path: /tmp/infrahub-helm
+          name: git-data
+        - name: config-volume
+          configMap:
+            name: {{ include "infrahub-helm.fullname" . }}-infrahub-config
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "infrahub-helm.fullname" . }}-git-data
+  labels:
+    service: git-data
+  {{- include "infrahub-helm.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.pvc.gitData.storageRequest | quote }}

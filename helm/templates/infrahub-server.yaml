@@ -1,0 +1,109 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "infrahub-helm.fullname" . }}-infrahub-server
+  labels:
+    service: infrahub-server
+  {{- include "infrahub-helm.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.infrahubServer.replicas | default 1 }}
+  selector:
+    matchLabels:
+      service: infrahub-server
+    {{- include "infrahub-helm.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        service: infrahub-server
+      {{- include "infrahub-helm.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - args: {{- toYaml .Values.infrahubServer.infrahubServer.args | nindent 12 }}
+          env:
+            - name: INFRAHUB_ALLOW_ANONYMOUS_ACCESS
+              value: {{ quote .Values.infrahubServer.infrahubServer.env.infrahubAllowAnonymousAccess }}
+            - name: INFRAHUB_CACHE_PORT
+              value: {{ quote .Values.infrahubServer.infrahubServer.env.infrahubCachePort }}
+            - name: INFRAHUB_CONFIG
+              value: {{ quote .Values.infrahubServer.infrahubServer.env.infrahubConfig }}
+            - name: INFRAHUB_DB_TYPE
+              value: {{ quote .Values.infrahubServer.infrahubServer.env.infrahubDbType }}
+            - name: INFRAHUB_LOG_LEVEL
+              value: {{ quote .Values.infrahubServer.infrahubServer.env.infrahubLogLevel }}
+            - name: INFRAHUB_PRODUCTION
+              value: {{ quote .Values.infrahubServer.infrahubServer.env.infrahubProduction }}
+            - name: INFRAHUB_SECURITY_INITIAL_ADMIN_TOKEN
+              value: {{ quote .Values.infrahubServer.infrahubServer.env.infrahubSecurityInitialAdminToken }}
+            - name: INFRAHUB_SECURITY_SECRET_KEY
+              value: {{ quote .Values.infrahubServer.infrahubServer.env.infrahubSecuritySecretKey }}
+            - name: KUBERNETES_CLUSTER_DOMAIN
+              value: {{ quote .Values.global.kubernetesClusterDomain }}
+          image: {{ .Values.global.imageRegistry }}/{{ .Values.global.infrahubRepository }}:{{ .Values.global.infrahubTag | default .Chart.AppVersion }}
+          imagePullPolicy: {{ default .Values.global.imagePullPolicy .Values.messageQueue.messageQueue.imagePullPolicy }}
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - wget -O /dev/null http://localhost:{{ (index .Values.infrahubServer.ports 0).port }}/api/schema || exit 1
+            failureThreshold: 20
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 5
+          name: infrahub-server
+          ports:
+          {{- range .Values.infrahubServer.ports }}
+          {{- if eq .name "infrahub-gui" }}
+            - containerPort: {{ .targetPort }}
+              hostPort: {{ .port }}
+              protocol: TCP
+              name: {{ quote .name }}
+          {{- end }}
+          {{- end }}
+          resources: {}
+          tty: true
+          volumeMounts:
+            - mountPath: /opt/infrahub/storage
+              name: infrahub-server-storage-data
+            - name: config-volume
+              mountPath: /config
+      restartPolicy: Always
+      volumes:
+        - hostPath:
+            path: /tmp/infrahub-helm
+          name: infrahub-server-storage-data
+        - name: config-volume
+          configMap:
+            name: {{ include "infrahub-helm.fullname" . }}-infrahub-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "infrahub-helm.fullname" . }}-infrahub-server
+  labels:
+    service: infrahub-server
+  {{- include "infrahub-helm.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.infrahubServer.type }}
+  selector:
+    service: infrahub-server
+  {{- include "infrahub-helm.selectorLabels" . | nindent 4 }}
+  ports:
+	{{- .Values.infrahubServer.ports | toYaml | nindent 4 }}
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "infrahub-helm.fullname" . }}-infrahub-server-storage-data
+  labels:
+    service: infrahub-server-storage-data
+  {{- include "infrahub-helm.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.pvc.infrahubServerStorageData.storageRequest | quote }}

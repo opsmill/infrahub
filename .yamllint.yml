@@ -7,6 +7,8 @@ ignore: |
   /repositories
   /frontend/node_modules
   /node_modules
+  # https://github.com/sbaudoin/yamllint/issues/16
+  /helm/templates
 
 rules:
   new-lines: disable
