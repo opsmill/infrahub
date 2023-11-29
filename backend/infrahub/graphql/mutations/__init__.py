@@ -28,7 +28,7 @@ from .proposed_change import (
 )
 from .relationship import RelationshipAdd, RelationshipRemove
 from .repository import InfrahubRepositoryMutation
-from .schema import SchemaEnumCreate, SchemaEnumDelete
+from .schema import SchemaEnumAdd, SchemaEnumRemove
 
 __all__ = [
     "AnyAttributeInput",
@@ -59,6 +59,6 @@ __all__ = [
     "RelationshipRemove",
     "StringAttributeInput",
     "TextAttributeInput",
-    "SchemaEnumCreate",
-    "SchemaEnumDelete",
+    "SchemaEnumAdd",
+    "SchemaEnumRemove",
 ]

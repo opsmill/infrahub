@@ -1,4 +1,3 @@
-from copy import deepcopy
 from typing import Dict, Union
 
 from graphene import Boolean, InputObjectType, Mutation, String
@@ -26,7 +25,7 @@ class SchemaEnumInput(InputObjectType):
     enum = String(required=True)
 
 
-class SchemaEnumCreate(Mutation):
+class SchemaEnumAdd(Mutation):
     class Arguments:
         data = SchemaEnumInput(required=True)
 
@@ -41,7 +40,7 @@ class SchemaEnumCreate(Mutation):
     ) -> Dict[str, bool]:
         db: InfrahubDatabase = info.context.get("infrahub_database")
         branch: Branch = info.context.get("infrahub_branch")
-        kind = deepcopy(registry.get_schema(name=str(data.kind), branch=branch.name))
+        kind = registry.get_schema(name=str(data.kind), branch=branch.name)
 
         attribute = str(data.attribute)
         enum = str(data.enum)
@@ -59,7 +58,7 @@ class SchemaEnumCreate(Mutation):
         return {"ok": True}
 
 
-class SchemaEnumDelete(Mutation):
+class SchemaEnumRemove(Mutation):
     class Arguments:
         data = SchemaEnumInput(required=True)
 
@@ -74,7 +73,7 @@ class SchemaEnumDelete(Mutation):
     ) -> Dict[str, bool]:
         db: InfrahubDatabase = info.context.get("infrahub_database")
         branch: Branch = info.context.get("infrahub_branch")
-        kind = deepcopy(registry.get_schema(name=str(data.kind), branch=branch.name))
+        kind = registry.get_schema(name=str(data.kind), branch=branch.name)
 
         attribute = str(data.attribute)
         enum = str(data.enum)
@@ -92,22 +91,27 @@ class SchemaEnumDelete(Mutation):
                 if len(attrib.enum) == 1:
                     raise ValidationError(f"Unable to remove the last enum on {kind.kind} in attribute {attribute}")
                 attrib.enum = [entry for entry in attrib.enum if entry != enum]
-        nodes_with_enum = NodeManager.query(db=db, schema=kind)
+
         await update_registry(kind=kind, branch=branch, db=db)
 
         return {"ok": True}
 
 
 def validate_kind(kind: Union[GenericSchema, GroupSchema, NodeSchema], attribute: str) -> None:
-    if not isinstance(kind, NodeSchema):
+    if isinstance(kind, GroupSchema):
         raise ValidationError(f"{kind.kind} is not a valid node")
     if kind.namespace in RESTRICTED_NAMESPACES:
         raise ValidationError(f"Operation not allowed for {kind.kind} in restricted namespace {kind.namespace}")
-    matching_attribute = [attrib for attrib in kind.attributes if attrib.name == attribute]
-    if not matching_attribute:
+    if attribute not in kind.attribute_names:
         raise ValidationError(f"Attribute {attribute} does not exist on {kind.kind}")
+
+    matching_attribute = [attrib for attrib in kind.attributes if attrib.name == attribute]
+
     if not matching_attribute[0].enum:
         raise ValidationError(f"Attribute {attribute} on {kind.kind} is not an enum")
+
+    if matching_attribute[0].inherited:
+        raise ValidationError(f"Attribute {attribute} on {kind.kind} is inherited and must be changed on the generic")
 
 
 async def update_registry(kind: NodeSchema, branch: Branch, db: InfrahubDatabase) -> None:
