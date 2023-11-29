@@ -1,9 +1,8 @@
 import { gql } from "@apollo/client";
-import { useContext, useState } from "react";
+import { useState } from "react";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/alert";
-import { ACCOUNT_OBJECT } from "../../config/constants";
-import { AuthContext } from "../../decorators/withAuth";
+import { ACCOUNT_SELF_UPDATE_OBJECT } from "../../config/constants";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
 import { stringifyWithoutQuotes } from "../../utils/string";
@@ -33,7 +32,6 @@ const fields: DynamicFieldData[] = [
 
 export default function TabPreferences() {
   const [isLoading, setIsLoading] = useState(false);
-  const auth = useContext(AuthContext);
 
   const onSubmit = async ({ newPassword, confirmPassword }: any) => {
     if (newPassword !== confirmPassword) {
@@ -45,12 +43,9 @@ export default function TabPreferences() {
 
     try {
       const mutationString = updateObjectWithId({
-        kind: ACCOUNT_OBJECT,
+        kind: ACCOUNT_SELF_UPDATE_OBJECT,
         data: stringifyWithoutQuotes({
-          id: auth.data.sub,
-          password: {
-            value: newPassword,
-          },
+          password: newPassword,
         }),
       });
 
