@@ -47,7 +47,9 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
         query_info["models"] = {"value": sorted(list(await analyzer.get_models_in_use()))}
         query_info["depth"] = {"value": await analyzer.calculate_depth()}
         query_info["height"] = {"value": await analyzer.calculate_height()}
-        query_info["operations"] = {"value": sorted([operation.value for operation in analyzer.operations])}
+        query_info["operations"] = {
+            "value": sorted([operation.operation_type.value for operation in analyzer.operations])
+        }
         query_info["variables"] = {"value": [variable.dict() for variable in analyzer.variables]}
 
         return query_info

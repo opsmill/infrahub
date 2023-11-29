@@ -25,6 +25,11 @@ class CoreAccountTokenCreateInput(InputObjectType):
     expiration = InputField(String(required=False), description="Timestamp when the token expires")
 
 
+class CoreAccountUpdateSelfInput(InputObjectType):
+    password = InputField(String(required=False), description="The new password")
+    description = InputField(String(required=False), description="The new description")
+
+
 class ValueType(InfrahubObjectType):
     value = String(required=True)
 
@@ -53,7 +58,7 @@ class AccountMixin:
 
         account = results[0]
 
-        mutation_map = {"CoreAccountTokenCreate": cls.create_token}
+        mutation_map = {"CoreAccountTokenCreate": cls.create_token, "CoreAccountSelfUpdate": cls.update_self}
         return await mutation_map[cls.__name__](db=db, account=account, data=data, info=info)
 
     @classmethod
@@ -74,6 +79,17 @@ class AccountMixin:
         fields = await extract_fields(info.field_nodes[0].selection_set)
         return cls(object=await obj.to_graphql(db=db, fields=fields.get("object", {})), ok=True)
 
+    @classmethod
+    async def update_self(cls, db: InfrahubDatabase, account: Node, data: Dict, info: GraphQLResolveInfo):
+        for field in ("password", "description"):
+            if value := data.get(field):
+                getattr(account, field).value = value
+
+        async with db.start_transaction() as db:
+            await account.save(db=db)
+
+        return cls(ok=True)
+
 
 class CoreAccountTokenCreate(AccountMixin, Mutation):
     class Arguments:
@@ -81,3 +97,10 @@ class CoreAccountTokenCreate(AccountMixin, Mutation):
 
     ok = Boolean()
     object = Field(CoreAccountTokenType)
+
+
+class CoreAccountSelfUpdate(AccountMixin, Mutation):
+    class Arguments:
+        data = CoreAccountUpdateSelfInput(required=True)
+
+    ok = Boolean()
