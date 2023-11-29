@@ -19,11 +19,10 @@ from infrahub.lock import initialize_lock
 from infrahub.log import clear_log_context, get_logger
 from infrahub.message_bus import get_broker, messages
 from infrahub.message_bus.operations import execute_message
-from infrahub.message_bus.worker import WorkerCallback
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
-from infrahub.worker import WORKER_IDENTITY
+from infrahub.worker import WorkerType
 
 app = typer.Typer()
 
@@ -53,13 +52,7 @@ async def subscribe_rpcs_queue(service: InfrahubServices) -> None:
 
     # Create a channel and subscribe to the incoming RPC queue
     channel = await connection.channel()
-    queue = await channel.declare_queue(
-        f"{config.SETTINGS.broker.namespace}.rpcs", durable=True, arguments={"x-queue-type": "quorum"}
-    )
-    events_queue = await channel.declare_queue(name=f"worker-events-{WORKER_IDENTITY}", exclusive=True)
-
-    worker_callback = WorkerCallback(service=service)
-    await events_queue.consume(worker_callback.run_command, no_ack=True)
+    queue = await channel.get_queue(f"{config.SETTINGS.broker.namespace}.rpcs")
     log.info("Waiting for RPC instructions to execute .. ")
     async with queue.iterator() as qiterator:
         async for message in qiterator:
@@ -114,23 +107,15 @@ async def _start(debug: bool, interval: int, port: int) -> None:
     # Initialize the lock
     initialize_lock()
 
-    connection = await get_broker()
-
-    # Create a channel and subscribe to the incoming RPC queue
-    channel = await connection.channel()
-    events_queue = await channel.declare_queue(name=f"worker-events-{WORKER_IDENTITY}", exclusive=True)
-
-    exchange = await channel.declare_exchange(f"{config.SETTINGS.broker.namespace}.events", type="topic", durable=True)
-    await events_queue.bind(exchange, routing_key="refresh.registry.*")
-    delayed_exchange = await channel.get_exchange(name=f"{config.SETTINGS.broker.namespace}.delayed")
     driver = await get_db()
     database = InfrahubDatabase(driver=driver)
     service = InfrahubServices(
         cache=RedisCache(),
         client=client,
         database=database,
-        message_bus=RabbitMQMessageBus(channel=channel, exchange=exchange, delayed_exchange=delayed_exchange),
+        message_bus=RabbitMQMessageBus(worker_type=WorkerType.GIT_AGENT),
     )
+    await service.initialize()
     await initialize_git_agent(service=service)
 
     async with service.database.start_session() as db:

@@ -43,6 +43,10 @@ class InfrahubServices:
 
         return self._database
 
+    async def initialize(self) -> None:
+        """Initialize the Services"""
+        await self.message_bus.initialize(service=self)
+
     async def send(self, message: InfrahubMessage, delay: Optional[MessageTTL] = None) -> None:
         routing_key = ROUTING_KEY_MAP.get(type(message))
         if not routing_key:

@@ -14,7 +14,7 @@ from infrahub.message_bus.operations import execute_message
 from infrahub.services import services
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
-from infrahub.worker import WORKER_IDENTITY
+from infrahub.worker import WORKER_IDENTITY, WorkerType
 
 from . import InfrahubMessage, InfrahubResponse, Meta, get_broker
 from .messages import ROUTING_KEY_MAP
@@ -104,7 +104,10 @@ class InfrahubRpcClientBase:
         await self.events_queue.bind(self.exchange, routing_key="refresh.registry.*")
 
         self.rabbitmq = RabbitMQMessageBus(
-            channel=self.channel, exchange=self.exchange, delayed_exchange=self.delayed_exchange
+            channel=self.channel,
+            exchange=self.exchange,
+            delayed_exchange=self.delayed_exchange,
+            worker_type=WorkerType.API,
         )
 
         return self
