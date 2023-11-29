@@ -825,7 +825,7 @@ internal_schema = {
                 {
                     "name": "groups",
                     "kind": "List",
-                    "description": "List of Group that this node is part of",
+                    "description": "List of Group that this Node is part of.",
                     "optional": True,
                 },
             ],
@@ -834,7 +834,7 @@ internal_schema = {
                     "name": "attributes",
                     "peer": "SchemaAttribute",
                     "kind": "Component",
-                    "description": "List of Attributes supported for the Schema",
+                    "description": "List of supported Attributes for the Node.",
                     "identifier": "schema__node__attributes",
                     "cardinality": "many",
                     "branch": BranchSupportType.AWARE.value,
@@ -844,7 +844,7 @@ internal_schema = {
                     "name": "relationships",
                     "peer": "SchemaRelationship",
                     "kind": "Component",
-                    "description": "List of Relationships supported for the Schema",
+                    "description": "List of supported Relationships for the Node.",
                     "identifier": "schema__node__relationships",
                     "cardinality": "many",
                     "branch": BranchSupportType.AWARE.value,
@@ -1038,6 +1038,7 @@ internal_schema = {
                     "description": "Defines how many objects are expected on the other side of the relationship.",
                     "enum": RelationshipCardinality.available_types(),
                     "default_value": RelationshipCardinality.MANY.value,
+                    "optional": True,
                 },
                 {
                     "name": "order_weight",
@@ -1142,7 +1143,7 @@ internal_schema = {
                     "kind": "Boolean",
                     "description": "Defines if objects of this kind should be included in the menu.",
                     "default_value": True,
-                    "optional": False,
+                    "optional": True,
                 },
                 {
                     "name": "menu_placement",
