@@ -151,7 +151,7 @@ describe("Main application", () => {
     });
 
     // Send request
-    cy.get("[data-cy=\"add-new-comment-button\"]").first().click();
+    cy.get("[data-cy='add-new-comment-button']").first().click();
 
     cy.wait("@CreateComment3");
 
