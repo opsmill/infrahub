@@ -584,7 +584,7 @@ class InfrahubNodeBase:
         return f"{self._schema.kind} ({self.id}) "
 
     def _generate_input_data(self, update: bool = False) -> Dict[str, Dict]:
-        """Generate a dictionnary that represent the input data required by a mutation.
+        """Generate a dictionary that represent the input data required by a mutation.
 
         Returns:
             Dict[str, Dict]: Representation of an input data in dict format
@@ -594,6 +594,8 @@ class InfrahubNodeBase:
         variables = {}
         for item_name in self._attributes:
             attr: Attribute = getattr(self, item_name)
+            if attr._schema.read_only:
+                continue
             attr_data = attr._generate_input_data()
 
             # NOTE, this code has been inherited when we splitted attributes and relationships

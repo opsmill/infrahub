@@ -474,6 +474,9 @@ def generate_graphql_mutation_create_input(schema: NodeSchema) -> Type[graphene.
     attrs: Dict[str, Union[graphene.String, graphene.InputField]] = {"id": graphene.String(required=False)}
 
     for attr in schema.attributes:
+        if attr.read_only:
+            continue
+
         attr_type = get_attribute_type(kind=attr.kind).get_graphql_input()
 
         # A Field is not required if explicitely indicated or if a default value has been provided
@@ -507,6 +510,8 @@ def generate_graphql_mutation_update_input(schema: NodeSchema) -> Type[graphene.
     attrs: Dict[str, Union[graphene.String, graphene.InputField]] = {"id": graphene.String(required=True)}
 
     for attr in schema.attributes:
+        if attr.read_only:
+            continue
         attr_type = get_attribute_type(kind=attr.kind).get_graphql_input()
         attrs[attr.name] = graphene.InputField(attr_type, required=False, description=attr.description)
 
