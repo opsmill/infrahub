@@ -1143,3 +1143,25 @@ async def test_node_extract(client, location_schema, location_data01, client_typ
         "identifier": "llllllll-llll-llll-llll-llllllllllll",
         "name": "DFW",
     }
+
+
+@pytest.mark.parametrize("client_type", client_types)
+async def test_read_only_attr(
+    client,
+    address_schema,
+    address_data,
+    client_type,
+):
+    if client_type == "standard":
+        address = InfrahubNode(client=client, schema=address_schema, data=address_data)
+    else:
+        address = InfrahubNodeSync(client=client, schema=address_schema, data=address_data)
+
+    assert address._generate_input_data()["data"] == {
+        "data": {
+            "street_number": {"is_protected": False, "is_visible": True, "value": "1234"},
+            "street_name": {"is_protected": False, "is_visible": True, "value": "Fake Street"},
+            "postal_code": {"is_protected": False, "is_visible": True, "value": "123ABC"},
+        },
+    }
+    assert address.computed_address.value == "1234 Fake Street 123ABC"

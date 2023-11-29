@@ -612,6 +612,65 @@ async def ipnetwork_schema() -> NodeSchema:
 
 
 @pytest.fixture
+async def address_schema() -> NodeSchema:
+    data = {
+        "name": "Address",
+        "namespace": "Infra",
+        "default_filter": "network__value",
+        "display_labels": ["network_value"],
+        "order_by": ["network_value"],
+        "attributes": [
+            {"name": "street_number", "kind": "String", "optional": True},
+            {"name": "street_name", "kind": "String", "optional": True},
+            {"name": "postal_code", "kind": "String", "optional": True},
+            {"name": "computed_address", "kind": "String", "optional": True, "read_only": True},
+        ],
+        "relationships": [],
+    }
+    return NodeSchema(**data)  # type: ignore
+
+
+@pytest.fixture
+async def address_data():
+    data = {
+        "node": {
+            "__typename": "Address",
+            "id": "d5994b18-b25e-4261-9e63-17c2844a0b45",
+            "display_label": "test_address",
+            "street_number": {
+                "is_protected": False,
+                "is_visible": True,
+                "owner": None,
+                "source": None,
+                "value": "1234",
+            },
+            "street_name": {
+                "is_protected": False,
+                "is_visible": True,
+                "owner": None,
+                "source": None,
+                "value": "Fake Street",
+            },
+            "postal_code": {
+                "is_protected": False,
+                "is_visible": True,
+                "owner": None,
+                "source": None,
+                "value": "123ABC",
+            },
+            "computed_address": {
+                "is_protected": False,
+                "is_visible": True,
+                "owner": None,
+                "source": None,
+                "value": "1234 Fake Street 123ABC",
+            },
+        }
+    }
+    return data
+
+
+@pytest.fixture
 async def mock_branches_list_query(httpx_mock: HTTPXMock) -> HTTPXMock:
     response = {
         "data": {

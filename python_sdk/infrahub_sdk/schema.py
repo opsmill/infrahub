@@ -123,6 +123,7 @@ class AttributeSchema(pydantic.BaseModel):
     unique: bool = False
     branch: Optional[BranchSupportType] = None
     optional: bool = False
+    read_only: bool = False
 
 
 class RelationshipSchema(pydantic.BaseModel):
