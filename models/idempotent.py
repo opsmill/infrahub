@@ -119,5 +119,4 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     # ax.set_axis_off()
     # plt.colorbar(pc, ax=ax)
     # list(reversed(list(nx.topological_sort(G))))
-    # breakpoint()
     # plt.show()
