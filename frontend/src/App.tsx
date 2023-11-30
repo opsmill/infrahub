@@ -90,7 +90,7 @@ function App() {
 
   useEffect(() => {
     setSchemaInState();
-  }, [branches?.length, branchInQueryString]);
+  }, [branchInQueryString]);
 
   // useEffect(() => {
   if (branches?.length) {
