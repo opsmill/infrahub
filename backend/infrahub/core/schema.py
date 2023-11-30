@@ -922,8 +922,8 @@ internal_schema = {
                 {
                     "name": "read_only",
                     "kind": "Boolean",
-                    "description": "Set the attribute as Read-Only, users won't be able to change its value. "\
-                        "Mainly relevant for internal object.",
+                    "description": "Set the attribute as Read-Only, users won't be able to change its value. "
+                    "Mainly relevant for internal object.",
                     "default_value": False,
                     "optional": True,
                 },
