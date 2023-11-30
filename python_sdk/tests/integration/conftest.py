@@ -319,7 +319,7 @@ async def schema_extension_02() -> Dict[str, Any]:
                 ],
                 "relationships": [
                     {
-                        "name": "Organization",
+                        "name": "organization",
                         "peer": "CoreOrganization",
                         "optional": False,
                         "cardinality": "one",

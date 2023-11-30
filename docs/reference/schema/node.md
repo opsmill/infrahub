@@ -5,153 +5,203 @@ layout: default
 order: 900
 ---
 
+
+
 # Node
 
-Below is the list of all available options to define a node in the schema
-## name
+## Summary
 
-| -- | -- | { class="compact" }
-| ---- | --------------- |
-| **Name** | name |
-| **Kind** | `Text` |
-| **Description** | Node name, must be unique and must be all lowercase. |
-| **Constraints** | <br> Length: min 2, max 2 |
+Below is the list of all available options to define a Node in the schema
 
+| Name | Type | Description | Mandatory | { class="compact" }
+| ---- | ---- | ----------- | --------- |
+| [**branch**](#branch) | Attribute | Type of branch support for the model. | False |
+| [**default_filter**](#default_filter) | Attribute | Default filter used to search for a node in addition to its ID. | False |
+| [**description**](#description) | Attribute | Short description of the model, will be visible in the frontend. | False |
+| [**display_labels**](#display_labels) | Attribute | List of attributes to use to generate the display label | False |
+| [**groups**](#groups) | Attribute | List of Group that this Node is part of. | False |
+| [**icon**](#icon) | Attribute | Defines the icon to be used for this object type. | False |
+| [**include_in_menu**](#include_in_menu) | Attribute | Defines if objects of this kind should be included in the menu. | False |
+| [**inherit_from**](#inherit_from) | Attribute | List of Generic Kind that this node is inheriting from | False |
+| [**label**](#label) | Attribute | Human friendly representation of the name/kind | False |
+| [**menu_placement**](#menu_placement) | Attribute | Defines where in the menu this object should be placed. | False |
+| [**name**](#name) | Attribute | Node name, must be unique within a namespace and must start with an uppercase letter. | True |
+| [**namespace**](#namespace) | Attribute | Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions. | True |
+| [**order_by**](#order_by) | Attribute | List of attributes to use to order the results by default | False |
+| [**attributes**](#attributes) | Relationship | List of supported Attributes for the Node. | False |
+| [**relationships**](#relationships) | Relationship | List of supported Relationships for the Node. | False |
 
-## namespace
+## Reference Guide
+### branch
 
-| -- | -- | { class="compact" }
-| ---- | --------------- |
-| **Name** | namespace |
-| **Kind** | `Text` |
-| **Description** |  |
-| **Constraints** |  Regex: `^[A-Z][a-zA-Z0-9]+$`<br> Length: min 3, max 3 |
-
-
-## label
-
-| -- | -- | { class="compact" }
-| ---- | --------------- |
-| **Name** | label |
-| **Kind** | `Text` |
-| **Description** | Human friendly representation of the name/kind |
-| **Constraints** | <br> Length: min -, max - |
-
-
-## description
-
-| -- | -- | { class="compact" }
-| ---- | --------------- |
-| **Name** | description |
-| **Kind** | `Text` |
-| **Description** |  |
-| **Constraints** | <br> Length: min -, max - |
-
-
-## branch
-
-| -- | -- | { class="compact" }
+| Key | Value | { class="compact" }
 | ---- | --------------- |
 | **Name** | branch |
 | **Kind** | `Text` |
-| **Description** |  |
+| **Description** | Type of branch support for the model. |
+| **Optional**  | True |
+| **Default Value** | aware |
 | **Constraints** |  |
 | **Accepted Values** | `aware` `agnostic` `local`  |
 
-## default_filter
+### default_filter
 
-| -- | -- | { class="compact" }
+| Key | Value | { class="compact" }
 | ---- | --------------- |
 | **Name** | default_filter |
 | **Kind** | `Text` |
 | **Description** | Default filter used to search for a node in addition to its ID. |
-| **Constraints** |  |
+| **Optional**  | True |
+| **Default Value** |  |
+| **Constraints** |  Regex: `^[a-z0-9\_]+$` |
 
 
-## display_labels
+### description
 
-| -- | -- | { class="compact" }
+| Key | Value | { class="compact" }
+| ---- | --------------- |
+| **Name** | description |
+| **Kind** | `Text` |
+| **Description** | Short description of the model, will be visible in the frontend. |
+| **Optional**  | True |
+| **Default Value** |  |
+| **Constraints** |  Length: min -, max 128 |
+
+
+### display_labels
+
+| Key | Value | { class="compact" }
 | ---- | --------------- |
 | **Name** | display_labels |
 | **Kind** | `List` |
 | **Description** | List of attributes to use to generate the display label |
+| **Optional**  | True |
+| **Default Value** |  |
 | **Constraints** |  |
 
 
-## include_in_menu
+### groups
 
-| -- | -- | { class="compact" }
+| Key | Value | { class="compact" }
 | ---- | --------------- |
-| **Name** | include_in_menu |
-| **Kind** | `Boolean` |
-| **Description** | Defines if objects of this kind should be included in the menu. |
+| **Name** | groups |
+| **Kind** | `List` |
+| **Description** | List of Group that this Node is part of. |
+| **Optional**  | True |
+| **Default Value** |  |
 | **Constraints** |  |
 
 
-## menu_placement
+### icon
 
-| -- | -- | { class="compact" }
-| ---- | --------------- |
-| **Name** | menu_placement |
-| **Kind** | `Text` |
-| **Description** | Defines where in the menu this object should be placed. |
-| **Constraints** |  |
-
-
-## icon
-
-| -- | -- | { class="compact" }
+| Key | Value | { class="compact" }
 | ---- | --------------- |
 | **Name** | icon |
 | **Kind** | `Text` |
 | **Description** | Defines the icon to be used for this object type. |
+| **Optional**  | True |
+| **Default Value** |  |
 | **Constraints** |  |
 
 
-## order_by
+### include_in_menu
 
-| -- | -- | { class="compact" }
+| Key | Value | { class="compact" }
 | ---- | --------------- |
-| **Name** | order_by |
-| **Kind** | `List` |
-| **Description** | List of attributes to use to order the results by default |
+| **Name** | include_in_menu |
+| **Kind** | `Boolean` |
+| **Description** | Defines if objects of this kind should be included in the menu. |
+| **Optional**  | True |
+| **Default Value** | True |
 | **Constraints** |  |
 
 
-## inherit_from
+### inherit_from
 
-| -- | -- | { class="compact" }
+| Key | Value | { class="compact" }
 | ---- | --------------- |
 | **Name** | inherit_from |
 | **Kind** | `List` |
 | **Description** | List of Generic Kind that this node is inheriting from |
+| **Optional**  | True |
+| **Default Value** |  |
 | **Constraints** |  |
 
 
-## groups
+### label
 
-| -- | -- | { class="compact" }
+| Key | Value | { class="compact" }
 | ---- | --------------- |
-| **Name** | groups |
+| **Name** | label |
+| **Kind** | `Text` |
+| **Description** | Human friendly representation of the name/kind |
+| **Optional**  | True |
+| **Default Value** |  |
+| **Constraints** |  Length: min -, max 32 |
+
+
+### menu_placement
+
+| Key | Value | { class="compact" }
+| ---- | --------------- |
+| **Name** | menu_placement |
+| **Kind** | `Text` |
+| **Description** | Defines where in the menu this object should be placed. |
+| **Optional**  | True |
+| **Default Value** |  |
+| **Constraints** |  |
+
+
+### name
+
+| Key | Value | { class="compact" }
+| ---- | --------------- |
+| **Name** | name |
+| **Kind** | `Text` |
+| **Description** | Node name, must be unique within a namespace and must start with an uppercase letter. |
+| **Optional**  | False |
+| **Default Value** |  |
+| **Constraints** |  Regex: `^[A-Z][a-zA-Z0-9]+$`<br> Length: min 2, max 32 |
+
+
+### namespace
+
+| Key | Value | { class="compact" }
+| ---- | --------------- |
+| **Name** | namespace |
+| **Kind** | `Text` |
+| **Description** | Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions. |
+| **Optional**  | False |
+| **Default Value** |  |
+| **Constraints** |  Regex: `^[A-Z][a-zA-Z0-9]+$`<br> Length: min 3, max 32 |
+
+
+### order_by
+
+| Key | Value | { class="compact" }
+| ---- | --------------- |
+| **Name** | order_by |
 | **Kind** | `List` |
-| **Description** | List of Group that this node is part of |
+| **Description** | List of attributes to use to order the results by default |
+| **Optional**  | True |
+| **Default Value** |  |
 | **Constraints** |  |
 
 
 
 ## attributes
 
-| -- | -- | { class="compact" }
+| Key | Value | { class="compact" }
 | ---- | --------------- |
 | **Name** | attributes |
 | **Kind** | `List` |
-| **Description** |  |
+| **Description** | List of supported Attributes for the Node. |
 
 ## relationships
 
-| -- | -- | { class="compact" }
+| Key | Value | { class="compact" }
 | ---- | --------------- |
 | **Name** | relationships |
 | **Kind** | `List` |
-| **Description** |  |
+| **Description** | List of supported Relationships for the Node. |
 
