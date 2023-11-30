@@ -1,6 +1,25 @@
 from infrahub_sync.adapters.nautobot import NautobotAdapter
 
-from .models import BuiltinLocation, BuiltinRole, BuiltinTag, InfraRack
+from .models import (
+    BuiltinLocation,
+    BuiltinRole,
+    BuiltinTag,
+    CoreOrganization,
+    CoreStandardGroup,
+    InfraAutonomousSystem,
+    InfraCircuit,
+    InfraDevice,
+    InfraIPAddress,
+    InfraPrefix,
+    InfraProviderNetwork,
+    InfraRack,
+    InfraRouteTarget,
+    InfraVLAN,
+    InfraVRF,
+    TemplateCircuitType,
+    TemplateDeviceType,
+    TemplateLocationType,
+)
 
 
 # -------------------------------------------------------
@@ -9,7 +28,21 @@ from .models import BuiltinLocation, BuiltinRole, BuiltinTag, InfraRack
 #  All modifications will be lost the next time you reexecute this command
 # -------------------------------------------------------
 class NautobotSync(NautobotAdapter):
+    CoreStandardGroup = CoreStandardGroup
     BuiltinTag = BuiltinTag
+    CoreOrganization = CoreOrganization
     BuiltinRole = BuiltinRole
     BuiltinLocation = BuiltinLocation
+    InfraAutonomousSystem = InfraAutonomousSystem
+    InfraCircuit = InfraCircuit
+    TemplateCircuitType = TemplateCircuitType
+    InfraDevice = InfraDevice
+    TemplateDeviceType = TemplateDeviceType
+    InfraIPAddress = InfraIPAddress
+    TemplateLocationType = TemplateLocationType
+    InfraProviderNetwork = InfraProviderNetwork
+    InfraPrefix = InfraPrefix
     InfraRack = InfraRack
+    InfraRouteTarget = InfraRouteTarget
+    InfraVLAN = InfraVLAN
+    InfraVRF = InfraVRF
