@@ -8,6 +8,7 @@ from uuid import UUID, uuid4
 
 import httpx
 import yaml
+from git.repo import Repo
 from pydantic import BaseModel
 
 
@@ -233,3 +234,12 @@ def find_files(
         files.extend(glob.glob(f"{directory}/**/.*.{ext}", recursive=recursive))
 
     return [Path(item) for item in files]
+
+
+def get_branch(branch: Optional[str] = None, directory: Union[str, Path] = ".") -> str:
+    """If branch isn't provide, return the name of the local Git branch."""
+    if branch:
+        return branch
+
+    repo = Repo(directory)
+    return str(repo.active_branch)

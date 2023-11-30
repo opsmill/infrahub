@@ -29,13 +29,13 @@ from infrahub_ctl.exceptions import FileNotValidError, QueryNotFoundError
 from infrahub_ctl.schema import app as schema
 from infrahub_ctl.utils import (
     find_graphql_query,
-    get_branch,
     load_repository_config_file,
     parse_cli_vars,
 )
 from infrahub_ctl.validate import app as validate_app
 from infrahub_sdk.exceptions import GraphQLError
 from infrahub_sdk.schema import InfrahubRepositoryConfig
+from infrahub_sdk.utils import get_branch
 
 app = typer.Typer(pretty_exceptions_show_locals=False)
 
