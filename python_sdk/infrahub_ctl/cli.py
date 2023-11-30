@@ -17,7 +17,6 @@ try:
 except ImportError:
     import pydantic  # type: ignore[no-redef]
 
-from infrahub.transforms import InfrahubTransform
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.syntax import Syntax
@@ -38,6 +37,7 @@ from infrahub_ctl.utils import (
 from infrahub_ctl.validate import app as validate_app
 from infrahub_sdk.exceptions import GraphQLError
 from infrahub_sdk.schema import InfrahubPythonTransformConfig, InfrahubRepositoryConfig, InfrahubRepositoryRFileConfig
+from infrahub_sdk.transforms import InfrahubTransform
 from infrahub_sdk.utils import get_branch
 
 app = typer.Typer(pretty_exceptions_show_locals=False)
@@ -111,7 +111,7 @@ def identify_faulty_jinja_code(traceback: Traceback, nbr_context_lines: int = 3)
 
 def get_repository_config(repo_config_file: Path) -> InfrahubRepositoryConfig:
     try:
-        config_file_data = load_repository_config_file(repo_config_file=Path(config.INFRAHUB_REPO_CONFIG_FILE))
+        config_file_data = load_repository_config_file(repo_config_file)
     except FileNotFoundError as exc:
         console.print(f"[red]{exc}")
         raise typer.Exit(1) from exc
@@ -174,8 +174,7 @@ def execute_graphql_query(
     return response
 
 
-def render_jinja2_template(template_path: str, variables: Dict[str, str], data: str) -> str:
-    template_path = template_path
+def render_jinja2_template(template_path: Path, variables: Dict[str, str], data: str) -> str:
     if not template_path.is_file():
         console.print(f"[red]Unable to locate the template at {template_path}")
         raise typer.Exit(1)
@@ -214,11 +213,11 @@ def find_rfile_in_repository_config(
     return filtered[0]
 
 
-def _run_transform(query: str, variables: List[str], transformer: Callable, branch: str):
+def _run_transform(query: str, variables: List[str], transformer: Callable, branch: str, debug: bool):
     branch = get_branch(branch)
 
     try:
-        response = execute_graphql_query(query, variables, branch)
+        response = execute_graphql_query(query, variables, branch, debug)
     except QueryNotFoundError as exc:
         console.print(f"[red]Unable to find query : {exc}")
         raise typer.Exit(1) from exc
@@ -260,12 +259,12 @@ def render(  # pylint: disable=too-many-branches,too-many-statements
 
     try:
         rfile = find_rfile_in_repository_config(rfile_name, repository_config)
-    except ValueError:
-        console.print(f"[red]Unable to find {rfile} in {config.INFRAHUB_REPO_CONFIG_FILE}")
-        raise typer.Exit(1)
+    except ValueError as exc:
+        console.print(f"[red]Unable to find {rfile_name} in {config.INFRAHUB_REPO_CONFIG_FILE}")
+        raise typer.Exit(1) from exc
 
     transformer = functools.partial(render_jinja2_template, rfile.template_path, variables_dict)
-    result = _run_transform(rfile.query, variables_dict, transformer, branch)
+    result = _run_transform(rfile.query, variables_dict, transformer, branch, debug)
     console.print(result)
 
 
@@ -288,13 +287,13 @@ def transform(  # pylint: disable=too-many-branches,too-many-statements
     repository_config = get_repository_config(Path(config.INFRAHUB_REPO_CONFIG_FILE))
 
     try:
-        transform_instance = get_transform_class_instance(transform, repository_config.python_transforms)
-    except InfrahubTransformNotFoundError:
+        transform_instance = get_transform_class_instance(transform_name, repository_config.python_transforms)
+    except InfrahubTransformNotFoundError as exc:
         console.print(f"Unable to load {transform} from python_transforms")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from exc
 
     transformer = functools.partial(transform_instance.transform)
-    result = _run_transform(transform_instance.query, variables_dict, transformer, branch)
+    result = _run_transform(transform_instance.query, variables_dict, transformer, branch, debug)
     console.print(json.dumps(result, indent=2))
 
 
