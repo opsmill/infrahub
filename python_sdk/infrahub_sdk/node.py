@@ -15,7 +15,7 @@ from typing import (
     get_args,
 )
 
-from infrahub_sdk.exceptions import Error, FilterNotFound, NodeNotFound
+from infrahub_sdk.exceptions import Error, FeatureNotSupported, FilterNotFound, NodeNotFound
 from infrahub_sdk.graphql import Mutation
 from infrahub_sdk.schema import GenericSchema, RelationshipCardinality, RelationshipKind
 from infrahub_sdk.timestamp import Timestamp
@@ -40,6 +40,16 @@ IP_TYPES = Union[
     ipaddress.IPv4Network,
     ipaddress.IPv6Network,
 ]
+
+ARTIFACT_FETCH_FEATURE_NOT_SUPPORTED_MESSAGE = (
+    "calling artifact_fetch is only supported for nodes that are Artifact Definition target"
+)
+ARTIFACT_GENERATE_FEATURE_NOT_SUPPORTED_MESSAGE = (
+    "calling artifact_generate is only supported for nodes that are Artifact Definition targets"
+)
+ARTIFACT_DEFINITION_GENERATE_FEATURE_NOT_SUPPORTED_MESSAGE = (
+    "calling generate is only supported for CoreArtifactDefinition nodes"
+)
 
 
 class Attribute:
@@ -556,6 +566,9 @@ class InfrahubNodeBase:
         self._attributes = [item.name for item in self._schema.attributes]
         self._relationships = [item.name for item in self._schema.relationships]
 
+        self._artifact_support = hasattr(schema, "inherit_from") and "CoreArtifactTarget" in schema.inherit_from
+        self._artifact_definition_support = schema.kind == "CoreArtifactDefinition"
+
         if not extracted_uuid:
             self._existing = False
 
@@ -733,6 +746,14 @@ class InfrahubNodeBase:
                 clean[key] = value
 
         return clean
+
+    def _validate_artifact_support(self, message: str) -> None:
+        if not self._artifact_support:
+            raise FeatureNotSupported(message)
+
+    def _validate_artifact_definition_support(self, message: str) -> None:
+        if not self._artifact_definition_support:
+            raise FeatureNotSupported(message)
 
     def generate_query_data_init(
         self,
@@ -916,6 +937,28 @@ class InfrahubNode(InfrahubNodeBase):
                     ),
                 )
 
+    async def generate(self, nodes: Optional[List[str]] = None) -> None:
+        self._validate_artifact_definition_support(ARTIFACT_DEFINITION_GENERATE_FEATURE_NOT_SUPPORTED_MESSAGE)
+
+        nodes = nodes or []
+        payload = {"nodes": nodes}
+        resp = await self._client._post(f"{self._client.address}/api/artifact/generate/{self.id}", payload=payload)
+        resp.raise_for_status()
+
+    async def artifact_generate(self, name: str) -> None:
+        self._validate_artifact_support(ARTIFACT_GENERATE_FEATURE_NOT_SUPPORTED_MESSAGE)
+
+        artifact = await self._client.get(kind="CoreArtifact", definition__name__value=name, object__ids=[self.id])
+        await artifact.definition.fetch()  # type: ignore[attr-defined]
+        await artifact.definition.peer.generate([artifact.id])  # type: ignore[attr-defined]
+
+    async def artifact_fetch(self, name: str) -> Union[str, Dict[str, Any]]:
+        self._validate_artifact_support(ARTIFACT_GENERATE_FEATURE_NOT_SUPPORTED_MESSAGE)
+
+        artifact = await self._client.get(kind="CoreArtifact", definition__name__value=name, object__ids=[self.id])
+        content = await self._client.object_store.get(identifier=artifact.storage_id.value)  # type: ignore[attr-defined]
+        return content
+
     async def delete(self, at: Optional[Timestamp] = None) -> None:
         at = Timestamp(at)
         input_data = {"data": {"id": self.id}}
@@ -1081,6 +1124,25 @@ class InfrahubNodeSync(InfrahubNodeBase):
                         data=rel_data,
                     ),
                 )
+
+    def generate(self, nodes: Optional[List[str]] = None) -> None:
+        self._validate_artifact_definition_support(ARTIFACT_DEFINITION_GENERATE_FEATURE_NOT_SUPPORTED_MESSAGE)
+        nodes = nodes or []
+        payload = {"nodes": nodes}
+        resp = self._client._post(f"{self._client.address}/api/artifact/generate/{self.id}", payload=payload)
+        resp.raise_for_status()
+
+    def artifact_generate(self, name: str) -> None:
+        self._validate_artifact_support(ARTIFACT_GENERATE_FEATURE_NOT_SUPPORTED_MESSAGE)
+        artifact = self._client.get(kind="CoreArtifact", definition__name__value=name, object__ids=[self.id])
+        artifact.definition.fetch()  # type: ignore[attr-defined]
+        artifact.definition.peer.generate([artifact.id])  # type: ignore[attr-defined]
+
+    def artifact_fetch(self, name: str) -> Union[str, Dict[str, Any]]:
+        self._validate_artifact_support(ARTIFACT_FETCH_FEATURE_NOT_SUPPORTED_MESSAGE)
+        artifact = self._client.get(kind="CoreArtifact", definition__name__value=name, object__ids=[self.id])
+        content = self._client.object_store.get(identifier=artifact.storage_id.value)  # type: ignore[attr-defined]
+        return content
 
     def delete(self, at: Optional[Timestamp] = None) -> None:
         at = Timestamp(at)
