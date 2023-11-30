@@ -31,14 +31,14 @@ Below is the list of all available options to define a Relationship in the schem
 
 | Name | Type | Description | Mandatory | { class="compact" }
 | ---- | ---- | ---- | --------- |
-{%- for attr in ns.node.attributes %}
+{%- for attr in ns.node.attributes | sort(attribute='name') %}
 {%-  if attr.name not in ["inherited"] %}
 | [**{{ attr.name }}**](#{{ attr.name }}) | Attribute | {{ attr.description }} | {{ reverse_bool_to_str(attr.optional) }} |
 {%- endif %}
 {%- endfor %}
 
 ## Reference Guide
-{% for attr in ns.node.attributes -%}
+{% for attr in ns.node.attributes | sort(attribute='name') -%}
 ### {{ attr.name }}
 
 | Key | Value | { class="compact" }
@@ -54,7 +54,7 @@ Below is the list of all available options to define a Relationship in the schem
 {%- endif %}
 
 {% endfor %}
-{% for rel in ns.node.relationships -%}
+{% for rel in ns.node.relationships | sort(attribute='name') -%}
 {%  if rel.name not in ["node"] %}
 ## {{ rel.name }}
 

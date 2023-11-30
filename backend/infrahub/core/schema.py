@@ -742,7 +742,7 @@ internal_schema = {
                 {
                     "name": "name",
                     "kind": "Text",
-                    "description": "Node name, must be unique within a namespace and must be all lowercase.",
+                    "description": "Node name, must be unique within a namespace and must start with an uppercase letter.",
                     "unique": True,
                     "regex": str(NODE_NAME_REGEX),
                     "min_length": DEFAULT_NAME_MIN_LENGTH,
@@ -916,20 +916,21 @@ internal_schema = {
                     "name": "description",
                     "kind": "Text",
                     "optional": True,
-                    "description": "Short description of the aattribute.",
+                    "description": "Short description of the attribute.",
                     "max_length": DEFAULT_DESCRIPTION_LENGTH,
                 },
                 {
                     "name": "read_only",
                     "kind": "Boolean",
-                    "description": "Set the attribute as Read-Only, users won't be able to change its value.",
+                    "description": "Set the attribute as Read-Only, users won't be able to change its value. "\
+                        "Mainly relevant for internal object.",
                     "default_value": False,
                     "optional": True,
                 },
                 {
                     "name": "unique",
                     "kind": "Boolean",
-                    "description": "Indicate if the value of this attribute but be unique in the database for a given model.",
+                    "description": "Indicate if the value of this attribute must be unique in the database for a given model.",
                     "default_value": False,
                     "optional": True,
                 },
@@ -1090,7 +1091,7 @@ internal_schema = {
                 {
                     "name": "name",
                     "kind": "Text",
-                    "description": "Generic name, must be unique within a namespace and must be all lowercase.",
+                    "description": "Generic name, must be unique within a namespace and must start with an uppercase letter.",
                     "unique": True,
                     "regex": str(NODE_NAME_REGEX),
                     "min_length": DEFAULT_NAME_MIN_LENGTH,
