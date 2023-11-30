@@ -3,11 +3,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Optional
 
 from infrahub import config
+from infrahub.components import ComponentType
 from infrahub.log import clear_log_context
 from infrahub.message_bus import InfrahubMessage, get_broker, messages
 from infrahub.message_bus.operations import execute_message
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
-from infrahub.worker import WORKER_IDENTITY, WorkerType
+from infrahub.worker import WORKER_IDENTITY
 
 if TYPE_CHECKING:
     from aio_pika.abc import AbstractChannel, AbstractExchange, AbstractIncomingMessage
@@ -19,7 +20,7 @@ if TYPE_CHECKING:
 class RabbitMQMessageBus(InfrahubMessageBus):
     def __init__(
         self,
-        worker_type: WorkerType,
+        component_type: ComponentType,
         channel: Optional[AbstractChannel] = None,
         exchange: Optional[AbstractExchange] = None,
         delayed_exchange: Optional[AbstractExchange] = None,
@@ -28,7 +29,7 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         self.exchange: AbstractExchange
         self.delayed_exchange: AbstractExchange
         self.service: InfrahubServices
-        self.worker_type = worker_type
+        self.component_type = component_type
         if channel:
             self.channel = channel
         if exchange:
@@ -38,7 +39,7 @@ class RabbitMQMessageBus(InfrahubMessageBus):
 
     async def initialize(self, service: InfrahubServices) -> None:
         self.service = service
-        if self.worker_type == WorkerType.GIT_AGENT:
+        if self.component_type == ComponentType.GIT_AGENT:
             await self._initialize_git_worker()
 
     async def on_callback(self, message: AbstractIncomingMessage) -> None:

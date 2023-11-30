@@ -11,6 +11,7 @@ from prometheus_client import start_http_server
 from rich.logging import RichHandler
 
 from infrahub import config
+from infrahub.components import ComponentType
 from infrahub.core.initialization import initialization
 from infrahub.database import InfrahubDatabase, get_db
 from infrahub.git import initialize_repositories_directory
@@ -22,7 +23,6 @@ from infrahub.message_bus.operations import execute_message
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
-from infrahub.worker import WorkerType
 
 app = typer.Typer()
 
@@ -113,7 +113,7 @@ async def _start(debug: bool, interval: int, port: int) -> None:
         cache=RedisCache(),
         client=client,
         database=database,
-        message_bus=RabbitMQMessageBus(worker_type=WorkerType.GIT_AGENT),
+        message_bus=RabbitMQMessageBus(component_type=ComponentType.GIT_AGENT),
     )
     await service.initialize()
     await initialize_git_agent(service=service)

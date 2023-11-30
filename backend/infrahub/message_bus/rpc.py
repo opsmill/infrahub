@@ -8,13 +8,14 @@ from typing import TYPE_CHECKING, List, MutableMapping
 from infrahub_sdk import UUIDT
 
 from infrahub import config
+from infrahub.components import ComponentType
 from infrahub.log import clear_log_context, get_log_data, get_logger
 from infrahub.message_bus import messages
 from infrahub.message_bus.operations import execute_message
 from infrahub.services import services
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
-from infrahub.worker import WORKER_IDENTITY, WorkerType
+from infrahub.worker import WORKER_IDENTITY
 
 from . import InfrahubMessage, InfrahubResponse, Meta, get_broker
 from .messages import ROUTING_KEY_MAP
@@ -107,7 +108,7 @@ class InfrahubRpcClientBase:
             channel=self.channel,
             exchange=self.exchange,
             delayed_exchange=self.delayed_exchange,
-            worker_type=WorkerType.API,
+            component_type=ComponentType.API_SERVER,
         )
 
         return self
