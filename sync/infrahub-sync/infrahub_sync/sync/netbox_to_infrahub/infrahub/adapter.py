@@ -31,14 +31,14 @@ class InfrahubSync(InfrahubAdapter):
     CoreOrganization = CoreOrganization
     BuiltinRole = BuiltinRole
     BuiltinLocation = BuiltinLocation
-    InfraDevice = InfraDevice
-    InfraIPAddress = InfraIPAddress
-    InfraVLAN = InfraVLAN
     InfraCircuit = InfraCircuit
     TemplateCircuitType = TemplateCircuitType
+    InfraDevice = InfraDevice
     TemplateDeviceType = TemplateDeviceType
+    InfraIPAddress = InfraIPAddress
     InfraProviderNetwork = InfraProviderNetwork
     InfraPrefix = InfraPrefix
     InfraRack = InfraRack
     InfraRouteTarget = InfraRouteTarget
+    InfraVLAN = InfraVLAN
     InfraVRF = InfraVRF
