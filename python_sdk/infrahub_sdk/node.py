@@ -698,6 +698,34 @@ class InfrahubNodeBase:
 
         return f"{self._schema.kind} ({self.id}) "
 
+    def get_namespace(self) -> str:
+        return self._schema.namespace
+
+    def get_name(self) -> str:
+        return self._schema.name
+
+    async def get_attributes(self) -> Dict[str, Any]:
+        attributes = {}
+        for attr_name in self._attributes:
+            if not hasattr(self, attr_name):
+                continue
+            attributes[attr_name] = getattr(self, attr_name).value
+        return attributes
+
+    async def get_relationships(self) -> Dict[str, List[str]]:
+        relationships = {}
+        for relationship_name in self._relationships:
+            relationship_attr = getattr(self, relationship_name)
+            if isinstance(relationship_attr, RelationshipManager):
+                await relationship_attr.fetch()
+                relationships[relationship_name] = relationship_attr.peer_ids
+            elif isinstance(relationship_attr, RelatedNode):
+                if not relationship_attr.initialized:
+                    await relationship_attr.fetch()
+                if relationship_attr.id:
+                    relationships[relationship_name] = [relationship_attr.id]
+        return relationships
+
     def _generate_input_data(self, update: bool = False) -> Dict[str, Dict]:
         """Generate a dictionary that represent the input data required by a mutation.
 

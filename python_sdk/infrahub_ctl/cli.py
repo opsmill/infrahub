@@ -11,6 +11,15 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import jinja2
 import typer
+
+from infrahub_sdk.transfer.export.interface import ExporterInterface
+from infrahub_sdk.transfer.export.json import JSONExporter
+
+try:
+    from pydantic import v1 as pydantic  # type: ignore[attr-defined]
+except ImportError:
+    import pydantic  # type: ignore[no-redef]
+
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.syntax import Syntax
@@ -297,3 +306,36 @@ def run(
             timeout=timeout,
         )
     )
+
+
+@app.command(name="export")
+def export(
+    config_file: str = typer.Option("infrahubctl.toml", envvar="INFRAHUBCTL_CONFIG"),
+    branch: str = typer.Option("main", help="Branch from which to export"),
+    concurrent: int = typer.Option(
+        4,
+        help="Maximum number of requests to execute at the same time.",
+        envvar="INFRAHUBCTL_CONCURRENT_EXECUTION",
+    ),
+    timeout: int = typer.Option(60, help="Timeout in sec", envvar="INFRAHUBCTL_TIMEOUT"),
+) -> None:
+    """Export node(s)."""
+    if not config.SETTINGS:
+        config.load_and_exit(config_file=config_file)
+    exporter = JSONExporter()
+    exported = aiorun(
+        _export(
+            exporter,
+            branch=branch,
+            concurrent=concurrent,
+            timeout=timeout,
+        )
+    )
+    console = Console()
+    console.print(exported)
+
+
+async def _export(exporter: ExporterInterface, branch: str, concurrent: int, timeout: int) -> str:
+    client = await initialize_client(timeout=timeout, max_concurrent_execution=concurrent)
+    accounts = await client.all("CoreAccount", branch=branch)
+    return await exporter.export(accounts)
