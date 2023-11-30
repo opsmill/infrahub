@@ -13,14 +13,7 @@ import { withAuth } from "./decorators/withAuth";
 import { branchVar } from "./graphql/variables/branchVar";
 import Layout from "./screens/layout/layout";
 import { branchesState } from "./state/atoms/branches.atom";
-import {
-  genericSchemaState,
-  genericsState,
-  iGenericSchema,
-  iGenericSchemaMapping,
-  iNodeSchema,
-  schemaState,
-} from "./state/atoms/schema.atom";
+import { genericsState, iGenericSchema, iNodeSchema, schemaState } from "./state/atoms/schema.atom";
 import { schemaKindNameState } from "./state/atoms/schemaKindName.atom";
 import "./styles/index.css";
 import { sortByOrderWeight } from "./utils/common";
@@ -33,7 +26,6 @@ function App() {
   const [branches] = useAtom(branchesState);
   const [, setSchema] = useAtom(schemaState);
   const [, setGenerics] = useAtom(genericsState);
-  const [, setGenericSchema] = useAtom(genericSchemaState);
   const [, setSchemaKindNameState] = useAtom(schemaKindNameState);
   const [branchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
 
@@ -86,16 +78,6 @@ function App() {
       const schemaKindNameMap = R.fromPairs(schemaKindNameTuples);
 
       setSchemaKindNameState(schemaKindNameMap);
-
-      const genericSchemaMapping: iGenericSchemaMapping = {};
-
-      schema.forEach((schemaNode: any) => {
-        if (schemaNode.used_by?.length) {
-          genericSchemaMapping[schemaNode.name] = schemaNode.used_by;
-        }
-      });
-
-      setGenericSchema(genericSchemaMapping);
     } catch (error) {
       toast(
         <Alert type={ALERT_TYPES.ERROR} message={"Something went wrong when fetching the schema"} />
