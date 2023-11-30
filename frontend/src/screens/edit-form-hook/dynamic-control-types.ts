@@ -85,6 +85,7 @@ export interface DynamicFieldData {
   label: string;
   type: ControlType;
   name: string;
+  peer?: string;
   kind?: SchemaAttributeType;
   value: any;
   options?: {
@@ -97,4 +98,5 @@ export interface DynamicFieldData {
   isReadOnly?: boolean;
   isUnique?: boolean;
   disabled?: boolean;
+  preventObjectsCreation?: boolean;
 }

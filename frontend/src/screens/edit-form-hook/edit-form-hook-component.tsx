@@ -8,6 +8,7 @@ interface Props {
   onCancel?: Function;
   isLoading?: boolean;
   submitLabel?: string;
+  preventObjectsCreation?: boolean;
 }
 
 export default function EditFormHookComponent(props: Props) {

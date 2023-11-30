@@ -4,11 +4,13 @@ import { iNodeSchema } from "../state/atoms/schema.atom";
 export type MutationMode = "create" | "update";
 
 const getMutationDetailsFromFormData = (
-  schema: iNodeSchema,
+  schema: iNodeSchema | undefined,
   formData: any,
   mode: MutationMode,
   existingObject?: any
 ) => {
+  if (!schema) return;
+
   const updatedObject = R.clone(formData);
 
   schema.attributes?.forEach((attribute) => {

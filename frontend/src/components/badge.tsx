@@ -15,55 +15,64 @@ const DEFAULT_CLASS = `
   flex font-medium mr-2 last:mr-0 px-2.5 py-0.5 rounded
 `;
 
-const getClasseName = (type: BADGE_TYPES, onClick: Function) => {
+const getClassName = (type: BADGE_TYPES, onClick: Function, disabled?: boolean) => {
   switch (type) {
     case BADGE_TYPES.VALIDATE: {
       return `
-        bg-green-400 text-gray-50
-        ${onClick ? "cursor-pointer hover:bg-green-200" : ""}
+        text-gray-50
+        ${disabled ? "bg-green-200" : "bg-green-400"}
+        ${onClick && !disabled ? "cursor-pointer hover:bg-green-200" : ""}
       `;
     }
     case BADGE_TYPES.CANCEL: {
       return `
-        bg-red-400 text-gray-50
-        ${onClick ? "cursor-pointer hover:bg-red-200" : ""}
+        text-gray-50
+        ${disabled ? "bg-red-200" : "bg-red-400"}
+        ${onClick && !disabled ? "cursor-pointer hover:bg-red-200" : ""}
       `;
     }
     case BADGE_TYPES.WARNING: {
       return `
-        bg-yellow-200 text-gray-800
-        ${onClick ? "cursor-pointer hover:bg-yellow-100" : ""}
+        text-gray-800
+        ${disabled ? "bg-yellow-50" : "bg-yellow-200"}
+        ${onClick && !disabled ? "cursor-pointer hover:bg-yellow-100" : ""}
       `;
     }
     case BADGE_TYPES.LIGHT: {
       return `
-        bg-custom-white text-gray-800
-        ${onClick ? "cursor-pointer hover:bg-gray-50" : ""}
+        text-gray-800 bg-custom-white
+        ${onClick && !disabled ? "cursor-pointer hover:bg-gray-50" : ""}
       `;
     }
     case BADGE_TYPES.DISABLED: {
       return `
-        bg-gray-300 text-gray-800
-        ${onClick ? "cursor-pointer hover:bg-gray-50" : ""}
+        text-gray-800
+        ${disabled ? "bg-gray-100" : "bg-gray-300"}
+        ${onClick && !disabled ? "cursor-pointer hover:bg-gray-50" : ""}
       `;
     }
     default: {
       return `
-        bg-gray-100 text-gray-900
-        ${onClick ? "cursor-pointer hover:bg-gray-50" : ""}
+        text-gray-900
+        ${disabled ? "bg-gray-50" : "bg-gray-100"}
+        ${onClick && !disabled ? "cursor-pointer hover:bg-gray-50" : ""}
       `;
     }
   }
 };
 
 export const Badge = (props: any) => {
-  const { type, className, children, onDelete, value, onClick } = props;
+  const { type, className, children, onDelete, value, onClick, disabled } = props;
 
-  const customClassName = getClasseName(type, onClick || onDelete);
+  const customClassName = getClassName(type, onClick || onDelete, disabled);
 
   const handleClick = (event: any) => {
     event.stopPropagation();
     event.preventDefault();
+
+    if (disabled) {
+      return;
+    }
 
     if (onClick) {
       return onClick(value);
@@ -82,7 +91,7 @@ export const Badge = (props: any) => {
         DEFAULT_CLASS,
         customClassName,
         className,
-        onDelete ? "cursor-pointer" : ""
+        onDelete && !disabled ? "cursor-pointer" : ""
       )}
       onClick={handleClick}>
       {children}

@@ -17,7 +17,7 @@ const DEFAULT_CLASS = (className?: string) => `
   shadow-sm ring-1 ring-inset ring-gray-300
 `;
 
-const getClasseName = (type: BUTTON_TYPES) => {
+const getClassName = (type: BUTTON_TYPES) => {
   switch (type) {
     case BUTTON_TYPES.VALIDATE: {
       return `
@@ -56,7 +56,7 @@ const getClasseName = (type: BUTTON_TYPES) => {
 export const RoundedButton = (props: any) => {
   const { type, className, onClick, ...propsToPass } = props;
 
-  const customClassName = getClasseName(type);
+  const customClassName = getClassName(type);
 
   const handleClick = (event: any) => {
     if (type !== "submit") {

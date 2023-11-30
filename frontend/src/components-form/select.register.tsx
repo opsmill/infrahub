@@ -18,7 +18,8 @@ type SelectRegisterProps = {
 };
 
 export const OpsSelectRegister = (props: SelectRegisterProps) => {
-  const { name, register, setValue, config, isProtected, disabled, ...propsToPass } = props;
+  const { register, setValue, config, isProtected, disabled, name, ...propsToPass } = props;
+
   const inputRegister = register(name, {
     value: props.value ?? "",
     ...config,

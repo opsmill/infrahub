@@ -33,7 +33,7 @@ const DEFAULT_CLASS = (className?: string, type?: BUTTON_TYPES) => `
   focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
 `;
 
-const getClasseName = (type?: BUTTON_TYPES) => {
+const getClassName = (type?: BUTTON_TYPES) => {
   switch (type) {
     case BUTTON_TYPES.VALIDATE: {
       return `
@@ -91,7 +91,7 @@ const getClasseName = (type?: BUTTON_TYPES) => {
 export const Button = forwardRef((props: ButtonProps, ref: any) => {
   const { buttonType, type, className = "", onClick, isLoading, children, ...propsToPass } = props;
 
-  const customClassName = getClasseName(buttonType);
+  const customClassName = getClassName(buttonType);
 
   const handleClick = (event: any) => {
     if (type !== "submit") {

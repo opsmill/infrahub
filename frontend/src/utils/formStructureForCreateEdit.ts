@@ -174,6 +174,7 @@ const getFormStructureForCreateEdit = (
       formFields.push({
         name: relationship.name + (relationship.cardinality === "one" ? ".id" : ".list"),
         kind: "String",
+        peer: relationship.peer,
         type:
           relationship.cardinality === "many"
             ? ("multiselect" as ControlType)

@@ -22,16 +22,25 @@ import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
 
 interface iProps {
-  objectname: string;
+  objectname?: string;
   onCancel?: Function;
   onCreate: Function;
   refetch?: Function;
-  formStructure: DynamicFieldData[];
+  formStructure?: DynamicFieldData[];
   customObject?: any;
+  preventObjectsCreation?: boolean;
 }
 
 export default function ObjectItemCreate(props: iProps) {
-  const { objectname, onCreate, onCancel, refetch, formStructure, customObject = {} } = props;
+  const {
+    objectname,
+    onCreate,
+    onCancel,
+    refetch,
+    formStructure,
+    customObject = {},
+    preventObjectsCreation,
+  } = props;
 
   const [schemaList] = useAtom(schemaState);
   const [schemaKindName] = useAtom(schemaKindNameState);
@@ -149,6 +158,7 @@ export default function ObjectItemCreate(props: iProps) {
             fields={fields}
             isLoading={isLoading}
             submitLabel={"Create"}
+            preventObjectsCreation={preventObjectsCreation}
           />
         </div>
       )}
