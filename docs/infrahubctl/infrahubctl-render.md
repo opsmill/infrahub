@@ -5,12 +5,12 @@ Render a local Jinja Template (RFile) for debugging purpose.
 **Usage**:
 
 ```console
-$ infrahubctl render [OPTIONS] RFILE [VARIABLES]...
+$ infrahubctl render [OPTIONS] RFILE_NAME [VARIABLES]...
 ```
 
 **Arguments**:
 
-* `RFILE`: [required]
+* `RFILE_NAME`: [required]
 * `[VARIABLES]...`: Variables to pass along with the query. Format key=value key=value.
 
 **Options**:

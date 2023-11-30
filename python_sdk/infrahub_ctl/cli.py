@@ -1,12 +1,13 @@
+import asyncio
+import functools
 import importlib
 import json
 import linecache
 import logging
 import os
 import sys
-from asyncio import run as aiorun
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import jinja2
 import typer
@@ -16,6 +17,7 @@ try:
 except ImportError:
     import pydantic  # type: ignore[no-redef]
 
+from infrahub.transforms import InfrahubTransform
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.syntax import Syntax
@@ -26,7 +28,7 @@ import infrahub_ctl.config as config
 from infrahub_ctl.branch import app as branch_app
 from infrahub_ctl.check import app as check_app
 from infrahub_ctl.client import initialize_client, initialize_client_sync
-from infrahub_ctl.exceptions import FileNotValidError, QueryNotFoundError
+from infrahub_ctl.exceptions import FileNotValidError, InfrahubTransformNotFoundError, QueryNotFoundError
 from infrahub_ctl.schema import app as schema
 from infrahub_ctl.utils import (
     find_graphql_query,
@@ -35,7 +37,7 @@ from infrahub_ctl.utils import (
 )
 from infrahub_ctl.validate import app as validate_app
 from infrahub_sdk.exceptions import GraphQLError
-from infrahub_sdk.schema import InfrahubRepositoryConfig
+from infrahub_sdk.schema import InfrahubPythonTransformConfig, InfrahubRepositoryConfig, InfrahubRepositoryRFileConfig
 from infrahub_sdk.utils import get_branch
 
 app = typer.Typer(pretty_exceptions_show_locals=False)
@@ -44,6 +46,8 @@ app.add_typer(branch_app, name="branch")
 app.add_typer(check_app, name="check")
 app.add_typer(schema, name="schema")
 app.add_typer(validate_app, name="validate")
+
+console = Console()
 
 
 async def _run(
@@ -105,28 +109,7 @@ def identify_faulty_jinja_code(traceback: Traceback, nbr_context_lines: int = 3)
     return response
 
 
-@app.command(name="render")
-def render(  # pylint: disable=too-many-branches,too-many-statements
-    rfile: str,
-    variables: Optional[List[str]] = typer.Argument(
-        None, help="Variables to pass along with the query. Format key=value key=value."
-    ),
-    branch: str = typer.Option(None, help="Branch on which to render the RFile."),
-    debug: bool = False,
-    config_file: str = typer.Option(config.DEFAULT_CONFIG_FILE, envvar=config.ENVVAR_CONFIG_FILE),
-) -> None:
-    """Render a local Jinja Template (RFile) for debugging purpose."""
-
-    if not config.SETTINGS:
-        config.load_and_exit(config_file=config_file)
-
-    branch = get_branch(branch)
-
-    console = Console()
-
-    # ------------------------------------------------------------------
-    # Read the configuration file
-    # ------------------------------------------------------------------
+def get_repository_config(repo_config_file: Path) -> InfrahubRepositoryConfig:
     try:
         config_file_data = load_repository_config_file(repo_config_file=Path(config.INFRAHUB_REPO_CONFIG_FILE))
     except FileNotFoundError as exc:
@@ -145,53 +128,54 @@ def render(  # pylint: disable=too-many-branches,too-many-statements
             console.print(f"  {'/'.join(loc_str)} | {error['msg']} ({error['type']})")
         raise typer.Exit(1) from exc
 
-    # ------------------------------------------------------------------
-    # Find the GraphQL Query and Retrive its data
-    # ------------------------------------------------------------------
-    filtered_rfile = [entry for entry in data.rfiles if entry.name == rfile]
-    if not filtered_rfile:
-        console.print(f"[red]Unable to find {rfile} in {config.INFRAHUB_REPO_CONFIG_FILE}")
-        raise typer.Exit(1)
+    return data
 
-    rfile_data = filtered_rfile[0]
 
-    try:
-        query_str = find_graphql_query(rfile_data.query)
-    except QueryNotFoundError as exc:
-        console.print(f"[red]Unable to find query : {exc}")
-        raise typer.Exit(1) from exc
+def get_transform_class_instance(
+    transform_class_name: str, python_transforms: List[InfrahubPythonTransformConfig]
+) -> InfrahubTransform:
+    for transform_config in python_transforms:
+        try:
+            spec = importlib.util.spec_from_file_location(transform_class_name, transform_config.file_path)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
 
-    variables_dict = parse_cli_vars(variables)
+            # Get the specified class from the module
+            transform_class = getattr(module, transform_class_name)
+
+            # Create an instance of the class
+            transform_instance = transform_class()
+            break
+        except (FileNotFoundError, AttributeError):
+            continue
+    else:
+        raise InfrahubTransformNotFoundError(name=transform_class_name)
+
+    return transform_instance
+
+
+def execute_graphql_query(
+    query: str, variables_dict: Dict[str, Any], branch: Optional[str] = None, debug: bool = False
+) -> str:
+    query_str = find_graphql_query(query)
 
     client = initialize_client_sync()
-    try:
-        response = client.execute_graphql(
-            query=query_str,
-            branch_name=branch,
-            variables=variables_dict,
-            raise_for_error=False,
-        )
-    except GraphQLError as exc:
-        console.print(f"[red]{len(exc.errors)} error(s) occured while executing the query")
-        for error in exc.errors:
-            if isinstance(error, dict) and "message" in error and "locations" in error:
-                console.print(f"[yellow] - Message: {error['message']}")  # type: ignore[typeddict-item]
-                console.print(f"[yellow]   Location: {error['locations']}")  # type: ignore[typeddict-item]
-            elif isinstance(error, str) and "Branch:" in error:
-                console.print(f"[yellow] - {error}")
-                console.print("[yellow]   you can specify a different branch with --branch")
-        raise typer.Abort()
+    response = client.execute_graphql(
+        query=query_str,
+        branch_name=branch,
+        variables=variables_dict,
+        raise_for_error=False,
+    )
 
     if debug:
-        console.print("-" * 40)
-        console.print(f"Response for GraphQL Query {rfile_data.query}")
-        console.print(response)
-        console.print("-" * 40)
+        message = ("-" * 40, f"Response for GraphQL Query {query}", response, "-" * 40)
+        console.print("\n".join(message))
 
-    # ------------------------------------------------------------------
-    # Finally, render the template
-    # ------------------------------------------------------------------
-    template_path = rfile_data.template_path
+    return response
+
+
+def render_jinja2_template(template_path: str, variables: Dict[str, str], data: str) -> str:
+    template_path = template_path
     if not template_path.is_file():
         console.print(f"[red]Unable to locate the template at {template_path}")
         raise typer.Exit(1)
@@ -201,7 +185,7 @@ def render(  # pylint: disable=too-many-branches,too-many-statements
     template = templateEnv.get_template(str(template_path))
 
     try:
-        rendered_tpl = template.render(**variables_dict, data=response)  # type: ignore[arg-type]
+        rendered_tpl = template.render(**variables, data=data)  # type: ignore[arg-type]
     except jinja2.TemplateSyntaxError as exc:
         console.print("[red]Syntax Error detected on the template")
         console.print(f"[yellow]  {exc}")
@@ -218,72 +202,26 @@ def render(  # pylint: disable=too-many-branches,too-many-statements
         console.print(traceback.trace.stacks[0].exc_value)
         raise typer.Exit(1) from exc
 
-    print(rendered_tpl)
+    return rendered_tpl
 
 
-@app.command(name="transform")
-def transform(  # pylint: disable=too-many-branches,too-many-statements
-    transform_script: str = typer.Argument(
-        ...,
-        help="The path to a Python script containing a class for data transformation. "
-        "The format should be: filename:class (e.g., my_transform:MyTransformer).",
-    ),
-    variables: Optional[List[str]] = typer.Argument(
-        None, help="Variables to pass along with the query. Format key=value key=value."
-    ),
-    branch: str = typer.Option(None, help="Branch on which to render the RFile."),
-    debug: bool = False,
-    config_file: str = typer.Option(config.DEFAULT_CONFIG_FILE, envvar=config.ENVVAR_CONFIG_FILE),
-) -> None:
-    """Render a local transform (TransformPython) for debugging purpose."""
+def find_rfile_in_repository_config(
+    rfile: str, repository_config: InfrahubRepositoryConfig
+) -> InfrahubRepositoryRFileConfig:
+    filtered = [entry for entry in repository_config.rfiles if entry.name == rfile]
+    if len(filtered) == 0 or len(filtered) > 1:
+        raise ValueError
+    return filtered[0]
 
-    if not config.SETTINGS:
-        config.load_and_exit(config_file=config_file)
 
+def _run_transform(query: str, variables: List[str], transformer: Callable, branch: str):
     branch = get_branch(branch)
 
-    console = Console()
-
-    # ------------------------------------------------------------------
-    # Find the GraphQL Query and Retrieve its data
-    # ------------------------------------------------------------------
-
     try:
-        # Split the input into filename and class name
-        filename, class_name = transform_script.split(":")
-
-        # Dynamically import the specified module
-        spec = importlib.util.spec_from_file_location(filename, filename + ".py")
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-
-        # Get the specified class from the module
-        transform_class = getattr(module, class_name)
-
-        # Create an instance of the class
-        transform_instance = transform_class()
-
-    except Exception as exc:
-        console.print(f"[red]Error loading {transform_script}: {exc}")
-        raise typer.Exit(1)
-
-    try:
-        query_str = find_graphql_query(transform_instance.query)
+        response = execute_graphql_query(query, variables, branch)
     except QueryNotFoundError as exc:
         console.print(f"[red]Unable to find query : {exc}")
         raise typer.Exit(1) from exc
-
-    variables_dict = parse_cli_vars(variables)
-
-    client = initialize_client_sync()
-    try:
-        response = client.execute_graphql(
-            query=query_str,
-            branch_name=branch,
-            variables=variables_dict,
-            raise_for_error=False,
-        )
-
     except GraphQLError as exc:
         console.print(f"[red]{len(exc.errors)} error(s) occured while executing the query")
         for error in exc.errors:
@@ -295,20 +233,69 @@ def transform(  # pylint: disable=too-many-branches,too-many-statements
                 console.print("[yellow]   you can specify a different branch with --branch")
         raise typer.Abort()
 
-    if debug:
-        console.print("-" * 40)
-        console.print(f"Response for GraphQL Query {transform_instance.query}")
-        console.print(response)
-        console.print("-" * 40)
+    if asyncio.iscoroutinefunction(transformer.func):
+        output = asyncio.run(transformer(response))
+    else:
+        output = transformer(response)
+    return output
 
-    # ------------------------------------------------------------------
-    # Finally, render the transform
-    # ------------------------------------------------------------------
-    rendered = aiorun(transform_instance.transform(response))
 
-    rendered_json = json.dumps(rendered, indent=2)
+@app.command(name="render")
+def render(  # pylint: disable=too-many-branches,too-many-statements
+    rfile_name: str,
+    variables: Optional[List[str]] = typer.Argument(
+        None, help="Variables to pass along with the query. Format key=value key=value."
+    ),
+    branch: str = typer.Option(None, help="Branch on which to render the RFile."),
+    debug: bool = False,
+    config_file: str = typer.Option(config.DEFAULT_CONFIG_FILE, envvar=config.ENVVAR_CONFIG_FILE),
+) -> None:
+    """Render a local Jinja Template (RFile) for debugging purpose."""
 
-    print(rendered_json)
+    if not config.SETTINGS:
+        config.load_and_exit(config_file=config_file)
+
+    variables_dict = parse_cli_vars(variables)
+    repository_config = get_repository_config(Path(config.INFRAHUB_REPO_CONFIG_FILE))
+
+    try:
+        rfile = find_rfile_in_repository_config(rfile_name, repository_config)
+    except ValueError:
+        console.print(f"[red]Unable to find {rfile} in {config.INFRAHUB_REPO_CONFIG_FILE}")
+        raise typer.Exit(1)
+
+    transformer = functools.partial(render_jinja2_template, rfile.template_path, variables_dict)
+    result = _run_transform(rfile.query, variables_dict, transformer, branch)
+    console.print(result)
+
+
+@app.command(name="transform")
+def transform(  # pylint: disable=too-many-branches,too-many-statements
+    transform_name: str = typer.Argument("Name of the Python transformation class"),
+    variables: Optional[List[str]] = typer.Argument(
+        None, help="Variables to pass along with the query. Format key=value key=value."
+    ),
+    branch: str = typer.Option(None, help="Branch on which to run the transformation"),
+    debug: bool = False,
+    config_file: str = typer.Option(config.DEFAULT_CONFIG_FILE, envvar=config.ENVVAR_CONFIG_FILE),
+) -> None:
+    """Render a local transform (TransformPython) for debugging purpose."""
+
+    if not config.SETTINGS:
+        config.load_and_exit(config_file=config_file)
+
+    variables_dict = parse_cli_vars(variables)
+    repository_config = get_repository_config(Path(config.INFRAHUB_REPO_CONFIG_FILE))
+
+    try:
+        transform_instance = get_transform_class_instance(transform, repository_config.python_transforms)
+    except InfrahubTransformNotFoundError:
+        console.print(f"Unable to load {transform} from python_transforms")
+        raise typer.Exit(1)
+
+    transformer = functools.partial(transform_instance.transform)
+    result = _run_transform(transform_instance.query, variables_dict, transformer, branch)
+    console.print(json.dumps(result, indent=2))
 
 
 @app.command(name="run")
@@ -339,7 +326,7 @@ def run(
     logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
     log = logging.getLogger("infrahubctl")
 
-    aiorun(
+    asyncio.run(
         _run(
             script=script,
             method=method,
