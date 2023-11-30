@@ -321,7 +321,7 @@ nodes:
     namespace: Infra
     description: "Generic Device object."
     label: "Device"
-    icon: "mdi:router-network" # "mdi:desktop-tower"
+    icon: "mdi:router-network"
     default_filter: name__value
     inherit_from:
       - "CoreArtifactTarget"

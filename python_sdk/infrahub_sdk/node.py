@@ -933,11 +933,12 @@ class InfrahubNode(InfrahubNodeBase):
     async def save(self, at: Optional[Timestamp] = None) -> Dict:
         at = Timestamp(at)
         if self._existing is False:
-            return await self._create(at=at)
+            result = await self._create(at=at)
         else:
-            return await self._update(at=at)
+            result = await self._update(at=at)
 
-        # self._client.store.set(key=self.id, node=self)
+        self._client.store.set(key=self.id, node=self)
+        return result
 
     async def generate_query_data(
         self,
@@ -1101,11 +1102,12 @@ class InfrahubNodeSync(InfrahubNodeBase):
     def save(self, at: Optional[Timestamp] = None) -> Dict:
         at = Timestamp(at)
         if self._existing is False:
-            return self._create(at=at)
+            result = self._create(at=at)
         else:
-            return self._update(at=at)
+            result = self._update(at=at)
 
-        # self._client.store.set(key=self.id, node=self)
+        self._client.store.set(key=self.id, node=self)
+        return result
 
     def generate_query_data(
         self,
