@@ -8,7 +8,7 @@ except ImportError:
 from infrahub_sdk.playback import JSONPlayback
 from infrahub_sdk.recorder import JSONRecorder, NoRecorder, Recorder, RecorderType
 from infrahub_sdk.types import AsyncRequester, RequesterTransport, SyncRequester
-from infrahub_sdk.utils import is_valid_url
+from infrahub_sdk.utils import get_branch, is_valid_url
 
 
 class Config(pydantic.BaseSettings):
@@ -31,6 +31,10 @@ class Config(pydantic.BaseSettings):
     )
     default_branch: str = pydantic.Field(
         default="main", description="Default branch to target if not specified for each request."
+    )
+    default_branch_from_git: bool = pydantic.Field(
+        default=False,
+        description="Indicates if the default Infrahub branch to target should come from the active branch in the local Git repository.",
     )
     requester: Optional[AsyncRequester] = None
     timeout: int = pydantic.Field(default=10, description="Default connection timeout in seconds")
@@ -89,6 +93,14 @@ class Config(pydantic.BaseSettings):
             return value
 
         raise ValueError("The configured address is not a valid url")
+
+    @property
+    def default_infrahub_branch(self) -> str:
+        branch: Optional[str] = None
+        if not self.default_branch_from_git:
+            branch = self.default_branch
+
+        return get_branch(branch=branch)
 
     @property
     def password_authentication(self) -> bool:

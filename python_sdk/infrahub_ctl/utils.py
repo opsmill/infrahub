@@ -5,7 +5,6 @@ from typing import List, Optional, Union
 
 import pendulum
 import yaml
-from git import Repo
 from pendulum.datetime import DateTime
 from rich.console import Console
 from rich.markup import escape
@@ -82,15 +81,6 @@ def render_action_rich(value: str) -> str:
         return f"[red]{value.upper()}[/red]"
 
     return value.upper()
-
-
-def get_branch(branch: Optional[str] = None, directory: Union[str, Path] = ".") -> str:
-    """If branch isn't provide, return the name of the local Git branch."""
-    if branch:
-        return branch
-
-    repo = Repo(directory)
-    return str(repo.active_branch)
 
 
 def get_fixtures_dir() -> Path:

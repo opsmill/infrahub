@@ -17,8 +17,9 @@ from ujson import JSONDecodeError
 import infrahub_ctl.config as config
 from infrahub_ctl.client import initialize_client, initialize_client_sync
 from infrahub_ctl.exceptions import QueryNotFoundError
-from infrahub_ctl.utils import find_graphql_query, get_branch, parse_cli_vars
+from infrahub_ctl.utils import find_graphql_query, parse_cli_vars
 from infrahub_sdk.exceptions import GraphQLError
+from infrahub_sdk.utils import get_branch
 
 app = typer.Typer()
 

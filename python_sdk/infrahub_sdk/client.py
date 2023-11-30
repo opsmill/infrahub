@@ -67,7 +67,7 @@ class BaseClient:
         else:
             self.config = Config()
 
-        self.default_branch = self.config.default_branch
+        self.default_branch = self.config.default_infrahub_branch
         self.default_timeout = self.config.timeout
         self.config.address = address or self.config.address
         self.address = self.config.address
