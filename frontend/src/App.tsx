@@ -32,7 +32,9 @@ function App() {
   /**
    * Fetch schema from the backend, sort, and return them
    */
-  const fetchSchema = useCallback(async () => {
+  const fetchSchema = useCallback<
+    () => Promise<{ schema: iNodeSchema[]; generics: iGenericSchema[] }>
+  >(async () => {
     const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
     try {
       const data = await fetchUrl(CONFIG.SCHEMA_URL(branchInQueryString));
@@ -61,8 +63,7 @@ function App() {
    */
   const setSchemaInState = useCallback(async () => {
     try {
-      const { schema, generics }: { schema: iNodeSchema[]; generics: iGenericSchema[] } =
-        await fetchSchema();
+      const { schema, generics } = await fetchSchema();
 
       schema.forEach((s) => {
         s.attributes = sortByOrderWeight(s.attributes || []);
