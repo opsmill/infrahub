@@ -184,10 +184,11 @@ export const FileContentDiff = (props: any) => {
 
       const newDate = formatISO(new Date());
 
-      const lineNumber =
-        displayAddComment.lineNumber ||
-        displayAddComment.newLineNumber ||
-        displayAddComment.oldLineNumber;
+      const lineNumber = displayAddComment.isNormal
+        ? displayAddComment.side === "new"
+          ? displayAddComment.newLineNumber
+          : displayAddComment.oldLineNumber
+        : displayAddComment.lineNumber;
 
       const label = `${repositoryDisplayName} - ${file.location}:${lineNumber}`;
 
