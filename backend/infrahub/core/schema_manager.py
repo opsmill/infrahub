@@ -13,6 +13,7 @@ from infrahub import lock
 from infrahub.core import get_branch, get_branch_from_registry
 from infrahub.core.constants import (
     RESERVED_ATTR_REL_NAMES,
+    RESTRICTED_NAMESPACES,
     BranchSupportType,
     FilterSchemaKind,
     RelationshipCardinality,
@@ -73,6 +74,11 @@ class SchemaDiff(BaseModel):
     @property
     def all(self) -> List[str]:
         return self.changed + self.added + self.removed
+
+
+class SchemaNamespace(BaseModel):
+    name: str
+    user_editable: bool
 
 
 class SchemaBranch:
@@ -193,6 +199,20 @@ class SchemaBranch:
             for name in list(self.nodes.keys()) + list(self.generics.keys()) + list(self.groups.keys())
             if include_internal or name not in INTERNAL_SCHEMA_NODE_KINDS
         }
+
+    def get_namespaces(self, include_internal: bool = False) -> List[SchemaNamespace]:
+        all_schemas = self.get_all(include_internal=include_internal)
+        namespaces: Dict[str, SchemaNamespace] = {}
+        for schema in all_schemas.values():
+            if isinstance(schema, GroupSchema):
+                continue
+            if schema.namespace in namespaces:
+                continue
+            namespaces[schema.namespace] = SchemaNamespace(
+                name=schema.namespace, user_editable=schema.namespace not in RESTRICTED_NAMESPACES
+            )
+
+        return list(namespaces.values())
 
     def load_schema(self, schema: SchemaRoot) -> None:
         """Load a SchemaRoot object and store all NodeSchema, GenericSchema or GroupSchema.

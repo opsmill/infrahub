@@ -12,6 +12,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch  # noqa: TCH001
 from infrahub.core.models import SchemaBranchHash  # noqa: TCH001
 from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema, SchemaRoot
+from infrahub.core.schema_manager import SchemaNamespace  # noqa: TCH001
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
 from infrahub.exceptions import PermissionDeniedError, SchemaNotFound
 from infrahub.log import get_logger
@@ -21,6 +22,7 @@ from infrahub.worker import WORKER_IDENTITY
 
 if TYPE_CHECKING:
     from typing_extensions import Self
+
 
 log = get_logger()
 router = APIRouter(prefix="/schema")
@@ -66,6 +68,7 @@ class SchemaReadAPI(BaseModel):
     main: str = Field(description="Main hash for the entire schema")
     nodes: List[APINodeSchema] = Field(default_factory=list)
     generics: List[APIGenericSchema] = Field(default_factory=list)
+    namespaces: List[SchemaNamespace] = Field(default_factory=list)
 
 
 class SchemaLoadAPI(SchemaRoot):
@@ -91,6 +94,7 @@ async def get_schema(
         generics=[
             APIGenericSchema.from_schema(value) for value in full_schema.values() if isinstance(value, GenericSchema)
         ],
+        namespaces=schema_branch.get_namespaces(),
     )
 
 
