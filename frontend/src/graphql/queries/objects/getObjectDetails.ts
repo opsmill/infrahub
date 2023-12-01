@@ -1,4 +1,5 @@
 import Handlebars from "handlebars";
+import "../../../utils/handlebars"; // Import handlebars utils
 
 export const getObjectDetailsPaginated = Handlebars.compile(`
 query {{kind}} {
