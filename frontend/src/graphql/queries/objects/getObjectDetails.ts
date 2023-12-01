@@ -24,6 +24,10 @@ query {{kind}} {
                 display_label
                 __typename
               }
+              {{#if (eq this.kind "Dropdown")}}
+              color
+              description
+              {{/if}}
           }
           {{/each}}
 
