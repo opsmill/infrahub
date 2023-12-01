@@ -35,6 +35,7 @@ opentelemetry-sdk = "~1.21"
 opentelemetry-instrumentation-fastapi = "^0.42b0"
 opentelemetry-exporter-otlp-proto-http = "~1.21"
 opentelemetry-exporter-otlp-proto-grpc = "~1.21"
+pyarrow = "^14.0.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"
