@@ -87,6 +87,7 @@ export default function ObjectItemDetails(props: any) {
   const relationships = getSchemaRelationshipColumns(schemaData);
 
   const relationshipsTabs = getSchemaRelationshipsTabs(schemaData);
+
   const queryString = schemaData
     ? getObjectDetailsPaginated({
         ...schemaData,

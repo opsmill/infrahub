@@ -4,8 +4,14 @@ import { Badge } from "../components/badge";
 import { CodeEditor } from "../components/code-editor";
 import { DateDisplay } from "../components/date-display";
 import { MAX_VALUE_LENGTH_DISPLAY } from "../config/constants";
+import { iSchemaKindNameMap } from "../state/atoms/schemaKindName.atom";
+import { getTextColor } from "./common";
 
-export const getObjectItemDisplayValue = (row: any, attribute: any, schemaKindName?: any) => {
+export const getObjectItemDisplayValue = (
+  row: any,
+  attribute: any,
+  schemaKindName?: iSchemaKindNameMap
+) => {
   if (!row) {
     return;
   }
@@ -65,6 +71,23 @@ export const getObjectItemDisplayValue = (row: any, attribute: any, schemaKindNa
 
   if (textValue?.length > MAX_VALUE_LENGTH_DISPLAY) {
     return `${textValue.substr(0, MAX_VALUE_LENGTH_DISPLAY)} ...`;
+  }
+
+  if (row[attribute?.name]?.color) {
+    return (
+      <div
+        className="px-2 py-1 rounded-md flex flex-col"
+        style={{
+          backgroundColor: row[attribute?.name]?.color || "",
+          color: row[attribute?.name]?.color ? getTextColor(row[attribute?.name]?.color) : "",
+        }}>
+        {textValue}
+
+        {row[attribute?.name]?.description && (
+          <span className="text-xs italic">{row[attribute?.name]?.description}</span>
+        )}
+      </div>
+    );
   }
 
   return textValue;

@@ -119,7 +119,7 @@ export default function ObjectItemEditComponent(props: Props) {
     if (Object.keys(updatedObject).length) {
       try {
         const mutationString = updateObjectWithId({
-          kind: schema.kind,
+          kind: schema?.kind,
           data: stringifyWithoutQuotes({
             id: objectid,
             ...updatedObject,
