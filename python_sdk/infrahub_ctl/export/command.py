@@ -7,19 +7,18 @@ import typer
 from rich.console import Console
 
 from infrahub_sdk.client import InfrahubClient
-from infrahub_sdk.node.deduplicator import NodeDeduplicator
+from infrahub_sdk.schema import GenericSchema
 from infrahub_sdk.transfer.export.interface import ExporterInterface
 
 if TYPE_CHECKING:
     from infrahub_sdk.schema import BaseNodeSchema
 
-from .constants import ILLEGAL_KINDS, ILLEGAL_NAMESPACES
+from .constants import ILLEGAL_NAMESPACES
 
 
 async def do_export(
     exporter: ExporterInterface,
     client: InfrahubClient,
-    deduplicator: NodeDeduplicator,
     namespaces: List[str],
     branch: str,
 ) -> List[Dict[str, Any]]:
@@ -27,7 +26,7 @@ async def do_export(
     node_schema_map = await client.schema.all(branch=branch)
     node_schema_by_namespace: Dict[str, List[BaseNodeSchema]] = defaultdict(list)
     for node_schema in node_schema_map.values():
-        if node_schema.kind.lower() in ILLEGAL_KINDS:
+        if isinstance(node_schema, GenericSchema):
             continue
         node_schema_by_namespace[node_schema.namespace.lower()].append(node_schema)
 
@@ -45,6 +44,5 @@ async def do_export(
             [client.all(node_schema.kind, branch=branch) for node_schema in node_schema_by_namespace[namespace]]
         )
 
-    all_nodes = chain(*await asyncio.gather(*tasks))
-    unique_nodes = await deduplicator.deduplicate(all_nodes)
-    return await exporter.export(unique_nodes)
+    all_nodes = list(chain(*await asyncio.gather(*tasks)))
+    return await exporter.export(all_nodes)

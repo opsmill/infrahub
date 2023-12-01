@@ -1,19 +1,26 @@
+from pathlib import Path
 from typing import List
 
 import ujson
 
 from infrahub_sdk.node import InfrahubNode
 
+from ..exceptions import FileAlreadyExistsError
 from .interface import ExporterInterface
 
 
-class JSONExporter(ExporterInterface):
-    async def export(self, nodes: List[InfrahubNode]) -> str:
-        ordered_nodes = sorted(nodes, key=lambda n: n.get_kind())
-        export_data = []
-        for node in ordered_nodes:
-            graphql_data = node.get_raw_graphql_data()
-            if graphql_data:
-                graphql_data["relationships"] = await node.get_relationships()
-                export_data.append(graphql_data)
-        return ujson.dumps(export_data)
+class LineDelimitedJSONExporter(ExporterInterface):
+    def __init__(self, destination_directory: Path):
+        self.destination_directory = destination_directory
+
+    async def export(self, nodes: List[InfrahubNode]) -> None:
+        node_file = self.destination_directory / Path("nodes.json")
+        if node_file.exists():
+            raise FileAlreadyExistsError(f"{node_file.absolute()} already exists")
+        json_lines = [ujson.dumps({"kind": n.get_kind(), "graphql": n.get_raw_graphql_data()}) for n in nodes]
+        file_content = "\n".join(json_lines)
+
+        if not self.destination_directory.exists():
+            self.destination_directory.mkdir()
+        node_file.touch()
+        node_file.write_text(file_content)

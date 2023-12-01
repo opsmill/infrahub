@@ -6,5 +6,5 @@ from infrahub_sdk.node import InfrahubNode
 
 class ExporterInterface(ABC):
     @abstractmethod
-    async def export(self, nodes: List[InfrahubNode]) -> str:
+    async def export(self, nodes: List[InfrahubNode]) -> None:
         ...
