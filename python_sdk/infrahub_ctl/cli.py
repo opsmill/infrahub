@@ -240,7 +240,7 @@ def _run_transform(query: str, variables: List[str], transformer: Callable, bran
 
 
 @app.command(name="render")
-def render(  # pylint: disable=too-many-branches,too-many-statements
+def render(
     rfile_name: str,
     variables: Optional[List[str]] = typer.Argument(
         None, help="Variables to pass along with the query. Format key=value key=value."
@@ -269,7 +269,7 @@ def render(  # pylint: disable=too-many-branches,too-many-statements
 
 
 @app.command(name="transform")
-def transform(  # pylint: disable=too-many-branches,too-many-statements
+def transform(
     transform_name: str = typer.Argument("Name of the Python transformation class"),
     variables: Optional[List[str]] = typer.Argument(
         None, help="Variables to pass along with the query. Format key=value key=value."
@@ -335,7 +335,3 @@ def run(
             timeout=timeout,
         )
     )
-
-
-if __name__ == "__main__":
-    app()
