@@ -29,6 +29,7 @@ Below is the list of all available options to define a Relationship in the schem
 | [**optional**](#optional) | Attribute | Indicate if this relationship is mandatory or optional. | False |
 | [**order_weight**](#order_weight) | Attribute | Number used to order the relationship in the frontend (table and view). | False |
 | [**peer**](#peer) | Attribute | Type (kind) of objects supported on the other end of the relationship. | True |
+| [**side**](#side) | Attribute |  | False |
 
 ## Reference Guide
 ### branch
@@ -89,6 +90,9 @@ Below is the list of all available options to define a Relationship in the schem
 | **Optional** | True |
 | **Default Value** | False |
 | **Constraints** |  |
+
+
+### kind
 
 | Key | Value | { class="compact" }
 | ---- | --------------- |
@@ -159,6 +163,18 @@ Below is the list of all available options to define a Relationship in the schem
 | **Default Value** |  |
 | **Constraints** |  Regex: `^[A-Z][a-zA-Z0-9]+$`<br> Length: min 3, max 32 |
 
+
+### side
+
+| Key | Value | { class="compact" }
+| ---- | --------------- |
+| **Name** | side |
+| **Kind** | `Text` |
+| **Description** |  |
+| **Optional** | True |
+| **Default Value** | both |
+| **Constraints** |  |
+| **Accepted Values** | `both` `source` `destination`  |
 
 
 
