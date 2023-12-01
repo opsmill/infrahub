@@ -698,19 +698,11 @@ class InfrahubNodeBase:
 
         return f"{self._schema.kind} ({self.id}) "
 
-    def get_namespace(self) -> str:
-        return self._schema.namespace
+    def get_kind(self) -> str:
+        return self._schema.kind
 
-    def get_name(self) -> str:
-        return self._schema.name
-
-    async def get_attributes(self) -> Dict[str, Any]:
-        attributes = {}
-        for attr_name in self._attributes:
-            if not hasattr(self, attr_name):
-                continue
-            attributes[attr_name] = getattr(self, attr_name).value
-        return attributes
+    def get_raw_graphql_data(self) -> Optional[Dict]:
+        return self._data
 
     async def get_relationships(self) -> Dict[str, List[str]]:
         relationships = {}
@@ -720,9 +712,12 @@ class InfrahubNodeBase:
                 await relationship_attr.fetch()
                 relationships[relationship_name] = relationship_attr.peer_ids
             elif isinstance(relationship_attr, RelatedNode):
+                if relationship_attr is None:
+                    continue
+                if relationship_attr.id is None:
+                    continue
                 if not relationship_attr.initialized:
                     await relationship_attr.fetch()
-                if relationship_attr.id:
                     relationships[relationship_name] = [relationship_attr.id]
         return relationships
 
