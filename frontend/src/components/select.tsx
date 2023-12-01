@@ -63,7 +63,7 @@ export const Select = (props: SelectProps) => {
   const [open, setOpen] = useState(false);
   const [localOptions, setLocalOptions] = useState(options);
   const [selectedOption, setSelectedOption] = useState(
-    multiple ? value : options?.find((option) => option?.id === value)
+    multiple ? value : options?.find((option) => option?.id === value || option.name === value)
   );
 
   const schemaData = schemaList.find((s) => s.kind === peer);
