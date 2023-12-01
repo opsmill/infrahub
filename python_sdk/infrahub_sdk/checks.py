@@ -60,6 +60,9 @@ class InfrahubCheck:
         if not self.query:
             raise ValueError("A query must be provided")
 
+    def __str__(self) -> str:
+        return self.__class__.__name__
+
     @classmethod
     async def init(cls, client: Optional[InfrahubClient] = None, *args: Any, **kwargs: Any) -> InfrahubCheck:
         """Async init method, If an existing InfrahubClient client hasn't been provided, one will be created automatically."""
@@ -124,7 +127,7 @@ class InfrahubCheck:
         """Code to validate the status of this check."""
 
     async def collect_data(self) -> None:
-        """Query the result of the GraphQL Query defined in sef.query and store the result in self.data"""
+        """Query the result of the GraphQL Query defined in self.query and store the result in self.data"""
 
         data = await self.client.query_gql_query(name=self.query, branch_name=self.branch_name, rebase=self.rebase)
         self.data = data

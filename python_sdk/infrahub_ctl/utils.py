@@ -4,12 +4,11 @@ from pathlib import Path
 from typing import List, Optional, Union
 
 import pendulum
-import yaml
 from pendulum.datetime import DateTime
 from rich.console import Console
 from rich.markup import escape
 
-from infrahub_ctl.exceptions import FileNotValidError, QueryNotFoundError
+from infrahub_ctl.exceptions import QueryNotFoundError
 
 
 def print_graphql_errors(console: Console, errors: List) -> None:
@@ -21,19 +20,6 @@ def print_graphql_errors(console: Console, errors: List) -> None:
             console.print(f"[red]{escape(str(error['path']))} {escape(str(error['message']))}")
         else:
             console.print(f"[red]{escape(str(error))}")
-
-
-def load_repository_config_file(repo_config_file: Path) -> dict:
-    if not repo_config_file.is_file():
-        raise FileNotFoundError(repo_config_file)
-
-    try:
-        yaml_data = repo_config_file.read_text()
-        data = yaml.safe_load(yaml_data)
-    except yaml.YAMLError as exc:
-        raise FileNotValidError(name=str(repo_config_file)) from exc
-
-    return data
 
 
 def parse_cli_vars(variables: Optional[List[str]]) -> dict:

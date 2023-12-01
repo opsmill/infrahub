@@ -11,27 +11,20 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import jinja2
 import typer
-
-try:
-    from pydantic import v1 as pydantic  # type: ignore[attr-defined]
-except ImportError:
-    import pydantic  # type: ignore[no-redef]
-
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.syntax import Syntax
 from rich.traceback import Frame, Traceback
 
-# pylint: disable=import-outside-toplevel
 import infrahub_ctl.config as config
 from infrahub_ctl.branch import app as branch_app
 from infrahub_ctl.check import app as check_app
 from infrahub_ctl.client import initialize_client, initialize_client_sync
-from infrahub_ctl.exceptions import FileNotValidError, InfrahubTransformNotFoundError, QueryNotFoundError
+from infrahub_ctl.exceptions import InfrahubTransformNotFoundError, QueryNotFoundError
+from infrahub_ctl.repository import get_repository_config
 from infrahub_ctl.schema import app as schema
 from infrahub_ctl.utils import (
     find_graphql_query,
-    load_repository_config_file,
     parse_cli_vars,
 )
 from infrahub_ctl.validate import app as validate_app
@@ -107,28 +100,6 @@ def identify_faulty_jinja_code(traceback: Traceback, nbr_context_lines: int = 3)
         response.append((frame, syntax))
 
     return response
-
-
-def get_repository_config(repo_config_file: Path) -> InfrahubRepositoryConfig:
-    try:
-        config_file_data = load_repository_config_file(repo_config_file)
-    except FileNotFoundError as exc:
-        console.print(f"[red]{exc}")
-        raise typer.Exit(1) from exc
-    except FileNotValidError as exc:
-        console.print(f"[red]{exc}")
-        raise typer.Exit(1) from exc
-
-    try:
-        data = InfrahubRepositoryConfig(**config_file_data)
-    except pydantic.ValidationError as exc:
-        console.print(f"[red]Repository config file not valid, found {len(exc.errors())} error(s)")
-        for error in exc.errors():
-            loc_str = [str(item) for item in error["loc"]]
-            console.print(f"  {'/'.join(loc_str)} | {error['msg']} ({error['type']})")
-        raise typer.Exit(1) from exc
-
-    return data
 
 
 def get_transform_class_instance(
