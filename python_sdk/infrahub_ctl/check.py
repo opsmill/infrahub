@@ -52,7 +52,7 @@ def run(
     if not config.SETTINGS:
         config.load_and_exit(config_file=config_file)
 
-    check_definitions = get_avaiable_checks(check_file=check_file)
+    check_definitions = get_available_checks(check_file=check_file)
     check_modules = get_modules(check_definitions=check_definitions)
     aiorun(run_checks(check_modules=check_modules, format_json=format_json, path=path, branch=branch))
 
@@ -135,7 +135,7 @@ def get_modules(check_definitions: List[InfrahubCheckDefinitionConfig]) -> List[
     return modules
 
 
-def get_avaiable_checks(check_file: Optional[str] = None) -> List[InfrahubCheckDefinitionConfig]:
+def get_available_checks(check_file: Optional[str] = None) -> List[InfrahubCheckDefinitionConfig]:
     repository_config = get_repository_config(Path(config.INFRAHUB_REPO_CONFIG_FILE))
     log = logging.getLogger("infrahub")
     if check_file:
