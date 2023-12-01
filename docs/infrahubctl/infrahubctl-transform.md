@@ -1,21 +1,21 @@
-# `infrahubctl render`
+# `infrahubctl transform`
 
-Render a local Jinja Template (RFile) for debugging purpose.
+Render a local transform (TransformPython) for debugging purpose.
 
 **Usage**:
 
 ```console
-$ infrahubctl render [OPTIONS] RFILE_NAME [VARIABLES]...
+$ infrahubctl transform [OPTIONS] [TRANSFORM_NAME] [VARIABLES]...
 ```
 
 **Arguments**:
 
-* `RFILE_NAME`: [required]
+* `[TRANSFORM_NAME]`: [default: Name of the Python transformation class]
 * `[VARIABLES]...`: Variables to pass along with the query. Format key=value key=value.
 
 **Options**:
 
-* `--branch TEXT`: Branch on which to render the RFile.
+* `--branch TEXT`: Branch on which to run the transformation
 * `--debug / --no-debug`: [default: no-debug]
 * `--config-file TEXT`: [env var: INFRAHUBCTL_CONFIG; default: infrahubctl.toml]
 * `--install-completion`: Install completion for the current shell.
