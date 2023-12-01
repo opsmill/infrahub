@@ -15,6 +15,7 @@ type SelectRegisterProps = {
   isProtected?: boolean;
   isOptional?: boolean;
   disabled?: boolean;
+  dropdown?: boolean;
 };
 
 export const OpsSelectRegister = (props: SelectRegisterProps) => {

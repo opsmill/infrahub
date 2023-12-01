@@ -125,12 +125,16 @@ nodes:
           - name: active
             label: Active
             color: "#0c0c0c"
+            description: "Active option"
           - name: drained
             label: Drained
+            description: "Drained option"
           - name: maintenance
             label: Maintenance
+            description: "Maintenance option"
           - name: provisioning
             label: Provisioning
+            description: "Provisioning option"
     relationships:
       - name: site
         peer: BuiltinLocation

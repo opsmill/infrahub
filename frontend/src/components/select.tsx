@@ -11,7 +11,7 @@ import { FormFieldError } from "../screens/edit-form-hook/form";
 import ObjectItemCreate from "../screens/object-item-create/object-item-create-paginated";
 import { schemaState } from "../state/atoms/schema.atom";
 import { schemaKindNameState } from "../state/atoms/schemaKindName.atom";
-import { classNames } from "../utils/common";
+import { classNames, getTextColor } from "../utils/common";
 import { Input } from "./input";
 import { MultipleInput } from "./multiple-input";
 import SlideOver from "./slide-over";
@@ -19,6 +19,8 @@ import SlideOver from "./slide-over";
 export type SelectOption = {
   id: string | number;
   name: string;
+  color?: string; // For dropdown
+  description?: string; // For dropdown
 };
 
 export enum SelectDirection {
@@ -36,6 +38,7 @@ type SelectProps = {
   direction?: SelectDirection;
   preventObjectsCreation?: boolean;
   multiple?: true | undefined;
+  dropdown?: true | undefined;
 };
 
 export const Select = (props: SelectProps) => {
@@ -60,7 +63,7 @@ export const Select = (props: SelectProps) => {
   const [open, setOpen] = useState(false);
   const [localOptions, setLocalOptions] = useState(options);
   const [selectedOption, setSelectedOption] = useState(
-    multiple ? value : options.find((option) => option?.id === value)
+    multiple ? value : options?.find((option) => option?.id === value)
   );
 
   const schemaData = schemaList.find((s) => s.kind === peer);
@@ -83,7 +86,7 @@ export const Select = (props: SelectProps) => {
     }
 
     if (multiple) {
-      const includesNewItemCreation = item.find((i) => i.id === addOption.id);
+      const includesNewItemCreation = item.find((i: any) => i.id === addOption.id);
 
       if (!includesNewItemCreation) {
         setSelectedOption(item);
@@ -110,7 +113,7 @@ export const Select = (props: SelectProps) => {
 
     setLocalOptions([...localOptions, newItem]);
 
-    if (multiple) {
+    if (multiple && Array.isArray(value)) {
       handleChange([...value, newItem]);
 
       return;
@@ -158,12 +161,16 @@ export const Select = (props: SelectProps) => {
             disabled={disabled}
             error={error}
             className={"pr-8"}
+            style={{
+              backgroundColor: selectedOption?.color || "",
+              color: selectedOption?.color ? getTextColor(selectedOption?.color) : "",
+            }}
           />
           <Combobox.Button className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none disabled:cursor-not-allowed">
             <ChevronDownIcon className="w-4 h-4 text-gray-400" aria-hidden="true" />
           </Combobox.Button>
 
-          {filteredOptions.length > 0 && (
+          {filteredOptions && filteredOptions.length > 0 && (
             <Combobox.Options
               className={classNames(
                 "absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-custom-white text-base shadow-lg ring-1 ring-custom-black ring-opacity-5 focus:outline-none sm:text-sm",
@@ -176,15 +183,29 @@ export const Select = (props: SelectProps) => {
                   className={({ active }) =>
                     classNames(
                       "relative cursor-pointer select-none py-2 pl-3 pr-9",
-                      active ? "bg-custom-blue-600 text-custom-white" : "text-gray-900"
+                      active ? "!bg-custom-blue-600" : ""
                     )
-                  }>
+                  }
+                  style={{
+                    backgroundColor: option?.color || "",
+                    color: option?.color ? getTextColor(option?.color) : "",
+                  }}>
                   {({ active, selected }) => (
                     <>
                       <span
                         className={classNames("block truncate", selected ? "font-semibold" : "")}>
                         {option.name}
                       </span>
+
+                      {option.description && (
+                        <span
+                          className={classNames(
+                            "block truncate italic text-xs",
+                            selected ? "font-semibold" : ""
+                          )}>
+                          {option.description}
+                        </span>
+                      )}
 
                       {selected && (
                         <span
@@ -195,6 +216,8 @@ export const Select = (props: SelectProps) => {
                           <CheckIcon className="w-4 h-4" aria-hidden="true" />
                         </span>
                       )}
+
+                      {}
                     </>
                   )}
                 </Combobox.Option>
