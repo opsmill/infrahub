@@ -167,4 +167,6 @@ export const getOptionsFromRelationship = (
       }
     });
   }
+
+  return [];
 };
