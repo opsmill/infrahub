@@ -1156,6 +1156,43 @@ async def car_person_schema(db: InfrahubDatabase, default_branch: Branch, node_g
 
 
 @pytest.fixture
+async def choices_schema(db: InfrahubDatabase, default_branch: Branch, node_group_schema) -> None:
+    SCHEMA = {
+        "generics": [
+            {
+                "name": "Choice",
+                "namespace": "Base",
+                "default_filter": "name__value",
+                "display_labels": ["name__value", "color__value"],
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "color", "kind": "Text", "enum": ["red", "green", "blue"], "optional": True},
+                    {"name": "measuring_system", "kind": "Text", "enum": ["metric"], "optional": True},
+                    {"name": "description", "kind": "Text", "optional": True},
+                ],
+            },
+        ],
+        "nodes": [
+            {
+                "name": "Choice",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "display_labels": ["name__value", "color__value"],
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "status", "kind": "Text", "enum": ["active", "passive"]},
+                ],
+                "inherit_from": ["BaseChoice"],
+            },
+        ],
+    }
+
+    schema = SchemaRoot(**SCHEMA)
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+
+@pytest.fixture
 async def car_person_schema_global(
     db: InfrahubDatabase, default_branch: Branch, node_group_schema, data_schema
 ) -> None:

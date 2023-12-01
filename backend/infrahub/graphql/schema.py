@@ -21,6 +21,8 @@ from .mutations import (
     ProposedChangeRequestRunCheck,
     RelationshipAdd,
     RelationshipRemove,
+    SchemaEnumAdd,
+    SchemaEnumRemove,
 )
 from .queries import BranchQueryList, DiffSummary
 from .utils import extract_fields
@@ -85,3 +87,5 @@ class InfrahubBaseMutation(ObjectType):
 
     RelationshipAdd = RelationshipAdd.Field()
     RelationshipRemove = RelationshipRemove.Field()
+    SchemaEnumAdd = SchemaEnumAdd.Field()
+    SchemaEnumRemove = SchemaEnumRemove.Field()

@@ -193,4 +193,5 @@ RESTRICTED_NAMESPACES: List[str] = [
     "Infrahub",
     "Internal",
     "Lineage",
+    "Schema",
 ]
