@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, List, MutableMapping
 from infrahub_sdk import UUIDT
 
 from infrahub import config
+from infrahub.components import ComponentType
 from infrahub.log import clear_log_context, get_log_data, get_logger
 from infrahub.message_bus import messages
 from infrahub.message_bus.operations import execute_message
@@ -104,7 +105,10 @@ class InfrahubRpcClientBase:
         await self.events_queue.bind(self.exchange, routing_key="refresh.registry.*")
 
         self.rabbitmq = RabbitMQMessageBus(
-            channel=self.channel, exchange=self.exchange, delayed_exchange=self.delayed_exchange
+            channel=self.channel,
+            exchange=self.exchange,
+            delayed_exchange=self.delayed_exchange,
+            component_type=ComponentType.API_SERVER,
         )
 
         return self
