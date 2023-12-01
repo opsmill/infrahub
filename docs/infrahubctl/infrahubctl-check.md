@@ -35,7 +35,8 @@ $ infrahubctl check run [OPTIONS] [PATH]
 **Options**:
 
 * `--branch TEXT`
-* `--rebase / --no-rebase`: [default: rebase]
 * `--debug / --no-debug`: [default: no-debug]
 * `--format-json / --no-format-json`: [default: no-format-json]
+* `--config-file TEXT`: [env var: INFRAHUBCTL_CONFIG; default: infrahubctl.toml]
+* `--check-file TEXT`
 * `--help`: Show this message and exit.
