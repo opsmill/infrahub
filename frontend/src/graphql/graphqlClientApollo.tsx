@@ -7,6 +7,7 @@ import { ALERT_TYPES, Alert } from "../components/alert";
 import { CONFIG } from "../config/config";
 import { ACCESS_TOKEN_KEY } from "../config/constants";
 import { getNewToken } from "../decorators/withAuth";
+import "../utils/handlebars"; // Import handlebars utils
 
 const defaultOptions: DefaultOptions = {
   watchQuery: {
