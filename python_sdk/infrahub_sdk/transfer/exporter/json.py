@@ -8,7 +8,6 @@ import ujson
 
 from infrahub_sdk.client import InfrahubClient
 from infrahub_sdk.schema import GenericSchema
-from infrahub_sdk.transfer.export.interface import ExporterInterface
 
 from ..exceptions import FileAlreadyExistsError, InvalidNamespaceError
 from .interface import ExporterInterface
@@ -60,7 +59,9 @@ class LineDelimitedJSONExporter(ExporterInterface):
 
         nodes = list(chain(*await asyncio.gather(*tasks)))
 
-        json_lines = [ujson.dumps({"kind": n.get_kind(), "graphql": n.get_raw_graphql_data()}) for n in nodes]
+        json_lines = [
+            ujson.dumps({"kind": n.get_kind(), "graphql_json": ujson.dumps(n.get_raw_graphql_data())}) for n in nodes
+        ]
         file_content = "\n".join(json_lines)
 
         if not export_directory.exists():
