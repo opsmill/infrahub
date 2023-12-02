@@ -10,9 +10,8 @@ from rich.console import Console
 import infrahub_ctl.config as config
 from infrahub_ctl.client import initialize_client
 from infrahub_sdk.transfer.export.json import LineDelimitedJSONExporter
-
-from .command import do_export
-from .constants import ILLEGAL_NAMESPACES
+from infrahub_sdk.transfer.exceptions import TransferError
+from infrahub_sdk.transfer.constants import ILLEGAL_NAMESPACES
 
 
 def directory_name_with_timestamp():
@@ -36,20 +35,18 @@ def export(
     """Export node(s)."""
     namespace = [ns.lower() for ns in namespace]
     console = Console()
-    if set(namespace) & ILLEGAL_NAMESPACES:
-        console.print(f"[red]namespaces cannot include {ILLEGAL_NAMESPACES}")
-        raise typer.Exit(1)
     if not config.SETTINGS:
         config.load_and_exit(config_file=config_file)
     client = aiorun(initialize_client(timeout=timeout, max_concurrent_execution=concurrent, retry_on_failure=True))
-    exporter = LineDelimitedJSONExporter(destination_directory=directory)
-    exported = aiorun(
-        do_export(
-            exporter,
-            client,
-            namespaces=namespace,
-            branch=branch,
+    exporter = LineDelimitedJSONExporter(client)
+    try:
+        aiorun(
+            exporter.export(
+                export_directory=directory,
+                namespaces=namespace,
+                branch=branch,
+            )
         )
-    )
-
-    console.print(exported)
+    except TransferError as exc:
+        console.print(f"[red]{exc}")
+        raise typer.Exit(1)

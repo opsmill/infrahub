@@ -40,7 +40,7 @@ from infrahub_sdk.schema import InfrahubPythonTransformConfig, InfrahubRepositor
 from infrahub_sdk.transforms import InfrahubTransform
 from infrahub_sdk.utils import get_branch
 
-from .export.parser import export
+from .export import export
 
 app = typer.Typer(pretty_exceptions_show_locals=False)
 
