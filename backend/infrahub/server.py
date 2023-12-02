@@ -20,6 +20,7 @@ from infrahub import __version__, config
 from infrahub.api import router as api
 from infrahub.api.background import BackgroundRunner
 from infrahub.api.exception_handlers import generic_api_exception_handler
+from infrahub.components import ComponentType
 from infrahub.core.initialization import initialization
 from infrahub.database import InfrahubDatabase, InfrahubDatabaseMode, get_db
 from infrahub.exceptions import Error
@@ -31,6 +32,7 @@ from infrahub.message_bus.rpc import InfrahubRpcClient
 from infrahub.middleware import InfrahubCORSMiddleware
 from infrahub.services import InfrahubServices, services
 from infrahub.services.adapters.cache.redis import RedisCache
+from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
 from infrahub.trace import add_span_exception, configure_trace, get_traceid, get_tracer
 
 # pylint: disable=too-many-locals
@@ -88,11 +90,17 @@ async def app_initialization():
     # Initialize connection to the RabbitMQ bus
     await connect_to_broker()
 
-    # Initialize RPC Client
-    app.state.rpc_client = await InfrahubRpcClient().connect()
-    service = InfrahubServices(cache=RedisCache(), database=database)
-    service.message_bus = app.state.rpc_client.rabbitmq
+    message_bus = config.SETTINGS.override.message_bus or RabbitMQMessageBus(component_type=ComponentType.API_SERVER)
+    cache = config.SETTINGS.override.cache or RedisCache()
+    service = InfrahubServices(cache=cache, database=database, message_bus=message_bus)
+    await service.initialize()
+    # service.message_bus = app.state.rpc_client.rabbitmq
     services.prepare(service=service)
+    # Initialize RPC Client
+    rpc_client = InfrahubRpcClient()
+    rpc_client.exchange = message_bus.rpc_exchange
+    app.state.rpc_client = rpc_client
+    app.state.service = service
 
     async with app.state.db.start_session() as db:
         await initialization(db=db)

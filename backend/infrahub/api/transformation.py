@@ -19,7 +19,7 @@ from infrahub.message_bus import messages
 from infrahub.message_bus.responses import TemplateResponse, TransformResponse
 
 if TYPE_CHECKING:
-    from infrahub.message_bus.rpc import InfrahubRpcClient
+    from infrahub.services import InfrahubServices
 
 router = APIRouter()
 
@@ -80,7 +80,7 @@ async def transform_python(
 
         return JSONResponse(status_code=500, content={"errors": errors})
 
-    rpc_client: InfrahubRpcClient = request.app.state.rpc_client
+    service: InfrahubServices = request.app.state.service
 
     message = messages.TransformPythonData(
         repository_id=repository.id,  # type: ignore[attr-defined]
@@ -91,7 +91,7 @@ async def transform_python(
         data=result.data,
     )
 
-    response = await rpc_client.rpc(message=message)
+    response = await service.message_bus.rpc(message=message)
     template = response.parse(response_class=TransformResponse)
 
     return JSONResponse(content=template.transformed_data)
@@ -143,7 +143,7 @@ async def generate_rfile(
 
         return JSONResponse(status_code=500, content={"errors": errors})
 
-    rpc_client: InfrahubRpcClient = request.app.state.rpc_client
+    service: InfrahubServices = request.app.state.service
 
     message = messages.TransformJinjaTemplate(
         repository_id=repository.id,  # type: ignore[attr-defined]
@@ -154,7 +154,7 @@ async def generate_rfile(
         data=result.data,
     )
 
-    response = await rpc_client.rpc(message=message)
+    response = await service.message_bus.rpc(message=message)
     template = response.parse(response_class=TemplateResponse)
 
     return PlainTextResponse(content=template.rendered_template)
