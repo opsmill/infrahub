@@ -704,23 +704,6 @@ class InfrahubNodeBase:
     def get_raw_graphql_data(self) -> Optional[Dict]:
         return self._data
 
-    async def get_relationships(self) -> Dict[str, List[str]]:
-        relationships = {}
-        for relationship_name in self._relationships:
-            relationship_attr = getattr(self, relationship_name)
-            if isinstance(relationship_attr, RelationshipManager):
-                await relationship_attr.fetch()
-                relationships[relationship_name] = relationship_attr.peer_ids
-            elif isinstance(relationship_attr, RelatedNode):
-                if relationship_attr is None:
-                    continue
-                if relationship_attr.id is None:
-                    continue
-                if not relationship_attr.initialized:
-                    await relationship_attr.fetch()
-                    relationships[relationship_name] = [relationship_attr.id]
-        return relationships
-
     def _generate_input_data(self, update: bool = False) -> Dict[str, Dict]:
         """Generate a dictionary that represent the input data required by a mutation.
 
