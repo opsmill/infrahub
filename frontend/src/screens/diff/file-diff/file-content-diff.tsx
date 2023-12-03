@@ -65,37 +65,36 @@ const shouldDisplayAddComment = (state: any, change: any) => {
   );
 };
 
-const getThread = (threads: any[], change: any, commitFrom?: string, commitTo?: string) => {
-  const thread = threads.find((thread) => {
-    const THREADLineNumber = thread?.line_number?.value;
+const findThreadByChange = (
+  threads: any[],
+  change: any,
+  commitFrom?: string,
+  commitTo?: string
+) => {
+  const isChangeOnLeftSide = change?.isDelete;
+  const isChangeOnRightSide = change?.isInsert;
+  const isChangeOnBothSide = change?.isNormal;
 
-    if (
-      change?.isDelete &&
-      THREADLineNumber === change.lineNumber &&
-      (thread?.commit?.value === commitFrom || (!thread?.commit?.value && !commitFrom))
-    ) {
-      // Thread on the left side
+  return threads.find((thread) => {
+    const threadLineNumber = thread?.line_number?.value;
+    const threadCommit = thread?.commit?.value;
+
+    const isThreadOnLeftSide = threadCommit === commitFrom || !threadCommit === !commitFrom;
+    if (isChangeOnLeftSide && isThreadOnLeftSide && threadLineNumber === change.lineNumber) {
       return true;
     }
 
-    if (
-      change?.isInsert &&
-      thread?.commit?.value === commitTo &&
-      THREADLineNumber === change.lineNumber
-    ) {
-      // Thread on the right side
+    const isThreadOnRightSide = threadCommit === commitTo;
+    if (isChangeOnRightSide && isThreadOnRightSide && threadLineNumber === change.lineNumber) {
       return true;
     }
 
-    if (change.isNormal && THREADLineNumber === change.newLineNumber) {
-      // Both left + right side
-      return true;
-    }
-
-    return false;
+    return !!(
+      isChangeOnBothSide &&
+      ((isThreadOnLeftSide && threadLineNumber === change.oldLineNumber) ||
+        (isThreadOnRightSide && threadLineNumber === change.newLineNumber))
+    );
   });
-
-  return thread;
 };
 
 export const FileContentDiff = (props: any) => {
@@ -175,22 +174,21 @@ export const FileContentDiff = (props: any) => {
     setFileDetailsInState();
   }, []);
 
-  const handleSubmitComment = async (data: any, event: any) => {
+  const handleSubmitComment = async (data: string) => {
     let threadId;
 
     try {
-      event.target.reset();
-
       if (!data || !approverId) {
         return;
       }
 
       const newDate = formatISO(new Date());
 
-      const lineNumber =
-        displayAddComment.lineNumber ||
-        displayAddComment.newLineNumber ||
-        displayAddComment.oldLineNumber;
+      const lineNumber = displayAddComment.isNormal
+        ? displayAddComment.side === "new"
+          ? displayAddComment.newLineNumber
+          : displayAddComment.oldLineNumber
+        : displayAddComment.lineNumber;
 
       const label = `${repositoryDisplayName} - ${file.location}:${lineNumber}`;
 
@@ -245,7 +243,7 @@ export const FileContentDiff = (props: any) => {
 
       const newComment = {
         text: {
-          value: data.comment,
+          value: data,
         },
         created_by: {
           id: approverId,
@@ -335,7 +333,7 @@ export const FileContentDiff = (props: any) => {
         };
       }
 
-      const thread = getThread(threads, change, commitFrom, commitTo);
+      const thread = findThreadByChange(threads, change, commitFrom, commitTo);
 
       if (thread) {
         return {
@@ -368,7 +366,7 @@ export const FileContentDiff = (props: any) => {
       setDisplayAddComment({ side, ...change });
     };
 
-    const thread = getThread(threads, change, commitFrom, commitTo);
+    const thread = findThreadByChange(threads, change, commitFrom, commitTo);
 
     if (thread || !auth?.permissions?.write || !proposedchange) {
       // Do not display the add button if there is already a thread
