@@ -4,7 +4,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Tuple
 
-from infrahub.core.constants import RelationshipSide
+from infrahub.core.constants import RelationshipDirection
 from infrahub.core.query import Query, QueryResult, QueryType
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
 from infrahub.core.query.utils import find_node_schema
@@ -122,10 +122,14 @@ class NodeCreateAllQuery(NodeQuery):
                 relationships.append(await rel.get_create_data(db=db))
 
         self.params["attrs"] = [attr.dict() for attr in attributes]
-        self.params["rels_bidir"] = [rel.dict() for rel in relationships if rel.side == RelationshipSide.BOTH.value]
-        self.params["rels_src"] = [rel.dict() for rel in relationships if rel.side == RelationshipSide.SOURCE.value]
-        self.params["rels_dst"] = [
-            rel.dict() for rel in relationships if rel.side == RelationshipSide.DESTINATION.value
+        self.params["rels_bidir"] = [
+            rel.dict() for rel in relationships if rel.direction == RelationshipDirection.BIDIR.value
+        ]
+        self.params["rels_out"] = [
+            rel.dict() for rel in relationships if rel.direction == RelationshipDirection.OUTBOUND.value
+        ]
+        self.params["rels_in"] = [
+            rel.dict() for rel in relationships if rel.direction == RelationshipDirection.INBOUND.value
         ]
 
         self.params["node_prop"] = {
@@ -181,7 +185,7 @@ class NodeCreateAllQuery(NodeQuery):
                 CREATE (rl)-[:HAS_OWNER { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(peer)
             )
         )
-        FOREACH ( rel IN $rels_src |
+        FOREACH ( rel IN $rels_out |
             MERGE (d:Node { uuid: rel.destination_id })
             CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
             CREATE (n)-[:IS_RELATED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(rl)
@@ -199,7 +203,7 @@ class NodeCreateAllQuery(NodeQuery):
                 CREATE (rl)-[:HAS_OWNER { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(peer)
             )
         )
-        FOREACH ( rel IN $rels_dst |
+        FOREACH ( rel IN $rels_in |
             MERGE (d:Node { uuid: rel.destination_id })
             CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
             CREATE (n)<-[:IS_RELATED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]-(rl)

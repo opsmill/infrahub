@@ -192,8 +192,8 @@ class RelationshipCreateQuery(RelationshipQuery):
             "to": None,
         }
         arrows = self.schema.get_query_arrows()
-        r1 = f"{arrows[0]}[r1:{self.rel_type} $rel_prop ]{arrows[1]}"
-        r2 = f"{arrows[2]}[r2:{self.rel_type} $rel_prop ]{arrows[3]}"
+        r1 = f"{arrows.left.start}[r1:{self.rel_type} $rel_prop ]{arrows.left.end}"
+        r2 = f"{arrows.right.start}[r2:{self.rel_type} $rel_prop ]{arrows.right.end}"
 
         query_create = """
         CREATE (rl:Relationship { uuid: $uuid, name: $name, branch_support: $branch_support })
@@ -368,8 +368,8 @@ class RelationshipDataDeleteQuery(RelationshipQuery):
         }
 
         arrows = self.schema.get_query_arrows()
-        r1 = f"{arrows[0]}[r1:{self.rel_type} $rel_prop ]{arrows[1]}"
-        r2 = f"{arrows[2]}[r2:{self.rel_type} $rel_prop ]{arrows[3]}"
+        r1 = f"{arrows.left.start}[r1:{self.rel_type} $rel_prop ]{arrows.left.end}"
+        r2 = f"{arrows.right.start}[r2:{self.rel_type} $rel_prop ]{arrows.right.end}"
 
         # -----------------------------------------------------------------------
         # Create all the DELETE relationships, including properties
@@ -421,8 +421,8 @@ class RelationshipDeleteQuery(RelationshipQuery):
         }
 
         arrows = self.schema.get_query_arrows()
-        r1 = f"{arrows[0]}[r1:{self.rel_type} $rel_prop ]{arrows[1]}"
-        r2 = f"{arrows[2]}[r2:{self.rel_type} $rel_prop ]{arrows[3]}"
+        r1 = f"{arrows.left.start}[r1:{self.rel_type} $rel_prop ]{arrows.left.end}"
+        r2 = f"{arrows.right.start}[r2:{self.rel_type} $rel_prop ]{arrows.right.end}"
 
         query = """
         MATCH (s { uuid: $source_id })-[]-(rl:Relationship {uuid: $rel_id})-[]-(d { uuid: $destination_id })
@@ -477,7 +477,7 @@ class RelationshipGetPeerQuery(RelationshipQuery):
             LIMIT 1
         }
         WITH peer, rl1 as rl, r1, r2
-        """ % (arrows[0], arrows[1], arrows[2], arrows[3], branch_filter)
+        """ % (arrows.left.start, arrows.left.end, arrows.right.start, arrows.right.end, branch_filter)
 
         self.add_to_query(query)
         where_clause = ['r1.status = "active"', 'r2.status = "active"']
@@ -659,8 +659,8 @@ class RelationshipGetQuery(RelationshipQuery):
         self.params.update(rels_params)
 
         arrows = self.schema.get_query_arrows()
-        r1 = f"{arrows[0]}[r1:{self.rel.rel_type}]{arrows[1]}"
-        r2 = f"{arrows[2]}[r2:{self.rel.rel_type}]{arrows[3]}"
+        r1 = f"{arrows.left.start}[r1:{self.rel.rel_type}]{arrows.left.end}"
+        r2 = f"{arrows.right.start}[r2:{self.rel.rel_type}]{arrows.right.end}"
 
         query = """
         MATCH (s { uuid: $source_id })

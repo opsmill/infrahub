@@ -16,6 +16,7 @@ from infrahub.core.constants import (
     BranchSupportType,
     FilterSchemaKind,
     RelationshipCardinality,
+    RelationshipDirection,
     RelationshipKind,
 )
 from infrahub.core.manager import NodeManager
@@ -45,7 +46,7 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 
-# pylint: disable=redefined-builtin,too-many-public-methods
+# pylint: disable=redefined-builtin,too-many-public-methods,too-many-lines
 
 INTERNAL_SCHEMA_NODE_KINDS = [node["namespace"] + node["name"] for node in internal_schema["nodes"]]
 SUPPORTED_SCHEMA_NODE_TYPE = [
@@ -227,8 +228,8 @@ class SchemaBranch:
     def process_validate(self) -> None:
         self.validate_names()
         self.validate_menu_placements()
-        self.validate_identifiers()
         self.validate_kinds()
+        self.validate_identifiers()
 
     def process_post_validation(self) -> None:
         self.add_groups()
@@ -251,22 +252,58 @@ class SchemaBranch:
 
     def validate_identifiers(self) -> None:
         """Validate that all relationships have a unique identifier for a given model."""
+        # Organize all the relationships per identifier and node
+        rels_per_identifier: Dict[str, Dict[str, List[RelationshipSchema]]] = defaultdict(lambda: defaultdict(list))
         for name in list(self.nodes.keys()) + list(self.generics.keys()):
             node = self.get(name=name)
 
-            rels_per_identifier: Dict[str, List[RelationshipSchema]] = defaultdict(list)
             for rel in node.relationships:
-                rels_per_identifier[rel.identifier].append(rel)
+                rels_per_identifier[rel.identifier][name].append(rel)
 
-            for identifier, rels in rels_per_identifier.items():
-                sides = sorted([rel.side.value for rel in rels])
-                if len(rels) == 1 or len(rels) == 2 and sides == ["destination", "source"]:
+        valid_options = [
+            [RelationshipDirection.BIDIR, RelationshipDirection.BIDIR],
+            sorted([RelationshipDirection.INBOUND, RelationshipDirection.OUTBOUND]),
+        ]
+
+        # breakpoint()
+        for identifier, rels_per_kind in rels_per_identifier.items():
+            # Per node kind, check if the directions are good
+            for _, rels in rels_per_kind.items():
+                directions = sorted([rel.direction.value for rel in rels])
+                if not (len(rels) == 1 or (len(rels) == 2 and directions == ["inbound", "outbound"])):
+                    names_directions = [(rel.name, rel.direction.value) for rel in rels]
+                    raise ValueError(
+                        f"{node.kind}: Identifier of relationships must be unique for a given direction > {identifier!r} : {names_directions}"
+                    ) from None
+
+                # Continue if no other model is using this identifier
+                if len(rels_per_kind) == 1:
                     continue
 
-                names_sides = [(rel.name, rel.side.value) for rel in rels]
-                raise ValueError(
-                    f"{node.kind}: Identifier of relationships must be unique within a side > {identifier!r} : {names_sides}"
-                ) from None
+                # If this node has 2 relationships, BIDIRECTIONAL is not a valid option on the remote node
+                if len(rels) == 2:
+                    for rel in rels:
+                        if (
+                            rel.peer in list(rels_per_kind.keys())
+                            and len(rels_per_kind[rel.peer]) == 1
+                            and rels_per_kind[rel.peer][0].direction == RelationshipDirection.BIDIR
+                        ):
+                            raise ValueError(
+                                f"{node.kind}: Incompatible direction detected on Reverse Relationship for {rel.name!r} ({identifier!r}) "
+                                f" > {RelationshipDirection.BIDIR.value} "
+                            ) from None
+
+                elif (
+                    len(rels) == 1
+                    and rels[0].peer in list(rels_per_kind.keys())
+                    and len(rels_per_kind[rels[0].peer]) == 1
+                ):
+                    peer_direction = rels_per_kind[rels[0].peer][0].direction
+                    if sorted([peer_direction, rels[0].direction]) not in valid_options:
+                        raise ValueError(
+                            f"{node.kind}: Incompatible direction detected on Reverse Relationship for {rels[0].name!r} ({identifier!r})"
+                            f" {rels[0].direction.value} <> {peer_direction.value}"
+                        ) from None
 
     def validate_names(self) -> None:
         for name in list(self.nodes.keys()) + list(self.generics.keys()):

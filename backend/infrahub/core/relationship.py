@@ -51,7 +51,7 @@ class RelationshipCreateData(BaseModel):
     branch: str
     branch_level: int
     branch_support: str
-    side: str
+    direction: str
     status: str
     is_protected: bool
     is_visible: bool
@@ -417,7 +417,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             branch=branch.name,
             destination_id=peer.id,
             status="active",
-            side=self.schema.side.value,
+            direction=self.schema.direction.value,
             branch_level=self.branch.hierarchy_level,
             branch_support=self.schema.branch.value,
             is_protected=self.is_protected,

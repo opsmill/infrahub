@@ -23,8 +23,8 @@ from infrahub.core.constants import (
     FilterSchemaKind,
     ProposedChangeState,
     RelationshipCardinality,
+    RelationshipDirection,
     RelationshipKind,
-    RelationshipSide,
     Severity,
     ValidatorConclusion,
     ValidatorState,
@@ -63,6 +63,31 @@ DEFAULT_DESCRIPTION_LENGTH = 128
 DEFAULT_REL_IDENTIFIER_LENGTH = 128
 
 HTML_COLOR = re.compile(r"#[0-9a-fA-F]{6}\b")
+
+
+class QueryArrow(BaseModel):
+    start: str
+    end: str
+
+
+class QueryArrowInband(QueryArrow):
+    start: str = "<-"
+    end: str = "-"
+
+
+class QueryArrowOutband(QueryArrow):
+    start: str = "-"
+    end: str = "->"
+
+
+class QueryArrowBidir(QueryArrow):
+    start: str = "-"
+    end: str = "-"
+
+
+class QueryArrows(BaseModel):
+    left: QueryArrow
+    right: QueryArrow
 
 
 class BaseSchemaModel(BaseModel):
@@ -356,7 +381,7 @@ class RelationshipSchema(BaseSchemaModel):
     name: str = Field(regex=NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
     peer: str = Field(regex=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH)
     kind: RelationshipKind = RelationshipKind.GENERIC
-    side: RelationshipSide = RelationshipSide.BOTH
+    direction: RelationshipDirection = RelationshipDirection.BIDIR
     label: Optional[str]
     description: Optional[str] = Field(max_length=DEFAULT_DESCRIPTION_LENGTH)
     identifier: Optional[str] = Field(max_length=DEFAULT_REL_IDENTIFIER_LENGTH)
@@ -376,15 +401,15 @@ class RelationshipSchema(BaseSchemaModel):
     async def get_peer_schema(self, branch: Optional[Union[Branch, str]] = None):
         return registry.schema.get(name=self.peer, branch=branch)
 
-    def get_query_arrows(self) -> Tuple[str, str, str, str]:
+    def get_query_arrows(self) -> QueryArrows:
         """Return (in 4 parts) the 2 arrows for the relationship R1 and R2 based on the direction of the relationship."""
 
-        if self.side == RelationshipSide.SOURCE:
-            return ("-", "->", "-", "->")
-        if self.side == RelationshipSide.DESTINATION:
-            return ("<-", "-", "<-", "-")
+        if self.direction == RelationshipDirection.OUTBOUND:
+            return QueryArrows(left=QueryArrowOutband(), right=QueryArrowOutband())
+        if self.direction == RelationshipDirection.INBOUND:
+            return QueryArrows(left=QueryArrowInband(), right=QueryArrowInband())
 
-        return ("-", "->", "<-", "-")
+        return QueryArrows(left=QueryArrowOutband(), right=QueryArrowInband())
 
     async def get_query_filter(
         self,
@@ -414,18 +439,18 @@ class RelationshipSchema(BaseSchemaModel):
 
         # Determine in which direction the relationships should point based on the side of the query
         rels_direction = {
-            "r1": QueryRelDirection.RIGHT,
-            "r2": QueryRelDirection.LEFT,
+            "r1": QueryRelDirection.OUTBOUND,
+            "r2": QueryRelDirection.INBOUND,
         }
-        if self.side == RelationshipSide.SOURCE:
+        if self.direction == RelationshipDirection.OUTBOUND:
             rels_direction = {
-                "r1": QueryRelDirection.RIGHT,
-                "r2": QueryRelDirection.RIGHT,
+                "r1": QueryRelDirection.OUTBOUND,
+                "r2": QueryRelDirection.OUTBOUND,
             }
-        if self.side == RelationshipSide.DESTINATION:
+        if self.direction == RelationshipDirection.INBOUND:
             rels_direction = {
-                "r1": QueryRelDirection.LEFT,
-                "r2": QueryRelDirection.LEFT,
+                "r1": QueryRelDirection.INBOUND,
+                "r2": QueryRelDirection.INBOUND,
             }
 
         if filter_name == "id":
@@ -1097,10 +1122,12 @@ internal_schema = {
                     "optional": True,
                 },
                 {
-                    "name": "side",
+                    "name": "direction",
                     "kind": "Text",
-                    "enum": RelationshipSide.available_types(),
-                    "default_value": RelationshipSide.BOTH.value,
+                    "description": "Defines the direction of the relationship, "
+                    " Unidirectional relationship are required when the same model is on both side.",
+                    "enum": RelationshipDirection.available_types(),
+                    "default_value": RelationshipDirection.BIDIR.value,
                     "optional": True,
                 },
             ],
