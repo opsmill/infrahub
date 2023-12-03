@@ -90,8 +90,8 @@ async def app_initialization():
     # Initialize connection to the RabbitMQ bus
     await connect_to_broker()
 
-    message_bus = config.SETTINGS.override.message_bus or RabbitMQMessageBus(component_type=ComponentType.API_SERVER)
-    cache = config.SETTINGS.override.cache or RedisCache()
+    message_bus = config.OVERRIDE.message_bus or RabbitMQMessageBus(component_type=ComponentType.API_SERVER)
+    cache = config.OVERRIDE.cache or RedisCache()
     service = InfrahubServices(cache=cache, database=database, message_bus=message_bus)
     await service.initialize()
     # service.message_bus = app.state.rpc_client.rabbitmq

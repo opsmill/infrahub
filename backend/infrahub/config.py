@@ -283,7 +283,6 @@ class Settings(BaseSettings):
     storage: StorageSettings = StorageSettings()
     trace: TraceSettings = TraceSettings()
     experimental_features: ExperimentalFeaturesSettings = ExperimentalFeaturesSettings()
-    override: Override = Override()
 
 
 def load(config_file_name: str = "infrahub.toml", config_data: Optional[Dict[str, Any]] = None) -> None:
@@ -325,3 +324,6 @@ def load_and_exit(config_file_name: str = "infrahub.toml", config_data: Optional
         for error in err.errors():
             print(f"  {'/'.join(error['loc'])} | {error['msg']} ({error['type']})")
         sys.exit(1)
+
+
+OVERRIDE: Override = Override()

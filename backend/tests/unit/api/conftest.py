@@ -31,11 +31,11 @@ def admin_headers():
 
 @pytest.fixture
 def rpc_bus(helper):
-    original = config.SETTINGS.override.message_bus
+    original = config.OVERRIDE.message_bus
     bus = helper.get_message_bus_rpc()
-    config.SETTINGS.override.message_bus = bus
+    config.OVERRIDE.message_bus = bus
     yield bus
-    config.SETTINGS.override.message_bus = original
+    config.OVERRIDE.message_bus = original
 
 
 @pytest.fixture
