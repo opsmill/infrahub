@@ -5,18 +5,24 @@ import { EditorState } from "@codemirror/state";
 type CodeMirrorProps = {
   value?: string;
   placeholder?: string;
+  onChange: (s: string) => void;
 };
 
 export const CodeMirror: FC<CodeMirrorProps> = ({
   value = "",
   placeholder = "Write your text here...",
+  onChange,
 }) => {
   const editor = useRef<HTMLDivElement>(null);
+
+  const onUpdate = EditorView.updateListener.of(({ state }) => {
+    onChange(state.doc.toString());
+  });
 
   useEffect(() => {
     const startState = EditorState.create({
       doc: value,
-      extensions: [placeholderView(placeholder)],
+      extensions: [onUpdate, placeholderView(placeholder)],
     });
 
     const view = new EditorView({ state: startState, parent: editor.current! });

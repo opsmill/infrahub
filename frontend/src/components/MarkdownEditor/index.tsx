@@ -6,10 +6,11 @@ import { Button } from "../button";
 
 type MarkdownEditorProps = {
   className?: string;
+  onChange: (v: string) => void;
   value?: string;
 };
 export const MarkdownEditor = forwardRef<HTMLDivElement, MarkdownEditorProps>(
-  ({ className = "", value }, ref) => {
+  ({ className = "", onChange, value }, ref) => {
     const [preview, setPreview] = useState<boolean>(false);
 
     return (
@@ -23,7 +24,7 @@ export const MarkdownEditor = forwardRef<HTMLDivElement, MarkdownEditorProps>(
         {preview ? (
           <MarkdownViewer markdownText={value} />
         ) : (
-          <CodeMirror placeholder="Write your text here..." value={value} />
+          <CodeMirror placeholder="Write your text here..." value={value} onChange={onChange} />
         )}
       </div>
     );
