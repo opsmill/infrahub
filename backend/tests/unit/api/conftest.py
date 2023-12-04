@@ -4,6 +4,7 @@ import pendulum
 import pytest
 from fastapi.testclient import TestClient
 
+from infrahub import config
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -26,6 +27,15 @@ def client_headers():
 @pytest.fixture
 def admin_headers():
     return {"X-INFRAHUB-KEY": "admin-security"}
+
+
+@pytest.fixture
+def rpc_bus(helper):
+    original = config.OVERRIDE.message_bus
+    bus = helper.get_message_bus_rpc()
+    config.OVERRIDE.message_bus = bus
+    yield bus
+    config.OVERRIDE.message_bus = original
 
 
 @pytest.fixture

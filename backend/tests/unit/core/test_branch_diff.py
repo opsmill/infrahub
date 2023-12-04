@@ -15,6 +15,18 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.message_bus import InfrahubResponse
 from infrahub.message_bus.rpc import InfrahubRpcClientTesting
+from infrahub.services import services
+
+
+@pytest.fixture
+def patch_services(helper):
+    original = services.service.message_bus
+    bus = helper.get_message_bus_rpc()
+    services.service.message_bus = bus
+    services.prepare(service=services.service)
+    yield bus
+    services.service.message_bus = original
+    services.prepare(service=services.service)
 
 
 async def test_diff_has_changes_graph(db: InfrahubDatabase, base_dataset_02):
@@ -130,7 +142,9 @@ async def test_diff_get_modified_paths_graph(db: InfrahubDatabase, base_dataset_
     assert modified_branch1 == sorted(expected_paths_branch1)
 
 
-async def test_diff_get_files_repository(db: InfrahubDatabase, rpc_client, repos_in_main, base_dataset_02):
+async def test_diff_get_files_repository(
+    db: InfrahubDatabase, rpc_client, repos_in_main, base_dataset_02, patch_services
+):
     mock_response = InfrahubResponse(
         response_class="diffnames_response",
         response_data={
@@ -140,7 +154,7 @@ async def test_diff_get_files_repository(db: InfrahubDatabase, rpc_client, repos
         },
     )
 
-    await rpc_client.add_mock_reply(response=mock_response)
+    patch_services.add_mock_reply(response=mock_response)
 
     branch2 = await create_branch(branch_name="branch2", db=db)
 
@@ -165,7 +179,7 @@ async def test_diff_get_files_repository(db: InfrahubDatabase, rpc_client, repos
 
 
 async def test_diff_get_files_repositories_for_branch_case01(
-    db: InfrahubDatabase, rpc_client: InfrahubRpcClientTesting, default_branch: Branch, repos_in_main
+    db: InfrahubDatabase, rpc_client: InfrahubRpcClientTesting, default_branch: Branch, repos_in_main, patch_services
 ):
     """Testing the get_modified_paths_repositories_for_branch_case01 method with 2 repositories in the database
     but only one has a different commit value between 2 and from so we expect only 2 files"""
@@ -179,7 +193,7 @@ async def test_diff_get_files_repositories_for_branch_case01(
         },
     )
 
-    await rpc_client.add_mock_reply(response=mock_response)
+    patch_services.add_mock_reply(response=mock_response)
 
     branch2 = await create_branch(branch_name="branch2", db=db)
 
@@ -200,7 +214,7 @@ async def test_diff_get_files_repositories_for_branch_case01(
 
 
 async def test_diff_get_files_repositories_for_branch_case02(
-    db: InfrahubDatabase, rpc_client: InfrahubRpcClientTesting, default_branch: Branch, repos_in_main
+    db: InfrahubDatabase, rpc_client: InfrahubRpcClientTesting, default_branch: Branch, repos_in_main, patch_services
 ):
     """Testing the get_modified_paths_repositories_for_branch_case01 method with 2 repositories in the database
     both repositories have a new commit value so we expect both to return something"""
@@ -213,7 +227,7 @@ async def test_diff_get_files_repositories_for_branch_case02(
             "files_added": [],
         },
     )
-    await rpc_client.add_mock_reply(response=mock_response)
+    patch_services.add_mock_reply(response=mock_response)
 
     mock_response = InfrahubResponse(
         response_class="diffnames_response",
@@ -223,7 +237,7 @@ async def test_diff_get_files_repositories_for_branch_case02(
             "files_added": [],
         },
     )
-    await rpc_client.add_mock_reply(response=mock_response)
+    patch_services.add_mock_reply(response=mock_response)
 
     branch2 = await create_branch(branch_name="branch2", db=db)
 
@@ -248,7 +262,7 @@ async def test_diff_get_files_repositories_for_branch_case02(
 
 
 async def test_diff_get_files(
-    db: InfrahubDatabase, rpc_client: InfrahubRpcClientTesting, default_branch: Branch, repos_in_main
+    db: InfrahubDatabase, rpc_client: InfrahubRpcClientTesting, default_branch: Branch, repos_in_main, patch_services
 ):
     """Testing the get_modified_paths_repositories_for_branch_case01 method with 2 repositories in the database
     both repositories have a new commit value so we expect both to return something"""
@@ -261,7 +275,7 @@ async def test_diff_get_files(
             "files_added": [],
         },
     )
-    await rpc_client.add_mock_reply(response=mock_response)
+    patch_services.add_mock_reply(response=mock_response)
 
     mock_response = InfrahubResponse(
         response_class="diffnames_response",
@@ -271,7 +285,7 @@ async def test_diff_get_files(
             "files_added": [],
         },
     )
-    await rpc_client.add_mock_reply(response=mock_response)
+    patch_services.add_mock_reply(response=mock_response)
 
     branch2 = await create_branch(branch_name="branch2", db=db)
 

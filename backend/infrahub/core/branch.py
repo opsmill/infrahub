@@ -47,6 +47,7 @@ from infrahub.exceptions import (
 )
 from infrahub.message_bus import messages
 from infrahub.message_bus.responses import DiffNamesResponse
+from infrahub.services import services
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -1437,7 +1438,11 @@ class Diff:
         return paths
 
     async def get_modified_paths_repository(
-        self, rpc_client: InfrahubRpcClient, repository, commit_from: str, commit_to: str
+        self,
+        rpc_client: InfrahubRpcClient,  # pylint: disable=unused-argument
+        repository,
+        commit_from: str,
+        commit_to: str,
     ) -> Set[Tuple]:
         """Return the path of all the files that have changed for a given repository between 2 commits.
 
@@ -1451,7 +1456,7 @@ class Diff:
             second_commit=commit_to,
         )
 
-        reply = await rpc_client.rpc(message=message)
+        reply = await services.service.message_bus.rpc(message=message)
         diff = reply.parse(response_class=DiffNamesResponse)
 
         return {("file", repository.id, filename) for filename in diff.files_changed}
@@ -1968,7 +1973,7 @@ class Diff:
 
     async def get_files_repository(
         self,
-        rpc_client: InfrahubRpcClient,
+        rpc_client: InfrahubRpcClient,  # pylint: disable=unused-argument
         branch_name: str,
         repository,
         commit_from: str,
@@ -1985,7 +1990,7 @@ class Diff:
             second_commit=commit_to,
         )
 
-        reply = await rpc_client.rpc(message=message)
+        reply = await services.service.message_bus.rpc(message=message)
         diff = reply.parse(response_class=DiffNamesResponse)
 
         actions = {
