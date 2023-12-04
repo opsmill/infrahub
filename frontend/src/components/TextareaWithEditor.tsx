@@ -21,7 +21,7 @@ export const TextareaWithEditor: FC<TextareaWithEditorProps> = ({
         className={className}
         disabled={disabled}
         onChange={onChange}
-        value={defaultValue}
+        defaultValue={defaultValue}
       />
 
       {error?.message && (

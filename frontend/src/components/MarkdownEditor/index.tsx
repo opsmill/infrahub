@@ -6,15 +6,16 @@ import { Button } from "../button";
 
 type MarkdownEditorProps = {
   className?: string;
+  defaultValue?: string;
   onChange: (v: string) => void;
-  value?: string;
 };
 export const MarkdownEditor = forwardRef<HTMLDivElement, MarkdownEditorProps>(
-  ({ className = "", onChange, value }, ref) => {
+  ({ className = "", defaultValue = "", onChange }, ref) => {
     const [preview, setPreview] = useState<boolean>(false);
+    const [text, setText] = useState<string>(defaultValue);
 
     return (
-      <div ref={ref} className={classNames("rounded-md border border-gray-300 shadow", className)}>
+      <div ref={ref} className={classNames("rounded-md border border-gray-300", className)}>
         <Button
           onClick={() => setPreview(!preview)}
           className="bg-white border-none rounded-none rounded-tl-md">
@@ -22,9 +23,16 @@ export const MarkdownEditor = forwardRef<HTMLDivElement, MarkdownEditorProps>(
         </Button>
 
         {preview ? (
-          <MarkdownViewer markdownText={value} />
+          <MarkdownViewer markdownText={text} />
         ) : (
-          <CodeMirror placeholder="Write your text here..." value={value} onChange={onChange} />
+          <CodeMirror
+            placeholder="Write your text here..."
+            value={text}
+            onChange={(e) => {
+              onChange(e);
+              setText(e);
+            }}
+          />
         )}
       </div>
     );
