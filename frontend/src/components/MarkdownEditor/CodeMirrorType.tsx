@@ -1,4 +1,4 @@
-import React, { FC, forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { EditorView, keymap, placeholder as placeholderView } from "@codemirror/view";
 import { EditorState } from "@codemirror/state";
 import { markdown, markdownLanguage, markdownKeymap } from "@codemirror/lang-markdown";
@@ -22,7 +22,7 @@ type CodeMirrorProps = {
   onChange: (s: string) => void;
 };
 
-export const CodeMirror: FC<CodeMirrorProps> = forwardRef<CodeMirrorType, CodeMirrorProps>(
+export const CodeMirror = forwardRef<CodeMirrorType, CodeMirrorProps>(
   ({ value = "", placeholder = "Write your text here...", onChange }, ref) => {
     const editor = useRef<HTMLDivElement>(null);
     const [state, setState] = useState<EditorState>();
