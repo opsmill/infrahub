@@ -1159,6 +1159,30 @@ class InfrahubNode(InfrahubNodeBase):
             variables=input_data["variables"],
         )
 
+    async def _process_relationships(
+        self, node_data: Dict[str, Any], branch: str, related_nodes: List[InfrahubNode]
+    ) -> None:
+        """Processes the Relationships of a InfrahubNode and add Related Nodes to a list.
+
+        Args:
+            node_data (Dict[str, Any]): The item from the GraphQL response corresponding to the node.
+            branch (str): The branch name.
+            related_nodes (List[InfrahubNode]): The list to which related nodes will be appended.
+        """
+        for rel_name in self._relationships:
+            rel = getattr(self, rel_name)
+            if rel and isinstance(rel, RelatedNode):
+                related_node = await InfrahubNode.from_graphql(
+                    client=self._client, branch=branch, data=node_data["node"].get(rel_name)
+                )
+                related_nodes.append(related_node)
+            elif rel and isinstance(rel, RelationshipManager):
+                peers = node_data["node"].get(rel_name)
+                if peers:
+                    for peer in peers["edges"]:
+                        related_node = await InfrahubNode.from_graphql(client=self._client, branch=branch, data=peer)
+                        related_nodes.append(related_node)
+
 
 class InfrahubNodeSync(InfrahubNodeBase):
     """Represents a Infrahub node in a synchronous context."""
@@ -1417,6 +1441,30 @@ class InfrahubNodeSync(InfrahubNodeBase):
             tracker=f"mutation-{str(self._schema.kind).lower()}-update",
             variables=input_data["variables"],
         )
+
+    def _process_relationships(
+        self, node_data: Dict[str, Any], branch: str, related_nodes: List[InfrahubNodeSync]
+    ) -> None:
+        """Processes the Relationships of a InfrahubNodeSync and add Related Nodes to a list.
+
+        Args:
+            node_data (Dict[str, Any]): The item from the GraphQL response corresponding to the node.
+            branch (str): The branch name.
+            related_nodes (List[InfrahubNodeSync]): The list to which related nodes will be appended.
+        """
+        for rel_name in self._relationships:
+            rel = getattr(self, rel_name)
+            if rel and isinstance(rel, RelatedNodeSync):
+                related_node = InfrahubNodeSync.from_graphql(
+                    client=self._client, branch=branch, data=node_data["node"].get(rel_name)
+                )
+                related_nodes.append(related_node)
+            elif rel and isinstance(rel, RelationshipManagerSync):
+                peers = node_data["node"].get(rel_name)
+                if peers:
+                    for peer in peers["edges"]:
+                        related_node = InfrahubNodeSync.from_graphql(client=self._client, branch=branch, data=peer)
+                        related_nodes.append(related_node)
 
 
 class NodeProperty:
