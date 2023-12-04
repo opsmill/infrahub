@@ -3,6 +3,7 @@ import { Combobox } from "@headlessui/react";
 import { CheckIcon } from "@heroicons/react/20/solid";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
+import { isArray } from "cypress/types/lodash";
 import { useAtom } from "jotai";
 import { useState } from "react";
 import { DEFAULT_BRANCH_NAME } from "../config/constants";
@@ -37,8 +38,8 @@ type SelectProps = {
   error?: FormFieldError;
   direction?: SelectDirection;
   preventObjectsCreation?: boolean;
-  multiple?: true | undefined;
-  dropdown?: true | undefined;
+  multiple?: boolean;
+  dropdown?: boolean;
 };
 
 export const Select = (props: SelectProps) => {
@@ -51,10 +52,9 @@ export const Select = (props: SelectProps) => {
     direction,
     peer,
     preventObjectsCreation,
+    multiple,
     ...otherProps
   } = props;
-
-  const { multiple } = props;
 
   const [schemaList] = useAtom(schemaState);
   const [schemaKindName] = useAtom(schemaKindNameState);
@@ -142,7 +142,25 @@ export const Select = (props: SelectProps) => {
       return query;
     }
 
-    return selectedOption?.name;
+    if (typeof selectedOption === "object" && !isArray(selectedOption)) {
+      return selectedOption?.name;
+    }
+
+    return selectedOption;
+  };
+
+  const getStyle = () => {
+    if (typeof selectedOption === "object" && !isArray(selectedOption)) {
+      return {
+        backgroundColor: (typeof selectedOption === "object" && selectedOption?.color) || "",
+        color:
+          typeof selectedOption === "object" && selectedOption?.color
+            ? getTextColor(selectedOption?.color)
+            : "",
+      };
+    }
+
+    return {};
   };
 
   return (
@@ -152,6 +170,7 @@ export const Select = (props: SelectProps) => {
         value={selectedOption}
         onChange={handleChange}
         disabled={disabled}
+        multiple={multiple}
         {...otherProps}>
         <div className="relative mt-1">
           <Combobox.Input
@@ -161,10 +180,7 @@ export const Select = (props: SelectProps) => {
             disabled={disabled}
             error={error}
             className={"pr-8"}
-            style={{
-              backgroundColor: selectedOption?.color || "",
-              color: selectedOption?.color ? getTextColor(selectedOption?.color) : "",
-            }}
+            style={getStyle()}
           />
           <Combobox.Button className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none disabled:cursor-not-allowed">
             <ChevronDownIcon className="w-4 h-4 text-gray-400" aria-hidden="true" />
