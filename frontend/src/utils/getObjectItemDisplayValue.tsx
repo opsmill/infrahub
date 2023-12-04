@@ -82,10 +82,6 @@ export const getObjectItemDisplayValue = (
           color: row[attribute?.name]?.color ? getTextColor(row[attribute?.name]?.color) : "",
         }}>
         {textValue}
-
-        {row[attribute?.name]?.description && (
-          <span className="text-xs italic">{row[attribute?.name]?.description}</span>
-        )}
       </div>
     );
   }
