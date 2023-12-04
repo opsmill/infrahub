@@ -4,8 +4,8 @@ import { MarkdownEditor } from "./MarkdownEditor";
 type TextareaWithEditorProps = {
   className?: string;
   defaultValue?: string;
-  disabled?: Boolean;
-  error?: { message: string };
+  disabled?: boolean;
+  error?: { message?: string };
   onChange: (v: string) => void;
 };
 export const TextareaWithEditor: FC<TextareaWithEditorProps> = ({
