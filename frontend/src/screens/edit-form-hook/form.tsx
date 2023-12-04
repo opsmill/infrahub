@@ -1,4 +1,4 @@
-import { ReactElement } from "react";
+import { ReactElement, useEffect } from "react";
 import { FieldValues, FormProvider, SubmitHandler, useForm } from "react-hook-form";
 import { BUTTON_TYPES, Button } from "../../components/button";
 import { resolve } from "../../utils/objects";
@@ -44,7 +44,13 @@ export const Form = ({
 }: FormProps) => {
   const formMethods = useForm();
 
-  const { handleSubmit, formState } = formMethods;
+  const { handleSubmit, reset, formState } = formMethods;
+
+  useEffect(() => {
+    if (formState.isSubmitSuccessful) {
+      reset(fields);
+    }
+  }, [formState, reset]);
 
   const { errors } = formState;
 

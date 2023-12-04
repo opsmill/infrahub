@@ -63,6 +63,6 @@ export const CodeMirror = forwardRef<CodeMirrorType, CodeMirrorProps>(
       };
     }, []);
 
-    return <div ref={editorRef}></div>;
+    return <div ref={editorRef} data-cy="cm-editor"></div>;
   }
 );
