@@ -9,6 +9,7 @@ type MarkdownEditorProps = {
   defaultValue?: string;
   disabled?: boolean;
   onChange: (value: string) => void;
+  placeholder?: string;
 };
 
 export const MarkdownEditor: FC<MarkdownEditorProps> = ({
@@ -16,6 +17,7 @@ export const MarkdownEditor: FC<MarkdownEditorProps> = ({
   defaultValue = "",
   disabled = false,
   onChange,
+  placeholder,
 }) => {
   const [isPreviewActive, setPreviewActive] = useState<boolean>(false);
   const [editorText, setEditorText] = useState<string>(defaultValue);
@@ -48,7 +50,7 @@ export const MarkdownEditor: FC<MarkdownEditorProps> = ({
       ) : (
         <CodeMirror
           ref={codeMirrorRef}
-          placeholder="Write your text here..."
+          placeholder={placeholder}
           value={editorText}
           onChange={handleTextChange}
         />

@@ -15,6 +15,7 @@ const fields: DynamicFieldData[] = [
   {
     name: "comment",
     label: "Add a comment",
+    placeholder: "Add your comment here...",
     type: "textarea",
     value: "",
     config: {

@@ -5,6 +5,7 @@ import { classNames } from "../utils/common";
 
 type OpsInputProps = {
   label: string;
+  placeholder?: string;
   value: string;
   onChange: (value: string) => void;
   className?: string;
@@ -15,7 +16,17 @@ type OpsInputProps = {
 };
 
 export const OpsTextarea = (props: OpsInputProps) => {
-  const { className, onChange, value, label, error, isProtected, isOptional, disabled } = props;
+  const {
+    className,
+    onChange,
+    placeholder,
+    value,
+    label,
+    error,
+    isProtected,
+    isOptional,
+    disabled,
+  } = props;
 
   return (
     <>
@@ -29,6 +40,7 @@ export const OpsTextarea = (props: OpsInputProps) => {
       <TextareaWithEditor
         onChange={onChange}
         defaultValue={value ?? ""}
+        placeholder={placeholder}
         className={classNames(className ?? "")}
         error={error}
         disabled={isProtected || disabled}

@@ -10,6 +10,7 @@ export interface DynamicFieldData {
   name: string;
   peer?: string;
   kind?: SchemaAttributeType;
+  placeholder?: string;
   value: any;
   options?: {
     values: SelectOption[];

@@ -7,6 +7,7 @@ type TextareaWithEditorProps = {
   disabled?: boolean;
   error?: { message?: string };
   onChange: (value: string) => void;
+  placeholder?: string;
 };
 
 export const TextareaWithEditor: FC<TextareaWithEditorProps> = ({
@@ -15,6 +16,7 @@ export const TextareaWithEditor: FC<TextareaWithEditorProps> = ({
   disabled,
   error,
   onChange,
+  placeholder,
 }) => {
   const hasError = !!error?.message;
 
@@ -25,6 +27,7 @@ export const TextareaWithEditor: FC<TextareaWithEditorProps> = ({
         disabled={disabled}
         onChange={onChange}
         defaultValue={defaultValue}
+        placeholder={placeholder}
       />
 
       {hasError && (
