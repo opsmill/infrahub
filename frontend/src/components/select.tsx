@@ -3,7 +3,6 @@ import { Combobox } from "@headlessui/react";
 import { CheckIcon } from "@heroicons/react/20/solid";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
-import { isArray } from "cypress/types/lodash";
 import { useAtom } from "jotai";
 import { useState } from "react";
 import { DEFAULT_BRANCH_NAME } from "../config/constants";
@@ -142,7 +141,7 @@ export const Select = (props: SelectProps) => {
       return query;
     }
 
-    if (typeof selectedOption === "object" && !isArray(selectedOption)) {
+    if (typeof selectedOption === "object" && !Array.isArray(selectedOption)) {
       return selectedOption?.name;
     }
 
@@ -150,7 +149,7 @@ export const Select = (props: SelectProps) => {
   };
 
   const getStyle = () => {
-    if (typeof selectedOption === "object" && !isArray(selectedOption)) {
+    if (typeof selectedOption === "object" && !Array.isArray(selectedOption)) {
       return {
         backgroundColor: (typeof selectedOption === "object" && selectedOption?.color) || "",
         color:
