@@ -53,7 +53,15 @@ ARTIFACT_DEFINITION_GENERATE_FEATURE_NOT_SUPPORTED_MESSAGE = (
 
 
 class Attribute:
+    """Represents an attribute of a Node, including its schema, value, and properties."""
+
     def __init__(self, name: str, schema: AttributeSchema, data: Union[Any, dict]):
+        """
+        Args:
+            name (str): The name of the attribute.
+            schema (AttributeSchema): The schema defining the attribute.
+            data (Union[Any, dict]): The data for the attribute, either in raw form or as a dictionary.
+        """
         self.name = name
         self._schema = schema
 
@@ -132,6 +140,8 @@ class Attribute:
 
 
 class RelatedNodeBase:
+    """Base class for representing a related node in a relationship."""
+
     def __init__(
         self,
         branch: str,
@@ -139,6 +149,13 @@ class RelatedNodeBase:
         data: Union[Any, dict],
         name: Optional[str] = None,
     ):
+        """
+        Args:
+            branch (str): The branch where the related node resides.
+            schema (RelationshipSchema): The schema of the relationship.
+            data (Union[Any, dict]): Data representing the related node.
+            name (Optional[str]): The name of the related node.
+        """
         self.schema = schema
         self.name = name
 
@@ -225,7 +242,17 @@ class RelatedNodeBase:
         return data
 
     @classmethod
-    def _generate_query_data(cls) -> Dict:
+    def _generate_query_data(cls, peer_data: Optional[Dict[str, Any]] = None) -> Dict:
+        """Generates the basic structure of a GraphQL query for a single relationship.
+
+        Args:
+            peer_data (Dict[str, Union[Any, Dict]], optional): Additional data to be included in the query for the node.
+                This is used to add extra fields when prefetching related node data.
+
+        Returns:
+            Dict: A dictionary representing the basic structure of a GraphQL query, including the node's ID, display label,
+                and typename. The method also includes additional properties and any peer_data provided.
+        """
         data: Dict[str, Any] = {"node": {"id": None, "display_label": None, "__typename": None}}
 
         properties: Dict[str, Any] = {}
@@ -240,10 +267,15 @@ class RelatedNodeBase:
 
         if properties:
             data["properties"] = properties
+        if peer_data:
+            data["node"].update(peer_data)
+
         return data
 
 
 class RelatedNode(RelatedNodeBase):
+    """Represents a RelatedNodeBase in an asynchronous context."""
+
     def __init__(
         self,
         client: InfrahubClient,
@@ -252,6 +284,14 @@ class RelatedNode(RelatedNodeBase):
         data: Union[Any, dict],
         name: Optional[str] = None,
     ):
+        """
+        Args:
+            client (InfrahubClient): The client used to interact with the backend asynchronously.
+            branch (str): The branch where the related node resides.
+            schema (RelationshipSchema): The schema of the relationship.
+            data (Union[Any, dict]): Data representing the related node.
+            name (Optional[str]): The name of the related node.
+        """
         self._client = client
         super().__init__(branch=branch, schema=schema, data=data, name=name)
 
@@ -270,7 +310,7 @@ class RelatedNode(RelatedNodeBase):
             return self._peer  # type: ignore[return-value]
 
         if not self.id:
-            raise ValueError("Node id but be defined to query it.")
+            raise ValueError("Node id must be defined to query it.")
 
         if self.id and self.typename:
             return self._client.store.get(key=self.id, kind=self.typename)  # type: ignore[return-value]
@@ -283,6 +323,8 @@ class RelatedNode(RelatedNodeBase):
 
 
 class RelatedNodeSync(RelatedNodeBase):
+    """Represents a related node in a synchronous context."""
+
     def __init__(
         self,
         client: InfrahubClientSync,
@@ -291,6 +333,14 @@ class RelatedNodeSync(RelatedNodeBase):
         data: Union[Any, dict],
         name: Optional[str] = None,
     ):
+        """
+        Args:
+            client (InfrahubClientSync): The client used to interact with the backend synchronously.
+            branch (str): The branch where the related node resides.
+            schema (RelationshipSchema): The schema of the relationship.
+            data (Union[Any, dict]): Data representing the related node.
+            name (Optional[str]): The name of the related node.
+        """
         self._client = client
         super().__init__(branch=branch, schema=schema, data=data, name=name)
 
@@ -309,7 +359,7 @@ class RelatedNodeSync(RelatedNodeBase):
             return self._peer  # type: ignore[return-value]
 
         if not self.id:
-            raise ValueError("Node id but be defined to query it.")
+            raise ValueError("Node id must be defined to query it.")
 
         if self.id and self.typename:
             return self._client.store.get(key=self.id, kind=self.typename)  # type: ignore[return-value]
@@ -322,7 +372,15 @@ class RelatedNodeSync(RelatedNodeBase):
 
 
 class RelationshipManagerBase:
+    """Base class for RelationshipManager and RelationshipManagerSync"""
+
     def __init__(self, name: str, branch: str, schema: RelationshipSchema):
+        """
+        Args:
+            name (str): The name of the relationship.
+            branch (str): The branch where the relationship resides.
+            schema (RelationshipSchema): The schema of the relationship.
+        """
         self.name = name
         self.schema = schema
         self.branch = branch
@@ -341,7 +399,18 @@ class RelationshipManagerBase:
         return [peer._generate_input_data() for peer in self.peers]
 
     @classmethod
-    def _generate_query_data(cls) -> Dict:
+    def _generate_query_data(cls, peer_data: Optional[Dict[str, Any]] = None) -> Dict:
+        """Generates the basic structure of a GraphQL query for relationships with multiple nodes.
+
+        Args:
+            peer_data (Dict[str, Union[Any, Dict]], optional): Additional data to be included in the query for each node.
+                This is used to add extra fields when prefetching related node data in many-to-many relationships.
+
+        Returns:
+            Dict: A dictionary representing the basic structure of a GraphQL query for multiple related nodes.
+                It includes count, edges, and node information (ID, display label, and typename), along with additional properties
+                and any peer_data provided.
+        """
         data: Dict[str, Any] = {
             "count": None,
             "edges": {"node": {"id": None, "display_label": None, "__typename": None}},
@@ -359,10 +428,15 @@ class RelationshipManagerBase:
 
         if properties:
             data["edges"]["properties"] = properties
+        if peer_data:
+            data["edges"]["node"].update(peer_data)
+
         return data
 
 
 class RelationshipManager(RelationshipManagerBase):
+    """Manages relationships of a node in an asynchronous context."""
+
     def __init__(
         self,
         name: str,
@@ -372,6 +446,15 @@ class RelationshipManager(RelationshipManagerBase):
         schema: RelationshipSchema,
         data: Union[Any, dict],
     ):
+        """
+        Args:
+            name (str): The name of the relationship.
+            client (InfrahubClient): The client used to interact with the backend.
+            node (InfrahubNode): The node to which the relationship belongs.
+            branch (str): The branch where the relationship resides.
+            schema (RelationshipSchema): The schema of the relationship.
+            data (Union[Any, dict]): Initial data for the relationships.
+        """
         self.client = client
         self.node = node
 
@@ -455,6 +538,8 @@ class RelationshipManager(RelationshipManagerBase):
 
 
 class RelationshipManagerSync(RelationshipManagerBase):
+    """Manages relationships of a node in a synchronous context."""
+
     def __init__(
         self,
         name: str,
@@ -464,6 +549,15 @@ class RelationshipManagerSync(RelationshipManagerBase):
         schema: RelationshipSchema,
         data: Union[Any, dict],
     ):
+        """
+        Args:
+            name (str): The name of the relationship.
+            client (InfrahubClientSync): The client used to interact with the backend synchronously.
+            node (InfrahubNodeSync): The node to which the relationship belongs.
+            branch (str): The branch where the relationship resides.
+            schema (RelationshipSchema): The schema of the relationship.
+            data (Union[Any, dict]): Initial data for the relationships.
+        """
         self.client = client
         self.node = node
 
@@ -547,12 +641,20 @@ class RelationshipManagerSync(RelationshipManagerBase):
 
 
 class InfrahubNodeBase:
+    """Base class for InfrahubNode and InfrahubNodeSync"""
+
     def __init__(
         self,
         schema: Union[NodeSchema, GenericSchema],
         branch: str,
         data: Optional[dict] = None,
     ) -> None:
+        """
+        Args:
+            schema (Union[NodeSchema, GenericSchema]): The schema of the node.
+            branch (str): The branch where the node resides.
+            data (Optional[dict]): Optional data to initialize the node.
+        """
         self._schema = schema
         self._data = data
         self._branch = branch
@@ -783,72 +885,6 @@ class InfrahubNodeBase:
 
         return data
 
-    def generate_query_data_node(
-        self,
-        include: Optional[List[str]] = None,
-        exclude: Optional[List[str]] = None,
-        inherited: bool = True,
-        insert_alias: bool = False,
-    ) -> Dict[str, Union[Any, Dict]]:
-        """Generate the node part of a GraphQL Query with attributes and nodes.
-
-        Args:
-            include (Optional[List[str]], optional): List of attributes or relationships to include. Defaults to None.
-            exclude (Optional[List[str]], optional): List of attributes or relationships to exclude. Defaults to None.
-            inherited (bool, optional): Indicated of the attributes and the relationships inherited from generics should be included as well.
-            Defaults to True.
-
-        Returns:
-            Dict[str, Union[Any, Dict]]: Query in Dict format
-        """
-        # pylint: disable=too-many-branches
-
-        data: Dict[str, Any] = {}
-
-        for attr_name in self._attributes:
-            if exclude and attr_name in exclude:
-                continue
-
-            attr: Attribute = getattr(self, attr_name)
-
-            if not inherited and attr._schema.inherited:
-                continue
-
-            attr_data = attr._generate_query_data()
-            if attr_data:
-                data[attr_name] = attr_data
-                if insert_alias:
-                    data[attr_name]["@alias"] = f"__alias__{self._schema.kind}__{attr_name}"
-            elif insert_alias:
-                if insert_alias:
-                    data[attr_name] = {"@alias": f"__alias__{self._schema.kind}__{attr_name}"}
-
-        for rel_name in self._relationships:
-            if exclude and rel_name in exclude:
-                continue
-
-            rel_schema = self._schema.get_relationship(name=rel_name)
-
-            if not rel_schema or (not inherited and rel_schema.inherited):
-                continue
-
-            if (
-                rel_schema.cardinality == RelationshipCardinality.MANY  # type: ignore[union-attr]
-                and rel_schema.kind not in [RelationshipKind.ATTRIBUTE, RelationshipKind.PARENT]  # type: ignore[union-attr]
-                and not (include and rel_name in include)
-            ):
-                continue
-
-            if rel_schema and rel_schema.cardinality == "one":
-                rel_data = RelatedNode._generate_query_data()
-            elif rel_schema and rel_schema.cardinality == "many":
-                rel_data = RelationshipManager._generate_query_data()
-            data[rel_name] = rel_data
-            if insert_alias:
-                data[rel_name]["@alias"] = f"__alias__{self._schema.kind}__{rel_name}"
-
-        return data
-
     def validate_filters(self, filters: Optional[Dict[str, Any]] = None) -> bool:
         if not filters:
             return True
@@ -877,8 +913,18 @@ class InfrahubNodeBase:
 
         return result
 
+    def __hash__(self) -> int:
+        return hash(self.id)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, (InfrahubNode, InfrahubNodeSync)):
+            return NotImplemented
+        return self.id == other.id
+
 
 class InfrahubNode(InfrahubNodeBase):
+    """Represents a Infrahub node in an asynchronous context."""
+
     def __init__(
         self,
         client: InfrahubClient,
@@ -886,6 +932,13 @@ class InfrahubNode(InfrahubNodeBase):
         branch: Optional[str] = None,
         data: Optional[dict] = None,
     ) -> None:
+        """
+        Args:
+            client (InfrahubClient): The client used to interact with the backend.
+            schema (Union[NodeSchema, GenericSchema]): The schema of the node.
+            branch (Optional[str]): The branch where the node resides.
+            data (Optional[dict]): Optional data to initialize the node.
+        """
         self._client = client
         self.__class__ = type(f"{schema.kind}InfrahubNode", (self.__class__,), {})
 
@@ -992,6 +1045,7 @@ class InfrahubNode(InfrahubNodeBase):
         include: Optional[List[str]] = None,
         exclude: Optional[List[str]] = None,
         fragment: bool = False,
+        prefetch_relationships: bool = False,
     ) -> Dict[str, Union[Any, Dict]]:
         data = self.generate_query_data_init(
             filters=filters,
@@ -1000,7 +1054,14 @@ class InfrahubNode(InfrahubNodeBase):
             include=include,
             exclude=exclude,
         )
-        data["edges"]["node"].update(self.generate_query_data_node(include=include, exclude=exclude, inherited=True))
+        data["edges"]["node"].update(
+            await self.generate_query_data_node(
+                include=include,
+                exclude=exclude,
+                prefetch_relationships=prefetch_relationships,
+                inherited=True,
+            )
+        )
 
         if isinstance(self._schema, GenericSchema) and fragment:
             for child in self._schema.used_by:
@@ -1015,9 +1076,10 @@ class InfrahubNode(InfrahubNodeBase):
                 if exclude:
                     exclude_child += exclude
 
-                child_data = child_node.generate_query_data_node(
+                child_data = await child_node.generate_query_data_node(
                     include=include,
                     exclude=exclude_child,
+                    prefetch_relationships=prefetch_relationships,
                     inherited=False,
                     insert_alias=True,
                 )
@@ -1026,6 +1088,83 @@ class InfrahubNode(InfrahubNodeBase):
                     data["edges"]["node"][f"...on {child}"] = child_data
 
         return {self._schema.kind: data}
+
+    async def generate_query_data_node(
+        self,
+        include: Optional[List[str]] = None,
+        exclude: Optional[List[str]] = None,
+        inherited: bool = True,
+        insert_alias: bool = False,
+        prefetch_relationships: bool = False,
+    ) -> Dict[str, Union[Any, Dict]]:
+        """Generate the node part of a GraphQL Query with attributes and nodes.
+
+        Args:
+            include (Optional[List[str]], optional): List of attributes or relationships to include. Defaults to None.
+            exclude (Optional[List[str]], optional): List of attributes or relationships to exclude. Defaults to None.
+            inherited (bool, optional): Indicated of the attributes and the relationships inherited from generics should be included as well.
+                                        Defaults to True.
+            insert_alias (bool, optional): If True, inserts aliases in the query for each attribute or relationship.
+            prefetch_relationships (bool, optional): If True, pre-fetches relationship data as part of the query.
+
+        Returns:
+            Dict[str, Union[Any, Dict]]: GraphQL query in dictionary format
+        """
+        # pylint: disable=too-many-branches
+
+        data: Dict[str, Any] = {}
+
+        for attr_name in self._attributes:
+            if exclude and attr_name in exclude:
+                continue
+
+            attr: Attribute = getattr(self, attr_name)
+
+            if not inherited and attr._schema.inherited:
+                continue
+
+            attr_data = attr._generate_query_data()
+            if attr_data:
+                data[attr_name] = attr_data
+                if insert_alias:
+                    data[attr_name]["@alias"] = f"__alias__{self._schema.kind}__{attr_name}"
+            elif insert_alias:
+                if insert_alias:
+                    data[attr_name] = {"@alias": f"__alias__{self._schema.kind}__{attr_name}"}
+
+        for rel_name in self._relationships:
+            if exclude and rel_name in exclude:
+                continue
+
+            rel_schema = self._schema.get_relationship(name=rel_name)
+
+            if not rel_schema or (not inherited and rel_schema.inherited):
+                continue
+
+            if (
+                rel_schema.cardinality == RelationshipCardinality.MANY  # type: ignore[union-attr]
+                and rel_schema.kind not in [RelationshipKind.ATTRIBUTE, RelationshipKind.PARENT]  # type: ignore[union-attr]
+                and not (include and rel_name in include)
+            ):
+                continue
+
+            peer_data: Dict[str, Any] = {}
+            if rel_schema and prefetch_relationships:
+                peer_schema = await self._client.schema.get(kind=rel_schema.peer)
+                peer_node = InfrahubNode(client=self._client, schema=peer_schema, branch=self._branch)
+                peer_data = await peer_node.generate_query_data_node(include=include, exclude=exclude, inherited=False)
+
+            if rel_schema and rel_schema.cardinality == "one":
+                rel_data = RelatedNode._generate_query_data(peer_data=peer_data)
+            elif rel_schema and rel_schema.cardinality == "many":
+                rel_data = RelationshipManager._generate_query_data(peer_data=peer_data)
+
+            data[rel_name] = rel_data
+
+            if insert_alias:
+                data[rel_name]["@alias"] = f"__alias__{self._schema.kind}__{rel_name}"
+
+        return data
 
     async def _create(self, at: Timestamp) -> None:
         input_data = self._generate_input_data()
@@ -1065,8 +1204,34 @@ class InfrahubNode(InfrahubNodeBase):
             variables=input_data["variables"],
         )
 
+    async def _process_relationships(
+        self, node_data: Dict[str, Any], branch: str, related_nodes: List[InfrahubNode]
+    ) -> None:
+        """Processes the Relationships of a InfrahubNode and add Related Nodes to a list.
+
+        Args:
+            node_data (Dict[str, Any]): The item from the GraphQL response corresponding to the node.
+            branch (str): The branch name.
+            related_nodes (List[InfrahubNode]): The list to which related nodes will be appended.
+        """
+        for rel_name in self._relationships:
+            rel = getattr(self, rel_name)
+            if rel and isinstance(rel, RelatedNode):
+                related_node = await InfrahubNode.from_graphql(
+                    client=self._client, branch=branch, data=node_data["node"].get(rel_name)
+                )
+                related_nodes.append(related_node)
+            elif rel and isinstance(rel, RelationshipManager):
+                peers = node_data["node"].get(rel_name)
+                if peers:
+                    for peer in peers["edges"]:
+                        related_node = await InfrahubNode.from_graphql(client=self._client, branch=branch, data=peer)
+                        related_nodes.append(related_node)
+
 
 class InfrahubNodeSync(InfrahubNodeBase):
+    """Represents a Infrahub node in a synchronous context."""
+
     def __init__(
         self,
         client: InfrahubClientSync,
@@ -1074,6 +1239,13 @@ class InfrahubNodeSync(InfrahubNodeBase):
         branch: Optional[str] = None,
         data: Optional[dict] = None,
     ) -> None:
+        """
+        Args:
+            client (InfrahubClientSync): The client used to interact with the backend synchronously.
+            schema (Union[NodeSchema, GenericSchema]): The schema of the node.
+            branch (Optional[str]): The branch where the node resides.
+            data (Optional[dict]): Optional data to initialize the node.
+        """
         self.__class__ = type(f"{schema.kind}InfrahubNodeSync", (self.__class__,), {})
         self._client = client
 
@@ -1175,6 +1347,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
         include: Optional[List[str]] = None,
         exclude: Optional[List[str]] = None,
         fragment: bool = False,
+        prefetch_relationships: bool = False,
     ) -> Dict[str, Union[Any, Dict]]:
         data = self.generate_query_data_init(
             filters=filters,
@@ -1183,19 +1356,116 @@ class InfrahubNodeSync(InfrahubNodeBase):
             include=include,
             exclude=exclude,
         )
-        data["edges"]["node"].update(self.generate_query_data_node(include=include, exclude=exclude, inherited=True))
+        data["edges"]["node"].update(
+            self.generate_query_data_node(
+                include=include,
+                exclude=exclude,
+                prefetch_relationships=prefetch_relationships,
+                inherited=True,
+            )
+        )
 
         if isinstance(self._schema, GenericSchema) and fragment:
-            for parent in self._schema.used_by:
-                parent_schema = self._client.schema.get(kind=parent)
-                parent_node = InfrahubNodeSync(client=self._client, schema=parent_schema)
-                parent_data = parent_node.generate_query_data_node(
-                    include=include, exclude=exclude, inherited=False, insert_alias=True
+            for child in self._schema.used_by:
+                child_schema = self._client.schema.get(kind=child)
+                child_node = InfrahubNodeSync(client=self._client, schema=child_schema)
+
+                exclude_parent = self._attributes + self._relationships
+                _, _, only_in_list2 = compare_lists(list1=include or [], list2=exclude_parent)
+
+                exclude_child = only_in_list2
+                if exclude:
+                    exclude_child += exclude
+
+                child_data = child_node.generate_query_data_node(
+                    include=include,
+                    exclude=exclude_child,
+                    prefetch_relationships=prefetch_relationships,
+                    inherited=False,
+                    insert_alias=True,
                 )
-                if parent_data:
-                    data["edges"]["node"][f"...on {parent}"] = parent_data
+
+                if child_data:
+                    data["edges"]["node"][f"...on {child}"] = child_data
 
         return {self._schema.kind: data}
+
+    def generate_query_data_node(
+        self,
+        include: Optional[List[str]] = None,
+        exclude: Optional[List[str]] = None,
+        inherited: bool = True,
+        insert_alias: bool = False,
+        prefetch_relationships: bool = False,
+    ) -> Dict[str, Union[Any, Dict]]:
+        """Generate the node part of a GraphQL Query with attributes and nodes.
+
+        Args:
+            include (Optional[List[str]], optional): List of attributes or relationships to include. Defaults to None.
+            exclude (Optional[List[str]], optional): List of attributes or relationships to exclude. Defaults to None.
+            inherited (bool, optional): Indicated of the attributes and the relationships inherited from generics should be included as well.
+                                        Defaults to True.
+            insert_alias (bool, optional): If True, inserts aliases in the query for each attribute or relationship.
+            prefetch_relationships (bool, optional): If True, pre-fetches relationship data as part of the query.
+
+        Returns:
+            Dict[str, Union[Any, Dict]]: GraphQL query in dictionary format
+        """
+        # pylint: disable=too-many-branches
+
+        data: Dict[str, Any] = {}
+
+        for attr_name in self._attributes:
+            if exclude and attr_name in exclude:
+                continue
+
+            attr: Attribute = getattr(self, attr_name)
+
+            if not inherited and attr._schema.inherited:
+                continue
+
+            attr_data = attr._generate_query_data()
+            if attr_data:
+                data[attr_name] = attr_data
+                if insert_alias:
+                    data[attr_name]["@alias"] = f"__alias__{self._schema.kind}__{attr_name}"
+            elif insert_alias:
+                if insert_alias:
+                    data[attr_name] = {"@alias": f"__alias__{self._schema.kind}__{attr_name}"}
+
+        for rel_name in self._relationships:
+            if exclude and rel_name in exclude:
+                continue
+
+            rel_schema = self._schema.get_relationship(name=rel_name)
+
+            if not rel_schema or (not inherited and rel_schema.inherited):
+                continue
+
+            if (
+                rel_schema.cardinality == RelationshipCardinality.MANY  # type: ignore[union-attr]
+                and rel_schema.kind not in [RelationshipKind.ATTRIBUTE, RelationshipKind.PARENT]  # type: ignore[union-attr]
+                and not (include and rel_name in include)
+            ):
+                continue
+
+            peer_data: Dict[str, Any] = {}
+            if rel_schema and prefetch_relationships:
+                peer_schema = self._client.schema.get(kind=rel_schema.peer)
+                peer_node = InfrahubNodeSync(client=self._client, schema=peer_schema, branch=self._branch)
+                peer_data = peer_node.generate_query_data_node(include=include, exclude=exclude, inherited=False)
+
+            if rel_schema and rel_schema.cardinality == "one":
+                rel_data = RelatedNodeSync._generate_query_data(peer_data=peer_data)
+            elif rel_schema and rel_schema.cardinality == "many":
+                rel_data = RelationshipManagerSync._generate_query_data(peer_data=peer_data)
+
+            data[rel_name] = rel_data
+
+            if insert_alias:
+                data[rel_name]["@alias"] = f"__alias__{self._schema.kind}__{rel_name}"
+
+        return data
 
     def _create(self, at: Timestamp) -> None:
         input_data = self._generate_input_data()
@@ -1236,9 +1506,39 @@ class InfrahubNodeSync(InfrahubNodeBase):
             variables=input_data["variables"],
         )
 
+    def _process_relationships(
+        self, node_data: Dict[str, Any], branch: str, related_nodes: List[InfrahubNodeSync]
+    ) -> None:
+        """Processes the Relationships of a InfrahubNodeSync and add Related Nodes to a list.
+
+        Args:
+            node_data (Dict[str, Any]): The item from the GraphQL response corresponding to the node.
+            branch (str): The branch name.
+            related_nodes (List[InfrahubNodeSync]): The list to which related nodes will be appended.
+        """
+        for rel_name in self._relationships:
+            rel = getattr(self, rel_name)
+            if rel and isinstance(rel, RelatedNodeSync):
+                related_node = InfrahubNodeSync.from_graphql(
+                    client=self._client, branch=branch, data=node_data["node"].get(rel_name)
+                )
+                related_nodes.append(related_node)
+            elif rel and isinstance(rel, RelationshipManagerSync):
+                peers = node_data["node"].get(rel_name)
+                if peers:
+                    for peer in peers["edges"]:
+                        related_node = InfrahubNodeSync.from_graphql(client=self._client, branch=branch, data=peer)
+                        related_nodes.append(related_node)
+
 
 class NodeProperty:
+    """Represents a property of a node, typically used for metadata like display labels."""
+
     def __init__(self, data: Union[dict, str]):
+        """
+        Args:
+            data (Union[dict, str]): Data representing the node property.
+        """
         self.id = None
         self.display_label = None
         self.typename = None
@@ -1255,7 +1555,17 @@ class NodeProperty:
 
 
 def generate_relationship_property(node: Union[InfrahubNode, InfrahubNodeSync], name: str, node_class):  # type: ignore
-    """Return a property that stores values under a private non-public name."""
+    """Generates a property that stores values under a private non-public name.
+
+    Args:
+        node (Union[InfrahubNode, InfrahubNodeSync]): The node instance.
+        name (str): The name of the relationship property.
+        node_class: The class of the node.
+
+    Returns:
+        A property object for managing the relationship.
+
+    """
     internal_name = "_" + name.lower()
     external_name = name
 
