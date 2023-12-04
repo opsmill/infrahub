@@ -7,15 +7,28 @@ icon: pencil
 
 Welcome to the Infrahub documentation guide. This document aims to answer any questions that may come up when creating or updating documentation.
 
-## Generating the docs site
+## Working with the docs site locally
 
-The documentation runs on [Retype](https://retype.com). That said, the preferred way to run and build the docs locally is with Infrahub's suite of `invoke`-driven tasks.
+The recommended way to run and build the docs locally is with Infrahub's suite of `invoke`-driven tasks. To run the commands, you should:
 
-In addition to `python` and `invoke`, you'll need Node.JS and NPM installed. Once these requirements are met, you'll have access to the doc task list.
+1. Install [`python`](https://www.python.org/).
+2. Install [`invoke`](https://www.pyinvoke.org/).
+3. Install [`poetry`](https://python-poetry.org/).
+4. Run `poetry install` from the Infrahub project directory.
+5. Install [Node.js(and NPM)](https://nodejs.org/en).
+
+Once these requirements are met, you'll have access to the doc task list.
 
 ```sh
 invoke -l docs
 ```
+
+The primary commands are as follows:
+
+- `invoke docs.build`: Build the documentation website.
+- `invoke docs.generate`: Generate source-derived documentation pages (such as the schema and Jinja templates).
+- `invoke docs.serve`: Run a local development server for the documentation website.
+- `invoke docs.validate`: Validate that the generated documentation has been committed to git.
 
 ## Linting and automation
 
