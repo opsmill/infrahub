@@ -1,7 +1,7 @@
+import React from "react";
 import { classNames } from "../../utils/common";
 import { AVATAR_SIZE, Avatar } from "../avatar";
 import { DateDisplay } from "../date-display";
-import React from "react";
 import { MarkdownViewer } from "../MarkdownViewer";
 
 type CommentProps = {
