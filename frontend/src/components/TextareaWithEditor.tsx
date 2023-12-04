@@ -6,8 +6,9 @@ type TextareaWithEditorProps = {
   defaultValue?: string;
   disabled?: boolean;
   error?: { message?: string };
-  onChange: (v: string) => void;
+  onChange: (value: string) => void;
 };
+
 export const TextareaWithEditor: FC<TextareaWithEditorProps> = ({
   className,
   defaultValue,
@@ -15,6 +16,8 @@ export const TextareaWithEditor: FC<TextareaWithEditorProps> = ({
   error,
   onChange,
 }) => {
+  const hasError = !!error?.message;
+
   return (
     <div className="relative">
       <MarkdownEditor
@@ -24,7 +27,7 @@ export const TextareaWithEditor: FC<TextareaWithEditorProps> = ({
         defaultValue={defaultValue}
       />
 
-      {error?.message && (
+      {hasError && (
         <div className="absolute text-sm text-red-500 bg-custom-white -bottom-2 ml-2 px-2">
           {error.message}
         </div>

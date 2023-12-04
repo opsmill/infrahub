@@ -1,7 +1,7 @@
-import { CodeMirrorType } from "./CodeMirrorType";
+import { CodeMirrorType } from "./CodeMirror";
 import { EditorSelection } from "@codemirror/state";
 
-type EditorCommand = {
+export type EditorCommand = {
   label: string;
   icon: string;
   onClick: (codeMirror: CodeMirrorType) => void;

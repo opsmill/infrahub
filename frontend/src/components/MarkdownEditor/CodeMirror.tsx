@@ -19,16 +19,20 @@ const theme = EditorView.baseTheme({
 type CodeMirrorProps = {
   value?: string;
   placeholder?: string;
-  onChange: (s: string) => void;
+  onChange: (value: string) => void;
 };
 
 export const CodeMirror = forwardRef<CodeMirrorType, CodeMirrorProps>(
   ({ value = "", placeholder = "Write your text here...", onChange }, ref) => {
-    const editor = useRef<HTMLDivElement>(null);
-    const [state, setState] = useState<EditorState>();
-    const [view, setView] = useState<EditorView>();
+    const editorRef = useRef<HTMLDivElement>(null);
+    const [editorState, setEditorState] = useState<EditorState>();
+    const [editorView, setEditorView] = useState<EditorView>();
 
-    useImperativeHandle(ref, () => ({ editor: editor.current, state, view }));
+    useImperativeHandle(ref, () => ({
+      editor: editorRef.current,
+      state: editorState,
+      view: editorView,
+    }));
 
     const onUpdate = EditorView.updateListener.of(({ state }) => {
       onChange(state.doc.toString());
@@ -46,16 +50,19 @@ export const CodeMirror = forwardRef<CodeMirrorType, CodeMirrorProps>(
         ],
       });
 
-      const view = new EditorView({ state: startState, parent: editor.current! });
+      const newEditorView = new EditorView({ state: startState, parent: editorRef.current! });
 
-      view.focus();
-      setState(startState);
-      setView(view);
+      newEditorView.focus();
+      setEditorState(startState);
+      setEditorView(newEditorView);
+
       return () => {
-        view.destroy();
+        if (editorView) {
+          editorView.destroy();
+        }
       };
     }, []);
 
-    return <div ref={editor}></div>;
+    return <div ref={editorRef}></div>;
   }
 );
