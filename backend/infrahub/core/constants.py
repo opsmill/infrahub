@@ -163,6 +163,12 @@ class RelationshipStatus(InfrahubStringEnum):
     DELETED = "deleted"
 
 
+class RelationshipDirection(InfrahubStringEnum):
+    BIDIR = "bidirectional"
+    OUTBOUND = "outbound"
+    INBOUND = "inbound"
+
+
 class Severity(InfrahubStringEnum):
     SUCCESS = "success"
     INFO = "info"

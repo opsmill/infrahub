@@ -23,12 +23,13 @@ from infrahub.core.constants import (
     FilterSchemaKind,
     ProposedChangeState,
     RelationshipCardinality,
+    RelationshipDirection,
     RelationshipKind,
     Severity,
     ValidatorConclusion,
     ValidatorState,
 )
-from infrahub.core.query import QueryNode, QueryRel
+from infrahub.core.query import QueryNode, QueryRel, QueryRelDirection
 from infrahub.core.relationship import Relationship
 from infrahub.types import ATTRIBUTE_TYPES
 from infrahub.visuals import select_color
@@ -62,6 +63,31 @@ DEFAULT_DESCRIPTION_LENGTH = 128
 DEFAULT_REL_IDENTIFIER_LENGTH = 128
 
 HTML_COLOR = re.compile(r"#[0-9a-fA-F]{6}\b")
+
+
+class QueryArrow(BaseModel):
+    start: str
+    end: str
+
+
+class QueryArrowInband(QueryArrow):
+    start: str = "<-"
+    end: str = "-"
+
+
+class QueryArrowOutband(QueryArrow):
+    start: str = "-"
+    end: str = "->"
+
+
+class QueryArrowBidir(QueryArrow):
+    start: str = "-"
+    end: str = "-"
+
+
+class QueryArrows(BaseModel):
+    left: QueryArrow
+    right: QueryArrow
 
 
 class BaseSchemaModel(BaseModel):
@@ -355,6 +381,7 @@ class RelationshipSchema(BaseSchemaModel):
     name: str = Field(regex=NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
     peer: str = Field(regex=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH)
     kind: RelationshipKind = RelationshipKind.GENERIC
+    direction: RelationshipDirection = RelationshipDirection.BIDIR
     label: Optional[str]
     description: Optional[str] = Field(max_length=DEFAULT_DESCRIPTION_LENGTH)
     identifier: Optional[str] = Field(max_length=DEFAULT_REL_IDENTIFIER_LENGTH)
@@ -373,6 +400,16 @@ class RelationshipSchema(BaseSchemaModel):
 
     async def get_peer_schema(self, branch: Optional[Union[Branch, str]] = None):
         return registry.schema.get(name=self.peer, branch=branch)
+
+    def get_query_arrows(self) -> QueryArrows:
+        """Return (in 4 parts) the 2 arrows for the relationship R1 and R2 based on the direction of the relationship."""
+
+        if self.direction == RelationshipDirection.OUTBOUND:
+            return QueryArrows(left=QueryArrowOutband(), right=QueryArrowOutband())
+        if self.direction == RelationshipDirection.INBOUND:
+            return QueryArrows(left=QueryArrowInband(), right=QueryArrowInband())
+
+        return QueryArrows(left=QueryArrowOutband(), right=QueryArrowInband())
 
     async def get_query_filter(
         self,
@@ -400,12 +437,28 @@ class RelationshipSchema(BaseSchemaModel):
         if include_match:
             query_filter.append(QueryNode(name="n"))
 
+        # Determine in which direction the relationships should point based on the side of the query
+        rels_direction = {
+            "r1": QueryRelDirection.OUTBOUND,
+            "r2": QueryRelDirection.INBOUND,
+        }
+        if self.direction == RelationshipDirection.OUTBOUND:
+            rels_direction = {
+                "r1": QueryRelDirection.OUTBOUND,
+                "r2": QueryRelDirection.OUTBOUND,
+            }
+        if self.direction == RelationshipDirection.INBOUND:
+            rels_direction = {
+                "r1": QueryRelDirection.INBOUND,
+                "r2": QueryRelDirection.INBOUND,
+            }
+
         if filter_name == "id":
             query_filter.extend(
                 [
-                    QueryRel(name="r1", labels=[rel_type]),
+                    QueryRel(name="r1", labels=[rel_type], direction=rels_direction["r1"]),
                     QueryNode(name="rl", labels=["Relationship"], params={"name": f"${prefix}_rel_name"}),
-                    QueryRel(name="r2", labels=[rel_type]),
+                    QueryRel(name="r2", labels=[rel_type], direction=rels_direction["r2"]),
                     QueryNode(name="peer", labels=["Node"]),
                 ]
             )
@@ -419,9 +472,9 @@ class RelationshipSchema(BaseSchemaModel):
         if filter_name == "ids":
             query_filter.extend(
                 [
-                    QueryRel(name="r1", labels=[rel_type]),
+                    QueryRel(name="r1", labels=[rel_type], direction=rels_direction["r1"]),
                     QueryNode(name="rl", labels=["Relationship"], params={"name": f"${prefix}_rel_name"}),
-                    QueryRel(name="r2", labels=[rel_type]),
+                    QueryRel(name="r2", labels=[rel_type], direction=rels_direction["r2"]),
                     QueryNode(name="peer", labels=["Node"]),
                 ]
             )
@@ -445,9 +498,9 @@ class RelationshipSchema(BaseSchemaModel):
 
         query_filter.extend(
             [
-                QueryRel(name="r1", labels=[rel_type]),
+                QueryRel(name="r1", labels=[rel_type], direction=rels_direction["r1"]),
                 QueryNode(name="rl", labels=["Relationship"], params={"name": f"${prefix}_rel_name"}),
-                QueryRel(name="r2", labels=[rel_type]),
+                QueryRel(name="r2", labels=[rel_type], direction=rels_direction["r2"]),
                 QueryNode(name="peer", labels=["Node"]),
             ]
         )
@@ -1066,6 +1119,15 @@ internal_schema = {
                     "kind": "Boolean",
                     "description": "Internal value to indicate if the relationship was inherited from a Generic node.",
                     "default_value": False,
+                    "optional": True,
+                },
+                {
+                    "name": "direction",
+                    "kind": "Text",
+                    "description": "Defines the direction of the relationship, "
+                    " Unidirectional relationship are required when the same model is on both side.",
+                    "enum": RelationshipDirection.available_types(),
+                    "default_value": RelationshipDirection.BIDIR.value,
                     "optional": True,
                 },
             ],

@@ -52,6 +52,12 @@ class QueryElementType(Enum):
     RELATIONSHIP = "relationship"
 
 
+class QueryRelDirection(Enum):
+    BIDIR = "bidirectional"
+    INBOUND = "inbound"
+    OUTBOUND = "outbound"
+
+
 @dataclass
 class QueryElement:
     type: QueryElementType
@@ -97,6 +103,17 @@ class QueryNode(QueryElement):
 @dataclass
 class QueryRel(QueryElement):
     type: QueryElementType = QueryElementType.RELATIONSHIP
+    direction: QueryRelDirection = QueryRelDirection.BIDIR
+
+    def __str__(self):
+        main_str = "[%s%s%s]" % (self.name or "", self.labels_as_str, self.params_as_str)
+
+        if self.direction == QueryRelDirection.INBOUND:
+            return "<-%s-" % main_str
+        if self.direction == QueryRelDirection.OUTBOUND:
+            return "-%s->" % main_str
+
+        return "-%s-" % main_str
 
 
 class QueryType(Enum):

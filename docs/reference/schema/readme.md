@@ -18,7 +18,7 @@ The schema is composed of 4 primary types of objects: `Nodes`- that are themselv
 
 - A `Node` in Infrahub represents a `Model`.
 - An `Attribute` represents a direct value associated with a `Node` like a `Text`, a `Number` etc ...
-- A `Relationship` represents a unidirectional link between 2 `Node`, a `Relationship` can be of cardinality `one` or `many`.
+- A `Relationship` represents a link between 2 `Node`, a `Relationship` can be of cardinality `one` or `many`.
 - A `Generic` can be used to share some attributes between multiple `Node`, if you're familiar with programming concept, it's close to class inheritance.
 
 In the example below, the node `Person` has 2 attributes (`name` and `description`) and the node `Car` has 1 attribute (`model`) and 1 relationship to `Person`, identified by `owner``.

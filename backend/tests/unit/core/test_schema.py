@@ -227,13 +227,13 @@ async def test_rel_schema_query_filter(db: InfrahubDatabase, default_branch, car
     filters, params, matchs = await rel.get_query_filter(db=db, filter_name="name__value", filter_value="alice")
     expected_response = [
         "(n)",
-        "[r1:IS_RELATED]",
+        "<-[r1:IS_RELATED]-",
         "(rl:Relationship { name: $rel_cars_rel_name })",
-        "[r2:IS_RELATED]",
+        "<-[r2:IS_RELATED]-",
         "(peer:Node)",
-        "[:HAS_ATTRIBUTE]",
+        "-[:HAS_ATTRIBUTE]-",
         "(i:Attribute { name: $attr_name_name })",
-        "[:HAS_VALUE]",
+        "-[:HAS_VALUE]-",
         "(av:AttributeValue { value: $attr_name_value })",
     ]
     assert [str(item) for item in filters] == expected_response
@@ -244,9 +244,9 @@ async def test_rel_schema_query_filter(db: InfrahubDatabase, default_branch, car
     filters, params, matchs = await rel.get_query_filter(db=db, name="bob", filter_name="id", filter_value="XXXX-YYYY")
     expected_response = [
         "(n)",
-        "[r1:IS_RELATED]",
+        "<-[r1:IS_RELATED]-",
         "(rl:Relationship { name: $rel_cars_rel_name })",
-        "[r2:IS_RELATED]",
+        "<-[r2:IS_RELATED]-",
         "(peer:Node { uuid: $rel_cars_peer_id })",
     ]
     assert [str(item) for item in filters] == expected_response
@@ -262,13 +262,13 @@ async def test_rel_schema_query_filter_no_value(db: InfrahubDatabase, default_br
     filters, params, matchs = await rel.get_query_filter(db=db, filter_name="name__value")
     expected_response = [
         "(n)",
-        "[r1:IS_RELATED]",
+        "<-[r1:IS_RELATED]-",
         "(rl:Relationship { name: $rel_cars_rel_name })",
-        "[r2:IS_RELATED]",
+        "<-[r2:IS_RELATED]-",
         "(peer:Node)",
-        "[:HAS_ATTRIBUTE]",
+        "-[:HAS_ATTRIBUTE]-",
         "(i:Attribute { name: $attr_name_name })",
-        "[:HAS_VALUE]",
+        "-[:HAS_VALUE]-",
         "(av:AttributeValue)",
     ]
     assert [str(item) for item in filters] == expected_response
@@ -279,9 +279,9 @@ async def test_rel_schema_query_filter_no_value(db: InfrahubDatabase, default_br
     filters, params, matchs = await rel.get_query_filter(db=db, name="bob", filter_name="id")
     expected_response = [
         "(n)",
-        "[r1:IS_RELATED]",
+        "<-[r1:IS_RELATED]-",
         "(rl:Relationship { name: $rel_cars_rel_name })",
-        "[r2:IS_RELATED]",
+        "<-[r2:IS_RELATED]-",
         "(peer:Node)",
     ]
     assert [str(item) for item in filters] == expected_response

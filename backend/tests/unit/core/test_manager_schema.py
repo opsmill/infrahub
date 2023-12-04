@@ -408,8 +408,8 @@ async def test_schema_branch_validate_identifiers():
         schema.validate_identifiers()
 
     assert (
-        str(exc.value)
-        == "TestCriticality: Identifier of relationships must be unique : ['testcriticality__testcriticality']"
+        str(exc.value) == "TestCriticality: Identifier of relationships must be unique for a given direction > "
+        "'testcriticality__testcriticality' : [('first', 'bidirectional'), ('second', 'bidirectional')]"
     )
 
     SCHEMA2 = {
@@ -429,6 +429,166 @@ async def test_schema_branch_validate_identifiers():
     schema.load_schema(schema=SchemaRoot(nodes=[SCHEMA2]))
     schema.generate_identifiers()
     schema.validate_identifiers()
+
+
+async def test_schema_branch_validate_identifiers_direction():
+    SCHEMA1 = {
+        "name": "Criticality",
+        "namespace": "Test",
+        "default_filter": "name__value",
+        "branch": BranchSupportType.AWARE.value,
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True},
+        ],
+        "relationships": [
+            {"name": "first", "peer": "TestCriticality", "cardinality": "one", "direction": "outbound"},
+            {"name": "second", "peer": "TestCriticality", "cardinality": "one", "direction": "inbound"},
+        ],
+    }
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(nodes=[SCHEMA1]))
+    schema.generate_identifiers()
+    schema.validate_identifiers()
+
+    SCHEMA2 = {
+        "name": "Criticality",
+        "namespace": "Test",
+        "default_filter": "name__value",
+        "branch": BranchSupportType.AWARE.value,
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True},
+        ],
+        "relationships": [
+            {"name": "first", "peer": "TestCriticality", "cardinality": "one", "direction": "bidirectional"},
+            {"name": "second", "peer": "TestCriticality", "cardinality": "one", "direction": "inbound"},
+        ],
+    }
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(nodes=[SCHEMA2]))
+    schema.generate_identifiers()
+    with pytest.raises(ValueError) as exc:
+        schema.validate_identifiers()
+
+    assert (
+        str(exc.value) == "TestCriticality: Identifier of relationships must be unique for a given direction > "
+        "'testcriticality__testcriticality' : [('first', 'bidirectional'), ('second', 'inbound')]"
+    )
+
+
+async def test_schema_branch_validate_identifiers_matching_direction():
+    SCHEMA = {
+        "nodes": [
+            {
+                "name": "Criticality",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+                "relationships": [
+                    {"name": "first", "peer": "TestOther", "cardinality": "one", "direction": "outbound"},
+                ],
+            },
+            {
+                "name": "Other",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+                "relationships": [
+                    {"name": "first", "peer": "TestCriticality", "cardinality": "one", "direction": "outbound"},
+                ],
+            },
+        ]
+    }
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**SCHEMA))
+    schema.generate_identifiers()
+    with pytest.raises(ValueError) as exc:
+        schema.validate_identifiers()
+
+    assert (
+        str(exc.value)
+        == "TestOther: Incompatible direction detected on Reverse Relationship for 'first' ('testcriticality__testother') "
+        "outbound <> outbound"
+    )
+
+    SCHEMA["nodes"][0]["relationships"][0]["direction"] = "bidirectional"
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**SCHEMA))
+    schema.generate_identifiers()
+    with pytest.raises(ValueError) as exc:
+        schema.validate_identifiers()
+
+    assert (
+        str(exc.value)
+        == "TestOther: Incompatible direction detected on Reverse Relationship for 'first' ('testcriticality__testother') "
+        "bidirectional <> outbound"
+    )
+
+    # Validation is good with inbound <> outbound
+    SCHEMA["nodes"][0]["relationships"][0]["direction"] = "inbound"
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**SCHEMA))
+    schema.generate_identifiers()
+    schema.validate_identifiers()
+
+    # Validation is good with bidirectional <> bidirectional
+    SCHEMA["nodes"][0]["relationships"][0]["direction"] = "bidirectional"
+    SCHEMA["nodes"][1]["relationships"][0]["direction"] = "bidirectional"
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**SCHEMA))
+    schema.generate_identifiers()
+    schema.validate_identifiers()
+
+    assert True
+
+    SCHEMA = {
+        "nodes": [
+            {
+                "name": "Criticality",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+                "relationships": [
+                    {"name": "first", "peer": "TestOther", "cardinality": "one", "direction": "outbound"},
+                    {"name": "second", "peer": "TestOther", "cardinality": "one", "direction": "inbound"},
+                ],
+            },
+            {
+                "name": "Other",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+                "relationships": [
+                    {"name": "first", "peer": "TestCriticality", "cardinality": "one", "direction": "bidirectional"},
+                ],
+            },
+        ]
+    }
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**SCHEMA))
+    schema.generate_identifiers()
+    with pytest.raises(ValueError) as exc:
+        schema.validate_identifiers()
+
+    assert (
+        str(exc.value)
+        == "TestOther: Incompatible direction detected on Reverse Relationship for 'first' ('testcriticality__testother')  > bidirectional "
+    )
 
 
 async def test_schema_branch_validate_kinds_peer():

@@ -25,7 +25,7 @@ from infrahub.core.query.relationship import (
 )
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import update_relationships_to
-from infrahub.exceptions import NodeNotFound, ValidationError
+from infrahub.exceptions import Error, NodeNotFound, ValidationError
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -51,6 +51,7 @@ class RelationshipCreateData(BaseModel):
     branch: str
     branch_level: int
     branch_support: str
+    direction: str
     status: str
     is_protected: bool
     is_visible: bool
@@ -340,6 +341,10 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         )
         await query.execute(db=db)
         result = query.get_result()
+        if not result:
+            raise Error(
+                f"Unable to find the relationship to delete. id: {self.id}, source: {node.id}, destination: {peer.id}"
+            )
 
         # when we remove a relationship we need to :
         # - Update the existing relationship if we are on the same branch
@@ -412,6 +417,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             branch=branch.name,
             destination_id=peer.id,
             status="active",
+            direction=self.schema.direction.value,
             branch_level=self.branch.hierarchy_level,
             branch_support=self.schema.branch.value,
             is_protected=self.is_protected,

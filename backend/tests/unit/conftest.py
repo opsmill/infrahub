@@ -1133,7 +1133,13 @@ async def car_person_schema(db: InfrahubDatabase, default_branch: Branch, node_g
                     {"name": "is_electric", "kind": "Boolean"},
                 ],
                 "relationships": [
-                    {"name": "owner", "peer": "TestPerson", "optional": False, "cardinality": "one"},
+                    {
+                        "name": "owner",
+                        "peer": "TestPerson",
+                        "optional": False,
+                        "cardinality": "one",
+                        "direction": "outbound",
+                    },
                 ],
             },
             {
@@ -1146,7 +1152,7 @@ async def car_person_schema(db: InfrahubDatabase, default_branch: Branch, node_g
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "height", "kind": "Number", "optional": True},
                 ],
-                "relationships": [{"name": "cars", "peer": "TestCar", "cardinality": "many"}],
+                "relationships": [{"name": "cars", "peer": "TestCar", "cardinality": "many", "direction": "inbound"}],
             },
         ],
     }
@@ -1521,12 +1527,13 @@ async def person_tag_schema(db: InfrahubDatabase, default_branch: Branch, data_s
                     {"name": "lastname", "kind": "Text"},
                 ],
                 "relationships": [
-                    {"name": "tags", "peer": "BuiltinTag", "cardinality": "many"},
+                    {"name": "tags", "peer": "BuiltinTag", "cardinality": "many", "direction": "inbound"},
                     {
                         "name": "primary_tag",
                         "peer": "BuiltinTag",
                         "identifier": "person_primary_tag",
                         "cardinality": "one",
+                        "direction": "outbound",
                     },
                 ],
             },
