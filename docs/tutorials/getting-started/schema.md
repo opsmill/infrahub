@@ -22,7 +22,7 @@ You can explore the current schema by visiting the schema page at the bottom of 
 
 ## Extend the schema with some network related models
 
-In order to model a simple network, we need to extend the current models to capture more information like: `Device`, `Interface`, `IPAddress`, `BGPSession`, etc.
+In order to model a network, we need to extend the current models to capture more information like: `Device`, `Interface`, `IPAddress`, `BGPSession`, etc.
 
 A schema extension with these types of models and more is available in the `models/` directory
 
