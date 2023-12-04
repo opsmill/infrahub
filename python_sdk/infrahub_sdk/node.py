@@ -930,15 +930,14 @@ class InfrahubNode(InfrahubNodeBase):
             tracker=f"mutation-{str(self._schema.kind).lower()}-delete",
         )
 
-    async def save(self, at: Optional[Timestamp] = None) -> Dict:
+    async def save(self, at: Optional[Timestamp] = None) -> None:
         at = Timestamp(at)
         if self._existing is False:
-            result = await self._create(at=at)
+            await self._create(at=at)
         else:
-            result = await self._update(at=at)
+            await self._update(at=at)
 
         self._client.store.set(key=self.id, node=self)
-        return result
 
     async def generate_query_data(
         self,
@@ -983,7 +982,7 @@ class InfrahubNode(InfrahubNodeBase):
 
         return {self._schema.kind: data}
 
-    async def _create(self, at: Timestamp) -> Dict:
+    async def _create(self, at: Timestamp) -> None:
         input_data = self._generate_input_data()
         input_data["data"]["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
@@ -994,7 +993,7 @@ class InfrahubNode(InfrahubNodeBase):
             query=mutation_query,
             variables=input_data["mutation_variables"],
         )
-        result = await self._client.execute_graphql(
+        await self._client.execute_graphql(
             query=query.render(),
             branch_name=self._branch,
             at=at,
@@ -1002,9 +1001,8 @@ class InfrahubNode(InfrahubNodeBase):
             variables=input_data["variables"],
         )
         self._existing = True
-        return result
 
-    async def _update(self, at: Timestamp) -> Dict:
+    async def _update(self, at: Timestamp) -> None:
         input_data = self._generate_input_data(update=True)
         input_data["data"]["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
@@ -1014,14 +1012,13 @@ class InfrahubNode(InfrahubNodeBase):
             query=mutation_query,
             variables=input_data["mutation_variables"],
         )
-        result = await self._client.execute_graphql(
+        await self._client.execute_graphql(
             query=query.render(),
             branch_name=self._branch,
             at=at,
             tracker=f"mutation-{str(self._schema.kind).lower()}-update",
             variables=input_data["variables"],
         )
-        return result
 
 
 class InfrahubNodeSync(InfrahubNodeBase):
@@ -1099,15 +1096,14 @@ class InfrahubNodeSync(InfrahubNodeBase):
             tracker=f"mutation-{str(self._schema.kind).lower()}-delete",
         )
 
-    def save(self, at: Optional[Timestamp] = None) -> Dict:
+    def save(self, at: Optional[Timestamp] = None) -> None:
         at = Timestamp(at)
         if self._existing is False:
-            result = self._create(at=at)
+            self._create(at=at)
         else:
-            result = self._update(at=at)
+            self._update(at=at)
 
         self._client.store.set(key=self.id, node=self)
-        return result
 
     def generate_query_data(
         self,
@@ -1139,7 +1135,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
 
         return {self._schema.kind: data}
 
-    def _create(self, at: Timestamp) -> Dict:
+    def _create(self, at: Timestamp) -> None:
         input_data = self._generate_input_data()
         input_data["data"]["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
@@ -1151,7 +1147,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
             variables=input_data["mutation_variables"],
         )
 
-        result = self._client.execute_graphql(
+        self._client.execute_graphql(
             query=query.render(),
             branch_name=self._branch,
             at=at,
@@ -1159,9 +1155,8 @@ class InfrahubNodeSync(InfrahubNodeBase):
             variables=input_data["variables"],
         )
         self._existing = True
-        return result
 
-    def _update(self, at: Timestamp) -> Dict:
+    def _update(self, at: Timestamp) -> None:
         input_data = self._generate_input_data(update=True)
         input_data["data"]["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
@@ -1172,14 +1167,13 @@ class InfrahubNodeSync(InfrahubNodeBase):
             variables=input_data["mutation_variables"],
         )
 
-        result = self._client.execute_graphql(
+        self._client.execute_graphql(
             query=query.render(),
             branch_name=self._branch,
             at=at,
             tracker=f"mutation-{str(self._schema.kind).lower()}-update",
             variables=input_data["variables"],
         )
-        return result
 
 
 class NodeProperty:
