@@ -15,6 +15,7 @@ type SelectRegisterProps = {
   isProtected?: boolean;
   isOptional?: boolean;
   disabled?: boolean;
+  dropdown?: boolean;
 };
 
 export const OpsSelectRegister = (props: SelectRegisterProps) => {
@@ -29,7 +30,7 @@ export const OpsSelectRegister = (props: SelectRegisterProps) => {
     <OpsSelect
       {...propsToPass}
       disabled={!!disabled}
-      onChange={(item: SelectOption) => setValue(inputRegister.name, item.id)}
+      onChange={(item: SelectOption) => setValue(inputRegister.name, item.id || item.name)}
       isProtected={isProtected || disabled}
     />
   );

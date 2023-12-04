@@ -107,7 +107,7 @@ async def test_dropdown_properties(db: InfrahubDatabase, default_branch: Branch,
     assert passive.description == ""
     assert passive.label == "Redundancy nodes not in the active path"
     # The color of the passive choice comes from the color selector in infrahub.visuals
-    assert passive.color == "#0b6581"
+    assert passive.color == "#ed6a5a"
 
 
 async def test_validate_format_string(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):

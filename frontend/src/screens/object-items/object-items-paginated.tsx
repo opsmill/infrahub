@@ -202,13 +202,13 @@ export default function ObjectItems(props: any) {
                         <th
                           key={attribute.name}
                           scope="col"
-                          className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 px-4 py-2 text-left text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter">
+                          className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 p-2 text-left text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter">
                           {attribute.label}
                         </th>
                       ))}
                       <th
                         scope="col"
-                        className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 px-4 py-2 text-left text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter"></th>
+                        className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 p-2 text-left text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter"></th>
                     </tr>
                   </thead>
                   <tbody className="bg-custom-white">
@@ -224,7 +224,7 @@ export default function ObjectItems(props: any) {
                             key={row.id + "-" + attribute.name}
                             className={classNames(
                               index !== rows.length - 1 ? "border-b border-gray-200" : "",
-                              "whitespace-wrap p-4 text-xs text-gray-900"
+                              "whitespace-wrap p-2 text-xs text-gray-900"
                             )}>
                             {getObjectItemDisplayValue(row, attribute)}
                           </td>
