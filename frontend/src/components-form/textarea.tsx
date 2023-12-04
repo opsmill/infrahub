@@ -1,7 +1,7 @@
 import { LockClosedIcon } from "@heroicons/react/24/outline";
-import { Textarea } from "../components/textarea";
 import { FormFieldError } from "../screens/edit-form-hook/form";
 import { classNames } from "../utils/common";
+import { TextareaWithEditor } from "../components/TextareaWithEditor";
 
 type OpsInputProps = {
   label: string;
@@ -25,7 +25,8 @@ export const OpsTextarea = (props: OpsInputProps) => {
         </label>
         <div className="ml-2"> {isProtected ? <LockClosedIcon className="w-4 h-4" /> : null} </div>
       </div>
-      <Textarea
+
+      <TextareaWithEditor
         onChange={onChange}
         defaultValue={value ?? ""}
         className={classNames(className ?? "")}
