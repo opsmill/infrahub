@@ -265,7 +265,6 @@ class SchemaBranch:
             sorted([RelationshipDirection.INBOUND, RelationshipDirection.OUTBOUND]),
         ]
 
-        # breakpoint()
         for identifier, rels_per_kind in rels_per_identifier.items():
             # Per node kind, check if the directions are good
             for _, rels in rels_per_kind.items():
