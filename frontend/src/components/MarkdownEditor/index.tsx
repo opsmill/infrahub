@@ -7,13 +7,23 @@ import { CodeMirror, CodeMirrorType } from "./CodeMirrorType";
 type MarkdownEditorProps = {
   className?: string;
   defaultValue?: string;
+  disabled?: boolean;
   onChange: (v: string) => void;
 };
 export const MarkdownEditor = forwardRef<HTMLDivElement, MarkdownEditorProps>(
-  ({ className = "", defaultValue = "", onChange }, ref) => {
+  ({ className = "", defaultValue = "", disabled, onChange }, ref) => {
     const [preview, setPreview] = useState<boolean>(false);
     const [text, setText] = useState<string>(defaultValue);
     const codeMirrorRef = useRef<CodeMirrorType>({ editor: null });
+
+    if (disabled) {
+      return (
+        <MarkdownViewer
+          markdownText={text}
+          className="w-full bg-gray-100 min-h-10 rounded-md p-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 cursor-not-allowed"
+        />
+      );
+    }
 
     return (
       <div ref={ref} className={classNames("rounded-md border border-gray-300", className)}>
