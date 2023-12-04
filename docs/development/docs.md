@@ -151,8 +151,9 @@ In an effort to keep application screenshots up to date, use [Cypress](https://d
 As a general rule, prefer consistency and simplicity when possible. This guide should help in making choices, but it is a living document and should evolve as the needs of the project evolve. For anything not answered below, reference the [Microsoft Style Guide](https://learn.microsoft.com/en-us/style-guide/welcome/).
 
 General tips:
-
+<!-- vale off -->
 - Avoid words like *easy*, *just*, or *simple* to describe how to do something or how "easy" a task is.
+<!-- vale on -->
 - If a sentence looks too long, it probably is. Try and simplify it or break it into multiple sentences.
 - Avoid jargon unless you are sure the reader knows the term.
 - Don't hesitate to link between pages and concepts.
@@ -247,7 +248,7 @@ Prefer `i.e.` over `e.g.` or `ex.`. In a sentence, `i.e.` is surrounded by comma
 
 For example: *Select the current branch, i.e., 'main'.*
 
-It's also acceptable to use "for example" or "such as".
+It's also acceptable and clearer to use "for example" or "such as".
 
 ### Common external words
 
@@ -263,11 +264,13 @@ Refer to external brand guidelines for capitalization rules. Here are some commo
 
 ## Documentation release checklist
 
-- [ ] Generate output files for automated pages, `invoke docs.generate`.
+Before publishing new changes to documentation, complete the following tasks:
+
+- [ ] Generate output files for automated pages with `invoke docs.generate`.
   - [ ] Confirm build of `infrahubctl` pages.
   - [ ] Confirm build of `infrahub-cli` pages.
   - [ ] Confirm build of schema pages.
 - [ ] [Generate application screenshots](#creating-application-screenshots).
-- [ ] If app version update, create new release notes file in `docs/release-notes`.
+- [ ] If there is a new app version, create a new release notes document in `docs/release-notes`.
 - [ ] Run [linters](#linting-and-automation) and fix valid errors on all source files.
 - [ ] Perform test build of docs, `invoke docs.build`.
