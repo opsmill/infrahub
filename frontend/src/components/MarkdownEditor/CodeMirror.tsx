@@ -1,8 +1,8 @@
 import React, { FC, useEffect, useRef } from "react";
-import { EditorView, placeholder as placeholderView } from "@codemirror/view";
+import { EditorView, keymap, placeholder as placeholderView } from "@codemirror/view";
 import { EditorState } from "@codemirror/state";
-import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
-
+import { markdown, markdownLanguage, markdownKeymap } from "@codemirror/lang-markdown";
+import { defaultKeymap, indentWithTab } from "@codemirror/commands";
 const theme = EditorView.baseTheme({
   "&.cm-focused": {
     outline: "none",
@@ -30,6 +30,7 @@ export const CodeMirror: FC<CodeMirrorProps> = ({
     const startState = EditorState.create({
       doc: value,
       extensions: [
+        keymap.of([...defaultKeymap, indentWithTab, ...markdownKeymap]),
         markdown({ base: markdownLanguage }),
         onUpdate,
         placeholderView(placeholder),
