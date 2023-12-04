@@ -1,8 +1,8 @@
 import React, { forwardRef, useState } from "react";
+import { MarkdownEditorHeader } from "./MarkdownEditorHeader";
 import { MarkdownViewer } from "../MarkdownViewer";
 import { classNames } from "../../utils/common";
 import { CodeMirror } from "./CodeMirror";
-import { Button } from "../button";
 
 type MarkdownEditorProps = {
   className?: string;
@@ -16,11 +16,7 @@ export const MarkdownEditor = forwardRef<HTMLDivElement, MarkdownEditorProps>(
 
     return (
       <div ref={ref} className={classNames("rounded-md border border-gray-300", className)}>
-        <Button
-          onClick={() => setPreview(!preview)}
-          className="bg-white border-none rounded-none rounded-tl-md">
-          {preview ? "Continue editing" : "Preview"}
-        </Button>
+        <MarkdownEditorHeader preview={preview} onPreviewToggle={() => setPreview(!preview)} />
 
         {preview ? (
           <MarkdownViewer markdownText={text} />
