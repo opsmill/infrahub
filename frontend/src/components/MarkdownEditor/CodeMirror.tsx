@@ -1,6 +1,7 @@
 import React, { FC, useEffect, useRef } from "react";
 import { EditorView, placeholder as placeholderView } from "@codemirror/view";
 import { EditorState } from "@codemirror/state";
+import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 
 const theme = EditorView.baseTheme({
   "&.cm-focused": {
@@ -28,7 +29,12 @@ export const CodeMirror: FC<CodeMirrorProps> = ({
   useEffect(() => {
     const startState = EditorState.create({
       doc: value,
-      extensions: [onUpdate, placeholderView(placeholder), theme],
+      extensions: [
+        markdown({ base: markdownLanguage }),
+        onUpdate,
+        placeholderView(placeholder),
+        theme,
+      ],
     });
 
     const view = new EditorView({ state: startState, parent: editor.current! });
