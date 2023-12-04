@@ -197,7 +197,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         nodes: List[InfrahubNode] = []
         related_nodes: List[InfrahubNode] = []
 
-        for item in response[schema_kind]["edges"]:
+        for item in response.get(schema_kind, {}).get("edges", []):
             node = await InfrahubNode.from_graphql(client=self, branch=branch, data=item)
             nodes.append(node)
 
@@ -834,7 +834,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         nodes: List[InfrahubNodeSync] = []
         related_nodes: List[InfrahubNodeSync] = []
 
-        for item in response[schema_kind]["edges"]:
+        for item in response.get(schema_kind, {}).get("edges", []):
             node = InfrahubNodeSync.from_graphql(client=self, branch=branch, data=item)
             nodes.append(node)
 
