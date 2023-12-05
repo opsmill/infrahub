@@ -9,10 +9,14 @@ from .models import (
     InfraAutonomousSystem,
     InfraCircuit,
     InfraDevice,
+    InfraFrontPort,
     InfraIPAddress,
+    InfraInterface,
+    InfraPlatform,
     InfraPrefix,
     InfraProviderNetwork,
     InfraRack,
+    InfraRearPort,
     InfraRouteTarget,
     InfraVLAN,
     InfraVRF,
@@ -38,11 +42,15 @@ class InfrahubSync(InfrahubAdapter):
     TemplateCircuitType = TemplateCircuitType
     InfraDevice = InfraDevice
     TemplateDeviceType = TemplateDeviceType
+    InfraFrontPort = InfraFrontPort
+    InfraRearPort = InfraRearPort
     InfraIPAddress = InfraIPAddress
     TemplateLocationType = TemplateLocationType
+    InfraPlatform = InfraPlatform
     InfraProviderNetwork = InfraProviderNetwork
     InfraPrefix = InfraPrefix
     InfraRack = InfraRack
     InfraRouteTarget = InfraRouteTarget
     InfraVLAN = InfraVLAN
     InfraVRF = InfraVRF
+    InfraInterface = InfraInterface

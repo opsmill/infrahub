@@ -27,7 +27,21 @@ generics:
       - name: enabled
         kind: Boolean
         default_value: true
+      - name: mgmt_only
+        label: Management only
+        kind: Boolean
+        default_value: false
+      - name: mac_address
+        label: Mac Address
+        kind: Text
+        optional: true
+      - name: type
+        kind: Text
+        optional: true
     relationships:
+      # - name: type
+      #   peer: InterfaceType
+      #   cardinality: one
       - name: status
         peer: BuiltinStatus
         optional: true
@@ -86,6 +100,35 @@ generics:
         optional: true
         cardinality: many
         kind: Attribute
+  - name: PanelPort
+    namespace: Infra
+    description: "Generic Patch Panel Port."
+    label: "Interface"
+    icon: "mdi:ethernet"
+    menu_placement: "InfraDevice"
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+      - name: description
+        kind: Text
+        optional: true
+      - name: type
+        kind: Text
+        optional: true
+    relationships:
+      - name: device
+        peer: InfraDevice
+        identifier: "device__ports"
+        optional: false
+        cardinality: one
+        kind: Parent
+      # - name: type
+      #   peer: InterfaceType
+      #   cardinality: one
 
 nodes:
   - name: AutonomousSystem
@@ -289,7 +332,7 @@ nodes:
     inherit_from:
       - "InfraEndpoint"
     relationships:
-      - name: site
+      - name: location
         peer: BuiltinLocation
         optional: false
         cardinality: one
@@ -332,7 +375,6 @@ nodes:
     attributes:
       - name: name
         kind: Text
-        # unique: true
         optional: true
       - name: description
         kind: Text
@@ -341,14 +383,12 @@ nodes:
         label: Serial Number
         kind: Text
         optional: true
-        # unique: true
       - name: asset_tag
         label: Asset Tag
         kind: Text
         optional: true
-        # unique: true
     relationships:
-      - name: site
+      - name: location
         peer: BuiltinLocation
         optional: false
         cardinality: one
@@ -444,29 +484,10 @@ nodes:
         optional: false
         cardinality: one
         kind: Attribute
-  - name: InterfaceL3
+  - name: InterfaceL2L3
     namespace: Infra
-    description: "Network Layer 3 Interface"
-    label: "Interface L3"
-    include_in_menu: false
-    display_labels:
-      - name__value
-    order_by:
-      - name__value
-    inherit_from:
-      - "InfraInterface"
-      - "InfraEndpoint"
-      - "CoreArtifactTarget"
-    relationships:
-      - name: ip_addresses
-        peer: InfraIPAddress
-        optional: true
-        cardinality: many
-        kind: Component
-  - name: InterfaceL2
-    namespace: Infra
-    description: "Network Layer 2 Interface"
-    label: "Interface L2"
+    description: "Network Interface"
+    label: "Network Interface"
     include_in_menu: false
     display_labels:
       - name__value
@@ -480,8 +501,13 @@ nodes:
       - name: l2_mode
         label: Layer2 Mode
         kind: Text
-        enum: ["Access", "Trunk"]
+        enum: ["Access", "Tagged", "Tagged (All)"]
     relationships:
+      - name: ip_addresses
+        peer: InfraIPAddress
+        optional: true
+        cardinality: many
+        kind: Component
       - name: untagged_vlan
         label: Untagged VLAN
         peer: InfraVLAN
@@ -496,6 +522,66 @@ nodes:
         cardinality: one
         kind: Component
         identifier: interface_l2__tagged_vlan
+  - name: FrontPort
+    namespace: Infra
+    description: "Patch Panel Front Port"
+    label: "Front Port"
+    include_in_menu: false
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    inherit_from:
+      - InfraPanelPort
+      - "InfraEndpoint"
+    relationships:
+      - name: rear_port
+        peer: InfraRearPort
+        optional: true
+        cardinality: many
+        identifier: front_ports__rear_ports
+  - name: RearPort
+    namespace: Infra
+    description: "Patch Panel Front Port"
+    label: "Front Port"
+    include_in_menu: false
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    inherit_from:
+      - InfraPanelPort
+      - "InfraEndpoint"
+    relationships:
+      - name: front_port
+        peer: InfraFrontPort
+        optional: true
+        cardinality: many
+        identifier: front_ports__rear_ports
+  # - name: PanelPortType
+  #   namespace: Template
+  #   description: "A model of Patch Panel Port"
+  #   label: "Patch Panel Port Type"
+  #   icon: "mdi:poll"
+  #   menu_placement: "InfraDevice"
+  #   display_labels:
+  #     - name__value
+  #   order_by:
+  #     - name__value
+  #   inherit_from:
+  #     - "TemplateChoice"
+  # - name: InterfaceType
+  #   namespace: Template
+  #   description: "A model of Interface"
+  #   label: "Interface Type"
+  #   icon: "mdi:poll"
+  #   menu_placement: "InfraDevice"
+  #   display_labels:
+  #     - name__value
+  #   order_by:
+  #     - name__value
+  #   inherit_from:
+  #     - "TemplateChoice"
   - name: IPAddress
     namespace: Infra
     description: "IP Address"
@@ -520,7 +606,7 @@ nodes:
         cardinality: one
         kind: Attribute
       - name: interface
-        peer: InfraInterfaceL3
+        peer: InfraInterfaceL2L3
         optional: true
         cardinality: one
         kind: Parent
@@ -563,7 +649,7 @@ nodes:
     namespace: Infra
     description: "A Platform represent the type of software running on a device."
     label: "Platform"
-    icon: "mdi:application-cog-outline"  # mdi:application-brackets-outline
+    icon: "mdi:application-cog-outline"
     menu_placement: "InfraDevice"
     default_filter: name__value
     order_by:
@@ -590,10 +676,10 @@ nodes:
         kind: Text
         optional: true
     relationships:
-      - name: devices
-        peer: InfraDevice
-        optional: true
-        cardinality: many
+      - name: manufacturer
+        peer: CoreOrganization
+        optional: false
+        cardinality: one
   - name: ProviderNetwork
     namespace: Infra
     description: "Represent the boundary of a provider network, the details of which are unknown or unimportant."
@@ -655,7 +741,7 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
-      - name: site
+      - name: location
         peer: BuiltinLocation
         optional: true
         cardinality: one
@@ -672,7 +758,7 @@ nodes:
         kind: Attribute
       - name: gateway
         label: L3 Gateway
-        peer: InfraInterfaceL3
+        peer: InfraInterfaceL2L3
         optional: true
         cardinality: one
         kind: Attribute
@@ -704,7 +790,6 @@ nodes:
     attributes:
       - name: name
         kind: Text
-        # unique: true
       - name: description
         kind: Text
         optional: true
@@ -777,7 +862,7 @@ nodes:
     namespace: Infra
     description: "A VLAN is isolated layer two domain"
     label: "VLAN"
-    icon: "mdi:lan-pending"   # mdi:lan
+    icon: "mdi:lan-pending"
     default_filter: name__value
     order_by:
       - vlan_id__value
@@ -798,7 +883,7 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
-      - name: site
+      - name: location
         peer: BuiltinLocation
         optional: true
         cardinality: one

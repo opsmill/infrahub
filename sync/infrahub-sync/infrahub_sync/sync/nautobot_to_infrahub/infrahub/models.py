@@ -119,17 +119,18 @@ class TemplateCircuitType(InfrahubModel):
 
 class InfraDevice(InfrahubModel):
     _modelname = "InfraDevice"
-    _identifiers = ("name", "site", "organization")
-    _attributes = ("model", "rack", "role", "tags", "serial_number", "asset_tag")
+    _identifiers = ("location", "organization", "name")
+    _attributes = ("model", "rack", "role", "tags", "platform", "serial_number", "asset_tag")
 
     name: Optional[str]
     serial_number: Optional[str]
     asset_tag: Optional[str]
-    site: str
+    location: str
     model: str
     rack: Optional[str]
     role: Optional[str]
     tags: List[str] = []
+    platform: Optional[str]
     organization: Optional[str]
 
     local_id: Optional[str]
@@ -147,6 +148,35 @@ class TemplateDeviceType(InfrahubModel):
     name: str
     manufacturer: str
     tags: List[str] = []
+
+    local_id: Optional[str]
+    local_data: Optional[Any]
+
+
+class InfraFrontPort(InfrahubModel):
+    _modelname = "InfraFrontPort"
+    _identifiers = ("name", "device")
+    _attributes = ("rear_port", "description", "type")
+
+    name: str
+    description: Optional[str]
+    type: Optional[str]
+    rear_port: List[str] = []
+    device: str
+
+    local_id: Optional[str]
+    local_data: Optional[Any]
+
+
+class InfraRearPort(InfrahubModel):
+    _modelname = "InfraRearPort"
+    _identifiers = ("name", "device")
+    _attributes = ("description", "type")
+
+    name: str
+    description: Optional[str]
+    type: Optional[str]
+    device: str
 
     local_id: Optional[str]
     local_data: Optional[Any]
@@ -180,6 +210,20 @@ class TemplateLocationType(InfrahubModel):
     local_data: Optional[Any]
 
 
+class InfraPlatform(InfrahubModel):
+    _modelname = "InfraPlatform"
+    _identifiers = ("name", "manufacturer")
+    _attributes = ("description", "napalm_driver")
+
+    name: str
+    description: Optional[str]
+    napalm_driver: Optional[str]
+    manufacturer: str
+
+    local_id: Optional[str]
+    local_data: Optional[Any]
+
+
 class InfraProviderNetwork(InfrahubModel):
     _modelname = "InfraProviderNetwork"
     _identifiers = ("name",)
@@ -198,11 +242,12 @@ class InfraProviderNetwork(InfrahubModel):
 class InfraPrefix(InfrahubModel):
     _modelname = "InfraPrefix"
     _identifiers = ("prefix",)
-    _attributes = ("organization", "role", "vlan", "description")
+    _attributes = ("organization", "location", "role", "vlan", "description")
 
     prefix: str
     description: Optional[str]
     organization: Optional[str]
+    location: Optional[str]
     role: Optional[str]
     vlan: Optional[str]
 
@@ -243,14 +288,14 @@ class InfraRouteTarget(InfrahubModel):
 
 class InfraVLAN(InfrahubModel):
     _modelname = "InfraVLAN"
-    _identifiers = ("name", "vlan_id", "site", "organization", "vlan_group")
+    _identifiers = ("name", "vlan_id", "location", "organization", "vlan_group")
     _attributes = ("role", "description")
 
     name: str
     description: Optional[str]
     vlan_id: int
     organization: Optional[str]
-    site: Optional[str]
+    location: Optional[str]
     role: Optional[str]
     vlan_group: Optional[str]
 
@@ -269,6 +314,23 @@ class InfraVRF(InfrahubModel):
     organization: Optional[str]
     importRT: List[str] = []
     exportRT: List[str] = []
+
+    local_id: Optional[str]
+    local_data: Optional[Any]
+
+
+class InfraInterface(InfrahubModel):
+    _modelname = "InfraInterface"
+    _identifiers = ("name", "device")
+    _attributes = ("tags", "description", "mgmt_only", "mac_address", "type")
+
+    name: str
+    description: Optional[str]
+    mgmt_only: Optional[bool]
+    mac_address: Optional[str]
+    type: Optional[str]
+    device: str
+    tags: List[str] = []
 
     local_id: Optional[str]
     local_data: Optional[Any]
