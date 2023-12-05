@@ -1339,6 +1339,8 @@ class InfrahubNodeSync(InfrahubNodeBase):
         else:
             self._update(at=at)
 
+        self._client.store.set(key=self.id, node=self)
+
     def generate_query_data(
         self,
         filters: Optional[Dict[str, Any]] = None,
@@ -1469,6 +1471,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
 
     def _create(self, at: Timestamp) -> None:
         input_data = self._generate_input_data()
+        input_data["data"]["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
         mutation_name = f"{self._schema.kind}Create"
         query = Mutation(
