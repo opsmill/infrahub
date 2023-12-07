@@ -30,7 +30,6 @@ if TYPE_CHECKING:
 class RabbitMQMessageBus(InfrahubMessageBus):
     def __init__(
         self,
-        component_type: ComponentType,
     ) -> None:
         self.channel: AbstractChannel
         self.exchange: AbstractExchange
@@ -41,15 +40,14 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         self.events_queue: AbstractQueue
         self.dlx: AbstractExchange
 
-        self.component_type = component_type
         self.loop = asyncio.get_running_loop()
         self.futures: MutableMapping[str, asyncio.Future] = {}
 
     async def initialize(self, service: InfrahubServices) -> None:
         self.service = service
-        if self.component_type == ComponentType.API_SERVER:
+        if self.service.component_type == ComponentType.API_SERVER:
             await self._initialize_api_server()
-        elif self.component_type == ComponentType.GIT_AGENT:
+        elif self.service.component_type == ComponentType.GIT_AGENT:
             await self._initialize_git_worker()
 
     async def on_callback(self, message: AbstractIncomingMessage) -> None:

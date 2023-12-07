@@ -12,6 +12,8 @@ class InfrahubCache:
         """Return a list of active keys that match the provided filter."""
         raise NotImplementedError()
 
-    async def set(self, key: str, value: str, expires: Optional[int] = None) -> bool:
+    async def set(
+        self, key: str, value: str, expires: Optional[int] = None, not_exists: bool = False
+    ) -> Optional[bool]:
         """Set a value in the cache."""
         raise NotImplementedError()
