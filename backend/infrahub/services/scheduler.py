@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, List
 from infrahub import config
 from infrahub.components import ComponentType
 from infrahub.tasks.keepalive import refresh_api_server_components
-from infrahub.tasks.recurring import trigger_branch_refresh
+from infrahub.tasks.recurring import resync_repositories, trigger_branch_refresh
 
 if TYPE_CHECKING:
     from infrahub.services import InfrahubServices, ServiceFunction
@@ -38,6 +38,7 @@ class InfrahubScheduler:
 
             schedules = [
                 Schedule(name="refresh_api_components", interval=10, function=refresh_api_server_components),
+                Schedule(name="resync_repositories", interval=10, function=resync_repositories),
                 Schedule(
                     name="branch_refresh", interval=10, function=trigger_branch_refresh, start_delay=random_number
                 ),
