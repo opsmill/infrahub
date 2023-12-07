@@ -1,0 +1,12 @@
+---
+extends: substitution
+message: "Instead of %s, use ',i.e.,' or 'for example:'."
+level: warning
+ignorecase: true
+nonword: true
+action:
+  name: replace
+swap:
+  - e\.g\.: i.e.
+  - e\. g\.: i.e.
+  - i\. e\.: i.e.

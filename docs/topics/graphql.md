@@ -58,7 +58,7 @@ At the object level, there are mainly 3 types of resources that can be accessed,
 Each attribute is its own object in GraphQL to expose the value and all the metadata.
 
 In the query below, to access the attribute **name** of the object the query must be `CoreRepository` > `edges` > `node` > `name` > `value`.
-At the same level all the metadata of the attribute are also available example : `is_protected`, `is_visible`, `source` & `owner`
+At the same level all the metadata of the attribute are also available example: `is_protected`, `is_visible`, `source` & `owner`
 
 ```graphql #6-14 Example query to access the value and the properties of the attribute 'name'
 query {
