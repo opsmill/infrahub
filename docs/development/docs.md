@@ -32,7 +32,7 @@ The primary commands are as follows:
 
 ## Linting and automation
 
-Infrahub used [Vale](https://vale.sh) to check grammar, style, and word usage. You can find Vale's configuration in `.vale.ini`, and the Infrahub styles located in `.vale/styles/Infrahub`.
+Infrahub uses [Vale](https://vale.sh) to check grammar, style, and word usage. You can find Vale's configuration in `.vale.ini`, and the Infrahub styles located in `.vale/styles/Infrahub`.
 
 [Markdownlint](https://github.com/DavidAnson/markdownlint) is used to encourage consistent markdown files, and Infrahub's configuration is located at `.markdownlint.yaml`.
 
