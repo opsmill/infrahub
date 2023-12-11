@@ -2,7 +2,7 @@ import React, { FC, useRef, useState } from "react";
 import { MarkdownEditorHeader } from "./MarkdownEditorHeader";
 import { MarkdownViewer } from "../MarkdownViewer";
 import { classNames } from "../../utils/common";
-import { CodeMirror, CodeMirrorType } from "./CodeMirror";
+import { useCodeMirror } from "./CodeMirror";
 
 type MarkdownEditorProps = {
   className?: string;
@@ -21,7 +21,18 @@ export const MarkdownEditor: FC<MarkdownEditorProps> = ({
 }) => {
   const [isPreviewActive, setPreviewActive] = useState<boolean>(false);
   const [editorText, setEditorText] = useState<string>(defaultValue);
-  const codeMirrorRef = useRef<CodeMirrorType>({ editor: null });
+  const codeMirrorRef = useRef<HTMLDivElement>(null);
+
+  const handleTextChange = (value: string) => {
+    setEditorText(value);
+    onChange(value);
+  };
+
+  const codeMirror = useCodeMirror(codeMirrorRef.current, {
+    placeholder,
+    value: editorText,
+    onChange: handleTextChange,
+  });
 
   if (disabled) {
     return (
@@ -31,11 +42,6 @@ export const MarkdownEditor: FC<MarkdownEditorProps> = ({
       />
     );
   }
-
-  const handleTextChange = (value: string) => {
-    setEditorText(value);
-    onChange(value);
-  };
 
   return (
     <div
@@ -47,7 +53,7 @@ export const MarkdownEditor: FC<MarkdownEditorProps> = ({
         className
       )}>
       <MarkdownEditorHeader
-        codeMirror={codeMirrorRef.current}
+        codeMirror={codeMirror}
         previewMode={isPreviewActive}
         onPreviewToggle={() => setPreviewActive((prev) => !prev)}
       />
@@ -55,12 +61,7 @@ export const MarkdownEditor: FC<MarkdownEditorProps> = ({
       {isPreviewActive ? (
         <MarkdownViewer markdownText={editorText} className="p-2" />
       ) : (
-        <CodeMirror
-          ref={codeMirrorRef}
-          placeholder={placeholder}
-          value={editorText}
-          onChange={handleTextChange}
-        />
+        <div ref={codeMirrorRef} />
       )}
     </div>
   );

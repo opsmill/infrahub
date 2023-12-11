@@ -2,9 +2,9 @@ import React, { FC } from "react";
 import { Button } from "../button";
 import { Icon } from "@iconify-icon/react";
 import { boldCommand, EditorCommand, italicCommand, strikethroughCommand } from "./commands";
-import { CodeMirrorType } from "./CodeMirror";
+import { UseCodeMirror } from "./CodeMirror";
 
-type ToolbarProps = { codeMirror: CodeMirrorType };
+type ToolbarProps = { codeMirror: UseCodeMirror };
 
 const ToolBar: FC<ToolbarProps> = ({ codeMirror }) => {
   const handleButtonMouseDown =
@@ -32,7 +32,7 @@ const ToolBar: FC<ToolbarProps> = ({ codeMirror }) => {
 };
 
 type EditorHeaderProps = {
-  codeMirror: CodeMirrorType;
+  codeMirror: UseCodeMirror;
   previewMode: boolean;
   onPreviewToggle: () => void;
 };

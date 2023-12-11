@@ -1,10 +1,10 @@
-import { CodeMirrorType } from "./CodeMirror";
+import { UseCodeMirror } from "./CodeMirror";
 import { EditorSelection } from "@codemirror/state";
 
 export type EditorCommand = {
   label: string;
   icon: string;
-  onClick: (codeMirror: CodeMirrorType) => void;
+  onClick: (codeMirror: UseCodeMirror) => void;
 };
 
 const applyFormatting =

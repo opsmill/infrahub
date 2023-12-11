@@ -1,11 +1,11 @@
-import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
-import { EditorView, keymap, placeholder as placeholderView } from "@codemirror/view";
+import { useEffect, useState } from "react";
+import { EditorView, keymap, ViewUpdate, placeholder as placeholderView } from "@codemirror/view";
 import { EditorState } from "@codemirror/state";
-import { markdown, markdownLanguage, markdownKeymap } from "@codemirror/lang-markdown";
 import { defaultKeymap, indentWithTab } from "@codemirror/commands";
+import { markdown, markdownKeymap, markdownLanguage } from "@codemirror/lang-markdown";
 import { basicLight } from "cm6-theme-basic-light";
 
-export type CodeMirrorType = {
+export type UseCodeMirror = {
   editor?: HTMLDivElement | null;
   state?: EditorState;
   view?: EditorView;
@@ -30,51 +30,74 @@ type CodeMirrorProps = {
   value?: string;
   placeholder?: string;
   onChange: (value: string) => void;
+  autoFocus?: boolean;
 };
 
-export const CodeMirror = forwardRef<CodeMirrorType, CodeMirrorProps>(
-  ({ value = "", placeholder = "Write your text here...", onChange }, ref) => {
-    const editorRef = useRef<HTMLDivElement>(null);
-    const [editorState, setEditorState] = useState<EditorState>();
-    const [editorView, setEditorView] = useState<EditorView>();
+export function useCodeMirror(
+  container: HTMLDivElement | null,
+  { value, onChange, autoFocus, placeholder = "" }: CodeMirrorProps
+) {
+  const [containerElement, setContainerElement] = useState<HTMLDivElement>();
+  const [view, setView] = useState<EditorView>();
+  const [state, setState] = useState<EditorState>();
 
-    useImperativeHandle(ref, () => ({
-      editor: editorRef.current,
-      state: editorState,
-      view: editorView,
-    }));
+  const updateListener = EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
+    if (viewUpdate.docChanged) {
+      onChange(viewUpdate.state.doc.toString());
+    }
+  });
 
-    const onUpdate = EditorView.updateListener.of(({ state }) => {
-      onChange(state.doc.toString());
-    });
-
-    useEffect(() => {
-      const startState = EditorState.create({
+  useEffect(() => {
+    if (containerElement && !state) {
+      const stateCurrent = EditorState.create({
         doc: value,
         extensions: [
+          updateListener,
+          theme,
           keymap.of([...defaultKeymap, indentWithTab, ...markdownKeymap]),
           markdown({ base: markdownLanguage }),
-          onUpdate,
+          updateListener,
           placeholderView(placeholder),
           theme,
           basicLight,
         ],
       });
+      setState(stateCurrent);
 
-      const newEditorView = new EditorView({ state: startState, parent: editorRef.current! });
+      if (!view) {
+        const viewCurrent = new EditorView({
+          state: stateCurrent,
+          parent: containerElement,
+        });
+        setView(viewCurrent);
+      }
+    }
 
-      newEditorView.focus();
-      setEditorState(startState);
-      setEditorView(newEditorView);
+    return () => {
+      if (view) {
+        setState(undefined);
+        setView(undefined);
+      }
+    };
+  }, [containerElement, state]);
 
-      return () => {
-        if (editorView) {
-          editorView.destroy();
-          setEditorView(undefined);
-        }
-      };
-    }, []);
+  useEffect(() => setContainerElement(container!), [container]);
 
-    return <div ref={editorRef} data-cy="codemirror-editor"></div>;
-  }
-);
+  useEffect(() => {
+    if (autoFocus && view) {
+      view.focus();
+    }
+
+    return () => {
+      if (view) {
+        view.destroy();
+        setView(undefined);
+      }
+    };
+  }, [view]);
+
+  return {
+    state,
+    view,
+  };
+}
