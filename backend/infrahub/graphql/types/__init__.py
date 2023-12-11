@@ -31,6 +31,7 @@ __all__ = [
     "BaseAttribute",
     "DropdownType",
     "IPHostType",
+    "IPNetworkType",
     "TextAttributeType",
     "NumberAttributeType",
     "CheckboxAttributeType",
