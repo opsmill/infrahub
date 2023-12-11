@@ -34,7 +34,6 @@ $ infrahub git-agent start [OPTIONS] [PORT]
 
 **Options**:
 
-* `--interval INTEGER`: Interval in sec between remote repositories update.  [default: 10]
 * `--debug / --no-debug`: Enable advanced logging and troubleshooting  [default: no-debug]
 * `--config-file TEXT`: Location of the configuration file to use for Infrahub  [env var: INFRAHUB_CONFIG; default: infrahub.toml]
 * `--help`: Show this message and exit.

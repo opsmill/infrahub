@@ -80,15 +80,7 @@ async def initialize_git_agent(service: InfrahubServices) -> None:
     await sync_remote_repositories(service=service)
 
 
-async def monitor_remote_activity(service: InfrahubServices, interval: int) -> None:
-    log.info("Monitoring remote repository for updates .. ")
-
-    while True:
-        await sync_remote_repositories(service=service)
-        await asyncio.sleep(interval)
-
-
-async def _start(debug: bool, interval: int, port: int) -> None:
+async def _start(debug: bool, port: int) -> None:
     """Start Infrahub Git Agent."""
 
     log_level = "DEBUG" if debug else "INFO"
@@ -124,7 +116,6 @@ async def _start(debug: bool, interval: int, port: int) -> None:
 
     tasks = [
         asyncio.create_task(subscribe_rpcs_queue(service=service)),
-        asyncio.create_task(monitor_remote_activity(service=service, interval=interval)),
     ]
 
     await asyncio.gather(*tasks)
@@ -132,7 +123,6 @@ async def _start(debug: bool, interval: int, port: int) -> None:
 
 @app.command()
 def start(
-    interval: int = typer.Option(10, help="Interval in sec between remote repositories update."),
     debug: bool = typer.Option(False, help="Enable advanced logging and troubleshooting"),
     config_file: str = typer.Option(
         "infrahub.toml", envvar="INFRAHUB_CONFIG", help="Location of the configuration file to use for Infrahub"
@@ -151,4 +141,4 @@ def start(
 
     config.load_and_exit(config_file_name=config_file)
 
-    aiorun(_start(interval=interval, debug=debug, port=port))
+    aiorun(_start(debug=debug, port=port))
