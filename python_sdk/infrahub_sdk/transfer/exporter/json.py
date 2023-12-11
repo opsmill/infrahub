@@ -1,6 +1,5 @@
-import asyncio
 from collections import defaultdict
-from itertools import chain
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict, List
 
@@ -48,19 +47,26 @@ class LineDelimitedJSONExporter(ExporterInterface):
         else:
             namespaces = [ns for ns in node_schema_by_namespace if ns not in ILLEGAL_NAMESPACES]
 
-        tasks = []
+        schema_batch = await self.client.create_batch()
         for namespace in namespaces:
-            tasks.extend(
-                [
-                    self.client.all(node_schema.kind, branch=branch)
-                    for node_schema in node_schema_by_namespace[namespace]
-                ]
-            )
+            for node_schema in node_schema_by_namespace[namespace]:
+                schema_batch.add(node_schema.kind, task=self.client.all, branch=branch)
+        all_nodes = []
 
-        nodes = list(chain(*await asyncio.gather(*tasks)))
+        async for _, schema_nodes in schema_batch.execute():
+            all_nodes.extend(schema_nodes)
 
+        timestamp = datetime.now(timezone.utc).astimezone().isoformat()
         json_lines = [
-            ujson.dumps({"kind": n.get_kind(), "graphql_json": ujson.dumps(n.get_raw_graphql_data())}) for n in nodes
+            ujson.dumps(
+                {
+                    "id": n.id,
+                    "kind": n.get_kind(),
+                    "timestamp": timestamp,
+                    "graphql_json": ujson.dumps(n.get_raw_graphql_data()),
+                }
+            )
+            for n in all_nodes
         ]
         file_content = "\n".join(json_lines)
 
