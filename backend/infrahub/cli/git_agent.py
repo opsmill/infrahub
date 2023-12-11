@@ -113,7 +113,8 @@ async def _start(debug: bool, interval: int, port: int) -> None:
         cache=RedisCache(),
         client=client,
         database=database,
-        message_bus=RabbitMQMessageBus(component_type=ComponentType.GIT_AGENT),
+        message_bus=RabbitMQMessageBus(),
+        component_type=ComponentType.GIT_AGENT,
     )
     await service.initialize()
     await initialize_git_agent(service=service)
