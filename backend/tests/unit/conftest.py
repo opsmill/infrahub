@@ -1176,6 +1176,15 @@ async def choices_schema(db: InfrahubDatabase, default_branch: Branch, node_grou
                     {"name": "color", "kind": "Text", "enum": ["red", "green", "blue"], "optional": True},
                     {"name": "measuring_system", "kind": "Text", "enum": ["metric"], "optional": True},
                     {"name": "description", "kind": "Text", "optional": True},
+                    {
+                        "name": "section",
+                        "kind": "Dropdown",
+                        "optional": True,
+                        "choices": [
+                            {"name": "backend", "label": "Backend", "color": ""},
+                            {"name": "frontend", "label": "Frontend", "color": "#0000ff"},
+                        ],
+                    },
                 ],
             },
         ],
@@ -1188,6 +1197,13 @@ async def choices_schema(db: InfrahubDatabase, default_branch: Branch, node_grou
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "status", "kind": "Text", "enum": ["active", "passive"]},
+                    {"name": "comment", "kind": "Text", "optional": True},
+                    {
+                        "name": "temperature_scale",
+                        "kind": "Dropdown",
+                        "optional": True,
+                        "choices": [{"name": "celsius", "label": "Celsius"}],
+                    },
                 ],
                 "inherit_from": ["BaseChoice"],
             },

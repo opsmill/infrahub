@@ -297,6 +297,8 @@ class DropdownChoice(BaseSchemaModel):
         cls,
         v: str,
     ) -> str:
+        if v == "":
+            return v
         if HTML_COLOR.match(v):
             return v.lower()
 
