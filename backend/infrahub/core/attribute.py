@@ -356,12 +356,12 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         return True
 
     @classmethod
-    async def get_query_filter(  # pylint: disable=unused-argument
+    async def get_query_filter(  # pylint: disable=unused-argument,disable=too-many-branches
         cls,
         name: str,
         filter_name: str,
         branch: Optional[Branch] = None,
-        filter_value: Optional[Union[str, int, bool]] = None,
+        filter_value: Optional[Union[str, int, bool, list]] = None,
         include_match: bool = True,
         param_prefix: Optional[str] = None,
         db: Optional[InfrahubDatabase] = None,
@@ -372,8 +372,11 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         query_params: Dict[str, Any] = {}
         query_where: List[str] = []
 
-        if filter_value and not isinstance(filter_value, (str, bool, int)):
+        if filter_value and not isinstance(filter_value, (str, bool, int, list)):
             raise TypeError(f"filter {filter_name}: {filter_value} ({type(filter_value)}) is not supported.")
+
+        if isinstance(filter_value, list) and not all(isinstance(value, (str, bool, int)) for value in filter_value):
+            raise TypeError(f"filter {filter_name}: {filter_value} (list) contains unsupported item")
 
         param_prefix = param_prefix or f"attr_{name}"
 
@@ -398,6 +401,11 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 query_params[f"{param_prefix}_value"] = filter_value
             else:
                 query_filter.append(QueryNode(name="av", labels=["AttributeValue"]))
+
+        elif filter_name == "values" and isinstance(filter_value, list):
+            query_filter.extend((QueryRel(labels=["HAS_VALUE"]), QueryNode(name="av", labels=["AttributeValue"])))
+            query_where.append(f"av.value IN ${param_prefix}_value")
+            query_params[f"{param_prefix}_value"] = filter_value
 
         elif filter_name in cls._flag_properties and filter_value is not None:
             query_filter.append(QueryRel(labels=[filter_name.upper()]))
