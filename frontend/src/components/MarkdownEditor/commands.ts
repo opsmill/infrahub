@@ -7,50 +7,76 @@ export type EditorCommand = {
   onClick: (codeMirror: UseCodeMirror) => void;
 };
 
-const applyFormatting =
+const applyFormattingForToken =
   (markdownToken: string): EditorCommand["onClick"] =>
   ({ view }) => {
     if (!view) return;
 
     const tokenLength = markdownToken.length;
     const { state, dispatch } = view;
-    const { from, to } = state.selection.main;
+    const { from: selectionFrom, to: selectionTo } = state.selection.main;
 
-    const lineStart = state.doc.lineAt(from).from;
-    const lineEnd = state.doc.lineAt(from).to;
+    const isTextAlreadyFormatted = (text: string) =>
+      text.startsWith(markdownToken) && text.endsWith(markdownToken);
 
-    // Find word boundaries around the cursor position
-    let wordStart = from;
-    while (wordStart > lineStart && !/\s/.test(state.sliceDoc(wordStart - 1, wordStart))) {
-      wordStart--;
-    }
+    const getSelectionRangeText = (from: number, to: number) => state.sliceDoc(from, to);
 
-    let wordEnd = to;
-    while (wordEnd < lineEnd && !/\s/.test(state.sliceDoc(wordEnd, wordEnd + 1))) {
-      wordEnd++;
-    }
+    const isSelectionRange = selectionFrom !== selectionTo;
+    if (isSelectionRange) {
+      const selectedText = getSelectionRangeText(selectionFrom, selectionTo);
+      const isAlreadyFormatted = isTextAlreadyFormatted(selectedText);
 
-    const selectedText = state.sliceDoc(wordStart, wordEnd);
-    const isAlreadyFormatted =
-      selectedText.startsWith(markdownToken) && selectedText.endsWith(markdownToken);
-
-    const changes = [
-      {
-        from: wordStart,
-        to: wordEnd,
+      const changes = {
+        from: selectionFrom,
+        to: selectionTo,
         insert: isAlreadyFormatted
           ? selectedText.slice(tokenLength, -tokenLength)
           : `${markdownToken}${selectedText}${markdownToken}`,
-      },
-    ];
+      };
+
+      return dispatch({
+        changes,
+      });
+    }
+    const getWordAtCursor = () => {
+      const { from: lineStart, to: lineEnd } = state.doc.lineAt(selectionFrom);
+
+      const textPreviousCursor = state.doc.sliceString(lineStart, selectionFrom);
+      const textAfterCursor = state.doc.sliceString(selectionFrom, lineEnd);
+
+      const previousPosition = textPreviousCursor.lastIndexOf(" ");
+      const nextPosition = textAfterCursor.lastIndexOf(" ");
+
+      const from = previousPosition === -1 ? lineStart : lineStart + previousPosition + 1;
+      const to = nextPosition === -1 ? lineEnd : selectionFrom + nextPosition;
+
+      return {
+        from,
+        to,
+        text: state.sliceDoc(from, to),
+      };
+    };
+
+    const wordAtCursor = getWordAtCursor();
+    const isAlreadyFormatted = isTextAlreadyFormatted(wordAtCursor.text);
+
+    const changes = {
+      from: wordAtCursor.from,
+      to: wordAtCursor.to,
+      insert: isAlreadyFormatted
+        ? wordAtCursor.text.slice(tokenLength, -tokenLength)
+        : `${markdownToken}${wordAtCursor.text}${markdownToken}`,
+    };
+
+    const wordLimit = isAlreadyFormatted
+      ? wordAtCursor.to - tokenLength * 2
+      : wordAtCursor.to + tokenLength * 2;
+    const nextCursorPosition = wordAtCursor.text === "" ? wordLimit - tokenLength : wordLimit;
 
     dispatch(
       state.changeByRange(() => ({
         changes,
-        range: EditorSelection.range(
-          wordStart,
-          isAlreadyFormatted ? wordEnd - tokenLength * 2 : wordEnd + tokenLength * 2
-        ),
+        range: EditorSelection.range(nextCursorPosition, nextCursorPosition),
       }))
     );
   };
@@ -58,17 +84,17 @@ const applyFormatting =
 export const boldCommand: EditorCommand = {
   label: "Add bold text",
   icon: "mdi:format-bold",
-  onClick: applyFormatting("**"),
+  onClick: applyFormattingForToken("**"),
 };
 
 export const italicCommand: EditorCommand = {
   label: "Add italic text",
   icon: "mdi:format-italic",
-  onClick: applyFormatting("_"),
+  onClick: applyFormattingForToken("_"),
 };
 
 export const strikethroughCommand: EditorCommand = {
   label: "Add strikethrough text",
   icon: "mdi:format-strikethrough-variant",
-  onClick: applyFormatting("~~"),
+  onClick: applyFormattingForToken("~~"),
 };
