@@ -66,11 +66,11 @@ async def run_schedule(schedule: Schedule, service: InfrahubServices) -> None:
     service.log.info("Started recurring task", task=schedule.name)
 
     while service.scheduler.running:
-        for _ in range(schedule.interval):
-            await asyncio.sleep(delay=1)
-            if not service.scheduler.running:
-                return
         try:
             await schedule.function(service)
         except Exception as exc:  # pylint: disable=broad-exception-caught
             service.log.error(str(exc))
+        for _ in range(schedule.interval):
+            if not service.scheduler.running:
+                return
+            await asyncio.sleep(delay=1)
