@@ -150,3 +150,67 @@ async def test_build_subquery_order_relationship(db: InfrahubDatabase, default_b
     assert query == expected_query
     assert params == {"order1_name": "name", "order1_rel_name": "testcar__testperson"}
     assert result_name == "order1"
+
+
+async def test_build_subquery_filter_attribute_multiple_values(
+    db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema: NodeSchema
+):
+    attr_schema = all_attribute_types_schema.get_attribute(name="mystring")
+
+    query, params, result_name = await build_subquery_filter(
+        db=db,
+        field=attr_schema,
+        name="name",
+        filter_name="values",
+        filter_value=["myvalue", "myothervalue"],
+        branch_filter="PLACEHOLDER",
+        branch=default_branch,
+        subquery_idx=1,
+    )
+
+    expected_query = """
+    WITH n
+    MATCH p = (n)-[f1r1:HAS_ATTRIBUTE]-(i:Attribute { name: $filter1_name })-[f1r2:HAS_VALUE]-(av:AttributeValue)
+    WHERE av.value IN $filter1_value AND all(r IN relationships(p) WHERE (PLACEHOLDER))
+    RETURN n as filter1
+    ORDER BY f1r1.branch_level DESC, f1r1.from DESC, f1r2.branch_level DESC, f1r2.from DESC
+    LIMIT 1
+    """
+    assert query == expected_query
+    assert params == {"filter1_name": "name", "filter1_value": ["myvalue", "myothervalue"]}
+    assert result_name == "filter1"
+
+
+async def test_build_subquery_filter_relationship_multiple_values(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema
+):
+    car_schema = registry.schema.get(name="TestCar")
+    rel_schema = car_schema.get_relationship(name="owner")
+
+    query, params, result_name = await build_subquery_filter(
+        db=db,
+        field=rel_schema,
+        name="owner",
+        filter_name="name__values",
+        filter_value=["john", "jane"],
+        branch_filter="PLACEHOLDER",
+        branch=default_branch,
+        subquery_idx=1,
+    )
+
+    # ruff: noqa: E501
+    expected_query = """
+    WITH n
+    MATCH p = (n)-[f1r1:IS_RELATED]->(rl:Relationship { name: $filter1_rel_name })-[f1r2:IS_RELATED]->(peer:Node)-[f1r3:HAS_ATTRIBUTE]-(i:Attribute { name: $filter1_name })-[f1r4:HAS_VALUE]-(av:AttributeValue)
+    WHERE av.value IN $filter1_value AND all(r IN relationships(p) WHERE (PLACEHOLDER))
+    RETURN n as filter1
+    ORDER BY f1r1.branch_level DESC, f1r1.from DESC, f1r2.branch_level DESC, f1r2.from DESC, f1r3.branch_level DESC, f1r3.from DESC, f1r4.branch_level DESC, f1r4.from DESC
+    LIMIT 1
+    """
+    assert query == expected_query
+    assert params == {
+        "filter1_name": "name",
+        "filter1_rel_name": "testcar__testperson",
+        "filter1_value": ["john", "jane"],
+    }
+    assert result_name == "filter1"

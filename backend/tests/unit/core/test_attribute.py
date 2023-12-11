@@ -287,6 +287,27 @@ async def test_get_query_filter_any_node_property(db: InfrahubDatabase, default_
     assert matchs == []
 
 
+async def test_get_query_filter_multiple_values(db: InfrahubDatabase, default_branch: Branch):
+    filters, params, matchs = await String.get_query_filter(
+        name="name", filter_name="values", filter_value=["test1", "test2"]
+    )
+    expected_response = [
+        "(n)",
+        "-[:HAS_ATTRIBUTE]-",
+        "(i:Attribute { name: $attr_name_name })",
+        "-[:HAS_VALUE]-",
+        "(av:AttributeValue)",
+    ]
+    assert [str(item) for item in filters] == expected_response
+    assert params == {"attr_name_name": "name", "attr_name_value": ["test1", "test2"]}
+    assert matchs == ["av.value IN $attr_name_value"]
+
+
+async def test_get_query_filter_multiple_values_invalid_type(db: InfrahubDatabase, default_branch: Branch):
+    with pytest.raises(TypeError):
+        await String.get_query_filter(name="name", filter_name="values", filter_value=["test1", 1.0])
+
+
 async def test_base_serialization(db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema):
     obj1 = await Node.init(db=db, schema="TestAllAttributeTypes")
     await obj1.new(db=db, name="obj1", mystring="abc", mybool=False, myint=123, mylist=["1", 2, False])

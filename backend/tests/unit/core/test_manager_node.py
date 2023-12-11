@@ -1,3 +1,4 @@
+import pytest
 from infrahub_sdk import UUIDT
 
 from infrahub.core import registry
@@ -251,6 +252,21 @@ async def test_query_with_filter_string_int(
     assert len(nodes) == 1
 
 
+async def test_query_filter_with_multiple_values_string_int(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    criticality_schema,
+    criticality_low: Node,
+    criticality_medium: Node,
+    criticality_high: Node,
+):
+    nodes = await NodeManager.query(db=db, schema=criticality_schema, filters={"level__values": [2, 3]})
+    assert len(nodes) == 2
+
+    nodes = await NodeManager.query(db=db, schema=criticality_schema, filters={"name__values": ["medium", "low"]})
+    assert len(nodes) == 2
+
+
 async def test_query_with_filter_bool_rel(
     db: InfrahubDatabase,
     person_john_main,
@@ -270,6 +286,41 @@ async def test_query_with_filter_bool_rel(
     # Check filter with a relationship
     nodes = await NodeManager.query(db=db, schema=car, branch=branch, filters={"owner__name__value": "John"})
     assert len(nodes) == 2
+
+
+async def test_query_filter_with_multiple_values_rel(
+    db: InfrahubDatabase,
+    person_john_main,
+    person_jane_main,
+    car_accord_main,
+    car_volt_main,
+    car_yaris_main,
+    car_camry_main,
+    branch: Branch,
+):
+    car = registry.get_schema(name="TestCar")
+
+    nodes = await NodeManager.query(db=db, schema=car, branch=branch, filters={"owner__name__values": ["John", "Jane"]})
+    assert len(nodes) == 4
+
+
+async def test_qeury_with_multiple_values_invalid_type(
+    db: InfrahubDatabase,
+    person_john_main,
+    person_jane_main,
+    car_accord_main,
+    car_volt_main,
+    car_yaris_main,
+    car_camry_main,
+    branch: Branch,
+):
+    car = registry.get_schema(name="TestCar")
+
+    with pytest.raises(TypeError):
+        await NodeManager.query(db=db, schema=car, branch=branch, filters={"owner__name__values": [1.0]})
+
+    with pytest.raises(TypeError):
+        await NodeManager.query(db=db, schema=car, branch=branch, filters={"owner__name__values": [None]})
 
 
 async def test_query_non_default_class(
