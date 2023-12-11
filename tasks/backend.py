@@ -127,7 +127,7 @@ def test_core(context: Context, database: str = INFRAHUB_DATABASE):
     with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_test_compose_files_cmd(database=database)
         base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run {build_test_envs()} infrahub-test"
-        exec_cmd = f"pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/unit/core/test_attribute.py"
+        exec_cmd = f"pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/unit/core"
         if database == "neo4j":
             exec_cmd += " --neo4j"
         print(f"{base_cmd} {exec_cmd}")
