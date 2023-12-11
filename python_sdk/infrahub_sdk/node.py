@@ -768,7 +768,7 @@ class InfrahubNodeBase:
             elif rel_schema.cardinality == RelationshipCardinality.MANY:
                 data[item_name] = []
 
-        if update:
+        if exclude_unmodified:
             data, variables = self._strip_unmodified(data=data, variables=variables)
 
         mutation_variables = {key: type(value) for key, value in variables.items()}
@@ -1192,8 +1192,8 @@ class InfrahubNode(InfrahubNodeBase):
         )
         self._existing = True
 
-    async def update(self, at: Timestamp) -> None:
-        input_data = self._generate_input_data(update=True)
+    async def update(self, at: Timestamp, do_full_update: bool = False) -> None:
+        input_data = self._generate_input_data(exclude_unmodified=not do_full_update)
         input_data["data"]["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
         query = Mutation(
@@ -1496,8 +1496,8 @@ class InfrahubNodeSync(InfrahubNodeBase):
         )
         self._existing = True
 
-    def update(self, at: Timestamp) -> None:
-        input_data = self._generate_input_data(update=True)
+    def update(self, at: Timestamp, do_full_update: bool = False) -> None:
+        input_data = self._generate_input_data(exclude_unmodified=not do_full_update)
         input_data["data"]["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
         query = Mutation(
