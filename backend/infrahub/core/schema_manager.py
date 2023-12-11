@@ -565,6 +565,7 @@ class SchemaBranch:
                 filter.enum = attr.enum
 
             filters.append(filter)
+            filters.append(FilterSchema(name=f"{attr.name}__values", kind=FilterSchemaKind.LIST))
 
             for flag_prop in FlagPropertyMixin._flag_properties:
                 filters.append(FilterSchema(name=f"{attr.name}__{flag_prop}", kind=FilterSchemaKind.BOOLEAN))
@@ -599,6 +600,7 @@ class SchemaBranch:
                     filter.enum = attr.enum
 
                 filters.append(filter)
+                filters.append(FilterSchema(name=f"{rel.name}__{attr.name}__values", kind=FilterSchemaKind.LIST))
 
                 for flag_prop in FlagPropertyMixin._flag_properties:
                     filters.append(

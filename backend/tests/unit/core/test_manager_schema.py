@@ -796,6 +796,7 @@ async def test_schema_branch_process_filters(
     expected_filters = [
         {"name": "ids", "kind": FilterSchemaKind.TEXT, "enum": None, "object_kind": None, "description": None},
         {"name": "name__value", "kind": FilterSchemaKind.TEXT, "enum": None, "object_kind": None, "description": None},
+        {"name": "name__values", "kind": FilterSchemaKind.TEXT, "enum": None, "object_kind": None, "description": None},
         {
             "name": "name__is_visible",
             "kind": FilterSchemaKind.BOOLEAN,
@@ -832,6 +833,13 @@ async def test_schema_branch_process_filters(
             "description": None,
         },
         {
+            "name": "level__values",
+            "kind": FilterSchemaKind.TEXT,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {
             "name": "level__is_visible",
             "kind": FilterSchemaKind.BOOLEAN,
             "enum": None,
@@ -860,6 +868,13 @@ async def test_schema_branch_process_filters(
             "description": None,
         },
         {"name": "color__value", "kind": FilterSchemaKind.TEXT, "enum": None, "object_kind": None, "description": None},
+        {
+            "name": "color__values",
+            "kind": FilterSchemaKind.TEXT,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
         {
             "name": "color__is_visible",
             "kind": FilterSchemaKind.BOOLEAN,
@@ -890,6 +905,13 @@ async def test_schema_branch_process_filters(
         },
         {
             "name": "description__value",
+            "kind": FilterSchemaKind.TEXT,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {
+            "name": "description__values",
             "kind": FilterSchemaKind.TEXT,
             "enum": None,
             "object_kind": None,

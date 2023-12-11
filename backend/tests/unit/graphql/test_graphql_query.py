@@ -1158,6 +1158,99 @@ async def test_query_filter_relationship_id(db: InfrahubDatabase, default_branch
     assert len(result.data["TestPerson"]["edges"][0]["node"]["cars"]["edges"]) == 2
 
 
+async def test_query_attribute_multiple_values(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
+    person = registry.get_schema(name="TestPerson")
+
+    p1 = await Node.init(db=db, schema=person)
+    await p1.new(db=db, name="John", height=180)
+    await p1.save(db=db)
+    p2 = await Node.init(db=db, schema=person)
+
+    await p2.new(db=db, name="Jane", height=170)
+    await p2.save(db=db)
+
+    query = """
+    query {
+        TestPerson(name__values: ["John", "Jane"]) {
+            count
+        }
+    }
+    """
+
+    result = await graphql(
+        await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["TestPerson"]["count"] == 2
+
+
+async def test_query_relationship_multiple_values(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
+    car = registry.get_schema(name="TestCar")
+    person = registry.get_schema(name="TestPerson")
+
+    p1 = await Node.init(db=db, schema=person)
+    await p1.new(db=db, name="John", height=180)
+    await p1.save(db=db)
+    p2 = await Node.init(db=db, schema=person)
+
+    await p2.new(db=db, name="Jane", height=170)
+    await p2.save(db=db)
+
+    c1 = await Node.init(db=db, schema=car)
+    await c1.new(db=db, name="volt", nbr_seats=4, is_electric=True, owner=p1)
+    await c1.save(db=db)
+    c2 = await Node.init(db=db, schema=car)
+    await c2.new(db=db, name="bolt", nbr_seats=4, is_electric=True, owner=p1)
+    await c2.save(db=db)
+    c3 = await Node.init(db=db, schema=car)
+    await c3.new(db=db, name="nolt", nbr_seats=4, is_electric=True, owner=p2)
+    await c3.save(db=db)
+    c4 = await Node.init(db=db, schema=car)
+    await c4.new(db=db, name="yaris", nbr_seats=5, is_electric=False, owner=p1)
+    await c4.save(db=db)
+
+    query = """
+    query {
+        TestPerson {
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                    cars (name__values: ["volt", "nolt"]) {
+                        edges {
+                            node {
+                                name {
+                                    value
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+    # (name__values: ["John", "Jane"])
+    result = await graphql(
+        await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert len(result.data["TestPerson"]["edges"]) == 2
+    assert result.data["TestPerson"]["edges"][0]["node"]["cars"]["edges"][0]["node"]["name"]["value"] == "volt"
+    assert result.data["TestPerson"]["edges"][1]["node"]["cars"]["edges"][0]["node"]["name"]["value"] == "nolt"
+
+
 async def test_query_oneway_relationship(db: InfrahubDatabase, default_branch: Branch, person_tag_schema):
     t1 = await Node.init(db=db, schema="BuiltinTag")
     await t1.new(db=db, name="Blue", description="The Blue tag")

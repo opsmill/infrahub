@@ -294,7 +294,7 @@ jobs:
       needs.files-changed.outputs.backend == 'true'
     needs: ["files-changed", "yaml-lint", "python-lint"]
     runs-on: "runner-ubuntu-4-16"
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       INFRAHUB_DB_TYPE: neo4j
     steps:
