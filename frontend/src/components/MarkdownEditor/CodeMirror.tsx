@@ -30,12 +30,11 @@ type CodeMirrorProps = {
   value?: string;
   placeholder?: string;
   onChange: (value: string) => void;
-  autoFocus?: boolean;
 };
 
 export function useCodeMirror(
   container: HTMLDivElement | null,
-  { value, onChange, autoFocus, placeholder = "" }: CodeMirrorProps
+  { value, onChange, placeholder = "" }: CodeMirrorProps
 ) {
   const [containerElement, setContainerElement] = useState<HTMLDivElement>();
   const [view, setView] = useState<EditorView>();
@@ -70,31 +69,21 @@ export function useCodeMirror(
           parent: containerElement,
         });
         setView(viewCurrent);
+        viewCurrent.focus();
       }
-    }
-
-    return () => {
-      if (view) {
-        setState(undefined);
-        setView(undefined);
-      }
-    };
-  }, [containerElement, state]);
-
-  useEffect(() => setContainerElement(container!), [container]);
-
-  useEffect(() => {
-    if (autoFocus && view) {
-      view.focus();
     }
 
     return () => {
       if (view) {
         view.destroy();
         setView(undefined);
+        setState(undefined);
+        setView(undefined);
       }
     };
-  }, [view]);
+  }, [containerElement, state, view]);
+
+  useEffect(() => setContainerElement(container!), [container]);
 
   return {
     state,
