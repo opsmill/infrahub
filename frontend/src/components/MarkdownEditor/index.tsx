@@ -38,7 +38,7 @@ export const MarkdownEditor: FC<MarkdownEditorProps> = ({
   };
 
   return (
-    <div className={classNames("rounded-md border border-gray-300", className)}>
+    <div className={classNames("bg-white rounded-lg border border-gray-200", className)}>
       <MarkdownEditorHeader
         codeMirror={codeMirrorRef.current}
         previewMode={isPreviewActive}
@@ -46,7 +46,7 @@ export const MarkdownEditor: FC<MarkdownEditorProps> = ({
       />
 
       {isPreviewActive ? (
-        <MarkdownViewer markdownText={editorText} />
+        <MarkdownViewer markdownText={editorText} className="p-2" />
       ) : (
         <CodeMirror
           ref={codeMirrorRef}
