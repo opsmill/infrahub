@@ -38,7 +38,14 @@ export const MarkdownEditor: FC<MarkdownEditorProps> = ({
   };
 
   return (
-    <div className={classNames("bg-white rounded-lg border border-gray-200", className)}>
+    <div
+      className={classNames(
+        `
+        bg-white rounded-lg border border-gray-200
+        focus-within:outline focus-within:outline-custom-blue-600 focus-within:border-custom-blue-600
+        `,
+        className
+      )}>
       <MarkdownEditorHeader
         codeMirror={codeMirrorRef.current}
         previewMode={isPreviewActive}

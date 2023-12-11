@@ -16,8 +16,7 @@ const theme = EditorView.baseTheme({
     borderRadius: "0 0 0.5rem 0.5rem",
   },
   "&.cm-focused": {
-    outline: "2px solid #0987a8",
-    borderRadius: "0 0 0.5rem 0.5rem",
+    outline: "none",
   },
   "& .cm-content": {
     padding: "8px",
