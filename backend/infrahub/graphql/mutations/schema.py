@@ -58,7 +58,7 @@ class SchemaDropdownAdd(Mutation):
         attribute = str(data.attribute)
         validate_kind_dropdown(kind=kind, attribute=attribute)
         dropdown = str(data.dropdown)
-        color = color = str(data.color) if data.color else ""
+        color = str(data.color) if data.color else ""
         description = str(data.description) if data.description else ""
         label = str(data.label) if data.label else ""
         choice = DropdownChoice(name=dropdown, color=color, label=label, description=description)
