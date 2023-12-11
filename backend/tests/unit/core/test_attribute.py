@@ -83,13 +83,16 @@ async def test_validate_format_ipnetwork_and_iphost(
             name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="2001:db8::/ffff:ff00::"
         )
 
-async def test_validate_iphost_returns(
-    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
-):
+
+async def test_validate_iphost_returns(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
     schema = criticality_schema.get_attribute("name")
 
-    test_ipv4 = IPHost(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="192.0.2.1/31")
-    test_ipv6 = IPHost(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="2001:db8::/32")
+    test_ipv4 = IPHost(
+        name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="192.0.2.1/31"
+    )
+    test_ipv6 = IPHost(
+        name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="2001:db8::/32"
+    )
 
     assert test_ipv4.value == "192.0.2.1/31"
     assert test_ipv4.ip == "192.0.2.1"
@@ -112,13 +115,15 @@ async def test_validate_iphost_returns(
     assert test_ipv6.version == 6
 
 
-async def test_validate_ipnetwork_returns(
-    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
-):
+async def test_validate_ipnetwork_returns(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
     schema = criticality_schema.get_attribute("name")
 
-    test_ipv4 = IPNetwork(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="192.0.2.0/31")
-    test_ipv6 = IPNetwork(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="2001:db8::/32")
+    test_ipv4 = IPNetwork(
+        name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="192.0.2.0/31"
+    )
+    test_ipv6 = IPNetwork(
+        name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="2001:db8::/32"
+    )
 
     assert test_ipv4.value == "192.0.2.0/31"
     assert test_ipv4.broadcast_address == "192.0.2.1"
