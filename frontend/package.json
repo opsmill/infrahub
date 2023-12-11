@@ -44,6 +44,7 @@
     "@types/react-dom": "^18.0.10",
     "@vitejs/plugin-react": "^4.0.0",
     "autoprefixer": "^10.4.14",
+    "cm6-theme-basic-light": "^0.2.0",
     "cross-fetch": "^4.0.0",
     "date-fns": "^2.29.3",
     "handlebars": "^4.7.7",

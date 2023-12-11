@@ -3,6 +3,7 @@ import { EditorView, keymap, placeholder as placeholderView } from "@codemirror/
 import { EditorState } from "@codemirror/state";
 import { markdown, markdownLanguage, markdownKeymap } from "@codemirror/lang-markdown";
 import { defaultKeymap, indentWithTab } from "@codemirror/commands";
+import { basicLight } from "cm6-theme-basic-light";
 
 export type CodeMirrorType = {
   editor?: HTMLDivElement | null;
@@ -11,6 +12,9 @@ export type CodeMirrorType = {
 };
 
 const theme = EditorView.baseTheme({
+  "&": {
+    borderRadius: "0 0 0.5rem 0.5rem",
+  },
   "&.cm-focused": {
     outline: "2px solid #0987a8",
     borderRadius: "0 0 0.5rem 0.5rem",
@@ -54,6 +58,7 @@ export const CodeMirror = forwardRef<CodeMirrorType, CodeMirrorProps>(
           onUpdate,
           placeholderView(placeholder),
           theme,
+          basicLight,
         ],
       });
 
@@ -71,6 +76,6 @@ export const CodeMirror = forwardRef<CodeMirrorType, CodeMirrorProps>(
       };
     }, []);
 
-    return <div ref={editorRef} data-cy="cm-editor"></div>;
+    return <div ref={editorRef} data-cy="codemirror-editor"></div>;
   }
 );

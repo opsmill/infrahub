@@ -93,7 +93,7 @@ describe("Main application", () => {
     cy.contains("Just a moment").should("not.exist");
 
     // Type the first comment in the add comment section
-    cy.get("[data-cy='cm-editor']").first().type(PROPOSED_CHANGE_COMMENT_1);
+    cy.get("[data-cy='codemirror-editor']").first().type(PROPOSED_CHANGE_COMMENT_1);
 
     cy.intercept("/graphql/main").as("CreateComment1");
 
@@ -115,7 +115,7 @@ describe("Main application", () => {
         // Add reply
         cy.contains("button", "Reply").click();
 
-        cy.get("[data-cy='cm-editor']").first().type(PROPOSED_CHANGE_COMMENT_2);
+        cy.get("[data-cy='codemirror-editor']").first().type(PROPOSED_CHANGE_COMMENT_2);
 
         cy.intercept("/graphql/main").as("CreateComment2");
 
@@ -133,7 +133,7 @@ describe("Main application", () => {
 
         // Add third comment
         cy.contains("button", "Reply").click();
-        cy.get("[data-cy='cm-editor']").first().type(PROPOSED_CHANGE_COMMENT_3);
+        cy.get("[data-cy='codemirror-editor']").first().type(PROPOSED_CHANGE_COMMENT_3);
 
         // Mark as resolved once commented
         cy.contains("Resolve thread").click();
