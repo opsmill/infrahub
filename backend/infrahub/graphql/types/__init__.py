@@ -11,6 +11,7 @@ from .attribute import (
     DropdownType,
     IntAttributeType,
     IPHostType,
+    IPNetworkType,
     JSONAttributeType,
     ListAttributeType,
     NumberAttributeType,
