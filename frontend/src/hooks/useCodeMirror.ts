@@ -79,7 +79,6 @@ export function useCodeMirror(
         view.destroy();
         setView(undefined);
         setState(undefined);
-        setView(undefined);
       }
     };
   }, [containerElement, state, view]);

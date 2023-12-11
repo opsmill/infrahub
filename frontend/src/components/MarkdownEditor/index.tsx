@@ -2,7 +2,7 @@ import React, { FC, useRef, useState } from "react";
 import { MarkdownEditorHeader } from "./MarkdownEditorHeader";
 import { MarkdownViewer } from "../MarkdownViewer";
 import { classNames } from "../../utils/common";
-import { useCodeMirror } from "./CodeMirror";
+import { useCodeMirror } from "../../hooks/useCodeMirror";
 
 type MarkdownEditorProps = {
   className?: string;
@@ -61,7 +61,7 @@ export const MarkdownEditor: FC<MarkdownEditorProps> = ({
       {isPreviewActive ? (
         <MarkdownViewer markdownText={editorText} className="p-2" />
       ) : (
-        <div ref={codeMirrorRef} />
+        <div ref={codeMirrorRef} data-cy="codemirror-editor" />
       )}
     </div>
   );

@@ -1,4 +1,4 @@
-import { UseCodeMirror } from "./CodeMirror";
+import { UseCodeMirror } from "../../hooks/useCodeMirror";
 import { EditorSelection } from "@codemirror/state";
 
 export type EditorCommand = {
