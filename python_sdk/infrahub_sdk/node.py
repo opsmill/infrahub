@@ -1037,9 +1037,9 @@ class InfrahubNode(InfrahubNodeBase):
     async def save(self, at: Optional[Timestamp] = None) -> None:
         at = Timestamp(at)
         if self._existing is False:
-            await self._create(at=at)
+            await self.create(at=at)
         else:
-            await self._update(at=at)
+            await self.update(at=at)
 
         self._client.store.set(key=self.id, node=self)
 
@@ -1172,7 +1172,7 @@ class InfrahubNode(InfrahubNodeBase):
 
         return data
 
-    async def _create(self, at: Timestamp) -> None:
+    async def create(self, at: Timestamp) -> None:
         input_data = self._generate_input_data()
         input_data["data"]["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
@@ -1192,7 +1192,7 @@ class InfrahubNode(InfrahubNodeBase):
         )
         self._existing = True
 
-    async def _update(self, at: Timestamp) -> None:
+    async def update(self, at: Timestamp) -> None:
         input_data = self._generate_input_data(update=True)
         input_data["data"]["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
@@ -1341,9 +1341,9 @@ class InfrahubNodeSync(InfrahubNodeBase):
     def save(self, at: Optional[Timestamp] = None) -> None:
         at = Timestamp(at)
         if self._existing is False:
-            self._create(at=at)
+            self.create(at=at)
         else:
-            self._update(at=at)
+            self.update(at=at)
 
         self._client.store.set(key=self.id, node=self)
 
@@ -1475,7 +1475,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
 
         return data
 
-    def _create(self, at: Timestamp) -> None:
+    def create(self, at: Timestamp) -> None:
         input_data = self._generate_input_data()
         input_data["data"]["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
@@ -1496,7 +1496,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
         )
         self._existing = True
 
-    def _update(self, at: Timestamp) -> None:
+    def update(self, at: Timestamp) -> None:
         input_data = self._generate_input_data(update=True)
         input_data["data"]["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
