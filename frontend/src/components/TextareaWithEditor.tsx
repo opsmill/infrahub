@@ -1,5 +1,6 @@
 import React, { FC } from "react";
 import { MarkdownEditor } from "./MarkdownEditor";
+import { classNames } from "../utils/common";
 
 type TextareaWithEditorProps = {
   className?: string;
@@ -11,7 +12,7 @@ type TextareaWithEditorProps = {
 };
 
 export const TextareaWithEditor: FC<TextareaWithEditorProps> = ({
-  className,
+  className = "",
   defaultValue,
   disabled,
   error,
@@ -23,7 +24,12 @@ export const TextareaWithEditor: FC<TextareaWithEditorProps> = ({
   return (
     <div className="relative">
       <MarkdownEditor
-        className={className}
+        className={classNames(
+          className,
+          error?.message
+            ? "border-red-500 outline-red-500 focus-within:border-red-500 focus-within:outline-red-600"
+            : ""
+        )}
         disabled={disabled}
         onChange={onChange}
         defaultValue={defaultValue}
