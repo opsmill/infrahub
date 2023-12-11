@@ -19,7 +19,7 @@ def directory_name_with_timestamp():
     return f"infrahubexport-{timestamp}"
 
 
-def export(
+def dump(
     namespace: List[str] = typer.Option([], help="Namespace(s) to export"),
     directory: Path = typer.Option(directory_name_with_timestamp, help="Directory path to store export."),
     config_file: str = typer.Option("infrahubctl.toml", envvar="INFRAHUBCTL_CONFIG"),

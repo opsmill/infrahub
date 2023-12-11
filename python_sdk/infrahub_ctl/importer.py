@@ -11,7 +11,7 @@ from infrahub_sdk.transfer.exceptions import TransferError
 from infrahub_sdk.transfer.importer.json import LineDelimitedJSONImporter
 
 
-def import_data(
+def load(
     directory: Path = typer.Argument(default=None, help="Directory path of exported data."),
     config_file: str = typer.Option("infrahubctl.toml", envvar="INFRAHUBCTL_CONFIG"),
     branch: str = typer.Option("main", help="Branch from which to export"),
