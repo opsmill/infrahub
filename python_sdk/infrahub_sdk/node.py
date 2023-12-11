@@ -704,7 +704,7 @@ class InfrahubNodeBase:
     def get_raw_graphql_data(self) -> Optional[Dict]:
         return self._data
 
-    def _generate_input_data(self, update: bool = False) -> Dict[str, Dict]:
+    def _generate_input_data(self, exclude_unmodified: bool = False) -> Dict[str, Dict]:
         """Generate a dictionary that represent the input data required by a mutation.
 
         Returns:
