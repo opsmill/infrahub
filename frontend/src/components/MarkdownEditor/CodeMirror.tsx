@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { EditorView, keymap, ViewUpdate, placeholder as placeholderView } from "@codemirror/view";
 import { EditorState } from "@codemirror/state";
-import { defaultKeymap, indentWithTab } from "@codemirror/commands";
+import { defaultKeymap, indentWithTab, history, historyKeymap } from "@codemirror/commands";
 import { markdown, markdownKeymap, markdownLanguage } from "@codemirror/lang-markdown";
 import { basicLight } from "cm6-theme-basic-light";
 
@@ -53,7 +53,8 @@ export function useCodeMirror(
         extensions: [
           updateListener,
           theme,
-          keymap.of([...defaultKeymap, indentWithTab, ...markdownKeymap]),
+          history(),
+          keymap.of([...defaultKeymap, indentWithTab, ...markdownKeymap, ...historyKeymap]),
           markdown({ base: markdownLanguage }),
           updateListener,
           placeholderView(placeholder),
