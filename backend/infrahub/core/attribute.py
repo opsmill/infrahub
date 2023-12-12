@@ -573,7 +573,7 @@ class Dropdown(BaseAttribute):
             if selected:
                 label = selected[0].label
 
-        return label or str(self.value)
+        return label
 
     @classmethod
     def validate_content(cls, value: Any, name: str, schema: AttributeSchema) -> None:

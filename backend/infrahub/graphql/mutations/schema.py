@@ -14,7 +14,6 @@ from infrahub.exceptions import ValidationError
 from infrahub.log import get_logger
 from infrahub.message_bus import Meta, messages
 from infrahub.services import services
-from infrahub.visuals import select_color
 from infrahub.worker import WORKER_IDENTITY
 
 log = get_logger()
@@ -69,9 +68,6 @@ class SchemaDropdownAdd(Mutation):
                 raise ValidationError(
                     f"The dropdown value {dropdown} already exists on {kind.kind} in attribute {attribute}"
                 )
-            if not choice.color:
-                existing_colors = [dropdown_entry.color for dropdown_entry in attrib.choices]
-                choice.color = select_color(existing=existing_colors)
             attrib.choices.append(choice)
 
         await update_registry(kind=kind, branch=branch, db=db)
