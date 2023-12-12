@@ -20,6 +20,7 @@ generics:
         optional: true
       - name: speed
         kind: Number
+        optional: true
       - name: mtu
         label: MTU
         default_value: 1500
@@ -35,7 +36,7 @@ generics:
         label: Mac Address
         kind: Text
         optional: true
-      - name: type
+      - name: interface_type
         kind: Text
         optional: true
     relationships:
@@ -91,7 +92,7 @@ generics:
       - name: description
         kind: Text
         optional: true
-      - name: Color
+      - name: color
         kind: Text
         optional: true
     relationships:
@@ -355,9 +356,9 @@ nodes:
     inherit_from:
       - "TemplateChoice"
     relationships:
-      - cardinality: many
+      - name: circuit
+        cardinality: many
         identifier: circuit__type
-        name: Circuit
         optional: true
         peer: InfraCircuit
   - name: Device
@@ -388,9 +389,16 @@ nodes:
         kind: Text
         optional: true
     relationships:
+      - name: site
+        peer: BuiltinLocation
+        identifier: device__site
+        optional: true
+        cardinality: one
+        kind: Attribute
       - name: location
         peer: BuiltinLocation
-        optional: false
+        identifier: device__location
+        optional: true
         cardinality: one
         kind: Attribute
       - name: model
@@ -474,9 +482,9 @@ nodes:
         optional: true
         kind: Boolean
     relationships:
-      - cardinality: many
+      - name: device
+        cardinality: many
         identifier: device__type
-        name: Device
         optional: true
         peer: InfraDevice
       - name: manufacturer
@@ -527,20 +535,20 @@ nodes:
         label: IP Addresses
         optional: true
         cardinality: many
-        kind: Component
+        kind: Attribute
       - name: untagged_vlan
         label: Untagged VLAN
         peer: InfraVLAN
         optional: true
         cardinality: one
-        kind: Component
+        kind: Attribute
         identifier: interface_l2__untagged_vlan
       - name: tagged_vlan
         label: Tagged VLANs
         peer: InfraVLAN
         optional: true
         cardinality: one
-        kind: Component
+        kind: Attribute
         identifier: interface_l2__tagged_vlan
   - name: IPAddress
     namespace: Infra
@@ -617,12 +625,12 @@ nodes:
     inherit_from:
       - "TemplateChoice"
     relationships:
-      - name: Prefixes
+      - name: prefixes
         peer: InfraPrefix
         identifier: namespace__prefixes
         cardinality: many
         optional: true
-      - name: VRFs
+      - name: vrfs
         peer: InfraVRF
         identifier: namespace__vrfs
         cardinality: many
@@ -798,7 +806,14 @@ nodes:
     relationships:
       - name: location
         peer: BuiltinLocation
-        optional: false
+        identifier: rack__location
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: site
+        peer: BuiltinLocation
+        identifier: rack__site
+        optional: true
         cardinality: one
         kind: Attribute
       - name: status
@@ -965,14 +980,14 @@ nodes:
         optional: true
         cardinality: many
         kind: Attribute
-      - name: importRT
+      - name: import_rt
         identifier: "vrf__import"
         label: "Import Targets"
         peer: InfraRouteTarget
         optional: true
         cardinality: many
         kind: Attribute
-      - name: exportRT
+      - name: export_rt
         identifier: "vrf__export"
         label: "Export Targets"
         peer: InfraRouteTarget
