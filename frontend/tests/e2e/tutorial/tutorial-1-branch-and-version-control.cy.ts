@@ -28,8 +28,9 @@ describe("Tutorial - Part 1", () => {
     cy.get("[data-cy='create']").click();
 
     // Add organization name
-    cy.contains("Name").should("exist"); // Assert that the form is ready
-    cy.get("#Name").should("not.be.disabled");
+    cy.contains("Create Organization").should("be.visible"); // Assert that the form is ready
+    cy.get("#Name").clear({ force: true }); // Workaround to prevent cypress bug "cy.type() failed because it targeted a disabled element."
+
     cy.get("#Name").type(ORGANIZATION_NAME);
     cy.get("#Description").type(ORGANIZATION_DESCRIPTION);
 
