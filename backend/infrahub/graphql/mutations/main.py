@@ -61,12 +61,20 @@ class InfrahubMutationMixin:
         elif "Update" in cls.__name__:
             obj, mutation = await cls.mutate_update(root=root, info=info, branch=branch, at=at, *args, **kwargs)
             action = MutationAction.UPDATED
+        elif "Upsert" in cls.__name__:
+            obj, mutation, created = await cls.mutate_upsert(
+                root=root, info=info, branch=branch, at=at, *args, **kwargs
+            )
+            if created:
+                action = MutationAction.ADDED
+            else:
+                action = MutationAction.UPDATED
         elif "Delete" in cls.__name__:
             obj, mutation = await cls.mutate_delete(root=root, info=info, branch=branch, at=at, *args, **kwargs)
             action = MutationAction.REMOVED
         else:
             raise ValueError(
-                f"Unexpected class Name: {cls.__name__}, should start with either Create, Update or Delete"
+                f"Unexpected class Name: {cls.__name__}, should end with Create, Update, Upsert, or Delete"
             )
 
         if config.SETTINGS.broker.enable and info.context.get("background"):
@@ -179,6 +187,37 @@ class InfrahubMutationMixin:
         fields = await extract_fields(info.field_nodes[0].selection_set)
 
         return obj, cls(object=await obj.to_graphql(db=db, fields=fields.get("object", {})), ok=ok)
+
+    @classmethod
+    async def mutate_upsert(
+        cls,
+        root: dict,
+        info: GraphQLResolveInfo,
+        data: InputObjectType,
+        branch: Branch,
+        at: str,
+        database: Optional[InfrahubDatabase] = None,
+        node: Optional[Node] = None,
+    ):
+        if "id" in data:
+            db: InfrahubDatabase = database or info.context.get("infrahub_database")
+            obj = None
+            try:
+                obj = node or await NodeManager.get_one_by_id_or_default_filter(
+                    db=db,
+                    schema_name=cls._meta.schema.kind,
+                    id=data.get("id"),
+                    branch=branch,
+                    at=at,
+                    include_owner=True,
+                    include_source=True,
+                )
+                updated_obj, mutation = await cls.mutate_update(root, info, data, branch, at, database, obj)
+                return updated_obj, mutation, False
+            except NodeNotFound:
+                pass
+        created_obj, mutation = await cls.mutate_create(root, info, data, branch, at)
+        return created_obj, mutation, True
 
     @classmethod
     async def mutate_delete(
