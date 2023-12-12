@@ -103,7 +103,7 @@ generics:
   - name: PanelPort
     namespace: Infra
     description: "Generic Patch Panel Port."
-    label: "Interface"
+    label: "Panel Port (Front & Rear)"
     icon: "mdi:ethernet"
     menu_placement: "InfraDevice"
     display_labels:
@@ -484,44 +484,6 @@ nodes:
         optional: false
         cardinality: one
         kind: Attribute
-  - name: InterfaceL2L3
-    namespace: Infra
-    description: "Network Interface"
-    label: "Network Interface"
-    include_in_menu: false
-    display_labels:
-      - name__value
-    order_by:
-      - name__value
-    inherit_from:
-      - "InfraInterface"
-      - "InfraEndpoint"
-      - "CoreArtifactTarget"
-    attributes:
-      - name: l2_mode
-        label: Layer2 Mode
-        kind: Text
-        enum: ["Access", "Tagged", "Tagged (All)"]
-    relationships:
-      - name: ip_addresses
-        peer: InfraIPAddress
-        optional: true
-        cardinality: many
-        kind: Component
-      - name: untagged_vlan
-        label: Untagged VLAN
-        peer: InfraVLAN
-        optional: true
-        cardinality: one
-        kind: Component
-        identifier: interface_l2__untagged_vlan
-      - name: tagged_vlan
-        label: Tagged VLANs
-        peer: InfraVLAN
-        optional: true
-        cardinality: one
-        kind: Component
-        identifier: interface_l2__tagged_vlan
   - name: FrontPort
     namespace: Infra
     description: "Patch Panel Front Port"
@@ -540,48 +502,46 @@ nodes:
         optional: true
         cardinality: many
         identifier: front_ports__rear_ports
-  - name: RearPort
+  - name: InterfaceL2L3
     namespace: Infra
-    description: "Patch Panel Front Port"
-    label: "Front Port"
+    description: "Network Interface"
+    label: "Network Interface"
     include_in_menu: false
     display_labels:
       - name__value
     order_by:
       - name__value
     inherit_from:
-      - InfraPanelPort
+      - "InfraInterface"
       - "InfraEndpoint"
+      - "CoreArtifactTarget"
+    attributes:
+      - name: l2_mode
+        label: Layer2 Mode
+        kind: Text
+        enum: ["Access", "Tagged", "Tagged (All)"]
+        optional: true
     relationships:
-      - name: front_port
-        peer: InfraFrontPort
+      - name: ip_addresses
+        peer: InfraIPAddress
+        label: IP Addresses
         optional: true
         cardinality: many
-        identifier: front_ports__rear_ports
-  # - name: PanelPortType
-  #   namespace: Template
-  #   description: "A model of Patch Panel Port"
-  #   label: "Patch Panel Port Type"
-  #   icon: "mdi:poll"
-  #   menu_placement: "InfraDevice"
-  #   display_labels:
-  #     - name__value
-  #   order_by:
-  #     - name__value
-  #   inherit_from:
-  #     - "TemplateChoice"
-  # - name: InterfaceType
-  #   namespace: Template
-  #   description: "A model of Interface"
-  #   label: "Interface Type"
-  #   icon: "mdi:poll"
-  #   menu_placement: "InfraDevice"
-  #   display_labels:
-  #     - name__value
-  #   order_by:
-  #     - name__value
-  #   inherit_from:
-  #     - "TemplateChoice"
+        kind: Component
+      - name: untagged_vlan
+        label: Untagged VLAN
+        peer: InfraVLAN
+        optional: true
+        cardinality: one
+        kind: Component
+        identifier: interface_l2__untagged_vlan
+      - name: tagged_vlan
+        label: Tagged VLANs
+        peer: InfraVLAN
+        optional: true
+        cardinality: one
+        kind: Component
+        identifier: interface_l2__tagged_vlan
   - name: IPAddress
     namespace: Infra
     description: "IP Address"
@@ -645,6 +605,28 @@ nodes:
         cardinality: many
         optional: true
         peer: BuiltinLocation
+  - name: Namespace
+    namespace: Nautobot
+    label: "Nautobot Namespace"
+    icon: "mdi:checkbox-multiple-blank-outline"
+    menu_placement: "CoreOrganization"
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    inherit_from:
+      - "TemplateChoice"
+    relationships:
+      - name: Prefixes
+        peer: InfraPrefix
+        identifier: namespace__prefixes
+        cardinality: many
+        optional: true
+      - name: VRFs
+        peer: InfraVRF
+        identifier: namespace__vrfs
+        cardinality: many
+        optional: true
   - name: Platform
     namespace: Infra
     description: "A Platform represent the type of software running on a device."
@@ -741,6 +723,12 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
+      - name: namespace
+        peer: NautobotNamespace
+        identifier: namespace__prefixes
+        optional: true
+        cardinality: one
+        kind: Parent
       - name: location
         peer: BuiltinLocation
         optional: true
@@ -828,6 +816,24 @@ nodes:
         optional: true
         cardinality: many
         kind: Attribute
+  - name: RearPort
+    namespace: Infra
+    description: "Patch Panel Front Port"
+    label: "Front Port"
+    include_in_menu: false
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    inherit_from:
+      - InfraPanelPort
+      - "InfraEndpoint"
+    relationships:
+      - name: front_port
+        peer: InfraFrontPort
+        optional: true
+        cardinality: many
+        identifier: front_ports__rear_ports
   - name: RouteTarget
     namespace: Infra
     description: "Route Target (RFC 4360)"
@@ -936,6 +942,12 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
+      - name: namespace
+        peer: NautobotNamespace
+        identifier: namespace__vrfs
+        optional: true
+        cardinality: one
+        kind: Parent
       - name: status
         peer: BuiltinStatus
         optional: true
