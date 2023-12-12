@@ -1,14 +1,19 @@
+from typing import List, Optional
+
+from diffsync import DiffSync
+from diffsync.diff import Diff
 from diffsync.enum import DiffSyncFlags
 from diffsync.logging import enable_console_logging
+from infrahub_sync import SyncInstance
 
 
 class Potenda:
     def __init__(
         self,
-        source,
-        destination,
-        config,
-        top_level,
+        source: DiffSync,
+        destination: DiffSync,
+        config: SyncInstance,
+        top_level: List[str],
         partition=None,
     ):
         self.top_level = top_level
@@ -36,10 +41,17 @@ class Potenda:
         except Exception as e:
             raise Exception(f"An error occurred while loading the sync: {e}")
 
-    def diff(self):
+    def diff(self) -> Diff:
         print(f"Diff: Comparing data from {self.source} to {self.destination}")
         return self.destination.diff_from(self.source, flags=self.flags)
 
-    def sync(self, diff):
+    @classmethod
+    def _print_callback(self, stage: str, elements_processed: int, total_models: int):
+        """Callback for DiffSync"""
+        percentage: float = round(elements_processed / total_models * 100, 1)
+        if percentage.is_integer():
+            print(f"-> Processed {elements_processed} on {total_models} ({percentage}% done)")
+
+    def sync(self, diff: Optional[Diff] = None):
         print(f"Sync: Importing data from {self.source} to {self.destination} based on Diff")
-        return self.destination.sync_from(self.source, diff=diff, flags=self.flags)
+        return self.destination.sync_from(self.source, diff=diff, flags=self.flags, callback=self._print_callback)

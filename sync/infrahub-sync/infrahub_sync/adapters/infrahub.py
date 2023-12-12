@@ -72,11 +72,13 @@ class InfrahubAdapter(DiffSyncMixin, DiffSync):
 
     def model_loader(self, model_name: str, model):
         nodes = self.client.all(kind=model.__name__, populate_store=True)
-        # print(f"-> Loading {len(nodes)} {model.__name__}")
+        print(f"nodes={nodes}")
+        print(f"-> Loading {len(nodes)} {model.__name__}")
         for node in nodes:
             data = self.infrahub_node_to_diffsync(node)
             item = model(**data)
             self.client.store.set(key=item.get_unique_id(), node=node)
+            print(f"item = {item} - {data}")
             self.add(item)
 
     def infrahub_node_to_diffsync(self, node: InfrahubNodeSync) -> dict:
@@ -159,6 +161,7 @@ class InfrahubModel(DiffSyncModelMixin, DiffSyncModel):
         create_data = diffsync.client.schema.generate_payload_create(
             schema=schema, data=data, source=source.id, is_protected=True
         )
+        print(f"create_data={create_data}")
         node = diffsync.client.create(kind=cls.__name__, data=create_data)
         node.save()
         diffsync.client.store.set(key=unique_id, node=node)

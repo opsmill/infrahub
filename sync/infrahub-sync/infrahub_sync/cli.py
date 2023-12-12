@@ -3,6 +3,7 @@ import importlib
 import logging
 import os
 from pathlib import Path
+from timeit import default_timer as timer
 from typing import List, Optional
 
 import typer
@@ -88,7 +89,7 @@ def diff_cmd(
     if not sync_instance:
         print_error_and_abort(f"Unable to find the sync {name}. Use the list command to see the sync available")
 
-    ptd = get_potenda_from_instance(sync_instance, branch)
+    ptd = get_potenda_from_instance(sync_instance=sync_instance, branch=branch)
     ptd.load()
 
     mydiff = ptd.diff()
@@ -109,7 +110,7 @@ def sync_cmd(
     if not sync_instance:
         print_error_and_abort(f"Unable to find the sync {name}. Use the list command to see the sync available")
 
-    ptd = get_potenda_from_instance(sync_instance, branch)
+    ptd = get_potenda_from_instance(sync_instance=sync_instance, branch=branch)
     ptd.load()
 
     mydiff = ptd.diff()
@@ -117,8 +118,10 @@ def sync_cmd(
     if mydiff.has_diffs():
         if diff:
             print(mydiff.str())
+        start_synctime = timer()
         ptd.sync(diff=mydiff)
-        console.print("Sync: Completed")
+        end_synctime = timer()
+        console.print(f"Sync: Completed in {end_synctime - start_synctime} sec")
     else:
         console.print("No diffence found. Nothing to sync")
 
