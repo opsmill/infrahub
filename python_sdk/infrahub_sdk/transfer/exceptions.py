@@ -12,3 +12,7 @@ class FileNotFoundError(TransferError):
 
 class InvalidNamespaceError(TransferError):
     ...
+
+
+class SchemaImportError(TransferError):
+    ...

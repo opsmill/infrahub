@@ -9,6 +9,7 @@ import infrahub_ctl.config as config
 from infrahub_ctl.client import initialize_client
 from infrahub_sdk.transfer.exceptions import TransferError
 from infrahub_sdk.transfer.importer.json import LineDelimitedJSONImporter
+from infrahub_sdk.transfer.schema_sorter import InfrahubSchemaTopologicalSorter
 
 
 def load(
@@ -27,7 +28,7 @@ def load(
     if not config.SETTINGS:
         config.load_and_exit(config_file=config_file)
     client = aiorun(initialize_client(timeout=timeout, max_concurrent_execution=concurrent, retry_on_failure=True))
-    importer = LineDelimitedJSONImporter(client)
+    importer = LineDelimitedJSONImporter(client, InfrahubSchemaTopologicalSorter())
     try:
         aiorun(
             importer.import_data(
