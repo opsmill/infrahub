@@ -183,7 +183,16 @@ class InfraFrontPort(NautobotModel):
 class InfraInterfaceL2L3(NautobotModel):
     _modelname = "InfraInterfaceL2L3"
     _identifiers = ("name", "device")
-    _attributes = ("untagged_vlan", "tagged_vlan", "tags", "l2_mode", "description", "mgmt_only", "mac_address", "interface_type")
+    _attributes = (
+        "untagged_vlan",
+        "tagged_vlan",
+        "tags",
+        "l2_mode",
+        "description",
+        "mgmt_only",
+        "mac_address",
+        "interface_type",
+    )
 
     l2_mode: Optional[str]
     name: str

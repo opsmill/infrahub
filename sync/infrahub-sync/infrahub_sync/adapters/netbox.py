@@ -49,7 +49,6 @@ class NetboxAdapter(DiffSyncMixin, DiffSync):
 
         return pynetbox.api(url, token=token)
 
-
     def model_loader(self, model_name, model):
         for element in self.config.schema_mapping:
             if not element.name == model_name:
