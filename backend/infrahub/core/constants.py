@@ -179,7 +179,7 @@ class ValidatorState(InfrahubStringEnum):
 RESTRICTED_NAMESPACES: List[str] = [
     "Account",
     "Branch",
-    "Builtin",
+    # "Builtin",
     # "Core",
     "Deprecated",
     "Diff",
