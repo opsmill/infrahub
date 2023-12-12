@@ -42,7 +42,6 @@ import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
-import "./conversations.css";
 
 type tConversations = {
   refetch?: Function;
@@ -150,7 +149,7 @@ export const Conversations = (props: tConversations) => {
   const path = constructPath("/proposed-changes");
   const state = proposedChangesDetails?.state?.value;
 
-  const handleSubmit = async (data: string) => {
+  const handleSubmit = async ({ comment }: { comment: string }) => {
     let threadId;
 
     try {
@@ -194,7 +193,7 @@ export const Conversations = (props: tConversations) => {
 
       const newComment = {
         text: {
-          value: data,
+          value: comment,
         },
         created_by: {
           id: approverId,

@@ -174,11 +174,11 @@ export const FileContentDiff = (props: any) => {
     setFileDetailsInState();
   }, []);
 
-  const handleSubmitComment = async (data: string) => {
+  const handleSubmitComment = async ({ comment }: { comment: string }) => {
     let threadId;
 
     try {
-      if (!data || !approverId) {
+      if (!comment || !approverId) {
         return;
       }
 
@@ -243,7 +243,7 @@ export const FileContentDiff = (props: any) => {
 
       const newComment = {
         text: {
-          value: data,
+          value: comment,
         },
         created_by: {
           id: approverId,

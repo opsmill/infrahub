@@ -66,7 +66,7 @@ export const DynamicControl = (props: DynamicFieldData) => {
           value={existingValue ?? value}
         />
       );
-    case "select": {
+    case "select":
       return (
         <OpsSelectRegister
           {...props}
@@ -76,7 +76,6 @@ export const DynamicControl = (props: DynamicFieldData) => {
           value={existingValue ?? value}
         />
       );
-    }
     case "dropdown": {
       return (
         <OpsSelectRegister
