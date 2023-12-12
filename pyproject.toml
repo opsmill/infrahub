@@ -70,6 +70,7 @@ structlog = "^22.3.0"
 pynetbox = "^7.0.1"
 pynautobot = "^2.0.2"
 diffsync = "^1.8.0"
+tqdm = "^4.66"
 
 
 [tool.poetry.scripts]
