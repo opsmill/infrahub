@@ -324,10 +324,10 @@ schema_mapping:
         reference: CoreOrganization
       - name: vrf_rd
         mapping: rd
-      - name: importRT
+      - name: import_rt
         mapping: import_targets
         reference: InfraRouteTarget
-      - name: exportRT
+      - name: export_rt
         mapping: export_targets
         reference: InfraRouteTarget
   - name: CoreStandardGroup

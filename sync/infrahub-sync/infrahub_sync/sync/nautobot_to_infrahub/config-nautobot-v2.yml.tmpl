@@ -32,8 +32,8 @@ order: [
   "InfraPrefix",
   "InfraIPAddress",
   "InfraRearPort",
-  "InfraFrontPort"
-  # "InfraInterfaceL2L3"
+  "InfraFrontPort",
+  "InfraInterfaceL2L3"
 ]
 
 schema_mapping:
@@ -47,7 +47,7 @@ schema_mapping:
       - name: description
         mapping: description
 
-  # Roles (Device Role, Rack Role, IPAM Role)
+  # Roles (Device Role, Rack Role, IPAM Role, and IPAddressRoleChoices)
   - name: BuiltinRole
     mapping: extras.roles
     identifiers: ["name"]
@@ -59,8 +59,7 @@ schema_mapping:
       - name: label
         mapping: display
 
-  # Comment due to "Null" Status in Nautobot v2. NeedNeed to solve https://github.com/opsmill/infrahub/issues/1546 on our side
-  # Status
+  # Status (Device Role, Rack Role, IPAM Role, and IPAddressRoleChoices)
   # - name: BuiltinStatus
   #   mapping: extras.statuses
   #   identifiers: ["name"]
@@ -344,10 +343,10 @@ schema_mapping:
         reference: NautobotNamespace
       - name: vrf_rd
         mapping: rd
-      - name: importRT
+      - name: import_rt
         mapping: import_targets
         reference: InfraRouteTarget
-      - name: exportRT
+      - name: export_rt
         mapping: export_targets
         reference: InfraRouteTarget
   - name: CoreStandardGroup
@@ -448,9 +447,9 @@ schema_mapping:
         mapping: mode.label
       - name: mac_address
         mapping: mac_address
-      - name: ip_addresses
-        mapping: ip_addresses
-        reference: InfraIPAddress
+      # - name: ip_addresses
+      #   mapping: ip_addresses
+      #   reference: InfraIPAddress
       - name: mgmt_only
         mapping: mgmt_only
       - name: untagged_vlan
@@ -462,12 +461,13 @@ schema_mapping:
       - name: device
         mapping: device
         reference: InfraDevice
-      # - name: status
-      #   mapping: status
-      #   reference: BuiltinStatus
       - name: tags
         mapping: tags
         reference: BuiltinTag
+      # - name: status
+      #   mapping: status
+      #   reference: BuiltinStatus
+
   - name: InfraFrontPort
     identifiers: ["name", "device"]
     mapping: dcim.front-ports

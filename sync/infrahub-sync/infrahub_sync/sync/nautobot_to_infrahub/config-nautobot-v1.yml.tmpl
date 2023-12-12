@@ -3,7 +3,7 @@ name: from-nautobot
 source:
   name: nautobot
   settings:
-    url: "https://demo.nautobot.com"
+    url: "http://nautobot:8080"
 
 destination:
   name: infrahub
@@ -15,8 +15,8 @@ order: [
   "BuiltinRole",
   # "BuiltinStatus",
   "CoreStandardGroup",
-  "CoreOrganization",
   "TemplateLocationType",
+  "CoreOrganization",
   "BuiltinLocation",
   "InfraRack",
   "TemplateDeviceType",
@@ -31,8 +31,8 @@ order: [
   "InfraPrefix",
   "InfraIPAddress",
   "InfraRearPort",
-  "InfraFrontPort"
-  # "InfraInterfaceL2L3"
+  "InfraFrontPort",
+  "InfraInterfaceL2L3"
 ]
 
 schema_mapping:
@@ -104,10 +104,18 @@ schema_mapping:
       - name: type
         static: "Tenant"
       - name: group
-        mapping: tenant_group
+        mapping: group
         reference: CoreStandardGroup
 
   # Sites (Region, Sites, Location)
+  - name: TemplateLocationType
+    mapping: dcim.location-types
+    identifiers: ["name"]
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
   - name: BuiltinLocation
     mapping: dcim.regions
     fields:
@@ -138,6 +146,9 @@ schema_mapping:
         mapping: name
       - name: type
         static: "Location"
+      - name: location_type
+        mapping: location_type
+        reference: TemplateLocationType
       - name: organization
         mapping: tenant
         reference: CoreOrganization
@@ -151,6 +162,9 @@ schema_mapping:
         mapping: name
       - name: location
         mapping: location
+        reference: BuiltinLocation
+      - name: site
+        mapping: site
         reference: BuiltinLocation
       - name: height
         mapping: u_height
@@ -231,7 +245,7 @@ schema_mapping:
         mapping: tenant
         reference: CoreOrganization
       - name: role
-        mapping: role
+        mapping: device_role
         reference: BuiltinRole
       # - name: status
       #   mapping: status
@@ -301,7 +315,7 @@ schema_mapping:
       #   mapping: status
       #   reference: BuiltinStatus
       - name: type
-        mapping: circuit_type
+        mapping: type
         reference: TemplateCircuitType
       # - name: tenant
       #   mapping: tenant
@@ -350,10 +364,10 @@ schema_mapping:
         reference: CoreOrganization
       - name: vrf_rd
         mapping: rd
-      - name: importRT
+      - name: import_rt
         mapping: import_targets
         reference: InfraRouteTarget
-      - name: exportRT
+      - name: export_rt
         mapping: export_targets
         reference: InfraRouteTarget
   - name: CoreStandardGroup
@@ -390,11 +404,11 @@ schema_mapping:
       #   mapping: status
       #   reference: BuiltinStatus
       - name: vlan_group
-        mapping: vlan_group
+        mapping: group
         reference: CoreStandardGroup
   - name: InfraPrefix
     mapping: ipam.prefixes
-    identifiers: ["prefix"]
+    identifiers: ["prefix", "vrf", "organization"]
     fields:
       - name: prefix
         mapping: prefix
@@ -403,6 +417,9 @@ schema_mapping:
       - name: organization
         mapping: tenant
         reference: CoreOrganization
+      - name: vrf
+        mapping: vrf
+        reference: InfraVRF
       - name: role
         mapping: role
         reference: BuiltinRole
@@ -417,7 +434,7 @@ schema_mapping:
         reference: BuiltinLocation
   - name: InfraIPAddress
     mapping: ipam.ip-addresses
-    identifiers: ["address", "prefix"]
+    identifiers: ["address", "vrf"]
     fields:
       - name: address
         mapping: address
@@ -426,9 +443,9 @@ schema_mapping:
       - name: organization
         mapping: tenant
         reference: CoreOrganization
-      - name: prefix
-        mapping: parent
-        reference: InfraPrefix
+      - name: vrf
+        mapping: vrf
+        reference: InfraVRF
       - name: role
         mapping: role
         reference: BuiltinRole
@@ -445,15 +462,12 @@ schema_mapping:
         mapping: name
       - name: description
         maping: description
-      - name: type
+      - name: interface_type
         mapping: type.label
       - name: l2_mode
         mapping: mode.label
       - name: mac_address
         mapping: mac_address
-      - name: ip_addresses
-        mapping: ip_addresses
-        reference: InfraIPAddress
       - name: mgmt_only
         mapping: mgmt_only
       - name: untagged_vlan

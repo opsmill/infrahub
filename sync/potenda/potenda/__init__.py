@@ -5,6 +5,7 @@ from diffsync.diff import Diff
 from diffsync.enum import DiffSyncFlags
 from diffsync.logging import enable_console_logging
 from infrahub_sync import SyncInstance
+from tqdm import tqdm
 
 
 class Potenda:
@@ -15,6 +16,7 @@ class Potenda:
         config: SyncInstance,
         top_level: List[str],
         partition=None,
+        show_progress: Optional[bool] = False,
     ):
         self.top_level = top_level
 
@@ -27,10 +29,23 @@ class Potenda:
         self.destination.top_level = top_level
 
         self.partition = partition
-
+        self.progress_bar = None
+        self.show_progress = show_progress
+        enable_console_logging(verbosity=1)
         self.flags = DiffSyncFlags.SKIP_UNMATCHED_DST
 
-        enable_console_logging(verbosity=1)
+    def _print_callback(self, stage: str, elements_processed: int, total_models: int):
+        """Callback for DiffSync using tqdm"""
+        if self.show_progress:
+            if self.progress_bar is None:
+                self.progress_bar = tqdm(total=total_models, desc=stage, unit="models")
+
+            self.progress_bar.n = elements_processed
+            self.progress_bar.refresh()
+
+            if elements_processed == total_models:
+                self.progress_bar.close()
+                self.progress_bar = None
 
     def load(self):
         try:
@@ -43,15 +58,10 @@ class Potenda:
 
     def diff(self) -> Diff:
         print(f"Diff: Comparing data from {self.source} to {self.destination}")
-        return self.destination.diff_from(self.source, flags=self.flags)
-
-    @classmethod
-    def _print_callback(self, stage: str, elements_processed: int, total_models: int):
-        """Callback for DiffSync"""
-        percentage: float = round(elements_processed / total_models * 100, 1)
-        if percentage.is_integer():
-            print(f"-> Processed {elements_processed} on {total_models} ({percentage}% done)")
+        self.progress_bar = None
+        return self.destination.diff_from(self.source, flags=self.flags, callback=self._print_callback)
 
     def sync(self, diff: Optional[Diff] = None):
         print(f"Sync: Importing data from {self.source} to {self.destination} based on Diff")
+        self.progress_bar = None
         return self.destination.sync_from(self.source, diff=diff, flags=self.flags, callback=self._print_callback)

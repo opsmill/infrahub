@@ -1,4 +1,6 @@
 ---
+# Template using Nautobot V2 and pynautobot v2 !
+
 name: from-nautobot
 source:
   name: nautobot
@@ -343,10 +345,10 @@ schema_mapping:
         reference: NautobotNamespace
       - name: vrf_rd
         mapping: rd
-      - name: importRT
+      - name: import_rt
         mapping: import_targets
         reference: InfraRouteTarget
-      - name: exportRT
+      - name: export_rt
         mapping: export_targets
         reference: InfraRouteTarget
   - name: CoreStandardGroup
@@ -447,9 +449,9 @@ schema_mapping:
         mapping: mode.label
       - name: mac_address
         mapping: mac_address
-      - name: ip_addresses
-        mapping: ip_addresses
-        reference: InfraIPAddress
+      # - name: ip_addresses
+      #   mapping: ip_addresses
+      #   reference: InfraIPAddress
       - name: mgmt_only
         mapping: mgmt_only
       - name: untagged_vlan
@@ -464,7 +466,6 @@ schema_mapping:
       - name: tags
         mapping: tags
         reference: BuiltinTag
-
       # - name: status
       #   mapping: status
       #   reference: BuiltinStatus

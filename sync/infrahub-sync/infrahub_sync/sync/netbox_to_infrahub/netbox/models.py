@@ -113,7 +113,6 @@ class InfraDevice(NetboxModel):
     description: Optional[str]
     serial_number: Optional[str]
     asset_tag: Optional[str]
-    site: str
     model: str
     rack: Optional[str]
     role: Optional[str]
@@ -172,12 +171,11 @@ class InfraProviderNetwork(NetboxModel):
 class InfraPrefix(NetboxModel):
     _modelname = "InfraPrefix"
     _identifiers = ("prefix", "vrf")
-    _attributes = ("organization", "site", "role", "description")
+    _attributes = ("organization", "role", "description")
 
     prefix: str
     description: Optional[str]
     organization: Optional[str]
-    site: Optional[str]
     role: Optional[str]
     vrf: Optional[str]
 
@@ -225,7 +223,6 @@ class InfraVLAN(NetboxModel):
     description: Optional[str]
     vlan_id: int
     organization: Optional[str]
-    site: Optional[str]
     vlan_group: Optional[str]
 
     local_id: Optional[str]
@@ -235,14 +232,14 @@ class InfraVLAN(NetboxModel):
 class InfraVRF(NetboxModel):
     _modelname = "InfraVRF"
     _identifiers = ("name",)
-    _attributes = ("organization", "importRT", "exportRT", "description", "vrf_rd")
+    _attributes = ("organization", "import_rt", "export_rt", "description", "vrf_rd")
 
     name: str
     description: Optional[str]
     vrf_rd: Optional[str]
     organization: Optional[str]
-    importRT: List[str] = []
-    exportRT: List[str] = []
+    import_rt: List[str] = []
+    export_rt: List[str] = []
 
     local_id: Optional[str]
     local_data: Optional[Any]

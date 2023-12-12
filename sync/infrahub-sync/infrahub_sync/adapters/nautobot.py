@@ -69,7 +69,6 @@ class NautobotAdapter(DiffSyncMixin, DiffSync):
             for obj in objs:
                 data = self.nautobot_obj_to_diffsync(obj=obj, mapping=element, model=model)
                 item = model(**data)
-                print(f"item = {item} - {data}")
                 self.add(item)
 
     def nautobot_obj_to_diffsync(self, obj: NautobotRecord, mapping: SchemaMappingModel, model: NautobotModel) -> dict:
