@@ -3,6 +3,7 @@ coverage.xml
 *.pyc
 *.env
 script.py
+**/*.local.*
 .vscode/settings.json
 node_modules/*
 development/docker-compose.override.yml

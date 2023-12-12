@@ -8,6 +8,9 @@ query {
       node {
         id
         display_label
+        resolved {
+          value
+        }
         __typename
         _updated_at
 

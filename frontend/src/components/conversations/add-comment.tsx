@@ -1,46 +1,45 @@
-import { ReactElement, useRef } from "react";
-import { MarkdownEditor } from "../../screens/proposed-changes/MarkdownEditor";
-import { Button, BUTTON_TYPES } from "../button";
-import { MDXEditorMethods } from "@mdxeditor/editor";
+import { ReactElement } from "react";
+import { Form } from "../../screens/edit-form-hook/form";
+import { DynamicFieldData } from "../../screens/edit-form-hook/dynamic-control-types";
+import { FieldValues, SubmitHandler } from "react-hook-form";
 
 type tAddComment = {
-  onSubmit: (data: string) => Promise<void>;
+  onSubmit: SubmitHandler<FieldValues>;
   isLoading?: boolean;
   onCancel?: Function;
   disabled?: boolean;
   additionalButtons?: ReactElement;
 };
 
-export const AddComment = (props: tAddComment) => {
-  const { onSubmit, isLoading, onCancel, disabled, additionalButtons } = props;
-  const ref = useRef<MDXEditorMethods>(null);
+const fields: DynamicFieldData[] = [
+  {
+    name: "comment",
+    label: "Add a comment",
+    placeholder: "Add your comment here...",
+    type: "textarea",
+    value: "",
+    config: {
+      required: "Required",
+    },
+  },
+];
 
-  const handleCommentSubmit = async () => {
-    const markdown = ref.current?.getMarkdown();
-    if (markdown) {
-      await onSubmit(markdown);
-      ref.current?.setMarkdown("");
-    }
-  };
-
+export const AddComment = ({
+  onSubmit,
+  isLoading,
+  onCancel,
+  disabled,
+  additionalButtons,
+}: tAddComment) => {
   return (
-    <>
-      <MarkdownEditor ref={ref} />
-
-      <div className="flex items-center justify-end gap-3 pt-3">
-        {additionalButtons && <div className="mr-auto">{additionalButtons}</div>}
-
-        {onCancel && <Button onClick={onCancel}>Cancel</Button>}
-
-        <Button
-          onClick={handleCommentSubmit}
-          buttonType={BUTTON_TYPES.MAIN}
-          isLoading={isLoading}
-          disabled={disabled}
-          data-cy="add-new-comment-button">
-          Comment
-        </Button>
-      </div>
-    </>
+    <Form
+      onSubmit={onSubmit}
+      fields={fields}
+      submitLabel="Comment"
+      isLoading={isLoading}
+      onCancel={onCancel}
+      disabled={disabled}
+      additionalButtons={additionalButtons}
+    />
   );
 };

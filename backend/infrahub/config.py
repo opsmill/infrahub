@@ -5,11 +5,15 @@ import os.path
 import sys
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import toml
 from infrahub_sdk import generate_uuid
-from pydantic import BaseSettings, Field, ValidationError
+from pydantic import BaseModel, BaseSettings, Field, ValidationError
+
+if TYPE_CHECKING:
+    from infrahub.services.adapters.cache import InfrahubCache
+    from infrahub.services.adapters.message_bus import InfrahubMessageBus
 
 SETTINGS: Settings = None
 
@@ -258,6 +262,11 @@ class TraceSettings(BaseSettings):
         case_sensitive = False
 
 
+class Override(BaseModel):
+    message_bus: Optional[InfrahubMessageBus] = None
+    cache: Optional[InfrahubCache] = None
+
+
 class Settings(BaseSettings):
     """Main Settings Class for the project."""
 
@@ -315,3 +324,6 @@ def load_and_exit(config_file_name: str = "infrahub.toml", config_data: Optional
         for error in err.errors():
             print(f"  {'/'.join(error['loc'])} | {error['msg']} ({error['type']})")
         sys.exit(1)
+
+
+OVERRIDE: Override = Override()

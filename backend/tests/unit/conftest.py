@@ -1133,7 +1133,13 @@ async def car_person_schema(db: InfrahubDatabase, default_branch: Branch, node_g
                     {"name": "is_electric", "kind": "Boolean"},
                 ],
                 "relationships": [
-                    {"name": "owner", "peer": "TestPerson", "optional": False, "cardinality": "one"},
+                    {
+                        "name": "owner",
+                        "peer": "TestPerson",
+                        "optional": False,
+                        "cardinality": "one",
+                        "direction": "outbound",
+                    },
                 ],
             },
             {
@@ -1146,7 +1152,60 @@ async def car_person_schema(db: InfrahubDatabase, default_branch: Branch, node_g
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "height", "kind": "Number", "optional": True},
                 ],
-                "relationships": [{"name": "cars", "peer": "TestCar", "cardinality": "many"}],
+                "relationships": [{"name": "cars", "peer": "TestCar", "cardinality": "many", "direction": "inbound"}],
+            },
+        ],
+    }
+
+    schema = SchemaRoot(**SCHEMA)
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+
+@pytest.fixture
+async def choices_schema(db: InfrahubDatabase, default_branch: Branch, node_group_schema) -> None:
+    SCHEMA = {
+        "generics": [
+            {
+                "name": "Choice",
+                "namespace": "Base",
+                "default_filter": "name__value",
+                "display_labels": ["name__value", "color__value"],
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "color", "kind": "Text", "enum": ["red", "green", "blue"], "optional": True},
+                    {"name": "measuring_system", "kind": "Text", "enum": ["metric"], "optional": True},
+                    {"name": "description", "kind": "Text", "optional": True},
+                    {
+                        "name": "section",
+                        "kind": "Dropdown",
+                        "optional": True,
+                        "choices": [
+                            {"name": "backend", "label": "Backend", "color": ""},
+                            {"name": "frontend", "label": "Frontend", "color": "#0000ff"},
+                        ],
+                    },
+                ],
+            },
+        ],
+        "nodes": [
+            {
+                "name": "Choice",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "display_labels": ["name__value", "color__value"],
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "status", "kind": "Text", "enum": ["active", "passive"]},
+                    {"name": "comment", "kind": "Text", "optional": True},
+                    {
+                        "name": "temperature_scale",
+                        "kind": "Dropdown",
+                        "optional": True,
+                        "choices": [{"name": "celsius", "label": "Celsius"}],
+                    },
+                ],
+                "inherit_from": ["BaseChoice"],
             },
         ],
     }
@@ -1484,12 +1543,13 @@ async def person_tag_schema(db: InfrahubDatabase, default_branch: Branch, data_s
                     {"name": "lastname", "kind": "Text"},
                 ],
                 "relationships": [
-                    {"name": "tags", "peer": "BuiltinTag", "cardinality": "many"},
+                    {"name": "tags", "peer": "BuiltinTag", "cardinality": "many", "direction": "inbound"},
                     {
                         "name": "primary_tag",
                         "peer": "BuiltinTag",
                         "identifier": "person_primary_tag",
                         "cardinality": "one",
+                        "direction": "outbound",
                     },
                 ],
             },

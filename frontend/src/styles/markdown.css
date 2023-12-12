@@ -6,7 +6,6 @@
   word-wrap: break-word;
 }
 
-.markdown,
 .markdown p,
 .markdown blockquote,
 .markdown > ul,
@@ -189,21 +188,4 @@
 
 .markdown li > p {
   margin: 0;
-}
-
-.markdown-editor [role="toolbar"] {
-  border-radius: 0.5rem 0.5rem 0 0;
-}
-
-.cm-gutters {
-  display: none !important;
-}
-
-.cm-content {
-  padding: 12px !important;
-}
-
-.cm-editor,
-.cm-activeLine {
-  background: transparent !important;
 }

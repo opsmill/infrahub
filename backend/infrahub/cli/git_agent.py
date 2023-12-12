@@ -11,6 +11,7 @@ from prometheus_client import start_http_server
 from rich.logging import RichHandler
 
 from infrahub import config
+from infrahub.components import ComponentType
 from infrahub.core.initialization import initialization
 from infrahub.database import InfrahubDatabase, get_db
 from infrahub.git import initialize_repositories_directory
@@ -19,11 +20,9 @@ from infrahub.lock import initialize_lock
 from infrahub.log import clear_log_context, get_logger
 from infrahub.message_bus import get_broker, messages
 from infrahub.message_bus.operations import execute_message
-from infrahub.message_bus.worker import WorkerCallback
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
-from infrahub.worker import WORKER_IDENTITY
 
 app = typer.Typer()
 
@@ -53,13 +52,7 @@ async def subscribe_rpcs_queue(service: InfrahubServices) -> None:
 
     # Create a channel and subscribe to the incoming RPC queue
     channel = await connection.channel()
-    queue = await channel.declare_queue(
-        f"{config.SETTINGS.broker.namespace}.rpcs", durable=True, arguments={"x-queue-type": "quorum"}
-    )
-    events_queue = await channel.declare_queue(name=f"worker-events-{WORKER_IDENTITY}", exclusive=True)
-
-    worker_callback = WorkerCallback(service=service)
-    await events_queue.consume(worker_callback.run_command, no_ack=True)
+    queue = await channel.get_queue(f"{config.SETTINGS.broker.namespace}.rpcs")
     log.info("Waiting for RPC instructions to execute .. ")
     async with queue.iterator() as qiterator:
         async for message in qiterator:
@@ -87,15 +80,7 @@ async def initialize_git_agent(service: InfrahubServices) -> None:
     await sync_remote_repositories(service=service)
 
 
-async def monitor_remote_activity(service: InfrahubServices, interval: int) -> None:
-    log.info("Monitoring remote repository for updates .. ")
-
-    while True:
-        await sync_remote_repositories(service=service)
-        await asyncio.sleep(interval)
-
-
-async def _start(debug: bool, interval: int, port: int) -> None:
+async def _start(debug: bool, port: int) -> None:
     """Start Infrahub Git Agent."""
 
     log_level = "DEBUG" if debug else "INFO"
@@ -114,23 +99,16 @@ async def _start(debug: bool, interval: int, port: int) -> None:
     # Initialize the lock
     initialize_lock()
 
-    connection = await get_broker()
-
-    # Create a channel and subscribe to the incoming RPC queue
-    channel = await connection.channel()
-    events_queue = await channel.declare_queue(name=f"worker-events-{WORKER_IDENTITY}", exclusive=True)
-
-    exchange = await channel.declare_exchange(f"{config.SETTINGS.broker.namespace}.events", type="topic", durable=True)
-    await events_queue.bind(exchange, routing_key="refresh.registry.*")
-    delayed_exchange = await channel.get_exchange(name=f"{config.SETTINGS.broker.namespace}.delayed")
     driver = await get_db()
     database = InfrahubDatabase(driver=driver)
     service = InfrahubServices(
         cache=RedisCache(),
         client=client,
         database=database,
-        message_bus=RabbitMQMessageBus(channel=channel, exchange=exchange, delayed_exchange=delayed_exchange),
+        message_bus=RabbitMQMessageBus(),
+        component_type=ComponentType.GIT_AGENT,
     )
+    await service.initialize()
     await initialize_git_agent(service=service)
 
     async with service.database.start_session() as db:
@@ -138,7 +116,6 @@ async def _start(debug: bool, interval: int, port: int) -> None:
 
     tasks = [
         asyncio.create_task(subscribe_rpcs_queue(service=service)),
-        asyncio.create_task(monitor_remote_activity(service=service, interval=interval)),
     ]
 
     await asyncio.gather(*tasks)
@@ -146,7 +123,6 @@ async def _start(debug: bool, interval: int, port: int) -> None:
 
 @app.command()
 def start(
-    interval: int = typer.Option(10, help="Interval in sec between remote repositories update."),
     debug: bool = typer.Option(False, help="Enable advanced logging and troubleshooting"),
     config_file: str = typer.Option(
         "infrahub.toml", envvar="INFRAHUB_CONFIG", help="Location of the configuration file to use for Infrahub"
@@ -165,4 +141,4 @@ def start(
 
     config.load_and_exit(config_file_name=config_file)
 
-    aiorun(_start(interval=interval, debug=debug, port=port))
+    aiorun(_start(debug=debug, port=port))

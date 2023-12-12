@@ -82,7 +82,7 @@ describe("Tutorial - Part 1", () => {
 
     cy.contains(ORGANIZATION_NAME).click();
 
-    cy.get(".bg-gray-500").should("not.exist");
+    cy.get("[data-cy='side-panel-background']").should("not.exist");
 
     cy.get(".sm\\:divide-y > :nth-child(2) > div.flex > .mt-1").should(
       "have.text",

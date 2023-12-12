@@ -107,7 +107,7 @@ async def test_dropdown_properties(db: InfrahubDatabase, default_branch: Branch,
     assert passive.description == ""
     assert passive.label == "Redundancy nodes not in the active path"
     # The color of the passive choice comes from the color selector in infrahub.visuals
-    assert passive.color == "#0b6581"
+    assert passive.color == "#ed6a5a"
 
 
 async def test_validate_format_string(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
@@ -220,9 +220,9 @@ async def test_get_query_filter_string_value(db: InfrahubDatabase, default_branc
     )
     expected_response = [
         "(n)",
-        "[:HAS_ATTRIBUTE]",
+        "-[:HAS_ATTRIBUTE]-",
         "(i:Attribute { name: $attr_description_name })",
-        "[:HAS_VALUE]",
+        "-[:HAS_VALUE]-",
         "(av:AttributeValue { value: $attr_description_value })",
     ]
     assert [str(item) for item in filters] == expected_response
@@ -233,9 +233,9 @@ async def test_get_query_filter_string_value(db: InfrahubDatabase, default_branc
         name="description", filter_name="value", filter_value="test", include_match=False
     )
     expected_response = [
-        "[:HAS_ATTRIBUTE]",
+        "-[:HAS_ATTRIBUTE]-",
         "(i:Attribute { name: $attr_description_name })",
-        "[:HAS_VALUE]",
+        "-[:HAS_VALUE]-",
         "(av:AttributeValue { value: $attr_description_value })",
     ]
     assert [str(item) for item in filters] == expected_response
@@ -247,9 +247,9 @@ async def test_get_query_filter_any(db: InfrahubDatabase, default_branch: Branch
     filters, params, matchs = await String.get_query_filter(name="any", filter_name="value", filter_value="test")
     expected_response = [
         "(n)",
-        "[:HAS_ATTRIBUTE]",
+        "-[:HAS_ATTRIBUTE]-",
         "(i:Attribute)",
-        "[:HAS_VALUE]",
+        "-[:HAS_VALUE]-",
         "(av:AttributeValue { value: $attr_any_value })",
     ]
     assert [str(item) for item in filters] == expected_response
@@ -263,9 +263,9 @@ async def test_get_query_filter_flag_property(db: InfrahubDatabase, default_bran
     )
     expected_response = [
         "(n)",
-        "[:HAS_ATTRIBUTE]",
+        "-[:HAS_ATTRIBUTE]-",
         "(i:Attribute { name: $attr_descr_name })",
-        "[:IS_PROTECTED]",
+        "-[:IS_PROTECTED]-",
         "(ap:Boolean { value: $attr_descr_is_protected })",
     ]
     assert [str(item) for item in filters] == expected_response
@@ -277,14 +277,35 @@ async def test_get_query_filter_any_node_property(db: InfrahubDatabase, default_
     filters, params, matchs = await String.get_query_filter(name="any", filter_name="source__id", filter_value="abcdef")
     expected_response = [
         "(n)",
-        "[:HAS_ATTRIBUTE]",
+        "-[:HAS_ATTRIBUTE]-",
         "(i:Attribute)",
-        "[:HAS_SOURCE]",
+        "-[:HAS_SOURCE]-",
         "(ap:CoreNode { uuid: $attr_any_source_id })",
     ]
     assert [str(item) for item in filters] == expected_response
     assert params == {"attr_any_source_id": "abcdef"}
     assert matchs == []
+
+
+async def test_get_query_filter_multiple_values(db: InfrahubDatabase, default_branch: Branch):
+    filters, params, matchs = await String.get_query_filter(
+        name="name", filter_name="values", filter_value=["test1", "test2"]
+    )
+    expected_response = [
+        "(n)",
+        "-[:HAS_ATTRIBUTE]-",
+        "(i:Attribute { name: $attr_name_name })",
+        "-[:HAS_VALUE]-",
+        "(av:AttributeValue)",
+    ]
+    assert [str(item) for item in filters] == expected_response
+    assert params == {"attr_name_name": "name", "attr_name_value": ["test1", "test2"]}
+    assert matchs == ["av.value IN $attr_name_value"]
+
+
+async def test_get_query_filter_multiple_values_invalid_type(db: InfrahubDatabase, default_branch: Branch):
+    with pytest.raises(TypeError):
+        await String.get_query_filter(name="name", filter_name="values", filter_value=["test1", 1.0])
 
 
 async def test_base_serialization(db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema):

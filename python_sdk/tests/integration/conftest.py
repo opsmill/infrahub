@@ -1,17 +1,21 @@
 import asyncio
 import json
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import httpx
 import infrahub.config as config
 import pytest
 from fastapi.testclient import TestClient
+from infrahub.components import ComponentType
 from infrahub.core.initialization import first_time_initialization, initialization
 from infrahub.core.node import Node
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase, get_db
 from infrahub.lock import initialize_lock
+from infrahub.message_bus import InfrahubMessage
+from infrahub.message_bus.types import MessageTTL
+from infrahub.services.adapters.message_bus import InfrahubMessageBus
 
 from infrahub_sdk.schema import NodeSchema
 from infrahub_sdk.types import HTTPMethod
@@ -94,6 +98,7 @@ def execute_before_any_test(worker_id, tmpdir_factory):
     config.SETTINGS.miscellaneous.start_background_runner = False
     config.SETTINGS.security.secret_key = "4e26b3d9-b84f-42c9-a03f-fee3ada3b2fa"
     config.SETTINGS.main.internal_address = "http://mock"
+    config.OVERRIDE.message_bus = BusRecorder()
 
     initialize_lock()
 
@@ -319,7 +324,7 @@ async def schema_extension_02() -> Dict[str, Any]:
                 ],
                 "relationships": [
                     {
-                        "name": "Organization",
+                        "name": "organization",
                         "peer": "CoreOrganization",
                         "optional": False,
                         "cardinality": "one",
@@ -345,3 +350,19 @@ async def schema_extension_02() -> Dict[str, Any]:
             ]
         },
     }
+
+
+class BusRecorder(InfrahubMessageBus):
+    def __init__(self, component_type: Optional[ComponentType] = None):
+        self.messages: List[InfrahubMessage] = []
+        self.messages_per_routing_key: Dict[str, List[InfrahubMessage]] = {}
+
+    async def publish(self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None) -> None:
+        self.messages.append(message)
+        if routing_key not in self.messages_per_routing_key:
+            self.messages_per_routing_key[routing_key] = []
+        self.messages_per_routing_key[routing_key].append(message)
+
+    @property
+    def seen_routing_keys(self) -> List[str]:
+        return list(self.messages_per_routing_key.keys())

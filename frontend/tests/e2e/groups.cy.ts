@@ -77,7 +77,7 @@ describe("Groups", () => {
       .should("have.length", 4);
 
     // Close side panel
-    cy.get(".bg-gray-500").click();
+    cy.get("[data-cy='side-panel-background']").click();
 
     // Access the group page
     cy.get("[href='/groups']").scrollIntoView();
@@ -133,7 +133,7 @@ describe("Groups", () => {
       .should("have.length", 2);
 
     // Close side panel
-    cy.get(".bg-gray-500").click();
+    cy.get("[data-cy='side-panel-background']").click();
 
     // Access the group page
     cy.get("[href='/groups']").scrollIntoView();

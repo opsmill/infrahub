@@ -23,12 +23,13 @@ from infrahub.core.constants import (
     FilterSchemaKind,
     ProposedChangeState,
     RelationshipCardinality,
+    RelationshipDirection,
     RelationshipKind,
     Severity,
     ValidatorConclusion,
     ValidatorState,
 )
-from infrahub.core.query import QueryNode, QueryRel
+from infrahub.core.query import QueryNode, QueryRel, QueryRelDirection
 from infrahub.core.relationship import Relationship
 from infrahub.types import ATTRIBUTE_TYPES
 from infrahub.visuals import select_color
@@ -51,7 +52,8 @@ AttributeKind = enum.Enum("AttributeKind", dict(attribute_dict))
 RELATIONSHIPS_MAPPING = {"Relationship": Relationship}
 
 NODE_KIND_REGEX = r"^[A-Z][a-zA-Z0-9]+$"
-NODE_NAME_REGEX = r""
+NODE_NAME_REGEX = r"^[A-Z][a-zA-Z0-9]+$"
+NAME_REGEX = r"^[a-z0-9\_]+$"
 
 DEFAULT_NAME_MIN_LENGTH = 2
 DEFAULT_NAME_MAX_LENGTH = 32
@@ -61,6 +63,31 @@ DEFAULT_DESCRIPTION_LENGTH = 128
 DEFAULT_REL_IDENTIFIER_LENGTH = 128
 
 HTML_COLOR = re.compile(r"#[0-9a-fA-F]{6}\b")
+
+
+class QueryArrow(BaseModel):
+    start: str
+    end: str
+
+
+class QueryArrowInband(QueryArrow):
+    start: str = "<-"
+    end: str = "-"
+
+
+class QueryArrowOutband(QueryArrow):
+    start: str = "-"
+    end: str = "->"
+
+
+class QueryArrowBidir(QueryArrow):
+    start: str = "-"
+    end: str = "-"
+
+
+class QueryArrows(BaseModel):
+    left: QueryArrow
+    right: QueryArrow
 
 
 class BaseSchemaModel(BaseModel):
@@ -270,6 +297,8 @@ class DropdownChoice(BaseSchemaModel):
         cls,
         v: str,
     ) -> str:
+        if v == "":
+            return v
         if HTML_COLOR.match(v):
             return v.lower()
 
@@ -278,9 +307,8 @@ class DropdownChoice(BaseSchemaModel):
 
 class AttributeSchema(BaseSchemaModel):
     id: Optional[str]
-    name: str = Field(regex=NODE_NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
+    name: str = Field(regex=NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
     kind: str  # AttributeKind
-    namespace: str = "Attribute"
     label: Optional[str]
     description: Optional[str] = Field(max_length=DEFAULT_DESCRIPTION_LENGTH)
     default_value: Optional[Any]
@@ -352,9 +380,10 @@ class AttributeSchema(BaseSchemaModel):
 
 class RelationshipSchema(BaseSchemaModel):
     id: Optional[str]
-    name: str = Field(regex=NODE_NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
+    name: str = Field(regex=NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
     peer: str = Field(regex=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH)
     kind: RelationshipKind = RelationshipKind.GENERIC
+    direction: RelationshipDirection = RelationshipDirection.BIDIR
     label: Optional[str]
     description: Optional[str] = Field(max_length=DEFAULT_DESCRIPTION_LENGTH)
     identifier: Optional[str] = Field(max_length=DEFAULT_REL_IDENTIFIER_LENGTH)
@@ -373,6 +402,16 @@ class RelationshipSchema(BaseSchemaModel):
 
     async def get_peer_schema(self, branch: Optional[Union[Branch, str]] = None):
         return registry.schema.get(name=self.peer, branch=branch)
+
+    def get_query_arrows(self) -> QueryArrows:
+        """Return (in 4 parts) the 2 arrows for the relationship R1 and R2 based on the direction of the relationship."""
+
+        if self.direction == RelationshipDirection.OUTBOUND:
+            return QueryArrows(left=QueryArrowOutband(), right=QueryArrowOutband())
+        if self.direction == RelationshipDirection.INBOUND:
+            return QueryArrows(left=QueryArrowInband(), right=QueryArrowInband())
+
+        return QueryArrows(left=QueryArrowOutband(), right=QueryArrowInband())
 
     async def get_query_filter(
         self,
@@ -400,12 +439,28 @@ class RelationshipSchema(BaseSchemaModel):
         if include_match:
             query_filter.append(QueryNode(name="n"))
 
+        # Determine in which direction the relationships should point based on the side of the query
+        rels_direction = {
+            "r1": QueryRelDirection.OUTBOUND,
+            "r2": QueryRelDirection.INBOUND,
+        }
+        if self.direction == RelationshipDirection.OUTBOUND:
+            rels_direction = {
+                "r1": QueryRelDirection.OUTBOUND,
+                "r2": QueryRelDirection.OUTBOUND,
+            }
+        if self.direction == RelationshipDirection.INBOUND:
+            rels_direction = {
+                "r1": QueryRelDirection.INBOUND,
+                "r2": QueryRelDirection.INBOUND,
+            }
+
         if filter_name == "id":
             query_filter.extend(
                 [
-                    QueryRel(name="r1", labels=[rel_type]),
+                    QueryRel(name="r1", labels=[rel_type], direction=rels_direction["r1"]),
                     QueryNode(name="rl", labels=["Relationship"], params={"name": f"${prefix}_rel_name"}),
-                    QueryRel(name="r2", labels=[rel_type]),
+                    QueryRel(name="r2", labels=[rel_type], direction=rels_direction["r2"]),
                     QueryNode(name="peer", labels=["Node"]),
                 ]
             )
@@ -419,9 +474,9 @@ class RelationshipSchema(BaseSchemaModel):
         if filter_name == "ids":
             query_filter.extend(
                 [
-                    QueryRel(name="r1", labels=[rel_type]),
+                    QueryRel(name="r1", labels=[rel_type], direction=rels_direction["r1"]),
                     QueryNode(name="rl", labels=["Relationship"], params={"name": f"${prefix}_rel_name"}),
-                    QueryRel(name="r2", labels=[rel_type]),
+                    QueryRel(name="r2", labels=[rel_type], direction=rels_direction["r2"]),
                     QueryNode(name="peer", labels=["Node"]),
                 ]
             )
@@ -445,9 +500,9 @@ class RelationshipSchema(BaseSchemaModel):
 
         query_filter.extend(
             [
-                QueryRel(name="r1", labels=[rel_type]),
+                QueryRel(name="r1", labels=[rel_type], direction=rels_direction["r1"]),
                 QueryNode(name="rl", labels=["Relationship"], params={"name": f"${prefix}_rel_name"}),
-                QueryRel(name="r2", labels=[rel_type]),
+                QueryRel(name="r2", labels=[rel_type], direction=rels_direction["r2"]),
                 QueryNode(name="peer", labels=["Node"]),
             ]
         )
@@ -673,7 +728,7 @@ class NodeSchema(BaseNodeSchema):
 
 class GroupSchema(BaseSchemaModel):
     id: Optional[str]
-    name: str = Field(regex=NODE_NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
+    name: str = Field(regex=NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
     kind: str = Field(regex=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH)
     description: Optional[str] = Field(max_length=DEFAULT_DESCRIPTION_LENGTH)
 
@@ -742,7 +797,7 @@ internal_schema = {
                 {
                     "name": "name",
                     "kind": "Text",
-                    "description": "Node name, must be unique and must be all lowercase.",
+                    "description": "Node name, must be unique within a namespace and must start with an uppercase letter.",
                     "unique": True,
                     "regex": str(NODE_NAME_REGEX),
                     "min_length": DEFAULT_NAME_MIN_LENGTH,
@@ -751,6 +806,7 @@ internal_schema = {
                 {
                     "name": "namespace",
                     "kind": "Text",
+                    "description": "Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.",
                     "regex": str(NODE_KIND_REGEX),
                     "min_length": DEFAULT_KIND_MIN_LENGTH,
                     "max_length": DEFAULT_KIND_MAX_LENGTH,
@@ -765,13 +821,14 @@ internal_schema = {
                 {
                     "name": "description",
                     "kind": "Text",
-                    #  "description": "",
+                    "description": "Short description of the model, will be visible in the frontend.",
                     "optional": True,
                     "max_length": DEFAULT_DESCRIPTION_LENGTH,
                 },
                 {
                     "name": "branch",
                     "kind": "Text",
+                    "description": "Type of branch support for the model.",
                     "enum": BranchSupportType.available_types(),
                     "default_value": BranchSupportType.AWARE.value,
                     "optional": True,
@@ -779,6 +836,7 @@ internal_schema = {
                 {
                     "name": "default_filter",
                     "kind": "Text",
+                    "regex": str(NAME_REGEX),
                     "description": "Default filter used to search for a node in addition to its ID.",
                     "optional": True,
                 },
@@ -822,7 +880,7 @@ internal_schema = {
                 {
                     "name": "groups",
                     "kind": "List",
-                    "description": "List of Group that this node is part of",
+                    "description": "List of Group that this Node is part of.",
                     "optional": True,
                 },
             ],
@@ -831,6 +889,7 @@ internal_schema = {
                     "name": "attributes",
                     "peer": "SchemaAttribute",
                     "kind": "Component",
+                    "description": "List of supported Attributes for the Node.",
                     "identifier": "schema__node__attributes",
                     "cardinality": "many",
                     "branch": BranchSupportType.AWARE.value,
@@ -840,6 +899,7 @@ internal_schema = {
                     "name": "relationships",
                     "peer": "SchemaRelationship",
                     "kind": "Component",
+                    "description": "List of supported Relationships for the Node.",
                     "identifier": "schema__node__relationships",
                     "cardinality": "many",
                     "branch": BranchSupportType.AWARE.value,
@@ -856,49 +916,112 @@ internal_schema = {
             "attributes": [
                 {
                     "name": "name",
+                    "description": "Attribute name, must be unique within a model and must be all lowercase.",
                     "kind": "Text",
-                    "regex": str(NODE_NAME_REGEX),
+                    "regex": str(NAME_REGEX),
                     "min_length": DEFAULT_KIND_MIN_LENGTH,
                     "max_length": DEFAULT_KIND_MAX_LENGTH,
-                },
-                {
-                    "name": "namespace",
-                    "kind": "Text",
-                    "regex": str(NODE_KIND_REGEX),
-                    "min_length": DEFAULT_KIND_MIN_LENGTH,
-                    "max_length": DEFAULT_KIND_MAX_LENGTH,
-                    "optional": True,
                 },
                 {
                     "name": "kind",
                     "kind": "Text",
+                    "description": "Defines the type of the attribute.",
                     "enum": ATTRIBUTE_KIND_LABELS,
                     "min_length": DEFAULT_KIND_MIN_LENGTH,
                     "max_length": DEFAULT_KIND_MAX_LENGTH,
                 },
-                {"name": "enum", "kind": "List", "optional": True},
-                {"name": "choices", "kind": "List", "optional": True},
-                {"name": "regex", "kind": "Text", "optional": True},
-                {"name": "max_length", "kind": "Number", "optional": True},
-                {"name": "min_length", "kind": "Number", "optional": True},
-                {"name": "label", "kind": "Text", "optional": True, "max_length": DEFAULT_NAME_MAX_LENGTH},
-                {"name": "description", "kind": "Text", "optional": True, "max_length": DEFAULT_DESCRIPTION_LENGTH},
-                {"name": "read_only", "kind": "Boolean", "default_value": False, "optional": True},
-                {"name": "unique", "kind": "Boolean", "default_value": False, "optional": True},
-                {"name": "optional", "kind": "Boolean", "default_value": True, "optional": True},
+                {
+                    "name": "enum",
+                    "kind": "List",
+                    "description": "Define a list of valid values for the attribute.",
+                    "optional": True,
+                },
+                {
+                    "name": "choices",
+                    "kind": "List",
+                    "description": "Define a list of valid choices for a dropdown attribute.",
+                    "optional": True,
+                },
+                {
+                    "name": "regex",
+                    "kind": "Text",
+                    "description": "Regex uses to limit limit the characters allowed in for the attributes.",
+                    "optional": True,
+                },
+                {
+                    "name": "max_length",
+                    "kind": "Number",
+                    "description": "Set a maximum number of characters allowed for a given attribute.",
+                    "optional": True,
+                },
+                {
+                    "name": "min_length",
+                    "kind": "Number",
+                    "description": "Set a minimum number of characters allowed for a given attribute.",
+                    "optional": True,
+                },
+                {
+                    "name": "label",
+                    "kind": "Text",
+                    "optional": True,
+                    "description": "Human friendly representation of the name. Will be autogenerated if not provided",
+                    "max_length": DEFAULT_NAME_MAX_LENGTH,
+                },
+                {
+                    "name": "description",
+                    "kind": "Text",
+                    "optional": True,
+                    "description": "Short description of the attribute.",
+                    "max_length": DEFAULT_DESCRIPTION_LENGTH,
+                },
+                {
+                    "name": "read_only",
+                    "kind": "Boolean",
+                    "description": "Set the attribute as Read-Only, users won't be able to change its value. "
+                    "Mainly relevant for internal object.",
+                    "default_value": False,
+                    "optional": True,
+                },
+                {
+                    "name": "unique",
+                    "kind": "Boolean",
+                    "description": "Indicate if the value of this attribute must be unique in the database for a given model.",
+                    "default_value": False,
+                    "optional": True,
+                },
+                {
+                    "name": "optional",
+                    "kind": "Boolean",
+                    "description": "Indicate if this attribute is mandatory or optional.",
+                    "default_value": True,
+                    "optional": True,
+                },
                 {
                     "name": "branch",
                     "kind": "Text",
+                    "description": "Type of branch support for the attribute, if not defined it will be inherited from the node.",
                     "enum": BranchSupportType.available_types(),
                     "optional": True,
                 },
-                {"name": "order_weight", "kind": "Number", "optional": True},
+                {
+                    "name": "order_weight",
+                    "kind": "Number",
+                    "description": "Number used to order the attribute in the frontend (table and view).",
+                    "optional": True,
+                },
                 {
                     "name": "default_value",
                     "kind": "Any",
+                    "description": "Default value of the attribute.",
                     "optional": True,
                 },
-                {"name": "inherited", "kind": "Boolean", "default_value": False, "optional": True},
+                {
+                    "name": "inherited",
+                    "kind": "Boolean",
+                    "default_value": False,
+                    "description": "Internal value to indicate if the attribute was inherited from a Generic node.",
+                    "optional": True,
+                },
             ],
             "relationships": [
                 {
@@ -922,13 +1045,15 @@ internal_schema = {
                 {
                     "name": "name",
                     "kind": "Text",
-                    "regex": str(NODE_NAME_REGEX),
+                    "description": "Relationship name, must be unique within a model and must be all lowercase.",
+                    "regex": str(NAME_REGEX),
                     "min_length": DEFAULT_KIND_MIN_LENGTH,
                     "max_length": DEFAULT_KIND_MAX_LENGTH,
                 },
                 {
                     "name": "peer",
                     "kind": "Text",
+                    "description": "Type (kind) of objects supported on the other end of the relationship.",
                     "regex": str(NODE_KIND_REGEX),
                     "min_length": DEFAULT_KIND_MIN_LENGTH,
                     "max_length": DEFAULT_KIND_MAX_LENGTH,
@@ -936,30 +1061,75 @@ internal_schema = {
                 {
                     "name": "kind",
                     "kind": "Text",
+                    "description": "Defines the type of the relationship.",
                     "enum": RelationshipKind.available_types(),
-                    "default_value": "Generic",
+                    "default_value": RelationshipKind.GENERIC.value,
                 },
-                {"name": "label", "kind": "Text", "optional": True, "max_length": DEFAULT_NAME_MAX_LENGTH},
-                {"name": "description", "kind": "Text", "optional": True, "max_length": DEFAULT_DESCRIPTION_LENGTH},
-                {"name": "identifier", "kind": "Text", "max_length": DEFAULT_REL_IDENTIFIER_LENGTH, "optional": True},
-                {"name": "cardinality", "kind": "Text", "enum": RelationshipCardinality.available_types()},
-                {"name": "order_weight", "kind": "Number", "optional": True},
+                {
+                    "name": "label",
+                    "kind": "Text",
+                    "description": "Human friendly representation of the name. Will be autogenerated if not provided",
+                    "optional": True,
+                    "max_length": DEFAULT_NAME_MAX_LENGTH,
+                },
+                {
+                    "name": "description",
+                    "kind": "Text",
+                    "optional": True,
+                    "description": "Short description of the relationship.",
+                    "max_length": DEFAULT_DESCRIPTION_LENGTH,
+                },
+                {
+                    "name": "identifier",
+                    "kind": "Text",
+                    "description": "Unique identifier of the relationship within a model,"
+                    " identifiers must match to traverse a relationship on both direction.",
+                    "regex": str(NAME_REGEX),
+                    "max_length": DEFAULT_REL_IDENTIFIER_LENGTH,
+                    "optional": True,
+                },
+                {
+                    "name": "cardinality",
+                    "kind": "Text",
+                    "description": "Defines how many objects are expected on the other side of the relationship.",
+                    "enum": RelationshipCardinality.available_types(),
+                    "default_value": RelationshipCardinality.MANY.value,
+                    "optional": True,
+                },
+                {
+                    "name": "order_weight",
+                    "kind": "Number",
+                    "description": "Number used to order the relationship in the frontend (table and view).",
+                    "optional": True,
+                },
                 {
                     "name": "optional",
                     "kind": "Boolean",
+                    "description": "Indicate if this relationship is mandatory or optional.",
                     "default_value": False,
                     "optional": True,
                 },
                 {
                     "name": "branch",
                     "kind": "Text",
+                    "description": "Type of branch support for the relatioinship, if not defined it will be determine based both peers.",
                     "enum": BranchSupportType.available_types(),
                     "optional": True,
                 },
                 {
                     "name": "inherited",
                     "kind": "Boolean",
+                    "description": "Internal value to indicate if the relationship was inherited from a Generic node.",
                     "default_value": False,
+                    "optional": True,
+                },
+                {
+                    "name": "direction",
+                    "kind": "Text",
+                    "description": "Defines the direction of the relationship, "
+                    " Unidirectional relationship are required when the same model is on both side.",
+                    "enum": RelationshipDirection.available_types(),
+                    "default_value": RelationshipDirection.BIDIR.value,
                     "optional": True,
                 },
             ],
@@ -985,6 +1155,7 @@ internal_schema = {
                 {
                     "name": "name",
                     "kind": "Text",
+                    "description": "Generic name, must be unique within a namespace and must start with an uppercase letter.",
                     "unique": True,
                     "regex": str(NODE_NAME_REGEX),
                     "min_length": DEFAULT_NAME_MIN_LENGTH,
@@ -993,6 +1164,7 @@ internal_schema = {
                 {
                     "name": "namespace",
                     "kind": "Text",
+                    "description": "Generic Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.",
                     "regex": str(NODE_KIND_REGEX),
                     "min_length": DEFAULT_KIND_MIN_LENGTH,
                     "max_length": DEFAULT_KIND_MAX_LENGTH,
@@ -1000,12 +1172,14 @@ internal_schema = {
                 {
                     "name": "label",
                     "kind": "Text",
+                    "description": "Human friendly representation of the name/kind",
                     "optional": True,
                     "max_length": 32,
                 },
                 {
                     "name": "branch",
                     "kind": "Text",
+                    "description": "Type of branch support for the model.",
                     "enum": BranchSupportType.available_types(),
                     "default_value": BranchSupportType.AWARE.value,
                     "optional": True,
@@ -1014,6 +1188,7 @@ internal_schema = {
                     "name": "default_filter",
                     "kind": "Text",
                     "description": "Default filter used to search for a node in addition to its ID.",
+                    "regex": str(NAME_REGEX),
                     "optional": True,
                 },
                 {
@@ -1033,7 +1208,7 @@ internal_schema = {
                     "kind": "Boolean",
                     "description": "Defines if objects of this kind should be included in the menu.",
                     "default_value": True,
-                    "optional": False,
+                    "optional": True,
                 },
                 {
                     "name": "menu_placement",
@@ -1047,7 +1222,13 @@ internal_schema = {
                     "description": "Defines the icon to be used for this object type.",
                     "optional": True,
                 },
-                {"name": "description", "kind": "Text", "optional": True, "max_length": DEFAULT_DESCRIPTION_LENGTH},
+                {
+                    "name": "description",
+                    "kind": "Text",
+                    "optional": True,
+                    "description": "Short description of the Generic.",
+                    "max_length": DEFAULT_DESCRIPTION_LENGTH,
+                },
                 {
                     "name": "used_by",
                     "kind": "List",
@@ -1085,7 +1266,6 @@ internal_schema = {
                     "name": "name",
                     "kind": "Text",
                     "unique": True,
-                    "regex": str(NODE_NAME_REGEX),
                     "min_length": DEFAULT_NAME_MIN_LENGTH,
                     "max_length": DEFAULT_NAME_MAX_LENGTH,
                 },
@@ -1096,7 +1276,13 @@ internal_schema = {
                     "min_length": DEFAULT_KIND_MIN_LENGTH,
                     "max_length": DEFAULT_KIND_MAX_LENGTH,
                 },
-                {"name": "description", "kind": "Text", "optional": True, "max_length": DEFAULT_DESCRIPTION_LENGTH},
+                {
+                    "name": "description",
+                    "kind": "Text",
+                    "description": "Short description of the Group.",
+                    "optional": True,
+                    "max_length": DEFAULT_DESCRIPTION_LENGTH,
+                },
             ],
         },
     ],

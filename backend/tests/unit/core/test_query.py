@@ -5,6 +5,7 @@ from infrahub.core.query import (
     Query,
     QueryNode,
     QueryRel,
+    QueryRelDirection,
     QueryResult,
     cleanup_return_labels,
     sort_results_by_time,
@@ -218,11 +219,18 @@ def test_query_node():
 
 
 def test_query_rel():
-    assert str(QueryRel()) == "[]"
-    assert str(QueryRel(name="r2")) == "[r2]"
-    assert str(QueryRel(name="r2", labels=["HAS_VALUE"])) == "[r2:HAS_VALUE]"
-    assert str(QueryRel(labels=["HAS_VALUE"])) == "[:HAS_VALUE]"
-    assert str(QueryRel(name="r2", labels=["HAS_VALUE", "IS_RELATED"])) == "[r2:HAS_VALUE:IS_RELATED]"
-    assert str(QueryRel(name="r2", labels=["HAS_VALUE"], params={"name": "john"})) == '[r2:HAS_VALUE { name: "john" }]'
-    assert str(QueryRel(labels=["HAS_VALUE"], params={"name": "john"})) == '[:HAS_VALUE { name: "john" }]'
-    assert str(QueryRel(labels=["HAS_VALUE"], params={"name": "$myvar"})) == "[:HAS_VALUE { name: $myvar }]"
+    assert str(QueryRel()) == "-[]-"
+    assert str(QueryRel(name="r2")) == "-[r2]-"
+    assert str(QueryRel(name="r2", direction=QueryRelDirection.INBOUND)) == "<-[r2]-"
+    assert str(QueryRel(name="r2", direction=QueryRelDirection.OUTBOUND)) == "-[r2]->"
+    assert str(QueryRel(name="r2", labels=["HAS_VALUE"])) == "-[r2:HAS_VALUE]-"
+    assert str(QueryRel(labels=["HAS_VALUE"])) == "-[:HAS_VALUE]-"
+    assert str(QueryRel(name="r2", labels=["HAS_VALUE", "IS_RELATED"])) == "-[r2:HAS_VALUE:IS_RELATED]-"
+    assert (
+        str(QueryRel(name="r2", labels=["HAS_VALUE"], params={"name": "john"})) == '-[r2:HAS_VALUE { name: "john" }]-'
+    )
+    assert str(QueryRel(labels=["HAS_VALUE"], params={"name": "john"})) == '-[:HAS_VALUE { name: "john" }]-'
+    assert (
+        str(QueryRel(labels=["HAS_VALUE"], params={"name": "$myvar"}, direction=QueryRelDirection.OUTBOUND))
+        == "-[:HAS_VALUE { name: $myvar }]->"
+    )

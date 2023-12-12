@@ -49,12 +49,12 @@ export const Thread = (props: tThread) => {
   const [confirmModal, setConfirmModal] = useState(false);
   const [markAsResolved, setMarkAsResolved] = useState(false);
 
-  const handleSubmit = async (data: string) => {
+  const handleSubmit = async ({ comment }: { comment: string }) => {
     try {
       setIsLoading(true);
       const newObject = {
         text: {
-          value: data,
+          value: comment,
         },
         thread: {
           id: thread.id,

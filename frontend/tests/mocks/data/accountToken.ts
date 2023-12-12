@@ -803,6 +803,7 @@ export const accountTokenFormStructure = [
     config: {},
     isOptional: true,
     isProtected: false,
+    isReadOnly: undefined,
     isUnique: false,
   },
   {
@@ -815,6 +816,7 @@ export const accountTokenFormStructure = [
     config: {},
     isOptional: false,
     isProtected: false,
+    isReadOnly: undefined,
     isUnique: true,
   },
   {
@@ -827,11 +829,13 @@ export const accountTokenFormStructure = [
     config: {},
     isOptional: true,
     isProtected: false,
+    isReadOnly: undefined,
     isUnique: false,
   },
   {
     name: "account.id",
     kind: "String",
+    peer: "CoreAccount",
     type: "select",
     label: "Account",
     value: "",

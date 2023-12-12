@@ -1,4 +1,4 @@
-import { ReactElement } from "react";
+import { ReactElement, useEffect } from "react";
 import { FieldValues, FormProvider, SubmitHandler, useForm } from "react-hook-form";
 import { BUTTON_TYPES, Button } from "../../components/button";
 import { resolve } from "../../utils/objects";
@@ -29,6 +29,7 @@ export type FormProps = {
   submitLabel?: string;
   disabled?: boolean;
   additionalButtons?: ReactElement;
+  preventObjectsCreation?: boolean;
 };
 
 export const Form = ({
@@ -39,10 +40,17 @@ export const Form = ({
   submitLabel = "Save",
   disabled,
   additionalButtons,
+  preventObjectsCreation,
 }: FormProps) => {
   const formMethods = useForm();
 
-  const { handleSubmit, formState, reset } = formMethods;
+  const { handleSubmit, reset, formState } = formMethods;
+
+  useEffect(() => {
+    if (formState.isSubmitSuccessful) {
+      reset(fields);
+    }
+  }, [formState, reset]);
 
   const { errors } = formState;
 
@@ -52,19 +60,28 @@ export const Form = ({
     return (
       <>
         <div className="sm:col-span-7">
-          <DynamicControl {...field} error={error} disabled={disabled} />
+          <DynamicControl
+            {...field}
+            error={error}
+            disabled={disabled}
+            preventObjectsCreation={preventObjectsCreation}
+          />
         </div>
       </>
     );
   };
 
-  const submit = async (...props: any) => {
-    await onSubmit(...props);
-    reset();
+  const handleFormSubmit = (event: any) => {
+    // Stop propagation for nested forms on related objects creation
+    if (event && event.stopPropagation) {
+      event.stopPropagation();
+    }
+
+    return handleSubmit(onSubmit)(event);
   };
 
   return (
-    <form className="flex-1 flex flex-col w-full" onSubmit={handleSubmit(submit)} data-cy="form">
+    <form className="flex-1 flex flex-col w-full" onSubmit={handleFormSubmit} data-cy="form">
       <FormProvider {...formMethods}>
         <div className="space-y-12 px-4 flex-1">
           <div className="">

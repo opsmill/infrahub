@@ -66,10 +66,7 @@ export const DynamicControl = (props: DynamicFieldData) => {
           value={existingValue ?? value}
         />
       );
-    case "select": {
-      // if (kind && ["Integer", "Number", "Bandwidth"].indexOf(kind) > -1) {
-      //   config.valueAsNumber = true;
-      // }
+    case "select":
       return (
         <OpsSelectRegister
           {...props}
@@ -77,6 +74,17 @@ export const DynamicControl = (props: DynamicFieldData) => {
           register={register}
           setValue={setValue}
           value={existingValue ?? value}
+        />
+      );
+    case "dropdown": {
+      return (
+        <OpsSelectRegister
+          {...props}
+          options={options.values}
+          register={register}
+          setValue={setValue}
+          value={existingValue ?? value}
+          dropdown
         />
       );
     }

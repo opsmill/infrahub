@@ -36,4 +36,5 @@ exceptions:
   - RFile
   - SDK
   - TransformPython
+  - Vale
   - VS Code

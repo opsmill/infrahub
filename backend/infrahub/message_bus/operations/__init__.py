@@ -26,6 +26,7 @@ COMMAND_MAP = {
     "git.repository.merge": git.repository.merge,
     "refresh.registry.branches": refresh.registry.branches,
     "request.git.create_branch": requests.git.create_branch,
+    "request.git.sync": requests.git.sync,
     "request.artifact.generate": requests.artifact.generate,
     "request.artifact_definition.check": requests.artifact_definition.check,
     "request.artifact_definition.generate": requests.artifact_definition.generate,

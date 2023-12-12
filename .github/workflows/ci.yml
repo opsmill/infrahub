@@ -116,7 +116,11 @@ jobs:
   python-sdk-unit-tests:
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11"]
+        python-version:
+          - "3.8"
+          - "3.9"
+          - "3.10"
+          - "3.11"
         pydantic-version: ["^1.10", "^2"]
     if: |
       always() && !cancelled() &&
@@ -290,7 +294,7 @@ jobs:
       needs.files-changed.outputs.backend == 'true'
     needs: ["files-changed", "yaml-lint", "python-lint"]
     runs-on: "runner-ubuntu-4-16"
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       INFRAHUB_DB_TYPE: neo4j
     steps:
