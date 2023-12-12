@@ -60,7 +60,9 @@ async def test_merge_graph_delete(db: InfrahubDatabase, base_dataset_02, registe
     assert len(persons) == 2
 
 
-async def test_merge_relationship_many(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema):
+async def test_merge_relationship_many(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, register_organization_schema
+):
     blue = await Node.init(db=db, schema="BuiltinTag", branch=default_branch)
     await blue.new(db=db, name="Blue", description="The Blue tag")
     await blue.save(db=db)

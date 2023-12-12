@@ -202,22 +202,6 @@ async def first_time_initialization(db: InfrahubDatabase):
     # --------------------------------------------------
     # Create Default Users and Groups
     # --------------------------------------------------
-    CRITICALITY_LEVELS = (
-        # ("negligible", 1),
-        ("low", 2),
-        ("medium", 3),
-        ("high", 4),
-        # ("very high", 5),
-        # ("critical", 6),
-        # ("very critical", 7),
-    )
-
-    criticality_schema = registry.get_schema(name="BuiltinCriticality")
-    for level in CRITICALITY_LEVELS:
-        obj = await Node.init(db=db, schema=criticality_schema)
-        await obj.new(db=db, name=level[0], level=level[1])
-        await obj.save(db=db)
-
     token_schema = registry.get_schema(name="InternalAccountToken")
     # admin_grp = await Node.init(db=db, schema=group_schema)
     # await admin_grp.new(db=db, name="admin")
