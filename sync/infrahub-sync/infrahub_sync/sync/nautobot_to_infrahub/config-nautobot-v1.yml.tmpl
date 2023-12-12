@@ -24,7 +24,6 @@ order: [
   "InfraProviderNetwork",
   "TemplateCircuitType",
   "InfraCircuit",
-  "NautobotNamespace",
   "InfraRouteTarget",
   "InfraVRF",
   "InfraDevice",
@@ -47,9 +46,35 @@ schema_mapping:
       - name: description
         mapping: description
 
-  # Roles (Device Role, Rack Role, IPAM Role, and IPAddressRoleChoices)
+  # Roles (Device Role, Rack Role, IPAM Role)
   - name: BuiltinRole
-    mapping: extras.roles
+    mapping: dcim.device_roles
+    identifiers: ["name"]
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
+  - name: BuiltinRole
+    mapping: dcim.rack_roles
+    identifiers: ["name"]
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
+  - name: BuiltinRole
+    mapping: ipam.roles
+    identifiers: ["name"]
+    fields:
+      - name: name
+        mapping: name
+      - name: description
+        mapping: description
+
+  # Status
+  - name: BuiltinStatus
+    mapping: extras.statuses
     identifiers: ["name"]
     fields:
       - name: name
@@ -58,18 +83,6 @@ schema_mapping:
         mapping: description
       - name: label
         mapping: display
-
-  # Status (Device Role, Rack Role, IPAM Role, and IPAddressRoleChoices)
-  # - name: BuiltinStatus
-  #   mapping: extras.statuses
-  #   identifiers: ["name"]
-  #   fields:
-  #     - name: name
-  #       mapping: name
-  #     - name: description
-  #       mapping: description
-  #     - name: label
-  #       mapping: display
 
   # Tenancy (tenants, tenant groups)
   - name: CoreStandardGroup
@@ -94,35 +107,40 @@ schema_mapping:
         mapping: tenant_group
         reference: CoreStandardGroup
 
-  # Locations (Location Type, Locations)
-  - name: TemplateLocationType
-    mapping: dcim.location-types
-    identifiers: ["name"]
+  # Sites (Region, Sites, Location)
+  - name: BuiltinLocation
+    mapping: dcim.regions
     fields:
       - name: name
-        mapping: name
+        mapping: slug
       - name: description
-        mapping: description
+        mapping: name
+      - name: type
+        static: "Region"
+  - name: BuiltinLocation
+    mapping: dcim.sites
+    fields:
+      - name: name
+        mapping: slug
+      - name: description
+        mapping: name
+      - name: type
+        static: "Site"
+      - name: organization
+        mapping: tenant
+        reference: CoreOrganization
   - name: BuiltinLocation
     mapping: dcim.locations
-    identifiers: ["name"]
     fields:
       - name: name
-        mapping: name
+        mapping: slug
       - name: description
-        mapping: description
-      # type should be removed to use location_type only, but need to change Core Schema for that
+        mapping: name
       - name: type
-        mapping: location_type.name
-      - name: location_type
-        mapping: location_type
-        reference: TemplateLocationType
-      # - name: status
-      #   mapping: status
-      #   reference: BuiltinStatus
-      - name: tags
-        mapping: tags
-        reference: BuiltinTag
+        static: "Location"
+      - name: organization
+        mapping: tenant
+        reference: CoreOrganization
 
   # Racks
   - name: InfraRack
@@ -307,15 +325,7 @@ schema_mapping:
         mapping: provider
         reference: CoreOrganization
 
-# IPAM (Namepsace, VRF, VLANs Groups, VLANs, Prefixes, IPs)
-  - name: NautobotNamespace
-    mapping: ipam.namespaces
-    identifiers: ["name"]
-    fields:
-      - name: name
-        mapping: name
-      - name: description
-        mapping: description
+# IPAM (VRF, VLANs Groups, VLANs, Prefixes, IPs)
   - name: InfraRouteTarget
     mapping: ipam.route-targets
     identifiers: ["name", "organization"]
@@ -329,7 +339,7 @@ schema_mapping:
         reference: CoreOrganization
   - name: InfraVRF
     mapping: ipam.vrfs
-    identifiers: ["name", "namespace"]
+    identifiers: ["name"]
     fields:
       - name: name
         mapping: name
@@ -338,9 +348,6 @@ schema_mapping:
       - name: organization
         mapping: tenant
         reference: CoreOrganization
-      - name: namespace
-        mapping: namespace
-        reference: NautobotNamespace
       - name: vrf_rd
         mapping: rd
       - name: importRT
@@ -387,7 +394,7 @@ schema_mapping:
         reference: CoreStandardGroup
   - name: InfraPrefix
     mapping: ipam.prefixes
-    identifiers: ["prefix", "namespace"]
+    identifiers: ["prefix"]
     fields:
       - name: prefix
         mapping: prefix
@@ -396,9 +403,6 @@ schema_mapping:
       - name: organization
         mapping: tenant
         reference: CoreOrganization
-      - name: namespace
-        mapping: namespace
-        reference: NautobotNamespace
       - name: role
         mapping: role
         reference: BuiltinRole

@@ -47,7 +47,7 @@ schema_mapping:
       - name: description
         mapping: description
 
-  # Roles (Device Role, Rack Role, IPAM Role, and IPAddressRoleChoices)
+  # Roles (Device Role, Rack Role, IPAM Role)
   - name: BuiltinRole
     mapping: extras.roles
     identifiers: ["name"]
@@ -59,7 +59,8 @@ schema_mapping:
       - name: label
         mapping: display
 
-  # Status (Device Role, Rack Role, IPAM Role, and IPAddressRoleChoices)
+  # Comment due to "Null" Status in Nautobot v2. NeedNeed to solve https://github.com/opsmill/infrahub/issues/1546 on our side
+  # Status
   # - name: BuiltinStatus
   #   mapping: extras.statuses
   #   identifiers: ["name"]
