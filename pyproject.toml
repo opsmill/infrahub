@@ -6,8 +6,6 @@ authors = ["OpsMill <info@opsmill.com>"]
 
 packages = [
     { include = "infrahub", from = "backend" },
-    { include = "infrahub_sync", from = "sync/infrahub-sync"},
-    { include = "potenda", from = "sync/potenda"},
 ]
 
 [tool.poetry.dependencies]
@@ -63,21 +61,10 @@ types-python-slugify = "^8.0.0.3"
 invoke = "2.2.0"
 
 
-[tool.poetry.group.sync.dependencies]
-dagster = "^1.1.19"
-dagit = "^1.1.19"
-structlog = "^22.3.0"
-pynetbox = "^7.0.1"
-pynautobot = "^1.5.0"
-diffsync = "^1.8.0"
-
-
 [tool.poetry.scripts]
 infrahub = "infrahub.cli:app"
 infrahub-git-credential = "infrahub.git_credential.helper:app"
 infrahub-git-askpass = "infrahub.git_credential.askpass:app"
-infrahub-sync = "infrahub_sync.cli:app"
-
 
 [tool.coverage.run]
 branch = true
