@@ -7,7 +7,7 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 import jinja2
 import typer
@@ -19,12 +19,12 @@ from rich.traceback import Frame, Traceback
 import infrahub_ctl.config as config
 from infrahub_ctl.branch import app as branch_app
 from infrahub_ctl.check import app as check_app
-from infrahub_ctl.client import initialize_client, initialize_client_sync
+from infrahub_ctl.client import initialize_client
 from infrahub_ctl.exceptions import InfrahubTransformNotFoundError, QueryNotFoundError
 from infrahub_ctl.repository import get_repository_config
 from infrahub_ctl.schema import app as schema
 from infrahub_ctl.utils import (
-    find_graphql_query,
+    execute_graphql_query,
     parse_cli_vars,
 )
 from infrahub_ctl.validate import app as validate_app
@@ -123,26 +123,6 @@ def get_transform_class_instance(
         raise InfrahubTransformNotFoundError(name=transform_class_name)
 
     return transform_instance
-
-
-def execute_graphql_query(
-    query: str, variables_dict: Dict[str, Any], branch: Optional[str] = None, debug: bool = False
-) -> str:
-    query_str = find_graphql_query(query)
-
-    client = initialize_client_sync()
-    response = client.execute_graphql(
-        query=query_str,
-        branch_name=branch,
-        variables=variables_dict,
-        raise_for_error=False,
-    )
-
-    if debug:
-        message = ("-" * 40, f"Response for GraphQL Query {query}", response, "-" * 40)
-        console.print("\n".join(message))
-
-    return response
 
 
 def render_jinja2_template(template_path: Path, variables: Dict[str, str], data: str) -> str:

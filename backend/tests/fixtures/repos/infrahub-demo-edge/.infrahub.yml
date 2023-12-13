@@ -30,7 +30,9 @@ artifact_definitions:
     transformation: "device_startup"
 
 check_definitions:
-  - file_path: "checks/check_backbone_link_redundancy.py"
+  - name: "backbone_link_redundancy"
+    file_path: "checks/check_backbone_link_redundancy.py"
+    class_name: "InfrahubCheckBackboneLinkRedundancy"
 
 python_transforms:
   - file_path: "transforms/openconfig.py"
