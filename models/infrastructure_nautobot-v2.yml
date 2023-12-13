@@ -36,13 +36,11 @@ generics:
         label: Mac Address
         kind: Text
         optional: true
-      - name: type
+      - name: interface_type
+        label: Interface Type
         kind: Text
         optional: true
     relationships:
-      # - name: type
-      #   peer: InterfaceType
-      #   cardinality: one
       - name: status
         peer: BuiltinStatus
         optional: true
@@ -117,7 +115,8 @@ generics:
       - name: description
         kind: Text
         optional: true
-      - name: type
+      - name: port_type
+        label: "Port Type"
         kind: Text
         optional: true
     relationships:
@@ -127,9 +126,6 @@ generics:
         optional: false
         cardinality: one
         kind: Parent
-      # - name: type
-      #   peer: InterfaceType
-      #   cardinality: one
 
 nodes:
   - name: AutonomousSystem

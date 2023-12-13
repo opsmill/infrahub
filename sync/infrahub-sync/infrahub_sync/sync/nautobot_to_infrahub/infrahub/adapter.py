@@ -3,7 +3,6 @@ from infrahub_sync.adapters.infrahub import InfrahubAdapter
 from .models import (
     BuiltinLocation,
     BuiltinRole,
-    BuiltinStatus,
     BuiltinTag,
     CoreOrganization,
     CoreStandardGroup,
@@ -21,6 +20,7 @@ from .models import (
     InfraRouteTarget,
     InfraVLAN,
     InfraVRF,
+    NautobotNamespace,
     TemplateCircuitType,
     TemplateDeviceType,
     TemplateLocationType,
@@ -36,7 +36,6 @@ class InfrahubSync(InfrahubAdapter):
     CoreStandardGroup = CoreStandardGroup
     BuiltinTag = BuiltinTag
     CoreOrganization = CoreOrganization
-    BuiltinStatus = BuiltinStatus
     BuiltinRole = BuiltinRole
     BuiltinLocation = BuiltinLocation
     InfraAutonomousSystem = InfraAutonomousSystem
@@ -48,6 +47,7 @@ class InfrahubSync(InfrahubAdapter):
     InfraInterfaceL2L3 = InfraInterfaceL2L3
     InfraIPAddress = InfraIPAddress
     TemplateLocationType = TemplateLocationType
+    NautobotNamespace = NautobotNamespace
     InfraPlatform = InfraPlatform
     InfraProviderNetwork = InfraProviderNetwork
     InfraPrefix = InfraPrefix

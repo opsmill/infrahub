@@ -54,7 +54,9 @@ def get_instance(name: str) -> Optional[SyncInstance]:
     return None
 
 
-def get_potenda_from_instance(sync_instance: SyncInstance, branch: Optional[str] = None, show_progress: Optional[bool] = True) -> Potenda:
+def get_potenda_from_instance(
+    sync_instance: SyncInstance, branch: Optional[str] = None, show_progress: Optional[bool] = True
+) -> Potenda:
     source = import_adapter(adapter=sync_instance.source, directory=sync_instance.directory)
     destination = import_adapter(adapter=sync_instance.destination, directory=sync_instance.directory)
 
@@ -67,7 +69,13 @@ def get_potenda_from_instance(sync_instance: SyncInstance, branch: Optional[str]
     else:
         dst = destination(config=sync_instance, target="destination", adapter=sync_instance.destination)
 
-    ptd = Potenda(destination=dst, source=src, config=sync_instance, top_level=sync_instance.order, show_progress=show_progress)
+    ptd = Potenda(
+        destination=dst,
+        source=src,
+        config=sync_instance,
+        top_level=sync_instance.order,
+        show_progress=show_progress,
+    )
 
     return ptd
 
