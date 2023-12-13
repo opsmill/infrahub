@@ -54,7 +54,7 @@ def get_instance(name: str) -> Optional[SyncInstance]:
     return None
 
 
-def get_potenda_from_instance(sync_instance: SyncInstance, branch: Optional[str] = None) -> Potenda:
+def get_potenda_from_instance(sync_instance: SyncInstance, branch: Optional[str] = None, show_progress: Optional[bool] = True) -> Potenda:
     source = import_adapter(adapter=sync_instance.source, directory=sync_instance.directory)
     destination = import_adapter(adapter=sync_instance.destination, directory=sync_instance.directory)
 
@@ -67,7 +67,7 @@ def get_potenda_from_instance(sync_instance: SyncInstance, branch: Optional[str]
     else:
         dst = destination(config=sync_instance, target="destination", adapter=sync_instance.destination)
 
-    ptd = Potenda(destination=dst, source=src, config=sync_instance, top_level=sync_instance.order)
+    ptd = Potenda(destination=dst, source=src, config=sync_instance, top_level=sync_instance.order, show_progress=show_progress)
 
     return ptd
 
@@ -82,14 +82,15 @@ def list_projects():
 @app.command(name="diff")
 def diff_cmd(
     name: str = typer.Argument(..., help="Name of the sync to use"),
-    branch: str = typer.Option(default=None, help="Branch to use for the sync."),
+    branch: str = typer.Option(default=None, help="Branch to use for the diff."),
+    show_progress: bool = typer.Option(default=True, help="Show a progress bar during diff"),
 ):
     """Calculate and print the differences between the source and the destination systems for a given project."""
     sync_instance = get_instance(name=name)
     if not sync_instance:
         print_error_and_abort(f"Unable to find the sync {name}. Use the list command to see the sync available")
 
-    ptd = get_potenda_from_instance(sync_instance=sync_instance, branch=branch)
+    ptd = get_potenda_from_instance(sync_instance=sync_instance, branch=branch, show_progress=show_progress)
     ptd.load()
 
     mydiff = ptd.diff()
@@ -104,13 +105,14 @@ def sync_cmd(
     diff: bool = typer.Option(
         default=True, help="Print the differences between the source and the destinatio before syncing"
     ),
+    show_progress: bool = typer.Option(default=True, help="Show a progress bar during syncing"),
 ):
     """Synchronize the data between source and the destination systems for a given project."""
     sync_instance = get_instance(name=name)
     if not sync_instance:
         print_error_and_abort(f"Unable to find the sync {name}. Use the list command to see the sync available")
 
-    ptd = get_potenda_from_instance(sync_instance=sync_instance, branch=branch)
+    ptd = get_potenda_from_instance(sync_instance=sync_instance, branch=branch, show_progress=show_progress)
     ptd.load()
 
     mydiff = ptd.diff()

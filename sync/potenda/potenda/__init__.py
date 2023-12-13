@@ -16,7 +16,7 @@ class Potenda:
         config: SyncInstance,
         top_level: List[str],
         partition=None,
-        show_progress: Optional[bool] = False,
+        show_progress: Optional[bool] = True,
     ):
         self.top_level = top_level
 
