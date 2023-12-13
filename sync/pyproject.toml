@@ -10,7 +10,7 @@ repository = "https://opsmill.io"
 documentation = "https://opsmill.io"
 packages = [
     { include = "infrahub_sync", from = "infrahub-sync"},
-    { include = "potenda", from = "spotenda"},
+    { include = "potenda", from = "potenda"},
 ]
 classifiers = [
     "Intended Audience :: Developers",
