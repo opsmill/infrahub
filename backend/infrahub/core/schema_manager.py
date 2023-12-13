@@ -37,6 +37,7 @@ from infrahub.core.schema import (
 from infrahub.exceptions import SchemaNotFound
 from infrahub.graphql import generate_graphql_schema
 from infrahub.log import get_logger
+from infrahub.utils import format_label
 from infrahub.visuals import select_color
 
 log = get_logger()
@@ -394,7 +395,7 @@ class SchemaBranch:
                         choice.color = select_color(defined_colors)
                         changed = True
                     if not choice.label:
-                        choice.label = choice.name
+                        choice.label = format_label(choice.name)
                         changed = True
 
             if changed:
@@ -407,17 +408,17 @@ class SchemaBranch:
             changed = False
 
             if not node.label:
-                node.label = " ".join([word.title() for word in node.name.split("_")])
+                node.label = format_label(node.name)
                 changed = True
 
             for attr in node.attributes:
                 if not attr.label:
-                    attr.label = " ".join([word.title() for word in attr.name.split("_")])
+                    attr.label = format_label(attr.name)
                     changed = True
 
             for rel in node.relationships:
                 if not rel.label:
-                    rel.label = " ".join([word.title() for word in rel.name.split("_")])
+                    rel.label = format_label(rel.name)
                     changed = True
 
             if changed:

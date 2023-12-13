@@ -100,7 +100,7 @@ async def test_dropdown_properties(db: InfrahubDatabase, default_branch: Branch,
 
     assert active.value == "active"
     assert active.description == "Online things"
-    assert active.label == "active"
+    assert active.label == "Active"
     # The color of the active choice is hardoced within criticality_schema
     assert active.color == "#00ff00"
     assert passive.value == "passive"
