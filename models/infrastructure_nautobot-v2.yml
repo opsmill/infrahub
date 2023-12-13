@@ -525,23 +525,24 @@ nodes:
     relationships:
       - name: ip_addresses
         peer: InfraIPAddress
+        identifier: "interface_addresses"
         label: IP Addresses
         optional: true
         cardinality: many
-        kind: Component
+        kind: Attribute
       - name: untagged_vlan
         label: Untagged VLAN
         peer: InfraVLAN
         optional: true
         cardinality: one
-        kind: Component
+        kind: Attribute
         identifier: interface_l2__untagged_vlan
       - name: tagged_vlan
         label: Tagged VLANs
         peer: InfraVLAN
         optional: true
         cardinality: one
-        kind: Component
+        kind: Attribute
         identifier: interface_l2__tagged_vlan
   - name: IPAddress
     namespace: Infra
@@ -566,11 +567,12 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
-      - name: interface
+      - name: interfaces
         peer: InfraInterfaceL2L3
+        identifier: "address__interfaces"
         optional: true
-        cardinality: one
-        kind: Parent
+        cardinality: many
+        kind: Attribute
       - name: prefix
         peer: InfraPrefix
         identifier: "prefix__address"

@@ -293,11 +293,6 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
-      - name: role
-        peer: BuiltinRole
-        optional: true
-        cardinality: one
-        kind: Attribute
       - name: provider
         peer: CoreOrganization
         identifier: circuit__provider
@@ -613,28 +608,6 @@ nodes:
         cardinality: many
         optional: true
         peer: BuiltinLocation
-  - name: Namespace
-    namespace: Nautobot
-    label: "Nautobot Namespace"
-    icon: "mdi:checkbox-multiple-blank-outline"
-    menu_placement: "CoreOrganization"
-    display_labels:
-      - name__value
-    order_by:
-      - name__value
-    inherit_from:
-      - "TemplateChoice"
-    relationships:
-      - name: prefixes
-        peer: InfraPrefix
-        identifier: namespace__prefixes
-        cardinality: many
-        optional: true
-      - name: vrfs
-        peer: InfraVRF
-        identifier: namespace__vrfs
-        cardinality: many
-        optional: true
   - name: Platform
     namespace: Infra
     description: "A Platform represent the type of software running on a device."
@@ -731,12 +704,6 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
-      - name: namespace
-        peer: NautobotNamespace
-        identifier: namespace__prefixes
-        optional: true
-        cardinality: one
-        kind: Parent
       - name: location
         peer: BuiltinLocation
         optional: true
@@ -957,12 +924,6 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
-      - name: namespace
-        peer: NautobotNamespace
-        identifier: namespace__vrfs
-        optional: true
-        cardinality: one
-        kind: Parent
       - name: status
         peer: BuiltinStatus
         optional: true
