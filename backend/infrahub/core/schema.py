@@ -261,7 +261,9 @@ class BaseSchemaModel(BaseModel):
                     attr_other
                 ):
                     new_attr = self.update_list_schema_model(
-                        field_name=field_name, attr_local=attr_local, attr_other=attr_other
+                        field_name=field_name,
+                        attr_local=attr_local,
+                        attr_other=attr_other,
                     )
                     setattr(self, field_name, new_attr)
 
@@ -307,7 +309,11 @@ class DropdownChoice(BaseSchemaModel):
 
 class AttributeSchema(BaseSchemaModel):
     id: Optional[str]
-    name: str = Field(regex=NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
+    name: str = Field(
+        regex=NAME_REGEX,
+        min_length=DEFAULT_NAME_MIN_LENGTH,
+        max_length=DEFAULT_NAME_MAX_LENGTH,
+    )
     kind: str  # AttributeKind
     label: Optional[str]
     description: Optional[str] = Field(max_length=DEFAULT_DESCRIPTION_LENGTH)
@@ -380,8 +386,16 @@ class AttributeSchema(BaseSchemaModel):
 
 class RelationshipSchema(BaseSchemaModel):
     id: Optional[str]
-    name: str = Field(regex=NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
-    peer: str = Field(regex=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH)
+    name: str = Field(
+        regex=NAME_REGEX,
+        min_length=DEFAULT_NAME_MIN_LENGTH,
+        max_length=DEFAULT_NAME_MAX_LENGTH,
+    )
+    peer: str = Field(
+        regex=NODE_KIND_REGEX,
+        min_length=DEFAULT_KIND_MIN_LENGTH,
+        max_length=DEFAULT_KIND_MAX_LENGTH,
+    )
     kind: RelationshipKind = RelationshipKind.GENERIC
     direction: RelationshipDirection = RelationshipDirection.BIDIR
     label: Optional[str]
@@ -389,6 +403,8 @@ class RelationshipSchema(BaseSchemaModel):
     identifier: Optional[str] = Field(max_length=DEFAULT_REL_IDENTIFIER_LENGTH)
     inherited: bool = False
     cardinality: RelationshipCardinality = RelationshipCardinality.MANY
+    min_count: int = Field(default=0)
+    max_count: int = Field(default=0)
     branch: Optional[BranchSupportType]
     optional: bool = True
     filters: List[FilterSchema] = Field(default_factory=list)
@@ -459,7 +475,11 @@ class RelationshipSchema(BaseSchemaModel):
             query_filter.extend(
                 [
                     QueryRel(name="r1", labels=[rel_type], direction=rels_direction["r1"]),
-                    QueryNode(name="rl", labels=["Relationship"], params={"name": f"${prefix}_rel_name"}),
+                    QueryNode(
+                        name="rl",
+                        labels=["Relationship"],
+                        params={"name": f"${prefix}_rel_name"},
+                    ),
                     QueryRel(name="r2", labels=[rel_type], direction=rels_direction["r2"]),
                     QueryNode(name="peer", labels=["Node"]),
                 ]
@@ -475,7 +495,11 @@ class RelationshipSchema(BaseSchemaModel):
             query_filter.extend(
                 [
                     QueryRel(name="r1", labels=[rel_type], direction=rels_direction["r1"]),
-                    QueryNode(name="rl", labels=["Relationship"], params={"name": f"${prefix}_rel_name"}),
+                    QueryNode(
+                        name="rl",
+                        labels=["Relationship"],
+                        params={"name": f"${prefix}_rel_name"},
+                    ),
                     QueryRel(name="r2", labels=[rel_type], direction=rels_direction["r2"]),
                     QueryNode(name="peer", labels=["Node"]),
                 ]
@@ -501,7 +525,11 @@ class RelationshipSchema(BaseSchemaModel):
         query_filter.extend(
             [
                 QueryRel(name="r1", labels=[rel_type], direction=rels_direction["r1"]),
-                QueryNode(name="rl", labels=["Relationship"], params={"name": f"${prefix}_rel_name"}),
+                QueryNode(
+                    name="rl",
+                    labels=["Relationship"],
+                    params={"name": f"${prefix}_rel_name"},
+                ),
                 QueryRel(name="r2", labels=[rel_type], direction=rels_direction["r2"]),
                 QueryNode(name="peer", labels=["Node"]),
             ]
@@ -525,15 +553,46 @@ class RelationshipSchema(BaseSchemaModel):
 
         return query_filter, query_params, query_where
 
+    @root_validator
+    def validate_count_against_cardinality(cls, values: Dict[str, Any]):
+        cardinality = values["cardinality"]
+        min_count = values["min_count"]
+        max_count = values["max_count"]
+
+        # Overwrite the min_count and max_count based on the cardinality.ONE since the intent is clear
+        if cardinality == RelationshipCardinality.ONE:
+            values["min_count"] = 1
+            values["max_count"] = 1
+        elif cardinality == RelationshipCardinality.MANY:
+            if min_count < 0:
+                values["min_count"] = 0
+            if max_count < 0:
+                values["max_count"] = 0
+
+            if min_count > max_count:
+                raise ValueError("min_count must be lower than max_count")
+            if min_count == 1:
+                raise ValueError("min_count must be 0 or at least 2 when cardinality is MANY")
+            if max_count == 1:
+                raise ValueError("max_count must be 0 or at least 2 when cardinality is MANY")
+
+        return values
+
 
 NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
 
 
 class BaseNodeSchema(BaseSchemaModel):
     id: Optional[str]
-    name: str = Field(regex=NODE_NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
+    name: str = Field(
+        regex=NODE_NAME_REGEX,
+        min_length=DEFAULT_NAME_MIN_LENGTH,
+        max_length=DEFAULT_NAME_MAX_LENGTH,
+    )
     namespace: str = Field(
-        regex=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH
+        regex=NODE_KIND_REGEX,
+        min_length=DEFAULT_KIND_MIN_LENGTH,
+        max_length=DEFAULT_KIND_MAX_LENGTH,
     )
     description: Optional[str] = Field(max_length=DEFAULT_DESCRIPTION_LENGTH)
     default_filter: Optional[str]
@@ -563,7 +622,8 @@ class BaseNodeSchema(BaseSchemaModel):
 
     def __hash__(self):
         """Return a hash of the object.
-        Be careful hash generated from hash() have a salt by default and they will not be the same across run"""
+        Be careful hash generated from hash() have a salt by default and they will not be the same across run
+        """
         return hash(self.get_hash())
 
     def get_hash(self, display_values: bool = False):
@@ -728,8 +788,16 @@ class NodeSchema(BaseNodeSchema):
 
 class GroupSchema(BaseSchemaModel):
     id: Optional[str]
-    name: str = Field(regex=NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
-    kind: str = Field(regex=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH)
+    name: str = Field(
+        regex=NAME_REGEX,
+        min_length=DEFAULT_NAME_MIN_LENGTH,
+        max_length=DEFAULT_NAME_MAX_LENGTH,
+    )
+    kind: str = Field(
+        regex=NODE_KIND_REGEX,
+        min_length=DEFAULT_KIND_MIN_LENGTH,
+        max_length=DEFAULT_KIND_MAX_LENGTH,
+    )
     description: Optional[str] = Field(max_length=DEFAULT_DESCRIPTION_LENGTH)
 
 
@@ -1097,6 +1165,20 @@ internal_schema = {
                     "optional": True,
                 },
                 {
+                    "name": "min_count",
+                    "kind": "Number",
+                    "description": "Defines the minimum objects allowed on the other side of the relationship.",
+                    "default_value": 0,
+                    "optional": True,
+                },
+                {
+                    "name": "max_count",
+                    "kind": "Number",
+                    "description": "Defines the maximum objects allowed on the other side of the relationship.",
+                    "default_value": 0,
+                    "optional": True,
+                },
+                {
                     "name": "order_weight",
                     "kind": "Number",
                     "description": "Number used to order the relationship in the frontend (table and view).",
@@ -1332,7 +1414,12 @@ core_models = {
             "include_in_menu": False,
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
-                {"name": "text", "kind": "TextArea", "unique": False, "optional": False},
+                {
+                    "name": "text",
+                    "kind": "TextArea",
+                    "unique": False,
+                    "optional": False,
+                },
                 {"name": "created_at", "kind": "DateTime", "optional": True},
             ],
             "relationships": [
@@ -1543,7 +1630,13 @@ core_models = {
                     "identifier": "repository__transformation",
                     "optional": False,
                 },
-                {"name": "tags", "peer": "BuiltinTag", "kind": "Attribute", "optional": True, "cardinality": "many"},
+                {
+                    "name": "tags",
+                    "peer": "BuiltinTag",
+                    "kind": "Attribute",
+                    "optional": True,
+                    "cardinality": "many",
+                },
             ],
         },
         {
@@ -1591,7 +1684,11 @@ core_models = {
             "branch": BranchSupportType.AWARE.value,
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
-                {"name": "level", "kind": "Number", "enum": CriticalityLevel.available_types()},
+                {
+                    "name": "level",
+                    "kind": "Number",
+                    "enum": CriticalityLevel.available_types(),
+                },
                 {"name": "description", "kind": "Text", "optional": True},
             ],
         },
@@ -1628,7 +1725,13 @@ core_models = {
                 {"name": "description", "kind": "Text", "optional": True},
             ],
             "relationships": [
-                {"name": "tags", "peer": "BuiltinTag", "kind": "Attribute", "optional": True, "cardinality": "many"},
+                {
+                    "name": "tags",
+                    "peer": "BuiltinTag",
+                    "kind": "Attribute",
+                    "optional": True,
+                    "cardinality": "many",
+                },
             ],
         },
         {
@@ -1662,7 +1765,12 @@ core_models = {
                 },
             ],
             "relationships": [
-                {"name": "tokens", "peer": "InternalAccountToken", "optional": True, "cardinality": "many"},
+                {
+                    "name": "tokens",
+                    "peer": "InternalAccountToken",
+                    "optional": True,
+                    "cardinality": "many",
+                },
             ],
         },
         {
@@ -1935,7 +2043,13 @@ core_models = {
                 {"name": "type", "kind": "Text"},
             ],
             "relationships": [
-                {"name": "tags", "peer": "BuiltinTag", "kind": "Attribute", "optional": True, "cardinality": "many"},
+                {
+                    "name": "tags",
+                    "peer": "BuiltinTag",
+                    "kind": "Attribute",
+                    "optional": True,
+                    "cardinality": "many",
+                },
             ],
         },
         {
@@ -1954,7 +2068,12 @@ core_models = {
                 {"name": "description", "kind": "Text", "optional": True},
                 {"name": "location", "kind": "Text", "unique": True},
                 {"name": "default_branch", "kind": "Text", "default_value": "main"},
-                {"name": "commit", "kind": "Text", "optional": True, "branch": BranchSupportType.LOCAL.value},
+                {
+                    "name": "commit",
+                    "kind": "Text",
+                    "optional": True,
+                    "branch": BranchSupportType.LOCAL.value,
+                },
                 {"name": "username", "kind": "Text", "optional": True},
                 {"name": "password", "kind": "Password", "optional": True},
             ],
@@ -1967,7 +2086,13 @@ core_models = {
                     "optional": True,
                     "cardinality": "one",
                 },
-                {"name": "tags", "peer": "BuiltinTag", "kind": "Attribute", "optional": True, "cardinality": "many"},
+                {
+                    "name": "tags",
+                    "peer": "BuiltinTag",
+                    "kind": "Attribute",
+                    "optional": True,
+                    "cardinality": "many",
+                },
                 {
                     "name": "transformations",
                     "peer": "CoreTransformation",
@@ -2017,7 +2142,12 @@ core_models = {
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
                 {"name": "conflicts", "kind": "JSON"},
-                {"name": "keep_branch", "enum": BranchConflictKeep.available_types(), "kind": "Text", "optional": True},
+                {
+                    "name": "keep_branch",
+                    "enum": BranchConflictKeep.available_types(),
+                    "kind": "Text",
+                    "optional": True,
+                },
             ],
         },
         {
@@ -2177,7 +2307,13 @@ core_models = {
                     "cardinality": "one",
                     "optional": True,
                 },
-                {"name": "tags", "peer": "BuiltinTag", "kind": "Attribute", "optional": True, "cardinality": "many"},
+                {
+                    "name": "tags",
+                    "peer": "BuiltinTag",
+                    "kind": "Attribute",
+                    "optional": True,
+                    "cardinality": "many",
+                },
             ],
         },
         {
@@ -2211,7 +2347,12 @@ core_models = {
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "description", "kind": "Text", "optional": True},
                 {"name": "query", "kind": "TextArea"},
-                {"name": "variables", "kind": "JSON", "description": "variables in use in the query", "optional": True},
+                {
+                    "name": "variables",
+                    "kind": "JSON",
+                    "description": "variables in use in the query",
+                    "optional": True,
+                },
                 {
                     "name": "operations",
                     "kind": "List",
@@ -2248,7 +2389,13 @@ core_models = {
                     "cardinality": "one",
                     "optional": True,
                 },
-                {"name": "tags", "peer": "BuiltinTag", "kind": "Attribute", "optional": True, "cardinality": "many"},
+                {
+                    "name": "tags",
+                    "peer": "BuiltinTag",
+                    "kind": "Attribute",
+                    "optional": True,
+                    "cardinality": "many",
+                },
             ],
         },
         {

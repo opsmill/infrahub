@@ -1,11 +1,12 @@
 import pytest
 
+from infrahub import exceptions as infra_execs
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.query.relationship import RelationshipGetPeerQuery
-from infrahub.core.relationship import Relationship
+from infrahub.core.relationship import Relationship, RelationshipValidatorList
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 
@@ -169,3 +170,229 @@ async def test_relationship_hash(
 
     assert hash4 == hash6
     assert hash4 != hash5
+
+
+async def test_relationship_validate_one_init_empty_success():
+    result = RelationshipValidatorList(min_count=1, max_count=1)
+
+    # Assert that the list is empty
+    assert not result
+    assert result.min_count == 1
+    assert result.max_count == 1
+    assert isinstance(result, RelationshipValidatorList)
+
+
+async def test_relationship_validate_many_init_empty_success():
+    result = RelationshipValidatorList(min_count=100, max_count=100)
+
+    # Assert that the list is empty
+    assert not result
+    assert result.min_count == 100
+    assert result.max_count == 100
+
+
+async def test_relationship_validate_empty_init_success():
+    result = RelationshipValidatorList()
+
+    # Assert that the list is empty
+    assert not result
+    assert result.min_count == 0
+    assert result.max_count == 0
+    assert isinstance(result, RelationshipValidatorList)
+
+
+async def test_relationship_validate_many_init_empty_raise_min_ge_max():
+    with pytest.raises(infra_execs.ValidationError):
+        RelationshipValidatorList(min_count=200, max_count=100)
+
+
+async def test_relationship_validate_init_below_min_raise(
+    person_jack_main: Node, person_jane_main: Node, branch: Branch
+):
+    person_schema = registry.get_schema(name="TestPerson")
+    rel_schema = person_schema.get_relationship("tags")
+
+    rel_jack = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
+    rel_jane = Relationship(schema=rel_schema, branch=branch, node=person_jane_main)
+
+    with pytest.raises(infra_execs.ValidationError):
+        RelationshipValidatorList(rel_jack, rel_jane, min_count=3, max_count=0)
+
+
+async def test_relationship_validate_init_above_max_raise(
+    person_jack_main: Node, person_jane_main: Node, person_albert_main: Node, branch: Branch
+):
+    person_schema = registry.get_schema(name="TestPerson")
+    rel_schema = person_schema.get_relationship("tags")
+
+    rel_jack = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
+    rel_jane = Relationship(schema=rel_schema, branch=branch, node=person_jane_main)
+    rel_albert = Relationship(schema=rel_schema, branch=branch, node=person_albert_main)
+
+    with pytest.raises(infra_execs.ValidationError):
+        RelationshipValidatorList(rel_jack, rel_jane, rel_albert, min_count=0, max_count=2)
+
+
+async def test_relationship_validate_one_success(person_jack_main: Node, branch: Branch):
+    person_schema = registry.get_schema(name="TestPerson")
+    rel_schema = person_schema.get_relationship("tags")
+
+    rel_jack = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
+
+    result = RelationshipValidatorList(rel_jack, min_count=1, max_count=1)
+
+    result.append(rel_jack)
+    assert len(result) == 1
+    assert result._relationships_count == 1
+    result.clear()
+    assert len(result) == 0
+    assert result.min_count == 1
+    assert result.max_count == 1
+
+
+async def test_relationship_validate_one_append_raise(person_jack_main: Node, person_jane_main: Node, branch: Branch):
+    """Validate that it raises when appending a second relationship onto cardinality of one."""
+    person_schema = registry.get_schema(name="TestPerson")
+    rel_schema = person_schema.get_relationship("tags")
+
+    rel_jack = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
+    rel_jane = Relationship(schema=rel_schema, branch=branch, node=person_jane_main)
+    result = RelationshipValidatorList(min_count=1, max_count=1)
+
+    assert len(result) == 0
+    assert result._relationships_count == 0
+
+    result.append(rel_jack)
+    assert len(result) == 1
+    assert result._relationships_count == 1
+
+    with pytest.raises(infra_execs.ValidationError):
+        result.append(rel_jane)
+
+
+async def test_relationship_validate_one_append_extend_duplicate(person_jack_main: Node, branch: Branch):
+    """Attempting to use the methods that would insert over the max_count but are duplicates."""
+    person_schema = registry.get_schema(name="TestPerson")
+    rel_schema = person_schema.get_relationship("tags")
+
+    rel_jack = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
+    result = RelationshipValidatorList(rel_jack, min_count=1, max_count=1)
+
+    # RelationshipValidatorList should not append/extend a duplicate relationship
+    result.append(rel_jack)
+    assert len(result) == 1
+    assert result._relationships_count == 1
+    result.extend([rel_jack])
+    # assert result.length() == 1
+    assert result._relationships_count == 1
+    result.insert(1, rel_jack)
+    assert result.count(rel_jack) == 1
+    assert result._relationships_count == 1
+    assert result.get(0) == rel_jack
+
+
+async def test_relationship_validate_one_append_extend_raise(
+    person_jack_main: Node, person_albert_main: Node, branch: Branch
+):
+    person_schema = registry.get_schema(name="TestPerson")
+    rel_schema = person_schema.get_relationship("tags")
+
+    rel_jack = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
+
+    result = RelationshipValidatorList(rel_jack, min_count=1, max_count=1)
+
+    with pytest.raises(infra_execs.ValidationError):
+        rel_albert = Relationship(schema=rel_schema, branch=branch, node=person_albert_main)
+        result.append(rel_albert)
+
+
+async def test_relationship_validate_one_remove_raise(person_jack_main: Node, branch: Branch):
+    person_schema = registry.get_schema(name="TestPerson")
+    rel_schema = person_schema.get_relationship("tags")
+
+    rel_jack = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
+
+    result = RelationshipValidatorList(rel_jack, min_count=1, max_count=1)
+
+    with pytest.raises(infra_execs.ValidationError):
+        result.pop()
+    with pytest.raises(infra_execs.ValidationError):
+        result.pop(0)
+    with pytest.raises(infra_execs.ValidationError):
+        result.remove(rel_jack)
+    with pytest.raises(infra_execs.ValidationError):
+        del result[0]
+
+
+async def test_relationship_validate_many_no_limit_success(
+    person_jack_main: Node, person_jane_main: Node, person_albert_main: Node, branch: Branch
+):
+    person_schema = registry.get_schema(name="TestPerson")
+    rel_schema = person_schema.get_relationship("tags")
+
+    rel_jack = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
+    rel_jane = Relationship(schema=rel_schema, branch=branch, node=person_jane_main)
+    rel_albert = Relationship(schema=rel_schema, branch=branch, node=person_albert_main)
+
+    result = RelationshipValidatorList(rel_jack, rel_jane, rel_albert, min_count=0, max_count=0)
+
+    assert result[0] == rel_jack
+    assert result[1] == rel_jane
+    assert result[2] == rel_albert
+
+
+async def test_relationship_validate_many_no_limit_duplicate_success(person_jack_main: Node, branch: Branch):
+    person_schema = registry.get_schema(name="TestPerson")
+    rel_schema = person_schema.get_relationship("tags")
+
+    rel = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
+
+    result = RelationshipValidatorList(rel, min_count=rel_schema.min_count, max_count=rel_schema.max_count)
+
+    for _ in range(5):
+        result.append(rel)
+    assert len(result) == 1
+    assert result[0] == rel
+
+
+async def test_relationship_validate_many_above_max_count_raise(
+    person_jack_main: Node, person_jane_main: Node, person_albert_main: Node, branch: Branch
+):
+    person_schema = registry.get_schema(name="TestPerson")
+    rel_schema = person_schema.get_relationship("tags")
+
+    rel_jack = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
+    rel_jane = Relationship(schema=rel_schema, branch=branch, node=person_jane_main)
+    rel_albert = Relationship(schema=rel_schema, branch=branch, node=person_albert_main)
+
+    result = RelationshipValidatorList(rel_jack, rel_jane, min_count=2, max_count=2)
+
+    assert result[0] == rel_jack
+    assert result[1] == rel_jane
+    with pytest.raises(infra_execs.ValidationError):
+        result.append(rel_albert)
+    with pytest.raises(infra_execs.ValidationError):
+        result.insert(2, rel_albert)
+
+
+async def test_relationship_validate_many_less_than_min_raise(
+    person_jack_main: Node, person_jane_main: Node, person_albert_main: Node, branch: Branch
+):
+    person_schema = registry.get_schema(name="TestPerson")
+    rel_schema = person_schema.get_relationship("tags")
+
+    rel_jack = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
+    rel_jane = Relationship(schema=rel_schema, branch=branch, node=person_jane_main)
+
+    result = RelationshipValidatorList(rel_jack, rel_jane, min_count=2, max_count=2)
+
+    assert result[0] == rel_jack
+    assert result[1] == rel_jane
+    with pytest.raises(infra_execs.ValidationError):
+        result.pop()
+    with pytest.raises(infra_execs.ValidationError):
+        result.pop(0)
+    with pytest.raises(infra_execs.ValidationError):
+        result.remove(rel_jane)
+    with pytest.raises(infra_execs.ValidationError):
+        del result[0]

@@ -236,7 +236,11 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             await self._get_peer(db=db)
 
         if not self._peer:
-            raise NodeNotFound(branch_name=self.branch.name, node_type=self.schema.peer, identifier=self.peer_id)
+            raise NodeNotFound(
+                branch_name=self.branch.name,
+                node_type=self.schema.peer,
+                identifier=self.peer_id,
+            )
 
         return self._peer
 
@@ -337,7 +341,12 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         branch = self.get_branch_based_on_support_type()
 
         query = await RelationshipGetQuery.init(
-            db=db, source=node, destination=peer, rel=self, branch=self.branch, at=delete_at
+            db=db,
+            source=node,
+            destination=peer,
+            rel=self,
+            branch=self.branch,
+            at=delete_at,
         )
         await query.execute(db=db)
         result = query.get_result()
@@ -354,7 +363,12 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             await update_relationships_to(rel_ids_to_update, to=delete_at, db=db)
 
         query = await RelationshipDeleteQuery.init(
-            db=db, rel=self, source_id=node.id, destination_id=peer.id, branch=branch, at=delete_at
+            db=db,
+            rel=self,
+            source_id=node.id,
+            destination_id=peer.id,
+            branch=branch,
+            at=delete_at,
         )
         await query.execute(db=db)
 
@@ -432,6 +446,147 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         return data
 
 
+# write tests for class below
+
+
+class RelationshipValidatorList:
+    """Provides a list/set like interface to the RelationshipManager's _relationships but with validation against min/max count and no duplicates.
+
+    Raises:
+        ValidationError: If the number of relationships is not within the min and max count.
+    """
+
+    def __init__(
+        self,
+        *relationships: Relationship,
+        min_count: int = 0,
+        max_count: int = 0,
+    ):
+        """Initialize list for Relationship but with validation against min/max count.
+
+        Args:
+            min_count (int, optional): Min count of relationships required. Defaults to 0.
+            max_count (int, optional): Max count of relationships allowed. Defaults to 0. 0 provides no limit.
+
+        Raises:
+            ValidationError: The number of relationships is not within the min and max count.
+        """
+        if max_count < min_count:
+            raise ValidationError({"msg": "max_count must be greater than min_count"})
+        self.min_count: int = min_count
+        self.max_count: int = max_count
+
+        self._relationships: List[Relationship] = [rel for rel in relationships if isinstance(rel, Relationship)]
+        self._relationships_count: int = len(self._relationships)
+
+        # Validate the initial relationships count is within the min and max count if relationships were provided
+        if self._relationships:
+            if self.max_count and self._relationships_count > self.max_count:
+                raise ValidationError({relationships[0].node_id: f"Too many relationships, max {self.max_count}"})
+            if self.min_count and self._relationships_count < self.min_count:
+                raise ValidationError({relationships[0].node_id: f"Too few relationships, min {self.min_count}"})
+
+    def __contains__(self, item: Relationship):
+        return item in self._relationships
+
+    def __hash__(self):
+        return hash(self._relationships)
+
+    def __iter__(self):
+        return iter(self._relationships)
+
+    def __getitem__(self, index: int):
+        return self._relationships[index]
+
+    def __setitem__(self, index: int, value: Relationship):
+        if value in self._relationships:
+            raise ValidationError({value.name: "Relationship already exists in the list"})
+        if not isinstance(value, Relationship):
+            raise ValidationError("RelationshipValidatorList only accepts Relationship objects")
+        self._relationships[index] = value
+
+    def __delitem__(self, index: int):
+        if self._relationships_count - 1 < self.min_count:
+            raise ValidationError({self._relationships[0].name: f"Too few relationships, min {self.min_count}"})
+        del self._relationships[index]
+
+    def __len__(self):
+        length = len(self._relationships)
+        if length != self._relationships_count:
+            self._relationships_count = length
+        return length
+
+    def __repr__(self):
+        return repr(self._relationships)
+
+    def append(self, rel: Relationship):
+        # Do not do anything if the relationship is already present
+        if rel in self._relationships:
+            return
+        if not isinstance(rel, Relationship):
+            raise ValidationError("RelationshipValidatorList only accepts Relationship objects")
+
+        # If the max_count is greater than 0 then validate
+        if self.max_count and self._relationships_count + 1 > self.max_count:
+            raise ValidationError({rel.name: f"Too many relationships, max {self.max_count}"})
+
+        self._relationships.append(rel)
+        self._relationships_count += 1
+
+    def clear(self):
+        self._relationships.clear()
+
+    def count(self, value: Relationship):
+        return self._relationships.count(value)
+
+    def extend(self, iterable):
+        # Filter down to only Relationship objects and remove duplicates
+        relationships = [rel for rel in iterable if isinstance(rel, Relationship) and rel not in self._relationships]
+        rel_len = len(relationships)
+        # If the max_count is greater than 0 then validate
+        if self.max_count and self._relationships_count + rel_len > self.max_count:
+            raise ValidationError({self._relationships[0].name: f"Too many relationships, max {self.max_count}"})
+
+        self._relationships.extend(relationships)
+        self._relationships_count += rel_len
+
+    def get(self, index: int):
+        return self._relationships[index]
+
+    def index(self, value: Relationship, start: int = 0, stop: int = 9223372036854775807):
+        return self._relationships.index(value, start, stop)
+
+    def insert(self, index: int, value: Relationship):
+        if value in self._relationships:
+            return
+        if not isinstance(value, Relationship):
+            raise ValidationError("RelationshipValidatorList only accepts Relationship objects")
+        if self.max_count and self._relationships_count + 1 > self.max_count:
+            raise ValidationError({value.name: f"Too many relationships, max {self.max_count}"})
+        self._relationships.insert(index, value)
+        self._relationships_count += 1
+
+    def pop(self, idx: int = -1):
+        if self.min_count and self._relationships_count - 1 < self.min_count:
+            raise ValidationError({self._relationships[0].name: f"Too few relationships, min {self.min_count}"})
+
+        result = self._relationships.pop(idx)
+        self._relationships_count -= 1
+        return result
+
+    def remove(self, value: Relationship):
+        if self.min_count and self._relationships_count - 1 < self.min_count:
+            raise ValidationError({self._relationships[0].name: f"Too few relationships, min {self.min_count}"})
+        self._relationships.remove(value)
+        self._relationships_count -= 1
+
+    def reverse(self):
+        raise NotImplementedError("reverse is not implemented due to RelationshipManager not requiring it")
+
+    def sort(self, key=None, reverse=False):
+        raise NotImplementedError("sort is not implemented due to RelationshipManager not requiring it")
+
+
 class RelationshipManager:
     def __init__(  # pylint: disable=unused-argument
         self,
@@ -451,7 +606,10 @@ class RelationshipManager:
         # TODO Ideally this information should come from the Schema
         self.rel_class = Relationship
 
-        self._relationships: List[Relationship] = []
+        self._relationships: RelationshipValidatorList = RelationshipValidatorList(
+            min_count=self.schema.min_count,
+            max_count=self.schema.max_count,
+        )
         self.has_fetched_relationships: bool = False
 
     @classmethod
@@ -558,7 +716,12 @@ class RelationshipManager:
         peer_ids_present_local_only = list(set(current_peer_ids) - set(peer_ids_present_both))
         peer_ids_present_database_only = list(set(peer_ids) - set(peer_ids_present_both))
 
-        return peer_ids_present_both, peer_ids_present_local_only, peer_ids_present_database_only, peers_database
+        return (
+            peer_ids_present_both,
+            peer_ids_present_local_only,
+            peer_ids_present_database_only,
+            peers_database,
+        )
 
     async def _fetch_relationships(self, db: InfrahubDatabase, at: Optional[Timestamp] = None):
         """Fetch the latest relationships from the database and update the local cache."""
@@ -658,7 +821,8 @@ class RelationshipManager:
         update_db: bool = False,
     ):
         """Remote a peer id from the local relationships list,
-        need to investigate if and when we should update the relationship in the database."""
+        need to investigate if and when we should update the relationship in the database.
+        """
 
         for idx, rel in enumerate(await self.get_relationships(db=db)):
             if rel.peer_id != peer_id:
@@ -715,7 +879,12 @@ class RelationshipManager:
         # Update the one in the database that shouldn't be here.
         if self.has_fetched_relationships:
             for peer_id in peer_ids_present_database_only:
-                await self.remove_in_db(peer_id=peer_id, peer_data=peers_database[peer_id], at=save_at, db=db)
+                await self.remove_in_db(
+                    peer_id=peer_id,
+                    peer_data=peers_database[peer_id],
+                    at=save_at,
+                    db=db,
+                )
 
         # Create the new relationship that are not present in the database
         #  and Compare the existing one
