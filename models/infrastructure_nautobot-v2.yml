@@ -525,7 +525,7 @@ nodes:
     relationships:
       - name: ip_addresses
         peer: InfraIPAddress
-        identifier: "interface_addresses"
+        identifier: "interface__addresses"
         label: IP Addresses
         optional: true
         cardinality: many
@@ -535,14 +535,14 @@ nodes:
         peer: InfraVLAN
         optional: true
         cardinality: one
-        kind: Attribute
+        kind: Component
         identifier: interface_l2__untagged_vlan
       - name: tagged_vlan
-        label: Tagged VLANs
+        label: "Tagged VLAN(s)"
         peer: InfraVLAN
         optional: true
         cardinality: one
-        kind: Attribute
+        kind: Component
         identifier: interface_l2__tagged_vlan
   - name: IPAddress
     namespace: Infra

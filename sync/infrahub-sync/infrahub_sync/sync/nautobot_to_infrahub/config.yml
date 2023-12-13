@@ -32,10 +32,10 @@ order: [
   "InfraDevice",
   "InfraVLAN",
   "InfraPrefix",
-  "InfraIPAddress",
+  "InfraInterfaceL2L3",
   "InfraRearPort",
   "InfraFrontPort",
-  "InfraInterfaceL2L3"
+  "InfraIPAddress",
 ]
 
 schema_mapping:
@@ -427,6 +427,9 @@ schema_mapping:
       - name: prefix
         mapping: parent
         reference: InfraPrefix
+      - name: interfaces
+        mapping: interfaces
+        reference: InfraInterfaceL2L3
       - name: role
         mapping: role
         reference: BuiltinRole
