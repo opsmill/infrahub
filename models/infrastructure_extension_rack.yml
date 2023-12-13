@@ -36,11 +36,11 @@ nodes:
         choices:
           - name: active
             label: Active
-            description: "Fonctional and ready for production"
+            description: "Functional and ready for production"
             color: "#009933"
           - name: planned
             label: Planned
-            description: "Not physically present yet."
+            description: "Not physically present yet"
             color: "#cc66ff"
         default_value: "active"
       - name: role
