@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Mapping, Optional
+from typing import Any, Dict, List, Mapping, Optional
 
 
 class Error(Exception):
@@ -29,7 +29,7 @@ class ServerNotResponsiveError(Error):
 class GraphQLError(Error):
     def __init__(
         self,
-        errors: List[str],
+        errors: List[Dict[str, Any]],
         query: Optional[str] = None,
         variables: Optional[dict] = None,
     ):

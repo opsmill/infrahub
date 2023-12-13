@@ -14,6 +14,10 @@ from infrahub_sdk.transfer.schema_sorter import InfrahubSchemaTopologicalSorter
 
 def load(
     directory: Path = typer.Argument(default=None, help="Directory path of exported data."),
+    continue_on_error: bool = typer.Option(
+        False, help="Allow exceptions during loading and display them when complete"
+    ),
+    quiet: bool = typer.Option(False, help="No console output"),
     config_file: str = typer.Option("infrahubctl.toml", envvar="INFRAHUBCTL_CONFIG"),
     branch: str = typer.Option("main", help="Branch from which to export"),
     concurrent: int = typer.Option(
@@ -28,7 +32,12 @@ def load(
     if not config.SETTINGS:
         config.load_and_exit(config_file=config_file)
     client = aiorun(initialize_client(timeout=timeout, max_concurrent_execution=concurrent, retry_on_failure=True))
-    importer = LineDelimitedJSONImporter(client, InfrahubSchemaTopologicalSorter())
+    importer = LineDelimitedJSONImporter(
+        client,
+        InfrahubSchemaTopologicalSorter(),
+        continue_on_error=continue_on_error,
+        console=Console() if not quiet else None,
+    )
     try:
         aiorun(
             importer.import_data(

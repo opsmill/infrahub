@@ -1,7 +1,7 @@
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, List
+from typing import TYPE_CHECKING, Dict, List, Union
 
 import ujson
 
@@ -12,7 +12,7 @@ from ..exceptions import FileAlreadyExistsError, InvalidNamespaceError
 from .interface import ExporterInterface
 
 if TYPE_CHECKING:
-    from infrahub_sdk.schema import BaseNodeSchema
+    from infrahub_sdk.schema import NodeSchema, GenericSchema
 
 from ..constants import ILLEGAL_NAMESPACES
 
@@ -34,7 +34,7 @@ class LineDelimitedJSONExporter(ExporterInterface):
             raise InvalidNamespaceError(f"namespaces cannot include {ILLEGAL_NAMESPACES}")
 
         node_schema_map = await self.client.schema.all(branch=branch)
-        node_schema_by_namespace: Dict[str, List[BaseNodeSchema]] = defaultdict(list)
+        node_schema_by_namespace: Dict[str, List[Union[NodeSchema, GenericSchema]]] = defaultdict(list)
         for node_schema in node_schema_map.values():
             if isinstance(node_schema, GenericSchema):
                 continue
