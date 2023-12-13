@@ -78,6 +78,3 @@ class OCBGPNeighbors(InfrahubTransform):
             response_payload["openconfig-bgp:neighbors"]["neighbor"].append(session_data)
 
         return response_payload
-
-
-INFRAHUB_TRANSFORMS = [OCInterfaces, OCBGPNeighbors]

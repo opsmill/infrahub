@@ -75,7 +75,9 @@ class InfrahubCheckDefinitionConfig(pydantic.BaseModel):
 
 
 class InfrahubPythonTransformConfig(pydantic.BaseModel):
+    name: str = pydantic.Field(..., description="The name of the Transform")
     file_path: Path = pydantic.Field(..., description="The file within the repo with the transform code.")
+    class_name: str = pydantic.Field(default="Transform", description="The name of the transform class to run.")
 
 
 class InfrahubRepositoryConfig(pydantic.BaseModel):
