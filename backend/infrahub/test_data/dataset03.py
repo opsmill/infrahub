@@ -180,24 +180,6 @@ async def load_data(db: InfrahubDatabase):
     # ------------------------------------------
     # Create Status, Role & DeviceProfile
     # ------------------------------------------
-    statuses_dict = {}
-    roles_dict = {}
-
-    LOGGER.info("Creating Roles, Status & Tag")
-    for role in DEVICE_ROLES + INTF_ROLES:
-        obj = await Node.init(db=db, schema="Role")
-        await obj.new(db=db, description=role.title(), name=role)
-        await obj.save(db=db)
-        roles_dict[role] = obj
-        LOGGER.info(f" Created Role: {role}")
-
-    for status in STATUSES:
-        obj = await Node.init(db=db, schema="Status")
-        await obj.new(db=db, description=status.title(), name=status)
-        await obj.save(db=db)
-        statuses_dict[status] = obj
-        LOGGER.info(f" Created Status: {status}")
-
     for tag in TAGS:
         obj = await Node.init(db=db, schema="Tag")
         await obj.new(db=db, name=tag)
@@ -205,7 +187,7 @@ async def load_data(db: InfrahubDatabase):
         tags_dict[tag] = obj
         LOGGER.info(f" Created Tag: {tag}")
 
-    active_status = statuses_dict["active"]
+    active_status = "active"
     internal_as = asn_dict["Duff"]
 
     LOGGER.info("Creating Site & Device")
@@ -229,8 +211,6 @@ async def load_data(db: InfrahubDatabase):
 
         for idx, device in enumerate(DEVICES):
             device_name = f"{site_name}-{device[0]}"
-            status_id = statuses_dict[device[1]].id
-            role_id = roles_dict[device[4]].id
             device_type = device[2]
 
             obj = await Node.init(db=db, schema="Device")
@@ -238,9 +218,9 @@ async def load_data(db: InfrahubDatabase):
                 db=db,
                 site=site,
                 name=device_name,
-                status=status_id,
+                status=device[1],
                 type=device[2],
-                role=role_id,
+                role=device[4],
                 # source=pop_builder_account,
                 asn=asn_dict["Duff"],
                 tags=[tags_dict[tag_name] for tag_name in device[5]],
@@ -257,8 +237,8 @@ async def load_data(db: InfrahubDatabase):
                 device=obj.id,
                 name="Loopback0",
                 enabled=True,
-                status=active_status.id,
-                role=roles_dict["loopback"].id,
+                status=active_status,
+                role="loopback",
                 speed=1000,
                 # source=pop_builder_account,
             )
@@ -277,8 +257,8 @@ async def load_data(db: InfrahubDatabase):
                 device=obj.id,
                 name=INTERFACE_MGMT_NAME[device_type],
                 enabled=True,
-                status=active_status.id,
-                role=roles_dict["management"].id,
+                status=active_status,
+                role="management",
                 speed=1000,
                 # source=pop_builder_account,
             )
@@ -291,7 +271,6 @@ async def load_data(db: InfrahubDatabase):
             # Other Interfaces
             for intf_idx, intf_name in enumerate(INTERFACE_NAMES[device_type]):
                 intf_role = INTERFACE_ROLES_MAPPING[device[4]][intf_idx]
-                intf_role_id = roles_dict[intf_role].id
 
                 intf = await Node.init(db=db, schema="Interface")
                 await intf.new(
@@ -300,8 +279,8 @@ async def load_data(db: InfrahubDatabase):
                     name=intf_name,
                     speed=10000,
                     enabled=True,
-                    status=active_status.id,
-                    role=intf_role_id,
+                    status=active_status,
+                    role=intf_role,
                     # source=pop_builder_account,
                 )
                 await intf.save(db=db)
@@ -356,8 +335,8 @@ async def load_data(db: InfrahubDatabase):
                         vendor_id=f"{provider_name.upper()}-{UUIDT().short()}",
                         provider=provider.id,
                         # type=intf_role.upper(),
-                        status=active_status.id,
-                        role=roles_dict[intf_role].id,
+                        status=active_status,
+                        role=intf_role,
                     )
                     await circuit.save(db=db)
 
@@ -391,8 +370,8 @@ async def load_data(db: InfrahubDatabase):
                             remote_ip=peer_ip,
                             peer_group=peer_group_dict[peer_group_name],
                             device=device_dict[device_name],
-                            status=active_status.id,
-                            role=roles_dict[intf_role].id,
+                            status=active_status,
+                            role=intf_role,
                         )
                         await bgp_session.save(db=db)
 
@@ -439,8 +418,8 @@ async def load_data(db: InfrahubDatabase):
                 remote_ip=loopback2,
                 peer_group=peer_group_dict[peer_group_name].id,
                 device=device_dict[device1].id,
-                status=active_status.id,
-                role=roles_dict["backbone"],
+                status=active_status,
+                role="backbone",
             )
             await obj.save(db=db)
 
@@ -484,7 +463,7 @@ async def load_data(db: InfrahubDatabase):
             provider=provider,
             # type="DARK FIBER",
             status=active_status,
-            role=roles_dict["backbone"],
+            role="backbone",
         )
         await obj.save(db=db)
 

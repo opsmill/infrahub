@@ -6,6 +6,8 @@ from infrahub.database import InfrahubDatabase
 # pylint: skip-file
 
 ROLES = ["spine", "leaf", "firewall", "server", "loopback"]
+STATUSES = ["active", "provisionning", "maintenance"]
+TAGS = ["blue", "green", "red"]
 
 DEVICES = (
     ("spine1", "active", "MX480", "profile1", "spine", ["red", "green"]),
@@ -89,53 +91,29 @@ async def load_data(db: InfrahubDatabase, nbr_devices: int = None):
     # ------------------------------------------
     # Create Status, Role & DeviceProfile
     # ------------------------------------------
-    statuses_dict = {}
-    roles_dict = {}
+    # statuses_dict = {}
+    # roles_dict = {}
 
     LOGGER.info("Creating Site")
     site_hq = await Node.init(db=db, schema="BuiltinLocation")
     await site_hq.new(db=db, name="HQ", type="Site")
     await site_hq.save(db=db)
 
-    LOGGER.info("Creating Roles & Status")
-    for role in ROLES:
-        obj = await Node.init(db=db, schema="BuiltinRole")
-        await obj.new(db=db, description=role.title(), name=role)
-        await obj.save(db=db)
-        roles_dict[role] = obj
-        LOGGER.info(f"Created Role: {role}")
-
-    STATUSES = ["active", "provisionning", "maintenance"]
-    for status in STATUSES:
-        obj = await Node.init(db=db, schema="BuiltinStatus")
-        await obj.new(db=db, description=status.title(), name=status)
-        await obj.save(db=db)
-        statuses_dict[status] = obj
-        LOGGER.info(f"Created Status: {status}")
-
-    # TAGS = ["blue", "green", "red"]
-    # for tag in TAGS:
-    #     obj = await Node.init(db=db, schema="Tag")
-    #     await obj.new(db=db, name=tag)
-    #     await obj.save(db=db)
-    #     tags_dict[tag] = obj
-    #     LOGGER.info(f"Created Tag: {tag}")
-
-    active_status = statuses_dict["active"]
-    role_loopback = roles_dict["loopback"]
+    active_status = "active"
+    role_loopback = "loopback"
 
     LOGGER.info("Creating Device")
     for idx, device in enumerate(DEVICES):
         if nbr_devices and nbr_devices <= idx:
             continue
 
-        status = statuses_dict[device[1]]
+        status = device[1]
 
-        role_id = None
+        role = None
         if device[4]:
-            role_id = roles_dict[device[4]].id
+            role = device[4]
         obj = await Node.init(db=db, schema="InfraDevice")
-        await obj.new(db=db, name=device[0], status=status.id, type=device[2], role=role_id, site=site_hq)
+        await obj.new(db=db, name=device[0], status=status, type=device[2], role=role, site=site_hq)
 
         await obj.save(db=db)
         LOGGER.info(f"- Created Device: {device[0]}")
@@ -148,8 +126,8 @@ async def load_data(db: InfrahubDatabase, nbr_devices: int = None):
                 device="spine1",
                 name="Loopback0",
                 enabled=True,
-                status=active_status.id,
-                role=role_loopback.id,
+                status=active_status,
+                role=role_loopback,
                 speed=10000,
             )
             await intf.save(db=db)
@@ -165,7 +143,7 @@ async def load_data(db: InfrahubDatabase, nbr_devices: int = None):
         INTERFACES = ["Ethernet0", "Ethernet1", "Ethernet2"]
         for intf_idx, intf_name in enumerate(INTERFACES):
             intf_role = INTERFACE_ROLES[device[4]][intf_idx]
-            intf_role_id = roles_dict[intf_role].id
+            # intf_role_id = roles_dict[intf_role].id
 
             enabled = True
             if intf_idx in [0, 1]:
@@ -178,8 +156,8 @@ async def load_data(db: InfrahubDatabase, nbr_devices: int = None):
                 name=intf_name,
                 speed=10000,
                 enabled=enabled,
-                status=active_status.id,
-                role=intf_role_id,
+                status=active_status,
+                role=intf_role,
             )
             await intf.save(db=db)
 

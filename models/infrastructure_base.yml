@@ -78,6 +78,10 @@ generics:
             label: Management
             description: "Dedicated network for control and monitoring."
             color: "#ccc28a"
+          - name: uplink
+            label: Uplink
+            description: "Connect to higher device."
+            color: "#ff6b6b"
           - name: spare
             label: Spare
             description: "Reserve resources for future use."
