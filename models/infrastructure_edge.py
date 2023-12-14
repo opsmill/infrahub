@@ -223,7 +223,7 @@ async def group_add_member(client: InfrahubClient, group: InfrahubNode, members:
 
 async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str, site_name: str):
     group_eng = store.get("Engineering Team")
-    store.get("Operation Team")
+    group_ops = store.get("Operation Team")
     account_pop = store.get("pop-builder")
     account_crm = store.get("CRM Synchronization")
     internal_as = store.get(kind="InfraAutonomousSystem", key="Duff")
@@ -331,8 +331,12 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
             device={"id": obj.id, "is_protected": True},
             name={"value": INTERFACE_MGMT_NAME[device_type], "source": account_pop.id},
             enabled={"value": True, "owner": group_eng.id},
-            status=ACTIVE_STATUS,
-            role="management",
+            status={"value": ACTIVE_STATUS, "owner": group_eng.id},
+            role={
+                "value": "management",
+                "source": account_pop.id,
+                "is_protected": True,
+            },
             speed=1000,
         )
         await intf.save()
@@ -356,8 +360,8 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
                 name=intf_name,
                 speed=10000,
                 enabled=True,
-                status=ACTIVE_STATUS,
-                role=intf_role,
+                status={"value": ACTIVE_STATUS, "owner": group_ops.id},
+                role={"value": intf_role, "source": account_pop.id},
             )
             await intf.save()
 
@@ -404,8 +408,12 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
                     circuit_id=circuit_id,
                     vendor_id=f"{provider_name.upper()}-{UUIDT().short()}",
                     provider=provider.id,
-                    status=ACTIVE_STATUS,
-                    role=intf_role,
+                    status={"value": ACTIVE_STATUS, "owner": group_ops.id},
+                    role={
+                        "value": intf_role,
+                        "source": account_pop.id,
+                        "owner": group_eng.id,
+                    },
                 )
                 await circuit.save()
                 log.info(f" - Created {circuit._schema.kind} - {provider_name} [{circuit.vendor_id.value}]")
@@ -462,8 +470,8 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
                 name=intf_name,
                 speed=10000,
                 enabled=True,
-                status=ACTIVE_STATUS,
-                role=intf_role,
+                status={"value": ACTIVE_STATUS, "owner": group_ops.id},
+                role={"value": intf_role, "source": account_pop.id},
                 l2_mode="Access",
                 untagged_vlan={"id": store.get(kind="InfraVLAN", key=f"{site_name}_server").id},
             )
