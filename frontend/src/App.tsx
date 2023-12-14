@@ -1,3 +1,5 @@
+import { addCollection } from "@iconify-icon/react";
+import mdiIcons from "@iconify-json/mdi/icons.json";
 import { useAtom } from "jotai";
 import * as R from "ramda";
 import { useCallback, useEffect } from "react";
@@ -18,21 +20,22 @@ import {
   genericsState,
   iGenericSchema,
   iGenericSchemaMapping,
+  iNamespace,
   iNodeSchema,
+  namespacesState,
   schemaState,
 } from "./state/atoms/schema.atom";
 import { schemaKindNameState } from "./state/atoms/schemaKindName.atom";
 import "./styles/index.css";
 import { sortByOrderWeight } from "./utils/common";
 import { fetchUrl } from "./utils/fetch";
-import mdiIcons from "@iconify-json/mdi/icons.json";
-import { addCollection } from "@iconify-icon/react";
 addCollection(mdiIcons);
 
 function App() {
   const [branches] = useAtom(branchesState);
   const [, setSchema] = useAtom(schemaState);
   const [, setGenerics] = useAtom(genericsState);
+  const [, setNamespaces] = useAtom(namespacesState);
   const [, setGenericSchema] = useAtom(genericSchemaState);
   const [, setSchemaKindNameState] = useAtom(schemaKindNameState);
   const [branchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
@@ -40,7 +43,11 @@ function App() {
   /**
    * Fetch schema from the backend, sort, and return them
    */
-  const fetchSchema = useCallback(async () => {
+  const fetchSchema = useCallback(async (): Promise<{
+    schema: iNodeSchema[];
+    generics: iGenericSchema[];
+    namespaces: iNamespace[];
+  }> => {
     const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
     try {
       const data = await fetchUrl(CONFIG.SCHEMA_URL(branchInQueryString));
@@ -48,6 +55,7 @@ function App() {
       return {
         schema: sortByName(data.nodes || []),
         generics: sortByName(data.generics || []),
+        namespaces: sortByName(data.namespaces || []),
       };
     } catch (err) {
       toast(
@@ -60,6 +68,7 @@ function App() {
       return {
         schema: [],
         generics: [],
+        namespaces: [],
       };
     }
   }, [branchInQueryString]);
@@ -69,8 +78,7 @@ function App() {
    */
   const setSchemaInState = useCallback(async () => {
     try {
-      const { schema, generics }: { schema: iNodeSchema[]; generics: iGenericSchema[] } =
-        await fetchSchema();
+      const { schema, generics, namespaces } = await fetchSchema();
 
       schema.forEach((s) => {
         s.attributes = sortByOrderWeight(s.attributes || []);
@@ -79,6 +87,7 @@ function App() {
 
       setSchema(schema);
       setGenerics(generics);
+      setNamespaces(namespaces);
 
       const schemaNames = R.map(R.prop("name"), schema);
       const schemaKinds = R.map(R.prop("kind"), schema);
