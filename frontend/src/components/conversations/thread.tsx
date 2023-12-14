@@ -11,7 +11,6 @@ import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { createObject } from "../../graphql/mutations/objects/createObject";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
-import { branchVar } from "../../graphql/variables/branchVar";
 import { dateVar } from "../../graphql/variables/dateVar";
 import { classNames } from "../../utils/common";
 import { getThreadTitle } from "../../utils/diff";
@@ -23,6 +22,8 @@ import ModalConfirm from "../modal-confirm";
 import { Tooltip } from "../tooltip";
 import { AddComment } from "./add-comment";
 import { Comment } from "./comment";
+import { useAtomValue } from "jotai/index";
+import { currentBranchAtom } from "../../state/atoms/branches.atom";
 
 type tThread = {
   thread: any;
@@ -42,7 +43,7 @@ export const Thread = (props: tThread) => {
 
   const auth = useContext(AuthContext);
 
-  const branch = useReactiveVar(branchVar);
+  const branch = useAtomValue(currentBranchAtom);
   const date = useReactiveVar(dateVar);
   const [isLoading, setIsLoading] = useState(false);
   const [displayAddComment, setDisplayAddComment] = useState(false);
