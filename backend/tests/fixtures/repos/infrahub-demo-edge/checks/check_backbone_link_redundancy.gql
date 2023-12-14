@@ -10,11 +10,7 @@ query check_backbone_link_redundancy {
           value
         }
         status {
-          node {
-            name {
-              value
-            }
-          }
+          value
         }
         endpoints {
           edges {
