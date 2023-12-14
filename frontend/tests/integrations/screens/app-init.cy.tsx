@@ -2,7 +2,7 @@
 
 import { MockedProvider } from "@apollo/client/testing";
 import React from "react";
-import App from "../../../src/App";
+import { Root } from "../../../src";
 
 describe("Config fetch", () => {
   beforeEach(function () {
@@ -10,6 +10,7 @@ describe("Config fetch", () => {
     cy.fixture("config").as("config");
     cy.fixture("schema").as("schema");
     cy.fixture("menu").as("menu");
+    cy.fixture("branches").as("branches");
   });
 
   it("should login and load the config", function () {
@@ -21,11 +22,13 @@ describe("Config fetch", () => {
 
     cy.intercept("GET", "/api/schema", this.schema).as("getSchema");
 
-    cy.intercept("GET", "/api/menu", this.menu).as("getMenu");
+    cy.intercept("GET", "/api/menu?branch=main", this.menu).as("getMenu");
+
+    cy.intercept("POST", "/graphql/main", this.branches).as("branches");
 
     cy.mount(
       <MockedProvider addTypename={false}>
-        <App />
+        <Root />
       </MockedProvider>
     );
 
