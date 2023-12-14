@@ -19,7 +19,9 @@ export default function DesktopMenu() {
   const [isLoading, setIsLoading] = useState(false);
   const [menu, setMenu] = useState([]);
 
-  const fecthMenu = async () => {
+  const fetchMenu = async () => {
+    if (!branch?.name) return;
+
     try {
       setIsLoading(true);
 
@@ -36,7 +38,7 @@ export default function DesktopMenu() {
   };
 
   useEffect(() => {
-    fecthMenu();
+    fetchMenu();
   }, [branch?.name]);
 
   return (
