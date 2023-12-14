@@ -167,7 +167,7 @@ class InfrahubMutationMixin:
                     raise ValidationError(
                         {unique_attr.name: f"An object already exist with this value: {unique_attr.name}: {attr.value}"}
                     )
-            node_id = data.pop("id")
+            node_id = data.pop("id", obj.id)
             fields = list(data.keys())
             validate_mutation_permissions_update_node(
                 operation=cls.__name__, node_id=node_id, account_session=account_session, fields=fields
@@ -197,25 +197,21 @@ class InfrahubMutationMixin:
         branch: Branch,
         at: str,
         database: Optional[InfrahubDatabase] = None,
-        node: Optional[Node] = None,
     ):
-        if "id" in data:
-            db: InfrahubDatabase = database or info.context.get("infrahub_database")
-            obj = None
-            try:
-                obj = node or await NodeManager.get_one_by_id_or_default_filter(
-                    db=db,
-                    schema_name=cls._meta.schema.kind,
-                    id=data.get("id"),
-                    branch=branch,
-                    at=at,
-                    include_owner=True,
-                    include_source=True,
-                )
-                updated_obj, mutation = await cls.mutate_update(root, info, data, branch, at, database, obj)
-                return updated_obj, mutation, False
-            except NodeNotFound:
-                pass
+        schema_name = cls._meta.schema.kind
+        node_schema = registry.get_node_schema(name=schema_name, branch=branch)
+        db: InfrahubDatabase = database or info.context.get("infrahub_database")
+
+        node_by_id = await _get_node_by_id(node_schema=node_schema, db=db, data=data, branch=branch, at=at)
+        node_by_default_filter = await _get_node_by_default_filter(
+            node_schema=node_schema, db=db, data=data, branch=branch, at=at
+        )
+
+        node = node_by_id or node_by_default_filter
+
+        if node:
+            updated_obj, mutation = await cls.mutate_update(root, info, data, branch, at, database, node)
+            return updated_obj, mutation, False
         created_obj, mutation = await cls.mutate_create(root, info, data, branch, at)
         return created_obj, mutation, True
 
@@ -271,3 +267,63 @@ class InfrahubMutation(InfrahubMutationMixin, Mutation):
         _meta.schema = schema
 
         super().__init_subclass_with_meta__(_meta=_meta, **options)
+
+
+async def _get_node_by_default_filter(
+    node_schema: NodeSchema,
+    db: InfrahubDatabase,
+    data: InputObjectType,
+    branch: Branch,
+    at: str,
+) -> Optional[Node]:
+    node = None
+    default_filter_value = None
+    if not node_schema.default_filter:
+        return node
+    this_datum = data
+    for filter_key in node_schema.default_filter.split("__"):
+        if filter_key not in this_datum:
+            break
+        this_datum = this_datum[filter_key]
+    default_filter_value = this_datum
+    if not default_filter_value:
+        return node
+    nodes = await NodeManager.query(
+        db=db,
+        schema=node_schema,
+        limit=2,
+        filters={node_schema.default_filter: default_filter_value},
+        branch=branch,
+        at=at,
+    )
+    if len(nodes) > 1:
+        raise NodeNotFound(
+            branch_name=branch.name,
+            node_type=node_schema.kind,
+            identifier=default_filter_value,
+            message=f"Unable to find node {default_filter_value!r}, {len(nodes)} nodes returned, expected 1",
+        )
+    if len(nodes) == 1:
+        node = nodes[0]
+    return node
+
+
+async def _get_node_by_id(
+    node_schema: NodeSchema,
+    db: InfrahubDatabase,
+    data: InputObjectType,
+    branch: Branch,
+    at: str,
+) -> Optional[Node]:
+    node = None
+    if "id" not in data:
+        return node
+    node = await NodeManager.get_one(id=data["id"], db=db, at=at, branch=branch)
+    if node and node.get_kind() != node_schema.kind:
+        raise NodeNotFound(
+            branch_name=branch.name,
+            node_type=node_schema.kind,
+            identifier=data["id"],
+            message=f"Node with id {data['id']} exists, but it is a {node.get_kind()}, not {node_schema.kind}",
+        )
+    return node
