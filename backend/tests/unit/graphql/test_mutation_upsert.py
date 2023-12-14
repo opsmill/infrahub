@@ -179,3 +179,29 @@ async def test_id_for_other_schema_raises_error(
 
     expected_error = f"Node with id {car_accord_main.id} exists, but it is a TestCar, not TestPerson"
     assert any([expected_error in error.message for error in result.errors])
+
+
+async def test_update_by_id_to_nonunique_value_raises_error(
+    db: InfrahubDatabase, person_john_main, person_jim_main, branch: Branch
+):
+    query = (
+        """
+    mutation {
+        TestPersonUpsert(data: {id: "%s", name: {value: "Jim"}}) {
+            ok
+        }
+    }
+    """
+        % person_john_main.id
+    )
+
+    result = await graphql(
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=branch),
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    expected_error = "An object already exist with this value: name: Jim at name"
+    assert any([expected_error in error.message for error in result.errors])
