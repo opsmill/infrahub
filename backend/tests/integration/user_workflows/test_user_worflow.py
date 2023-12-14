@@ -115,9 +115,9 @@ INTERFACE_CREATE = """
             device: { id: $device },
             name: { value: $intf_name },
             description: { value: $description },
-            role: { id: $role },
+            role: { value: $role },
             speed: { value: $speed },
-            status: { id: $status }
+            status: { value: $status }
         })
         {
             ok
