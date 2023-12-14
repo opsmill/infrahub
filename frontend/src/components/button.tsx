@@ -73,7 +73,6 @@ const getClassName = (type?: BUTTON_TYPES) => {
     case BUTTON_TYPES.INVISIBLE: {
       return `
         bg-transparent border-transparent
-        hover:bg-gray-50
         disabled:cursor-not-allowed disabled:bg-transparent
       `;
     }
