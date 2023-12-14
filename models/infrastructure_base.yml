@@ -82,6 +82,10 @@ generics:
             label: Uplink
             description: "Connect to higher device."
             color: "#ff6b6b"
+          - name: leaf
+            label: Leaf
+            description: "Connect to leaf device."
+            color: "#e6e6fa"
           - name: spare
             label: Spare
             description: "Reserve resources for future use."

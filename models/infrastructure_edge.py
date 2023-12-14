@@ -262,8 +262,8 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
             kind="InfraVLAN",
             name={"value": f"{site_name}_{vlan[1]}", "is_protected": True, "source": account_pop.id},
             vlan_id={"value": int(vlan[0]), "is_protected": True, "owner": group_eng.id, "source": account_pop.id},
-            status=ACTIVE_STATUS,
-            role=vlan_role,
+            status={"value": ACTIVE_STATUS, "owner": group_ops.id},
+            role={"value": vlan_role, "source": account_pop.id, "is_protected": True, "owner": group_eng.id},
         )
         await obj.save()
         store.set(key=vlan_name, node=obj)
@@ -280,9 +280,9 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
             kind="InfraDevice",
             site={"id": site.id, "source": account_pop.id, "is_protected": True},
             name={"value": device_name, "source": account_pop.id, "is_protected": True},
-            status=device_status,
+            status={"value": device_status, "owner": group_ops.id},
             type={"value": device[2], "source": account_pop.id},
-            role=device_role,
+            role={"value": device_role, "source": account_pop.id, "is_protected": True, "owner": group_eng.id},
             asn={"id": internal_as.id, "source": account_pop.id, "is_protected": True, "owner": group_eng.id},
             tags=[store.get(kind="BuiltinTag", key=tag_name).id for tag_name in device[5]],
             platform={"id": platform_id, "source": account_pop.id, "is_protected": True},
