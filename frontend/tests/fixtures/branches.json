@@ -1,0 +1,28 @@
+{
+  "data": {
+    "Branch": [
+      {
+        "id": "17a06b82-4728-a235-367d-c51874096ca7",
+        "name": "main",
+        "description": "Default Branch",
+        "origin_branch": "main",
+        "branched_from": "2023-12-13T14:47:46.429753Z",
+        "created_at": "2023-12-13T14:47:46.429778Z",
+        "is_data_only": false,
+        "is_default": true,
+        "__typename": "Branch"
+      },
+      {
+        "id": "17a07042-b14a-a923-3675-c5183a53c719",
+        "name": "branch1",
+        "description": "",
+        "origin_branch": "main",
+        "branched_from": "2023-12-13T16:14:50.889873Z",
+        "created_at": "2023-12-13T16:14:50.889940Z",
+        "is_data_only": true,
+        "is_default": false,
+        "__typename": "Branch"
+      }
+    ]
+  }
+}

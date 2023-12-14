@@ -1,4 +1,4 @@
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import * as R from "ramda";
 import { useCallback, useEffect } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
@@ -10,9 +10,8 @@ import { CONFIG } from "./config/config";
 import { QSP } from "./config/qsp";
 import { MAIN_ROUTES } from "./config/routes";
 import { withAuth } from "./decorators/withAuth";
-import { branchVar } from "./graphql/variables/branchVar";
 import Layout from "./screens/layout/layout";
-import { branchesState } from "./state/atoms/branches.atom";
+import { branchesState, currentBranchAtom } from "./state/atoms/branches.atom";
 import { genericsState, iGenericSchema, iNodeSchema, schemaState } from "./state/atoms/schema.atom";
 import { schemaKindNameState } from "./state/atoms/schemaKindName.atom";
 import "./styles/index.css";
@@ -20,10 +19,12 @@ import { sortByOrderWeight } from "./utils/common";
 import { fetchUrl } from "./utils/fetch";
 import mdiIcons from "@iconify-json/mdi/icons.json";
 import { addCollection } from "@iconify-icon/react";
+import { Branch } from "./generated/graphql";
 addCollection(mdiIcons);
 
 function App() {
-  const [branches] = useAtom(branchesState);
+  const branches = useAtomValue(branchesState);
+  const setCurrentBranch = useSetAtom(currentBranchAtom);
   const [, setSchema] = useAtom(schemaState);
   const [, setGenerics] = useAtom(genericsState);
   const [, setSchemaKindNameState] = useAtom(schemaKindNameState);
@@ -92,21 +93,13 @@ function App() {
     setSchemaInState();
   }, [branchInQueryString]);
 
-  // useEffect(() => {
-  if (branches?.length) {
-    // For first load or navigation with branch change:
-    // We need to store the current branch in the state, from the QSP or the default branch
-    const selectedBranch = branches.find((b) =>
-      branchInQueryString ? b.name === branchInQueryString : b.is_default
-    );
-
-    if (selectedBranch?.name) {
-      // TODO: Fix the bad set state,
-      // TODO: mandatory for now to correctly define the apollo context
-      branchVar(selectedBranch);
-    }
-  }
-  // }, [branches?.length, branchInQueryString]);
+  useEffect(() => {
+    const filter = branchInQueryString
+      ? (b: Branch) => branchInQueryString === b.name
+      : (b: Branch) => b.is_default;
+    const selectedBranch = branches.find(filter);
+    setCurrentBranch(selectedBranch);
+  }, [branches.length, branchInQueryString]);
 
   return (
     <Routes>

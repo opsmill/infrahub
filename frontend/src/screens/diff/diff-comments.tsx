@@ -16,13 +16,14 @@ import graphqlClient from "../../graphql/graphqlClientApollo";
 import { createObject } from "../../graphql/mutations/objects/createObject";
 import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
 import { getProposedChangesObjectThreadComments } from "../../graphql/queries/proposed-changes/getProposedChangesObjectThreadComments";
-import { branchVar } from "../../graphql/variables/branchVar";
 import { dateVar } from "../../graphql/variables/dateVar";
 import useQuery from "../../hooks/useQuery";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { getThreadLabel } from "../../utils/diff";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import { DiffContext } from "./data-diff";
+import { useAtomValue } from "jotai/index";
+import { currentBranchAtom } from "../../state/atoms/branches.atom";
 
 type tDataDiffComments = {
   path: string;
@@ -35,7 +36,7 @@ export const DataDiffComments = (props: tDataDiffComments) => {
   const { proposedchange } = useParams();
   const [schemaList] = useAtom(schemaState);
   const auth = useContext(AuthContext);
-  const branch = useReactiveVar(branchVar);
+  const branch = useAtomValue(currentBranchAtom);
   const date = useReactiveVar(dateVar);
   const [isLoading, setIsLoading] = useState(false);
   const { refetch: contextRefetch, node, currentBranch } = useContext(DiffContext);

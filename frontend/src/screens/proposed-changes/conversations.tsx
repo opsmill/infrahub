@@ -29,10 +29,9 @@ import { createObject } from "../../graphql/mutations/objects/createObject";
 import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
 import { getProposedChangesThreads } from "../../graphql/queries/proposed-changes/getProposedChangesThreads";
-import { branchVar } from "../../graphql/variables/branchVar";
 import { dateVar } from "../../graphql/variables/dateVar";
 import useQuery from "../../hooks/useQuery";
-import { branchesState } from "../../state/atoms/branches.atom";
+import { branchesState, currentBranchAtom } from "../../state/atoms/branches.atom";
 import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { constructPath } from "../../utils/fetch";
@@ -42,6 +41,7 @@ import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
+import { useAtomValue } from "jotai/index";
 
 type tConversations = {
   refetch?: Function;
@@ -102,7 +102,7 @@ export const Conversations = (props: tConversations) => {
   const [branches] = useAtom(branchesState);
   const [schemaList] = useAtom(schemaState);
   const [proposedChangesDetails] = useAtom(proposedChangedState);
-  const branch = useReactiveVar(branchVar);
+  const branch = useAtomValue(currentBranchAtom);
   const date = useReactiveVar(dateVar);
   const auth = useContext(AuthContext);
   const [isLoadingApprove, setIsLoadingApprove] = useState(false);

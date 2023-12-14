@@ -1,7 +1,7 @@
-import { useReactiveVar } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { DEFAULT_BRANCH_NAME } from "../config/constants";
-import { branchVar } from "../graphql/variables/branchVar";
+import { useAtomValue } from "jotai/index";
+import { currentBranchAtom } from "../state/atoms/branches.atom";
 
 type tSidePanelTitle = {
   title: string;
@@ -12,7 +12,7 @@ type tSidePanelTitle = {
 export const SidePanelTitle = (props: tSidePanelTitle) => {
   const { title, children, hideBranch } = props;
 
-  const branch = useReactiveVar(branchVar);
+  const branch = useAtomValue(currentBranchAtom);
 
   return (
     <div className="space-y-2">

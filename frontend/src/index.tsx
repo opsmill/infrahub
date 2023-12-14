@@ -123,31 +123,31 @@ export const Root = () => {
     );
   }
 
-  return (
-    <BrowserRouter basename="/">
-      <QueryParamProvider
-        adapter={ReactRouter6Adapter}
-        options={{
-          searchStringToObject: queryString.parse,
-          objectToSearchString: queryString.stringify,
-        }}>
-        <ApolloProvider client={graphqlClient}>
-          <ToastContainer
-            hideProgressBar={true}
-            transition={Slide}
-            autoClose={5000}
-            closeOnClick={false}
-            newestOnTop
-            position="bottom-right"
-          />
-          <App />
-        </ApolloProvider>
-      </QueryParamProvider>
-    </BrowserRouter>
-  );
+  return <App />;
 };
 
-root.render(<Root />);
+root.render(
+  <BrowserRouter basename="/">
+    <QueryParamProvider
+      adapter={ReactRouter6Adapter}
+      options={{
+        searchStringToObject: queryString.parse,
+        objectToSearchString: queryString.stringify,
+      }}>
+      <ApolloProvider client={graphqlClient}>
+        <ToastContainer
+          hideProgressBar={true}
+          transition={Slide}
+          autoClose={5000}
+          closeOnClick={false}
+          newestOnTop
+          position="bottom-right"
+        />
+        <Root />
+      </ApolloProvider>
+    </QueryParamProvider>
+  </BrowserRouter>
+);
 
 // If you want to start measuring performance in your app, pass a function
 // to log results (for example: reportWebVitals(console.log))
