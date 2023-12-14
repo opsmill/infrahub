@@ -86,7 +86,7 @@ class IPNetworkType(BaseAttribute):
 
     class Meta:
         description = "Attribute of type Text"
-        name = "IPHost"
+        name = "IPNetwork"
         interfaces = {AttributeInterface}
 
 
