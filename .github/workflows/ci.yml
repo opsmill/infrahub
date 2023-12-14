@@ -211,8 +211,6 @@ jobs:
     needs: ["files-changed", "yaml-lint", "python-lint"]
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    env:
-      INFRAHUB_DB_TYPE: memgraph
     defaults:
       run:
         working-directory: sync/

@@ -5,7 +5,7 @@ description = ""
 authors = ["OpsMill <info@opsmill.com>"]
 
 packages = [
-    { include = "infrahub", from = "backend" },
+    { include = "infrahub", from = "backend" }
 ]
 
 [tool.poetry.dependencies]
@@ -43,7 +43,7 @@ yamllint = "*"
 pylint = "*"
 mypy = "*"
 ipython = "*"
-pytest-asyncio = "*"
+pytest-asyncio = "^0.21"
 requests = "*"
 pre-commit = "^2.20.0"
 autoflake = "*"
@@ -59,7 +59,6 @@ pytest-xdist = "^3.3.1"
 buildkite-test-collector = "^0.1.7"
 types-python-slugify = "^8.0.0.3"
 invoke = "2.2.0"
-
 
 [tool.poetry.scripts]
 infrahub = "infrahub.cli:app"
