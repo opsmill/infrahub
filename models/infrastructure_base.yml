@@ -112,7 +112,7 @@ nodes:
     namespace: Infra
     description: "A Platform represent the type of software running on a device."
     label: "Platform"
-    icon: "mdi:application-cog-outline"  # mdi:application-brackets-outline
+    icon: "mdi:application-cog-outline"
     menu_placement: "InfraDevice"
     default_filter: name__value
     order_by:
