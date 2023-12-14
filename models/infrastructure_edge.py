@@ -542,7 +542,7 @@ async def branch_scenario_add_transit(client: InfrahubClient, log: logging.Logge
     role_spare = "spare"
 
     intfs = await client.filters(
-        branch=new_branch_name, kind="InfraInterfaceL3", device__ids=[device.id], any__value=role_spare
+        branch=new_branch_name, kind="InfraInterfaceL3", device__ids=[device.id], role__value=role_spare
     )
     intf = intfs[0]
     log.info(f" - Adding new Transit on '{device_name}::{intf.name.value}'")
@@ -648,13 +648,13 @@ async def branch_scenario_replace_ip_addresses(client: InfrahubClient, log: logg
 
     peer_intfs_dev1 = sorted(
         await client.filters(
-            branch=new_branch_name, kind="InfraInterfaceL3", device__ids=[device1.id], any__value=role_peer
+            branch=new_branch_name, kind="InfraInterfaceL3", device__ids=[device1.id], role__value=role_peer
         ),
         key=lambda x: x.name.value,
     )
     peer_intfs_dev2 = sorted(
         await client.filters(
-            branch=new_branch_name, kind="InfraInterfaceL3", device__ids=[device2.id], any__value=role_peer
+            branch=new_branch_name, kind="InfraInterfaceL3", device__ids=[device2.id], role__value=role_peer
         ),
         key=lambda x: x.name.value,
     )
