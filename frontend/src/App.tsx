@@ -56,8 +56,8 @@ function App() {
         s.relationships = sortByOrderWeight(s.relationships || []);
       });
 
-      const schemaNames = R.map(R.prop("name"), schema);
-      const schemaKinds = R.map(R.prop("kind"), schema);
+      const schemaNames = schema.map((s) => s.name);
+      const schemaKinds = schema.map((s) => s.kind);
       const schemaKindNameTuples = R.zip(schemaKinds, schemaNames);
       const schemaKindNameMap = R.fromPairs(schemaKindNameTuples);
 
@@ -71,11 +71,6 @@ function App() {
       );
 
       console.error("Error while fetching the schema: ", error);
-
-      return {
-        schema: [],
-        generics: [],
-      };
     }
   };
 
