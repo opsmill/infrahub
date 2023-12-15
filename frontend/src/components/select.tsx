@@ -250,7 +250,6 @@ export const Select = (props: SelectProps) => {
           data: stringifyWithoutQuotes(update),
         });
 
-        console.log("mustationString: ", mustationString);
         const mutation = gql`
           ${mustationString}
         `;
@@ -332,7 +331,6 @@ export const Select = (props: SelectProps) => {
 
         setLocalOptions([...localOptions, newOption]);
 
-        console.log("newOption: ", newOption);
         handleChange(newOption);
 
         setOpen(false);
