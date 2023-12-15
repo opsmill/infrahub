@@ -4,12 +4,12 @@ A Python SDK for Infrahub greatly simplifies how we can interact with Infrahub p
 
 ## Installation
 
-> The Python SDK is currently hosted in the same repository as Infrahub, but once both reach a better maturity state, the plan is to make it possible to install the SDK as a stand alone package.
-
-For now, the recommendation is to clone the main Infrahub repository on your file system and to install the entire Infrahub package in your own repository using a relative path with the `--editable` flag.
+The Infrahub SDK for Python is available on [PyPI](https://pypi.org/project/infrahub-sdk/) and can be installed using the `pip` package installer. It is recommended to install the SDK into a virtual environment.
 
 ```sh
-poetry add --editable <path to the Infrahub repository on disk>
+python3 -m venv .venv
+source .venv/bin/activate
+pip install infrahub-sdk
 ```
 
 ## Getting started
