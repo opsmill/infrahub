@@ -9,6 +9,7 @@ describe("Config fetch", () => {
     cy.fixture("login").as("login");
     cy.fixture("config").as("config");
     cy.fixture("schema").as("schema");
+    cy.fixture("schemaSummary").as("schemaSummary");
     cy.fixture("menu").as("menu");
     cy.fixture("branches").as("branches");
   });
@@ -21,6 +22,8 @@ describe("Config fetch", () => {
     cy.intercept("GET", "/api/config", this.config).as("getConfig");
 
     cy.intercept("GET", "/api/schema*", this.schema).as("getSchema");
+
+    cy.intercept("GET", "/api/schema/summary*", this.schema).as("getSchemaSummary");
 
     cy.intercept("GET", "/api/menu?branch=main", this.menu).as("getMenu");
 
@@ -40,6 +43,10 @@ describe("Config fetch", () => {
 
     cy.wait("@login").then(({ response }) => {
       expect(response?.body?.access_token).to.exist;
+    });
+
+    cy.wait("@getSchemaSummary").then(({ response }) => {
+      expect(response?.body?.main).to.exist;
     });
 
     cy.wait("@getSchema").then(({ response }) => {
