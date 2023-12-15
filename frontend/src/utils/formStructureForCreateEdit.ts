@@ -121,6 +121,8 @@ const getFormStructureForCreateEdit = (
         isReadOnly: attribute.read_only,
       }),
       isUnique: attribute.unique,
+      attribute,
+      schema,
     });
   });
 
@@ -185,6 +187,8 @@ const getFormStructureForCreateEdit = (
             row && row[relationship.name] && row[relationship.name]?.properties?.is_protected,
           isReadOnly: relationship.read_only,
         }),
+        relationship,
+        schema,
       });
     });
 
