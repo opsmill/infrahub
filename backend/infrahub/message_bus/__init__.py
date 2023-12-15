@@ -61,6 +61,7 @@ class Meta(BaseModel):
         default=None, description="Validator execution ID related to this message"
     )
     check_execution_id: Optional[str] = Field(default=None, description="Check execution ID related to this message")
+    priority: int = Field(default=3, description="Message Priority")
 
 
 class InfrahubMessage(BaseModel, aio_pika.abc.AbstractMessage):
@@ -80,6 +81,10 @@ class InfrahubMessage(BaseModel, aio_pika.abc.AbstractMessage):
         self.meta.headers = self.meta.headers or {}
         self.meta.headers[key] = value
 
+    def assign_priority(self, priority: int) -> None:
+        self.meta = self.meta or Meta()
+        self.meta.priority = priority
+
     def set_log_data(self, routing_key: str) -> None:
         set_log_data(key="routing_key", value=routing_key)
         if self.meta:
@@ -97,7 +102,7 @@ class InfrahubMessage(BaseModel, aio_pika.abc.AbstractMessage):
 
     @property
     def body(self) -> bytes:
-        return self.json(exclude={"meta": {"headers"}, "value": True}, exclude_none=True).encode("UTF-8")
+        return self.json(exclude={"meta": {"headers", "priority"}, "value": True}, exclude_none=True).encode("UTF-8")
 
     @property
     def locked(self) -> bool:
@@ -107,11 +112,17 @@ class InfrahubMessage(BaseModel, aio_pika.abc.AbstractMessage):
     def properties(self) -> aiormq.spec.Basic.Properties:
         correlation_id = None
         headers = None
+        priority = 3
         if self.meta:
             correlation_id = self.meta.correlation_id
             headers = self.meta.headers
+            priority = self.meta.priority
         return aiormq.spec.Basic.Properties(
-            content_type="application/json", content_encoding="utf-8", correlation_id=correlation_id, headers=headers
+            content_type="application/json",
+            content_encoding="utf-8",
+            correlation_id=correlation_id,
+            headers=headers,
+            priority=priority,
         )
 
     def increase_retry_count(self, count: int = 1) -> None:

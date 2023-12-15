@@ -67,6 +67,19 @@ MESSAGE_MAP: Dict[str, Type[InfrahubMessage]] = {
 }
 
 
+def message_priority(routing_key: str) -> int:
+    PRIORITY_MAP = {
+        "event.branch.create": 4,
+        "event.branch.merge": 4,
+        "git.diff.names_only": 5,
+        "git.file.get": 5,
+        "transform.jinja.template": 5,
+        "transform.python.data": 5,
+    }
+
+    return PRIORITY_MAP.get(routing_key, 3)
+
+
 ROUTING_KEY_MAP: Dict[Type[InfrahubMessage], str] = {
     message: routing_key for routing_key, message in MESSAGE_MAP.items()
 }
