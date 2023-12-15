@@ -36,6 +36,7 @@ namespaces
 o'brian
 openconfig
 opentelemetry
+PyPI
 rebase
 repo
 REST
