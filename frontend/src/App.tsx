@@ -12,7 +12,13 @@ import { MAIN_ROUTES } from "./config/routes";
 import { withAuth } from "./decorators/withAuth";
 import Layout from "./screens/layout/layout";
 import { branchesState, currentBranchAtom } from "./state/atoms/branches.atom";
-import { genericsState, iGenericSchema, iNodeSchema, schemaState } from "./state/atoms/schema.atom";
+import {
+  currentSchemaHashAtom,
+  genericsState,
+  iGenericSchema,
+  iNodeSchema,
+  schemaState,
+} from "./state/atoms/schema.atom";
 import { schemaKindNameState } from "./state/atoms/schemaKindName.atom";
 import "./styles/index.css";
 import { sortByOrderWeight } from "./utils/common";
@@ -28,19 +34,20 @@ function App() {
   const branches = useAtomValue(branchesState);
   const setCurrentBranch = useSetAtom(currentBranchAtom);
   const [, setSchema] = useAtom(schemaState);
+  const [, setCurrentSchemaHash] = useAtom(currentSchemaHashAtom);
   const [, setGenerics] = useAtom(genericsState);
   const [, setSchemaKindNameState] = useAtom(schemaKindNameState);
   const [branchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
 
   /**
-   * Fetch schema from the backend, sort, and return them
+   * Fetch schema from the backend, and store it
    */
   const fetchAndSetSchema = async () => {
     try {
-      const data: { nodes: iNodeSchema[]; generics: iGenericSchema[] } = await fetchUrl(
-        CONFIG.SCHEMA_URL(branchInQueryString)
-      );
+      const data: { main: string; nodes: iNodeSchema[]; generics: iGenericSchema[] } =
+        await fetchUrl(CONFIG.SCHEMA_URL(branchInQueryString));
 
+      const hash = data.main;
       const schema = sortByName(data.nodes || []);
       const generics = sortByName(data.generics || []);
 
@@ -54,8 +61,9 @@ function App() {
       const schemaKindNameTuples = R.zip(schemaKinds, schemaNames);
       const schemaKindNameMap = R.fromPairs(schemaKindNameTuples);
 
-      setSchema(schema);
       setGenerics(generics);
+      setCurrentSchemaHash(hash);
+      setSchema(schema);
       setSchemaKindNameState(schemaKindNameMap);
     } catch (error) {
       toast(
