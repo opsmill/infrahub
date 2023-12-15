@@ -1,6 +1,6 @@
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import * as R from "ramda";
-import { useCallback, useEffect } from "react";
+import { useEffect } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -35,24 +35,35 @@ function App() {
   /**
    * Fetch schema from the backend, sort, and return them
    */
-  const fetchSchema = async () => {
+  const fetchAndSetSchema = async () => {
     try {
       const data: { nodes: iNodeSchema[]; generics: iGenericSchema[] } = await fetchUrl(
         CONFIG.SCHEMA_URL(branchInQueryString)
       );
 
-      return {
-        schema: sortByName(data.nodes || []),
-        generics: sortByName(data.generics || []),
-      };
-    } catch (err) {
+      const schema = sortByName(data.nodes || []);
+      const generics = sortByName(data.generics || []);
+
+      schema.forEach((s) => {
+        s.attributes = sortByOrderWeight(s.attributes || []);
+        s.relationships = sortByOrderWeight(s.relationships || []);
+      });
+
+      const schemaNames = R.map(R.prop("name"), schema);
+      const schemaKinds = R.map(R.prop("kind"), schema);
+      const schemaKindNameTuples = R.zip(schemaKinds, schemaNames);
+      const schemaKindNameMap = R.fromPairs(schemaKindNameTuples);
+
+      setSchema(schema);
+      setGenerics(generics);
+      setSchemaKindNameState(schemaKindNameMap);
+    } catch (error) {
       toast(
-        <Alert
-          type={ALERT_TYPES.ERROR}
-          message={"Something went wrong when fetching the schema details"}
-        />
+        <Alert type={ALERT_TYPES.ERROR} message="Something went wrong when fetching the schema" />
       );
-      console.error("Error while fetching the schema: ", err);
+
+      console.error("Error while fetching the schema: ", error);
+
       return {
         schema: [],
         generics: [],
@@ -60,38 +71,8 @@ function App() {
     }
   };
 
-  /**
-   * Set schema in state atom
-   */
-  const setSchemaInState = useCallback(async () => {
-    try {
-      const { schema, generics } = await fetchSchema();
-
-      schema.forEach((s) => {
-        s.attributes = sortByOrderWeight(s.attributes || []);
-        s.relationships = sortByOrderWeight(s.relationships || []);
-      });
-
-      setSchema(schema);
-      setGenerics(generics);
-
-      const schemaNames = R.map(R.prop("name"), schema);
-      const schemaKinds = R.map(R.prop("kind"), schema);
-      const schemaKindNameTuples = R.zip(schemaKinds, schemaNames);
-      const schemaKindNameMap = R.fromPairs(schemaKindNameTuples);
-
-      setSchemaKindNameState(schemaKindNameMap);
-    } catch (error) {
-      toast(
-        <Alert type={ALERT_TYPES.ERROR} message={"Something went wrong when fetching the schema"} />
-      );
-
-      console.error("Error while fetching the schema: ", error);
-    }
-  }, []);
-
   useEffect(() => {
-    setSchemaInState();
+    fetchAndSetSchema();
   }, [branchInQueryString]);
 
   useEffect(() => {
