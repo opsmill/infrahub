@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
     from infrahub.graphql.mutations import BaseAttributeInput
     from infrahub.graphql.types import InfrahubObject
-    from infrahub.storage.main import InfrahubObjectStorage
+    from infrahub.storage import InfrahubObjectStorage
     from infrahub.types import InfrahubDataType
 
 # pylint: disable=too-many-public-methods

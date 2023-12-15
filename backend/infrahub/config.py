@@ -27,7 +27,8 @@ class DatabaseType(str, Enum):
 
 
 class StorageDriver(str, Enum):
-    LOCAL = "local"
+    FileSystemStorage = "local"
+    InfrahubS3ObjectStorage = "s3"
 
 
 class TraceExporterType(str, Enum):
@@ -58,15 +59,45 @@ class MainSettings(BaseSettings):
         case_sensitive = False
 
 
-class StorageSettings(BaseSettings):
-    driver: StorageDriver = StorageDriver.LOCAL
-    settings: Optional[Dict[str, str]] = Field(default=None)
+class FileSystemStorageSettings(BaseSettings):
+    path_: str = Field(default="/opt/infrahub/storage", alias="path")
 
     class Config:
-        case_sensitive = False
+        fields = {"path_": {"env": "INFRAHUB_STORAGE_LOCAL_PATH"}}
+
+
+class S3StorageSettings(BaseSettings):
+    access_key_id: str = Field(default="", alias="AWS_ACCESS_KEY_ID")
+    secret_access_key: str = Field(default="", alias="AWS_SECRET_ACCESS_KEY")
+    bucket_name: str = Field(default="", alias="AWS_S3_BUCKET_NAME")
+    endpoint_url: str = Field(default="", alias="AWS_S3_ENDPOINT_URL")
+    use_ssl: bool = Field(default=True, alias="AWS_S3_US_SSL")
+    default_acl: str = Field(default="", alias="AWS_DEFAULT_ACL")
+    querystring_auth: bool = Field(default=False, alias="AWS_QUERYSTRING_AUTH")
+    custom_domain: str = Field(default="", alias="AWS_S3_CUSTOM_DOMAIN")
+
+    class Config:
         fields = {
-            "driver": {"env": "INFRAHUB_STORAGE_DRIVER"},
+            "access_key_id": {"env": "AWS_ACCESS_KEY_ID"},
+            "secret_access_key": {"env": "AWS_SECRET_ACCESS_KEY"},
+            "bucket_name": {"env": "INFRAHUB_STORAGE_BUCKET_NAME"},
+            "endpoint_url": {"env": "INFRAHUB_STORAGE_ENDPOINT_URL"},
+            "use_ssl": {"env": "INFRAHUB_STORAGE_USE_SSL"},
+            "default_acl": {"env": "INFRAHUB_STORAGE_DEFAULT_ACL"},
+            "querystring_auth": {"env": "INFRAHUB_STORAGE_QUERYTSTRING_AUTH"},
+            "custom_domain": {"env": "INFRAHUB_STORAGE_CUSTOM_DOMAIN"},
         }
+
+
+class StorageSettings(BaseSettings):
+    driver: StorageDriver = StorageDriver.FileSystemStorage
+
+    local: FileSystemStorageSettings = FileSystemStorageSettings()
+    s3: S3StorageSettings = S3StorageSettings()
+
+    class Config:
+        env_prefix = "INFRAHUB_STORAGE"
+        case_sensitive = False
 
 
 class DatabaseSettings(BaseSettings):
