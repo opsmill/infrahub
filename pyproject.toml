@@ -60,6 +60,14 @@ ruff = "^0.1.6"
 buildkite-test-collector = "^0.1.7"
 invoke = "2.2.0"
 
+[tool.poetry.group.sync.dependencies]
+dagster = "^1.1.19"
+dagit = "^1.1.19"
+structlog = "^22.3.0"
+pynetbox = "^7.0.1"
+pynautobot = "^1.5.0"
+diffsync = "^1.8.0"
+
 [tool.poetry.scripts]
 infrahub = "infrahub.cli:app"
 infrahub-git-credential = "infrahub.git_credential.helper:app"
