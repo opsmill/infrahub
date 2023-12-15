@@ -2387,6 +2387,8 @@ async def authentication_base(
     default_branch: Branch,
     create_test_admin,
     register_core_models_schema,
+    register_builtin_models_schema,
+    register_organization_schema,
 ):
     pass
 
