@@ -1,25 +1,27 @@
-import { useReactiveVar } from "@apollo/client";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/alert";
 import { CONFIG } from "../../config/config";
-import { branchVar } from "../../graphql/variables/branchVar";
 import logo from "../../images/Infrahub-SVG-hori.svg";
 import { fetchUrl } from "../../utils/fetch";
 import LoadingScreen from "../loading-screen/loading-screen";
 import DropDownMenuHeader from "./desktop-menu-header";
 import { Footer } from "./footer";
+import { useAtomValue } from "jotai/index";
+import { currentBranchAtom } from "../../state/atoms/branches.atom";
 
 export default function DesktopMenu() {
   const navigate = useNavigate();
 
-  const branch = useReactiveVar(branchVar);
+  const branch = useAtomValue(currentBranchAtom);
 
   const [isLoading, setIsLoading] = useState(false);
   const [menu, setMenu] = useState([]);
 
-  const fecthMenu = async () => {
+  const fetchMenu = async () => {
+    if (!branch?.name) return;
+
     try {
       setIsLoading(true);
 
@@ -36,7 +38,7 @@ export default function DesktopMenu() {
   };
 
   useEffect(() => {
-    fecthMenu();
+    fetchMenu();
   }, [branch?.name]);
 
   return (

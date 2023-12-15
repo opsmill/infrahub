@@ -4,13 +4,14 @@ import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/alert";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
-import { branchVar } from "../../graphql/variables/branchVar";
 import { dateVar } from "../../graphql/variables/dateVar";
 import { iNodeSchema } from "../../state/atoms/schema.atom";
 import { getFormStructureForMetaEditPaginated } from "../../utils/formStructureForCreateEdit";
 import getMutationMetaDetailsFromFormData from "../../utils/getMutationMetaDetailsFromFormData";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
+import { useAtomValue } from "jotai/index";
+import { currentBranchAtom } from "../../state/atoms/branches.atom";
 interface Props {
   row: any;
   schema: iNodeSchema;
@@ -34,7 +35,7 @@ export default function ObjectItemMetaEdit(props: Props) {
     closeDrawer,
   } = props;
 
-  const branch = useReactiveVar(branchVar);
+  const branch = useAtomValue(currentBranchAtom);
   const date = useReactiveVar(dateVar);
   const [isLoading, setIsLoading] = useState(false);
 

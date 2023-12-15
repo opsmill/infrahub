@@ -4,6 +4,7 @@ import { CheckIcon } from "@heroicons/react/20/solid";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
+import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import {
   DEFAULT_BRANCH_NAME,
@@ -14,10 +15,10 @@ import {
 } from "../config/constants";
 import graphqlClient from "../graphql/graphqlClientApollo";
 import { basicMutation } from "../graphql/mutations/objects/basicMutation";
-import { branchVar } from "../graphql/variables/branchVar";
 import { dateVar } from "../graphql/variables/dateVar";
 import { Form, FormFieldError } from "../screens/edit-form-hook/form";
 import ObjectItemCreate from "../screens/object-item-create/object-item-create-paginated";
+import { currentBranchAtom } from "../state/atoms/branches.atom";
 import { namespacesState, schemaState } from "../state/atoms/schema.atom";
 import { schemaKindNameState } from "../state/atoms/schemaKindName.atom";
 import { classNames, getTextColor } from "../utils/common";
@@ -80,9 +81,9 @@ export const Select = (props: SelectProps) => {
 
   const [schemaList] = useAtom(schemaState);
   const [schemaKindName] = useAtom(schemaKindNameState);
-  const [namespaces] = useAtom(namespacesState);
-  const branch = useReactiveVar(branchVar);
+  const branch = useAtomValue(currentBranchAtom);
   const date = useReactiveVar(dateVar);
+  const [namespaces] = useAtom(namespacesState);
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
