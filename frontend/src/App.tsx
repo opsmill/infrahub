@@ -34,7 +34,7 @@ function App() {
   const branches = useAtomValue(branchesState);
   const setCurrentBranch = useSetAtom(currentBranchAtom);
   const [, setSchema] = useAtom(schemaState);
-  const [, setCurrentSchemaHash] = useAtom(currentSchemaHashAtom);
+  const [currentSchemaHash, setCurrentSchemaHash] = useAtom(currentSchemaHashAtom);
   const [, setGenerics] = useAtom(genericsState);
   const [, setSchemaKindNameState] = useAtom(schemaKindNameState);
   const [branchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
@@ -79,8 +79,21 @@ function App() {
     }
   };
 
+  const updateSchemaStateIfNeeded = async () => {
+    try {
+      const schemaSummary = await fetchUrl(CONFIG.SCHEMA_SUMMARY_URL(branchInQueryString));
+      const isSameSchema = currentSchemaHash === schemaSummary.main;
+
+      // Updating schema only if it's different from the current one
+      if (isSameSchema) return;
+      await fetchAndSetSchema();
+    } catch (error) {
+      console.error("Error while updating the schema state:", error);
+    }
+  };
+
   useEffect(() => {
-    fetchAndSetSchema();
+    updateSchemaStateIfNeeded();
   }, [branchInQueryString]);
 
   useEffect(() => {
