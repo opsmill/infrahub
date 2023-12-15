@@ -1,4 +1,4 @@
-import { ReactElement, useEffect } from "react";
+import { MouseEventHandler, ReactElement } from "react";
 import { FieldValues, FormProvider, SubmitHandler, useForm } from "react-hook-form";
 import { BUTTON_TYPES, Button } from "../../components/button";
 import { resolve } from "../../utils/objects";
@@ -24,7 +24,7 @@ type FormFieldProps = {
 export type FormProps = {
   fields: DynamicFieldData[];
   onSubmit: SubmitHandler<FieldValues>;
-  onCancel?: Function;
+  onCancel?: MouseEventHandler<HTMLButtonElement> & Function;
   isLoading?: boolean;
   submitLabel?: string;
   disabled?: boolean;
@@ -44,13 +44,7 @@ export const Form = ({
 }: FormProps) => {
   const formMethods = useForm();
 
-  const { handleSubmit, reset, formState } = formMethods;
-
-  useEffect(() => {
-    if (formState.isSubmitSuccessful) {
-      reset(fields);
-    }
-  }, [formState, reset]);
+  const { handleSubmit, formState } = formMethods;
 
   const { errors } = formState;
 
@@ -81,7 +75,7 @@ export const Form = ({
   };
 
   return (
-    <form className="flex-1 flex flex-col w-full" onSubmit={handleFormSubmit} data-cy="form">
+    <form className="flex-1 flex flex-col w-full" data-cy="form">
       <FormProvider {...formMethods}>
         <div className="space-y-12 px-4 flex-1">
           <div className="">
@@ -104,7 +98,7 @@ export const Form = ({
 
           <Button
             data-cy="submit-form"
-            type="submit"
+            onClick={handleFormSubmit}
             buttonType={BUTTON_TYPES.MAIN}
             isLoading={isLoading}
             disabled={disabled}>
