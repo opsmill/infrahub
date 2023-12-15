@@ -138,6 +138,7 @@ export const getOptionsFromAttribute = (attribute: any) => {
     return attribute.choices?.map((option: any) => ({
       ...option,
       id: option.name,
+      name: option.label,
     }));
   }
 

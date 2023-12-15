@@ -1,7 +1,8 @@
 import { gql, useReactiveVar } from "@apollo/client";
-import { PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { PlusIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
+import { useAtomValue } from "jotai/index";
 import { useContext, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -20,6 +21,7 @@ import { dateVar } from "../../graphql/variables/dateVar";
 import useFilters from "../../hooks/useFilters";
 import usePagination from "../../hooks/usePagination";
 import useQuery from "../../hooks/useQuery";
+import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { iComboBoxFilter } from "../../state/atoms/filters.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { classNames } from "../../utils/common";
@@ -36,8 +38,6 @@ import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
-import { useAtomValue } from "jotai/index";
-import { currentBranchAtom } from "../../state/atoms/branches.atom";
 
 export default function ObjectItems(props: any) {
   const { objectname: objectnameFromParams } = useParams();
@@ -234,7 +234,7 @@ export default function ObjectItems(props: any) {
                         <td
                           className={classNames(
                             index !== rows.length - 1 ? "border-b border-gray-200" : "",
-                            "whitespace-wrap text-xs text-gray-900"
+                            "whitespace-wrap text-xs text-gray-900 flex justify-end"
                           )}>
                           <Button
                             data-cy="delete"
@@ -244,7 +244,7 @@ export default function ObjectItems(props: any) {
                               setRowToDelete(row);
                               setDeleteModal(true);
                             }}>
-                            <TrashIcon className="w-4 h-4 text-red-500" />
+                            <Icon icon="mdi:trash" className="text-red-500" />
                           </Button>
                         </td>
                       </tr>
