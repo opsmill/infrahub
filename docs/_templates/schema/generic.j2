@@ -1,9 +1,9 @@
-<!-- vale off -->
 ---
 label: Generic
 layout: default
 order: 600
 ---
+<!-- vale off -->
 {% macro attribute_constraints(attr) -%}
 {% if attr.regex %} Regex: `{{attr.regex}}`{% endif %}{% if attr.regex and (attr.min_length or attr.max_length) %}<br>{% endif %}{% if attr.min_length or attr.max_length %} Length: min {{attr.min_length | default("-")}}, max {{attr.max_length | default("-")}}{% endif %}
 {%- endmacro %}

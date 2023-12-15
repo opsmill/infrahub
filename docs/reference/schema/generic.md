@@ -1,9 +1,9 @@
-<!-- vale off -->
 ---
 label: Generic
 layout: default
 order: 600
 ---
+<!-- vale off -->
 
 
 
