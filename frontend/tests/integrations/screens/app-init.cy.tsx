@@ -20,7 +20,7 @@ describe("Config fetch", () => {
 
     cy.intercept("GET", "/api/config", this.config).as("getConfig");
 
-    cy.intercept("GET", "/api/schema", this.schema).as("getSchema");
+    cy.intercept("GET", "/api/schema*", this.schema).as("getSchema");
 
     cy.intercept("GET", "/api/menu?branch=main", this.menu).as("getMenu");
 
@@ -32,11 +32,11 @@ describe("Config fetch", () => {
       </MockedProvider>
     );
 
-    cy.get(":nth-child(1) > .relative > .block").type("test", { delay: 0, force: true });
-
-    cy.get(":nth-child(2) > .relative > .block").type("test", { delay: 0, force: true });
-
-    cy.get(".justify-end > .rounded-md").click();
+    cy.contains("Sign in to your account");
+    cy.get("#Username").clear({ force: true });
+    cy.get("#Username").type("test");
+    cy.get("#Password").type("test");
+    cy.contains("button", "Sign in").click();
 
     cy.wait("@login").then(({ response }) => {
       expect(response?.body?.access_token).to.exist;
