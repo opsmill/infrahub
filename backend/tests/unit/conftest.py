@@ -131,12 +131,25 @@ async def git_fixture_repo(git_sources_dir, git_repos_dir, helper) -> InfrahubRe
 @pytest.fixture
 def local_storage_dir(tmp_path) -> str:
     storage_dir = os.path.join(str(tmp_path), "storage")
-
     os.mkdir(storage_dir)
 
-    config.SETTINGS.storage.settings = {"directory": storage_dir}
+    config.SETTINGS.storage.driver = config.StorageDriver.FileSystemStorage
+    config.SETTINGS.storage.local = config.FileSystemStorageSettings(path=storage_dir)
 
     return storage_dir
+
+
+@pytest.fixture
+def s3_storage_bucket() -> str:
+    bucket_name = "mocked"
+    config.SETTINGS.storage.driver = config.StorageDriver.InfrahubS3ObjectStorage
+    config.SETTINGS.storage.s3 = config.S3StorageSettings(
+        AWS_S3_BUCKET_NAME=bucket_name,
+        AWS_ACCESS_KEY_ID="some_id",
+        AWS_SECRET_ACCESS_KEY="secret_key",
+        AWS_S3_ENDPOINT_URL="storage.googleapis.com",
+    )
+    return config.SETTINGS.storage.s3.endpoint_url
 
 
 @pytest.fixture
