@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 from graphene import InputObjectType, Mutation
 from graphene.types.mutation import MutationOptions
@@ -22,6 +22,8 @@ from infrahub.services import services
 from infrahub.worker import WORKER_IDENTITY
 
 from ..utils import extract_fields
+from .node_getter.by_default_filter import MutationNodeGetterByDefaultFilter
+from .node_getter.by_id import MutationNodeGetterById
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -29,6 +31,8 @@ if TYPE_CHECKING:
     from infrahub.auth import AccountSession
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+
+    from .node_getter.interface import MutationNodeGetterInterface
 
 # pylint: disable=unused-argument
 
@@ -62,8 +66,13 @@ class InfrahubMutationMixin:
             obj, mutation = await cls.mutate_update(root=root, info=info, branch=branch, at=at, *args, **kwargs)
             action = MutationAction.UPDATED
         elif "Upsert" in cls.__name__:
+            node_manager = NodeManager()
+            node_getters = [
+                MutationNodeGetterById(db, node_manager),
+                MutationNodeGetterByDefaultFilter(db, node_manager),
+            ]
             obj, mutation, created = await cls.mutate_upsert(
-                root=root, info=info, branch=branch, at=at, *args, **kwargs
+                root=root, info=info, branch=branch, at=at, node_getters=node_getters, *args, **kwargs
             )
             if created:
                 action = MutationAction.ADDED
@@ -196,18 +205,17 @@ class InfrahubMutationMixin:
         data: InputObjectType,
         branch: Branch,
         at: str,
+        node_getters: List[MutationNodeGetterInterface],
         database: Optional[InfrahubDatabase] = None,
     ):
         schema_name = cls._meta.schema.kind
         node_schema = registry.get_node_schema(name=schema_name, branch=branch)
-        db: InfrahubDatabase = database or info.context.get("infrahub_database")
 
-        node_by_id = await _get_node_by_id(node_schema=node_schema, db=db, data=data, branch=branch, at=at)
-        node_by_default_filter = await _get_node_by_default_filter(
-            node_schema=node_schema, db=db, data=data, branch=branch, at=at
-        )
-
-        node = node_by_id or node_by_default_filter
+        node = None
+        for getter in node_getters:
+            node = await getter.get_node(node_schema=node_schema, data=data, branch=branch, at=at)
+            if node:
+                break
 
         if node:
             updated_obj, mutation = await cls.mutate_update(root, info, data, branch, at, database, node)
@@ -267,63 +275,3 @@ class InfrahubMutation(InfrahubMutationMixin, Mutation):
         _meta.schema = schema
 
         super().__init_subclass_with_meta__(_meta=_meta, **options)
-
-
-async def _get_node_by_default_filter(
-    node_schema: NodeSchema,
-    db: InfrahubDatabase,
-    data: InputObjectType,
-    branch: Branch,
-    at: str,
-) -> Optional[Node]:
-    node = None
-    default_filter_value = None
-    if not node_schema.default_filter:
-        return node
-    this_datum = data
-    for filter_key in node_schema.default_filter.split("__"):
-        if filter_key not in this_datum:
-            break
-        this_datum = this_datum[filter_key]
-    default_filter_value = this_datum
-    if not default_filter_value:
-        return node
-    nodes = await NodeManager.query(
-        db=db,
-        schema=node_schema,
-        limit=2,
-        filters={node_schema.default_filter: default_filter_value},
-        branch=branch,
-        at=at,
-    )
-    if len(nodes) > 1:
-        raise NodeNotFound(
-            branch_name=branch.name,
-            node_type=node_schema.kind,
-            identifier=default_filter_value,
-            message=f"Unable to find node {default_filter_value!r}, {len(nodes)} nodes returned, expected 1",
-        )
-    if len(nodes) == 1:
-        node = nodes[0]
-    return node
-
-
-async def _get_node_by_id(
-    node_schema: NodeSchema,
-    db: InfrahubDatabase,
-    data: InputObjectType,
-    branch: Branch,
-    at: str,
-) -> Optional[Node]:
-    node = None
-    if "id" not in data:
-        return node
-    node = await NodeManager.get_one(id=data["id"], db=db, at=at, branch=branch)
-    if node and node.get_kind() != node_schema.kind:
-        raise NodeNotFound(
-            branch_name=branch.name,
-            node_type=node_schema.kind,
-            identifier=data["id"],
-            message=f"Node with id {data['id']} exists, but it is a {node.get_kind()}, not {node_schema.kind}",
-        )
-    return node
