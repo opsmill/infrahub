@@ -22,16 +22,16 @@ class UploadContentPayload(BaseModel):
 
 
 @router.get("/object/{identifier:str}")
-async def get_file(
+def get_file(
     identifier: str,
     _: str = Depends(get_current_user),
 ) -> Response:
-    content = await registry.storage.retrieve(identifier=identifier)
+    content = registry.storage.retrieve(identifier=identifier)
     return Response(content=content)
 
 
 @router.post("/upload/content")
-async def upload_content(
+def upload_content(
     item: UploadContentPayload,
     _: str = Depends(get_current_user),
 ) -> UploadResponse:
@@ -43,12 +43,12 @@ async def upload_content(
     identifier = str(UUIDT())
 
     checksum = hashlib.md5(file_content).hexdigest()
-    await registry.storage.store(identifier=identifier, content=file_content)
+    registry.storage.store(identifier=identifier, content=file_content)
     return UploadResponse(identifier=identifier, checksum=checksum)
 
 
 @router.post("/upload/file")
-async def upload_file(
+def upload_file(
     file: UploadFile = File(...),
     _: str = Depends(get_current_user),
 ) -> UploadResponse:
@@ -60,5 +60,5 @@ async def upload_file(
     identifier = str(UUIDT())
 
     checksum = hashlib.md5(file_content).hexdigest()
-    await registry.storage.store(identifier=identifier, content=file_content)
+    registry.storage.store(identifier=identifier, content=file_content)
     return UploadResponse(identifier=identifier, checksum=checksum)
