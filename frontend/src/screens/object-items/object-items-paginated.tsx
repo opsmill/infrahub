@@ -224,7 +224,7 @@ export default function ObjectItems(props: any) {
                             key={row.id + "-" + attribute.name}
                             className={classNames(
                               index !== rows.length - 1 ? "border-b border-gray-200" : "",
-                              "whitespace-wrap p-2 text-xs text-gray-900"
+                              "whitespace-wrap p-1 text-xs text-gray-900"
                             )}>
                             {getObjectItemDisplayValue(row, attribute)}
                           </td>
