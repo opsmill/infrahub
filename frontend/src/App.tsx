@@ -22,6 +22,8 @@ import { addCollection } from "@iconify-icon/react";
 import { Branch } from "./generated/graphql";
 addCollection(mdiIcons);
 
+const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
+
 function App() {
   const branches = useAtomValue(branchesState);
   const setCurrentBranch = useSetAtom(currentBranchAtom);
@@ -36,7 +38,6 @@ function App() {
   const fetchSchema = useCallback<
     () => Promise<{ schema: iNodeSchema[]; generics: iGenericSchema[] }>
   >(async () => {
-    const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
     try {
       const data = await fetchUrl(CONFIG.SCHEMA_URL(branchInQueryString));
 
