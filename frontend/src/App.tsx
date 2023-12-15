@@ -44,12 +44,12 @@ function App() {
    */
   const fetchAndSetSchema = async () => {
     try {
-      const data: { main: string; nodes: iNodeSchema[]; generics: iGenericSchema[] } =
+      const schemaData: { main: string; nodes: iNodeSchema[]; generics: iGenericSchema[] } =
         await fetchUrl(CONFIG.SCHEMA_URL(branchInQueryString));
 
-      const hash = data.main;
-      const schema = sortByName(data.nodes || []);
-      const generics = sortByName(data.generics || []);
+      const hash = schemaData.main;
+      const schema = sortByName(schemaData.nodes || []);
+      const generics = sortByName(schemaData.generics || []);
 
       schema.forEach((s) => {
         s.attributes = sortByOrderWeight(s.attributes || []);
