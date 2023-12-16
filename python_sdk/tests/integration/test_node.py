@@ -3,7 +3,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 
-from infrahub_sdk import Config, InfrahubClient
+from infrahub_sdk import Config, InfrahubClient, SchemaRoot
 from infrahub_sdk.exceptions import NodeNotFound
 from infrahub_sdk.node import InfrahubNode
 
@@ -26,7 +26,17 @@ class TestInfrahubNode:
         config = Config(username="admin", password="infrahub", requester=test_client.async_request)
         return await InfrahubClient.init(config=config)
 
-    async def test_node_create(self, client: InfrahubClient, init_db_base, location_schema):
+    @pytest.fixture(scope="class")
+    async def load_builtin_schema(
+        self, db: InfrahubDatabase, test_client: InfrahubTestClient, builtin_org_schema: SchemaRoot
+    ):
+        config = Config(username="admin", password="infrahub", requester=test_client.async_request)
+        client = await InfrahubClient.init(config=config)
+        success, response = await client.schema.load(schemas=[builtin_org_schema.dict()])
+        assert response is None
+        assert success
+
+    async def test_node_create(self, client: InfrahubClient, init_db_base, load_builtin_schema, location_schema):
         data = {
             "name": {"value": "JFK1"},
             "description": {"value": "JFK Airport"},
@@ -42,6 +52,7 @@ class TestInfrahubNode:
         db: InfrahubDatabase,
         client: InfrahubClient,
         init_db_base,
+        load_builtin_schema,
         location_schema,
     ):
         data = {
@@ -64,6 +75,7 @@ class TestInfrahubNode:
         db: InfrahubDatabase,
         client: InfrahubClient,
         init_db_base,
+        load_builtin_schema,
         location_schema,
     ):
         obj = await Node.init(db=db, schema="CoreAccount")
@@ -81,6 +93,7 @@ class TestInfrahubNode:
         db: InfrahubDatabase,
         client: InfrahubClient,
         init_db_base,
+        load_builtin_schema,
         tag_blue: Node,
         tag_red: Node,
         repo01: Node,
@@ -109,6 +122,7 @@ class TestInfrahubNode:
         db: InfrahubDatabase,
         client: InfrahubClient,
         init_db_base,
+        load_builtin_schema,
         tag_blue: Node,
         tag_red: Node,
         repo01: Node,
@@ -141,6 +155,7 @@ class TestInfrahubNode:
         db: InfrahubDatabase,
         client: InfrahubClient,
         init_db_base,
+        load_builtin_schema,
         tag_blue: Node,
         tag_red: Node,
         repo01: Node,
@@ -174,6 +189,7 @@ class TestInfrahubNode:
         db: InfrahubDatabase,
         client: InfrahubClient,
         init_db_base,
+        load_builtin_schema,
         tag_blue: Node,
         tag_red: Node,
         repo99: Node,
@@ -196,6 +212,7 @@ class TestInfrahubNode:
         db: InfrahubDatabase,
         client: InfrahubClient,
         init_db_base,
+        load_builtin_schema,
         tag_green: Node,
         tag_red: Node,
         tag_blue: Node,
@@ -223,6 +240,7 @@ class TestInfrahubNode:
         db: InfrahubDatabase,
         client: InfrahubClient,
         init_db_base,
+        load_builtin_schema,
         tag_green: Node,
         tag_red: Node,
         tag_blue: Node,
@@ -259,6 +277,7 @@ class TestInfrahubNode:
         client: InfrahubClient,
         location_schema,
         init_db_base,
+        load_builtin_schema,
         location_cdg: Node,
     ):
         data = await location_cdg.to_graphql(db=db)
