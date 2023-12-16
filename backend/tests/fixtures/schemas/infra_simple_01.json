@@ -31,9 +31,7 @@
                 {"name": "name", "kind": "Text"},
                 {"name": "description", "kind": "Text", "optional": true},
                 {"name": "speed", "kind": "Number"},
-                {"name": "enabled", "kind": "Boolean", "default_value": true},
-                {"name": "status", "kind": "Dropdown", "optional": false, "choices": [{"name": "active"}, {"name": "drained"}]},
-                {"name": "role", "kind": "Dropdown", "optional": false, "choices": [{"name": "server"}, {"name": "uplink"}]}
+                {"name": "enabled", "kind": "Boolean", "default_value": true}
             ],
             "relationships": [
                 {"name": "device", "peer": "InfraDevice", "optional": false, "cardinality": "one", "kind": "Parent"},
