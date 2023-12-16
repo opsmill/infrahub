@@ -4,7 +4,6 @@ import os
 from typing import Any, Dict, List, Optional
 
 import httpx
-import infrahub.config as config
 import pytest
 from fastapi.testclient import TestClient
 from infrahub import config
