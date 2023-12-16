@@ -754,27 +754,6 @@ wrapt = ">=1.10,<2"
 dev = ["PyTest", "PyTest-Cov", "bump2version (<1)", "sphinx (<2)", "tox"]
 
 [[package]]
-name = "diffsync"
-version = "1.10.0"
-description = "Library to easily sync/diff/update 2 different data sources"
-optional = false
-python-versions = ">=3.8,<4.0"
-files = [
-    {file = "diffsync-1.10.0-py3-none-any.whl", hash = "sha256:f4368c97162d51eecc7a8e87026c731197a694026cabcf2ab4f16d18d7bdadbd"},
-    {file = "diffsync-1.10.0.tar.gz", hash = "sha256:a9d7cb8e8ce983b446bf858c1c5c82cf473fcf231db73c0855e8c59ee7cd8370"},
-]
-
-[package.dependencies]
-colorama = ">=0.4.3,<0.5.0"
-packaging = ">=21.3,<24.0"
-pydantic = ">=1.7.4,<1.8 || >1.8,<1.8.1 || >1.8.1,<2.0.0"
-structlog = ">=20.1.0,<23.0.0"
-typing-extensions = {version = ">=4.0.1", markers = "python_version < \"3.11\""}
-
-[package.extras]
-redis = ["redis (>=4.3,<5.0)"]
-
-[[package]]
 name = "dill"
 version = "0.3.7"
 description = "serialize all of Python"
@@ -1663,7 +1642,7 @@ testing = ["flufl.flake8", "importlib-resources (>=1.3)", "packaging", "pyfakefs
 
 [[package]]
 name = "infrahub-sdk"
-version = "0.2.1"
+version = "0.3.0"
 description = "Python Client to interact with Infrahub"
 optional = false
 python-versions = "^3.8"
@@ -4226,4 +4205,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8, < 3.12"
-content-hash = "1c68f5eb9914c3eecd03b92ece1c447e93a396073ec36ded9299093b81262b51"
+content-hash = "d8e83b0b48e6575caf946e62566b252a9b181fdc5bfc07e3231481ccef2f0ad2"

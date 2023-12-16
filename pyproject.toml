@@ -63,12 +63,6 @@ buildkite-test-collector = "^0.1.7"
 types-python-slugify = "^8.0.0.3"
 invoke = "2.2.0"
 
-
-[tool.poetry.group.sync.dependencies]
-structlog = "^22.3.0"
-diffsync = "^1.8.0"
-
-
 [tool.poetry.scripts]
 infrahub = "infrahub.cli:app"
 infrahub-git-credential = "infrahub.git_credential.helper:app"
