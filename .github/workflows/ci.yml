@@ -199,7 +199,11 @@ jobs:
           flag-name: python-sdk-integration
           parallel: true
 
-  infrahub-sync-tests:
+  infrahub-sync-unit-tests:
+    strategy:
+      matrix:
+        python-version:
+          - "3.11"
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -208,15 +212,28 @@ jobs:
     needs: ["files-changed", "yaml-lint", "python-lint"]
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: sync/
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
-      - name: "Install Invoke"
-        run: "pip install toml invoke"
-      - name: "Build Test Image"
-        run: "invoke test.build"
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: "Setup environment"
+        run: |
+          pipx install poetry
+          poetry config virtualenvs.prefer-active-python true
+          pip install invoke toml
+      - name: "Install Package"
+        run: "poetry install"
       - name: "Pylint Tests"
-        run: "invoke sync.pylint --docker"
+        run: "poetry run pylint infrahub_sync/"
+      # - name: "Mypy Tests"
+      #   run: "poetry run mypy --show-error-codes infrahub_sync/"
+
 
   backend-tests-unit:
     if: |
