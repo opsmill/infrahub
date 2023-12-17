@@ -18,19 +18,19 @@ fastapi-storages = "^0.2.0"
 
 [tool.poetry.group.server.dependencies]
 fastapi = "~0.95"
+starlette-exporter = "^0.12.0"
+python-multipart = "^0.0.6"         # Required by FastAPI to upload large files
+asgi-correlation-id = "4.2.0"       # Middleware for FastAPI to generate ID per request
+bcrypt = "~4.1"                     # Used to hash and validate password
+pyjwt = "~2.8"                      # Used to manage JWT tokens
 uvicorn = {version = "~0.21", extras = ["standard"]}
 gunicorn = "^20.1"
 graphene = "~3.2"
 neo4j = "~5.12"
-starlette-exporter = "^0.12.0"
-aio-pika = "^9"
+aio-pika = "~9.3"
 structlog = "^22.3.0"
-asgi-correlation-id = "4.2.0"
-bcrypt = "4.0.1"
-pyjwt = "2.7.0"
-boto3 = "^1.33.11"
+boto3 = "~1.33.11"
 email-validator = "2.0.0"
-python-multipart = "^0.0.6"
 redis = { version = "^5.0.0", extras = ["hiredis"]}
 opentelemetry-api = "^1.16.0"
 opentelemetry-sdk = "^1.16.0"
@@ -46,9 +46,9 @@ mypy = "*"
 ipython = "*"
 pytest-asyncio = "^0.21.1"
 pytest-httpx = "*"
-pytest-clarity = "^1.0.1"
-pytest-cov = "^4.0.0"
-pytest-xdist = "3.4.0"
+pytest-clarity = "~1.0"
+pytest-cov = "~4.1"
+pytest-xdist = "~3.4"
 types-python-slugify = "^8.0.0.3"
 requests = "*"
 pre-commit = "^2.20.0"
