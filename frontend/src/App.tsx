@@ -77,7 +77,7 @@ function App() {
       ? (b: Branch) => branchInQueryString === b.name
       : (b: Branch) => b.is_default;
     const selectedBranch = branches.find(filter);
-    setCurrentBranch(selectedBranch);
+    setCurrentBranch(selectedBranch ?? null);
   }, [branches.length, branchInQueryString]);
 
   return (
