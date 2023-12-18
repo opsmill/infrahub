@@ -30,6 +30,7 @@ export const Root = () => {
   const [, setBranches] = useAtom(branchesState);
   const [config, setConfig] = useAtom(configState);
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
+  const [isLoadingBranches, setIsLoadingBranches] = useState(true);
 
   /**
    * Sentry configuration
@@ -75,10 +76,6 @@ export const Root = () => {
     }
   }, []);
 
-  useEffect(() => {
-    setConfigInState();
-  }, []);
-
   /**
    * Fetch branches from the backend, sort, and return them
    */
@@ -108,14 +105,16 @@ export const Root = () => {
   const setBranchesInState = useCallback(async () => {
     const branches = await fetchBranches();
     setBranches(branches);
+    setIsLoadingBranches(false);
   }, []);
 
   useEffect(() => {
+    setConfigInState();
     setBranchesInState();
   }, []);
 
-  if (isLoadingConfig) {
-    // Loading screen while loadign the token from the lcoal storage
+  if (isLoadingConfig || isLoadingBranches) {
+    // Loading screen while loading the token from the local storage
     return (
       <div className="w-screen h-screen flex ">
         <LoadingScreen />;
