@@ -123,6 +123,28 @@ function App() {
 
       // Updating schema only if it's different from the current one
       if (isSameSchema) return;
+      const { nodes: currentNodeHashes, generics: currentGenericHashes } = currentSchemaHash;
+
+      const nodesWithDifferentHash = Object.entries(newSchemaSummary.nodes).reduce(
+        (result: string[], [key, fetchedValue]) => {
+          return currentNodeHashes[key] !== fetchedValue ? [...result, key] : result;
+        },
+        []
+      );
+
+      const genericsWithDifferentHash = Object.entries(newSchemaSummary.generics).reduce(
+        (result: string[], [key, fetchedValue]) => {
+          return currentGenericHashes[key] !== fetchedValue ? [...result, key] : result;
+        },
+        []
+      );
+
+      console.log([...nodesWithDifferentHash, ...genericsWithDifferentHash]);
+      [...nodesWithDifferentHash, ...genericsWithDifferentHash].forEach((kind) => {
+        fetchUrl(CONFIG.SCHEMA_KIND_URL(kind, branchInQueryString)).then((node: iNodeSchema) => {
+          schemaFamily(node);
+        });
+      });
 
       setCurrentSchemaHash(newSchemaSummary);
       await fetchAndSetSchema();
