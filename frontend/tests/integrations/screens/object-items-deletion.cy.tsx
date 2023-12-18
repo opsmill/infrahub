@@ -8,7 +8,7 @@ import { ACCESS_TOKEN_KEY } from "../../../src/config/constants";
 import { withAuth } from "../../../src/decorators/withAuth";
 import ObjectItems from "../../../src/screens/object-items/object-items-paginated";
 import { configState } from "../../../src/state/atoms/config.atom";
-import { schemaState } from "../../../src/state/atoms/schema.atom";
+import { schemaFamily } from "../../../src/state/atoms/schema.atom";
 import { mockedToken } from "../../fixtures/auth";
 import { configMocks } from "../../mocks/data/config";
 import {
@@ -52,16 +52,16 @@ const mocks: any[] = [
   },
 ];
 
+schemaMocks.forEach((s) => {
+  schemaFamily(s);
+});
+
 const AuthenticatedObjectItems = withAuth(ObjectItems);
 
 // Provide the initial value for jotai
 const ObjectItemsProvider = () => {
   return (
-    <TestProvider
-      initialValues={[
-        [schemaState, schemaMocks],
-        [configState, configMocks],
-      ]}>
+    <TestProvider initialValues={[[configState, configMocks]]}>
       <AuthenticatedObjectItems />
     </TestProvider>
   );
