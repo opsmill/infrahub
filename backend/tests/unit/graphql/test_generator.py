@@ -8,7 +8,9 @@ from infrahub.database import InfrahubDatabase
 from infrahub.graphql.generator import (
     generate_filters,
     generate_graphql_mutation_create,
+    generate_graphql_mutation_create_input,
     generate_graphql_mutation_update,
+    generate_graphql_mutation_update_input,
     generate_graphql_object,
     generate_interface_object,
     generate_object_types,
@@ -106,7 +108,8 @@ async def test_generate_graphql_object_with_interface(
 async def test_generate_graphql_mutation_create(
     db: InfrahubDatabase, default_branch: Branch, group_graphql, criticality_schema
 ):
-    result = generate_graphql_mutation_create(schema=criticality_schema, branch=default_branch)
+    input_type = generate_graphql_mutation_create_input(criticality_schema)
+    result = generate_graphql_mutation_create(schema=criticality_schema, branch=default_branch, input_type=input_type)
     assert result._meta.name == "TestCriticalityCreate"
     assert sorted(list(result._meta.fields.keys())) == ["object", "ok"]
 
@@ -114,7 +117,8 @@ async def test_generate_graphql_mutation_create(
 async def test_generate_graphql_mutation_update(
     db: InfrahubDatabase, default_branch: Branch, group_graphql, criticality_schema
 ):
-    result = generate_graphql_mutation_update(schema=criticality_schema, branch=default_branch)
+    input_type = generate_graphql_mutation_update_input(schema=criticality_schema)
+    result = generate_graphql_mutation_update(schema=criticality_schema, branch=default_branch, input_type=input_type)
     assert result._meta.name == "TestCriticalityUpdate"
     assert sorted(list(result._meta.fields.keys())) == ["object", "ok"]
 
