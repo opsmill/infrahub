@@ -93,6 +93,7 @@ export const Pagination = (props: tPaginationType) => {
               value={limit}
               onChange={handleLimitChange}
               direction={SelectDirection.OVER}
+              preventEmpty
             />
           </div>
         </div>

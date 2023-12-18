@@ -57,6 +57,7 @@ type SelectProps = {
   attribute?: any;
   relationship?: any;
   schema?: any;
+  preventEmpty?: boolean;
 };
 
 export const Select = (props: SelectProps) => {
@@ -74,6 +75,7 @@ export const Select = (props: SelectProps) => {
     enum: enumBoolean,
     attribute,
     schema,
+    preventEmpty,
     ...otherProps
   } = props;
 
@@ -112,7 +114,7 @@ export const Select = (props: SelectProps) => {
         option?.name?.toString().toLowerCase().includes(query.toLowerCase())
       );
 
-  const finalOptions = [emptyOption, ...filteredOptions];
+  const finalOptions = [...(preventEmpty ? [] : [emptyOption]), ...filteredOptions];
 
   const canRemoveOption = (id: string | number) =>
     namespaceData?.user_editable && (dropdown || enumBoolean) && id !== emptyOption.id;
