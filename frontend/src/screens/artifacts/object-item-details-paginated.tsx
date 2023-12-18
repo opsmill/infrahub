@@ -349,7 +349,7 @@ export default function ObjectItemDetails() {
 
             <div className="text-sm">{schemaData?.description}</div>
 
-            <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
+            <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 mr-2">
               <svg
                 className="h-1.5 w-1.5 mr-1 fill-yellow-500"
                 viewBox="0 0 6 6"
@@ -358,7 +358,7 @@ export default function ObjectItemDetails() {
               </svg>
               {schemaData.kind}
             </span>
-            <div className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-custom-blue-500 ring-1 ring-inset ring-custom-blue-500/10 ml-3">
+            <div className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-custom-blue-500 ring-1 ring-inset ring-custom-blue-500/10">
               <svg
                 className="h-1.5 w-1.5 mr-1 fill-custom-blue-500"
                 viewBox="0 0 6 6"
@@ -406,7 +406,7 @@ export default function ObjectItemDetails() {
 
             <div className="text-sm">{schemaData?.description}</div>
 
-            <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
+            <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 mr-2">
               <svg
                 className="h-1.5 w-1.5 mr-1 fill-yellow-500"
                 viewBox="0 0 6 6"
@@ -415,7 +415,7 @@ export default function ObjectItemDetails() {
               </svg>
               {schemaData.kind}
             </span>
-            <div className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-custom-blue-500 ring-1 ring-inset ring-custom-blue-500/10 ml-3">
+            <div className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-custom-blue-500 ring-1 ring-inset ring-custom-blue-500/10">
               <svg
                 className="h-1.5 w-1.5 mr-1 fill-custom-blue-500"
                 viewBox="0 0 6 6"

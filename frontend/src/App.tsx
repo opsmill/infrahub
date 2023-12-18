@@ -1,3 +1,5 @@
+import { addCollection } from "@iconify-icon/react";
+import mdiIcons from "@iconify-json/mdi/icons.json";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import * as R from "ramda";
 import { useEffect } from "react";
@@ -10,22 +12,22 @@ import { CONFIG } from "./config/config";
 import { QSP } from "./config/qsp";
 import { MAIN_ROUTES } from "./config/routes";
 import { withAuth } from "./decorators/withAuth";
+import { Branch } from "./generated/graphql";
 import Layout from "./screens/layout/layout";
 import { branchesState, currentBranchAtom } from "./state/atoms/branches.atom";
 import {
   currentSchemaHashAtom,
   genericsState,
   iGenericSchema,
+  iNamespace,
   iNodeSchema,
+  namespacesState,
   schemaState,
 } from "./state/atoms/schema.atom";
 import { schemaKindNameState } from "./state/atoms/schemaKindName.atom";
 import "./styles/index.css";
 import { sortByOrderWeight } from "./utils/common";
 import { fetchUrl } from "./utils/fetch";
-import mdiIcons from "@iconify-json/mdi/icons.json";
-import { addCollection } from "@iconify-icon/react";
-import { Branch } from "./generated/graphql";
 addCollection(mdiIcons);
 
 const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
@@ -33,10 +35,11 @@ const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
 function App() {
   const branches = useAtomValue(branchesState);
   const setCurrentBranch = useSetAtom(currentBranchAtom);
-  const [, setSchema] = useAtom(schemaState);
   const [currentSchemaHash, setCurrentSchemaHash] = useAtom(currentSchemaHashAtom);
-  const [, setGenerics] = useAtom(genericsState);
+  const [, setSchema] = useAtom(schemaState);
   const [, setSchemaKindNameState] = useAtom(schemaKindNameState);
+  const [, setGenerics] = useAtom(genericsState);
+  const [, setNamespaces] = useAtom(namespacesState);
   const [branchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
 
   /**
@@ -44,12 +47,17 @@ function App() {
    */
   const fetchAndSetSchema = async () => {
     try {
-      const schemaData: { main: string; nodes: iNodeSchema[]; generics: iGenericSchema[] } =
-        await fetchUrl(CONFIG.SCHEMA_URL(branchInQueryString));
+      const schemaData: {
+        main: string;
+        nodes: iNodeSchema[];
+        generics: iGenericSchema[];
+        namespaces: iNamespace[];
+      } = await fetchUrl(CONFIG.SCHEMA_URL(branchInQueryString));
 
       const hash = schemaData.main;
       const schema = sortByName(schemaData.nodes || []);
       const generics = sortByName(schemaData.generics || []);
+      const namespaces = sortByName(schemaData.namespaces || []);
 
       schema.forEach((s) => {
         s.attributes = sortByOrderWeight(s.attributes || []);
@@ -65,6 +73,7 @@ function App() {
       setCurrentSchemaHash(hash);
       setSchema(schema);
       setSchemaKindNameState(schemaKindNameMap);
+      setNamespaces(namespaces);
     } catch (error) {
       toast(
         <Alert type={ALERT_TYPES.ERROR} message="Something went wrong when fetching the schema" />

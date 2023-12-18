@@ -58,6 +58,14 @@ export const PROPOSED_CHANGES_THREAD_COMMENT_OBJECT = "CoreThreadComment";
 
 export const PROPOSED_CHANGES_VALIDATOR_OBJECT = "CoreValidator";
 
+export const SCHEMA_DROPDOWN_ADD = "SchemaDropdownAdd";
+
+export const SCHEMA_DROPDOWN_REMOVE = "SchemaDropdownRemove";
+
+export const SCHEMA_ENUM_ADD = "SchemaEnumAdd";
+
+export const SCHEMA_ENUM_REMOVE = "SchemaEnumRemove";
+
 export const GROUP_OBJECT = "CoreGroup";
 
 export const WRITE_ROLES = ["admin", "read-write"];

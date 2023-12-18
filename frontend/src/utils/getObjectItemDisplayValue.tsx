@@ -38,9 +38,7 @@ export const getObjectItemDisplayValue = (
     return (
       <div className="flex flex-wrap items-center">
         {items.map((item: string, index: number) => (
-          <Badge key={index} className="m-2">
-            {item}
-          </Badge>
+          <Badge key={index}>{item}</Badge>
         ))}
 
         {items.length !== row[attribute?.name]?.edges?.length && <i>{`(${rest} more)`}</i>}

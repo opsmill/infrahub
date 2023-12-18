@@ -251,7 +251,7 @@ describe("Object details", () => {
 
     // Select an account
     cy.get("[id^=headlessui-combobox-button-]").click();
-    cy.get("[id^=headlessui-combobox-option-]").first().click();
+    cy.get("[id^=headlessui-combobox-option-]").eq(1).click(); // Get second option (first = empty)
 
     // Verify that the button is not in a loading state
     cy.get(".bg-custom-blue-700").should("have.text", "Save");

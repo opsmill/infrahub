@@ -64,7 +64,8 @@ export type ControlType =
   | "switch"
   | "datepicker"
   | "json"
-  | "dropdown";
+  | "dropdown"
+  | "enum";
 
 export type RelationshipCardinality = "one" | "many";
 
@@ -107,7 +108,7 @@ export const getInputTypeFromKind = (kind: SchemaAttributeType): ControlType => 
 
 export const getInputTypeFromAttribute = (attribute: any) => {
   if (attribute.enum) {
-    return "select";
+    return "enum";
   }
 
   return getInputTypeFromKind(attribute.kind);
@@ -134,7 +135,11 @@ export const getOptionsFromAttribute = (attribute: any) => {
   }
 
   if (attribute.choices) {
-    return attribute.choices;
+    return attribute.choices?.map((option: any) => ({
+      ...option,
+      id: option.name,
+      name: option.label,
+    }));
   }
 
   return [];
