@@ -2,7 +2,7 @@ import { RegisterOptions } from "react-hook-form";
 import { SelectOption } from "../../components/select";
 import { iPeerDropdownOptions } from "../../graphql/queries/objects/dropdownOptionsForRelatedPeers";
 import { FormFieldError } from "./form";
-import { useAtomValue } from "jotai/index";
+import { useAtomValue } from "jotai";
 import { iGenericSchema, schemaFamily } from "../../state/atoms/schema.atom";
 
 // Interface for every field in a create/edit form

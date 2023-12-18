@@ -167,7 +167,7 @@ const getFormStructureForCreateEdit = (
           return "";
         })(),
         options: {
-          values: getOptionsFromRelationship(dropdownOptions, relationship, isInherited, generics),
+          values: getOptionsFromRelationship(dropdownOptions, relationship, isInherited),
         },
         config: {
           validate: (value: any) => validate(value, undefined, relationship.optional),

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { updateObjectWithId } from "../../../src/graphql/mutations/objects/updateObjectWithId";
 import getFormStructureForCreateEdit from "../../../src/utils/formStructureForCreateEdit";
 import getMutationDetailsFromFormData from "../../../src/utils/getMutationDetailsFromFormData";
@@ -15,10 +15,23 @@ import {
 import { genericsMocks } from "../../mocks/data/generics";
 
 describe("Form structure and object update", () => {
+  beforeEach(() => {
+    vi.mock("jotai", async () => {
+      const actual = await vi.importActual("jotai");
+      return {
+        ...actual,
+        useAtomValue: vi.fn(
+          (kind: string) =>
+            genericsMocks.find((generic: any) => generic.kind === kind) ||
+            accountTokenDetailsMocksSchema.find((generic: any) => generic.kind === kind)
+        ),
+      };
+    });
+  });
+
   it("should return a correct form structure", () => {
     const calculatedAttributes = getFormStructureForCreateEdit(
       accountTokenDetailsMocksSchema[0],
-      accountTokenDetailsMocksSchema,
       genericsMocks,
       [],
       accountTokenDetailsMocksDataWithDate.InternalAccountToken.edges[0].node,
