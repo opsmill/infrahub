@@ -2,7 +2,7 @@
 label: Creating an object
 # icon: file-directory
 tags: [tutorial]
-order: 850
+order: 800
 ---
 # Create a new organization
 

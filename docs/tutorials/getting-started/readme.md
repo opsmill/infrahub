@@ -41,15 +41,6 @@ Initialize the database and start the application
 invoke demo.start
 ```
 
-### Load some data
-
-Once you have an environment up and running you can load your own schema or you can explore the one provided with the project using the following commands.
-
-```sh
-invoke demo.load-infra-schema
-invoke demo.load-infra-data
-```
-
 ### Control the local environment
 
 - `invoke demo.start` : Start all the containers in detached mode.
