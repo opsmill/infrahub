@@ -88,6 +88,18 @@ export const DynamicControl = (props: DynamicFieldData) => {
         />
       );
     }
+    case "enum": {
+      return (
+        <OpsSelectRegister
+          {...props}
+          options={options.values}
+          register={register}
+          setValue={setValue}
+          value={existingValue ?? value}
+          enum
+        />
+      );
+    }
     case "select2step": {
       const selectOptions = options.values.map((o) => ({
         name: o.name,
