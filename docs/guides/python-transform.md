@@ -6,9 +6,9 @@ label: Creating a Python transform
 
 Within Infrahub a [Transform](/topics/transformation) is defined in an [external repository](/topics/repository). However, during development and troubleshooting it is easiest to start from your local computer and run the transform using [infrahubctl transform](/infrahubctl/infrahubctl-transform).
 
-The goal of this guide is to add develop a Python Transform and add it to Infrahub, we will achieve this by following these steps.
+The goal of this guide is to develop a Python Transform and add it to Infrahub, we will achieve this by following these steps.
 
-1. Identify the relevant data you want to extract from the database using a [GraphQL query](/topics/graphql), that takes an input parameter to filter the data
+1. Identify the relevant data you want to extract from the database using a [GraphQL query](/topics/graphql), that can take an input parameter to filter the data
 2. Write a Python script that use the GraphQL query to read information from the system and transforms the data into a new format
 3. Create an entry for the transform within an .infrahub.yml file.
 4. Create a Git repository
@@ -37,7 +37,7 @@ mutation CreateTags {
 }
 ```
 
-The next step is to create a query that returns this data. The rest of this guide assumes that a query for all tags will such as this one:
+The next step is to create a query that returns the data we just created. The rest of this guide assumes that the following query will return a response similar to the response below the query.
 
 ```GraphQL
 query TagsQuery {
@@ -56,7 +56,7 @@ query TagsQuery {
 }
 ```
 
-Will return this data:
+Response to the tags query:
 
 ```json
 {
@@ -99,7 +99,7 @@ Will return this data:
 }
 ```
 
-While it would be possible to create a transform that targets all of these tags, for example if you want to create a report, the goal for us is to be able to focus one one of these objects. For this reason we need to modify the query from above to take an input parameter so that we can filter the result to what we want.
+While it would be possible to create a transform that targets all of these tags, for example if you want to create a report, the goal for us is to be able to focus on one of these objects. For this reason we need to modify the query from above to take an input parameter so that we can filter the result to what we want.
 
 Create a local directory on your computer.
 
@@ -202,6 +202,7 @@ With this configuration the endpoint of our transform will be [http://localhost:
 
 When running the transform the `data` input variable will consist of the response to the query we created. In this case we return a JSON object consisting of two keys `tags_title` and `bold_description` where we have modified the data in some way. Here you would return data in the format you need.
 
+!!!info
 If you are unsure of the format of the data you can set a debug marker when testing the transform with infrahubctl:
 
 ```python
@@ -211,6 +212,8 @@ If you are unsure of the format of the data you can set a debug marker when test
         tag_name = tag["name"]["value"]
         tag_description = tag["description"]["value"]
 ```
+
+!!!
 
 ## 3. Create a .infrahub.yml file
 
@@ -255,6 +258,7 @@ Python transforms defined in repository: 1
 tags_transform (tags_transform.py::TagsTransform)
 ```
 
+!!!info
 Trying to run the transform with just the name will produce an error.
 
 ```sh
@@ -268,8 +272,9 @@ Aborted.
 ```
 
 Here we can see that our query is missing the required input for `$tag` which is needed to filter the data.
+!!!
 
-Try again and this time we specify the variable name along with the tag we want to target.
+Run the transform and specify the variable name along with the tag we want to target.
 
 ```sh
 ❯ infrahubctl transform tags_transform tag=red
