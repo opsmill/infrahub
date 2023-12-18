@@ -1,0 +1,51 @@
+---
+name: Publish Infrahub Python SDK
+
+on:
+  push:
+    tags:
+      - "python-sdk-v*"
+
+jobs:
+  publish_to_pypi:
+    name: "Publish Infrahub SDK to PyPI"
+    runs-on: "ubuntu-22.04"
+    steps:
+      - name: "Set up Python"
+        uses: "actions/setup-python@v5"
+        with:
+          python-version: "3.11"
+
+      - name: "Install Poetry"
+        uses: "snok/install-poetry@v1"
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+          installer-parallel: true
+
+      - name: "Check out repository code"
+        uses: "actions/checkout@v4"
+
+      - name: "Cache poetry venv"
+        uses: "actions/cache@v3"
+        id: "cached-poetry-dependencies"
+        with:
+          path: "./python_sdk/.venv"
+          key: "venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}"
+
+      - name: "Install Dependencies"
+        run: "poetry install"
+        working-directory: "./python_sdk"
+        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+
+      - name: "Poetry build"
+        run: "poetry build"
+        working-directory: "./python_sdk"
+
+      - name: "show output"
+        run: "ls -la dist/"
+        working-directory: "./python_sdk"
+
+      - name: "Poetry push PyPI"
+        run: "poetry publish"
+        working-directory: "./python_sdk"
