@@ -5,9 +5,7 @@ description = ""
 authors = ["OpsMill <info@opsmill.com>"]
 
 packages = [
-    { include = "infrahub", from = "backend" },
-    { include = "infrahub_sync", from = "sync/infrahub-sync"},
-    { include = "potenda", from = "sync/potenda"},
+    { include = "infrahub", from = "backend" }
 ]
 
 [tool.poetry.dependencies]
@@ -64,7 +62,6 @@ invoke = "2.2.0"
 infrahub = "infrahub.cli:app"
 infrahub-git-credential = "infrahub.git_credential.helper:app"
 infrahub-git-askpass = "infrahub.git_credential.askpass:app"
-infrahub-sync = "infrahub_sync.cli:app"
 
 
 [tool.coverage.run]
