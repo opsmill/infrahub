@@ -41,8 +41,10 @@ def event_loop():
 
 
 @pytest.fixture(scope="module", autouse=True)
-def execute_before_any_test(worker_id):
+def execute_before_any_test(worker_id, tmpdir_factory):
     config.load_and_exit()
+
+    config.SETTINGS.storage.driver = config.StorageDriver.FileSystemStorage
 
     if TEST_IN_DOCKER:
         try:
@@ -52,7 +54,10 @@ def execute_before_any_test(worker_id):
 
         config.SETTINGS.cache.address = f"{BUILD_NAME}-cache-{db_id}"
         config.SETTINGS.database.address = f"{BUILD_NAME}-database-{db_id}"
-        config.SETTINGS.storage.settings = {"directory": "/opt/infrahub/storage"}
+        config.SETTINGS.storage.local = config.FileSystemStorageSettings(path="/opt/infrahub/storage")
+    else:
+        storage_dir = tmpdir_factory.mktemp("storage")
+        config.SETTINGS.storage.local = config.FileSystemStorageSettings(path=str(storage_dir))
 
     config.SETTINGS.broker.enable = False
     config.SETTINGS.cache.enable = True

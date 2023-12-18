@@ -5,78 +5,63 @@ description = ""
 authors = ["OpsMill <info@opsmill.com>"]
 
 packages = [
-    { include = "infrahub", from = "backend" },
-    { include = "infrahub_sync", from = "sync/infrahub-sync"},
-    { include = "potenda", from = "sync/potenda"},
+    { include = "infrahub", from = "backend" }
 ]
 
 [tool.poetry.dependencies]
 python = "^3.8, < 3.12"
 infrahub-sdk = {path = "python_sdk", develop=true}
 pydantic = "^1.10"
+fastapi-storages = "~0.2"
 
 [tool.poetry.group.server.dependencies]
 fastapi = "~0.95"
+starlette-exporter = "^0.12.0"
+python-multipart = "^0.0.6"         # Required by FastAPI to upload large files
+asgi-correlation-id = "4.2.0"       # Middleware for FastAPI to generate ID per request
+bcrypt = "~4.1"                     # Used to hash and validate password
+pyjwt = "~2.8"                      # Used to manage JWT tokens
 uvicorn = {version = "~0.21", extras = ["standard"]}
 gunicorn = "^20.1"
 graphene = "~3.2"
 neo4j = "~5.12"
-starlette-exporter = "^0.12.0"
-aio-pika = "^9"
+aio-pika = "~9.3"
 structlog = "^22.3.0"
-asgi-correlation-id = "4.2.0"
-bcrypt = "4.0.1"
-pyjwt = "2.7.0"
-email-validator = "2.0.0"
-python-multipart = "^0.0.6"
+boto3 = "~1.33.11"
+email-validator = "~2.1"
 redis = { version = "^5.0.0", extras = ["hiredis"]}
-opentelemetry-api = "^1.16.0"
-opentelemetry-sdk = "^1.16.0"
-opentelemetry-instrumentation-fastapi = "^0.37b0"
-opentelemetry-exporter-otlp-proto-http = "^1.16.0"
-opentelemetry-exporter-otlp-proto-grpc = "^1.16.0"
-
-[tool.poetry.group.perf.dependencies]
-locust = "^2.13.1"
+opentelemetry-api = "~1.21"
+opentelemetry-sdk = "~1.21"
+opentelemetry-instrumentation-fastapi = "^0.42b0"
+opentelemetry-exporter-otlp-proto-http = "~1.21"
+opentelemetry-exporter-otlp-proto-grpc = "~1.21"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"
 yamllint = "*"
 pylint = "*"
 mypy = "*"
-ipython = "*"
-pytest-asyncio = "*"
-requests = "*"
+ipython = "~8"
+pytest-asyncio = "^0.21.1"
+pytest-httpx = "~0.21"      # Latest version with Python 3.8 support
+pytest-clarity = "~1.0"
+pytest-cov = "~4.1"
+pytest-xdist = "~3.4"
+types-python-slugify = "^8.0.0.3"
 pre-commit = "^2.20.0"
 autoflake = "*"
-pytest-clarity = "^1.0.1"
 types-toml = "*"
 types-ujson = "*"
 types-pyyaml = "*"
 typer-cli = "*"
-pytest-cov = "^4.0.0"
-pytest-httpx = "*"
-ruff = "^0.1.6"
-pytest-xdist = "^3.3.1"
+ruff = "0.1.8"
 buildkite-test-collector = "^0.1.7"
-types-python-slugify = "^8.0.0.3"
 invoke = "2.2.0"
-
-
-[tool.poetry.group.sync.dependencies]
-dagster = "^1.1.19"
-dagit = "^1.1.19"
-structlog = "^22.3.0"
-pynetbox = "^7.0.1"
-pynautobot = "^1.5.0"
-diffsync = "^1.8.0"
-
 
 [tool.poetry.scripts]
 infrahub = "infrahub.cli:app"
 infrahub-git-credential = "infrahub.git_credential.helper:app"
 infrahub-git-askpass = "infrahub.git_credential.askpass:app"
-infrahub-sync = "infrahub_sync.cli:app"
 
 
 [tool.coverage.run]

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type, Union
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
 
 import graphene
 
@@ -237,11 +238,12 @@ async def generate_mutation_mixin(db: InfrahubDatabase, branch: Union[Branch, st
         }
         base_class = mutation_map.get(node_schema.kind, InfrahubMutation)
 
-        create, update, delete = generate_graphql_mutations(branch=branch, schema=node_schema, base_class=base_class)
+        mutations = generate_graphql_mutations(branch=branch, schema=node_schema, base_class=base_class)
 
-        class_attrs[f"{node_schema.kind}Create"] = create.Field()
-        class_attrs[f"{node_schema.kind}Update"] = update.Field()
-        class_attrs[f"{node_schema.kind}Delete"] = delete.Field()
+        class_attrs[f"{node_schema.kind}Create"] = mutations.create.Field()
+        class_attrs[f"{node_schema.kind}Update"] = mutations.update.Field()
+        class_attrs[f"{node_schema.kind}Upsert"] = mutations.upsert.Field()
+        class_attrs[f"{node_schema.kind}Delete"] = mutations.delete.Field()
 
     return type("MutationMixin", (object,), class_attrs)
 
@@ -447,18 +449,41 @@ def generate_paginated_interface_object(
     return type(f"NestedPaginated{schema.kind}", (InfrahubObject,), main_attrs)
 
 
+@dataclass
+class GraphqlMutations:
+    create: Type[InfrahubMutation]
+    update: Type[InfrahubMutation]
+    upsert: Type[InfrahubMutation]
+    delete: Type[InfrahubMutation]
+
+
 def generate_graphql_mutations(
     schema: NodeSchema, base_class: type[InfrahubMutation], branch: Branch
-) -> Tuple[Type[InfrahubMutation], Type[InfrahubMutation], Type[InfrahubMutation]]:
-    create = generate_graphql_mutation_create(branch=branch, schema=schema, base_class=base_class)
-    update = generate_graphql_mutation_update(branch=branch, schema=schema, base_class=base_class)
+) -> GraphqlMutations:
+    graphql_mutation_create_input = generate_graphql_mutation_create_input(schema)
+    graphql_mutation_update_input = generate_graphql_mutation_update_input(schema)
+
+    create = generate_graphql_mutation_create(
+        branch=branch, schema=schema, base_class=base_class, input_type=graphql_mutation_create_input
+    )
+    upsert = generate_graphql_mutation_create(
+        branch=branch,
+        schema=schema,
+        base_class=base_class,
+        input_type=graphql_mutation_create_input,
+        mutation_type="Upsert",
+    )
+    update = generate_graphql_mutation_update(
+        branch=branch, schema=schema, base_class=base_class, input_type=graphql_mutation_update_input
+    )
     delete = generate_graphql_mutation_delete(branch=branch, schema=schema, base_class=base_class)
 
     registry.set_graphql_type(name=create._meta.name, graphql_type=create, branch=branch.name)
     registry.set_graphql_type(name=update._meta.name, graphql_type=update, branch=branch.name)
+    registry.set_graphql_type(name=upsert._meta.name, graphql_type=upsert, branch=branch.name)
     registry.set_graphql_type(name=delete._meta.name, graphql_type=delete, branch=branch.name)
 
-    return create, update, delete
+    return GraphqlMutations(create=create, update=update, upsert=upsert, delete=delete)
 
 
 def generate_graphql_mutation_create_input(schema: NodeSchema) -> Type[graphene.InputObjectType]:
@@ -530,13 +555,14 @@ def generate_graphql_mutation_update_input(schema: NodeSchema) -> Type[graphene.
 def generate_graphql_mutation_create(
     schema: NodeSchema,
     branch: Branch,
+    input_type: Type[graphene.InputObjectType],
     base_class: type[InfrahubMutation] = InfrahubMutation,
+    mutation_type: str = "Create",
 ) -> Type[InfrahubMutation]:
     """Generate a GraphQL Mutation to CREATE an object based on the specified NodeSchema."""
-    name = f"{schema.kind}Create"
+    name = f"{schema.kind}{mutation_type}"
 
     object_type = generate_graphql_object(schema=schema, branch=branch)
-    input_type = generate_graphql_mutation_create_input(schema=schema)
 
     main_attrs = {"ok": graphene.Boolean(), "object": graphene.Field(object_type)}
 
@@ -554,13 +580,13 @@ def generate_graphql_mutation_create(
 def generate_graphql_mutation_update(
     schema: NodeSchema,
     branch: Branch,
+    input_type: Type[graphene.InputObjectType],
     base_class: type[InfrahubMutation] = InfrahubMutation,
 ) -> Type[InfrahubMutation]:
     """Generate a GraphQL Mutation to UPDATE an object based on the specified NodeSchema."""
     name = f"{schema.kind}Update"
 
     object_type = generate_graphql_object(schema=schema, branch=branch)
-    input_type = generate_graphql_mutation_update_input(schema=schema)
 
     main_attrs = {"ok": graphene.Boolean(), "object": graphene.Field(object_type)}
 

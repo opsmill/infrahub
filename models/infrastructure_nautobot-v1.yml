@@ -1,0 +1,998 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/develop/schema.schema.json
+---
+version: '1.0'
+generics:
+  - name: Interface
+    namespace: Infra
+    description: "Generic Network Interface."
+    label: "Interface"
+    icon: "mdi:ethernet"
+    menu_placement: "InfraDevice"
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+      - name: description
+        kind: Text
+        optional: true
+      - name: speed
+        kind: Number
+        optional: true
+      - name: mtu
+        label: MTU
+        default_value: 1500
+        kind: Number
+      - name: enabled
+        kind: Boolean
+        default_value: true
+      - name: mgmt_only
+        label: Management only
+        kind: Boolean
+        default_value: false
+      - name: mac_address
+        label: Mac Address
+        kind: Text
+        optional: true
+      - name: interface_type
+        kind: Text
+        optional: true
+    relationships:
+      - name: status
+        peer: BuiltinStatus
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: role
+        peer: BuiltinRole
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: device
+        peer: InfraDevice
+        identifier: "device__interface"
+        optional: false
+        cardinality: one
+        kind: Parent
+      - name: tags
+        peer: BuiltinTag
+        optional: true
+        cardinality: many
+        kind: Attribute
+  - name: Endpoint
+    namespace: Infra
+    description: "Generic Endpoint to connect two objects together."
+    include_in_menu: false
+    label: "Endpoint"
+    relationships:
+      - name: connected_endpoint
+        peer: InfraEndpoint
+        optional: true
+        cardinality: one
+        kind: Attribute
+        identifier: connected__endpoint
+  - name: Choice
+    namespace: Template
+    description: "Generic Choice"
+    include_in_menu: false
+    label: "Choice"
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: description
+        kind: Text
+        optional: true
+      - name: color
+        kind: Text
+        optional: true
+    relationships:
+      - name: tags
+        peer: BuiltinTag
+        optional: true
+        cardinality: many
+        kind: Attribute
+  - name: PanelPort
+    namespace: Infra
+    description: "Generic Patch Panel Port."
+    label: "Panel Port (Front & Rear)"
+    icon: "mdi:ethernet"
+    menu_placement: "InfraDevice"
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+      - name: description
+        kind: Text
+        optional: true
+      - name: port_type
+        kind: Text
+        optional: true
+    relationships:
+      - name: device
+        peer: InfraDevice
+        identifier: "device__ports"
+        optional: false
+        cardinality: one
+        kind: Parent
+
+nodes:
+  - name: AutonomousSystem
+    namespace: Infra
+    description: "An Autonomous System (AS) is a set of Internet routable IP prefixes belonging to a network"
+    label: "Autonomous System"
+    icon: "mdi:bank-circle-outline"
+    menu_placement: InfraBGPSession
+    default_filter: name__value
+    order_by: ["asn__value"]
+    display_labels:
+      - name__value
+      - asn__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: asn
+        kind: Number
+        unique: true
+      - name: description
+        kind: Text
+        optional: true
+    relationships:
+      - name: organization
+        peer: CoreOrganization
+        optional: false
+        cardinality: one
+        kind: Attribute
+  - name: BGPPeerGroup
+    namespace: Infra
+    description: "A BGP Peer Group is used to regroup parameters that are shared across multiple peers"
+    label: "BGP Peer Group"
+    icon: "mdi:view-grid-plus-outline"
+    menu_placement: InfraBGPSession
+    default_filter: name__value
+    order_by:
+      - name__value
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+      - name: description
+        kind: Text
+        optional: true
+      - name: import_policies
+        kind: Text
+        optional: true
+      - name: export_policies
+        kind: Text
+        optional: true
+    relationships:
+      - name: local_as
+        identifier: bgppeergroup__local_as
+        peer: InfraAutonomousSystem
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: remote_as
+        identifier: bgppeergroup__remote_as
+        peer: InfraAutonomousSystem
+        optional: true
+        cardinality: one
+        kind: Attribute
+  - name: BGPSession
+    namespace: Infra
+    description: "A BGP Session represent a point to point connection between two routers"
+    label: "BGP Session"
+    icon: "mdi:transit-connection-horizontal"
+    inherit_from:
+      - "CoreArtifactTarget"
+    order_by:
+      - device__name__value
+      - remote_as__asn__value
+    attributes:
+      - name: type
+        kind: Text
+        enum: [EXTERNAL, INTERNAL]
+      - name: description
+        kind: Text
+        optional: true
+      - name: import_policies
+        kind: Text
+        optional: true
+      - name: export_policies
+        kind: Text
+        optional: true
+    relationships:
+      - name: status
+        peer: BuiltinStatus
+        optional: false
+        cardinality: one
+        kind: Attribute
+      - name: role
+        peer: BuiltinRole
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: local_as
+        identifier: bgpsession__local_as
+        peer: InfraAutonomousSystem
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: remote_as
+        identifier: bgpsession__remote_as
+        peer: InfraAutonomousSystem
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: local_ip
+        identifier: bgpsession__local_ip
+        peer: InfraIPAddress
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: remote_ip
+        identifier: bgpsession__remote_ip
+        peer: InfraIPAddress
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: device
+        peer: InfraDevice
+        optional: true
+        cardinality: one
+      - name: peer_group
+        peer: InfraBGPPeerGroup
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: peer_session
+        peer: InfraBGPSession
+        optional: true
+        cardinality: one
+        kind: Attribute
+  - name: Circuit
+    namespace: Infra
+    description: "A Circuit represent a single physical link between two locations"
+    label: "Circuit"
+    icon: "mdi:transit-connection-variant"
+    default_filter: circuit_id__value
+    order_by:
+      - circuit_id__value
+    display_labels:
+      - circuit_id__value
+    attributes:
+      - name: circuit_id
+        kind: Text
+        unique: true
+      - name: description
+        kind: Text
+        optional: true
+      - name: vendor_id
+        kind: Text
+        optional: true
+    relationships:
+      - name: status
+        peer: BuiltinStatus
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: provider
+        peer: CoreOrganization
+        identifier: circuit__provider
+        optional: false
+        cardinality: one
+        kind: Attribute
+      - name: endpoints
+        peer: InfraCircuitEndpoint
+        optional: true
+        cardinality: many
+        kind: Component
+      - name: type
+        label: type
+        peer: TemplateCircuitType
+        optional: false
+        cardinality: one
+        kind: Attribute
+      - name: tags
+        peer: BuiltinTag
+        optional: true
+        cardinality: many
+        kind: Attribute
+  - name: CircuitEndpoint
+    namespace: Infra
+    description: "A Circuit endpoint is attached to each end of a circuit"
+    label: "Circuit Endpoint"
+    icon: "mdi:ethernet-cable"
+    menu_placement: "InfraCircuit"
+    attributes:
+      - name: description
+        kind: Text
+        optional: true
+    inherit_from:
+      - "InfraEndpoint"
+    relationships:
+      - name: location
+        peer: BuiltinLocation
+        optional: false
+        cardinality: one
+        kind: Attribute
+      - name: circuit
+        peer: InfraCircuit
+        optional: false
+        cardinality: one
+        kind: Parent
+  - name: CircuitType
+    namespace: Template
+    description: "A type of Circuit"
+    label: "Circuit Type"
+    icon: "mdi:poll"
+    menu_placement: "InfraCircuit"
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    inherit_from:
+      - "TemplateChoice"
+    relationships:
+      - name: circuit
+        cardinality: many
+        identifier: circuit__type
+        optional: true
+        peer: InfraCircuit
+  - name: Device
+    namespace: Infra
+    description: "Generic Device object."
+    label: "Device"
+    icon: "mdi:router-network"
+    default_filter: name__value
+    inherit_from:
+      - "CoreArtifactTarget"
+    order_by:
+      - name__value
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        optional: true
+      - name: description
+        kind: Text
+        optional: true
+      - name: serial_number
+        label: Serial Number
+        kind: Text
+        optional: true
+      - name: asset_tag
+        label: Asset Tag
+        kind: Text
+        optional: true
+    relationships:
+      - name: site
+        peer: BuiltinLocation
+        identifier: device__site
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: location
+        peer: BuiltinLocation
+        identifier: device__location
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: model
+        label: Model
+        peer: TemplateDeviceType
+        optional: false
+        cardinality: one
+        kind: Attribute
+      - name: rack
+        peer: InfraRack
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: status
+        peer: BuiltinStatus
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: role
+        peer: BuiltinRole
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: interfaces
+        label: Interfaces
+        peer: InfraInterface
+        identifier: "device__interface"
+        optional: true
+        cardinality: many
+        kind: Component
+      - name: asn
+        label: ASN
+        peer: InfraAutonomousSystem
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: tags
+        peer: BuiltinTag
+        optional: true
+        cardinality: many
+        kind: Attribute
+      - name: primary_address
+        peer: InfraIPAddress
+        label: Primary IP Address
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: platform
+        peer: InfraPlatform
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: organization
+        peer: CoreOrganization
+        optional: true
+        cardinality: one
+        kind: Attribute
+  - name: DeviceType
+    namespace: Template
+    description: "A model of device"
+    label: "Device Type"
+    icon: "mdi:poll"
+    menu_placement: "InfraDevice"
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    inherit_from:
+      - "TemplateChoice"
+    attributes:
+      - name: part_number
+        label: Part Number
+        optional: true
+        kind: Text
+      - name: height
+        label: "Height (U)"
+        optional: true
+        kind: Number
+      - name: full_depth
+        label: "Full Depth"
+        optional: true
+        kind: Boolean
+    relationships:
+      - name: device
+        cardinality: many
+        identifier: device__type
+        optional: true
+        peer: InfraDevice
+      - name: manufacturer
+        peer: CoreOrganization
+        optional: false
+        cardinality: one
+        kind: Attribute
+  - name: FrontPort
+    namespace: Infra
+    description: "Patch Panel Front Port"
+    label: "Front Port"
+    include_in_menu: false
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    inherit_from:
+      - InfraPanelPort
+      - "InfraEndpoint"
+    relationships:
+      - name: rear_port
+        peer: InfraRearPort
+        optional: true
+        cardinality: many
+        identifier: front_ports__rear_ports
+  - name: InterfaceL2L3
+    namespace: Infra
+    description: "Network Interface"
+    label: "Network Interface"
+    include_in_menu: false
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    inherit_from:
+      - "InfraInterface"
+      - "InfraEndpoint"
+      - "CoreArtifactTarget"
+    attributes:
+      - name: l2_mode
+        label: Layer2 Mode
+        kind: Text
+        enum: ["Access", "Tagged", "Tagged (All)"]
+        optional: true
+    relationships:
+      - name: ip_addresses
+        peer: InfraIPAddress
+        label: IP Addresses
+        optional: true
+        cardinality: many
+        kind: Attribute
+      - name: untagged_vlan
+        label: Untagged VLAN
+        peer: InfraVLAN
+        optional: true
+        cardinality: one
+        kind: Attribute
+        identifier: interface_l2__untagged_vlan
+      - name: tagged_vlan
+        label: Tagged VLANs
+        peer: InfraVLAN
+        optional: true
+        cardinality: one
+        kind: Attribute
+        identifier: interface_l2__tagged_vlan
+  - name: IPAddress
+    namespace: Infra
+    description: "IP Address"
+    label: "IP Address"
+    icon: "mdi:ip-outline"
+    menu_placement: "InfraPrefix"
+    default_filter: address__value
+    order_by:
+      - "address__value"
+    display_labels:
+      - address__value
+    attributes:
+      - name: address
+        kind: IPHost
+      - name: description
+        kind: Text
+        optional: true
+    relationships:
+      - name: organization
+        peer: CoreOrganization
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: interface
+        peer: InfraInterfaceL2L3
+        optional: true
+        cardinality: one
+        kind: Parent
+      - name: prefix
+        peer: InfraPrefix
+        identifier: "prefix__address"
+        optional: true
+        cardinality: one
+        kind: Parent
+      - name: vrf
+        identifier: "vrf__address"
+        peer: InfraVRF
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: role
+        peer: BuiltinRole
+        optional: true
+        cardinality: one
+        kind: Attribute
+  - name: LocationType
+    namespace: Template
+    description: "A type of Location"
+    label: "Location Type"
+    icon: "mdi:map-marker-question"
+    menu_placement: "BuiltinLocation"
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    inherit_from:
+      - "TemplateChoice"
+    relationships:
+      - name: location
+        identifier: location__type
+        cardinality: many
+        optional: true
+        peer: BuiltinLocation
+  - name: Platform
+    namespace: Infra
+    description: "A Platform represent the type of software running on a device."
+    label: "Platform"
+    icon: "mdi:application-cog-outline"
+    menu_placement: "InfraDevice"
+    default_filter: name__value
+    order_by:
+      - name__value
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: description
+        kind: Text
+        optional: true
+      - name: nornir_platform
+        kind: Text
+        optional: true
+      - name: napalm_driver
+        kind: Text
+        optional: true
+      - name: netmiko_device_type
+        kind: Text
+        optional: true
+      - name: ansible_network_os
+        kind: Text
+        optional: true
+    relationships:
+      - name: manufacturer
+        peer: CoreOrganization
+        optional: false
+        cardinality: one
+  - name: ProviderNetwork
+    namespace: Infra
+    description: "Represent the boundary of a provider network, the details of which are unknown or unimportant."
+    label: "Provider Network"
+    icon: "mdi:cloud"
+    menu_placement: "InfraCircuit"
+    default_filter: name__value
+    order_by:
+      - name__value
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: description
+        kind: Text
+        optional: true
+      - name: vendor_id
+        kind: Text
+        optional: true
+    inherit_from:
+      - "InfraEndpoint"
+    relationships:
+      - name: status
+        peer: BuiltinStatus
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: provider
+        peer: CoreOrganization
+        optional: false
+        cardinality: one
+        kind: Attribute
+      - name: tags
+        peer: BuiltinTag
+        optional: true
+        cardinality: many
+        kind: Attribute
+  - name: Prefix
+    namespace: Infra
+    description: "IPv4 or IPv6 network (with mask)"
+    icon: "mdi:ip-network"
+    label: "Prefix"
+    default_filter: prefix__value
+    order_by:
+      - prefix__value
+    display_labels:
+      - prefix__value
+    attributes:
+      - name: prefix
+        kind: IPNetwork
+      - name: description
+        kind: Text
+        optional: true
+    relationships:
+      - name: organization
+        peer: CoreOrganization
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: location
+        peer: BuiltinLocation
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: status
+        peer: BuiltinStatus
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: role
+        peer: BuiltinRole
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: gateway
+        label: L3 Gateway
+        peer: InfraInterfaceL2L3
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: vrf
+        identifier: "prefix__vrf"
+        peer: InfraVRF
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: vlan
+        peer: InfraVLAN
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: ip_addresses
+        peer: InfraIPAddress
+        identifier: "prefix__address"
+        cardinality: many
+        kind: Component
+  - name: Rack
+    namespace: Infra
+    description: "A Rack represents a physical two- or four-post equipment rack in which devices can be installed."
+    label: "Rack"
+    icon: "mdi:server"
+    menu_placement: "BuiltinLocation"
+    default_filter: name__value
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+      - name: description
+        kind: Text
+        optional: true
+      - name: height
+        kind: Text
+      - name: facility_id
+        label: Facility ID
+        kind: Text
+        optional: true
+      - name: serial_number
+        label: Serial Number
+        kind: Text
+        optional: true
+      - name: asset_tag
+        label: Asset Tag
+        kind: Text
+        optional: true
+    relationships:
+      - name: location
+        peer: BuiltinLocation
+        identifier: rack__location
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: site
+        peer: BuiltinLocation
+        identifier: rack__site
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: status
+        peer: BuiltinStatus
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: role
+        peer: BuiltinRole
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: tags
+        peer: BuiltinTag
+        optional: true
+        cardinality: many
+        kind: Attribute
+  - name: RearPort
+    namespace: Infra
+    description: "Patch Panel Front Port"
+    label: "Front Port"
+    include_in_menu: false
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    inherit_from:
+      - InfraPanelPort
+      - "InfraEndpoint"
+    relationships:
+      - name: front_port
+        peer: InfraFrontPort
+        optional: true
+        cardinality: many
+        identifier: front_ports__rear_ports
+  - name: RouteTarget
+    namespace: Infra
+    description: "Route Target (RFC 4360)"
+    label: "Route Target"
+    icon: "mdi:target"
+    menu_placement: "InfraVRF"
+    default_filter: name__value
+    order_by:
+      - name__value
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: description
+        kind: Text
+        optional: true
+    relationships:
+      - name: organization
+        peer: CoreOrganization
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: vrf
+        identifier: "vrf__rt"
+        peer: InfraVRF
+        optional: true
+        cardinality: many
+        kind: Parent
+  - name: VLAN
+    namespace: Infra
+    description: "A VLAN is isolated layer two domain"
+    label: "VLAN"
+    icon: "mdi:lan-pending"
+    default_filter: name__value
+    order_by:
+      - vlan_id__value
+    display_labels:
+      - name__value
+      - vlan_id__value
+    attributes:
+      - name: name
+        kind: Text
+      - name: description
+        kind: Text
+        optional: true
+      - name: vlan_id
+        kind: Number
+    relationships:
+      - name: organization
+        peer: CoreOrganization
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: location
+        peer: BuiltinLocation
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: status
+        peer: BuiltinStatus
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: role
+        peer: BuiltinRole
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: prefix
+        label: Prefix
+        peer: InfraPrefix
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: vlan_group
+        identifier: "vlan__vlan_group"
+        peer: CoreStandardGroup
+        optional: true
+        cardinality: one
+        kind: Parent
+  - name: VRF
+    namespace: Infra
+    description: "A VRF is isolated layer three domain"
+    label: "VRF"
+    icon: "mdi:router"
+    default_filter: name__value
+    order_by:
+      - name__value
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+      - name: description
+        kind: Text
+        optional: true
+      - name: vrf_rd
+        label: Route Distinguisher
+        kind: Text
+        optional: true
+    relationships:
+      - name: organization
+        peer: CoreOrganization
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: status
+        peer: BuiltinStatus
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: role
+        peer: BuiltinRole
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: prefix
+        identifier: "vrf__prefix"
+        label: Prefix
+        peer: InfraPrefix
+        optional: true
+        cardinality: many
+        kind: Attribute
+      - name: import_rt
+        identifier: "vrf__import"
+        label: "Import Targets"
+        peer: InfraRouteTarget
+        optional: true
+        cardinality: many
+        kind: Attribute
+      - name: export_rt
+        identifier: "vrf__export"
+        label: "Export Targets"
+        peer: InfraRouteTarget
+        optional: true
+        cardinality: many
+        kind: Attribute
+
+extensions:
+  nodes:
+    - kind: BuiltinLocation
+      relationships:
+        - name: racks
+          peer: InfraRack
+          optional: true
+          cardinality: many
+          kind: Generic
+        - name: organization
+          peer: CoreOrganization
+          optional: true
+          cardinality: one
+          kind: Attribute
+        - name: tags
+          peer: BuiltinTag
+          optional: true
+          cardinality: many
+          kind: Attribute
+        - name: group
+          identifier: "location__group"
+          peer: CoreStandardGroup
+          optional: true
+          cardinality: one
+          kind: Generic
+        - name: location_type
+          peer: TemplateLocationType
+          optional: true
+          cardinality: one
+        - name: status
+          identifier: "location__status"
+          peer: BuiltinStatus
+          optional: true
+          cardinality: one
+    - kind: CoreOrganization
+      attributes:
+        - name: type
+          kind: Text
+          optional: true
+      relationships:
+        - name: group
+          identifier: "organization__group"
+          peer: CoreStandardGroup
+          optional: true
+          cardinality: one
+          kind: Generic

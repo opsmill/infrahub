@@ -98,7 +98,7 @@ def get_children(node: NodeSchema, config: SyncConfig) -> Optional[str]:
         return None
 
     children_list = [f'"{key}": "{value}"' for key, value in children.items()]
-    return "{ " + ", ".join(children_list) + " }"
+    return "{" + ", ".join(children_list) + "}"
 
 
 def get_kind(item: Union[RelationshipSchema, AttributeSchema]) -> str:

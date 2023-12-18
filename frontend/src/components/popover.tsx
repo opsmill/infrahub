@@ -66,8 +66,11 @@ export const PopOver = ({
         leaveTo="opacity-0 translate-y-1">
         <Popover.Panel
           className={classNames(
-            "absolute z-10 overflow-scroll rounded-lg border shadow-xl right-0 top-10 mt-3 grid grid-cols-1 divide-y divide-gray-200",
+            "absolute z-10 overflow-scroll rounded-lg border shadow-xl grid grid-cols-1 divide-y divide-gray-200",
             className?.includes("bg-") ? "" : "bg-custom-white",
+            className?.includes("right-") ? "" : "right-0",
+            className?.includes("top-") ? "" : "top-10",
+            className?.includes("mt-") ? "" : "mt-3",
             className ?? "",
             widthClass[width ?? POPOVER_SIZE.SMALL],
             heightClass[height ?? POPOVER_SIZE.SMALL]

@@ -19,7 +19,7 @@ artifact_definitions:
       device: "name__value"
     content_type: "application/json"
     targets: "arista_devices"
-    transformation: "OCInterfaces"
+    transformation: "oc_interfaces"
 
   - name: "Startup Config for Edge devices"
     artifact_name: "startup-config"
@@ -30,7 +30,14 @@ artifact_definitions:
     transformation: "device_startup"
 
 check_definitions:
-  - file_path: "checks/check_backbone_link_redundancy.py"
+  - name: "backbone_link_redundancy"
+    file_path: "checks/check_backbone_link_redundancy.py"
+    class_name: "InfrahubCheckBackboneLinkRedundancy"
 
 python_transforms:
-  - file_path: "transforms/openconfig.py"
+  - name: oc_interfaces
+    class_name: OCInterfaces
+    file_path: "transforms/openconfig.py"
+  - name: oc_bgp
+    class_name: OCBGPNeighbors
+    file_path: "transforms/openconfig.py"

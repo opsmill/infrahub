@@ -52,6 +52,8 @@ async def subscribe_rpcs_queue(service: InfrahubServices) -> None:
 
     # Create a channel and subscribe to the incoming RPC queue
     channel = await connection.channel()
+    await channel.set_qos(prefetch_count=1)
+
     queue = await channel.get_queue(f"{config.SETTINGS.broker.namespace}.rpcs")
     log.info("Waiting for RPC instructions to execute .. ")
     async with queue.iterator() as qiterator:

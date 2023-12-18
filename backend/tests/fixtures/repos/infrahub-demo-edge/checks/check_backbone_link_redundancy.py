@@ -28,8 +28,3 @@ class InfrahubCheckBackboneLinkRedundancy(InfrahubCheck):
                     object_id=site_id_by_name[site_name],
                     object_type="site",
                 )
-
-        # rprint(backbone_links_per_site)
-
-
-INFRAHUB_CHECKS = [InfrahubCheckBackboneLinkRedundancy]

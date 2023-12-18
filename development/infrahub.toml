@@ -19,8 +19,11 @@ password = "infrahub"
 [cache]
 address = "cache"
 
-[storage.settings]
-directory = "/opt/infrahub/storage"
+[storage]
+driver = "local"
+
+[storage.local]
+path = "/opt/infrahub/storage"
 
 [trace]
 enable = false

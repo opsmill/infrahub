@@ -1,9 +1,9 @@
-<!-- vale off -->
 ---
 label: Relationship
 layout: default
 order: 700
 ---
+<!-- vale off -->
 
 
 

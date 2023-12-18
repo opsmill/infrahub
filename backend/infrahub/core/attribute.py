@@ -573,7 +573,7 @@ class Dropdown(BaseAttribute):
             if selected:
                 label = selected[0].label
 
-        return label or str(self.value)
+        return label
 
     @classmethod
     def validate_content(cls, value: Any, name: str, schema: AttributeSchema) -> None:
@@ -586,6 +586,62 @@ class Dropdown(BaseAttribute):
 
 class IPNetwork(BaseAttribute):
     type = str
+
+    @property
+    def broadcast_address(self) -> Optional[str]:
+        """Return the broadcast address of the ip network."""
+        if not self.value:
+            return None
+        return str(ipaddress.ip_network(str(self.value)).broadcast_address)
+
+    @property
+    def hostmask(self) -> Optional[str]:
+        """Return the hostmask of the ip network."""
+        if not self.value:
+            return None
+        return str(ipaddress.ip_network(str(self.value)).hostmask)
+
+    @property
+    def netmask(self) -> Optional[str]:
+        """Return the netmask of the ip network."""
+        if not self.value:
+            return None
+        return str(ipaddress.ip_network(str(self.value)).netmask)
+
+    @property
+    def prefixlen(self) -> Optional[str]:
+        """Return the prefix length the ip network."""
+        if not self.value:
+            return None
+        return str(ipaddress.ip_network(str(self.value)).prefixlen)
+
+    @property
+    def num_addresses(self) -> Optional[int]:
+        """Return the number of possible addresses in the ip network."""
+        if not self.value:
+            return None
+        return int(ipaddress.ip_network(str(self.value)).num_addresses)
+
+    @property
+    def version(self) -> Optional[int]:
+        """Return the IP version of the ip network."""
+        if not self.value:
+            return None
+        return int(ipaddress.ip_network(str(self.value)).version)
+
+    @property
+    def with_hostmask(self) -> Optional[str]:
+        """Return the network ip and the associated hostmask of the ip network."""
+        if not self.value:
+            return None
+        return str(ipaddress.ip_network(str(self.value)).with_hostmask)
+
+    @property
+    def with_netmask(self) -> Optional[str]:
+        """Return the network ip and the associated netmask of the ip network."""
+        if not self.value:
+            return None
+        return str(ipaddress.ip_network(str(self.value)).with_netmask)
 
     @classmethod
     def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
@@ -617,9 +673,60 @@ class IPHost(BaseAttribute):
     type = str
 
     @property
-    def ip(self) -> str:
+    def ip(self) -> Optional[str]:
         """Return the ip adress without a prefix or subnet mask."""
+        if not self.value:
+            return None
         return str(ipaddress.ip_interface(str(self.value)).ip)
+
+    @property
+    def hostmask(self) -> Optional[str]:
+        """Return the hostmask of the ip address."""
+        if not self.value:
+            return None
+        return str(ipaddress.ip_interface(str(self.value)).hostmask)
+
+    @property
+    def netmask(self) -> Optional[str]:
+        """Return the netmask of the ip address."""
+        if not self.value:
+            return None
+        return str(ipaddress.ip_interface(str(self.value)).netmask)
+
+    @property
+    def network(self) -> Optional[str]:
+        """Return the network encapsuling the ip address."""
+        if not self.value:
+            return None
+        return str(ipaddress.ip_interface(str(self.value)).network)
+
+    @property
+    def prefixlen(self) -> Optional[str]:
+        """Return the prefix length of the ip address."""
+        if not self.value:
+            return None
+        return str(ipaddress.ip_interface(str(self.value))._prefixlen)
+
+    @property
+    def version(self) -> Optional[int]:
+        """Return the IP version of the ip address."""
+        if not self.value:
+            return None
+        return int(ipaddress.ip_interface(str(self.value)).version)
+
+    @property
+    def with_hostmask(self) -> Optional[str]:
+        """Return the ip address and the associated hostmask of the ip address."""
+        if not self.value:
+            return None
+        return str(ipaddress.ip_interface(str(self.value)).with_hostmask)
+
+    @property
+    def with_netmask(self) -> Optional[str]:
+        """Return the ip address and the associated netmask of the ip address."""
+        if not self.value:
+            return None
+        return str(ipaddress.ip_interface(str(self.value)).with_netmask)
 
     @classmethod
     def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:

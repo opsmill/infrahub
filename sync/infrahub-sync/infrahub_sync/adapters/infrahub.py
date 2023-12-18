@@ -11,6 +11,7 @@ from infrahub_sdk import (
     NodeStoreSync,
 )
 from infrahub_sdk.utils import compare_lists
+
 from infrahub_sync import DiffSyncMixin, DiffSyncModelMixin, SyncAdapter, SyncConfig
 from infrahub_sync.generator import has_field
 
@@ -21,22 +22,23 @@ def update_node(node: InfrahubNodeSync, attrs: dict):
             attr = getattr(node, attr_name)
             attr.value = attr_value
 
-        for rel in node._schema.relationships:
-            if attr_name == rel.name and rel.cardinality == "one":
-                peer = node._client.store.get(key=attr_value, kind=rel.peer)
-                setattr(node, attr_name, peer)
+        if attr_name in node._schema.relationship_names:
+            for rel in node._schema.relationships:
+                if attr_name == rel.name and rel.cardinality == "one":
+                    peer = node._client.store.get(key=attr_value, kind=rel.peer)
+                    setattr(node, attr_name, peer)
 
-            if attr_name == rel.name and rel.cardinality == "many":
-                new_peer_ids = [node._client.store.get(key=value, kind=rel.peer).id for value in list(attr_value)]
-                attr = getattr(node, attr_name)
-                existing_peer_ids = attr.peer_ids
-                in_both, existing_only, new_only = compare_lists(existing_peer_ids, new_peer_ids)  # noqa: F841
+                if attr_name == rel.name and rel.cardinality == "many":
+                    attr = getattr(node, attr_name)
+                    existing_peer_ids = attr.peer_ids
+                    new_peer_ids = [node._client.store.get(key=value, kind=rel.peer).id for value in list(attr_value)]
+                    in_both, existing_only, new_only = compare_lists(existing_peer_ids, new_peer_ids)  # noqa: F841
 
-                for id in existing_only:
-                    attr.remove(id)
+                    for id in existing_only:
+                        attr.remove(id)
 
-                for id in new_only:
-                    attr.add(id)
+                    for id in new_only:
+                        attr.add(id)
 
     return node
 
@@ -55,16 +57,14 @@ class InfrahubAdapter(DiffSyncMixin, DiffSync):
             raise ValueError("url must be specified!")
 
         if self.branch:
-            print(f"Using '{branch}' branch ")
             self.client = InfrahubClientSync(
                 address=adapter.settings["url"], default_branch=self.branch, config=sdk_config
             )
         else:
-            print("Using 'main' branch (default)")
             self.client = InfrahubClientSync(address=adapter.settings["url"], config=sdk_config)
 
         # We need to identify with an account until we have some auth in place
-        remote_account = "Netbox"
+        remote_account = config.source.name
         try:
             self.account = self.client.get(kind="CoreAccount", name__value=remote_account)
         except NodeNotFound:
@@ -73,7 +73,7 @@ class InfrahubAdapter(DiffSyncMixin, DiffSync):
 
     def model_loader(self, model_name: str, model):
         nodes = self.client.all(kind=model.__name__, populate_store=True)
-        # print(f"-> Loading {len(nodes)} {model.__name__}")
+        print(f"-> Loading {len(nodes)} {model_name}")
         for node in nodes:
             data = self.infrahub_node_to_diffsync(node)
             item = model(**data)
@@ -131,19 +131,20 @@ def diffsync_to_infrahub(ids: Mapping[Any, Any], attrs: Mapping[Any, Any], store
     data.update(dict(attrs))
 
     for key in list(data.keys()):
-        for rel in schema.relationships:
-            if key == rel.name and rel.cardinality == "one":
-                if data[key] is None:
-                    del data[key]
-                    continue
-                peer = store.get(key=data[key], kind=rel.peer)
-                data[key] = peer.id
-            if key == rel.name and rel.cardinality == "many":
-                if data[key] is None:
-                    del data[key]
-                    continue
-                new_values = [store.get(key=value, kind=rel.peer).id for value in list(data[key])]
-                data[key] = new_values
+        if key in schema.relationship_names:
+            for rel in schema.relationships:
+                if key == rel.name and rel.cardinality == "one":
+                    if data[key] is None:
+                        del data[key]
+                        continue
+                    peer = store.get(key=data[key], kind=rel.peer)
+                    data[key] = peer.id
+                if key == rel.name and rel.cardinality == "many":
+                    if data[key] is None:
+                        del data[key]
+                        continue
+                    new_values = [store.get(key=value, kind=rel.peer).id for value in list(data[key])]
+                    data[key] = new_values
 
     return data
 
@@ -155,7 +156,6 @@ class InfrahubModel(DiffSyncModelMixin, DiffSyncModel):
 
         data = diffsync_to_infrahub(ids=ids, attrs=attrs, schema=schema, store=diffsync.client.store)
         unique_id = cls(**ids, **attrs).get_unique_id()
-
         source = diffsync.account
         create_data = diffsync.client.schema.generate_payload_create(
             schema=schema, data=data, source=source.id, is_protected=True

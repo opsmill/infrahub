@@ -57,8 +57,8 @@ describe("Groups", () => {
     // Open the select
     cy.get("[id^=headlessui-combobox-button-]").click();
 
-    // CHeck if the options have a length of 4
-    cy.get("[id^=headlessui-combobox-options-]").find("li").should("have.length", 4);
+    // CHeck if the options have a length of 5
+    cy.get("[id^=headlessui-combobox-options-]").find("li").should("have.length", 5);
 
     // Choose 2 options
     cy.contains(NEW_GROUP_1).click();
@@ -113,8 +113,8 @@ describe("Groups", () => {
     // Open the select
     cy.get("[id^=headlessui-combobox-button-]").click();
 
-    // CHeck if the options have a length of 4
-    cy.get("[id^=headlessui-combobox-options-]").find("li").should("have.length", 4);
+    // CHeck if the options have a length of 5
+    cy.get("[id^=headlessui-combobox-options-]").find("li").should("have.length", 5);
 
     // Choose the 2 same options to remove the groups
     cy.contains(NEW_GROUP_1).click();

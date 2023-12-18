@@ -2,7 +2,7 @@
 label: Custom API endpoint
 # icon: file-directory
 tags: [tutorial]
-order: 300
+order: 500
 ---
 
 # Create a custom API endpoint

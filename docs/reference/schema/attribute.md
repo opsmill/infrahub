@@ -1,9 +1,9 @@
-<!-- vale off -->
 ---
 label: Attribute
 layout: default
 order: 800
 ---
+<!-- vale off -->
 
 
 

@@ -18,6 +18,7 @@ $ infrahubctl transform [OPTIONS] [TRANSFORM_NAME] [VARIABLES]...
 * `--branch TEXT`: Branch on which to run the transformation
 * `--debug / --no-debug`: [default: no-debug]
 * `--config-file TEXT`: [env var: INFRAHUBCTL_CONFIG; default: infrahubctl.toml]
+* `--list`: Show available transforms
 * `--install-completion`: Install completion for the current shell.
 * `--show-completion`: Show completion for the current shell, to copy it or customize the installation.
 * `--help`: Show this message and exit.

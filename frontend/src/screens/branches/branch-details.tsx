@@ -13,6 +13,7 @@ import { DateDisplay } from "../../components/date-display";
 import ModalDelete from "../../components/modal-delete";
 import SlideOver from "../../components/slide-over";
 import { ACCOUNT_OBJECT, PROPOSED_CHANGES_OBJECT } from "../../config/constants";
+import { QSP } from "../../config/qsp";
 import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { deleteBranch } from "../../graphql/mutations/branches/deleteBranch";
@@ -25,12 +26,11 @@ import useQuery from "../../hooks/useQuery";
 import { branchesState } from "../../state/atoms/branches.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { objectToString } from "../../utils/common";
+import { constructPath, getCurrentQsp } from "../../utils/fetch";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
 import { getFormStructure } from "../proposed-changes/conversations";
-import { constructPath, getCurrentQsp } from "../../utils/fetch";
-import { QSP } from "../../config/qsp";
 
 export const BranchDetails = () => {
   const { branchname } = useParams();
@@ -294,7 +294,7 @@ export const BranchDetails = () => {
                 <div className="ml-1.5 pb-1">{branch?.name}</div>
               </div>
             </div>
-            <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
+            <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 mr-2">
               <svg
                 className="h-1.5 w-1.5 mr-1 fill-yellow-500"
                 viewBox="0 0 6 6"

@@ -491,3 +491,95 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
+
+  - name: Organization
+    namespace: Core
+    label: Organization
+    description: An organization represent a legal entity, a company.
+    default_filter: name__value
+    display_labels: [label__value]
+    order_by: [name__value]
+    icon: mdi:domain
+    include_in_menu: true
+
+    attributes:
+      - kind: Text
+        name: name
+        unique: true
+      - kind: Text
+        name: label
+        optional: true
+      - kind: Text
+        name: description
+        optional: true
+
+    relationships:
+      - cardinality: many
+        kind: Attribute
+        name: tags
+        optional: true
+        peer: BuiltinTag
+
+  - name: Status
+    namespace: Builtin
+    label: Status
+    description: 'Represent the status of an object: active, maintenance'
+    default_filter: name__value
+    display_labels: [label__value]
+    icon: mdi:list-status
+    include_in_menu: true
+    attributes:
+      - kind: Text
+        name: name
+        unique: true
+      - kind: Text
+        name: label
+        optional: true
+      - kind: Text
+        name: description
+        optional: true
+
+  - name: Role
+    namespace: Builtin
+    label: Role
+    description: Represent the role of an object
+    default_filter: name__value
+    display_labels: [label__value]
+    order_by: [name__value]
+    icon: mdi:ballot
+    include_in_menu: true
+    attributes:
+      - kind: Text
+        name: name
+        unique: true
+      - kind: Text
+        name: label
+        optional: true
+      - kind: Text
+        name: description
+        optional: true
+
+  - name: Location
+    namespace: Builtin
+    label: Location
+    description: 'A location represent a physical element: a building, a site, a city'
+    default_filter: name__value
+    display_labels: [name__value]
+    order_by: [name__value]
+    icon: mdi:map-marker-radius-outline
+    include_in_menu: true
+    attributes:
+      - kind: Text
+        name: name
+        unique: true
+      - kind: Text
+        name: description
+        optional: true
+      - kind: Text
+        name: type
+    relationships:
+      - cardinality: many
+        kind: Attribute
+        name: tags
+        optional: true
+        peer: BuiltinTag

@@ -38,6 +38,7 @@ class InfrahubCheck:
         root_directory: str = "",
         output: Optional[str] = None,
         initializer: Optional[InfrahubCheckInitializer] = None,
+        params: Optional[Dict] = None,
     ):
         self.data: Dict = {}
         self.git: Optional[Repo] = None
@@ -49,6 +50,7 @@ class InfrahubCheck:
         self.output = output
 
         self.branch = branch
+        self.params = params or {}
 
         self.root_directory = root_directory or os.getcwd()
 
@@ -128,8 +130,12 @@ class InfrahubCheck:
 
     async def collect_data(self) -> None:
         """Query the result of the GraphQL Query defined in self.query and store the result in self.data"""
+        if self.data:
+            return
 
-        data = await self.client.query_gql_query(name=self.query, branch_name=self.branch_name, rebase=self.rebase)
+        data = await self.client.query_gql_query(
+            name=self.query, branch_name=self.branch_name, params=self.params, rebase=self.rebase
+        )
         self.data = data
 
     async def run(self) -> bool:

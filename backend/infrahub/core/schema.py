@@ -19,7 +19,6 @@ from infrahub.core.constants import (
     BranchConflictKeep,
     BranchSupportType,
     ContentType,
-    CriticalityLevel,
     FilterSchemaKind,
     ProposedChangeState,
     RelationshipCardinality,
@@ -32,7 +31,6 @@ from infrahub.core.constants import (
 from infrahub.core.query import QueryNode, QueryRel, QueryRelDirection
 from infrahub.core.relationship import Relationship
 from infrahub.types import ATTRIBUTE_TYPES
-from infrahub.visuals import select_color
 
 if TYPE_CHECKING:
     from typing_extensions import Self
@@ -333,24 +331,6 @@ class AttributeSchema(BaseSchemaModel):
     )
 
     _sort_by: List[str] = ["name"]
-
-    @validator("choices")
-    def assign_colors(
-        cls,
-        choices: Optional[List[DropdownChoice]] = None,
-    ) -> Optional[List[DropdownChoice]]:
-        if not choices:
-            return None
-        defined_colors = [choice.color for choice in choices if choice.color]
-        assigned_choices: List[DropdownChoice] = []
-        for choice in choices:
-            if choice.color:
-                assigned_choices.append(choice)
-            else:
-                choice.color = select_color(defined_colors)
-                assigned_choices.append(choice)
-
-        return assigned_choices
 
     @validator("kind")
     def kind_options(
@@ -1672,27 +1652,6 @@ core_models = {
             "inherit_from": ["CoreGroup"],
         },
         {
-            "name": "Criticality",
-            "namespace": "Builtin",
-            "description": "Level of criticality expressed from 1 to 10.",
-            "include_in_menu": True,
-            "icon": "mdi:alert-octagon-outline",
-            "label": "Criticality",
-            "default_filter": "name__value",
-            "order_by": ["name__value"],
-            "display_labels": ["name__value"],
-            "branch": BranchSupportType.AWARE.value,
-            "attributes": [
-                {"name": "name", "kind": "Text", "unique": True},
-                {
-                    "name": "level",
-                    "kind": "Number",
-                    "enum": CriticalityLevel.available_types(),
-                },
-                {"name": "description", "kind": "Text", "optional": True},
-            ],
-        },
-        {
             "name": "Tag",
             "namespace": "Builtin",
             "description": "Standard Tag object to attached to other objects to provide some context.",
@@ -1706,32 +1665,6 @@ core_models = {
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "description", "kind": "Text", "optional": True},
-            ],
-        },
-        {
-            "name": "Organization",
-            "namespace": "Core",
-            "description": "An organization represent a legal entity, a company.",
-            "include_in_menu": True,
-            "label": "Organization",
-            "icon": "mdi:domain",
-            "default_filter": "name__value",
-            "order_by": ["name__value"],
-            "display_labels": ["label__value"],
-            "branch": BranchSupportType.AWARE.value,
-            "attributes": [
-                {"name": "name", "kind": "Text", "unique": True},
-                {"name": "label", "kind": "Text", "optional": True},
-                {"name": "description", "kind": "Text", "optional": True},
-            ],
-            "relationships": [
-                {
-                    "name": "tags",
-                    "peer": "BuiltinTag",
-                    "kind": "Attribute",
-                    "optional": True,
-                    "cardinality": "many",
-                },
             ],
         },
         {
@@ -1990,65 +1923,6 @@ core_models = {
                     "identifier": "thread__threadcomment",
                     "cardinality": "one",
                     "optional": False,
-                },
-            ],
-        },
-        {
-            "name": "Status",
-            "namespace": "Builtin",
-            "description": "Represent the status of an object: active, maintenance",
-            "include_in_menu": True,
-            "icon": "mdi:list-status",
-            "label": "Status",
-            "default_filter": "name__value",
-            "order_by": ["name__value"],
-            "display_labels": ["label__value"],
-            "branch": BranchSupportType.AWARE.value,
-            "attributes": [
-                {"name": "name", "kind": "Text", "unique": True},
-                {"name": "label", "kind": "Text", "optional": True},
-                {"name": "description", "kind": "Text", "optional": True},
-            ],
-        },
-        {
-            "name": "Role",
-            "namespace": "Builtin",
-            "description": "Represent the role of an object",
-            "include_in_menu": True,
-            "icon": "mdi:ballot",
-            "label": "Role",
-            "default_filter": "name__value",
-            "order_by": ["name__value"],
-            "display_labels": ["label__value"],
-            "branch": BranchSupportType.AWARE.value,
-            "attributes": [
-                {"name": "name", "kind": "Text", "unique": True},
-                {"name": "label", "kind": "Text", "optional": True},
-                {"name": "description", "kind": "Text", "optional": True},
-            ],
-        },
-        {
-            "name": "Location",
-            "namespace": "Builtin",
-            "description": "A location represent a physical element: a building, a site, a city",
-            "include_in_menu": True,
-            "icon": "mdi:map-marker-radius-outline",
-            "label": "Location",
-            "default_filter": "name__value",
-            "order_by": ["name__value"],
-            "display_labels": ["name__value"],
-            "attributes": [
-                {"name": "name", "kind": "Text", "unique": True},
-                {"name": "description", "kind": "Text", "optional": True},
-                {"name": "type", "kind": "Text"},
-            ],
-            "relationships": [
-                {
-                    "name": "tags",
-                    "peer": "BuiltinTag",
-                    "kind": "Attribute",
-                    "optional": True,
-                    "cardinality": "many",
                 },
             ],
         },

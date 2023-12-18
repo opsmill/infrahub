@@ -2,7 +2,7 @@
 label: Introduction & GraphQL queries
 # icon: file-directory
 tags: [tutorial]
-order: 200
+order: 450
 ---
 
 # Explore the GraphQL interface

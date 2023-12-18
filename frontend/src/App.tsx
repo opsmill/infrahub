@@ -1,6 +1,8 @@
-import { useAtom } from "jotai";
+import { addCollection } from "@iconify-icon/react";
+import mdiIcons from "@iconify-json/mdi/icons.json";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import * as R from "ramda";
-import { useCallback, useEffect } from "react";
+import { useEffect } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -10,103 +12,101 @@ import { CONFIG } from "./config/config";
 import { QSP } from "./config/qsp";
 import { MAIN_ROUTES } from "./config/routes";
 import { withAuth } from "./decorators/withAuth";
-import { branchVar } from "./graphql/variables/branchVar";
+import { Branch } from "./generated/graphql";
 import Layout from "./screens/layout/layout";
-import { branchesState } from "./state/atoms/branches.atom";
-import { genericsState, iGenericSchema, iNodeSchema, schemaState } from "./state/atoms/schema.atom";
+import { branchesState, currentBranchAtom } from "./state/atoms/branches.atom";
+import {
+  currentSchemaHashAtom,
+  genericsState,
+  iGenericSchema,
+  iNamespace,
+  iNodeSchema,
+  namespacesState,
+  schemaState,
+} from "./state/atoms/schema.atom";
 import { schemaKindNameState } from "./state/atoms/schemaKindName.atom";
 import "./styles/index.css";
 import { sortByOrderWeight } from "./utils/common";
 import { fetchUrl } from "./utils/fetch";
-import mdiIcons from "@iconify-json/mdi/icons.json";
-import { addCollection } from "@iconify-icon/react";
 addCollection(mdiIcons);
 
+const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
+
 function App() {
-  const [branches] = useAtom(branchesState);
+  const branches = useAtomValue(branchesState);
+  const setCurrentBranch = useSetAtom(currentBranchAtom);
+  const [currentSchemaHash, setCurrentSchemaHash] = useAtom(currentSchemaHashAtom);
   const [, setSchema] = useAtom(schemaState);
-  const [, setGenerics] = useAtom(genericsState);
   const [, setSchemaKindNameState] = useAtom(schemaKindNameState);
+  const [, setGenerics] = useAtom(genericsState);
+  const [, setNamespaces] = useAtom(namespacesState);
   const [branchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
 
   /**
-   * Fetch schema from the backend, sort, and return them
+   * Fetch schema from the backend, and store it
    */
-  const fetchSchema = useCallback<
-    () => Promise<{ schema: iNodeSchema[]; generics: iGenericSchema[] }>
-  >(async () => {
-    const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
+  const fetchAndSetSchema = async () => {
     try {
-      const data = await fetchUrl(CONFIG.SCHEMA_URL(branchInQueryString));
+      const schemaData: {
+        main: string;
+        nodes: iNodeSchema[];
+        generics: iGenericSchema[];
+        namespaces: iNamespace[];
+      } = await fetchUrl(CONFIG.SCHEMA_URL(branchInQueryString));
 
-      return {
-        schema: sortByName(data.nodes || []),
-        generics: sortByName(data.generics || []),
-      };
-    } catch (err) {
-      toast(
-        <Alert
-          type={ALERT_TYPES.ERROR}
-          message={"Something went wrong when fetching the schema details"}
-        />
-      );
-      console.error("Error while fetching the schema: ", err);
-      return {
-        schema: [],
-        generics: [],
-      };
-    }
-  }, [branchInQueryString]);
-
-  /**
-   * Set schema in state atom
-   */
-  const setSchemaInState = useCallback(async () => {
-    try {
-      const { schema, generics } = await fetchSchema();
+      const hash = schemaData.main;
+      const schema = sortByName(schemaData.nodes || []);
+      const generics = sortByName(schemaData.generics || []);
+      const namespaces = sortByName(schemaData.namespaces || []);
 
       schema.forEach((s) => {
         s.attributes = sortByOrderWeight(s.attributes || []);
         s.relationships = sortByOrderWeight(s.relationships || []);
       });
 
-      setSchema(schema);
-      setGenerics(generics);
-
-      const schemaNames = R.map(R.prop("name"), schema);
-      const schemaKinds = R.map(R.prop("kind"), schema);
+      const schemaNames = schema.map((s) => s.name);
+      const schemaKinds = schema.map((s) => s.kind);
       const schemaKindNameTuples = R.zip(schemaKinds, schemaNames);
       const schemaKindNameMap = R.fromPairs(schemaKindNameTuples);
 
+      setGenerics(generics);
+      setCurrentSchemaHash(hash);
+      setSchema(schema);
       setSchemaKindNameState(schemaKindNameMap);
+      setNamespaces(namespaces);
     } catch (error) {
       toast(
-        <Alert type={ALERT_TYPES.ERROR} message={"Something went wrong when fetching the schema"} />
+        <Alert type={ALERT_TYPES.ERROR} message="Something went wrong when fetching the schema" />
       );
 
       console.error("Error while fetching the schema: ", error);
     }
-  }, []);
+  };
+
+  const updateSchemaStateIfNeeded = async () => {
+    try {
+      const schemaSummary = await fetchUrl(CONFIG.SCHEMA_SUMMARY_URL(branchInQueryString));
+      const isSameSchema = currentSchemaHash === schemaSummary.main;
+
+      // Updating schema only if it's different from the current one
+      if (isSameSchema) return;
+      await fetchAndSetSchema();
+    } catch (error) {
+      console.error("Error while updating the schema state:", error);
+    }
+  };
 
   useEffect(() => {
-    setSchemaInState();
+    updateSchemaStateIfNeeded();
   }, [branchInQueryString]);
 
-  // useEffect(() => {
-  if (branches?.length) {
-    // For first load or navigation with branch change:
-    // We need to store the current branch in the state, from the QSP or the default branch
-    const selectedBranch = branches.find((b) =>
-      branchInQueryString ? b.name === branchInQueryString : b.is_default
-    );
-
-    if (selectedBranch?.name) {
-      // TODO: Fix the bad set state,
-      // TODO: mandatory for now to correctly define the apollo context
-      branchVar(selectedBranch);
-    }
-  }
-  // }, [branches?.length, branchInQueryString]);
+  useEffect(() => {
+    const filter = branchInQueryString
+      ? (b: Branch) => branchInQueryString === b.name
+      : (b: Branch) => b.is_default;
+    const selectedBranch = branches.find(filter);
+    setCurrentBranch(selectedBranch);
+  }, [branches.length, branchInQueryString]);
 
   return (
     <Routes>

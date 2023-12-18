@@ -1,7 +1,7 @@
 import glob
 import os
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import pendulum
 from pendulum.datetime import DateTime
@@ -9,6 +9,29 @@ from rich.console import Console
 from rich.markup import escape
 
 from infrahub_ctl.exceptions import QueryNotFoundError
+
+from .client import initialize_client_sync
+
+
+def execute_graphql_query(
+    query: str, variables_dict: Dict[str, Any], branch: Optional[str] = None, debug: bool = False
+) -> Dict:
+    console = Console()
+    query_str = find_graphql_query(query)
+
+    client = initialize_client_sync()
+    response = client.execute_graphql(
+        query=query_str,
+        branch_name=branch,
+        variables=variables_dict,
+        raise_for_error=False,
+    )
+
+    if debug:
+        message = ("-" * 40, f"Response for GraphQL Query {query}", response, "-" * 40)
+        console.print("\n".join(message))
+
+    return response
 
 
 def print_graphql_errors(console: Console, errors: List) -> None:

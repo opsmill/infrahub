@@ -24,9 +24,11 @@ from infrahub_sdk import (
     InfrahubRepositoryConfig,
     ValidationError,
 )
-from infrahub_sdk.checks import INFRAHUB_CHECK_VARIABLE_TO_IMPORT, InfrahubCheck
-from infrahub_sdk.schema import InfrahubRepositoryRFileConfig
-from infrahub_sdk.transforms import INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT
+from infrahub_sdk.schema import (
+    InfrahubCheckDefinitionConfig,
+    InfrahubPythonTransformConfig,
+    InfrahubRepositoryRFileConfig,
+)
 from infrahub_sdk.utils import YamlFile, compare_lists
 from pydantic import BaseModel, validator
 from pydantic import ValidationError as PydanticValidationError
@@ -45,6 +47,7 @@ from infrahub.services import InfrahubServices
 
 if TYPE_CHECKING:
     from infrahub_sdk.branch import BranchData
+    from infrahub_sdk.checks import InfrahubCheck
     from infrahub_sdk.schema import InfrahubRepositoryArtifactDefinitionConfig
 
     from infrahub.message_bus import messages
@@ -1385,10 +1388,11 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 continue
 
             checks.extend(
-                await self.get_check_definitions(
+                await self.get_check_definition(
                     branch_name=branch_name,
                     module=module,
                     file_path=file_info.relative_path_file,
+                    check_definition=check,
                 )
             )
 
@@ -1463,6 +1467,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                     branch_name=branch_name,
                     module=module,
                     file_path=file_info.relative_path_file,
+                    transform=transform,
                 )
             )
 
@@ -1505,69 +1510,72 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             )
             await transform_definition_in_graph[transform_name].delete()
 
-    async def get_check_definitions(
-        self, branch_name: str, module: types.ModuleType, file_path: str
+    async def get_check_definition(
+        self,
+        branch_name: str,
+        module: types.ModuleType,
+        file_path: str,
+        check_definition: InfrahubCheckDefinitionConfig,
     ) -> List[CheckDefinitionInformation]:
-        if INFRAHUB_CHECK_VARIABLE_TO_IMPORT not in dir(module):
+        if check_definition.class_name not in dir(module):
             return []
 
         checks = []
-        for check_class in getattr(module, INFRAHUB_CHECK_VARIABLE_TO_IMPORT):
-            graphql_query = await self.client.get(
-                kind="CoreGraphQLQuery", branch=branch_name, id=str(check_class.query), populate_store=True
+        check_class = getattr(module, check_definition.class_name)
+        graphql_query = await self.client.get(
+            kind="CoreGraphQLQuery", branch=branch_name, id=str(check_class.query), populate_store=True
+        )
+        try:
+            checks.append(
+                CheckDefinitionInformation(
+                    name=check_definition.name,
+                    repository=str(self.id),
+                    class_name=check_definition.class_name,
+                    check_class=check_class,
+                    file_path=file_path,
+                    query=str(graphql_query.id),
+                    timeout=check_class.timeout,
+                    rebase=check_class.rebase,
+                )
             )
-            try:
-                checks.append(
-                    CheckDefinitionInformation(
-                        name=check_class.__name__,
-                        repository=str(self.id),
-                        class_name=check_class.__name__,
-                        check_class=check_class,
-                        file_path=file_path,
-                        query=str(graphql_query.id),
-                        timeout=check_class.timeout,
-                        rebase=check_class.rebase,
-                    )
-                )
 
-            except Exception as exc:  # pylint: disable=broad-exception-caught
-                LOGGER.error(
-                    f"{self.name} | An error occured while processing the CheckDefinition {check_class.__name__} from {file_path} : {exc} "
-                )
-                continue
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            LOGGER.error(
+                f"{self.name} | An error occured while processing the CheckDefinition {check_class.__name__} from {file_path} : {exc} "
+            )
         return checks
 
     async def get_python_transforms(
-        self, branch_name: str, module: types.ModuleType, file_path: str
+        self, branch_name: str, module: types.ModuleType, file_path: str, transform: InfrahubPythonTransformConfig
     ) -> List[TransformPythonInformation]:
-        if INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT not in dir(module):
+        if transform.class_name not in dir(module):
             return []
 
         transforms = []
-        for transform_class in getattr(module, INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT):
-            graphql_query = await self.client.get(
-                kind="CoreGraphQLQuery", branch=branch_name, id=str(transform_class.query), populate_store=True
+        transform_class = getattr(module, transform.class_name)
+        graphql_query = await self.client.get(
+            kind="CoreGraphQLQuery", branch=branch_name, id=str(transform_class.query), populate_store=True
+        )
+        try:
+            transforms.append(
+                TransformPythonInformation(
+                    name=transform.name,
+                    repository=str(self.id),
+                    class_name=transform.class_name,
+                    transform_class=transform_class,
+                    file_path=file_path,
+                    query=str(graphql_query.id),
+                    timeout=transform_class.timeout,
+                    rebase=transform_class.rebase,
+                    url=transform_class.url,
+                )
             )
-            try:
-                transforms.append(
-                    TransformPythonInformation(
-                        name=transform_class.__name__,
-                        repository=str(self.id),
-                        class_name=transform_class.__name__,
-                        transform_class=transform_class,
-                        file_path=file_path,
-                        query=str(graphql_query.id),
-                        timeout=transform_class.timeout,
-                        rebase=transform_class.rebase,
-                        url=transform_class.url,
-                    )
-                )
 
-            except Exception as exc:  # pylint: disable=broad-exception-caught
-                LOGGER.error(
-                    f"{self.name} | An error occured while processing the PythonTransform {transform_class.__name__} from {file_path} : {exc} "
-                )
-                continue
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            LOGGER.error(
+                f"{self.name} | An error occured while processing the PythonTransform {transform.name} from {file_path} : {exc} "
+            )
+
         return transforms
 
     async def create_python_check_definition(self, branch_name: str, check: CheckDefinitionInformation) -> InfrahubNode:

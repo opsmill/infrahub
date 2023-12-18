@@ -4,7 +4,7 @@ import enum
 from typing import List
 
 from infrahub.exceptions import ValidationError
-from infrahub.utils import InfrahubNumberEnum, InfrahubStringEnum
+from infrahub.utils import InfrahubStringEnum
 
 GLOBAL_BRANCH_NAME = "-global-"
 
@@ -64,19 +64,6 @@ class BranchConflictKeep(InfrahubStringEnum):
 class ContentType(InfrahubStringEnum):
     APPLICATION_JSON = "application/json"
     TEXT_PLAIN = "text/plain"
-
-
-class CriticalityLevel(InfrahubNumberEnum):
-    one = 1
-    two = 2
-    three = 3
-    four = 4
-    five = 5
-    six = 6
-    seven = 7
-    eight = 8
-    nine = 9
-    ten = 1
 
 
 class DiffAction(InfrahubStringEnum):
@@ -192,7 +179,7 @@ class ValidatorState(InfrahubStringEnum):
 RESTRICTED_NAMESPACES: List[str] = [
     "Account",
     "Branch",
-    "Builtin",
+    # "Builtin",
     # "Core",
     "Deprecated",
     "Diff",

@@ -81,7 +81,9 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         )
 
         queue = await self.channel.declare_queue(
-            f"{config.SETTINGS.broker.namespace}.rpcs", durable=True, arguments={"x-queue-type": "quorum"}
+            f"{config.SETTINGS.broker.namespace}.rpcs",
+            durable=True,
+            arguments={"x-max-priority": 5},
         )
 
         worker_bindings = [
@@ -107,7 +109,7 @@ class RabbitMQMessageBus(InfrahubMessageBus):
                 arguments={
                     "x-dead-letter-exchange": self.dlx.name,
                     "x-message-ttl": ttl.value,
-                    "x-queue-type": "quorum",
+                    "x-max-priority": 5,
                 },
             )
             await ttl_queue.bind(
@@ -132,11 +134,8 @@ class RabbitMQMessageBus(InfrahubMessageBus):
 
         await events_queue.consume(callback=self.on_callback, no_ack=True)
 
-        await self.channel.declare_queue(
-            f"{config.SETTINGS.broker.namespace}.rpcs", durable=True, arguments={"x-queue-type": "quorum"}
-        )
-
     async def publish(self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None) -> None:
+        message.assign_priority(priority=messages.message_priority(routing_key=routing_key))
         if delay:
             message.assign_header(key="delay", value=delay.value)
             await self.delayed_exchange.publish(message, routing_key=routing_key)

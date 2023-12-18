@@ -7,6 +7,7 @@ nodes:
     description: "A Rack represents a physical two- or four-post equipment rack in which devices can be installed."
     label: "Rack"
     default_filter: name__value
+    icon: clarity:rack-server-solid
     display_labels:
       - name__value
     attributes:
@@ -30,20 +31,35 @@ nodes:
         label: Asset Tag
         kind: Text
         optional: true
+      - name: status
+        kind: Dropdown
+        choices:
+          - name: active
+            label: Active
+            description: "Functional and ready for production"
+            color: "#009933"
+          - name: planned
+            label: Planned
+            description: "Not physically present yet"
+            color: "#cc66ff"
+        default_value: "active"
+      - name: role
+        kind: Dropdown
+        choices:
+          - name: compute
+            description: "Rack mainly composed of compute"
+            color: "#0099ff"
+          - name: storage
+            description: "Rack mainly composed of Storage devices"
+            color: "#993399"
+          - name: networking
+            description: "Rack mainly composed of Network devices"
+            color: "#ff6600"
+        optional: true
     relationships:
       - name: location
         peer: BuiltinLocation
         optional: false
-        cardinality: one
-        kind: Attribute
-      - name: status
-        peer: BuiltinStatus
-        optional: true
-        cardinality: one
-        kind: Attribute
-      - name: role
-        peer: BuiltinRole
-        optional: true
         cardinality: one
         kind: Attribute
       - name: tags

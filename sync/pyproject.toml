@@ -1,0 +1,199 @@
+[tool.poetry]
+name = "infrahub-sync"
+version = "0.1.0"
+description = ""
+authors = ["OpsMill <contact@opsmill.com>"]
+readme = "README.md"
+license = "Apache-2.0"
+homepage = "https://opsmill.io"
+repository = "https://opsmill.io"
+documentation = "https://opsmill.io"
+packages = [
+    { include = "infrahub_sync", from = "infrahub-sync"},
+    { include = "potenda", from = "potenda"},
+]
+classifiers = [
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+infrahub-sdk = {path = "../python_sdk", develop=true}
+dagster = "^1.1.19"
+dagit = "^1.1.19"
+structlog = "^22.3.0"
+pynetbox = "^7.0.1"
+pynautobot = "^1.5.0"
+diffsync = "^1.8.0"
+
+
+[tool.poetry.group.dev.dependencies]
+pytest = "*"
+pytest-clarity = "^1.0.1"
+pytest-cov = "^4.0.0"
+pytest-httpx = "*"
+yamllint = "*"
+pylint = "*"
+mypy = "*"
+ipython = "*"
+pytest-asyncio = "*"
+requests = "*"
+pre-commit = "^2.20.0"
+autoflake = "*"
+types-toml = "*"
+types-ujson = "*"
+types-pyyaml = "*"
+typer-cli = "*"
+ruff = "^0.1.5"
+pytest-xdist = "^3.3.1"
+buildkite-test-collector = "^0.1.7"
+types-python-slugify = "^8.0.0.3"
+
+[tool.poetry.scripts]
+infrahub-sync = "infrahub_sync.cli:app"
+
+[tool.coverage.run]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError()"
+]
+
+[tool.pylint.general]
+extension-pkg-whitelist = [
+    "pydantic",
+    "ujson",
+]
+
+[tool.pylint.format]
+disable = "logging-fstring-interpolation"
+
+[tool.pylint.basic]
+# No docstrings required for private methods (Pylint default), or for test_ functions.
+no-docstring-rgx="^(_|test_)"
+
+[tool.pylint.messages_control]
+# Line length is enforced by Black, so pylint doesn't need to check it.
+# Pylint and Black disagree about how to format multi-line arrays; Black wins.
+disable = """,
+    line-too-long,
+    missing-module-docstring,
+    missing-function-docstring,
+    missing-class-docstring,
+    consider-using-from-import,
+    invalid-name,
+    too-many-arguments,
+    too-many-locals,
+    keyword-arg-before-vararg,
+    too-few-public-methods,
+    too-many-instance-attributes,
+    fixme,
+    consider-using-f-string,
+    protected-access,
+    import-self,
+    wrong-import-order,
+    """
+
+[tool.pylint.miscellaneous]
+notes = """,
+    FIXME,
+    XXX,
+    """
+
+[tool.pylint.similarities]
+min-similarity-lines = 20
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = [
+    "tests"
+]
+filterwarnings = [
+    "ignore:Module already imported so cannot be rewritten",
+    "ignore:the imp module is deprecated",
+    "ignore:Deprecated call to",
+]
+addopts = "-vs --cov-report term-missing --cov-report xml --dist loadscope"
+
+[tool.mypy]
+pretty = true
+ignore_missing_imports = true
+disallow_untyped_defs = true
+
+[tool.ruff]
+line-length = 120
+
+exclude = [
+        ".git",
+        ".tox",
+        ".venv",
+        "env",
+        "_build",
+        "build",
+        "dist",
+        "examples",
+]
+
+task-tags = [
+    "FIXME",
+    "TODO",
+    "XXX",
+]
+
+[tool.ruff.lint]
+preview = true
+
+select = [
+    # mccabe complexity
+    "C90",
+    # pycodestyle errors
+    "E",
+    # pycodestyle warnings
+    "W",
+    # pyflakes
+    "F",
+    # isort-like checks
+    "I",
+    # flake8-datetimez
+    "DTZ",
+    # flake8-import-conventions
+    "ICN",
+    # flake8-type-checking
+    "TCH",
+    # flake8-debugger
+    "T10",
+    # flake8-quotes
+    "Q",
+    # flake8-2020
+    "YTT",
+]
+
+#https://docs.astral.sh/ruff/formatter/black/
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.ruff.lint.isort]
+known-first-party = ["infrahub_sync", "potenda"]
+
+[tool.ruff.lint.pycodestyle]
+max-line-length = 150
+
+[tool.ruff.mccabe]
+# Target max-complexity=10
+max-complexity = 31
+
+[tool.ruff.per-file-ignores]
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

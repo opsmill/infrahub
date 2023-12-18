@@ -84,6 +84,68 @@ async def test_validate_format_ipnetwork_and_iphost(
         )
 
 
+async def test_validate_iphost_returns(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
+    schema = criticality_schema.get_attribute("name")
+
+    test_ipv4 = IPHost(
+        name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="192.0.2.1/31"
+    )
+    test_ipv6 = IPHost(
+        name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="2001:db8::/32"
+    )
+
+    assert test_ipv4.value == "192.0.2.1/31"
+    assert test_ipv4.ip == "192.0.2.1"
+    assert test_ipv4.hostmask == "0.0.0.1"
+    assert test_ipv4.netmask == "255.255.255.254"
+    assert test_ipv4.network == "192.0.2.0/31"
+    assert test_ipv4.prefixlen == "31"
+    assert test_ipv4.with_hostmask == "192.0.2.1/0.0.0.1"
+    assert test_ipv4.with_netmask == "192.0.2.1/255.255.255.254"
+    assert test_ipv4.version == 4
+
+    assert test_ipv6.value == "2001:db8::/32"
+    assert test_ipv6.ip == "2001:db8::"
+    assert test_ipv6.hostmask == "::ffff:ffff:ffff:ffff:ffff:ffff"
+    assert test_ipv6.netmask == "ffff:ffff::"
+    assert test_ipv6.network == "2001:db8::/32"
+    assert test_ipv6.prefixlen == "32"
+    assert test_ipv6.with_hostmask == "2001:db8::/::ffff:ffff:ffff:ffff:ffff:ffff"
+    assert test_ipv6.with_netmask == "2001:db8::/ffff:ffff::"
+    assert test_ipv6.version == 6
+
+
+async def test_validate_ipnetwork_returns(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
+    schema = criticality_schema.get_attribute("name")
+
+    test_ipv4 = IPNetwork(
+        name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="192.0.2.0/31"
+    )
+    test_ipv6 = IPNetwork(
+        name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="2001:db8::/32"
+    )
+
+    assert test_ipv4.value == "192.0.2.0/31"
+    assert test_ipv4.broadcast_address == "192.0.2.1"
+    assert test_ipv4.hostmask == "0.0.0.1"
+    assert test_ipv4.netmask == "255.255.255.254"
+    assert test_ipv4.prefixlen == "31"
+    assert test_ipv4.num_addresses == 2
+    assert test_ipv4.with_hostmask == "192.0.2.0/0.0.0.1"
+    assert test_ipv4.with_netmask == "192.0.2.0/255.255.255.254"
+    assert test_ipv4.version == 4
+
+    assert test_ipv6.value == "2001:db8::/32"
+    assert test_ipv6.broadcast_address == "2001:db8:ffff:ffff:ffff:ffff:ffff:ffff"
+    assert test_ipv6.hostmask == "::ffff:ffff:ffff:ffff:ffff:ffff"
+    assert test_ipv6.netmask == "ffff:ffff::"
+    assert test_ipv6.prefixlen == "32"
+    assert test_ipv6.num_addresses == 79228162514264337593543950336
+    assert test_ipv6.with_hostmask == "2001:db8::/::ffff:ffff:ffff:ffff:ffff:ffff"
+    assert test_ipv6.with_netmask == "2001:db8::/ffff:ffff::"
+    assert test_ipv6.version == 6
+
+
 async def test_validate_content_dropdown(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
     schema = criticality_schema.get_attribute("status")
     Dropdown(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="active")
@@ -100,7 +162,7 @@ async def test_dropdown_properties(db: InfrahubDatabase, default_branch: Branch,
 
     assert active.value == "active"
     assert active.description == "Online things"
-    assert active.label == "active"
+    assert active.label == "Active"
     # The color of the active choice is hardoced within criticality_schema
     assert active.color == "#00ff00"
     assert passive.value == "passive"

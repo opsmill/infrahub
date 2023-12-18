@@ -2,7 +2,7 @@
 label: Data lineage & metadata
 # icon: file-directory
 tags: [tutorial]
-order: 600
+order: 650
 ---
 
 # Data lineage and metadata

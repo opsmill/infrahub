@@ -24,7 +24,6 @@ import graphqlClient from "../../../graphql/graphqlClientApollo";
 import { createObject } from "../../../graphql/mutations/objects/createObject";
 import { deleteObject } from "../../../graphql/mutations/objects/deleteObject";
 import { getProposedChangesArtifactsThreads } from "../../../graphql/queries/proposed-changes/getProposedChangesArtifactsThreads";
-import { branchVar } from "../../../graphql/variables/branchVar";
 import { dateVar } from "../../../graphql/variables/dateVar";
 import useQuery from "../../../hooks/useQuery";
 import { schemaState } from "../../../state/atoms/schema.atom";
@@ -32,6 +31,8 @@ import { fetchStream } from "../../../utils/fetch";
 import { stringifyWithoutQuotes } from "../../../utils/string";
 import ErrorScreen from "../../error-screen/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
+import { useAtomValue } from "jotai/index";
+import { currentBranchAtom } from "../../../state/atoms/branches.atom";
 
 const fakeIndex = () => {
   return sha(Math.random() * 100000).slice(0, 9);
@@ -100,7 +101,7 @@ export const ArtifactContentDiff = (props: any) => {
   const { itemPrevious, itemNew } = props;
 
   const { proposedchange } = useParams();
-  const branch = useReactiveVar(branchVar);
+  const branch = useAtomValue(currentBranchAtom);
   const date = useReactiveVar(dateVar);
   const auth = useContext(AuthContext);
   const [schemaList] = useAtom(schemaState);

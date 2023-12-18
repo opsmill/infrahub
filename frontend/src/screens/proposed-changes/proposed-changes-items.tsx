@@ -1,4 +1,4 @@
-import { gql, useReactiveVar } from "@apollo/client";
+import { gql } from "@apollo/client";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
@@ -13,9 +13,8 @@ import {
 } from "../../config/constants";
 import { AuthContext } from "../../decorators/withAuth";
 import { getProposedChanges } from "../../graphql/queries/proposed-changes/getProposedChanges";
-import { branchVar } from "../../graphql/variables/branchVar";
 import useQuery from "../../hooks/useQuery";
-import { branchesState } from "../../state/atoms/branches.atom";
+import { branchesState, currentBranchAtom } from "../../state/atoms/branches.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { constructPath } from "../../utils/fetch";
 import { getSchemaRelationshipColumns } from "../../utils/getSchemaObjectColumns";
@@ -24,12 +23,13 @@ import LoadingScreen from "../loading-screen/loading-screen";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
 import { getFormStructure } from "./conversations";
 import { ProposedChange } from "./proposed-changes-item";
+import { useAtomValue } from "jotai/index";
 
 export const ProposedChanges = () => {
   const [schemaList] = useAtom(schemaState);
   const [branches] = useAtom(branchesState);
   const auth = useContext(AuthContext);
-  const branch = useReactiveVar(branchVar);
+  const branch = useAtomValue(currentBranchAtom);
   const navigate = useNavigate();
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
 
@@ -123,7 +123,7 @@ export const ProposedChanges = () => {
                 <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
               </div>
             </div>
-            <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
+            <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 mr-2">
               <svg
                 className="h-1.5 w-1.5 mr-1 fill-yellow-500"
                 viewBox="0 0 6 6"
