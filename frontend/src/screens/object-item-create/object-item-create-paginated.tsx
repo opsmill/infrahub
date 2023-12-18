@@ -9,7 +9,7 @@ import { createObject } from "../../graphql/mutations/objects/createObject";
 import { getDropdownOptionsForRelatedPeersPaginated } from "../../graphql/queries/objects/dropdownOptionsForRelatedPeers";
 import { dateVar } from "../../graphql/variables/dateVar";
 import useQuery from "../../hooks/useQuery";
-import { genericsState, schemaState } from "../../state/atoms/schema.atom";
+import { genericsState, schemaFamily } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdit";
 import getMutationDetailsFromFormData from "../../utils/getMutationDetailsFromFormData";
@@ -43,14 +43,13 @@ export default function ObjectItemCreate(props: iProps) {
     preventObjectsCreation,
   } = props;
 
-  const [schemaList] = useAtom(schemaState);
   const [schemaKindName] = useAtom(schemaKindNameState);
   const [genericsList] = useAtom(genericsState);
   const branch = useAtomValue(currentBranchAtom);
   const date = useReactiveVar(dateVar);
   const [isLoading, setIsLoading] = useState(false);
 
-  const schema = schemaList.find((s) => s.kind === objectname);
+  const schema = useAtomValue(schemaFamily({ kind: objectname }));
 
   const peers = R.uniq((schema?.relationships || []).map((r) => r.peer).filter(Boolean));
 
@@ -94,13 +93,7 @@ export default function ObjectItemCreate(props: iProps) {
 
   const fields =
     formStructure ??
-    getFormStructureForCreateEdit(
-      schema,
-      schemaList,
-      genericsList,
-      peerDropdownOptions,
-      objectDetailsData
-    );
+    getFormStructureForCreateEdit(schema, genericsList, peerDropdownOptions, objectDetailsData);
 
   async function onSubmit(data: any) {
     setIsLoading(true);

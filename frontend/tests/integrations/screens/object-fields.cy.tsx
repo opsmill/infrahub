@@ -4,7 +4,7 @@ import { MockedProvider } from "@apollo/client/testing";
 import React from "react";
 import { Route, Routes } from "react-router-dom";
 import { withAuth } from "../../../src/decorators/withAuth";
-import { schemaState } from "../../../src/state/atoms/schema.atom";
+import { schemaFamily } from "../../../src/state/atoms/schema.atom";
 
 import { gql } from "@apollo/client";
 import { ACCESS_TOKEN_KEY } from "../../../src/config/constants";
@@ -41,7 +41,6 @@ import {
   taskMocksQuery as taskMocksQuery4,
   taskMocksSchema as taskMocksSchema4,
 } from "../../mocks/data/task_4";
-import { TestProvider } from "../../mocks/jotai/atom";
 
 // URL for the current view
 const mockedUrl = "/objects/TestTask";
@@ -119,30 +118,30 @@ describe("Object list", () => {
     localStorage.setItem(ACCESS_TOKEN_KEY, token);
   });
 
+  afterEach(() => {
+    schemaFamily.setShouldRemove(() => true); // set function to remove all
+    schemaFamily.setShouldRemove(null); // clear function
+  });
+
   it("should open the add panel, submit without filling the text field and display a required message", function () {
     cy.viewport(1920, 1080);
 
     cy.intercept("POST", "/graphql/main ", this.mutation).as("mutate");
 
     // Provide the initial value for jotai
-    const ObjectItemsProvider = () => {
-      return (
-        <TestProvider
-          initialValues={[[schemaState, [...accountDetailsMocksSchema, ...taskMocksSchema1]]]}>
-          <AuthenticatedObjectItems />
-        </TestProvider>
-      );
-    };
+    [...accountDetailsMocksSchema, ...taskMocksSchema1].forEach((s) => {
+      schemaFamily(s);
+    });
 
     // Mount the view with the default route and the mocked data
     cy.mount(
       <MockedProvider mocks={mocks} addTypename={false}>
         <Routes>
-          <Route element={<ObjectItemsProvider />} path={mockedPath} />
+          <Route element={<AuthenticatedObjectItems />} path={mockedPath} />
         </Routes>
       </MockedProvider>,
       {
-        // Add iniital route for the app router, to display the current items view
+        // Add initial route for the app router, to display the current items view
         routerProps: {
           initialEntries: [mockedUrl],
         },
@@ -165,26 +164,19 @@ describe("Object list", () => {
     cy.intercept("POST", "/graphql/main ", this.mutation).as("mutate");
 
     // Provide the initial value for jotai
-    const ObjectItemsProvider = () => {
-      return (
-        <TestProvider
-          initialValues={[
-            [schemaState, [...accountDetailsMocksSchema, ...taskMocksSchemaOptionnal1]],
-          ]}>
-          <AuthenticatedObjectItems />
-        </TestProvider>
-      );
-    };
+    [...accountDetailsMocksSchema, ...taskMocksSchemaOptionnal1].forEach((s) => {
+      schemaFamily(s);
+    });
 
     // Mount the view with the default route and the mocked data
     cy.mount(
       <MockedProvider mocks={mocks} addTypename={false}>
         <Routes>
-          <Route element={<ObjectItemsProvider />} path={mockedPath} />
+          <Route element={<AuthenticatedObjectItems />} path={mockedPath} />
         </Routes>
       </MockedProvider>,
       {
-        // Add iniital route for the app router, to display the current items view
+        // Add initial route for the app router, to display the current items view
         routerProps: {
           initialEntries: [mockedUrl],
         },
@@ -207,24 +199,19 @@ describe("Object list", () => {
     cy.intercept("POST", "/graphql/main ", this.mutation).as("mutate");
 
     // Provide the initial value for jotai
-    const ObjectItemsProvider = () => {
-      return (
-        <TestProvider
-          initialValues={[[schemaState, [...accountDetailsMocksSchema, ...taskMocksSchema2]]]}>
-          <AuthenticatedObjectItems />
-        </TestProvider>
-      );
-    };
+    [...accountDetailsMocksSchema, ...taskMocksSchema2].forEach((s) => {
+      schemaFamily(s);
+    });
 
     // Mount the view with the default route and the mocked data
     cy.mount(
       <MockedProvider mocks={mocks} addTypename={false}>
         <Routes>
-          <Route element={<ObjectItemsProvider />} path={mockedPath} />
+          <Route element={<AuthenticatedObjectItems />} path={mockedPath} />
         </Routes>
       </MockedProvider>,
       {
-        // Add iniital route for the app router, to display the current items view
+        // Add initial route for the app router, to display the current items view
         routerProps: {
           initialEntries: [mockedUrl],
         },
@@ -247,22 +234,15 @@ describe("Object list", () => {
     cy.intercept("POST", "/graphql/main ", this.mutation).as("mutate");
 
     // Provide the initial value for jotai
-    const ObjectItemsProvider = () => {
-      return (
-        <TestProvider
-          initialValues={[
-            [schemaState, [...accountDetailsMocksSchema, ...taskMocksSchemaWithDefaultValue2]],
-          ]}>
-          <AuthenticatedObjectItems />
-        </TestProvider>
-      );
-    };
+    [...accountDetailsMocksSchema, ...taskMocksSchemaWithDefaultValue2].forEach((s) => {
+      schemaFamily(s);
+    });
 
     // Mount the view with the default route and the mocked data
     cy.mount(
       <MockedProvider mocks={mocks} addTypename={false}>
         <Routes>
-          <Route element={<ObjectItemsProvider />} path={mockedPath} />
+          <Route element={<AuthenticatedObjectItems />} path={mockedPath} />
         </Routes>
       </MockedProvider>,
       {
@@ -289,22 +269,15 @@ describe("Object list", () => {
     cy.intercept("POST", "/graphql/main ", this.mutation).as("mutate");
 
     // Provide the initial value for jotai
-    const ObjectItemsProvider = () => {
-      return (
-        <TestProvider
-          initialValues={[
-            [schemaState, [...accountDetailsMocksSchema, ...taskMocksSchemaOptional2]],
-          ]}>
-          <AuthenticatedObjectItems />
-        </TestProvider>
-      );
-    };
+    [...accountDetailsMocksSchema, ...taskMocksSchemaOptional2].forEach((s) => {
+      schemaFamily(s);
+    });
 
     // Mount the view with the default route and the mocked data
     cy.mount(
       <MockedProvider mocks={mocks} addTypename={false}>
         <Routes>
-          <Route element={<ObjectItemsProvider />} path={mockedPath} />
+          <Route element={<AuthenticatedObjectItems />} path={mockedPath} />
         </Routes>
       </MockedProvider>,
       {
@@ -331,20 +304,15 @@ describe("Object list", () => {
     cy.intercept("POST", "/graphql/main ", this.mutation).as("mutate");
 
     // Provide the initial value for jotai
-    const ObjectItemsProvider = () => {
-      return (
-        <TestProvider
-          initialValues={[[schemaState, [...accountDetailsMocksSchema, ...taskMocksSchema3]]]}>
-          <AuthenticatedObjectItems />
-        </TestProvider>
-      );
-    };
+    [...accountDetailsMocksSchema, ...taskMocksSchema3].forEach((s) => {
+      schemaFamily(s);
+    });
 
     // Mount the view with the default route and the mocked data
     cy.mount(
       <MockedProvider mocks={mocks} addTypename={false}>
         <Routes>
-          <Route element={<ObjectItemsProvider />} path={mockedPath} />
+          <Route element={<AuthenticatedObjectItems />} path={mockedPath} />
         </Routes>
       </MockedProvider>,
       {
@@ -371,20 +339,15 @@ describe("Object list", () => {
     cy.intercept("POST", "/graphql/main ", this.mutation).as("mutate");
 
     // Provide the initial value for jotai
-    const ObjectItemsProvider = () => {
-      return (
-        <TestProvider
-          initialValues={[[schemaState, [...accountDetailsMocksSchema, ...taskMocksSchema3]]]}>
-          <AuthenticatedObjectItems />
-        </TestProvider>
-      );
-    };
+    [...accountDetailsMocksSchema, ...taskMocksSchema3].forEach((s) => {
+      schemaFamily(s);
+    });
 
     // Mount the view with the default route and the mocked data
     cy.mount(
       <MockedProvider mocks={mocks} addTypename={false}>
         <Routes>
-          <Route element={<ObjectItemsProvider />} path={mockedPath} />
+          <Route element={<AuthenticatedObjectItems />} path={mockedPath} />
         </Routes>
       </MockedProvider>,
       {
@@ -414,22 +377,15 @@ describe("Object list", () => {
     cy.intercept("POST", "/graphql/main ", this.mutation).as("mutate");
 
     // Provide the initial value for jotai
-    const ObjectItemsProvider = () => {
-      return (
-        <TestProvider
-          initialValues={[
-            [schemaState, [...accountDetailsMocksSchema, ...taskMocksSchemaWithDefaultValue3]],
-          ]}>
-          <AuthenticatedObjectItems />
-        </TestProvider>
-      );
-    };
+    [...accountDetailsMocksSchema, ...taskMocksSchemaWithDefaultValue3].forEach((s) => {
+      schemaFamily(s);
+    });
 
     // Mount the view with the default route and the mocked data
     cy.mount(
       <MockedProvider mocks={mocks} addTypename={false}>
         <Routes>
-          <Route element={<ObjectItemsProvider />} path={mockedPath} />
+          <Route element={<AuthenticatedObjectItems />} path={mockedPath} />
         </Routes>
       </MockedProvider>,
       {
@@ -456,22 +412,15 @@ describe("Object list", () => {
     cy.intercept("POST", "/graphql/main ", this.mutation).as("mutate");
 
     // Provide the initial value for jotai
-    const ObjectItemsProvider = () => {
-      return (
-        <TestProvider
-          initialValues={[
-            [schemaState, [...accountDetailsMocksSchema, ...taskMocksSchemaOptional3]],
-          ]}>
-          <AuthenticatedObjectItems />
-        </TestProvider>
-      );
-    };
+    [...accountDetailsMocksSchema, ...taskMocksSchemaOptional3].forEach((s) => {
+      schemaFamily(s);
+    });
 
     // Mount the view with the default route and the mocked data
     cy.mount(
       <MockedProvider mocks={mocks} addTypename={false}>
         <Routes>
-          <Route element={<ObjectItemsProvider />} path={mockedPath} />
+          <Route element={<AuthenticatedObjectItems />} path={mockedPath} />
         </Routes>
       </MockedProvider>,
       {
@@ -498,20 +447,15 @@ describe("Object list", () => {
     cy.intercept("POST", "/graphql/main ", this.mutation).as("mutate");
 
     // Provide the initial value for jotai
-    const ObjectItemsProvider = () => {
-      return (
-        <TestProvider
-          initialValues={[[schemaState, [...accountDetailsMocksSchema, ...taskMocksSchema4]]]}>
-          <AuthenticatedObjectItems />
-        </TestProvider>
-      );
-    };
+    [...accountDetailsMocksSchema, ...taskMocksSchema4].forEach((s) => {
+      schemaFamily(s);
+    });
 
     // Mount the view with the default route and the mocked data
     cy.mount(
       <MockedProvider mocks={mocks} addTypename={false}>
         <Routes>
-          <Route element={<ObjectItemsProvider />} path={mockedPath} />
+          <Route element={<AuthenticatedObjectItems />} path={mockedPath} />
         </Routes>
       </MockedProvider>,
       {

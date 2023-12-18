@@ -82,7 +82,6 @@ const validate = (value: any, attribute: any = {}, optional?: boolean) => {
 
 const getFormStructureForCreateEdit = (
   schema: iNodeSchema,
-  schemas: iNodeSchema[],
   generics: iGenericSchema[],
   dropdownOptions: iPeerDropdownOptions,
   row?: any,
@@ -168,13 +167,7 @@ const getFormStructureForCreateEdit = (
           return "";
         })(),
         options: {
-          values: getOptionsFromRelationship(
-            dropdownOptions,
-            relationship,
-            isInherited,
-            schemas,
-            generics
-          ),
+          values: getOptionsFromRelationship(dropdownOptions, relationship, isInherited, generics),
         },
         config: {
           validate: (value: any) => validate(value, undefined, relationship.optional),

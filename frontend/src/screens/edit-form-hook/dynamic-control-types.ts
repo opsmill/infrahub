@@ -2,6 +2,8 @@ import { RegisterOptions } from "react-hook-form";
 import { SelectOption } from "../../components/select";
 import { iPeerDropdownOptions } from "../../graphql/queries/objects/dropdownOptionsForRelatedPeers";
 import { FormFieldError } from "./form";
+import { useAtomValue } from "jotai/index";
+import { iGenericSchema, schemaFamily } from "../../state/atoms/schema.atom";
 
 // Interface for every field in a create/edit form
 export interface DynamicFieldData {
@@ -148,9 +150,7 @@ export const getOptionsFromAttribute = (attribute: any) => {
 export const getOptionsFromRelationship = (
   dropdownOptions: iPeerDropdownOptions,
   relationship: any,
-  isInherited: any,
-  schemas: any,
-  generics: any
+  isInherited: any
 ) => {
   if (!isInherited && dropdownOptions[relationship.peer]) {
     return dropdownOptions[relationship.peer].map((row: any) => ({
@@ -159,11 +159,11 @@ export const getOptionsFromRelationship = (
     }));
   }
 
-  const generic = generics.find((generic: any) => generic.kind === relationship.peer);
+  const generic = useAtomValue<iGenericSchema>(schemaFamily({ kind: relationship.peer }));
 
   if (generic) {
     return (generic.used_by || []).map((name: string) => {
-      const relatedSchema = schemas.find((s: any) => s.kind === name);
+      const relatedSchema = useAtomValue(schemaFamily({ kind: name }));
 
       if (relatedSchema) {
         return {
