@@ -5,14 +5,13 @@ import { MockedProvider } from "@apollo/client/testing";
 import React from "react";
 import { Route, Routes } from "react-router-dom";
 import ObjectItems from "../../../src/screens/object-items/object-items-paginated";
-import { schemaState } from "../../../src/state/atoms/schema.atom";
+import { schemaFamily } from "../../../src/state/atoms/schema.atom";
 import {
   graphqlQueriesMocksData,
   graphqlQueriesMocksQuery,
   graphqlQueriesMocksQueryWithLimit,
 } from "../../mocks/data/graphqlQueries";
 import { schemaMocks } from "../../mocks/data/schema";
-import { TestProvider } from "../../mocks/jotai/atom";
 
 // URL for the current view
 const mockedUrl = "/objects/CoreGraphQLQuery";
@@ -47,13 +46,9 @@ const mocks: any[] = [
 ];
 
 // Provide the initial value for jotai
-const ObjectItemsProvider = () => {
-  return (
-    <TestProvider initialValues={[[schemaState, schemaMocks]]}>
-      <ObjectItems />
-    </TestProvider>
-  );
-};
+schemaMocks.forEach((s) => {
+  schemaFamily(s);
+});
 
 describe("List screen", () => {
   it("should fetch items and render list", () => {
@@ -63,11 +58,11 @@ describe("List screen", () => {
     cy.mount(
       <MockedProvider mocks={mocks} addTypename={false}>
         <Routes>
-          <Route element={<ObjectItemsProvider />} path={mockedPath} />
+          <Route element={<ObjectItems />} path={mockedPath} />
         </Routes>
       </MockedProvider>,
       {
-        // Add iniital route for the app router, to display the current items view
+        // Add initial route for the app router, to display the current items view
         routerProps: {
           initialEntries: [mockedUrl],
         },
