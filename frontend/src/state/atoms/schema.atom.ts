@@ -1,4 +1,5 @@
-import { atom } from "jotai";
+import { Atom, atom } from "jotai";
+import { atomFamily } from "jotai/utils";
 import { components } from "../../infraops";
 
 export type iNodeSchema = components["schemas"]["APINodeSchema"];
@@ -33,3 +34,8 @@ export type SchemaSummary = {
   };
 };
 export const schemaSummaryAtom = atom<SchemaSummary | null>(null);
+
+export const nodesFamily = atomFamily<iNodeSchema, Atom<iNodeSchema>>(
+  (s: iNodeSchema) => atom(s),
+  (a, b) => a.kind === b.kind
+);

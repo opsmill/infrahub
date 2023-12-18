@@ -23,7 +23,7 @@ import usePagination from "../../hooks/usePagination";
 import useQuery from "../../hooks/useQuery";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { iComboBoxFilter } from "../../state/atoms/filters.atom";
-import { genericsState, schemaState } from "../../state/atoms/schema.atom";
+import { genericsState, nodesFamily } from "../../state/atoms/schema.atom";
 import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
@@ -52,7 +52,6 @@ export default function ObjectItems(props: any) {
 
   const auth = useContext(AuthContext);
 
-  const [schemaList] = useAtom(schemaState);
   const [genericList] = useAtom(genericsState);
   const branch = useAtomValue(currentBranchAtom);
   const date = useReactiveVar(dateVar);
@@ -64,12 +63,12 @@ export default function ObjectItems(props: any) {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const navigate = useNavigate();
 
-  const schema = schemaList.find((s) => s.kind === objectname);
+  const schema = useAtomValue(nodesFamily({ kind: objectnameFromParams }));
   const generic = genericList.find((s) => s.kind === objectname);
 
   const schemaData = schema || generic;
 
-  if ((schemaList?.length || genericList?.length) && !schemaData) {
+  if (genericList?.length && !schemaData) {
     // If there is no schema nor generics, go to home page
     navigate("/");
   }
