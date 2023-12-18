@@ -110,13 +110,12 @@ def lint(context: Context, docker: bool = False):
     print(f" - [{NAMESPACE}] All tests have passed!")
 
 
-def test_base(context: Context, database: str = INFRAHUB_DATABASE, label=None):
+@task(optional=["database"])
+def test_unit(context: Context, database: str = INFRAHUB_DATABASE):
     with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_test_compose_files_cmd(database=database)
         base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run {build_test_envs()} infrahub-test"
-        if not label:
-            label = f"{MAIN_DIRECTORY}/tests"
-        exec_cmd = f"pytest -n {NBR_WORKERS} -v --cov=infrahub {label}"
+        exec_cmd = f"pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/unit"
         if database == "neo4j":
             exec_cmd += " --neo4j"
         print(f"{base_cmd} {exec_cmd}")
@@ -124,31 +123,27 @@ def test_base(context: Context, database: str = INFRAHUB_DATABASE, label=None):
 
 
 @task(optional=["database"])
-def test(context: Context, label: str, database: str = INFRAHUB_DATABASE):
-    return test_base(
-        context=context, database=database, label=f"{MAIN_DIRECTORY}/tests/{label}"
-    )
-
-
-@task(optional=["database"])
-def test_unit(context: Context, database: str = INFRAHUB_DATABASE):
-    return test_base(
-        context=context, database=database, label=f"{MAIN_DIRECTORY}/tests/unit"
-    )
-
-
-@task(optional=["database"])
 def test_core(context: Context, database: str = INFRAHUB_DATABASE):
-    return test_base(
-        context=context, database=database, label=f"{MAIN_DIRECTORY}/tests/unit/core"
-    )
+    with context.cd(ESCAPED_REPO_PATH):
+        compose_files_cmd = build_test_compose_files_cmd(database=database)
+        base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run {build_test_envs()} infrahub-test"
+        exec_cmd = f"pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/unit/core"
+        if database == "neo4j":
+            exec_cmd += " --neo4j"
+        print(f"{base_cmd} {exec_cmd}")
+        return execute_command(context=context, command=f"{base_cmd} {exec_cmd}")
 
 
 @task(optional=["database"])
 def test_integration(context: Context, database: str = INFRAHUB_DATABASE):
-    return test_base(
-        context=context, database=database, label=f"{MAIN_DIRECTORY}/tests/integration"
-    )
+    with context.cd(ESCAPED_REPO_PATH):
+        compose_files_cmd = build_test_compose_files_cmd(database=database)
+        base_cmd = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} run {build_test_envs()} infrahub-test"
+        exec_cmd = f"pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/integration"
+        if database == "neo4j":
+            exec_cmd += " --neo4j"
+        print(f"{base_cmd} {exec_cmd}")
+        return execute_command(context=context, command=f"{base_cmd} {exec_cmd}")
 
 
 @task(default=True)
