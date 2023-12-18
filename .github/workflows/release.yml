@@ -5,7 +5,7 @@ name: New Release
 on:
   push:
     tags:
-      - 'v*'
+      - '*'
 
 jobs:
   meta_data:
