@@ -4,7 +4,7 @@ import { ADMIN_CREDENTIALS, SCREENSHOT_ENV_VARIABLE, screenshotConfig } from "..
 
 const NEW_BRANCH = "update-ethernet1";
 const DEVICE = "atl1-edge1";
-const INTERFACE = "Ethernet12";
+const INTERFACE = "Ethernet1";
 const NEW_INTERFACE_DESCRIPTION = "New description in the branch";
 
 describe("Tutorial - Part 6", () => {
