@@ -1,15 +1,15 @@
-import { gql, useReactiveVar } from "@apollo/client";
+import { gql } from "@apollo/client";
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { SelectOption } from "../components/select";
 import graphqlClient from "../graphql/graphqlClientApollo";
 import { getDropdownOptionsForRelatedPeersPaginated } from "../graphql/queries/objects/dropdownOptionsForRelatedPeers";
-import { dateVar } from "../graphql/variables/dateVar";
 import { FormFieldError } from "../screens/edit-form-hook/form";
 import { classNames } from "../utils/common";
 import { OpsSelect } from "./select";
 import { useAtomValue } from "jotai/index";
 import { currentBranchAtom } from "../state/atoms/branches.atom";
+import { timeTravelDateAtom } from "../state/atoms/time.atom";
 
 export interface iTwoStepDropdownData {
   parent: string | number;
@@ -31,7 +31,7 @@ export const OpsSelect2Step = (props: Props) => {
 
   const { objectid } = useParams();
   const branch = useAtomValue(currentBranchAtom);
-  const date = useReactiveVar(dateVar);
+  const date = useAtomValue(timeTravelDateAtom);
 
   const [optionsRight, setOptionsRight] = useState<SelectOption[]>([]);
 

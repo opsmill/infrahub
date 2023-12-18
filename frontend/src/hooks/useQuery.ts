@@ -1,11 +1,11 @@
-import { OperationVariables, useQuery as useApolloQuery, useReactiveVar } from "@apollo/client";
-import { dateVar } from "../graphql/variables/dateVar";
+import { OperationVariables, useQuery as useApolloQuery } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
 import { currentBranchAtom } from "../state/atoms/branches.atom";
+import { timeTravelDateAtom } from "../state/atoms/time.atom";
 
 const useQuery = (QUERY: any, options?: OperationVariables) => {
   const branch = useAtomValue(currentBranchAtom);
-  const date = useReactiveVar(dateVar);
+  const date = useAtomValue(timeTravelDateAtom);
 
   return useApolloQuery(QUERY, {
     ...options,

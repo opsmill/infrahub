@@ -1,4 +1,4 @@
-import { gql, NetworkStatus, useReactiveVar } from "@apollo/client";
+import { gql, NetworkStatus } from "@apollo/client";
 import { PencilIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { formatISO } from "date-fns";
@@ -29,7 +29,6 @@ import { createObject } from "../../graphql/mutations/objects/createObject";
 import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
 import { getProposedChangesThreads } from "../../graphql/queries/proposed-changes/getProposedChangesThreads";
-import { dateVar } from "../../graphql/variables/dateVar";
 import useQuery from "../../hooks/useQuery";
 import { branchesState, currentBranchAtom } from "../../state/atoms/branches.atom";
 import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
@@ -42,6 +41,7 @@ import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 import { useAtomValue } from "jotai/index";
+import { timeTravelDateAtom } from "../../state/atoms/time.atom";
 
 type tConversations = {
   refetch?: Function;
@@ -103,7 +103,7 @@ export const Conversations = (props: tConversations) => {
   const [schemaList] = useAtom(schemaState);
   const [proposedChangesDetails] = useAtom(proposedChangedState);
   const branch = useAtomValue(currentBranchAtom);
-  const date = useReactiveVar(dateVar);
+  const date = useAtomValue(timeTravelDateAtom);
   const auth = useContext(AuthContext);
   const [isLoadingApprove, setIsLoadingApprove] = useState(false);
   const [isLoadingMerge, setIsLoadingMerge] = useState(false);

@@ -1,4 +1,4 @@
-import { gql, useReactiveVar } from "@apollo/client";
+import { gql } from "@apollo/client";
 import { PencilIcon } from "@heroicons/react/24/outline";
 import { formatISO } from "date-fns";
 import { useAtom } from "jotai";
@@ -24,7 +24,6 @@ import graphqlClient from "../../../graphql/graphqlClientApollo";
 import { createObject } from "../../../graphql/mutations/objects/createObject";
 import { deleteObject } from "../../../graphql/mutations/objects/deleteObject";
 import { getProposedChangesArtifactsThreads } from "../../../graphql/queries/proposed-changes/getProposedChangesArtifactsThreads";
-import { dateVar } from "../../../graphql/variables/dateVar";
 import useQuery from "../../../hooks/useQuery";
 import { schemaState } from "../../../state/atoms/schema.atom";
 import { fetchStream } from "../../../utils/fetch";
@@ -33,6 +32,7 @@ import ErrorScreen from "../../error-screen/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
 import { useAtomValue } from "jotai/index";
 import { currentBranchAtom } from "../../../state/atoms/branches.atom";
+import { timeTravelDateAtom } from "../../../state/atoms/time.atom";
 
 const fakeIndex = () => {
   return sha(Math.random() * 100000).slice(0, 9);
@@ -102,7 +102,7 @@ export const ArtifactContentDiff = (props: any) => {
 
   const { proposedchange } = useParams();
   const branch = useAtomValue(currentBranchAtom);
-  const date = useReactiveVar(dateVar);
+  const date = useAtomValue(timeTravelDateAtom);
   const auth = useContext(AuthContext);
   const [schemaList] = useAtom(schemaState);
   const [isLoading, setIsLoading] = useState(false);

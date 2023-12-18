@@ -1,4 +1,4 @@
-import { gql, useReactiveVar } from "@apollo/client";
+import { gql } from "@apollo/client";
 import { formatISO, isBefore, parseISO } from "date-fns";
 import * as R from "ramda";
 import { useContext, useState } from "react";
@@ -11,7 +11,6 @@ import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { createObject } from "../../graphql/mutations/objects/createObject";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
-import { dateVar } from "../../graphql/variables/dateVar";
 import { classNames } from "../../utils/common";
 import { getThreadTitle } from "../../utils/diff";
 import { stringifyWithoutQuotes } from "../../utils/string";
@@ -24,6 +23,7 @@ import { AddComment } from "./add-comment";
 import { Comment } from "./comment";
 import { useAtomValue } from "jotai/index";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
+import { timeTravelDateAtom } from "../../state/atoms/time.atom";
 
 type tThread = {
   thread: any;
@@ -44,7 +44,7 @@ export const Thread = (props: tThread) => {
   const auth = useContext(AuthContext);
 
   const branch = useAtomValue(currentBranchAtom);
-  const date = useReactiveVar(dateVar);
+  const date = useAtomValue(timeTravelDateAtom);
   const [isLoading, setIsLoading] = useState(false);
   const [displayAddComment, setDisplayAddComment] = useState(false);
   const [confirmModal, setConfirmModal] = useState(false);
