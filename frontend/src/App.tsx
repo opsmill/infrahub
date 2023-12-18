@@ -16,13 +16,14 @@ import { Branch } from "./generated/graphql";
 import Layout from "./screens/layout/layout";
 import { branchesState, currentBranchAtom } from "./state/atoms/branches.atom";
 import {
-  currentSchemaHashAtom,
+  schemaSummaryAtom,
   genericsState,
   iGenericSchema,
   iNamespace,
   iNodeSchema,
   namespacesState,
   schemaState,
+  SchemaSummary,
 } from "./state/atoms/schema.atom";
 import { schemaKindNameState } from "./state/atoms/schemaKindName.atom";
 import "./styles/index.css";
@@ -38,6 +39,7 @@ function App() {
   const [currentSchemaHash, setCurrentSchemaHash] = useAtom(currentSchemaHashAtom);
   const [, setSchema] = useAtom(schemaState);
   const [, setSchemaKindNameState] = useAtom(schemaKindNameState);
+  const [currentSchemaHash, setCurrentSchemaHash] = useAtom(schemaSummaryAtom);
   const [, setGenerics] = useAtom(genericsState);
   const [, setNamespaces] = useAtom(namespacesState);
   const [branchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
@@ -54,7 +56,6 @@ function App() {
         namespaces: iNamespace[];
       } = await fetchUrl(CONFIG.SCHEMA_URL(branchInQueryString));
 
-      const hash = schemaData.main;
       const schema = sortByName(schemaData.nodes || []);
       const generics = sortByName(schemaData.generics || []);
       const namespaces = sortByName(schemaData.namespaces || []);
@@ -70,7 +71,6 @@ function App() {
       const schemaKindNameMap = R.fromPairs(schemaKindNameTuples);
 
       setGenerics(generics);
-      setCurrentSchemaHash(hash);
       setSchema(schema);
       setSchemaKindNameState(schemaKindNameMap);
       setNamespaces(namespaces);
@@ -83,13 +83,43 @@ function App() {
     }
   };
 
-  const updateSchemaStateIfNeeded = async () => {
+  const fetchAndSetSchemaSummary = async () => {
     try {
-      const schemaSummary = await fetchUrl(CONFIG.SCHEMA_SUMMARY_URL(branchInQueryString));
-      const isSameSchema = currentSchemaHash === schemaSummary.main;
+      const schemaSummary: SchemaSummary = await fetchUrl(
+        CONFIG.SCHEMA_SUMMARY_URL(branchInQueryString)
+      );
+
+      setCurrentSchemaHash(schemaSummary);
+    } catch (error) {
+      toast(
+        <Alert
+          type={ALERT_TYPES.ERROR}
+          message="Something went wrong when fetching the schema summary"
+        />
+      );
+
+      console.error("Error while fetching the schema summary: ", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchAndSetSchema();
+    fetchAndSetSchemaSummary();
+  }, []);
+
+  const updateSchemaStateIfNeeded = async () => {
+    if (!currentSchemaHash) return;
+
+    try {
+      const newSchemaSummary: SchemaSummary = await fetchUrl(
+        CONFIG.SCHEMA_SUMMARY_URL(branchInQueryString)
+      );
+      const isSameSchema = currentSchemaHash?.main === newSchemaSummary.main;
 
       // Updating schema only if it's different from the current one
       if (isSameSchema) return;
+
+      setCurrentSchemaHash(newSchemaSummary);
       await fetchAndSetSchema();
     } catch (error) {
       console.error("Error while updating the schema state:", error);
