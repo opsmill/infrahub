@@ -27,11 +27,7 @@ query($device: String!) {
                 value
               }
               role {
-                node {
-                  name {
-                    value
-                  }
-                }
+                  value
               }
               ... on InfraInterfaceL3 {
                 ip_addresses {
