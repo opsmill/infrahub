@@ -37,6 +37,8 @@ from infrahub.core.schema import (
 from infrahub.exceptions import SchemaNotFound
 from infrahub.graphql import generate_graphql_schema
 from infrahub.log import get_logger
+from infrahub.utils import format_label
+from infrahub.visuals import select_color
 
 log = get_logger()
 
@@ -256,6 +258,7 @@ class SchemaBranch:
         self.process_filters()
         self.generate_weight()
         self.process_labels()
+        self.process_dropdowns()
 
     def generate_identifiers(self) -> None:
         """Generate the identifier for all relationships if it's not already present."""
@@ -375,6 +378,29 @@ class SchemaBranch:
                         f"{node.kind}: Relationship {rel.name!r} is referencing an invalid peer {rel.peer!r}"
                     ) from None
 
+    def process_dropdowns(self) -> None:
+        for name in list(self.nodes.keys()) + list(self.generics.keys()):
+            node = self.get(name=name)
+
+            changed = False
+
+            attributes = [attr for attr in node.attributes if attr.kind == "Dropdown"]
+            for attr in attributes:
+                if not attr.choices:
+                    continue
+                choices = attr.choices or []
+                defined_colors = [choice.color for choice in choices if choice.color]
+                for choice in choices:
+                    if not choice.color:
+                        choice.color = select_color(defined_colors)
+                        changed = True
+                    if not choice.label:
+                        choice.label = format_label(choice.name)
+                        changed = True
+
+            if changed:
+                self.set(name=name, schema=node)
+
     def process_labels(self) -> None:
         for name in list(self.nodes.keys()) + list(self.generics.keys()):
             node = self.get(name=name)
@@ -382,17 +408,17 @@ class SchemaBranch:
             changed = False
 
             if not node.label:
-                node.label = " ".join([word.title() for word in node.name.split("_")])
+                node.label = format_label(node.name)
                 changed = True
 
             for attr in node.attributes:
                 if not attr.label:
-                    attr.label = " ".join([word.title() for word in attr.name.split("_")])
+                    attr.label = format_label(attr.name)
                     changed = True
 
             for rel in node.relationships:
                 if not rel.label:
-                    rel.label = " ".join([word.title() for word in rel.name.split("_")])
+                    rel.label = format_label(rel.name)
                     changed = True
 
             if changed:

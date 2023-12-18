@@ -9,9 +9,8 @@ import { AuthContext } from "../decorators/withAuth";
 import { Branch } from "../generated/graphql";
 import graphqlClient from "../graphql/graphqlClientApollo";
 import { createBranch } from "../graphql/mutations/branches/createBranch";
-import { branchVar } from "../graphql/variables/branchVar";
 import { dateVar } from "../graphql/variables/dateVar";
-import { branchesState } from "../state/atoms/branches.atom";
+import { branchesState, currentBranchAtom } from "../state/atoms/branches.atom";
 import { classNames, objectToString } from "../utils/common";
 import { BUTTON_TYPES, Button } from "./button";
 import { Input } from "./input";
@@ -19,11 +18,12 @@ import { POPOVER_SIZE, PopOver } from "./popover";
 import { Select } from "./select";
 import { SelectButton } from "./select-button";
 import { Switch } from "./switch";
+import { useAtomValue } from "jotai/index";
 
 export default function BranchSelector() {
   const [branches] = useAtom(branchesState);
   const [, setBranchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
-  const branch = useReactiveVar(branchVar);
+  const branch = useAtomValue(currentBranchAtom);
   const date = useReactiveVar(dateVar);
   const auth = useContext(AuthContext);
 

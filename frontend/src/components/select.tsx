@@ -1,4 +1,3 @@
-import { useReactiveVar } from "@apollo/client";
 import { Combobox } from "@headlessui/react";
 import { CheckIcon } from "@heroicons/react/20/solid";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
@@ -6,7 +5,6 @@ import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { useState } from "react";
 import { DEFAULT_BRANCH_NAME } from "../config/constants";
-import { branchVar } from "../graphql/variables/branchVar";
 import { FormFieldError } from "../screens/edit-form-hook/form";
 import ObjectItemCreate from "../screens/object-item-create/object-item-create-paginated";
 import { schemaState } from "../state/atoms/schema.atom";
@@ -15,6 +13,8 @@ import { classNames, getTextColor } from "../utils/common";
 import { Input } from "./input";
 import { MultipleInput } from "./multiple-input";
 import SlideOver from "./slide-over";
+import { useAtomValue } from "jotai/index";
+import { currentBranchAtom } from "../state/atoms/branches.atom";
 
 export type SelectOption = {
   id: string | number;
@@ -57,7 +57,7 @@ export const Select = (props: SelectProps) => {
 
   const [schemaList] = useAtom(schemaState);
   const [schemaKindName] = useAtom(schemaKindNameState);
-  const branch = useReactiveVar(branchVar);
+  const branch = useAtomValue(currentBranchAtom);
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [localOptions, setLocalOptions] = useState(options);

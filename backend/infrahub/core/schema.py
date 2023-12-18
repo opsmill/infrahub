@@ -32,7 +32,6 @@ from infrahub.core.constants import (
 from infrahub.core.query import QueryNode, QueryRel, QueryRelDirection
 from infrahub.core.relationship import Relationship
 from infrahub.types import ATTRIBUTE_TYPES
-from infrahub.visuals import select_color
 
 if TYPE_CHECKING:
     from typing_extensions import Self
@@ -327,24 +326,6 @@ class AttributeSchema(BaseSchemaModel):
     )
 
     _sort_by: List[str] = ["name"]
-
-    @validator("choices")
-    def assign_colors(
-        cls,
-        choices: Optional[List[DropdownChoice]] = None,
-    ) -> Optional[List[DropdownChoice]]:
-        if not choices:
-            return None
-        defined_colors = [choice.color for choice in choices if choice.color]
-        assigned_choices: List[DropdownChoice] = []
-        for choice in choices:
-            if choice.color:
-                assigned_choices.append(choice)
-            else:
-                choice.color = select_color(defined_colors)
-                assigned_choices.append(choice)
-
-        return assigned_choices
 
     @validator("kind")
     def kind_options(

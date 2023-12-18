@@ -4,9 +4,9 @@ import os
 from typing import Any, Dict, List, Optional
 
 import httpx
-import infrahub.config as config
 import pytest
 from fastapi.testclient import TestClient
+from infrahub import config
 from infrahub.components import ComponentType
 from infrahub.core.initialization import first_time_initialization, initialization
 from infrahub.core.node import Node
@@ -81,6 +81,8 @@ def event_loop():
 def execute_before_any_test(worker_id, tmpdir_factory):
     config.load_and_exit()
 
+    config.SETTINGS.storage.driver = config.StorageDriver.FileSystemStorage
+
     if TEST_IN_DOCKER:
         try:
             db_id = int(worker_id[2]) + 1
@@ -88,10 +90,10 @@ def execute_before_any_test(worker_id, tmpdir_factory):
             db_id = 1
         config.SETTINGS.cache.address = f"{BUILD_NAME}-cache-1"
         config.SETTINGS.database.address = f"{BUILD_NAME}-database-{db_id}"
-        config.SETTINGS.storage.settings = {"directory": "/opt/infrahub/storage"}
+        config.SETTINGS.storage.local = config.FileSystemStorageSettings(path="/opt/infrahub/storage")
     else:
         storage_dir = tmpdir_factory.mktemp("storage")
-        config.SETTINGS.storage.settings = {"directory": str(storage_dir)}
+        config.SETTINGS.storage.local = config.FileSystemStorageSettings(path=str(storage_dir))
 
     config.SETTINGS.broker.enable = False
     config.SETTINGS.cache.enable = True
