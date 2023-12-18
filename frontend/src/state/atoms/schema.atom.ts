@@ -35,7 +35,11 @@ export type SchemaSummary = {
 };
 export const schemaSummaryAtom = atom<SchemaSummary | null>(null);
 
-export const nodesFamily = atomFamily<iNodeSchema, Atom<iNodeSchema>>(
+export const schemaFamily = atomFamily<
+  iNodeSchema | iGenericSchema | Pick<iNodeSchema, "kind">,
+  Atom<iNodeSchema | iGenericSchema>
+>(
+  // @ts-expect-error
   (s: iNodeSchema) => atom(s),
   (a, b) => a.kind === b.kind
 );

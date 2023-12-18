@@ -23,7 +23,7 @@ import usePagination from "../../hooks/usePagination";
 import useQuery from "../../hooks/useQuery";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { iComboBoxFilter } from "../../state/atoms/filters.atom";
-import { genericsState, nodesFamily } from "../../state/atoms/schema.atom";
+import { schemaFamily } from "../../state/atoms/schema.atom";
 import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
@@ -52,7 +52,6 @@ export default function ObjectItems(props: any) {
 
   const auth = useContext(AuthContext);
 
-  const [genericList] = useAtom(genericsState);
   const branch = useAtomValue(currentBranchAtom);
   const date = useReactiveVar(dateVar);
   const [filters] = useFilters();
@@ -63,14 +62,12 @@ export default function ObjectItems(props: any) {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const navigate = useNavigate();
 
-  const schema = useAtomValue(nodesFamily({ kind: objectnameFromParams }));
-  const generic = genericList.find((s) => s.kind === objectname);
+  const schemaData = useAtomValue(schemaFamily({ kind: objectnameFromParams }));
 
-  const schemaData = schema || generic;
-
-  if (genericList?.length && !schemaData) {
+  if (!schemaData.kind) {
     // If there is no schema nor generics, go to home page
     navigate("/");
+    return null;
   }
 
   if (schemaData && MENU_EXCLUDELIST.includes(schemaData.kind) && !preventBlock) {

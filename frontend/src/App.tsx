@@ -24,7 +24,7 @@ import {
   namespacesState,
   schemaState,
   SchemaSummary,
-  nodesFamily,
+  schemaFamily,
 } from "./state/atoms/schema.atom";
 import { schemaKindNameState } from "./state/atoms/schemaKindName.atom";
 import "./styles/index.css";
@@ -64,7 +64,11 @@ function App() {
       schema.forEach((s) => {
         s.attributes = sortByOrderWeight(s.attributes || []);
         s.relationships = sortByOrderWeight(s.relationships || []);
-        nodesFamily(s);
+        schemaFamily(s);
+      });
+
+      generics.forEach((g) => {
+        schemaFamily(g);
       });
 
       const schemaNames = schema.map((s) => s.name);
