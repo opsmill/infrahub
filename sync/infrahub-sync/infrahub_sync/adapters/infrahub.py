@@ -11,6 +11,7 @@ from infrahub_sdk import (
     NodeStoreSync,
 )
 from infrahub_sdk.utils import compare_lists
+
 from infrahub_sync import DiffSyncMixin, DiffSyncModelMixin, SyncAdapter, SyncConfig
 from infrahub_sync.generator import has_field
 

@@ -9,11 +9,11 @@ from typing import List, Optional
 import typer
 import yaml
 from infrahub_sdk import InfrahubClientSync
-from potenda import Potenda
 from rich.console import Console
 
 from infrahub_sync import SyncAdapter, SyncConfig, SyncInstance
 from infrahub_sync.generator import render_template
+from potenda import Potenda
 
 app = typer.Typer()
 console = Console()
