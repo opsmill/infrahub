@@ -197,22 +197,22 @@ export default function ObjectItems(props: any) {
             <div className="min-w-full pt-2 align-middle">
               <div className="shadow-sm ring-1 ring-custom-black ring-opacity-5 overflow-x-auto">
                 <table className="min-w-full border-separate" style={{ borderSpacing: 0 }}>
-                  <thead className="bg-gray-50">
+                  <thead className="bg-gray-50 text-left">
                     <tr>
                       {columns?.map((attribute) => (
                         <th
                           key={attribute.name}
                           scope="col"
-                          className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 p-2 text-left text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter">
+                          className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 p-2 text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter">
                           {attribute.label}
                         </th>
                       ))}
                       <th
                         scope="col"
-                        className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 p-2 text-left text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter"></th>
+                        className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 p-2 text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter"></th>
                     </tr>
                   </thead>
-                  <tbody className="bg-custom-white">
+                  <tbody className="bg-custom-white text-left">
                     {rows?.map((row: any, index: number) => (
                       <tr
                         onClick={() =>
@@ -225,7 +225,7 @@ export default function ObjectItems(props: any) {
                             key={row.id + "-" + attribute.name}
                             className={classNames(
                               index !== rows.length - 1 ? "border-b border-gray-200" : "",
-                              "whitespace-wrap p-1 text-xs text-gray-900"
+                              "whitespace-wrap px-2 py-1 text-xs text-gray-900"
                             )}>
                             {getObjectItemDisplayValue(row, attribute)}
                           </td>
