@@ -1,7 +1,7 @@
 import { ApolloProvider } from "@apollo/client";
 import { useAtom, useSetAtom } from "jotai";
 import queryString from "query-string";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { Slide, ToastContainer, toast } from "react-toastify";
@@ -72,7 +72,7 @@ export const Root = () => {
   /**
    * Set config in state atom
    */
-  const setConfigInState = useCallback(async () => {
+  const setConfigInState = async () => {
     try {
       setIsLoadingConfig(true);
       const config: Config = await fetchConfig();
@@ -91,7 +91,7 @@ export const Root = () => {
       );
       console.error("Error while fetching the config: ", error);
     }
-  }, []);
+  };
 
   /**
    * Fetch branches from the backend, sort, and return them
@@ -119,7 +119,7 @@ export const Root = () => {
   /**
    * Set branches in state atom
    */
-  const setBranchesInState = useCallback(async () => {
+  const setBranchesInState = async () => {
     const branches = await fetchBranches();
     setBranches(branches);
 
@@ -130,7 +130,7 @@ export const Root = () => {
     const selectedBranch = branches.find(filter);
     setCurrentBranch(selectedBranch ?? null);
     setIsLoadingBranches(false);
-  }, []);
+  };
 
   useEffect(() => {
     setConfigInState();
@@ -148,8 +148,6 @@ export const Root = () => {
 
   return <AppInitializer />;
 };
-
-const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
 
 const AppInitializer = () => {
   const setGenerics = useSetAtom(genericsState);
@@ -171,9 +169,10 @@ const AppInitializer = () => {
         namespaces: iNamespace[];
       } = await fetchUrl(CONFIG.SCHEMA_URL(branchInQueryString));
 
-      const schema = sortByName(schemaData.nodes || []);
-      const generics = sortByName(schemaData.generics || []);
-      const namespaces = sortByName(schemaData.namespaces || []);
+      const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
+      const schema: iNodeSchema[] = sortByName(schemaData.nodes || []);
+      const generics: iGenericSchema[] = sortByName(schemaData.generics || []);
+      const namespaces: iNamespace[] = sortByName(schemaData.namespaces || []);
 
       schema.forEach((s) => {
         s.attributes = sortByOrderWeight(s.attributes || []);
@@ -185,10 +184,13 @@ const AppInitializer = () => {
         schemaFamily(g);
       });
 
-      const schemaNames = schema.map((s) => s.name);
-      const schemaKinds = schema.map((s) => s.kind);
-      const schemaKindNameTuples = R.zip(schemaKinds, schemaNames);
-      const schemaKindNameMap = R.fromPairs(schemaKindNameTuples);
+      const schemaKindNameMap = schema.reduce(
+        (kindNameMap: Record<string, string>, { name, kind }) => ({
+          ...kindNameMap,
+          [kind as string]: name,
+        }),
+        {}
+      );
 
       setGenerics(generics);
       setSchema(schema);

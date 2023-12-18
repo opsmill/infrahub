@@ -1,6 +1,6 @@
 import { addCollection } from "@iconify-icon/react";
 import mdiIcons from "@iconify-json/mdi/icons.json";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { useEffect } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import "react-toastify/dist/ReactToastify.css";
@@ -24,16 +24,16 @@ addCollection(mdiIcons);
 
 function App() {
   const branches = useAtomValue(branchesState);
-  const setCurrentBranch = useSetAtom(currentBranchAtom);
+  const [currentBranch, setCurrentBranch] = useAtom(currentBranchAtom);
   const [currentSchemaHash, setCurrentSchemaHash] = useAtom(schemaSummaryAtom);
   const [branchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
 
-  const updateSchemaStateIfNeeded = async () => {
+  const updateSchemaStateIfNeeded = async (branch: Branch | null) => {
     if (!currentSchemaHash) return; // Wait for initial load
 
     try {
       const newSchemaSummary: SchemaSummary = await fetchUrl(
-        CONFIG.SCHEMA_SUMMARY_URL(branchInQueryString)
+        CONFIG.SCHEMA_SUMMARY_URL(branch?.name)
       );
       const isSameSchema = currentSchemaHash?.main === newSchemaSummary.main;
 
@@ -55,9 +55,8 @@ function App() {
         []
       );
 
-      console.log([...nodesWithDifferentHash, ...genericsWithDifferentHash]);
       [...nodesWithDifferentHash, ...genericsWithDifferentHash].forEach((kind) => {
-        fetchUrl(CONFIG.SCHEMA_KIND_URL(kind, branchInQueryString)).then((node: iNodeSchema) => {
+        fetchUrl(CONFIG.SCHEMA_KIND_URL(kind, branch?.name)).then((node: iNodeSchema) => {
           schemaFamily(node);
         });
       });
@@ -69,15 +68,16 @@ function App() {
   };
 
   useEffect(() => {
-    updateSchemaStateIfNeeded();
-  }, [branchInQueryString]);
-
-  useEffect(() => {
     const filter = branchInQueryString
       ? (b: Branch) => branchInQueryString === b.name
       : (b: Branch) => b.is_default;
-    const selectedBranch = branches.find(filter);
-    setCurrentBranch(selectedBranch ?? null);
+
+    const selectedBranch = branches.find(filter) ?? null;
+
+    if (selectedBranch?.name === currentBranch?.name) return;
+    setCurrentBranch(selectedBranch);
+
+    updateSchemaStateIfNeeded(selectedBranch);
   }, [branches.length, branchInQueryString]);
 
   return (
