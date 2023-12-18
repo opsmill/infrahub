@@ -583,23 +583,3 @@ nodes:
         name: tags
         optional: true
         peer: BuiltinTag
-
-  # - name: Criticality
-  #   namespace: Builtin
-  #   label: Criticality
-  #   description: Level of criticality expressed from 1 to 10.
-  #   default_filter: name__value
-  #   display_labels: [name__value]
-  #   order_by: [name__value]
-  #   icon: mdi:alert-octagon-outline
-  #   include_in_menu: true
-  #   attributes:
-  #     - kind: Text
-  #       name: name
-  #       unique: true
-  #     - enum: [ 0,1,2,3,4,5,6,7,8,9]
-  #       kind: Number
-  #       name: level
-  #     - kind: Text
-  #       name: description
-  #       optional: true
