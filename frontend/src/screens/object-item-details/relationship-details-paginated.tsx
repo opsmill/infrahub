@@ -20,7 +20,6 @@ import SlideOver from "../../components/slide-over";
 import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
-import { branchVar } from "../../graphql/variables/branchVar";
 import { dateVar } from "../../graphql/variables/dateVar";
 // import { ReactComponent as UnlinkIcon } from "../../images/icons/unlink.svg";
 import { Icon } from "@iconify-icon/react";
@@ -41,6 +40,8 @@ import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
+import { useAtomValue } from "jotai/index";
+import { currentBranchAtom } from "../../state/atoms/branches.atom";
 
 type iRelationDetailsProps = {
   parentNode: any;
@@ -62,7 +63,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
 
   const [schemaList] = useAtom(schemaState);
   const [generics] = useAtom(genericsState);
-  const branch = useReactiveVar(branchVar);
+  const branch = useAtomValue(currentBranchAtom);
   const date = useReactiveVar(dateVar);
   const [showAddDrawer, setShowAddDrawer] = useState(false);
   const [isLoading, setIsLoading] = useState(false);

@@ -1,4 +1,4 @@
-import { gql, useReactiveVar } from "@apollo/client";
+import { gql } from "@apollo/client";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import {
   LockClosedIcon,
@@ -23,7 +23,6 @@ import {
 import { QSP } from "../../config/qsp";
 import { AuthContext } from "../../decorators/withAuth";
 import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
-import { branchVar } from "../../graphql/variables/branchVar";
 import useQuery from "../../hooks/useQuery";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
@@ -47,6 +46,8 @@ import ObjectItemEditComponent from "../object-item-edit/object-item-edit-pagina
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 import RelationshipDetails from "./relationship-details-paginated";
 import RelationshipsDetails from "./relationships-details-paginated";
+import { useAtomValue } from "jotai/index";
+import { currentBranchAtom } from "../../state/atoms/branches.atom";
 
 export default function ObjectItemDetails(props: any) {
   const { objectname: objectnameFromProps, objectid: objectidFromProps, hideHeaders } = props;
@@ -63,7 +64,7 @@ export default function ObjectItemDetails(props: any) {
   const auth = useContext(AuthContext);
   const [showMetaEditModal, setShowMetaEditModal] = useAtom(showMetaEditState);
   const [metaEditFieldDetails, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
-  const branch = useReactiveVar(branchVar);
+  const branch = useAtomValue(currentBranchAtom);
   const [schemaList] = useAtom(schemaState);
   const [schemaKindName] = useAtom(schemaKindNameState);
   const [genericList] = useAtom(genericsState);

@@ -11,7 +11,7 @@ from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema_manager import SchemaManager
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import DatabaseError
-from infrahub.storage.local import InfrahubLocalStorage
+from infrahub.storage import InfrahubObjectStorage
 
 LOGGER = logging.getLogger("infrahub")
 
@@ -42,8 +42,7 @@ async def initialization(db: InfrahubDatabase):
     # ---------------------------------------------------
     # Initialize the Storage Driver
     # ---------------------------------------------------
-    if config.SETTINGS.storage.driver == config.StorageDriver.LOCAL:
-        registry.storage = await InfrahubLocalStorage.init(settings=config.SETTINGS.storage.settings)
+    registry.storage = await InfrahubObjectStorage.init(settings=config.SETTINGS.storage)
 
     # ---------------------------------------------------
     # Load all existing branches into the registry

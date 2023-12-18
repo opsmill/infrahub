@@ -14,16 +14,17 @@ import { PROPOSED_CHANGES_OBJECT } from "../../config/constants";
 import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
-import { branchVar } from "../../graphql/variables/branchVar";
 import { dateVar } from "../../graphql/variables/dateVar";
 import { constructPath } from "../../utils/fetch";
 import { getProposedChangesStateBadgeType } from "../../utils/proposed-changes";
 import { stringifyWithoutQuotes } from "../../utils/string";
+import { useAtomValue } from "jotai/index";
+import { currentBranchAtom } from "../../state/atoms/branches.atom";
 
 export const ProposedChange = (props: any) => {
   const { row, refetch } = props;
 
-  const branch = useReactiveVar(branchVar);
+  const branch = useAtomValue(currentBranchAtom);
   const date = useReactiveVar(dateVar);
   const auth = useContext(AuthContext);
   const [isLoading, setIsLoading] = useState(false);

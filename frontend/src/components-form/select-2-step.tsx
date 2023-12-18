@@ -4,11 +4,12 @@ import { useParams } from "react-router-dom";
 import { SelectOption } from "../components/select";
 import graphqlClient from "../graphql/graphqlClientApollo";
 import { getDropdownOptionsForRelatedPeersPaginated } from "../graphql/queries/objects/dropdownOptionsForRelatedPeers";
-import { branchVar } from "../graphql/variables/branchVar";
 import { dateVar } from "../graphql/variables/dateVar";
 import { FormFieldError } from "../screens/edit-form-hook/form";
 import { classNames } from "../utils/common";
 import { OpsSelect } from "./select";
+import { useAtomValue } from "jotai/index";
+import { currentBranchAtom } from "../state/atoms/branches.atom";
 
 export interface iTwoStepDropdownData {
   parent: string | number;
@@ -29,7 +30,7 @@ export const OpsSelect2Step = (props: Props) => {
   const { label, options, value, error, onChange, isProtected, isOptional } = props;
 
   const { objectid } = useParams();
-  const branch = useReactiveVar(branchVar);
+  const branch = useAtomValue(currentBranchAtom);
   const date = useReactiveVar(dateVar);
 
   const [optionsRight, setOptionsRight] = useState<SelectOption[]>([]);

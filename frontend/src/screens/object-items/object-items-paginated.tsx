@@ -16,7 +16,6 @@ import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
 import { getObjectItemsPaginated } from "../../graphql/queries/objects/getObjectItems";
-import { branchVar } from "../../graphql/variables/branchVar";
 import { dateVar } from "../../graphql/variables/dateVar";
 import useFilters from "../../hooks/useFilters";
 import usePagination from "../../hooks/usePagination";
@@ -37,6 +36,8 @@ import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
+import { useAtomValue } from "jotai/index";
+import { currentBranchAtom } from "../../state/atoms/branches.atom";
 
 export default function ObjectItems(props: any) {
   const { objectname: objectnameFromParams } = useParams();
@@ -53,7 +54,7 @@ export default function ObjectItems(props: any) {
 
   const [schemaList] = useAtom(schemaState);
   const [genericList] = useAtom(genericsState);
-  const branch = useReactiveVar(branchVar);
+  const branch = useAtomValue(currentBranchAtom);
   const date = useReactiveVar(dateVar);
   const [filters] = useFilters();
   const [pagination] = usePagination();

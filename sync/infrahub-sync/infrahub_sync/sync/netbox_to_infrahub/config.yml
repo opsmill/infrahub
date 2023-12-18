@@ -152,7 +152,8 @@ schema_mapping:
       - name: name
         mapping: name
       - name: location
-        mapping: site.slug
+        mapping: site
+        reference: BuiltinLocation
       - name: height
         mapping: u_height
       - name: serial_number
@@ -162,7 +163,8 @@ schema_mapping:
       - name: facility_id
         mapping: facility_id
       - name: role
-        mapping: role.name
+        mapping: role
+        reference: BuiltinRole
       - name: tags
         mapping: tags
         reference: BuiltinTag
@@ -186,6 +188,10 @@ schema_mapping:
         mapping: model
       - name: part_number
         mapping: part_number
+      - name: full_depth
+        mapping: is_full_depth
+      - name: height
+        mapping: u_height
       - name: tags
         mapping: tags
         reference: BuiltinTag
@@ -195,7 +201,7 @@ schema_mapping:
   # -> The netbox constraint is `dcim_device_unique_name_site_tenant`
   # Reusing device_name + site + Organization as identifiers
   - name: InfraDevice
-    identifiers: ["name", "site", "organization"]
+    identifiers: ["name", "site", "rack", "organization"]
     mapping: dcim.devices
     fields:
       - name: name
@@ -217,7 +223,8 @@ schema_mapping:
       # - name: status
       #   mapping: status.value
       - name: site
-        mapping: site.slug
+        mapping: site
+        reference: BuiltinLocation
       - name: rack
         mapping: rack
         reference: InfraRack
@@ -245,7 +252,8 @@ schema_mapping:
       - name: vendor_id
         mapping: service_id
       - name: provider
-        mapping: provider.slug
+        mapping: provider
+        reference: CoreOrganization
       - name: description
         mapping: description
       # - name: status
@@ -316,10 +324,10 @@ schema_mapping:
         reference: CoreOrganization
       - name: vrf_rd
         mapping: rd
-      - name: importRT
+      - name: import_rt
         mapping: import_targets
         reference: InfraRouteTarget
-      - name: exportRT
+      - name: export_rt
         mapping: export_targets
         reference: InfraRouteTarget
   - name: CoreStandardGroup
@@ -344,7 +352,8 @@ schema_mapping:
       - name: description
         mapping: description
       - name: site
-        mapping: site.slug
+        mapping: site
+        reference: BuiltinLocation
       - name: vlan_group
         mapping: group
         reference: CoreStandardGroup
@@ -360,17 +369,18 @@ schema_mapping:
         mapping: tenant
         reference: CoreOrganization
       - name: role
-        mapping: role.name
+        mapping: role
+        reference: BuiltinRole
       - name: vrf
-        mapping: vrf.name
+        mapping: vrf
+        reference: InfraVRF
       - name: site
-        mapping: site.slug
+        mapping: site
+        reference: BuiltinLocation
       # - name: status
       #   mapping: status.value
       # - name: vlan
       #   mapping: vlan.name
-      # - name: site
-      #   mapping: site.slug
       # - name: location
       #   mapping: location.slug
   - name: InfraIPAddress
@@ -390,4 +400,5 @@ schema_mapping:
       # - name: status
       #   mapping: status.value
       - name: vrf
-        mapping: vrf.name
+        mapping: vrf
+        reference: InfraVRF

@@ -14,6 +14,7 @@ def patch_rpc_client():
     infrahub.message_bus.rpc.InfrahubRpcClient = InfrahubRpcClientTesting
 
 
+@pytest.mark.xfail(reason="FIXME: #1627, working in standalone but failing when it's part of the testsuite")
 async def test_artifact_definition_endpoint(
     db: InfrahubDatabase,
     admin_headers,
