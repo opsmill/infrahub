@@ -1,5 +1,5 @@
 import { ApolloProvider } from "@apollo/client";
-import { useAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import queryString from "query-string";
 import { useCallback, useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
@@ -15,19 +15,36 @@ import SentryClient from "./config/sentry";
 import graphqlClient from "./graphql/graphqlClientApollo";
 import GET_BRANCHES from "./graphql/queries/branches/getBranches";
 import reportWebVitals from "./reportWebVitals";
-import { branchesState } from "./state/atoms/branches.atom";
+import { branchesState, currentBranchAtom } from "./state/atoms/branches.atom";
 import { Config, configState } from "./state/atoms/config.atom";
 
 import LoadingScreen from "./screens/loading-screen/loading-screen";
 import "./styles/index.css";
-import { fetchUrl } from "./utils/fetch";
+import { fetchUrl, getCurrentQsp } from "./utils/fetch";
+import {
+  genericsState,
+  iGenericSchema,
+  iNamespace,
+  iNodeSchema,
+  namespacesState,
+  schemaFamily,
+  schemaState,
+  SchemaSummary,
+  schemaSummaryAtom,
+} from "./state/atoms/schema.atom";
+import { sortByOrderWeight } from "./utils/common";
+import * as R from "ramda";
+import { QSP } from "./config/qsp";
+import { schemaKindNameState } from "./state/atoms/schemaKindName.atom";
+import { Branch } from "./generated/graphql";
 
 const root = ReactDOM.createRoot(
   (document.getElementById("root") || document.createElement("div")) as HTMLElement
 );
 
 export const Root = () => {
-  const [, setBranches] = useAtom(branchesState);
+  const setBranches = useSetAtom(branchesState);
+  const setCurrentBranch = useSetAtom(currentBranchAtom);
   const [config, setConfig] = useAtom(configState);
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
   const [isLoadingBranches, setIsLoadingBranches] = useState(true);
@@ -105,6 +122,13 @@ export const Root = () => {
   const setBranchesInState = useCallback(async () => {
     const branches = await fetchBranches();
     setBranches(branches);
+
+    const branchInQueryString = getCurrentQsp().get(QSP.BRANCH);
+    const filter = branchInQueryString
+      ? (b: Branch) => branchInQueryString === b.name
+      : (b: Branch) => b.is_default;
+    const selectedBranch = branches.find(filter);
+    setCurrentBranch(selectedBranch ?? null);
     setIsLoadingBranches(false);
   }, []);
 
@@ -115,6 +139,97 @@ export const Root = () => {
 
   if (isLoadingConfig || isLoadingBranches) {
     // Loading screen while loading the token from the local storage
+    return (
+      <div className="w-screen h-screen flex ">
+        <LoadingScreen />;
+      </div>
+    );
+  }
+
+  return <AppInitializer />;
+};
+
+const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
+
+const AppInitializer = () => {
+  const setGenerics = useSetAtom(genericsState);
+  const setNamespaces = useSetAtom(namespacesState);
+  const setSchema = useSetAtom(schemaState);
+  const setSchemaKindNameState = useSetAtom(schemaKindNameState);
+  const setCurrentSchemaHash = useSetAtom(schemaSummaryAtom);
+  const [isSchemaLoading, setSchemaLoading] = useState(true);
+  const [isSchemaSummaryLoading, setSchemaSummaryLoading] = useState(true);
+
+  const branchInQueryString = getCurrentQsp().get(QSP.BRANCH);
+
+  const fetchAndSetSchema = async () => {
+    try {
+      const schemaData: {
+        main: string;
+        nodes: iNodeSchema[];
+        generics: iGenericSchema[];
+        namespaces: iNamespace[];
+      } = await fetchUrl(CONFIG.SCHEMA_URL(branchInQueryString));
+
+      const schema = sortByName(schemaData.nodes || []);
+      const generics = sortByName(schemaData.generics || []);
+      const namespaces = sortByName(schemaData.namespaces || []);
+
+      schema.forEach((s) => {
+        s.attributes = sortByOrderWeight(s.attributes || []);
+        s.relationships = sortByOrderWeight(s.relationships || []);
+        schemaFamily(s);
+      });
+
+      generics.forEach((g) => {
+        schemaFamily(g);
+      });
+
+      const schemaNames = schema.map((s) => s.name);
+      const schemaKinds = schema.map((s) => s.kind);
+      const schemaKindNameTuples = R.zip(schemaKinds, schemaNames);
+      const schemaKindNameMap = R.fromPairs(schemaKindNameTuples);
+
+      setGenerics(generics);
+      setSchema(schema);
+      setSchemaKindNameState(schemaKindNameMap);
+      setNamespaces(namespaces);
+      setSchemaLoading(false);
+    } catch (error) {
+      toast(
+        <Alert type={ALERT_TYPES.ERROR} message="Something went wrong when fetching the schema" />
+      );
+
+      console.error("Error while fetching the schema: ", error);
+    }
+  };
+
+  const fetchAndSetSchemaSummary = async () => {
+    try {
+      const schemaSummary: SchemaSummary = await fetchUrl(
+        CONFIG.SCHEMA_SUMMARY_URL(branchInQueryString)
+      );
+
+      setCurrentSchemaHash(schemaSummary);
+      setSchemaSummaryLoading(false);
+    } catch (error) {
+      toast(
+        <Alert
+          type={ALERT_TYPES.ERROR}
+          message="Something went wrong when fetching the schema summary"
+        />
+      );
+
+      console.error("Error while fetching the schema summary: ", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchAndSetSchema();
+    fetchAndSetSchemaSummary();
+  }, []);
+
+  if (isSchemaLoading || isSchemaSummaryLoading) {
     return (
       <div className="w-screen h-screen flex ">
         <LoadingScreen />;
