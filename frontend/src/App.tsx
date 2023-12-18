@@ -37,7 +37,6 @@ const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
 function App() {
   const branches = useAtomValue(branchesState);
   const setCurrentBranch = useSetAtom(currentBranchAtom);
-  const [currentSchemaHash, setCurrentSchemaHash] = useAtom(currentSchemaHashAtom);
   const [, setSchema] = useAtom(schemaState);
   const [, setSchemaKindNameState] = useAtom(schemaKindNameState);
   const [currentSchemaHash, setCurrentSchemaHash] = useAtom(schemaSummaryAtom);
