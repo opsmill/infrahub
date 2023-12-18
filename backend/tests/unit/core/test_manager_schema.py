@@ -722,11 +722,15 @@ async def test_schema_branch_validate_menu_placement():
     assert str(exc.value) == "TestSubObject: NoSuchObject is not a valid menu placement"
 
 
-async def test_schema_branch_load_schema_extension(db: InfrahubDatabase, default_branch, helper):
+async def test_schema_branch_load_schema_extension(
+    db: InfrahubDatabase, default_branch, organization_schema, builtin_schema, helper
+):
     schema = SchemaRoot(**core_models)
 
     schema_branch = SchemaBranch(cache={}, name="test")
     schema_branch.load_schema(schema=schema)
+    schema_branch.load_schema(schema=builtin_schema)
+    schema_branch.load_schema(schema=organization_schema)
     schema_branch.process()
 
     org = schema_branch.get(name="CoreOrganization")
@@ -1264,6 +1268,7 @@ async def test_load_schema_to_db_simple_01(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
+    register_builtin_models_schema: SchemaBranch,
     helper,
 ):
     schema = SchemaRoot(**helper.schema_file("infra_simple_01.json"))
@@ -1281,6 +1286,7 @@ async def test_load_schema_to_db_w_generics_01(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
+    register_builtin_models_schema: SchemaBranch,
     helper,
 ):
     schema = SchemaRoot(**helper.schema_file("infra_w_generics_01.json"))

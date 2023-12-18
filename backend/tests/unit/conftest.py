@@ -991,7 +991,9 @@ async def base_dataset_03(db: InfrahubDatabase, default_branch: Branch, person_t
 
 
 @pytest.fixture
-async def base_dataset_04(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema) -> dict:
+async def base_dataset_04(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, register_organization_schema
+) -> dict:
     time0 = pendulum.now(tz="UTC")
     params = {
         "main_branch": "main",
@@ -2207,6 +2209,142 @@ async def register_core_models_schema(default_branch: Branch, register_internal_
 
 
 @pytest.fixture
+async def organization_schema() -> SchemaRoot:
+    SCHEMA = {
+        "nodes": [
+            {
+                "name": "Organization",
+                "namespace": "Core",
+                "description": "An organization represent a legal entity, a company.",
+                "include_in_menu": True,
+                "label": "Organization",
+                "icon": "mdi:domain",
+                "default_filter": "name__value",
+                "order_by": ["name__value"],
+                "display_labels": ["label__value"],
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "label", "kind": "Text", "optional": True},
+                    {"name": "description", "kind": "Text", "optional": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "tags",
+                        "peer": "BuiltinTag",
+                        "kind": "Attribute",
+                        "optional": True,
+                        "cardinality": "many",
+                    },
+                ],
+            },
+        ]
+    }
+
+    return SchemaRoot(**SCHEMA)
+
+
+@pytest.fixture
+async def builtin_schema() -> SchemaRoot:
+    SCHEMA = {
+        "nodes": [
+            {
+                "name": "Status",
+                "namespace": "Builtin",
+                "description": "Represent the status of an object: active, maintenance",
+                "include_in_menu": True,
+                "icon": "mdi:list-status",
+                "label": "Status",
+                "default_filter": "name__value",
+                "order_by": ["name__value"],
+                "display_labels": ["label__value"],
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "label", "kind": "Text", "optional": True},
+                    {"name": "description", "kind": "Text", "optional": True},
+                ],
+            },
+            {
+                "name": "Role",
+                "namespace": "Builtin",
+                "description": "Represent the role of an object",
+                "include_in_menu": True,
+                "icon": "mdi:ballot",
+                "label": "Role",
+                "default_filter": "name__value",
+                "order_by": ["name__value"],
+                "display_labels": ["label__value"],
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "label", "kind": "Text", "optional": True},
+                    {"name": "description", "kind": "Text", "optional": True},
+                ],
+            },
+            {
+                "name": "Location",
+                "namespace": "Builtin",
+                "description": "A location represent a physical element: a building, a site, a city",
+                "include_in_menu": True,
+                "icon": "mdi:map-marker-radius-outline",
+                "label": "Location",
+                "default_filter": "name__value",
+                "order_by": ["name__value"],
+                "display_labels": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "description", "kind": "Text", "optional": True},
+                    {"name": "type", "kind": "Text"},
+                ],
+                "relationships": [
+                    {
+                        "name": "tags",
+                        "peer": "BuiltinTag",
+                        "kind": "Attribute",
+                        "optional": True,
+                        "cardinality": "many",
+                    },
+                ],
+            },
+            {
+                "name": "Criticality",
+                "namespace": "Builtin",
+                "description": "Level of criticality expressed from 1 to 10.",
+                "include_in_menu": True,
+                "icon": "mdi:alert-octagon-outline",
+                "label": "Criticality",
+                "default_filter": "name__value",
+                "order_by": ["name__value"],
+                "display_labels": ["name__value"],
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "level", "kind": "Number", "enum": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]},
+                    {"name": "description", "kind": "Text", "optional": True},
+                ],
+            },
+        ]
+    }
+
+    return SchemaRoot(**SCHEMA)
+
+
+@pytest.fixture
+async def register_builtin_models_schema(default_branch: Branch, builtin_schema: SchemaRoot) -> SchemaBranch:
+    schema_branch = registry.schema.register_schema(schema=builtin_schema, branch=default_branch.name)
+    default_branch.update_schema_hash()
+    return schema_branch
+
+
+@pytest.fixture
+async def register_organization_schema(default_branch: Branch, organization_schema: SchemaRoot) -> SchemaBranch:
+    schema_branch = registry.schema.register_schema(schema=organization_schema, branch=default_branch.name)
+    default_branch.update_schema_hash()
+    return schema_branch
+
+
+@pytest.fixture
 async def register_core_schema_db(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema) -> None:
     await registry.schema.load_schema_to_db(schema=register_core_models_schema, branch=default_branch, db=db)
     updated_schema = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
@@ -2249,6 +2387,8 @@ async def authentication_base(
     default_branch: Branch,
     create_test_admin,
     register_core_models_schema,
+    register_builtin_models_schema,
+    register_organization_schema,
 ):
     pass
 

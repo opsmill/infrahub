@@ -2,7 +2,7 @@
 label: Integration with Git
 # icon: file-directory
 tags: [tutorial]
-order: 500
+order: 600
 ---
 
 # Connect a Git repository to Infrahub

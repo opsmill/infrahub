@@ -8,7 +8,10 @@ import pytest
 from fastapi.testclient import TestClient
 from infrahub import config
 from infrahub.components import ComponentType
-from infrahub.core.initialization import first_time_initialization, initialization
+from infrahub.core.initialization import (
+    first_time_initialization,
+    initialization,
+)
 from infrahub.core.node import Node
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase, get_db
@@ -17,7 +20,7 @@ from infrahub.message_bus import InfrahubMessage
 from infrahub.message_bus.types import MessageTTL
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 
-from infrahub_sdk.schema import NodeSchema
+from infrahub_sdk.schema import NodeSchema, SchemaRoot
 from infrahub_sdk.types import HTTPMethod
 from infrahub_sdk.utils import str_to_bool
 
@@ -119,6 +122,120 @@ async def init_db_base(db: InfrahubDatabase):
     await delete_all_nodes(db=db)
     await first_time_initialization(db=db)
     await initialization(db=db)
+
+
+@pytest.fixture(scope="module")
+async def builtin_org_schema() -> SchemaRoot:
+    SCHEMA = {
+        "version": "1.0",
+        "nodes": [
+            {
+                "name": "Organization",
+                "namespace": "Core",
+                "description": "An organization represent a legal entity, a company.",
+                "include_in_menu": True,
+                "label": "Organization",
+                "icon": "mdi:domain",
+                "default_filter": "name__value",
+                "order_by": ["name__value"],
+                "display_labels": ["label__value"],
+                "branch": "aware",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "label", "kind": "Text", "optional": True},
+                    {"name": "description", "kind": "Text", "optional": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "tags",
+                        "peer": "BuiltinTag",
+                        "kind": "Attribute",
+                        "optional": True,
+                        "cardinality": "many",
+                    },
+                ],
+            },
+            {
+                "name": "Status",
+                "namespace": "Builtin",
+                "description": "Represent the status of an object: active, maintenance",
+                "include_in_menu": True,
+                "icon": "mdi:list-status",
+                "label": "Status",
+                "default_filter": "name__value",
+                "order_by": ["name__value"],
+                "display_labels": ["label__value"],
+                "branch": "aware",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "label", "kind": "Text", "optional": True},
+                    {"name": "description", "kind": "Text", "optional": True},
+                ],
+            },
+            {
+                "name": "Role",
+                "namespace": "Builtin",
+                "description": "Represent the role of an object",
+                "include_in_menu": True,
+                "icon": "mdi:ballot",
+                "label": "Role",
+                "default_filter": "name__value",
+                "order_by": ["name__value"],
+                "display_labels": ["label__value"],
+                "branch": "aware",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "label", "kind": "Text", "optional": True},
+                    {"name": "description", "kind": "Text", "optional": True},
+                ],
+            },
+            {
+                "name": "Location",
+                "namespace": "Builtin",
+                "description": "A location represent a physical element: a building, a site, a city",
+                "include_in_menu": True,
+                "icon": "mdi:map-marker-radius-outline",
+                "label": "Location",
+                "default_filter": "name__value",
+                "order_by": ["name__value"],
+                "display_labels": ["name__value"],
+                "branch": "aware",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "description", "kind": "Text", "optional": True},
+                    {"name": "type", "kind": "Text"},
+                ],
+                "relationships": [
+                    {
+                        "name": "tags",
+                        "peer": "BuiltinTag",
+                        "kind": "Attribute",
+                        "optional": True,
+                        "cardinality": "many",
+                    },
+                ],
+            },
+            {
+                "name": "Criticality",
+                "namespace": "Builtin",
+                "description": "Level of criticality expressed from 1 to 10.",
+                "include_in_menu": True,
+                "icon": "mdi:alert-octagon-outline",
+                "label": "Criticality",
+                "default_filter": "name__value",
+                "order_by": ["name__value"],
+                "display_labels": ["name__value"],
+                "branch": "aware",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "level", "kind": "Number", "enum": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]},
+                    {"name": "description", "kind": "Text", "optional": True},
+                ],
+            },
+        ],
+    }
+
+    return SchemaRoot(**SCHEMA)
 
 
 @pytest.fixture
@@ -268,13 +385,6 @@ async def schema_extension_01() -> Dict[str, Any]:
                 ],
                 "relationships": [
                     {
-                        "name": "location",
-                        "peer": "BuiltinLocation",
-                        "optional": False,
-                        "cardinality": "one",
-                        "kind": "Attribute",
-                    },
-                    {
                         "name": "tags",
                         "peer": "BuiltinTag",
                         "optional": True,
@@ -287,7 +397,7 @@ async def schema_extension_01() -> Dict[str, Any]:
         "extensions": {
             "nodes": [
                 {
-                    "kind": "BuiltinLocation",
+                    "kind": "BuiltinTag",
                     "relationships": [
                         {
                             "name": "racks",
@@ -326,26 +436,26 @@ async def schema_extension_02() -> Dict[str, Any]:
                 ],
                 "relationships": [
                     {
-                        "name": "organization",
-                        "peer": "CoreOrganization",
-                        "optional": False,
-                        "cardinality": "one",
+                        "name": "tags",
+                        "peer": "BuiltinTag",
+                        "optional": True,
+                        "cardinality": "many",
                         "kind": "Attribute",
-                    }
+                    },
                 ],
             }
         ],
         "extensions": {
             "nodes": [
                 {
-                    "kind": "CoreOrganization",
+                    "kind": "BuiltinTag",
                     "relationships": [
                         {
-                            "name": "contract",
+                            "name": "contracts",
                             "peer": "ProcurementContract",
                             "optional": True,
                             "cardinality": "many",
-                            "kind": "Component",
+                            "kind": "Generic",
                         }
                     ],
                 }

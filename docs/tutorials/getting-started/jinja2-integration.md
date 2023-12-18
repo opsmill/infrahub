@@ -2,7 +2,7 @@
 label: Rendering configuration
 # icon: file-directory
 tags: [tutorial]
-order: 400
+order: 550
 ---
 
 # Rendering Jinja templates

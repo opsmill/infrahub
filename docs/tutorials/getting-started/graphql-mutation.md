@@ -2,7 +2,7 @@
 label: GraphQL mutation
 # icon: file-directory
 tags: [tutorial]
-order: 100
+order: 400
 ---
 
 # Make changes using GraphQL

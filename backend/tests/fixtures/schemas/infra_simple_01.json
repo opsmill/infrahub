@@ -34,8 +34,6 @@
                 {"name": "enabled", "kind": "Boolean", "default_value": true}
             ],
             "relationships": [
-                {"name": "status", "peer": "BuiltinStatus", "optional": false, "cardinality": "one", "kind": "Attribute"},
-                {"name": "role", "peer": "BuiltinRole", "optional": false, "cardinality": "one", "kind": "Attribute"},
                 {"name": "device", "peer": "InfraDevice", "optional": false, "cardinality": "one", "kind": "Parent"},
                 {"name": "tags", "peer": "BuiltinTag", "optional": true, "cardinality": "many", "kind": "Attribute"},
                 {

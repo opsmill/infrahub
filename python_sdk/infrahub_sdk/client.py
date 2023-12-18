@@ -19,6 +19,7 @@ from infrahub_sdk.config import Config
 from infrahub_sdk.data import RepositoryData
 from infrahub_sdk.exceptions import (
     AuthenticationError,
+    Error,
     GraphQLError,
     NodeNotFound,
     ServerNotReacheableError,
@@ -423,6 +424,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         # self.log.error(payload)
 
         retry = True
+        resp = None
         while retry:
             retry = self.retry_on_failure
             try:
@@ -447,6 +449,9 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
                     errors = response.get("errors")
                     messages = [error.get("message") for error in errors]
                     raise AuthenticationError(" | ".join(messages)) from exc
+
+        if not resp:
+            raise Error("Unexpected situation, resp hasn't been initialized.")
 
         response = resp.json()
 
@@ -736,6 +741,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             headers["X-Infrahub-Tracker"] = tracker
 
         retry = True
+        resp = None
         while retry:
             retry = self.retry_on_failure
             try:
@@ -760,6 +766,9 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
                     errors = response.get("errors")
                     messages = [error.get("message") for error in errors]
                     raise AuthenticationError(" | ".join(messages)) from exc
+
+        if not resp:
+            raise Error("Unexpected situation, resp hasn't been initialized.")
 
         response = resp.json()
 

@@ -2,7 +2,7 @@
 label: Branches and version control
 # icon: file-directory
 tags: [tutorial]
-order: 800
+order: 750
 ---
 # Manage changes with branching and version control
 

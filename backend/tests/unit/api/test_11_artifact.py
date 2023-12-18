@@ -21,6 +21,7 @@ async def test_artifact_definition_endpoint(
     default_branch,
     patch_rpc_client,
     register_core_models_schema,
+    register_builtin_models_schema,
     car_person_data_generic,
     authentication_base,
 ):
