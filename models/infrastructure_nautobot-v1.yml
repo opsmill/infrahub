@@ -20,6 +20,7 @@ generics:
         optional: true
       - name: speed
         kind: Number
+        optional: true
       - name: mtu
         label: MTU
         default_value: 1500
@@ -27,6 +28,17 @@ generics:
       - name: enabled
         kind: Boolean
         default_value: true
+      - name: mgmt_only
+        label: Management only
+        kind: Boolean
+        default_value: false
+      - name: mac_address
+        label: Mac Address
+        kind: Text
+        optional: true
+      - name: interface_type
+        kind: Text
+        optional: true
     relationships:
       - name: status
         peer: BuiltinStatus
@@ -86,6 +98,32 @@ generics:
         optional: true
         cardinality: many
         kind: Attribute
+  - name: PanelPort
+    namespace: Infra
+    description: "Generic Patch Panel Port."
+    label: "Panel Port (Front & Rear)"
+    icon: "mdi:ethernet"
+    menu_placement: "InfraDevice"
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+      - name: description
+        kind: Text
+        optional: true
+      - name: port_type
+        kind: Text
+        optional: true
+    relationships:
+      - name: device
+        peer: InfraDevice
+        identifier: "device__ports"
+        optional: false
+        cardinality: one
+        kind: Parent
 
 nodes:
   - name: AutonomousSystem
@@ -249,13 +287,9 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
-      - name: role
-        peer: BuiltinRole
-        optional: true
-        cardinality: one
-        kind: Attribute
       - name: provider
         peer: CoreOrganization
+        identifier: circuit__provider
         optional: false
         cardinality: one
         kind: Attribute
@@ -288,7 +322,7 @@ nodes:
     inherit_from:
       - "InfraEndpoint"
     relationships:
-      - name: site
+      - name: location
         peer: BuiltinLocation
         optional: false
         cardinality: one
@@ -311,9 +345,9 @@ nodes:
     inherit_from:
       - "TemplateChoice"
     relationships:
-      - cardinality: many
+      - name: circuit
+        cardinality: many
         identifier: circuit__type
-        name: circuit
         optional: true
         peer: InfraCircuit
   - name: Device
@@ -331,7 +365,6 @@ nodes:
     attributes:
       - name: name
         kind: Text
-        # unique: true
         optional: true
       - name: description
         kind: Text
@@ -340,16 +373,21 @@ nodes:
         label: Serial Number
         kind: Text
         optional: true
-        # unique: true
       - name: asset_tag
         label: Asset Tag
         kind: Text
         optional: true
-        # unique: true
     relationships:
       - name: site
         peer: BuiltinLocation
-        optional: false
+        identifier: device__site
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: location
+        peer: BuiltinLocation
+        identifier: device__location
+        optional: true
         cardinality: one
         kind: Attribute
       - name: model
@@ -433,9 +471,9 @@ nodes:
         optional: true
         kind: Boolean
     relationships:
-      - cardinality: many
+      - name: device
+        cardinality: many
         identifier: device__type
-        name: device
         optional: true
         peer: InfraDevice
       - name: manufacturer
@@ -443,29 +481,28 @@ nodes:
         optional: false
         cardinality: one
         kind: Attribute
-  - name: InterfaceL3
+  - name: FrontPort
     namespace: Infra
-    description: "Network Layer 3 Interface"
-    label: "Interface L3"
+    description: "Patch Panel Front Port"
+    label: "Front Port"
     include_in_menu: false
     display_labels:
       - name__value
     order_by:
       - name__value
     inherit_from:
-      - "InfraInterface"
+      - InfraPanelPort
       - "InfraEndpoint"
-      - "CoreArtifactTarget"
     relationships:
-      - name: ip_addresses
-        peer: InfraIPAddress
+      - name: rear_port
+        peer: InfraRearPort
         optional: true
         cardinality: many
-        kind: Component
-  - name: InterfaceL2
+        identifier: front_ports__rear_ports
+  - name: InterfaceL2L3
     namespace: Infra
-    description: "Network Layer 2 Interface"
-    label: "Interface L2"
+    description: "Network Interface"
+    label: "Network Interface"
     include_in_menu: false
     display_labels:
       - name__value
@@ -479,21 +516,28 @@ nodes:
       - name: l2_mode
         label: Layer2 Mode
         kind: Text
-        enum: ["Access", "Trunk"]
+        enum: ["Access", "Tagged", "Tagged (All)"]
+        optional: true
     relationships:
+      - name: ip_addresses
+        peer: InfraIPAddress
+        label: IP Addresses
+        optional: true
+        cardinality: many
+        kind: Attribute
       - name: untagged_vlan
         label: Untagged VLAN
         peer: InfraVLAN
         optional: true
         cardinality: one
-        kind: Component
+        kind: Attribute
         identifier: interface_l2__untagged_vlan
       - name: tagged_vlan
         label: Tagged VLANs
         peer: InfraVLAN
         optional: true
         cardinality: one
-        kind: Component
+        kind: Attribute
         identifier: interface_l2__tagged_vlan
   - name: IPAddress
     namespace: Infra
@@ -519,7 +563,7 @@ nodes:
         cardinality: one
         kind: Attribute
       - name: interface
-        peer: InfraInterfaceL3
+        peer: InfraInterfaceL2L3
         optional: true
         cardinality: one
         kind: Parent
@@ -530,7 +574,7 @@ nodes:
         cardinality: one
         kind: Parent
       - name: vrf
-        identifier: "vrf__prefix"
+        identifier: "vrf__address"
         peer: InfraVRF
         optional: true
         cardinality: one
@@ -540,11 +584,29 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
+  - name: LocationType
+    namespace: Template
+    description: "A type of Location"
+    label: "Location Type"
+    icon: "mdi:map-marker-question"
+    menu_placement: "BuiltinLocation"
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    inherit_from:
+      - "TemplateChoice"
+    relationships:
+      - name: location
+        identifier: location__type
+        cardinality: many
+        optional: true
+        peer: BuiltinLocation
   - name: Platform
     namespace: Infra
     description: "A Platform represent the type of software running on a device."
     label: "Platform"
-    icon: "mdi:application-cog-outline"  # mdi:application-brackets-outline
+    icon: "mdi:application-cog-outline"
     menu_placement: "InfraDevice"
     default_filter: name__value
     order_by:
@@ -571,10 +633,10 @@ nodes:
         kind: Text
         optional: true
     relationships:
-      - name: devices
-        peer: InfraDevice
-        optional: true
-        cardinality: many
+      - name: manufacturer
+        peer: CoreOrganization
+        optional: false
+        cardinality: one
   - name: ProviderNetwork
     namespace: Infra
     description: "Represent the boundary of a provider network, the details of which are unknown or unimportant."
@@ -636,7 +698,7 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
-      - name: site
+      - name: location
         peer: BuiltinLocation
         optional: true
         cardinality: one
@@ -653,12 +715,12 @@ nodes:
         kind: Attribute
       - name: gateway
         label: L3 Gateway
-        peer: InfraInterfaceL3
+        peer: InfraInterfaceL2L3
         optional: true
         cardinality: one
         kind: Attribute
       - name: vrf
-        identifier: "vrf__prefix"
+        identifier: "prefix__vrf"
         peer: InfraVRF
         optional: true
         cardinality: one
@@ -685,7 +747,6 @@ nodes:
     attributes:
       - name: name
         kind: Text
-        # unique: true
       - name: description
         kind: Text
         optional: true
@@ -706,7 +767,14 @@ nodes:
     relationships:
       - name: location
         peer: BuiltinLocation
-        optional: false
+        identifier: rack__location
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: site
+        peer: BuiltinLocation
+        identifier: rack__site
+        optional: true
         cardinality: one
         kind: Attribute
       - name: status
@@ -724,6 +792,24 @@ nodes:
         optional: true
         cardinality: many
         kind: Attribute
+  - name: RearPort
+    namespace: Infra
+    description: "Patch Panel Front Port"
+    label: "Front Port"
+    include_in_menu: false
+    display_labels:
+      - name__value
+    order_by:
+      - name__value
+    inherit_from:
+      - InfraPanelPort
+      - "InfraEndpoint"
+    relationships:
+      - name: front_port
+        peer: InfraFrontPort
+        optional: true
+        cardinality: many
+        identifier: front_ports__rear_ports
   - name: RouteTarget
     namespace: Infra
     description: "Route Target (RFC 4360)"
@@ -758,7 +844,7 @@ nodes:
     namespace: Infra
     description: "A VLAN is isolated layer two domain"
     label: "VLAN"
-    icon: "mdi:lan-pending"   # mdi:lan
+    icon: "mdi:lan-pending"
     default_filter: name__value
     order_by:
       - vlan_id__value
@@ -779,7 +865,7 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
-      - name: site
+      - name: location
         peer: BuiltinLocation
         optional: true
         cardinality: one
@@ -889,6 +975,15 @@ extensions:
           optional: true
           cardinality: one
           kind: Generic
+        - name: location_type
+          peer: TemplateLocationType
+          optional: true
+          cardinality: one
+        - name: status
+          identifier: "location__status"
+          peer: BuiltinStatus
+          optional: true
+          cardinality: one
     - kind: CoreOrganization
       attributes:
         - name: type
