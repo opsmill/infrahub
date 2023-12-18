@@ -9,7 +9,7 @@ import { updateObjectWithId } from "../../graphql/mutations/objects/updateObject
 import { getObjectDetailsAndPeers } from "../../graphql/queries/objects/getObjectDetailsAndPeers";
 import { dateVar } from "../../graphql/variables/dateVar";
 import useQuery from "../../hooks/useQuery";
-import { genericsState, schemaState } from "../../state/atoms/schema.atom";
+import { genericsState, schemaFamily } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdit";
 import getMutationDetailsFromFormData from "../../utils/getMutationDetailsFromFormData";
@@ -45,14 +45,13 @@ export default function ObjectItemEditComponent(props: Props) {
 
   const user = useContext(AuthContext);
 
-  const [schemaList] = useAtom(schemaState);
   const [schemaKindName] = useAtom(schemaKindNameState);
   const [genericsList] = useAtom(genericsState);
   const branch = useAtomValue(currentBranchAtom);
   const date = useReactiveVar(dateVar);
   const [isLoading, setIsLoading] = useState(false);
 
-  const schema = schemaList.find((s) => s.kind === objectname);
+  const schema = useAtomValue(schemaFamily({ kind: objectname }));
 
   const attributes = getSchemaAttributeColumns(schema, true);
   const relationships = getSchemaRelationshipColumns(schema);
@@ -105,7 +104,6 @@ export default function ObjectItemEditComponent(props: Props) {
     formStructureFromProps ??
     getFormStructureForCreateEdit(
       schema,
-      schemaList,
       genericsList,
       peerDropdownOptions,
       objectDetailsData,

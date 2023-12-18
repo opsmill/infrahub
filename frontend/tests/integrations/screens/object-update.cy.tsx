@@ -9,7 +9,7 @@ import { ACCESS_TOKEN_KEY } from "../../../src/config/constants";
 import { withAuth } from "../../../src/decorators/withAuth";
 import ObjectDetails from "../../../src/screens/object-item-details/object-item-details-paginated";
 import { configState } from "../../../src/state/atoms/config.atom";
-import { schemaState } from "../../../src/state/atoms/schema.atom";
+import { schemaFamily, schemaState } from "../../../src/state/atoms/schema.atom";
 import { mockedToken } from "../../fixtures/auth";
 import {
   accountTokenDetailsMocksDataBis,
@@ -150,6 +150,9 @@ const mocksToken = [
 const AuthenticatedObjectItems = withAuth(ObjectDetails);
 
 // Provide the initial value for jotai
+[...deviceDetailsMocksSchema, ...accountTokenDetailsMocksSchemaBIS].forEach((s) => {
+  schemaFamily(s);
+});
 const ObjectDetailsProvider = () => {
   return (
     <TestProvider
