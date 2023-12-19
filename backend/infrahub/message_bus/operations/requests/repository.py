@@ -10,13 +10,19 @@ from infrahub.services import InfrahubServices
 log = get_logger()
 
 
-async def check(message: messages.RequestRepositoryChecks, service: InfrahubServices):
+async def checks(message: messages.RequestRepositoryChecks, service: InfrahubServices):
     """Request to start validation checks on a specific repository."""
     log.info("Running repository checks", repository_id=message.repository, proposed_change_id=message.proposed_change)
+
+    source_branch = await service.client.branch.get(branch_name=message.source_branch)
+    if source_branch.is_data_only:
+        return
+
     events: List[InfrahubMessage] = []
+
     repository = await service.client.get(kind="CoreRepository", id=message.repository, branch=message.source_branch)
     proposed_change = await service.client.get(kind="CoreProposedChange", id=message.proposed_change)
-    source_branch = await service.client.branch.get(branch_name=message.source_branch)
+
     validator_execution_id = str(UUIDT())
     check_execution_ids: List[str] = []
     await proposed_change.validations.fetch()
@@ -50,42 +56,22 @@ async def check(message: messages.RequestRepositoryChecks, service: InfrahubServ
         )
         await validator.save()
 
-    if not source_branch.is_data_only:
-        check_execution_id = str(UUIDT())
-        check_execution_ids.append(check_execution_id)
-        log.info("Adding check for merge conflict")
+    check_execution_id = str(UUIDT())
+    check_execution_ids.append(check_execution_id)
+    log.info("Adding check for merge conflict")
 
-        events.append(
-            messages.CheckRepositoryMergeConflicts(
-                validator_id=validator.id,
-                validator_execution_id=validator_execution_id,
-                check_execution_id=check_execution_id,
-                proposed_change=message.proposed_change,
-                repository_id=message.repository,
-                repository_name=repository.name.value,
-                source_branch=message.source_branch,
-                target_branch=message.target_branch,
-            )
+    events.append(
+        messages.CheckRepositoryMergeConflicts(
+            validator_id=validator.id,
+            validator_execution_id=validator_execution_id,
+            check_execution_id=check_execution_id,
+            proposed_change=message.proposed_change,
+            repository_id=message.repository,
+            repository_name=repository.name.value,
+            source_branch=message.source_branch,
+            target_branch=message.target_branch,
         )
-
-    for relationship in repository.checks.peers:
-        log.info("Adding check for user defined check")
-        check_definition = relationship.peer
-        check_execution_id = str(UUIDT())
-        check_execution_ids.append(check_execution_id)
-        events.append(
-            messages.CheckRepositoryCheckDefinition(
-                validator_id=validator.id,
-                validator_execution_id=validator_execution_id,
-                check_execution_id=check_execution_id,
-                repository_id=repository.id,
-                repository_name=repository.name.value,
-                commit=repository.commit.value,
-                file_path=check_definition.file_path.value,
-                class_name=check_definition.class_name.value,
-                branch_name=message.source_branch,
-            )
-        )
+    )
 
     checks_in_execution = ",".join(check_execution_ids)
     log.info("Checks in execution", checks=checks_in_execution)
@@ -100,6 +86,43 @@ async def check(message: messages.RequestRepositoryChecks, service: InfrahubServ
             validator_type="CoreRepositoryValidator",
         )
     )
+
+    for event in events:
+        event.assign_meta(parent=message)
+        await service.send(message=event)
+
+
+async def user_checks(message: messages.RequestRepositoryUserChecks, service: InfrahubServices):
+    """Request to start validation checks on a specific repositor for User defined checks."""
+    log.info(
+        "Running user defined checks checks",
+        repository_id=message.repository,
+        proposed_change_id=message.proposed_change,
+    )
+    events: List[InfrahubMessage] = []
+
+    repository = await service.client.get(
+        kind="CoreRepository",
+        id=message.repository,
+        branch=message.source_branch,
+    )
+    await repository.checks.fetch()
+
+    for relationship in repository.checks.peers:
+        log.info("Adding check for user defined check")
+        check_definition = relationship.peer
+        events.append(
+            messages.CheckRepositoryCheckDefinition(
+                check_definition_id=check_definition.id,
+                repository_id=repository.id,
+                repository_name=repository.name.value,
+                commit=repository.commit.value,
+                file_path=check_definition.file_path.value,
+                class_name=check_definition.class_name.value,
+                branch_name=message.source_branch,
+                proposed_change=message.proposed_change,
+            )
+        )
 
     for event in events:
         event.assign_meta(parent=message)
