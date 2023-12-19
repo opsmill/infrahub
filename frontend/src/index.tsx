@@ -35,6 +35,7 @@ import {
 } from "./state/atoms/schema.atom";
 import { schemaKindNameState } from "./state/atoms/schemaKindName.atom";
 import { sortByName, sortByOrderWeight } from "./utils/common";
+import { findSelectedBranch } from "./utils/branches";
 
 const root = ReactDOM.createRoot(
   (document.getElementById("root") || document.createElement("div")) as HTMLElement
@@ -121,10 +122,7 @@ export const Root = () => {
     const branches: Branch[] = await fetchBranches();
 
     const branchInQueryString = getCurrentQsp().get(QSP.BRANCH);
-    const filter = branchInQueryString
-      ? (b: Branch) => branchInQueryString === b.name
-      : (b: Branch) => b.is_default;
-    const selectedBranch = branches.find(filter) ?? null;
+    const selectedBranch = findSelectedBranch(branches, branchInQueryString);
 
     setBranches(branches);
     setCurrentBranch(selectedBranch);

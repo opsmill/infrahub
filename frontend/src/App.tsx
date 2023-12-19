@@ -28,6 +28,7 @@ import { schemaKindNameState } from "./state/atoms/schemaKindName.atom";
 import "./styles/index.css";
 import { sortByName, sortByOrderWeight } from "./utils/common";
 import { fetchUrl } from "./utils/fetch";
+import { findSelectedBranch } from "./utils/branches";
 addCollection(mdiIcons);
 
 function App() {
@@ -87,7 +88,6 @@ function App() {
       const isSameSchema = currentSchemaHash === schemaSummary.main;
 
       // Updating schema only if it's different from the current one
-      console.log(currentSchemaHash, schemaSummary.main);
       if (isSameSchema) return;
       await fetchAndSetSchema(branch);
     } catch (error) {
@@ -96,14 +96,9 @@ function App() {
   };
 
   useEffect(() => {
-    const filter = branchInQueryString
-      ? (b: Branch) => branchInQueryString === b.name
-      : (b: Branch) => b.is_default;
-
-    const selectedBranch = branches.find(filter) ?? null;
+    const selectedBranch = findSelectedBranch(branches, branchInQueryString);
 
     if (selectedBranch?.name === currentBranch?.name) return;
-
     setCurrentBranch(selectedBranch);
 
     updateSchemaStateIfNeeded(selectedBranch);
