@@ -38,6 +38,9 @@ jobs:
         working-directory: "./python_sdk"
         if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
 
+      - name: "Add PyPI secret"
+        run: "poetry config pypi-token.pypi ${{ secrets.PYPI_TOKEN }}"
+
       - name: "Poetry build"
         run: "poetry build"
         working-directory: "./python_sdk"
