@@ -24,6 +24,8 @@ export const objectToString = (object: any) =>
     })
     .join(",");
 
+export const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
+
 export const sortByOrderWeight = R.sortBy(R.compose(R.prop("order_weight")));
 
 export const parseJwt = (token: string | null) => {

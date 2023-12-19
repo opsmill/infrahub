@@ -1,7 +1,7 @@
 import { ApolloProvider } from "@apollo/client";
-import { useAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import queryString from "query-string";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { Slide, ToastContainer, toast } from "react-toastify";
@@ -15,21 +15,38 @@ import SentryClient from "./config/sentry";
 import graphqlClient from "./graphql/graphqlClientApollo";
 import GET_BRANCHES from "./graphql/queries/branches/getBranches";
 import reportWebVitals from "./reportWebVitals";
-import { branchesState } from "./state/atoms/branches.atom";
+import { branchesState, currentBranchAtom } from "./state/atoms/branches.atom";
 import { Config, configState } from "./state/atoms/config.atom";
 
 import LoadingScreen from "./screens/loading-screen/loading-screen";
 import "./styles/index.css";
-import { fetchUrl } from "./utils/fetch";
+import { fetchUrl, getCurrentQsp } from "./utils/fetch";
+import { Branch } from "./generated/graphql";
+import { QSP } from "./config/qsp";
+import {
+  currentSchemaHashAtom,
+  genericsState,
+  iGenericSchema,
+  iNamespace,
+  iNodeSchema,
+  namespacesState,
+  schemaState,
+  SchemaSummary,
+} from "./state/atoms/schema.atom";
+import { schemaKindNameState } from "./state/atoms/schemaKindName.atom";
+import { sortByName, sortByOrderWeight } from "./utils/common";
+import { findSelectedBranch } from "./utils/branches";
 
 const root = ReactDOM.createRoot(
   (document.getElementById("root") || document.createElement("div")) as HTMLElement
 );
 
 export const Root = () => {
-  const [, setBranches] = useAtom(branchesState);
+  const setBranches = useSetAtom(branchesState);
+  const setCurrentBranch = useSetAtom(currentBranchAtom);
   const [config, setConfig] = useAtom(configState);
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
+  const [isLoadingBranches, setIsLoadingBranches] = useState(true);
 
   /**
    * Sentry configuration
@@ -54,7 +71,7 @@ export const Root = () => {
   /**
    * Set config in state atom
    */
-  const setConfigInState = useCallback(async () => {
+  const setConfigInState = async () => {
     try {
       setIsLoadingConfig(true);
       const config: Config = await fetchConfig();
@@ -73,11 +90,7 @@ export const Root = () => {
       );
       console.error("Error while fetching the config: ", error);
     }
-  }, []);
-
-  useEffect(() => {
-    setConfigInState();
-  }, []);
+  };
 
   /**
    * Fetch branches from the backend, sort, and return them
@@ -105,17 +118,111 @@ export const Root = () => {
   /**
    * Set branches in state atom
    */
-  const setBranchesInState = useCallback(async () => {
-    const branches = await fetchBranches();
+  const setBranchesInState = async () => {
+    const branches: Branch[] = await fetchBranches();
+
+    const branchInQueryString = getCurrentQsp().get(QSP.BRANCH);
+    const selectedBranch = findSelectedBranch(branches, branchInQueryString);
+
     setBranches(branches);
-  }, []);
+    setCurrentBranch(selectedBranch);
+    setIsLoadingBranches(false);
+  };
 
   useEffect(() => {
+    setConfigInState();
     setBranchesInState();
   }, []);
 
-  if (isLoadingConfig) {
-    // Loading screen while loadign the token from the lcoal storage
+  if (isLoadingConfig || isLoadingBranches) {
+    // Loading screen while loading the token from the local storage
+    return (
+      <div className="w-screen h-screen flex ">
+        <LoadingScreen />;
+      </div>
+    );
+  }
+
+  return <AppInitializer />;
+};
+
+const AppInitializer = () => {
+  const setGenerics = useSetAtom(genericsState);
+  const setNamespaces = useSetAtom(namespacesState);
+  const setSchema = useSetAtom(schemaState);
+  const setSchemaKindNameState = useSetAtom(schemaKindNameState);
+  const setCurrentSchemaHash = useSetAtom(currentSchemaHashAtom);
+  const [isSchemaLoading, setSchemaLoading] = useState(true);
+  const [isSchemaSummaryLoading, setSchemaSummaryLoading] = useState(true);
+
+  const branchInQueryString = getCurrentQsp().get(QSP.BRANCH);
+
+  const fetchAndSetSchema = async () => {
+    try {
+      const schemaData: {
+        main: string;
+        nodes: iNodeSchema[];
+        generics: iGenericSchema[];
+        namespaces: iNamespace[];
+      } = await fetchUrl(CONFIG.SCHEMA_URL(branchInQueryString));
+
+      const schema: iNodeSchema[] = sortByName(schemaData.nodes || []);
+      const generics: iGenericSchema[] = sortByName(schemaData.generics || []);
+      const namespaces: iNamespace[] = sortByName(schemaData.namespaces || []);
+
+      schema.forEach((s) => {
+        s.attributes = sortByOrderWeight(s.attributes || []);
+        s.relationships = sortByOrderWeight(s.relationships || []);
+      });
+
+      const schemaKindNameMap = schema.reduce(
+        (kindNameMap: Record<string, string>, { name, kind }) => ({
+          ...kindNameMap,
+          [kind as string]: name,
+        }),
+        {}
+      );
+
+      setGenerics(generics);
+      setSchema(schema);
+      setSchemaKindNameState(schemaKindNameMap);
+      setNamespaces(namespaces);
+      setSchemaLoading(false);
+    } catch (error) {
+      toast(
+        <Alert type={ALERT_TYPES.ERROR} message="Something went wrong when fetching the schema" />
+      );
+
+      console.error("Error while fetching the schema: ", error);
+    }
+  };
+
+  const fetchAndSetSchemaSummary = async () => {
+    try {
+      const schemaSummary: SchemaSummary = await fetchUrl(
+        CONFIG.SCHEMA_SUMMARY_URL(branchInQueryString)
+      );
+
+      setCurrentSchemaHash(schemaSummary.main);
+      setSchemaSummaryLoading(false);
+    } catch (error) {
+      toast(
+        <Alert
+          type={ALERT_TYPES.ERROR}
+          message="Something went wrong when fetching the schema summary"
+        />
+      );
+
+      console.error("Error while fetching the schema summary: ", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchAndSetSchema();
+    fetchAndSetSchemaSummary();
+  }, []);
+
+  if (isSchemaLoading || isSchemaSummaryLoading) {
     return (
       <div className="w-screen h-screen flex ">
         <LoadingScreen />;
