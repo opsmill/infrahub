@@ -23,7 +23,7 @@ import { stringifyWithoutQuotes } from "../../utils/string";
 import { DiffContext } from "./data-diff";
 import { useAtomValue } from "jotai/index";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { timeTravelDateAtom } from "../../state/atoms/time.atom";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 
 type tDataDiffComments = {
   path: string;
@@ -37,7 +37,7 @@ export const DataDiffComments = (props: tDataDiffComments) => {
   const [schemaList] = useAtom(schemaState);
   const auth = useContext(AuthContext);
   const branch = useAtomValue(currentBranchAtom);
-  const date = useAtomValue(timeTravelDateAtom);
+  const date = useAtomValue(datetimeAtom);
   const [isLoading, setIsLoading] = useState(false);
   const { refetch: contextRefetch, node, currentBranch } = useContext(DiffContext);
 

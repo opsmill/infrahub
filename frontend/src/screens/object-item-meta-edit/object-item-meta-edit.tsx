@@ -11,7 +11,7 @@ import { stringifyWithoutQuotes } from "../../utils/string";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 import { useAtomValue } from "jotai/index";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { timeTravelDateAtom } from "../../state/atoms/time.atom";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 interface Props {
   row: any;
   schema: iNodeSchema;
@@ -36,7 +36,7 @@ export default function ObjectItemMetaEdit(props: Props) {
   } = props;
 
   const branch = useAtomValue(currentBranchAtom);
-  const date = useAtomValue(timeTravelDateAtom);
+  const date = useAtomValue(datetimeAtom);
   const [isLoading, setIsLoading] = useState(false);
 
   const formStructure = getFormStructureForMetaEditPaginated(

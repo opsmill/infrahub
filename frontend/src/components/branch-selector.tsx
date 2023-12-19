@@ -18,13 +18,13 @@ import { Select, SelectOption } from "./select";
 import { SelectButton } from "./select-button";
 import { Switch } from "./switch";
 import { useAtomValue } from "jotai/index";
-import { timeTravelDateAtom } from "../state/atoms/time.atom";
+import { datetimeAtom } from "../state/atoms/time.atom";
 
 export default function BranchSelector() {
   const [branches] = useAtom(branchesState);
   const [, setBranchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
   const branch = useAtomValue(currentBranchAtom);
-  const date = useAtomValue(timeTravelDateAtom);
+  const date = useAtomValue(datetimeAtom);
   const auth = useContext(AuthContext);
 
   const [newBranchName, setNewBranchName] = useState("");

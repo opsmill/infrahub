@@ -34,7 +34,7 @@ import ErrorScreen from "../../error-screen/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
 import { useAtomValue } from "jotai/index";
 import { currentBranchAtom } from "../../../state/atoms/branches.atom";
-import { timeTravelDateAtom } from "../../../state/atoms/time.atom";
+import { datetimeAtom } from "../../../state/atoms/time.atom";
 
 const fakeIndex = () => {
   return sha(Math.random() * 100000).slice(0, 9);
@@ -106,7 +106,7 @@ export const FileContentDiff = (props: any) => {
   const [timeFrom] = useQueryParam(QSP.BRANCH_FILTER_TIME_FROM, StringParam);
   const [timeTo] = useQueryParam(QSP.BRANCH_FILTER_TIME_TO, StringParam);
   const branch = useAtomValue(currentBranchAtom);
-  const date = useAtomValue(timeTravelDateAtom);
+  const date = useAtomValue(datetimeAtom);
   const auth = useContext(AuthContext);
   const [schemaList] = useAtom(schemaState);
   const [isLoading, setIsLoading] = useState(false);

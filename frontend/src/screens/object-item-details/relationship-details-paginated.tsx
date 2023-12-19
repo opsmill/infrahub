@@ -41,7 +41,7 @@ import ObjectItemEditComponent from "../object-item-edit/object-item-edit-pagina
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 import { useAtomValue } from "jotai/index";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { timeTravelDateAtom } from "../../state/atoms/time.atom";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 
 type iRelationDetailsProps = {
   parentNode: any;
@@ -64,7 +64,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   const [schemaList] = useAtom(schemaState);
   const [generics] = useAtom(genericsState);
   const branch = useAtomValue(currentBranchAtom);
-  const date = useAtomValue(timeTravelDateAtom);
+  const date = useAtomValue(datetimeAtom);
   const [showAddDrawer, setShowAddDrawer] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showRelationMetaEditModal, setShowRelationMetaEditModal] = useState(false);

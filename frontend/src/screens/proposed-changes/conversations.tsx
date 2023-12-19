@@ -41,7 +41,7 @@ import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 import { useAtomValue } from "jotai/index";
-import { timeTravelDateAtom } from "../../state/atoms/time.atom";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 
 type tConversations = {
   refetch?: Function;
@@ -103,7 +103,7 @@ export const Conversations = (props: tConversations) => {
   const [schemaList] = useAtom(schemaState);
   const [proposedChangesDetails] = useAtom(proposedChangedState);
   const branch = useAtomValue(currentBranchAtom);
-  const date = useAtomValue(timeTravelDateAtom);
+  const date = useAtomValue(datetimeAtom);
   const auth = useContext(AuthContext);
   const [isLoadingApprove, setIsLoadingApprove] = useState(false);
   const [isLoadingMerge, setIsLoadingMerge] = useState(false);

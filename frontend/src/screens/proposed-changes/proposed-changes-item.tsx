@@ -19,13 +19,13 @@ import { getProposedChangesStateBadgeType } from "../../utils/proposed-changes";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import { useAtomValue } from "jotai/index";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { timeTravelDateAtom } from "../../state/atoms/time.atom";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 
 export const ProposedChange = (props: any) => {
   const { row, refetch } = props;
 
   const branch = useAtomValue(currentBranchAtom);
-  const date = useAtomValue(timeTravelDateAtom);
+  const date = useAtomValue(datetimeAtom);
   const auth = useContext(AuthContext);
   const [isLoading, setIsLoading] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);

@@ -21,7 +21,7 @@ import { schemaState } from "../../state/atoms/schema.atom";
 import { classNames, debounce, parseJwt } from "../../utils/common";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { userNavigation } from "./navigation-list";
-import { timeTravelDateAtom } from "../../state/atoms/time.atom";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 
 interface Props {
   setSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -33,7 +33,7 @@ export default function Header(props: Props) {
   const { setSidebarOpen } = props;
 
   const [qspDate, setQspDate] = useQueryParam(QSP.DATETIME, StringParam);
-  const [date, setDate] = useAtom(timeTravelDateAtom);
+  const [date, setDate] = useAtom(datetimeAtom);
   const auth = useContext(AuthContext);
   const [schemaList] = useAtom(schemaState);
   const navigate = useNavigate();

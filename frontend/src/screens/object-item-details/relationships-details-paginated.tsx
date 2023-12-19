@@ -19,7 +19,7 @@ import LoadingScreen from "../loading-screen/loading-screen";
 import RelationshipDetails from "./relationship-details-paginated";
 import { useAtomValue } from "jotai/index";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { timeTravelDateAtom } from "../../state/atoms/time.atom";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 
 interface RelationshipsDetailsProps {
   parentNode: any;
@@ -36,7 +36,7 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
   const [schemaList] = useAtom(schemaState);
   const [generics] = useAtom(genericsState);
   const branch = useAtomValue(currentBranchAtom);
-  const date = useAtomValue(timeTravelDateAtom);
+  const date = useAtomValue(datetimeAtom);
 
   const schema = schemaList.find((s) => s.kind === objectname);
   const relationshipSchema = schema?.relationships?.find((r) => r?.name === relationshipTab);

@@ -9,7 +9,7 @@ import { classNames } from "../utils/common";
 import { OpsSelect } from "./select";
 import { useAtomValue } from "jotai/index";
 import { currentBranchAtom } from "../state/atoms/branches.atom";
-import { timeTravelDateAtom } from "../state/atoms/time.atom";
+import { datetimeAtom } from "../state/atoms/time.atom";
 
 export interface iTwoStepDropdownData {
   parent: string | number;
@@ -31,7 +31,7 @@ export const OpsSelect2Step = (props: Props) => {
 
   const { objectid } = useParams();
   const branch = useAtomValue(currentBranchAtom);
-  const date = useAtomValue(timeTravelDateAtom);
+  const date = useAtomValue(datetimeAtom);
 
   const [optionsRight, setOptionsRight] = useState<SelectOption[]>([]);
 

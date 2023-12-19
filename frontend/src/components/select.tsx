@@ -27,7 +27,7 @@ import { Input } from "./input";
 import ModalDelete from "./modal-delete";
 import { MultipleInput } from "./multiple-input";
 import SlideOver from "./slide-over";
-import { timeTravelDateAtom } from "../state/atoms/time.atom";
+import { datetimeAtom } from "../state/atoms/time.atom";
 
 export type SelectOption = {
   id: string | number;
@@ -84,7 +84,7 @@ export const Select = (props: SelectProps) => {
   const [schemaList] = useAtom(schemaState);
   const [schemaKindName] = useAtom(schemaKindNameState);
   const branch = useAtomValue(currentBranchAtom);
-  const date = useAtomValue(timeTravelDateAtom);
+  const date = useAtomValue(datetimeAtom);
   const [namespaces] = useAtom(namespacesState);
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);

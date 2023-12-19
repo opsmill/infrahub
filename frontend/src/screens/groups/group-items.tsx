@@ -28,7 +28,7 @@ import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
 import { useAtomValue } from "jotai/index";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { timeTravelDateAtom } from "../../state/atoms/time.atom";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 
 export default function GroupItems() {
   const { groupname } = useParams();
@@ -40,7 +40,7 @@ export default function GroupItems() {
   const [schemaList] = useAtom(schemaState);
   const [genericList] = useAtom(genericsState);
   const branch = useAtomValue(currentBranchAtom);
-  const date = useAtomValue(timeTravelDateAtom);
+  const date = useAtomValue(datetimeAtom);
   const [pagination] = usePagination();
   const [rowToDelete, setRowToDelete] = useState<any>();
   const [deleteModal, setDeleteModal] = useState<boolean>(false);

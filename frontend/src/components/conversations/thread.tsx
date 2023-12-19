@@ -23,7 +23,7 @@ import { AddComment } from "./add-comment";
 import { Comment } from "./comment";
 import { useAtomValue } from "jotai/index";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { timeTravelDateAtom } from "../../state/atoms/time.atom";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 
 type tThread = {
   thread: any;
@@ -44,7 +44,7 @@ export const Thread = (props: tThread) => {
   const auth = useContext(AuthContext);
 
   const branch = useAtomValue(currentBranchAtom);
-  const date = useAtomValue(timeTravelDateAtom);
+  const date = useAtomValue(datetimeAtom);
   const [isLoading, setIsLoading] = useState(false);
   const [displayAddComment, setDisplayAddComment] = useState(false);
   const [confirmModal, setConfirmModal] = useState(false);

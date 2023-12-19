@@ -1,3 +1,3 @@
 import { atom } from "jotai";
 
-export const timeTravelDateAtom = atom<Date | null>(null);
+export const datetimeAtom = atom<Date | null>(null);

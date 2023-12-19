@@ -31,11 +31,11 @@ import LoadingScreen from "../loading-screen/loading-screen";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
 import { getFormStructure } from "../proposed-changes/conversations";
 import { useAtomValue } from "jotai/index";
-import { timeTravelDateAtom } from "../../state/atoms/time.atom";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 
 export const BranchDetails = () => {
   const { branchname } = useParams();
-  const date = useAtomValue(timeTravelDateAtom);
+  const date = useAtomValue(datetimeAtom);
   const auth = useContext(AuthContext);
   const [branches] = useAtom(branchesState);
   const [schemaList] = useAtom(schemaState);

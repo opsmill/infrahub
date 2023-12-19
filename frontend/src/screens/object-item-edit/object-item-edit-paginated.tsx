@@ -24,7 +24,7 @@ import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
 import { useAtomValue } from "jotai/index";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { timeTravelDateAtom } from "../../state/atoms/time.atom";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 
 interface Props {
   objectname: string;
@@ -49,7 +49,7 @@ export default function ObjectItemEditComponent(props: Props) {
   const [schemaKindName] = useAtom(schemaKindNameState);
   const [genericsList] = useAtom(genericsState);
   const branch = useAtomValue(currentBranchAtom);
-  const date = useAtomValue(timeTravelDateAtom);
+  const date = useAtomValue(datetimeAtom);
   const [isLoading, setIsLoading] = useState(false);
 
   const schema = schemaList.find((s) => s.kind === objectname);

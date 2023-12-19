@@ -20,7 +20,7 @@ import { getNodeClassName } from "../data-diff-node";
 import { QSP } from "../../../config/qsp";
 import { useAtomValue } from "jotai/index";
 import { currentBranchAtom } from "../../../state/atoms/branches.atom";
-import { timeTravelDateAtom } from "../../../state/atoms/time.atom";
+import { datetimeAtom } from "../../../state/atoms/time.atom";
 
 const renderConflict = {
   attribute_value: (name: string) => {
@@ -67,7 +67,7 @@ export const Conflict = (props: any) => {
   const { keep_branch } = check;
 
   const currentBranch = useAtomValue(currentBranchAtom);
-  const date = useAtomValue(timeTravelDateAtom);
+  const date = useAtomValue(datetimeAtom);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleAccept = async (conflictValue: string) => {

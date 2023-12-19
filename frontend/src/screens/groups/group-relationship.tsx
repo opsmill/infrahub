@@ -25,7 +25,7 @@ import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 import { useAtomValue } from "jotai/index";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { timeTravelDateAtom } from "../../state/atoms/time.atom";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 
 type iRelationDetailsProps = {
   parentNode: any;
@@ -47,7 +47,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   const [schemaList] = useAtom(schemaState);
   const [schemaKindName] = useAtom(schemaKindNameState);
   const branch = useAtomValue(currentBranchAtom);
-  const date = useAtomValue(timeTravelDateAtom);
+  const date = useAtomValue(datetimeAtom);
   const [relatedRowToDelete, setRelatedRowToDelete] = useState<any>();
   const [relatedObjectToEdit, setRelatedObjectToEdit] = useState<any>();
 

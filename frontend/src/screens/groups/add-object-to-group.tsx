@@ -20,7 +20,7 @@ import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
 import { useAtomValue } from "jotai/index";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { timeTravelDateAtom } from "../../state/atoms/time.atom";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 
 interface Props {
   closeDrawer: Function;
@@ -35,7 +35,7 @@ export default function AddObjectToGroup(props: Props) {
   const [schemaList] = useAtom(schemaState);
   const [genericsList] = useAtom(genericsState);
   const branch = useAtomValue(currentBranchAtom);
-  const date = useAtomValue(timeTravelDateAtom);
+  const date = useAtomValue(datetimeAtom);
   const [pagination] = usePagination();
   const [isLoading, setIsLoading] = useState(false);
 
