@@ -24,7 +24,7 @@ import { fetchUrl, getCurrentQsp } from "./utils/fetch";
 import { Branch } from "./generated/graphql";
 import { QSP } from "./config/qsp";
 import {
-  currentSchemaHashAtom,
+  schemaSummaryAtom,
   genericsState,
   iGenericSchema,
   iNamespace,
@@ -151,7 +151,7 @@ const AppInitializer = () => {
   const setNamespaces = useSetAtom(namespacesState);
   const setSchema = useSetAtom(schemaState);
   const setSchemaKindNameState = useSetAtom(schemaKindNameState);
-  const setCurrentSchemaHash = useSetAtom(currentSchemaHashAtom);
+  const setSchemaSummary = useSetAtom(schemaSummaryAtom);
   const [isSchemaLoading, setSchemaLoading] = useState(true);
   const [isSchemaSummaryLoading, setSchemaSummaryLoading] = useState(true);
 
@@ -203,7 +203,7 @@ const AppInitializer = () => {
         CONFIG.SCHEMA_SUMMARY_URL(branchInQueryString)
       );
 
-      setCurrentSchemaHash(schemaSummary.main);
+      setSchemaSummary(schemaSummary);
       setSchemaSummaryLoading(false);
     } catch (error) {
       toast(

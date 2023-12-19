@@ -16,7 +16,7 @@ import { Branch } from "./generated/graphql";
 import Layout from "./screens/layout/layout";
 import { branchesState, currentBranchAtom } from "./state/atoms/branches.atom";
 import {
-  currentSchemaHashAtom,
+  schemaSummaryAtom,
   genericsState,
   iGenericSchema,
   iNamespace,
@@ -34,7 +34,7 @@ addCollection(mdiIcons);
 function App() {
   const branches = useAtomValue(branchesState);
   const [currentBranch, setCurrentBranch] = useAtom(currentBranchAtom);
-  const [currentSchemaHash, setCurrentSchemaHash] = useAtom(currentSchemaHashAtom);
+  const [schemaSummary, setSchemaSummary] = useAtom(schemaSummaryAtom);
   const [, setSchema] = useAtom(schemaState);
   const [, setSchemaKindNameState] = useAtom(schemaKindNameState);
   const [, setGenerics] = useAtom(genericsState);
@@ -53,7 +53,6 @@ function App() {
         namespaces: iNamespace[];
       } = await fetchUrl(CONFIG.SCHEMA_URL(branch?.name));
 
-      const hash = schemaData.main;
       const schema = sortByName(schemaData.nodes || []);
       const generics = sortByName(schemaData.generics || []);
       const namespaces = sortByName(schemaData.namespaces || []);
@@ -69,7 +68,6 @@ function App() {
       const schemaKindNameMap = R.fromPairs(schemaKindNameTuples);
 
       setGenerics(generics);
-      setCurrentSchemaHash(hash);
       setSchema(schema);
       setSchemaKindNameState(schemaKindNameMap);
       setNamespaces(namespaces);
@@ -84,11 +82,13 @@ function App() {
 
   const updateSchemaStateIfNeeded = async (branch: Branch | null) => {
     try {
-      const schemaSummary = await fetchUrl(CONFIG.SCHEMA_SUMMARY_URL(branch?.name));
-      const isSameSchema = currentSchemaHash === schemaSummary.main;
+      const newSchemaSummary = await fetchUrl(CONFIG.SCHEMA_SUMMARY_URL(branch?.name));
+      const isSameSchema = schemaSummary?.main === newSchemaSummary.main;
 
       // Updating schema only if it's different from the current one
       if (isSameSchema) return;
+
+      setSchemaSummary(newSchemaSummary);
       await fetchAndSetSchema(branch);
     } catch (error) {
       console.error("Error while updating the schema state:", error);

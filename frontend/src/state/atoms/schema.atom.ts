@@ -19,4 +19,4 @@ export interface iGenericSchemaMapping {
 
 export type SchemaSummary = components["schemas"]["SchemaBranchHash"];
 
-export const currentSchemaHashAtom = atom<string | null>(null);
+export const schemaSummaryAtom = atom<SchemaSummary | null>(null);
