@@ -1,7 +1,7 @@
 import { ApolloProvider } from "@apollo/client";
 import { useAtom, useSetAtom } from "jotai";
 import queryString from "query-string";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { Slide, ToastContainer, toast } from "react-toastify";
@@ -58,7 +58,7 @@ export const Root = () => {
   /**
    * Set config in state atom
    */
-  const setConfigInState = useCallback(async () => {
+  const setConfigInState = async () => {
     try {
       setIsLoadingConfig(true);
       const config: Config = await fetchConfig();
@@ -77,7 +77,7 @@ export const Root = () => {
       );
       console.error("Error while fetching the config: ", error);
     }
-  }, []);
+  };
 
   /**
    * Fetch branches from the backend, sort, and return them
@@ -105,7 +105,7 @@ export const Root = () => {
   /**
    * Set branches in state atom
    */
-  const setBranchesInState = useCallback(async () => {
+  const setBranchesInState = async () => {
     const branches: Branch[] = await fetchBranches();
 
     const branchInQueryString = getCurrentQsp().get(QSP.BRANCH);
@@ -117,7 +117,7 @@ export const Root = () => {
     setBranches(branches);
     setCurrentBranch(selectedBranch);
     setIsLoadingBranches(false);
-  }, []);
+  };
 
   useEffect(() => {
     setConfigInState();
