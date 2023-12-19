@@ -29,6 +29,7 @@ class CheckType(Enum):
     DATA = "data"
     REPOSITORY = "repository"
     SCHEMA = "schema"
+    USER = "user"
     ALL = "all"
 
 
@@ -215,7 +216,7 @@ class ProposedChangeRequestRunCheck(Mutation):
             await rpc_client.send(messages.RequestProposedChangeRefreshArtifacts(proposed_change=proposed_change.id))
         elif check_type == CheckType.DATA:
             await rpc_client.send(messages.RequestProposedChangeDataIntegrity(proposed_change=proposed_change.id))
-        elif check_type == CheckType.REPOSITORY:
+        elif check_type in [CheckType.REPOSITORY, CheckType.USER]:
             await rpc_client.send(messages.RequestProposedChangeRepositoryChecks(proposed_change=proposed_change.id))
         elif check_type == CheckType.SCHEMA:
             await rpc_client.send(messages.RequestProposedChangeSchemaIntegrity(proposed_change=proposed_change.id))

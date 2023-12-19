@@ -5,6 +5,7 @@ from infrahub.message_bus import InfrahubMessage
 from .check_artifact_create import CheckArtifactCreate
 from .check_repository_checkdefinition import CheckRepositoryCheckDefinition
 from .check_repository_mergeconflicts import CheckRepositoryMergeConflicts
+from .check_repository_usercheck import CheckRepositoryUserCheck
 from .event_branch_create import EventBranchCreate
 from .event_branch_delete import EventBranchDelete
 from .event_branch_merge import EventBranchMerge
@@ -28,6 +29,7 @@ from .request_proposedchange_refreshartifacts import RequestProposedChangeRefres
 from .request_proposedchange_repositorychecks import RequestProposedChangeRepositoryChecks
 from .request_proposedchange_schemaintegrity import RequestProposedChangeSchemaIntegrity
 from .request_repository_checks import RequestRepositoryChecks
+from .request_repository_userchecks import RequestRepositoryUserChecks
 from .transform_jinja_template import TransformJinjaTemplate
 from .transform_python_data import TransformPythonData
 from .trigger_artifact_definition_generate import TriggerArtifactDefinitionGenerate
@@ -37,6 +39,7 @@ MESSAGE_MAP: Dict[str, Type[InfrahubMessage]] = {
     "check.artifact.create": CheckArtifactCreate,
     "check.repository.check_definition": CheckRepositoryCheckDefinition,
     "check.repository.merge_conflicts": CheckRepositoryMergeConflicts,
+    "check.repository.user_check": CheckRepositoryUserCheck,
     "event.branch.create": EventBranchCreate,
     "event.branch.delete": EventBranchDelete,
     "event.branch.merge": EventBranchMerge,
@@ -60,6 +63,7 @@ MESSAGE_MAP: Dict[str, Type[InfrahubMessage]] = {
     "request.proposed_change.repository_checks": RequestProposedChangeRepositoryChecks,
     "request.proposed_change.schema_integrity": RequestProposedChangeSchemaIntegrity,
     "request.repository.checks": RequestRepositoryChecks,
+    "request.repository.user_checks": RequestRepositoryUserChecks,
     "transform.jinja.template": TransformJinjaTemplate,
     "transform.python.data": TransformPythonData,
     "trigger.artifact_definition.generate": TriggerArtifactDefinitionGenerate,
@@ -80,6 +84,7 @@ def message_priority(routing_key: str) -> int:
         "git.file.get": 4,
         "request.artifact.generate": 2,
         "request.git.sync": 4,
+        "request.proposed_change.repository_checks": 5,
         "transform.jinja.template": 4,
         "transform.python.data": 4,
     }

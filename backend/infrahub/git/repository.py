@@ -30,7 +30,7 @@ from infrahub_sdk.schema import (
     InfrahubRepositoryRFileConfig,
 )
 from infrahub_sdk.utils import YamlFile, compare_lists
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, Field, validator
 from pydantic import ValidationError as PydanticValidationError
 
 import infrahub.config as config
@@ -125,6 +125,8 @@ class CheckDefinitionInformation(BaseModel):
 
     parameters: Optional[dict] = None
     """Additional Parameters to extract from each target (if targets is provided)"""
+
+    targets: Optional[str] = Field(default=None, description="Targets if not a global check")
 
 
 class InfrahubRepositoryRFile(InfrahubRepositoryRFileConfig):
@@ -1536,6 +1538,8 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                     query=str(graphql_query.id),
                     timeout=check_class.timeout,
                     rebase=check_class.rebase,
+                    parameters=check_definition.parameters,
+                    targets=check_definition.targets,
                 )
             )
 
@@ -1589,6 +1593,9 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             "timeout": check.timeout,
             "parameters": check.parameters,
         }
+
+        if check.targets:
+            data["targets"] = check.targets
 
         schema = await self.client.schema.get(kind="CoreCheckDefinition", branch=branch_name)
 
@@ -1775,7 +1782,13 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             raise TransformError(repository_name=self.name, commit=commit, location=location, message=str(exc)) from exc
 
     async def execute_python_check(
-        self, branch_name: str, commit: str, location: str, class_name: str, client: InfrahubClient
+        self,
+        branch_name: str,
+        commit: str,
+        location: str,
+        class_name: str,
+        client: InfrahubClient,
+        params: Optional[Dict] = None,
     ) -> InfrahubCheck:
         """Execute A Python Check stored in the repository."""
 
@@ -1798,7 +1811,9 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
             check_class: InfrahubCheck = getattr(module, class_name)
 
-            check = await check_class.init(root_directory=commit_worktree.directory, branch=branch_name, client=client)
+            check = await check_class.init(
+                root_directory=commit_worktree.directory, branch=branch_name, client=client, params=params
+            )
             await check.run()
 
             return check
