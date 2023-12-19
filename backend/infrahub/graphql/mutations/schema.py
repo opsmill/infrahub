@@ -1,6 +1,6 @@
 from typing import Dict, Union
 
-from graphene import Boolean, InputObjectType, Mutation, String
+from graphene import Boolean, Field, InputObjectType, Mutation, String
 from graphql import GraphQLResolveInfo
 
 from infrahub import config, lock
@@ -15,6 +15,8 @@ from infrahub.log import get_logger
 from infrahub.message_bus import Meta, messages
 from infrahub.services import services
 from infrahub.worker import WORKER_IDENTITY
+
+from ..types import DropdownType
 
 log = get_logger()
 
@@ -42,6 +44,7 @@ class SchemaDropdownAdd(Mutation):
         data = SchemaDropdownAddInput(required=True)
 
     ok = Boolean()
+    object = Field(DropdownType)
 
     @classmethod
     async def mutate(
@@ -49,7 +52,7 @@ class SchemaDropdownAdd(Mutation):
         root: dict,  # pylint: disable=unused-argument
         info: GraphQLResolveInfo,
         data: SchemaDropdownAddInput,
-    ) -> Dict[str, bool]:
+    ):
         db: InfrahubDatabase = info.context.get("infrahub_database")
         branch: Branch = info.context.get("infrahub_branch")
         kind = registry.get_schema(name=str(data.kind), branch=branch.name)
@@ -72,7 +75,7 @@ class SchemaDropdownAdd(Mutation):
 
         await update_registry(kind=kind, branch=branch, db=db)
 
-        return {"ok": True}
+        return cls(object=DropdownType(value=dropdown, label=label, color=color, description=description), ok=True)
 
 
 class SchemaDropdownRemove(Mutation):
@@ -80,6 +83,7 @@ class SchemaDropdownRemove(Mutation):
         data = SchemaDropdownRemoveInput(required=True)
 
     ok = Boolean()
+    object = Field(DropdownType)
 
     @classmethod
     async def mutate(
@@ -87,14 +91,17 @@ class SchemaDropdownRemove(Mutation):
         root: dict,  # pylint: disable=unused-argument
         info: GraphQLResolveInfo,
         data: SchemaDropdownRemoveInput,
-    ) -> Dict[str, bool]:
+    ):
         db: InfrahubDatabase = info.context.get("infrahub_database")
         branch: Branch = info.context.get("infrahub_branch")
         kind = registry.get_schema(name=str(data.kind), branch=branch.name)
 
         attribute = str(data.attribute)
-        dropdown = str(data.dropdown)
         validate_kind_dropdown(kind=kind, attribute=attribute)
+        dropdown = str(data.dropdown)
+        color = str(data.color) if data.color else ""
+        description = str(data.description) if data.description else ""
+        label = str(data.label) if data.label else ""
         nodes_with_dropdown = await NodeManager.query(
             db=db, schema=kind.kind, filters={f"{attribute}__value": dropdown}
         )
@@ -113,7 +120,7 @@ class SchemaDropdownRemove(Mutation):
 
         await update_registry(kind=kind, branch=branch, db=db)
 
-        return {"ok": True}
+        return cls(object=DropdownType(value=dropdown, label=label, color=color, description=description), ok=True)
 
 
 class SchemaEnumAdd(Mutation):
