@@ -51,7 +51,8 @@ export default function MetaDetailsTooltip(props: Props) {
           className={classNames(
             "absolute z-10 bg-custom-white rounded-lg border shadow-xl",
             position === "LEFT" ? "right-0" : ""
-          )}>
+          )}
+          data-cy="metadata-tooltip">
           <div className="w-80 text-sm divide-y">
             {!!header && header}
             {items.map((item) => {
