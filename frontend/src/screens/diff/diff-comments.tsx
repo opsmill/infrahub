@@ -1,4 +1,4 @@
-import { gql, useReactiveVar } from "@apollo/client";
+import { gql } from "@apollo/client";
 import { formatISO } from "date-fns";
 import { useAtom } from "jotai";
 import { useContext, useState } from "react";
@@ -16,7 +16,6 @@ import graphqlClient from "../../graphql/graphqlClientApollo";
 import { createObject } from "../../graphql/mutations/objects/createObject";
 import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
 import { getProposedChangesObjectThreadComments } from "../../graphql/queries/proposed-changes/getProposedChangesObjectThreadComments";
-import { dateVar } from "../../graphql/variables/dateVar";
 import useQuery from "../../hooks/useQuery";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { getThreadLabel } from "../../utils/diff";
@@ -24,6 +23,7 @@ import { stringifyWithoutQuotes } from "../../utils/string";
 import { DiffContext } from "./data-diff";
 import { useAtomValue } from "jotai/index";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 
 type tDataDiffComments = {
   path: string;
@@ -37,7 +37,7 @@ export const DataDiffComments = (props: tDataDiffComments) => {
   const [schemaList] = useAtom(schemaState);
   const auth = useContext(AuthContext);
   const branch = useAtomValue(currentBranchAtom);
-  const date = useReactiveVar(dateVar);
+  const date = useAtomValue(datetimeAtom);
   const [isLoading, setIsLoading] = useState(false);
   const { refetch: contextRefetch, node, currentBranch } = useContext(DiffContext);
 

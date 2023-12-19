@@ -1,4 +1,4 @@
-import { gql, useReactiveVar } from "@apollo/client";
+import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { format, formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
@@ -9,7 +9,6 @@ import { AuthContext } from "../decorators/withAuth";
 import { Branch } from "../generated/graphql";
 import graphqlClient from "../graphql/graphqlClientApollo";
 import { createBranch } from "../graphql/mutations/branches/createBranch";
-import { dateVar } from "../graphql/variables/dateVar";
 import { branchesState, currentBranchAtom } from "../state/atoms/branches.atom";
 import { classNames, objectToString } from "../utils/common";
 import { BUTTON_TYPES, Button } from "./button";
@@ -19,12 +18,13 @@ import { Select, SelectOption } from "./select";
 import { SelectButton } from "./select-button";
 import { Switch } from "./switch";
 import { useAtomValue } from "jotai/index";
+import { datetimeAtom } from "../state/atoms/time.atom";
 
 export default function BranchSelector() {
   const [branches] = useAtom(branchesState);
   const [, setBranchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
   const branch = useAtomValue(currentBranchAtom);
-  const date = useReactiveVar(dateVar);
+  const date = useAtomValue(datetimeAtom);
   const auth = useContext(AuthContext);
 
   const [newBranchName, setNewBranchName] = useState("");

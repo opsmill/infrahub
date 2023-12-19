@@ -1,4 +1,4 @@
-import { gql, useReactiveVar } from "@apollo/client";
+import { gql } from "@apollo/client";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
@@ -17,7 +17,6 @@ import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
 import { getObjectItemsPaginated } from "../../graphql/queries/objects/getObjectItems";
-import { dateVar } from "../../graphql/variables/dateVar";
 import useFilters from "../../hooks/useFilters";
 import usePagination from "../../hooks/usePagination";
 import useQuery from "../../hooks/useQuery";
@@ -38,6 +37,7 @@ import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 
 export default function ObjectItems(props: any) {
   const { objectname: objectnameFromParams } = useParams();
@@ -55,7 +55,7 @@ export default function ObjectItems(props: any) {
   const [schemaList] = useAtom(schemaState);
   const [genericList] = useAtom(genericsState);
   const branch = useAtomValue(currentBranchAtom);
-  const date = useReactiveVar(dateVar);
+  const date = useAtomValue(datetimeAtom);
   const [filters] = useFilters();
   const [pagination] = usePagination();
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);

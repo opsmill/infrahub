@@ -1,4 +1,4 @@
-import { gql, useReactiveVar } from "@apollo/client";
+import { gql } from "@apollo/client";
 import { CheckIcon, ShieldCheckIcon } from "@heroicons/react/20/solid";
 import { ArrowPathIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
@@ -21,7 +21,6 @@ import { mergeBranch } from "../../graphql/mutations/branches/mergeBranch";
 import { rebaseBranch } from "../../graphql/mutations/branches/rebaseBranch";
 import { validateBranch } from "../../graphql/mutations/branches/validateBranch";
 import { getBranchDetails } from "../../graphql/queries/branches/getBranchDetails";
-import { dateVar } from "../../graphql/variables/dateVar";
 import useQuery from "../../hooks/useQuery";
 import { branchesState } from "../../state/atoms/branches.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
@@ -31,10 +30,12 @@ import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
 import { getFormStructure } from "../proposed-changes/conversations";
+import { useAtomValue } from "jotai/index";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 
 export const BranchDetails = () => {
   const { branchname } = useParams();
-  const date = useReactiveVar(dateVar);
+  const date = useAtomValue(datetimeAtom);
   const auth = useContext(AuthContext);
   const [branches] = useAtom(branchesState);
   const [schemaList] = useAtom(schemaState);

@@ -1,3 +1,3 @@
 import { atom } from "jotai";
 
-export const timeState = atom<Date | null | undefined>(undefined);
+export const datetimeAtom = atom<Date | null>(null);

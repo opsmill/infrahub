@@ -1,4 +1,4 @@
-import { gql, useReactiveVar } from "@apollo/client";
+import { gql } from "@apollo/client";
 import {
   EyeSlashIcon,
   LockClosedIcon,
@@ -20,7 +20,6 @@ import SlideOver from "../../components/slide-over";
 import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
-import { dateVar } from "../../graphql/variables/dateVar";
 // import { ReactComponent as UnlinkIcon } from "../../images/icons/unlink.svg";
 import { Icon } from "@iconify-icon/react";
 import { AuthContext } from "../../decorators/withAuth";
@@ -42,6 +41,7 @@ import ObjectItemEditComponent from "../object-item-edit/object-item-edit-pagina
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 import { useAtomValue } from "jotai/index";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 
 type iRelationDetailsProps = {
   parentNode: any;
@@ -64,7 +64,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   const [schemaList] = useAtom(schemaState);
   const [generics] = useAtom(genericsState);
   const branch = useAtomValue(currentBranchAtom);
-  const date = useReactiveVar(dateVar);
+  const date = useAtomValue(datetimeAtom);
   const [showAddDrawer, setShowAddDrawer] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showRelationMetaEditModal, setShowRelationMetaEditModal] = useState(false);

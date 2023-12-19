@@ -1,4 +1,4 @@
-import { gql, useReactiveVar } from "@apollo/client";
+import { gql } from "@apollo/client";
 import { Menu, Transition } from "@headlessui/react";
 import { MagnifyingGlassIcon } from "@heroicons/react/20/solid";
 import { Bars3BottomLeftIcon } from "@heroicons/react/24/outline";
@@ -16,12 +16,12 @@ import { ACCESS_TOKEN_KEY, ACCOUNT_OBJECT } from "../../config/constants";
 import { QSP } from "../../config/qsp";
 import { AuthContext } from "../../decorators/withAuth";
 import { getProfileDetails } from "../../graphql/queries/profile/getProfileDetails";
-import { dateVar } from "../../graphql/variables/dateVar";
 import useQuery from "../../hooks/useQuery";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { classNames, debounce, parseJwt } from "../../utils/common";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { userNavigation } from "./navigation-list";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 
 interface Props {
   setSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -33,7 +33,7 @@ export default function Header(props: Props) {
   const { setSidebarOpen } = props;
 
   const [qspDate, setQspDate] = useQueryParam(QSP.DATETIME, StringParam);
-  const date = useReactiveVar(dateVar);
+  const [date, setDate] = useAtom(datetimeAtom);
   const auth = useContext(AuthContext);
   const [schemaList] = useAtom(schemaState);
   const navigate = useNavigate();
@@ -62,7 +62,7 @@ export default function Header(props: Props) {
   useEffect(() => {
     // Remove the date from the state
     if (!qspDate || (qspDate && !isValid(new Date(qspDate)))) {
-      dateVar(null);
+      setDate(null);
     }
 
     if (qspDate) {
@@ -70,7 +70,7 @@ export default function Header(props: Props) {
 
       // Store the new QSP date only if it's not defined OR if it's different
       if (!date || (date && !isEqual(newQspDate, date))) {
-        dateVar(newQspDate);
+        setDate(newQspDate);
       }
     }
   }, [date, qspDate]);

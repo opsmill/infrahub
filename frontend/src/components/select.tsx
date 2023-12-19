@@ -1,4 +1,4 @@
-import { gql, useReactiveVar } from "@apollo/client";
+import { gql } from "@apollo/client";
 import { Combobox } from "@headlessui/react";
 import { CheckIcon } from "@heroicons/react/20/solid";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
@@ -15,7 +15,6 @@ import {
 } from "../config/constants";
 import graphqlClient from "../graphql/graphqlClientApollo";
 import { basicMutation } from "../graphql/mutations/objects/basicMutation";
-import { dateVar } from "../graphql/variables/dateVar";
 import { Form, FormFieldError } from "../screens/edit-form-hook/form";
 import ObjectItemCreate from "../screens/object-item-create/object-item-create-paginated";
 import { currentBranchAtom } from "../state/atoms/branches.atom";
@@ -28,6 +27,7 @@ import { Input } from "./input";
 import ModalDelete from "./modal-delete";
 import { MultipleInput } from "./multiple-input";
 import SlideOver from "./slide-over";
+import { datetimeAtom } from "../state/atoms/time.atom";
 
 export type SelectOption = {
   id: string | number;
@@ -84,7 +84,7 @@ export const Select = (props: SelectProps) => {
   const [schemaList] = useAtom(schemaState);
   const [schemaKindName] = useAtom(schemaKindNameState);
   const branch = useAtomValue(currentBranchAtom);
-  const date = useReactiveVar(dateVar);
+  const date = useAtomValue(datetimeAtom);
   const [namespaces] = useAtom(namespacesState);
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
