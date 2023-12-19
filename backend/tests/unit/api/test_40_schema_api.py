@@ -177,7 +177,7 @@ async def test_schema_load_endpoint_valid_simple(
     assert attributes["description"] == 900
     assert attributes["type"] == 3000
     assert relationships["interfaces"] == 450
-    assert relationships["tags"] == 5000
+    assert relationships["tags"] == 7000
 
 
 async def test_schema_load_restricted_namespace(
@@ -229,7 +229,7 @@ async def test_schema_load_endpoint_idempotent_simple(
         assert attributes["description"] == 900
         assert attributes["type"] == 3000
         assert relationships["interfaces"] == 450
-        assert relationships["tags"] == 5000
+        assert relationships["tags"] == 7000
 
         creation = client.post(
             "/api/schema/load", headers=admin_headers, json={"schemas": [helper.schema_file("infra_simple_01.json")]}
