@@ -1,5 +1,4 @@
 from collections import defaultdict
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict, List, Union
 
@@ -12,7 +11,7 @@ from ..exceptions import FileAlreadyExistsError, InvalidNamespaceError
 from .interface import ExporterInterface
 
 if TYPE_CHECKING:
-    from infrahub_sdk.schema import NodeSchema, GenericSchema
+    from infrahub_sdk.schema import NodeSchema
 
 from ..constants import ILLEGAL_NAMESPACES
 
@@ -56,13 +55,11 @@ class LineDelimitedJSONExporter(ExporterInterface):
         async for _, schema_nodes in schema_batch.execute():
             all_nodes.extend(schema_nodes)
 
-        timestamp = datetime.now(timezone.utc).astimezone().isoformat()
         json_lines = [
             ujson.dumps(
                 {
                     "id": n.id,
                     "kind": n.get_kind(),
-                    "timestamp": timestamp,
                     "graphql_json": ujson.dumps(n.get_raw_graphql_data()),
                 }
             )

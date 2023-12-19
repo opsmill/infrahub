@@ -1189,11 +1189,16 @@ class InfrahubNode(InfrahubNodeBase):
 
         return data
 
-    async def create(self, at: Timestamp) -> None:
+    async def create(self, at: Timestamp, allow_update: bool = False) -> None:
         input_data = self._generate_input_data()
         input_data["data"]["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
-        mutation_name = f"{self._schema.kind}Create"
+        if allow_update:
+            mutation_name = f"{self._schema.kind}Upsert"
+            tracker = (f"mutation-{str(self._schema.kind).lower()}-upsert",)
+        else:
+            mutation_name = f"{self._schema.kind}Create"
+            tracker = (f"mutation-{str(self._schema.kind).lower()}-create",)
         query = Mutation(
             mutation=mutation_name,
             input_data=input_data["data"],
@@ -1204,7 +1209,7 @@ class InfrahubNode(InfrahubNodeBase):
             query=query.render(),
             branch_name=self._branch,
             at=at,
-            tracker=f"mutation-{str(self._schema.kind).lower()}-create",
+            tracker=tracker,
             variables=input_data["variables"],
         )
         self._existing = True

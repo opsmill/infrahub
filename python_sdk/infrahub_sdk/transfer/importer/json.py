@@ -1,8 +1,7 @@
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
-from infrahub_sdk.exceptions import GraphQLError
 
 import pyarrow.json as pa_json
 import ujson
@@ -10,6 +9,7 @@ from rich.console import Console
 from rich.progress import Progress
 
 from infrahub_sdk.client import InfrahubClient
+from infrahub_sdk.exceptions import GraphQLError
 from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.transfer.schema_sorter import InfrahubSchemaTopologicalSorter
 
@@ -50,10 +50,7 @@ class LineDelimitedJSONImporter(ImporterInterface):
             self.console.print("[green]done")
 
         import_nodes_by_kind = defaultdict(list)
-        for graphql_data, kind, timestamp_raw in zip(
-            table.column("graphql_json"), table.column("kind"), table.column("timestamp")
-        ):
-            timestamp = datetime.fromisoformat(str(timestamp_raw))
+        for graphql_data, kind in zip(table.column("graphql_json"), table.column("kind")):
             node = await InfrahubNode.from_graphql(self.client, branch, ujson.loads(str(graphql_data)))
             import_nodes_by_kind[str(kind)].append(node)
 
@@ -61,6 +58,7 @@ class LineDelimitedJSONImporter(ImporterInterface):
             self.console.print("Building import batches", end="...")
         node_count = 0
         save_batches = []
+        right_now = datetime.now(timezone.utc).astimezone()
         for kind in ordered_schema_names:
             schema_import_nodes = import_nodes_by_kind[kind]
             if not schema_import_nodes:
@@ -68,7 +66,7 @@ class LineDelimitedJSONImporter(ImporterInterface):
             save_batch = await self.client.create_batch(return_exceptions=True)
             node_count += len(schema_import_nodes)
             for node in schema_import_nodes:
-                save_batch.add(task=node.upsert, node=node, at=timestamp)
+                save_batch.add(task=node.create, node=node, at=right_now, allow_update=True)
             save_batches.append(save_batch)
         if self.console:
             self.console.print("[green]done")
