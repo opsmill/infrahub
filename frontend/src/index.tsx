@@ -23,6 +23,18 @@ import "./styles/index.css";
 import { fetchUrl, getCurrentQsp } from "./utils/fetch";
 import { Branch } from "./generated/graphql";
 import { QSP } from "./config/qsp";
+import {
+  currentSchemaHashAtom,
+  genericsState,
+  iGenericSchema,
+  iNamespace,
+  iNodeSchema,
+  namespacesState,
+  schemaState,
+  SchemaSummary,
+} from "./state/atoms/schema.atom";
+import { schemaKindNameState } from "./state/atoms/schemaKindName.atom";
+import { sortByName, sortByOrderWeight } from "./utils/common";
 
 const root = ReactDOM.createRoot(
   (document.getElementById("root") || document.createElement("div")) as HTMLElement
@@ -126,6 +138,93 @@ export const Root = () => {
 
   if (isLoadingConfig || isLoadingBranches) {
     // Loading screen while loading the token from the local storage
+    return (
+      <div className="w-screen h-screen flex ">
+        <LoadingScreen />;
+      </div>
+    );
+  }
+
+  return <AppInitializer />;
+};
+
+const AppInitializer = () => {
+  const setGenerics = useSetAtom(genericsState);
+  const setNamespaces = useSetAtom(namespacesState);
+  const setSchema = useSetAtom(schemaState);
+  const setSchemaKindNameState = useSetAtom(schemaKindNameState);
+  const setCurrentSchemaHash = useSetAtom(currentSchemaHashAtom);
+  const [isSchemaLoading, setSchemaLoading] = useState(true);
+  const [isSchemaSummaryLoading, setSchemaSummaryLoading] = useState(true);
+
+  const branchInQueryString = getCurrentQsp().get(QSP.BRANCH);
+
+  const fetchAndSetSchema = async () => {
+    try {
+      const schemaData: {
+        main: string;
+        nodes: iNodeSchema[];
+        generics: iGenericSchema[];
+        namespaces: iNamespace[];
+      } = await fetchUrl(CONFIG.SCHEMA_URL(branchInQueryString));
+
+      const schema: iNodeSchema[] = sortByName(schemaData.nodes || []);
+      const generics: iGenericSchema[] = sortByName(schemaData.generics || []);
+      const namespaces: iNamespace[] = sortByName(schemaData.namespaces || []);
+
+      schema.forEach((s) => {
+        s.attributes = sortByOrderWeight(s.attributes || []);
+        s.relationships = sortByOrderWeight(s.relationships || []);
+      });
+
+      const schemaKindNameMap = schema.reduce(
+        (kindNameMap: Record<string, string>, { name, kind }) => ({
+          ...kindNameMap,
+          [kind as string]: name,
+        }),
+        {}
+      );
+
+      setGenerics(generics);
+      setSchema(schema);
+      setSchemaKindNameState(schemaKindNameMap);
+      setNamespaces(namespaces);
+      setSchemaLoading(false);
+    } catch (error) {
+      toast(
+        <Alert type={ALERT_TYPES.ERROR} message="Something went wrong when fetching the schema" />
+      );
+
+      console.error("Error while fetching the schema: ", error);
+    }
+  };
+
+  const fetchAndSetSchemaSummary = async () => {
+    try {
+      const schemaSummary: SchemaSummary = await fetchUrl(
+        CONFIG.SCHEMA_SUMMARY_URL(branchInQueryString)
+      );
+
+      setCurrentSchemaHash(schemaSummary.main);
+      setSchemaSummaryLoading(false);
+    } catch (error) {
+      toast(
+        <Alert
+          type={ALERT_TYPES.ERROR}
+          message="Something went wrong when fetching the schema summary"
+        />
+      );
+
+      console.error("Error while fetching the schema summary: ", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchAndSetSchema();
+    fetchAndSetSchemaSummary();
+  }, []);
+
+  if (isSchemaLoading || isSchemaSummaryLoading) {
     return (
       <div className="w-screen h-screen flex ">
         <LoadingScreen />;
