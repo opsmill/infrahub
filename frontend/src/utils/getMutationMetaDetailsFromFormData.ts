@@ -32,7 +32,7 @@ const getMutationMetaDetailsFromFormData = (
       return acc;
     }
 
-    if (metadataFields.includes(key)) {
+    if (metadataFields.includes(key) && type === "relationship") {
       return {
         ...acc,
         [`_relation__${key}`]: value,

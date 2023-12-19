@@ -66,6 +66,7 @@ KIND_FILTER_MAP = {
     "Integer": FilterSchemaKind.NUMBER,
     "Boolean": FilterSchemaKind.BOOLEAN,
     "Checkbox": FilterSchemaKind.BOOLEAN,
+    "Dropdown": FilterSchemaKind.TEXT,
 }
 
 
