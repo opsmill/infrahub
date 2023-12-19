@@ -1,5 +1,5 @@
 import { ApolloProvider } from "@apollo/client";
-import { useAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import queryString from "query-string";
 import { useCallback, useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
@@ -15,19 +15,22 @@ import SentryClient from "./config/sentry";
 import graphqlClient from "./graphql/graphqlClientApollo";
 import GET_BRANCHES from "./graphql/queries/branches/getBranches";
 import reportWebVitals from "./reportWebVitals";
-import { branchesState } from "./state/atoms/branches.atom";
+import { branchesState, currentBranchAtom } from "./state/atoms/branches.atom";
 import { Config, configState } from "./state/atoms/config.atom";
 
 import LoadingScreen from "./screens/loading-screen/loading-screen";
 import "./styles/index.css";
-import { fetchUrl } from "./utils/fetch";
+import { fetchUrl, getCurrentQsp } from "./utils/fetch";
+import { Branch } from "./generated/graphql";
+import { QSP } from "./config/qsp";
 
 const root = ReactDOM.createRoot(
   (document.getElementById("root") || document.createElement("div")) as HTMLElement
 );
 
 export const Root = () => {
-  const [, setBranches] = useAtom(branchesState);
+  const setBranches = useSetAtom(branchesState);
+  const setCurrentBranch = useSetAtom(currentBranchAtom);
   const [config, setConfig] = useAtom(configState);
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
   const [isLoadingBranches, setIsLoadingBranches] = useState(true);
@@ -103,8 +106,16 @@ export const Root = () => {
    * Set branches in state atom
    */
   const setBranchesInState = useCallback(async () => {
-    const branches = await fetchBranches();
+    const branches: Branch[] = await fetchBranches();
+
+    const branchInQueryString = getCurrentQsp().get(QSP.BRANCH);
+    const filter = branchInQueryString
+      ? (b: Branch) => branchInQueryString === b.name
+      : (b: Branch) => b.is_default;
+    const selectedBranch = branches.find(filter) ?? null;
+
     setBranches(branches);
+    setCurrentBranch(selectedBranch);
     setIsLoadingBranches(false);
   }, []);
 
