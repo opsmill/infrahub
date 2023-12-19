@@ -34,10 +34,10 @@ describe("Groups", () => {
       GROUP_NAME
     );
 
-    // Access the memebers
+    // Access the members
     cy.get(".-mb-px > :nth-child(2)").click();
 
-    // There are 6 members
+    // There are 5 members
     cy.get("div.flex > .text-sm > :nth-child(3)").should("have.text", "5");
   });
 
@@ -86,7 +86,7 @@ describe("Groups", () => {
     // Access group details
     cy.contains(GROUP_NAME).click();
 
-    // Access the memebers
+    // Access the members
     cy.get(".-mb-px > :nth-child(2)").click();
 
     // There are 6 members
@@ -142,7 +142,7 @@ describe("Groups", () => {
     // Access group details
     cy.contains(GROUP_NAME).click();
 
-    // Access the memebers
+    // Access the members
     cy.get(".-mb-px > :nth-child(2)").click();
 
     // There are 5 members
