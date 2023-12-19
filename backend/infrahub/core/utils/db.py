@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from inspect import isclass
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import TYPE_CHECKING, List, Optional
 
 import infrahub.config as config
 from infrahub.core.constants import RelationshipStatus
 from infrahub.core.timestamp import Timestamp
+
+from .query import element_id_to_id
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -47,15 +48,6 @@ async def add_relationship(
     if not results:
         return None
     return results[0][0]
-
-
-async def delete_all_relationships_for_branch(branch_name: str, db: InfrahubDatabase):
-    query = """
-    MATCH ()-[r { branch: $branch_name }]-() DELETE r
-    """
-    params = {"branch_name": branch_name}
-
-    await db.execute_query(query=query, params=params)
 
 
 async def update_relationships_to(
@@ -141,86 +133,3 @@ async def delete_all_nodes(db: InfrahubDatabase):
     params: dict = {}
 
     return await db.execute_query(query=query, params=params)
-
-
-def element_id_to_id(element_id: Union[str, int]) -> int:
-    if isinstance(element_id, int):
-        return element_id
-
-    if isinstance(element_id, str) and ":" not in element_id:
-        return int(element_id)
-
-    return int(element_id.split(":")[2])
-
-
-def extract_field_filters(field_name: str, filters: dict) -> dict:
-    """Extract the filters for a given field (attribute or relationship) from a filters dict."""
-    return {
-        key.replace(f"{field_name}__", ""): value for key, value in filters.items() if key.startswith(f"{field_name}__")
-    }
-
-
-# --------------------------------------------------------------------------------
-# CODE IMPORTED FROM:
-#   https://github.com/graphql-python/graphene/blob/9c3e4bb7da001aac48002a3b7d83dcd072087770/graphene/utils/subclass_with_meta.py#L18
-#   https://github.com/graphql-python/graphene/blob/9c3e4bb7da001aac48002a3b7d83dcd072087770/graphene/utils/props.py#L12
-# --------------------------------------------------------------------------------
-
-
-class _OldClass:
-    pass
-
-
-class _NewClass:
-    pass
-
-
-_all_vars = set(dir(_OldClass) + dir(_NewClass))
-
-
-def props(x):
-    return {key: vars(x).get(key, getattr(x, key)) for key in dir(x) if key not in _all_vars}
-
-
-class SubclassWithMeta_Meta(type):
-    _meta = None
-
-    def __str__(cls):
-        if cls._meta:
-            return cls._meta.name
-        return cls.__name__
-
-    def __repr__(cls):
-        return f"<{cls.__name__} meta={repr(cls._meta)}>"
-
-
-class SubclassWithMeta(metaclass=SubclassWithMeta_Meta):
-    """This class improves __init_subclass__ to receive automatically the options from meta"""
-
-    def __init_subclass__(cls, **meta_options):
-        """This method just terminates the super() chain"""
-        _Meta = getattr(cls, "Meta", None)
-        _meta_props = {}
-        if _Meta:
-            if isinstance(_Meta, dict):
-                _meta_props = _Meta
-            elif isclass(_Meta):
-                _meta_props = props(_Meta)
-            else:
-                raise TypeError(f"Meta have to be either a class or a dict. Received {_Meta}")
-            delattr(cls, "Meta")
-        options = dict(meta_options, **_meta_props)
-
-        abstract = options.pop("abstract", False)
-        if abstract:
-            assert not options, (
-                "Abstract types can only contain the abstract attribute. " f"Received: abstract, {', '.join(options)}"
-            )
-        else:
-            super_class = super(cls, cls)
-            if hasattr(super_class, "__init_subclass_with_meta__"):
-                super_class.__init_subclass_with_meta__(**options)
-
-    @classmethod
-    def __init_subclass_with_meta__(cls, **meta_options):
-        """This method just terminates the super() chain"""

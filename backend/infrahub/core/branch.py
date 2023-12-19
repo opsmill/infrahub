@@ -7,6 +7,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
 from pydantic import BaseModel, Field, validator
+from ujson import JSONDecodeError
 
 from infrahub import config
 from infrahub.core.constants import (
@@ -39,6 +40,7 @@ from infrahub.core.query.node import NodeDeleteQuery, NodeListGetInfoQuery
 from infrahub.core.registry import get_branch, registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import add_relationship, update_relationships_to
+from infrahub.core.utils.json_equality import are_json_equal
 from infrahub.exceptions import (
     BranchNotFound,
     DiffFromRequiredOnDefaultBranchError,
@@ -48,6 +50,8 @@ from infrahub.exceptions import (
 from infrahub.message_bus import messages
 from infrahub.message_bus.responses import DiffNamesResponse
 from infrahub.services import services
+from infrahub.types import Dropdown as InfrahubDropdownType
+from infrahub.types import List as InfrahubListType
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -807,6 +811,16 @@ class ValueElement(BaseDiffElement):
     previous: Optional[Any] = None
     new: Optional[Any] = None
 
+    def includes_change(self, order_matters: bool = True) -> bool:
+        if self.previous == self.new:
+            return False
+        if isinstance(self.previous, str) and isinstance(self.new, str):
+            try:
+                return not are_json_equal(self.previous, self.new, order_matters=order_matters)
+            except JSONDecodeError:
+                pass
+        return self.previous != self.new
+
     def __hash__(self):
         return hash(type(self))
 
@@ -822,6 +836,11 @@ class PropertyDiffElement(BaseDiffElement):
     value: Optional[ValueElement]
     changed_at: Optional[Timestamp]
 
+    def includes_change(self, order_matters: bool = True) -> bool:
+        if self.action in (DiffAction.ADDED, DiffAction.REMOVED):
+            return True
+        return self.value.includes_change(order_matters) if self.value is not None else False
+
 
 class NodeAttributeDiffElement(BaseDiffElement):
     id: str
@@ -830,9 +849,24 @@ class NodeAttributeDiffElement(BaseDiffElement):
     action: DiffAction
     db_id: str = Field(exclude=True)
     rel_id: str = Field(exclude=True)
+    attr_type: Optional[str]
     origin_rel_id: Optional[str] = Field(exclude=True)
     changed_at: Optional[Timestamp]
     properties: Dict[str, PropertyDiffElement]
+
+    def includes_change(self) -> bool:
+        if self.action in (DiffAction.ADDED, DiffAction.REMOVED):
+            return True
+        if not self.attr_type:
+            order_matters = False
+        else:
+            order_matters = self.attr_type.lower() in (
+                InfrahubDropdownType.label.lower(),
+                InfrahubListType.label.lower(),
+            )
+        return any(
+            [prop_diff_elem.includes_change(order_matters=order_matters) for prop_diff_elem in self.properties.values()]
+        )
 
 
 class NodeDiffElement(BaseDiffElement):
@@ -846,6 +880,11 @@ class NodeDiffElement(BaseDiffElement):
     rel_id: Optional[str] = Field(exclude=True)
     changed_at: Optional[Timestamp]
     attributes: Dict[str, NodeAttributeDiffElement]
+
+    def includes_change(self) -> bool:
+        if self.action in (DiffAction.ADDED, DiffAction.REMOVED):
+            return True
+        return any([attr_diff_elem.includes_change() for attr_diff_elem in self.attributes.values()])
 
 
 class RelationshipEdgeNodeDiffElement(BaseDiffElement):
@@ -1573,6 +1612,8 @@ class Diff:
             # Check if the Attribute is already present or if it was added during this time frame.
             attr_name = result.get("a").get("name")
             attr_id = result.get("a").get("uuid")
+            attr_type = result.get("a").get("type")
+
             if attr_name not in self._results[branch_name]["nodes"][node_id].attributes.keys():
                 node = self._results[branch_name]["nodes"][node_id]
                 item = {
@@ -1581,6 +1622,7 @@ class Diff:
                     "name": attr_name,
                     "path": f"data/{node_id}/{attr_name}",
                     "rel_id": result.get("r1").element_id,
+                    "attr_type": attr_type.lower() if attr_type else None,
                     "properties": {},
                     "origin_rel_id": None,
                 }
@@ -1686,6 +1728,16 @@ class Diff:
             self._results[branch_name]["nodes"][node_id].attributes[attr_name].properties[
                 prop_type
             ] = PropertyDiffElement(**item)
+
+        for branch_name in self._results:
+            node_ids_to_delete = [
+                node_id
+                for node_id, node_diff_element in self._results[branch_name]["nodes"].items()
+                if not node_diff_element.includes_change()
+            ]
+
+            for node_id in node_ids_to_delete:
+                del self._results[branch_name]["nodes"][node_id]
 
         self._calculated_diff_nodes_at = Timestamp()
 
