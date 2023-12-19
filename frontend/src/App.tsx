@@ -1,6 +1,6 @@
 import { addCollection } from "@iconify-icon/react";
 import mdiIcons from "@iconify-json/mdi/icons.json";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import * as R from "ramda";
 import { useEffect } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
@@ -26,15 +26,13 @@ import {
 } from "./state/atoms/schema.atom";
 import { schemaKindNameState } from "./state/atoms/schemaKindName.atom";
 import "./styles/index.css";
-import { sortByOrderWeight } from "./utils/common";
+import { sortByName, sortByOrderWeight } from "./utils/common";
 import { fetchUrl } from "./utils/fetch";
 addCollection(mdiIcons);
 
-const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
-
 function App() {
   const branches = useAtomValue(branchesState);
-  const setCurrentBranch = useSetAtom(currentBranchAtom);
+  const [currentBranch, setCurrentBranch] = useAtom(currentBranchAtom);
   const [currentSchemaHash, setCurrentSchemaHash] = useAtom(currentSchemaHashAtom);
   const [, setSchema] = useAtom(schemaState);
   const [, setSchemaKindNameState] = useAtom(schemaKindNameState);
@@ -45,14 +43,14 @@ function App() {
   /**
    * Fetch schema from the backend, and store it
    */
-  const fetchAndSetSchema = async () => {
+  const fetchAndSetSchema = async (branch: Branch | null) => {
     try {
       const schemaData: {
         main: string;
         nodes: iNodeSchema[];
         generics: iGenericSchema[];
         namespaces: iNamespace[];
-      } = await fetchUrl(CONFIG.SCHEMA_URL(branchInQueryString));
+      } = await fetchUrl(CONFIG.SCHEMA_URL(branch?.name));
 
       const hash = schemaData.main;
       const schema = sortByName(schemaData.nodes || []);
@@ -83,29 +81,32 @@ function App() {
     }
   };
 
-  const updateSchemaStateIfNeeded = async () => {
+  const updateSchemaStateIfNeeded = async (branch: Branch | null) => {
     try {
-      const schemaSummary = await fetchUrl(CONFIG.SCHEMA_SUMMARY_URL(branchInQueryString));
+      const schemaSummary = await fetchUrl(CONFIG.SCHEMA_SUMMARY_URL(branch?.name));
       const isSameSchema = currentSchemaHash === schemaSummary.main;
 
       // Updating schema only if it's different from the current one
+      console.log(currentSchemaHash, schemaSummary.main);
       if (isSameSchema) return;
-      await fetchAndSetSchema();
+      await fetchAndSetSchema(branch);
     } catch (error) {
       console.error("Error while updating the schema state:", error);
     }
   };
 
   useEffect(() => {
-    updateSchemaStateIfNeeded();
-  }, [branchInQueryString]);
-
-  useEffect(() => {
     const filter = branchInQueryString
       ? (b: Branch) => branchInQueryString === b.name
       : (b: Branch) => b.is_default;
-    const selectedBranch = branches.find(filter);
+
+    const selectedBranch = branches.find(filter) ?? null;
+
+    if (selectedBranch?.name === currentBranch?.name) return;
+
     setCurrentBranch(selectedBranch);
+
+    updateSchemaStateIfNeeded(selectedBranch);
   }, [branches.length, branchInQueryString]);
 
   return (
