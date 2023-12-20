@@ -19,7 +19,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ${{ env.REGISTRY_IMAGE }}
+            ${{ vars.HARBOR_HOST }}/${{ github.repository }}
           tags: |
             type=ref,value=${{ inputs.version }}
             type=semver,pattern={{version}},value=${{ github.ref_name }}
@@ -35,6 +35,7 @@ jobs:
   publish-docker-image:
     uses: ./.github/workflows/ci-docker-image.yml
     secrets: inherit
+    needs: meta_data
     with:
       publish: true
       version: ${{ github.ref_name }}
