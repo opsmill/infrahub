@@ -3,6 +3,7 @@ import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import { LockClosedIcon, PencilSquareIcon, RectangleGroupIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
+import { useAtomValue } from "jotai/index";
 import { useContext, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
@@ -17,6 +18,7 @@ import { QSP } from "../../config/qsp";
 import { AuthContext } from "../../decorators/withAuth";
 import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
 import useQuery from "../../hooks/useQuery";
+import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
@@ -39,8 +41,6 @@ import RelationshipsDetails from "../object-item-details/relationships-details-p
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 import { Generate } from "./generate";
-import { useAtomValue } from "jotai/index";
-import { currentBranchAtom } from "../../state/atoms/branches.atom";
 
 export default function ObjectItemDetails() {
   const { objectid } = useParams();
@@ -171,7 +171,7 @@ export default function ObjectItemDetails() {
 
           <div className="flex-1 bg-custom-white p-4 min-w-[500px]">
             <dl className="sm:divide-y sm:divide-gray-200">
-              <div className="p-4 grid grid-cols-3 gap-4">
+              <div className="p-2 grid grid-cols-3 gap-4 text-xs">
                 <dt className="text-sm font-medium text-gray-500 flex items-center">ID</dt>
                 <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
                   <a
@@ -193,7 +193,7 @@ export default function ObjectItemDetails() {
                 }
 
                 return (
-                  <div className="p-4 grid grid-cols-3 gap-4" key={attribute.name}>
+                  <div className="p-2 grid grid-cols-3 gap-4 text-xs" key={attribute.name}>
                     <dt className="text-sm font-medium text-gray-500 flex items-center">
                       {attribute.label}
                     </dt>

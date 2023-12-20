@@ -56,10 +56,12 @@ export const getObjectItemDisplayValue = (
   }
 
   const textValue =
-    row[attribute?.name]?.value ??
-    row[attribute?.name]?.node?.value ??
+    row[attribute?.name]?.label ??
     row[attribute?.name]?.display_label ??
+    row[attribute?.name]?.value ??
+    row[attribute?.name]?.node?.label ??
     row[attribute?.name]?.node?.display_label ??
+    row[attribute?.name]?.node?.value ??
     (typeof row[attribute?.name] === "string" ? row[attribute?.name] : "") ??
     "-";
 

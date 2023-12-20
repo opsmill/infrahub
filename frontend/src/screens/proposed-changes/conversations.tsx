@@ -3,6 +3,7 @@ import { PencilIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { formatISO } from "date-fns";
 import { useAtom } from "jotai";
+import { useAtomValue } from "jotai/index";
 import { useContext, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -33,6 +34,7 @@ import useQuery from "../../hooks/useQuery";
 import { branchesState, currentBranchAtom } from "../../state/atoms/branches.atom";
 import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 import { constructPath } from "../../utils/fetch";
 import { getProposedChangesStateBadgeType } from "../../utils/proposed-changes";
 import { stringifyWithoutQuotes } from "../../utils/string";
@@ -40,8 +42,6 @@ import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
-import { useAtomValue } from "jotai/index";
-import { datetimeAtom } from "../../state/atoms/time.atom";
 
 type tConversations = {
   refetch?: Function;
@@ -413,7 +413,7 @@ export const Conversations = (props: tConversations) => {
 
   return (
     <div className="flex">
-      <div className="flex-1 p-4 overflow-auto">
+      <div className="flex-1 p-4 min-w-[500px]">
         <div>
           {threads.map((item: any, index: number) => (
             <Thread key={index} thread={item} refetch={refetch} displayContext />
@@ -453,44 +453,42 @@ export const Conversations = (props: tConversations) => {
             </div>
           </div>
 
-          <div className="border-t border-gray-200 px-2 py-2 sm:p-0">
+          <div className="border-t border-gray-200">
             <dl className="divide-y divide-gray-200">
-              <div className="p-4 grid grid-cols-3 gap-4 items-center">
+              <div className="p-2 grid grid-cols-3 gap-4 text-xs items-center">
                 <dt className="text-sm font-medium text-gray-500">ID</dt>
-                <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">{proposedchange}</dd>
+                <dd className="flex text-gray-900">{proposedchange}</dd>
               </div>
 
-              <div className="p-4 grid grid-cols-3 gap-4 items-center">
+              <div className="p-2 grid grid-cols-3 gap-4 text-xs items-center">
                 <dt className="text-sm font-medium text-gray-500">Name</dt>
-                <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
-                  {proposedChangesDetails?.name.value}
-                </dd>
+                <dd className="flex text-gray-900">{proposedChangesDetails?.name.value}</dd>
               </div>
 
-              <div className="p-4 grid grid-cols-3 gap-4 items-center">
+              <div className="p-2 grid grid-cols-3 gap-4 text-xs items-center">
                 <dt className="text-sm font-medium text-gray-500">State</dt>
-                <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
+                <dd className="flex text-gray-900">
                   <Badge type={getProposedChangesStateBadgeType(state)}>{state}</Badge>
                 </dd>
               </div>
 
-              <div className="p-4 grid grid-cols-3 gap-4 items-center">
+              <div className="p-2 grid grid-cols-3 gap-4 text-xs items-center">
                 <dt className="text-sm font-medium text-gray-500">Source branch</dt>
-                <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
+                <dd className="flex text-gray-900">
                   <Badge>{proposedChangesDetails?.source_branch.value}</Badge>
                 </dd>
               </div>
 
-              <div className="p-4 grid grid-cols-3 gap-4 items-center">
+              <div className="p-2 grid grid-cols-3 gap-4 text-xs items-center">
                 <dt className="text-sm font-medium text-gray-500">Destination branch</dt>
-                <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
+                <dd className="flex text-gray-900">
                   <Badge>{proposedChangesDetails?.destination_branch.value}</Badge>
                 </dd>
               </div>
 
-              <div className="p-4 grid grid-cols-3 gap-4 items-center">
+              <div className="p-2 grid grid-cols-3 gap-4 text-xs items-center">
                 <dt className="text-sm font-medium text-gray-500">Created by</dt>
-                <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
+                <dd className="flex text-gray-900">
                   <Tooltip message={proposedChangesDetails?.created_by?.node?.display_label}>
                     <Avatar
                       size={AVATAR_SIZE.SMALL}
@@ -501,9 +499,9 @@ export const Conversations = (props: tConversations) => {
                 </dd>
               </div>
 
-              <div className="p-4 grid grid-cols-3 gap-4 items-center">
+              <div className="p-2 grid grid-cols-3 gap-4 text-xs items-center">
                 <dt className="text-sm font-medium text-gray-500">Reviewers</dt>
-                <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
+                <dd className="flex text-gray-900">
                   {reviewers.map((reviewer: any, index: number) => (
                     <Tooltip key={index} message={reviewer.display_label}>
                       <Avatar
@@ -516,9 +514,9 @@ export const Conversations = (props: tConversations) => {
                 </dd>
               </div>
 
-              <div className="p-4 grid grid-cols-3 gap-4 items-center">
+              <div className="p-2 grid grid-cols-3 gap-4 text-xs items-center">
                 <dt className="text-sm font-medium text-gray-500">Approved by</dt>
-                <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
+                <dd className="flex text-gray-900">
                   {approvers.map((approver: any, index: number) => (
                     <Tooltip key={index} message={approver.display_label}>
                       <Avatar
@@ -531,16 +529,16 @@ export const Conversations = (props: tConversations) => {
                 </dd>
               </div>
 
-              <div className="p-4 grid grid-cols-3 gap-4 items-center">
+              <div className="p-2 grid grid-cols-3 gap-4 text-xs items-center">
                 <dt className="text-sm font-medium text-gray-500">Updated</dt>
-                <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
+                <dd className="flex text-gray-900">
                   <DateDisplay date={proposedChangesDetails?._updated_at} />
                 </dd>
               </div>
 
-              <div className="p-4 grid grid-cols-3 gap-4 items-center">
+              <div className="p-2 grid grid-cols-3 gap-4 text-xs items-center">
                 <dt className="text-sm font-medium text-gray-500">Actions</dt>
-                <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
+                <dd className="flex text-gray-900">
                   <Button
                     onClick={handleApprove}
                     isLoading={isLoadingApprove}

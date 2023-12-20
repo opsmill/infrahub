@@ -263,7 +263,7 @@ describe("Object details", () => {
     cy.wait("@mutate");
 
     // The date should be defined
-    cy.get(".text-xs").should(
+    cy.get(".group\\/tooltip > .text-xs").should(
       "have.text",
       formatDistanceToNow(new Date(accountTokenNewDate), { addSuffix: true })
     );
