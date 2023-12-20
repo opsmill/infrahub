@@ -28,13 +28,11 @@ describe("Tutorial - Part 1", () => {
     cy.get("[data-cy='create']").click();
 
     // Add organization name
-    cy.get(".grid > :nth-child(1) > .relative > .block").type(ORGANIZATION_NAME, {
-      delay: 0,
-      force: true,
-    });
-    cy.get(".grid > :nth-child(3) > .relative > .block").type(ORGANIZATION_DESCRIPTION, {
-      delay: 0,
-    });
+    cy.contains("Create Organization").should("be.visible"); // Assert that the form is ready
+    cy.get("#Name").clear({ force: true }); // Workaround to prevent cypress bug "cy.type() failed because it targeted a disabled element."
+
+    cy.get("#Name").type(ORGANIZATION_NAME);
+    cy.get("#Description").type(ORGANIZATION_DESCRIPTION);
 
     if (this.screenshots) {
       cy.screenshot("tutorial_1_organization_create", screenshotConfig);
@@ -51,30 +49,33 @@ describe("Tutorial - Part 1", () => {
 
   it("should create a new branch", function () {
     // The branch selector should contain the main branch name
-    cy.get(":nth-child(1) > :nth-child(1) > .border").should("have.text", MAIN_BRANCH_NAME);
+    cy.get("[data-cy='branch-select-menu']").should("have.text", MAIN_BRANCH_NAME);
 
     // Click to open the branch creation form
     cy.get("[data-cy='create-branch-button']").click();
 
     // Fill the new branch name
-    cy.get(".flex-col > :nth-child(1) > .block").type(NEW_BRANCH_NAME, { delay: 0, force: true });
+    cy.contains("Create a new branch").should("be.visible"); // Assert that the form is ready
+    cy.get("#new-branch-name").type(NEW_BRANCH_NAME);
 
     if (this.screenshots) {
       cy.screenshot("tutorial_1_branch_creation", screenshotConfig);
     }
 
     // Submit the form
-    cy.get(".justify-center > .rounded-md").click();
+    cy.contains("button", "Create").click();
 
     // Verify if the new branch is selected
-    cy.get(":nth-child(1) > :nth-child(1) > .border").should("have.text", NEW_BRANCH_NAME);
+    cy.get("[data-cy='branch-select-menu']").contains(NEW_BRANCH_NAME);
   });
 
   it("should update the organization", function () {
     cy.visit(`/?branch=${NEW_BRANCH_NAME}`);
 
-    // Select the Admin object in the menu
-    cy.get(`[href='/objects/CoreOrganization?branch=${NEW_BRANCH_NAME}'] > .group`).click();
+    // Select the CoreOrganization object in the menu
+    cy.get("[data-cy='sidebar-menu']").within(() => {
+      cy.contains("Organization").click();
+    });
 
     // Select the organization
     cy.contains(ORGANIZATION_NAME).should("exist");
@@ -85,30 +86,26 @@ describe("Tutorial - Part 1", () => {
 
     cy.contains(ORGANIZATION_NAME).click();
 
-    cy.get(".bg-gray-500").should("not.exist");
+    cy.get("[data-cy='side-panel-background']").should("not.exist");
 
-    cy.get(".sm\\:divide-y > :nth-child(2) > div.flex > .mt-1").should(
-      "have.text",
-      ORGANIZATION_NAME
-    );
+    cy.contains("Name" + ORGANIZATION_NAME);
+    cy.contains("Description" + ORGANIZATION_DESCRIPTION);
 
     if (this.screenshots) {
       cy.screenshot("tutorial_1_organization_details", screenshotConfig);
     }
 
     // Open the edit panel
-    cy.contains("Edit").click();
+    cy.contains("button", "Edit").click();
 
     // Verify that the field is pre-populated
-    cy.get(".grid > :nth-child(1) > .relative > .block").should("have.value", ORGANIZATION_NAME);
+    cy.contains("Name *must be unique").should("be.visible"); // Assert that the form is ready
+    cy.get("#Name").should("have.value", ORGANIZATION_NAME);
+    cy.get("#Description").should("have.value", ORGANIZATION_DESCRIPTION);
 
     // Update the label
-    cy.get(":nth-child(3) > .relative > .block").should("have.value", ORGANIZATION_DESCRIPTION);
-    cy.get(":nth-child(3) > .relative > .block").clear();
-    cy.get(":nth-child(3) > .relative > .block").type(NEW_ORGANIZATION_DESCRIPTION, {
-      delay: 0,
-      force: true,
-    });
+    cy.get("#Description").clear();
+    cy.get("#Description").type(NEW_ORGANIZATION_DESCRIPTION);
 
     if (this.screenshots) {
       cy.screenshot("tutorial_1_organization_edit", screenshotConfig);
@@ -118,34 +115,33 @@ describe("Tutorial - Part 1", () => {
     cy.intercept(`/graphql/${NEW_BRANCH_NAME}`).as("Request");
 
     // Submit the form
-    cy.contains("Save").click();
+    cy.contains("button", "Save").click();
 
     // Wait for the mutation to succeed
     cy.wait("@Request");
 
-    // The new label should be saved
-    cy.get(".sm\\:p-0 > :nth-child(1) > :nth-child(4)").within(() => {
-      cy.contains(NEW_ORGANIZATION_DESCRIPTION).should("exist");
-    });
+    // The new description should be saved
+    cy.contains("Name" + ORGANIZATION_NAME);
+    cy.contains("Description" + NEW_ORGANIZATION_DESCRIPTION);
   });
 
-  it("should access the organzation diff", function () {
+  it("should access the organization diff", function () {
     // List the branches
-    cy.get("[href='/branches'] > .group").click();
+    cy.get("[data-cy='sidebar-menu']").contains("Branches").click();
 
     if (this.screenshots) {
       cy.screenshot("tutorial_1_branch_list", screenshotConfig);
     }
 
     // Find and click on the new branch
-    cy.contains(NEW_BRANCH_NAME).click();
+    cy.get("[data-cy='branches-items']").contains(NEW_BRANCH_NAME).click();
 
     if (this.screenshots) {
       cy.screenshot("tutorial_1_branch_details", screenshotConfig);
     }
 
     // The branch details should be ok
-    cy.get(".border-t > .divide-y > :nth-child(1) > .flex").should("have.text", NEW_BRANCH_NAME);
+    cy.contains("Name" + NEW_BRANCH_NAME);
 
     // Access to the branch diff
     cy.contains("Diff").click();
@@ -158,17 +154,17 @@ describe("Tutorial - Part 1", () => {
     }
 
     // The old + new label should be displayed
-    cy.get(".text-xs > .shadow").within(() => {
+    cy.get("[data-cy='data-diff']").within(() => {
       cy.contains(ORGANIZATION_NAME, { matchCase: false }).should("exist");
       cy.contains(NEW_ORGANIZATION_DESCRIPTION).should("exist");
     });
 
     // Go back to details
-    cy.get(".isolate > .bg-gray-100").click();
+    cy.contains("button", "Details").click();
 
     // Merge the branch
-    cy.get(".bg-green-500").click();
+    cy.contains("button", "Merge").click();
 
-    cy.contains("Branch merged successfully!").should("exist");
+    cy.contains("Branch merged successfully!").should("be.visible");
   });
 });

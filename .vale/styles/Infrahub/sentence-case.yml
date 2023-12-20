@@ -1,0 +1,40 @@
+---
+extends: capitalization
+message: "'%s' should use sentence case"
+level: warning
+scope:
+  - heading.h1
+  - heading.h2
+  - heading.h3
+  - heading.h4
+  - heading.h5
+  - heading.h6
+match: $sentence
+exceptions:
+  - API
+  - Attributes
+  - CI
+  - Docker Compose
+  - E2E
+  - Generics
+  - Git
+  - GitHub
+  - GitLab
+  - GitPod
+  - GraphQL
+  - GraphQLQuery
+  - Helm
+  - Infrahub
+  - infrahubctl
+  - JavaScript
+  - Jinja
+  - Jinja2
+  - Namespace
+  - Node
+  - Python
+  - REST
+  - RFile
+  - SDK
+  - TransformPython
+  - Vale
+  - VS Code

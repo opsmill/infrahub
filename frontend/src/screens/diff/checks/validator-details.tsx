@@ -69,12 +69,12 @@ export const ValidatorDetails = () => {
       <div className="flex flex-col">
         <div className="bg-custom-white">
           <dl className="sm:divide-y sm:divide-gray-200">
-            <div className="p-4 px-3 grid grid-cols-3 gap-4">
+            <div className="p-4 grid grid-cols-3 gap-4">
               <dt className="text-sm font-medium text-gray-500 flex items-center">ID</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">{validator.id} </dd>
             </div>
 
-            <div className="p-4 px-3 grid grid-cols-3 gap-4">
+            <div className="p-4 grid grid-cols-3 gap-4">
               <dt className="text-sm font-medium text-gray-500 flex items-center">Name</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
                 {validator?.display_label}
@@ -83,7 +83,7 @@ export const ValidatorDetails = () => {
 
             {attributes?.map((attribute) => {
               return (
-                <div className="p-4 px-3 grid grid-cols-3 gap-4" key={attribute.name}>
+                <div className="p-4 grid grid-cols-3 gap-4" key={attribute.name}>
                   <dt className="text-sm font-medium text-gray-500 flex items-center">
                     {attribute.label}
                   </dt>

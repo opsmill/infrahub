@@ -8,18 +8,24 @@ import { fetchUrl } from "../../utils/fetch";
 import LoadingScreen from "../loading-screen/loading-screen";
 import DropDownMenuHeader from "./desktop-menu-header";
 import { Footer } from "./footer";
+import { useAtomValue } from "jotai/index";
+import { currentBranchAtom } from "../../state/atoms/branches.atom";
 
 export default function DesktopMenu() {
   const navigate = useNavigate();
 
+  const branch = useAtomValue(currentBranchAtom);
+
   const [isLoading, setIsLoading] = useState(false);
   const [menu, setMenu] = useState([]);
 
-  const fecthMenu = async () => {
+  const fetchMenu = async () => {
+    if (!branch?.name) return;
+
     try {
       setIsLoading(true);
 
-      const result = await fetchUrl(CONFIG.MENU_URL);
+      const result = await fetchUrl(CONFIG.MENU_URL(branch?.name));
 
       setMenu(result);
 
@@ -32,8 +38,8 @@ export default function DesktopMenu() {
   };
 
   useEffect(() => {
-    fecthMenu();
-  }, []);
+    fetchMenu();
+  }, [branch?.name]);
 
   return (
     <div className="z-100 hidden w-64 md:visible md:inset-y-0 md:flex md:flex-col">

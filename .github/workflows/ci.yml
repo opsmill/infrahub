@@ -26,14 +26,17 @@ env:
   BUILDKITE_ANALYTICS_BRANCH: ${{ github.ref }}
   BUILDKITE_BRANCH: ${{ github.ref }}
   BUILDKITE_COMMIT: ${{ github.sha }}
+  VALE_VERSION: "2.29.7"
 
 jobs:
+   # ------------------------------------------ Check Files Changes  ------------------------------------------
   files-changed:
     name: Detect which file has changed
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
       backend: ${{ steps.changes.outputs.backend_all }}
+      documentation: ${{ steps.changes.outputs.documentation_all }}
       frontend: ${{ steps.changes.outputs.frontend_all }}
       sdk: ${{ steps.changes.outputs.sdk_all }}
       sync: ${{ steps.changes.outputs.sync_all }}
@@ -43,7 +46,7 @@ jobs:
       yaml: ${{ steps.changes.outputs.yaml_all }}
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v3"
+        uses: "actions/checkout@v4"
       - name: Check for file changes
         uses: dorny/paths-filter@v2
         id: changes
@@ -51,6 +54,7 @@ jobs:
           token: ${{ github.token }}
           filters: .github/file-filters.yml
 
+ # ------------------------------------------ All Linter  ------------------------------------------
   yaml-lint:
     if: needs.files-changed.outputs.yaml == 'true'
     needs: ["files-changed"]
@@ -58,7 +62,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v3"
+        uses: "actions/checkout@v4"
       - name: "Identify which files have changed"
         uses: dorny/paths-filter@v2
         id: changes
@@ -69,9 +73,10 @@ jobs:
               - '**.yaml'
               - 'development/workflows/ci.yml'
       - name: "Setup environment"
-        run: "pip install yamllint==1.29.0"
+        run: "pip install yamllint==1.33.0"
       - name: "Linting: yamllint"
         run: "yamllint ."
+
   javascript-lint:
     if: needs.files-changed.outputs.javascript == 'true'
     needs: ["files-changed"]
@@ -79,9 +84,9 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v3"
+        uses: "actions/checkout@v4"
       - name: Install NodeJS
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 16
           cache: 'npm'
@@ -92,6 +97,7 @@ jobs:
       - name: Run ESLint
         working-directory: ./frontend
         run: npm run eslint
+
   python-lint:
     if: needs.files-changed.outputs.python == 'true'
     needs: ["files-changed"]
@@ -99,105 +105,137 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v3"
+        uses: "actions/checkout@v4"
       - name: "Setup environment"
-        run: "pip install black==23.1.0 ruff==0.0.265"
-      - name: "Linting: BLACK"
-        run: "black --check ."
-      - name: "Linting: ruff"
-        run: "ruff check ."
+        run: "pip install ruff==0.1.8"
+      - name: "Linting: ruff check"
+        run: "ruff check --diff ."
+      - name: "Linting: ruff format"
+        run: "ruff format --check --diff ."
 
-  # backend-build-docker:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Set up QEMU
-  #       uses: docker/setup-qemu-action@v2
-  #     - name: Set up Docker Buildx
-  #       uses: docker/setup-buildx-action@v2
-  #     - name: Build Backend Image
-  #       uses: docker/build-push-action@v4
-  #       with:
-  #         file: "development/Dockerfile-backend"
-  #         push: false
-  #         tags: "${{env.INFRAHUB_IMAGE_NAME}}:${{env.INFRAHUB_IMAGE_VER}}"
-  #         cache-from: type=gha
-  #         cache-to: type=gha,mode=max
-
-  python-sdk-tests:
+  python-sdk-unit-tests:
+    strategy:
+      matrix:
+        python-version:
+          - "3.8"
+          - "3.9"
+          - "3.10"
+          - "3.11"
+        pydantic-version: ["^1.10", "^2"]
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.sdk == 'true'
     needs: ["files-changed", "yaml-lint", "python-lint"]
-    runs-on: "ubuntu-20.04"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      INFRAHUB_DB_TYPE: memgraph
+    defaults:
+      run:
+        working-directory: python_sdk/
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v4"
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: "Setup environment"
+        run: |
+          pipx install poetry
+          poetry config virtualenvs.prefer-active-python true
+          pip install invoke toml
+      - name: Set Version of Pydantic
+        run: poetry add pydantic@${{ matrix.pydantic-version }}
+      - name: "Install Package"
+        run: "poetry install"
+      - name: "Pylint Tests"
+        run: "poetry run pylint infrahub_sdk/ infrahub_ctl/"
+      - name: "Mypy Tests"
+        run: "poetry run mypy --show-error-codes infrahub_sdk/ infrahub_ctl/"
+      - name: "Unit Tests"
+        run: "poetry run pytest -v --cov=infrahub_sdk --cov=infrahub_ctl tests/unit"
+        env:
+          BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_SDK_UNIT }}
+      - name: "Coveralls : Unit Tests"
+        uses: coverallsapp/github-action@v2
+        env:
+          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+        with:
+          flag-name: python-sdk-unit
+          parallel: true
+
+
+  python-sdk-integration-tests:
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled')
+    needs: ["python-sdk-unit-tests"]
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
       INFRAHUB_DB_TYPE: memgraph
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v3"
+        uses: "actions/checkout@v4"
       - name: "Install Invoke"
         run: "pip install toml invoke"
       - name: "Build Test Image"
         run: "invoke test.build"
       - name: "Pull External Docker Images"
         run: "invoke test.pull"
-      - name: "Black Tests"
-        run: "invoke sdk.black --docker"
-      - name: "Isort Tests"
-        run: "invoke sdk.isort --docker"
-      - name: "Pylint Tests"
-        run: "invoke sdk.pylint --docker"
-      - name: "Mypy Tests"
-        run: "invoke sdk.mypy --docker"
-      - name: "Unit Tests"
-        run: "invoke sdk.test-unit"
-        env:
-          BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_SDK_UNIT }}
-      - name: "Coveralls : Unit Tests"
-        uses: coverallsapp/github-action@v2.0.0
-        env:
-          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
-        with:
-          flag-name: python-sdk-unit
-          parallel: true
       - name: "Integration Tests"
         run: "invoke sdk.test-integration"
         env:
           BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_SDK_INTEGRATION }}
       - name: "Coveralls : Integration Tests"
-        uses: coverallsapp/github-action@v2.0.0
+        uses: coverallsapp/github-action@v2
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
           flag-name: python-sdk-integration
           parallel: true
 
-  infrahub-sync-tests:
+  infrahub-sync-unit-tests:
+    strategy:
+      matrix:
+        python-version:
+          - "3.11"
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.sync == 'true'
     needs: ["files-changed", "yaml-lint", "python-lint"]
-    runs-on: "ubuntu-20.04"
+    runs-on: ubuntu-latest
     timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: sync/
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v3"
-      - name: "Install Invoke"
-        run: "pip install toml invoke"
-      - name: "Build Test Image"
-        run: "invoke test.build"
-      - name: "Black Tests"
-        run: "invoke sync.black --docker"
-      - name: "Isort Tests"
-        run: "invoke sync.isort --docker"
+        uses: "actions/checkout@v4"
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: "Setup environment"
+        run: |
+          pipx install poetry
+          poetry config virtualenvs.prefer-active-python true
+          pip install invoke toml
+      - name: "Install Package"
+        run: "poetry install"
       - name: "Pylint Tests"
-        run: "invoke sync.pylint --docker"
+        run: "poetry run pylint infrahub_sync/"
+      # - name: "Mypy Tests"
+      #   run: "poetry run mypy --show-error-codes infrahub_sync/"
 
-  backend-tests-default:
+
+  backend-tests-unit:
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -210,38 +248,55 @@ jobs:
       INFRAHUB_DB_TYPE: memgraph
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v3"
+        uses: "actions/checkout@v4"
       - name: "Setup Python environment"
         run: "pip install toml invoke"
       - name: "Build Test Image"
         run: "invoke test.build"
       - name: "Pull External Docker Images"
         run: "invoke test.pull"
-      - name: "Black Tests"
-        run: "invoke backend.black --docker"
-      - name: "Isort Tests"
-        run: "invoke backend.isort --docker"
-      - name: "Pylint Tests"
-        run: "invoke backend.pylint --docker"
-      - name: "Mypy Tests"
-        run: "invoke backend.mypy --docker"
       - name: "Unit Tests"
         run: "invoke backend.test-unit"
         env:
           BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_BACKEND_UNIT_DEFAULT }}
       - name: "Coveralls : Unit Tests"
-        uses: coverallsapp/github-action@v2.0.0
+        uses: coverallsapp/github-action@v2
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
           flag-name: backend-unit
           parallel: true
+
+  backend-tests-integration:
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.backend == 'true'
+    needs: ["files-changed", "yaml-lint", "python-lint"]
+    runs-on: "runner-ubuntu-4-16"
+    timeout-minutes: 30
+    env:
+      INFRAHUB_DB_TYPE: memgraph
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v4"
+      - name: "Setup Python environment"
+        run: "pip install toml invoke"
+      - name: "Build Test Image"
+        run: "invoke test.build"
+      - name: "Pull External Docker Images"
+        run: "invoke test.pull"
+      - name: "Pylint Tests"
+        run: "invoke backend.pylint --docker"
+      - name: "Mypy Tests"
+        run: "invoke backend.mypy --docker"
       - name: "Integration Tests"
         run: "invoke backend.test-integration"
         env:
           BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_BACKEND_INTEGRATION }}
       - name: "Coveralls : Integration Tests"
-        uses: coverallsapp/github-action@v2.0.0
+        uses: coverallsapp/github-action@v2
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
@@ -256,12 +311,12 @@ jobs:
       needs.files-changed.outputs.backend == 'true'
     needs: ["files-changed", "yaml-lint", "python-lint"]
     runs-on: "runner-ubuntu-4-16"
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       INFRAHUB_DB_TYPE: neo4j
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v3"
+        uses: "actions/checkout@v4"
       - name: "Setup Python environment"
         run: "pip install toml invoke"
       - name: "Build Test Image"
@@ -280,13 +335,13 @@ jobs:
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.frontend == 'true'
     needs: ["files-changed", "yaml-lint", "javascript-lint"]
-    runs-on: "ubuntu-20.04"
+    runs-on: "ubuntu-22.04"
     timeout-minutes: 30
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v3"
+        uses: "actions/checkout@v4"
       - name: Install NodeJS
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 16
           cache: 'npm'
@@ -313,7 +368,7 @@ jobs:
           name: screenshots
           path: frontend/cypress/videos/*
       - name: "Coveralls : Unit Tests"
-        uses: coverallsapp/github-action@v2.0.0
+        uses: coverallsapp/github-action@v2
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
@@ -321,84 +376,99 @@ jobs:
           parallel: true
           file: frontend/coverage/lcov.info
 
-  # E2E-testing-memgraph:
-  #   needs: ["frontend-tests", "backend-tests-default", "python-sdk-tests"]
-  #   if: |
-  #     always() && !cancelled() &&
-  #     !contains(needs.*.result, 'failure') &&
-  #     !contains(needs.*.result, 'cancelled')
-  #   runs-on: "runner-ubuntu-8-32"
-  #   timeout-minutes: 30
-  #   steps:
-  #     - name: "Check out repository code"
-  #       uses: "actions/checkout@v3"
-  #     - name: Install NodeJS
-  #       uses: actions/setup-node@v3
-  #       with:
-  #         node-version: 16
-  #         cache: 'npm'
-  #         cache-dependency-path: frontend/package-lock.json
-  #     - name: Install frontend dependencies
-  #       working-directory: ./frontend
-  #       run: npm install
-  #     - name: "Install Invoke"
-  #       run: "pip install toml invoke"
-  #     - name: Build Demo
-  #       run: "invoke demo.build"
-  #     - name: "Pull External Docker Images"
-  #       run: "invoke demo.pull"
-  #     - name: Initialize Demo
-  #       id: init-demo
-  #       run: "invoke demo.start demo.load-infra-schema"
-  #     - name: Check Demo Status
-  #       run: "invoke demo.status"
-  #     - name: Load Data
-  #       run: "invoke demo.load-infra-data"
-  #     - name: Git Repository
-  #       run: "invoke demo.infra-git-import demo.infra-git-create"
-  #     - name: Run End to End Tests
-  #       working-directory: ./frontend
-  #       run: npm run cypress:run:e2e
-  #     - name: Containers after failure
-  #       if: failure()
-  #       run: docker ps -a
-  #     - name: Upload cypress screenshots
-  #       if: failure()
-  #       uses: actions/upload-artifact@v3
-  #       with:
-  #         name: screenshots
-  #         path: docs/media/*
-  #     - name: Display server logs
-  #       if: failure()
-  #       run: docker logs infrahub-infrahub-server-1
-  #     - name: Display git 1 logs
-  #       if: failure()
-  #       run: docker logs infrahub-infrahub-git-1
-  #     - name: Display git 2 logs
-  #       if: failure()
-  #       run: docker logs infrahub-infrahub-git-2
-  #     - name: Display database logs
-  #       if: failure()
-  #       run: docker logs infrahub-database-1
-  #     - name: Display server status
-  #       if: failure()
-  #       run: invoke demo.status
+  documentation:
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.documentation == 'true'
+    needs: ["files-changed", "yaml-lint", "python-lint"]
+    runs-on: "ubuntu-22.04"
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v4"
+      - name: Install NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+      - name: "Install dependencies"
+        run: npm install
+      - name: "Setup Python environment"
+        run: "pip install toml invoke"
+      - name: "Build website"
+        run: "invoke docs.build"
 
-  E2E-testing-neo4j:
-    needs: ["frontend-tests", "backend-tests-default", "python-sdk-tests"]
+  validate_generated_documentation:
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.python == 'true'
+    needs: ["files-changed", "yaml-lint", "python-lint"]
+    runs-on: "ubuntu-22.04"
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v4"
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - name: "Setup environment"
+        run: "pip install invoke toml"
+      - name: "Build Test Image"
+        run: "invoke test.build"
+      - name: "Validate generated documentation"
+        run: "invoke docs.validate --docker"
+
+  validate_documentation_style:
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.documentation == 'true'
+    needs: ["files-changed", "yaml-lint", "python-lint"]
+    runs-on: "ubuntu-22.04"
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v4"
+      # The official GitHub Action for Vale doesn't work, installing manually instead:
+      # https://github.com/errata-ai/vale-action/issues/103
+      - name: Download Vale
+        run: |
+          curl -sL "https://github.com/errata-ai/vale/releases/download/v${VALE_VERSION}/vale_${VALE_VERSION}_Linux_64-bit.tar.gz" -o vale.tar.gz
+          tar -xzf vale.tar.gz
+        env:
+          VALE_VERSION: ${{ env.VALE_VERSION }}
+      - name: "Validate documentation style"
+        run: "./vale ."
+  # ------------------------------------------ E2E Tests  ------------------------------------------
+  E2E-testing:
+    needs:
+      - javascript-lint
+      - files-changed
+      - yaml-lint
+      - python-lint
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled')
+    strategy:
+      matrix:
+        python-version: ["neo4j", "memgraph"]
     runs-on: "runner-ubuntu-8-32"
     timeout-minutes: 40
     env:
-      INFRAHUB_DB_TYPE: neo4j
+      INFRAHUB_DB_TYPE: ${{ matrix.python-version }}
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v3"
+        uses: "actions/checkout@v4"
       - name: Install NodeJS
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 16
           cache: 'npm'
@@ -424,8 +494,7 @@ jobs:
       - name: Run End to End Tests
         working-directory: ./frontend
         run: npm run cypress:run:e2e
-      - name: Containers after failure
-        if: failure()
+      - name: Containers after tests
         run: docker ps -a
       - name: Upload cypress screenshots
         if: failure()
@@ -434,23 +503,23 @@ jobs:
           name: screenshots
           path: docs/media/*
       - name: Display server logs
-        if: failure()
         run: docker logs infrahub-infrahub-server-1
       - name: Display git 1 logs
-        if: failure()
         run: docker logs infrahub-infrahub-git-1
       - name: Display git 2 logs
-        if: failure()
         run: docker logs infrahub-infrahub-git-2
       - name: Display database logs
-        if: failure()
         run: docker logs infrahub-database-1
       - name: Display server status
-        if: failure()
         run: invoke demo.status
 
+  # ------------------------------------------ Coverall Report  ------------------------------------------
   coverall-report:
-    needs: ["frontend-tests", "backend-tests-default", "python-sdk-tests"]
+    needs:
+      - backend-tests-integration
+      - backend-tests-unit
+      - frontend-tests
+      - python-sdk-integration-tests
     if: |
       always() && !cancelled()
     runs-on: ubuntu-latest

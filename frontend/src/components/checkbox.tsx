@@ -4,6 +4,7 @@ type CheckboxProps = {
   enabled?: boolean;
   onChange?: ChangeEventHandler;
   disabled?: boolean;
+  id?: string;
 };
 
 export const Checkbox = (props: CheckboxProps) => {

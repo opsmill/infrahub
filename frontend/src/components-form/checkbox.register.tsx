@@ -10,7 +10,7 @@ interface Props {
   config?: RegisterOptions<FieldValues, string> | undefined;
   setValue: UseFormSetValue<FieldValues>;
   isProtected?: boolean;
-  isOptionnal?: boolean;
+  isOptional?: boolean;
   disabled?: boolean;
   error?: FormFieldError;
 }

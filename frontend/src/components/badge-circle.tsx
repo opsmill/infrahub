@@ -13,7 +13,7 @@ export enum CIRCLE_BADGE_TYPES {
 
 const DEFAULT_CLASS = "flex items-center text-sm font-medium mr-2 px-2.5 py-0.5 rounded";
 
-const getClasseName = (type?: CIRCLE_BADGE_TYPES, onClick?: Function) => {
+const getClassName = (type?: CIRCLE_BADGE_TYPES, onClick?: Function) => {
   switch (type) {
     case CIRCLE_BADGE_TYPES.VALIDATE: {
       return `
@@ -95,7 +95,7 @@ type tBadgeCircleProps = {
 export const BadgeCircle = (props: tBadgeCircleProps) => {
   const { type, className = "", children, onDelete, value, onClick } = props;
 
-  const customClassName = getClasseName(type, onClick || onDelete);
+  const customClassName = getClassName(type, onClick || onDelete);
   const customCircleClassName = getCircleClasseName(type, onClick || onDelete);
 
   const handleClick = (event: any) => {

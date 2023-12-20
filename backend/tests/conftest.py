@@ -10,8 +10,9 @@ import ujson
 from infrahub_sdk.utils import str_to_bool
 
 from infrahub import config
+from infrahub.components import ComponentType
 from infrahub.lock import initialize_lock
-from infrahub.message_bus import InfrahubMessage
+from infrahub.message_bus import InfrahubMessage, InfrahubResponse
 from infrahub.message_bus.operations import execute_message
 from infrahub.message_bus.types import MessageTTL
 from infrahub.services import InfrahubServices
@@ -40,8 +41,10 @@ def event_loop():
 
 
 @pytest.fixture(scope="module", autouse=True)
-def execute_before_any_test(worker_id):
+def execute_before_any_test(worker_id, tmpdir_factory):
     config.load_and_exit()
+
+    config.SETTINGS.storage.driver = config.StorageDriver.FileSystemStorage
 
     if TEST_IN_DOCKER:
         try:
@@ -51,19 +54,37 @@ def execute_before_any_test(worker_id):
 
         config.SETTINGS.cache.address = f"{BUILD_NAME}-cache-{db_id}"
         config.SETTINGS.database.address = f"{BUILD_NAME}-database-{db_id}"
-        config.SETTINGS.storage.settings = {"directory": "/opt/infrahub/storage"}
+        config.SETTINGS.storage.local = config.FileSystemStorageSettings(path="/opt/infrahub/storage")
+    else:
+        storage_dir = tmpdir_factory.mktemp("storage")
+        config.SETTINGS.storage.local = config.FileSystemStorageSettings(path=str(storage_dir))
 
     config.SETTINGS.broker.enable = False
     config.SETTINGS.cache.enable = True
     config.SETTINGS.miscellaneous.start_background_runner = False
     config.SETTINGS.security.secret_key = "4e26b3d9-b84f-42c9-a03f-fee3ada3b2fa"
     config.SETTINGS.main.internal_address = "http://mock"
+    config.OVERRIDE.message_bus = BusRecorder()
 
     initialize_lock()
 
 
-class BusRecorder(InfrahubMessageBus):
+class BusRPCMock(InfrahubMessageBus):
     def __init__(self):
+        self.response: List[InfrahubResponse] = []
+
+    async def publish(self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None) -> None:
+        pass
+
+    def add_mock_reply(self, response: InfrahubResponse):
+        self.response.append(response)
+
+    async def rpc(self, message: InfrahubMessage) -> InfrahubResponse:
+        return self.response.pop()
+
+
+class BusRecorder(InfrahubMessageBus):
+    def __init__(self, component_type: Optional[ComponentType] = None):
         self.messages: List[InfrahubMessage] = []
         self.messages_per_routing_key: Dict[str, List[InfrahubMessage]] = {}
 
@@ -133,6 +154,10 @@ class TestHelper:
     @staticmethod
     def get_message_bus_simulator() -> BusSimulator:
         return BusSimulator()
+
+    @staticmethod
+    def get_message_bus_rpc() -> BusRPCMock:
+        return BusRPCMock()
 
 
 @pytest.fixture()

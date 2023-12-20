@@ -2,8 +2,10 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 from graphql import (
     DocumentNode,
+    FieldNode,
     GraphQLError,
     GraphQLSchema,
+    OperationDefinitionNode,
     OperationType,
     parse,
     validate,
@@ -27,13 +29,18 @@ class GraphQLQueryVariable(BaseModel):
     default_value: Optional[Any] = None
 
 
+class GraphQLOperation(BaseModel):
+    name: Optional[str]
+    operation_type: OperationType
+
+
 class GraphQLQueryAnalyzer:
     def __init__(self, query: str, schema: Optional[GraphQLSchema] = None, branch: Optional[Branch] = None):
         self.query: str = query
         self.schema: Optional[GraphQLSchema] = schema
         self.branch: Optional[Branch] = branch
         self.document: DocumentNode = parse(self.query)
-        self._fields: Dict = None
+        self._fields: Optional[Dict] = None
 
     @property
     def is_valid(self) -> Tuple[bool, Optional[List[GraphQLError]]]:
@@ -48,14 +55,30 @@ class GraphQLQueryAnalyzer:
         return len(self.document.definitions)
 
     @property
-    def operations(self) -> Set[OperationType]:
-        return {definition.operation for definition in self.document.definitions}
+    def operations(self) -> List[GraphQLOperation]:
+        operations = []
+        for definition in self.document.definitions:
+            if not isinstance(definition, OperationDefinitionNode):
+                continue
+            operation_type = definition.operation
+            for field_node in definition.selection_set.selections:
+                if not isinstance(field_node, FieldNode):
+                    continue
+                operations.append(GraphQLOperation(operation_type=operation_type, name=field_node.name.value))
+        return operations
+
+    @property
+    def contains_mutation(self) -> bool:
+        return any(op.operation_type == OperationType.MUTATION for op in self.operations)
 
     @property
     def variables(self) -> List[GraphQLQueryVariable]:
         response = []
         for definition in self.document.definitions:
-            for variable in definition.variable_definitions:
+            variable_definitions = getattr(definition, "variable_definitions", None)
+            if not variable_definitions:
+                continue
+            for variable in variable_definitions:
                 data = {"name": variable.variable.name.value}
                 non_null = False
                 if variable.type.kind == "non_null_type":
@@ -100,15 +123,16 @@ class GraphQLQueryAnalyzer:
         graphql_types = set()
         models = set()
 
-        if not self.schema and not self.branch:
-            raise ValueError("Schema and Branch msut be provided to extract the models in use.")
+        if not (self.schema and self.branch):
+            raise ValueError("Schema and Branch must be provided to extract the models in use.")
 
         for definition in self.document.definitions:
             fields = await extract_fields(definition.selection_set)
 
-            if definition.operation == OperationType.QUERY:
+            operation = getattr(definition, "operation", None)
+            if operation == OperationType.QUERY:
                 schema = self.schema.query_type
-            elif definition.operation == OperationType.MUTATION:
+            elif operation == OperationType.MUTATION:
                 schema = self.schema.mutation_type
             else:
                 # Subscription not supported right now

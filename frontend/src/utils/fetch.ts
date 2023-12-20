@@ -51,39 +51,35 @@ export const fetchStream = async (url: string, payload?: any) => {
 
 const QSP_TO_INCLUDE = [QSP.BRANCH];
 
-const getParams = (params: [string, string][], overrideParams?: [string, string][]) => {
-  if (overrideParams?.length) {
-    return overrideParams;
-  }
-
-  if (params?.length) {
-    return params;
-  }
-
-  return [];
+type overrideQueryParams = {
+  name: string;
+  value?: string;
+  exclude?: boolean;
 };
 
 // Construct link with path that contains all QSP
-export const constructPath = (path: string, overrideParams?: [string, string][]) => {
-  const { href } = window.location;
+export const constructPath = (path: string, overrideParams?: overrideQueryParams[]) => {
+  const currentURLSearchParams = getCurrentQsp();
+  const newURLSearchParams = new URLSearchParams();
 
-  const targetUrl = new URL(href);
+  // Remove some QSP if not needed to be forwarded
+  QSP_TO_INCLUDE.forEach((qsp) => {
+    const paramValue = currentURLSearchParams.get(qsp);
+    if (paramValue) newURLSearchParams.set(qsp, paramValue);
+  });
 
-  const { searchParams: targetParams } = targetUrl;
+  overrideParams?.forEach(({ name, value, exclude }) => {
+    if (exclude) {
+      newURLSearchParams.delete(name);
+    } else if (value) {
+      newURLSearchParams.set(name, value);
+    }
+  });
 
-  // Get QSP as [ [ key, value ], ... ]
-  const params: [string, string][] = Array.from(targetParams).filter(
-    ([k]) => QSP_TO_INCLUDE.includes(k) // Remove some QSP if not needed to be forwarded
-  );
-
-  // Construct the new params as "?key=value&..."
-  const newParams = getParams(params, overrideParams).reduce(
-    (acc, [k, v], index) => `${acc}${k}=${v}${index === params.length - 1 ? "" : "&"}`,
-    "?"
-  );
-
-  return `${path}${newParams}`;
+  return `${path}?${newURLSearchParams.toString()}`;
 };
+
+export const getCurrentQsp = () => new URL(window.location.href).searchParams;
 
 // Update a QSP in the URL (add, update or remove it)
 export const updateQsp = (qsp: string, newValue: string, setSearchParams: Function) => {

@@ -1,0 +1,113 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "infrahub-helm.fullname" . }}-database
+  labels:
+    service: database
+  {{- include "infrahub-helm.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.database.replicas | default 1 }}
+  selector:
+    matchLabels:
+      service: database
+    {{- include "infrahub-helm.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        service: database
+      {{- include "infrahub-helm.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - env:
+            - name: NEO4J_AUTH
+              value: {{ quote .Values.database.database.env.neo4JAuth }}
+            - name: NEO4J_dbms_security_auth__minimum__password__length
+              value: {{ quote .Values.database.database.env.neo4JDbmsSecurityAuthMinimumPasswordLength }}
+            - name: NEO4J_dbms_security_procedures_unrestricted
+              value: {{ quote .Values.database.database.env.neo4JDbmsSecurityProceduresUnrestricted }}
+            - name: KUBERNETES_CLUSTER_DOMAIN
+              value: {{ quote .Values.global.kubernetesClusterDomain }}
+          image: {{ .Values.database.database.image.repository }}:{{ .Values.database.database.image.tag }}
+          imagePullPolicy: {{ default .Values.global.imagePullPolicy .Values.messageQueue.messageQueue.imagePullPolicy }}
+          livenessProbe:
+            tcpSocket:
+              port: {{ (index .Values.database.ports 1).port }}
+            failureThreshold: 20
+            initialDelaySeconds: 3
+            periodSeconds: 2
+            timeoutSeconds: 10
+          name: database
+          ports:
+          {{- range .Values.database.ports }}
+            - containerPort: {{ .targetPort }}
+              hostPort: {{ .port }}
+              protocol: TCP
+              name: {{ quote .name }}
+          {{- end }}
+          resources: {}
+          volumeMounts:
+            - mountPath: /plugins
+              name: database-hostpath0
+              readOnly: true
+            - mountPath: /data
+              name: database-data
+            - mountPath: /logs
+              name: database-logs
+      restartPolicy: Always
+      volumes:
+        - hostPath:
+            path: /tmp/plugins
+          name: database-hostpath0
+        - hostPath:
+            path: /tmp/infrahub-helm
+          name: database-data
+        - hostPath:
+            path: /tmp/infrahub-helm
+          name: database-logs
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "infrahub-helm.fullname" . }}-database
+  labels:
+    service: database
+  {{- include "infrahub-helm.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.database.type }}
+  selector:
+    service: database
+  {{- include "infrahub-helm.selectorLabels" . | nindent 4 }}
+  ports:
+	  {{- .Values.database.ports | toYaml | nindent 4 }}
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "infrahub-helm.fullname" . }}-database-data
+  labels:
+    service: database-data
+  {{- include "infrahub-helm.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.pvc.databaseData.storageRequest | quote }}
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "infrahub-helm.fullname" . }}-database-logs
+  labels:
+    service: database-logs
+  {{- include "infrahub-helm.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.pvc.databaseLogs.storageRequest | quote }}

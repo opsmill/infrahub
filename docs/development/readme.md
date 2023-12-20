@@ -1,9 +1,8 @@
-
-# Developer Guide
+# Developer guide
 
 ## Backend / Python
 
-### Code Linting
+### Code linting
 
 - **yamllint**
 - **Black**
@@ -15,11 +14,11 @@
 `invoke tests` will run all the linter at once to quickly validate if all files have the right format and are compliant with the internal coding guidelines.
 
 To help format the code correctly, the project is also recommending:
+
 - **autoflake** to automatically remove all unused variables and all unused import
 - **isort** to automatically sort all imports
 
 > `invoke format` will run Black, autoflake and isort together to ensure all files are as close as possible to the expected format.
-
 
 ### Run tests
 
@@ -31,38 +30,43 @@ infrahub test integration tests/integration/user_workflows/
 infrahub test client
 infrahub test ctl
 ```
+
 or
+
 ```shell
 infrahub test unit <path>
 ```
 
+## Frontend
 
-## FrontEnd
+### Code linting
 
-### Code Linting
 - **prettier**
 - **eslint**
 
 ### Run tests
 
 #### Unit tests
-```
+
+```sh
 npm run test
 ```
 
 or with coverage:
-```
+
+```sh
 npm run test:coverage
 ```
 
 #### Integration tests
-```
+
+```sh
 npm run cypress:run:component
 ```
 
 #### E2E tests
 
-```
+```sh
 npm run cypress:run:e2e
 ```
 
@@ -78,20 +82,19 @@ npm run cypress:run:e2e
 ![](../media/tests/cypress_e2e_3.png)
 
 Now we can:
+
 - verify if the content is correct:
 ```cy.get("...").should("have.text", "Account");```
-
 - verify the same thing but for inputs:
 ```cy.get("...").should("have.value", "some value");```
-
 - and also trigger a click:
 ```cy.get("...").click()```
 
 Full documentation: https://docs.cypress.io/guides/end-to-end-testing/writing-your-first-end-to-end-test
 
-## Developer Environment
+## Developer environment
 
-### VS Code Extensions
+### VS Code extensions
 
 - Excalidraw: https://marketplace.visualstudio.com/items?itemName=pomdtr.excalidraw-editor
 - Jinja: https://marketplace.visualstudio.com/items?itemName=wholroyd.jinja

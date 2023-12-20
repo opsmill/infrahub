@@ -8,7 +8,9 @@ from infrahub.database import InfrahubDatabase
 from infrahub.graphql.generator import (
     generate_filters,
     generate_graphql_mutation_create,
+    generate_graphql_mutation_create_input,
     generate_graphql_mutation_update,
+    generate_graphql_mutation_update_input,
     generate_graphql_object,
     generate_interface_object,
     generate_object_types,
@@ -20,7 +22,7 @@ from infrahub.graphql.types import InfrahubObject
 
 
 async def test_input_type_registration():
-    assert registry.input_type is not {}
+    assert registry.input_type is not {}  # noqa
 
 
 async def test_generate_interface_object(db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema):
@@ -79,6 +81,7 @@ async def test_generate_graphql_object(db: InfrahubDatabase, default_branch: Bra
         "level",
         "mylist",
         "name",
+        "status",
     ]
 
 
@@ -105,7 +108,8 @@ async def test_generate_graphql_object_with_interface(
 async def test_generate_graphql_mutation_create(
     db: InfrahubDatabase, default_branch: Branch, group_graphql, criticality_schema
 ):
-    result = generate_graphql_mutation_create(schema=criticality_schema, branch=default_branch)
+    input_type = generate_graphql_mutation_create_input(criticality_schema)
+    result = generate_graphql_mutation_create(schema=criticality_schema, branch=default_branch, input_type=input_type)
     assert result._meta.name == "TestCriticalityCreate"
     assert sorted(list(result._meta.fields.keys())) == ["object", "ok"]
 
@@ -113,7 +117,8 @@ async def test_generate_graphql_mutation_create(
 async def test_generate_graphql_mutation_update(
     db: InfrahubDatabase, default_branch: Branch, group_graphql, criticality_schema
 ):
-    result = generate_graphql_mutation_update(schema=criticality_schema, branch=default_branch)
+    input_type = generate_graphql_mutation_update_input(schema=criticality_schema)
+    result = generate_graphql_mutation_update(schema=criticality_schema, branch=default_branch, input_type=input_type)
     assert result._meta.name == "TestCriticalityUpdate"
     assert sorted(list(result._meta.fields.keys())) == ["object", "ok"]
 
@@ -195,39 +200,51 @@ async def test_generate_filters(
         "any__owner__id",
         "any__source__id",
         "any__value",
+        "any__values",
         "cars__color__is_protected",
         "cars__color__is_visible",
         "cars__color__owner__id",
         "cars__color__source__id",
         "cars__color__value",
+        "cars__color__values",
         "cars__ids",
         "cars__name__is_protected",
         "cars__name__is_visible",
         "cars__name__owner__id",
         "cars__name__source__id",
         "cars__name__value",
+        "cars__name__values",
         "cars__nbr_seats__is_protected",
         "cars__nbr_seats__is_visible",
         "cars__nbr_seats__owner__id",
         "cars__nbr_seats__source__id",
         "cars__nbr_seats__value",
+        "cars__nbr_seats__values",
         "height__is_protected",
         "height__is_visible",
         "height__owner__id",
         "height__source__id",
         "height__value",
+        "height__values",
         "member_of_groups__description__value",
+        "member_of_groups__description__values",
         "member_of_groups__ids",
         "member_of_groups__label__value",
+        "member_of_groups__label__values",
         "member_of_groups__name__value",
+        "member_of_groups__name__values",
         "name__is_protected",
         "name__is_visible",
         "name__owner__id",
         "name__source__id",
         "name__value",
+        "name__values",
         "subscriber_of_groups__description__value",
+        "subscriber_of_groups__description__values",
         "subscriber_of_groups__ids",
         "subscriber_of_groups__label__value",
+        "subscriber_of_groups__label__values",
         "subscriber_of_groups__name__value",
+        "subscriber_of_groups__name__values",
     ]
     assert sorted(list(filters.keys())) == sorted(expected_filters)

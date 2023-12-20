@@ -1,4 +1,4 @@
-import { gql, useReactiveVar } from "@apollo/client";
+import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { format, formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
@@ -9,22 +9,22 @@ import { AuthContext } from "../decorators/withAuth";
 import { Branch } from "../generated/graphql";
 import graphqlClient from "../graphql/graphqlClientApollo";
 import { createBranch } from "../graphql/mutations/branches/createBranch";
-import { branchVar } from "../graphql/variables/branchVar";
-import { dateVar } from "../graphql/variables/dateVar";
-import { branchesState } from "../state/atoms/branches.atom";
+import { branchesState, currentBranchAtom } from "../state/atoms/branches.atom";
 import { classNames, objectToString } from "../utils/common";
 import { BUTTON_TYPES, Button } from "./button";
 import { Input } from "./input";
 import { POPOVER_SIZE, PopOver } from "./popover";
-import { Select } from "./select";
+import { Select, SelectOption } from "./select";
 import { SelectButton } from "./select-button";
 import { Switch } from "./switch";
+import { useAtomValue } from "jotai/index";
+import { datetimeAtom } from "../state/atoms/time.atom";
 
 export default function BranchSelector() {
   const [branches] = useAtom(branchesState);
   const [, setBranchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
-  const branch = useReactiveVar(branchVar);
-  const date = useReactiveVar(dateVar);
+  const branch = useAtomValue(currentBranchAtom);
+  const date = useAtomValue(datetimeAtom);
   const auth = useContext(AuthContext);
 
   const [newBranchName, setNewBranchName] = useState("");
@@ -52,25 +52,27 @@ export default function BranchSelector() {
     </Button>
   );
 
-  const branchesOptions = branches.sort((branch1, branch2) => {
-    if (branch1.name === "main") {
+  const branchesOptions: SelectOption[] = branches
+    .map((branch) => ({ id: branch.id, name: branch.name }))
+    .sort((branch1, branch2) => {
+      if (branch1.name === "main") {
+        return -1;
+      }
+
+      if (branch2.name === "main") {
+        return 1;
+      }
+
+      if (branch2.name === "main") {
+        return -1;
+      }
+
+      if (branch1.name > branch2.name) {
+        return 1;
+      }
+
       return -1;
-    }
-
-    if (branch2.name === "main") {
-      return 1;
-    }
-
-    if (branch2.name === "main") {
-      return -1;
-    }
-
-    if (branch1.name > branch2.name) {
-      return 1;
-    }
-
-    return -1;
-  });
+    });
 
   const defaultBranch = branches?.filter((b) => b.is_default)[0]?.id;
 
@@ -175,7 +177,7 @@ export default function BranchSelector() {
   }
 
   return (
-    <div className="flex">
+    <div className="flex" data-cy="branch-select-menu">
       <SelectButton
         value={branch}
         valueLabel={valueLabel}
@@ -192,10 +194,14 @@ export default function BranchSelector() {
         {({ close }: any) => (
           <>
             <div className="flex flex-col">
-              Branch name:
-              <Input value={newBranchName} onChange={setNewBranchName} />
-              Branch description:
-              <Input value={newBranchDescription} onChange={setNewBranchDescription} />
+              <label htmlFor="new-branch-name">Branch name:</label>
+              <Input id="new-branch-name" value={newBranchName} onChange={setNewBranchName} />
+              <label htmlFor="new-branch-description">Branch description:</label>
+              <Input
+                id="new-branch-description"
+                value={newBranchDescription}
+                onChange={setNewBranchDescription}
+              />
               Branched from:
               <Select
                 disabled

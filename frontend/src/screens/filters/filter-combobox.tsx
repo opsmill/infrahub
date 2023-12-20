@@ -109,7 +109,7 @@ export default function FilterCombobox(props: Props) {
         </Combobox.Button>
 
         {filteredRows && filteredRows?.length > 0 && (
-          <Combobox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-custom-white py-1 text-base shadow-lg ring-1 ring-custom-black ring-opacity-5 focus:outline-none sm:text-sm">
+          <Combobox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-custom-white text-base shadow-lg ring-1 ring-custom-black ring-opacity-5 focus:outline-none sm:text-sm">
             {filteredRows?.map((row) => (
               <Combobox.Option
                 key={row.id}

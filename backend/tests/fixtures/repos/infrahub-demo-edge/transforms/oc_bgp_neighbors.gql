@@ -1,0 +1,47 @@
+query oc_bgp_neighbors ($device: String!) {
+  InfraBGPSession(device__name__value: $device) {
+    edges {
+      node {
+        id
+        peer_group {
+          node {
+            name {
+              value
+            }
+          }
+        }
+        local_ip {
+          node {
+            address {
+              value
+            }
+          }
+        }
+        remote_ip {
+          node {
+            address {
+              value
+            }
+          }
+        }
+        local_as {
+          node {
+            asn {
+              value
+            }
+          }
+        }
+        remote_as {
+          node {
+            asn {
+              value
+            }
+          }
+        }
+        description {
+          value
+        }
+      }
+    }
+  }
+}

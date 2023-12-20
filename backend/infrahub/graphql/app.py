@@ -41,12 +41,12 @@ from graphql.utilities import (  # pylint: disable=no-name-in-module,import-erro
 from starlette.background import BackgroundTasks
 from starlette.datastructures import UploadFile
 from starlette.requests import HTTPConnection, Request
-from starlette.responses import HTMLResponse, JSONResponse, Response
+from starlette.responses import JSONResponse, Response
 from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 
 from infrahub.api.dependencies import api_key_scheme, cookie_auth_scheme, jwt_scheme
 from infrahub.auth import AccountSession, authentication_token
-from infrahub.exceptions import AuthorizationError, PermissionDeniedError
+from infrahub.graphql.analyzer import GraphQLQueryAnalyzer
 
 # pylint: disable=no-name-in-module,unused-argument,ungrouped-imports,raise-missing-from
 
@@ -78,6 +78,8 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 
+    from .auth.query_permission_checker.checker import GraphQLQueryPermissionChecker
+
 
 GQL_CONNECTION_ACK = "connection_ack"
 GQL_CONNECTION_ERROR = "connection_error"
@@ -93,16 +95,10 @@ ContextValue = Union[Any, Callable[[HTTPConnection], Any]]
 RootValue = Any
 
 
-def make_graphiql_handler() -> Callable[[Request], Response]:
-    def handler(request: Request) -> Response:
-        return HTMLResponse(_GRAPHIQL_HTML)
-
-    return handler
-
-
 class InfrahubGraphQLApp:
     def __init__(
         self,
+        permission_checker: GraphQLQueryPermissionChecker,
         schema: graphene.Schema = None,
         *,
         on_get: Optional[Callable[[Request], Union[Response, Awaitable[Response]]]] = None,
@@ -111,7 +107,6 @@ class InfrahubGraphQLApp:
         error_formatter: Callable[[GraphQLError], GraphQLFormattedError] = format_error,
         logger_name: Optional[str] = None,
         execution_context_class: Optional[Type[ExecutionContext]] = None,
-        playground: bool = False,  # Deprecating. Use on_get instead.
     ):
         self._schema = schema
         self.on_get = on_get
@@ -120,9 +115,7 @@ class InfrahubGraphQLApp:
         self.middleware = middleware
         self.execution_context_class = execution_context_class
         self.logger = logging.getLogger(logger_name or __name__)
-
-        if playground and self.on_get is None:
-            self.on_get = make_graphiql_handler()
+        self.permission_checker = permission_checker
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] == "http":
@@ -211,16 +204,16 @@ class InfrahubGraphQLApp:
 
         operation = operations
         query = operation["query"]
+        schema_branch = registry.schema.get_schema_branch(name=branch.name)
+        graphql_schema = await schema_branch.get_graphql_schema(db=db)
+        analyzed_query = GraphQLQueryAnalyzer(query=query, schema=graphql_schema, branch=branch)
+        await self.permission_checker.check(account_session=account_session, analyzed_query=analyzed_query)
+
         variable_values = operation.get("variables")
         operation_name = operation.get("operationName")
-        self._validate_authentication(account_session=account_session, query=query)
-
         context_value = await self._get_context_value(
             request=request, db=db, branch=branch, account_session=account_session
         )
-
-        schema_branch = registry.schema.get_schema_branch(name=branch.name)
-        graphql_schema = await schema_branch.get_graphql_schema(db=db)
 
         result = await graphql(
             schema=graphql_schema,
@@ -430,24 +423,6 @@ class InfrahubGraphQLApp:
         if WebSocketState.DISCONNECTED not in (websocket.client_state, websocket.application_state):
             await websocket.send_json({"type": GQL_COMPLETE, "id": operation_id})
 
-    @staticmethod
-    def _validate_authentication(account_session: AccountSession, query: str) -> None:
-        document = parse(query)
-        query_type = document.definitions[0].operation.value
-
-        if account_session.authenticated:
-            if not account_session.read_only:
-                return
-            if account_session.read_only and query_type != "mutation":
-                return
-
-            raise PermissionDeniedError("The current account is not authorized to perform this operation")
-
-        if config.SETTINGS.main.allow_anonymous_access and query_type != "mutation":
-            return
-
-        raise AuthorizationError("Authentication is required to perform this operation")
-
 
 async def _get_operation_from_request(
     request: Request,
@@ -511,96 +486,3 @@ def _inject_file_to_operations(ops_tree: Any, _file: UploadFile, path: Sequence[
             ops_tree[key] = _file
     else:
         _inject_file_to_operations(ops_tree[key], _file, path[1:])
-
-
-_GRAPHIQL_HTML = """
-<!--
- *  Copyright (c) 2021 GraphQL Contributors
- *  All rights reserved.
- *
- *  This source code is licensed under the license found in the
- *  LICENSE file in the root directory of this source tree.
--->
-<!doctype html>
-<html lang="en">
-  <head>
-    <title>GraphiQL</title>
-    <style>
-      body {
-        height: 100%;
-        margin: 0;
-        width: 100%;
-        overflow: hidden;
-      }
-
-      #graphiql {
-        height: 100vh;
-      }
-    </style>
-    <!--
-      This GraphiQL example depends on Promise and fetch, which are available in
-      modern browsers, but can be "polyfilled" for older browsers.
-      GraphiQL itself depends on React DOM.
-      If you do not want to rely on a CDN, you can host these files locally or
-      include them directly in your favored resource bundler.
-    -->
-    <script
-      crossorigin
-      src="https://unpkg.com/react@18/umd/react.development.js"
-    ></script>
-    <script
-      crossorigin
-      src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"
-    ></script>
-    <!--
-      These two files can be found in the npm module, however you may wish to
-      copy them directly into your environment, or perhaps include them in your
-      favored resource bundler.
-     -->
-    <script
-      src="https://unpkg.com/graphiql/graphiql.min.js"
-      type="application/javascript"
-    ></script>
-    <link rel="stylesheet" href="https://unpkg.com/graphiql/graphiql.min.css" />
-    <!--
-      These are imports for the GraphIQL Explorer plugin.
-     -->
-    <script
-      src="https://unpkg.com/@graphiql/plugin-explorer/dist/index.umd.js"
-      crossorigin
-    ></script>
-
-    <link
-      rel="stylesheet"
-      href="https://unpkg.com/@graphiql/plugin-explorer/dist/style.css"
-    />
-  </head>
-
-  <body>
-    <div id="graphiql">Loading...</div>
-    <script>
-      const root = ReactDOM.createRoot(document.getElementById('graphiql'));
-      const fetcher = GraphiQL.createFetcher({
-        url: window.location,
-      });
-      const explorerPlugin = GraphiQLPluginExplorer.explorerPlugin();
-      root.render(
-        React.createElement(GraphiQL, {
-          fetcher,
-          defaultEditorToolsVisibility: true,
-          plugins: [explorerPlugin],
-          query: `query GetTags {
-BuiltinTag {
-    edges {
-    node {
-        id
-        display_label
-      }
-    }
-  }
-}`
-        }),
-      );
-    </script>
-  </body>
-</html>""".strip()  # noqa: B950

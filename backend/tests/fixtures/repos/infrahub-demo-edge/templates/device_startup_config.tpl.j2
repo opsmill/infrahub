@@ -1,0 +1,111 @@
+{% set ns = namespace(loopback_intf_name=none, loopback_ip=none, management_intf_name=none, management_ip=none) %}
+{% for intf in data.InfraDevice.edges[0].node.interfaces.edges %}
+{%   if intf.node.role.value == "loopback" %}
+{%     set ns.loopback_intf_name = intf.node.name.value %}
+{%     set ns.loopback_ip = intf.node.ip_addresses.edges[0].node.address.value.split('/')[0] %}
+{%   elif intf.node.role.value == "management" %}
+{%     set ns.management_intf_name = intf.node.name.value %}
+{%     set ns.management_ip = intf.node.ip_addresses.edges[0].node.address.value.split('/')[0] %}
+{%   endif %}
+{% endfor %}
+no aaa root
+!
+username admin privilege 15 role network-admin secret sha512 $6$q4ez.aZgB/G/eeWW$ukvRobb5RtYmUlCcY0atxhwPmA6FPoRjR3AxYFJqNFoCRgJjrohKGrBsbY12n1uRZeCer1L8oejx5aPlrf.op0
+!
+transceiver qsfp default-mode 4x10G
+!
+service routing protocols model multi-agent
+!
+hostname {{ data.InfraDevice.edges[0].node.name.value }}
+!
+spanning-tree mode mstp
+!
+management api http-commands
+   no shutdown
+!
+management api gnmi
+   transport grpc default
+!
+management api netconf
+   transport ssh default
+!
+{% for intf in data.InfraDevice.edges[0].node.interfaces.edges %}
+{%   if intf.node.name.value != ns.management_intf_name and intf.node.name.value != ns.loopback_intf_name %}
+interface {{ intf.node.name.value }} 
+{%   if intf.node["description"]["value"] %}
+   description {{ intf.node["description"]["value"] }}
+{%   else %}
+   description role: {{ intf.node.role.value }}
+{%   endif %}
+{%   if not intf.node["enabled"]["value"] %}
+   shutdown
+{%   endif %}
+
+{%   if intf.node["ip_addresses"] %}
+{%     for ip in intf.node["ip_addresses"]["edges"] %}
+   ip address {{ ip.node["address"]["value"] }}
+   no switchport
+{%       if intf.node.role.value == "peer" or intf.node.role.value == "backbone" %}
+   ip ospf network point-to-point
+{%       endif %}
+{%     endfor %}
+{%   endif %}
+!
+{%   endif %}
+{% endfor %}
+!
+interface {{ ns.management_intf_name }}
+{% for intf in data.InfraDevice.edges[0]["interfaces"] %}
+{%   if intf.node.name.value == ns.management_intf_name %}
+{%     for ip in intf["ip_addresses"] %}
+   ip address {{ ip["address"]["value"] }}
+{%     endfor %}
+{%   endif %}
+{% endfor %}
+!
+interface {{ ns.loopback_intf_name }}
+{% for intf in data.InfraDevice.edges[0]["interfaces"] %}
+{%   if intf.node.name.value == ns.loopback_intf_name %}
+{%     for ip in intf["ip_addresses"] %}
+   ip address {{ ip["address"]["value"] }}
+{%     endfor %}
+{%   endif %}
+{% endfor %}
+!
+ip prefix-list BOGON-Prefixes seq 10 permit 172.16.0.0/12 le 24
+ip prefix-list BOGON-Prefixes seq 20 permit 192.168.0.0/16 le 24
+ip prefix-list BOGON-Prefixes seq 10 permit 172.16.0.0/12 le 24
+ip prefix-list BOGON-Prefixes seq 20 permit 192.168.0.0/16 le 24
+!
+ip routing
+!
+ip route 0.0.0.0/0 172.20.20.1
+!
+{% if data.InfraDevice.edges[0].node.asn %}
+router bgp {{ data.InfraDevice.edges[0].node.asn.node.asn.value }}
+   router-id {{ loopback_ip }}
+{%   for peer_group in data.InfraBGPPeerGroup.edges %}
+   neighbor {{ peer_group.node.name.value }} peer group
+{%     if peer_group.node.local_as %}
+   neighbor {{ peer_group.node.name.value }} local-as {{ peer_group.node.local_as.node.asn.value }}
+{%     endif %}
+{%     if peer_group.node.remote_as and peer_group.node.remote_as.node %}
+   neighbor {{ peer_group.node.name.value }} remote-as {{ peer_group.node.remote_as.node.asn.value }}
+{%     endif %}
+{%   endfor %}
+!
+{% endif %}
+!
+router ospf 1
+   router-id {{ loopback_ip }}
+   redistribute connected
+   max-lsa 12000
+   passive-interface Loopback0
+   network 0.0.0.0/0 area 0.0.0.0
+!
+route-map BOGONS permit 10
+ match ip address prefix-list BOGON-Prefixes
+!
+route-map BOGONS deny 20
+!
+end

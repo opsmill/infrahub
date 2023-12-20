@@ -1,4 +1,4 @@
-import { gql, useReactiveVar } from "@apollo/client";
+import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -9,8 +9,6 @@ import { QSP } from "../../config/qsp";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { removeRelationship } from "../../graphql/mutations/relationships/removeRelationship";
 import { getObjectRelationshipsDetailsPaginated } from "../../graphql/queries/objects/getObjectRelationshipDetails";
-import { branchVar } from "../../graphql/variables/branchVar";
-import { dateVar } from "../../graphql/variables/dateVar";
 import usePagination from "../../hooks/usePagination";
 import useQuery from "../../hooks/useQuery";
 import { genericsState, iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
@@ -19,22 +17,26 @@ import { stringifyWithoutQuotes } from "../../utils/string";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import RelationshipDetails from "./relationship-details-paginated";
+import { useAtomValue } from "jotai/index";
+import { currentBranchAtom } from "../../state/atoms/branches.atom";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 
 interface RelationshipsDetailsProps {
   parentNode: any;
   parentSchema: iNodeSchema;
+  refetchObjectDetails: Function;
 }
 
 export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
-  const { parentNode, parentSchema } = props;
+  const { parentNode, parentSchema, refetchObjectDetails } = props;
 
   const { objectname, objectid } = useParams();
   const [relationshipTab] = useQueryParam(QSP.TAB, StringParam);
   const [pagination] = usePagination();
   const [schemaList] = useAtom(schemaState);
   const [generics] = useAtom(genericsState);
-  const branch = useReactiveVar(branchVar);
-  const date = useReactiveVar(dateVar);
+  const branch = useAtomValue(currentBranchAtom);
+  const date = useAtomValue(datetimeAtom);
 
   const schema = schemaList.find((s) => s.kind === objectname);
   const relationshipSchema = schema?.relationships?.find((r) => r?.name === relationshipTab);
@@ -65,6 +67,10 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
 
   const { loading, error, data, refetch } = useQuery(query, { skip: !relationshipTab });
 
+  const updatePageData = () => {
+    return Promise.all([refetch(), refetchObjectDetails()]);
+  };
+
   if (loading) {
     return <LoadingScreen />;
   }
@@ -81,11 +87,11 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
 
   const relationships = result?.length ? result[0]?.node[relationshipTab]?.edges : null;
 
-  const handleDeleteRelationship = async (id: string) => {
+  const handleDeleteRelationship = async (name: string, id: string) => {
     const mutationString = removeRelationship({
       data: stringifyWithoutQuotes({
         id: objectid,
-        name: "members",
+        name,
         nodes: [
           {
             id,
@@ -103,7 +109,7 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
       context: { branch: branch?.name, date },
     });
 
-    refetch();
+    updatePageData();
 
     toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Item removed from the group"} />);
   };
@@ -116,7 +122,7 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
         parentSchema={parentSchema}
         relationshipsData={relationships}
         relationshipSchema={relationshipSchema}
-        refetch={refetch}
+        refetch={updatePageData}
         onDeleteRelationship={handleDeleteRelationship}
       />
 

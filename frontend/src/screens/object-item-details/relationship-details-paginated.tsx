@@ -1,10 +1,9 @@
-import { gql, useReactiveVar } from "@apollo/client";
+import { gql } from "@apollo/client";
 import {
   EyeSlashIcon,
   LockClosedIcon,
   PencilSquareIcon,
   PlusIcon,
-  Square3Stack3DIcon,
 } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useContext, useState } from "react";
@@ -21,9 +20,8 @@ import SlideOver from "../../components/slide-over";
 import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
-import { branchVar } from "../../graphql/variables/branchVar";
-import { dateVar } from "../../graphql/variables/dateVar";
 // import { ReactComponent as UnlinkIcon } from "../../images/icons/unlink.svg";
+import { Icon } from "@iconify-icon/react";
 import { AuthContext } from "../../decorators/withAuth";
 import { addRelationship } from "../../graphql/mutations/relationships/addRelationship";
 import UnlinkIcon from "../../images/icons/unlink.svg";
@@ -41,6 +39,9 @@ import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
+import { useAtomValue } from "jotai/index";
+import { currentBranchAtom } from "../../state/atoms/branches.atom";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 
 type iRelationDetailsProps = {
   parentNode: any;
@@ -62,8 +63,8 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
 
   const [schemaList] = useAtom(schemaState);
   const [generics] = useAtom(genericsState);
-  const branch = useReactiveVar(branchVar);
-  const date = useReactiveVar(dateVar);
+  const branch = useAtomValue(currentBranchAtom);
+  const date = useAtomValue(datetimeAtom);
   const [showAddDrawer, setShowAddDrawer] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showRelationMetaEditModal, setShowRelationMetaEditModal] = useState(false);
@@ -134,7 +135,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
 
   const handleDeleteRelationship = async (id: string) => {
     if (onDeleteRelationship) {
-      await onDeleteRelationship(id);
+      await onDeleteRelationship(relationshipSchema.name, id);
 
       setShowAddDrawer(false);
 
@@ -148,7 +149,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
       .filter((item: any) => item.id !== id);
 
     const mutationString = updateObjectWithId({
-      name: schema.name,
+      kind: schema.kind,
       data: stringifyWithoutQuotes({
         id: objectid,
         [relationshipSchema.name]: newList,
@@ -218,8 +219,6 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
       setIsLoading(false);
 
       setShowAddDrawer(false);
-
-      refetch && refetch();
     }
   };
 
@@ -247,7 +246,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
         {relationshipsData && (
           <>
             {relationshipSchema?.cardinality === "one" && (
-              <div className="p-4 px-3 grid grid-cols-3 gap-4">
+              <div className="p-4 grid grid-cols-3 gap-4">
                 <dt className="text-sm font-medium text-gray-500 flex items-center">
                   {relationshipSchema?.label}
                 </dt>
@@ -362,7 +361,8 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                 )
                               }
                               key={index}
-                              className="hover:bg-gray-50 cursor-pointer">
+                              className="hover:bg-gray-50 cursor-pointer"
+                              data-cy="relationship-row">
                               {newColumns?.map((column) => (
                                 <td
                                   key={node.id + "-" + column.name}
@@ -439,7 +439,8 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                   buttonType={BUTTON_TYPES.INVISIBLE}
                                   onClick={() => {
                                     setRelatedRowToDelete(node);
-                                  }}>
+                                  }}
+                                  data-cy="relationship-delete-button">
                                   <img src={UnlinkIcon} className="w-4 h-4" />
                                 </Button>
                               </td>
@@ -458,7 +459,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
             )}
 
             {relationshipSchema?.cardinality === "many" && mode === "DESCRIPTION-LIST" && (
-              <div className="p-4 px-3 grid grid-cols-3 gap-4">
+              <div className="p-4 grid grid-cols-3 gap-4">
                 <dt className="text-sm font-medium text-gray-500 flex items-center">
                   {relationshipSchema?.label}
                 </dt>
@@ -536,7 +537,8 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
             <RoundedButton
               disabled={!auth?.permissions?.write}
               onClick={() => setShowAddDrawer(true)}
-              className="p-3 ml-2 bg-custom-blue-500 text-sm hover:bg-custom-blue-500 focus:ring-custom-blue-500 focus:ring-offset-gray-50 focus:ring-offset-2">
+              className="p-3 ml-2 bg-custom-blue-500 text-sm hover:bg-custom-blue-500 focus:ring-custom-blue-500 focus:ring-offset-gray-50 focus:ring-offset-2"
+              data-cy="open-relationship-form-button">
               <PlusIcon className="h-7 w-7 text-custom-white" aria-hidden="true" />
             </RoundedButton>
           </div>
@@ -551,11 +553,11 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                 </span>
                 <div className="flex-1"></div>
                 <div className="flex items-center">
-                  <Square3Stack3DIcon className="w-4 h-4" />
+                  <Icon icon={"mdi:layers-triple"} />
                   <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
                 </div>
               </div>
-              <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
+              <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 mr-2">
                 <svg
                   className="h-1.5 w-1.5 mr-1 fill-yellow-500"
                   viewBox="0 0 6 6"
@@ -588,7 +590,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                     </span>
                     <div className="flex-1"></div>
                     <div className="flex items-center">
-                      <Square3Stack3DIcon className="w-4 h-4" />
+                      <Icon icon={"mdi:layers-triple"} />
                       <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
                     </div>
                   </div>
@@ -615,6 +617,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
             }}
           />
         </SlideOver>
+
         {relatedRowToDelete && (
           <ModalDelete
             title="Delete"
@@ -649,11 +652,11 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                       </span>
                       <div className="flex-1"></div>
                       <div className="flex items-center">
-                        <Square3Stack3DIcon className="w-4 h-4" />
+                        <Icon icon={"mdi:layers-triple"} />
                         <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
                       </div>
                     </div>
-                    <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
+                    <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 mr-2">
                       <svg
                         className="h-1.5 w-1.5 mr-1 fill-yellow-500"
                         viewBox="0 0 6 6"

@@ -1,0 +1,9 @@
+---
+extends: existence
+message: "Remove %s and avoid words that minimize the effort level required."
+level: warning
+ignorecase: true
+tokens:
+  - easy
+  - simple
+  - simply

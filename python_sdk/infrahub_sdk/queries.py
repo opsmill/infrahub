@@ -52,7 +52,7 @@ query GetBranch($branch_name: String!) {
 
 MUTATION_COMMIT_UPDATE = """
 mutation ($repository_id: String!, $commit: String!) {
-    CoreRepositoryUpdate(data: { id: $repository_id, commit: { value: $commit } }) {
+    CoreRepositoryUpdate(data: { id: $repository_id, commit: { is_protected: true, source: $repository_id, value: $commit } }) {
         ok
         object {
             commit {

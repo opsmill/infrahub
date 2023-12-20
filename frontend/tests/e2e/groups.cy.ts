@@ -20,8 +20,8 @@ describe("Groups", () => {
     cy.get("[href='/groups']").scrollIntoView();
     cy.get("[href='/groups']").click();
 
-    // 4 results should be present
-    cy.get("div.flex > .text-sm > :nth-child(3)").should("have.text", "4");
+    // 5 groups should be present
+    cy.get("div.flex > .text-sm > :nth-child(3)").should("have.text", "5");
 
     // Access group details
     cy.contains(GROUP_NAME).click();
@@ -34,10 +34,10 @@ describe("Groups", () => {
       GROUP_NAME
     );
 
-    // Access the memebers
+    // Access the members
     cy.get(".-mb-px > :nth-child(2)").click();
 
-    // There is no memeber
+    // There are 5 members
     cy.get("div.flex > .text-sm > :nth-child(3)").should("have.text", "5");
   });
 
@@ -57,8 +57,8 @@ describe("Groups", () => {
     // Open the select
     cy.get("[id^=headlessui-combobox-button-]").click();
 
-    // CHeck if the options have a length of 4
-    cy.get("[id^=headlessui-combobox-options-]").find("li").should("have.length", 4);
+    // CHeck if the options have a length of 6
+    cy.get("[id^=headlessui-combobox-options-]").find("li").should("have.length", 6);
 
     // Choose 2 options
     cy.contains(NEW_GROUP_1).click();
@@ -77,7 +77,7 @@ describe("Groups", () => {
       .should("have.length", 4);
 
     // Close side panel
-    cy.get(".bg-gray-500").click();
+    cy.get("[data-cy='side-panel-background']").click();
 
     // Access the group page
     cy.get("[href='/groups']").scrollIntoView();
@@ -86,10 +86,10 @@ describe("Groups", () => {
     // Access group details
     cy.contains(GROUP_NAME).click();
 
-    // Access the memebers
+    // Access the members
     cy.get(".-mb-px > :nth-child(2)").click();
 
-    // There is 1 member
+    // There are 6 members
     cy.get("div.flex > .text-sm > :nth-child(3)").should("have.text", "6");
 
     cy.contains(OBJECT_NAME).should("exist");
@@ -113,8 +113,8 @@ describe("Groups", () => {
     // Open the select
     cy.get("[id^=headlessui-combobox-button-]").click();
 
-    // CHeck if the options have a length of 4
-    cy.get("[id^=headlessui-combobox-options-]").find("li").should("have.length", 4);
+    // CHeck if the options have a length of 6
+    cy.get("[id^=headlessui-combobox-options-]").find("li").should("have.length", 6);
 
     // Choose the 2 same options to remove the groups
     cy.contains(NEW_GROUP_1).click();
@@ -133,7 +133,7 @@ describe("Groups", () => {
       .should("have.length", 2);
 
     // Close side panel
-    cy.get(".bg-gray-500").click();
+    cy.get("[data-cy='side-panel-background']").click();
 
     // Access the group page
     cy.get("[href='/groups']").scrollIntoView();
@@ -142,10 +142,10 @@ describe("Groups", () => {
     // Access group details
     cy.contains(GROUP_NAME).click();
 
-    // Access the memebers
+    // Access the members
     cy.get(".-mb-px > :nth-child(2)").click();
 
-    // There is 1 member
+    // There are 5 members
     cy.get("div.flex > .text-sm > :nth-child(3)").should("have.text", "5");
 
     cy.contains(OBJECT_NAME).should("not.exist");

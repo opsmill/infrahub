@@ -1,0 +1,43 @@
+---
+schemas:
+  - schemas/demo_edge_fabric.yml
+
+rfiles:
+  - name: device_startup
+    description: "Template to generate startup configuration for network devices"
+    query: "device_startup_info"
+    template_path: "templates/device_startup_config.tpl.j2"
+
+  - name: clab_topology
+    query: "topology_info"
+    template_path: "topology/topology.tpl.j2"
+
+artifact_definitions:
+  - name: "Openconfig Interface for Arista devices"
+    artifact_name: "openconfig-interfaces"
+    parameters:
+      device: "name__value"
+    content_type: "application/json"
+    targets: "arista_devices"
+    transformation: "oc_interfaces"
+
+  - name: "Startup Config for Edge devices"
+    artifact_name: "startup-config"
+    parameters:
+      device: "name__value"
+    content_type: "text/plain"
+    targets: "edge_router"
+    transformation: "device_startup"
+
+check_definitions:
+  - name: "backbone_link_redundancy"
+    file_path: "checks/check_backbone_link_redundancy.py"
+    class_name: "InfrahubCheckBackboneLinkRedundancy"
+
+python_transforms:
+  - name: oc_interfaces
+    class_name: OCInterfaces
+    file_path: "transforms/openconfig.py"
+  - name: oc_bgp
+    class_name: OCBGPNeighbors
+    file_path: "transforms/openconfig.py"

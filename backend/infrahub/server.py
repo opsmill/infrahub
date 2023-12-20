@@ -1,36 +1,37 @@
-import asyncio
 import logging
 import os
 import time
+from functools import partial
 from typing import Awaitable, Callable
 
 from asgi_correlation_id import CorrelationIdMiddleware
 from asgi_correlation_id.context import correlation_id
 from fastapi import FastAPI, Request, Response
 from fastapi.logger import logger
-from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from infrahub_sdk.timestamp import TimestampFormatError
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from pydantic import ValidationError
 from starlette_exporter import PrometheusMiddleware, handle_metrics
 
-import infrahub.config as config
-from infrahub import __version__
+from infrahub import __version__, config
 from infrahub.api import router as api
-from infrahub.api.background import BackgroundRunner
+from infrahub.api.exception_handlers import generic_api_exception_handler
+from infrahub.components import ComponentType
 from infrahub.core.initialization import initialization
 from infrahub.database import InfrahubDatabase, InfrahubDatabaseMode, get_db
 from infrahub.exceptions import Error
-from infrahub.graphql.app import InfrahubGraphQLApp
+from infrahub.graphql.api.endpoints import router as graphql_router
 from infrahub.lock import initialize_lock
 from infrahub.log import clear_log_context, get_logger, set_log_data
 from infrahub.message_bus import close_broker_connection, connect_to_broker
 from infrahub.message_bus.rpc import InfrahubRpcClient
 from infrahub.middleware import InfrahubCORSMiddleware
-from infrahub.services import services
+from infrahub.services import InfrahubServices, services
+from infrahub.services.adapters.cache.redis import RedisCache
+from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
 from infrahub.trace import add_span_exception, configure_trace, get_traceid, get_tracer
-
-# pylint: disable=too-many-locals
 
 app = FastAPI(
     title="Infrahub",
@@ -78,26 +79,29 @@ async def app_initialization():
         )
 
     # Initialize database Driver and load local registry
-    app.state.db = InfrahubDatabase(mode=InfrahubDatabaseMode.DRIVER, driver=await get_db())
+    database = app.state.db = InfrahubDatabase(mode=InfrahubDatabaseMode.DRIVER, driver=await get_db())
 
     initialize_lock()
-
-    # Initialize connection to the RabbitMQ bus
-    await connect_to_broker()
-
-    # Initialize RPC Client
-    app.state.rpc_client = await InfrahubRpcClient().connect()
-    services.prepare(service=app.state.rpc_client.service)
 
     async with app.state.db.start_session() as db:
         await initialization(db=db)
 
-    # Initialize the Background Runner
-    if config.SETTINGS.miscellaneous.start_background_runner:
-        app.state.runner = BackgroundRunner(
-            db=app.state.db, database_name=config.SETTINGS.database.database_name, interval=10
-        )
-        asyncio.create_task(app.state.runner.run())
+    # Initialize connection to the RabbitMQ bus
+    await connect_to_broker()
+
+    message_bus = config.OVERRIDE.message_bus or RabbitMQMessageBus()
+    cache = config.OVERRIDE.cache or RedisCache()
+    service = InfrahubServices(
+        cache=cache, database=database, message_bus=message_bus, component_type=ComponentType.API_SERVER
+    )
+    await service.initialize()
+    # service.message_bus = app.state.rpc_client.rabbitmq
+    services.prepare(service=service)
+    # Initialize RPC Client
+    rpc_client = InfrahubRpcClient()
+    rpc_client.exchange = message_bus.rpc_exchange
+    app.state.rpc_client = rpc_client
+    app.state.service = service
 
 
 @app.on_event("shutdown")
@@ -129,18 +133,18 @@ async def add_process_time_header(request: Request, call_next):
     return response
 
 
+@app.middleware("http")
+async def add_telemetry_span_exception(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
+    try:
+        return await call_next(request)
+    except Exception as exc:
+        add_span_exception(exc)
+        raise
+
+
 app.add_middleware(CorrelationIdMiddleware)
-
-
-@app.exception_handler(Error)
-async def api_exception_handler_base_infrahub_error(_: Request, exc: Error) -> JSONResponse:
-    """Generic API Exception handler."""
-
-    error = exc.api_response()
-    add_span_exception(exc)
-    return JSONResponse(status_code=exc.HTTP_CODE, content=error)
-
-
 app.add_middleware(
     PrometheusMiddleware,
     app_name="infrahub",
@@ -151,16 +155,16 @@ app.add_middleware(
 )
 app.add_middleware(InfrahubCORSMiddleware)
 
+app.add_exception_handler(Error, generic_api_exception_handler)
+app.add_exception_handler(TimestampFormatError, partial(generic_api_exception_handler, http_code=400))
+app.add_exception_handler(ValidationError, partial(generic_api_exception_handler, http_code=400))
+
 app.add_route(path="/metrics", route=handle_metrics)
-app.add_route(path="/graphql", route=InfrahubGraphQLApp(playground=True), methods=["GET", "POST", "OPTIONS"])
-app.add_route(
-    path="/graphql/{branch_name:path}", route=InfrahubGraphQLApp(playground=True), methods=["GET", "POST", "OPTIONS"]
-)
-# app.add_websocket_route(path="/graphql", route=InfrahubGraphQLApp())
-# app.add_websocket_route(path="/graphql/{branch_name:str}", route=InfrahubGraphQLApp())
+app.include_router(graphql_router)
 
 if os.path.exists(FRONTEND_ASSET_DIRECTORY) and os.path.isdir(FRONTEND_ASSET_DIRECTORY):
     app.mount("/assets", StaticFiles(directory=FRONTEND_ASSET_DIRECTORY), "assets")
+    app.mount("/favicons", StaticFiles(directory=FRONTEND_ASSET_DIRECTORY), "favicons")
 
 
 @app.get("/{rest_of_path:path}", include_in_schema=False)

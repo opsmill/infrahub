@@ -32,5 +32,7 @@ class RedisCache(InfrahubCache):
 
         return [key.decode() for key in keys]
 
-    async def set(self, key: str, value: str, expires: Optional[int] = None) -> bool:
-        return await self.connection.set(name=key, value=value, ex=expires)
+    async def set(
+        self, key: str, value: str, expires: Optional[int] = None, not_exists: bool = False
+    ) -> Optional[bool]:
+        return await self.connection.set(name=key, value=value, ex=expires, nx=not_exists)

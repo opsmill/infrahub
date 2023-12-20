@@ -6,8 +6,7 @@ generics:
     namespace: Infra
     description: "Generic Network Interface."
     label: "Interface"
-    icon: "mdi:ethernet"
-    menu_placement: "InfraDevice"
+    include_in_menu: false
     display_labels:
       - name__value
     order_by:
@@ -27,17 +26,71 @@ generics:
       - name: enabled
         kind: Boolean
         default_value: true
-    relationships:
       - name: status
-        peer: BuiltinStatus
-        optional: false
-        cardinality: one
-        kind: Attribute
+        kind: Dropdown
+        optional: true
+        choices:
+          - name: active
+            label: Active
+            description: "Fully operational and currently in service."
+            color: "#7fbf7f"
+          - name: provisionning
+            label: Provisioning
+            description: "In the process of being set up and configured."
+            color: "#ffff7f"
+          - name: maintenance
+            label: Maintenance
+            description: "Undergoing routine maintenance or repairs."
+            color: "#ffd27f"
+          - name: drained
+            label: Drained
+            description: "Temporarily taken out of service."
+            color: "#bfbfbf"
       - name: role
-        peer: BuiltinRole
-        optional: false
-        cardinality: one
-        kind: Attribute
+        kind: Dropdown
+        optional: true
+        choices:
+          - name: backbone
+            label: Backbone
+            description: "Provide main data routes."
+            color: "#6a5acd"
+          - name: transit
+            label: Transit
+            description: "Connect to Internet service provider."
+            color: "#9090de"
+          - name: peering
+            label: Peering
+            description: "Connect with other networks via IX."
+            color: "#ffa07a"
+          - name: peer
+            label: Peer
+            description: "Equal-status connections for direct interchange."
+            color: "#faa446"
+          - name: server
+            label: Server
+            description: "Dedicated to interfaces connected to servers."
+            color: "#98b2d1"
+          - name: loopback
+            label: Loopback
+            description: "Internal interface."
+            color: "#93e9be"
+          - name: management
+            label: Management
+            description: "Dedicated network for control and monitoring."
+            color: "#ccc28a"
+          - name: uplink
+            label: Uplink
+            description: "Connect to higher device."
+            color: "#ff6b6b"
+          - name: leaf
+            label: Leaf
+            description: "Connect to leaf device."
+            color: "#e6e6fa"
+          - name: spare
+            label: Spare
+            description: "Reserve resources for future use."
+            color: "#d3d3d3"
+    relationships:
       - name: device
         peer: InfraDevice
         identifier: "device__interface"
@@ -61,12 +114,13 @@ generics:
         cardinality: one
         kind: Attribute
         identifier: connected__endpoint
+
 nodes:
   - name: Platform
     namespace: Infra
     description: "A Platform represent the type of software running on a device."
     label: "Platform"
-    icon: "mdi:application-cog-outline"  # mdi:application-brackets-outline
+    icon: "mdi:application-cog-outline"
     menu_placement: "InfraDevice"
     default_filter: name__value
     order_by:
@@ -118,19 +172,58 @@ nodes:
         optional: true
       - name: type
         kind: Text
+      - name: status
+        kind: Dropdown
+        optional: true
+        choices:
+          - name: active
+            label: Active
+            description: "Fully operational and currently in service."
+            color: "#7fbf7f"
+          - name: provisionning
+            label: Provisioning
+            description: "In the process of being set up and configured."
+            color: "#ffff7f"
+          - name: maintenance
+            label: Maintenance
+            description: "Undergoing routine maintenance or repairs."
+            color: "#ffd27f"
+          - name: drained
+            label: Drained
+            description: "Temporarily taken out of service."
+            color: "#bfbfbf"
+      - name: role
+        kind: Dropdown
+        optional: true
+        choices:
+          - name: core
+            label: Core Router
+            description: Central part of the network.
+            color: "#7f7fff"
+          - name: edge
+            label: Edge Router
+            description: "Network boundary with external networks."
+            color: "#bf7fbf"
+          - name: cpe
+            label: Customer Premise Equipment
+            description: "Devices located at the customer's premises."
+            color: "#bf7f7f"
+          - name: firewall
+            label: Firewall
+            description: "Ensures network security."
+            color: "#ffa07a"
+          - name: spine
+            label: Spine Router
+            description: "Aggregation router part of a Fabric."
+            color: "#aeeeee"
+          - name: leaf
+            label: Leaf Switch
+            description: "Top of Rack part of a Fabric."
+            color: "#e6e6fa"
     relationships:
       - name: site
+        label: Site (Location)
         peer: BuiltinLocation
-        optional: false
-        cardinality: one
-        kind: Attribute
-      - name: status
-        peer: BuiltinStatus
-        optional: false
-        cardinality: one
-        kind: Attribute
-      - name: role
-        peer: BuiltinRole
         optional: false
         cardinality: one
         kind: Attribute
@@ -165,7 +258,9 @@ nodes:
     namespace: Infra
     description: "Network Layer 3 Interface"
     label: "Interface L3"
-    include_in_menu: false
+    icon: "mdi:ethernet"
+    menu_placement: "InfraDevice"
+    include_in_menu: true
     display_labels:
       - name__value
     order_by:
@@ -184,7 +279,9 @@ nodes:
     namespace: Infra
     description: "Network Layer 2 Interface"
     label: "Interface L2"
-    include_in_menu: false
+    icon: "mdi:ethernet"
+    menu_placement: "InfraDevice"
+    include_in_menu: true
     display_labels:
       - name__value
     order_by:
@@ -253,20 +350,45 @@ nodes:
         optional: true
       - name: vlan_id
         kind: Number
+      - name: status
+        kind: Dropdown
+        choices:
+          - name: active
+            label: Active
+            description: "Fully operational and currently in service."
+            color: "#7fbf7f"
+          - name: provisionning
+            label: Provisioning
+            description: "In the process of being set up and configured."
+            color: "#ffff7f"
+          - name: maintenance
+            label: Maintenance
+            description: "Undergoing routine maintenance or repairs."
+            color: "#ffd27f"
+          - name: drained
+            label: Drained
+            description: "Temporarily taken out of service."
+            color: "#bfbfbf"
+      - name: role
+        kind: Dropdown
+        choices:
+          - name: server
+            label: Server
+            description: "Dedicated systems for managing networked resources."
+            color: "#c4bed7"
+          - name: management
+            label: Management
+            description: "Network segments for administrative and control tasks."
+            color: "#9af1e1"
+          - name: user
+            label: User
+            description: Segments designed for end-user access and activities.
+            color: "#a0b78d"
     relationships:
       - name: site
+        label: Site (Location)
         peer: BuiltinLocation
         optional: true
-        cardinality: one
-        kind: Attribute
-      - name: status
-        peer: BuiltinStatus
-        optional: false
-        cardinality: one
-        kind: Attribute
-      - name: role
-        peer: BuiltinRole
-        optional: false
         cardinality: one
         kind: Attribute
       - name: gateway
@@ -277,7 +399,7 @@ nodes:
         kind: Attribute
   - name: Circuit
     namespace: Infra
-    description: "A Circuit represent a single physical link between two location"
+    description: "A Circuit represent a single physical link between two locations"
     label: "Circuit"
     icon: "mdi:cable-data"
     default_filter: circuit_id__value
@@ -295,18 +417,43 @@ nodes:
       - name: vendor_id
         kind: Text
         optional: true
-    relationships:
       - name: status
-        peer: BuiltinStatus
-        optional: false
-        cardinality: one
-        kind: Attribute
+        kind: Dropdown
+        choices:
+          - name: active
+            label: Active
+            description: "Fully operational and currently in service."
+            color: "#7fbf7f"
+          - name: provisionning
+            label: Provisioning
+            description: "In the process of being set up and configured."
+            color: "#ffff7f"
+          - name: maintenance
+            label: Maintenance
+            description: "Undergoing routine maintenance or repairs."
+            color: "#ffd27f"
+          - name: drained
+            label: Drained
+            description: "Temporarily taken out of service."
+            color: "#bfbfbf"
       - name: role
-        peer: BuiltinRole
-        optional: false
-        cardinality: one
-        kind: Attribute
+        kind: Dropdown
+        choices:
+          - name: backbone
+            label: Backbone
+            description: "Provide main data routes."
+            color: "#6a5acd"
+          - name: transit
+            label: Transit
+            description: "Connect to Internet service provider."
+            color: "#9090de"
+          - name: peering
+            label: Peering
+            description: "Connect with other networks via IX."
+            color: "#85db9b"
+    relationships:
       - name: provider
+        label: "Provider (Organization)"
         peer: CoreOrganization
         optional: false
         cardinality: one
@@ -330,6 +477,7 @@ nodes:
       - "InfraEndpoint"
     relationships:
       - name: site
+        label: Site (Location)
         peer: BuiltinLocation
         optional: false
         cardinality: one
@@ -425,17 +573,41 @@ nodes:
       - name: export_policies
         kind: Text
         optional: true
-    relationships:
       - name: status
-        peer: BuiltinStatus
-        optional: false
-        cardinality: one
-        kind: Attribute
+        kind: Dropdown
+        choices:
+          - name: active
+            label: Active
+            description: "Fully operational and currently in service."
+            color: "#7fbf7f"
+          - name: provisionning
+            label: Provisioning
+            description: "In the process of being set up and configured."
+            color: "#ffff7f"
+          - name: maintenance
+            label: Maintenance
+            description: "Undergoing routine maintenance or repairs."
+            color: "#ffd27f"
+          - name: drained
+            label: Drained
+            description: "Temporarily taken out of service."
+            color: "#bfbfbf"
       - name: role
-        peer: BuiltinRole
-        optional: false
-        cardinality: one
-        kind: Attribute
+        kind: Dropdown
+        choices:
+          - name: backbone
+            label: Backbone
+            description: "Provide main data routes."
+            color: "#6a5acd"
+          - name: transit
+            label: Transit
+            description: "Connect to Internet service provider."
+            color: "#9090de"
+          - name: peering
+            label: Peering
+            description: "Connect with other networks via IX."
+            color: "#85db9b"
+    relationships:
       - name: local_as
         identifier: bgpsession__local_as
         peer: InfraAutonomousSystem
@@ -474,3 +646,95 @@ nodes:
         optional: true
         cardinality: one
         kind: Attribute
+
+  - name: Organization
+    namespace: Core
+    label: Organization
+    description: An organization represent a legal entity, a company.
+    default_filter: name__value
+    display_labels: [label__value]
+    order_by: [name__value]
+    icon: mdi:domain
+    include_in_menu: true
+
+    attributes:
+      - kind: Text
+        name: name
+        unique: true
+      - kind: Text
+        name: label
+        optional: true
+      - kind: Text
+        name: description
+        optional: true
+
+    relationships:
+      - cardinality: many
+        kind: Attribute
+        name: tags
+        optional: true
+        peer: BuiltinTag
+
+  - name: Status
+    namespace: Builtin
+    label: Status
+    description: 'Represent the status of an object: active, maintenance'
+    default_filter: name__value
+    display_labels: [label__value]
+    icon: mdi:list-status
+    include_in_menu: true
+    attributes:
+      - kind: Text
+        name: name
+        unique: true
+      - kind: Text
+        name: label
+        optional: true
+      - kind: Text
+        name: description
+        optional: true
+
+  - name: Role
+    namespace: Builtin
+    label: Role
+    description: Represent the role of an object
+    default_filter: name__value
+    display_labels: [label__value]
+    order_by: [name__value]
+    icon: mdi:ballot
+    include_in_menu: true
+    attributes:
+      - kind: Text
+        name: name
+        unique: true
+      - kind: Text
+        name: label
+        optional: true
+      - kind: Text
+        name: description
+        optional: true
+
+  - name: Location
+    namespace: Builtin
+    label: Location
+    description: 'A location represent a physical element: a building, a site, a city'
+    default_filter: name__value
+    display_labels: [name__value]
+    order_by: [name__value]
+    icon: mdi:map-marker-radius-outline
+    include_in_menu: true
+    attributes:
+      - kind: Text
+        name: name
+        unique: true
+      - kind: Text
+        name: description
+        optional: true
+      - kind: Text
+        name: type
+    relationships:
+      - cardinality: many
+        kind: Attribute
+        name: tags
+        optional: true
+        peer: BuiltinTag

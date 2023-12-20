@@ -1,4 +1,4 @@
-import { gql, useReactiveVar } from "@apollo/client";
+import { gql } from "@apollo/client";
 import { PencilIcon } from "@heroicons/react/24/outline";
 import { formatISO } from "date-fns";
 import { useAtom } from "jotai";
@@ -26,14 +26,15 @@ import graphqlClient from "../../../graphql/graphqlClientApollo";
 import { createObject } from "../../../graphql/mutations/objects/createObject";
 import { deleteObject } from "../../../graphql/mutations/objects/deleteObject";
 import { getProposedChangesFilesThreads } from "../../../graphql/queries/proposed-changes/getProposedChangesFilesThreads";
-import { branchVar } from "../../../graphql/variables/branchVar";
-import { dateVar } from "../../../graphql/variables/dateVar";
 import useQuery from "../../../hooks/useQuery";
 import { schemaState } from "../../../state/atoms/schema.atom";
 import { fetchStream } from "../../../utils/fetch";
 import { stringifyWithoutQuotes } from "../../../utils/string";
 import ErrorScreen from "../../error-screen/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
+import { useAtomValue } from "jotai/index";
+import { currentBranchAtom } from "../../../state/atoms/branches.atom";
+import { datetimeAtom } from "../../../state/atoms/time.atom";
 
 const fakeIndex = () => {
   return sha(Math.random() * 100000).slice(0, 9);
@@ -65,37 +66,36 @@ const shouldDisplayAddComment = (state: any, change: any) => {
   );
 };
 
-const getThread = (threads: any[], change: any, commitFrom?: string, commitTo?: string) => {
-  const thread = threads.find((thread) => {
-    const THREADLineNumber = thread?.line_number?.value;
+const findThreadByChange = (
+  threads: any[],
+  change: any,
+  commitFrom?: string,
+  commitTo?: string
+) => {
+  const isChangeOnLeftSide = change?.isDelete;
+  const isChangeOnRightSide = change?.isInsert;
+  const isChangeOnBothSide = change?.isNormal;
 
-    if (
-      change?.isDelete &&
-      THREADLineNumber === change.lineNumber &&
-      (thread?.commit?.value === commitFrom || (!thread?.commit?.value && !commitFrom))
-    ) {
-      // Thread on the left side
+  return threads.find((thread) => {
+    const threadLineNumber = thread?.line_number?.value;
+    const threadCommit = thread?.commit?.value;
+
+    const isThreadOnLeftSide = threadCommit === commitFrom || !threadCommit === !commitFrom;
+    if (isChangeOnLeftSide && isThreadOnLeftSide && threadLineNumber === change.lineNumber) {
       return true;
     }
 
-    if (
-      change?.isInsert &&
-      thread?.commit?.value === commitTo &&
-      THREADLineNumber === change.lineNumber
-    ) {
-      // Thread on the right side
+    const isThreadOnRightSide = threadCommit === commitTo;
+    if (isChangeOnRightSide && isThreadOnRightSide && threadLineNumber === change.lineNumber) {
       return true;
     }
 
-    if (change.isNormal && THREADLineNumber === change.newLineNumber) {
-      // Both left + right side
-      return true;
-    }
-
-    return false;
+    return !!(
+      isChangeOnBothSide &&
+      ((isThreadOnLeftSide && threadLineNumber === change.oldLineNumber) ||
+        (isThreadOnRightSide && threadLineNumber === change.newLineNumber))
+    );
   });
-
-  return thread;
 };
 
 export const FileContentDiff = (props: any) => {
@@ -105,8 +105,8 @@ export const FileContentDiff = (props: any) => {
   const [branchOnly] = useQueryParam(QSP.BRANCH_FILTER_BRANCH_ONLY, StringParam);
   const [timeFrom] = useQueryParam(QSP.BRANCH_FILTER_TIME_FROM, StringParam);
   const [timeTo] = useQueryParam(QSP.BRANCH_FILTER_TIME_TO, StringParam);
-  const branch = useReactiveVar(branchVar);
-  const date = useReactiveVar(dateVar);
+  const branch = useAtomValue(currentBranchAtom);
+  const date = useAtomValue(datetimeAtom);
   const auth = useContext(AuthContext);
   const [schemaList] = useAtom(schemaState);
   const [isLoading, setIsLoading] = useState(false);
@@ -175,22 +175,21 @@ export const FileContentDiff = (props: any) => {
     setFileDetailsInState();
   }, []);
 
-  const handleSubmitComment = async (data: any, event: any) => {
+  const handleSubmitComment = async ({ comment }: { comment: string }) => {
     let threadId;
 
     try {
-      event.target.reset();
-
-      if (!data || !approverId) {
+      if (!comment || !approverId) {
         return;
       }
 
       const newDate = formatISO(new Date());
 
-      const lineNumber =
-        displayAddComment.lineNumber ||
-        displayAddComment.newLineNumber ||
-        displayAddComment.oldLineNumber;
+      const lineNumber = displayAddComment.isNormal
+        ? displayAddComment.side === "new"
+          ? displayAddComment.newLineNumber
+          : displayAddComment.oldLineNumber
+        : displayAddComment.lineNumber;
 
       const label = `${repositoryDisplayName} - ${file.location}:${lineNumber}`;
 
@@ -245,7 +244,7 @@ export const FileContentDiff = (props: any) => {
 
       const newComment = {
         text: {
-          value: data.comment,
+          value: comment,
         },
         created_by: {
           id: approverId,
@@ -331,11 +330,11 @@ export const FileContentDiff = (props: any) => {
       if (shouldDisplayAddComment(displayAddComment, change)) {
         return {
           ...widgets,
-          [changeKey]: <AddComment onSubmit={handleSubmitComment} onClose={handleCloseComment} />,
+          [changeKey]: <AddComment onSubmit={handleSubmitComment} onCancel={handleCloseComment} />,
         };
       }
 
-      const thread = getThread(threads, change, commitFrom, commitTo);
+      const thread = findThreadByChange(threads, change, commitFrom, commitTo);
 
       if (thread) {
         return {
@@ -368,7 +367,7 @@ export const FileContentDiff = (props: any) => {
       setDisplayAddComment({ side, ...change });
     };
 
-    const thread = getThread(threads, change, commitFrom, commitTo);
+    const thread = findThreadByChange(threads, change, commitFrom, commitTo);
 
     if (thread || !auth?.permissions?.write || !proposedchange) {
       // Do not display the add button if there is already a thread

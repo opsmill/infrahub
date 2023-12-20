@@ -27,8 +27,8 @@ async def test_repository_checks(helper):
     service = InfrahubServices(client=client, message_bus=bus_recorder)
     message = messages.RequestProposedChangeRepositoryChecks(proposed_change=proposed_change_id)
     await repository_checks(message=message, service=service)
-    assert len(bus_recorder.messages) == 2
-    assert ["request.repository.checks"] == bus_recorder.seen_routing_keys
+    assert len(bus_recorder.messages) == 4
+    assert ["request.repository.checks", "request.repository.user_checks"] == bus_recorder.seen_routing_keys
     assert (
         messages.RequestRepositoryChecks(
             meta=Meta(request_id=""),
@@ -48,4 +48,11 @@ async def test_repository_checks(helper):
             target_branch="main",
         )
         in bus_recorder.messages
+    )
+    assert messages.RequestRepositoryUserChecks(
+        meta=Meta(request_id=""),
+        proposed_change="1790fa8f-dd4d-ed00-58dd-18835e51189a",
+        repository="1790fa6d-1654-9068-58df-1883e684d3fd",
+        source_branch="test-pc-1",
+        target_branch="main",
     )

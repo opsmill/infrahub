@@ -2,7 +2,7 @@
 
 import { ADMIN_CREDENTIALS } from "../utils";
 
-const ETHERNET_DESCRIPTION = "Connected to dfw1-edge2 Ethernet1";
+const ETHERNET_DEVICE_NAME = "den1-edge2";
 
 const ACCOUNT = "Account";
 
@@ -20,7 +20,7 @@ describe("Object update", () => {
     cy.contains("Interface").click();
 
     // Access an interface
-    cy.contains(ETHERNET_DESCRIPTION).click();
+    cy.contains(ETHERNET_DEVICE_NAME).click();
 
     // Open the metadata panel
     cy.get(".sm\\:p-0").within(() => {
@@ -51,8 +51,8 @@ describe("Object update", () => {
       // Open the select
       cy.get("[id^=headlessui-combobox-button-]").click();
 
-      // Check if the options have a length of 4
-      cy.get("[id^=headlessui-combobox-options-]").find("li").should("have.length", 2);
+      // Check if the options have a length of 3
+      cy.get("[id^=headlessui-combobox-options-]").find("li").should("have.length", 3);
 
       // Choose the account
       cy.contains(ACCOUNT).click();
@@ -92,7 +92,7 @@ describe("Object update", () => {
     cy.contains("Interface").click();
 
     // Access an interface
-    cy.contains(ETHERNET_DESCRIPTION).click();
+    cy.contains(ETHERNET_DEVICE_NAME).click();
 
     // Open the metadata panel
     cy.get(".sm\\:p-0").within(() => {

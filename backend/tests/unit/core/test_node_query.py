@@ -6,6 +6,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.query.node import (
     NodeCreateAllQuery,
+    NodeDeleteQuery,
     NodeGetListQuery,
     NodeListGetAttributeQuery,
     NodeListGetInfoQuery,
@@ -348,3 +349,18 @@ async def test_query_NodeListGetRelationshipsQuery(db: InfrahubDatabase, default
     assert person_jack_tags_main.id in result
     assert "builtintag__testperson" in result[person_jack_tags_main.id]
     assert len(result[person_jack_tags_main.id]["builtintag__testperson"]) == 2
+
+
+async def test_query_NodeDeleteQuery(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_jack_tags_main: Node,
+    tag_blue_main: Node,
+):
+    tags_before = await NodeManager.query(db=db, schema="BuiltinTag", branch=default_branch)
+
+    query = await NodeDeleteQuery.init(db=db, node=tag_blue_main, branch=default_branch)
+    await query.execute(db=db)
+
+    tags_after = await NodeManager.query(db=db, schema="BuiltinTag", branch=default_branch)
+    assert len(tags_after) == len(tags_before) - 1

@@ -1,4 +1,5 @@
 import Handlebars from "handlebars";
+import "../../../utils/handlebars"; // Import handlebars utils
 
 export const getObjectItemsPaginated = Handlebars.compile(`
 query {{kind}} {
@@ -13,6 +14,10 @@ query {{kind}} {
         {{#each attributes}}
           {{this.name}} {
               value
+              {{#if (eq this.kind "Dropdown")}}
+              color
+              description
+              {{/if}}
           }
         {{/each}}
 

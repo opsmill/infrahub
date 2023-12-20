@@ -1,11 +1,7 @@
-import { gql, useReactiveVar } from "@apollo/client";
+import { gql } from "@apollo/client";
 import { CheckIcon, ShieldCheckIcon } from "@heroicons/react/20/solid";
-import {
-  ArrowPathIcon,
-  PlusIcon,
-  Square3Stack3DIcon,
-  TrashIcon,
-} from "@heroicons/react/24/outline";
+import { ArrowPathIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { useContext, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -17,6 +13,7 @@ import { DateDisplay } from "../../components/date-display";
 import ModalDelete from "../../components/modal-delete";
 import SlideOver from "../../components/slide-over";
 import { ACCOUNT_OBJECT, PROPOSED_CHANGES_OBJECT } from "../../config/constants";
+import { QSP } from "../../config/qsp";
 import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { deleteBranch } from "../../graphql/mutations/branches/deleteBranch";
@@ -24,20 +21,21 @@ import { mergeBranch } from "../../graphql/mutations/branches/mergeBranch";
 import { rebaseBranch } from "../../graphql/mutations/branches/rebaseBranch";
 import { validateBranch } from "../../graphql/mutations/branches/validateBranch";
 import { getBranchDetails } from "../../graphql/queries/branches/getBranchDetails";
-import { dateVar } from "../../graphql/variables/dateVar";
 import useQuery from "../../hooks/useQuery";
 import { branchesState } from "../../state/atoms/branches.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { objectToString } from "../../utils/common";
-import { constructPath } from "../../utils/fetch";
+import { constructPath, getCurrentQsp } from "../../utils/fetch";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
 import { getFormStructure } from "../proposed-changes/conversations";
+import { useAtomValue } from "jotai/index";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 
 export const BranchDetails = () => {
   const { branchname } = useParams();
-  const date = useReactiveVar(dateVar);
+  const date = useAtomValue(datetimeAtom);
   const auth = useContext(AuthContext);
   const [branches] = useAtom(branchesState);
   const [schemaList] = useAtom(schemaState);
@@ -132,7 +130,7 @@ export const BranchDetails = () => {
           title="Delete"
           description={
             <>
-              Are you sure you want to remove the the branch
+              Are you sure you want to remove the branch
               <br /> <b>`{branch?.name}`</b>?
             </>
           }
@@ -147,11 +145,18 @@ export const BranchDetails = () => {
               },
             });
 
-            navigate(constructPath("/branches"));
+            const queryStringParams = getCurrentQsp();
+            const isDeletedBranchSelected = queryStringParams.get(QSP.BRANCH) === branch.name;
+
+            const path = isDeletedBranchSelected
+              ? constructPath("/branches", [{ name: QSP.BRANCH, exclude: true }])
+              : constructPath("/branches");
+
+            navigate(path);
 
             window.location.reload();
           }}
-          open={!!displayModal}
+          open={displayModal}
           setOpen={() => setDisplayModal(false)}
         />
       )}
@@ -286,11 +291,11 @@ export const BranchDetails = () => {
               <span className="text-lg font-semibold mr-3">Create Proposed Changes</span>
               <div className="flex-1"></div>
               <div className="flex items-center">
-                <Square3Stack3DIcon className="w-4 h-4" />
+                <Icon icon={"mdi:layers-triple"} />
                 <div className="ml-1.5 pb-1">{branch?.name}</div>
               </div>
             </div>
-            <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
+            <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 mr-2">
               <svg
                 className="h-1.5 w-1.5 mr-1 fill-yellow-500"
                 viewBox="0 0 6 6"

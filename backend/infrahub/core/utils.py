@@ -21,16 +21,13 @@ async def add_relationship(
     at: Optional[Timestamp] = None,
     status=RelationshipStatus.ACTIVE,
 ):
-    create_rel_query = (
-        """
+    create_rel_query = """
     MATCH (s) WHERE ID(s) = $src_node_id
     MATCH (d) WHERE ID(d) = $dst_node_id
     WITH s,d
     CREATE (s)-[r:%s { branch: $branch, branch_level: $branch_level, from: $at, to: null, status: $status }]->(d)
     RETURN ID(r)
-    """
-        % str(rel_type).upper()
-    )
+    """ % str(rel_type).upper()
 
     at = Timestamp(at)
 

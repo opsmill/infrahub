@@ -1,4 +1,4 @@
-from .account import CoreAccountTokenCreate
+from .account import CoreAccountSelfUpdate, CoreAccountTokenCreate
 from .artifact_definition import InfrahubArtifactDefinitionMutation
 from .attribute import (
     AnyAttributeInput,
@@ -28,6 +28,7 @@ from .proposed_change import (
 )
 from .relationship import RelationshipAdd, RelationshipRemove
 from .repository import InfrahubRepositoryMutation
+from .schema import SchemaDropdownAdd, SchemaDropdownRemove, SchemaEnumAdd, SchemaEnumRemove
 
 __all__ = [
     "AnyAttributeInput",
@@ -41,6 +42,7 @@ __all__ = [
     "BranchNameInput",
     "BranchUpdate",
     "CheckboxAttributeInput",
+    "CoreAccountSelfUpdate",
     "CoreAccountTokenCreate",
     "InfrahubArtifactDefinitionMutation",
     "InfrahubRepositoryMutation",
@@ -57,4 +59,8 @@ __all__ = [
     "RelationshipRemove",
     "StringAttributeInput",
     "TextAttributeInput",
+    "SchemaDropdownAdd",
+    "SchemaDropdownRemove",
+    "SchemaEnumAdd",
+    "SchemaEnumRemove",
 ]

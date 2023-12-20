@@ -1,0 +1,40 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "infrahub-helm.fullname" . }}-infrahub-server-db-init-job
+  labels:
+  {{- include "infrahub-helm.labels" . | nindent 4 }}
+spec:
+  backoffLimit: {{ .Values.infrahubServerDbInitJob.backoffLimit }}
+  template:
+    spec:
+      containers:
+        - command:
+            - sh
+            - -c
+            - infrahub db init
+          env:
+            - name: INFRAHUB_CACHE_PORT
+              value: {{ quote .Values.infrahubServer.infrahubServer.env.infrahubCachePort }}
+            - name: INFRAHUB_CONFIG
+              value: {{ quote .Values.infrahubServerDbInitJob.infrahubServerDbInitJob.env.infrahubConfig }}
+            - name: KUBERNETES_CLUSTER_DOMAIN
+              value: {{ quote .Values.global.kubernetesClusterDomain }}
+          image: {{ .Values.global.imageRegistry }}/{{ .Values.global.infrahubRepository }}:{{ .Values.global.infrahubTag | default .Chart.AppVersion }}
+          name: infrahub-server-db-init-job
+          resources: {}
+          volumeMounts:
+            - name: config-volume
+              mountPath: /config
+      restartPolicy: Never
+      volumes:
+        - hostPath:
+            path: /tmp/infrahub-helm
+          name: git-data
+        - hostPath:
+            path: /tmp/infrahub-helm
+          name: git-remote-data
+        - name: config-volume
+          configMap:
+            name: {{ include "infrahub-helm.fullname" . }}-infrahub-config

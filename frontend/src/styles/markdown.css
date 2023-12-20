@@ -1,0 +1,191 @@
+.markdown {
+  -ms-text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  word-wrap: break-word;
+}
+
+.markdown p,
+.markdown blockquote,
+.markdown > ul,
+.markdown > ol,
+.markdown > dl,
+.markdown table,
+.markdown pre,
+.markdown details {
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+/* Links */
+.markdown a {
+  color: #0969da;
+}
+
+.markdown a:hover {
+  text-decoration: underline;
+}
+
+.markdown h1,
+.markdown h2,
+.markdown h3,
+.markdown h4,
+.markdown h5,
+.markdown h6 {
+  margin-top: 24px;
+  margin-bottom: 16px;
+  font-weight: 600;
+}
+
+.markdown h1 {
+  margin: 0.67em 0;
+  padding-bottom: 0.3em;
+  font-size: 2rem;
+  border-bottom: 1px solid hsla(210, 18%, 87%, 1);
+}
+
+.markdown h2 {
+  padding-bottom: 0.3em;
+  font-size: 1.5rem;
+  border-bottom: 1px solid hsla(210, 18%, 87%, 1);
+}
+
+.markdown h3 {
+  font-size: 1.25rem;
+}
+
+.markdown h4 {
+  font-size: 1rem;
+}
+
+.markdown h5 {
+  font-size: 0.875rem;
+}
+
+.markdown h6 {
+  font-size: 0.85rem;
+  color: #656d76;
+}
+
+.markdown hr {
+  box-sizing: content-box;
+  overflow: hidden;
+  border-bottom: 1px solid hsla(210, 18%, 87%, 1);
+  height: 0.25em;
+  margin: 24px 0;
+  background-color: #e5e7eb;
+}
+
+.markdown blockquote {
+  color: #656d76;
+  border-left: 0.25em solid #e5e7eb;
+  padding: 0 1em;
+}
+
+.markdown blockquote > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown pre {
+  padding: 16px;
+  overflow: auto;
+  color: #1f2328;
+  background-color: #f6f8fa;
+  border-radius: 6px;
+}
+
+.markdown code,
+.markdown kbd,
+.markdown samp {
+  font-family: monospace;
+}
+
+.markdown code {
+  padding: 0.2em 0.4em;
+  margin: 0;
+  background-color: rgba(175, 184, 193, 0.2);
+  border-radius: 6px;
+  display: inline;
+  white-space: pre-wrap;
+}
+
+.markdown pre code {
+  border: none;
+  background: none;
+  letter-spacing: normal;
+  word-break: normal;
+}
+
+.markdown table {
+  border-spacing: 0;
+  border-collapse: collapse;
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  overflow: auto;
+}
+
+.markdown th,
+.markdown td {
+  padding: 6px 12px;
+  border: 1px solid #e5e7eb;
+}
+
+/* Miscellaneous */
+.markdown mark {
+  background-color: #fff8c5;
+  color: #1f2328;
+}
+
+.markdown small {
+  font-size: 0.75rem;
+}
+
+.markdown sub,
+.markdown sup {
+  font-size: 0.75rem;
+  line-height: 0;
+  position: relative;
+  vertical-align: baseline;
+}
+
+/* Additional Styles */
+/* Add any additional styles based on specific requirements or preferences */
+
+.markdown ul {
+  list-style-type: disc;
+}
+
+.markdown ul ul {
+  list-style-type: circle;
+}
+
+.markdown ul ul ul {
+  list-style-type: square;
+}
+
+.markdown ul,
+.markdown ol {
+  padding-left: 2em;
+}
+
+.markdown ol {
+  list-style-type: decimal;
+}
+
+.markdown ol ol,
+.markdown ul ol {
+  list-style-type: lower-roman;
+}
+
+.markdown ul ul ol,
+.markdown ul ol ol,
+.markdown ol ul ol,
+.markdown ol ol ol {
+  list-style-type: lower-alpha;
+}
+
+.markdown li > p {
+  margin: 0;
+}

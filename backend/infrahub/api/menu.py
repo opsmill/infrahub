@@ -67,7 +67,7 @@ async def get_menu(
             continue
 
         if isinstance(model, NodeSchema) and "CoreGroup" in model.inherit_from:
-            groups.children.append(InterfaceMenu(title=model.label or model.name, path=f"/groups/{model.kind}"))
+            groups.children.append(InterfaceMenu(title=model.menu_title, path=f"/groups/{model.kind}"))
             continue
 
         menu_name = model.menu_placement or "base"
@@ -75,9 +75,7 @@ async def get_menu(
             structure[menu_name] = []
 
         structure[menu_name].append(
-            InterfaceMenu(
-                title=model.label or model.name, path=f"/objects/{model.kind}", icon=model.icon or "", kind=model.kind
-            )
+            InterfaceMenu(title=model.menu_title, path=f"/objects/{model.kind}", icon=model.icon or "", kind=model.kind)
         )
 
     for menu_item in structure["base"]:

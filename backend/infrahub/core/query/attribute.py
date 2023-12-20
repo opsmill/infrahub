@@ -57,9 +57,7 @@ class AttributeGetValueQuery(AttributeQuery):
         MATCH (a { uuid: $attr_uuid })
         MATCH (a)-[r:HAS_VALUE]-(av)
         WHERE %s
-        """ % (
-            "\n AND ".join(rels_filter),
-        )
+        """ % ("\n AND ".join(rels_filter),)
 
         self.add_to_query(query)
 
@@ -140,14 +138,11 @@ class AttributeUpdateFlagQuery(AttributeQuery):
         self.params["flag_value"] = getattr(self.attr, self.flag_name)
         self.params["flag_type"] = self.attr.get_kind()
 
-        query = (
-            """
+        query = """
         MATCH (a { uuid: $attr_uuid })
         MERGE (flag:Boolean { value: $flag_value })
         CREATE (a)-[r:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(flag)
-        """
-            % self.flag_name.upper()
-        )
+        """ % self.flag_name.upper()
 
         self.add_to_query(query)
         self.return_labels = ["a", "flag", "r"]
@@ -207,18 +202,18 @@ class AttributeGetQuery(AttributeQuery):
         at = self.at or self.attr.at
         self.params["at"] = at.to_string()
 
-        rels_filter, rel_params = self.branch.get_query_filter_relationships(rel_labels=["r1", "r2"], at=at.to_string())
-        self.params.update(rel_params)
+        rels_filter, rels_params = self.branch.get_query_filter_path(at=at.to_string())
+        self.params.update(rels_params)
 
-        query = """
-        MATCH (n { uuid: $node_uuid })
-        MATCH (a { uuid: $attr_uuid })
-        MATCH (n)-[r1]-(a)-[r2:HAS_VALUE|IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER]-(ap)
-        WHERE %s
-        """ % (
-            "\n AND ".join(rels_filter),
+        query = (
+            """
+        MATCH (a:Attribute { uuid: $attr_uuid })
+        MATCH p = ((a)-[r2:HAS_VALUE|IS_VISIBLE|IS_PROTECTED|HAS_SOURCE|HAS_OWNER]->(ap))
+        WHERE all(r IN relationships(p) WHERE ( %s))
+        """
+            % rels_filter
         )
 
         self.add_to_query(query)
 
-        self.return_labels = ["n", "a", "ap", "r1", "r2"]
+        self.return_labels = ["a", "ap", "r2"]

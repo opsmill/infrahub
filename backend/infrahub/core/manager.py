@@ -212,6 +212,51 @@ class NodeManager:
         ]
 
     @classmethod
+    async def get_one_by_default_filter(
+        cls,
+        db: InfrahubDatabase,
+        id: str,
+        schema_name: str,
+        fields: Optional[dict] = None,
+        at: Union[Timestamp, str] = None,
+        branch: Union[Branch, str] = None,
+        include_source: bool = False,
+        include_owner: bool = False,
+        prefetch_relationships: bool = False,
+        account=None,
+    ) -> Node:
+        branch = await get_branch(branch=branch, db=db)
+        at = Timestamp(at)
+
+        node_schema = registry.get_node_schema(name=schema_name, branch=branch)
+        if not node_schema.default_filter:
+            raise NodeNotFound(branch_name=branch.name, node_type=schema_name, identifier=id)
+
+        items = await NodeManager.query(
+            db=db,
+            schema=node_schema,
+            fields=fields,
+            limit=2,
+            filters={node_schema.default_filter: id},
+            branch=branch,
+            at=at,
+            include_owner=include_owner,
+            include_source=include_source,
+            prefetch_relationships=prefetch_relationships,
+            account=account,
+        )
+
+        if len(items) > 1:
+            raise NodeNotFound(
+                branch_name=branch.name,
+                node_type=schema_name,
+                identifier=id,
+                message=f"Unable to find node {id!r}, {len(items)} nodes returned, expected 1",
+            )
+
+        return items[0] if items else None
+
+    @classmethod
     async def get_one_by_id_or_default_filter(
         cls,
         db: InfrahubDatabase,
@@ -239,40 +284,24 @@ class NodeManager:
             prefetch_relationships=prefetch_relationships,
             account=account,
         )
-
         if node:
             return node
 
-        # Check if there is a default_filter defined for this schema
-        node_schema = registry.get_node_schema(name=schema_name, branch=branch)
-        if not node_schema.default_filter:
-            raise NodeNotFound(branch_name=branch.name, node_type=schema_name, identifier=id)
-
-        items = await NodeManager.query(
+        node = await cls.get_one_by_default_filter(
             db=db,
-            schema=node_schema,
+            id=id,
+            schema_name=schema_name,
             fields=fields,
-            limit=10,
-            filters={node_schema.default_filter: id},
-            branch=branch,
             at=at,
-            include_owner=include_owner,
+            branch=branch,
             include_source=include_source,
+            include_owner=include_owner,
             prefetch_relationships=prefetch_relationships,
             account=account,
         )
-        if not items:
+        if not node:
             raise NodeNotFound(branch_name=branch.name, node_type=schema_name, identifier=id)
-
-        if len(items) > 1:
-            raise NodeNotFound(
-                branch_name=branch.name,
-                node_type=schema_name,
-                identifier=id,
-                message=f"Unable to find node {id!r}, {len(items)} nodes returned, expected 1",
-            )
-
-        return items[0]
+        return node
 
     @classmethod
     async def get_one(
@@ -286,7 +315,8 @@ class NodeManager:
         include_owner: bool = False,
         prefetch_relationships: bool = False,
         account=None,
-    ) -> Node:
+        kind: Optional[str] = None,
+    ) -> Optional[Node]:
         """Return one node based on its ID."""
         result = await cls.get_many(
             ids=[id],
@@ -303,7 +333,17 @@ class NodeManager:
         if not result:
             return None
 
-        return result[id]
+        node = result[id]
+
+        if kind and node.get_kind() != kind:
+            raise NodeNotFound(
+                branch_name=branch.name,
+                node_type=kind,
+                identifier=id,
+                message=f"Node with id {id} exists, but it is a {node.get_kind()}, not {kind}",
+            )
+
+        return node
 
     @classmethod
     async def get_many(  # pylint: disable=too-many-branches
@@ -331,7 +371,7 @@ class NodeManager:
         # Query list of all Attributes
         query = await NodeListGetAttributeQuery.init(
             db=db,
-            ids=ids,
+            ids=list(nodes_info_by_id.keys()),
             fields=fields,
             branch=branch,
             include_source=include_source,

@@ -115,7 +115,9 @@ class TestInfrahubClient:
 
     async def test_import_schema_files(self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository):
         commit = repo.get_commit_value(branch_name="main")
-        await repo.import_schema_files(branch_name="main", commit=commit)
+        config_file = await repo.get_repository_config(branch_name="main", commit=commit)
+        assert config_file
+        await repo.import_schema_files(branch_name="main", commit=commit, config_file=config_file)
 
         assert await client.schema.get(kind="DemoEdgeFabric", refresh=True)
 
@@ -160,7 +162,10 @@ class TestInfrahubClient:
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, query_99
     ):
         commit = repo.get_commit_value(branch_name="main")
-        await repo.import_all_python_files(branch_name="main", commit=commit)
+        config_file = await repo.get_repository_config(branch_name="main", commit=commit)
+        assert config_file
+
+        await repo.import_all_python_files(branch_name="main", commit=commit, config_file=config_file)
 
         check_definitions = await client.all(kind="CoreCheckDefinition")
         assert len(check_definitions) >= 1
@@ -170,7 +175,7 @@ class TestInfrahubClient:
 
         # Validate if the function is idempotent, another import just after the first one shouldn't change anything
         nbr_relationships_before = await count_relationships(db=db)
-        await repo.import_all_python_files(branch_name="main", commit=commit)
+        await repo.import_all_python_files(branch_name="main", commit=commit, config_file=config_file)
         assert await count_relationships(db=db) == nbr_relationships_before
 
         # 1. Modify an object to validate if its being properly updated
@@ -213,7 +218,7 @@ class TestInfrahubClient:
         )
         await obj2.save(db=db)
 
-        await repo.import_all_python_files(branch_name="main", commit=commit)
+        await repo.import_all_python_files(branch_name="main", commit=commit, config_file=config_file)
 
         modified_check0 = await client.get(kind="CoreCheckDefinition", id=check_definitions[0].id)
         assert modified_check0.timeout.value == check_timeout_value_before_change
@@ -236,14 +241,16 @@ class TestInfrahubClient:
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, query_99
     ):
         commit = repo.get_commit_value(branch_name="main")
-        await repo.import_all_yaml_files(branch_name="main", commit=commit, exclude=["artifact_definitions"])
+        config_file = await repo.get_repository_config(branch_name="main", commit=commit)
+        assert config_file
+        await repo.import_rfiles(branch_name="main", commit=commit, config_file=config_file)
 
         rfiles = await client.all(kind="CoreRFile")
         assert len(rfiles) == 2
 
         # Validate if the function is idempotent, another import just after the first one shouldn't change anything
         nbr_relationships_before = await count_relationships(db=db)
-        await repo.import_all_yaml_files(branch_name="main", commit=commit, exclude=["artifact_definitions"])
+        await repo.import_rfiles(branch_name="main", commit=commit, config_file=config_file)
         assert await count_relationships(db=db) == nbr_relationships_before
 
         # 1. Modify an object to validate if its being properly updated
@@ -264,7 +271,7 @@ class TestInfrahubClient:
         )
         await obj.save(db=db)
 
-        await repo.import_all_yaml_files(branch_name="main", commit=commit, exclude=["artifact_definitions"])
+        await repo.import_rfiles(branch_name="main", commit=commit, config_file=config_file)
 
         modified_rfile = await client.get(kind="CoreRFile", id=rfiles[0].id)
         assert modified_rfile.template_path.value == rfile_template_path_value_before_change

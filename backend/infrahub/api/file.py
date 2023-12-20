@@ -18,7 +18,7 @@ from infrahub.message_bus import messages
 from infrahub.message_bus.responses import ContentResponse
 
 if TYPE_CHECKING:
-    from infrahub.message_bus.rpc import InfrahubRpcClient
+    from infrahub.services import InfrahubServices
 
 
 router = APIRouter(prefix="/file")
@@ -35,7 +35,7 @@ async def get_file(
     _: str = Depends(get_current_user),
 ) -> PlainTextResponse:
     """Retrieve a file from a git repository."""
-    rpc_client: InfrahubRpcClient = request.app.state.rpc_client
+    service: InfrahubServices = request.app.state.service
 
     repo = await NodeManager.get_one_by_id_or_default_filter(
         db=db,
@@ -57,6 +57,6 @@ async def get_file(
         file=file_path,
     )
 
-    response = await rpc_client.rpc(message=message)
+    response = await service.message_bus.rpc(message=message)
     content = response.parse(response_class=ContentResponse)
     return PlainTextResponse(content=content.content)

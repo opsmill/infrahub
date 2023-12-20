@@ -7,12 +7,13 @@ type MultipleInputProps = {
   value: SelectOption[] | undefined;
   onChange: (item: SelectOption[] | undefined) => void;
   className?: string;
+  disabled?: boolean;
 };
 
 // Forward ref used for Combobox.Input in Select
 // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
 export const MultipleInput = React.forwardRef((props: MultipleInputProps, ref: any) => {
-  const { className, onChange, value } = props;
+  const { className, onChange, value, disabled } = props;
 
   // Remove item from list
   const handleDelete = (item: SelectOption) => {
@@ -28,12 +29,17 @@ export const MultipleInput = React.forwardRef((props: MultipleInputProps, ref: a
           border-gray-300 bg-custom-white
           sm:text-sm sm:leading-6 px-2
           focus:ring-2 focus:ring-inset focus:ring-custom-blue-600 focus:border-custom-blue-600 focus:outline-none
-          disabled:cursor-not-allowed disabled:bg-gray-100
         `,
-        className ?? ""
+        className ?? "",
+        disabled ? "cursor-not-allowed bg-gray-100" : ""
       )}>
       {value?.map((item: SelectOption, index: number) => (
-        <Badge key={index} value={item} onDelete={handleDelete} className="mt-2">
+        <Badge
+          key={index}
+          value={item}
+          onDelete={handleDelete}
+          className="mt-2"
+          disabled={disabled}>
           {item.name}
         </Badge>
       ))}

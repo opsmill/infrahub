@@ -14,7 +14,7 @@ import LoadingScreen from "../loading-screen/loading-screen";
 import TabPassword from "./tab-account";
 import TabPreferences from "./tab-preferences";
 import TabProfile from "./tab-profile";
-import TabTokens from "./tab-tokens";
+// import TabTokens from "./tab-tokens";
 
 const PROFILE_TABS = {
   PREFERENCES: "preferences",
@@ -28,16 +28,20 @@ const tabs = [
     label: "Profile",
     name: PROFILE_TABS.PROFILE,
   },
+  // {
+  //   label: "Tokens",
+  //   name: PROFILE_TABS.TOKENS,
+  // },
   {
-    label: "Tokens",
-    name: PROFILE_TABS.TOKENS,
+    label: "Preferences",
+    name: PROFILE_TABS.PREFERENCES,
   },
 ];
 
 const renderContent = (tab: string | null | undefined) => {
   switch (tab) {
-    case PROFILE_TABS.TOKENS:
-      return <TabTokens />;
+    // case PROFILE_TABS.TOKENS:
+    //   return <TabTokens />;
     case PROFILE_TABS.ACCOUNT:
       return <TabPassword />;
     case PROFILE_TABS.PREFERENCES:
@@ -110,7 +114,7 @@ export default function UserProfile() {
         <Tabs tabs={tabs} />
       </div>
 
-      {renderContent(qspTab)}
+      <div data-cy="user-details">{renderContent(qspTab)}</div>
     </div>
   );
 }

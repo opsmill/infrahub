@@ -1,0 +1,975 @@
+{
+  "nodes": [
+    {
+      "id": "1799f63a-56b4-7f6c-304e-c510849dcb58",
+      "name": "Artifact",
+      "namespace": "Core",
+      "description": null,
+      "default_filter": "name__value",
+      "branch": "local",
+      "order_by": [
+        "name__value"
+      ],
+      "display_labels": [
+        "name__value"
+      ],
+      "attributes": [
+        {
+          "id": "1799f63a-5709-60c0-3049-c517825cf4c9",
+          "name": "name",
+          "kind": "Text",
+          "namespace": "Attribute",
+          "label": "Name",
+          "description": null,
+          "default_value": null,
+          "enum": null,
+          "regex": null,
+          "max_length": null,
+          "min_length": null,
+          "inherited": false,
+          "unique": false,
+          "branch": "local",
+          "optional": false,
+          "order_weight": 1000
+        },
+        {
+          "id": "1799f63a-5766-dcb8-304d-c51e643fd5aa",
+          "name": "status",
+          "kind": "Text",
+          "namespace": "Attribute",
+          "label": "Status",
+          "description": null,
+          "default_value": null,
+          "enum": [
+            "Error",
+            "Pending",
+            "Processing",
+            "Ready"
+          ],
+          "regex": null,
+          "max_length": null,
+          "min_length": null,
+          "inherited": false,
+          "unique": false,
+          "branch": "local",
+          "optional": false,
+          "order_weight": 2000
+        },
+        {
+          "id": "1799f63a-57c7-bcd9-3041-c51b45223d54",
+          "name": "content_type",
+          "kind": "Text",
+          "namespace": "Attribute",
+          "label": "Content Type",
+          "description": null,
+          "default_value": null,
+          "enum": [
+            "application/json",
+            "text/plain"
+          ],
+          "regex": null,
+          "max_length": null,
+          "min_length": null,
+          "inherited": false,
+          "unique": false,
+          "branch": "local",
+          "optional": false,
+          "order_weight": 3000
+        },
+        {
+          "id": "1799f63a-582f-ec8f-304c-c51ff4f83720",
+          "name": "checksum",
+          "kind": "Text",
+          "namespace": "Attribute",
+          "label": "Checksum",
+          "description": null,
+          "default_value": null,
+          "enum": null,
+          "regex": null,
+          "max_length": null,
+          "min_length": null,
+          "inherited": false,
+          "unique": false,
+          "branch": "local",
+          "optional": true,
+          "order_weight": 4000
+        },
+        {
+          "id": "1799f63a-5898-86b8-304e-c5143fc3cb31",
+          "name": "storage_id",
+          "kind": "Text",
+          "namespace": "Attribute",
+          "label": "Storage Id",
+          "description": "ID of the file in the object store",
+          "default_value": null,
+          "enum": null,
+          "regex": null,
+          "max_length": null,
+          "min_length": null,
+          "inherited": false,
+          "unique": false,
+          "branch": "local",
+          "optional": true,
+          "order_weight": 5000
+        },
+        {
+          "id": "1799f63a-5900-ba56-304e-c515eef9ed77",
+          "name": "parameters",
+          "kind": "JSON",
+          "namespace": "Attribute",
+          "label": "Parameters",
+          "description": null,
+          "default_value": null,
+          "enum": null,
+          "regex": null,
+          "max_length": null,
+          "min_length": null,
+          "inherited": false,
+          "unique": false,
+          "branch": "local",
+          "optional": true,
+          "order_weight": 6000
+        }
+      ],
+      "relationships": [
+        {
+          "id": "1799f63a-595e-7d97-304d-c51df7daa9a4",
+          "name": "object",
+          "peer": "CoreNode",
+          "kind": "Attribute",
+          "label": "Object",
+          "description": null,
+          "identifier": "artifact__node",
+          "inherited": false,
+          "cardinality": "one",
+          "branch": "local",
+          "optional": false,
+          "filters": [
+            {
+              "name": "ids",
+              "kind": "Text",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            }
+          ],
+          "order_weight": 7000
+        },
+        {
+          "id": "1799f63a-59b1-183d-3041-c5191c3136f6",
+          "name": "definition",
+          "peer": "CoreArtifactDefinition",
+          "kind": "Attribute",
+          "label": "Definition",
+          "description": null,
+          "identifier": "artifact__artifact_definition",
+          "inherited": false,
+          "cardinality": "one",
+          "branch": "local",
+          "optional": false,
+          "filters": [
+            {
+              "name": "ids",
+              "kind": "Text",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "name__value",
+              "kind": "Text",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "name__is_visible",
+              "kind": "Boolean",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "name__is_protected",
+              "kind": "Boolean",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "name__source__id",
+              "kind": "Text",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "name__owner__id",
+              "kind": "Text",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "artifact_name__value",
+              "kind": "Text",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "artifact_name__is_visible",
+              "kind": "Boolean",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "artifact_name__is_protected",
+              "kind": "Boolean",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "artifact_name__source__id",
+              "kind": "Text",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "artifact_name__owner__id",
+              "kind": "Text",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "description__value",
+              "kind": "Text",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "description__is_visible",
+              "kind": "Boolean",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "description__is_protected",
+              "kind": "Boolean",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "description__source__id",
+              "kind": "Text",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "description__owner__id",
+              "kind": "Text",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "content_type__value",
+              "kind": "Text",
+              "enum": [
+                "application/json",
+                "text/plain"
+              ],
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "content_type__is_visible",
+              "kind": "Boolean",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "content_type__is_protected",
+              "kind": "Boolean",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "content_type__source__id",
+              "kind": "Text",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "content_type__owner__id",
+              "kind": "Text",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            }
+          ],
+          "order_weight": 8000
+        },
+        {
+          "id": "1799f63a-5a06-60c2-304b-c513a9abcdd8",
+          "name": "member_of_groups",
+          "peer": "CoreGroup",
+          "kind": "Group",
+          "label": "Member Of Groups",
+          "description": null,
+          "identifier": "group_member",
+          "inherited": false,
+          "cardinality": "many",
+          "branch": "aware",
+          "optional": true,
+          "filters": [
+            {
+              "name": "ids",
+              "kind": "Text",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "name__value",
+              "kind": "Text",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "name__is_visible",
+              "kind": "Boolean",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "name__is_protected",
+              "kind": "Boolean",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "name__source__id",
+              "kind": "Text",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "name__owner__id",
+              "kind": "Text",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "label__value",
+              "kind": "Text",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "label__is_visible",
+              "kind": "Boolean",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "label__is_protected",
+              "kind": "Boolean",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "label__source__id",
+              "kind": "Text",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "label__owner__id",
+              "kind": "Text",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "description__value",
+              "kind": "Text",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "description__is_visible",
+              "kind": "Boolean",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "description__is_protected",
+              "kind": "Boolean",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "description__source__id",
+              "kind": "Text",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "description__owner__id",
+              "kind": "Text",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            }
+          ],
+          "order_weight": 9000
+        },
+        {
+          "id": "1799f63a-5a59-c417-3044-c51c9c8e5131",
+          "name": "subscriber_of_groups",
+          "peer": "CoreGroup",
+          "kind": "Group",
+          "label": "Subscriber Of Groups",
+          "description": null,
+          "identifier": "group_subscriber",
+          "inherited": false,
+          "cardinality": "many",
+          "branch": "aware",
+          "optional": true,
+          "filters": [
+            {
+              "name": "ids",
+              "kind": "Text",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "name__value",
+              "kind": "Text",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "name__is_visible",
+              "kind": "Boolean",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "name__is_protected",
+              "kind": "Boolean",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "name__source__id",
+              "kind": "Text",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "name__owner__id",
+              "kind": "Text",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "label__value",
+              "kind": "Text",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "label__is_visible",
+              "kind": "Boolean",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "label__is_protected",
+              "kind": "Boolean",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "label__source__id",
+              "kind": "Text",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "label__owner__id",
+              "kind": "Text",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "description__value",
+              "kind": "Text",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "description__is_visible",
+              "kind": "Boolean",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "description__is_protected",
+              "kind": "Boolean",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "description__source__id",
+              "kind": "Text",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            },
+            {
+              "name": "description__owner__id",
+              "kind": "Text",
+              "enum": null,
+              "object_kind": null,
+              "description": null
+            }
+          ],
+          "order_weight": 10000
+        }
+      ],
+      "filters": [
+        {
+          "name": "ids",
+          "kind": "Text",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "name__value",
+          "kind": "Text",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "name__is_visible",
+          "kind": "Boolean",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "name__is_protected",
+          "kind": "Boolean",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "name__source__id",
+          "kind": "Text",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "name__owner__id",
+          "kind": "Text",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "status__value",
+          "kind": "Text",
+          "enum": [
+            "Error",
+            "Pending",
+            "Processing",
+            "Ready"
+          ],
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "status__is_visible",
+          "kind": "Boolean",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "status__is_protected",
+          "kind": "Boolean",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "status__source__id",
+          "kind": "Text",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "status__owner__id",
+          "kind": "Text",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "content_type__value",
+          "kind": "Text",
+          "enum": [
+            "application/json",
+            "text/plain"
+          ],
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "content_type__is_visible",
+          "kind": "Boolean",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "content_type__is_protected",
+          "kind": "Boolean",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "content_type__source__id",
+          "kind": "Text",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "content_type__owner__id",
+          "kind": "Text",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "checksum__value",
+          "kind": "Text",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "checksum__is_visible",
+          "kind": "Boolean",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "checksum__is_protected",
+          "kind": "Boolean",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "checksum__source__id",
+          "kind": "Text",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "checksum__owner__id",
+          "kind": "Text",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "storage_id__value",
+          "kind": "Text",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "storage_id__is_visible",
+          "kind": "Boolean",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "storage_id__is_protected",
+          "kind": "Boolean",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "storage_id__source__id",
+          "kind": "Text",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "storage_id__owner__id",
+          "kind": "Text",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "any__value",
+          "kind": "Text",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "any__is_visible",
+          "kind": "Boolean",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "any__is_protected",
+          "kind": "Boolean",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "any__source__id",
+          "kind": "Text",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "any__owner__id",
+          "kind": "Text",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "object__ids",
+          "kind": "Text",
+          "enum": null,
+          "object_kind": "CoreNode",
+          "description": null
+        },
+        {
+          "name": "definition__ids",
+          "kind": "Text",
+          "enum": null,
+          "object_kind": "CoreArtifactDefinition",
+          "description": null
+        },
+        {
+          "name": "definition__name__value",
+          "kind": "Text",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "definition__name__is_visible",
+          "kind": "Boolean",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "definition__name__is_protected",
+          "kind": "Boolean",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "definition__name__source__id",
+          "kind": "Text",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "definition__name__owner__id",
+          "kind": "Text",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "definition__artifact_name__value",
+          "kind": "Text",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "definition__artifact_name__is_visible",
+          "kind": "Boolean",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "definition__artifact_name__is_protected",
+          "kind": "Boolean",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "definition__artifact_name__source__id",
+          "kind": "Text",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "definition__artifact_name__owner__id",
+          "kind": "Text",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "definition__description__value",
+          "kind": "Text",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "definition__description__is_visible",
+          "kind": "Boolean",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "definition__description__is_protected",
+          "kind": "Boolean",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "definition__description__source__id",
+          "kind": "Text",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "definition__description__owner__id",
+          "kind": "Text",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "definition__content_type__value",
+          "kind": "Text",
+          "enum": [
+            "application/json",
+            "text/plain"
+          ],
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "definition__content_type__is_visible",
+          "kind": "Boolean",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "definition__content_type__is_protected",
+          "kind": "Boolean",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "definition__content_type__source__id",
+          "kind": "Text",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        },
+        {
+          "name": "definition__content_type__owner__id",
+          "kind": "Text",
+          "enum": null,
+          "object_kind": null,
+          "description": null
+        }
+      ],
+      "include_in_menu": false,
+      "menu_placement": null,
+      "icon": null,
+      "label": "Artifact",
+      "inherit_from": [],
+      "groups": [],
+      "kind": "CoreArtifact"
+    }
+  ],
+  "generics": []
+}

@@ -39,9 +39,15 @@ from infrahub.core.query.node import NodeDeleteQuery, NodeListGetInfoQuery
 from infrahub.core.registry import get_branch, registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import add_relationship, update_relationships_to
-from infrahub.exceptions import BranchNotFound, ValidationError
+from infrahub.exceptions import (
+    BranchNotFound,
+    DiffFromRequiredOnDefaultBranchError,
+    DiffRangeValidationError,
+    ValidationError,
+)
 from infrahub.message_bus import messages
 from infrahub.message_bus.responses import DiffNamesResponse
+from infrahub.services import services
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -246,7 +252,9 @@ class Branch(StandardNode):
     def get_query_filter_relationships(
         self, rel_labels: list, at: Optional[Union[Timestamp, str]] = None, include_outside_parentheses: bool = False
     ) -> Tuple[List, Dict]:
-        """Generate a CYPHER Query filter based on a list of relationships to query a part of the graph at a specific time and on a specific branch."""
+        """
+        Generate a CYPHER Query filter based on a list of relationships to query a part of the graph at a specific time and on a specific branch.
+        """
 
         filters = []
         params = {}
@@ -279,7 +287,8 @@ class Branch(StandardNode):
         return filters, params
 
     def get_query_filter_path(self, at: Optional[Union[Timestamp, str]] = None) -> Tuple[str, Dict]:
-        """Generate a CYPHER Query filter based on a path to query a part of the graph at a specific time and on a specific branch.
+        """
+        Generate a CYPHER Query filter based on a path to query a part of the graph at a specific time and on a specific branch.
 
         Examples:
             >>> rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at)
@@ -355,7 +364,8 @@ class Branch(StandardNode):
         diff_from: Timestamp,
         diff_to: Timestamp,
     ) -> Tuple[List, Dict]:
-        """Generate a CYPHER Query filter to query all events that are applicable to a given branch based
+        """
+        Generate a CYPHER Query filter to query all events that are applicable to a given branch based
         - The time when the branch as created
         - The branched_from time of the branch
         - The diff_to and diff_from time as provided
@@ -398,7 +408,8 @@ class Branch(StandardNode):
         start_time: Union[Timestamp, str],
         end_time: Union[Timestamp, str],
     ) -> Tuple[List, Dict]:
-        """Generate a CYPHER Query filter to query a range of values in the graph between start_time and end_time."""
+        """
+        Generate a CYPHER Query filter to query a range of values in the graph between start_time and end_time."""
 
         filters = []
         params = {}
@@ -443,7 +454,8 @@ class Branch(StandardNode):
         registry.branch[self.name] = self
 
     async def validate_branch(self, db: InfrahubDatabase) -> List[ObjectConflict]:
-        """Validate if a branch is eligible to be merged.
+        """
+        Validate if a branch is eligible to be merged.
         - Must be conflict free both for data and repository
         - All checks must pass
         - Check schema changes
@@ -1029,7 +1041,9 @@ class Diff:
         self.branch_support = branch_support or [BranchSupportType.AWARE]
 
         if not diff_from and self.branch.is_default:
-            raise ValueError(f"diff_from is mandatory when diffing on the default branch `{self.branch.name}`.")
+            raise DiffFromRequiredOnDefaultBranchError(
+                f"diff_from is mandatory when diffing on the default branch `{self.branch.name}`."
+            )
 
         # If diff from hasn't been provided, we'll use the creation of the branch as the starting point
         if diff_from:
@@ -1041,7 +1055,7 @@ class Diff:
         self.diff_to = Timestamp(diff_to)
 
         if self.diff_to < self.diff_from:
-            raise ValueError("diff_to must be later than diff_from")
+            raise DiffRangeValidationError("diff_to must be later than diff_from")
 
         # Results organized by Branch
         self._results: Dict[str, dict] = defaultdict(
@@ -1082,7 +1096,9 @@ class Diff:
         )
 
     async def has_conflict(
-        self, db: InfrahubDatabase, rpc_client: InfrahubRpcClient  # pylint: disable=unused-argument
+        self,
+        db: InfrahubDatabase,
+        rpc_client: InfrahubRpcClient,  # pylint: disable=unused-argument
     ) -> bool:
         """Return True if the same path has been modified on multiple branches. False otherwise"""
 
@@ -1422,7 +1438,11 @@ class Diff:
         return paths
 
     async def get_modified_paths_repository(
-        self, rpc_client: InfrahubRpcClient, repository, commit_from: str, commit_to: str
+        self,
+        rpc_client: InfrahubRpcClient,  # pylint: disable=unused-argument
+        repository,
+        commit_from: str,
+        commit_to: str,
     ) -> Set[Tuple]:
         """Return the path of all the files that have changed for a given repository between 2 commits.
 
@@ -1436,7 +1456,7 @@ class Diff:
             second_commit=commit_to,
         )
 
-        reply = await rpc_client.rpc(message=message)
+        reply = await services.service.message_bus.rpc(message=message)
         diff = reply.parse(response_class=DiffNamesResponse)
 
         return {("file", repository.id, filename) for filename in diff.files_changed}
@@ -1953,7 +1973,7 @@ class Diff:
 
     async def get_files_repository(
         self,
-        rpc_client: InfrahubRpcClient,
+        rpc_client: InfrahubRpcClient,  # pylint: disable=unused-argument
         branch_name: str,
         repository,
         commit_from: str,
@@ -1970,7 +1990,7 @@ class Diff:
             second_commit=commit_to,
         )
 
-        reply = await rpc_client.rpc(message=message)
+        reply = await services.service.message_bus.rpc(message=message)
         diff = reply.parse(response_class=DiffNamesResponse)
 
         actions = {

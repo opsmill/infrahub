@@ -2,14 +2,19 @@ import { isValid, parseISO } from "date-fns";
 import { SelectOption } from "../components/select";
 import { iPeerDropdownOptions } from "../graphql/queries/objects/dropdownOptionsForRelatedPeers";
 import {
-  ControlType,
   DynamicFieldData,
   SchemaAttributeType,
-  getFormInputControlTypeFromSchemaAttributeKind,
+  getInputTypeFromAttribute,
+  getInputTypeFromRelationship,
+  getOptionsFromAttribute,
+  getOptionsFromRelationship,
 } from "../screens/edit-form-hook/dynamic-control-types";
 import { iGenericSchema, iNodeSchema } from "../state/atoms/schema.atom";
 
-const getIsDisabled = (owner?: any, user?: any, isProtected?: boolean) => {
+const getIsDisabled = ({ owner, user, isProtected, isReadOnly }: any) => {
+  // Field is read only
+  if (isReadOnly) return true;
+
   // Field is available if there is no owner and if is_protected is not set to true
   if (!isProtected || !owner || user?.permissions?.isAdmin) return false;
 
@@ -90,35 +95,34 @@ const getFormStructureForCreateEdit = (
   const formFields: DynamicFieldData[] = [];
 
   schema.attributes?.forEach((attribute) => {
-    let options: SelectOption[] = [];
-
-    if (attribute.enum) {
-      options = attribute.enum?.map((row: any) => ({
-        name: row,
-        id: row,
-      }));
+    if (attribute.read_only) {
+      // Hide read-only attributes
+      return;
     }
 
     formFields.push({
       name: attribute.name + ".value",
       kind: attribute.kind as SchemaAttributeType,
-      type: attribute.enum
-        ? "select"
-        : getFormInputControlTypeFromSchemaAttributeKind(attribute.kind as SchemaAttributeType),
-      label: attribute.label ? attribute.label : attribute.name,
+      type: getInputTypeFromAttribute(attribute),
+      label: attribute.label || attribute.name,
       value: getFieldValue(row, attribute),
       options: {
-        values: options,
+        values: getOptionsFromAttribute(attribute),
       },
       config: {
         validate: (value: any) => validate(value, attribute, attribute.optional),
       },
-      isOptionnal: attribute.optional,
-      isProtected: getIsDisabled(
-        row && row[attribute.name]?.owner,
+      isOptional: attribute.optional,
+      isReadOnly: attribute.read_only,
+      isProtected: getIsDisabled({
+        owner: row && row[attribute.name]?.owner,
         user,
-        row && row[attribute.name] && row[attribute.name].is_protected
-      ),
+        isProtected: row && row[attribute.name] && row[attribute.name].is_protected,
+        isReadOnly: attribute.read_only,
+      }),
+      isUnique: attribute.unique,
+      attribute,
+      schema,
     });
   });
 
@@ -131,39 +135,18 @@ const getFormStructureForCreateEdit = (
         relationship.kind === "Parent"
     )
     .forEach((relationship) => {
-      let options: SelectOption[] = [];
-
-      const isInherited = generics.find((g) => g.kind === relationship.peer);
-
-      if (!isInherited && dropdownOptions[relationship.peer]) {
-        options = dropdownOptions[relationship.peer].map((row: any) => ({
-          name: row.display_label,
-          id: row.id,
-        }));
-      } else {
-        const generic = generics.find((g) => g.kind === relationship.peer);
-        if (generic) {
-          (generic.used_by || []).forEach((name) => {
-            const relatedSchema = schemas.find((s) => s.kind === name);
-            if (relatedSchema) {
-              options.push({
-                id: name,
-                name: relatedSchema.name,
-              });
-            }
-          });
-        }
+      if (relationship.read_only) {
+        // Hide read-only relationship
+        return;
       }
+
+      const isInherited = !!generics.find((g) => g.kind === relationship.peer);
 
       formFields.push({
         name: relationship.name + (relationship.cardinality === "one" ? ".id" : ".list"),
         kind: "String",
-        type:
-          relationship.cardinality === "many"
-            ? ("multiselect" as ControlType)
-            : isInherited
-            ? "select2step"
-            : ("select" as ControlType),
+        peer: relationship.peer,
+        type: getInputTypeFromRelationship(relationship, isInherited),
         label: relationship.label ? relationship.label : relationship.name,
         value: (() => {
           if (!row || !row[relationship.name]) {
@@ -185,17 +168,27 @@ const getFormStructureForCreateEdit = (
           return "";
         })(),
         options: {
-          values: options,
+          values: getOptionsFromRelationship(
+            dropdownOptions,
+            relationship,
+            isInherited,
+            schemas,
+            generics
+          ),
         },
         config: {
           validate: (value: any) => validate(value, undefined, relationship.optional),
         },
-        isOptionnal: relationship.optional,
-        isProtected: getIsDisabled(
-          row && row[relationship.name]?.properties?.owner,
+        isOptional: relationship.optional,
+        isProtected: getIsDisabled({
+          owner: row && row[relationship.name]?.properties?.owner,
           user,
-          row && row[relationship.name] && row[relationship.name]?.properties?.is_protected
-        ),
+          isProtected:
+            row && row[relationship.name] && row[relationship.name]?.properties?.is_protected,
+          isReadOnly: relationship.read_only,
+        }),
+        relationship,
+        schema,
       });
     });
 

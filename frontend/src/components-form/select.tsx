@@ -10,18 +10,18 @@ type SelectProps = {
   onChange: (value: SelectOption) => void;
   error?: FormFieldError;
   isProtected?: boolean;
-  isOptionnal?: boolean;
+  isOptional?: boolean;
 };
 
 export const OpsSelect = (props: SelectProps) => {
-  const { label, isProtected, isOptionnal, ...propsToPass } = props;
+  const { label, isProtected, isOptional, ...propsToPass } = props;
 
   const getLabel = () => {
-    if (label && isOptionnal) {
+    if (label && isOptional) {
       return label;
     }
 
-    if (label && !isOptionnal) {
+    if (label && !isOptional) {
       return `${label} *`;
     }
 

@@ -15,9 +15,7 @@ from .main import InfrahubMutationOptions
 
 class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
     @classmethod
-    def __init_subclass_with_meta__(
-        cls, schema: NodeSchema = None, _meta=None, **options
-    ):  # pylint: disable=arguments-differ
+    def __init_subclass_with_meta__(cls, schema: NodeSchema = None, _meta=None, **options):  # pylint: disable=arguments-differ
         # Make sure schema is a valid NodeSchema Node Class
         if not isinstance(schema, NodeSchema):
             raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
@@ -49,7 +47,9 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
         query_info["models"] = {"value": sorted(list(await analyzer.get_models_in_use()))}
         query_info["depth"] = {"value": await analyzer.calculate_depth()}
         query_info["height"] = {"value": await analyzer.calculate_height()}
-        query_info["operations"] = {"value": sorted([operation.value for operation in analyzer.operations])}
+        query_info["operations"] = {
+            "value": sorted([operation.operation_type.value for operation in analyzer.operations])
+        }
         query_info["variables"] = {"value": [variable.dict() for variable in analyzer.variables]}
 
         return query_info

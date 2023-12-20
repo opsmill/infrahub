@@ -1,9 +1,12 @@
 from typing import Dict
 
-from pydantic import BaseModel
+try:
+    from pydantic import v1 as pydantic  # type: ignore[attr-defined]
+except ImportError:
+    import pydantic  # type: ignore[no-redef]
 
 
-class RepositoryData(BaseModel):
+class RepositoryData(pydantic.BaseModel):
     id: str
     name: str
     location: str

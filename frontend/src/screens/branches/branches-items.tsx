@@ -19,7 +19,7 @@ export const BranchesItems = () => {
   const branches = [...storedBranches.filter((b) => b.name === "main"), ...sortedBranches];
 
   return (
-    <ul className="grid gap-6 grid-cols-1 p-6">
+    <ul className="grid gap-6 grid-cols-1 p-6" data-cy="branches-items">
       {branches.map((branch) => (
         <li
           className="col-span-1 rounded-lg bg-custom-white shadow cursor-pointer hover:bg-gray-50"

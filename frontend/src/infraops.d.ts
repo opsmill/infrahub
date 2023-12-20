@@ -4,49 +4,104 @@
  */
 
 export interface paths {
-  "/schema/": {
-    /** Get Schema */
-    get: operations["get_schema_schema__get"];
+  "/api/artifact/{artifact_id}": {
+    /** Get Artifact */
+    get: operations["get_artifact_api_artifact__artifact_id__get"];
   };
-  "/schema/load": {
-    /** Load Schema */
-    post: operations["load_schema_schema_load_post"];
+  "/api/artifact/generate/{artifact_definition_id}": {
+    /** Generate Artifact */
+    post: operations["generate_artifact_api_artifact_generate__artifact_definition_id__post"];
   };
-  "/transform/{transform_url}": {
-    /** Transform Python */
-    get: operations["transform_python_transform__transform_url__get"];
+  "/api/auth/login": {
+    /** Login User */
+    post: operations["login_user_api_auth_login_post"];
   };
-  "/rfile/{rfile_id}": {
-    /** Generate Rfile */
-    get: operations["generate_rfile_rfile__rfile_id__get"];
+  "/api/auth/refresh": {
+    /** Refresh Jwt Token */
+    post: operations["refresh_jwt_token_api_auth_refresh_post"];
   };
-  "/config": {
+  "/api/auth/logout": {
+    /** Logout */
+    post: operations["logout_api_auth_logout_post"];
+  };
+  "/api/diff/data": {
+    /** Get Diff Data */
+    get: operations["get_diff_data_api_diff_data_get"];
+  };
+  "/api/diff/schema": {
+    /** Get Diff Schema */
+    get: operations["get_diff_schema_api_diff_schema_get"];
+  };
+  "/api/diff/files": {
+    /** Get Diff Files */
+    get: operations["get_diff_files_api_diff_files_get"];
+  };
+  "/api/diff/artifacts": {
+    /** Get Diff Artifacts */
+    get: operations["get_diff_artifacts_api_diff_artifacts_get"];
+  };
+  "/api/file/{repository_id}/{file_path}": {
+    /**
+     * Get File
+     * @description Retrieve a file from a git repository.
+     */
+    get: operations["get_file_api_file__repository_id___file_path__get"];
+  };
+  "/api/config": {
     /** Get Config */
-    get: operations["get_config_config_get"];
+    get: operations["get_config_api_config_get"];
   };
-  "/info": {
+  "/api/info": {
     /** Get Info */
-    get: operations["get_info_info_get"];
+    get: operations["get_info_api_info_get"];
   };
-  "/diff/data": {
-    /** Get Diff Data */
-    get: operations["get_diff_data_diff_data_get"];
+  "/api/menu": {
+    /** Get Menu */
+    get: operations["get_menu_api_menu_get"];
   };
-  "/diff/files": {
-    /** Get Diff Files */
-    get: operations["get_diff_files_diff_files_get"];
-  };
-  "/dev/diff/data": {
-    /** Get Diff Data */
-    get: operations["get_diff_data_dev_diff_data_get"];
-  };
-  "/dev/diff/files": {
-    /** Get Diff Files */
-    get: operations["get_diff_files_dev_diff_files_get"];
-  };
-  "/query/{query_id}": {
+  "/api/query/{query_id}": {
     /** Graphql Query */
-    get: operations["graphql_query_query__query_id__get"];
+    get: operations["graphql_query_api_query__query_id__get"];
+  };
+  "/api/schema/": {
+    /** Get Schema */
+    get: operations["get_schema_api_schema__get"];
+  };
+  "/api/schema": {
+    /** Get Schema */
+    get: operations["get_schema_api_schema_get"];
+  };
+  "/api/schema/summary": {
+    /** Get Schema Summary */
+    get: operations["get_schema_summary_api_schema_summary_get"];
+  };
+  "/api/schema/{schema_kind}": {
+    /** Get Schema By Kind */
+    get: operations["get_schema_by_kind_api_schema__schema_kind__get"];
+  };
+  "/api/schema/load": {
+    /** Load Schema */
+    post: operations["load_schema_api_schema_load_post"];
+  };
+  "/api/storage/object/{identifier}": {
+    /** Get File */
+    get: operations["get_file_api_storage_object__identifier__get"];
+  };
+  "/api/storage/upload/content": {
+    /** Upload Content */
+    post: operations["upload_content_api_storage_upload_content_post"];
+  };
+  "/api/storage/upload/file": {
+    /** Upload File */
+    post: operations["upload_file_api_storage_upload_file_post"];
+  };
+  "/api/transform/{transform_url}": {
+    /** Transform Python */
+    get: operations["transform_python_api_transform__transform_url__get"];
+  };
+  "/api/rfile/{rfile_id}": {
+    /** Generate Rfile */
+    get: operations["generate_rfile_api_rfile__rfile_id__get"];
   };
 }
 
@@ -54,6 +109,97 @@ export type webhooks = Record<string, never>;
 
 export interface components {
   schemas: {
+    /**
+     * APIGenericSchema
+     * @description A Generic can be either an Interface or a Union depending if there are some Attributes or Relationships defined.
+     */
+    APIGenericSchema: {
+      /** Id */
+      id?: string;
+      /** Name */
+      name: string;
+      /** Namespace */
+      namespace: string;
+      /** Description */
+      description?: string;
+      /** Default Filter */
+      default_filter?: string;
+      /** @default aware */
+      branch?: components["schemas"]["BranchSupportType"];
+      /** Order By */
+      order_by?: string[];
+      /** Display Labels */
+      display_labels?: string[];
+      /** Attributes */
+      attributes?: components["schemas"]["AttributeSchema"][];
+      /** Relationships */
+      relationships?: components["schemas"]["RelationshipSchema"][];
+      /** Filters */
+      filters?: components["schemas"]["FilterSchema"][];
+      /** Include In Menu */
+      include_in_menu?: boolean;
+      /** Menu Placement */
+      menu_placement?: string;
+      /** Icon */
+      icon?: string;
+      /** Label */
+      label?: string;
+      /** Used By */
+      used_by?: string[];
+      /** Kind */
+      kind?: string;
+      /** Hash */
+      hash: string;
+    };
+    /** APINodeSchema */
+    APINodeSchema: {
+      /** Id */
+      id?: string;
+      /** Name */
+      name: string;
+      /** Namespace */
+      namespace: string;
+      /** Description */
+      description?: string;
+      /** Default Filter */
+      default_filter?: string;
+      /** @default aware */
+      branch?: components["schemas"]["BranchSupportType"];
+      /** Order By */
+      order_by?: string[];
+      /** Display Labels */
+      display_labels?: string[];
+      /** Attributes */
+      attributes?: components["schemas"]["AttributeSchema"][];
+      /** Relationships */
+      relationships?: components["schemas"]["RelationshipSchema"][];
+      /** Filters */
+      filters?: components["schemas"]["FilterSchema"][];
+      /** Include In Menu */
+      include_in_menu?: boolean;
+      /** Menu Placement */
+      menu_placement?: string;
+      /** Icon */
+      icon?: string;
+      /** Label */
+      label?: string;
+      /** Inherit From */
+      inherit_from?: string[];
+      /** Groups */
+      groups?: string[];
+      /** Kind */
+      kind?: string;
+      /** Hash */
+      hash: string;
+    };
+    /** AccessTokenResponse */
+    AccessTokenResponse: {
+      /**
+       * Access Token
+       * @description JWT access_token
+       */
+      access_token: string;
+    };
     /**
      * AnalyticsSettings
      * @description Base class for settings, allowing values to be overridden by environment variables.
@@ -72,6 +218,20 @@ export interface components {
       /** Api Key */
       api_key?: string;
     };
+    /** ArtifactGeneratePayload */
+    ArtifactGeneratePayload: {
+      /** Nodes */
+      nodes?: string[];
+    };
+    /** ArtifactTarget */
+    ArtifactTarget: {
+      /** Id */
+      id: string;
+      /** Kind */
+      kind: string;
+      /** Display Label */
+      display_label?: string;
+    };
     /** AttributeSchema */
     AttributeSchema: {
       /** Id */
@@ -85,15 +245,20 @@ export interface components {
       /** Description */
       description?: string;
       /** Default Value */
-      default_value?: Record<string, never>;
+      default_value?: unknown;
       /** Enum */
-      enum?: Record<string, never>[];
+      enum?: unknown[];
       /** Regex */
       regex?: string;
       /** Max Length */
       max_length?: number;
       /** Min Length */
       min_length?: number;
+      /**
+       * Read Only
+       * @default false
+       */
+      read_only?: boolean;
       /**
        * Inherited
        * @default false
@@ -104,11 +269,7 @@ export interface components {
        * @default false
        */
       unique?: boolean;
-      /**
-       * Branch
-       * @default true
-       */
-      branch?: boolean;
+      branch?: components["schemas"]["BranchSupportType"];
       /**
        * Optional
        * @default false
@@ -116,32 +277,97 @@ export interface components {
       optional?: boolean;
       /** Order Weight */
       order_weight?: number;
+      /**
+       * Choices
+       * @description The available choices if the kind is Dropdown.
+       */
+      choices?: components["schemas"]["DropdownChoice"][];
     };
-    /** BranchDiffRelationship */
-    BranchDiffRelationship: {
+    /** Body_upload_file_api_storage_upload_file_post */
+    Body_upload_file_api_storage_upload_file_post: {
+      /**
+       * File
+       * Format: binary
+       */
+      file: string;
+    };
+    /** BranchDiff */
+    BranchDiff: {
+      /** Diffs */
+      diffs?: components["schemas"]["BranchDiffEntry"][];
+    };
+    /** BranchDiffArtifact */
+    BranchDiffArtifact: {
       /** Branch */
       branch: string;
       /** Id */
       id: string;
-      /** Identifier */
-      identifier: string;
+      /** Display Label */
+      display_label?: string;
+      action: components["schemas"]["DiffAction"];
+      target?: components["schemas"]["ArtifactTarget"];
+      item_new?: components["schemas"]["BranchDiffArtifactStorage"];
+      item_previous?: components["schemas"]["BranchDiffArtifactStorage"];
+    };
+    /** BranchDiffArtifactStorage */
+    BranchDiffArtifactStorage: {
+      /** Storage Id */
+      storage_id: string;
+      /** Checksum */
+      checksum: string;
+    };
+    /** BranchDiffElement */
+    BranchDiffElement: {
+      type: components["schemas"]["DiffElementType"];
       /** Name */
       name: string;
-      peer: components["schemas"]["infrahub__api__diff__BranchDiffRelationshipPeerNode"];
-      /** Properties */
-      properties: components["schemas"]["infrahub__api__diff__BranchDiffProperty"][];
-      /** Changed At */
-      changed_at?: string;
-      action: components["schemas"]["DiffAction"];
+      /** Path */
+      path: string;
+      /** Change */
+      change:
+        | components["schemas"]["BranchDiffElementAttribute"]
+        | components["schemas"]["BranchDiffElementRelationshipOne"]
+        | components["schemas"]["BranchDiffElementRelationshipMany"];
     };
-    /** BranchDiffRelationshipMany */
-    BranchDiffRelationshipMany: {
+    /** BranchDiffElementAttribute */
+    BranchDiffElementAttribute: {
+      /** @default Attribute */
+      type?: components["schemas"]["DiffElementType"];
+      /** Branches */
+      branches?: string[];
+      /**
+       * Id
+       * @default
+       */
+      id?: string;
+      /**
+       * Summary
+       * @default {
+       *   "added": 0,
+       *   "removed": 0,
+       *   "updated": 0
+       * }
+       */
+      summary?: components["schemas"]["DiffSummary"];
+      /** @default unchanged */
+      action?: components["schemas"]["DiffAction"];
+      value?: components["schemas"]["BranchDiffPropertyCollection"];
+      /** Properties */
+      properties?: {
+        [key: string]: components["schemas"]["BranchDiffPropertyCollection"];
+      };
+    };
+    /** BranchDiffElementRelationshipMany */
+    BranchDiffElementRelationshipMany: {
       /** @default RelationshipMany */
       type?: components["schemas"]["DiffElementType"];
-      /** Branch */
-      branch: string;
-      /** Identifier */
-      identifier: string;
+      /**
+       * Identifier
+       * @default
+       */
+      identifier?: string;
+      /** Branches */
+      branches?: string[];
       /**
        * Summary
        * @default {
@@ -151,45 +377,44 @@ export interface components {
        * }
        */
       summary?: components["schemas"]["DiffSummary"];
-      /** Name */
-      name: string;
       /** Peers */
-      peers?: components["schemas"]["BranchDiffRelationshipManyElement"][];
+      peers?: {
+        [key: string]: components["schemas"]["BranchDiffElementRelationshipManyPeer"];
+      };
     };
-    /** BranchDiffRelationshipManyElement */
-    BranchDiffRelationshipManyElement: {
-      /** Branch */
-      branch: string;
-      /** Id */
-      id: string;
-      /** Identifier */
-      identifier: string;
-      /**
-       * Summary
-       * @default {
-       *   "added": 0,
-       *   "removed": 0,
-       *   "updated": 0
-       * }
-       */
-      summary?: components["schemas"]["DiffSummary"];
-      peer: components["schemas"]["infrahub__api__dev_diff__BranchDiffRelationshipPeerNode"];
+    /** BranchDiffElementRelationshipManyPeer */
+    BranchDiffElementRelationshipManyPeer: {
+      /** Branches */
+      branches?: string[];
+      peer: components["schemas"]["BranchDiffRelationshipPeerNode"];
+      /** Path */
+      path: string;
       /** Properties */
-      properties?: components["schemas"]["infrahub__api__dev_diff__BranchDiffProperty"][];
+      properties?: {
+        [key: string]: components["schemas"]["BranchDiffPropertyCollection"];
+      };
       /** Changed At */
       changed_at?: string;
-      action: components["schemas"]["DiffAction"];
+      action?: {
+        [key: string]: components["schemas"]["DiffAction"];
+      };
     };
-    /** BranchDiffRelationshipOne */
-    BranchDiffRelationshipOne: {
+    /** BranchDiffElementRelationshipOne */
+    BranchDiffElementRelationshipOne: {
       /** @default RelationshipOne */
       type?: components["schemas"]["DiffElementType"];
-      /** Branch */
-      branch: string;
-      /** Id */
-      id: string;
-      /** Identifier */
-      identifier: string;
+      /**
+       * Id
+       * @default
+       */
+      id?: string;
+      /**
+       * Identifier
+       * @default
+       */
+      identifier?: string;
+      /** Branches */
+      branches?: string[];
       /**
        * Summary
        * @default {
@@ -199,36 +424,140 @@ export interface components {
        * }
        */
       summary?: components["schemas"]["DiffSummary"];
-      /** Name */
-      name: string;
-      peer: components["schemas"]["BranchDiffRelationshipOnePeerValue"];
+      peer?: components["schemas"]["BranchDiffRelationshipOnePeerCollection"];
       /** Properties */
-      properties?: components["schemas"]["infrahub__api__dev_diff__BranchDiffProperty"][];
+      properties?: {
+        [key: string]: components["schemas"]["BranchDiffPropertyCollection"];
+      };
+      /** Changed At */
+      changed_at?: string;
+      action?: {
+        [key: string]: components["schemas"]["DiffAction"];
+      };
+    };
+    /** BranchDiffEntry */
+    BranchDiffEntry: {
+      /** Kind */
+      kind: string;
+      /** Id */
+      id: string;
+      /** Path */
+      path: string;
+      /** Elements */
+      elements?: {
+        [key: string]: components["schemas"]["BranchDiffElement"];
+      };
+      /**
+       * Summary
+       * @default {
+       *   "added": 0,
+       *   "removed": 0,
+       *   "updated": 0
+       * }
+       */
+      summary?: components["schemas"]["DiffSummary"];
+      action?: {
+        [key: string]: components["schemas"]["DiffAction"];
+      };
+      /** Display Label */
+      display_label?: {
+        [key: string]: string;
+      };
+    };
+    /** BranchDiffFile */
+    BranchDiffFile: {
+      /** Branch */
+      branch: string;
+      /** Location */
+      location: string;
+      action: components["schemas"]["DiffAction"];
+    };
+    /** BranchDiffProperty */
+    BranchDiffProperty: {
+      /** Branch */
+      branch: string;
+      /** Type */
+      type: string;
       /** Changed At */
       changed_at?: string;
       action: components["schemas"]["DiffAction"];
+      value: components["schemas"]["BranchDiffPropertyValue"];
     };
-    /** BranchDiffRelationshipOnePeerValue */
-    BranchDiffRelationshipOnePeerValue: {
-      new?: components["schemas"]["infrahub__api__dev_diff__BranchDiffRelationshipPeerNode"];
-      previous?: components["schemas"]["infrahub__api__dev_diff__BranchDiffRelationshipPeerNode"];
+    /** BranchDiffPropertyCollection */
+    BranchDiffPropertyCollection: {
+      /** Path */
+      path: string;
+      /** Changes */
+      changes?: components["schemas"]["BranchDiffProperty"][];
     };
+    /** BranchDiffPropertyValue */
+    BranchDiffPropertyValue: {
+      /** New */
+      new?: unknown;
+      /** Previous */
+      previous?: unknown;
+    };
+    /** BranchDiffRelationshipOnePeer */
+    BranchDiffRelationshipOnePeer: {
+      /** Branch */
+      branch: string;
+      new?: components["schemas"]["BranchDiffRelationshipPeerNode"];
+      previous?: components["schemas"]["BranchDiffRelationshipPeerNode"];
+    };
+    /** BranchDiffRelationshipOnePeerCollection */
+    BranchDiffRelationshipOnePeerCollection: {
+      /** Path */
+      path: string;
+      /** Changes */
+      changes?: components["schemas"]["BranchDiffRelationshipOnePeer"][];
+    };
+    /** BranchDiffRelationshipPeerNode */
+    BranchDiffRelationshipPeerNode: {
+      /** Id */
+      id: string;
+      /** Kind */
+      kind: string;
+      /** Display Label */
+      display_label?: string;
+    };
+    /** BranchDiffRepository */
+    BranchDiffRepository: {
+      /** Branch */
+      branch: string;
+      /** Id */
+      id: string;
+      /** Display Name */
+      display_name?: string;
+      /** Commit From */
+      commit_from: string;
+      /** Commit To */
+      commit_to: string;
+      /** Files */
+      files?: components["schemas"]["BranchDiffFile"][];
+    };
+    /**
+     * BranchSupportType
+     * @description An enumeration.
+     * @enum {string}
+     */
+    BranchSupportType: "aware" | "agnostic" | "local";
     /** ConfigAPI */
     ConfigAPI: {
       main: components["schemas"]["MainSettings"];
       logging: components["schemas"]["LoggingSettings"];
       analytics: components["schemas"]["AnalyticsSettings"];
+      experimental_features: components["schemas"]["ExperimentalFeaturesSettings"];
     };
     /**
      * DiffAction
      * @description An enumeration.
-     * @enum {unknown}
+     * @enum {string}
      */
-    DiffAction: "added" | "removed" | "updated";
+    DiffAction: "added" | "removed" | "updated" | "unchanged";
     /**
      * DiffElementType
      * @description An enumeration.
-     * @enum {unknown}
+     * @enum {string}
      */
     DiffElementType: "Attribute" | "RelationshipOne" | "RelationshipMany";
     /** DiffSummary */
@@ -249,13 +578,47 @@ export interface components {
        */
       updated?: number;
     };
+    /** DropdownChoice */
+    DropdownChoice: {
+      /** Name */
+      name: string;
+      /**
+       * Description
+       * @default
+       */
+      description?: string;
+      /**
+       * Color
+       * @default
+       */
+      color?: string;
+      /**
+       * Label
+       * @default
+       */
+      label?: string;
+    };
+    /**
+     * ExperimentalFeaturesSettings
+     * @description Base class for settings, allowing values to be overridden by environment variables.
+     *
+     * This is useful in production for secrets you do not wish to save in code, it plays nicely with docker(-compose),
+     * Heroku and any 12 factor app design.
+     */
+    ExperimentalFeaturesSettings: {
+      /**
+       * Pull Request
+       * @default false
+       */
+      pull_request?: boolean;
+    };
     /** FilterSchema */
     FilterSchema: {
       /** Name */
       name: string;
       kind: components["schemas"]["FilterSchemaKind"];
       /** Enum */
-      enum?: Record<string, never>[];
+      enum?: unknown[];
       /** Object Kind */
       object_kind?: string;
       /** Description */
@@ -276,23 +639,30 @@ export interface components {
       id?: string;
       /** Name */
       name: string;
-      /** Kind */
-      kind: string;
+      /** Namespace */
+      namespace: string;
       /** Description */
       description?: string;
       /** Default Filter */
       default_filter?: string;
+      /** @default aware */
+      branch?: components["schemas"]["BranchSupportType"];
+      /** Order By */
+      order_by?: string[];
       /** Display Labels */
       display_labels?: string[];
       /** Attributes */
       attributes?: components["schemas"]["AttributeSchema"][];
       /** Relationships */
       relationships?: components["schemas"]["RelationshipSchema"][];
-      /**
-       * Branch
-       * @default true
-       */
-      branch?: boolean;
+      /** Filters */
+      filters?: components["schemas"]["FilterSchema"][];
+      /** Include In Menu */
+      include_in_menu?: boolean;
+      /** Menu Placement */
+      menu_placement?: string;
+      /** Icon */
+      icon?: string;
       /** Label */
       label?: string;
       /** Used By */
@@ -320,6 +690,36 @@ export interface components {
       deployment_id: string;
       /** Version */
       version: string;
+    };
+    /** InterfaceMenu */
+    InterfaceMenu: {
+      /**
+       * Title
+       * @description Title of the menu item
+       */
+      title: string;
+      /**
+       * Path
+       * @description URL endpoint if applicable
+       * @default
+       */
+      path?: string;
+      /**
+       * Icon
+       * @description The icon to show for the current view
+       * @default
+       */
+      icon?: string;
+      /**
+       * Children
+       * @description Child objects
+       */
+      children?: components["schemas"]["InterfaceMenu"][];
+      /**
+       * Kind
+       * @default
+       */
+      kind?: string;
     };
     /**
      * LoggingSettings
@@ -355,6 +755,12 @@ export interface components {
        * @default http://localhost:8000
        */
       internal_address?: string;
+      /**
+       * Allow Anonymous Access
+       * @description Indicates if the system allows anonymous read access
+       * @default true
+       */
+      allow_anonymous_access?: boolean;
     };
     /** NodeExtensionSchema */
     NodeExtensionSchema: {
@@ -371,31 +777,49 @@ export interface components {
       id?: string;
       /** Name */
       name: string;
-      /** Kind */
-      kind: string;
+      /** Namespace */
+      namespace: string;
       /** Description */
       description?: string;
       /** Default Filter */
       default_filter?: string;
+      /** @default aware */
+      branch?: components["schemas"]["BranchSupportType"];
+      /** Order By */
+      order_by?: string[];
       /** Display Labels */
       display_labels?: string[];
       /** Attributes */
       attributes?: components["schemas"]["AttributeSchema"][];
       /** Relationships */
       relationships?: components["schemas"]["RelationshipSchema"][];
+      /** Filters */
+      filters?: components["schemas"]["FilterSchema"][];
+      /** Include In Menu */
+      include_in_menu?: boolean;
+      /** Menu Placement */
+      menu_placement?: string;
+      /** Icon */
+      icon?: string;
       /** Label */
       label?: string;
       /** Inherit From */
       inherit_from?: string[];
       /** Groups */
       groups?: string[];
+    };
+    /** PasswordCredential */
+    PasswordCredential: {
       /**
-       * Branch
-       * @default true
+       * Username
+       * @description Name of the user that is logging in.
        */
-      branch?: boolean;
-      /** Filters */
-      filters?: components["schemas"]["FilterSchema"][];
+      username: string;
+      /**
+       * Password
+       * @description The password of the user.
+       */
+      password: string;
     };
     /**
      * RelationshipCardinality
@@ -404,11 +828,17 @@ export interface components {
      */
     RelationshipCardinality: "one" | "many";
     /**
+     * RelationshipDirection
+     * @description An enumeration.
+     * @enum {string}
+     */
+    RelationshipDirection: "bidirectional" | "outbound" | "inbound";
+    /**
      * RelationshipKind
      * @description An enumeration.
      * @enum {string}
      */
-    RelationshipKind: "Generic" | "Attribute" | "Component" | "Parent";
+    RelationshipKind: "Generic" | "Attribute" | "Component" | "Parent" | "Group";
     /** RelationshipSchema */
     RelationshipSchema: {
       /** Id */
@@ -419,6 +849,8 @@ export interface components {
       peer: string;
       /** @default Generic */
       kind?: components["schemas"]["RelationshipKind"];
+      /** @default bidirectional */
+      direction?: components["schemas"]["RelationshipDirection"];
       /** Label */
       label?: string;
       /** Description */
@@ -432,11 +864,7 @@ export interface components {
       inherited?: boolean;
       /** @default many */
       cardinality?: components["schemas"]["RelationshipCardinality"];
-      /**
-       * Branch
-       * @default true
-       */
-      branch?: boolean;
+      branch?: components["schemas"]["BranchSupportType"];
       /**
        * Optional
        * @default true
@@ -467,6 +895,23 @@ export interface components {
       /** Git Agent Dsn */
       git_agent_dsn?: string;
     };
+    /** SchemaBranchHash */
+    SchemaBranchHash: {
+      /** Main */
+      main: string;
+      /** Nodes */
+      nodes?: {
+        [key: string]: string;
+      };
+      /** Generics */
+      generics?: {
+        [key: string]: string;
+      };
+      /** Groups */
+      groups?: {
+        [key: string]: string;
+      };
+    };
     /** SchemaExtension */
     SchemaExtension: {
       /** Nodes */
@@ -490,12 +935,71 @@ export interface components {
        */
       extensions?: components["schemas"]["SchemaExtension"];
     };
+    /** SchemaNamespace */
+    SchemaNamespace: {
+      /** Name */
+      name: string;
+      /** User Editable */
+      user_editable: boolean;
+    };
     /** SchemaReadAPI */
     SchemaReadAPI: {
+      /**
+       * Main
+       * @description Main hash for the entire schema
+       */
+      main: string;
       /** Nodes */
-      nodes: components["schemas"]["NodeSchema"][];
+      nodes?: components["schemas"]["APINodeSchema"][];
       /** Generics */
-      generics: components["schemas"]["GenericSchema"][];
+      generics?: components["schemas"]["APIGenericSchema"][];
+      /** Namespaces */
+      namespaces?: components["schemas"]["SchemaNamespace"][];
+    };
+    /** SchemasLoadAPI */
+    SchemasLoadAPI: {
+      /** Version */
+      version?: string;
+      /** Generics */
+      generics?: components["schemas"]["GenericSchema"][];
+      /** Nodes */
+      nodes?: components["schemas"]["NodeSchema"][];
+      /** Groups */
+      groups?: components["schemas"]["GroupSchema"][];
+      /**
+       * Extensions
+       * @default {
+       *   "nodes": []
+       * }
+       */
+      extensions?: components["schemas"]["SchemaExtension"];
+      /** Schemas */
+      schemas: components["schemas"]["SchemaLoadAPI"][];
+    };
+    /** UploadContentPayload */
+    UploadContentPayload: {
+      /** Content */
+      content: string;
+    };
+    /** UploadResponse */
+    UploadResponse: {
+      /** Identifier */
+      identifier: string;
+      /** Checksum */
+      checksum: string;
+    };
+    /** UserToken */
+    UserToken: {
+      /**
+       * Access Token
+       * @description JWT access_token
+       */
+      access_token: string;
+      /**
+       * Refresh Token
+       * @description JWT refresh_token
+       */
+      refresh_token: string;
     };
     /** ValidationError */
     ValidationError: {
@@ -506,185 +1010,6 @@ export interface components {
       /** Error Type */
       type: string;
     };
-    /** BranchDiffAttribute */
-    infrahub__api__dev_diff__BranchDiffAttribute: {
-      /** @default Attribute */
-      type?: components["schemas"]["DiffElementType"];
-      /** Name */
-      name: string;
-      /** Id */
-      id: string;
-      /** Changed At */
-      changed_at?: string;
-      /**
-       * Summary
-       * @default {
-       *   "added": 0,
-       *   "removed": 0,
-       *   "updated": 0
-       * }
-       */
-      summary?: components["schemas"]["DiffSummary"];
-      action: components["schemas"]["DiffAction"];
-      value?: components["schemas"]["infrahub__api__dev_diff__BranchDiffProperty"];
-      /** Properties */
-      properties: components["schemas"]["infrahub__api__dev_diff__BranchDiffProperty"][];
-    };
-    /** BranchDiffFile */
-    infrahub__api__dev_diff__BranchDiffFile: {
-      /** Branch */
-      branch: string;
-      /** Location */
-      location: string;
-      action: components["schemas"]["DiffAction"];
-    };
-    /** BranchDiffNode */
-    infrahub__api__dev_diff__BranchDiffNode: {
-      /** Branch */
-      branch: string;
-      /** Kind */
-      kind: string;
-      /** Id */
-      id: string;
-      /**
-       * Summary
-       * @default {
-       *   "added": 0,
-       *   "removed": 0,
-       *   "updated": 0
-       * }
-       */
-      summary?: components["schemas"]["DiffSummary"];
-      /** Display Label */
-      display_label: string;
-      /** Changed At */
-      changed_at?: string;
-      action: components["schemas"]["DiffAction"];
-      /** Elements */
-      elements?: {
-        [key: string]:
-          | (
-              | components["schemas"]["BranchDiffRelationshipOne"]
-              | components["schemas"]["BranchDiffRelationshipMany"]
-              | components["schemas"]["infrahub__api__dev_diff__BranchDiffAttribute"]
-            )
-          | undefined;
-      };
-    };
-    /** BranchDiffProperty */
-    infrahub__api__dev_diff__BranchDiffProperty: {
-      /** Branch */
-      branch: string;
-      /** Type */
-      type: string;
-      /** Changed At */
-      changed_at?: string;
-      action: components["schemas"]["DiffAction"];
-      value: components["schemas"]["infrahub__api__dev_diff__BranchDiffPropertyValue"];
-    };
-    /** BranchDiffPropertyValue */
-    infrahub__api__dev_diff__BranchDiffPropertyValue: {
-      /** New */
-      new?: Record<string, never>;
-      /** Previous */
-      previous?: Record<string, never>;
-    };
-    /** BranchDiffRelationshipPeerNode */
-    infrahub__api__dev_diff__BranchDiffRelationshipPeerNode: {
-      /** Id */
-      id: string;
-      /** Kind */
-      kind: string;
-      /** Display Label */
-      display_label?: string;
-    };
-    /** BranchDiffRepository */
-    infrahub__api__dev_diff__BranchDiffRepository: {
-      /** Branch */
-      branch: string;
-      /** Id */
-      id: string;
-      /** Display Name */
-      display_name?: string;
-      /** Files */
-      files?: components["schemas"]["infrahub__api__dev_diff__BranchDiffFile"][];
-    };
-    /** BranchDiffAttribute */
-    infrahub__api__diff__BranchDiffAttribute: {
-      /** Name */
-      name: string;
-      /** Id */
-      id: string;
-      /** Changed At */
-      changed_at?: string;
-      action: components["schemas"]["DiffAction"];
-      /** Properties */
-      properties: components["schemas"]["infrahub__api__diff__BranchDiffProperty"][];
-    };
-    /** BranchDiffFile */
-    infrahub__api__diff__BranchDiffFile: {
-      /** Branch */
-      branch: string;
-      /** Location */
-      location: string;
-      action: components["schemas"]["DiffAction"];
-    };
-    /** BranchDiffNode */
-    infrahub__api__diff__BranchDiffNode: {
-      /** Branch */
-      branch: string;
-      /** Kind */
-      kind: string;
-      /** Id */
-      id: string;
-      /** Display Label */
-      display_label: string;
-      /** Changed At */
-      changed_at?: string;
-      action: components["schemas"]["DiffAction"];
-      /** Attributes */
-      attributes?: components["schemas"]["infrahub__api__diff__BranchDiffAttribute"][];
-      /** Relationships */
-      relationships?: components["schemas"]["BranchDiffRelationship"][];
-    };
-    /** BranchDiffProperty */
-    infrahub__api__diff__BranchDiffProperty: {
-      /** Branch */
-      branch: string;
-      /** Type */
-      type: string;
-      /** Changed At */
-      changed_at?: string;
-      action: components["schemas"]["DiffAction"];
-      value: components["schemas"]["infrahub__api__diff__BranchDiffPropertyValue"];
-    };
-    /** BranchDiffPropertyValue */
-    infrahub__api__diff__BranchDiffPropertyValue: {
-      /** New */
-      new?: Record<string, never>;
-      /** Previous */
-      previous?: Record<string, never>;
-    };
-    /** BranchDiffRelationshipPeerNode */
-    infrahub__api__diff__BranchDiffRelationshipPeerNode: {
-      /** Id */
-      id: string;
-      /** Kind */
-      kind: string;
-      /** Display Label */
-      display_label?: string;
-    };
-    /** BranchDiffRepository */
-    infrahub__api__diff__BranchDiffRepository: {
-      /** Branch */
-      branch: string;
-      /** Id */
-      id: string;
-      /** Display Name */
-      display_name?: string;
-      /** Files */
-      files?: components["schemas"]["infrahub__api__diff__BranchDiffFile"][];
-    };
   };
   responses: never;
   parameters: never;
@@ -693,21 +1018,31 @@ export interface components {
   pathItems: never;
 }
 
+export type $defs = Record<string, never>;
+
 export type external = Record<string, never>;
 
 export interface operations {
-  /** Get Schema */
-  get_schema_schema__get: {
+  /** Get Artifact */
+  get_artifact_api_artifact__artifact_id__get: {
     parameters: {
-      query: {
+      query?: {
+        /** @description Name of the branch to use for the query */
         branch?: string;
+        /** @description Time to use for the query, in absolute or relative format */
+        at?: string;
+        /** @description Temporarily rebase the current branch with the main branch for the duration of the query */
+        rebase?: boolean;
+      };
+      path: {
+        artifact_id: string;
       };
     };
     responses: {
       /** @description Successful Response */
       200: {
         content: {
-          "application/json": components["schemas"]["SchemaReadAPI"];
+          "application/json": unknown;
         };
       };
       /** @description Validation Error */
@@ -718,23 +1053,53 @@ export interface operations {
       };
     };
   };
-  /** Load Schema */
-  load_schema_schema_load_post: {
+  /** Generate Artifact */
+  generate_artifact_api_artifact_generate__artifact_definition_id__post: {
     parameters: {
-      query: {
+      query?: {
+        /** @description Name of the branch to use for the query */
         branch?: string;
+        /** @description Time to use for the query, in absolute or relative format */
+        at?: string;
+        /** @description Temporarily rebase the current branch with the main branch for the duration of the query */
+        rebase?: boolean;
+      };
+      path: {
+        artifact_definition_id: string;
       };
     };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["ArtifactGeneratePayload"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": null;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Login User */
+  login_user_api_auth_login_post: {
     requestBody: {
       content: {
-        "application/json": components["schemas"]["SchemaLoadAPI"];
+        "application/json": components["schemas"]["PasswordCredential"];
       };
     };
     responses: {
       /** @description Successful Response */
       200: {
         content: {
-          "application/json": Record<string, never>;
+          "application/json": components["schemas"]["UserToken"];
         };
       };
       /** @description Validation Error */
@@ -745,23 +1110,44 @@ export interface operations {
       };
     };
   };
-  /** Transform Python */
-  transform_python_transform__transform_url__get: {
-    parameters: {
-      query: {
-        branch?: string;
-        at?: string;
-        rebase?: boolean;
+  /** Refresh Jwt Token */
+  refresh_jwt_token_api_auth_refresh_post: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["AccessTokenResponse"];
+        };
       };
-      path: {
-        transform_url: string;
+    };
+  };
+  /** Logout */
+  logout_api_auth_logout_post: {
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": unknown;
+        };
+      };
+    };
+  };
+  /** Get Diff Data */
+  get_diff_data_api_diff_data_get: {
+    parameters: {
+      query?: {
+        time_from?: string;
+        time_to?: string;
+        branch_only?: boolean;
+        /** @description Name of the branch to use for the query */
+        branch?: string;
       };
     };
     responses: {
       /** @description Successful Response */
       200: {
         content: {
-          "application/json": Record<string, never>;
+          "application/json": components["schemas"]["BranchDiff"];
         };
       };
       /** @description Validation Error */
@@ -772,16 +1158,108 @@ export interface operations {
       };
     };
   };
-  /** Generate Rfile */
-  generate_rfile_rfile__rfile_id__get: {
+  /** Get Diff Schema */
+  get_diff_schema_api_diff_schema_get: {
     parameters: {
-      query: {
+      query?: {
+        time_from?: string;
+        time_to?: string;
+        branch_only?: boolean;
+        /** @description Name of the branch to use for the query */
         branch?: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["BranchDiff"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Get Diff Files */
+  get_diff_files_api_diff_files_get: {
+    parameters: {
+      query?: {
+        time_from?: string;
+        time_to?: string;
+        branch_only?: boolean;
+        /** @description Name of the branch to use for the query */
+        branch?: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": {
+            [key: string]: {
+              [key: string]: components["schemas"]["BranchDiffRepository"];
+            };
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Get Diff Artifacts */
+  get_diff_artifacts_api_diff_artifacts_get: {
+    parameters: {
+      query?: {
+        time_from?: string;
+        time_to?: string;
+        branch_only?: boolean;
+        /** @description Name of the branch to use for the query */
+        branch?: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": {
+            [key: string]: components["schemas"]["BranchDiffArtifact"];
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /**
+   * Get File
+   * @description Retrieve a file from a git repository.
+   */
+  get_file_api_file__repository_id___file_path__get: {
+    parameters: {
+      query?: {
+        commit?: string;
+        /** @description Name of the branch to use for the query */
+        branch?: string;
+        /** @description Time to use for the query, in absolute or relative format */
         at?: string;
+        /** @description Temporarily rebase the current branch with the main branch for the duration of the query */
         rebase?: boolean;
       };
       path: {
-        rfile_id: string;
+        repository_id: string;
+        file_path: string;
       };
     };
     responses: {
@@ -800,7 +1278,7 @@ export interface operations {
     };
   };
   /** Get Config */
-  get_config_config_get: {
+  get_config_api_config_get: {
     responses: {
       /** @description Successful Response */
       200: {
@@ -811,7 +1289,7 @@ export interface operations {
     };
   };
   /** Get Info */
-  get_info_info_get: {
+  get_info_api_info_get: {
     responses: {
       /** @description Successful Response */
       200: {
@@ -821,120 +1299,19 @@ export interface operations {
       };
     };
   };
-  /** Get Diff Data */
-  get_diff_data_diff_data_get: {
+  /** Get Menu */
+  get_menu_api_menu_get: {
     parameters: {
-      query: {
+      query?: {
+        /** @description Name of the branch to use for the query */
         branch?: string;
-        time_from?: string;
-        time_to?: string;
-        branch_only?: boolean;
       };
     };
     responses: {
       /** @description Successful Response */
       200: {
         content: {
-          "application/json": {
-            [key: string]:
-              | components["schemas"]["infrahub__api__diff__BranchDiffNode"][]
-              | undefined;
-          };
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  /** Get Diff Files */
-  get_diff_files_diff_files_get: {
-    parameters: {
-      query: {
-        branch?: string;
-        time_from?: string;
-        time_to?: string;
-        branch_only?: boolean;
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        content: {
-          "application/json": {
-            [key: string]:
-              | {
-                  [key: string]:
-                    | components["schemas"]["infrahub__api__diff__BranchDiffRepository"]
-                    | undefined;
-                }
-              | undefined;
-          };
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  /** Get Diff Data */
-  get_diff_data_dev_diff_data_get: {
-    parameters: {
-      query: {
-        branch?: string;
-        time_from?: string;
-        time_to?: string;
-        branch_only?: boolean;
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        content: {
-          "application/json": {
-            [key: string]:
-              | components["schemas"]["infrahub__api__dev_diff__BranchDiffNode"][]
-              | undefined;
-          };
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  /** Get Diff Files */
-  get_diff_files_dev_diff_files_get: {
-    parameters: {
-      query: {
-        branch?: string;
-        time_from?: string;
-        time_to?: string;
-        branch_only?: boolean;
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        content: {
-          "application/json": {
-            [key: string]:
-              | {
-                  [key: string]:
-                    | components["schemas"]["infrahub__api__dev_diff__BranchDiffRepository"]
-                    | undefined;
-                }
-              | undefined;
-          };
+          "application/json": components["schemas"]["InterfaceMenu"][];
         };
       };
       /** @description Validation Error */
@@ -946,14 +1323,18 @@ export interface operations {
     };
   };
   /** Graphql Query */
-  graphql_query_query__query_id__get: {
+  graphql_query_api_query__query_id__get: {
     parameters: {
-      query: {
+      query?: {
+        /** @description Name of the branch to use for the query */
         branch?: string;
+        /** @description Time to use for the query, in absolute or relative format */
         at?: string;
+        /** @description Temporarily rebase the current branch with the main branch for the duration of the query */
         rebase?: boolean;
       };
       path: {
+        /** @description ID or Name of the GraphQL query to execute */
         query_id: string;
       };
     };
@@ -961,7 +1342,259 @@ export interface operations {
       /** @description Successful Response */
       200: {
         content: {
-          "application/json": Record<string, never>;
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Get Schema */
+  get_schema_api_schema__get: {
+    parameters: {
+      query?: {
+        /** @description Name of the branch to use for the query */
+        branch?: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["SchemaReadAPI"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Get Schema */
+  get_schema_api_schema_get: {
+    parameters: {
+      query?: {
+        /** @description Name of the branch to use for the query */
+        branch?: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["SchemaReadAPI"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Get Schema Summary */
+  get_schema_summary_api_schema_summary_get: {
+    parameters: {
+      query?: {
+        /** @description Name of the branch to use for the query */
+        branch?: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["SchemaBranchHash"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Get Schema By Kind */
+  get_schema_by_kind_api_schema__schema_kind__get: {
+    parameters: {
+      query?: {
+        /** @description Name of the branch to use for the query */
+        branch?: string;
+      };
+      path: {
+        schema_kind: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json":
+            | components["schemas"]["APINodeSchema"]
+            | components["schemas"]["APIGenericSchema"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Load Schema */
+  load_schema_api_schema_load_post: {
+    parameters: {
+      query?: {
+        /** @description Name of the branch to use for the query */
+        branch?: string;
+      };
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SchemasLoadAPI"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Get File */
+  get_file_api_storage_object__identifier__get: {
+    parameters: {
+      path: {
+        identifier: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Upload Content */
+  upload_content_api_storage_upload_content_post: {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UploadContentPayload"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["UploadResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Upload File */
+  upload_file_api_storage_upload_file_post: {
+    requestBody: {
+      content: {
+        "multipart/form-data": components["schemas"]["Body_upload_file_api_storage_upload_file_post"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": components["schemas"]["UploadResponse"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Transform Python */
+  transform_python_api_transform__transform_url__get: {
+    parameters: {
+      query?: {
+        /** @description Name of the branch to use for the query */
+        branch?: string;
+        /** @description Time to use for the query, in absolute or relative format */
+        at?: string;
+        /** @description Temporarily rebase the current branch with the main branch for the duration of the query */
+        rebase?: boolean;
+      };
+      path: {
+        transform_url: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  /** Generate Rfile */
+  generate_rfile_api_rfile__rfile_id__get: {
+    parameters: {
+      query?: {
+        /** @description Name of the branch to use for the query */
+        branch?: string;
+        /** @description Time to use for the query, in absolute or relative format */
+        at?: string;
+        /** @description Temporarily rebase the current branch with the main branch for the duration of the query */
+        rebase?: boolean;
+      };
+      path: {
+        /** @description ID or Name of the RFile to render */
+        rfile_id: string;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        content: {
+          "text/plain": string;
         };
       };
       /** @description Validation Error */

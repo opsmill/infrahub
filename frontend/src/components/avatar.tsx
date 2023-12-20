@@ -31,7 +31,7 @@ const getAvatarSize = (size?: AVATAR_SIZE) => {
 };
 
 export const Avatar = (props: tAvatar) => {
-  const { name, image, size, className } = props;
+  const { name, image, size, className, ...otherProps } = props;
 
   if (image) {
     return (
@@ -39,6 +39,7 @@ export const Avatar = (props: tAvatar) => {
         className={`${getAvatarSize(size)} rounded-full object-cover`}
         src={image}
         alt="Avatar"
+        {...otherProps}
       />
     );
   } else {
@@ -48,7 +49,8 @@ export const Avatar = (props: tAvatar) => {
           getAvatarSize(size),
           "rounded-full bg-custom-blue-200 text-custom-white flex justify-center items-center",
           className ?? ""
-        )}>
+        )}
+        {...otherProps}>
         {initials(name)}
       </div>
     );

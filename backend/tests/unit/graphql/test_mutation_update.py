@@ -353,9 +353,7 @@ async def test_update_delete_optional_relationship_cardinality_one(
             }
         }
     }
-    """ % (
-        car_accord_main.id,
-    )
+    """ % (car_accord_main.id,)
     result = await graphql(
         schema=await generate_graphql_schema(db=db, include_subscription=False, branch=branch),
         source=query,

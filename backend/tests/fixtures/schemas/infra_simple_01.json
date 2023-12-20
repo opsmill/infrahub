@@ -9,7 +9,9 @@
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": true},
                 {"name": "description", "kind": "Text", "optional": true, "order_weight": 900},
-                {"name": "type", "kind": "Text"}
+                {"name": "type", "kind": "Text"},
+                {"name": "role", "kind": "Dropdown", "choices": [{"name": "router"}, {"name": "firewall"}]},
+                {"name": "status", "kind": "Dropdown", "choices": [{"name": "active"}, {"name": "planned"}]}
             ],
             "relationships": [
                 {
@@ -34,8 +36,6 @@
                 {"name": "enabled", "kind": "Boolean", "default_value": true}
             ],
             "relationships": [
-                {"name": "status", "peer": "BuiltinStatus", "optional": false, "cardinality": "one", "kind": "Attribute"},
-                {"name": "role", "peer": "BuiltinRole", "optional": false, "cardinality": "one", "kind": "Attribute"},
                 {"name": "device", "peer": "InfraDevice", "optional": false, "cardinality": "one", "kind": "Parent"},
                 {"name": "tags", "peer": "BuiltinTag", "optional": true, "cardinality": "many", "kind": "Attribute"},
                 {

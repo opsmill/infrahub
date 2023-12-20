@@ -1,13 +1,19 @@
-*.pyc
+**/*.pyc
 *.env
 script.py
 node_modules
 .venv
 .ruff_cache
+**/.ruff_cache
 .mypy_cache
 .pytest_cache
 *.env
-
+.DS_Store
+.coverage
+coverage.xml
+.git*
+.devcontainer
+.husky
 frontend/node_modules
 
 # Direnv files (https://direnv.net/)

@@ -1,0 +1,59 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "infrahub-helm.fullname" . }}-cache
+  labels:
+    service: cache
+  {{- include "infrahub-helm.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.messageQueue.replicas | default 1 }}
+  selector:
+    matchLabels:
+      service: cache
+    {{- include "infrahub-helm.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        service: cache
+      {{- include "infrahub-helm.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - env:
+            - name: KUBERNETES_CLUSTER_DOMAIN
+              value: {{ .Values.global.kubernetesClusterDomain }}
+          image: {{ .Values.cache.cache.image.repository }}:{{ .Values.cache.cache.image.tag }}
+          imagePullPolicy: {{ default .Values.global.imagePullPolicy .Values.messageQueue.messageQueue.imagePullPolicy }}
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - redis-cli -a ping
+            failureThreshold: 3
+            periodSeconds: 5
+            timeoutSeconds: 5
+          name: cache
+          ports:
+          {{- range .Values.cache.ports }}
+            - containerPort: {{ .targetPort }}
+              hostPort: {{ .port }}
+          {{- end }}
+          resources: {}
+      restartPolicy: Always
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "infrahub-helm.fullname" . }}-cache
+  labels:
+    service: cache
+  {{- include "infrahub-helm.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.cache.type }}
+  selector:
+    service: cache
+  {{- include "infrahub-helm.selectorLabels" . | nindent 4 }}
+  ports:
+	  {{- .Values.cache.ports | toYaml | nindent 4 }}

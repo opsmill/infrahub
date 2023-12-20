@@ -51,7 +51,9 @@ export const Tabs = (props: TabsProps) => {
                   {tab.label}
 
                   {tab.count !== undefined && (
-                    <Pill className="ml-2">{JSON.stringify(tab.count)}</Pill>
+                    <Pill className="ml-2" data-cy="tab-counter">
+                      {JSON.stringify(tab.count)}
+                    </Pill>
                   )}
 
                   <Component />

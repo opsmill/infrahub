@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, List, Set, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Set, Union
 
 from graphene.types.definitions import GrapheneInterfaceType, GrapheneObjectType
 from graphql import (  # pylint: disable=no-name-in-module
@@ -36,7 +36,7 @@ def calculate_dict_height(data: dict, cnt: int = 0) -> int:
     return cnt
 
 
-async def extract_fields(selection_set: SelectionSetNode) -> Dict[str, Dict]:
+async def extract_fields(selection_set: SelectionSetNode) -> Optional[Dict[str, Dict]]:
     """This function extract all the requested fields in a tree of Dict from a SelectionSetNode
 
     The goal of this function is to limit the fields that we need to query from the backend.
@@ -270,7 +270,7 @@ def print_selection_set(selection_set: SelectionSetNode, level: int = 1) -> int:
         # print(f"in print_selection_set loop {field}")
         # The field we are at is already a lever deeper, even if it doesn't have its own selection set.
         # max_depth = max(max_depth, level + 1)
-        print(f"{level*tab}{field.name.value}")
+        print(f"{level * tab}{field.name.value}")
         if selection_set := getattr(field, "selection_set", None):
             # max_depth = max(max_depth, self._get_query_depth(selection_set, level + 1))
             print_selection_set(selection_set, level + 1)

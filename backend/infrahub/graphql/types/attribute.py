@@ -45,6 +45,51 @@ class TextAttributeType(BaseAttribute):
         interfaces = {AttributeInterface}
 
 
+class DropdownType(BaseAttribute):
+    value = Field(String)
+    label = Field(String)
+    color = Field(String)
+    description = Field(String)
+
+    class Meta:
+        description = "Attribute of type Dropdown"
+        name = "Dropdown"
+        interfaces = {AttributeInterface}
+
+
+class IPHostType(BaseAttribute):
+    value = Field(String)
+    ip = Field(String)
+    hostmask = Field(String)
+    netmask = Field(String)
+    prefixlen = Field(String)
+    version = Field(Int)
+    with_hostmask = Field(String)
+    with_netmask = Field(String)
+
+    class Meta:
+        description = "Attribute of type Text"
+        name = "IPHost"
+        interfaces = {AttributeInterface}
+
+
+class IPNetworkType(BaseAttribute):
+    value = Field(String)
+    broadcast_address = Field(String)
+    hostmask = Field(String)
+    netmask = Field(String)
+    prefixlen = Field(String)
+    num_addresses = Field(Int)
+    version = Field(Int)
+    with_hostmask = Field(String)
+    with_netmask = Field(String)
+
+    class Meta:
+        description = "Attribute of type Text"
+        name = "IPNetwork"
+        interfaces = {AttributeInterface}
+
+
 class NumberAttributeType(BaseAttribute):
     value = Field(Int)
 

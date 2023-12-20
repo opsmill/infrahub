@@ -1,6 +1,8 @@
-import { gql, useReactiveVar } from "@apollo/client";
-import { PlusIcon, Square3Stack3DIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { gql } from "@apollo/client";
+import { PlusIcon } from "@heroicons/react/24/outline";
+import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
+import { useAtomValue } from "jotai/index";
 import { useContext, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -15,11 +17,10 @@ import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
 import { getObjectItemsPaginated } from "../../graphql/queries/objects/getObjectItems";
-import { branchVar } from "../../graphql/variables/branchVar";
-import { dateVar } from "../../graphql/variables/dateVar";
 import useFilters from "../../hooks/useFilters";
 import usePagination from "../../hooks/usePagination";
 import useQuery from "../../hooks/useQuery";
+import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { iComboBoxFilter } from "../../state/atoms/filters.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { classNames } from "../../utils/common";
@@ -36,6 +37,7 @@ import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 
 export default function ObjectItems(props: any) {
   const { objectname: objectnameFromParams } = useParams();
@@ -52,8 +54,8 @@ export default function ObjectItems(props: any) {
 
   const [schemaList] = useAtom(schemaState);
   const [genericList] = useAtom(genericsState);
-  const branch = useReactiveVar(branchVar);
-  const date = useReactiveVar(dateVar);
+  const branch = useAtomValue(currentBranchAtom);
+  const date = useAtomValue(datetimeAtom);
   const [filters] = useFilters();
   const [pagination] = usePagination();
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
@@ -124,33 +126,40 @@ export default function ObjectItems(props: any) {
 
     setIsLoading(true);
 
-    const mutationString = deleteObject({
-      kind: schemaData?.kind,
-      data: stringifyWithoutQuotes({
-        id: rowToDelete?.id,
-      }),
-    });
+    try {
+      const mutationString = deleteObject({
+        kind: rowToDelete.__typename,
+        data: stringifyWithoutQuotes({
+          id: rowToDelete?.id,
+        }),
+      });
 
-    const mutation = gql`
-      ${mutationString}
-    `;
+      const mutation = gql`
+        ${mutationString}
+      `;
 
-    await graphqlClient.mutate({
-      mutation,
-      context: { branch: branch?.name, date },
-    });
+      await graphqlClient.mutate({
+        mutation,
+        context: { branch: branch?.name, date },
+      });
 
-    refetch();
+      refetch();
 
-    setDeleteModal(false);
+      setDeleteModal(false);
+
+      setRowToDelete(undefined);
+
+      toast(
+        <Alert
+          type={ALERT_TYPES.SUCCESS}
+          message={`Object ${rowToDelete?.display_label} deleted`}
+        />
+      );
+    } catch (error) {
+      console.error("Error while deleting object: ", error);
+    }
 
     setIsLoading(false);
-
-    setRowToDelete(undefined);
-
-    toast(
-      <Alert type={ALERT_TYPES.SUCCESS} message={`Object ${rowToDelete?.display_label} deleted`} />
-    );
   };
 
   if (error) {
@@ -162,9 +171,11 @@ export default function ObjectItems(props: any) {
       <div className="flex items-center p-4 w-full">
         {schemaData && (
           <div className="sm:flex-auto flex items-center">
-            <h1 className="text-md font-semibold text-gray-900">
-              {schemaData.name} ({count})
+            <h1 className="text-md font-semibold text-gray-900 mr-2">
+              {schemaData.label} ({count})
             </h1>
+
+            <div className="text-sm">{schemaData?.description}</div>
           </div>
         )}
 
@@ -186,22 +197,22 @@ export default function ObjectItems(props: any) {
             <div className="min-w-full pt-2 align-middle">
               <div className="shadow-sm ring-1 ring-custom-black ring-opacity-5 overflow-x-auto">
                 <table className="min-w-full border-separate" style={{ borderSpacing: 0 }}>
-                  <thead className="bg-gray-50">
+                  <thead className="bg-gray-50 text-left">
                     <tr>
                       {columns?.map((attribute) => (
                         <th
                           key={attribute.name}
                           scope="col"
-                          className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 px-4 py-2 text-left text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter">
+                          className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 p-2 text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter">
                           {attribute.label}
                         </th>
                       ))}
                       <th
                         scope="col"
-                        className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 px-4 py-2 text-left text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter"></th>
+                        className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 p-2 text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter"></th>
                     </tr>
                   </thead>
-                  <tbody className="bg-custom-white">
+                  <tbody className="bg-custom-white text-left">
                     {rows?.map((row: any, index: number) => (
                       <tr
                         onClick={() =>
@@ -214,7 +225,7 @@ export default function ObjectItems(props: any) {
                             key={row.id + "-" + attribute.name}
                             className={classNames(
                               index !== rows.length - 1 ? "border-b border-gray-200" : "",
-                              "whitespace-wrap p-4 text-xs text-gray-900"
+                              "whitespace-wrap px-2 py-1 text-xs text-gray-900"
                             )}>
                             {getObjectItemDisplayValue(row, attribute)}
                           </td>
@@ -223,7 +234,7 @@ export default function ObjectItems(props: any) {
                         <td
                           className={classNames(
                             index !== rows.length - 1 ? "border-b border-gray-200" : "",
-                            "whitespace-wrap text-xs text-gray-900"
+                            "whitespace-wrap text-xs text-gray-900 flex justify-end"
                           )}>
                           <Button
                             data-cy="delete"
@@ -233,7 +244,7 @@ export default function ObjectItems(props: any) {
                               setRowToDelete(row);
                               setDeleteModal(true);
                             }}>
-                            <TrashIcon className="w-4 h-4 text-red-500" />
+                            <Icon icon="mdi:trash" className="text-red-500" />
                           </Button>
                         </td>
                       </tr>
@@ -254,14 +265,17 @@ export default function ObjectItems(props: any) {
         title={
           <div className="space-y-2">
             <div className="flex items-center w-full">
-              <span className="text-lg font-semibold mr-3">Create {objectname}</span>
+              <span className="text-lg font-semibold mr-3">Create {schemaData?.label}</span>
               <div className="flex-1"></div>
               <div className="flex items-center">
-                <Square3Stack3DIcon className="w-4 h-4" />
+                <Icon icon={"mdi:layers-triple"} />
                 <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
               </div>
             </div>
-            <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
+
+            <div className="text-sm">{schemaData?.description}</div>
+
+            <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 mr-2">
               <svg
                 className="h-1.5 w-1.5 mr-1 fill-yellow-500"
                 viewBox="0 0 6 6"

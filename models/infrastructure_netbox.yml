@@ -6,6 +6,8 @@ generics:
     namespace: Infra
     description: "Generic Network Interface."
     label: "Interface"
+    icon: "mdi:ethernet"
+    menu_placement: "InfraDevice"
     display_labels:
       - name__value
     order_by:
@@ -50,6 +52,7 @@ generics:
   - name: Endpoint
     namespace: Infra
     description: "Generic Endpoint to connect two objects together."
+    include_in_menu: false
     label: "Endpoint"
     relationships:
       - name: connected_endpoint
@@ -61,6 +64,7 @@ generics:
   - name: Choice
     namespace: Template
     description: "Generic Choice"
+    include_in_menu: false
     label: "Choice"
     display_labels:
       - name__value
@@ -73,7 +77,7 @@ generics:
       - name: description
         kind: Text
         optional: true
-      - name: Color
+      - name: color
         kind: Text
         optional: true
     relationships:
@@ -88,6 +92,8 @@ nodes:
     namespace: Infra
     description: "An Autonomous System (AS) is a set of Internet routable IP prefixes belonging to a network"
     label: "Autonomous System"
+    icon: "mdi:bank-circle-outline"
+    menu_placement: InfraBGPSession
     default_filter: name__value
     order_by: ["asn__value"]
     display_labels:
@@ -113,6 +119,8 @@ nodes:
     namespace: Infra
     description: "A BGP Peer Group is used to regroup parameters that are shared across multiple peers"
     label: "BGP Peer Group"
+    icon: "mdi:view-grid-plus-outline"
+    menu_placement: InfraBGPSession
     default_filter: name__value
     order_by:
       - name__value
@@ -147,6 +155,7 @@ nodes:
     namespace: Infra
     description: "A BGP Session represent a point to point connection between two routers"
     label: "BGP Session"
+    icon: "mdi:transit-connection-horizontal"
     inherit_from:
       - "CoreArtifactTarget"
     order_by:
@@ -216,8 +225,9 @@ nodes:
         kind: Attribute
   - name: Circuit
     namespace: Infra
-    description: "A Circuit represent a single physical link between two location"
+    description: "A Circuit represent a single physical link between two locations"
     label: "Circuit"
+    icon: "mdi:transit-connection-variant"
     default_filter: circuit_id__value
     order_by:
       - circuit_id__value
@@ -269,6 +279,8 @@ nodes:
     namespace: Infra
     description: "A Circuit endpoint is attached to each end of a circuit"
     label: "Circuit Endpoint"
+    icon: "mdi:ethernet-cable"
+    menu_placement: "InfraCircuit"
     attributes:
       - name: description
         kind: Text
@@ -288,8 +300,10 @@ nodes:
         kind: Parent
   - name: CircuitType
     namespace: Template
-    description: "A typoe of Circuit"
+    description: "A type of Circuit"
     label: "Circuit Type"
+    icon: "mdi:poll"
+    menu_placement: "InfraCircuit"
     display_labels:
       - name__value
     order_by:
@@ -299,13 +313,14 @@ nodes:
     relationships:
       - cardinality: many
         identifier: circuit__type
-        name: Circuit
+        name: circuit
         optional: true
         peer: InfraCircuit
   - name: Device
     namespace: Infra
     description: "Generic Device object."
     label: "Device"
+    icon: "mdi:router-network"
     default_filter: name__value
     inherit_from:
       - "CoreArtifactTarget"
@@ -396,6 +411,8 @@ nodes:
     namespace: Template
     description: "A model of device"
     label: "Device Type"
+    icon: "mdi:poll"
+    menu_placement: "InfraDevice"
     display_labels:
       - name__value
     order_by:
@@ -407,10 +424,18 @@ nodes:
         label: Part Number
         optional: true
         kind: Text
+      - name: height
+        label: "Height (U)"
+        optional: true
+        kind: Number
+      - name: full_depth
+        label: "Full Depth"
+        optional: true
+        kind: Boolean
     relationships:
       - cardinality: many
         identifier: device__type
-        name: Device
+        name: device
         optional: true
         peer: InfraDevice
       - name: manufacturer
@@ -422,6 +447,7 @@ nodes:
     namespace: Infra
     description: "Network Layer 3 Interface"
     label: "Interface L3"
+    include_in_menu: false
     display_labels:
       - name__value
     order_by:
@@ -440,6 +466,7 @@ nodes:
     namespace: Infra
     description: "Network Layer 2 Interface"
     label: "Interface L2"
+    include_in_menu: false
     display_labels:
       - name__value
     order_by:
@@ -472,6 +499,8 @@ nodes:
     namespace: Infra
     description: "IP Address"
     label: "IP Address"
+    icon: "mdi:ip-outline"
+    menu_placement: "InfraPrefix"
     default_filter: address__value
     order_by:
       - "address__value"
@@ -515,6 +544,8 @@ nodes:
     namespace: Infra
     description: "A Platform represent the type of software running on a device."
     label: "Platform"
+    icon: "mdi:application-cog-outline"  # mdi:application-brackets-outline
+    menu_placement: "InfraDevice"
     default_filter: name__value
     order_by:
       - name__value
@@ -548,6 +579,8 @@ nodes:
     namespace: Infra
     description: "Represent the boundary of a provider network, the details of which are unknown or unimportant."
     label: "Provider Network"
+    icon: "mdi:cloud"
+    menu_placement: "InfraCircuit"
     default_filter: name__value
     order_by:
       - name__value
@@ -584,6 +617,7 @@ nodes:
   - name: Prefix
     namespace: Infra
     description: "IPv4 or IPv6 network (with mask)"
+    icon: "mdi:ip-network"
     label: "Prefix"
     default_filter: prefix__value
     order_by:
@@ -643,6 +677,8 @@ nodes:
     namespace: Infra
     description: "A Rack represents a physical two- or four-post equipment rack in which devices can be installed."
     label: "Rack"
+    icon: "mdi:server"
+    menu_placement: "BuiltinLocation"
     default_filter: name__value
     display_labels:
       - name__value
@@ -692,6 +728,8 @@ nodes:
     namespace: Infra
     description: "Route Target (RFC 4360)"
     label: "Route Target"
+    icon: "mdi:target"
+    menu_placement: "InfraVRF"
     default_filter: name__value
     order_by:
       - name__value
@@ -720,7 +758,8 @@ nodes:
     namespace: Infra
     description: "A VLAN is isolated layer two domain"
     label: "VLAN"
-    default_filter: vlan_id__value
+    icon: "mdi:lan-pending"   # mdi:lan
+    default_filter: name__value
     order_by:
       - vlan_id__value
     display_labels:
@@ -771,6 +810,7 @@ nodes:
     namespace: Infra
     description: "A VRF is isolated layer three domain"
     label: "VRF"
+    icon: "mdi:router"
     default_filter: name__value
     order_by:
       - name__value
@@ -809,14 +849,14 @@ nodes:
         optional: true
         cardinality: many
         kind: Attribute
-      - name: importRT
+      - name: import_rt
         identifier: "vrf__import"
         label: "Import Targets"
         peer: InfraRouteTarget
         optional: true
         cardinality: many
         kind: Attribute
-      - name: exportRT
+      - name: export_rt
         identifier: "vrf__export"
         label: "Export Targets"
         peer: InfraRouteTarget

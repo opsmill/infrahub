@@ -142,9 +142,7 @@ async def test_update_artifact_definition(
             }
         }
     }
-    """ % (
-        definition1.id
-    )
+    """ % (definition1.id)
 
     result = await graphql(
         schema=await generate_graphql_schema(db=db, include_subscription=False, branch=branch),

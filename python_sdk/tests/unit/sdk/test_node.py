@@ -158,11 +158,13 @@ async def test_init_node_data_graphql(client, location_schema, location_data01, 
 
 
 @pytest.mark.parametrize("client_type", client_types)
-async def test_query_data_no_filters(client, location_schema, client_type):
+async def test_query_data_no_filters(clients, location_schema, client_type):
     if client_type == "standard":
+        client: InfrahubClient = getattr(clients, client_type)  # type: ignore[annotation-unchecked]
         node = InfrahubNode(client=client, schema=location_schema)
         data = await node.generate_query_data()
     else:
+        client: InfrahubClientSync = getattr(clients, client_type)  # type: ignore[annotation-unchecked]
         node = InfrahubNodeSync(client=client, schema=location_schema)
         data = node.generate_query_data()
 
@@ -248,14 +250,18 @@ async def test_query_data_no_filters(client, location_schema, client_type):
 
 
 @pytest.mark.parametrize("client_type", client_types)
-async def test_query_data_node(client, location_schema, client_type):
+async def test_query_data_node(clients, location_schema, client_type):
     if client_type == "standard":
+        client: InfrahubClient = getattr(clients, client_type)  # type: ignore[annotation-unchecked]
         node = InfrahubNode(client=client, schema=location_schema)
+        data = await node.generate_query_data_node()
 
     else:
+        client: InfrahubClientSync = getattr(clients, client_type)  # type: ignore[annotation-unchecked]
         node = InfrahubNodeSync(client=client, schema=location_schema)
+        data = node.generate_query_data_node()
 
-    assert node.generate_query_data_node() == {
+    assert data == {
         "name": {
             "is_protected": None,
             "is_visible": None,
@@ -302,6 +308,197 @@ async def test_query_data_node(client, location_schema, client_type):
 
 
 @pytest.mark.parametrize("client_type", client_types)
+async def test_query_data_with_prefetch_relationships(clients, mock_schema_query_02, client_type):
+    if client_type == "standard":
+        client: InfrahubClient = getattr(clients, client_type)  # type: ignore[annotation-unchecked]
+        location_schema: GenericSchema = await client.schema.get(kind="BuiltinLocation")  # type: ignore[annotation-unchecked]
+        node = InfrahubNode(client=client, schema=location_schema)
+        data = await node.generate_query_data(prefetch_relationships=True)
+
+    else:
+        client: InfrahubClientSync = getattr(clients, client_type)  # type: ignore[annotation-unchecked]
+        location_schema: GenericSchema = client.schema.get(kind="BuiltinLocation")  # type: ignore[annotation-unchecked]
+        node = InfrahubNodeSync(client=client, schema=location_schema)
+        data = node.generate_query_data(prefetch_relationships=True)
+
+    assert data == {
+        "BuiltinLocation": {
+            "@filters": {},
+            "count": None,
+            "edges": {
+                "node": {
+                    "__typename": None,
+                    "id": None,
+                    "display_label": None,
+                    "name": {
+                        "is_protected": None,
+                        "is_visible": None,
+                        "owner": {
+                            "__typename": None,
+                            "display_label": None,
+                            "id": None,
+                        },
+                        "source": {
+                            "__typename": None,
+                            "display_label": None,
+                            "id": None,
+                        },
+                        "value": None,
+                    },
+                    "description": {
+                        "is_protected": None,
+                        "is_visible": None,
+                        "owner": {
+                            "__typename": None,
+                            "display_label": None,
+                            "id": None,
+                        },
+                        "source": {
+                            "__typename": None,
+                            "display_label": None,
+                            "id": None,
+                        },
+                        "value": None,
+                    },
+                    "type": {
+                        "is_protected": None,
+                        "is_visible": None,
+                        "owner": {
+                            "__typename": None,
+                            "display_label": None,
+                            "id": None,
+                        },
+                        "source": {
+                            "__typename": None,
+                            "display_label": None,
+                            "id": None,
+                        },
+                        "value": None,
+                    },
+                    "primary_tag": {
+                        "properties": {
+                            "is_protected": None,
+                            "is_visible": None,
+                            "owner": {
+                                "__typename": None,
+                                "display_label": None,
+                                "id": None,
+                            },
+                            "source": {
+                                "__typename": None,
+                                "display_label": None,
+                                "id": None,
+                            },
+                        },
+                        "node": {
+                            "id": None,
+                            "display_label": None,
+                            "__typename": None,
+                            "description": {
+                                "is_protected": None,
+                                "is_visible": None,
+                                "owner": {
+                                    "__typename": None,
+                                    "display_label": None,
+                                    "id": None,
+                                },
+                                "source": {
+                                    "__typename": None,
+                                    "display_label": None,
+                                    "id": None,
+                                },
+                                "value": None,
+                            },
+                            "name": {
+                                "is_protected": None,
+                                "is_visible": None,
+                                "owner": {
+                                    "__typename": None,
+                                    "display_label": None,
+                                    "id": None,
+                                },
+                                "source": {
+                                    "__typename": None,
+                                    "display_label": None,
+                                    "id": None,
+                                },
+                                "value": None,
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    }
+
+
+@pytest.mark.parametrize("client_type", client_types)
+async def test_query_data_node_with_prefetch_relationships(clients, mock_schema_query_02, client_type):
+    if client_type == "standard":
+        client: InfrahubClient = getattr(clients, client_type)  # type: ignore[annotation-unchecked]
+        location_schema: GenericSchema = await client.schema.get(kind="BuiltinLocation")  # type: ignore[annotation-unchecked]
+        node = InfrahubNode(client=client, schema=location_schema)
+        data = await node.generate_query_data_node(prefetch_relationships=True)
+
+    else:
+        client: InfrahubClientSync = getattr(clients, client_type)  # type: ignore[annotation-unchecked]
+        location_schema: GenericSchema = client.schema.get(kind="BuiltinLocation")  # type: ignore[annotation-unchecked]
+        node = InfrahubNodeSync(client=client, schema=location_schema)
+        data = node.generate_query_data_node(prefetch_relationships=True)
+
+    assert data == {
+        "description": {
+            "is_protected": None,
+            "is_visible": None,
+            "owner": {"__typename": None, "display_label": None, "id": None},
+            "source": {"__typename": None, "display_label": None, "id": None},
+            "value": None,
+        },
+        "name": {
+            "is_protected": None,
+            "is_visible": None,
+            "owner": {"__typename": None, "display_label": None, "id": None},
+            "source": {"__typename": None, "display_label": None, "id": None},
+            "value": None,
+        },
+        "primary_tag": {
+            "node": {
+                "__typename": None,
+                "description": {
+                    "is_protected": None,
+                    "is_visible": None,
+                    "owner": {"__typename": None, "display_label": None, "id": None},
+                    "source": {"__typename": None, "display_label": None, "id": None},
+                    "value": None,
+                },
+                "display_label": None,
+                "id": None,
+                "name": {
+                    "is_protected": None,
+                    "is_visible": None,
+                    "owner": {"__typename": None, "display_label": None, "id": None},
+                    "source": {"__typename": None, "display_label": None, "id": None},
+                    "value": None,
+                },
+            },
+            "properties": {
+                "is_protected": None,
+                "is_visible": None,
+                "owner": {"__typename": None, "display_label": None, "id": None},
+                "source": {"__typename": None, "display_label": None, "id": None},
+            },
+        },
+        "type": {
+            "is_protected": None,
+            "is_visible": None,
+            "owner": {"__typename": None, "display_label": None, "id": None},
+            "source": {"__typename": None, "display_label": None, "id": None},
+            "value": None,
+        },
+    }
+
+
+@pytest.mark.parametrize("client_type", client_types)
 async def test_query_data_generic(clients, mock_schema_query_02, client_type):  # pylint: disable=unused-argument
     if client_type == "standard":
         client: InfrahubClient = getattr(clients, client_type)  # type: ignore[annotation-unchecked]
@@ -331,9 +528,7 @@ async def test_query_data_generic(clients, mock_schema_query_02, client_type):  
 
 
 @pytest.mark.parametrize("client_type", client_types)
-async def test_query_data_generic_fragment(
-    clients, mock_schema_query_02, client_type
-):  # pylint: disable=unused-argument
+async def test_query_data_generic_fragment(clients, mock_schema_query_02, client_type):  # pylint: disable=unused-argument
     if client_type == "standard":
         client: InfrahubClient = getattr(clients, client_type)  # type: ignore[annotation-unchecked]
         corenode_schema: GenericSchema = await client.schema.get(kind="CoreNode")  # type: ignore[annotation-unchecked]
@@ -1145,3 +1340,25 @@ async def test_node_extract(client, location_schema, location_data01, client_typ
         "identifier": "llllllll-llll-llll-llll-llllllllllll",
         "name": "DFW",
     }
+
+
+@pytest.mark.parametrize("client_type", client_types)
+async def test_read_only_attr(
+    client,
+    address_schema,
+    address_data,
+    client_type,
+):
+    if client_type == "standard":
+        address = InfrahubNode(client=client, schema=address_schema, data=address_data)
+    else:
+        address = InfrahubNodeSync(client=client, schema=address_schema, data=address_data)
+
+    assert address._generate_input_data()["data"] == {
+        "data": {
+            "street_number": {"is_protected": False, "is_visible": True, "value": "1234"},
+            "street_name": {"is_protected": False, "is_visible": True, "value": "Fake Street"},
+            "postal_code": {"is_protected": False, "is_visible": True, "value": "123ABC"},
+        },
+    }
+    assert address.computed_address.value == "1234 Fake Street 123ABC"

@@ -1,4 +1,4 @@
-import { gql, useReactiveVar } from "@apollo/client";
+import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import * as R from "ramda";
 import { useState } from "react";
@@ -7,8 +7,6 @@ import { ALERT_TYPES, Alert } from "../../components/alert";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { createObject } from "../../graphql/mutations/objects/createObject";
 import { getDropdownOptionsForRelatedPeersPaginated } from "../../graphql/queries/objects/dropdownOptionsForRelatedPeers";
-import { branchVar } from "../../graphql/variables/branchVar";
-import { dateVar } from "../../graphql/variables/dateVar";
 import useQuery from "../../hooks/useQuery";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
@@ -20,24 +18,36 @@ import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
+import { useAtomValue } from "jotai/index";
+import { currentBranchAtom } from "../../state/atoms/branches.atom";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 
 interface iProps {
-  objectname: string;
+  objectname?: string;
   onCancel?: Function;
   onCreate: Function;
   refetch?: Function;
-  formStructure: DynamicFieldData[];
+  formStructure?: DynamicFieldData[];
   customObject?: any;
+  preventObjectsCreation?: boolean;
 }
 
 export default function ObjectItemCreate(props: iProps) {
-  const { objectname, onCreate, onCancel, refetch, formStructure, customObject = {} } = props;
+  const {
+    objectname,
+    onCreate,
+    onCancel,
+    refetch,
+    formStructure,
+    customObject = {},
+    preventObjectsCreation,
+  } = props;
 
   const [schemaList] = useAtom(schemaState);
   const [schemaKindName] = useAtom(schemaKindNameState);
   const [genericsList] = useAtom(genericsState);
-  const branch = useReactiveVar(branchVar);
-  const date = useReactiveVar(dateVar);
+  const branch = useAtomValue(currentBranchAtom);
+  const date = useAtomValue(datetimeAtom);
   const [isLoading, setIsLoading] = useState(false);
 
   const schema = schemaList.find((s) => s.kind === objectname);
@@ -149,6 +159,7 @@ export default function ObjectItemCreate(props: iProps) {
             fields={fields}
             isLoading={isLoading}
             submitLabel={"Create"}
+            preventObjectsCreation={preventObjectsCreation}
           />
         </div>
       )}

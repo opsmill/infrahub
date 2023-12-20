@@ -4,8 +4,14 @@ import { Badge } from "../components/badge";
 import { CodeEditor } from "../components/code-editor";
 import { DateDisplay } from "../components/date-display";
 import { MAX_VALUE_LENGTH_DISPLAY } from "../config/constants";
+import { iSchemaKindNameMap } from "../state/atoms/schemaKindName.atom";
+import { getTextColor } from "./common";
 
-export const getObjectItemDisplayValue = (row: any, attribute: any, schemaKindName?: any) => {
+export const getObjectItemDisplayValue = (
+  row: any,
+  attribute: any,
+  schemaKindName?: iSchemaKindNameMap
+) => {
   if (!row) {
     return;
   }
@@ -32,9 +38,7 @@ export const getObjectItemDisplayValue = (row: any, attribute: any, schemaKindNa
     return (
       <div className="flex flex-wrap items-center">
         {items.map((item: string, index: number) => (
-          <Badge key={index} className="m-2">
-            {item}
-          </Badge>
+          <Badge key={index}>{item}</Badge>
         ))}
 
         {items.length !== row[attribute?.name]?.edges?.length && <i>{`(${rest} more)`}</i>}
@@ -65,6 +69,19 @@ export const getObjectItemDisplayValue = (row: any, attribute: any, schemaKindNa
 
   if (textValue?.length > MAX_VALUE_LENGTH_DISPLAY) {
     return `${textValue.substr(0, MAX_VALUE_LENGTH_DISPLAY)} ...`;
+  }
+
+  if (row[attribute?.name]?.color) {
+    return (
+      <div
+        className="px-2 py-1 rounded-md flex flex-col"
+        style={{
+          backgroundColor: row[attribute?.name]?.color || "",
+          color: row[attribute?.name]?.color ? getTextColor(row[attribute?.name]?.color) : "",
+        }}>
+        {textValue}
+      </div>
+    );
   }
 
   return textValue;

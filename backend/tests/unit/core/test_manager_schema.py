@@ -342,11 +342,395 @@ async def test_schema_branch_generate_identifiers(schema_all_in_one):
     assert generic.relationships[1].identifier == "builtinstatus__infragenericinterface"
 
 
-async def test_schema_branch_load_schema_extension(db: InfrahubDatabase, default_branch, helper):
+async def test_schema_branch_validate_names():
+    SCHEMA1 = {
+        "name": "Criticality",
+        "namespace": "Test",
+        "default_filter": "name__value",
+        "branch": BranchSupportType.AWARE.value,
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True},
+            {"name": "name", "kind": "Text", "unique": True},
+        ],
+    }
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(nodes=[SCHEMA1]))
+
+    with pytest.raises(ValueError) as exc:
+        schema.validate_names()
+
+    assert str(exc.value) == "TestCriticality: Names of attributes and relationships must be unique : ['name']"
+
+    SCHEMA2 = {
+        "name": "Criticality",
+        "namespace": "Test",
+        "default_filter": "name__value",
+        "branch": BranchSupportType.AWARE.value,
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True},
+            {"name": "dupname", "kind": "Text"},
+        ],
+        "relationships": [
+            {"name": "dupname", "peer": "Criticality", "cardinality": "one"},
+        ],
+    }
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(nodes=[SCHEMA2]))
+
+    with pytest.raises(ValueError) as exc:
+        schema.validate_names()
+
+    assert str(exc.value) == "TestCriticality: Names of attributes and relationships must be unique : ['dupname']"
+
+
+async def test_schema_branch_validate_identifiers():
+    SCHEMA1 = {
+        "name": "Criticality",
+        "namespace": "Test",
+        "default_filter": "name__value",
+        "branch": BranchSupportType.AWARE.value,
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True},
+        ],
+        "relationships": [
+            {"name": "first", "peer": "TestCriticality", "cardinality": "one"},
+            {"name": "second", "peer": "TestCriticality", "cardinality": "one"},
+        ],
+    }
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(nodes=[SCHEMA1]))
+    schema.generate_identifiers()
+
+    with pytest.raises(ValueError) as exc:
+        schema.validate_identifiers()
+
+    assert (
+        str(exc.value) == "TestCriticality: Identifier of relationships must be unique for a given direction > "
+        "'testcriticality__testcriticality' : [('first', 'bidirectional'), ('second', 'bidirectional')]"
+    )
+
+    SCHEMA2 = {
+        "name": "Criticality",
+        "namespace": "Test",
+        "default_filter": "name__value",
+        "branch": BranchSupportType.AWARE.value,
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True},
+        ],
+        "relationships": [
+            {"name": "first", "peer": "TestCriticality", "cardinality": "one"},
+            {"name": "second", "identifier": "something_unique", "peer": "TestCriticality", "cardinality": "one"},
+        ],
+    }
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(nodes=[SCHEMA2]))
+    schema.generate_identifiers()
+    schema.validate_identifiers()
+
+
+async def test_schema_branch_validate_identifiers_direction():
+    SCHEMA1 = {
+        "name": "Criticality",
+        "namespace": "Test",
+        "default_filter": "name__value",
+        "branch": BranchSupportType.AWARE.value,
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True},
+        ],
+        "relationships": [
+            {"name": "first", "peer": "TestCriticality", "cardinality": "one", "direction": "outbound"},
+            {"name": "second", "peer": "TestCriticality", "cardinality": "one", "direction": "inbound"},
+        ],
+    }
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(nodes=[SCHEMA1]))
+    schema.generate_identifiers()
+    schema.validate_identifiers()
+
+    SCHEMA2 = {
+        "name": "Criticality",
+        "namespace": "Test",
+        "default_filter": "name__value",
+        "branch": BranchSupportType.AWARE.value,
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True},
+        ],
+        "relationships": [
+            {"name": "first", "peer": "TestCriticality", "cardinality": "one", "direction": "bidirectional"},
+            {"name": "second", "peer": "TestCriticality", "cardinality": "one", "direction": "inbound"},
+        ],
+    }
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(nodes=[SCHEMA2]))
+    schema.generate_identifiers()
+    with pytest.raises(ValueError) as exc:
+        schema.validate_identifiers()
+
+    assert (
+        str(exc.value) == "TestCriticality: Identifier of relationships must be unique for a given direction > "
+        "'testcriticality__testcriticality' : [('first', 'bidirectional'), ('second', 'inbound')]"
+    )
+
+
+async def test_schema_branch_validate_identifiers_matching_direction():
+    SCHEMA = {
+        "nodes": [
+            {
+                "name": "Criticality",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+                "relationships": [
+                    {"name": "first", "peer": "TestOther", "cardinality": "one", "direction": "outbound"},
+                ],
+            },
+            {
+                "name": "Other",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+                "relationships": [
+                    {"name": "first", "peer": "TestCriticality", "cardinality": "one", "direction": "outbound"},
+                ],
+            },
+        ]
+    }
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**SCHEMA))
+    schema.generate_identifiers()
+    with pytest.raises(ValueError) as exc:
+        schema.validate_identifiers()
+
+    assert (
+        str(exc.value)
+        == "TestOther: Incompatible direction detected on Reverse Relationship for 'first' ('testcriticality__testother') "
+        "outbound <> outbound"
+    )
+
+    SCHEMA["nodes"][0]["relationships"][0]["direction"] = "bidirectional"
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**SCHEMA))
+    schema.generate_identifiers()
+    with pytest.raises(ValueError) as exc:
+        schema.validate_identifiers()
+
+    assert (
+        str(exc.value)
+        == "TestOther: Incompatible direction detected on Reverse Relationship for 'first' ('testcriticality__testother') "
+        "bidirectional <> outbound"
+    )
+
+    # Validation is good with inbound <> outbound
+    SCHEMA["nodes"][0]["relationships"][0]["direction"] = "inbound"
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**SCHEMA))
+    schema.generate_identifiers()
+    schema.validate_identifiers()
+
+    # Validation is good with bidirectional <> bidirectional
+    SCHEMA["nodes"][0]["relationships"][0]["direction"] = "bidirectional"
+    SCHEMA["nodes"][1]["relationships"][0]["direction"] = "bidirectional"
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**SCHEMA))
+    schema.generate_identifiers()
+    schema.validate_identifiers()
+
+    assert True
+
+    SCHEMA = {
+        "nodes": [
+            {
+                "name": "Criticality",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+                "relationships": [
+                    {"name": "first", "peer": "TestOther", "cardinality": "one", "direction": "outbound"},
+                    {"name": "second", "peer": "TestOther", "cardinality": "one", "direction": "inbound"},
+                ],
+            },
+            {
+                "name": "Other",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+                "relationships": [
+                    {"name": "first", "peer": "TestCriticality", "cardinality": "one", "direction": "bidirectional"},
+                ],
+            },
+        ]
+    }
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**SCHEMA))
+    schema.generate_identifiers()
+    with pytest.raises(ValueError) as exc:
+        schema.validate_identifiers()
+
+    assert (
+        str(exc.value)
+        == "TestOther: Incompatible direction detected on Reverse Relationship for 'first' ('testcriticality__testother')  > bidirectional "
+    )
+
+
+async def test_schema_branch_validate_kinds_peer():
+    SCHEMA1 = {
+        "name": "Criticality",
+        "namespace": "Test",
+        "default_filter": "name__value",
+        "branch": BranchSupportType.AWARE.value,
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True},
+        ],
+        "relationships": [
+            {"name": "first", "peer": "TestNotPresent", "cardinality": "one"},
+        ],
+    }
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(nodes=[SCHEMA1]))
+
+    with pytest.raises(ValueError) as exc:
+        schema.validate_kinds()
+
+    assert str(exc.value) == "TestCriticality: Relationship 'first' is referencing an invalid peer 'TestNotPresent'"
+
+
+async def test_schema_branch_validate_kinds_inherit():
+    SCHEMA1 = {
+        "name": "Criticality",
+        "namespace": "Test",
+        "default_filter": "name__value",
+        "branch": BranchSupportType.AWARE.value,
+        "inherit_from": ["TestNotPresent"],
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True},
+        ],
+    }
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(nodes=[SCHEMA1]))
+
+    with pytest.raises(ValueError) as exc:
+        schema.validate_kinds()
+
+    assert str(exc.value) == "TestCriticality: 'TestNotPresent' is not a invalid Generic to inherit from"
+
+    SCHEMA2 = {
+        "name": "Criticality",
+        "namespace": "Test",
+        "default_filter": "name__value",
+        "branch": BranchSupportType.AWARE.value,
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True},
+        ],
+    }
+
+    SCHEMA3 = {
+        "name": "Other",
+        "namespace": "Test",
+        "default_filter": "name__value",
+        "branch": BranchSupportType.AWARE.value,
+        "inherit_from": ["TestCriticality"],
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True},
+        ],
+    }
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(nodes=[SCHEMA2, SCHEMA3]))
+
+    with pytest.raises(ValueError) as exc:
+        schema.validate_kinds()
+
+    assert (
+        str(exc.value)
+        == "TestOther: Only generic model can be used as part of inherit_from, 'TestCriticality' is not a valid entry."
+    )
+
+
+async def test_schema_branch_validate_kinds_core(register_core_models_schema: SchemaBranch):
+    SCHEMA1 = {
+        "name": "Criticality",
+        "namespace": "Test",
+        "default_filter": "name__value",
+        "branch": BranchSupportType.AWARE.value,
+        "inherit_from": ["LineageOwner"],
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True},
+        ],
+        "relationships": [
+            {"name": "first", "peer": "CoreNode", "cardinality": "one"},
+        ],
+    }
+
+    register_core_models_schema.load_schema(schema=SchemaRoot(nodes=[SCHEMA1]))
+    register_core_models_schema.validate_kinds()
+
+
+async def test_schema_branch_validate_menu_placement():
+    """Validate that menu placements points to objects that exists in the schema."""
+    FULL_SCHEMA = {
+        "version": "1.0",
+        "nodes": [
+            {
+                "name": "Criticality",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+            },
+            {
+                "name": "SubObject",
+                "namespace": "Test",
+                "menu_placement": "NoSuchObject",
+                "default_filter": "name__value",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+            },
+        ],
+    }
+
+    schema = SchemaBranch(cache={})
+    schema.load_schema(schema=SchemaRoot(**FULL_SCHEMA))
+
+    with pytest.raises(ValueError) as exc:
+        schema.validate_menu_placements()
+
+    assert str(exc.value) == "TestSubObject: NoSuchObject is not a valid menu placement"
+
+
+async def test_schema_branch_load_schema_extension(
+    db: InfrahubDatabase, default_branch, organization_schema, builtin_schema, helper
+):
     schema = SchemaRoot(**core_models)
 
     schema_branch = SchemaBranch(cache={}, name="test")
     schema_branch.load_schema(schema=schema)
+    schema_branch.load_schema(schema=builtin_schema)
+    schema_branch.load_schema(schema=organization_schema)
     schema_branch.process()
 
     org = schema_branch.get(name="CoreOrganization")
@@ -416,6 +800,7 @@ async def test_schema_branch_process_filters(
     expected_filters = [
         {"name": "ids", "kind": FilterSchemaKind.TEXT, "enum": None, "object_kind": None, "description": None},
         {"name": "name__value", "kind": FilterSchemaKind.TEXT, "enum": None, "object_kind": None, "description": None},
+        {"name": "name__values", "kind": FilterSchemaKind.TEXT, "enum": None, "object_kind": None, "description": None},
         {
             "name": "name__is_visible",
             "kind": FilterSchemaKind.BOOLEAN,
@@ -452,6 +837,13 @@ async def test_schema_branch_process_filters(
             "description": None,
         },
         {
+            "name": "level__values",
+            "kind": FilterSchemaKind.TEXT,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {
             "name": "level__is_visible",
             "kind": FilterSchemaKind.BOOLEAN,
             "enum": None,
@@ -480,6 +872,13 @@ async def test_schema_branch_process_filters(
             "description": None,
         },
         {"name": "color__value", "kind": FilterSchemaKind.TEXT, "enum": None, "object_kind": None, "description": None},
+        {
+            "name": "color__values",
+            "kind": FilterSchemaKind.TEXT,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
         {
             "name": "color__is_visible",
             "kind": FilterSchemaKind.BOOLEAN,
@@ -510,6 +909,13 @@ async def test_schema_branch_process_filters(
         },
         {
             "name": "description__value",
+            "kind": FilterSchemaKind.TEXT,
+            "enum": None,
+            "object_kind": None,
+            "description": None,
+        },
+        {
+            "name": "description__values",
             "kind": FilterSchemaKind.TEXT,
             "enum": None,
             "object_kind": None,
@@ -862,6 +1268,7 @@ async def test_load_schema_to_db_simple_01(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
+    register_builtin_models_schema: SchemaBranch,
     helper,
 ):
     schema = SchemaRoot(**helper.schema_file("infra_simple_01.json"))
@@ -879,6 +1286,7 @@ async def test_load_schema_to_db_w_generics_01(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
+    register_builtin_models_schema: SchemaBranch,
     helper,
 ):
     schema = SchemaRoot(**helper.schema_file("infra_w_generics_01.json"))

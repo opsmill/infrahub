@@ -6,7 +6,8 @@ log = get_logger()
 
 
 async def mutated(
-    message: messages.EventNodeMutated, service: InfrahubServices  # pylint: disable=unused-argument
+    message: messages.EventNodeMutated,
+    service: InfrahubServices,  # pylint: disable=unused-argument
 ) -> None:
     log.debug(
         "Mutation on node",

@@ -32,6 +32,10 @@ def find_first_file_in_directory(directory: str) -> Optional[str]:
     return None
 
 
+def format_label(slug: str) -> str:
+    return " ".join([word.title() for word in slug.split("_")])
+
+
 class MetaEnum(EnumMeta):
     def __contains__(cls, item: Any) -> bool:
         try:

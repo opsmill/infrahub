@@ -1,0 +1,59 @@
+---
+# yamllint disable rule:truthy
+name: Publish development docker image
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        type: boolean
+        description: Publish the image
+        default: true
+        required: true
+      commit:
+        type: string
+        description: commit sha or branch name
+        default: ''
+        required: false
+
+
+jobs:
+  meta_data:
+    runs-on: ubuntu-22.04
+    outputs:
+      tags: ${{ steps.meta.outputs.tags }}
+      labels: ${{ steps.meta.outputs.labels }}
+      ref: ${{ steps.ref.outputs.ref }}
+      short_ref: ${{ steps.short_ref.outputs.short_ref }}
+    steps:
+      - name: Set GIT ref
+        run: echo "ref=${{ inputs.commit == '' && github.sha || inputs.commit }} " >> $GITHUB_OUTPUT
+        id: ref
+      - name: Set GIT short ref
+        run: echo "short_ref=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+        id: short_ref
+      - name: Set docker image meta data
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.REGISTRY_IMAGE }}
+          tags: |
+            type=raw,value=dev-${{ steps.short_ref.outputs.short_ref }}
+          labels: |
+            org.opencontainers.image.source=${{ github.repository }}
+            org.opencontainers.image.version=dev-${{ steps.short_ref.outputs.short_ref }}
+            org.opencontainers.image.created=${{ steps.meta.outputs.created }}
+          flavor: |
+            latest=false
+
+
+  publish-docker-image:
+    uses: ./.github/workflows/ci-docker-image.yml
+    secrets: inherit
+    with:
+      publish: ${{ inputs.publish }}
+      version: dev-${{ needs.meta_data.outputs.short_ref }}
+      ref: ${{ needs.meta_data.outputs.ref }}
+      tags: ${{needs.meta_data.outputs.tags}}
+      labels: ${{needs.meta_data.outputs.labels}}

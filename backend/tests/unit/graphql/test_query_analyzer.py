@@ -5,7 +5,7 @@ from graphql.error import GraphQLSyntaxError
 from infrahub.core.branch import Branch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql import generate_graphql_schema
-from infrahub.graphql.analyzer import GraphQLQueryAnalyzer
+from infrahub.graphql.analyzer import GraphQLOperation, GraphQLQueryAnalyzer
 
 
 async def test_analyzer_init_query_only(query_01, bad_query_01):
@@ -34,12 +34,17 @@ async def test_nbr_queries(query_01: str, query_03: str):
     assert gqa.nbr_queries == 2
 
 
-async def test_query_types(query_01: str, query_03: str):
+async def test_query_types(query_01: str, query_03: str, query_introspection: str):
     gqa = GraphQLQueryAnalyzer(query=query_01)
-    assert gqa.operations == {OperationType.QUERY}
+    assert gqa.operations == [GraphQLOperation(name="TestPerson", operation_type=OperationType.QUERY)]
 
     gqa = GraphQLQueryAnalyzer(query=query_03)
-    assert gqa.operations == {OperationType.QUERY, OperationType.MUTATION}
+    assert len(gqa.operations) == 2
+    assert GraphQLOperation(name="TestPerson", operation_type=OperationType.QUERY) in gqa.operations
+    assert GraphQLOperation(name="TestPersonCreate", operation_type=OperationType.MUTATION) in gqa.operations
+
+    gqa = GraphQLQueryAnalyzer(query=query_introspection)
+    assert gqa.operations == [GraphQLOperation(name="__schema", operation_type=OperationType.QUERY)]
 
 
 async def test_is_valid_simple_schema(
@@ -49,6 +54,7 @@ async def test_is_valid_simple_schema(
     query_02: str,
     query_03: str,
     query_04: str,
+    query_introspection: str,
     car_person_schema_generics,
 ):
     schema = await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch)
@@ -69,6 +75,11 @@ async def test_is_valid_simple_schema(
     assert is_valid is True
 
     gqa = GraphQLQueryAnalyzer(query=query_04, schema=schema, branch=default_branch)
+    is_valid, errors = gqa.is_valid
+    assert errors is None
+    assert is_valid is True
+
+    gqa = GraphQLQueryAnalyzer(query=query_introspection, schema=schema, branch=default_branch)
     is_valid, errors = gqa.is_valid
     assert errors is None
     assert is_valid is True

@@ -21,7 +21,7 @@ describe("Tutorial - Part 6", () => {
     cy.get("[data-cy='create-branch-button']").click();
 
     // Add the new branch name
-    cy.get(".flex-col > :nth-child(1) > .block").type(NEW_BRANCH, { delay: 0, force: true });
+    cy.get("#new-branch-name").type(NEW_BRANCH, { delay: 0, force: true });
 
     // Toggle the data-only field
     cy.get(".px-1\\.5").within(() => {

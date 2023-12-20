@@ -84,7 +84,7 @@ def render_input_block(data: dict, offset: int = 4, indentation: int = 4) -> Lis
             lines.append(f"{offset_str}{key}: " + "[")
             for item in value:
                 if isinstance(item, dict):
-                    lines.append(f"{offset_str}{' '*indentation}" + "{")
+                    lines.append(f"{offset_str}{' ' * indentation}" + "{")
                     lines.extend(
                         render_input_block(
                             data=item,
@@ -92,9 +92,9 @@ def render_input_block(data: dict, offset: int = 4, indentation: int = 4) -> Lis
                             indentation=indentation,
                         )
                     )
-                    lines.append(f"{offset_str}{' '*indentation}" + "},")
+                    lines.append(f"{offset_str}{' ' * indentation}" + "},")
                 else:
-                    lines.append(f"{offset_str}{' '*indentation}{convert_to_graphql_as_string(item)},")
+                    lines.append(f"{offset_str}{' ' * indentation}{convert_to_graphql_as_string(item)},")
             lines.append(offset_str + "]")
         else:
             lines.append(f"{offset_str}{key}: {convert_to_graphql_as_string(value)}")

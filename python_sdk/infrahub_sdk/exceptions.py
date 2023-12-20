@@ -102,3 +102,7 @@ class AuthenticationError(Error):
     def __init__(self, message: Optional[str] = None):
         self.message = message or "Authentication Error, unable to execute the query."
         super().__init__(self.message)
+
+
+class FeatureNotSupported(Error):
+    """Raised when trying to use a method on a node that doesn't support it."""

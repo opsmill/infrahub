@@ -15,11 +15,16 @@ from .mutations import (
     BranchRebase,
     BranchUpdate,
     BranchValidate,
+    CoreAccountSelfUpdate,
     CoreAccountTokenCreate,
     ProposedChangeRequestRefreshArtifacts,
     ProposedChangeRequestRunCheck,
     RelationshipAdd,
     RelationshipRemove,
+    SchemaDropdownAdd,
+    SchemaDropdownRemove,
+    SchemaEnumAdd,
+    SchemaEnumRemove,
 )
 from .queries import BranchQueryList, DiffSummary
 from .utils import extract_fields
@@ -71,6 +76,7 @@ class InfrahubBaseQuery(ObjectType):
 
 class InfrahubBaseMutation(ObjectType):
     CoreAccountTokenCreate = CoreAccountTokenCreate.Field()
+    CoreAccountSelfUpdate = CoreAccountSelfUpdate.Field()
     CoreProposedChangeRunCheck = ProposedChangeRequestRunCheck.Field()
     CoreProposedChangeRefreshArtifacts = ProposedChangeRequestRefreshArtifacts.Field()
 
@@ -83,3 +89,7 @@ class InfrahubBaseMutation(ObjectType):
 
     RelationshipAdd = RelationshipAdd.Field()
     RelationshipRemove = RelationshipRemove.Field()
+    SchemaDropdownAdd = SchemaDropdownAdd.Field()
+    SchemaDropdownRemove = SchemaDropdownRemove.Field()
+    SchemaEnumAdd = SchemaEnumAdd.Field()
+    SchemaEnumRemove = SchemaEnumRemove.Field()

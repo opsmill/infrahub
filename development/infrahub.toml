@@ -19,11 +19,11 @@ password = "infrahub"
 [cache]
 address = "cache"
 
-[api]
-cors_allow_origins = ["*"]
+[storage]
+driver = "local"
 
-[storage.settings]
-directory = "/opt/infrahub/storage"
+[storage.local]
+path = "/opt/infrahub/storage"
 
 [trace]
 enable = false

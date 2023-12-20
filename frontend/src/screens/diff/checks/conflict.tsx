@@ -1,4 +1,4 @@
-import { gql, useReactiveVar } from "@apollo/client";
+import { gql } from "@apollo/client";
 import { ArrowTopRightOnSquareIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
 import { toast } from "react-toastify";
@@ -11,14 +11,16 @@ import { Tooltip, TooltipPosition } from "../../../components/tooltip";
 import { DATA_CHECK_OBJECT } from "../../../config/constants";
 import graphqlClient from "../../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../../graphql/mutations/objects/updateObjectWithId";
-import { branchVar } from "../../../graphql/variables/branchVar";
-import { dateVar } from "../../../graphql/variables/dateVar";
 import { classNames } from "../../../utils/common";
 import { diffContent, getBadgeType } from "../../../utils/diff";
 import { constructPath } from "../../../utils/fetch";
 import { getObjectDetailsUrl } from "../../../utils/objects";
 import { stringifyWithoutQuotes } from "../../../utils/string";
 import { getNodeClassName } from "../data-diff-node";
+import { QSP } from "../../../config/qsp";
+import { useAtomValue } from "jotai/index";
+import { currentBranchAtom } from "../../../state/atoms/branches.atom";
+import { datetimeAtom } from "../../../state/atoms/time.atom";
 
 const renderConflict = {
   attribute_value: (name: string) => {
@@ -64,8 +66,8 @@ export const Conflict = (props: any) => {
 
   const { keep_branch } = check;
 
-  const branchFromStore = useReactiveVar(branchVar);
-  const date = useReactiveVar(dateVar);
+  const currentBranch = useAtomValue(currentBranchAtom);
+  const date = useAtomValue(datetimeAtom);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleAccept = async (conflictValue: string) => {
@@ -93,7 +95,7 @@ export const Conflict = (props: any) => {
       await graphqlClient.mutate({
         mutation,
         context: {
-          branch: branchFromStore?.name,
+          branch: currentBranch?.name,
           date,
         },
       });
@@ -142,7 +144,9 @@ export const Conflict = (props: any) => {
             value: change,
           };
 
-          const url = constructPath(getObjectDetailsUrl(node_id, kind), [["branch", branch]]);
+          const url = constructPath(getObjectDetailsUrl(node_id, kind), [
+            { name: QSP.BRANCH, value: branch },
+          ]);
 
           const isSelected =
             (keep_branch?.value === "target" && branch === "main") ||

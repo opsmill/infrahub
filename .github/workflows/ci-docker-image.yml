@@ -1,0 +1,79 @@
+---
+# yamllint disable rule:truthy
+name: Build And Push Docker image
+
+# When calling this workflow, ensure you use
+#   secrets: inherit
+
+on:
+  workflow_call:
+    inputs:
+      publish:
+        type: boolean
+        description: Wether to publish the image to Infrahub Private Registry
+        required: false
+        default: false
+      version:
+        type: string
+        required: false
+        description: The string to extract semver labels from.
+        default: ''
+      ref:
+        type: string
+        required: true
+        desription: The GIT ref from which the image will be build
+      tags:
+        type: string
+        required: true
+        description: The tags for the docker image
+      labels:
+        type: string
+        required: true
+        description: The labels for the docker image
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY_IMAGE: "${{ secrets.HARBOR_HOST }}/${{ github.repository }}"
+  DOCKERFILE: "development/Dockerfile"
+  PLATFORMS: "linux/amd64,linux/arm64"
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        if: ${{ inputs.publish }}
+        uses: docker/login-action@v3
+        id: login
+        with:
+          registry: ${{ secrets.HARBOR_HOST }}
+          username: ${{ secrets.HARBOR_USERNAME }}
+          password: ${{ secrets.HARBOR_PASSWORD }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        id: push
+        with:
+          context: .
+          file: ${{ env.DOCKERFILE }}
+          provenance: false   # To avoid cross platform "unknown"
+          push: ${{ inputs.publish }}
+          platforms: ${{ env.PLATFORMS }}
+          tags: ${{ inputs.tags }}
+          labels: ${{ inputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

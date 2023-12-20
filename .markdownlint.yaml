@@ -1,0 +1,11 @@
+---
+default: true
+MD013: false  # disables max line-length
+MD024: false  # disables 'no duplicate headings', which we use in tabs for instructions
+MD025:
+  front_matter_title: ""  # prevent collisions with h1s and frontmatter titles
+MD029: false  # allows manually creating ordered lists
+MD033: false  # allows inline html to override markdown styles
+MD034: false  # no-bare-urls
+MD045: false  # no alt text around images
+MD047: false  # single trailing newline

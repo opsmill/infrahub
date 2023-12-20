@@ -1,4 +1,4 @@
-import { gql, useReactiveVar } from "@apollo/client";
+import { gql } from "@apollo/client";
 import { TrashIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useContext, useState } from "react";
@@ -13,8 +13,6 @@ import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
 import { getGroups } from "../../graphql/queries/groups/getGroups";
-import { branchVar } from "../../graphql/variables/branchVar";
-import { dateVar } from "../../graphql/variables/dateVar";
 import usePagination from "../../hooks/usePagination";
 import useQuery from "../../hooks/useQuery";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
@@ -28,6 +26,9 @@ import { stringifyWithoutQuotes } from "../../utils/string";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
+import { useAtomValue } from "jotai/index";
+import { currentBranchAtom } from "../../state/atoms/branches.atom";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 
 export default function GroupItems() {
   const { groupname } = useParams();
@@ -38,8 +39,8 @@ export default function GroupItems() {
   const [schemaKindName] = useAtom(schemaKindNameState);
   const [schemaList] = useAtom(schemaState);
   const [genericList] = useAtom(genericsState);
-  const branch = useReactiveVar(branchVar);
-  const date = useReactiveVar(dateVar);
+  const branch = useAtomValue(currentBranchAtom);
+  const date = useAtomValue(datetimeAtom);
   const [pagination] = usePagination();
   const [rowToDelete, setRowToDelete] = useState<any>();
   const [deleteModal, setDeleteModal] = useState<boolean>(false);

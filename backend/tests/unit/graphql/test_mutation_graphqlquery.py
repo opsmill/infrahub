@@ -47,11 +47,7 @@ async def test_create_query_no_vars(db: InfrahubDatabase, default_branch, regist
             }
         }
     }
-    """ % query_value.replace(
-        "\n", " "
-    ).replace(
-        '"', '\\"'
-    )
+    """ % query_value.replace("\n", " ").replace('"', '\\"')
 
     result = await graphql(
         schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
@@ -116,11 +112,7 @@ async def test_create_query_with_vars(db: InfrahubDatabase, default_branch, regi
             }
         }
     }
-    """ % query_value.replace(
-        "\n", " "
-    ).replace(
-        '"', '\\"'
-    )
+    """ % query_value.replace("\n", " ").replace('"', '\\"')
 
     result = await graphql(
         schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
@@ -276,9 +268,7 @@ async def test_update_query_no_update(db: InfrahubDatabase, default_branch, regi
             }
         }
     }
-    """ % (
-        obj.id
-    )
+    """ % (obj.id)
 
     result = await graphql(
         schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),

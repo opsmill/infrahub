@@ -11,22 +11,28 @@ type OpsInputProps = {
   error?: FormFieldError;
   type: string;
   isProtected?: boolean;
-  isOptionnal?: boolean;
+  isOptional?: boolean;
+  isUnique?: boolean;
   disabled?: boolean;
 };
 
+const InputUniqueTips = () => <span className="text-xs text-gray-600 italic">must be unique</span>;
+
 export const OpsInput = (props: OpsInputProps) => {
-  const { className, onChange, value, label, error, isProtected, isOptionnal, disabled } = props;
+  const { className, onChange, value, label, error, isProtected, isOptional, isUnique, disabled } =
+    props;
 
   return (
     <>
-      <div className="flex items-center">
-        <label className="block text-sm font-medium leading-6 text-gray-900">
-          {label} {isOptionnal ? "" : "*"}
+      <div className="flex items-center gap-1.5">
+        <label htmlFor={label} className="text-sm font-medium leading-6 text-gray-900">
+          {label} {!isOptional && "*"}
         </label>
-        <div className="ml-2"> {isProtected ? <LockClosedIcon className="w-4 h-4" /> : null} </div>
+        {isProtected && <LockClosedIcon className="w-4 h-4" />}
+        {isUnique && <InputUniqueTips />}
       </div>
       <Input
+        id={label}
         type={props.type}
         onChange={onChange}
         defaultValue={value ?? ""}

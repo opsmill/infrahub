@@ -1,14 +1,15 @@
-import { gql, useReactiveVar } from "@apollo/client";
+import { gql } from "@apollo/client";
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { SelectOption } from "../components/select";
 import graphqlClient from "../graphql/graphqlClientApollo";
 import { getDropdownOptionsForRelatedPeersPaginated } from "../graphql/queries/objects/dropdownOptionsForRelatedPeers";
-import { branchVar } from "../graphql/variables/branchVar";
-import { dateVar } from "../graphql/variables/dateVar";
 import { FormFieldError } from "../screens/edit-form-hook/form";
 import { classNames } from "../utils/common";
 import { OpsSelect } from "./select";
+import { useAtomValue } from "jotai/index";
+import { currentBranchAtom } from "../state/atoms/branches.atom";
+import { datetimeAtom } from "../state/atoms/time.atom";
 
 export interface iTwoStepDropdownData {
   parent: string | number;
@@ -22,15 +23,15 @@ interface Props {
   onChange: (value: iTwoStepDropdownData) => void;
   error?: FormFieldError;
   isProtected?: boolean;
-  isOptionnal?: boolean;
+  isOptional?: boolean;
 }
 
 export const OpsSelect2Step = (props: Props) => {
-  const { label, options, value, error, onChange, isProtected, isOptionnal } = props;
+  const { label, options, value, error, onChange, isProtected, isOptional } = props;
 
   const { objectid } = useParams();
-  const branch = useReactiveVar(branchVar);
-  const date = useReactiveVar(dateVar);
+  const branch = useAtomValue(currentBranchAtom);
+  const date = useAtomValue(datetimeAtom);
 
   const [optionsRight, setOptionsRight] = useState<SelectOption[]>([]);
 
@@ -104,7 +105,7 @@ export const OpsSelect2Step = (props: Props) => {
     <div className={classNames("grid grid-cols-6")}>
       <div className="sm:col-span-6">
         <label className="block text-sm font-medium leading-6 text-gray-900 capitalize">
-          {label} {isOptionnal ? "" : "*"}
+          {label} {isOptional ? "" : "*"}
         </label>
       </div>
       <div className="sm:col-span-3 mr-2 mt-1">
@@ -118,6 +119,7 @@ export const OpsSelect2Step = (props: Props) => {
             setSelectedLeft(options.filter((option) => option.id === value.id)[0]);
           }}
           isProtected={isProtected}
+          data-cy="select2step-1"
         />
       </div>
       <div className="sm:col-span-3 ml-2 mt-1">
@@ -137,6 +139,7 @@ export const OpsSelect2Step = (props: Props) => {
               });
             }}
             isProtected={isProtected}
+            data-cy="select2step-2"
           />
         )}
       </div>

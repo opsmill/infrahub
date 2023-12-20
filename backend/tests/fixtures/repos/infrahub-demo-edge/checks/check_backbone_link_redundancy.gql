@@ -1,0 +1,41 @@
+query check_backbone_link_redundancy {
+  InfraCircuit(role__value: "backbone") {
+    edges {
+      node {
+        id
+        circuit_id {
+          value
+        }
+        vendor_id {
+          value
+        }
+        status {
+          value
+        }
+        endpoints {
+          edges {
+            node {
+              site {
+                node {
+                  id
+                  name {
+                    value
+                  }
+                }
+              }
+              connected_endpoint {
+                node {
+                  ... on InfraInterface {
+                    enabled {
+                      value
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,13 +1,13 @@
-import { gql, useReactiveVar } from "@apollo/client";
+import { gql } from "@apollo/client";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import {
   CheckIcon,
   LockClosedIcon,
   PencilIcon,
   PencilSquareIcon,
-  Square3Stack3DIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
+import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { useContext, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -20,7 +20,6 @@ import { DEFAULT_BRANCH_NAME, GROUP_OBJECT } from "../../config/constants";
 import { QSP } from "../../config/qsp";
 import { AuthContext } from "../../decorators/withAuth";
 import { getGroupDetails } from "../../graphql/queries/groups/getGroupDetails";
-import { branchVar } from "../../graphql/variables/branchVar";
 import useQuery from "../../hooks/useQuery";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
@@ -34,6 +33,8 @@ import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 import GroupRelationships from "./group-relationships";
+import { useAtomValue } from "jotai/index";
+import { currentBranchAtom } from "../../state/atoms/branches.atom";
 
 export default function GroupItemDetails() {
   const { groupname, groupid } = useParams();
@@ -43,7 +44,7 @@ export default function GroupItemDetails() {
   const auth = useContext(AuthContext);
   const [showMetaEditModal, setShowMetaEditModal] = useAtom(showMetaEditState);
   const [metaEditFieldDetails, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
-  const branch = useReactiveVar(branchVar);
+  const branch = useAtomValue(currentBranchAtom);
   const [schemaList] = useAtom(schemaState);
   const [genericList] = useAtom(genericsState);
   const schema = schemaList.filter((s) => s.kind === groupname)[0];
@@ -139,7 +140,7 @@ export default function GroupItemDetails() {
       {!qspTab && (
         <div className="px-4 py-5 sm:p-0 flex-1 overflow-auto">
           <dl className="sm:divide-y sm:divide-gray-200">
-            <div className="p-4 px-3 grid grid-cols-3 gap-4">
+            <div className="p-4 grid grid-cols-3 gap-4">
               <dt className="text-sm font-medium text-gray-500 flex items-center">ID</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
                 {objectDetailsData.id}
@@ -154,7 +155,7 @@ export default function GroupItemDetails() {
               }
 
               return (
-                <div className="p-4 px-3 grid grid-cols-3 gap-4" key={attribute.name}>
+                <div className="p-4 grid grid-cols-3 gap-4" key={attribute.name}>
                   <dt className="text-sm font-medium text-gray-500 flex items-center">
                     {attribute.label}
                   </dt>
@@ -268,11 +269,11 @@ export default function GroupItemDetails() {
               <span className="text-lg font-semibold mr-3">{objectDetailsData.display_label}</span>
               <div className="flex-1"></div>
               <div className="flex items-center">
-                <Square3Stack3DIcon className="w-4 h-4" />
+                <Icon icon={"mdi:layers-triple"} />
                 <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
               </div>
             </div>
-            <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
+            <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 mr-2">
               <svg
                 className="h-1.5 w-1.5 mr-1 fill-yellow-500"
                 viewBox="0 0 6 6"
@@ -281,7 +282,7 @@ export default function GroupItemDetails() {
               </svg>
               {schemaData.kind}
             </span>
-            <div className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-custom-blue-500 ring-1 ring-inset ring-custom-blue-500/10 ml-3">
+            <div className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-custom-blue-500 ring-1 ring-inset ring-custom-blue-500/10">
               <svg
                 className="h-1.5 w-1.5 mr-1 fill-custom-blue-500"
                 viewBox="0 0 6 6"
@@ -309,7 +310,7 @@ export default function GroupItemDetails() {
               <span className="text-lg font-semibold mr-3">{metaEditFieldDetails?.label}</span>
               <div className="flex-1"></div>
               <div className="flex items-center">
-                <Square3Stack3DIcon className="w-4 h-4" />
+                <Icon icon={"mdi:layers-triple"} />
                 <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
               </div>
             </div>

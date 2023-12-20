@@ -13,6 +13,10 @@ REGEX_MAPPING = {
 }
 
 
+class TimestampFormatError(ValueError):
+    ...
+
+
 class Timestamp:
     def __init__(self, value: Optional[Union[str, DateTime, Timestamp]] = None):
         if value and isinstance(value, DateTime):
@@ -30,7 +34,7 @@ class Timestamp:
             parsed_date = pendulum.parse(value)
             if isinstance(parsed_date, DateTime):
                 return parsed_date
-        except pendulum.parsing.exceptions.ParserError:
+        except (pendulum.parsing.exceptions.ParserError, ValueError):
             pass
 
         params = {}
@@ -40,7 +44,7 @@ class Timestamp:
                 params[key] = int(match.group(1))
 
         if not params:
-            raise ValueError(f"Invalid time format for {value}")
+            raise TimestampFormatError(f"Invalid time format for {value}")
 
         return DateTime.now(tz="UTC").subtract(**params)
 

@@ -12,7 +12,7 @@ interface Props {
   onChange?: Function;
   error?: FormFieldError;
   isProtected?: boolean;
-  isOptionnal?: boolean;
+  isOptional?: boolean;
   disabled?: boolean;
 }
 

@@ -1,0 +1,275 @@
+{
+    "data": {
+      "device": {
+        "edges": [
+          {
+            "node": {
+              "id": "67bbcb4f-5ee7-4c9b-a598-58985ff3dbd4",
+              "interfaces": {
+                "edges": [
+                  {
+                    "node": {
+                      "name": {
+                        "value": "Ethernet2"
+                      },
+                      "description": {
+                        "value": "Connected to ord1-edge2 Ethernet2"
+                      },
+                      "enabled": {
+                        "value": true
+                      },
+                      "ip_addresses": {
+                        "edges": []
+                      }
+                    }
+                  },
+                  {
+                    "node": {
+                      "name": {
+                        "value": "Ethernet3"
+                      },
+                      "description": {
+                        "value": null
+                      },
+                      "enabled": {
+                        "value": true
+                      },
+                      "ip_addresses": {
+                        "edges": []
+                      }
+                    }
+                  },
+                  {
+                    "node": {
+                      "name": {
+                        "value": "Ethernet12"
+                      },
+                      "description": {
+                        "value": null
+                      },
+                      "enabled": {
+                        "value": true
+                      }
+                    }
+                  },
+                  {
+                    "node": {
+                      "name": {
+                        "value": "Ethernet4"
+                      },
+                      "description": {
+                        "value": null
+                      },
+                      "enabled": {
+                        "value": true
+                      },
+                      "ip_addresses": {
+                        "edges": []
+                      }
+                    }
+                  },
+                  {
+                    "node": {
+                      "name": {
+                        "value": "Ethernet6"
+                      },
+                      "description": {
+                        "value": null
+                      },
+                      "enabled": {
+                        "value": true
+                      },
+                      "ip_addresses": {
+                        "edges": [
+                          {
+                            "node": {
+                              "address": {
+                                "value": "203.0.113.49/29"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "node": {
+                      "name": {
+                        "value": "Ethernet10"
+                      },
+                      "description": {
+                        "value": null
+                      },
+                      "enabled": {
+                        "value": true
+                      },
+                      "ip_addresses": {
+                        "edges": []
+                      }
+                    }
+                  },
+                  {
+                    "node": {
+                      "name": {
+                        "value": "Ethernet1"
+                      },
+                      "description": {
+                        "value": "Connected to ord1-edge2 Ethernet1"
+                      },
+                      "enabled": {
+                        "value": true
+                      },
+                      "ip_addresses": {
+                        "edges": []
+                      }
+                    }
+                  },
+                  {
+                    "node": {
+                      "name": {
+                        "value": "Ethernet11"
+                      },
+                      "description": {
+                        "value": null
+                      },
+                      "enabled": {
+                        "value": true
+                      }
+                    }
+                  },
+                  {
+                    "node": {
+                      "name": {
+                        "value": "Ethernet9"
+                      },
+                      "description": {
+                        "value": null
+                      },
+                      "enabled": {
+                        "value": true
+                      },
+                      "ip_addresses": {
+                        "edges": [
+                          {
+                            "node": {
+                              "address": {
+                                "value": "203.0.113.81/29"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "node": {
+                      "name": {
+                        "value": "Loopback0"
+                      },
+                      "description": {
+                        "value": null
+                      },
+                      "enabled": {
+                        "value": true
+                      },
+                      "ip_addresses": {
+                        "edges": [
+                          {
+                            "node": {
+                              "address": {
+                                "value": "10.0.0.2/32"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "node": {
+                      "name": {
+                        "value": "Ethernet5"
+                      },
+                      "description": {
+                        "value": null
+                      },
+                      "enabled": {
+                        "value": true
+                      },
+                      "ip_addresses": {
+                        "edges": [
+                          {
+                            "node": {
+                              "address": {
+                                "value": "203.0.113.9/29"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "node": {
+                      "name": {
+                        "value": "Ethernet7"
+                      },
+                      "description": {
+                        "value": null
+                      },
+                      "enabled": {
+                        "value": true
+                      },
+                      "ip_addresses": {
+                        "edges": []
+                      }
+                    }
+                  },
+                  {
+                    "node": {
+                      "name": {
+                        "value": "Management0"
+                      },
+                      "description": {
+                        "value": null
+                      },
+                      "enabled": {
+                        "value": true
+                      },
+                      "ip_addresses": {
+                        "edges": [
+                          {
+                            "node": {
+                              "address": {
+                                "value": "172.20.20.18/24"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "node": {
+                      "name": {
+                        "value": "Ethernet8"
+                      },
+                      "description": {
+                        "value": null
+                      },
+                      "enabled": {
+                        "value": true
+                      },
+                      "ip_addresses": {
+                        "edges": []
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  }

@@ -356,12 +356,12 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         return True
 
     @classmethod
-    async def get_query_filter(  # pylint: disable=unused-argument
+    async def get_query_filter(  # pylint: disable=unused-argument,disable=too-many-branches
         cls,
         name: str,
         filter_name: str,
         branch: Optional[Branch] = None,
-        filter_value: Optional[Union[str, int, bool]] = None,
+        filter_value: Optional[Union[str, int, bool, list]] = None,
         include_match: bool = True,
         param_prefix: Optional[str] = None,
         db: Optional[InfrahubDatabase] = None,
@@ -372,8 +372,11 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         query_params: Dict[str, Any] = {}
         query_where: List[str] = []
 
-        if filter_value and not isinstance(filter_value, (str, bool, int)):
+        if filter_value and not isinstance(filter_value, (str, bool, int, list)):
             raise TypeError(f"filter {filter_name}: {filter_value} ({type(filter_value)}) is not supported.")
+
+        if isinstance(filter_value, list) and not all(isinstance(value, (str, bool, int)) for value in filter_value):
+            raise TypeError(f"filter {filter_name}: {filter_value} (list) contains unsupported item")
 
         param_prefix = param_prefix or f"attr_{name}"
 
@@ -398,6 +401,11 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 query_params[f"{param_prefix}_value"] = filter_value
             else:
                 query_filter.append(QueryNode(name="av", labels=["AttributeValue"]))
+
+        elif filter_name == "values" and isinstance(filter_value, list):
+            query_filter.extend((QueryRel(labels=["HAS_VALUE"]), QueryNode(name="av", labels=["AttributeValue"])))
+            query_where.append(f"av.value IN ${param_prefix}_value")
+            query_params[f"{param_prefix}_value"] = filter_value
 
         elif filter_name in cls._flag_properties and filter_value is not None:
             query_filter.append(QueryRel(labels=[filter_name.upper()]))
@@ -532,8 +540,108 @@ class Boolean(BaseAttribute):
     type = bool
 
 
+class Dropdown(BaseAttribute):
+    type = str
+
+    @property
+    def color(self) -> str:
+        """Return the color for the current value"""
+        color = ""
+        if self.schema.choices:
+            selected = [choice for choice in self.schema.choices if choice.name == self.value]
+            if selected:
+                color = selected[0].color
+
+        return color
+
+    @property
+    def description(self) -> str:
+        """Return the description for the current value"""
+        if self.schema.choices:
+            selected = [choice for choice in self.schema.choices if choice.name == self.value]
+            if selected:
+                return selected[0].description
+
+        return ""
+
+    @property
+    def label(self) -> str:
+        """Return the label for the current value"""
+        label = ""
+        if self.schema.choices:
+            selected = [choice for choice in self.schema.choices if choice.name == self.value]
+            if selected:
+                label = selected[0].label
+
+        return label
+
+    @classmethod
+    def validate_content(cls, value: Any, name: str, schema: AttributeSchema) -> None:
+        """Validate the content of the dropdown."""
+        super().validate_content(value=value, name=name, schema=schema)
+        values = [choice.name for choice in schema.choices]
+        if value not in values:
+            raise ValidationError({name: f"{value} must be one of {', '.join(sorted(values))!r}"})
+
+
 class IPNetwork(BaseAttribute):
     type = str
+
+    @property
+    def broadcast_address(self) -> Optional[str]:
+        """Return the broadcast address of the ip network."""
+        if not self.value:
+            return None
+        return str(ipaddress.ip_network(str(self.value)).broadcast_address)
+
+    @property
+    def hostmask(self) -> Optional[str]:
+        """Return the hostmask of the ip network."""
+        if not self.value:
+            return None
+        return str(ipaddress.ip_network(str(self.value)).hostmask)
+
+    @property
+    def netmask(self) -> Optional[str]:
+        """Return the netmask of the ip network."""
+        if not self.value:
+            return None
+        return str(ipaddress.ip_network(str(self.value)).netmask)
+
+    @property
+    def prefixlen(self) -> Optional[str]:
+        """Return the prefix length the ip network."""
+        if not self.value:
+            return None
+        return str(ipaddress.ip_network(str(self.value)).prefixlen)
+
+    @property
+    def num_addresses(self) -> Optional[int]:
+        """Return the number of possible addresses in the ip network."""
+        if not self.value:
+            return None
+        return int(ipaddress.ip_network(str(self.value)).num_addresses)
+
+    @property
+    def version(self) -> Optional[int]:
+        """Return the IP version of the ip network."""
+        if not self.value:
+            return None
+        return int(ipaddress.ip_network(str(self.value)).version)
+
+    @property
+    def with_hostmask(self) -> Optional[str]:
+        """Return the network ip and the associated hostmask of the ip network."""
+        if not self.value:
+            return None
+        return str(ipaddress.ip_network(str(self.value)).with_hostmask)
+
+    @property
+    def with_netmask(self) -> Optional[str]:
+        """Return the network ip and the associated netmask of the ip network."""
+        if not self.value:
+            return None
+        return str(ipaddress.ip_network(str(self.value)).with_netmask)
 
     @classmethod
     def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
@@ -563,6 +671,62 @@ class IPNetwork(BaseAttribute):
 
 class IPHost(BaseAttribute):
     type = str
+
+    @property
+    def ip(self) -> Optional[str]:
+        """Return the ip adress without a prefix or subnet mask."""
+        if not self.value:
+            return None
+        return str(ipaddress.ip_interface(str(self.value)).ip)
+
+    @property
+    def hostmask(self) -> Optional[str]:
+        """Return the hostmask of the ip address."""
+        if not self.value:
+            return None
+        return str(ipaddress.ip_interface(str(self.value)).hostmask)
+
+    @property
+    def netmask(self) -> Optional[str]:
+        """Return the netmask of the ip address."""
+        if not self.value:
+            return None
+        return str(ipaddress.ip_interface(str(self.value)).netmask)
+
+    @property
+    def network(self) -> Optional[str]:
+        """Return the network encapsuling the ip address."""
+        if not self.value:
+            return None
+        return str(ipaddress.ip_interface(str(self.value)).network)
+
+    @property
+    def prefixlen(self) -> Optional[str]:
+        """Return the prefix length of the ip address."""
+        if not self.value:
+            return None
+        return str(ipaddress.ip_interface(str(self.value))._prefixlen)
+
+    @property
+    def version(self) -> Optional[int]:
+        """Return the IP version of the ip address."""
+        if not self.value:
+            return None
+        return int(ipaddress.ip_interface(str(self.value)).version)
+
+    @property
+    def with_hostmask(self) -> Optional[str]:
+        """Return the ip address and the associated hostmask of the ip address."""
+        if not self.value:
+            return None
+        return str(ipaddress.ip_interface(str(self.value)).with_hostmask)
+
+    @property
+    def with_netmask(self) -> Optional[str]:
+        """Return the ip address and the associated netmask of the ip address."""
+        if not self.value:
+            return None
+        return str(ipaddress.ip_interface(str(self.value)).with_netmask)
 
     @classmethod
     def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:

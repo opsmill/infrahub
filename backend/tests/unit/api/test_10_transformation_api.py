@@ -16,7 +16,7 @@ def patch_rpc_client():
 
 
 async def test_transform_endpoint(
-    db: InfrahubDatabase, client_headers, default_branch, patch_rpc_client, register_core_models_schema, car_person_data
+    db: InfrahubDatabase, client_headers, default_branch, rpc_bus, register_core_models_schema, car_person_data
 ):
     from infrahub.server import app
 
@@ -44,7 +44,7 @@ async def test_transform_endpoint(
             response_class="transform_response",
             response_data={"transformed_data": {"KEY1": "value1", "KEY2": "value2"}},
         )
-        await client.app.state.rpc_client.add_mock_reply(response=mock_response)
+        rpc_bus.add_mock_reply(response=mock_response)
 
         response = client.get(
             "/api/transform/mytransform",
@@ -58,9 +58,7 @@ async def test_transform_endpoint(
     assert result == {"KEY1": "value1", "KEY2": "value2"}
 
 
-async def test_transform_endpoint_path(
-    db: InfrahubDatabase, client_headers, patch_rpc_client, default_branch, car_person_data
-):
+async def test_transform_endpoint_path(db: InfrahubDatabase, client_headers, rpc_bus, default_branch, car_person_data):
     from infrahub.server import app
 
     client = TestClient(app)
@@ -86,7 +84,7 @@ async def test_transform_endpoint_path(
             response_class="transform_response",
             response_data={"transformed_data": {"KEY1": "value1", "KEY2": "value2"}},
         )
-        await client.app.state.rpc_client.add_mock_reply(response=mock_response)
+        rpc_bus.add_mock_reply(response=mock_response)
 
         response = client.get(
             "/api/transform/my/transform/function",
@@ -101,7 +99,7 @@ async def test_transform_endpoint_path(
 
 
 async def test_rfile_endpoint(
-    db: InfrahubDatabase, client_headers, default_branch, patch_rpc_client, register_core_models_schema, car_person_data
+    db: InfrahubDatabase, client_headers, default_branch, rpc_bus, register_core_models_schema, car_person_data
 ):
     from infrahub.server import app
 
@@ -126,7 +124,7 @@ async def test_rfile_endpoint(
             response_class="template_response",
             response_data={"rendered_template": "Rendered by a mocked agent"},
         )
-        await client.app.state.rpc_client.add_mock_reply(response=mock_response)
+        rpc_bus.add_mock_reply(response=mock_response)
 
         response = client.get(
             "/api/rfile/test-rfile",

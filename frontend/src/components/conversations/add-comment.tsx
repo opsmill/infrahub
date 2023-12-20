@@ -1,12 +1,12 @@
 import { ReactElement } from "react";
-import { FieldValues, SubmitHandler } from "react-hook-form";
-import { DynamicFieldData } from "../../screens/edit-form-hook/dynamic-control-types";
 import { Form } from "../../screens/edit-form-hook/form";
+import { DynamicFieldData } from "../../screens/edit-form-hook/dynamic-control-types";
+import { FieldValues, SubmitHandler } from "react-hook-form";
 
 type tAddComment = {
   onSubmit: SubmitHandler<FieldValues>;
   isLoading?: boolean;
-  onClose?: Function;
+  onCancel?: Function;
   disabled?: boolean;
   additionalButtons?: ReactElement;
 };
@@ -15,6 +15,7 @@ const fields: DynamicFieldData[] = [
   {
     name: "comment",
     label: "Add a comment",
+    placeholder: "Add your comment here...",
     type: "textarea",
     value: "",
     config: {
@@ -23,22 +24,22 @@ const fields: DynamicFieldData[] = [
   },
 ];
 
-export const AddComment = (props: tAddComment) => {
-  const { onSubmit, isLoading, onClose, disabled, additionalButtons } = props;
-
+export const AddComment = ({
+  onSubmit,
+  isLoading,
+  onCancel,
+  disabled,
+  additionalButtons,
+}: tAddComment) => {
   return (
-    <div className="mb-6">
-      <div className="bg-white rounded-lg rounded-t-lg border border-gray-200 relative">
-        <Form
-          onSubmit={onSubmit}
-          fields={fields}
-          submitLabel={"Comment"}
-          isLoading={isLoading}
-          onCancel={onClose}
-          disabled={disabled}
-          additionalButtons={additionalButtons}
-        />
-      </div>
-    </div>
+    <Form
+      onSubmit={onSubmit}
+      fields={fields}
+      submitLabel="Comment"
+      isLoading={isLoading}
+      onCancel={onCancel}
+      disabled={disabled}
+      additionalButtons={additionalButtons}
+    />
   );
 };

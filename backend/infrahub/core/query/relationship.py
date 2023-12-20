@@ -184,17 +184,28 @@ class RelationshipCreateQuery(RelationshipQuery):
 
         self.query_add_all_node_property_match()
 
+        self.params["rel_prop"] = {
+            "branch": self.branch.name,
+            "branch_level": self.branch.hierarchy_level,
+            "status": "active",
+            "from": self.at.to_string(),
+            "to": None,
+        }
+        arrows = self.schema.get_query_arrows()
+        r1 = f"{arrows.left.start}[r1:{self.rel_type} $rel_prop ]{arrows.left.end}"
+        r2 = f"{arrows.right.start}[r2:{self.rel_type} $rel_prop ]{arrows.right.end}"
+
         query_create = """
         CREATE (rl:Relationship { uuid: $uuid, name: $name, branch_support: $branch_support })
-        CREATE (s)-[r1:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(rl)
-        CREATE (d)-[r2:%s { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null  }]->(rl)
+        CREATE (s)%s(rl)
+        CREATE (rl)%s(d)
         MERGE (ip:Boolean { value: $is_protected })
         MERGE (iv:Boolean { value: $is_visible })
-        CREATE (rl)-[r3:IS_PROTECTED { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(ip)
-        CREATE (rl)-[r4:IS_VISIBLE { branch: $branch, branch_level: $branch_level, status: "active", from: $at, to: null }]->(iv)
+        CREATE (rl)-[r3:IS_PROTECTED $rel_prop ]->(ip)
+        CREATE (rl)-[r4:IS_VISIBLE $rel_prop ]->(iv)
         """ % (
-            self.rel_type,
-            self.rel_type,
+            r1,
+            r2,
         )
 
         self.add_to_query(query_create)
@@ -348,23 +359,34 @@ class RelationshipDataDeleteQuery(RelationshipQuery):
             self.params[f"prop_{prop_name}_id"] = element_id_to_id(prop.prop_db_id)
             self.return_labels.append(f"prop_{prop_name}")
 
+        self.params["rel_prop"] = {
+            "branch": self.branch.name,
+            "branch_level": self.branch.hierarchy_level,
+            "status": "deleted",
+            "from": self.at.to_string(),
+            "to": None,
+        }
+
+        arrows = self.schema.get_query_arrows()
+        r1 = f"{arrows.left.start}[r1:{self.rel_type} $rel_prop ]{arrows.left.end}"
+        r2 = f"{arrows.right.start}[r2:{self.rel_type} $rel_prop ]{arrows.right.end}"
+
         # -----------------------------------------------------------------------
         # Create all the DELETE relationships, including properties
         # -----------------------------------------------------------------------
         query = """
-        CREATE (s)-[r1:%s { branch: $branch, branch_level: $branch_level, status: "deleted", from: $at, to: null }]->(rl)
-        CREATE (d)-[r2:%s { branch: $branch, branch_level: $branch_level, status: "deleted", from: $at, to: null  }]->(rl)
+        CREATE (s)%s(rl)
+        CREATE (rl)%s(d)
         """ % (
-            self.rel_type,
-            self.rel_type,
+            r1,
+            r2,
         )
         self.add_to_query(query)
         self.return_labels.extend(["r1", "r2"])
 
         for prop_name, prop in self.data.properties.items():
             self.add_to_query(
-                'CREATE (prop_%s)-[rel_prop_%s:%s { branch: $branch, branch_level: $branch_level, status: "deleted", from: $at, to: null  }]->(rl)'
-                % (prop_name, prop_name, prop_name.upper()),
+                "CREATE (prop_%s)-[rel_prop_%s:%s $rel_prop ]->(rl)" % (prop_name, prop_name, prop_name.upper()),
             )
             self.return_labels.append(f"rel_prop_{prop_name}")
 
@@ -390,14 +412,25 @@ class RelationshipDeleteQuery(RelationshipQuery):
         self.params["rel_id"] = self.rel.id
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
+        self.params["rel_prop"] = {
+            "branch": self.branch.name,
+            "branch_level": self.branch.hierarchy_level,
+            "status": "deleted",
+            "from": self.at.to_string(),
+            "to": None,
+        }
+
+        arrows = self.schema.get_query_arrows()
+        r1 = f"{arrows.left.start}[r1:{self.rel_type} $rel_prop ]{arrows.left.end}"
+        r2 = f"{arrows.right.start}[r2:{self.rel_type} $rel_prop ]{arrows.right.end}"
 
         query = """
         MATCH (s { uuid: $source_id })-[]-(rl:Relationship {uuid: $rel_id})-[]-(d { uuid: $destination_id })
-        CREATE (s)-[r1:%s { branch: $branch, branch_level: $branch_level, status: "deleted", from: $at, to: null }]->(rl)
-        CREATE (d)-[r2:%s { branch: $branch, branch_level: $branch_level, status: "deleted", from: $at, to: null  }]->(rl)
+        CREATE (s)%s(rl)
+        CREATE (rl)%s(d)
         """ % (
-            self.rel_type,
-            self.rel_type,
+            r1,
+            r2,
         )
 
         self.params["at"] = self.at.to_string()
@@ -431,21 +464,20 @@ class RelationshipGetPeerQuery(RelationshipQuery):
         self.params["source_id"] = self.source_id
         self.params["rel_identifier"] = self.schema.identifier
 
-        query = (
-            """
+        arrows = self.schema.get_query_arrows()
+
+        query = """
         MATCH (rl { name: $rel_identifier })
         CALL {
             WITH rl
-            MATCH p = (source:Node { uuid: $source_id })-[f0r1:IS_RELATED]-(rl)-[f0r2:IS_RELATED]-(peer:Node)
+            MATCH p = (source:Node { uuid: $source_id })%s[f0r1:IS_RELATED]%s(rl:Relationship)%s[f0r2:IS_RELATED]%s(peer:Node)
             WHERE peer.uuid <> $source_id AND all(r IN relationships(p) WHERE (%s))
             RETURN peer as peer, rl as rl1, f0r1 as r1, f0r2 as r2
             ORDER BY f0r1.branch_level DESC, f0r2.branch_level DESC, f0r2.from DESC, f0r2.from DESC
             LIMIT 1
         }
         WITH peer, rl1 as rl, r1, r2
-        """
-            % branch_filter
-        )
+        """ % (arrows.left.start, arrows.left.end, arrows.right.start, arrows.right.end, branch_filter)
 
         self.add_to_query(query)
         where_clause = ['r1.status = "active"', 'r2.status = "active"']
@@ -508,9 +540,7 @@ class RelationshipGetPeerQuery(RelationshipQuery):
         MATCH (rl)-[rel_is_visible:IS_VISIBLE]-(is_visible)
         MATCH (rl)-[rel_is_protected:IS_PROTECTED]-(is_protected)
         WHERE all(r IN [ rel_is_visible, rel_is_protected] WHERE (%s))
-        """ % (
-            branch_filter,
-        )
+        """ % (branch_filter,)
 
         self.add_to_query(query)
 
@@ -628,14 +658,18 @@ class RelationshipGetQuery(RelationshipQuery):
 
         self.params.update(rels_params)
 
+        arrows = self.schema.get_query_arrows()
+        r1 = f"{arrows.left.start}[r1:{self.rel.rel_type}]{arrows.left.end}"
+        r2 = f"{arrows.right.start}[r2:{self.rel.rel_type}]{arrows.right.end}"
+
         query = """
         MATCH (s { uuid: $source_id })
         MATCH (d { uuid: $destination_id })
-        MATCH (s)-[r1:%s]->(rl:Relationship { name: $name })<-[r2:%s]-(d)
+        MATCH (s)%s(rl:Relationship { name: $name })%s(d)
         WHERE %s
         """ % (
-            self.rel.rel_type,
-            self.rel.rel_type,
+            r1,
+            r2,
             "\n AND ".join(rels_filter),
         )
 

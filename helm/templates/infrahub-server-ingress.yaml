@@ -1,0 +1,19 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "infrahub-helm.fullname" . }}-infrahub-server-ingress
+  labels:
+    {{- include "infrahub-helm.labels" . | nindent 4 }}
+spec:
+  rules:
+    - host: infrahub-{{ .Values.global.kubernetesClusterDomain }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "infrahub-helm.fullname" . }}-infrahub-server
+                port:
+                  number: {{ (index .Values.infrahubServer.ports 0).port }}

@@ -14,7 +14,6 @@ services:
       - "INFRAHUB_CONFIG=/source/development/infrahub.toml"
       - "INFRAHUB_PRODUCTION=false"
       - "INFRAHUB_LOG_LEVEL=CRITICAL"
-      - "PROMETHEUS_MULTIPROC_DIR=/prom_shared"
       - "INFRAHUB_TEST_IN_DOCKER=1"
       - "INFRAHUB_DB_TYPE=${INFRAHUB_DB_TYPE}"
     volumes:

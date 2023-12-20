@@ -5,15 +5,21 @@ from typing import List, Optional
 
 import typer
 import yaml
-from pydantic import ValidationError
+
+try:
+    from pydantic import v1 as pydantic  # type: ignore[attr-defined]
+except ImportError:
+    import pydantic  # type: ignore[no-redef]
+
 from rich.console import Console
 from ujson import JSONDecodeError
 
 import infrahub_ctl.config as config
 from infrahub_ctl.client import initialize_client, initialize_client_sync
 from infrahub_ctl.exceptions import QueryNotFoundError
-from infrahub_ctl.utils import find_graphql_query, get_branch, parse_cli_vars
+from infrahub_ctl.utils import find_graphql_query, parse_cli_vars
 from infrahub_sdk.exceptions import GraphQLError
+from infrahub_sdk.utils import get_branch
 
 app = typer.Typer()
 
@@ -38,7 +44,7 @@ async def _schema(schema: Path) -> None:
 
     try:
         client.schema.validate(schema_data)
-    except ValidationError as exc:
+    except pydantic.ValidationError as exc:
         console.print(f"[red]Schema not valid, found '{len(exc.errors())}' error(s)")
         for error in exc.errors():
             loc_str = [str(item) for item in error["loc"]]

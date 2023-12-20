@@ -20,7 +20,7 @@ const DEFAULT_CLASS = (className?: string) => `
   text-gray-80
 `;
 
-const getClasseName = (type?: PILL_TYPES) => {
+const getClassName = (type?: PILL_TYPES) => {
   switch (type) {
     case PILL_TYPES.VALIDATE: {
       return "bg-green-100 ";
@@ -40,7 +40,7 @@ const getClasseName = (type?: PILL_TYPES) => {
 export const Pill = (props: tPill) => {
   const { type, className = "", children } = props;
 
-  const customClassName = getClasseName(type);
+  const customClassName = getClassName(type);
 
   return (
     <span className={classNames(DEFAULT_CLASS(className), customClassName, className)}>

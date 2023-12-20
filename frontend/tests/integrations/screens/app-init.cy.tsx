@@ -2,14 +2,16 @@
 
 import { MockedProvider } from "@apollo/client/testing";
 import React from "react";
-import App from "../../../src/App";
+import { Root } from "../../../src";
 
 describe("Config fetch", () => {
   beforeEach(function () {
     cy.fixture("login").as("login");
     cy.fixture("config").as("config");
     cy.fixture("schema").as("schema");
+    cy.fixture("schemaSummary").as("schemaSummary");
     cy.fixture("menu").as("menu");
+    cy.fixture("branches").as("branches");
   });
 
   it("should login and load the config", function () {
@@ -19,24 +21,32 @@ describe("Config fetch", () => {
 
     cy.intercept("GET", "/api/config", this.config).as("getConfig");
 
-    cy.intercept("GET", "/api/schema", this.schema).as("getSchema");
+    cy.intercept("GET", "/api/schema*", this.schema).as("getSchema");
 
-    cy.intercept("GET", "/api/menu", this.menu).as("getMenu");
+    cy.intercept("GET", "/api/schema/summary*", this.schema).as("getSchemaSummary");
+
+    cy.intercept("GET", "/api/menu?branch=main", this.menu).as("getMenu");
+
+    cy.intercept("POST", "/graphql/main", this.branches).as("branches");
 
     cy.mount(
       <MockedProvider addTypename={false}>
-        <App />
+        <Root />
       </MockedProvider>
     );
 
-    cy.get(":nth-child(1) > .relative > .block").type("test", { delay: 0, force: true });
-
-    cy.get(":nth-child(2) > .relative > .block").type("test", { delay: 0, force: true });
-
-    cy.get(".justify-end > .rounded-md").click();
+    cy.contains("Sign in to your account");
+    cy.get("#Username").clear({ force: true });
+    cy.get("#Username").type("test");
+    cy.get("#Password").type("test");
+    cy.contains("button", "Sign in").click();
 
     cy.wait("@login").then(({ response }) => {
       expect(response?.body?.access_token).to.exist;
+    });
+
+    cy.wait("@getSchemaSummary").then(({ response }) => {
+      expect(response?.body?.main).to.exist;
     });
 
     cy.wait("@getSchema").then(({ response }) => {

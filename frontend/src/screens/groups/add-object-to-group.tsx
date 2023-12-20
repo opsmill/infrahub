@@ -1,4 +1,4 @@
-import { gql, useReactiveVar } from "@apollo/client";
+import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
@@ -9,8 +9,6 @@ import graphqlClient from "../../graphql/graphqlClientApollo";
 import { addRelationship } from "../../graphql/mutations/relationships/addRelationship";
 import { removeRelationship } from "../../graphql/mutations/relationships/removeRelationship";
 import { getGroups } from "../../graphql/queries/groups/getGroups";
-import { branchVar } from "../../graphql/variables/branchVar";
-import { dateVar } from "../../graphql/variables/dateVar";
 import usePagination from "../../hooks/usePagination";
 import useQuery from "../../hooks/useQuery";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
@@ -20,6 +18,9 @@ import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
+import { useAtomValue } from "jotai/index";
+import { currentBranchAtom } from "../../state/atoms/branches.atom";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 
 interface Props {
   closeDrawer: Function;
@@ -33,8 +34,8 @@ export default function AddObjectToGroup(props: Props) {
 
   const [schemaList] = useAtom(schemaState);
   const [genericsList] = useAtom(genericsState);
-  const branch = useReactiveVar(branchVar);
-  const date = useReactiveVar(dateVar);
+  const branch = useAtomValue(currentBranchAtom);
+  const date = useAtomValue(datetimeAtom);
   const [pagination] = usePagination();
   const [isLoading, setIsLoading] = useState(false);
 

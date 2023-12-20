@@ -9,11 +9,11 @@
                 {"name": "name", "kind": "Text"},
                 {"name": "description", "kind": "Text", "optional": true},
                 {"name": "speed", "kind": "Number"},
-                {"name": "enabled", "kind": "Boolean", "default_value": true}
+                {"name": "enabled", "kind": "Boolean", "default_value": true},
+                {"name": "role", "kind": "Dropdown", "choices": [{"name": "router"}, {"name": "firewall"}]},
+                {"name": "status", "kind": "Dropdown", "choices": [{"name": "active"}, {"name": "planned"}]}
             ],
             "relationships": [
-                {"name": "status", "peer": "BuiltinStatus", "optional": false, "cardinality": "one", "kind": "Attribute"},
-                {"name": "role", "peer": "BuiltinRole", "optional": false, "cardinality": "one", "kind": "Attribute"},
                 {"name": "device", "peer": "InfraDevice", "optional": false, "cardinality": "one", "kind": "Parent"},
                 {"name": "tags", "peer": "BuiltinTag", "optional": true, "cardinality": "many", "kind": "Attribute"}
             ]

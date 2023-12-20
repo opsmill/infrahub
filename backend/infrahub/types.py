@@ -60,6 +60,7 @@ class InfrahubDataType:
         filters: Dict[str, typing.Any] = {}
         attr_class = cls.get_infrahub_class()
         filters[f"{name}__value"] = cls.graphql_filter()
+        filters[f"{name}__values"] = graphene.List(cls.graphql_filter)
 
         if not include_properties:
             return filters
@@ -181,6 +182,15 @@ class Color(InfrahubDataType):
     infrahub = "String"
 
 
+class Dropdown(InfrahubDataType):
+    label: str = "Dropdown"
+    graphql = graphene.String
+    graphql_query = "DropdownType"
+    graphql_input = "TextAttributeInput"
+    graphql_filter = graphene.String
+    infrahub = "Dropdown"
+
+
 class Number(InfrahubDataType):
     label: str = "Number"
     graphql = graphene.Int
@@ -202,7 +212,7 @@ class Bandwidth(InfrahubDataType):
 class IPHost(InfrahubDataType):
     label: str = "IPHost"
     graphql = graphene.String
-    graphql_query = "TextAttributeType"
+    graphql_query = "IPHostType"
     graphql_input = "TextAttributeInput"
     graphql_filter = graphene.String
     infrahub = "IPHost"
@@ -211,7 +221,7 @@ class IPHost(InfrahubDataType):
 class IPNetwork(InfrahubDataType):
     label: str = "IPNetwork"
     graphql = graphene.String
-    graphql_query = "TextAttributeType"
+    graphql_query = "IPNetworkType"
     graphql_input = "TextAttributeInput"
     graphql_filter = graphene.String
     infrahub = "IPNetwork"
@@ -285,6 +295,7 @@ class Boolean(InfrahubDataType):
 
 ATTRIBUTE_TYPES: Dict[str, Type[InfrahubDataType]] = {
     "ID": ID,
+    "Dropdown": Dropdown,
     "Text": Text,
     "TextArea": TextArea,
     "DateTime": DateTime,

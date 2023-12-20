@@ -82,6 +82,73 @@ async def test_schema_read_endpoint_wrong_branch(
     assert response.json() is not None
 
 
+async def test_schema_summary_default_branch(
+    db: InfrahubDatabase,
+    client,
+    client_headers,
+    default_branch: Branch,
+    car_person_schema_generics: SchemaRoot,
+    car_person_data_generic,
+):
+    with client:
+        response = client.get(
+            "/api/schema/summary",
+            headers=client_headers,
+        )
+
+    assert response.status_code == 200
+    assert response.json() is not None
+
+    schema = response.json()
+
+    assert "nodes" in schema
+    assert "generics" in schema
+    assert isinstance(schema["nodes"]["BuiltinTag"], str)
+
+
+async def test_schema_kind_default_branch(
+    db: InfrahubDatabase,
+    client,
+    client_headers,
+    default_branch: Branch,
+    car_person_schema_generics: SchemaRoot,
+    car_person_data_generic,
+):
+    with client:
+        response = client.get(
+            "/api/schema/BuiltinTag",
+            headers=client_headers,
+        )
+
+    assert response.status_code == 200
+    assert response.json() is not None
+
+    schema = response.json()
+
+    assert "id" in schema
+    assert "hash" in schema
+    assert "filters" in schema
+    assert "relationships" in schema
+
+
+async def test_schema_kind_not_valid(
+    db: InfrahubDatabase,
+    client,
+    client_headers,
+    default_branch: Branch,
+    car_person_schema_generics: SchemaRoot,
+    car_person_data_generic,
+):
+    with client:
+        response = client.get(
+            "/api/schema/NotPresent",
+            headers=client_headers,
+        )
+
+    assert response.status_code == 422
+    assert response.json()["errors"][0]["message"] == "Unable to find the schema 'NotPresent' in the registry"
+
+
 async def test_schema_load_endpoint_valid_simple(
     db: InfrahubDatabase,
     client: TestClient,
@@ -110,7 +177,7 @@ async def test_schema_load_endpoint_valid_simple(
     assert attributes["description"] == 900
     assert attributes["type"] == 3000
     assert relationships["interfaces"] == 450
-    assert relationships["tags"] == 5000
+    assert relationships["tags"] == 7000
 
 
 async def test_schema_load_restricted_namespace(
@@ -162,7 +229,7 @@ async def test_schema_load_endpoint_idempotent_simple(
         assert attributes["description"] == 900
         assert attributes["type"] == 3000
         assert relationships["interfaces"] == 450
-        assert relationships["tags"] == 5000
+        assert relationships["tags"] == 7000
 
         creation = client.post(
             "/api/schema/load", headers=admin_headers, json={"schemas": [helper.schema_file("infra_simple_01.json")]}
@@ -335,7 +402,7 @@ async def test_schema_load_endpoint_not_valid_simple_05(
         )
 
     assert response.status_code == 422
-    assert response.json()["detail"][0]["msg"] == "Name can not be set to a reserved keyword 'class' is not allowed."
+    assert response.json()["detail"][0]["msg"] == "Name can not be set to a reserved keyword 'None' is not allowed."
 
 
 async def test_schema_load_endpoint_not_valid_with_generics_02(

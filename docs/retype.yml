@@ -1,7 +1,7 @@
 ---
 input: .
 output: .retype
-url:  # Add your website address here
+url: docs.infrahub.app
 branding:
   title: Infrahub
   label: Docs

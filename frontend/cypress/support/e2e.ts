@@ -26,10 +26,11 @@ Cypress.Commands.add("login", (username: string, password: string) => {
     [username, password],
     () => {
       cy.visit("/signin");
+      cy.contains("Sign in to your account").should("be.visible");
 
-      cy.get(":nth-child(1) > .relative > .block").type(username, { delay: 0, force: true });
+      cy.get(":nth-child(1) > .relative > .block").type(username);
 
-      cy.get(":nth-child(2) > .relative > .block").type(password, { delay: 0, force: true });
+      cy.get(":nth-child(2) > .relative > .block").type(password);
 
       cy.get(".justify-end > .rounded-md").click();
     },
@@ -39,4 +40,12 @@ Cypress.Commands.add("login", (username: string, password: string) => {
       },
     }
   );
+});
+
+Cypress.Commands.add("createBranch", (name: string) => {
+  cy.visit("/");
+  cy.get("[data-cy='create-branch-button']").click();
+  cy.get("#new-branch-name").type(name);
+  cy.contains("button", "Create").click();
+  cy.get("[data-cy='branch-select-menu']").contains(name);
 });

@@ -28,6 +28,11 @@ frontend_files: &frontend_files
 demo_files: &demo_files
   - "models/**"
 
+doc_files: &doc_files
+  - "docs/**"
+  - package.json
+  - package-lock.json
+
 python_all: &python_all
   - "**/*.py"
 
@@ -42,6 +47,10 @@ backend_all:
   - *backend_files
   - *ci_config
   - *development_files
+
+documentation_all:
+  - *development_files
+  - *doc_files
 
 sdk_all:
   - *sdk_files

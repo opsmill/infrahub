@@ -1,8 +1,8 @@
-import { gql, useReactiveVar } from "@apollo/client";
+import { gql } from "@apollo/client";
 import { Menu, Transition } from "@headlessui/react";
 import { MagnifyingGlassIcon } from "@heroicons/react/20/solid";
 import { Bars3BottomLeftIcon } from "@heroicons/react/24/outline";
-import { formatISO, isEqual } from "date-fns";
+import { formatISO, isEqual, isValid } from "date-fns";
 import { useAtom } from "jotai";
 import React, { Fragment, useContext, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -16,12 +16,12 @@ import { ACCESS_TOKEN_KEY, ACCOUNT_OBJECT } from "../../config/constants";
 import { QSP } from "../../config/qsp";
 import { AuthContext } from "../../decorators/withAuth";
 import { getProfileDetails } from "../../graphql/queries/profile/getProfileDetails";
-import { dateVar } from "../../graphql/variables/dateVar";
 import useQuery from "../../hooks/useQuery";
 import { schemaState } from "../../state/atoms/schema.atom";
-import { classNames, parseJwt } from "../../utils/common";
+import { classNames, debounce, parseJwt } from "../../utils/common";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { userNavigation } from "./navigation-list";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 
 interface Props {
   setSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -33,7 +33,7 @@ export default function Header(props: Props) {
   const { setSidebarOpen } = props;
 
   const [qspDate, setQspDate] = useQueryParam(QSP.DATETIME, StringParam);
-  const date = useReactiveVar(dateVar);
+  const [date, setDate] = useAtom(datetimeAtom);
   const auth = useContext(AuthContext);
   const [schemaList] = useAtom(schemaState);
   const navigate = useNavigate();
@@ -60,18 +60,18 @@ export default function Header(props: Props) {
   const { error, loading, data } = useQuery(query, { skip: !schema || !accountId });
 
   useEffect(() => {
+    // Remove the date from the state
+    if (!qspDate || (qspDate && !isValid(new Date(qspDate)))) {
+      setDate(null);
+    }
+
     if (qspDate) {
       const newQspDate = new Date(qspDate);
 
       // Store the new QSP date only if it's not defined OR if it's different
       if (!date || (date && !isEqual(newQspDate, date))) {
-        dateVar(newQspDate);
+        setDate(newQspDate);
       }
-    }
-
-    // Remove the date from the state
-    if (!qspDate) {
-      dateVar(null);
     }
   }, [date, qspDate]);
 
@@ -83,6 +83,8 @@ export default function Header(props: Props) {
       setQspDate(undefined);
     }
   };
+
+  const debouncedHandleDateChange = debounce(handleDateChange);
 
   const handleClickNow = () => {
     // Undefined is needed to remove a parameter from the QSP
@@ -147,7 +149,11 @@ export default function Header(props: Props) {
         </div>
         <div className="ml-4 flex items-center md:ml-6">
           <div className="mr-4">
-            <DatePicker date={date} onChange={handleDateChange} onClickNow={handleClickNow} />
+            <DatePicker
+              date={date}
+              onChange={debouncedHandleDateChange}
+              onClickNow={handleClickNow}
+            />
           </div>
 
           <BranchSelector />
@@ -168,10 +174,7 @@ export default function Header(props: Props) {
                 <Menu.Button
                   className="flex max-w-xs items-center rounded-full bg-custom-white text-sm focus:outline-none focus:ring-2 focus:ring-custom-blue-500 focus:ring-offset-2"
                   data-cy="current-user-avatar-button">
-                  <Avatar
-                    name={profile?.name?.value}
-                    // image="https://shotkit.com/wp-content/uploads/2020/07/headshots_image002.jpg"
-                  />
+                  <Avatar name={profile?.name?.value} data-cy="user-avatar" />
                 </Menu.Button>
               </div>
               <Transition

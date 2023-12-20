@@ -11,7 +11,7 @@ from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema_manager import SchemaManager
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import DatabaseError
-from infrahub.storage.local import InfrahubLocalStorage
+from infrahub.storage import InfrahubObjectStorage
 
 LOGGER = logging.getLogger("infrahub")
 
@@ -42,8 +42,7 @@ async def initialization(db: InfrahubDatabase):
     # ---------------------------------------------------
     # Initialize the Storage Driver
     # ---------------------------------------------------
-    if config.SETTINGS.storage.driver == config.StorageDriver.LOCAL:
-        registry.storage = await InfrahubLocalStorage.init(settings=config.SETTINGS.storage.settings)
+    registry.storage = await InfrahubObjectStorage.init(settings=config.SETTINGS.storage)
 
     # ---------------------------------------------------
     # Load all existing branches into the registry
@@ -67,7 +66,8 @@ async def initialization(db: InfrahubDatabase):
         await registry.schema.load_schema_from_db(db=db, branch=default_branch)
         if default_branch.update_schema_hash():
             LOGGER.warning(
-                f"{default_branch.name} | New schema detected after pulling the schema from the db : {hash_in_db!r} >> {default_branch.schema_hash.main!r}"
+                f"{default_branch.name} | New schema detected after pulling the schema from the db :"
+                f" {hash_in_db!r} >> {default_branch.schema_hash.main!r}"
             )
 
         for branch in branches:
@@ -80,7 +80,8 @@ async def initialization(db: InfrahubDatabase):
 
             if branch.update_schema_hash():
                 LOGGER.warning(
-                    f"{branch.name} | New schema detected after pulling the schema from the db {hash_in_db!r} >> {branch.schema_hash.main!r}"
+                    f"{branch.name} | New schema detected after pulling the schema from the db :"
+                    f" {hash_in_db!r} >> {branch.schema_hash.main!r}"
                 )
 
     # ---------------------------------------------------
@@ -201,22 +202,6 @@ async def first_time_initialization(db: InfrahubDatabase):
     # --------------------------------------------------
     # Create Default Users and Groups
     # --------------------------------------------------
-    CRITICALITY_LEVELS = (
-        # ("negligible", 1),
-        ("low", 2),
-        ("medium", 3),
-        ("high", 4),
-        # ("very high", 5),
-        # ("critical", 6),
-        # ("very critical", 7),
-    )
-
-    criticality_schema = registry.get_schema(name="BuiltinCriticality")
-    for level in CRITICALITY_LEVELS:
-        obj = await Node.init(db=db, schema=criticality_schema)
-        await obj.new(db=db, name=level[0], level=level[1])
-        await obj.save(db=db)
-
     token_schema = registry.get_schema(name="InternalAccountToken")
     # admin_grp = await Node.init(db=db, schema=group_schema)
     # await admin_grp.new(db=db, name="admin")

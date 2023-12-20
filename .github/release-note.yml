@@ -26,6 +26,6 @@ change-title-escapes: '\<*_&'  # You can add # and @ to disable mentions, and ad
 #       - 'patch'
 #   default: patch
 template: |
-  ## Changes
+  ## Changelog
 
   $CHANGES

@@ -1,0 +1,8 @@
+---
+extends: existence
+message: "Use a comma before the last 'and' or 'or' in a list of items."
+level: suggestion
+scope: sentence
+nonword: true
+tokens:
+  - '(?:[^\s,]+,){1,} \w+ (?:and|or) \w+[.?!]'

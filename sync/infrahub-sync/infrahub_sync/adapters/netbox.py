@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Dict
 
 import pynetbox
 from diffsync import DiffSync, DiffSyncModel
+
 from infrahub_sync import (
     DiffSyncMixin,
     DiffSyncModelMixin,
@@ -36,17 +37,18 @@ class NetboxAdapter(DiffSyncMixin, DiffSync):
         super().__init__(*args, **kwargs)
 
         self.target = target
+        self.client = self._create_netbox_client(adapter)
+        self.config = config
 
+    def _create_netbox_client(self, adapter: SyncAdapter):
         settings = adapter.settings or {}
-
-        url = os.environ.get("NETBOX_ADDRESS", settings.get("url", None))
-        token = os.environ.get("NETBOX_TOKEN", settings.get("token", None))
+        url = os.environ.get("NETBOX_ADDRESS") or settings.get("url")
+        token = os.environ.get("NETBOX_TOKEN") or settings.get("token")
 
         if not url or not token:
             raise ValueError("Both url and token must be specified!")
 
-        self.client = pynetbox.api(url, token=token)
-        self.config = config
+        return pynetbox.api(url, token=token)
 
     def model_loader(self, model_name, model):
         for element in self.config.schema_mapping:
@@ -59,7 +61,7 @@ class NetboxAdapter(DiffSyncMixin, DiffSync):
             netbox_model = getattr(netbox_app, resource_name)
 
             objs = netbox_model.all()
-            # print(f"-> Loading {len(objs)} {resource_name}")
+            print(f"-> Loading {len(objs)} {resource_name}")
             for obj in objs:
                 data = self.netbox_obj_to_diffsync(obj=obj, mapping=element, model=model)
                 item = model(**data)
@@ -83,17 +85,20 @@ class NetboxAdapter(DiffSyncMixin, DiffSync):
                 )
 
             elif field.mapping and field.reference:
-                nodes = [item for item in self.store.get_all(model=field.reference)]
-                if not nodes:
+                all_nodes_for_reference = self.store.get_all(model=field.reference)
+                nodes = [item for item in all_nodes_for_reference]
+                if not nodes and all_nodes_for_reference:
                     raise IndexError(
-                        f"Unable to get '{field.mapping}' with '{field.reference}' reference from store. The available models are {self.store.get_all_model_names()}"
+                        f"Unable to get '{field.mapping}' with '{field.reference}' reference from store."
+                        f" The available models are {self.store.get_all_model_names()}"
                     )
                 if not field_is_list:
                     if node := get_value(obj, field.mapping):
                         matching_nodes = []
-                        matching_nodes = [item for item in nodes if item.local_id == str(node.id)]
+                        node_id = getattr(node, "id", None)
+                        matching_nodes = [item for item in nodes if item.local_id == str(node_id)]
                         if len(matching_nodes) == 0:
-                            raise IndexError(f"Unable to locate the node {model} {node.id}")
+                            raise IndexError(f"Unable to locate the node {model} {node_id}")
                         node = matching_nodes[0]
                         data[field.name] = node.get_unique_id()
 
@@ -102,9 +107,15 @@ class NetboxAdapter(DiffSyncMixin, DiffSync):
                     for node in get_value(obj, field.mapping):
                         if not node:
                             continue
-                        matching_nodes = [item for item in nodes if item.local_id == str(node.id)]
+                        node_id = getattr(node, "id", None)
+                        if not node_id:
+                            if isinstance(node, tuple):
+                                node_id = node[1] if node[0] == "id" else None
+                                if not node_id:
+                                    continue
+                        matching_nodes = [item for item in nodes if item.local_id == str(node_id)]
                         if len(matching_nodes) == 0:
-                            raise IndexError(f"Unable to locate the node {field.reference} {node.id}")
+                            raise IndexError(f"Unable to locate the node {field.reference} {node_id}")
                         data[field.name].append(matching_nodes[0].get_unique_id())
 
         return data

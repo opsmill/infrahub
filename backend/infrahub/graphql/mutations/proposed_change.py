@@ -29,14 +29,13 @@ class CheckType(Enum):
     DATA = "data"
     REPOSITORY = "repository"
     SCHEMA = "schema"
+    USER = "user"
     ALL = "all"
 
 
 class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
     @classmethod
-    def __init_subclass_with_meta__(
-        cls, schema: NodeSchema = None, _meta=None, **options
-    ):  # pylint: disable=arguments-differ
+    def __init_subclass_with_meta__(cls, schema: NodeSchema = None, _meta=None, **options):  # pylint: disable=arguments-differ
         # Make sure schema is a valid NodeSchema Node Class
         if not isinstance(schema, NodeSchema):
             raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
@@ -217,7 +216,7 @@ class ProposedChangeRequestRunCheck(Mutation):
             await rpc_client.send(messages.RequestProposedChangeRefreshArtifacts(proposed_change=proposed_change.id))
         elif check_type == CheckType.DATA:
             await rpc_client.send(messages.RequestProposedChangeDataIntegrity(proposed_change=proposed_change.id))
-        elif check_type == CheckType.REPOSITORY:
+        elif check_type in [CheckType.REPOSITORY, CheckType.USER]:
             await rpc_client.send(messages.RequestProposedChangeRepositoryChecks(proposed_change=proposed_change.id))
         elif check_type == CheckType.SCHEMA:
             await rpc_client.send(messages.RequestProposedChangeSchemaIntegrity(proposed_change=proposed_change.id))

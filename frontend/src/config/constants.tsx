@@ -32,6 +32,8 @@ export const DATA_CHECK_OBJECT = "CoreDataCheck";
 
 export const ACCOUNT_OBJECT = "CoreAccount";
 
+export const ACCOUNT_SELF_UPDATE_OBJECT = "CoreAccountSelf";
+
 export const ACCOUNT_TOKEN_OBJECT = "InternalAccountToken";
 
 export const ARTIFACT_DEFINITION_OBJECT = "CoreArtifactDefinition";
@@ -55,6 +57,14 @@ export const PROPOSED_CHANGES_COMMENT_OBJECT = "CoreChangeComment";
 export const PROPOSED_CHANGES_THREAD_COMMENT_OBJECT = "CoreThreadComment";
 
 export const PROPOSED_CHANGES_VALIDATOR_OBJECT = "CoreValidator";
+
+export const SCHEMA_DROPDOWN_ADD = "SchemaDropdownAdd";
+
+export const SCHEMA_DROPDOWN_REMOVE = "SchemaDropdownRemove";
+
+export const SCHEMA_ENUM_ADD = "SchemaEnumAdd";
+
+export const SCHEMA_ENUM_REMOVE = "SchemaEnumRemove";
 
 export const GROUP_OBJECT = "CoreGroup";
 
@@ -118,13 +128,12 @@ export const CHECK_CONCLUSIONS = {
   SUCCESS: "success",
 };
 
-["CoreArtifactValidator", "CoreDataValidator", "CoreRepositoryValidator", "CoreSchemaValidator"];
-
 export const VALIDATIONS_ENUM_MAP: { [key: string]: string } = {
   CoreArtifactValidator: "ARTIFACT",
   CoreDataValidator: "DATA",
   CoreRepositoryValidator: "REPOSITORY",
   CoreSchemaValidator: "SCHEMA",
+  CoreUserValidator: "USER",
   all: "ALL",
 };
 

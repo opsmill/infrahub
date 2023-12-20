@@ -1,9 +1,15 @@
+from __future__ import annotations
+
 import enum
 import json
 from typing import Protocol, runtime_checkable
 
 import httpx
-from pydantic import BaseSettings
+
+try:
+    from pydantic import v1 as pydantic  # type: ignore[attr-defined]
+except ImportError:
+    import pydantic  # type: ignore[no-redef]
 
 from infrahub_sdk.utils import generate_request_filename
 
@@ -16,10 +22,20 @@ class RecorderType(str, enum.Enum):
 @runtime_checkable
 class Recorder(Protocol):
     def record(self, response: httpx.Response) -> None:
-        ...
+        """Record the response from Infrahub"""
 
 
-class JSONRecorder(BaseSettings):
+class NoRecorder:
+    @staticmethod
+    def record(response: httpx.Response) -> None:
+        """The NoRecorder just silently returns"""
+
+    @classmethod
+    def default(cls) -> NoRecorder:
+        return cls()
+
+
+class JSONRecorder(pydantic.BaseSettings):
     directory: str = "."
     host: str = ""
 

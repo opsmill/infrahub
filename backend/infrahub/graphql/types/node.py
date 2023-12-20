@@ -14,9 +14,7 @@ class InfrahubObjectOptions(ObjectTypeOptions):
 
 class InfrahubObject(ObjectType, GetListMixin):
     @classmethod
-    def __init_subclass_with_meta__(
-        cls, schema: NodeSchema = None, interfaces=(), _meta=None, **options
-    ):  # pylint: disable=arguments-differ
+    def __init_subclass_with_meta__(cls, schema: NodeSchema = None, interfaces=(), _meta=None, **options):  # pylint: disable=arguments-differ
         if not isinstance(schema, (NodeSchema, GenericSchema)):
             raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
 

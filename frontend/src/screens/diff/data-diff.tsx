@@ -181,9 +181,13 @@ export const DataDiff = () => {
         )}
       </div>
 
-      {isLoading && <LoadingScreen />}
-
-      {!isLoading && <div className="text-xs">{diff?.map(renderNode)}</div>}
+      {isLoading ? (
+        <LoadingScreen />
+      ) : (
+        <div className="text-xs" data-cy="data-diff">
+          {diff?.map(renderNode)}
+        </div>
+      )}
     </>
   );
 };

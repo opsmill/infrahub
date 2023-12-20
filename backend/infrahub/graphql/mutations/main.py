@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 from graphene import InputObjectType, Mutation
 from graphene.types.mutation import MutationOptions
@@ -22,6 +22,8 @@ from infrahub.services import services
 from infrahub.worker import WORKER_IDENTITY
 
 from ..utils import extract_fields
+from .node_getter.by_default_filter import MutationNodeGetterByDefaultFilter
+from .node_getter.by_id import MutationNodeGetterById
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -29,6 +31,8 @@ if TYPE_CHECKING:
     from infrahub.auth import AccountSession
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+
+    from .node_getter.interface import MutationNodeGetterInterface
 
 # pylint: disable=unused-argument
 
@@ -61,12 +65,25 @@ class InfrahubMutationMixin:
         elif "Update" in cls.__name__:
             obj, mutation = await cls.mutate_update(root=root, info=info, branch=branch, at=at, *args, **kwargs)
             action = MutationAction.UPDATED
+        elif "Upsert" in cls.__name__:
+            node_manager = NodeManager()
+            node_getters = [
+                MutationNodeGetterById(db, node_manager),
+                MutationNodeGetterByDefaultFilter(db, node_manager),
+            ]
+            obj, mutation, created = await cls.mutate_upsert(
+                root=root, info=info, branch=branch, at=at, node_getters=node_getters, *args, **kwargs
+            )
+            if created:
+                action = MutationAction.ADDED
+            else:
+                action = MutationAction.UPDATED
         elif "Delete" in cls.__name__:
             obj, mutation = await cls.mutate_delete(root=root, info=info, branch=branch, at=at, *args, **kwargs)
             action = MutationAction.REMOVED
         else:
             raise ValueError(
-                f"Unexpected class Name: {cls.__name__}, should start with either Create, Update or Delete"
+                f"Unexpected class Name: {cls.__name__}, should end with Create, Update, Upsert, or Delete"
             )
 
         if config.SETTINGS.broker.enable and info.context.get("background"):
@@ -159,7 +176,7 @@ class InfrahubMutationMixin:
                     raise ValidationError(
                         {unique_attr.name: f"An object already exist with this value: {unique_attr.name}: {attr.value}"}
                     )
-            node_id = data.pop("id")
+            node_id = data.pop("id", obj.id)
             fields = list(data.keys())
             validate_mutation_permissions_update_node(
                 operation=cls.__name__, node_id=node_id, account_session=account_session, fields=fields
@@ -179,6 +196,32 @@ class InfrahubMutationMixin:
         fields = await extract_fields(info.field_nodes[0].selection_set)
 
         return obj, cls(object=await obj.to_graphql(db=db, fields=fields.get("object", {})), ok=ok)
+
+    @classmethod
+    async def mutate_upsert(
+        cls,
+        root: dict,
+        info: GraphQLResolveInfo,
+        data: InputObjectType,
+        branch: Branch,
+        at: str,
+        node_getters: List[MutationNodeGetterInterface],
+        database: Optional[InfrahubDatabase] = None,
+    ):
+        schema_name = cls._meta.schema.kind
+        node_schema = registry.get_node_schema(name=schema_name, branch=branch)
+
+        node = None
+        for getter in node_getters:
+            node = await getter.get_node(node_schema=node_schema, data=data, branch=branch, at=at)
+            if node:
+                break
+
+        if node:
+            updated_obj, mutation = await cls.mutate_update(root, info, data, branch, at, database, node)
+            return updated_obj, mutation, False
+        created_obj, mutation = await cls.mutate_create(root, info, data, branch, at)
+        return created_obj, mutation, True
 
     @classmethod
     async def mutate_delete(
@@ -221,9 +264,7 @@ class InfrahubMutationMixin:
 
 class InfrahubMutation(InfrahubMutationMixin, Mutation):
     @classmethod
-    def __init_subclass_with_meta__(
-        cls, schema: NodeSchema = None, _meta=None, **options
-    ):  # pylint: disable=arguments-differ
+    def __init_subclass_with_meta__(cls, schema: NodeSchema = None, _meta=None, **options):  # pylint: disable=arguments-differ
         # Make sure schema is a valid NodeSchema Node Class
         if not isinstance(schema, NodeSchema):
             raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")

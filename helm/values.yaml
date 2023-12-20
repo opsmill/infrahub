@@ -1,0 +1,171 @@
+---
+global:
+  kubernetesClusterDomain: cluster.local
+  imageRegistry: 9r2s1098.c1.gra9.container-registry.ovh.net
+  infrahubRepository: opsmill/infrahub-py3.11
+  infrahubTag: "0.8.2-helm"
+  imagePullPolicy: IfNotPresent
+
+# ----------- Cache -----------
+cache:
+  type: ClusterIP
+  cache:
+    image:
+      repository: redis
+      tag: "7.2"
+  ports:
+    - name: "client"
+      port: 6379
+      targetPort: 6379
+    - name: "gossip"
+      port: 16379
+      targetPort: 16379
+
+# ----------- Databse -----------
+database:
+  type: ClusterIP
+  database:
+    env:
+      neo4JAuth: neo4j/admin
+      neo4JDbmsSecurityAuthMinimumPasswordLength: "4"
+      neo4JDbmsSecurityProceduresUnrestricted: apoc.*
+    image:
+      repository: neo4j
+      tag: 5.13-community
+  ports:
+    - name: "metrics"
+      port: 2004
+      targetPort: 2004
+    - name: "interface"
+      port: 7474
+      targetPort: 7474
+    - name: "bolt"
+      port: 7687
+      targetPort: 7687
+
+
+# ----------- Infrahub GIT -----------
+infrahubGit:
+  replicas: 2
+  infrahubGit:
+    args:
+      - infrahub
+      - git-agent
+      - start
+      - --debug
+    env:
+      infrahubAddress: http://infrahub-server:8000
+      infrahubCachePort: 6379
+      infrahubConfig: /config/infrahub.toml
+      infrahubDbType: neo4j
+      infrahubLogLevel: DEBUG
+      infrahubProduction: "false"
+      infrahubSdkApiToken: 06438eb2-8019-4776-878c-0941b1f1d1ec
+      infrahubSdkTimeout: "20"
+    imagePullPolicy: Always
+  waitForInfrahubServer:
+    image:
+      repository: busybox
+      tag: latest
+
+# ----------- Infrahub Server -----------
+infrahubServer:
+  type: ClusterIP
+  infrahubServer:
+    args:
+      - gunicorn
+      - --config
+      - /source/backend/infrahub/serve/gunicorn_config.py
+      - --logger-class
+      - infrahub.serve.log.GunicornLogger
+      - infrahub.server:app
+    env:
+      infrahubAllowAnonymousAccess: "true"
+      infrahubCachePort: 6379
+      infrahubConfig: /config/infrahub.toml
+      infrahubDbType: neo4j
+      infrahubLogLevel: INFO
+      infrahubProduction: "false"
+      infrahubSecurityInitialAdminToken: 06438eb2-8019-4776-878c-0941b1f1d1ec
+      infrahubSecuritySecretKey: 327f747f-efac-42be-9e73-999f08f86b92
+    imagePullPolicy: Always
+  ports:
+    - name: "interface"
+      port: 8000
+      targetPort: 8000
+  waitForCache:
+    image:
+      repository: busybox
+      tag: latest
+  waitForDatabase:
+    image:
+      repository: busybox
+      tag: latest
+  waitForMessageQueue:
+    image:
+      repository: busybox
+      tag: latest
+infrahubServerDbInitJob:
+  backoffLimit: 0
+  infrahubServerDbInitJob:
+    env:
+      infrahubCachePort: 6379
+      infrahubConfig: /config/infrahub.toml
+  waitForDatabase:
+    image:
+      repository: busybox
+      tag: latest
+
+# ----------- Mesage Queue (Rabbit MQ) -----------
+messageQueue:
+  type: ClusterIP
+  messageQueue:
+    image:
+      repository: rabbitmq
+      tag: 3.12-management
+  ports:
+    - name: "epmd"
+      port: 4369
+      targetPort: 4369
+    - name: "amqptls"
+      port: 5671
+      targetPort: 5671
+    - name: "amqp"
+      port: 5672
+      targetPort: 5672
+    - name: "manager"
+      port: 15672
+      targetPort: 15672
+    - name: "metrics"
+      port: 15692
+      targetPort: 15692
+    - name: "dist"
+      port: 25672
+      targetPort: 25672
+  # storageSize: 10Gi
+  auth:
+    username: infrahub
+    password: infrahub
+  metrics:
+    enabled: true
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 120
+    timeoutSeconds: 20
+    periodSeconds: 30
+    failureThreshold: 6
+    successThreshold: 1
+
+# ----------- Persistent Storage -----------
+pvc:
+  # Database
+  databaseData:
+    storageRequest: 100Mi
+  databaseLogs:
+    storageRequest: 100Mi
+  # Infrahub Git
+  gitData:
+    storageRequest: 100Mi
+  # Infrahub Server
+  infrahubServerStorageData:
+    storageRequest: 100Mi

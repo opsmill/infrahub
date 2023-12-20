@@ -9,6 +9,7 @@ from infrahub_sdk import (
     RelationshipKind,
     RelationshipSchema,
 )
+
 from infrahub_sync import SyncConfig
 from infrahub_sync.generator.utils import list_to_set, list_to_str
 
@@ -97,7 +98,7 @@ def get_children(node: NodeSchema, config: SyncConfig) -> Optional[str]:
         return None
 
     children_list = [f'"{key}": "{value}"' for key, value in children.items()]
-    return "{ " + ", ".join(children_list) + " }"
+    return "{" + ", ".join(children_list) + "}"
 
 
 def get_kind(item: Union[RelationshipSchema, AttributeSchema]) -> str:

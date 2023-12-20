@@ -3,12 +3,16 @@ coverage.xml
 *.pyc
 *.env
 script.py
+**/*.local.*
 .vscode/settings.json
 node_modules/*
 development/docker-compose.override.yml
 development/docker-compose.dev-override.yml
 .DS_Store
 .python-version
+.ruff_cache
+**/.ruff_cache
+**/.idea/**
 
 # Direnv files (https://direnv.net/)
 .direnv/

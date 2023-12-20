@@ -1,13 +1,22 @@
+---
+label: "Home"
+icon: "home"
+---
+<!-- markdownlint-disable -->
 ![](./media/Infrahub-horizontal.svg)
+<!-- markdownlint-restore -->
+
+# Welcome to Infrahub
 
 Infrahub is taking a new approach to Infrastructure Automation by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run.
 
 At its heart, Infrahub is built on 3 fundamental pillars
+
 - **Powerful Schema**, easily extensible
 - **Unified Version Control** for Data and Files
 - **Data Synchronization** with Traceability and Ownership
 
-# Getting Started
+## Getting started
 
 - Deploy the demo environment on your laptop
 - Deploy an instance of Infrahub in the Cloud with GitPod
@@ -15,11 +24,12 @@ At its heart, Infrahub is built on 3 fundamental pillars
 - Explore the capabilities of the schema
 - Check the architecture document to understand how the application is built
 
-# Project Status
+## Project status
 
 The project is currently in a Tech Preview phase, which means that not all features we are targeting for the first major release have been implemented yet and the project is still evolving at a very rapid pace with the (un)stability that you would expect in an early project.
 
 Having said that there are several features already available and you should be able already to:
+
 - Manage branches and query any branches
 - Integrate a Git repository within Infrahub
 - Integrate and render Jinja2 templates
@@ -31,8 +41,7 @@ Having said that there are several features already available and you should be 
 - Branch diff
 
 Missing features we are actively working on.
+
 - Object Profile and Inheritance
 - Pull requests
 - Branches support for the schema and schema migration
-
-

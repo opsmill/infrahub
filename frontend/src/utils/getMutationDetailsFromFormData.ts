@@ -4,15 +4,22 @@ import { iNodeSchema } from "../state/atoms/schema.atom";
 export type MutationMode = "create" | "update";
 
 const getMutationDetailsFromFormData = (
-  schema: iNodeSchema,
+  schema: iNodeSchema | undefined,
   formData: any,
   mode: MutationMode,
   existingObject?: any
 ) => {
+  if (!schema) return;
+
   const updatedObject = R.clone(formData);
 
   schema.attributes?.forEach((attribute) => {
     const updatedValue = updatedObject[attribute.name]?.value ?? attribute?.default_value;
+
+    if (attribute.read_only) {
+      // Delete the attribute if it's read-only
+      delete updatedObject[attribute.name];
+    }
 
     if (mode === "update" && existingObject) {
       const existingValue = existingObject[attribute.name]?.value;

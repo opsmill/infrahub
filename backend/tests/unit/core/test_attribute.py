@@ -1,7 +1,7 @@
 import pytest
 from infrahub_sdk import UUIDT
 
-from infrahub.core.attribute import Integer, IPHost, IPNetwork, String
+from infrahub.core.attribute import Dropdown, Integer, IPHost, IPNetwork, String
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -82,6 +82,94 @@ async def test_validate_format_ipnetwork_and_iphost(
         IPNetwork(
             name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="2001:db8::/ffff:ff00::"
         )
+
+
+async def test_validate_iphost_returns(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
+    schema = criticality_schema.get_attribute("name")
+
+    test_ipv4 = IPHost(
+        name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="192.0.2.1/31"
+    )
+    test_ipv6 = IPHost(
+        name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="2001:db8::/32"
+    )
+
+    assert test_ipv4.value == "192.0.2.1/31"
+    assert test_ipv4.ip == "192.0.2.1"
+    assert test_ipv4.hostmask == "0.0.0.1"
+    assert test_ipv4.netmask == "255.255.255.254"
+    assert test_ipv4.network == "192.0.2.0/31"
+    assert test_ipv4.prefixlen == "31"
+    assert test_ipv4.with_hostmask == "192.0.2.1/0.0.0.1"
+    assert test_ipv4.with_netmask == "192.0.2.1/255.255.255.254"
+    assert test_ipv4.version == 4
+
+    assert test_ipv6.value == "2001:db8::/32"
+    assert test_ipv6.ip == "2001:db8::"
+    assert test_ipv6.hostmask == "::ffff:ffff:ffff:ffff:ffff:ffff"
+    assert test_ipv6.netmask == "ffff:ffff::"
+    assert test_ipv6.network == "2001:db8::/32"
+    assert test_ipv6.prefixlen == "32"
+    assert test_ipv6.with_hostmask == "2001:db8::/::ffff:ffff:ffff:ffff:ffff:ffff"
+    assert test_ipv6.with_netmask == "2001:db8::/ffff:ffff::"
+    assert test_ipv6.version == 6
+
+
+async def test_validate_ipnetwork_returns(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
+    schema = criticality_schema.get_attribute("name")
+
+    test_ipv4 = IPNetwork(
+        name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="192.0.2.0/31"
+    )
+    test_ipv6 = IPNetwork(
+        name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="2001:db8::/32"
+    )
+
+    assert test_ipv4.value == "192.0.2.0/31"
+    assert test_ipv4.broadcast_address == "192.0.2.1"
+    assert test_ipv4.hostmask == "0.0.0.1"
+    assert test_ipv4.netmask == "255.255.255.254"
+    assert test_ipv4.prefixlen == "31"
+    assert test_ipv4.num_addresses == 2
+    assert test_ipv4.with_hostmask == "192.0.2.0/0.0.0.1"
+    assert test_ipv4.with_netmask == "192.0.2.0/255.255.255.254"
+    assert test_ipv4.version == 4
+
+    assert test_ipv6.value == "2001:db8::/32"
+    assert test_ipv6.broadcast_address == "2001:db8:ffff:ffff:ffff:ffff:ffff:ffff"
+    assert test_ipv6.hostmask == "::ffff:ffff:ffff:ffff:ffff:ffff"
+    assert test_ipv6.netmask == "ffff:ffff::"
+    assert test_ipv6.prefixlen == "32"
+    assert test_ipv6.num_addresses == 79228162514264337593543950336
+    assert test_ipv6.with_hostmask == "2001:db8::/::ffff:ffff:ffff:ffff:ffff:ffff"
+    assert test_ipv6.with_netmask == "2001:db8::/ffff:ffff::"
+    assert test_ipv6.version == 6
+
+
+async def test_validate_content_dropdown(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
+    schema = criticality_schema.get_attribute("status")
+    Dropdown(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="active")
+
+    with pytest.raises(ValidationError) as exc:
+        Dropdown(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="invalid-choice")
+    assert "invalid-choice must be one of" in str(exc.value)
+
+
+async def test_dropdown_properties(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
+    schema = criticality_schema.get_attribute("status")
+    active = Dropdown(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="active")
+    passive = Dropdown(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="passive")
+
+    assert active.value == "active"
+    assert active.description == "Online things"
+    assert active.label == "Active"
+    # The color of the active choice is hardoced within criticality_schema
+    assert active.color == "#00ff00"
+    assert passive.value == "passive"
+    assert passive.description == ""
+    assert passive.label == "Redundancy nodes not in the active path"
+    # The color of the passive choice comes from the color selector in infrahub.visuals
+    assert passive.color == "#ed6a5a"
 
 
 async def test_validate_format_string(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
@@ -194,9 +282,9 @@ async def test_get_query_filter_string_value(db: InfrahubDatabase, default_branc
     )
     expected_response = [
         "(n)",
-        "[:HAS_ATTRIBUTE]",
+        "-[:HAS_ATTRIBUTE]-",
         "(i:Attribute { name: $attr_description_name })",
-        "[:HAS_VALUE]",
+        "-[:HAS_VALUE]-",
         "(av:AttributeValue { value: $attr_description_value })",
     ]
     assert [str(item) for item in filters] == expected_response
@@ -207,9 +295,9 @@ async def test_get_query_filter_string_value(db: InfrahubDatabase, default_branc
         name="description", filter_name="value", filter_value="test", include_match=False
     )
     expected_response = [
-        "[:HAS_ATTRIBUTE]",
+        "-[:HAS_ATTRIBUTE]-",
         "(i:Attribute { name: $attr_description_name })",
-        "[:HAS_VALUE]",
+        "-[:HAS_VALUE]-",
         "(av:AttributeValue { value: $attr_description_value })",
     ]
     assert [str(item) for item in filters] == expected_response
@@ -221,9 +309,9 @@ async def test_get_query_filter_any(db: InfrahubDatabase, default_branch: Branch
     filters, params, matchs = await String.get_query_filter(name="any", filter_name="value", filter_value="test")
     expected_response = [
         "(n)",
-        "[:HAS_ATTRIBUTE]",
+        "-[:HAS_ATTRIBUTE]-",
         "(i:Attribute)",
-        "[:HAS_VALUE]",
+        "-[:HAS_VALUE]-",
         "(av:AttributeValue { value: $attr_any_value })",
     ]
     assert [str(item) for item in filters] == expected_response
@@ -237,9 +325,9 @@ async def test_get_query_filter_flag_property(db: InfrahubDatabase, default_bran
     )
     expected_response = [
         "(n)",
-        "[:HAS_ATTRIBUTE]",
+        "-[:HAS_ATTRIBUTE]-",
         "(i:Attribute { name: $attr_descr_name })",
-        "[:IS_PROTECTED]",
+        "-[:IS_PROTECTED]-",
         "(ap:Boolean { value: $attr_descr_is_protected })",
     ]
     assert [str(item) for item in filters] == expected_response
@@ -251,14 +339,35 @@ async def test_get_query_filter_any_node_property(db: InfrahubDatabase, default_
     filters, params, matchs = await String.get_query_filter(name="any", filter_name="source__id", filter_value="abcdef")
     expected_response = [
         "(n)",
-        "[:HAS_ATTRIBUTE]",
+        "-[:HAS_ATTRIBUTE]-",
         "(i:Attribute)",
-        "[:HAS_SOURCE]",
+        "-[:HAS_SOURCE]-",
         "(ap:CoreNode { uuid: $attr_any_source_id })",
     ]
     assert [str(item) for item in filters] == expected_response
     assert params == {"attr_any_source_id": "abcdef"}
     assert matchs == []
+
+
+async def test_get_query_filter_multiple_values(db: InfrahubDatabase, default_branch: Branch):
+    filters, params, matchs = await String.get_query_filter(
+        name="name", filter_name="values", filter_value=["test1", "test2"]
+    )
+    expected_response = [
+        "(n)",
+        "-[:HAS_ATTRIBUTE]-",
+        "(i:Attribute { name: $attr_name_name })",
+        "-[:HAS_VALUE]-",
+        "(av:AttributeValue)",
+    ]
+    assert [str(item) for item in filters] == expected_response
+    assert params == {"attr_name_name": "name", "attr_name_value": ["test1", "test2"]}
+    assert matchs == ["av.value IN $attr_name_value"]
+
+
+async def test_get_query_filter_multiple_values_invalid_type(db: InfrahubDatabase, default_branch: Branch):
+    with pytest.raises(TypeError):
+        await String.get_query_filter(name="name", filter_name="values", filter_value=["test1", 1.0])
 
 
 async def test_base_serialization(db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema):

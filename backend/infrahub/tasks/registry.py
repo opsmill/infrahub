@@ -1,10 +1,12 @@
-from typing import List
+from typing import TYPE_CHECKING, List
 
 from infrahub import lock
 from infrahub.core import registry
-from infrahub.core.branch import Branch
 from infrahub.database import InfrahubDatabase
 from infrahub.log import get_logger
+
+if TYPE_CHECKING:
+    from infrahub.core.branch import Branch
 
 log = get_logger()
 
@@ -17,7 +19,7 @@ async def refresh_branches(db: InfrahubDatabase):
     """
 
     async with lock.registry.local_schema_lock():
-        branches: List[Branch] = await Branch.get_list(db=db)
+        branches: List[Branch] = await registry.branch_object.get_list(db=db)
         active_branches = [branch.name for branch in branches]
         for new_branch in branches:
             if new_branch.name in registry.branch:

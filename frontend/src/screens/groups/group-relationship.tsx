@@ -1,5 +1,5 @@
-import { gql, useReactiveVar } from "@apollo/client";
-import { PencilSquareIcon, Square3Stack3DIcon } from "@heroicons/react/24/outline";
+import { gql } from "@apollo/client";
+import { PencilSquareIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useContext, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -10,9 +10,8 @@ import ModalDelete from "../../components/modal-delete";
 import SlideOver from "../../components/slide-over";
 import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 import graphqlClient from "../../graphql/graphqlClientApollo";
-import { branchVar } from "../../graphql/variables/branchVar";
-import { dateVar } from "../../graphql/variables/dateVar";
 // import { ReactComponent as UnlinkIcon } from "../../images/icons/unlink.svg";
+import { Icon } from "@iconify-icon/react";
 import { AuthContext } from "../../decorators/withAuth";
 import { removeRelationship } from "../../graphql/mutations/relationships/removeRelationship";
 import UnlinkIcon from "../../images/icons/unlink.svg";
@@ -24,6 +23,9 @@ import { getObjectDetailsUrl } from "../../utils/objects";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
+import { useAtomValue } from "jotai/index";
+import { currentBranchAtom } from "../../state/atoms/branches.atom";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 
 type iRelationDetailsProps = {
   parentNode: any;
@@ -44,8 +46,8 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
 
   const [schemaList] = useAtom(schemaState);
   const [schemaKindName] = useAtom(schemaKindNameState);
-  const branch = useReactiveVar(branchVar);
-  const date = useReactiveVar(dateVar);
+  const branch = useAtomValue(currentBranchAtom);
+  const date = useAtomValue(datetimeAtom);
   const [relatedRowToDelete, setRelatedRowToDelete] = useState<any>();
   const [relatedObjectToEdit, setRelatedObjectToEdit] = useState<any>();
 
@@ -225,11 +227,11 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                       </span>
                       <div className="flex-1"></div>
                       <div className="flex items-center">
-                        <Square3Stack3DIcon className="w-4 h-4" />
+                        <Icon icon={"mdi:layers-triple"} />
                         <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
                       </div>
                     </div>
-                    <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
+                    <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 mr-2">
                       <svg
                         className="h-1.5 w-1.5 mr-1 fill-yellow-500"
                         viewBox="0 0 6 6"

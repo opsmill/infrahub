@@ -21,6 +21,10 @@ export const CONFIG = {
       : `${INFRAHUB_API_SERVER_URL}/api/schema`,
   CONFIG_URL: `${INFRAHUB_API_SERVER_URL}/api/config`,
   AUTH_SIGN_IN_URL: `${INFRAHUB_API_SERVER_URL}/api/auth/login`,
+  SCHEMA_SUMMARY_URL: (branch?: string | null) =>
+    branch
+      ? `${INFRAHUB_API_SERVER_URL}/api/schema/summary?branch=${branch}`
+      : `${INFRAHUB_API_SERVER_URL}/api/schema/summary`,
   AUTH_REFRESH_TOKEN_URL: `${INFRAHUB_API_SERVER_URL}/api/auth/refresh`,
   DATA_DIFF_URL: (branch?: string) => `${INFRAHUB_API_SERVER_URL}/api/diff/data?branch=${branch}`,
   FILES_DIFF_URL: (branch?: string) => `${INFRAHUB_API_SERVER_URL}/api/diff/files?branch=${branch}`,
@@ -35,5 +39,6 @@ export const CONFIG = {
   FILES_CONTENT_URL: (repositoryId: string, location: string) =>
     `${INFRAHUB_API_SERVER_URL}/api/file/${repositoryId}/${encodeURIComponent(location)}`,
   STORAGE_DETAILS_URL: (id: string) => `${INFRAHUB_API_SERVER_URL}/api/storage/object/${id}`,
-  MENU_URL: `${INFRAHUB_API_SERVER_URL}/api/menu`,
+  MENU_URL: (branch?: string) =>
+    `${INFRAHUB_API_SERVER_URL}/api/menu${branch ? `?branch=${branch}` : ""}`,
 };

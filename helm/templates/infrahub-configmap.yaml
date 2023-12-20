@@ -1,0 +1,40 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "infrahub-helm.fullname" . }}-infrahub-config
+data:
+  infrahub.toml: |
+    [main]
+    internal_address = "http://{{ include "infrahub-helm.fullname" . }}-server.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}:8000"
+
+    [git]
+    repositories_directory = "/opt/infrahub/git"
+
+    [database]
+    username = "neo4j"
+    password = "admin"
+    address = "{{ include "infrahub-helm.fullname" . }}-database.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}"
+    port = "{{ (index .Values.database.ports 2).port }}"
+    protocol = "bolt"
+
+    [broker]
+    address = "{{ include "infrahub-helm.fullname" . }}-message-queue.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}"
+    username = {{ .Values.messageQueue.auth.username | quote }}
+    password = {{ .Values.messageQueue.auth.password | quote }}
+
+    [cache]
+    enable = true
+    address = "{{ include "infrahub-helm.fullname" . }}-cache.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}"
+    port = "{{ (index .Values.cache.ports 0).port }}"
+
+    [storage.settings]
+    directory = "/opt/infrahub/storage"
+
+    [trace]
+    enable = false
+    insecure = "True"
+    exporter_type = "otlp"
+    exporter_protocol = "grpc"
+    exporter_endpoint = "tempo" # Assuming this is external or not managed by Helm
+    exporter_port = 4317

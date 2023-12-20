@@ -1,8 +1,8 @@
-import { forwardRef } from "react";
+import { ButtonHTMLAttributes, forwardRef } from "react";
 import LoadingScreen from "../screens/loading-screen/loading-screen";
 import { classNames } from "../utils/common";
 
-type ButtonProps = {
+type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   type?: "button" | "reset" | "submit";
   buttonType?: BUTTON_TYPES;
   className?: string;
@@ -33,7 +33,7 @@ const DEFAULT_CLASS = (className?: string, type?: BUTTON_TYPES) => `
   focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
 `;
 
-const getClasseName = (type?: BUTTON_TYPES) => {
+const getClassName = (type?: BUTTON_TYPES) => {
   switch (type) {
     case BUTTON_TYPES.VALIDATE: {
       return `
@@ -73,7 +73,6 @@ const getClasseName = (type?: BUTTON_TYPES) => {
     case BUTTON_TYPES.INVISIBLE: {
       return `
         bg-transparent border-transparent
-        hover:bg-gray-50
         disabled:cursor-not-allowed disabled:bg-transparent
       `;
     }
@@ -91,7 +90,7 @@ const getClasseName = (type?: BUTTON_TYPES) => {
 export const Button = forwardRef((props: ButtonProps, ref: any) => {
   const { buttonType, type, className = "", onClick, isLoading, children, ...propsToPass } = props;
 
-  const customClassName = getClasseName(buttonType);
+  const customClassName = getClassName(buttonType);
 
   const handleClick = (event: any) => {
     if (type !== "submit") {

@@ -5,7 +5,7 @@ import hashlib
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
-from infrahub_sdk.utils import intersection
+from infrahub_sdk.utils import duplicates, intersection
 from pydantic import BaseModel, Field
 
 import infrahub.config as config
@@ -13,9 +13,11 @@ from infrahub import lock
 from infrahub.core import get_branch, get_branch_from_registry
 from infrahub.core.constants import (
     RESERVED_ATTR_REL_NAMES,
+    RESTRICTED_NAMESPACES,
     BranchSupportType,
     FilterSchemaKind,
     RelationshipCardinality,
+    RelationshipDirection,
     RelationshipKind,
 )
 from infrahub.core.manager import NodeManager
@@ -35,6 +37,8 @@ from infrahub.core.schema import (
 from infrahub.exceptions import SchemaNotFound
 from infrahub.graphql import generate_graphql_schema
 from infrahub.log import get_logger
+from infrahub.utils import format_label
+from infrahub.visuals import select_color
 
 log = get_logger()
 
@@ -45,7 +49,7 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 
-# pylint: disable=redefined-builtin,too-many-public-methods
+# pylint: disable=redefined-builtin,too-many-public-methods,too-many-lines
 
 INTERNAL_SCHEMA_NODE_KINDS = [node["namespace"] + node["name"] for node in internal_schema["nodes"]]
 SUPPORTED_SCHEMA_NODE_TYPE = [
@@ -62,6 +66,7 @@ KIND_FILTER_MAP = {
     "Integer": FilterSchemaKind.NUMBER,
     "Boolean": FilterSchemaKind.BOOLEAN,
     "Checkbox": FilterSchemaKind.BOOLEAN,
+    "Dropdown": FilterSchemaKind.TEXT,
 }
 
 
@@ -73,6 +78,11 @@ class SchemaDiff(BaseModel):
     @property
     def all(self) -> List[str]:
         return self.changed + self.added + self.removed
+
+
+class SchemaNamespace(BaseModel):
+    name: str
+    user_editable: bool
 
 
 class SchemaBranch:
@@ -194,6 +204,20 @@ class SchemaBranch:
             if include_internal or name not in INTERNAL_SCHEMA_NODE_KINDS
         }
 
+    def get_namespaces(self, include_internal: bool = False) -> List[SchemaNamespace]:
+        all_schemas = self.get_all(include_internal=include_internal)
+        namespaces: Dict[str, SchemaNamespace] = {}
+        for schema in all_schemas.values():
+            if isinstance(schema, GroupSchema):
+                continue
+            if schema.namespace in namespaces:
+                continue
+            namespaces[schema.namespace] = SchemaNamespace(
+                name=schema.namespace, user_editable=schema.namespace not in RESTRICTED_NAMESPACES
+            )
+
+        return list(namespaces.values())
+
     def load_schema(self, schema: SchemaRoot) -> None:
         """Load a SchemaRoot object and store all NodeSchema, GenericSchema or GroupSchema.
 
@@ -214,16 +238,28 @@ class SchemaBranch:
             self.set(name=node_extension.kind, schema=new_item)
 
     def process(self) -> None:
+        self.process_pre_validation()
+        self.process_validate()
+        self.process_post_validation()
+
+    def process_pre_validation(self) -> None:
         self.generate_identifiers()
-        self.validate_names()
-        self.validate_menu_placements()
         self.process_default_values()
         self.process_inheritance()
         self.process_branch_support()
+
+    def process_validate(self) -> None:
+        self.validate_names()
+        self.validate_menu_placements()
+        self.validate_kinds()
+        self.validate_identifiers()
+
+    def process_post_validation(self) -> None:
         self.add_groups()
         self.process_filters()
         self.generate_weight()
         self.process_labels()
+        self.process_dropdowns()
 
     def generate_identifiers(self) -> None:
         """Generate the identifier for all relationships if it's not already present."""
@@ -238,9 +274,68 @@ class SchemaBranch:
 
             self.set(name=name, schema=node)
 
+    def validate_identifiers(self) -> None:
+        """Validate that all relationships have a unique identifier for a given model."""
+        # Organize all the relationships per identifier and node
+        rels_per_identifier: Dict[str, Dict[str, List[RelationshipSchema]]] = defaultdict(lambda: defaultdict(list))
+        for name in list(self.nodes.keys()) + list(self.generics.keys()):
+            node = self.get(name=name)
+
+            for rel in node.relationships:
+                rels_per_identifier[rel.identifier][name].append(rel)
+
+        valid_options = [
+            [RelationshipDirection.BIDIR, RelationshipDirection.BIDIR],
+            sorted([RelationshipDirection.INBOUND, RelationshipDirection.OUTBOUND]),
+        ]
+
+        for identifier, rels_per_kind in rels_per_identifier.items():
+            # Per node kind, check if the directions are good
+            for _, rels in rels_per_kind.items():
+                directions = sorted([rel.direction.value for rel in rels])
+                if not (len(rels) == 1 or (len(rels) == 2 and directions == ["inbound", "outbound"])):
+                    names_directions = [(rel.name, rel.direction.value) for rel in rels]
+                    raise ValueError(
+                        f"{node.kind}: Identifier of relationships must be unique for a given direction > {identifier!r} : {names_directions}"
+                    ) from None
+
+                # Continue if no other model is using this identifier
+                if len(rels_per_kind) == 1:
+                    continue
+
+                # If this node has 2 relationships, BIDIRECTIONAL is not a valid option on the remote node
+                if len(rels) == 2:
+                    for rel in rels:
+                        if (
+                            rel.peer in list(rels_per_kind.keys())
+                            and len(rels_per_kind[rel.peer]) == 1
+                            and rels_per_kind[rel.peer][0].direction == RelationshipDirection.BIDIR
+                        ):
+                            raise ValueError(
+                                f"{node.kind}: Incompatible direction detected on Reverse Relationship for {rel.name!r} ({identifier!r}) "
+                                f" > {RelationshipDirection.BIDIR.value} "
+                            ) from None
+
+                elif (
+                    len(rels) == 1
+                    and rels[0].peer in list(rels_per_kind.keys())
+                    and len(rels_per_kind[rels[0].peer]) == 1
+                ):
+                    peer_direction = rels_per_kind[rels[0].peer][0].direction
+                    if sorted([peer_direction, rels[0].direction]) not in valid_options:
+                        raise ValueError(
+                            f"{node.kind}: Incompatible direction detected on Reverse Relationship for {rels[0].name!r} ({identifier!r})"
+                            f" {rels[0].direction.value} <> {peer_direction.value}"
+                        ) from None
+
     def validate_names(self) -> None:
         for name in list(self.nodes.keys()) + list(self.generics.keys()):
             node = self.get(name=name)
+
+            if names_dup := duplicates(node.attribute_names + node.relationship_names):
+                raise ValueError(
+                    f"{node.kind}: Names of attributes and relationships must be unique : {names_dup}"
+                ) from None
 
             if node.kind in INTERNAL_SCHEMA_NODE_KINDS:
                 continue
@@ -261,6 +356,55 @@ class SchemaBranch:
                 except SchemaNotFound:
                     raise ValueError(f"{node.kind}: {node.menu_placement} is not a valid menu placement") from None
 
+    def validate_kinds(self) -> None:
+        for name in list(self.nodes.keys()):
+            node = self.get(name=name)
+
+            for generic_kind in node.inherit_from:
+                if self.has(name=generic_kind):
+                    if not isinstance(self.get(name=generic_kind), GenericSchema):
+                        raise ValueError(
+                            f"{node.kind}: Only generic model can be used as part of inherit_from, {generic_kind!r} is not a valid entry."
+                        ) from None
+                else:
+                    raise ValueError(
+                        f"{node.kind}: {generic_kind!r} is not a invalid Generic to inherit from"
+                    ) from None
+
+            for rel in node.relationships:
+                if rel.peer in ["CoreGroup"]:
+                    continue
+                if not self.has(rel.peer):
+                    raise ValueError(
+                        f"{node.kind}: Relationship {rel.name!r} is referencing an invalid peer {rel.peer!r}"
+                    ) from None
+
+    def process_dropdowns(self) -> None:
+        for name in list(self.nodes.keys()) + list(self.generics.keys()):
+            node = self.get(name=name)
+
+            changed = False
+
+            attributes = [attr for attr in node.attributes if attr.kind == "Dropdown"]
+            for attr in attributes:
+                if not attr.choices:
+                    continue
+
+                sorted_choices = sorted(attr.choices or [], key=lambda x: x.name, reverse=True)
+                defined_colors = [choice.color for choice in sorted_choices if choice.color]
+                for choice in sorted_choices:
+                    if not choice.color:
+                        choice.color = select_color(defined_colors)
+                    if not choice.label:
+                        choice.label = format_label(choice.name)
+
+                if attr.choices != sorted_choices:
+                    attr.choices = sorted_choices
+                    changed = True
+
+            if changed:
+                self.set(name=name, schema=node)
+
     def process_labels(self) -> None:
         for name in list(self.nodes.keys()) + list(self.generics.keys()):
             node = self.get(name=name)
@@ -268,17 +412,17 @@ class SchemaBranch:
             changed = False
 
             if not node.label:
-                node.label = " ".join([word.title() for word in node.name.split("_")])
+                node.label = format_label(node.name)
                 changed = True
 
             for attr in node.attributes:
                 if not attr.label:
-                    attr.label = " ".join([word.title() for word in attr.name.split("_")])
+                    attr.label = format_label(attr.name)
                     changed = True
 
             for rel in node.relationships:
                 if not rel.label:
-                    rel.label = " ".join([word.title() for word in rel.name.split("_")])
+                    rel.label = format_label(rel.name)
                     changed = True
 
             if changed:
@@ -451,6 +595,7 @@ class SchemaBranch:
                 filter.enum = attr.enum
 
             filters.append(filter)
+            filters.append(FilterSchema(name=f"{attr.name}__values", kind=FilterSchemaKind.LIST))
 
             for flag_prop in FlagPropertyMixin._flag_properties:
                 filters.append(FilterSchema(name=f"{attr.name}__{flag_prop}", kind=FilterSchemaKind.BOOLEAN))
@@ -485,6 +630,7 @@ class SchemaBranch:
                     filter.enum = attr.enum
 
                 filters.append(filter)
+                filters.append(FilterSchema(name=f"{rel.name}__{attr.name}__values", kind=FilterSchemaKind.LIST))
 
                 for flag_prop in FlagPropertyMixin._flag_properties:
                     filters.append(
@@ -593,7 +739,7 @@ class SchemaManager(NodeManager):
 
         self._branches[branch.name] = updated_schema
 
-    def register_schema(self, schema: SchemaRoot, branch: str = None) -> SchemaBranch:
+    def register_schema(self, schema: SchemaRoot, branch: Optional[str] = None) -> SchemaBranch:
         """Register all nodes, generics & groups from a SchemaRoot object into the registry."""
 
         branch = branch or config.SETTINGS.main.default_branch
