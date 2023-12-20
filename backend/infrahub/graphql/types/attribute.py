@@ -45,12 +45,14 @@ class TextAttributeType(BaseAttribute):
         interfaces = {AttributeInterface}
 
 
-class DropdownType(BaseAttribute):
+class AbstractDropdown(ObjectType):
     value = Field(String)
     label = Field(String)
     color = Field(String)
     description = Field(String)
 
+
+class DropdownType(AbstractDropdown, BaseAttribute):
     class Meta:
         description = "Attribute of type Dropdown"
         name = "Dropdown"

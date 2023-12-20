@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Dict
 
 from .attribute import (
+    AbstractDropdown,
     AnyAttributeType,
     AttributeInterface,
     BaseAttribute,
@@ -30,6 +31,7 @@ __all__ = [
     "RelatedNodeInput",
     "AttributeInterface",
     "BaseAttribute",
+    "AbstractDropdown",
     "DropdownType",
     "IPHostType",
     "IPNetworkType",
