@@ -31,6 +31,10 @@ class InfrahubBatch:
         self.semaphore = semaphore or asyncio.Semaphore(value=max_concurrent_execution)
         self.return_exceptions = return_exceptions
 
+    @property
+    def num_tasks(self) -> int:
+        return len(self._tasks)
+
     def add(
         self, *args: Any, task: Callable[[Any], Awaitable[Any]], node: Optional[InfrahubNode] = None, **kwargs: Any
     ) -> None:

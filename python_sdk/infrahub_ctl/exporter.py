@@ -22,6 +22,7 @@ def directory_name_with_timestamp():
 def dump(
     namespace: List[str] = typer.Option([], help="Namespace(s) to export"),
     directory: Path = typer.Option(directory_name_with_timestamp, help="Directory path to store export."),
+    quiet: bool = typer.Option(False, help="No console output"),
     config_file: str = typer.Option("infrahubctl.toml", envvar="INFRAHUBCTL_CONFIG"),
     branch: str = typer.Option("main", help="Branch from which to export"),
     concurrent: int = typer.Option(
@@ -37,7 +38,7 @@ def dump(
     if not config.SETTINGS:
         config.load_and_exit(config_file=config_file)
     client = aiorun(initialize_client(timeout=timeout, max_concurrent_execution=concurrent, retry_on_failure=True))
-    exporter = LineDelimitedJSONExporter(client)
+    exporter = LineDelimitedJSONExporter(client, console=Console() if not quiet else None)
     try:
         aiorun(
             exporter.export(

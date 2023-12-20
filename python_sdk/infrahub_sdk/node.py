@@ -1195,10 +1195,10 @@ class InfrahubNode(InfrahubNodeBase):
         mutation_query = {"ok": None, "object": {"id": None}}
         if allow_update:
             mutation_name = f"{self._schema.kind}Upsert"
-            tracker = (f"mutation-{str(self._schema.kind).lower()}-upsert",)
+            tracker = f"mutation-{str(self._schema.kind).lower()}-upsert"
         else:
             mutation_name = f"{self._schema.kind}Create"
-            tracker = (f"mutation-{str(self._schema.kind).lower()}-create",)
+            tracker = f"mutation-{str(self._schema.kind).lower()}-create"
         query = Mutation(
             mutation=mutation_name,
             input_data=input_data["data"],
