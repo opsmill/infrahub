@@ -23,6 +23,7 @@ import useQuery from "../../hooks/useQuery";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { iComboBoxFilter } from "../../state/atoms/filters.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
@@ -37,7 +38,6 @@ import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
-import { datetimeAtom } from "../../state/atoms/time.atom";
 
 export default function ObjectItems(props: any) {
   const { objectname: objectnameFromParams } = useParams();
@@ -192,72 +192,66 @@ export default function ObjectItems(props: any) {
       {loading && !rows && <LoadingScreen />}
 
       {!loading && rows && (
-        <div className="mt-0 flex flex-col px-4 sm:px-6 lg:px-8 w-full flex-1">
-          <div className="-my-2 -mx-4 sm:-mx-6 lg:-mx-8">
-            <div className="min-w-full pt-2 align-middle">
-              <div className="shadow-sm ring-1 ring-custom-black ring-opacity-5 overflow-x-auto">
-                <table className="min-w-full border-separate" style={{ borderSpacing: 0 }}>
-                  <thead className="bg-gray-50 text-left">
-                    <tr>
-                      {columns?.map((attribute) => (
-                        <th
-                          key={attribute.name}
-                          scope="col"
-                          className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 p-2 text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter">
-                          {attribute.label}
-                        </th>
-                      ))}
-                      <th
-                        scope="col"
-                        className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 p-2 text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-custom-white text-left">
-                    {rows?.map((row: any, index: number) => (
-                      <tr
-                        onClick={() =>
-                          navigate(constructPath(getObjectDetailsUrl(row.id, row.__typename)))
-                        }
-                        key={index}
-                        className="hover:bg-gray-50 cursor-pointer">
-                        {columns?.map((attribute) => (
-                          <td
-                            key={row.id + "-" + attribute.name}
-                            className={classNames(
-                              index !== rows.length - 1 ? "border-b border-gray-200" : "",
-                              "whitespace-wrap px-2 py-1 text-xs text-gray-900"
-                            )}>
-                            {getObjectItemDisplayValue(row, attribute)}
-                          </td>
-                        ))}
+        <div className="flex-1 shadow-sm ring-1 ring-custom-black ring-opacity-5 overflow-x-auto">
+          <table className="min-w-full border-separate" style={{ borderSpacing: 0 }}>
+            <thead className="bg-gray-50 text-left">
+              <tr>
+                {columns?.map((attribute) => (
+                  <th
+                    key={attribute.name}
+                    scope="col"
+                    className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 p-2 text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter">
+                    {attribute.label}
+                  </th>
+                ))}
+                <th
+                  scope="col"
+                  className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 p-2 text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter"></th>
+              </tr>
+            </thead>
+            <tbody className="bg-custom-white text-left">
+              {rows?.map((row: any, index: number) => (
+                <tr
+                  onClick={() =>
+                    navigate(constructPath(getObjectDetailsUrl(row.id, row.__typename)))
+                  }
+                  key={index}
+                  className="hover:bg-gray-50 cursor-pointer">
+                  {columns?.map((attribute) => (
+                    <td
+                      key={row.id + "-" + attribute.name}
+                      className={classNames(
+                        index !== rows.length - 1 ? "border-b border-gray-200" : "",
+                        "whitespace-wrap px-2 py-1 text-xs text-gray-900"
+                      )}>
+                      {getObjectItemDisplayValue(row, attribute)}
+                    </td>
+                  ))}
 
-                        <td
-                          className={classNames(
-                            index !== rows.length - 1 ? "border-b border-gray-200" : "",
-                            "whitespace-wrap text-xs text-gray-900 flex justify-end"
-                          )}>
-                          <Button
-                            data-cy="delete"
-                            disabled={!auth?.permissions?.write}
-                            buttonType={BUTTON_TYPES.INVISIBLE}
-                            onClick={() => {
-                              setRowToDelete(row);
-                              setDeleteModal(true);
-                            }}>
-                            <Icon icon="mdi:trash" className="text-red-500" />
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                  <td
+                    className={classNames(
+                      index !== rows.length - 1 ? "border-b border-gray-200" : "",
+                      "whitespace-wrap text-xs text-gray-900 text-right"
+                    )}>
+                    <Button
+                      data-cy="delete"
+                      disabled={!auth?.permissions?.write}
+                      buttonType={BUTTON_TYPES.INVISIBLE}
+                      onClick={() => {
+                        setRowToDelete(row);
+                        setDeleteModal(true);
+                      }}>
+                      <Icon icon="mdi:trash" className="text-red-500" />
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
 
-                {!rows?.length && <NoDataFound message="No items found." />}
+          {!rows?.length && <NoDataFound message="No items found." />}
 
-                <Pagination count={count} />
-              </div>
-            </div>
-          </div>
+          <Pagination count={count} />
         </div>
       )}
 

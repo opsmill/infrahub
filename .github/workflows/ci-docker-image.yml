@@ -21,7 +21,7 @@ on:
       ref:
         type: string
         required: true
-        desription: The GIT ref from which the image will be build
+        description: The GIT ref from which the image will be build
       tags:
         type: string
         required: true
@@ -36,7 +36,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  REGISTRY_IMAGE: "${{ secrets.HARBOR_HOST }}/${{ github.repository }}"
   DOCKERFILE: "development/Dockerfile"
   PLATFORMS: "linux/amd64,linux/arm64"
 
@@ -60,7 +59,7 @@ jobs:
         uses: docker/login-action@v3
         id: login
         with:
-          registry: ${{ secrets.HARBOR_HOST }}
+          registry: ${{ vars.HARBOR_HOST }}
           username: ${{ secrets.HARBOR_USERNAME }}
           password: ${{ secrets.HARBOR_PASSWORD }}
 
