@@ -113,7 +113,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
         )}
 
         {relationshipsData && (
-          <div className="shadow-sm ring-1 ring-custom-black ring-opacity-5 overflow-x-auto">
+          <div className="flex-1 shadow-sm ring-1 ring-custom-black ring-opacity-5 overflow-x-auto">
             <table className="min-w-full border-separate" style={{ borderSpacing: 0 }}>
               <thead className="bg-gray-50">
                 <tr>
