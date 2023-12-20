@@ -197,10 +197,6 @@ module = "infrahub.core.manager"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.core.models"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.core.node"
 ignore_errors = true
 
