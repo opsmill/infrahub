@@ -162,17 +162,21 @@ export const ArtifactContentDiff = (props: any) => {
     setFileDetailsInState();
   }, []);
 
-  const handleSubmitComment = async (data: any, event: any) => {
+  const handleSubmitComment = async ({ comment }: { comment: string }) => {
     let threadId;
 
     try {
-      event.target.reset();
-
-      if (!data || !approverId) {
+      if (!comment || !approverId) {
         return;
       }
 
       const newDate = formatISO(new Date());
+
+      const lineNumber = displayAddComment.isNormal
+        ? displayAddComment.side === "new"
+          ? displayAddComment.newLineNumber
+          : displayAddComment.oldLineNumber
+        : displayAddComment.lineNumber;
 
       const newThread = {
         change: {
@@ -188,10 +192,7 @@ export const ArtifactContentDiff = (props: any) => {
           value: false,
         },
         line_number: {
-          value:
-            displayAddComment.lineNumber ||
-            displayAddComment.newLineNumber ||
-            displayAddComment.oldLineNumber,
+          value: lineNumber,
         },
         storage_id: {
           value: displayAddComment.side === "new" ? itemNew?.storage_id : itemPrevious?.storage_id,
@@ -219,7 +220,7 @@ export const ArtifactContentDiff = (props: any) => {
 
       const newComment = {
         text: {
-          value: data.comment,
+          value: comment,
         },
         created_by: {
           id: approverId,
@@ -251,7 +252,9 @@ export const ArtifactContentDiff = (props: any) => {
 
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Comment added"} />);
 
-      refetch();
+      if (refetch) {
+        refetch();
+      }
 
       setIsLoading(false);
 
