@@ -50,6 +50,7 @@ jobs:
 
   publish-docker-image:
     uses: ./.github/workflows/ci-docker-image.yml
+    needs: meta_data
     secrets: inherit
     with:
       publish: ${{ inputs.publish }}
