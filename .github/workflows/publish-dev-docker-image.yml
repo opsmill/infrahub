@@ -30,7 +30,7 @@ jobs:
         run: echo "ref=${{ inputs.commit == '' && github.sha || inputs.commit }} " >> $GITHUB_OUTPUT
         id: ref
       - name: Set GIT short ref
-        run: echo "short_ref=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+        run: echo "short_ref=$(echo ${{ steps.ref.outputs.ref }} | cut -c1-7)" >> $GITHUB_OUTPUT
         id: short_ref
       - name: Set docker image meta data
         id: meta
