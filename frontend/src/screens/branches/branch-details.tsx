@@ -167,23 +167,23 @@ export const BranchDetails = () => {
             <dl className="divide-y divide-gray-200">
               <div className="p-2 grid grid-cols-3 gap-4 text-xs">
                 <dt className="text-sm font-medium text-gray-500">Name</dt>
-                <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">{branch.name}</dd>
+                <dd className="flex text-gray-900">{branch.name}</dd>
               </div>
               <div className="p-2 grid grid-cols-3 gap-4 text-xs">
                 <dt className="text-sm font-medium text-gray-500">Origin branch</dt>
-                <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
+                <dd className="flex text-gray-900">
                   <Badge className="text-sm">{branch.origin_branch}</Badge>
                 </dd>
               </div>
               <div className="p-2 grid grid-cols-3 gap-4 text-xs">
                 <dt className="text-sm font-medium text-gray-500">Branched</dt>
-                <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
+                <dd className="flex text-gray-900">
                   <DateDisplay date={branch.branched_at} />
                 </dd>
               </div>
               <div className="p-2 grid grid-cols-3 gap-4 text-xs">
                 <dt className="text-sm font-medium text-gray-500">Created</dt>
-                <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
+                <dd className="flex text-gray-900">
                   <DateDisplay date={branch.created_at} />
                 </dd>
               </div>

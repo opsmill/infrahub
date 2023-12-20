@@ -238,7 +238,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
             <dt className="font-medium text-gray-500 flex items-center">
               {relationshipSchema?.label}
             </dt>
-            <dd className="mt-1 text-gray-900 sm:col-span-2 sm:mt-0 flex items-center">-</dd>
+            <dd className="text-gray-900 flex items-center">-</dd>
           </div>
         )}
         {relationshipsData && (
@@ -248,7 +248,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                 <dt className="font-medium text-gray-500 flex items-center">
                   {relationshipSchema?.label}
                 </dt>
-                <dd className="mt-1 text-gray-900 sm:col-span-2 sm:mt-0 underline flex items-center">
+                <dd className="text-gray-900 underline flex items-center">
                   <Link
                     to={constructPath(
                       getObjectDetailsUrl(

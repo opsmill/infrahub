@@ -1,6 +1,7 @@
 import { gql } from "@apollo/client";
 import { TrashIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
+import { useAtomValue } from "jotai/index";
 import { useContext, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -15,8 +16,10 @@ import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
 import { getGroups } from "../../graphql/queries/groups/getGroups";
 import usePagination from "../../hooks/usePagination";
 import useQuery from "../../hooks/useQuery";
+import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
@@ -26,9 +29,6 @@ import { stringifyWithoutQuotes } from "../../utils/string";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
-import { useAtomValue } from "jotai/index";
-import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { datetimeAtom } from "../../state/atoms/time.atom";
 
 export default function GroupItems() {
   const { groupname } = useParams();
@@ -140,71 +140,65 @@ export default function GroupItems() {
       {loading && !rows && <LoadingScreen />}
 
       {!loading && rows && (
-        <div className="mt-0 flex flex-col px-4 sm:px-6 lg:px-8 w-full flex-1">
-          <div className="-my-2 -mx-4 sm:-mx-6 lg:-mx-8">
-            <div className="inline-block min-w-full pt-2 align-middle">
-              <div className="shadow-sm ring-1 ring-custom-black ring-opacity-5 overflow-x-auto">
-                <table className="min-w-full border-separate" style={{ borderSpacing: 0 }}>
-                  <thead className="bg-gray-50">
-                    <tr>
-                      {columns?.map((attribute) => (
-                        <th
-                          key={attribute.name}
-                          scope="col"
-                          className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 px-4 py-2 text-left text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter">
-                          {attribute.label}
-                        </th>
-                      ))}
-                      <th
-                        scope="col"
-                        className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 px-4 py-2 text-left text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-custom-white">
-                    {rows?.map((row: any, index: number) => (
-                      <tr
-                        onClick={() =>
-                          navigate(constructPath(getObjectDetailsUrl(row.id, row.__typename)))
-                        }
-                        key={index}
-                        className="hover:bg-gray-50 cursor-pointer">
-                        {columns?.map((attribute) => (
-                          <td
-                            key={row.id + "-" + attribute.name}
-                            className={classNames(
-                              index !== rows.length - 1 ? "border-b border-gray-200" : "",
-                              "whitespace-wrap p-4 text-xs text-gray-900"
-                            )}>
-                            {getObjectItemDisplayValue(row, attribute, schemaKindName)}
-                          </td>
-                        ))}
+        <div className="shadow-sm ring-1 ring-custom-black ring-opacity-5 overflow-x-auto">
+          <table className="min-w-full border-separate" style={{ borderSpacing: 0 }}>
+            <thead className="bg-gray-50">
+              <tr>
+                {columns?.map((attribute) => (
+                  <th
+                    key={attribute.name}
+                    scope="col"
+                    className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 px-4 py-2 text-left text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter">
+                    {attribute.label}
+                  </th>
+                ))}
+                <th
+                  scope="col"
+                  className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 px-4 py-2 text-left text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter"></th>
+              </tr>
+            </thead>
+            <tbody className="bg-custom-white">
+              {rows?.map((row: any, index: number) => (
+                <tr
+                  onClick={() =>
+                    navigate(constructPath(getObjectDetailsUrl(row.id, row.__typename)))
+                  }
+                  key={index}
+                  className="hover:bg-gray-50 cursor-pointer">
+                  {columns?.map((attribute) => (
+                    <td
+                      key={row.id + "-" + attribute.name}
+                      className={classNames(
+                        index !== rows.length - 1 ? "border-b border-gray-200" : "",
+                        "whitespace-wrap p-4 text-xs text-gray-900"
+                      )}>
+                      {getObjectItemDisplayValue(row, attribute, schemaKindName)}
+                    </td>
+                  ))}
 
-                        <td
-                          className={classNames(
-                            index !== rows.length - 1 ? "border-b border-gray-200" : "",
-                            "whitespace-wrap p-4 text-xs text-gray-900"
-                          )}>
-                          <Button
-                            disabled={!auth?.permissions?.write}
-                            buttonType={BUTTON_TYPES.INVISIBLE}
-                            onClick={() => {
-                              setRowToDelete(row);
-                              setDeleteModal(true);
-                            }}>
-                            <TrashIcon className="w-4 h-4 text-red-500" />
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                  <td
+                    className={classNames(
+                      index !== rows.length - 1 ? "border-b border-gray-200" : "",
+                      "whitespace-wrap p-4 text-xs text-gray-900"
+                    )}>
+                    <Button
+                      disabled={!auth?.permissions?.write}
+                      buttonType={BUTTON_TYPES.INVISIBLE}
+                      onClick={() => {
+                        setRowToDelete(row);
+                        setDeleteModal(true);
+                      }}>
+                      <TrashIcon className="w-4 h-4 text-red-500" />
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
 
-                {!rows?.length && <NoDataFound message="No group items found." />}
+          {!rows?.length && <NoDataFound message="No group items found." />}
 
-                <Pagination count={count} />
-              </div>
-            </div>
-          </div>
+          <Pagination count={count} />
         </div>
       )}
 
