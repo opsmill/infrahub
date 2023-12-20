@@ -21,7 +21,7 @@ on:
       ref:
         type: string
         required: true
-        desription: The GIT ref from which the image will be build
+        description: The GIT ref from which the image will be build
       tags:
         type: string
         required: true
