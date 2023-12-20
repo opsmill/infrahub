@@ -357,13 +357,13 @@ jobs:
         run: "npm run cypress:run"
       - name: Upload cypress screenshots
         if: failure()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: screenshots
           path: docs/media/*
       - name: Upload cypress videos
         if: failure()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: screenshots
           path: frontend/cypress/videos/*
@@ -498,7 +498,7 @@ jobs:
         run: docker ps -a
       - name: Upload cypress screenshots
         if: failure()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: screenshots
           path: docs/media/*
