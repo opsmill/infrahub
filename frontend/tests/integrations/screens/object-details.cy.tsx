@@ -77,7 +77,7 @@ describe("List screen", () => {
 
     cy.get(":nth-child(5) > .underline").should("have.text", deviceDetailsMocksOwnerName);
 
-    cy.get(".sm\\:col-span-2 > :nth-child(1) > .cursor-pointer").should(
+    cy.get(".px-2 > .flex-col > :nth-child(1) > .cursor-pointer").should(
       "have.text",
       deviceDetailsMocksTagName
     );
