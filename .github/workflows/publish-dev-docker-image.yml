@@ -16,7 +16,6 @@ on:
         default: ''
         required: false
 
-
 jobs:
   meta_data:
     runs-on: ubuntu-22.04
@@ -37,7 +36,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ${{ env.REGISTRY_IMAGE }}
+            ${{ vars.HARBOR_HOST }}/${{ github.repository }}
           tags: |
             type=raw,value=dev-${{ steps.short_ref.outputs.short_ref }}
           labels: |
