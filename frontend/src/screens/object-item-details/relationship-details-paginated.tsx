@@ -502,6 +502,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                       {properties.is_protected && <LockClosedIcon className="w-4 h-4" />}
 
                       {properties.is_visible === false && <EyeSlashIcon className="w-4 h-4" />}
+
                       {/* {<TrashIcon className="w-4 h-4" onClick={async () => {
                             const newList  = relationshipsData.map((row: any) => ({ id: row.id })).filter((row: any) =>  row.id !== item.id);
                             await updateObjectWithId(objectid!, schema, {
@@ -565,6 +566,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
             isLoading={isLoading}
           />
         </SlideOver>
+
         <SlideOver
           title={
             <>

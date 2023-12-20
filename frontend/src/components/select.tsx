@@ -116,6 +116,11 @@ export const Select = (props: SelectProps) => {
 
   const finalOptions = [...(preventEmpty ? [] : [emptyOption]), ...filteredOptions];
 
+  const textColor =
+    typeof selectedOption === "object" && !Array.isArray(selectedOption)
+      ? getTextColor(selectedOption?.color)
+      : "";
+
   const canRemoveOption = (id: string | number) =>
     namespaceData?.user_editable && (dropdown || enumBoolean) && id !== emptyOption.id;
 
@@ -634,10 +639,7 @@ export const Select = (props: SelectProps) => {
     if (typeof selectedOption === "object" && !Array.isArray(selectedOption)) {
       return {
         backgroundColor: (typeof selectedOption === "object" && selectedOption?.color) || "",
-        color:
-          typeof selectedOption === "object" && selectedOption?.color
-            ? getTextColor(selectedOption?.color)
-            : "",
+        color: typeof selectedOption === "object" && selectedOption?.color ? textColor : "",
       };
     }
 
@@ -664,7 +666,7 @@ export const Select = (props: SelectProps) => {
             style={getInputStyle()}
           />
           <Combobox.Button className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none disabled:cursor-not-allowed">
-            <ChevronDownIcon className="w-4 h-4 text-gray-400" aria-hidden="true" />
+            <ChevronDownIcon className={"w-4 h-4"} aria-hidden="true" style={getInputStyle()} />
           </Combobox.Button>
 
           {finalOptions && finalOptions.length > 0 && (
@@ -677,15 +679,11 @@ export const Select = (props: SelectProps) => {
                 <Combobox.Option
                   key={index}
                   value={option}
-                  className={({ active, selected }) =>
-                    classNames(
-                      "relative cursor-pointer select-none py-2 pl-3 pr-9 border-2 border-transparent first:rounded-t-md",
-                      active ? "border-custom-blue-700" : "",
-                      selected ? "border-custom-blue-700" : ""
-                    )
+                  className={
+                    "relative cursor-pointer select-none py-2 pl-3 pr-9 first:rounded-t-md"
                   }
                   style={getOptionStyle(option)}>
-                  {({ active, selected }) => (
+                  {({ selected }) => (
                     <>
                       <div className="z-10">
                         <span
@@ -706,8 +704,7 @@ export const Select = (props: SelectProps) => {
                         {selected && (
                           <span
                             className={classNames(
-                              "absolute inset-y-0 flex items-center pr-4",
-                              active ? "text-custom-white" : "text-custom-blue-700",
+                              "absolute inset-y-0 flex items-center pr-4 text-custom-blue-700",
                               canRemoveOption(option.id) ? "right-2" : "right-0"
                             )}>
                             <CheckIcon className="w-4 h-4" aria-hidden="true" />

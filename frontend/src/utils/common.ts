@@ -74,7 +74,9 @@ const calculateBrightness = (color: string) => {
   return brightness;
 };
 
-export const getTextColor = (background: string) => {
+export const getTextColor = (background?: string) => {
+  if (!background) return "black";
+
   const isDarkBackground = calculateBrightness(background) < 128;
 
   return isDarkBackground ? "white" : "black";
