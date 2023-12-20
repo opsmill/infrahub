@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING, List, MutableMapping
+from typing import TYPE_CHECKING, Any, List, MutableMapping
 
 from infrahub.log import get_log_data, get_logger
 
@@ -42,7 +42,7 @@ class InfrahubRpcClient(InfrahubRpcClientBase):
 class InfrahubRpcClientTesting(InfrahubRpcClientBase):
     """InfrahubRPCClient instrumented for testing and mocking."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
 
         self.sent: List[InfrahubMessage] = []
