@@ -20,6 +20,7 @@ import ObjectItemCreate from "../screens/object-item-create/object-item-create-p
 import { currentBranchAtom } from "../state/atoms/branches.atom";
 import { namespacesState, schemaState } from "../state/atoms/schema.atom";
 import { schemaKindNameState } from "../state/atoms/schemaKindName.atom";
+import { datetimeAtom } from "../state/atoms/time.atom";
 import { classNames, getTextColor } from "../utils/common";
 import { stringifyWithoutQuotes } from "../utils/string";
 import { BUTTON_TYPES, Button } from "./button";
@@ -27,7 +28,6 @@ import { Input } from "./input";
 import ModalDelete from "./modal-delete";
 import { MultipleInput } from "./multiple-input";
 import SlideOver from "./slide-over";
-import { datetimeAtom } from "../state/atoms/time.atom";
 
 export type SelectOption = {
   id: string | number;
@@ -203,7 +203,6 @@ export const Select = (props: SelectProps) => {
         label: "Name",
         value: "",
         type: "text",
-        optional: true,
         config: {
           required: "Required",
         },
@@ -213,22 +212,21 @@ export const Select = (props: SelectProps) => {
         label: "Color",
         value: "",
         type: "text",
+        isOptional: true,
       },
       {
         name: "label",
         label: "Label",
         value: "",
         type: "text",
-        optional: true,
-        config: {
-          required: "Required",
-        },
+        isOptional: true,
       },
       {
         name: "description",
         label: "Description",
         value: "",
         type: "text",
+        isOptional: true,
       },
     ];
 
