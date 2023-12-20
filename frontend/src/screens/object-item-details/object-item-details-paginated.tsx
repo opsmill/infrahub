@@ -8,6 +8,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
+import { useAtomValue } from "jotai/index";
 import { useContext, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
@@ -24,6 +25,7 @@ import { QSP } from "../../config/qsp";
 import { AuthContext } from "../../decorators/withAuth";
 import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
 import useQuery from "../../hooks/useQuery";
+import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
@@ -46,8 +48,6 @@ import ObjectItemEditComponent from "../object-item-edit/object-item-edit-pagina
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 import RelationshipDetails from "./relationship-details-paginated";
 import RelationshipsDetails from "./relationships-details-paginated";
-import { useAtomValue } from "jotai/index";
-import { currentBranchAtom } from "../../state/atoms/branches.atom";
 
 export default function ObjectItemDetails(props: any) {
   const { objectname: objectnameFromProps, objectid: objectidFromProps, hideHeaders } = props;
@@ -154,12 +154,10 @@ export default function ObjectItemDetails(props: any) {
               className="w-4 h-4 mt-1 mx-2 flex-shrink-0 text-gray-400"
               aria-hidden="true"
             />
-            <p className="mt-1 max-w-2xl text-sm text-gray-500">
-              {objectDetailsData.display_label}
-            </p>
+            <p className="mt-1 max-w-2xl  text-gray-500">{objectDetailsData.display_label}</p>
           </div>
 
-          <div className="px-4 text-sm">{schemaData?.description}</div>
+          <div className="px-4 ">{schemaData?.description}</div>
 
           <Tabs
             tabs={tabs}
@@ -191,11 +189,9 @@ export default function ObjectItemDetails(props: any) {
       {!qspTab && (
         <div className="px-4 py-5 sm:p-0 flex-1 overflow-auto">
           <dl className="sm:divide-y sm:divide-gray-200">
-            <div className="p-4 grid grid-cols-3 gap-4">
-              <dt className="text-sm font-medium text-gray-500 flex items-center">ID</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-                {objectDetailsData.id}
-              </dd>
+            <div className="p-2 grid grid-cols-3 gap-4 text-xs">
+              <dt className=" font-medium text-gray-500 flex items-center">ID</dt>
+              <dd className="mt-1  text-gray-900 sm:col-span-2 sm:mt-0">{objectDetailsData.id}</dd>
             </div>
             {attributes?.map((attribute) => {
               if (
@@ -206,15 +202,15 @@ export default function ObjectItemDetails(props: any) {
               }
 
               return (
-                <div className="p-4 grid grid-cols-3 gap-4" key={attribute.name}>
-                  <dt className="text-sm font-medium text-gray-500 flex items-center">
+                <div className="p-2 grid grid-cols-3 gap-4 text-xs" key={attribute.name}>
+                  <dt className=" font-medium text-gray-500 flex items-center">
                     {attribute.label}
                   </dt>
 
                   <div className="flex items-center">
                     <dd
                       className={classNames(
-                        "mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0"
+                        "mt-1  text-gray-900 sm:col-span-2 sm:mt-0"
                         // attribute.kind === "TextArea" ? "whitespace-pre-wrap mr-2" : ""
                       )}>
                       {getObjectItemDisplayValue(objectDetailsData, attribute, schemaKindName)}
@@ -338,9 +334,7 @@ export default function ObjectItemDetails(props: any) {
                   className="w-4 h-4 mt-1 mx-2 flex-shrink-0 text-gray-400"
                   aria-hidden="true"
                 />
-                <p className="mt-1 max-w-2xl text-sm text-gray-500">
-                  {objectDetailsData.display_label}
-                </p>
+                <p className="mt-1 max-w-2xl  text-gray-500">{objectDetailsData.display_label}</p>
               </div>
 
               <div className="flex-1"></div>
@@ -351,7 +345,7 @@ export default function ObjectItemDetails(props: any) {
               </div>
             </div>
 
-            <div className="text-sm">{schemaData?.description}</div>
+            <div className="">{schemaData?.description}</div>
 
             <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 mr-2">
               <svg
@@ -395,9 +389,7 @@ export default function ObjectItemDetails(props: any) {
                   className="w-4 h-4 mt-1 mx-2 flex-shrink-0 text-gray-400"
                   aria-hidden="true"
                 />
-                <p className="mt-1 max-w-2xl text-sm text-gray-500">
-                  {objectDetailsData.display_label}
-                </p>
+                <p className="mt-1 max-w-2xl  text-gray-500">{objectDetailsData.display_label}</p>
               </div>
 
               <div className="flex-1"></div>
@@ -408,7 +400,7 @@ export default function ObjectItemDetails(props: any) {
               </div>
             </div>
 
-            <div className="text-sm">{schemaData?.description}</div>
+            <div className="">{schemaData?.description}</div>
 
             <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 mr-2">
               <svg

@@ -23,6 +23,7 @@ import useQuery from "../../hooks/useQuery";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { iComboBoxFilter } from "../../state/atoms/filters.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
@@ -37,7 +38,6 @@ import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
-import { datetimeAtom } from "../../state/atoms/time.atom";
 
 export default function ObjectItems(props: any) {
   const { objectname: objectnameFromParams } = useParams();
@@ -234,7 +234,7 @@ export default function ObjectItems(props: any) {
                         <td
                           className={classNames(
                             index !== rows.length - 1 ? "border-b border-gray-200" : "",
-                            "whitespace-wrap text-xs text-gray-900 flex justify-end"
+                            "whitespace-wrap text-xs text-gray-900 text-right"
                           )}>
                           <Button
                             data-cy="delete"

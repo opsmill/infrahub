@@ -55,11 +55,12 @@ export const getObjectItemDisplayValue = (
     return schemaKindName[row[attribute?.name]] ?? "-";
   }
 
+  console.log("row[attribute?.name]: ", row[attribute?.name]);
   const textValue =
-    row[attribute?.name]?.value ??
-    row[attribute?.name]?.node?.value ??
     row[attribute?.name]?.display_label ??
+    row[attribute?.name]?.value ??
     row[attribute?.name]?.node?.display_label ??
+    row[attribute?.name]?.node?.value ??
     (typeof row[attribute?.name] === "string" ? row[attribute?.name] : "") ??
     "-";
 

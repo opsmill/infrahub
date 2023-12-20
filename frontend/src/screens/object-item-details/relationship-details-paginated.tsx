@@ -22,12 +22,15 @@ import graphqlClient from "../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
 // import { ReactComponent as UnlinkIcon } from "../../images/icons/unlink.svg";
 import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai/index";
 import { AuthContext } from "../../decorators/withAuth";
 import { addRelationship } from "../../graphql/mutations/relationships/addRelationship";
 import UnlinkIcon from "../../images/icons/unlink.svg";
+import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { genericsState, iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
 import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom copy";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
@@ -39,9 +42,6 @@ import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
-import { useAtomValue } from "jotai/index";
-import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { datetimeAtom } from "../../state/atoms/time.atom";
 
 type iRelationDetailsProps = {
   parentNode: any;
@@ -235,22 +235,20 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
       <div key={relationshipSchema?.name}>
         {!relationshipsData && (
           <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-4 sm:px-6">
-            <dt className="text-sm font-medium text-gray-500 flex items-center">
+            <dt className="font-medium text-gray-500 flex items-center">
               {relationshipSchema?.label}
             </dt>
-            <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 flex items-center">
-              -
-            </dd>
+            <dd className="mt-1 text-gray-900 sm:col-span-2 sm:mt-0 flex items-center">-</dd>
           </div>
         )}
         {relationshipsData && (
           <>
             {relationshipSchema?.cardinality === "one" && (
-              <div className="p-4 grid grid-cols-3 gap-4">
-                <dt className="text-sm font-medium text-gray-500 flex items-center">
+              <div className="p-2 grid grid-cols-3 gap-4 text-xs">
+                <dt className="font-medium text-gray-500 flex items-center">
                   {relationshipSchema?.label}
                 </dt>
-                <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 underline flex items-center">
+                <dd className="mt-1 text-gray-900 sm:col-span-2 sm:mt-0 underline flex items-center">
                   <Link
                     to={constructPath(
                       getObjectDetailsUrl(
@@ -330,192 +328,181 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
             )}
 
             {relationshipSchema?.cardinality === "many" && mode === "TABLE" && (
-              <div className="mt-0 flex flex-col px-4 sm:px-6 lg:px-8 w-full flex-1">
-                <div className="-my-2 -mx-4 sm:-mx-6 lg:-mx-8">
-                  <div className="inline-block min-w-full pt-2 align-middle">
-                    <div className="shadow-sm ring-1 ring-custom-black ring-opacity-5 overflow-x-auto">
-                      <table className="min-w-full border-separate" style={{ borderSpacing: 0 }}>
-                        <thead className="bg-gray-50">
-                          <tr>
-                            {newColumns?.map((column) => (
-                              <th
-                                key={column.name}
-                                scope="col"
-                                className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 px-4 py-2 text-left text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter">
-                                {column.label}
-                              </th>
-                            ))}
-                            <th
-                              scope="col"
-                              className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 px-4 py-2 text-left text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter">
-                              <span className="sr-only">Meta</span>
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-custom-white">
-                          {relationshipsData?.map(({ node, properties }: any, index: number) => (
-                            <tr
-                              onClick={() =>
-                                navigate(
-                                  constructPath(getObjectDetailsUrl(node.id, node.__typename))
-                                )
-                              }
-                              key={index}
-                              className="hover:bg-gray-50 cursor-pointer"
-                              data-cy="relationship-row">
-                              {newColumns?.map((column) => (
-                                <td
-                                  key={node.id + "-" + column.name}
-                                  className={classNames(
-                                    index !== relationshipsData.length - 1
-                                      ? "border-b border-gray-200"
-                                      : "",
-                                    "whitespace-nowrap p-4 text-sm font-medium text-gray-900"
-                                  )}>
-                                  {getObjectItemDisplayValue(node, column)}
-                                </td>
-                              ))}
-                              <td
-                                className={classNames(
-                                  index !== relationshipsData.length - 1
-                                    ? "border-b border-gray-200"
-                                    : "",
-                                  "whitespace-nowrap p-4 text-sm font-medium text-gray-900 flex justify-end"
-                                )}>
-                                <div
-                                  className="flex px-2"
-                                  onClick={() => {
-                                    setRowForMetaEdit(node);
-                                    setShowRelationMetaEditModal(true);
-                                  }}>
-                                  <MetaDetailsTooltip
-                                    position="LEFT"
-                                    items={[
-                                      {
-                                        label: "Updated at",
-                                        value: properties?.updated_at,
-                                        type: "date",
-                                      },
-                                      {
-                                        label: "Update time",
-                                        value: `${new Date(
-                                          properties?.updated_at
-                                        ).toLocaleDateString()} ${new Date(
-                                          properties?.updated_at
-                                        ).toLocaleTimeString()}`,
-                                        type: "text",
-                                      },
-                                      {
-                                        label: "Source",
-                                        value: properties?.source?.display_label,
-                                        type: "link",
-                                      },
-                                      {
-                                        label: "Owner",
-                                        value: properties?.owner?.display_label,
-                                        type: "link",
-                                      },
-                                      {
-                                        label: "Is protected",
-                                        value: properties?.is_protected ? "True" : "False",
-                                        type: "text",
-                                      },
-                                    ]}
-                                  />
-                                </div>
-
-                                <Button
-                                  disabled={!auth?.permissions?.write}
-                                  buttonType={BUTTON_TYPES.INVISIBLE}
-                                  onClick={() => {
-                                    setRelatedObjectToEdit(node);
-                                  }}
-                                  data-cy="metadata-edit-button">
-                                  <PencilSquareIcon className="w-4 h-4 text-gray-500" />
-                                </Button>
-
-                                <Button
-                                  disabled={!auth?.permissions?.write}
-                                  buttonType={BUTTON_TYPES.INVISIBLE}
-                                  onClick={() => {
-                                    setRelatedRowToDelete(node);
-                                  }}
-                                  data-cy="relationship-delete-button">
-                                  <img src={UnlinkIcon} className="w-4 h-4" />
-                                </Button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-
-                      {relationshipsData && !relationshipsData.length && (
-                        <NoDataFound message="No relationship found." />
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {relationshipSchema?.cardinality === "many" && mode === "DESCRIPTION-LIST" && (
-              <div className="p-4 grid grid-cols-3 gap-4">
-                <dt className="text-sm font-medium text-gray-500 flex items-center">
-                  {relationshipSchema?.label}
-                </dt>
-                <dl className="sm:divide-y sm:divide-gray-200">
-                  <div className="sm:col-span-2 space-y-4">
-                    {relationshipsData?.length === 0 && "-"}
-                    {relationshipsData?.map(({ node, properties }: any) => (
-                      <dd
-                        className="mt-1 text-sm text-gray-900 sm:mt-0 underline flex items-center"
-                        key={node.id}>
-                        <Link to={constructPath(getObjectDetailsUrl(node.id, node.__typename))}>
-                          {node.display_label}
-                        </Link>
-
-                        {node && (
-                          <div className="p-2">
+              <div className="shadow-sm ring-1 ring-custom-black ring-opacity-5 overflow-x-auto">
+                <table className="min-w-full border-separate" style={{ borderSpacing: 0 }}>
+                  <thead className="bg-gray-50">
+                    <tr>
+                      {newColumns?.map((column) => (
+                        <th
+                          key={column.name}
+                          scope="col"
+                          className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 p-2 text-left text-xs font-semibold text-gray-900">
+                          {column.label}
+                        </th>
+                      ))}
+                      <th
+                        scope="col"
+                        className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 p-2 text-left text-xs font-semibold text-gray-900">
+                        <span className="sr-only">Meta</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-custom-white">
+                    {relationshipsData?.map(({ node, properties }: any, index: number) => (
+                      <tr
+                        onClick={() =>
+                          navigate(constructPath(getObjectDetailsUrl(node.id, node.__typename)))
+                        }
+                        key={index}
+                        className="hover:bg-gray-50 cursor-pointer"
+                        data-cy="relationship-row">
+                        {newColumns?.map((column) => (
+                          <td
+                            key={node.id + "-" + column.name}
+                            className={classNames(
+                              index !== relationshipsData.length - 1
+                                ? "border-b border-gray-200"
+                                : "",
+                              "whitespace-nowrap px-2 py-1 text-xs font-medium text-gray-900"
+                            )}>
+                            {getObjectItemDisplayValue(node, column)}
+                          </td>
+                        ))}
+                        <td
+                          className={classNames(
+                            index !== relationshipsData.length - 1
+                              ? "border-b border-gray-200"
+                              : "",
+                            "whitespace-nowrap px-2 py-1 text-xs font-medium text-gray-900 flex justify-end"
+                          )}>
+                          <div
+                            className="flex px-2"
+                            onClick={() => {
+                              setRowForMetaEdit(node);
+                              setShowRelationMetaEditModal(true);
+                            }}>
                             <MetaDetailsTooltip
+                              position="LEFT"
                               items={[
                                 {
                                   label: "Updated at",
-                                  value: properties.updated_at,
+                                  value: properties?.updated_at,
                                   type: "date",
                                 },
                                 {
                                   label: "Update time",
                                   value: `${new Date(
-                                    properties.updated_at
+                                    properties?.updated_at
                                   ).toLocaleDateString()} ${new Date(
-                                    properties.updated_at
+                                    properties?.updated_at
                                   ).toLocaleTimeString()}`,
                                   type: "text",
                                 },
                                 {
                                   label: "Source",
-                                  value: properties._relation__source,
+                                  value: properties?.source?.display_label,
                                   type: "link",
                                 },
                                 {
                                   label: "Owner",
-                                  value: properties.owner?.display_label,
+                                  value: properties?.owner?.display_label,
                                   type: "link",
                                 },
                                 {
                                   label: "Is protected",
-                                  value: properties.is_protected ? "True" : "False",
+                                  value: properties?.is_protected ? "True" : "False",
                                   type: "text",
                                 },
                               ]}
                             />
                           </div>
-                        )}
 
-                        {properties.is_protected && <LockClosedIcon className="w-4 h-4" />}
+                          <Button
+                            disabled={!auth?.permissions?.write}
+                            buttonType={BUTTON_TYPES.INVISIBLE}
+                            onClick={() => {
+                              setRelatedObjectToEdit(node);
+                            }}
+                            data-cy="metadata-edit-button">
+                            <PencilSquareIcon className="w-4 h-4 text-gray-500" />
+                          </Button>
 
-                        {properties.is_visible === false && <EyeSlashIcon className="w-4 h-4" />}
-                        {/* {<TrashIcon className="w-4 h-4" onClick={async () => {
+                          <Button
+                            disabled={!auth?.permissions?.write}
+                            buttonType={BUTTON_TYPES.INVISIBLE}
+                            onClick={() => {
+                              setRelatedRowToDelete(node);
+                            }}
+                            data-cy="relationship-delete-button">
+                            <img src={UnlinkIcon} className="w-4 h-4" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {relationshipsData && !relationshipsData.length && (
+                  <NoDataFound message="No relationship found." />
+                )}
+              </div>
+            )}
+
+            {relationshipSchema?.cardinality === "many" && mode === "DESCRIPTION-LIST" && (
+              <div className="px-2 grid grid-cols-3 gap-4 text-xs">
+                <dt className="font-medium text-gray-500 flex items-center">
+                  {relationshipSchema?.label}
+                </dt>
+                <dl className="flex flex-col">
+                  {relationshipsData?.length === 0 && "-"}
+                  {relationshipsData?.map(({ node, properties }: any) => (
+                    <dd className="text-gray-900 underline flex items-center" key={node.id}>
+                      <Link to={constructPath(getObjectDetailsUrl(node.id, node.__typename))}>
+                        {node.display_label}
+                      </Link>
+
+                      {node && (
+                        <div className="p-2">
+                          <MetaDetailsTooltip
+                            items={[
+                              {
+                                label: "Updated at",
+                                value: properties.updated_at,
+                                type: "date",
+                              },
+                              {
+                                label: "Update time",
+                                value: `${new Date(
+                                  properties.updated_at
+                                ).toLocaleDateString()} ${new Date(
+                                  properties.updated_at
+                                ).toLocaleTimeString()}`,
+                                type: "text",
+                              },
+                              {
+                                label: "Source",
+                                value: properties._relation__source,
+                                type: "link",
+                              },
+                              {
+                                label: "Owner",
+                                value: properties.owner?.display_label,
+                                type: "link",
+                              },
+                              {
+                                label: "Is protected",
+                                value: properties.is_protected ? "True" : "False",
+                                type: "text",
+                              },
+                            ]}
+                          />
+                        </div>
+                      )}
+
+                      {properties.is_protected && <LockClosedIcon className="w-4 h-4" />}
+
+                      {properties.is_visible === false && <EyeSlashIcon className="w-4 h-4" />}
+                      {/* {<TrashIcon className="w-4 h-4" onClick={async () => {
                             const newList  = relationshipsData.map((row: any) => ({ id: row.id })).filter((row: any) =>  row.id !== item.id);
                             await updateObjectWithId(objectid!, schema, {
                               [relationshipSchema.name]: newList
@@ -523,9 +510,8 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                             props.refreshObject();
                             setShowAddDrawer(false);
                           }}/>} */}
-                      </dd>
-                    ))}
-                  </div>
+                    </dd>
+                  ))}
                 </dl>
               </div>
             )}
@@ -537,7 +523,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
             <RoundedButton
               disabled={!auth?.permissions?.write}
               onClick={() => setShowAddDrawer(true)}
-              className="p-3 ml-2 bg-custom-blue-500 text-sm hover:bg-custom-blue-500 focus:ring-custom-blue-500 focus:ring-offset-gray-50 focus:ring-offset-2"
+              className="p-3 ml-2 bg-custom-blue-500 hover:bg-custom-blue-500 focus:ring-custom-blue-500 focus:ring-offset-gray-50 focus:ring-offset-2"
               data-cy="open-relationship-form-button">
               <PlusIcon className="h-7 w-7 text-custom-white" aria-hidden="true" />
             </RoundedButton>

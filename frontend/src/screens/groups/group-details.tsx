@@ -9,6 +9,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
+import { useAtomValue } from "jotai/index";
 import { useContext, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
@@ -21,6 +22,7 @@ import { QSP } from "../../config/qsp";
 import { AuthContext } from "../../decorators/withAuth";
 import { getGroupDetails } from "../../graphql/queries/groups/getGroupDetails";
 import useQuery from "../../hooks/useQuery";
+import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom copy";
@@ -33,8 +35,6 @@ import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 import GroupRelationships from "./group-relationships";
-import { useAtomValue } from "jotai/index";
-import { currentBranchAtom } from "../../state/atoms/branches.atom";
 
 export default function GroupItemDetails() {
   const { groupname, groupid } = useParams();
@@ -140,7 +140,7 @@ export default function GroupItemDetails() {
       {!qspTab && (
         <div className="px-4 py-5 sm:p-0 flex-1 overflow-auto">
           <dl className="sm:divide-y sm:divide-gray-200">
-            <div className="p-4 grid grid-cols-3 gap-4">
+            <div className="p-2 grid grid-cols-3 gap-4 text-xs">
               <dt className="text-sm font-medium text-gray-500 flex items-center">ID</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
                 {objectDetailsData.id}
@@ -155,7 +155,7 @@ export default function GroupItemDetails() {
               }
 
               return (
-                <div className="p-4 grid grid-cols-3 gap-4" key={attribute.name}>
+                <div className="p-2 grid grid-cols-3 gap-4 text-xs" key={attribute.name}>
                   <dt className="text-sm font-medium text-gray-500 flex items-center">
                     {attribute.label}
                   </dt>
