@@ -4,15 +4,13 @@ from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
-# pylint: disable=no-member
-
 
 class SchemaBranchDiff(BaseModel):
     nodes: List[str] = Field(default_factory=list)
     generics: List[str] = Field(default_factory=list)
     groups: List[str] = Field(default_factory=list)
 
-    def to_string(self):
+    def to_string(self) -> str:
         return ", ".join(self.nodes + self.generics + self.groups)
 
 
