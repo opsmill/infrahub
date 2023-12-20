@@ -83,7 +83,6 @@ class SchemaDropdownRemove(Mutation):
         data = SchemaDropdownRemoveInput(required=True)
 
     ok = Boolean()
-    object = Field(DropdownType)
 
     @classmethod
     async def mutate(
@@ -91,7 +90,7 @@ class SchemaDropdownRemove(Mutation):
         root: dict,  # pylint: disable=unused-argument
         info: GraphQLResolveInfo,
         data: SchemaDropdownRemoveInput,
-    ):
+    ) -> Dict[str, bool]:
         db: InfrahubDatabase = info.context.get("infrahub_database")
         branch: Branch = info.context.get("infrahub_branch")
         kind = registry.get_schema(name=str(data.kind), branch=branch.name)
@@ -99,9 +98,6 @@ class SchemaDropdownRemove(Mutation):
         attribute = str(data.attribute)
         validate_kind_dropdown(kind=kind, attribute=attribute)
         dropdown = str(data.dropdown)
-        color = str(data.color) if data.color else ""
-        description = str(data.description) if data.description else ""
-        label = str(data.label) if data.label else ""
         nodes_with_dropdown = await NodeManager.query(
             db=db, schema=kind.kind, filters={f"{attribute}__value": dropdown}
         )
@@ -120,7 +116,7 @@ class SchemaDropdownRemove(Mutation):
 
         await update_registry(kind=kind, branch=branch, db=db)
 
-        return cls(object=DropdownType(value=dropdown, label=label, color=color, description=description), ok=True)
+        return {"ok": True}
 
 
 class SchemaEnumAdd(Mutation):
