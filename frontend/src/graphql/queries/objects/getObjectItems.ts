@@ -17,6 +17,7 @@ query {{kind}} {
               {{#if (eq this.kind "Dropdown")}}
               color
               description
+              label
               {{/if}}
           }
         {{/each}}

@@ -100,6 +100,7 @@ export default function ObjectItemDetails(props: any) {
       // TODO: Find another solution for queries while loading schema
       "query { ok }";
 
+  console.log("queryString: ", queryString);
   const query = gql`
     ${queryString}
   `;
