@@ -6,6 +6,7 @@ export const proposedChangesDetails = {
   name: { value: "test", __typename: "TextAttribute" },
   source_branch: { value: "jfk1-update-edge-ips", __typename: "TextAttribute" },
   destination_branch: { value: "main", __typename: "TextAttribute" },
+  state: { value: "open", __typename: "TextAttribute" },
   approved_by: { edges: [], __typename: "NestedPaginatedCoreAccount" },
   reviewers: { edges: [], __typename: "NestedPaginatedCoreAccount" },
   created_by: {

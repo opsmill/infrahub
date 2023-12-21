@@ -388,7 +388,7 @@ export const ArtifactContentDiff = (props: any) => {
   });
 
   return (
-    <div className={"pr-2 pb-2"}>
+    <div className={"pr-2 pb-2"} data-cy="artifact-content-diff">
       <div className="flex">
         <div className="flex-1">
           {itemPrevious?.storage_id && (
