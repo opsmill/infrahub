@@ -86,7 +86,15 @@ class SchemaDropdownAdd(Mutation):
         if not dropdown_entry:
             return cls(object={}, ok=False)
 
-        return cls(object={"value": dropdown, "color": dropdown_entry.color, "label": dropdown_entry.label, "description": description}, ok=True)
+        return cls(
+            object={
+                "value": dropdown,
+                "color": dropdown_entry.color,
+                "label": dropdown_entry.label,
+                "description": description,
+            },
+            ok=True,
+        )
 
 
 class SchemaDropdownRemove(Mutation):
