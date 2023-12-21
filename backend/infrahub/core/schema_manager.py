@@ -1012,9 +1012,7 @@ class SchemaManager(NodeManager):
 
         if not has_filters or filters["groups"]:
             group_schema = self.get(name="SchemaGroup", branch=branch)
-            for schema_node in await self.query(
-                schema=group_schema, branch=branch, filters=filters["groups"], prefetch_relationships=True, db=db
-            ):
+            for schema_node in await self.query(schema=group_schema, branch=branch, prefetch_relationships=True, db=db):
                 schema.set(
                     name=schema_node.kind.value,
                     schema=await self.convert_group_schema_to_schema(schema_node=schema_node),
