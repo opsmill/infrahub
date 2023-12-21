@@ -1,0 +1,21 @@
+{
+  "17a28f63-3e15-4454-3828-c51a82d8615e": {
+    "branch": "jfk1-update-edge-ips",
+    "id": "17a28f63-3e15-4454-3828-c51a82d8615e",
+    "display_label": "dfw1-edge1 - test",
+    "action": "updated",
+    "target": {
+      "id": "17a28edd-0a50-8364-305b-c51e6a0d7b6a",
+      "kind": "InfraDevice",
+      "display_label": "dfw1-edge1"
+    },
+    "item_new": {
+      "storage_id": "17a28ff2-526c-2f68-3876-c511fd22b9e3",
+      "checksum": "307eca5063c12b90b49f4651f4cd33b8"
+    },
+    "item_previous": {
+      "storage_id": "17a28f63-f0bb-b131-3875-c51eff1b7a20",
+      "checksum": "98c60c85f4a55ee1eceaf1db55150a3f"
+    }
+  }
+}
