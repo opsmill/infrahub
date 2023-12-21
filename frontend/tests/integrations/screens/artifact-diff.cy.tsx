@@ -54,14 +54,32 @@ const ArtifactsDiffProvider = ({ loggedIn }: { loggedIn: boolean }) => {
 };
 
 describe("Artifact Diff", () => {
-  beforeEach(function () {
+  before(function () {
     cy.viewport(1920, 1080);
-    cy.fixture("artifacts").as("artifacts");
+    cy.fixture("storage-old").as("storageOld");
+    cy.fixture("storage-new").as("storageNew");
+  });
+
+  beforeEach(function () {
+    cy.fixture("artifacts").then(function (json) {
+      cy.intercept("GET", "/api/diff/artifacts*", json).as("artifacts");
+    });
+    cy.fixture("storage-old").then(function (json) {
+      cy.intercept("GET", "api/storage/object/17a28f63-f0bb-b131-3875-c51eff1b7a20", {
+        statusCode: 200,
+        body: JSON.stringify(json, null, 4),
+      }).as("storageOld");
+    });
+    cy.fixture("storage-new").then(function (json) {
+      cy.intercept("GET", "api/storage/object/17a28ff2-526c-2f68-3876-c511fd22b9e3", {
+        statusCode: 200,
+        body: JSON.stringify(json, null, 4),
+      }).as("storageNew");
+    });
   });
 
   it("should display artifact diff", function () {
     // GIVEN
-    cy.intercept("GET", "/api/diff/artifacts*", this.artifacts).as("artifacts");
     const mocks = [
       {
         request: {
@@ -99,7 +117,6 @@ describe("Artifact Diff", () => {
 
   it("should display artifact diff with threads", function () {
     // GIVEN
-    cy.intercept("GET", "/api/diff/artifacts*", this.artifacts).as("artifacts");
     const mocks = [
       {
         request: {
@@ -157,7 +174,6 @@ describe("Artifact Diff", () => {
 
     it("should display artifact diff with threads", function () {
       // GIVEN
-      cy.intercept("GET", "/api/diff/artifacts*", this.artifacts).as("artifacts");
       cy.mount(
         <MockedProvider mocks={mocks} addTypename={false}>
           <Routes>

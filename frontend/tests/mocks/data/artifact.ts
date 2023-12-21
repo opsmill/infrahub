@@ -1376,7 +1376,7 @@ export const artifactThreadMockData = {
           __typename: "CoreArtifactThread",
           _updated_at: "2023-12-21T13:09:10.606650+00:00",
           line_number: {
-            value: 35,
+            value: 3,
             __typename: "NumberAttribute",
           },
           storage_id: {
@@ -1424,7 +1424,7 @@ export const artifactThreadMockData = {
           __typename: "CoreArtifactThread",
           _updated_at: "2023-12-21T13:09:15.307479+00:00",
           line_number: {
-            value: 36,
+            value: 5,
             __typename: "NumberAttribute",
           },
           storage_id: {
