@@ -36,6 +36,7 @@ from infrahub.core.schema import (
     SchemaRoot,
     internal_schema,
 )
+from infrahub.core.utils import parse_node_kind
 from infrahub.exceptions import SchemaNotFound
 from infrahub.graphql import generate_graphql_schema
 from infrahub.log import get_logger
@@ -836,7 +837,17 @@ class SchemaManager(NodeManager):
             await self.load_schema_to_db(schema=schema, db=db, branch=branch, limit=limit)
             # After updating the schema into the db
             # we need to pull a fresh version because some default value are managed/generated within the node object
-            updated_schema = await self.load_schema_from_db(db=db, branch=branch)
+            schema_diff = None
+            if limit:
+                schema_diff = SchemaBranchDiff(
+                    nodes=[name for name in list(schema.nodes.keys()) if name in limit],
+                    generics=[name for name in list(schema.generics.keys()) if name in limit],
+                    groups=[name for name in list(schema.groups.keys()) if name in limit],
+                )
+
+            updated_schema = await self.load_schema_from_db(
+                db=db, branch=branch, schema=schema, schema_diff=schema_diff
+            )
 
         self._branches[branch.name] = updated_schema
 
@@ -1063,37 +1074,74 @@ class SchemaManager(NodeManager):
         self,
         db: InfrahubDatabase,
         branch: Optional[Union[str, Branch]] = None,
+        schema: Optional[SchemaBranch] = None,
         schema_diff: Optional[SchemaBranchDiff] = None,
     ) -> SchemaBranch:
-        """Query all the node of type NodeSchema, GenericSchema and GroupSchema from the database and convert them to their respective type."""
+        """Query all the node of type NodeSchema, GenericSchema and GroupSchema from the database and convert them to their respective type.
+
+        Args:
+            db: Database Driver
+            branch: Name of the branch to load the schema from. Defaults to None.
+            schema: (Optional) If a schema is provided, it will be updated with the latest value, if not a new one will be created.
+            schema_diff: (Optional). List of nodes, generics & groups to query
+
+        Returns:
+            SchemaBranch
+        """
 
         branch = await get_branch(branch=branch, db=db)
-        schema = SchemaBranch(cache=self._cache, name=branch.name)
+        schema = schema or SchemaBranch(cache=self._cache, name=branch.name)
 
+        # If schema_diff has been provided, we need to build the proper filters for the queries based on the namespace and the name of the object.
+        # the namespace and the name will be extracted from the kind with the function `parse_node_kind`
+        filters = {"generics": {}, "groups": {}, "nodes": {}}
+        has_filters = False
         if schema_diff:
             log.info(f"Loading schema from DB to update : {schema_diff.to_string()}")
 
-        group_schema = self.get(name="SchemaGroup", branch=branch)
-        for schema_node in await self.query(schema=group_schema, branch=branch, prefetch_relationships=True, db=db):
-            schema.set(
-                name=schema_node.kind.value, schema=await self.convert_group_schema_to_schema(schema_node=schema_node)
-            )
+            for node_type in list(filters.keys()):
+                filter_value = {
+                    "namespace__values": list(
+                        {parse_node_kind(item).namespace for item in getattr(schema_diff, node_type)}
+                    ),
+                    "name__values": list({parse_node_kind(item).name for item in getattr(schema_diff, node_type)}),
+                }
 
-        generic_schema = self.get(name="SchemaGeneric", branch=branch)
-        for schema_node in await self.query(schema=generic_schema, branch=branch, prefetch_relationships=True, db=db):
-            kind = f"{schema_node.namespace.value}{schema_node.name.value}"
-            schema.set(
-                name=kind,
-                schema=await self.convert_generic_schema_to_schema(schema_node=schema_node, db=db),
-            )
+                if filter_value["namespace__values"]:
+                    filters[node_type] = filter_value
+                    has_filters = True
 
-        node_schema = self.get(name="SchemaNode", branch=branch)
-        for schema_node in await self.query(schema=node_schema, branch=branch, prefetch_relationships=True, db=db):
-            kind = f"{schema_node.namespace.value}{schema_node.name.value}"
-            schema.set(
-                name=kind,
-                schema=await self.convert_node_schema_to_schema(schema_node=schema_node, db=db),
-            )
+        if not has_filters or filters["groups"]:
+            group_schema = self.get(name="SchemaGroup", branch=branch)
+            for schema_node in await self.query(
+                schema=group_schema, branch=branch, filters=filters["groups"], prefetch_relationships=True, db=db
+            ):
+                schema.set(
+                    name=schema_node.kind.value,
+                    schema=await self.convert_group_schema_to_schema(schema_node=schema_node),
+                )
+
+        if not has_filters or filters["generics"]:
+            generic_schema = self.get(name="SchemaGeneric", branch=branch)
+            for schema_node in await self.query(
+                schema=generic_schema, branch=branch, filters=filters["generics"], prefetch_relationships=True, db=db
+            ):
+                kind = f"{schema_node.namespace.value}{schema_node.name.value}"
+                schema.set(
+                    name=kind,
+                    schema=await self.convert_generic_schema_to_schema(schema_node=schema_node, db=db),
+                )
+
+        if not has_filters or filters["nodes"]:
+            node_schema = self.get(name="SchemaNode", branch=branch)
+            for schema_node in await self.query(
+                schema=node_schema, branch=branch, filters=filters["nodes"], prefetch_relationships=True, db=db
+            ):
+                kind = f"{schema_node.namespace.value}{schema_node.name.value}"
+                schema.set(
+                    name=kind,
+                    schema=await self.convert_node_schema_to_schema(schema_node=schema_node, db=db),
+                )
 
         schema.process()
         self._branches[branch.name] = schema
