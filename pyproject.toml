@@ -167,11 +167,6 @@ ignore_errors = true
 module = "infrahub.api.storage"
 ignore_errors = true
 
-
-[[tool.mypy.overrides]]
-module = "infrahub.api.transformation"
-ignore_errors = true
-
 [[tool.mypy.overrides]]
 module = "infrahub.auth"
 ignore_errors = true

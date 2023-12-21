@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Request
 from graphql import graphql
+from graphql.execution import ExecutionResult
 from starlette.responses import JSONResponse, PlainTextResponse
 
 from infrahub.api.dependencies import (
@@ -15,6 +16,7 @@ from infrahub.api.dependencies import (
 from infrahub.core import registry
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
+from infrahub.exceptions import GraphQLQueryError
 from infrahub.message_bus import messages
 from infrahub.message_bus.responses import TemplateResponse, TransformResponse
 
@@ -66,19 +68,7 @@ async def transform_python(
         variable_values=params,
     )
 
-    if result.errors:
-        errors = []
-        for error in result.errors:
-            error_locations = error.locations or []
-            errors.append(
-                {
-                    "message": f"GraphQLQuery {query.name.value}: {error.message}",
-                    "path": error.path,
-                    "locations": [{"line": location.line, "column": location.column} for location in error_locations],
-                }
-            )
-
-        return JSONResponse(status_code=500, content={"errors": errors})
+    data = extract_data(query_name=query.name.value, result=result)
 
     service: InfrahubServices = request.app.state.service
 
@@ -88,7 +78,7 @@ async def transform_python(
         commit=repository.commit.value,  # type: ignore[attr-defined]
         branch=branch_params.branch.name,
         transform_location=f"{transform.file_path.value}::{transform.class_name.value}",  # type: ignore[attr-defined]
-        data=result.data,
+        data=data,
     )
 
     response = await service.message_bus.rpc(message=message)
@@ -129,19 +119,7 @@ async def generate_rfile(
         variable_values=params,
     )
 
-    if result.errors:
-        errors = []
-        for error in result.errors:
-            error_locations = error.locations or []
-            errors.append(
-                {
-                    "message": f"GraphQLQuery {query.name.value}: {error.message}",
-                    "path": error.path,
-                    "locations": [{"line": location.line, "column": location.column} for location in error_locations],
-                }
-            )
-
-        return JSONResponse(status_code=500, content={"errors": errors})
+    data = extract_data(query_name=query.name.value, result=result)
 
     service: InfrahubServices = request.app.state.service
 
@@ -151,10 +129,28 @@ async def generate_rfile(
         commit=repository.commit.value,  # type: ignore[attr-defined]
         branch=branch_params.branch.name,
         template_location=rfile.template_path.value,  # type: ignore[attr-defined]
-        data=result.data,
+        data=data,
     )
 
     response = await service.message_bus.rpc(message=message)
     template = response.parse(response_class=TemplateResponse)
 
     return PlainTextResponse(content=template.rendered_template)
+
+
+def extract_data(query_name: str, result: ExecutionResult) -> Dict:
+    if result.errors:
+        errors = []
+        for error in result.errors:
+            error_locations = error.locations or []
+            errors.append(
+                {
+                    "message": f"GraphQLQuery {query_name}: {error.message}",
+                    "path": error.path,
+                    "locations": [{"line": location.line, "column": location.column} for location in error_locations],
+                }
+            )
+
+        raise GraphQLQueryError(errors=errors)
+
+    return result.data or {}
