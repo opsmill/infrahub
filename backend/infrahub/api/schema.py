@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, List, Optional, Union
 
-from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from pydantic import BaseModel, Field, root_validator
 from starlette.responses import JSONResponse
 
@@ -83,17 +83,20 @@ class SchemasLoadAPI(SchemaRoot):
 @router.get("/")
 async def get_schema(
     branch: Branch = Depends(get_branch_dep),
+    namespaces: Union[List[str], None] = Query(default=None),
 ) -> SchemaReadAPI:
     log.debug("schema_request", branch=branch.name)
     schema_branch = registry.schema.get_schema_branch(name=branch.name)
-    full_schema = schema_branch.get_all()
+    if namespaces:
+        all_schemas = schema_branch.get_schemas_for_namespaces(namespaces=namespaces)
+    else:
+        full_schema = schema_branch.get_all()
+        all_schemas = full_schema.values()
 
     return SchemaReadAPI(
         main=registry.schema.get_schema_branch(name=branch.name).get_hash(),
-        nodes=[APINodeSchema.from_schema(value) for value in full_schema.values() if isinstance(value, NodeSchema)],
-        generics=[
-            APIGenericSchema.from_schema(value) for value in full_schema.values() if isinstance(value, GenericSchema)
-        ],
+        nodes=[APINodeSchema.from_schema(value) for value in all_schemas if isinstance(value, NodeSchema)],
+        generics=[APIGenericSchema.from_schema(value) for value in all_schemas if isinstance(value, GenericSchema)],
         namespaces=schema_branch.get_namespaces(),
     )
 
