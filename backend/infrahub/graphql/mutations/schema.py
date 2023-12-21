@@ -75,7 +75,18 @@ class SchemaDropdownAdd(Mutation):
 
         await update_registry(kind=kind, branch=branch, db=db)
 
-        return cls(object={"value": dropdown, "color": color, "label": label, "description": description}, ok=True)
+        kind = registry.get_schema(name=str(data.kind), branch=branch.name)
+        attrib = kind.get_attribute(attribute)
+        dropdown_entry = None
+
+        for entry in attrib.choices:
+            if entry.name == dropdown:
+                dropdown_entry = entry
+
+        if not dropdown_entry:
+            return cls(object={}, ok=False)
+
+        return cls(object={"value": dropdown, "color": dropdown_entry.color, "label": dropdown_entry.label, "description": description}, ok=True)
 
 
 class SchemaDropdownRemove(Mutation):
