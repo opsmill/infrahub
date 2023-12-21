@@ -64,37 +64,32 @@ const shouldDisplayAddComment = (state: any, change: any) => {
   );
 };
 
-const getThread = (threads: any[], change: any, idFrom?: string, idTo?: string) => {
-  const thread = threads.find((thread) => {
-    const THREADLineNumber = thread?.line_number?.value;
+const findThreadByChange = (threads: any[], change: any, idFrom?: string, idTo?: string) => {
+  const isChangeOnLeftSide = !!change?.isDelete;
+  const isChangeOnRightSide = !!change?.isInsert;
+  const isChangeOnBothSide = !!change?.isNormal;
 
-    if (
-      change?.isDelete &&
-      THREADLineNumber === change.lineNumber &&
-      (thread?.storage_id?.value === idFrom || (!thread?.storage_id?.value && !idFrom))
-    ) {
-      // Thread on the left side
+  return threads.find((thread) => {
+    const threadLineNumber = thread?.line_number?.value;
+    const threadStorageId = thread?.storage_id?.value;
+
+    const isThreadOnLeftSide = threadStorageId === idFrom;
+    if (isChangeOnLeftSide && isThreadOnLeftSide && threadLineNumber === change.lineNumber) {
       return true;
     }
 
-    if (
-      change?.isInsert &&
-      thread?.storage_id?.value === idTo &&
-      THREADLineNumber === change.lineNumber
-    ) {
-      // Thread on the right side
+    const isThreadOnRightSide = threadStorageId === idTo;
+    if (isChangeOnRightSide && isThreadOnRightSide && threadLineNumber === change.lineNumber) {
       return true;
     }
 
-    if (change.isNormal && THREADLineNumber === change.newLineNumber) {
-      // Both left + right side
-      return true;
-    }
+    const a =
+      isChangeOnBothSide &&
+      ((isThreadOnLeftSide && threadLineNumber === change.oldLineNumber) ||
+        (isThreadOnRightSide && threadLineNumber === change.newLineNumber));
 
-    return false;
+    return a;
   });
-
-  return thread;
 };
 
 export const ArtifactContentDiff = (props: any) => {
@@ -310,7 +305,12 @@ export const ArtifactContentDiff = (props: any) => {
         };
       }
 
-      const thread = getThread(threads, change, itemPrevious?.storage_id, itemNew?.storage_id);
+      const thread = findThreadByChange(
+        threads,
+        change,
+        itemPrevious?.storage_id,
+        itemNew?.storage_id
+      );
 
       if (thread) {
         return {
@@ -343,7 +343,12 @@ export const ArtifactContentDiff = (props: any) => {
       setDisplayAddComment({ side, ...change });
     };
 
-    const thread = getThread(threads, change, itemPrevious?.storage_id, itemNew?.storage_id);
+    const thread = findThreadByChange(
+      threads,
+      change,
+      itemPrevious?.storage_id,
+      itemNew?.storage_id
+    );
 
     if (thread || !auth?.permissions?.write || !proposedchange) {
       // Do not display the add button if there is already a thread
