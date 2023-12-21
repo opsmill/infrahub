@@ -19,13 +19,14 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 
 [tool.poetry.dependencies]
 python = "^3.8"
 httpx = "^0.23"
 rich = "^13.3"
-pendulum = "~2.1"
+pendulum = "~3.0"
 typer = "^0.7"
 Jinja2 = "^3.1"
 toml = "^0.10.2"
