@@ -27,14 +27,14 @@ jobs:
         run: echo "short_ref=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
         id: short_ref
       - name: Set date
-        run: echo "date=$(date '+'%Y-%m-%d')" >> $GITHUB_OUTPUT
+        run: echo "date=$(date '+%Y%m%d')" >> $GITHUB_OUTPUT
         id: date
       - name: Set docker image meta data
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: |
-            ${{ env.REGISTRY_IMAGE }}
+            ${{ vars.HARBOR_HOST }}/${{ github.repository }}
           tags: |
             type=raw,value=dev-${{ steps.date.outputs.date }}-${{ steps.short_ref.outputs.short_ref }}
           labels: |
