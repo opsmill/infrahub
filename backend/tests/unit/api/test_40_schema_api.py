@@ -165,6 +165,7 @@ async def test_schema_load_endpoint_valid_simple(
         )
         read = client.get("/api/schema", headers=admin_headers)
 
+    assert creation.json() == {}
     assert creation.status_code == 202
     assert read.status_code == 200
     nodes = read.json()["nodes"]

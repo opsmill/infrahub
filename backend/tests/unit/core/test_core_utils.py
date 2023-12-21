@@ -1,8 +1,12 @@
+import pytest
+
+from infrahub.core.models import NodeKind
 from infrahub.core.utils import (
     count_relationships,
     delete_all_nodes,
     element_id_to_id,
     get_paths_between_nodes,
+    parse_node_kind,
 )
 from infrahub.database import InfrahubDatabase
 
@@ -15,6 +19,17 @@ def test_element_id_to_id():
     assert element_id_to_id("4:c0814fa2-df5b-4d66-ba5f-9a01817f16fb:167") == 167
     assert element_id_to_id("198") == 198
     assert element_id_to_id(167) == 167
+
+
+def test_parse_node_kind():
+    assert parse_node_kind(kind="TestMyModel") == NodeKind(namespace="Test", name="MyModel")
+    assert parse_node_kind(kind="Test3Myname1234") == NodeKind(namespace="Test3", name="Myname1234")
+
+    with pytest.raises(ValueError):
+        parse_node_kind(kind="test3Myname1234")
+
+    with pytest.raises(ValueError):
+        parse_node_kind(kind="Test3myname1234")
 
 
 async def test_get_paths_between_nodes(db: InfrahubDatabase, empty_database):

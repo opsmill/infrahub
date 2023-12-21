@@ -7,6 +7,14 @@ from pydantic import BaseModel, Field
 # pylint: disable=no-member
 
 
+class NodeKind(BaseModel):
+    namespace: str
+    name: str
+
+    def __str__(self):
+        return f"{self.namespace}{self.name}"
+
+
 class SchemaBranchDiff(BaseModel):
     nodes: List[str] = Field(default_factory=list)
     generics: List[str] = Field(default_factory=list)

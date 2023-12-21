@@ -50,6 +50,7 @@ AttributeKind = enum.Enum("AttributeKind", dict(attribute_dict))
 RELATIONSHIPS_MAPPING = {"Relationship": Relationship}
 
 NODE_KIND_REGEX = r"^[A-Z][a-zA-Z0-9]+$"
+NAMESPACE_REGEX = r"^[A-Z][a-z0-9]+$"
 NODE_NAME_REGEX = r"^[A-Z][a-zA-Z0-9]+$"
 NAME_REGEX = r"^[a-z0-9\_]+$"
 
@@ -787,7 +788,7 @@ internal_schema = {
                     "name": "namespace",
                     "kind": "Text",
                     "description": "Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.",
-                    "regex": str(NODE_KIND_REGEX),
+                    "regex": str(NAMESPACE_REGEX),
                     "min_length": DEFAULT_KIND_MIN_LENGTH,
                     "max_length": DEFAULT_KIND_MAX_LENGTH,
                 },
@@ -1145,7 +1146,7 @@ internal_schema = {
                     "name": "namespace",
                     "kind": "Text",
                     "description": "Generic Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.",
-                    "regex": str(NODE_KIND_REGEX),
+                    "regex": str(NAMESPACE_REGEX),
                     "min_length": DEFAULT_KIND_MIN_LENGTH,
                     "max_length": DEFAULT_KIND_MAX_LENGTH,
                 },
