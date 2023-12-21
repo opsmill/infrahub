@@ -83,12 +83,11 @@ const findThreadByChange = (threads: any[], change: any, idFrom?: string, idTo?:
       return true;
     }
 
-    const a =
+    return (
       isChangeOnBothSide &&
       ((isThreadOnLeftSide && threadLineNumber === change.oldLineNumber) ||
-        (isThreadOnRightSide && threadLineNumber === change.newLineNumber));
-
-    return a;
+        (isThreadOnRightSide && threadLineNumber === change.newLineNumber))
+    );
   });
 };
 
