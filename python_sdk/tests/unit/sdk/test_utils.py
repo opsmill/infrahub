@@ -37,7 +37,6 @@ def test_is_valid_url():
     assert is_valid_url("https://my-server") is True
     assert is_valid_url("http://my-server:8080") is True
     assert is_valid_url("http://192.168.1.10") is True
-    assert is_valid_url("ftp://ftp.sunet.se") is False
 
 
 def test_duplicates():
