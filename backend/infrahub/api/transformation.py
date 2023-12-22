@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Request
 from graphql import graphql
-from graphql.execution import ExecutionResult
 from starlette.responses import JSONResponse, PlainTextResponse
 
 from infrahub.api.dependencies import (
@@ -16,7 +15,7 @@ from infrahub.api.dependencies import (
 from infrahub.core import registry
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
-from infrahub.exceptions import GraphQLQueryError
+from infrahub.graphql.utils import extract_data
 from infrahub.message_bus import messages
 from infrahub.message_bus.responses import TemplateResponse, TransformResponse
 
@@ -136,21 +135,3 @@ async def generate_rfile(
     template = response.parse(response_class=TemplateResponse)
 
     return PlainTextResponse(content=template.rendered_template)
-
-
-def extract_data(query_name: str, result: ExecutionResult) -> Dict:
-    if result.errors:
-        errors = []
-        for error in result.errors:
-            error_locations = error.locations or []
-            errors.append(
-                {
-                    "message": f"GraphQLQuery {query_name}: {error.message}",
-                    "path": error.path,
-                    "locations": [{"line": location.line, "column": location.column} for location in error_locations],
-                }
-            )
-
-        raise GraphQLQueryError(errors=errors)
-
-    return result.data or {}
