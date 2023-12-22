@@ -127,6 +127,8 @@ class AttributeSchema(pydantic.BaseModel):
     branch: Optional[BranchSupportType] = None
     optional: bool = False
     read_only: bool = False
+    choices: Optional[List[Dict[str, str]]] = None
+    enum: Optional[List[Union[str, int]]] = None
 
 
 class RelationshipSchema(pydantic.BaseModel):
