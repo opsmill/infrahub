@@ -15,8 +15,12 @@ from graphql import (  # pylint: disable=no-name-in-module
     SelectionSetNode,
 )
 
+from infrahub.exceptions import GraphQLQueryError
+
 if TYPE_CHECKING:
     import abc
+
+    from graphql.execution import ExecutionResult
 
 
 def calculate_dict_depth(data: dict, level: int = 1) -> int:
@@ -71,6 +75,24 @@ async def extract_fields(selection_set: SelectionSetNode) -> Optional[Dict[str, 
                     fields[sub_node.name.value].update(value)
 
     return fields
+
+
+def extract_data(query_name: str, result: ExecutionResult) -> Dict:
+    if result.errors:
+        errors = []
+        for error in result.errors:
+            error_locations = error.locations or []
+            errors.append(
+                {
+                    "message": f"GraphQLQuery {query_name}: {error.message}",
+                    "path": error.path,
+                    "locations": [{"line": location.line, "column": location.column} for location in error_locations],
+                }
+            )
+
+        raise GraphQLQueryError(errors=errors)
+
+    return result.data or {}
 
 
 def find_types_implementing_interface(
