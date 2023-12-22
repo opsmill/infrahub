@@ -1,5 +1,6 @@
+from contextlib import contextmanager
 from pathlib import Path
-from typing import List, Optional
+from typing import Generator, List, Optional
 
 import ujson
 from rich.console import Console
@@ -18,32 +19,40 @@ class LineDelimitedJSONExporter(ExporterInterface):
         self.client = client
         self.console = console
 
+    @contextmanager
+    def wrapped_task_output(self, start: str, end: str = "[green]done") -> Generator:
+        if self.console:
+            self.console.print(f"{start}", end="...")
+        yield
+        if self.console:
+            self.console.print(f"{end}")
+
     async def export(
         self,
         export_directory: Path,
         namespaces: List[str],
         branch: str,
     ) -> None:
+        illegal_namespaces = set(ILLEGAL_NAMESPACES)
         node_file = export_directory / Path("nodes.json")
         if node_file.exists():
             raise FileAlreadyExistsError(f"{node_file.absolute()} already exists")
-        if set(namespaces) & ILLEGAL_NAMESPACES:
-            raise InvalidNamespaceError(f"namespaces cannot include {ILLEGAL_NAMESPACES}")
+        if set([ns.lower() for ns in namespaces]) & illegal_namespaces:
+            raise InvalidNamespaceError(f"namespaces cannot include {illegal_namespaces}")
 
-        if self.console:
-            self.console.print("Retrieving schema to export", end="...")
-        node_schema_map = await self.client.schema.all(branch=branch, namespaces=namespaces)
-        node_schema_map = {k: v for k, v in node_schema_map.items() if isinstance(v, NodeSchema)}
-        retrieved_namespaces = {node_schema.namespace.lower() for node_schema in node_schema_map.values()}
-        if self.console:
-            self.console.print("[green]done")
+        with self.wrapped_task_output("Retrieving schema to export"):
+            node_schema_map = await self.client.schema.all(branch=branch, namespaces=namespaces)
+            node_schema_map = {
+                kind: schema
+                for kind, schema in node_schema_map.items()
+                if isinstance(schema, NodeSchema) and schema.namespace.lower() not in illegal_namespaces
+            }
+            retrieved_namespaces = {node_schema.namespace.lower() for node_schema in node_schema_map.values()}
 
         if namespaces:
             invalid_namespaces = [ns for ns in namespaces if ns not in retrieved_namespaces]
             if invalid_namespaces:
                 raise InvalidNamespaceError(f"these namespaces do not exist on branch {branch}: {invalid_namespaces}")
-        else:
-            namespaces = [ns for ns in retrieved_namespaces if ns not in ILLEGAL_NAMESPACES]
 
         schema_batch = await self.client.create_batch()
         for node_schema in node_schema_map.values():
@@ -61,24 +70,22 @@ class LineDelimitedJSONExporter(ExporterInterface):
         if self.console:
             progress.stop()
 
-        if self.console:
-            self.console.print("Writing export", end="...")
-        json_lines = [
-            ujson.dumps(
-                {
-                    "id": n.id,
-                    "kind": n.get_kind(),
-                    "graphql_json": ujson.dumps(n.get_raw_graphql_data()),
-                }
-            )
-            for n in all_nodes
-        ]
-        file_content = "\n".join(json_lines)
+        with self.wrapped_task_output("Writing export"):
+            json_lines = [
+                ujson.dumps(
+                    {
+                        "id": n.id,
+                        "kind": n.get_kind(),
+                        "graphql_json": ujson.dumps(n.get_raw_graphql_data()),
+                    }
+                )
+                for n in all_nodes
+            ]
+            file_content = "\n".join(json_lines)
 
-        if not export_directory.exists():
-            export_directory.mkdir()
-        node_file.touch()
-        node_file.write_text(file_content)
+            if not export_directory.exists():
+                export_directory.mkdir()
+            node_file.touch()
+            node_file.write_text(file_content)
         if self.console:
-            self.console.print("[green]done")
             self.console.print(f"Export directory - {export_directory}")

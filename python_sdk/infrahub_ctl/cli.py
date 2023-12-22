@@ -16,7 +16,7 @@ from rich.logging import RichHandler
 from rich.syntax import Syntax
 from rich.traceback import Frame, Traceback
 
-import infrahub_ctl.config as config
+from infrahub_ctl import config
 from infrahub_ctl.branch import app as branch_app
 from infrahub_ctl.check import app as check_app
 from infrahub_ctl.client import initialize_client

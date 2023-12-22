@@ -49,7 +49,7 @@ class InfrahubBatch:
         for completed_task in asyncio.as_completed(tasks):
             try:
                 yield await completed_task
-            except Exception as exc:
+            except Exception as exc:  # pylint: disable=broad-exception-caught
                 if self.return_exceptions:
                     yield exc
                 else:
