@@ -156,10 +156,6 @@ module = "infrahub.api.exception_handlers"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.api.query"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.api.schema"
 ignore_errors = true
 

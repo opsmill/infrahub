@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from fastapi import APIRouter, Depends, Path, Request, Response
+from fastapi import APIRouter, Depends, Path, Request
 from graphql import graphql
 
 from infrahub.api.dependencies import (
@@ -14,6 +14,7 @@ from infrahub.api.dependencies import (
 from infrahub.core import registry
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
+from infrahub.graphql.utils import extract_data
 
 router = APIRouter(prefix="/query")
 
@@ -21,12 +22,11 @@ router = APIRouter(prefix="/query")
 @router.get("/{query_id}")
 async def graphql_query(
     request: Request,
-    response: Response,
     query_id: str = Path(description="ID or Name of the GraphQL query to execute"),
     db: InfrahubDatabase = Depends(get_db),
     branch_params: BranchParams = Depends(get_branch_params),
     _: str = Depends(get_current_user),
-):
+) -> Dict:
     params = {key: value for key, value in request.query_params.items() if key not in ["branch", "rebase", "at"]}
 
     gql_query = await NodeManager.get_one_by_id_or_default_filter(
@@ -47,20 +47,8 @@ async def graphql_query(
         root_value=None,
         variable_values=params,
     )
+    data = extract_data(query_name=gql_query.name.value, result=result)  # type: ignore[attr-defined]
 
-    response_payload: Dict[str, Any] = {"data": result.data}
-
-    if result.errors:
-        response_payload["errors"] = []
-        for error in result.errors:
-            error_locations = error.locations or []
-            response_payload["errors"].append(
-                {
-                    "message": error.message,
-                    "path": error.path,
-                    "locations": [{"line": location.line, "column": location.column} for location in error_locations],
-                }
-            )
-        response.status_code = 500
+    response_payload: Dict[str, Any] = {"data": data}
 
     return response_payload
