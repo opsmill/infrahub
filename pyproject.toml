@@ -13,7 +13,7 @@ packages = [
 optional = true
 
 [tool.poetry.dependencies]
-python = "^3.8, < 3.12"
+python = "^3.8, < 3.13"
 infrahub-sdk = {path = "python_sdk", develop=true}
 pydantic = "^2.5"
 pydantic-settings = "^2.1"
