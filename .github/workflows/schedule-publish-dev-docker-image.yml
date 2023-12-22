@@ -40,7 +40,6 @@ jobs:
           labels: |
             org.opencontainers.image.source=${{ github.repository }}
             org.opencontainers.image.version=dev-${{ steps.short_ref.outputs.short_ref }}
-            org.opencontainers.image.created=${{ steps.meta.outputs.created }}
           flavor: |
             latest=false
 
@@ -48,6 +47,7 @@ jobs:
   publish-docker-image:
     uses: ./.github/workflows/ci-docker-image.yml
     secrets: inherit
+    needs: meta_data
     with:
       publish: true
       version: dev-${{ needs.meta_data.outputs.date }}-${{ needs.meta_data.outputs.short_ref }}
