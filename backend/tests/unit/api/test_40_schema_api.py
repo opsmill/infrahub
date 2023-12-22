@@ -177,7 +177,7 @@ async def test_schema_load_endpoint_valid_simple(
     assert attributes["description"] == 900
     assert attributes["type"] == 3000
     assert relationships["interfaces"] == 450
-    assert relationships["tags"] == 7000
+    assert relationships["tags"] == 5000
 
 
 async def test_schema_load_restricted_namespace(
