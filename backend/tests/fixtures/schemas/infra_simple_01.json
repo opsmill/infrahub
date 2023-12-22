@@ -9,9 +9,7 @@
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": true},
                 {"name": "description", "kind": "Text", "optional": true, "order_weight": 900},
-                {"name": "type", "kind": "Text"},
-                {"name": "role", "kind": "Dropdown", "choices": [{"name": "router"}, {"name": "firewall"}]},
-                {"name": "status", "kind": "Dropdown", "choices": [{"name": "active"}, {"name": "planned"}]}
+                {"name": "type", "kind": "Text"}
             ],
             "relationships": [
                 {
