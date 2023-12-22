@@ -1,10 +1,9 @@
 from collections import defaultdict
 from typing import Dict, List, Set
 
-from toposort import CircularDependencyError, toposort
-
 from infrahub_sdk.schema import BaseNodeSchema
 
+from ..topological_sort import DependencyCycleExists, topological_sort
 from .exceptions import SchemaImportError
 
 
@@ -21,6 +20,8 @@ class InfrahubSchemaTopologicalSorter:
                 relationship_graph[node_schema.kind].add(relationship_schema.peer)
 
         try:
-            return list(toposort(relationship_graph))
-        except CircularDependencyError:
-            raise SchemaImportError("Cannot import nodes. There are cycles in the dependency graph.")
+            return topological_sort(relationship_graph)
+        except DependencyCycleExists:
+            raise SchemaImportError(
+                "Cannot import nodes. There are cycles in the dependency graph."
+            ) from DependencyCycleExists
