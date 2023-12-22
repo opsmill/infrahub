@@ -16,7 +16,7 @@ from infrahub.message_bus import Meta, messages
 from infrahub.services import services
 from infrahub.worker import WORKER_IDENTITY
 
-from ..types import AbstractDropdown
+from ..types import DropdownFields
 
 log = get_logger()
 
@@ -44,7 +44,7 @@ class SchemaDropdownAdd(Mutation):
         data = SchemaDropdownAddInput(required=True)
 
     ok = Boolean()
-    object = Field(AbstractDropdown)
+    object = Field(DropdownFields)
 
     @classmethod
     async def mutate(
@@ -77,24 +77,20 @@ class SchemaDropdownAdd(Mutation):
 
         kind = registry.get_schema(name=str(data.kind), branch=branch.name)
         attrib = kind.get_attribute(attribute)
-        dropdown_entry = None
+        dropdown_entry = {}
+        success = False
 
         for entry in attrib.choices:
             if entry.name == dropdown:
-                dropdown_entry = entry
+                dropdown_entry = {
+                    "value": dropdown,
+                    "color": entry.color,
+                    "label": entry.label,
+                    "description": description,
+                }
+                success = True
 
-        if not dropdown_entry:
-            return cls(object={}, ok=False)
-
-        return cls(
-            object={
-                "value": dropdown,
-                "color": dropdown_entry.color,
-                "label": dropdown_entry.label,
-                "description": description,
-            },
-            ok=True,
-        )
+        return cls(object=dropdown_entry, ok=success)
 
 
 class SchemaDropdownRemove(Mutation):
