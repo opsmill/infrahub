@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Dict, List, Set
+from typing import Dict, List, Sequence, Set
 
 from infrahub_sdk.schema import BaseNodeSchema
 
@@ -9,11 +9,10 @@ from .exceptions import SchemaImportError
 
 class InfrahubSchemaTopologicalSorter:
     async def get_sorted_node_schema(
-        self, schemas: List[BaseNodeSchema], required_relationships_only: bool = True
+        self, schemas: Sequence[BaseNodeSchema], required_relationships_only: bool = True
     ) -> List[Set[str]]:
         relationship_graph: Dict[str, Set[str]] = defaultdict(set)
         for node_schema in schemas:
-            relationship_graph[node_schema.kind]
             for relationship_schema in node_schema.relationships:
                 if required_relationships_only and relationship_schema.optional:
                     continue

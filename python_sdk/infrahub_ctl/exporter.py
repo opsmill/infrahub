@@ -6,7 +6,6 @@ from typing import List
 import typer
 from rich.console import Console
 
-# pylint: disable=import-outside-toplevel
 import infrahub_ctl.config as config
 from infrahub_ctl.client import initialize_client
 from infrahub_sdk.transfer.exceptions import TransferError

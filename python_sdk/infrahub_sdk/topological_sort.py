@@ -1,12 +1,12 @@
 from itertools import chain
-from typing import Dict, Iterable, List, Set
+from typing import Iterable, List, Mapping, Set
 
 
 class DependencyCycleExists(Exception):
     ...
 
 
-def topological_sort(dependency_dict: Dict[str, Iterable[str]]) -> List[Set[str]]:
+def topological_sort(dependency_dict: Mapping[str, Iterable[str]]) -> List[Set[str]]:
     if not dependency_dict:
         return []
 

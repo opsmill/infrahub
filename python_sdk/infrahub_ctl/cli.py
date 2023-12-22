@@ -11,7 +11,6 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import jinja2
 import typer
-
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.syntax import Syntax

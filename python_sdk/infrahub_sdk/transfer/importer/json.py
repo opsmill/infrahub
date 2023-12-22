@@ -15,6 +15,7 @@ from infrahub_sdk.exceptions import GraphQLError
 from infrahub_sdk.node import InfrahubNode, RelatedNode, RelationshipManager
 from infrahub_sdk.transfer.schema_sorter import InfrahubSchemaTopologicalSorter
 
+from ..exceptions import TransferFileNotFoundError
 from .interface import ImporterInterface
 
 
@@ -38,7 +39,7 @@ class LineDelimitedJSONImporter(ImporterInterface):
     ) -> None:
         node_file = import_directory / Path("nodes.json")
         if not node_file.exists():
-            raise FileNotFoundError(f"{node_file.absolute()} does not exist")
+            raise TransferFileNotFoundError(f"{node_file.absolute()} does not exist")
         if self.console:
             self.console.print("Reading import directory", end="...")
         table = pa_json.read_json(node_file.absolute())
@@ -109,7 +110,7 @@ class LineDelimitedJSONImporter(ImporterInterface):
         if not optional_relationships_by_node:
             return
 
-        all_nodes = chain(*[nodes for nodes in import_nodes_by_kind.values()])
+        all_nodes = chain(*import_nodes_by_kind.values())
         update_batch = await self.client.create_batch(return_exceptions=True)
         for node in all_nodes:
             if node.id not in optional_relationships_by_node:

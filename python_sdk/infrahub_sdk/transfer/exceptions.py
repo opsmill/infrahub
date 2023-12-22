@@ -6,7 +6,7 @@ class FileAlreadyExistsError(TransferError):
     ...
 
 
-class FileNotFoundError(TransferError):
+class TransferFileNotFoundError(TransferError):
     ...
 
 
