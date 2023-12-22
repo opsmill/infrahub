@@ -11,6 +11,7 @@ from typing import (
     MutableMapping,
     Optional,
     Tuple,
+    TypedDict,
     Union,
 )
 
@@ -20,11 +21,21 @@ except ImportError:
     import pydantic  # type: ignore[no-redef]
 
 from infrahub_sdk.exceptions import SchemaNotFound, ValidationError
+from infrahub_sdk.graphql import Mutation
 
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient, InfrahubClientSync
+    from infrahub_sdk.node import InfrahubNode, InfrahubNodeSync
+
+    InfrahubNodeTypes = Union[InfrahubNode, InfrahubNodeSync]
 
 # pylint: disable=redefined-builtin
+
+
+class DropdownMutationOptionalArgs(TypedDict):
+    color: Optional[str]
+    description: Optional[str]
+    label: Optional[str]
 
 
 # ---------------------------------------------------------------------------------
@@ -116,6 +127,16 @@ class RelationshipKind(str, Enum):
     GROUP = "Group"
 
 
+class DropdownMutation(str, Enum):
+    add = "SchemaDropdownAdd"
+    remove = "SchemaDropdownRemove"
+
+
+class EnumMutation(str, Enum):
+    add = "SchemaEnumAdd"
+    remove = "SchemaEnumRemove"
+
+
 class AttributeSchema(pydantic.BaseModel):
     name: str
     kind: str
@@ -127,6 +148,8 @@ class AttributeSchema(pydantic.BaseModel):
     branch: Optional[BranchSupportType] = None
     optional: bool = False
     read_only: bool = False
+    choices: Optional[List[Dict[str, str]]] = None
+    enum: Optional[List[Union[str, int]]] = None
 
 
 class RelationshipSchema(pydantic.BaseModel):
@@ -392,6 +415,116 @@ class InfrahubSchema(InfrahubSchemaBase):
         response.raise_for_status()
         return False, None
 
+    async def _get_kind_and_attribute_schema(
+        self, kind: Union[str, InfrahubNodeTypes], attribute: str, branch: Optional[str] = None
+    ) -> Tuple[str, AttributeSchema]:
+        node_kind: str = kind._schema.kind if not isinstance(kind, str) else kind
+        node_schema = await self.client.schema.get(kind=node_kind, branch=branch)
+        schema_attr = node_schema.get_attribute(attribute, raise_on_error=True)
+
+        if schema_attr is None:
+            raise ValueError(f"Unable to find attribute {attribute}")
+
+        return node_kind, schema_attr
+
+    async def _mutate_enum_attribute(
+        self,
+        mutation: EnumMutation,
+        kind: Union[str, InfrahubNodeTypes],
+        attribute: str,
+        option: Union[str, int],
+        branch: Optional[str] = None,
+    ) -> None:
+        node_kind, schema_attr = await self._get_kind_and_attribute_schema(
+            kind=kind, attribute=attribute, branch=branch
+        )
+
+        if schema_attr.enum is None:
+            raise ValueError(f"Attribute '{schema_attr.name}' is not of kind Enum")
+
+        input_data = {"data": {"kind": node_kind, "attribute": schema_attr.name, "enum": option}}
+
+        query = Mutation(mutation=mutation.value, input_data=input_data, query={"ok": None})
+        await self.client.execute_graphql(
+            query=query.render(), branch_name=branch, tracker=f"mutation-{mutation.name}-add", timeout=60
+        )
+
+    async def add_enum_option(
+        self, kind: Union[str, InfrahubNodeTypes], attribute: str, option: Union[str, int], branch: Optional[str] = None
+    ) -> None:
+        await self._mutate_enum_attribute(
+            mutation=EnumMutation.add, kind=kind, attribute=attribute, option=option, branch=branch
+        )
+
+    async def remove_enum_option(
+        self, kind: Union[str, InfrahubNodeTypes], attribute: str, option: Union[str, int], branch: Optional[str] = None
+    ) -> None:
+        await self._mutate_enum_attribute(
+            mutation=EnumMutation.remove, kind=kind, attribute=attribute, option=option, branch=branch
+        )
+
+    async def _mutate_dropdown_attribute(
+        self,
+        mutation: DropdownMutation,
+        kind: Union[str, InfrahubNodeTypes],
+        attribute: str,
+        option: str,
+        branch: Optional[str] = None,
+        dropdown_optional_args: Optional[DropdownMutationOptionalArgs] = None,
+    ) -> None:
+        dropdown_optional_args = dropdown_optional_args or DropdownMutationOptionalArgs(
+            color="", description="", label=""
+        )
+
+        node_kind, schema_attr = await self._get_kind_and_attribute_schema(
+            kind=kind, attribute=attribute, branch=branch
+        )
+
+        if schema_attr.kind != "Dropdown":
+            raise ValueError(f"Attribute '{schema_attr.name}' is not of kind Dropdown")
+
+        input_data: Dict[str, Any] = {
+            "data": {
+                "kind": node_kind,
+                "attribute": schema_attr.name,
+                "dropdown": option,
+            }
+        }
+        if mutation == DropdownMutation.add:
+            input_data["data"].update(dropdown_optional_args)
+
+        query = Mutation(mutation=mutation.value, input_data=input_data, query={"ok": None})
+        await self.client.execute_graphql(
+            query=query.render(), branch_name=branch, tracker=f"mutation-{mutation.name}-remove", timeout=60
+        )
+
+    async def remove_dropdown_option(
+        self, kind: Union[str, InfrahubNodeTypes], attribute: str, option: str, branch: Optional[str] = None
+    ) -> None:
+        await self._mutate_dropdown_attribute(
+            mutation=DropdownMutation.remove, kind=kind, attribute=attribute, option=option, branch=branch
+        )
+
+    async def add_dropdown_option(
+        self,
+        kind: Union[str, InfrahubNodeTypes],
+        attribute: str,
+        option: str,
+        color: Optional[str] = "",
+        description: Optional[str] = "",
+        label: Optional[str] = "",
+        branch: Optional[str] = None,
+    ) -> None:
+        dropdown_optional_args = DropdownMutationOptionalArgs(color=color, description=description, label=label)
+        await self._mutate_dropdown_attribute(
+            mutation=DropdownMutation.add,
+            kind=kind,
+            attribute=attribute,
+            option=option,
+            branch=branch,
+            dropdown_optional_args=dropdown_optional_args,
+        )
+
     async def fetch(self, branch: str) -> MutableMapping[str, Union[NodeSchema, GenericSchema]]:
         """Fetch the schema from the server for a given branch.
 
@@ -463,6 +596,112 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
             return self.cache[branch][kind]
 
         raise SchemaNotFound(identifier=kind)
+
+    def _get_kind_and_attribute_schema(
+        self, kind: Union[str, InfrahubNodeTypes], attribute: str, branch: Optional[str] = None
+    ) -> Tuple[str, AttributeSchema]:
+        node_kind: str = kind._schema.kind if not isinstance(kind, str) else kind
+        node_schema = self.client.schema.get(kind=node_kind, branch=branch)
+        schema_attr = node_schema.get_attribute(attribute, raise_on_error=True)
+
+        if schema_attr is None:
+            raise ValueError(f"Unable to find attribute {attribute}")
+
+        return node_kind, schema_attr
+
+    def _mutate_enum_attribute(
+        self,
+        mutation: EnumMutation,
+        kind: Union[str, InfrahubNodeTypes],
+        attribute: str,
+        option: Union[str, int],
+        branch: Optional[str] = None,
+    ) -> None:
+        node_kind, schema_attr = self._get_kind_and_attribute_schema(kind=kind, attribute=attribute, branch=branch)
+
+        if schema_attr.enum is None:
+            raise ValueError(f"Attribute '{schema_attr.name}' is not of kind Enum")
+
+        input_data = {"data": {"kind": node_kind, "attribute": schema_attr.name, "enum": option}}
+
+        query = Mutation(mutation=mutation.value, input_data=input_data, query={"ok": None})
+        self.client.execute_graphql(
+            query=query.render(), branch_name=branch, tracker=f"mutation-{mutation.name}-add", timeout=60
+        )
+
+    def add_enum_option(
+        self, kind: Union[str, InfrahubNodeTypes], attribute: str, option: Union[str, int], branch: Optional[str] = None
+    ) -> None:
+        self._mutate_enum_attribute(
+            mutation=EnumMutation.add, kind=kind, attribute=attribute, option=option, branch=branch
+        )
+
+    def remove_enum_option(
+        self, kind: Union[str, InfrahubNodeTypes], attribute: str, option: Union[str, int], branch: Optional[str] = None
+    ) -> None:
+        self._mutate_enum_attribute(
+            mutation=EnumMutation.remove, kind=kind, attribute=attribute, option=option, branch=branch
+        )
+
+    def _mutate_dropdown_attribute(
+        self,
+        mutation: DropdownMutation,
+        kind: Union[str, InfrahubNodeTypes],
+        attribute: str,
+        option: str,
+        branch: Optional[str] = None,
+        dropdown_optional_args: Optional[DropdownMutationOptionalArgs] = None,
+    ) -> None:
+        dropdown_optional_args = dropdown_optional_args or DropdownMutationOptionalArgs(
+            color="", description="", label=""
+        )
+        node_kind, schema_attr = self._get_kind_and_attribute_schema(kind=kind, attribute=attribute, branch=branch)
+
+        if schema_attr.kind != "Dropdown":
+            raise ValueError(f"Attribute '{schema_attr.name}' is not of kind Dropdown")
+
+        input_data: Dict[str, Any] = {
+            "data": {
+                "kind": node_kind,
+                "attribute": schema_attr.name,
+                "dropdown": option,
+            }
+        }
+
+        if mutation == DropdownMutation.add:
+            input_data["data"].update(dropdown_optional_args)
+
+        query = Mutation(mutation=mutation.value, input_data=input_data, query={"ok": None})
+        self.client.execute_graphql(
+            query=query.render(), branch_name=branch, tracker=f"mutation-{mutation.name}-remove", timeout=60
+        )
+
+    def remove_dropdown_option(
+        self, kind: Union[str, InfrahubNodeTypes], attribute: str, option: str, branch: Optional[str] = None
+    ) -> None:
+        self._mutate_dropdown_attribute(
+            mutation=DropdownMutation.remove, kind=kind, attribute=attribute, option=option, branch=branch
+        )
+
+    def add_dropdown_option(
+        self,
+        kind: Union[str, InfrahubNodeTypes],
+        attribute: str,
+        option: str,
+        color: Optional[str] = "",
+        description: Optional[str] = "",
+        label: Optional[str] = "",
+        branch: Optional[str] = None,
+    ) -> None:
+        dropdown_optional_args = DropdownMutationOptionalArgs(color=color, description=description, label=label)
+        self._mutate_dropdown_attribute(
+            mutation=DropdownMutation.add,
+            kind=kind,
+            attribute=attribute,
+            option=option,
+            branch=branch,
+            dropdown_optional_args=dropdown_optional_args,
+        )
 
     def fetch(self, branch: str) -> MutableMapping[str, Union[NodeSchema, GenericSchema]]:
         """Fetch the schema from the server for a given branch.

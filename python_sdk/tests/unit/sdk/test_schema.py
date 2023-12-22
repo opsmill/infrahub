@@ -3,6 +3,7 @@ import inspect
 import pytest
 
 from infrahub_sdk import InfrahubClient, InfrahubClientSync, ValidationError
+from infrahub_sdk.exceptions import SchemaNotFound
 from infrahub_sdk.schema import InfrahubSchema, InfrahubSchemaSync, NodeSchema
 
 async_schema_methods = [method for method in dir(InfrahubSchema) if not method.startswith("_")]
@@ -64,3 +65,93 @@ async def test_schema_data_validation(rfile_schema, client_type):
         )
 
     assert "invalid_field is not a valid value for CoreRFile" == excinfo.value.message
+
+
+@pytest.mark.parametrize("client_type", client_types)
+async def test_add_dropdown_option(clients, client_type, mock_schema_query_01, mock_query_mutation_schema_dropdown_add):
+    if client_type == "standard":
+        await clients.standard.schema.add_dropdown_option("BuiltinTag", "status", "something")
+    else:
+        clients.sync.schema.add_dropdown_option("BuiltinTag", "status", "something")
+
+
+@pytest.mark.parametrize("client_type", client_types)
+async def test_remove_dropdown_option(
+    clients, client_type, mock_schema_query_01, mock_query_mutation_schema_dropdown_remove
+):
+    if client_type == "standard":
+        await clients.standard.schema.remove_dropdown_option("BuiltinTag", "status", "active")
+    else:
+        clients.sync.schema.remove_dropdown_option("BuiltinTag", "status", "active")
+
+
+@pytest.mark.parametrize("client_type", client_types)
+async def test_add_enum_option(clients, client_type, mock_schema_query_01, mock_query_mutation_schema_enum_add):
+    if client_type == "standard":
+        await clients.standard.schema.add_enum_option("BuiltinTag", "mode", "hard")
+    else:
+        clients.sync.schema.add_enum_option("BuiltinTag", "mode", "hard")
+
+
+@pytest.mark.parametrize("client_type", client_types)
+async def test_remove_enum_option(clients, client_type, mock_schema_query_01, mock_query_mutation_schema_enum_remove):
+    if client_type == "standard":
+        await clients.standard.schema.remove_enum_option("BuiltinTag", "mode", "easy")
+    else:
+        clients.sync.schema.remove_enum_option("BuiltinTag", "mode", "easy")
+
+
+@pytest.mark.parametrize("client_type", client_types)
+async def test_add_dropdown_option_raises(clients, client_type, mock_schema_query_01):
+    if client_type == "standard":
+        with pytest.raises(SchemaNotFound):
+            await clients.standard.schema.add_dropdown_option("DoesNotExist", "atribute", "option")
+        with pytest.raises(ValueError):
+            await clients.standard.schema.add_dropdown_option("BuiltinTag", "attribute", "option")
+    else:
+        with pytest.raises(SchemaNotFound):
+            clients.sync.schema.add_dropdown_option("DoesNotExist", "atribute", "option")
+        with pytest.raises(ValueError):
+            clients.sync.schema.add_dropdown_option("BuiltinTag", "attribute", "option")
+
+
+@pytest.mark.parametrize("client_type", client_types)
+async def test_add_enum_option_raises(clients, client_type, mock_schema_query_01):
+    if client_type == "standard":
+        with pytest.raises(SchemaNotFound):
+            await clients.standard.schema.add_enum_option("DoesNotExist", "atribute", "option")
+        with pytest.raises(ValueError):
+            await clients.standard.schema.add_enum_option("BuiltinTag", "attribute", "option")
+    else:
+        with pytest.raises(SchemaNotFound):
+            clients.sync.schema.add_enum_option("DoesNotExist", "atribute", "option")
+        with pytest.raises(ValueError):
+            clients.sync.schema.add_enum_option("BuiltinTag", "attribute", "option")
+
+
+@pytest.mark.parametrize("client_type", client_types)
+async def test_remove_dropdown_option_raises(clients, client_type, mock_schema_query_01):
+    if client_type == "standard":
+        with pytest.raises(SchemaNotFound):
+            await clients.standard.schema.remove_dropdown_option("DoesNotExist", "atribute", "option")
+        with pytest.raises(ValueError):
+            await clients.standard.schema.remove_dropdown_option("BuiltinTag", "attribute", "option")
+    else:
+        with pytest.raises(SchemaNotFound):
+            clients.sync.schema.remove_dropdown_option("DoesNotExist", "atribute", "option")
+        with pytest.raises(ValueError):
+            clients.sync.schema.remove_dropdown_option("BuiltinTag", "attribute", "option")
+
+
+@pytest.mark.parametrize("client_type", client_types)
+async def test_remove_enum_option_raises(clients, client_type, mock_schema_query_01):
+    if client_type == "standard":
+        with pytest.raises(SchemaNotFound):
+            await clients.standard.schema.remove_enum_option("DoesNotExist", "atribute", "option")
+        with pytest.raises(ValueError):
+            await clients.standard.schema.remove_enum_option("BuiltinTag", "attribute", "option")
+    else:
+        with pytest.raises(SchemaNotFound):
+            clients.sync.schema.add_enum_option("DoesNotExist", "atribute", "option")
+        with pytest.raises(ValueError):
+            clients.sync.schema.add_enum_option("BuiltinTag", "attribute", "option")

@@ -336,7 +336,28 @@
                     "unique": false,
                     "branch": "aware",
                     "optional": true
-                }
+                },
+		{
+		    "name": "status",
+		    "kind": "Dropdown",
+                    "branch": "aware",
+		    "optional": true,
+		    "choices": [
+			{
+			    "name": "active",
+			    "label": "Active",
+			    "description": "A status",
+			    "color": "#ffffff"
+			}
+		    ]
+		},
+		{
+		    "name": "mode",
+		    "kind": "Text",
+                    "branch": "aware",
+		    "optional": true,
+		    "enum": ["easy"]
+		}
             ],
             "relationships": [],
             "label": null,
