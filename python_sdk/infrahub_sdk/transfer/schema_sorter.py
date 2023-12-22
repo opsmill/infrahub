@@ -21,6 +21,6 @@ class InfrahubSchemaTopologicalSorter:
                 relationship_graph[node_schema.kind].add(relationship_schema.peer)
 
         try:
-            return toposort(relationship_graph)
+            return list(toposort(relationship_graph))
         except CircularDependencyError:
             raise SchemaImportError("Cannot import nodes. There are cycles in the dependency graph.")

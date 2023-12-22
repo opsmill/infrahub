@@ -14,6 +14,8 @@ $ infrahubctl load [OPTIONS] [DIRECTORY]
 
 **Options**:
 
+* `--continue-on-error / --no-continue-on-error`: Allow exceptions during loading and display them when complete  [default: no-continue-on-error]
+* `--quiet / --no-quiet`: No console output  [default: no-quiet]
 * `--config-file TEXT`: [env var: INFRAHUBCTL_CONFIG; default: infrahubctl.toml]
 * `--branch TEXT`: Branch from which to export  [default: main]
 * `--concurrent INTEGER`: Maximum number of requests to execute at the same time.  [env var: INFRAHUBCTL_CONCURRENT_EXECUTION; default: 4]

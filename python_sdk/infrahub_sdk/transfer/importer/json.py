@@ -12,7 +12,7 @@ from rich.progress import Progress
 from infrahub_sdk.batch import InfrahubBatch
 from infrahub_sdk.client import InfrahubClient
 from infrahub_sdk.exceptions import GraphQLError
-from infrahub_sdk.node import InfrahubNode
+from infrahub_sdk.node import InfrahubNode, RelatedNode, RelationshipManager
 from infrahub_sdk.transfer.schema_sorter import InfrahubSchemaTopologicalSorter
 
 from .interface import ImporterInterface
@@ -73,9 +73,14 @@ class LineDelimitedJSONImporter(ImporterInterface):
             for node in nodes:
                 for relationship_name in optional_relationship_names:
                     relationship_value = getattr(node, relationship_name)
-                    if relationship_value is not None:
-                        optional_relationships_by_node[node.id][relationship_name] = relationship_value
-                        setattr(node, relationship_name, None)
+                    if isinstance(relationship_value, RelationshipManager):
+                        if relationship_value.peer_ids:
+                            optional_relationships_by_node[node.id][relationship_name] = relationship_value
+                            setattr(node, relationship_name, None)
+                    elif isinstance(relationship_value, RelatedNode):
+                        if relationship_value.id:
+                            optional_relationships_by_node[node.id][relationship_name] = relationship_value
+                            setattr(node, relationship_name, None)
         if self.console:
             self.console.print("[green]done")
 
@@ -114,7 +119,9 @@ class LineDelimitedJSONImporter(ImporterInterface):
             update_batch.add(task=node.update, node=node, at=right_now)
         await self.execute_batches([update_batch], "Adding optional relationships to nodes")
 
-    async def execute_batches(self, save_batches: List[InfrahubBatch], progress_bar_message: str = "Executing batches") -> None:
+    async def execute_batches(
+        self, save_batches: List[InfrahubBatch], progress_bar_message: str = "Executing batches"
+    ) -> None:
         if self.console:
             task_count = sum([batch.num_tasks for batch in save_batches])
             progress = Progress()

@@ -1,21 +1,16 @@
-from collections import defaultdict
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, List, Optional, Union
+from typing import List, Optional
 
 import ujson
 from rich.console import Console
 from rich.progress import Progress
 
 from infrahub_sdk.client import InfrahubClient
-from infrahub_sdk.schema import GenericSchema
-
-from ..exceptions import FileAlreadyExistsError, InvalidNamespaceError
-from .interface import ExporterInterface
-
-if TYPE_CHECKING:
-    from infrahub_sdk.schema import NodeSchema
+from infrahub_sdk.schema import NodeSchema
 
 from ..constants import ILLEGAL_NAMESPACES
+from ..exceptions import FileAlreadyExistsError, InvalidNamespaceError
+from .interface import ExporterInterface
 
 
 class LineDelimitedJSONExporter(ExporterInterface):
@@ -36,34 +31,29 @@ class LineDelimitedJSONExporter(ExporterInterface):
             raise InvalidNamespaceError(f"namespaces cannot include {ILLEGAL_NAMESPACES}")
 
         if self.console:
-            self.console.print("Retrieving schema", end="...")
-        node_schema_map = await self.client.schema.all(branch=branch)
-        node_schema_by_namespace: Dict[str, List[Union[NodeSchema, GenericSchema]]] = defaultdict(list)
-        for node_schema in node_schema_map.values():
-            if isinstance(node_schema, GenericSchema):
-                continue
-            node_schema_by_namespace[node_schema.namespace.lower()].append(node_schema)
+            self.console.print("Retrieving schema to export", end="...")
+        node_schema_map = await self.client.schema.all(branch=branch, namespaces=namespaces)
+        node_schema_map = {k: v for k, v in node_schema_map.items() if isinstance(v, NodeSchema)}
+        retrieved_namespaces = {node_schema.namespace.lower() for node_schema in node_schema_map.values()}
         if self.console:
             self.console.print("[green]done")
 
         if namespaces:
-            invalid_namespaces = [ns for ns in namespaces if ns not in node_schema_by_namespace]
+            invalid_namespaces = [ns for ns in namespaces if ns not in retrieved_namespaces]
             if invalid_namespaces:
-                raise InvalidNamespaceError(f"these namespaces do not exist: {invalid_namespaces}")
+                raise InvalidNamespaceError(f"these namespaces do not exist on branch {branch}: {invalid_namespaces}")
         else:
-            namespaces = [ns for ns in node_schema_by_namespace if ns not in ILLEGAL_NAMESPACES]
+            namespaces = [ns for ns in retrieved_namespaces if ns not in ILLEGAL_NAMESPACES]
 
         schema_batch = await self.client.create_batch()
-        for namespace in namespaces:
-            for node_schema in node_schema_by_namespace[namespace]:
-                schema_batch.add(node_schema.kind, task=self.client.all, branch=branch)
-        all_nodes = []
+        for node_schema in node_schema_map.values():
+            schema_batch.add(node_schema.kind, task=self.client.all, branch=branch)
 
+        all_nodes = []
         if self.console:
-            task_count = schema_batch.num_tasks
             progress = Progress()
             progress.start()
-            progress_task = progress.add_task("Retrieving nodes...", total=task_count)
+            progress_task = progress.add_task("Retrieving nodes...", total=schema_batch.num_tasks)
         async for _, schema_nodes in schema_batch.execute():
             all_nodes.extend(schema_nodes)
             if self.console:

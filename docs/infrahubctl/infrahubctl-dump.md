@@ -12,6 +12,7 @@ $ infrahubctl dump [OPTIONS]
 
 * `--namespace TEXT`: Namespace(s) to export
 * `--directory PATH`: Directory path to store export.  [default: (dynamic)]
+* `--quiet / --no-quiet`: No console output  [default: no-quiet]
 * `--config-file TEXT`: [env var: INFRAHUBCTL_CONFIG; default: infrahubctl.toml]
 * `--branch TEXT`: Branch from which to export  [default: main]
 * `--concurrent INTEGER`: Maximum number of requests to execute at the same time.  [env var: INFRAHUBCTL_CONCURRENT_EXECUTION; default: 4]

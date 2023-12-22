@@ -704,23 +704,6 @@ class InfrahubNodeBase:
     def get_raw_graphql_data(self) -> Optional[Dict]:
         return self._data
 
-    async def get_relationships(self) -> Dict[str, List[str]]:
-        relationships = {}
-        for relationship_name in self._relationships:
-            relationship_attr = getattr(self, relationship_name)
-            if isinstance(relationship_attr, RelationshipManager):
-                await relationship_attr.fetch()
-                relationships[relationship_name] = relationship_attr.peer_ids
-            elif isinstance(relationship_attr, RelatedNode):
-                if relationship_attr is None:
-                    continue
-                if relationship_attr.id is None:
-                    continue
-                if not relationship_attr.initialized:
-                    await relationship_attr.fetch()
-                    relationships[relationship_name] = [relationship_attr.id]
-        return relationships
-
     def _generate_input_data(self, exclude_unmodified: bool = False) -> Dict[str, Dict]:
         """Generate a dictionary that represent the input data required by a mutation.
 
@@ -1497,11 +1480,16 @@ class InfrahubNodeSync(InfrahubNodeBase):
 
         return data
 
-    def create(self, at: Timestamp) -> None:
+    def create(self, at: Timestamp, allow_update: bool = False) -> None:
         input_data = self._generate_input_data()
         input_data["data"]["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
-        mutation_name = f"{self._schema.kind}Create"
+        if allow_update:
+            mutation_name = f"{self._schema.kind}Upsert"
+            tracker = f"mutation-{str(self._schema.kind).lower()}-upsert"
+        else:
+            mutation_name = f"{self._schema.kind}Create"
+            tracker = f"mutation-{str(self._schema.kind).lower()}-create"
         query = Mutation(
             mutation=mutation_name,
             input_data=input_data["data"],
@@ -1513,7 +1501,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
             query=query.render(),
             branch_name=self._branch,
             at=at,
-            tracker=f"mutation-{str(self._schema.kind).lower()}-create",
+            tracker=tracker,
             variables=input_data["variables"],
         )
         self._existing = True
