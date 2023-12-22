@@ -1,7 +1,7 @@
 # ****************************************************************
 # STAGE : Base Python Image
 # ****************************************************************
-ARG PYTHON_VER=3.11
+ARG PYTHON_VER=3.12
 FROM docker.io/python:${PYTHON_VER} AS base
 
 ENV PYTHONUNBUFFERED 1
