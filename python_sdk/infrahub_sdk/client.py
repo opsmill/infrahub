@@ -685,7 +685,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
 
         return InfrahubNodeSync(client=self, schema=schema, branch=branch, data=data or kwargs)
 
-    def create_batch(self) -> InfrahubBatch:
+    async def create_batch(self, return_exceptions: bool = False) -> InfrahubBatch:
         raise NotImplementedError("This method hasn't been implemented in the sync client yet.")
 
     def execute_graphql(  # pylint: disable=too-many-branches
