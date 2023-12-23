@@ -1,0 +1,56 @@
+---
+# yamllint disable rule:truthy rule:truthy rule:line-length
+name: Manual Cherry-Pick PR
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_branch:
+        description: "Source branch to cherry-pick from"
+        required: true
+        default: "develop"
+
+      target_branch:
+        description: "Target branch to create PR to"
+        required: true
+        default: "stable"
+
+      source_folder:
+        description: "Folder to cherry-pick"
+        required: true
+
+
+jobs:
+  cherry-pick-and-create-pr:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.target_branch }}
+
+      - name: Create new branch for PR
+        run: git checkout -b cherry-pick-${{ github.run_id }}
+
+      - name: Cherry-pick changes from source branch for specific folder
+        run: |
+          git fetch origin ${{ inputs.source_branch }}
+          git checkout origin/${{ inputs.source_branch }} -- ${{ inputs.source_folder }}
+
+      - name: Commit changes
+        run: |
+          git add ${{ inputs.source_folder }}
+          git commit -m "Cherry-picked changes from ${{ inputs.source_branch }} for folder ${{ inputs.source_folder }}"
+
+      - name: Push changes
+        run: |
+          git push origin cherry-pick-${{ github.run_id }}
+
+      - name: Create pull request
+        uses: repo-sync/pull-request@v2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          destination_branch: ${{ inputs.target_branch }}
+          source_branch: cherry-pick-${{ github.run_id }}
+          pr_title: "Cherry-picked changes from ${{ inputs.source_branch }} to ${{ inputs.target_branch }}"
+          pr_body: "This PR includes cherry-picked changes for the folder ${{ inputs.source_folder }}"

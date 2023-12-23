@@ -1,11 +1,11 @@
 ---
-# yamllint disable rule:truthy
+# yamllint disable rule:truthy rule:truthy rule:line-length
 name: New Release
 
 on:
   push:
     tags:
-      - '*'
+      - "*"
 
 jobs:
   meta_data:
@@ -24,7 +24,7 @@ jobs:
             type=ref,value=${{ inputs.version }}
             type=semver,pattern={{version}},value=${{ github.ref_name }}
             type=semver,pattern={{major}}.{{minor}},value=${{ github.ref_name }}
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') }}
+            type=raw,value=latest,enable=${{ github.ref == "refs/heads/main" || startsWith(github.ref, "refs/tags/") }}
           labels: |
             org.opencontainers.image.source=${{ github.repository }}
             org.opencontainers.image.version=${{ github.ref_name }}

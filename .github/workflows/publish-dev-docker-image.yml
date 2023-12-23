@@ -13,7 +13,7 @@ on:
       commit:
         type: string
         description: commit sha or branch name
-        default: ''
+        default: ""
         required: false
 
 jobs:
@@ -26,7 +26,7 @@ jobs:
       short_ref: ${{ steps.short_ref.outputs.short_ref }}
     steps:
       - name: Set GIT ref
-        run: echo "ref=${{ inputs.commit == '' && github.sha || inputs.commit }} " >> $GITHUB_OUTPUT
+        run: echo "ref=${{ inputs.commit == "" && github.sha || inputs.commit }} " >> $GITHUB_OUTPUT
         id: ref
       - name: Set GIT short ref
         run: echo "short_ref=$(echo ${{ steps.ref.outputs.ref }} | cut -c1-7)" >> $GITHUB_OUTPUT

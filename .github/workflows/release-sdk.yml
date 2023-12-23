@@ -1,0 +1,19 @@
+---
+# yamllint disable rule:truthy rule:truthy rule:line-length
+name: New SDK Release
+
+on:
+  push:
+    tags:
+      - "infrahub_sdk-*"
+    paths:
+      - "python_sdk/*"
+
+jobs:
+  # Do we want to Bump the version here or Before the Release ?
+  publish-sdk-package:
+    uses: ./.github/workflows/ci-pypi-package.yml
+    secrets: inherit
+    with:
+      package_directory: "python_sdk"
+      registry_password: ${{ secrets.PYPI_TOKEN }}

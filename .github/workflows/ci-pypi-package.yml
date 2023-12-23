@@ -1,0 +1,60 @@
+---
+# yamllint disable rule:truthy rule:truthy rule:line-length
+name: Build & Push Package to Pypi
+
+on:
+  workflow_dispatch:
+    inputs:
+      python_version:
+        description: "Python Version"
+        required: false
+        default: "3.11"
+      poetry_version:
+        description: "The version of Poetry to use"
+        required: false
+        default: ""
+      package_directory:
+        description: "Folder to build from"
+        required: true
+        default: "stable"
+      registry_url:
+        description: "The URL where the package will be uploaded"
+        required: false
+      registry_username:
+        description: "The username for the registry. Defaults to __token__"
+        required: false
+        default: "__token__"
+      registry_password:
+        description: "Password for the user to publish to PyPI. May also be a Token - requires the `registry_username` to be `__token__`"
+        required: true
+
+jobs:
+  publish_to_pypi:
+    name: "Build & Publish Package to Pypi"
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install poetry
+        run: |
+          pip install poetry${{ inputs.poetry_version != '' && format('=={0}', inputs.poetry_version) || '' }}
+        shell: bash
+
+      - name: Set up Python ${{ inputs.python_version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ inputs.python_version }}
+          cache: poetry
+          check-latest: true
+
+      - name: Install dependencies
+        run: |
+          poetry install --no-root ${{ inputs.poetry_version != '', --directory inputs.poetry_versio || '' }}
+        shell: bash
+
+      - name: Build and Publish
+        run: |
+          poetry config repositories.publish ${{ inputs.registry_url }}
+          poetry publish -u ${{ inputs.registry_username }} -p ${{ inputs.registry_password }} -r publish --build
+        shell: bash
