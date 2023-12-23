@@ -1,1 +1,1 @@
-ILLEGAL_NAMESPACES = {"internal", "infrahub", "schema"}
+ILLEGAL_NAMESPACES = {"Internal", "Infrahub", "Schema"}

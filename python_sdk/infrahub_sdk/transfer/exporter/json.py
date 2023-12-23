@@ -37,7 +37,7 @@ class LineDelimitedJSONExporter(ExporterInterface):
         node_file = export_directory / Path("nodes.json")
         if node_file.exists():
             raise FileAlreadyExistsError(f"{node_file.absolute()} already exists")
-        if {ns.lower() for ns in namespaces} & illegal_namespaces:
+        if set(namespaces) & illegal_namespaces:
             raise InvalidNamespaceError(f"namespaces cannot include {illegal_namespaces}")
 
         with self.wrapped_task_output("Retrieving schema to export"):
@@ -45,9 +45,9 @@ class LineDelimitedJSONExporter(ExporterInterface):
             node_schema_map = {
                 kind: schema
                 for kind, schema in node_schema_map.items()
-                if isinstance(schema, NodeSchema) and schema.namespace.lower() not in illegal_namespaces
+                if isinstance(schema, NodeSchema) and schema.namespace not in illegal_namespaces
             }
-            retrieved_namespaces = {node_schema.namespace.lower() for node_schema in node_schema_map.values()}
+            retrieved_namespaces = {node_schema.namespace for node_schema in node_schema_map.values()}
 
         if namespaces:
             invalid_namespaces = [ns for ns in namespaces if ns not in retrieved_namespaces]

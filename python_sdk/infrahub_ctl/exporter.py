@@ -32,7 +32,6 @@ def dump(
     timeout: int = typer.Option(60, help="Timeout in sec", envvar="INFRAHUBCTL_TIMEOUT"),
 ) -> None:
     """Export node(s)."""
-    namespace = [ns.lower() for ns in namespace]
     console = Console()
     if not config.SETTINGS:
         config.load_and_exit(config_file=config_file)
