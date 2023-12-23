@@ -87,7 +87,7 @@ async def get_schema(
 ) -> SchemaReadAPI:
     log.debug("schema_request", branch=branch.name)
     schema_branch = registry.schema.get_schema_branch(name=branch.name)
-    all_schemas = schema_branch.get_schemas_for_namespaces(namespaces=namespaces or [])
+    all_schemas = schema_branch.get_schemas_for_namespaces(namespaces=namespaces)
 
     return SchemaReadAPI(
         main=registry.schema.get_schema_branch(name=branch.name).get_hash(),

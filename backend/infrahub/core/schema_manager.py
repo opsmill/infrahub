@@ -219,11 +219,13 @@ class SchemaBranch:
         return list(namespaces.values())
 
     def get_schemas_for_namespaces(
-        self, namespaces: List[str], include_internal: bool = False
+        self, namespaces: Optional[List[str]] = None, include_internal: bool = False
     ) -> List[Union[NodeSchema, GenericSchema]]:
         """Retrive everything in a single dictionary."""
         all_schemas = self.get_all(include_internal=include_internal)
-        return [schema for schema in all_schemas.values() if schema.namespace in namespaces]
+        if namespaces:
+            return [schema for schema in all_schemas.values() if schema.namespace in namespaces]
+        return list(all_schemas.values())
 
     def load_schema(self, schema: SchemaRoot) -> None:
         """Load a SchemaRoot object and store all NodeSchema, GenericSchema or GroupSchema.
