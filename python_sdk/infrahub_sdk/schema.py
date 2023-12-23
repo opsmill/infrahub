@@ -565,7 +565,7 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
         self.client = client
         self.cache: dict = defaultdict(lambda: dict)
 
-    async def all(
+    def all(
         self, branch: Optional[str] = None, refresh: bool = False, namespaces: Optional[List[str]] = None
     ) -> MutableMapping[str, Union[NodeSchema, GenericSchema]]:
         """Retrieve the entire schema for a given branch.
@@ -711,7 +711,7 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
             dropdown_optional_args=dropdown_optional_args,
         )
 
-    async def fetch(
+    def fetch(
         self, branch: str, namespaces: Optional[List[str]] = None
     ) -> MutableMapping[str, Union[NodeSchema, GenericSchema]]:
         """Fetch the schema from the server for a given branch.
