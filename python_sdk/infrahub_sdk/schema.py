@@ -541,7 +541,7 @@ class InfrahubSchema(InfrahubSchemaBase):
         if namespaces:
             url_parts.extend([("namespaces", ns) for ns in namespaces])
         query_params = urlencode(url_parts)
-        url = f"{self.client.address}/api/schema?{query_params}"
+        url = f"{self.client.address}/api/schema/?{query_params}"
 
         response = await self.client._get(url=url)
         response.raise_for_status()
@@ -726,7 +726,7 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
         if namespaces:
             url_parts.extend([("namespaces", ns) for ns in namespaces])
         query_params = urlencode(url_parts)
-        url = f"{self.client.address}/api/schema?{query_params}"
+        url = f"{self.client.address}/api/schema/?{query_params}"
 
         response = self.client._get(url=url)
         response.raise_for_status()
