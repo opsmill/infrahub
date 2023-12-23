@@ -565,8 +565,8 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
         self.client = client
         self.cache: dict = defaultdict(lambda: dict)
 
-    def all(
-        self, branch: Optional[str] = None, refresh: bool = False
+    async def all(
+        self, branch: Optional[str] = None, refresh: bool = False, namespaces: Optional[List[str]] = None
     ) -> MutableMapping[str, Union[NodeSchema, GenericSchema]]:
         """Retrieve the entire schema for a given branch.
 
@@ -582,7 +582,7 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
         """
         branch = branch or self.client.default_branch
         if refresh or branch not in self.cache:
-            self.cache[branch] = self.fetch(branch=branch)
+            self.cache[branch] = self.fetch(branch=branch, namespaces=namespaces)
 
         return self.cache[branch]
 
@@ -711,7 +711,9 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
             dropdown_optional_args=dropdown_optional_args,
         )
 
-    def fetch(self, branch: str) -> MutableMapping[str, Union[NodeSchema, GenericSchema]]:
+    async def fetch(
+        self, branch: str, namespaces: Optional[List[str]] = None
+    ) -> MutableMapping[str, Union[NodeSchema, GenericSchema]]:
         """Fetch the schema from the server for a given branch.
 
         Args:
@@ -720,7 +722,12 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
         Returns:
             Dict[str, NodeSchema]: Dictionnary of all schema organized by kind
         """
-        url = f"{self.client.address}/api/schema/?branch={branch}"
+        url_parts = [("branch", branch)]
+        if namespaces:
+            url_parts.extend([("namespaces", ns) for ns in namespaces])
+        query_params = urlencode(url_parts)
+        url = f"{self.client.address}/api/schema?{query_params}"
+
         response = self.client._get(url=url)
         response.raise_for_status()
 
