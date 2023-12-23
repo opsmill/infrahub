@@ -37,7 +37,7 @@ class LineDelimitedJSONExporter(ExporterInterface):
         node_file = export_directory / Path("nodes.json")
         if node_file.exists():
             raise FileAlreadyExistsError(f"{node_file.absolute()} already exists")
-        if set([ns.lower() for ns in namespaces]) & illegal_namespaces:
+        if {ns.lower() for ns in namespaces} & illegal_namespaces:
             raise InvalidNamespaceError(f"namespaces cannot include {illegal_namespaces}")
 
         with self.wrapped_task_output("Retrieving schema to export"):

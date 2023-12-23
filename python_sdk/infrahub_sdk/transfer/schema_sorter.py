@@ -10,7 +10,7 @@ class InfrahubSchemaTopologicalSorter:
     async def get_sorted_node_schema(
         self, schemas: Sequence[BaseNodeSchema], required_relationships_only: bool = True
     ) -> List[Set[str]]:
-        relationship_graph: Dict[str, Set[str]] = dict()
+        relationship_graph: Dict[str, Set[str]] = {}
         for node_schema in schemas:
             relationship_graph[node_schema.kind] = set()
             for relationship_schema in node_schema.relationships:
