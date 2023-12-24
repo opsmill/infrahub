@@ -85,14 +85,12 @@ export default function Header(props: Props) {
           </form>
         </div>
 
-        <div className="ml-4 flex items-center md:ml-6">
-          <div className="mr-4">
-            <DatePicker
-              date={date}
-              onChange={debouncedHandleDateChange}
-              onClickNow={handleClickNow}
-            />
-          </div>
+        <div className="flex items-center gap-4 ml-4 md:ml-6">
+          <DatePicker
+            date={date}
+            onChange={debouncedHandleDateChange}
+            onClickNow={handleClickNow}
+          />
 
           <BranchSelector />
 

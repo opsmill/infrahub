@@ -35,11 +35,11 @@ export const AccountManager = () => {
     ${queryString}
   `;
 
-  const [getProfile, { error, loading, data }] = useLazyQuery(query);
+  const [fetchProfile, { error, loading, data }] = useLazyQuery(query);
 
   useEffect(() => {
     if (schema && accountId) {
-      getProfile();
+      fetchProfile();
     }
   }, [schema, accountId]);
 
@@ -67,14 +67,12 @@ export const AccountManager = () => {
   }
 
   return auth?.accessToken ? (
-    <Menu as="div" className="relative ml-3">
-      <div>
-        <Menu.Button
-          className="flex max-w-xs items-center rounded-full bg-custom-white text-sm focus:outline-none focus:ring-2 focus:ring-custom-blue-500 focus:ring-offset-2"
-          data-cy="current-user-avatar-button">
-          <Avatar name={profile?.name?.value} data-cy="user-avatar" />
-        </Menu.Button>
-      </div>
+    <Menu as="div">
+      <Menu.Button
+        className="flex max-w-xs items-center rounded-full bg-custom-white text-sm focus:outline-none focus:ring-2 focus:ring-custom-blue-500 focus:ring-offset-2"
+        data-cy="current-user-avatar-button">
+        <Avatar name={profile?.name?.value} data-cy="user-avatar" />
+      </Menu.Button>
       <Transition
         as={Fragment}
         enter="transition ease-out duration-100"
@@ -103,7 +101,7 @@ export const AccountManager = () => {
             <Link
               to={"/"}
               className={"block px-4 py-2 text-sm text-gray-700 hover:bg-gray-200"}
-              onClick={() => auth?.signOut && auth?.signOut()}>
+              onClick={() => auth?.signOut?.()}>
               Sign out
             </Link>
           </Menu.Item>
@@ -113,8 +111,8 @@ export const AccountManager = () => {
   ) : (
     <Link
       to={window.location.pathname}
-      className={"block ml-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-md"}
-      onClick={() => auth?.displaySignIn && auth?.displaySignIn()}>
+      className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-md"
+      onClick={() => auth?.displaySignIn?.()}>
       Sign in
     </Link>
   );
