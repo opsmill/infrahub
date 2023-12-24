@@ -1,63 +1,25 @@
-import { gql } from "@apollo/client";
-import { Menu, Transition } from "@headlessui/react";
 import { MagnifyingGlassIcon } from "@heroicons/react/20/solid";
 import { Bars3BottomLeftIcon } from "@heroicons/react/24/outline";
 import { formatISO, isEqual, isValid } from "date-fns";
 import { useAtom } from "jotai";
-import React, { Fragment, useContext, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { toast } from "react-toastify";
+import React, { useEffect } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
-import { ALERT_TYPES, Alert } from "../../components/alert";
-import { Avatar } from "../../components/avatar";
 import BranchSelector from "../../components/branch-selector";
 import { DatePicker } from "../../components/date-picker";
-import { ACCESS_TOKEN_KEY, ACCOUNT_OBJECT } from "../../config/constants";
 import { QSP } from "../../config/qsp";
-import { AuthContext } from "../../decorators/withAuth";
-import { getProfileDetails } from "../../graphql/queries/profile/getProfileDetails";
-import useQuery from "../../hooks/useQuery";
-import { schemaState } from "../../state/atoms/schema.atom";
-import { classNames, debounce, parseJwt } from "../../utils/common";
-import LoadingScreen from "../loading-screen/loading-screen";
-import { userNavigation } from "./navigation-list";
+import { debounce } from "../../utils/common";
 import { datetimeAtom } from "../../state/atoms/time.atom";
+import { AccountManager } from "../../components/AccountManager";
 
 interface Props {
   setSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }
-
-const customId = "profile-alert";
 
 export default function Header(props: Props) {
   const { setSidebarOpen } = props;
 
   const [qspDate, setQspDate] = useQueryParam(QSP.DATETIME, StringParam);
   const [date, setDate] = useAtom(datetimeAtom);
-  const auth = useContext(AuthContext);
-  const [schemaList] = useAtom(schemaState);
-  const navigate = useNavigate();
-
-  const schema = schemaList.find((s) => s.kind === ACCOUNT_OBJECT);
-
-  const localToken = localStorage.getItem(ACCESS_TOKEN_KEY);
-
-  const tokenData = parseJwt(localToken);
-
-  const accountId = tokenData?.sub;
-
-  const queryString = schema
-    ? getProfileDetails({ ...schema })
-    : // Empty query to make the gql parsing work
-      // TODO: Find another solution for queries while loading schema
-      "query { ok }";
-
-  const query = gql`
-    ${queryString}
-  `;
-
-  // TODO: Find a way to avoid querying object details if we are on a tab
-  const { error, loading, data } = useQuery(query, { skip: !schema || !accountId });
 
   useEffect(() => {
     // Remove the date from the state
@@ -91,31 +53,6 @@ export default function Header(props: Props) {
     setQspDate(undefined);
   };
 
-  if (loading || !schema) {
-    return (
-      <div className="z-10 flex h-16 flex-shrink-0 bg-custom-white shadow">
-        <LoadingScreen size={32} hideText />
-      </div>
-    );
-  }
-
-  const profile = data?.AccountProfile;
-
-  if (!loading && auth?.accessToken && (error || !profile)) {
-    toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading profile data" />, {
-      toastId: customId,
-    });
-
-    // Sign out because there is nothing from the API for that user id
-    if (auth?.signOut) {
-      auth?.signOut();
-    }
-
-    navigate("/");
-
-    return null;
-  }
-
   return (
     <div className="z-10 flex h-16 flex-shrink-0 bg-custom-white shadow">
       <button
@@ -147,6 +84,7 @@ export default function Header(props: Props) {
             </div>
           </form>
         </div>
+
         <div className="ml-4 flex items-center md:ml-6">
           <div className="mr-4">
             <DatePicker
@@ -158,61 +96,7 @@ export default function Header(props: Props) {
 
           <BranchSelector />
 
-          {/* Profile dropdown */}
-          {!auth?.accessToken && (
-            <Link
-              to={window.location.pathname}
-              className={"block ml-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-md"}
-              onClick={() => auth?.displaySignIn && auth?.displaySignIn()}>
-              Sign in
-            </Link>
-          )}
-
-          {auth?.accessToken && (
-            <Menu as="div" className="relative ml-3">
-              <div>
-                <Menu.Button
-                  className="flex max-w-xs items-center rounded-full bg-custom-white text-sm focus:outline-none focus:ring-2 focus:ring-custom-blue-500 focus:ring-offset-2"
-                  data-cy="current-user-avatar-button">
-                  <Avatar name={profile?.name?.value} data-cy="user-avatar" />
-                </Menu.Button>
-              </div>
-              <Transition
-                as={Fragment}
-                enter="transition ease-out duration-100"
-                enterFrom="transform opacity-0 scale-95"
-                enterTo="transform opacity-100 scale-100"
-                leave="transition ease-in duration-75"
-                leaveFrom="transform opacity-100 scale-100"
-                leaveTo="transform opacity-0 scale-95">
-                <Menu.Items className="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-custom-white py-1 shadow-lg ring-1 ring-custom-black ring-opacity-5 focus:outline-none">
-                  {userNavigation.map((item) => (
-                    <Menu.Item key={item.name}>
-                      {({ active }) => (
-                        <Link
-                          to={item.href}
-                          className={classNames(
-                            active ? "bg-gray-100" : "",
-                            "block px-4 py-2 text-sm text-gray-700 hover:bg-gray-200"
-                          )}>
-                          {item.name}
-                        </Link>
-                      )}
-                    </Menu.Item>
-                  ))}
-
-                  <Menu.Item>
-                    <Link
-                      to={"/"}
-                      className={"block px-4 py-2 text-sm text-gray-700 hover:bg-gray-200"}
-                      onClick={() => auth?.signOut && auth?.signOut()}>
-                      Sign out
-                    </Link>
-                  </Menu.Item>
-                </Menu.Items>
-              </Transition>
-            </Menu>
-          )}
+          <AccountManager />
         </div>
       </div>
     </div>
