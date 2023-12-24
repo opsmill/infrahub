@@ -1,13 +1,12 @@
 import { Link, useNavigate } from "react-router-dom";
-import React, { Fragment, useContext } from "react";
+import React, { Fragment, useContext, useEffect } from "react";
 import { Menu, Transition } from "@headlessui/react";
 import { Avatar } from "./avatar";
 import { userNavigation } from "../screens/layout/navigation-list";
 import { classNames, parseJwt } from "../utils/common";
 import { AuthContext } from "../decorators/withAuth";
 import { getProfileDetails } from "../graphql/queries/profile/getProfileDetails";
-import { gql } from "@apollo/client";
-import useQuery from "../hooks/useQuery";
+import { gql, useLazyQuery } from "@apollo/client";
 import { ACCESS_TOKEN_KEY, ACCOUNT_OBJECT } from "../config/constants";
 import { useAtom } from "jotai/index";
 import { schemaState } from "../state/atoms/schema.atom";
@@ -30,15 +29,19 @@ export const AccountManager = () => {
   const queryString = schema
     ? getProfileDetails({ ...schema })
     : // Empty query to make the gql parsing work
-      // TODO: Find another solution for queries while loading schema
       "query { ok }";
 
   const query = gql`
     ${queryString}
   `;
 
-  // TODO: Find a way to avoid querying object details if we are on a tab
-  const { error, loading, data } = useQuery(query, { skip: !schema || !accountId });
+  const [getProfile, { error, loading, data }] = useLazyQuery(query);
+
+  useEffect(() => {
+    if (schema && accountId) {
+      getProfile();
+    }
+  }, [schema, accountId]);
 
   if (loading || !schema) {
     return (
@@ -50,7 +53,7 @@ export const AccountManager = () => {
 
   const profile = data?.AccountProfile;
 
-  if (!loading && auth?.accessToken && (error || !profile)) {
+  if (error) {
     toast(<Alert type={ALERT_TYPES.ERROR} message="Error while loading profile data" />, {
       toastId: customId,
     });
@@ -61,8 +64,6 @@ export const AccountManager = () => {
     }
 
     navigate("/");
-
-    return null;
   }
 
   return auth?.accessToken ? (
