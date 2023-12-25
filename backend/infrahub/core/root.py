@@ -5,8 +5,6 @@ from infrahub.exceptions import Error
 
 
 class Root(StandardNode):
-    pass
-
     async def create(self, db: InfrahubDatabase) -> bool:
         """Create a new node in the database."""
 
