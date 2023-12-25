@@ -60,9 +60,9 @@ class StandardNode(BaseModel):
         """Create or Update the Node in the database."""
 
         if self.id:
-            return await self._update(db=db)
+            return await self.update(db=db)
 
-        return await self._create(db=db)
+        return await self.create(db=db)
 
     async def delete(self, db: InfrahubDatabase) -> None:
         """Delete the Node in the database."""
@@ -81,7 +81,7 @@ class StandardNode(BaseModel):
 
         return True
 
-    async def _create(self, db: InfrahubDatabase) -> bool:
+    async def create(self, db: InfrahubDatabase) -> bool:
         """Create a new node in the database."""
 
         query: Query = await StandardNodeCreateQuery.init(db=db, node=self)
@@ -97,7 +97,7 @@ class StandardNode(BaseModel):
 
         return True
 
-    async def _update(self, db: InfrahubDatabase) -> bool:
+    async def update(self, db: InfrahubDatabase) -> bool:
         """Update the node in the database if needed."""
 
         query: Query = await StandardNodeUpdateQuery.init(db=db, node=self)
