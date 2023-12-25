@@ -16,7 +16,7 @@ import { Alert, ALERT_TYPES } from "./alert";
 
 const customId = "profile-alert";
 
-export const AccountManager = () => {
+export const AccountMenu = () => {
   const auth = useContext(AuthContext);
   const navigate = useNavigate();
   const [schemaList] = useAtom(schemaState);

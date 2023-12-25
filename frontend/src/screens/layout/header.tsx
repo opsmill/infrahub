@@ -9,7 +9,7 @@ import { DatePicker } from "../../components/date-picker";
 import { QSP } from "../../config/qsp";
 import { debounce } from "../../utils/common";
 import { datetimeAtom } from "../../state/atoms/time.atom";
-import { AccountManager } from "../../components/AccountManager";
+import { AccountMenu } from "../../components/AccountMenu";
 
 interface Props {
   setSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -94,7 +94,7 @@ export default function Header(props: Props) {
 
           <BranchSelector />
 
-          <AccountManager />
+          <AccountMenu />
         </div>
       </div>
     </div>
