@@ -62,7 +62,14 @@ describe("Tutorial - Part 4", () => {
     cy.get(".sm\\:p-0 > :nth-child(1)").within(() => {
       // Click to open the metadata for a tag
       cy.get(":nth-child(1) > .p-2").click();
-      cy.get(":nth-child(5) > :nth-child(2)").should("have.text", "False");
+    });
+
+    cy.get("[data-cy='metadata-tooltip']").within(() => {
+      cy.contains("Is protected")
+        .parent()
+        .within(() => {
+          cy.contains("False").should("exist");
+        });
     });
 
     cy.contains(DEVICE_NAME).first().click(); // Close the popin

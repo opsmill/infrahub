@@ -19,4 +19,18 @@ export interface iGenericSchemaMapping {
 export const genericSchemaState = atom<iGenericSchemaMapping>({});
 
 export type iRelationshipSchema = components["schemas"]["RelationshipSchema"];
+
+export type SchemaSummary = {
+  main: string;
+  nodes: {
+    [key: string]: string;
+  };
+  generics: {
+    [key: string]: string;
+  };
+  groups: {
+    [key: string]: string;
+  };
+};
+
 export const currentSchemaHashAtom = atom<string | null>(null);

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "infrahub"
-version = "0.8.2"
+version = "0.9.0"
 description = ""
 authors = ["OpsMill <info@opsmill.com>"]
 
@@ -167,11 +167,6 @@ ignore_errors = true
 module = "infrahub.api.storage"
 ignore_errors = true
 
-
-[[tool.mypy.overrides]]
-module = "infrahub.api.transformation"
-ignore_errors = true
-
 [[tool.mypy.overrides]]
 module = "infrahub.auth"
 ignore_errors = true
@@ -194,10 +189,6 @@ ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = "infrahub.core.manager"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.core.models"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
@@ -311,11 +302,6 @@ ignore_errors = true
 [[tool.mypy.overrides]]
 module = "infrahub.message_bus.operations.*"
 ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.message_bus.rpc"
-ignore_errors = true
-
 
 [[tool.mypy.overrides]]
 module = "infrahub.server"

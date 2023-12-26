@@ -1,8 +1,9 @@
-import { gql, useReactiveVar } from "@apollo/client";
+import { gql } from "@apollo/client";
 import { CheckIcon, ShieldCheckIcon } from "@heroicons/react/20/solid";
 import { ArrowPathIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
+import { useAtomValue } from "jotai/index";
 import { useContext, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -21,10 +22,10 @@ import { mergeBranch } from "../../graphql/mutations/branches/mergeBranch";
 import { rebaseBranch } from "../../graphql/mutations/branches/rebaseBranch";
 import { validateBranch } from "../../graphql/mutations/branches/validateBranch";
 import { getBranchDetails } from "../../graphql/queries/branches/getBranchDetails";
-import { dateVar } from "../../graphql/variables/dateVar";
 import useQuery from "../../hooks/useQuery";
 import { branchesState } from "../../state/atoms/branches.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 import { objectToString } from "../../utils/common";
 import { constructPath, getCurrentQsp } from "../../utils/fetch";
 import ErrorScreen from "../error-screen/error-screen";
@@ -34,7 +35,7 @@ import { getFormStructure } from "../proposed-changes/conversations";
 
 export const BranchDetails = () => {
   const { branchname } = useParams();
-  const date = useReactiveVar(dateVar);
+  const date = useAtomValue(datetimeAtom);
   const auth = useContext(AuthContext);
   const [branches] = useAtom(branchesState);
   const [schemaList] = useAtom(schemaState);
@@ -164,25 +165,25 @@ export const BranchDetails = () => {
         <>
           <div className="border-t border-b border-gray-200 px-2 py-2 sm:p-0 mb-6">
             <dl className="divide-y divide-gray-200">
-              <div className="p-4 grid grid-cols-3 gap-4">
+              <div className="p-2 grid grid-cols-3 gap-4 text-xs">
                 <dt className="text-sm font-medium text-gray-500">Name</dt>
-                <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">{branch.name}</dd>
+                <dd className="flex text-gray-900">{branch.name}</dd>
               </div>
-              <div className="p-4 grid grid-cols-3 gap-4">
+              <div className="p-2 grid grid-cols-3 gap-4 text-xs">
                 <dt className="text-sm font-medium text-gray-500">Origin branch</dt>
-                <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
+                <dd className="flex text-gray-900">
                   <Badge className="text-sm">{branch.origin_branch}</Badge>
                 </dd>
               </div>
-              <div className="p-4 grid grid-cols-3 gap-4">
+              <div className="p-2 grid grid-cols-3 gap-4 text-xs">
                 <dt className="text-sm font-medium text-gray-500">Branched</dt>
-                <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
+                <dd className="flex text-gray-900">
                   <DateDisplay date={branch.branched_at} />
                 </dd>
               </div>
-              <div className="p-4 grid grid-cols-3 gap-4">
+              <div className="p-2 grid grid-cols-3 gap-4 text-xs">
                 <dt className="text-sm font-medium text-gray-500">Created</dt>
-                <dd className="flex mt-1 text-gray-900 sm:col-span-2 sm:mt-0">
+                <dd className="flex text-gray-900">
                   <DateDisplay date={branch.created_at} />
                 </dd>
               </div>

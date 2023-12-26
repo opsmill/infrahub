@@ -1,4 +1,4 @@
-import { gql, useReactiveVar } from "@apollo/client";
+import { gql } from "@apollo/client";
 import { PencilSquareIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useContext, useState } from "react";
@@ -10,22 +10,22 @@ import ModalDelete from "../../components/modal-delete";
 import SlideOver from "../../components/slide-over";
 import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 import graphqlClient from "../../graphql/graphqlClientApollo";
-import { dateVar } from "../../graphql/variables/dateVar";
 // import { ReactComponent as UnlinkIcon } from "../../images/icons/unlink.svg";
 import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai/index";
 import { AuthContext } from "../../decorators/withAuth";
 import { removeRelationship } from "../../graphql/mutations/relationships/removeRelationship";
 import UnlinkIcon from "../../images/icons/unlink.svg";
+import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 import { classNames } from "../../utils/common";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
 import { getObjectDetailsUrl } from "../../utils/objects";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
-import { useAtomValue } from "jotai/index";
-import { currentBranchAtom } from "../../state/atoms/branches.atom";
 
 type iRelationDetailsProps = {
   parentNode: any;
@@ -47,7 +47,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   const [schemaList] = useAtom(schemaState);
   const [schemaKindName] = useAtom(schemaKindNameState);
   const branch = useAtomValue(currentBranchAtom);
-  const date = useReactiveVar(dateVar);
+  const date = useAtomValue(datetimeAtom);
   const [relatedRowToDelete, setRelatedRowToDelete] = useState<any>();
   const [relatedObjectToEdit, setRelatedObjectToEdit] = useState<any>();
 
@@ -113,82 +113,72 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
         )}
 
         {relationshipsData && (
-          <div className="mt-0 flex flex-col px-4 sm:px-6 lg:px-8 w-full flex-1">
-            <div className="-my-2 -mx-4 sm:-mx-6 lg:-mx-8">
-              <div className="inline-block min-w-full pt-2 align-middle">
-                <div className="shadow-sm ring-1 ring-custom-black ring-opacity-5 overflow-x-auto">
-                  <table className="min-w-full border-separate" style={{ borderSpacing: 0 }}>
-                    <thead className="bg-gray-50">
-                      <tr>
-                        {columns?.map((column) => (
-                          <th
-                            key={column.name}
-                            scope="col"
-                            className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 px-4 py-2 text-left text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter">
-                            {column.label}
-                          </th>
-                        ))}
-                        <th
-                          scope="col"
-                          className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 px-4 py-2 text-left text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter">
-                          <span className="sr-only">Meta</span>
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-custom-white">
-                      {relationshipsData?.map(({ node }: any, index: number) => (
-                        <tr
-                          onClick={() => navigate(getObjectDetailsUrl(node.id, node.__typename))}
-                          key={index}
-                          className="hover:bg-gray-50 cursor-pointer">
-                          {columns?.map((column) => (
-                            <td
-                              key={node.id + "-" + column.name}
-                              className={classNames(
-                                index !== relationshipsData.length - 1
-                                  ? "border-b border-gray-200"
-                                  : "",
-                                "whitespace-nowrap p-4 text-sm font-medium text-gray-900"
-                              )}>
-                              {getObjectItemDisplayValue(node, column, schemaKindName)}
-                            </td>
-                          ))}
-                          <td
-                            className={classNames(
-                              index !== relationshipsData.length - 1
-                                ? "border-b border-gray-200"
-                                : "",
-                              "whitespace-nowrap p-4 text-sm font-medium text-gray-900"
-                            )}>
-                            <Button
-                              disabled={!auth?.permissions?.write}
-                              buttonType={BUTTON_TYPES.INVISIBLE}
-                              onClick={() => {
-                                setRelatedObjectToEdit(node);
-                              }}>
-                              <PencilSquareIcon className="w-4 h-4 text-gray-500" />
-                            </Button>
+          <div className="flex-1 shadow-sm ring-1 ring-custom-black ring-opacity-5 overflow-x-auto">
+            <table className="min-w-full border-separate" style={{ borderSpacing: 0 }}>
+              <thead className="bg-gray-50">
+                <tr>
+                  {columns?.map((column) => (
+                    <th
+                      key={column.name}
+                      scope="col"
+                      className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 px-4 py-2 text-left text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter">
+                      {column.label}
+                    </th>
+                  ))}
+                  <th
+                    scope="col"
+                    className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 px-4 py-2 text-left text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter">
+                    <span className="sr-only">Meta</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-custom-white">
+                {relationshipsData?.map(({ node }: any, index: number) => (
+                  <tr
+                    onClick={() => navigate(getObjectDetailsUrl(node.id, node.__typename))}
+                    key={index}
+                    className="hover:bg-gray-50 cursor-pointer">
+                    {columns?.map((column) => (
+                      <td
+                        key={node.id + "-" + column.name}
+                        className={classNames(
+                          index !== relationshipsData.length - 1 ? "border-b border-gray-200" : "",
+                          "whitespace-nowrap p-4 text-sm font-medium text-gray-900"
+                        )}>
+                        {getObjectItemDisplayValue(node, column, schemaKindName)}
+                      </td>
+                    ))}
+                    <td
+                      className={classNames(
+                        index !== relationshipsData.length - 1 ? "border-b border-gray-200" : "",
+                        "whitespace-nowrap p-4 text-sm font-medium text-gray-900"
+                      )}>
+                      <Button
+                        disabled={!auth?.permissions?.write}
+                        buttonType={BUTTON_TYPES.INVISIBLE}
+                        onClick={() => {
+                          setRelatedObjectToEdit(node);
+                        }}>
+                        <PencilSquareIcon className="w-4 h-4 text-gray-500" />
+                      </Button>
 
-                            <Button
-                              disabled={!auth?.permissions?.write}
-                              buttonType={BUTTON_TYPES.INVISIBLE}
-                              onClick={() => {
-                                setRelatedRowToDelete(node);
-                              }}>
-                              <img src={UnlinkIcon} className="w-4 h-4" />
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      <Button
+                        disabled={!auth?.permissions?.write}
+                        buttonType={BUTTON_TYPES.INVISIBLE}
+                        onClick={() => {
+                          setRelatedRowToDelete(node);
+                        }}>
+                        <img src={UnlinkIcon} className="w-4 h-4" />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
 
-                  {relationshipsData && !relationshipsData.length && (
-                    <NoDataFound message="No relationship found." />
-                  )}
-                </div>
-              </div>
-            </div>
+            {relationshipsData && !relationshipsData.length && (
+              <NoDataFound message="No relationship found." />
+            )}
           </div>
         )}
 

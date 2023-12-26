@@ -128,13 +128,12 @@ export const CHECK_CONCLUSIONS = {
   SUCCESS: "success",
 };
 
-["CoreArtifactValidator", "CoreDataValidator", "CoreRepositoryValidator", "CoreSchemaValidator"];
-
 export const VALIDATIONS_ENUM_MAP: { [key: string]: string } = {
   CoreArtifactValidator: "ARTIFACT",
   CoreDataValidator: "DATA",
   CoreRepositoryValidator: "REPOSITORY",
   CoreSchemaValidator: "SCHEMA",
+  CoreUserValidator: "USER",
   all: "ALL",
 };
 

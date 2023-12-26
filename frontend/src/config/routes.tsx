@@ -12,51 +12,51 @@ import UserProfile from "../screens/user-profile/user-profile";
 
 export const MAIN_ROUTES = [
   {
-    path: "/profile",
-    element: <UserProfile />,
-  },
-  {
-    path: "/objects/:objectname/:objectid",
-    element: <ObjectItemDetailsPaginated />,
-  },
-  {
-    path: "/objects/CoreArtifact/:objectid",
-    element: <ArtifactsObjectItemDetailsPaginated />,
-  },
-  {
-    path: "/objects/:objectname",
-    element: <ObjectItemsPaginated />,
-  },
-  {
-    path: "/schema",
-    element: <OpsObjects />,
+    path: "/branches/:branchname",
+    element: <BrancheItemDetails />,
   },
   {
     path: "/branches",
     element: <BranchesItems />,
   },
   {
-    path: "/proposed-changes",
-    element: <ProposedChanges />,
-  },
-  {
-    path: "/proposed-changes/:proposedchange",
-    element: <ProposedChangesDetails />,
-  },
-  {
-    path: "/branches/:branchname",
-    element: <BrancheItemDetails />,
-  },
-  {
-    path: "/groups",
-    element: <GroupItems />,
+    path: "/groups/:groupname/:groupid",
+    element: <GroupItemDetails />,
   },
   {
     path: "/groups/:groupname",
     element: <GroupItems />,
   },
   {
-    path: "/groups/:groupname/:groupid",
-    element: <GroupItemDetails />,
+    path: "/groups",
+    element: <GroupItems />,
+  },
+  {
+    path: "/objects/CoreArtifact/:objectid",
+    element: <ArtifactsObjectItemDetailsPaginated />,
+  },
+  {
+    path: "/objects/:objectname/:objectid",
+    element: <ObjectItemDetailsPaginated />,
+  },
+  {
+    path: "/objects/:objectname",
+    element: <ObjectItemsPaginated />,
+  },
+  {
+    path: "/profile",
+    element: <UserProfile />,
+  },
+  {
+    path: "/proposed-changes/:proposedchange",
+    element: <ProposedChangesDetails />,
+  },
+  {
+    path: "/proposed-changes",
+    element: <ProposedChanges />,
+  },
+  {
+    path: "/schema",
+    element: <OpsObjects />,
   },
 ];

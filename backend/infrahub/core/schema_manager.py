@@ -66,6 +66,7 @@ KIND_FILTER_MAP = {
     "Integer": FilterSchemaKind.NUMBER,
     "Boolean": FilterSchemaKind.BOOLEAN,
     "Checkbox": FilterSchemaKind.BOOLEAN,
+    "Dropdown": FilterSchemaKind.TEXT,
 }
 
 
@@ -388,15 +389,18 @@ class SchemaBranch:
             for attr in attributes:
                 if not attr.choices:
                     continue
-                choices = attr.choices or []
-                defined_colors = [choice.color for choice in choices if choice.color]
-                for choice in choices:
+
+                sorted_choices = sorted(attr.choices or [], key=lambda x: x.name, reverse=True)
+                defined_colors = [choice.color for choice in sorted_choices if choice.color]
+                for choice in sorted_choices:
                     if not choice.color:
                         choice.color = select_color(defined_colors)
-                        changed = True
                     if not choice.label:
                         choice.label = format_label(choice.name)
-                        changed = True
+
+                if attr.choices != sorted_choices:
+                    attr.choices = sorted_choices
+                    changed = True
 
             if changed:
                 self.set(name=name, schema=node)

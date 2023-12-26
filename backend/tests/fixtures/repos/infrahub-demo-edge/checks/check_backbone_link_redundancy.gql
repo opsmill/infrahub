@@ -1,5 +1,5 @@
 query check_backbone_link_redundancy {
-  InfraCircuit(role__name__value: "backbone") {
+  InfraCircuit(role__value: "backbone") {
     edges {
       node {
         id
@@ -10,11 +10,7 @@ query check_backbone_link_redundancy {
           value
         }
         status {
-          node {
-            name {
-              value
-            }
-          }
+          value
         }
         endpoints {
           edges {

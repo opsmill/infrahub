@@ -1,13 +1,16 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 
 class Error(Exception):
     HTTP_CODE: int = 500
     DESCRIPTION: str = "Unknown Error"
     message: str = ""
+    errors: Optional[List] = None
 
     def api_response(self) -> Dict[str, Any]:
         """Return error response."""
+        if isinstance(self.errors, list):
+            return {"data": None, "errors": self.errors}
         return {
             "data": None,
             "errors": [{"message": str(self.message) or self.DESCRIPTION, "extensions": {"code": self.HTTP_CODE}}],
@@ -36,6 +39,13 @@ class DatabaseError(Error):
 
 class LockError(Error):
     pass
+
+
+class GraphQLQueryError(Error):
+    HTTP_CODE = 502
+
+    def __init__(self, errors: list):
+        self.errors = errors
 
 
 class RepositoryError(Error):

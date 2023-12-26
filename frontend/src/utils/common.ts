@@ -24,6 +24,8 @@ export const objectToString = (object: any) =>
     })
     .join(",");
 
+export const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
+
 export const sortByOrderWeight = R.sortBy(R.compose(R.prop("order_weight")));
 
 export const parseJwt = (token: string | null) => {
@@ -72,7 +74,9 @@ const calculateBrightness = (color: string) => {
   return brightness;
 };
 
-export const getTextColor = (background: string) => {
+export const getTextColor = (background?: string) => {
+  if (!background) return "black";
+
   const isDarkBackground = calculateBrightness(background) < 128;
 
   return isDarkBackground ? "white" : "black";
