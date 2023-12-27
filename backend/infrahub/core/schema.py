@@ -305,7 +305,7 @@ class DropdownChoice(BaseSchemaModel):
 
 class AttributeSchema(BaseSchemaModel):
     id: Optional[str] = None
-    name: str = Field(regex=NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
+    name: str = Field(pattern=NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
     kind: str  # AttributeKind
     label: Optional[str] = None
     description: Optional[str] = Field(None, max_length=DEFAULT_DESCRIPTION_LENGTH)
@@ -360,8 +360,8 @@ class AttributeSchema(BaseSchemaModel):
 
 class RelationshipSchema(BaseSchemaModel):
     id: Optional[str] = None
-    name: str = Field(regex=NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
-    peer: str = Field(regex=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH)
+    name: str = Field(pattern=NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
+    peer: str = Field(pattern=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH)
     kind: RelationshipKind = RelationshipKind.GENERIC
     direction: RelationshipDirection = RelationshipDirection.BIDIR
     label: Optional[str] = None
@@ -511,9 +511,9 @@ NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
 
 class BaseNodeSchema(BaseSchemaModel):
     id: Optional[str] = None
-    name: str = Field(regex=NODE_NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
+    name: str = Field(pattern=NODE_NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
     namespace: str = Field(
-        regex=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH
+        pattern=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH
     )
     description: Optional[str] = Field(None, max_length=DEFAULT_DESCRIPTION_LENGTH)
     default_filter: Optional[str] = None
@@ -708,8 +708,8 @@ class NodeSchema(BaseNodeSchema):
 
 class GroupSchema(BaseSchemaModel):
     id: Optional[str] = None
-    name: str = Field(regex=NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
-    kind: str = Field(regex=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH)
+    name: str = Field(pattern=NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
+    kind: str = Field(pattern=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH)
     description: Optional[str] = Field(None, max_length=DEFAULT_DESCRIPTION_LENGTH)
 
 
