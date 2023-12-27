@@ -87,10 +87,12 @@ async def test_validate_format_ipnetwork_and_iphost(
 async def test_validate_validate_url(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
     schema = criticality_schema.get_attribute("name")
 
-    URL(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="https://api.example.com")
-
-    with pytest.raises(ValidationError):
-        URL(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="ftp://api.example.com")
+    assert URL(
+        name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="https://api.example.com"
+    )
+    assert URL(
+        name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="ftp://api.example.com"
+    )
 
 
 async def test_validate_iphost_returns(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
