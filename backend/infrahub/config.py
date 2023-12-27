@@ -15,6 +15,10 @@ from pydantic_settings import BaseSettings
 if TYPE_CHECKING:
     from infrahub.services.adapters.cache import InfrahubCache
     from infrahub.services.adapters.message_bus import InfrahubMessageBus
+else:
+    # Avoid pydantic complaints
+    # TODO: Is there a better way to fix this?
+    InfrahubCache = InfrahubMessageBus = None
 
 SETTINGS: Settings = None
 
