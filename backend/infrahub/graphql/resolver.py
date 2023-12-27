@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict
 
 from infrahub.core.manager import NodeManager
 
@@ -68,48 +68,6 @@ async def default_resolver(*args, **kwargs):
         if "__" in key and value or key in ["id", "ids"]
     }
 
-    async with db.start_session() as db:
-        objs = await NodeManager.query_peers(
-            db=db,
-            id=parent["id"],
-            schema=node_rel,
-            filters=filters,
-            fields=fields,
-            at=at,
-            branch=branch,
-        )
-
-        if node_rel.cardinality == "many":
-            return [await obj.to_graphql(db=db, fields=fields) for obj in objs]
-
-        # If cardinality is one
-        if not objs:
-            return None
-
-        return await objs[0].to_graphql(db=db, fields=fields)
-
-
-async def relationship_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> Optional[Union[Dict, List]]:
-    # Extract the InfraHub schema by inspecting the GQL Schema
-    node_schema: NodeSchema = info.parent_type.graphene_type._meta.schema
-
-    # Extract the contextual information from the request context
-    at = info.context.get("infrahub_at")
-    branch: Branch = info.context.get("infrahub_branch")
-    db: InfrahubDatabase = info.context.get("infrahub_database")
-
-    # Extract the name of the fields in the GQL query
-    fields = await extract_fields(info.field_nodes[0].selection_set)
-
-    # Extract the schema of the node on the other end of the relationship from the GQL Schema
-    node_rel = node_schema.get_relationship(info.field_name)
-
-    # Extract only the filters from the kwargs and prepend the name of the field to the filters
-    filters = {
-        f"{info.field_name}__{key}": value
-        for key, value in kwargs.items()
-        if "__" in key and value or key in ["id", "ids"]
-    }
     async with db.start_session() as db:
         objs = await NodeManager.query_peers(
             db=db,
