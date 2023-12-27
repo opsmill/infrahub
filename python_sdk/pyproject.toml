@@ -36,6 +36,11 @@ ujson = "^5.7"
 pydantic = ">=1.7.4,!=1.8,!=1.8.1,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0"
 pyyaml = "^6.0"
 gitpython = "3.1.40"
+pyarrow = "^14.0.1"
+numpy = [
+    { version = "^1.24.2", python = ">=3.8,<3.12" },
+    { version = "^1.26.2", python = ">=3.12" }
+]
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"

@@ -25,9 +25,15 @@ class InfrahubBatch:
         self,
         semaphore: Optional[asyncio.Semaphore] = None,
         max_concurrent_execution: int = 5,
+        return_exceptions: bool = False,
     ):
         self._tasks: List[BatchTask] = []
         self.semaphore = semaphore or asyncio.Semaphore(value=max_concurrent_execution)
+        self.return_exceptions = return_exceptions
+
+    @property
+    def num_tasks(self) -> int:
+        return len(self._tasks)
 
     def add(
         self, *args: Any, task: Callable[[Any], Awaitable[Any]], node: Optional[InfrahubNode] = None, **kwargs: Any
@@ -41,4 +47,10 @@ class InfrahubBatch:
             tasks.append(asyncio.create_task(execute_batch_task_in_pool(task=batch_task, semaphore=self.semaphore)))
 
         for completed_task in asyncio.as_completed(tasks):
-            yield await completed_task
+            try:
+                yield await completed_task
+            except Exception as exc:  # pylint: disable=broad-exception-caught
+                if self.return_exceptions:
+                    yield exc
+                else:
+                    raise exc

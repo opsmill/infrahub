@@ -16,7 +16,7 @@ from rich.logging import RichHandler
 from rich.syntax import Syntax
 from rich.traceback import Frame, Traceback
 
-import infrahub_ctl.config as config
+from infrahub_ctl import config
 from infrahub_ctl.branch import app as branch_app
 from infrahub_ctl.check import app as check_app
 from infrahub_ctl.client import initialize_client
@@ -34,12 +34,17 @@ from infrahub_sdk.schema import InfrahubPythonTransformConfig, InfrahubRepositor
 from infrahub_sdk.transforms import InfrahubTransform
 from infrahub_sdk.utils import get_branch
 
+from .exporter import dump
+from .importer import load
+
 app = typer.Typer(pretty_exceptions_show_locals=False)
 
 app.add_typer(branch_app, name="branch")
 app.add_typer(check_app, name="check")
 app.add_typer(schema, name="schema")
 app.add_typer(validate_app, name="validate")
+app.command(name="dump")(dump)
+app.command(name="load")(load)
 
 console = Console()
 
