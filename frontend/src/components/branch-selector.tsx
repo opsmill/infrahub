@@ -1,4 +1,4 @@
-import { gql } from "@apollo/client";
+import { useMutation } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { format, formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
@@ -7,10 +7,9 @@ import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "../config/qsp";
 import { AuthContext } from "../decorators/withAuth";
 import { Branch } from "../generated/graphql";
-import graphqlClient from "../graphql/graphqlClientApollo";
-import { createBranch } from "../graphql/mutations/branches/createBranch";
+import { BRANCH_CREATE } from "../graphql/mutations/branches/createBranch";
 import { branchesState, currentBranchAtom } from "../state/atoms/branches.atom";
-import { classNames, objectToString } from "../utils/common";
+import { classNames } from "../utils/common";
 import { BUTTON_TYPES, Button } from "./button";
 import { Input } from "./input";
 import { POPOVER_SIZE, PopOver } from "./popover";
@@ -18,13 +17,11 @@ import { Select, SelectOption } from "./select";
 import { SelectButton } from "./select-button";
 import { Switch } from "./switch";
 import { useAtomValue } from "jotai/index";
-import { datetimeAtom } from "../state/atoms/time.atom";
 
 export default function BranchSelector() {
-  const [branches] = useAtom(branchesState);
+  const [branches, setBranches] = useAtom(branchesState);
   const [, setBranchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
   const branch = useAtomValue(currentBranchAtom);
-  const date = useAtomValue(datetimeAtom);
   const auth = useContext(AuthContext);
 
   const [newBranchName, setNewBranchName] = useState("");
@@ -32,7 +29,8 @@ export default function BranchSelector() {
   const [originBranch, setOriginBranch] = useState();
   const [branchedFrom] = useState(); // TODO: Add calendar component
   const [isDataOnly, setIsDataOnly] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
+
+  const [createBranch, { loading }] = useMutation(BRANCH_CREATE);
 
   const valueLabel = (
     <>
@@ -131,41 +129,27 @@ export default function BranchSelector() {
 
   const handleSubmit = async (close: any) => {
     try {
-      setIsLoading(true);
-
-      const newBranch = {
+      const newBranch: Branch = {
         name: newBranchName,
         description: newBranchDescription,
-        // origin_branch: originBranch ?? branches[0]?.name,
-        // branched_from: formatISO(branchedFrom ?? new Date()),
         is_data_only: isDataOnly,
       } as Branch;
 
-      const mustationString = createBranch({ data: objectToString(newBranch) });
-
-      const mutation = gql`
-        ${mustationString}
-      `;
-
-      await graphqlClient.mutate({
-        mutation,
-        context: {
-          branch: branch?.name,
-          date,
+      const { data } = await createBranch({
+        variables: {
+          name: newBranchName,
+          description: newBranchDescription,
+          isDataOnly: isDataOnly,
         },
       });
+
+      setBranches([...branches, data.BranchCreate.object]);
 
       close();
 
       onBranchChange(newBranch);
-
-      // toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Branch created"} />);
-
-      window.location.reload();
     } catch (error) {
       console.error("Error while creating the branch: ", error);
-
-      setIsLoading(false);
     }
   };
 
@@ -221,7 +205,7 @@ export default function BranchSelector() {
 
             <div className="flex justify-center">
               <Button
-                isLoading={isLoading}
+                isLoading={loading}
                 buttonType={BUTTON_TYPES.VALIDATE}
                 onClick={() => handleSubmit(close)}
                 className="mt-2">
