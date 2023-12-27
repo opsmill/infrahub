@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import toml
 from infrahub_sdk import generate_uuid
+from pydantic import BaseModel, Field, ValidationError
 from pydantic_settings import BaseSettings
 
 if TYPE_CHECKING:
