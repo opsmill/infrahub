@@ -40,7 +40,7 @@ async def _get_conflicts(db: InfrahubDatabase, proposed_change: Node) -> List[Ob
     return await diff.get_conflicts_graph(db=db)
 
 
-async def cancel(message: messages.RequestProposedChangeDataIntegrity, service: InfrahubServices) -> None:
+async def cancel(message: messages.RequestProposedChangeCancel, service: InfrahubServices) -> None:
     """Cancel a proposed change."""
     log.info("Cancelling proposed change", id=message.proposed_change)
     proposed_change = await service.client.get(kind="CoreProposedChange", id=message.proposed_change)
