@@ -53,7 +53,7 @@ export default function Header(props: Props) {
   };
 
   return (
-    <div className="flex justify-between gap-4 flex-shrink-0 h-16 bg-custom-white shadow pr-4">
+    <div className="flex justify-between flex-shrink-0 h-16 bg-custom-white shadow pr-4">
       <button
         type="button"
         className="border-r border-gray-200 p-4 text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-custom-blue-500 md:hidden"
@@ -62,7 +62,7 @@ export default function Header(props: Props) {
         <Icon icon="mdi:menu" height="32" width="32" />
       </button>
 
-      <div className="flex flex-1 items-center justify-end gap-4">
+      <div className="flex flex-1 items-center justify-end gap-4 pl-4">
         <DatePicker date={date} onChange={debouncedHandleDateChange} onClickNow={handleClickNow} />
 
         <BranchSelector />
