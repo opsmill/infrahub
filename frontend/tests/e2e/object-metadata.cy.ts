@@ -17,7 +17,9 @@ describe("Object update", () => {
 
   it("should access the object's metadata", function () {
     // Access the interfaces view
-    cy.contains("Interface").click();
+    cy.get("[data-cy='sidebar-menu']").within(() => {
+      cy.contains("Interface L2").click();
+    });
 
     // Access an interface
     cy.contains(ETHERNET_DEVICE_NAME).click();
@@ -38,10 +40,10 @@ describe("Object update", () => {
     });
 
     // Is visible
-    cy.get(":nth-child(3) > .flex-col > .relative > .w-4").should("be.checked");
+    cy.get("#is\\ visible").should("be.checked");
 
     // Is protected
-    cy.get(":nth-child(4) > .flex-col > .relative > .w-4").should("not.be.checked");
+    cy.get("#is\\ protected").should("not.be.checked");
 
     // Owner select
     cy.get(".grid-cols-1 > :nth-child(1) > .grid").within(() => {
@@ -73,18 +75,16 @@ describe("Object update", () => {
       cy.get("[id^=headlessui-combobox-input-]").eq(1).should("have.value", ACCOUNT_NAME);
     });
 
-    // Check the is proteced field
-    cy.get(":nth-child(4) > .flex-col > .relative > .w-4").click();
+    // Check the is protected field
+    cy.get("#is\\ protected").click();
 
-    cy.get(":nth-child(4) > .flex-col > .relative > .w-4").should("be.checked");
+    cy.get("#is\\ protected").should("be.checked");
 
-    cy.get(".justify-end").within(() => {
-      cy.intercept("/graphql/main").as("Request");
+    cy.intercept("/graphql/main").as("Request");
 
-      cy.contains("Save").click();
+    cy.contains("button", "Save").click();
 
-      cy.wait("@Request");
-    });
+    cy.wait("@Request");
   });
 
   it("should verify the prefilled object's metadata", function () {
