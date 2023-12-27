@@ -24,7 +24,7 @@ pyjwt = "~2.8"                      # Used to manage JWT tokens
 uvicorn = {version = "~0.21", extras = ["standard"]}
 gunicorn = "^20.1"
 graphene = "~3.2"
-neo4j = "~5.12"
+neo4j = "~5.15"
 aio-pika = "~9.3"
 structlog = "^22.3.0"
 boto3 = "~1.33.11"
