@@ -25,11 +25,10 @@ RUN poetry config virtualenvs.create false
 # ****************************************************************
 # STAGE : Frontend
 # ****************************************************************
-FROM docker.io/node:16-slim AS frontend
+FROM docker.io/node:20-slim AS frontend
 
 RUN mkdir /source
 
-RUN npm install -g npm@v9.8.1
 COPY frontend/package.json  frontend/package-lock.json /source/
 
 WORKDIR /source
