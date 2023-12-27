@@ -2,6 +2,7 @@
   "name": "frontend",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "start": "vite",
     "build": "vite build",
@@ -17,7 +18,7 @@
     "cypress:run:e2e": "ELECTRON_ENABLE_LOGGING=1 cypress run --e2e",
     "cypress:run:e2e:screenshots": "cypress run --e2e --env SCREENSHOTS=true",
     "cypress:run:spec": "ELECTRON_ENABLE_LOGGING=1 cypress run --spec",
-    "codegen": "graphql-codegen --config codegen.yml",
+    "codegen": "graphql-codegen --config graphql.config.ts",
     "codegen:openapi": "npx openapi-typescript http://localhost:8000/api/openapi.json --output src/infraops.d.ts",
     "prettier": "prettier './**/*.{js,jsx,ts,tsx,css,md,json}' --config ./.prettierrc.json",
     "prettier:fix": "prettier --write './**/*.{js,jsx,ts,tsx,css,md,json}' --config ./.prettierrc.json",
