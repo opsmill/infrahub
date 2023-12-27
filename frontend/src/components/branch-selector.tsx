@@ -129,12 +129,6 @@ export default function BranchSelector() {
 
   const handleSubmit = async (close: any) => {
     try {
-      const newBranch: Branch = {
-        name: newBranchName,
-        description: newBranchDescription,
-        is_data_only: isDataOnly,
-      } as Branch;
-
       const { data } = await createBranch({
         variables: {
           name: newBranchName,
@@ -143,11 +137,13 @@ export default function BranchSelector() {
         },
       });
 
-      setBranches([...branches, data.BranchCreate.object]);
+      const branchCreated = data?.BranchCreate?.object;
+      if (branchCreated) {
+        setBranches([...branches, branchCreated]);
+        onBranchChange(branchCreated);
+      }
 
       close();
-
-      onBranchChange(newBranch);
     } catch (error) {
       console.error("Error while creating the branch: ", error);
     }
