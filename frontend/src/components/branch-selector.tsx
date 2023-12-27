@@ -139,7 +139,7 @@ export default function BranchSelector() {
         variables: {
           name: newBranchName,
           description: newBranchDescription,
-          isDataOnly: isDataOnly,
+          is_data_only: isDataOnly,
         },
       });
 
