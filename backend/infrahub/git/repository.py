@@ -287,7 +287,7 @@ class BranchInGraph(BaseModel):
     id: str
     name: str
     is_data_only: bool
-    commit: Optional[str]
+    commit: Optional[str] = None
 
 
 class BranchInRemote(BaseModel):
@@ -316,14 +316,14 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
     id: UUID
     name: str
-    default_branch_name: Optional[str]
-    type: Optional[str]
-    location: Optional[str]
+    default_branch_name: Optional[str] = None
+    type: Optional[str] = None
+    location: Optional[str] = None
     has_origin: bool = False
 
-    client: Optional[InfrahubClient]
+    client: Optional[InfrahubClient] = None
 
-    cache_repo: Optional[Repo]
+    cache_repo: Optional[Repo] = None
     service: InfrahubServices
 
     class Config:

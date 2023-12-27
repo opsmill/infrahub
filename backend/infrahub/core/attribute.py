@@ -49,7 +49,7 @@ class AttributeCreateData(BaseModel):
     branch_level: int
     branch_support: str
     status: str
-    value: Any
+    value: Any = None
     is_protected: bool
     is_visible: bool
     source_prop: List[ValuePropertyData] = Field(default_factory=list)

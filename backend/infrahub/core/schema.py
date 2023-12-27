@@ -304,22 +304,22 @@ class DropdownChoice(BaseSchemaModel):
 
 
 class AttributeSchema(BaseSchemaModel):
-    id: Optional[str]
+    id: Optional[str] = None
     name: str = Field(regex=NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
     kind: str  # AttributeKind
-    label: Optional[str]
-    description: Optional[str] = Field(max_length=DEFAULT_DESCRIPTION_LENGTH)
-    default_value: Optional[Any]
-    enum: Optional[List]
-    regex: Optional[str]
-    max_length: Optional[int]
-    min_length: Optional[int]
+    label: Optional[str] = None
+    description: Optional[str] = Field(None, max_length=DEFAULT_DESCRIPTION_LENGTH)
+    default_value: Optional[Any] = None
+    enum: Optional[List] = None
+    regex: Optional[str] = None
+    max_length: Optional[int] = None
+    min_length: Optional[int] = None
     read_only: bool = False
     inherited: bool = False
     unique: bool = False
-    branch: Optional[BranchSupportType]
+    branch: Optional[BranchSupportType] = None
     optional: bool = False
-    order_weight: Optional[int]
+    order_weight: Optional[int] = None
     choices: Optional[List[DropdownChoice]] = Field(
         default=None, description="The available choices if the kind is Dropdown."
     )
@@ -359,20 +359,20 @@ class AttributeSchema(BaseSchemaModel):
 
 
 class RelationshipSchema(BaseSchemaModel):
-    id: Optional[str]
+    id: Optional[str] = None
     name: str = Field(regex=NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
     peer: str = Field(regex=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH)
     kind: RelationshipKind = RelationshipKind.GENERIC
     direction: RelationshipDirection = RelationshipDirection.BIDIR
-    label: Optional[str]
-    description: Optional[str] = Field(max_length=DEFAULT_DESCRIPTION_LENGTH)
-    identifier: Optional[str] = Field(max_length=DEFAULT_REL_IDENTIFIER_LENGTH)
+    label: Optional[str] = None
+    description: Optional[str] = Field(None, max_length=DEFAULT_DESCRIPTION_LENGTH)
+    identifier: Optional[str] = Field(None, max_length=DEFAULT_REL_IDENTIFIER_LENGTH)
     inherited: bool = False
     cardinality: RelationshipCardinality = RelationshipCardinality.MANY
-    branch: Optional[BranchSupportType]
+    branch: Optional[BranchSupportType] = None
     optional: bool = True
     filters: List[FilterSchema] = Field(default_factory=list)
-    order_weight: Optional[int]
+    order_weight: Optional[int] = None
 
     _exclude_from_hash: List[str] = ["filters"]
     _sort_by: List[str] = ["name"]
@@ -510,23 +510,23 @@ NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
 
 
 class BaseNodeSchema(BaseSchemaModel):
-    id: Optional[str]
+    id: Optional[str] = None
     name: str = Field(regex=NODE_NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
     namespace: str = Field(
         regex=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH
     )
-    description: Optional[str] = Field(max_length=DEFAULT_DESCRIPTION_LENGTH)
-    default_filter: Optional[str]
+    description: Optional[str] = Field(None, max_length=DEFAULT_DESCRIPTION_LENGTH)
+    default_filter: Optional[str] = None
     branch: BranchSupportType = BranchSupportType.AWARE
-    order_by: Optional[List[str]]
-    display_labels: Optional[List[str]]
+    order_by: Optional[List[str]] = None
+    display_labels: Optional[List[str]] = None
     attributes: List[AttributeSchema] = Field(default_factory=list)
     relationships: List[RelationshipSchema] = Field(default_factory=list)
     filters: List[FilterSchema] = Field(default_factory=list)
     include_in_menu: Optional[bool] = Field(default=None)
     menu_placement: Optional[str] = Field(default=None)
     icon: Optional[str] = Field(default=None)
-    label: Optional[str]
+    label: Optional[str] = None
 
     _exclude_from_hash: List[str] = ["attributes", "relationships"]
     _sort_by: List[str] = ["name"]
@@ -707,10 +707,10 @@ class NodeSchema(BaseNodeSchema):
 
 
 class GroupSchema(BaseSchemaModel):
-    id: Optional[str]
+    id: Optional[str] = None
     name: str = Field(regex=NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
     kind: str = Field(regex=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH)
-    description: Optional[str] = Field(max_length=DEFAULT_DESCRIPTION_LENGTH)
+    description: Optional[str] = Field(None, max_length=DEFAULT_DESCRIPTION_LENGTH)
 
 
 # -----------------------------------------------------

@@ -8,7 +8,7 @@ from infrahub.exceptions import Error
 
 
 class ModelForTesting(BaseModel):
-    field_1: Optional[str]
+    field_1: Optional[str] = None
 
     @validator("field_1", always=True)
     def always_fail(cls, *args, **kwargs):

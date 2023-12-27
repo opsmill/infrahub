@@ -66,21 +66,21 @@ class DiffSummary(BaseModel):
 
 
 class BranchDiffPropertyValue(BaseModel):
-    new: Any
-    previous: Any
+    new: Any = None
+    previous: Any = None
 
 
 class BranchDiffProperty(BaseModel):
     branch: str
     type: str
-    changed_at: Optional[str]
+    changed_at: Optional[str] = None
     action: DiffAction
     value: BranchDiffPropertyValue
 
 
 class BranchDiffPropertyUnbranched(BaseModel):
     type: str
-    changed_at: Optional[str]
+    changed_at: Optional[str] = None
     action: DiffAction
     value: BranchDiffPropertyValue
 
@@ -106,17 +106,17 @@ class BranchDiffAttribute(BaseModel):
     type: DiffElementType = DiffElementType.ATTRIBUTE
     name: str
     id: str
-    changed_at: Optional[str]
+    changed_at: Optional[str] = None
     summary: DiffSummary = DiffSummary()
     action: DiffAction
-    value: Optional[BranchDiffProperty]
+    value: Optional[BranchDiffProperty] = None
     properties: List[BranchDiffProperty] = Field(default_factory=list)
 
 
 class BranchDiffRelationshipPeerNode(BaseModel):
     id: str
     kind: str
-    display_label: Optional[str]
+    display_label: Optional[str] = None
 
 
 # OLD
@@ -135,7 +135,7 @@ class BranchDiffRelationshipOne(BaseModel):
     name: str
     peer: BranchDiffRelationshipOnePeerValue
     properties: List[BranchDiffProperty] = Field(default_factory=list)
-    changed_at: Optional[str]
+    changed_at: Optional[str] = None
     action: DiffAction
 
 
@@ -147,7 +147,7 @@ class BranchDiffRelationshipManyElement(BaseModel):
     summary: DiffSummary = DiffSummary()
     peer: BranchDiffRelationshipPeerNode
     properties: List[BranchDiffProperty] = Field(default_factory=list)
-    changed_at: Optional[str]
+    changed_at: Optional[str] = None
     action: DiffAction
 
 
@@ -176,7 +176,7 @@ class BranchDiffElementAttribute(BaseModel):
     id: str = ""
     summary: DiffSummary = DiffSummary()
     action: DiffAction = DiffAction.UNCHANGED
-    value: Optional[BranchDiffPropertyCollection]
+    value: Optional[BranchDiffPropertyCollection] = None
     properties: Dict[str, BranchDiffPropertyCollection] = Field(default_factory=dict)
 
     class Config:
@@ -210,7 +210,7 @@ class BranchDiffElementRelationshipOne(BaseModel):
     identifier: str = ""
     branches: List[str] = Field(default_factory=list)
     summary: DiffSummary = DiffSummary()
-    peer: Optional[BranchDiffRelationshipOnePeerCollection]
+    peer: Optional[BranchDiffRelationshipOnePeerCollection] = None
     properties: Dict[str, BranchDiffPropertyCollection] = Field(default_factory=dict)
     changed_at: Optional[str] = None
     action: Dict[str, DiffAction] = Field(default_factory=dict)
@@ -305,7 +305,7 @@ class BranchDiffArtifactStorage(BaseModel):
 class ArtifactTarget(BaseModel):
     id: str
     kind: str
-    display_label: Optional[str]
+    display_label: Optional[str] = None
 
 
 class BranchDiffArtifact(BaseModel):

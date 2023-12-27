@@ -30,7 +30,7 @@ class GraphQLQueryVariable(BaseModel):
 
 
 class GraphQLOperation(BaseModel):
-    name: Optional[str]
+    name: Optional[str] = None
     operation_type: OperationType
 
 

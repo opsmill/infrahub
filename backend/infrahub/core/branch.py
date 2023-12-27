@@ -818,9 +818,9 @@ class PropertyDiffElement(BaseDiffElement):
     path: Optional[str] = None
     db_id: str = Field(exclude=True)
     rel_id: str = Field(exclude=True)
-    origin_rel_id: Optional[str] = Field(exclude=True)
-    value: Optional[ValueElement]
-    changed_at: Optional[Timestamp]
+    origin_rel_id: Optional[str] = Field(None, exclude=True)
+    value: Optional[ValueElement] = None
+    changed_at: Optional[Timestamp] = None
 
 
 class NodeAttributeDiffElement(BaseDiffElement):
@@ -830,41 +830,41 @@ class NodeAttributeDiffElement(BaseDiffElement):
     action: DiffAction
     db_id: str = Field(exclude=True)
     rel_id: str = Field(exclude=True)
-    origin_rel_id: Optional[str] = Field(exclude=True)
-    changed_at: Optional[Timestamp]
+    origin_rel_id: Optional[str] = Field(None, exclude=True)
+    changed_at: Optional[Timestamp] = None
     properties: Dict[str, PropertyDiffElement]
 
 
 class NodeDiffElement(BaseDiffElement):
-    branch: Optional[str]
+    branch: Optional[str] = None
     labels: List[str]
     kind: str
     id: str
     path: str
     action: DiffAction
     db_id: str = Field(exclude=True)
-    rel_id: Optional[str] = Field(exclude=True)
-    changed_at: Optional[Timestamp]
+    rel_id: Optional[str] = Field(None, exclude=True)
+    changed_at: Optional[Timestamp] = None
     attributes: Dict[str, NodeAttributeDiffElement]
 
 
 class RelationshipEdgeNodeDiffElement(BaseDiffElement):
     id: str
-    db_id: Optional[str] = Field(exclude=True)
-    rel_id: Optional[str] = Field(exclude=True)
+    db_id: Optional[str] = Field(None, exclude=True)
+    rel_id: Optional[str] = Field(None, exclude=True)
     labels: List[str]
     kind: str
 
 
 class RelationshipDiffElement(BaseDiffElement):
-    branch: Optional[str]
+    branch: Optional[str] = None
     id: str
     db_id: str = Field(exclude=True)
     name: str
     action: DiffAction
     nodes: Dict[str, RelationshipEdgeNodeDiffElement]
     properties: Dict[str, PropertyDiffElement]
-    changed_at: Optional[Timestamp]
+    changed_at: Optional[Timestamp] = None
     paths: List[str]
     conflict_paths: List[str]
 

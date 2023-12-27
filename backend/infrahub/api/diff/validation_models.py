@@ -8,8 +8,8 @@ from infrahub.core.timestamp import Timestamp
 
 class DiffQueryValidated(BaseModel):
     branch: Branch
-    time_from: Optional[str]
-    time_to: Optional[str]
+    time_from: Optional[str] = None
+    time_to: Optional[str] = None
     branch_only: bool
 
     class Config:
