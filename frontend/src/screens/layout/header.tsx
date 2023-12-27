@@ -1,4 +1,4 @@
-import { Bars3BottomLeftIcon } from "@heroicons/react/24/outline";
+import { Icon } from "@iconify-icon/react";
 import { formatISO, isEqual, isValid } from "date-fns";
 import { useAtom } from "jotai";
 import React, { useEffect } from "react";
@@ -59,7 +59,7 @@ export default function Header(props: Props) {
         className="border-r border-gray-200 p-4 text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-custom-blue-500 md:hidden"
         onClick={() => setSidebarOpen(true)}>
         <span className="sr-only">Open sidebar</span>
-        <Bars3BottomLeftIcon className="h-6 w-6" aria-hidden="true" />
+        <Icon icon="mdi:menu" height="32" width="32" />
       </button>
 
       <div className="flex flex-1 items-center justify-end gap-4">
