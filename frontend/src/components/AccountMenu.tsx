@@ -111,7 +111,7 @@ export const AccountMenu = () => {
   ) : (
     <Link
       to={window.location.pathname}
-      className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-md"
+      className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded-md whitespace-nowrap"
       onClick={() => auth?.displaySignIn?.()}>
       Sign in
     </Link>

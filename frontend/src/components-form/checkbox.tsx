@@ -19,13 +19,14 @@ export default function OpsCheckbox(props: Props) {
   return (
     <div className="flex flex-col relative">
       <div className="flex items-center">
-        <label className="block text-sm font-medium leading-6 text-gray-900">
+        <label htmlFor={label} className="block text-sm font-medium leading-6 text-gray-900">
           {label} {isOptional ? "" : "*"}
         </label>
         <div className="ml-2"> {isProtected ? <LockClosedIcon className="w-4 h-4" /> : null} </div>
       </div>
       <div className="relative flex items-center">
         <Checkbox
+          id={label}
           enabled={enabled}
           onChange={() => {
             onChange(!enabled);

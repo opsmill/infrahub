@@ -42,9 +42,7 @@ describe("Main application", () => {
     cy.intercept("/graphql/main").as("ProposedChangesCreate");
 
     // Submit the form
-    cy.get(".justify-end").within(() => {
-      cy.contains("Create").click();
-    });
+    cy.contains("button", "Create").click();
 
     // Wait for the mutation to succeed
     cy.wait("@ProposedChangesCreate");
