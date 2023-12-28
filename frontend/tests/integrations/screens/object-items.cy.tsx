@@ -5,7 +5,7 @@ import { MockedProvider } from "@apollo/client/testing";
 import React from "react";
 import { Route, Routes } from "react-router-dom";
 import ObjectItems from "../../../src/screens/object-items/object-items-paginated";
-import { schemaState } from "../../../src/state/atoms/schema.atom";
+import { genericsState, schemaState } from "../../../src/state/atoms/schema.atom";
 import {
   graphqlQueriesMocksData,
   graphqlQueriesMocksQuery,
@@ -75,6 +75,7 @@ describe("List screen", () => {
     );
 
     // Should check that the last item in pagination is page number 100
+    cy.get("[data-cy='create']").should("exist");
     cy.get(":nth-child(7) > .cursor-pointer").should("have.text", "100");
 
     // Should display the last item for the current page
@@ -95,5 +96,40 @@ describe("List screen", () => {
       "have.text",
       Math.ceil(graphqlQueriesMocksData.CoreGraphQLQuery.count / 50)
     );
+  });
+
+  it("should not display add open panel when object is generic", () => {
+    cy.viewport(1920, 1080);
+    const GenericItemsProvider = () => {
+      return (
+        <TestProvider
+          initialValues={[
+            [schemaState, []],
+            [genericsState, schemaMocks],
+          ]}>
+          <ObjectItems />
+        </TestProvider>
+      );
+    };
+
+    // Mount the view with the default route and the mocked data
+    cy.mount(
+      <MockedProvider mocks={mocks} addTypename={false}>
+        <Routes>
+          <Route element={<GenericItemsProvider />} path={mockedPath} />
+        </Routes>
+      </MockedProvider>,
+      {
+        // Add iniital route for the app router, to display the current items view
+        routerProps: {
+          initialEntries: [mockedUrl],
+        },
+      }
+    );
+
+    // Should check that the last item in pagination is page number 100
+    cy.get(":nth-child(7) > .cursor-pointer").should("have.text", "100");
+
+    cy.get("[data-cy='create']").should("not.exist");
   });
 });
