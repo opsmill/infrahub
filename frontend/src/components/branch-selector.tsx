@@ -45,7 +45,8 @@ export default function BranchSelector() {
       buttonType={BUTTON_TYPES.MAIN}
       className="flex-1 rounded-r-md border border-transparent"
       type="submit"
-      data-cy="create-branch-button">
+      data-cy="create-branch-button"
+      data-testid="create-branch-button">
       <Icon icon={"mdi:plus"} className="text-custom-white" />
     </Button>
   );
@@ -157,7 +158,7 @@ export default function BranchSelector() {
   }
 
   return (
-    <div className="flex" data-cy="branch-select-menu">
+    <div className="flex" data-cy="branch-select-menu" data-testid="branch-select-menu">
       <SelectButton
         value={branch}
         valueLabel={valueLabel}
