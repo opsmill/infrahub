@@ -152,7 +152,7 @@ class URL(InfrahubDataType):
     graphql_query = "TextAttributeType"
     graphql_input = "TextAttributeInput"
     graphql_filter = graphene.String
-    infrahub = "String"
+    infrahub = "URL"
 
 
 class File(InfrahubDataType):

@@ -1,7 +1,7 @@
 import pytest
 from infrahub_sdk import UUIDT
 
-from infrahub.core.attribute import Dropdown, Integer, IPHost, IPNetwork, String
+from infrahub.core.attribute import URL, Dropdown, Integer, IPHost, IPNetwork, String
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -82,6 +82,17 @@ async def test_validate_format_ipnetwork_and_iphost(
         IPNetwork(
             name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="2001:db8::/ffff:ff00::"
         )
+
+
+async def test_validate_validate_url(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
+    schema = criticality_schema.get_attribute("name")
+
+    assert URL(
+        name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="https://api.example.com"
+    )
+    assert URL(
+        name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="ftp://api.example.com"
+    )
 
 
 async def test_validate_iphost_returns(db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema):
