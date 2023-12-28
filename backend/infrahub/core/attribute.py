@@ -1,4 +1,5 @@
 from __future__ import annotations
+from enum import Enum
 
 import ipaddress
 import re
@@ -103,6 +104,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         elif data is not None:
             self.value = self.from_db(data)
 
+        self.value = self.coerce_value(self.value)
+            
         # Assign default values
         if self.value is None and self.schema.default_value is not None:
             self.value = self.schema.default_value
@@ -221,6 +224,18 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         """Deserialize the value coming from the database."""
         return value
 
+    @classmethod
+    def coerce_value(cls, value: Any) -> Any:
+        if (
+            value is not None
+            and cls.type != Any
+            and not isinstance(value, cls.type)
+            and isinstance(value, Enum)
+            and isinstance(value.value, cls.type)
+        ):
+            return value.value
+        return value
+
     async def save(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> bool:
         """Create or Update the Attribute in the database."""
 
@@ -295,6 +310,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         update_at = Timestamp(at)
 
+        self.value = self.coerce_value(self.value)
         # Validate if the value is still correct, will raise a ValidationError if not
         self.validate(value=self.value, name=self.name, schema=self.schema)
 
