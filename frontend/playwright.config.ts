@@ -34,6 +34,9 @@ export default defineConfig({
     screenshot: {
       mode: "only-on-failure",
     },
+    video: {
+      mode: "on-first-retry",
+    },
   },
 
   /* Configure projects for major browsers */
