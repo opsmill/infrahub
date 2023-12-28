@@ -1551,6 +1551,28 @@ core_models = {
             "inherit_from": ["CoreGroup"],
         },
         {
+            "name": "GraphQLQueryGroup",
+            "namespace": "Core",
+            "description": "Group of nodes associated with a given GraphQLQuery.",
+            "include_in_menu": True,
+            "icon": "mdi:account-group",
+            "label": "GraphQL Query Group",
+            "default_filter": "name__value",
+            "order_by": ["name__value"],
+            "display_labels": ["name__value"],
+            "branch": BranchSupportType.LOCAL.value,
+            "inherit_from": ["CoreGroup"],
+            "relationships": [
+                {
+                    "name": "query",
+                    "peer": "CoreGraphQLQuery",
+                    "optional": False,
+                    "cardinality": "one",
+                    "kind": "Attribute",
+                },
+            ],
+        },
+        {
             "name": "Tag",
             "namespace": "Builtin",
             "description": "Standard Tag object to attached to other objects to provide some context.",

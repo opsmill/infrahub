@@ -150,6 +150,176 @@
             "kind": "CoreStandardGroup"
         },
         {
+            "name": "GraphQLQueryGroup",
+            "namespace": "Core",
+            "description": "Group of nodes associated with a given GraphQLQuery.",
+            "default_filter": "name__value",
+            "order_by": [
+                "name__value"
+            ],
+            "display_labels": [
+                "name__value"
+            ],
+            "attributes": [
+                {
+                    "name": "name",
+                    "kind": "Text",
+                    "namespace": "Attribute",
+                    "label": "Name",
+                    "description": null,
+                    "default_value": null,
+                    "enum": null,
+                    "regex": null,
+                    "max_length": null,
+                    "min_length": null,
+                    "inherited": false,
+                    "unique": true,
+                    "branch": "aware",
+                    "optional": false,
+                    "order_weight": 1000
+                },
+                {
+                    "name": "label",
+                    "kind": "Text",
+                    "namespace": "Attribute",
+                    "label": null,
+                    "description": null,
+                    "default_value": null,
+                    "enum": null,
+                    "regex": null,
+                    "max_length": null,
+                    "min_length": null,
+                    "inherited": true,
+                    "unique": false,
+                    "branch": "aware",
+                    "optional": true,
+                    "order_weight": 2000
+                },
+                {
+                    "name": "description",
+                    "kind": "Text",
+                    "namespace": "Attribute",
+                    "label": null,
+                    "description": null,
+                    "default_value": null,
+                    "enum": null,
+                    "regex": null,
+                    "max_length": null,
+                    "min_length": null,
+                    "inherited": true,
+                    "unique": false,
+                    "branch": "aware",
+                    "optional": true,
+                    "order_weight": 3000
+                }
+            ],
+            "relationships": [
+                {
+                    "name": "query",
+                    "peer": "GraphQLQuery",
+                    "kind": "Attribute",
+                    "label": null,
+                    "description": null,
+                    "identifier": "query__query_group",
+                    "inherited": false,
+                    "cardinality": "one",
+                    "branch": "aware",
+                    "optional": false,
+                    "filters": [
+                        {
+                            "name": "id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        }
+                    ],
+                    "order_weight": 4000
+                },
+                {
+                    "name": "members",
+                    "peer": "CoreNode",
+                    "kind": "Generic",
+                    "label": null,
+                    "description": null,
+                    "identifier": "group_member",
+                    "inherited": true,
+                    "cardinality": "many",
+                    "branch": "aware",
+                    "optional": true,
+                    "filters": [
+                        {
+                            "name": "id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        }
+                    ],
+                    "order_weight": 4000
+                },
+                {
+                    "name": "subscribers",
+                    "peer": "CoreNode",
+                    "kind": "Generic",
+                    "label": null,
+                    "description": null,
+                    "identifier": "group_subscriber",
+                    "inherited": true,
+                    "cardinality": "many",
+                    "branch": "aware",
+                    "optional": true,
+                    "filters": [
+                        {
+                            "name": "id",
+                            "kind": "Text",
+                            "enum": null,
+                            "object_kind": null,
+                            "description": null
+                        }
+                    ],
+                    "order_weight": 5000
+                }
+            ],
+            "label": "GraphQLQuery Group",
+            "inherit_from": [
+                "CoreGroup"
+            ],
+            "groups": [],
+            "branch": "local",
+            "filters": [
+                {
+                    "name": "ids",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "name": "name__value",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "name": "label__value",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                },
+                {
+                    "name": "description__value",
+                    "kind": "Text",
+                    "enum": null,
+                    "object_kind": null,
+                    "description": null
+                }
+            ],
+            "kind": "CoreGraphQLQueryGroup"
+        },
+        {
             "name": "ElectricCar",
             "namespace": "Test",
             "description": null,

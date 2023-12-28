@@ -1,5 +1,102 @@
+import pytest
+from fastapi.testclient import TestClient
+from infrahub_sdk.utils import dict_hash
+
 from infrahub.core.initialization import create_branch
 from infrahub.database import InfrahubDatabase
+from infrahub.message_bus import messages
+from infrahub.message_bus.rpc import InfrahubRpcClientTesting
+
+
+@pytest.fixture
+def patch_rpc_client():
+    import infrahub.message_bus.rpc
+
+    infrahub.message_bus.rpc.InfrahubRpcClient = InfrahubRpcClientTesting
+
+
+async def test_query_endpoint_group_no_params(
+    db: InfrahubDatabase, client_headers, default_branch, patch_rpc_client, car_person_data
+):
+    from infrahub.server import app
+
+    client = TestClient(app)
+
+    # Must execute in a with block to execute the startup/shutdown events
+    with client:
+        response = client.get(
+            "/api/query/query01?update_group=true&subscribers=AAAAAA&subscribers=BBBBBB",
+            headers=client_headers,
+        )
+
+    assert "errors" not in response.json()
+    assert response.status_code == 200
+    assert response.json()["data"] is not None
+    result = response.json()["data"]
+
+    result_per_name = {result["node"]["name"]["value"]: result for result in result["TestPerson"]["edges"]}
+    assert sorted(result_per_name.keys()) == ["Jane", "John"]
+    assert len(result_per_name["John"]["node"]["cars"]["edges"]) == 2
+    assert len(result_per_name["Jane"]["node"]["cars"]["edges"]) == 1
+
+    q1 = car_person_data["q1"]
+    p1 = car_person_data["p1"]
+    p2 = car_person_data["p2"]
+    c1 = car_person_data["c1"]
+    c2 = car_person_data["c2"]
+    c3 = car_person_data["c3"]
+
+    assert (
+        messages.RequestGraphQLQueryGroupUpdate(
+            meta=None,
+            query_id=q1.id,
+            query_name="query01",
+            branch="main",
+            related_node_ids={p1.id, p2.id, c1.id, c2.id, c3.id},
+            subscribers={"AAAAAA", "BBBBBB"},
+            params_hash=dict_hash({}),
+        )
+        in client.app.state.rpc_client.sent
+    )
+
+
+async def test_query_endpoint_group_params(
+    db: InfrahubDatabase, client_headers, default_branch, patch_rpc_client, car_person_data
+):
+    from infrahub.server import app
+
+    client = TestClient(app)
+
+    # Must execute in a with block to execute the startup/shutdown events
+    with client:
+        response = client.get(
+            "/api/query/query02?update_group=true&person=John",
+            headers=client_headers,
+        )
+
+    assert "errors" not in response.json()
+    assert response.status_code == 200
+    assert response.json()["data"] is not None
+    result = response.json()["data"]
+
+    result_per_name = {result["node"]["name"]["value"]: result for result in result["TestPerson"]["edges"]}
+    assert sorted(result_per_name.keys()) == ["John"]
+
+    q2 = car_person_data["q2"]
+    p1 = car_person_data["p1"]
+
+    assert (
+        messages.RequestGraphQLQueryGroupUpdate(
+            meta=None,
+            query_id=q2.id,
+            query_name="query02",
+            branch="main",
+            related_node_ids={p1.id},
+            subscribers=[],
+            params_hash=dict_hash({"person": "John"}),
+        )
+        in client.app.state.rpc_client.sent
+    )
 
 
 async def test_query_endpoint_default_branch(
@@ -12,8 +109,8 @@ async def test_query_endpoint_default_branch(
             headers=client_headers,
         )
 
-    assert response.status_code == 200
     assert "errors" not in response.json()
+    assert response.status_code == 200
     assert response.json()["data"] is not None
     result = response.json()["data"]
 
@@ -33,8 +130,8 @@ async def test_query_endpoint_branch1(db: InfrahubDatabase, client, client_heade
             headers=client_headers,
         )
 
-    assert response.status_code == 200
     assert "errors" not in response.json()
+    assert response.status_code == 200
     assert response.json()["data"] is not None
     result = response.json()["data"]
 

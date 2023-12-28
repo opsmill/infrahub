@@ -23,6 +23,7 @@ from .request_artifactdefinition_check import RequestArtifactDefinitionCheck
 from .request_artifactdefinition_generate import RequestArtifactDefinitionGenerate
 from .request_git_createbranch import RequestGitCreateBranch
 from .request_git_sync import RequestGitSync
+from .request_graphql_query_group_update import RequestGraphQLQueryGroupUpdate
 from .request_proposed_change_cancel import RequestProposedChangeCancel
 from .request_proposedchange_dataintegrity import RequestProposedChangeDataIntegrity
 from .request_proposedchange_refreshartifacts import RequestProposedChangeRefreshArtifacts
@@ -57,6 +58,7 @@ MESSAGE_MAP: Dict[str, Type[InfrahubMessage]] = {
     "request.artifact_definition.generate": RequestArtifactDefinitionGenerate,
     "request.git.create_branch": RequestGitCreateBranch,
     "request.git.sync": RequestGitSync,
+    "request.graphql_query_group.update": RequestGraphQLQueryGroupUpdate,
     "request.proposed_change.cancel": RequestProposedChangeCancel,
     "request.proposed_change.data_integrity": RequestProposedChangeDataIntegrity,
     "request.proposed_change.refresh_artifacts": RequestProposedChangeRefreshArtifacts,
