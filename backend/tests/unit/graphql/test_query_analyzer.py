@@ -144,6 +144,7 @@ async def test_get_models_in_use(
 
     gqa = GraphQLQueryAnalyzer(query=query_02, schema=schema, branch=default_branch)
     assert await gqa.get_models_in_use() == {
+        "CoreGraphQLQueryGroup",
         "CoreGroup",
         "CoreStandardGroup",
         "TestCar",
