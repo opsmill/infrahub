@@ -448,7 +448,7 @@ jobs:
       - name: "Validate documentation style"
         run: "./vale ."
   # ------------------------------------------ E2E Tests  ------------------------------------------
-  E2E-testing:
+  E2E-testing-cypress:
     needs:
       - javascript-lint
       - files-changed
@@ -514,6 +514,92 @@ jobs:
       - name: Display server status
         run: invoke demo.status
 
+  E2E-testing-playwright:
+    defaults:
+      run:
+        working-directory: ./frontend
+    needs:
+      - javascript-lint
+      - files-changed
+      - yaml-lint
+      - python-lint
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled')
+    strategy:
+      matrix:
+        db-type: ["neo4j", "memgraph"]
+    runs-on: "runner-ubuntu-8-32"
+    timeout-minutes: 40
+    env:
+      INFRAHUB_DB_TYPE: ${{ matrix.db-type }}
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Install NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install Invoke
+        run: pip install toml invoke
+
+      - name: Build Demo
+        run: invoke demo.build
+
+      - name: Pull External Docker Images
+        run: invoke demo.pull
+
+      - name: Initialize Demo
+        id: init-demo
+        run: invoke demo.start demo.load-infra-schema
+
+      - name: Check Demo Status
+        run: invoke demo.status
+
+      - name: Load Data
+        run: invoke demo.load-infra-data
+
+      - name: Git Repository
+        run: invoke demo.infra-git-import demo.infra-git-create
+
+      - name: Install frontend dependencies
+        run: npm install
+
+      - name: Install Playwright Browsers
+        run: npx playwright install chromium
+
+      - name: Run Playwright tests ${{ matrix.db-type }}
+        run: npx playwright test
+
+      - name: playwright-report-${{ matrix.db-type }}
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ matrix.db-type }}
+          path: frontend/playwright-report/
+
+      - name: Containers after tests
+        run: docker ps -a
+
+      - name: Display server logs
+        run: docker logs infrahub-infrahub-server-1
+
+      - name: Display git 1 logs
+        run: docker logs infrahub-infrahub-git-1
+
+      - name: Display git 2 logs
+        run: docker logs infrahub-infrahub-git-2
+
+      - name: Display database logs
+        run: docker logs infrahub-database-1
+
+      - name: Display server status
+        run: invoke demo.status
   # ------------------------------------------ Coverall Report  ------------------------------------------
   coverall-report:
     needs:
