@@ -574,7 +574,7 @@ jobs:
         run: npx playwright install chromium
 
       - name: Run Playwright tests ${{ matrix.db-type }}
-        run: npx playwright test
+        run: npm run ci:test:e2e
 
       - name: playwright-report-${{ matrix.db-type }}
         if: always()
