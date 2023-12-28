@@ -23,6 +23,7 @@ except ImportError:
 
 from infrahub_sdk.exceptions import SchemaNotFound, ValidationError
 from infrahub_sdk.graphql import Mutation
+from infrahub_sdk.utils import duplicates
 
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient, InfrahubClientSync
@@ -98,6 +99,49 @@ class InfrahubRepositoryConfig(pydantic.BaseModel):
     rfiles: List[InfrahubRepositoryRFileConfig] = pydantic.Field(default_factory=list)
     artifact_definitions: List[InfrahubRepositoryArtifactDefinitionConfig] = pydantic.Field(default_factory=list)
     python_transforms: List[InfrahubPythonTransformConfig] = pydantic.Field(default_factory=list)
+
+    @pydantic.validator("rfiles", "check_definitions", "artifact_definitions", "python_transforms")
+    def unique_items(cls, v: Any, **kwargs: Dict[str, Any]) -> Any:  # pylint: disable=no-self-argument,unused-argument
+        names = [item.name for item in v]
+        if dups := duplicates(names):
+            raise ValueError(f"Found multiples element with the same names: {dups}")
+        return v
+
+    def _has_resource(self, resource_id: str, resource_type: str, resource_field: str = "name") -> bool:
+        for item in getattr(self, resource_type):
+            if getattr(item, resource_field) == resource_id:
+                return True
+        return False
+
+    def _get_resource(self, resource_id: str, resource_type: str, resource_field: str = "name") -> Any:
+        for item in getattr(self, resource_type):
+            if getattr(item, resource_field) == resource_id:
+                return item
+        raise KeyError(f"Unable to find {resource_id!r} in {resource_type!r}")
+
+    def has_rfile(self, name: str) -> bool:
+        return self._has_resource(resource_id=name, resource_type="rfiles")
+
+    def get_rfile(self, name: str) -> InfrahubRepositoryRFileConfig:
+        return self._get_resource(resource_id=name, resource_type="rfiles")
+
+    def has_check_definition(self, name: str) -> bool:
+        return self._has_resource(resource_id=name, resource_type="check_definitions")
+
+    def get_check_definition(self, name: str) -> InfrahubCheckDefinitionConfig:
+        return self._get_resource(resource_id=name, resource_type="check_definitions")
+
+    def has_artifact_definition(self, name: str) -> bool:
+        return self._has_resource(resource_id=name, resource_type="artifact_definitions")
+
+    def get_artifact_definition(self, name: str) -> InfrahubRepositoryArtifactDefinitionConfig:
+        return self._get_resource(resource_id=name, resource_type="artifact_definitions")
+
+    def has_python_transform(self, name: str) -> bool:
+        return self._has_resource(resource_id=name, resource_type="python_transforms")
+
+    def get_python_transform(self, name: str) -> InfrahubRepositoryArtifactDefinitionConfig:
+        return self._get_resource(resource_id=name, resource_type="python_transforms")
 
 
 # ---------------------------------------------------------------------------------
