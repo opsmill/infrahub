@@ -369,7 +369,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
 
         return self
 
-    async def to_graphql(self, fields: dict, db: InfrahubDatabase) -> dict:
+    async def to_graphql(self, fields: dict, db: InfrahubDatabase, related_node_ids: Optional[set] = None) -> dict:
         """Generate GraphQL Payload for the associated Peer."""
 
         peer_fields = {
@@ -382,7 +382,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         }
 
         peer = await self.get_peer(db=db)
-        response = await peer.to_graphql(fields=peer_fields, db=db)
+        response = await peer.to_graphql(fields=peer_fields, db=db, related_node_ids=related_node_ids)
 
         for field_name in rel_fields.keys():
             if field_name == "updated_at":
@@ -395,7 +395,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
                     response[f"{PREFIX_PROPERTY}{field_name}"] = None
                 else:
                     response[f"{PREFIX_PROPERTY}{field_name}"] = await node_prop.to_graphql(
-                        db=db, fields=rel_fields[field_name]
+                        db=db, fields=rel_fields[field_name], related_node_ids=related_node_ids
                     )
             if field_name in self._flag_properties:
                 response[f"{PREFIX_PROPERTY}{field_name}"] = getattr(self, field_name)

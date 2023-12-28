@@ -54,6 +54,7 @@ async def default_resolver(*args, **kwargs):
     at = info.context.get("infrahub_at")
     branch: Branch = info.context.get("infrahub_branch")
     db: InfrahubDatabase = info.context.get("infrahub_database")
+    related_node_ids: set = info.context.get("related_node_ids")
 
     # Extract the name of the fields in the GQL query
     fields = await extract_fields(info.field_nodes[0].selection_set)
@@ -80,13 +81,13 @@ async def default_resolver(*args, **kwargs):
         )
 
         if node_rel.cardinality == "many":
-            return [await obj.to_graphql(db=db, fields=fields) for obj in objs]
+            return [await obj.to_graphql(db=db, fields=fields, related_node_ids=related_node_ids) for obj in objs]
 
         # If cardinality is one
         if not objs:
             return None
 
-        return await objs[0].to_graphql(db=db, fields=fields)
+        return await objs[0].to_graphql(db=db, fields=fields, related_node_ids=related_node_ids)
 
 
 async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> Dict[str, Any]:
@@ -103,6 +104,7 @@ async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, *
     at = info.context.get("infrahub_at")
     branch: Branch = info.context.get("infrahub_branch")
     db: InfrahubDatabase = info.context.get("infrahub_database")
+    related_node_ids: set = info.context.get("related_node_ids")
 
     # Extract the name of the fields in the GQL query
     fields = await extract_fields(info.field_nodes[0].selection_set)
@@ -136,7 +138,7 @@ async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, *
         if not objs:
             return response
 
-        node_graph = await objs[0].to_graphql(db=db, fields=node_fields)
+        node_graph = await objs[0].to_graphql(db=db, fields=node_fields, related_node_ids=related_node_ids)
         for key, mapped in RELATIONS_PROPERTY_MAP_REVERSED.items():
             value = node_graph.pop(key, None)
             if value:
@@ -158,6 +160,7 @@ async def many_relationship_resolver(parent: dict, info: GraphQLResolveInfo, **k
     at = info.context.get("infrahub_at")
     branch: Branch = info.context.get("infrahub_branch")
     db: InfrahubDatabase = info.context.get("infrahub_database")
+    related_node_ids: set = info.context.get("related_node_ids")
 
     # Extract the name of the fields in the GQL query
     fields = await extract_fields(info.field_nodes[0].selection_set)
@@ -206,7 +209,9 @@ async def many_relationship_resolver(parent: dict, info: GraphQLResolveInfo, **k
 
         if not objs:
             return response
-        node_graph = [await obj.to_graphql(db=db, fields=node_fields) for obj in objs]
+        node_graph = [
+            await obj.to_graphql(db=db, fields=node_fields, related_node_ids=related_node_ids) for obj in objs
+        ]
 
         entries = []
         for node in node_graph:

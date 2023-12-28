@@ -52,7 +52,7 @@ async def test_create_query_no_vars(db: InfrahubDatabase, default_branch, regist
     result = await graphql(
         schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -117,7 +117,7 @@ async def test_create_query_with_vars(db: InfrahubDatabase, default_branch, regi
     result = await graphql(
         schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -212,7 +212,7 @@ async def test_update_query(db: InfrahubDatabase, default_branch, register_core_
     result = await graphql(
         schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -273,7 +273,7 @@ async def test_update_query_no_update(db: InfrahubDatabase, default_branch, regi
     result = await graphql(
         schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )

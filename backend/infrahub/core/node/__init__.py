@@ -406,7 +406,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         query = await NodeDeleteQuery.init(db=db, node=self, at=delete_at)
         await query.execute(db=db)
 
-    async def to_graphql(self, db: InfrahubDatabase, fields: Optional[dict] = None) -> dict:
+    async def to_graphql(
+        self, db: InfrahubDatabase, fields: Optional[dict] = None, related_node_ids: Optional[set] = None
+    ) -> dict:
         """Generate GraphQL Payload for all attributes
 
         Returns:
@@ -414,6 +416,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         """
 
         response = {"id": self.id, "type": self.get_kind()}
+
+        if related_node_ids is not None:
+            related_node_ids.add(self.id)
 
         FIELD_NAME_TO_EXCLUDE = ["id"] + self._schema.relationship_names
 
@@ -445,7 +450,9 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 continue
 
             if fields and isinstance(fields, dict):
-                response[field_name] = await field.to_graphql(db=db, fields=fields.get(field_name))
+                response[field_name] = await field.to_graphql(
+                    db=db, fields=fields.get(field_name), related_node_ids=related_node_ids
+                )
             else:
                 response[field_name] = await field.to_graphql(db=db)
 

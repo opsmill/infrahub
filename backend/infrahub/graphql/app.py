@@ -187,6 +187,7 @@ class InfrahubGraphQLApp:
             "infrahub_database": db,
             "infrahub_rpc_client": request.app.state.rpc_client,
             "account_session": account_session,
+            "related_node_ids": set(),
         }
 
         return context_value
