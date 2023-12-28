@@ -30,6 +30,10 @@ export const ENG_TEAM_ONLY_CREDENTIALS = {
   password: "Password123",
 };
 
+export const ACCOUNT_STATE_PATH = {
+  ADMIN: "e2e/.auth/admin.json",
+};
+
 export const waitFor = (alias, checkFn, maxRequests = 10, level = 0) => {
   if (level === maxRequests) {
     throw `${maxRequests} requests exceeded`;
