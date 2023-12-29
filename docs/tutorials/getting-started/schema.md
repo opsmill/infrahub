@@ -39,15 +39,21 @@ invoke demo.load-infra-schema
 ==- Expected Results
 
 ```sh
-▶ invoke demo.load-infra-schema
-!! Found an override file for docker compose !!
-[+] Running 2/2
- ✔ Container infrahub-anaconda-database-1       Healthy                                                                                                        0.5s
- ✔ Container infrahub-anaconda-message-queue-1  Healthy                                                                                                        0.5s
-[+] Building 0.0s (0/0)
-Schema loaded successfully!
+> invoke demo.load-infra-schema
+command=IMAGE_NAME=opsmill/infrahub-py3.11 IMAGE_VER=0.9.1 PYTHON_VER=3.11 INFRAHUB_BUILD_NAME=infrahub NBR_WORKERS=1 CACHE_DOCKER_IMAGE=redis:7.2 MESSAGE_QUEUE_DOCKER_IMAGE=rabbitmq:3.12-management INFRAHUB_DB_TYPE=neo4j DATABASE_DOCKER_IMAGE=neo4j:5.14-community docker compose -f development/docker-compose-deps.yml -f development/docker-compose-database-neo4j.yml -f development/docker-compose.yml -f development/docker-compose.default.yml -p infrahub run infrahub-git infrahubctl schema load models/infrastructure_base.yml
+[+] Creating 4/0
+ ✔ Container infrahub-message-queue-1    Running                                                                                                 0.0s
+ ✔ Container infrahub-cache-1            Running                                                                                                 0.0s
+ ✔ Container infrahub-database-1         Running                                                                                                 0.0s
+ ✔ Container infrahub-infrahub-server-1  Running                                                                                                 0.0s
+[+] Running 3/3
+ ✔ Container infrahub-database-1       Healthy                                                                                                   0.5s
+ ✔ Container infrahub-message-queue-1  Healthy                                                                                                   0.5s
+ ✔ Container infrahub-cache-1          Healthy                                                                                                   0.5s
+ schema 'models/infrastructure_base.yml' loaded successfully in 12.352 sec!
+command=IMAGE_NAME=opsmill/infrahub-py3.11 IMAGE_VER=0.9.1 PYTHON_VER=3.11 INFRAHUB_BUILD_NAME=infrahub NBR_WORKERS=1 CACHE_DOCKER_IMAGE=redis:7.2 MESSAGE_QUEUE_DOCKER_IMAGE=rabbitmq:3.12-management INFRAHUB_DB_TYPE=neo4j DATABASE_DOCKER_IMAGE=neo4j:5.14-community docker compose -f development/docker-compose-deps.yml -f development/docker-compose-database-neo4j.yml -f development/docker-compose.yml -f development/docker-compose.default.yml -p infrahub restart infrahub-server
 [+] Restarting 1/1
- ⠿ Container infrahub-dev-infrahub-server-1  Started                                                                                   1.0s
+ ✔ Container infrahub-infrahub-server-1  Started                                                                                                 1.5s
  ```
 
 ==-
