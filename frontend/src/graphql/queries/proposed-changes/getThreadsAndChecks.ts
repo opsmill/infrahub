@@ -1,7 +1,7 @@
 import Handlebars from "handlebars";
 
 export const getThreadsAndChecks = Handlebars.compile(`
-query {
+query getThreadsAndChecksFor{{kind}} {
   {{kind}}(
     change__ids: "{{id}}"
   ) {

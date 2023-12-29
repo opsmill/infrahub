@@ -1,0 +1,56 @@
+{
+  "diffs": [
+    {
+      "kind": "InfraDevice",
+      "id": "17a53fbd-e27b-784b-393c-c5127a1b1be3",
+      "path": "data/17a53fbd-e27b-784b-393c-c5127a1b1be3",
+      "elements": {
+        "status": {
+          "type": "Attribute",
+          "name": "status",
+          "path": "data/17a53fbd-e27b-784b-393c-c5127a1b1be3/status",
+          "change": {
+            "type": "Attribute",
+            "branches": [
+              "branch-data-changes"
+            ],
+            "id": "17a53fbd-e42a-2be5-2d0c-c511ff024321",
+            "summary": {
+              "added": 0,
+              "removed": 0,
+              "updated": 1
+            },
+            "action": "updated",
+            "value": {
+              "path": "data/17a53fbd-e27b-784b-393c-c5127a1b1be3/status/value",
+              "changes": [
+                {
+                  "branch": "branch-data-changes",
+                  "type": "HAS_VALUE",
+                  "changed_at": "2023-12-29T09:21:22.570264Z",
+                  "action": "updated",
+                  "value": {
+                    "new": "provisionning",
+                    "previous": "active"
+                  }
+                }
+              ]
+            },
+            "properties": {}
+          }
+        }
+      },
+      "summary": {
+        "added": 0,
+        "removed": 0,
+        "updated": 1
+      },
+      "action": {
+        "branch-data-changes": "updated"
+      },
+      "display_label": {
+        "branch-data-changes": "atl1-edge1"
+      }
+    }
+  ]
+}
