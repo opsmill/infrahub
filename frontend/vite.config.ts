@@ -15,6 +15,7 @@ export default defineConfig({
   },
   plugins: [react(), viteTsconfigPaths(), svgrPlugin()],
   test: {
+    exclude: ["**/node_modules/**", "**/dist/**", "**/e2e/**", "**/playwright-report/**"],
     globals: true,
     environment: "jsdom",
     coverage: {
@@ -26,6 +27,8 @@ export default defineConfig({
         "**/**.d.ts",
         "**/tests/**",
         "**/**component-preview",
+        "playwright-report/",
+        "e2e/",
       ],
       all: true,
     },

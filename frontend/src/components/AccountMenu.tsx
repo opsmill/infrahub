@@ -70,7 +70,8 @@ export const AccountMenu = () => {
     <Menu as="div">
       <Menu.Button
         className="flex max-w-xs items-center rounded-full bg-custom-white text-sm focus:outline-none focus:ring-2 focus:ring-custom-blue-500 focus:ring-offset-2"
-        data-cy="current-user-avatar-button">
+        data-cy="current-user-avatar-button"
+        data-testid="current-user-avatar-button">
         <Avatar name={profile?.name?.value} data-cy="user-avatar" />
       </Menu.Button>
       <Transition
