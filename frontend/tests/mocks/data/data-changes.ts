@@ -1142,3 +1142,131 @@ export const getCoreObjectWithoutThreadMockData = {
     },
   },
 };
+
+export const getProposedChangesCommentsMockQuery = `query getProposedChangesObjectThreadCommentsForCoreObjectThread{
+  CoreObjectThread(
+    change__ids: "1cec1fe9-fcc4-4f5b-af30-9d661de65bd8"
+    object_path__value: "data/17a53fbd-e27b-784b-393c-c5127a1b1be3"
+  ) {
+    count
+    edges {
+      node {
+        __typename
+        id
+        display_label
+        resolved {
+          value
+        }
+        created_by {
+          node {
+            display_label
+          }
+        }
+        comments {
+          count
+          edges {
+            node {
+              id
+              display_label
+              created_by {
+                node {
+                  display_label
+                }
+              }
+              created_at {
+                value
+              }
+              text {
+                value
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}`;
+
+export const createThreadMockData = {
+  data: {
+    CoreObjectThreadCreate: {
+      object: {
+        id: "17a55dee-acc3-3df9-2d04-c51c5bd2161d",
+        display_label: "CoreObjectThread(ID: 17a55dee-acc3-3df9-2d04-c51c5bd2161d)",
+        __typename: "CoreObjectThread",
+      },
+      ok: true,
+      __typename: "CoreObjectThreadCreate",
+    },
+  },
+};
+
+export const getProposedChangesCommentsMockData = {
+  data: {
+    CoreObjectThread: {
+      count: 1,
+      edges: [
+        {
+          node: {
+            __typename: "CoreObjectThread",
+            id: "17a55fb5-7d2f-f712-2d0e-c5154fe1bf17",
+            display_label: "CoreObjectThread(ID: 17a55fb5-7d2f-f712-2d0e-c5154fe1bf17)",
+            resolved: {
+              value: false,
+              __typename: "CheckboxAttribute",
+            },
+            created_by: {
+              node: null,
+              __typename: "NestedEdgedCoreAccount",
+            },
+            comments: {
+              count: 1,
+              edges: [
+                {
+                  node: {
+                    id: "17a55fb5-82a1-197c-2d0e-c512237d7fa5",
+                    display_label: "new comment",
+                    created_by: {
+                      node: {
+                        display_label: "Admin",
+                        __typename: "CoreAccount",
+                      },
+                      __typename: "NestedEdgedCoreAccount",
+                    },
+                    created_at: {
+                      value: "2023-12-29T19:07:47+01:00",
+                      __typename: "TextAttribute",
+                    },
+                    text: {
+                      value: "new comment",
+                      __typename: "TextAttribute",
+                    },
+                    __typename: "CoreThreadComment",
+                  },
+                  __typename: "NestedEdgedCoreThreadComment",
+                },
+              ],
+              __typename: "NestedPaginatedCoreThreadComment",
+            },
+          },
+          __typename: "EdgedCoreObjectThread",
+        },
+      ],
+      __typename: "PaginatedCoreObjectThread",
+    },
+  },
+};
+
+export const createThreadCommentMockQuery = `mutation CoreThreadCommentCreate {
+  CoreThreadCommentCreate(
+    data: {text: {value: "new reply"}, thread: {id: "17a55fb5-7d2f-f712-2d0e-c5154fe1bf17"}, created_by: {id: "d07bb58e-8394-4053-a198-9cef84e7d6c0"}, created_at: {value: "2023-12-24T12:24:36+01:00"}}
+  ) {
+    object {
+      id
+      display_label
+      __typename
+    }
+    ok
+    __typename
+  }
+}`;
