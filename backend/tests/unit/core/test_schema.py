@@ -81,14 +81,14 @@ def test_base_schema_update():
     class MySubElement(BaseSchemaModel):
         _sort_by: List[str] = ["name"]
         name: str
-        value1: Optional[str]
-        value2: Optional[int]
+        value1: Optional[str] = None
+        value2: Optional[int] = None
 
     class MyTopElement(BaseSchemaModel):
         _sort_by: List[str] = ["name"]
         name: str
-        value1: Optional[str]
-        value2: Optional[int]
+        value1: Optional[str] = None
+        value2: Optional[int] = None
         value3: List[str]
         subs: List[MySubElement]
 
@@ -118,7 +118,7 @@ def test_base_schema_update():
         "value3": ["one", "two", "three"],
     }
 
-    assert DeepDiff(expected_result, node1.update(node2).dict()).to_dict() == {}
+    assert DeepDiff(expected_result, node1.update(node2).model_dump()).to_dict() == {}
 
 
 def test_schema_root_no_generic():
