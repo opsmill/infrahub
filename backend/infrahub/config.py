@@ -63,7 +63,9 @@ class MainSettings(BaseSettings):
 
 class FileSystemStorageSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_STORAGE_")
-    path_: str = Field(default="/opt/infrahub/storage", alias="path", validation_alias=AliasChoices("path", "local_path"))
+    path_: str = Field(
+        default="/opt/infrahub/storage", alias="path", validation_alias=AliasChoices("path", "local_path")
+    )
 
 
 class S3StorageSettings(BaseSettings):
