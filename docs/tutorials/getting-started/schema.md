@@ -12,7 +12,7 @@ Infrahub can be extended by providing your own schema (or models). The version o
 
 The default schema is composed of 25+ models that are either mandatory for Infrahub to function like `Account`, `StandardGroup`, `Repository` or that are very generic like `Tag`.
 
-You can explore the current schema by visiting the schema page at the bottom of the left menu.
+You can explore the current schema by visiting the schema page, you can find it in the left menu under the Unified Storage section.
 
 [!ref Explore the current schema](http://localhost:8000/api/schema)
 
