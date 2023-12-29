@@ -1,4 +1,4 @@
-export const diffThreadSchema = {
+export const objectThreadSchema = {
   id: "17a53fb0-8191-7969-2d03-c51b08c9b696",
   name: "ObjectThread",
   namespace: "Core",
@@ -1004,6 +1004,45 @@ export const diffThreadSchema = {
   hash: "5a92f8a14bf7c4dd08da69e168d1c4b7",
 };
 
+export const DataDiffProposedChangesState = {
+  id: "17a54304-4b2a-264a-2d02-c51eae9cdde6",
+  display_label: "pc-data-changes",
+  __typename: "CoreProposedChange",
+  _updated_at: "2023-12-29T09:21:59.750848+00:00",
+  name: {
+    value: "pc-data-changes",
+    __typename: "TextAttribute",
+  },
+  source_branch: {
+    value: "branch-data-changes",
+    __typename: "TextAttribute",
+  },
+  destination_branch: {
+    value: "main",
+    __typename: "TextAttribute",
+  },
+  state: {
+    value: "open",
+    __typename: "TextAttribute",
+  },
+  approved_by: {
+    edges: [],
+    __typename: "NestedPaginatedCoreAccount",
+  },
+  reviewers: {
+    edges: [],
+    __typename: "NestedPaginatedCoreAccount",
+  },
+  created_by: {
+    node: {
+      id: "17a53fb1-512b-ae9e-2d0d-c51fade6639c",
+      display_label: "Admin",
+      __typename: "CoreAccount",
+    },
+    __typename: "NestedEdgedCoreAccount",
+  },
+};
+
 export const getAllCoreObjectThreadMockQuery = `query getThreadsAndChecksForCoreObjectThread {
   CoreObjectThread(
     change__ids: "1cec1fe9-fcc4-4f5b-af30-9d661de65bd8"
@@ -1023,6 +1062,33 @@ export const getAllCoreObjectThreadMockQuery = `query getThreadsAndChecksForCore
     }
   }
 }`;
+
+export const getAllCoreObjectThreadMockData = {
+  data: {
+    CoreObjectThread: {
+      count: 1,
+      edges: [
+        {
+          node: {
+            __typename: "CoreObjectThread",
+            id: "17a54a5c-55d1-0620-2d0a-c51d250954a9",
+            object_path: {
+              value: "data/17a53fbd-e27b-784b-393c-c5127a1b1be3",
+              __typename: "TextAttribute",
+            },
+            comments: {
+              count: 1,
+              __typename: "NestedPaginatedCoreThreadComment",
+            },
+          },
+          __typename: "EdgedCoreObjectThread",
+        },
+      ],
+      __typename: "PaginatedCoreObjectThread",
+    },
+  },
+};
+
 export const getCoreObjectThreadMockQuery = `query getProposedChangesThreadsForCoreObjectThread {
   CoreObjectThread(
     change__ids: "1cec1fe9-fcc4-4f5b-af30-9d661de65bd8"
@@ -1067,32 +1133,6 @@ export const getCoreObjectThreadMockData = {
   },
 };
 
-export const getAllCoreObjectThreadMockData = {
-  data: {
-    CoreObjectThread: {
-      count: 1,
-      edges: [
-        {
-          node: {
-            __typename: "CoreObjectThread",
-            id: "17a54a5c-55d1-0620-2d0a-c51d250954a9",
-            object_path: {
-              value: "data/17a53fbd-e27b-784b-393c-c5127a1b1be3",
-              __typename: "TextAttribute",
-            },
-            comments: {
-              count: 1,
-              __typename: "NestedPaginatedCoreThreadComment",
-            },
-          },
-          __typename: "EdgedCoreObjectThread",
-        },
-      ],
-      __typename: "PaginatedCoreObjectThread",
-    },
-  },
-};
-
 export const getCoreObjectWithoutThreadMockData = {
   data: {
     CoreObjectThread: {
@@ -1100,44 +1140,5 @@ export const getCoreObjectWithoutThreadMockData = {
       edges: [],
       __typename: "PaginatedCoreObjectThread",
     },
-  },
-};
-
-export const DataDiffProposedChangesState = {
-  id: "17a54304-4b2a-264a-2d02-c51eae9cdde6",
-  display_label: "pc-data-changes",
-  __typename: "CoreProposedChange",
-  _updated_at: "2023-12-29T09:21:59.750848+00:00",
-  name: {
-    value: "pc-data-changes",
-    __typename: "TextAttribute",
-  },
-  source_branch: {
-    value: "branch-data-changes",
-    __typename: "TextAttribute",
-  },
-  destination_branch: {
-    value: "main",
-    __typename: "TextAttribute",
-  },
-  state: {
-    value: "open",
-    __typename: "TextAttribute",
-  },
-  approved_by: {
-    edges: [],
-    __typename: "NestedPaginatedCoreAccount",
-  },
-  reviewers: {
-    edges: [],
-    __typename: "NestedPaginatedCoreAccount",
-  },
-  created_by: {
-    node: {
-      id: "17a53fb1-512b-ae9e-2d0d-c51fade6639c",
-      display_label: "Admin",
-      __typename: "CoreAccount",
-    },
-    __typename: "NestedEdgedCoreAccount",
   },
 };

@@ -12,7 +12,7 @@ import { withAuth } from "../../../src/decorators/withAuth";
 import { DataDiff } from "../../../src/screens/diff/data-diff";
 import {
   DataDiffProposedChangesState,
-  diffThreadSchema,
+  objectThreadSchema,
   getAllCoreObjectThreadMockData,
   getAllCoreObjectThreadMockQuery,
   getCoreObjectWithoutThreadMockData,
@@ -23,6 +23,48 @@ import {
 const url = `/proposed-changes/${proposedChangesId}`;
 const path = "/proposed-changes/:proposedchange";
 
+const mocksWithComments = [
+  {
+    request: {
+      query: gql`
+        ${getAllCoreObjectThreadMockQuery}
+      `,
+    },
+    result: getAllCoreObjectThreadMockData,
+  },
+  {
+    request: {
+      query: gql`
+        ${getCoreObjectThreadMockQuery}
+      `,
+    },
+    result: getCoreObjectThreadMockData,
+  },
+];
+
+const mocksWithoutComments = [
+  {
+    request: {
+      query: gql`
+        ${getAllCoreObjectThreadMockQuery}
+      `,
+    },
+    result: {
+      data: getCoreObjectWithoutThreadMockData,
+    },
+  },
+  {
+    request: {
+      query: gql`
+        ${getCoreObjectThreadMockQuery}
+      `,
+    },
+    result: {
+      data: getCoreObjectWithoutThreadMockData,
+    },
+  },
+];
+
 const AuthDataDiff = withAuth(DataDiff);
 
 // Provide the initial value for jotai
@@ -30,7 +72,7 @@ const DataDiffProvider = ({ loggedIn }: { loggedIn: boolean }) => {
   return (
     <TestProvider
       initialValues={[
-        [schemaState, [diffThreadSchema, ...accountDetailsMocksSchema]],
+        [schemaState, [objectThreadSchema, ...accountDetailsMocksSchema]],
         [proposedChangedState, DataDiffProposedChangesState],
       ]}>
       {loggedIn ? <AuthDataDiff /> : <DataDiff />}
@@ -52,32 +94,8 @@ describe("Data Diff", () => {
   describe("when not logged in", () => {
     it("should display data diff without comments", function () {
       // GIVEN
-      const mocks = [
-        {
-          request: {
-            query: gql`
-              ${getAllCoreObjectThreadMockQuery}
-            `,
-          },
-          result: {
-            data: getCoreObjectWithoutThreadMockData,
-          },
-        },
-        {
-          request: {
-            query: gql`
-              ${getCoreObjectThreadMockQuery}
-            `,
-          },
-          result: {
-            data: getCoreObjectWithoutThreadMockData,
-          },
-        },
-      ];
-
-      // WHEN
       cy.mount(
-        <MockedProvider mocks={mocks} addTypename={false}>
+        <MockedProvider mocks={mocksWithoutComments} addTypename={false}>
           <Routes>
             <Route element={<DataDiffProvider loggedIn={false} />} path={path} />
           </Routes>
@@ -101,27 +119,9 @@ describe("Data Diff", () => {
 
     it("should display data diff with threads", function () {
       // GIVEN
-      const mocks = [
-        {
-          request: {
-            query: gql`
-              ${getAllCoreObjectThreadMockQuery}
-            `,
-          },
-          result: getAllCoreObjectThreadMockData,
-        },
-        {
-          request: {
-            query: gql`
-              ${getCoreObjectThreadMockQuery}
-            `,
-          },
-          result: getCoreObjectThreadMockData,
-        },
-      ];
 
       cy.mount(
-        <MockedProvider mocks={mocks} addTypename={false}>
+        <MockedProvider mocks={mocksWithComments} addTypename={false}>
           <Routes>
             <Route element={<DataDiffProvider loggedIn={false} />} path={path} />
           </Routes>
@@ -149,30 +149,8 @@ describe("Data Diff", () => {
 
     it("should not be able to add comments", function () {
       // GIVEN
-      const mocks = [
-        {
-          request: {
-            query: gql`
-              ${getAllCoreObjectThreadMockQuery}
-            `,
-          },
-          result: {
-            data: getCoreObjectWithoutThreadMockData,
-          },
-        },
-        {
-          request: {
-            query: gql`
-              ${getCoreObjectThreadMockQuery}
-            `,
-          },
-          result: {
-            data: getCoreObjectWithoutThreadMockData,
-          },
-        },
-      ];
       cy.mount(
-        <MockedProvider mocks={mocks} addTypename={false}>
+        <MockedProvider mocks={mocksWithoutComments} addTypename={false}>
           <Routes>
             <Route element={<DataDiffProvider loggedIn={false} />} path={path} />
           </Routes>

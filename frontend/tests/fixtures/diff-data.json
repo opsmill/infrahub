@@ -11,9 +11,7 @@
           "path": "data/17a53fbd-e27b-784b-393c-c5127a1b1be3/status",
           "change": {
             "type": "Attribute",
-            "branches": [
-              "branch-data-changes"
-            ],
+            "branches": ["branch-data-changes"],
             "id": "17a53fbd-e42a-2be5-2d0c-c511ff024321",
             "summary": {
               "added": 0,
