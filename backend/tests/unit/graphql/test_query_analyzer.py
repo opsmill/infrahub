@@ -201,17 +201,17 @@ async def test_get_variables(
     assert gqa.variables == []
 
     gqa = GraphQLQueryAnalyzer(query=query_04)
-    assert [var.dict() for var in gqa.variables] == [
+    assert [var.model_dump() for var in gqa.variables] == [
         {"default_value": None, "name": "person", "required": True, "type": "String"}
     ]
 
     gqa = GraphQLQueryAnalyzer(query=query_05)
-    assert [var.dict() for var in gqa.variables] == [
+    assert [var.model_dump() for var in gqa.variables] == [
         {"default_value": None, "name": "myvar", "required": False, "type": "String"}
     ]
 
     gqa = GraphQLQueryAnalyzer(query=query_06)
-    assert [var.dict() for var in gqa.variables] == [
+    assert [var.model_dump() for var in gqa.variables] == [
         {
             "default_value": None,
             "name": "str1",

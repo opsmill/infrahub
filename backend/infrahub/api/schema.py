@@ -31,7 +31,7 @@ router = APIRouter(prefix="/schema")
 class APISchemaMixin:
     @classmethod
     def from_schema(cls, schema: NodeSchema) -> Self:
-        data = schema.dict()
+        data = schema.model_dump()
         data["hash"] = schema.get_hash()
         return cls(**data)
 
