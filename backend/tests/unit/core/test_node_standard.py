@@ -60,7 +60,7 @@ async def test_node_standard_get(db: InfrahubDatabase, empty_database):
     assert await obj1.save(db=db)
 
     obj11 = await MyStdNode.get(id=obj1.uuid, db=db)
-    assert obj11.dict(exclude={"uuid"}) == obj1.dict(exclude={"uuid"})
+    assert obj11.model_dump(exclude={"uuid"}) == obj1.model_dump(exclude={"uuid"})
     assert str(obj11.uuid) == str(obj1.uuid)
     assert obj11.attr3_int is None
 
@@ -71,7 +71,7 @@ async def test_node_standard_update(db: InfrahubDatabase, empty_database):
     assert await obj1.save(db=db)
 
     obj11 = await MyStdNode.get(id=obj1.uuid, db=db)
-    assert obj11.dict(exclude={"uuid"}) == obj1.dict(exclude={"uuid"})
+    assert obj11.model_dump(exclude={"uuid"}) == obj1.model_dump(exclude={"uuid"})
     assert str(obj11.uuid) == str(obj1.uuid)
     assert obj11.attr3_int is None
     assert obj11.attr5_dict == attr5_value
@@ -82,7 +82,7 @@ async def test_node_standard_update(db: InfrahubDatabase, empty_database):
     await obj11.save(db=db)
 
     obj12 = await MyStdNode.get(id=obj1.uuid, db=db)
-    assert obj12.dict(exclude={"uuid"}) == obj11.dict(exclude={"uuid"})
+    assert obj12.model_dump(exclude={"uuid"}) == obj11.model_dump(exclude={"uuid"})
 
 
 async def test_node_standard_list(db: InfrahubDatabase, empty_database):
@@ -102,7 +102,7 @@ async def test_node_standard_list(db: InfrahubDatabase, empty_database):
 
     objs = await OtherStdNode.get_list(db=db, name=obj2.name)
     assert len(objs) == 1
-    assert objs[0].dict(exclude={"uuid"}) == obj2.dict(exclude={"uuid"})
+    assert objs[0].model_dump(exclude={"uuid"}) == obj2.model_dump(exclude={"uuid"})
 
 
 async def test_node_standard_pydantic(db: InfrahubDatabase, empty_database):
@@ -115,4 +115,4 @@ async def test_node_standard_pydantic(db: InfrahubDatabase, empty_database):
     await obj1.save(db=db)
 
     obj11 = await PadanticStdNode.get(id=obj1.uuid, db=db)
-    assert obj11.dict(exclude={"uuid"}) == obj1.dict(exclude={"uuid"})
+    assert obj11.model_dump(exclude={"uuid"}) == obj1.model_dump(exclude={"uuid"})

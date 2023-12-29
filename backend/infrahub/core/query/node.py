@@ -121,15 +121,15 @@ class NodeCreateAllQuery(NodeQuery):
             for rel in rel_manager._relationships:
                 relationships.append(await rel.get_create_data(db=db))
 
-        self.params["attrs"] = [attr.dict() for attr in attributes]
+        self.params["attrs"] = [attr.model_dump() for attr in attributes]
         self.params["rels_bidir"] = [
-            rel.dict() for rel in relationships if rel.direction == RelationshipDirection.BIDIR.value
+            rel.model_dump() for rel in relationships if rel.direction == RelationshipDirection.BIDIR.value
         ]
         self.params["rels_out"] = [
-            rel.dict() for rel in relationships if rel.direction == RelationshipDirection.OUTBOUND.value
+            rel.model_dump() for rel in relationships if rel.direction == RelationshipDirection.OUTBOUND.value
         ]
         self.params["rels_in"] = [
-            rel.dict() for rel in relationships if rel.direction == RelationshipDirection.INBOUND.value
+            rel.model_dump() for rel in relationships if rel.direction == RelationshipDirection.INBOUND.value
         ]
 
         self.params["node_prop"] = {
