@@ -89,6 +89,7 @@ export const DataDiffThread = (props: tDataDiffThread) => {
               }}
               className="p-1"
               data-cy="data-diff-add-comment"
+              data-testid="data-diff-add-comment"
               type={BUTTON_TYPES.DEFAULT}>
               {/* Display either a pill with the number of comments, or a plus icon to add a comment */}
               <PlusIcon className="h-3 w-3 " aria-hidden="true" />

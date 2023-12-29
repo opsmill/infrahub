@@ -665,7 +665,9 @@ export const Select = (props: SelectProps) => {
             className={"pr-8"}
             style={getInputStyle()}
           />
-          <Combobox.Button className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none disabled:cursor-not-allowed">
+          <Combobox.Button
+            className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none disabled:cursor-not-allowed"
+            data-testid="select-open-option-button">
             <ChevronDownIcon className={"w-4 h-4"} aria-hidden="true" style={getInputStyle()} />
           </Combobox.Button>
 

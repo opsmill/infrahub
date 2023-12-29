@@ -178,6 +178,7 @@ export const Thread = (props: tThread) => {
         isResolved ? "bg-gray-200" : "bg-custom-white",
         "p-4 m-4 rounded-lg relative"
       )}
+      data-testid="thread"
       data-cy="thread">
       {displayContext && getThreadTitle(thread)}
 

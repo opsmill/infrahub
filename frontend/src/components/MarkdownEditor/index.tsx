@@ -61,7 +61,7 @@ export const MarkdownEditor: FC<MarkdownEditorProps> = ({
       {isPreviewActive ? (
         <MarkdownViewer markdownText={editorText} className="p-2" />
       ) : (
-        <div ref={codeMirrorRef} data-cy="codemirror-editor" />
+        <div ref={codeMirrorRef} data-cy="codemirror-editor" data-testid="codemirror-editor" />
       )}
     </div>
   );
