@@ -326,5 +326,5 @@ command=IMAGE_NAME=opsmill/infrahub-py3.11 IMAGE_VER=0.9.1 PYTHON_VER=3.11 INFRA
 ==-
 
 !!!success Validate that everything is correct
-You should now be able to see 10 devices when you visit the list of devices at [http://localhost:8000/objects/Device](http://localhost:8000/objects/Device)
+You should now be able to see 10 devices when you visit the list of devices at [http://localhost:8000/objects/InfraDevice](http://localhost:8000/objects/InfraDevice)
 !!!
