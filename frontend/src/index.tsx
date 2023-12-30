@@ -47,6 +47,7 @@ export const Root = () => {
   const [config, setConfig] = useAtom(configState);
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
   const [isLoadingBranches, setIsLoadingBranches] = useState(true);
+  const branchInQueryString = getCurrentQsp().get(QSP.BRANCH);
 
   /**
    * Sentry configuration
@@ -99,6 +100,7 @@ export const Root = () => {
     try {
       const { data }: any = await graphqlClient.query({
         query: GET_BRANCHES,
+        context: { branch: branchInQueryString },
       });
 
       return data.Branch ?? [];
@@ -121,7 +123,6 @@ export const Root = () => {
   const setBranchesInState = async () => {
     const branches: Branch[] = await fetchBranches();
 
-    const branchInQueryString = getCurrentQsp().get(QSP.BRANCH);
     const selectedBranch = findSelectedBranch(branches, branchInQueryString);
 
     setBranches(branches);
