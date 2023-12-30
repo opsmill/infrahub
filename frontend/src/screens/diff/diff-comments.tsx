@@ -73,14 +73,11 @@ export const DataDiffComments = (props: tDataDiffComments) => {
     }
   };
 
-  const handleSubmit = async (data: any, event: any) => {
-    console.log("data: ", data);
+  const handleSubmit = async ({ comment }: { comment: string }) => {
     let threadId;
 
     try {
-      event.target.reset();
-
-      if (!data || !approverId) {
+      if (!comment || !approverId) {
         return;
       }
 
@@ -127,7 +124,7 @@ export const DataDiffComments = (props: tDataDiffComments) => {
 
       const newComment = {
         text: {
-          value: data.comment,
+          value: comment,
         },
         created_by: {
           id: approverId,
