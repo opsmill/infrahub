@@ -254,6 +254,7 @@ class SchemaBranch:
     def process_pre_validation(self) -> None:
         self.generate_identifiers()
         self.process_default_values()
+        self.process_cardinality_counts()
         self.process_inheritance()
         self.process_branch_support()
 
@@ -261,6 +262,7 @@ class SchemaBranch:
         self.validate_names()
         self.validate_menu_placements()
         self.validate_kinds()
+        self.validate_count_against_cardinality()
         self.validate_identifiers()
 
     def process_post_validation(self) -> None:
@@ -387,6 +389,31 @@ class SchemaBranch:
                     raise ValueError(
                         f"{node.kind}: Relationship {rel.name!r} is referencing an invalid peer {rel.peer!r}"
                     ) from None
+
+    def validate_count_against_cardinality(self) -> None:
+        """Validate every RelationshipSchema cardinality against the min_count and max_count."""
+        for name in list(self.nodes.keys()) + list(self.generics.keys()):
+            node = self.get(name=name)
+
+            for rel in node.relationships:
+                if rel.cardinality == RelationshipCardinality.ONE:
+                    if rel.min_count != 1 or rel.max_count != 1:
+                        raise ValueError(
+                            f"{node.kind}: Relationship {rel.name!r} is defined as cardinality.ONE but min_count or max_count are not 1"
+                        ) from None
+                elif rel.cardinality == RelationshipCardinality.MANY:
+                    if rel.min_count > rel.max_count:
+                        raise ValueError(
+                            f"{node.kind}: Relationship {rel.name!r} min_count must be lower than max_count"
+                        )
+                    if rel.min_count == 1:
+                        raise ValueError(
+                            f"{node.kind}: Relationship {rel.name!r} min_count must be 0 or greater than 1 when cardinality is MANY"
+                        )
+                    if rel.max_count == 1:
+                        raise ValueError(
+                            f"{node.kind}: Relationship {rel.name!r} max_count must be 0 or greater than 1 when cardinality is MANY"
+                        )
 
     def process_dropdowns(self) -> None:
         for name in list(self.nodes.keys()) + list(self.generics.keys()):
@@ -530,6 +557,26 @@ class SchemaBranch:
                 rel.filters = self.generate_filters(schema=peer_schema, include_relationships=False)
 
             self.set(name=name, schema=node)
+
+    def process_cardinality_counts(self) -> None:
+        """Ensure that all relationships with a cardinality of ONE have a min_count and max_count of 1."""
+        for name in list(self.nodes.keys()) + list(self.generics.keys()):
+            node = self.get(name=name)
+
+            changed = False
+            for rel in node.relationships:
+                if rel.cardinality == RelationshipCardinality.ONE:
+                    # Handle default values of RelationshipSchema when cardinality is ONE and set to valid values (1)
+                    # RelationshipSchema default values 0 for min_count and max_count
+                    if rel.min_count == 0:
+                        rel.min_count = 1
+                        changed = True
+                    if rel.max_count == 0:
+                        rel.max_count = 1
+                        changed = True
+
+            if changed:
+                self.set(name=name, schema=node)
 
     def generate_weight(self):
         for name in list(self.nodes.keys()) + list(self.generics.keys()):

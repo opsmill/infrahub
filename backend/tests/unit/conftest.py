@@ -1586,7 +1586,7 @@ async def person_john_main(db: InfrahubDatabase, default_branch: Branch, car_per
 @pytest.fixture
 async def person_jane_main(db: InfrahubDatabase, default_branch: Branch, car_person_schema) -> Node:
     person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
-    await person.new(db=db, name="Jane", firstname="Jane", lastname="Smith", height=180)
+    await person.new(db=db, name="Jane", height=180)
     await person.save(db=db)
 
     return person
@@ -1595,7 +1595,7 @@ async def person_jane_main(db: InfrahubDatabase, default_branch: Branch, car_per
 @pytest.fixture
 async def person_jim_main(db: InfrahubDatabase, default_branch: Branch, car_person_schema) -> Node:
     person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
-    await person.new(db=db, name="Jim", firstname="Jim", lastname="Smith", height=170)
+    await person.new(db=db, name="Jim", height=170)
     await person.save(db=db)
 
     return person
@@ -1604,7 +1604,7 @@ async def person_jim_main(db: InfrahubDatabase, default_branch: Branch, car_pers
 @pytest.fixture
 async def person_albert_main(db: InfrahubDatabase, default_branch: Branch, car_person_schema) -> Node:
     person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
-    await person.new(db=db, name="Albert", firstname="Albert", lastname="Smith", height=160)
+    await person.new(db=db, name="Albert", height=160)
     await person.save(db=db)
 
     return person

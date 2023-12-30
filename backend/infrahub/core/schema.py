@@ -533,31 +533,6 @@ class RelationshipSchema(BaseSchemaModel):
 
         return query_filter, query_params, query_where
 
-    @root_validator
-    def validate_count_against_cardinality(cls, values: Dict[str, Any]):
-        cardinality = values["cardinality"]
-        min_count = values["min_count"]
-        max_count = values["max_count"]
-
-        # Overwrite the min_count and max_count based on the cardinality.ONE since the intent is clear
-        if cardinality == RelationshipCardinality.ONE:
-            values["min_count"] = 1
-            values["max_count"] = 1
-        elif cardinality == RelationshipCardinality.MANY:
-            if min_count < 0:
-                values["min_count"] = 0
-            if max_count < 0:
-                values["max_count"] = 0
-
-            if min_count > max_count:
-                raise ValueError("min_count must be lower than max_count")
-            if min_count == 1:
-                raise ValueError("min_count must be 0 or at least 2 when cardinality is MANY")
-            if max_count == 1:
-                raise ValueError("max_count must be 0 or at least 2 when cardinality is MANY")
-
-        return values
-
 
 NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
 

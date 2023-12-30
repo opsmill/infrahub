@@ -446,9 +446,6 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         return data
 
 
-# write tests for class below
-
-
 class RelationshipValidatorList:
     """Provides a list/set like interface to the RelationshipManager's _relationships but with validation against min/max count and no duplicates.
 

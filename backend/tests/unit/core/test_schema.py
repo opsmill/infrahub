@@ -194,63 +194,6 @@ async def test_relationship_schema_hashable():
     assert schema.get_hash()
 
 
-async def test_relationship_cardinality_one():
-    SCHEMA = {"name": "first", "peer": "Criticality", "cardinality": "one"}
-
-    schema = RelationshipSchema(**SCHEMA)
-    assert schema.cardinality == "one"
-    assert schema.max_count == 1
-    assert schema.min_count == 1
-
-
-async def test_relationship_cardinality_one_count_two_success():
-    SCHEMA = {"name": "first", "peer": "Criticality", "cardinality": "one", "min_count": 2, "max_count": 2}
-
-    schema = RelationshipSchema(**SCHEMA)
-    assert schema.cardinality == "one"
-    assert schema.max_count == 1
-    assert schema.min_count == 1
-
-
-async def test_relationship_cardinality_many_count_negative_success():
-    SCHEMA = {"name": "first", "peer": "Criticality", "cardinality": "many", "min_count": -2, "max_count": -1}
-
-    schema = RelationshipSchema(**SCHEMA)
-    assert schema.cardinality == "many"
-    assert schema.max_count == 0
-    assert schema.min_count == 0
-
-
-async def test_relationship_cardinality_many_count_same_success():
-    SCHEMA = {"name": "first", "peer": "Criticality", "cardinality": "many", "min_count": 100, "max_count": 100}
-
-    schema = RelationshipSchema(**SCHEMA)
-    assert schema.cardinality == "many"
-    assert schema.max_count == 100
-    assert schema.min_count == 100
-
-
-async def test_relationship_cardinality_many_count_min_greater_max_raises():
-    SCHEMA = {"name": "first", "peer": "Criticality", "cardinality": "many", "min_count": 3, "max_count": 2}
-
-    with pytest.raises(ValidationError):
-        RelationshipSchema(**SCHEMA)
-
-
-async def test_relationship_cardinality_many_count_min_one_raises():
-    SCHEMA = {"name": "first", "peer": "Criticality", "cardinality": "many", "min_count": 1, "max_count": 2}
-
-    with pytest.raises(ValidationError):
-        RelationshipSchema(**SCHEMA)
-
-
-async def test_relationship_cardinality_many_count_max_one_raises():
-    SCHEMA = {"name": "first", "peer": "Criticality", "cardinality": "many", "min_count": 0, "max_count": 1}
-
-    with pytest.raises(ValidationError):
-        RelationshipSchema(**SCHEMA)
-
-
 async def test_node_schema_generate_fields_for_display_label():
     SCHEMA = {
         "name": "Criticality",
