@@ -53,7 +53,7 @@ export default function Header(props: Props) {
   };
 
   return (
-    <div className="flex justify-between flex-shrink-0 h-16 bg-custom-white shadow pr-4">
+    <div className="z-10 flex justify-between flex-shrink-0 h-16 bg-custom-white shadow pr-4">
       <button
         type="button"
         className="border-r border-gray-200 p-4 text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-custom-blue-500 md:hidden"
