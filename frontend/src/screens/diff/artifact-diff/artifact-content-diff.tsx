@@ -64,37 +64,31 @@ const shouldDisplayAddComment = (state: any, change: any) => {
   );
 };
 
-const getThread = (threads: any[], change: any, idFrom?: string, idTo?: string) => {
-  const thread = threads.find((thread) => {
-    const THREADLineNumber = thread?.line_number?.value;
+const findThreadByChange = (threads: any[], change: any, idFrom?: string, idTo?: string) => {
+  const isChangeOnLeftSide = !!change?.isDelete;
+  const isChangeOnRightSide = !!change?.isInsert;
+  const isChangeOnBothSide = !!change?.isNormal;
 
-    if (
-      change?.isDelete &&
-      THREADLineNumber === change.lineNumber &&
-      (thread?.storage_id?.value === idFrom || (!thread?.storage_id?.value && !idFrom))
-    ) {
-      // Thread on the left side
+  return threads.find((thread) => {
+    const threadLineNumber = thread?.line_number?.value;
+    const threadStorageId = thread?.storage_id?.value;
+
+    const isThreadOnLeftSide = threadStorageId === idFrom;
+    if (isChangeOnLeftSide && isThreadOnLeftSide && threadLineNumber === change.lineNumber) {
       return true;
     }
 
-    if (
-      change?.isInsert &&
-      thread?.storage_id?.value === idTo &&
-      THREADLineNumber === change.lineNumber
-    ) {
-      // Thread on the right side
+    const isThreadOnRightSide = threadStorageId === idTo;
+    if (isChangeOnRightSide && isThreadOnRightSide && threadLineNumber === change.lineNumber) {
       return true;
     }
 
-    if (change.isNormal && THREADLineNumber === change.newLineNumber) {
-      // Both left + right side
-      return true;
-    }
-
-    return false;
+    return (
+      isChangeOnBothSide &&
+      ((isThreadOnLeftSide && threadLineNumber === change.oldLineNumber) ||
+        (isThreadOnRightSide && threadLineNumber === change.newLineNumber))
+    );
   });
-
-  return thread;
 };
 
 export const ArtifactContentDiff = (props: any) => {
@@ -162,17 +156,21 @@ export const ArtifactContentDiff = (props: any) => {
     setFileDetailsInState();
   }, []);
 
-  const handleSubmitComment = async (data: any, event: any) => {
+  const handleSubmitComment = async ({ comment }: { comment: string }) => {
     let threadId;
 
     try {
-      event.target.reset();
-
-      if (!data || !approverId) {
+      if (!comment || !approverId) {
         return;
       }
 
       const newDate = formatISO(new Date());
+
+      const lineNumber = displayAddComment.isNormal
+        ? displayAddComment.side === "new"
+          ? displayAddComment.newLineNumber
+          : displayAddComment.oldLineNumber
+        : displayAddComment.lineNumber;
 
       const newThread = {
         change: {
@@ -188,10 +186,7 @@ export const ArtifactContentDiff = (props: any) => {
           value: false,
         },
         line_number: {
-          value:
-            displayAddComment.lineNumber ||
-            displayAddComment.newLineNumber ||
-            displayAddComment.oldLineNumber,
+          value: lineNumber,
         },
         storage_id: {
           value: displayAddComment.side === "new" ? itemNew?.storage_id : itemPrevious?.storage_id,
@@ -219,7 +214,7 @@ export const ArtifactContentDiff = (props: any) => {
 
       const newComment = {
         text: {
-          value: data.comment,
+          value: comment,
         },
         created_by: {
           id: approverId,
@@ -251,7 +246,9 @@ export const ArtifactContentDiff = (props: any) => {
 
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Comment added"} />);
 
-      refetch();
+      if (refetch) {
+        refetch();
+      }
 
       setIsLoading(false);
 
@@ -307,7 +304,12 @@ export const ArtifactContentDiff = (props: any) => {
         };
       }
 
-      const thread = getThread(threads, change, itemPrevious?.storage_id, itemNew?.storage_id);
+      const thread = findThreadByChange(
+        threads,
+        change,
+        itemPrevious?.storage_id,
+        itemNew?.storage_id
+      );
 
       if (thread) {
         return {
@@ -340,7 +342,12 @@ export const ArtifactContentDiff = (props: any) => {
       setDisplayAddComment({ side, ...change });
     };
 
-    const thread = getThread(threads, change, itemPrevious?.storage_id, itemNew?.storage_id);
+    const thread = findThreadByChange(
+      threads,
+      change,
+      itemPrevious?.storage_id,
+      itemNew?.storage_id
+    );
 
     if (thread || !auth?.permissions?.write || !proposedchange) {
       // Do not display the add button if there is already a thread
@@ -385,7 +392,7 @@ export const ArtifactContentDiff = (props: any) => {
   });
 
   return (
-    <div className={"pr-2 pb-2"}>
+    <div className={"pr-2 pb-2"} data-cy="artifact-content-diff">
       <div className="flex">
         <div className="flex-1">
           {itemPrevious?.storage_id && (

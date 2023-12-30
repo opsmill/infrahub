@@ -179,12 +179,14 @@ export default function ObjectItems(props: any) {
           </div>
         )}
 
-        <RoundedButton
-          data-cy="create"
-          disabled={!auth?.permissions?.write}
-          onClick={() => setShowCreateDrawer(true)}>
-          <PlusIcon className="w-4 h-4" aria-hidden="true" />
-        </RoundedButton>
+        {schema && (
+          <RoundedButton
+            data-cy="create"
+            disabled={!auth?.permissions?.write}
+            onClick={() => setShowCreateDrawer(true)}>
+            <PlusIcon className="w-4 h-4" aria-hidden="true" />
+          </RoundedButton>
+        )}
       </div>
 
       {schemaData?.filters && <DeviceFilterBar objectname={objectname} />}
@@ -281,9 +283,7 @@ export default function ObjectItems(props: any) {
           </div>
         }
         open={showCreateDrawer}
-        setOpen={setShowCreateDrawer}
-        // title={`Create ${objectname}`}
-      >
+        setOpen={setShowCreateDrawer}>
         <ObjectItemCreate
           onCreate={() => setShowCreateDrawer(false)}
           onCancel={() => setShowCreateDrawer(false)}

@@ -253,7 +253,7 @@ class TestInfrahubNode:
         updated_query = f"\n\n{node.query.value}"  # type: ignore[attr-defined]
         node.name.value = "query031"  # type: ignore[attr-defined]
         node.query.value = updated_query  # type: ignore[attr-defined]
-        first_update = node._generate_input_data(update=True)
+        first_update = node._generate_input_data(exclude_unmodified=True)
         await node.save()
         nodedb = await NodeManager.get_one(id=node.id, db=db, include_owner=True, include_source=True)
 
@@ -262,7 +262,7 @@ class TestInfrahubNode:
         node.name.value = "query031"  # type: ignore[attr-defined]
         node.query.value = updated_query  # type: ignore[attr-defined]
 
-        second_update = node._generate_input_data(update=True)
+        second_update = node._generate_input_data(exclude_unmodified=True)
 
         assert nodedb.query.value == updated_query  # type: ignore[attr-defined]
         assert "query" in first_update["data"]["data"]

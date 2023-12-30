@@ -6,6 +6,7 @@ ignore: |
   /examples
   /repositories
   /frontend/node_modules
+  /frontend/playwright-report
   /node_modules
   # https://github.com/sbaudoin/yamllint/issues/16
   /helm/templates

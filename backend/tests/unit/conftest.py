@@ -167,7 +167,6 @@ def file1_in_storage(local_storage_dir, helper) -> str:
 
 @pytest.fixture
 async def simple_dataset_01(db: InfrahubDatabase, empty_database) -> dict:
-    await create_root_node(db=db)
     await create_default_branch(db=db)
 
     params = {
@@ -2175,6 +2174,7 @@ async def reset_registry(db: InfrahubDatabase) -> None:
 @pytest.fixture
 async def empty_database(db: InfrahubDatabase) -> None:
     await delete_all_nodes(db=db)
+    await create_root_node(db=db)
 
 
 @pytest.fixture
@@ -2185,7 +2185,6 @@ async def init_db(empty_database, db: InfrahubDatabase) -> None:
 
 @pytest.fixture
 async def default_branch(reset_registry, local_storage_dir, empty_database, db: InfrahubDatabase) -> Branch:
-    await create_root_node(db=db)
     branch = await create_default_branch(db=db)
     await create_global_branch(db=db)
     registry.schema = SchemaManager()

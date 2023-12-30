@@ -43,7 +43,8 @@ export default function ModalDelete(props: iProps) {
               leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
               <Dialog.Panel
                 className="relative transform overflow-hidden rounded-lg bg-custom-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg"
-                data-cy="modal-delete">
+                data-cy="modal-delete"
+                data-testid="modal-delete">
                 <div className="bg-custom-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
                   <div className="sm:flex sm:items-start">
                     <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
@@ -70,7 +71,8 @@ export default function ModalDelete(props: iProps) {
                     buttonType={BUTTON_TYPES.CANCEL}
                     className="ml-2"
                     isLoading={isLoading}
-                    data-cy="modal-delete-confirm">
+                    data-cy="modal-delete-confirm"
+                    data-testid="modal-delete-confirm">
                     Delete
                   </Button>
                   <Button onClick={onCancel} ref={cancelButtonRef}>

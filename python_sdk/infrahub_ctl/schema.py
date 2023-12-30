@@ -48,6 +48,7 @@ async def _load(schemas: List[Path], branch: str, log: logging.Logger) -> None: 
     console = Console()
 
     schemas_data: List[SchemaFile] = []
+    has_error = False
 
     for schema in schemas:
         if schema.is_file():
@@ -60,8 +61,10 @@ async def _load(schemas: List[Path], branch: str, log: logging.Logger) -> None: 
                 schema_file = SchemaFile(location=item)
                 schema_file.load_content()
                 schemas_data.append(schema_file)
+        else:
+            console.print(f"[red]Schema path: {schema} does not exist!")
+            has_error = True
 
-    has_error = False
     for schema_file in schemas_data:
         if schema_file.valid:
             continue

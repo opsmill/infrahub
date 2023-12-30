@@ -30,7 +30,7 @@ export const Retry = (props: tRetryProps) => {
   return (
     <div
       className={classNames(
-        "ml-2 p-1 rounded-full",
+        "p-1 rounded-full",
         isInProgress ? "cursor-not-allowed " : "",
         auth?.permissions?.write ? "cursor-pointer hover:bg-gray-200" : "cursor-not-allowed"
       )}

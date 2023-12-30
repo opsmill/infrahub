@@ -54,7 +54,8 @@ export default function DesktopMenu() {
             <nav
               className="flex-1 bg-custom-white divide-y"
               aria-label="Sidebar"
-              data-cy="sidebar-menu">
+              data-cy="sidebar-menu"
+              data-testid="sidebar-menu">
               {menu.map((item: any, index: number) => (
                 <DropDownMenuHeader
                   key={index}

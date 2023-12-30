@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 import ujson
 from infrahub_sdk import UUIDT
+from infrahub_sdk.utils import is_valid_url
 from pydantic import BaseModel, Field
 
 from infrahub.core import registry
@@ -582,6 +583,17 @@ class Dropdown(BaseAttribute):
         values = [choice.name for choice in schema.choices]
         if value not in values:
             raise ValidationError({name: f"{value} must be one of {', '.join(sorted(values))!r}"})
+
+
+class URL(BaseAttribute):
+    type = str
+
+    @classmethod
+    def validate_format(cls, value: str, name: str, schema: AttributeSchema) -> None:
+        super().validate_format(value=value, name=name, schema=schema)
+
+        if not is_valid_url(value):
+            raise ValidationError({name: f"{value} is not a valid {schema.kind}"})
 
 
 class IPNetwork(BaseAttribute):
