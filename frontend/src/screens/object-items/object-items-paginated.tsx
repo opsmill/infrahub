@@ -182,6 +182,7 @@ export default function ObjectItems(props: any) {
         {schema && (
           <RoundedButton
             data-cy="create"
+            data-testid="create-object-button"
             disabled={!auth?.permissions?.write}
             onClick={() => setShowCreateDrawer(true)}>
             <PlusIcon className="w-4 h-4" aria-hidden="true" />
