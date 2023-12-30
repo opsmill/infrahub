@@ -259,9 +259,7 @@ class BaseSchemaModel(BaseModel):
                     attr_other
                 ):
                     new_attr = self.update_list_schema_model(
-                        field_name=field_name,
-                        attr_local=attr_local,
-                        attr_other=attr_other,
+                        field_name=field_name, attr_local=attr_local, attr_other=attr_other
                     )
                     setattr(self, field_name, new_attr)
 
@@ -455,11 +453,7 @@ class RelationshipSchema(BaseSchemaModel):
             query_filter.extend(
                 [
                     QueryRel(name="r1", labels=[rel_type], direction=rels_direction["r1"]),
-                    QueryNode(
-                        name="rl",
-                        labels=["Relationship"],
-                        params={"name": f"${prefix}_rel_name"},
-                    ),
+                    QueryNode(name="rl", labels=["Relationship"], params={"name": f"${prefix}_rel_name"}),
                     QueryRel(name="r2", labels=[rel_type], direction=rels_direction["r2"]),
                     QueryNode(name="peer", labels=["Node"]),
                 ]
@@ -475,11 +469,7 @@ class RelationshipSchema(BaseSchemaModel):
             query_filter.extend(
                 [
                     QueryRel(name="r1", labels=[rel_type], direction=rels_direction["r1"]),
-                    QueryNode(
-                        name="rl",
-                        labels=["Relationship"],
-                        params={"name": f"${prefix}_rel_name"},
-                    ),
+                    QueryNode(name="rl", labels=["Relationship"], params={"name": f"${prefix}_rel_name"}),
                     QueryRel(name="r2", labels=[rel_type], direction=rels_direction["r2"]),
                     QueryNode(name="peer", labels=["Node"]),
                 ]
@@ -505,11 +495,7 @@ class RelationshipSchema(BaseSchemaModel):
         query_filter.extend(
             [
                 QueryRel(name="r1", labels=[rel_type], direction=rels_direction["r1"]),
-                QueryNode(
-                    name="rl",
-                    labels=["Relationship"],
-                    params={"name": f"${prefix}_rel_name"},
-                ),
+                QueryNode(name="rl", labels=["Relationship"], params={"name": f"${prefix}_rel_name"}),
                 QueryRel(name="r2", labels=[rel_type], direction=rels_direction["r2"]),
                 QueryNode(name="peer", labels=["Node"]),
             ]
@@ -577,8 +563,7 @@ class BaseNodeSchema(BaseSchemaModel):
 
     def __hash__(self):
         """Return a hash of the object.
-        Be careful hash generated from hash() have a salt by default and they will not be the same across run
-        """
+        Be careful hash generated from hash() have a salt by default and they will not be the same across run"""
         return hash(self.get_hash())
 
     def get_hash(self, display_values: bool = False):
@@ -1369,12 +1354,7 @@ core_models = {
             "include_in_menu": False,
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
-                {
-                    "name": "text",
-                    "kind": "TextArea",
-                    "unique": False,
-                    "optional": False,
-                },
+                {"name": "text", "kind": "TextArea", "unique": False, "optional": False},
                 {"name": "created_at", "kind": "DateTime", "optional": True},
             ],
             "relationships": [
@@ -1585,13 +1565,7 @@ core_models = {
                     "identifier": "repository__transformation",
                     "optional": False,
                 },
-                {
-                    "name": "tags",
-                    "peer": "BuiltinTag",
-                    "kind": "Attribute",
-                    "optional": True,
-                    "cardinality": "many",
-                },
+                {"name": "tags", "peer": "BuiltinTag", "kind": "Attribute", "optional": True, "cardinality": "many"},
             ],
         },
         {
@@ -1673,12 +1647,7 @@ core_models = {
                 },
             ],
             "relationships": [
-                {
-                    "name": "tokens",
-                    "peer": "InternalAccountToken",
-                    "optional": True,
-                    "cardinality": "many",
-                },
+                {"name": "tokens", "peer": "InternalAccountToken", "optional": True, "cardinality": "many"},
             ],
         },
         {
@@ -1917,12 +1886,7 @@ core_models = {
                 {"name": "description", "kind": "Text", "optional": True},
                 {"name": "location", "kind": "Text", "unique": True},
                 {"name": "default_branch", "kind": "Text", "default_value": "main"},
-                {
-                    "name": "commit",
-                    "kind": "Text",
-                    "optional": True,
-                    "branch": BranchSupportType.LOCAL.value,
-                },
+                {"name": "commit", "kind": "Text", "optional": True, "branch": BranchSupportType.LOCAL.value},
                 {"name": "username", "kind": "Text", "optional": True},
                 {"name": "password", "kind": "Password", "optional": True},
             ],
@@ -1935,13 +1899,7 @@ core_models = {
                     "optional": True,
                     "cardinality": "one",
                 },
-                {
-                    "name": "tags",
-                    "peer": "BuiltinTag",
-                    "kind": "Attribute",
-                    "optional": True,
-                    "cardinality": "many",
-                },
+                {"name": "tags", "peer": "BuiltinTag", "kind": "Attribute", "optional": True, "cardinality": "many"},
                 {
                     "name": "transformations",
                     "peer": "CoreTransformation",
@@ -1991,12 +1949,7 @@ core_models = {
             "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
                 {"name": "conflicts", "kind": "JSON"},
-                {
-                    "name": "keep_branch",
-                    "enum": BranchConflictKeep.available_types(),
-                    "kind": "Text",
-                    "optional": True,
-                },
+                {"name": "keep_branch", "enum": BranchConflictKeep.available_types(), "kind": "Text", "optional": True},
             ],
         },
         {
@@ -2184,13 +2137,7 @@ core_models = {
                     "cardinality": "one",
                     "optional": True,
                 },
-                {
-                    "name": "tags",
-                    "peer": "BuiltinTag",
-                    "kind": "Attribute",
-                    "optional": True,
-                    "cardinality": "many",
-                },
+                {"name": "tags", "peer": "BuiltinTag", "kind": "Attribute", "optional": True, "cardinality": "many"},
             ],
         },
         {
@@ -2224,12 +2171,7 @@ core_models = {
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "description", "kind": "Text", "optional": True},
                 {"name": "query", "kind": "TextArea"},
-                {
-                    "name": "variables",
-                    "kind": "JSON",
-                    "description": "variables in use in the query",
-                    "optional": True,
-                },
+                {"name": "variables", "kind": "JSON", "description": "variables in use in the query", "optional": True},
                 {
                     "name": "operations",
                     "kind": "List",
@@ -2266,13 +2208,7 @@ core_models = {
                     "cardinality": "one",
                     "optional": True,
                 },
-                {
-                    "name": "tags",
-                    "peer": "BuiltinTag",
-                    "kind": "Attribute",
-                    "optional": True,
-                    "cardinality": "many",
-                },
+                {"name": "tags", "peer": "BuiltinTag", "kind": "Attribute", "optional": True, "cardinality": "many"},
             ],
         },
         {

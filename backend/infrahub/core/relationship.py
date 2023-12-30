@@ -236,11 +236,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             await self._get_peer(db=db)
 
         if not self._peer:
-            raise NodeNotFound(
-                branch_name=self.branch.name,
-                node_type=self.schema.peer,
-                identifier=self.peer_id,
-            )
+            raise NodeNotFound(branch_name=self.branch.name, node_type=self.schema.peer, identifier=self.peer_id)
 
         return self._peer
 
@@ -341,12 +337,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         branch = self.get_branch_based_on_support_type()
 
         query = await RelationshipGetQuery.init(
-            db=db,
-            source=node,
-            destination=peer,
-            rel=self,
-            branch=self.branch,
-            at=delete_at,
+            db=db, source=node, destination=peer, rel=self, branch=self.branch, at=delete_at
         )
         await query.execute(db=db)
         result = query.get_result()
@@ -363,12 +354,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             await update_relationships_to(rel_ids_to_update, to=delete_at, db=db)
 
         query = await RelationshipDeleteQuery.init(
-            db=db,
-            rel=self,
-            source_id=node.id,
-            destination_id=peer.id,
-            branch=branch,
-            at=delete_at,
+            db=db, rel=self, source_id=node.id, destination_id=peer.id, branch=branch, at=delete_at
         )
         await query.execute(db=db)
 
@@ -713,12 +699,7 @@ class RelationshipManager:
         peer_ids_present_local_only = list(set(current_peer_ids) - set(peer_ids_present_both))
         peer_ids_present_database_only = list(set(peer_ids) - set(peer_ids_present_both))
 
-        return (
-            peer_ids_present_both,
-            peer_ids_present_local_only,
-            peer_ids_present_database_only,
-            peers_database,
-        )
+        return peer_ids_present_both, peer_ids_present_local_only, peer_ids_present_database_only, peers_database
 
     async def _fetch_relationships(self, db: InfrahubDatabase, at: Optional[Timestamp] = None):
         """Fetch the latest relationships from the database and update the local cache."""
@@ -818,8 +799,7 @@ class RelationshipManager:
         update_db: bool = False,
     ):
         """Remote a peer id from the local relationships list,
-        need to investigate if and when we should update the relationship in the database.
-        """
+        need to investigate if and when we should update the relationship in the database."""
 
         for idx, rel in enumerate(await self.get_relationships(db=db)):
             if rel.peer_id != peer_id:
@@ -876,12 +856,7 @@ class RelationshipManager:
         # Update the one in the database that shouldn't be here.
         if self.has_fetched_relationships:
             for peer_id in peer_ids_present_database_only:
-                await self.remove_in_db(
-                    peer_id=peer_id,
-                    peer_data=peers_database[peer_id],
-                    at=save_at,
-                    db=db,
-                )
+                await self.remove_in_db(peer_id=peer_id, peer_data=peers_database[peer_id], at=save_at, db=db)
 
         # Create the new relationship that are not present in the database
         #  and Compare the existing one
