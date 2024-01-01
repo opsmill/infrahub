@@ -402,7 +402,7 @@ class SchemaBranch:
                             f"{node.kind}: Relationship {rel.name!r} is defined as cardinality.ONE but min_count or max_count are not 1"
                         ) from None
                 elif rel.cardinality == RelationshipCardinality.MANY:
-                    if rel.min_count > rel.max_count:
+                    if rel.max_count and rel.min_count > rel.max_count:
                         raise ValueError(
                             f"{node.kind}: Relationship {rel.name!r} min_count must be lower than max_count"
                         )
