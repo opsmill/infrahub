@@ -182,6 +182,7 @@ export default function ObjectItems(props: any) {
         {schema && (
           <RoundedButton
             data-cy="create"
+            data-testid="create-object-button"
             disabled={!auth?.permissions?.write}
             onClick={() => setShowCreateDrawer(true)}>
             <PlusIcon className="w-4 h-4" aria-hidden="true" />
@@ -193,7 +194,7 @@ export default function ObjectItems(props: any) {
 
       {loading && !rows && <LoadingScreen />}
 
-      {!loading && rows && (
+      {rows && (
         <div className="flex-1 shadow-sm ring-1 ring-custom-black ring-opacity-5 overflow-x-auto">
           <table className="min-w-full border-separate" style={{ borderSpacing: 0 }}>
             <thead className="bg-gray-50 text-left">

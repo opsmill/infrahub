@@ -6,13 +6,14 @@ import { userNavigation } from "../screens/layout/navigation-list";
 import { classNames, parseJwt } from "../utils/common";
 import { AuthContext } from "../decorators/withAuth";
 import { getProfileDetails } from "../graphql/queries/profile/getProfileDetails";
-import { gql, useLazyQuery } from "@apollo/client";
+import { gql } from "@apollo/client";
 import { ACCESS_TOKEN_KEY, ACCOUNT_OBJECT } from "../config/constants";
 import { useAtom } from "jotai/index";
 import { schemaState } from "../state/atoms/schema.atom";
 import LoadingScreen from "../screens/loading-screen/loading-screen";
 import { toast } from "react-toastify";
 import { Alert, ALERT_TYPES } from "./alert";
+import { useLazyQuery } from "../hooks/useQuery";
 
 const customId = "profile-alert";
 
