@@ -25,5 +25,35 @@ test.describe("/signin", () => {
 
       await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible();
     });
+
+    test("should refresh access token and retry failed request", async ({ page }) => {
+      let callCounter = 0; // force 401 on first call
+      await page.route("**/graphql/main**", async (route) => {
+        const reqData = route.request().postDataJSON();
+        if (reqData.operationName === "BuiltinTag" && callCounter === 0) {
+          callCounter = callCounter + 1;
+          await route.fulfill({
+            status: 401,
+            json: {
+              data: null,
+              errors: [
+                {
+                  message: "Expired Signature",
+                  extensions: {
+                    code: 401,
+                  },
+                },
+              ],
+            },
+          });
+        } else {
+          await route.fallback();
+        }
+      });
+
+      await page.goto("/objects/BuiltinTag");
+
+      await expect(page.getByRole("cell", { name: "blue" })).toBeVisible();
+    });
   });
 });
