@@ -8,5 +8,6 @@ Topics explain the concepts of Infrahub and how it works.
 - [GraphQL queries](./graphql.md)
 - [Object storage](./object-storage.md)
 - [Proposed change](./proposed-change.md)
+- [Schema](./schema.md)
 - [Transformation](./transformation.md)
 - [User management and authentication](./auth.md)
