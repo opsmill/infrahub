@@ -1,6 +1,7 @@
 import logging
 import os
 import time
+from contextlib import asynccontextmanager
 from functools import partial
 from typing import Awaitable, Callable
 
@@ -34,35 +35,7 @@ from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
 from infrahub.trace import add_span_exception, configure_trace, get_traceid, get_tracer
 from infrahub.worker import WORKER_IDENTITY
 
-app = FastAPI(
-    title="Infrahub",
-    version=__version__,
-    contact={
-        "name": "OpsMill",
-        "email": "info@opsmill.com",
-    },
-    openapi_url="/api/openapi.json",
-    docs_url="/api/docs",
-    redoc_url="/api/redoc",
-)
 
-FastAPIInstrumentor().instrument_app(app, excluded_urls=".*/metrics")
-tracer = get_tracer()
-
-FRONTEND_DIRECTORY = os.environ.get("INFRAHUB_FRONTEND_DIRECTORY", os.path.abspath("frontend"))
-FRONTEND_ASSET_DIRECTORY = f"{FRONTEND_DIRECTORY}/dist/assets"
-
-
-log = get_logger()
-gunicorn_logger = logging.getLogger("gunicorn.error")
-logger.handlers = gunicorn_logger.handlers
-
-app.include_router(api)
-
-templates = Jinja2Templates(directory=f"{FRONTEND_DIRECTORY}/dist")
-
-
-@app.on_event("startup")
 async def app_initialization() -> None:
     if not config.SETTINGS:
         config_file_name = os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")
@@ -105,10 +78,45 @@ async def app_initialization() -> None:
     app.state.service = service
 
 
-@app.on_event("shutdown")
 async def shutdown() -> None:
     await close_broker_connection()
     await app.state.db.close()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await app_initialization()
+    yield
+    await shutdown()
+
+
+app = FastAPI(
+    title="Infrahub",
+    version=__version__,
+    lifespan=lifespan,
+    contact={
+        "name": "OpsMill",
+        "email": "info@opsmill.com",
+    },
+    openapi_url="/api/openapi.json",
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+)
+
+FastAPIInstrumentor().instrument_app(app, excluded_urls=".*/metrics")
+tracer = get_tracer()
+
+FRONTEND_DIRECTORY = os.environ.get("INFRAHUB_FRONTEND_DIRECTORY", os.path.abspath("frontend"))
+FRONTEND_ASSET_DIRECTORY = f"{FRONTEND_DIRECTORY}/dist/assets"
+
+
+log = get_logger()
+gunicorn_logger = logging.getLogger("gunicorn.error")
+logger.handlers = gunicorn_logger.handlers
+
+app.include_router(api)
+
+templates = Jinja2Templates(directory=f"{FRONTEND_DIRECTORY}/dist")
 
 
 @app.middleware("http")
