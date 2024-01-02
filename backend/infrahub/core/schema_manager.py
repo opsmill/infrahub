@@ -112,9 +112,7 @@ class SchemaBranch:
         return md5hash.hexdigest()
 
     def get_hash_full(self) -> SchemaBranchHash:
-        return SchemaBranchHash(
-            main=self.get_hash(), nodes=self.nodes.items(), generics=self.generics.items(), groups=self.groups.items()
-        )
+        return SchemaBranchHash(main=self.get_hash(), nodes=self.nodes, generics=self.generics, groups=self.groups)
 
     def to_dict(self) -> Dict[str, Any]:
         # TODO need to implement a flag to return the real objects if needed
