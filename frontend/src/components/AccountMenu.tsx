@@ -1,19 +1,18 @@
-import { Link, useNavigate } from "react-router-dom";
-import React, { Fragment, useContext, useEffect } from "react";
+import { gql } from "@apollo/client";
 import { Menu, Transition } from "@headlessui/react";
-import { Avatar } from "./avatar";
-import { userNavigation } from "../screens/layout/navigation-list";
-import { classNames, parseJwt } from "../utils/common";
+import { useAtom } from "jotai/index";
+import { Fragment, useContext, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
+import { ACCESS_TOKEN_KEY, ACCOUNT_OBJECT } from "../config/constants";
 import { AuthContext } from "../decorators/withAuth";
 import { getProfileDetails } from "../graphql/queries/profile/getProfileDetails";
-import { gql } from "@apollo/client";
-import { ACCESS_TOKEN_KEY, ACCOUNT_OBJECT } from "../config/constants";
-import { useAtom } from "jotai/index";
-import { schemaState } from "../state/atoms/schema.atom";
-import LoadingScreen from "../screens/loading-screen/loading-screen";
-import { toast } from "react-toastify";
-import { Alert, ALERT_TYPES } from "./alert";
 import { useLazyQuery } from "../hooks/useQuery";
+import { userNavigation } from "../screens/layout/navigation-list";
+import { schemaState } from "../state/atoms/schema.atom";
+import { classNames, parseJwt } from "../utils/common";
+import { ALERT_TYPES, Alert } from "./alert";
+import { Avatar } from "./avatar";
 
 const customId = "profile-alert";
 
@@ -45,11 +44,7 @@ export const AccountMenu = () => {
   }, [schema, accountId]);
 
   if (loading || !schema) {
-    return (
-      <div className="z-10 flex h-16 flex-shrink-0 bg-custom-white shadow">
-        <LoadingScreen size={32} hideText />
-      </div>
-    );
+    return <Avatar isLoading />;
   }
 
   const profile = data?.AccountProfile;
