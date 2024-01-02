@@ -123,7 +123,9 @@ export const DynamicControl = (props: DynamicFieldData) => {
       );
     }
     case "multiselect": {
-      const currentValue = options.values.filter((option) => (value || []).indexOf(option.id) > -1);
+      const selectOptions = options?.values ?? value;
+
+      const currentValue = selectOptions.filter((option) => (value || []).indexOf(option.id) > -1);
 
       return (
         <OpsMultiSelectRegister
