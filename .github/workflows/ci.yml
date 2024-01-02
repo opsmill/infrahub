@@ -157,7 +157,7 @@ jobs:
       - name: "Mypy Tests"
         run: "poetry run mypy --show-error-codes infrahub_sdk/ infrahub_ctl/"
       - name: "Unit Tests"
-        run: "poetry run pytest -v --cov=infrahub_sdk --cov=infrahub_ctl tests/unit"
+        run: "poetry run pytest -v --cov=infrahub_sdk tests/unit/sdk"
         env:
           BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_SDK_UNIT }}
       - name: "Coveralls : Unit Tests"
@@ -166,6 +166,15 @@ jobs:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
           flag-name: python-sdk-unit
+          parallel: true
+      - name: "Unit Tests - CTL"
+        run: "poetry run pytest -v --cov=infrahub_ctl tests/unit/ctl"
+      - name: "Coveralls : Unit Tests (CTL)"
+        uses: coverallsapp/github-action@v2
+        env:
+          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+        with:
+          flag-name: python-ctl-unit
           parallel: true
 
 
@@ -638,5 +647,5 @@ jobs:
         env:
           COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
         with:
-          carryforward: "backend-unit,backend-integration,frontend-unit,python-sdk-unit,python-sdk-integration"
+          carryforward: "backend-unit,backend-integration,frontend-unit,python-sdk-unit,python-ctl-unit,python-sdk-integration"
           parallel-finished: true
