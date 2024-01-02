@@ -4,7 +4,7 @@ from typing import Any, Dict, Iterator, Optional, TypeVar
 
 import aio_pika
 import aiormq
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic.v1 import BaseModel, ConfigDict, Field
 
 from infrahub import config
 from infrahub.exceptions import Error, RPCError
@@ -105,9 +105,7 @@ class InfrahubMessage(BaseModel, aio_pika.abc.AbstractMessage):
 
     @property
     def body(self) -> bytes:
-        return self.model_dump_json(exclude={"meta": {"headers", "priority"}, "value": True}, exclude_none=True).encode(
-            "UTF-8"
-        )
+        return self.json(exclude={"meta": {"headers", "priority"}, "value": True}, exclude_none=True).encode("UTF-8")
 
     @property
     def locked(self) -> bool:
