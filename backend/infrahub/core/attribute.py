@@ -240,12 +240,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             return type(value)(**{k: cls.coerce_value(v) for k, v in value.items()})
         if isinstance(value, Iterable):
             return type(value)((cls.coerce_value(v) for v in value))
-        class_types: Tuple[Type] = (cls.type, ) if not isinstance(cls.type, Tuple) else cls.type
-        if (
-            not isinstance(value, class_types)
-            and isinstance(value, Enum)
-            and isinstance(value.value, class_types)
-        ):
+        class_types: Tuple[Type] = (cls.type,) if not isinstance(cls.type, Tuple) else cls.type
+        if not isinstance(value, class_types) and isinstance(value, Enum) and isinstance(value.value, class_types):
             return value.value
         return value
 
