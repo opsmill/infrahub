@@ -30,7 +30,7 @@ from infrahub_sdk.schema import (
     InfrahubRepositoryRFileConfig,
 )
 from infrahub_sdk.utils import YamlFile, compare_lists
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, ConfigDict, Field, validator
 from pydantic import ValidationError as PydanticValidationError
 
 import infrahub.config as config
@@ -314,6 +314,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         <repo_name>/commit     Directory for worktrees of individual commits
     """
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     id: UUID
     name: str
     default_branch_name: Optional[str] = None

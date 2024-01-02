@@ -6,7 +6,7 @@ from collections import defaultdict
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, ConfigDict, Field, validator
 
 from infrahub import config
 from infrahub.core.constants import (
@@ -776,8 +776,7 @@ class RelationshipPath(BaseModel):
 
 
 class BaseDiffElement(BaseModel):
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def to_graphql(self):
         """Recursively Export the model to a dict for GraphQL.

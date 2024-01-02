@@ -1,12 +1,13 @@
 from typing import Any, Dict, Optional
 
-from pydantic import BaseModel, root_validator, validator
+from pydantic import BaseModel, ConfigDict, validator
 
 from infrahub.core.branch import Branch
 from infrahub.core.timestamp import Timestamp
 
 
 class DiffQueryValidated(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     branch: Branch
     time_from: Optional[str] = None
     time_to: Optional[str] = None
