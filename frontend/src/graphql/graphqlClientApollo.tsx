@@ -1,4 +1,11 @@
-import { ApolloClient, DefaultOptions, InMemoryCache, createHttpLink } from "@apollo/client";
+import {
+  ApolloClient,
+  DefaultOptions,
+  InMemoryCache,
+  Observable,
+  createHttpLink,
+  from,
+} from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
 import { onError } from "@apollo/client/link/error";
 import fetch from "cross-fetch";
@@ -48,43 +55,56 @@ const authLink = setContext((_, { headers }) => {
 
 const errorLink = onError(({ graphQLErrors, operation, forward }) => {
   if (graphQLErrors) {
-    graphQLErrors.forEach(async ({ message, locations, path, extensions }) => {
+    for (const graphQLError of graphQLErrors) {
       console.error(
-        `[GraphQL error]: Message: ${message}, Location: ${JSON.stringify(
-          locations
-        )}, Path: ${path}`
+        `[GraphQL error]: Message: ${graphQLError.message}, Location: ${JSON.stringify(
+          graphQLError.locations
+        )}, Path: ${graphQLError.path}`
       );
 
-      if (message) {
-        toast(<Alert type={ALERT_TYPES.ERROR} message={message} />);
-      }
+      return new Observable((observer) => {
+        switch (graphQLError.extensions.code) {
+          case 401: {
+            // Modify the operation context with a new token
+            const oldHeaders = operation.getContext().headers;
 
-      switch (extensions?.code) {
-        case 401: {
-          // Modify the operation context with a new token
-          const oldHeaders = operation.getContext().headers;
+            getNewToken()
+              .then((newToken) => {
+                if (newToken?.access_token) {
+                  operation.setContext({
+                    headers: {
+                      ...oldHeaders,
+                      authorization: newToken?.access_token,
+                    },
+                  });
 
-          const newToken = await getNewToken();
+                  // Retry the failed request
+                  const subscriber = {
+                    next: observer.next.bind(observer),
+                    error: observer.error.bind(observer),
+                    complete: observer.complete.bind(observer),
+                  };
 
-          if (newToken?.access_token) {
-            operation.setContext({
-              headers: {
-                ...oldHeaders,
-                authorization: newToken?.access_token,
-              },
-            });
+                  forward(operation).subscribe(subscriber);
+                }
+              })
+              .catch((err) => observer.error(err));
+
+            forward(operation);
+            break;
           }
-
-          // Retry the request, returning the new observable
-          return forward(operation);
+          default:
+            if (graphQLError.message) {
+              toast(<Alert type={ALERT_TYPES.ERROR} message={graphQLError.message} />);
+            }
         }
-      }
-    });
+      });
+    }
   }
 });
 
 const graphqlClient = new ApolloClient({
-  link: authLink.concat(errorLink).concat(httpLink),
+  link: from([errorLink, authLink, httpLink]),
   cache: new InMemoryCache(),
   defaultOptions,
 });
