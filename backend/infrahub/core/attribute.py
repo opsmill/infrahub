@@ -1,15 +1,17 @@
 from __future__ import annotations
-from enum import Enum
 
 import ipaddress
 import re
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from enum import Enum
+from types import NoneType
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Mapping, Optional, Tuple, Type, Union
 
 import ujson
 from infrahub_sdk import UUIDT
 from infrahub_sdk.utils import is_valid_url
 from pydantic.v1 import BaseModel, Field
 
+import infrahub.config as config
 from infrahub.core import registry
 from infrahub.core.constants import BranchSupportType, RelationshipStatus
 from infrahub.core.property import (
@@ -58,7 +60,7 @@ class AttributeCreateData(BaseModel):
 
 
 class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
-    type = None
+    type: Optional[Union[Type, Tuple[Type]]] = None
 
     _rel_to_node_label: str = "HAS_ATTRIBUTE"
     _rel_to_value_label: str = "HAS_VALUE"
@@ -105,7 +107,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             self.value = self.from_db(data)
 
         self.value = self.coerce_value(self.value)
-            
+
         # Assign default values
         if self.value is None and self.schema.default_value is not None:
             self.value = self.schema.default_value
@@ -226,12 +228,23 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
     @classmethod
     def coerce_value(cls, value: Any) -> Any:
+        # pylint: disable=isinstance-second-argument-not-valid-type
         if (
-            value is not None
-            and cls.type != Any
-            and not isinstance(value, cls.type)
+            not config.SETTINGS.experimental_features.graphql_enums
+            or isinstance(value, (str, int, bool, float, NoneType))
+            or cls.type is None
+            or cls.type == Any
+        ):
+            return value
+        if isinstance(value, Mapping):
+            return type(value)(**{k: cls.coerce_value(v) for k, v in value.items()})
+        if isinstance(value, Iterable):
+            return type(value)((cls.coerce_value(v) for v in value))
+        class_types: Tuple[Type] = (cls.type, ) if not isinstance(cls.type, Tuple) else cls.type
+        if (
+            not isinstance(value, class_types)
             and isinstance(value, Enum)
-            and isinstance(value.value, cls.type)
+            and isinstance(value.value, class_types)
         ):
             return value.value
         return value
@@ -378,7 +391,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         name: str,
         filter_name: str,
         branch: Optional[Branch] = None,
-        filter_value: Optional[Union[str, int, bool, list]] = None,
+        filter_value: Optional[Union[str, int, bool, list, Enum]] = None,
         include_match: bool = True,
         param_prefix: Optional[str] = None,
         db: Optional[InfrahubDatabase] = None,
@@ -388,6 +401,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         query_filter: List[QueryElement] = []
         query_params: Dict[str, Any] = {}
         query_where: List[str] = []
+
+        filter_value = cls.coerce_value(filter_value)
 
         if filter_value and not isinstance(filter_value, (str, bool, int, list)):
             raise TypeError(f"filter {filter_name}: {filter_value} ({type(filter_value)}) is not supported.")

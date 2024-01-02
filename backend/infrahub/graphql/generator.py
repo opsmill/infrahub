@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import re
 from collections import defaultdict
 from dataclasses import dataclass
-import re
 from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Type, Union
 
 import graphene
 
+import infrahub.config as config
 from infrahub.core import get_branch, registry
 from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema
 from infrahub.core.attribute import String
@@ -51,7 +52,12 @@ def load_attribute_types_in_registry(branch: Branch):
             name=data_type.get_graphql_type_name(), graphql_type=data_type.get_graphql_type(), branch=branch.name
         )
 
-def load_enum_types_in_registry(node_schemas: Iterable[Union[NodeSchema, GenericSchema, GroupSchema]], branch: Branch) -> None:    
+
+def load_enum_types_in_registry(
+    node_schemas: Iterable[Union[NodeSchema, GenericSchema, GroupSchema]], branch: Branch
+) -> None:
+    if not config.SETTINGS.experimental_features.graphql_enums:
+        return
     for node_schema in node_schemas:
         for attr_schema in node_schema.attributes:
             if not attr_schema.enum:
@@ -71,33 +77,35 @@ def load_enum_types_in_registry(node_schemas: Iterable[Union[NodeSchema, Generic
             data_type_class_name = f"{base_enum_name}EnumType"
             graphene_enum = graphene.Enum(enum_value_name, enum_tuples)
             graphene_field = graphene.Field(graphene_enum, default_value=default_value)
-            input_class = type(
-                input_class_name, (BaseAttributeInput,), {"value": graphene_field}
-            )
+            input_class = type(input_class_name, (BaseAttributeInput,), {"value": graphene_field})
             attribute_type_metaclass = type(
                 "Meta",
                 (),
                 {
                     "description": f"Attribute of type {attribute_name}",
                     "name": attribute_name,
-                    "interfaces": {AttributeInterface}
-                }
+                    "interfaces": {AttributeInterface},
+                },
             )
             attribute_type_class = type(
-                attribute_type_class_name,
-                (BaseAttribute, ),
-                {"value": graphene_field, "Meta": attribute_type_metaclass}
+                attribute_type_class_name, (BaseAttribute,), {"value": graphene_field, "Meta": attribute_type_metaclass}
             )
-            data_type_class = type(data_type_class_name, (InfrahubDataType, ), dict(
-                label=data_type_class_name,
-                graphql=graphene.String,
-                graphql_query=attribute_type_class,
-                graphql_input=input_class,
-                graphql_filter=graphene.String,
-                infrahub=String
-            ))
+            data_type_class = type(
+                data_type_class_name,
+                (InfrahubDataType,),
+                {
+                    "label": data_type_class_name,
+                    "graphql": graphene.String,
+                    "graphql_query": attribute_type_class,
+                    "graphql_input": input_class,
+                    "graphql_filter": graphene_enum,
+                    "infrahub": String,
+                },
+            )
             registry.set_graphql_type(
-                name=data_type_class.get_graphql_type_name(), graphql_type=data_type_class.get_graphql_type(), branch=branch.name
+                name=data_type_class.get_graphql_type_name(),
+                graphql_type=data_type_class.get_graphql_type(),
+                branch=branch.name,
             )
             ATTRIBUTE_TYPES[base_enum_name] = data_type_class
 
@@ -120,7 +128,7 @@ def get_enum_attribute_type_name(node_schema: NodeSchema, attr_schema: Attribute
 
 
 def get_attr_kind(node_schema: NodeSchema, attr_schema: AttributeSchema) -> str:
-    if not attr_schema.enum:
+    if not config.SETTINGS.experimental_features.graphql_enums or not attr_schema.enum:
         return attr_schema.kind
     return get_enum_attribute_type_name(node_schema, attr_schema)
 
