@@ -8,7 +8,7 @@ import re
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
 from infrahub_sdk.utils import duplicates, intersection
-from pydantic import BaseModel, ConfigDict, Field, root_validator, validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from infrahub.core import registry
 from infrahub.core.constants import (
@@ -287,11 +287,9 @@ class DropdownChoice(BaseSchemaModel):
 
     _sort_by: List[str] = ["name"]
 
-    @validator("color")
-    def kind_options(
-        cls,
-        v: str,
-    ) -> str:
+    @field_validator("color")
+    @classmethod
+    def kind_options(cls, v: str) -> str:
         if v == "":
             return v
         if HTML_COLOR.match(v):
@@ -323,25 +321,23 @@ class AttributeSchema(BaseSchemaModel):
 
     _sort_by: List[str] = ["name"]
 
-    @validator("kind")
-    def kind_options(
-        cls,
-        v,
-    ):
+    @field_validator("kind")
+    @classmethod
+    def kind_options(cls, v):
         if v not in ATTRIBUTE_KIND_LABELS:
             raise ValueError(f"Only valid Attribute Kind are : {ATTRIBUTE_KIND_LABELS} ")
         return v
 
-    @root_validator
-    def validate_dropdown_choices(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+    @model_validator(mode="after")
+    def validate_dropdown_choices(self) -> "AttributeSchema":
         """Validate that choices are defined for a dropdown but not for other kinds."""
-        if values.get("kind") != "Dropdown" and values.get("choices"):
-            raise ValueError(f"Can only specify 'choices' for kind=Dropdown: {values['kind'] }")
+        if self.kind != "Dropdown" and self.choices:
+            raise ValueError(f"Can only specify 'choices' for kind=Dropdown: {self.kind}")
 
-        if values.get("kind") == "Dropdown" and not values.get("choices"):
+        if self.kind == "Dropdown" and not self.choices:
             raise ValueError("The property 'choices' is required for kind=Dropdown")
 
-        return values
+        return self
 
     def get_class(self):
         return ATTRIBUTE_TYPES[self.kind].get_infrahub_class()
@@ -657,7 +653,8 @@ class BaseNodeSchema(BaseSchemaModel):
 
         return fields
 
-    @validator("name")
+    @field_validator("name")
+    @classmethod
     def name_is_not_keyword(cls, value: str) -> str:
         if keyword.iskeyword(value):
             raise ValueError(f"Name can not be set to a reserved keyword '{value}' is not allowed.")

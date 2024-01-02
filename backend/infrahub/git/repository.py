@@ -30,7 +30,7 @@ from infrahub_sdk.schema import (
     InfrahubRepositoryRFileConfig,
 )
 from infrahub_sdk.utils import YamlFile, compare_lists
-from pydantic import BaseModel, ConfigDict, Field, validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic import ValidationError as PydanticValidationError
 
 import infrahub.config as config
@@ -317,7 +317,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
     model_config = ConfigDict(arbitrary_types_allowed=True)
     id: UUID
     name: str
-    default_branch_name: Optional[str] = None
+    default_branch_name: Optional[str] = Field(default=None, validate_default=True)
     type: Optional[str] = None
     location: Optional[str] = None
     has_origin: bool = False
@@ -327,11 +327,8 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
     cache_repo: Optional[Repo] = None
     service: InfrahubServices
 
-    class Config:
-        arbitrary_types_allowed = True
-
-    # pylint: disable=no-self-argument
-    @validator("default_branch_name", pre=True, always=True)
+    @field_validator("default_branch_name", mode="before")
+    @classmethod
     def set_default_branch_name(cls, value):
         return value or config.SETTINGS.main.default_branch
 

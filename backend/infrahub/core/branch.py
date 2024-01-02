@@ -6,7 +6,7 @@ from collections import defaultdict
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
-from pydantic import BaseModel, ConfigDict, Field, validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from infrahub import config
 from infrahub.core.constants import (
@@ -65,9 +65,9 @@ class Branch(StandardNode):
     status: str = "OPEN"  # OPEN, CLOSED
     description: str = ""
     origin_branch: str = "main"
-    branched_from: Optional[str] = None
+    branched_from: Optional[str] = Field(default=None, validate_default=True)
     hierarchy_level: int = 2
-    created_at: Optional[str] = None
+    created_at: Optional[str] = Field(default=None, validate_default=True)
     is_default: bool = False
     is_global: bool = False
     is_protected: bool = False
@@ -79,8 +79,9 @@ class Branch(StandardNode):
 
     _exclude_attrs: List[str] = ["id", "uuid", "owner", "ephemeral_rebase"]
 
-    @validator("name", pre=True, always=True)
-    def validate_branch_name(cls, value):  # pylint: disable=no-self-argument
+    @field_validator("name", mode="before")
+    @classmethod
+    def validate_branch_name(cls, value):
         checks = [
             (r".*/\.", "/."),
             (r"\.\.", ".."),
@@ -109,12 +110,14 @@ class Branch(StandardNode):
 
         return value
 
-    @validator("branched_from", pre=True, always=True)
-    def set_branched_from(cls, value):  # pylint: disable=no-self-argument
+    @field_validator("branched_from", mode="before")
+    @classmethod
+    def set_branched_from(cls, value):
         return Timestamp(value).to_string()
 
-    @validator("created_at", pre=True, always=True)
-    def set_created_at(cls, value):  # pylint: disable=no-self-argument
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def set_created_at(cls, value):
         return Timestamp(value).to_string()
 
     def update_schema_hash(self, at: Optional[Union[Timestamp, str]] = None) -> bool:
