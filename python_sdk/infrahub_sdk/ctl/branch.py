@@ -11,14 +11,14 @@ from rich.console import group as rich_group
 from rich.panel import Panel
 from rich.table import Table
 
-import infrahub_ctl.config as config
-from infrahub_ctl.client import initialize_client
-from infrahub_ctl.utils import (
+from infrahub_sdk import Error, GraphQLError
+from infrahub_sdk.ctl import config
+from infrahub_sdk.ctl.client import initialize_client
+from infrahub_sdk.ctl.utils import (
     calculate_time_diff,
     print_graphql_errors,
     render_action_rich,
 )
-from infrahub_sdk import Error, GraphQLError
 
 app = typer.Typer()
 

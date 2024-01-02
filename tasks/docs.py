@@ -94,7 +94,7 @@ def _generate(context: Context):
 
 def _generate_infrahubctl_documentation(context: Context):
     """Generate the documentation for infrahubctl using typer-cli."""
-    from infrahub_ctl.cli import app
+    from infrahub_sdk.ctl.cli import app
 
     print(" - Generate infrahubctl CLI documentation")
     for cmd in app.registered_commands:

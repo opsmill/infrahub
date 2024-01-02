@@ -6,8 +6,8 @@ from typing import List
 import typer
 from rich.console import Console
 
-from infrahub_ctl import config
-from infrahub_ctl.client import initialize_client
+from infrahub_sdk.ctl import config
+from infrahub_sdk.ctl.client import initialize_client
 from infrahub_sdk.transfer.exceptions import TransferError
 from infrahub_sdk.transfer.exporter.json import LineDelimitedJSONExporter
 
