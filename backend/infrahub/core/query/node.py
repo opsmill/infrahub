@@ -302,35 +302,6 @@ class NodeCheckIDQuery(Query):
         self.return_labels = ["n"]
 
 
-class NodeListGetLocalAttributeValueQuery(Query):
-    name: str = "node_list_get_local_attribute_value"
-
-    def __init__(self, ids: List[str], *args, **kwargs):
-        self.ids = ids
-        super().__init__(*args, **kwargs)
-
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
-        self.params["attrs_ids"] = self.ids
-
-        rel_filter, rel_params = self.branch.get_query_filter_relationships(
-            rel_labels=["r1"], at=self.at.to_string(), include_outside_parentheses=False
-        )
-
-        self.params.update(rel_params)
-
-        query = """
-        MATCH (a:Attribute) WHERE a.uuid IN $attrs_ids
-        MATCH (a)-[r1:HAS_VALUE]-(av:AttributeValue)
-        WHERE %s
-        """ % rel_filter[0]
-
-        self.add_to_query(query)
-        self.return_labels = ["a", "av", "r1"]
-
-    def get_results_by_id(self):
-        return {item.get("a").get("uuid"): item for item in self.get_results_group_by(("a", "uuid"), ("a", "name"))}
-
-
 class NodeListGetAttributeQuery(Query):
     name: str = "node_list_get_attribute"
 
