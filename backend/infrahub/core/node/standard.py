@@ -145,7 +145,7 @@ class StandardNode(BaseModel):
         node_data = dict(node)
         attrs["id"] = node.element_id
         for key, value in node_data.items():
-            if key not in cls.__fields__:
+            if key not in cls.model_fields:
                 continue
 
             field_type = cls.__fields__[key].type_
@@ -167,7 +167,7 @@ class StandardNode(BaseModel):
         else:
             data["uuid"] = self.uuid
 
-        for attr_name, field in self.__fields__.items():
+        for attr_name, field in self.model_fields.items():
             if attr_name in self._exclude_attrs:
                 continue
 
@@ -178,11 +178,10 @@ class StandardNode(BaseModel):
                 data[attr_name] = "NULL"
             elif inspect.isclass(field_type) and issubclass(field_type, BaseModel):
                 if isinstance(attr_value, list):
-                    clean_value = [item.dict() for item in attr_value]
+                    clean_value = [item.model_dump() for item in attr_value]
                     data[attr_name] = ujson.dumps(clean_value)
                 else:
                     data[attr_name] = attr_value.json()
-
             elif issubclass(field_type, (int, float, bool, str, UUID)):
                 data[attr_name] = attr_value
             else:

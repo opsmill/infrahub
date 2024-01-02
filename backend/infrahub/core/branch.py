@@ -790,7 +790,7 @@ class BaseDiffElement(BaseModel):
                 resp[key] = value.to_graphql()
             elif isinstance(value, dict):
                 resp[key] = [item.to_graphql() for item in value.values()]
-            elif self.__fields__[key].field_info.exclude:
+            elif self.model_fields[key].exclude:
                 continue
             elif isinstance(value, Enum):
                 resp[key] = value.value

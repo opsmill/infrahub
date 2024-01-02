@@ -8,7 +8,7 @@ import re
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
 from infrahub_sdk.utils import duplicates, intersection
-from pydantic import BaseModel, Extra, Field, root_validator, validator
+from pydantic import BaseModel, ConfigDict, Field, root_validator, validator
 
 from infrahub.core import registry
 from infrahub.core.constants import (
@@ -89,12 +89,9 @@ class QueryArrows(BaseModel):
 
 
 class BaseSchemaModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     _exclude_from_hash: List[str] = []
     _sort_by: List[str] = []
-
-    class Config:
-        extra = Extra.forbid
-        underscore_attrs_are_private = True
 
     def __hash__(self):
         return hash(self.get_hash())
@@ -115,7 +112,7 @@ class BaseSchemaModel(BaseModel):
 
         values = []
         md5hash = hashlib.md5()
-        for field_name in sorted(self.__fields__.keys()):
+        for field_name in sorted(self.model_fields.keys()):
             if field_name.startswith("_") or field_name in self._exclude_from_hash:
                 continue
 
@@ -181,7 +178,7 @@ class BaseSchemaModel(BaseModel):
 
     def duplicate(self) -> Self:
         """Duplicate the current object by doing a deep copy of everything and recreating a new object."""
-        return self.__class__(**copy.deepcopy(self.dict()))
+        return self.__class__(**copy.deepcopy(self.model_dump()))
 
     @staticmethod
     def is_list_composed_of_schema_model(items) -> bool:
@@ -240,7 +237,7 @@ class BaseSchemaModel(BaseModel):
         TODO Implement other fields type like dict
         """
 
-        for field_name, _ in other.__fields__.items():
+        for field_name, _ in other.model_fields.items():
             if not hasattr(self, field_name):
                 setattr(self, field_name, getattr(other, field_name))
                 continue
@@ -733,14 +730,12 @@ class SchemaExtension(BaseSchemaModel):
 
 
 class SchemaRoot(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     version: Optional[str] = Field(default=None)
     generics: List[GenericSchema] = Field(default_factory=list)
     nodes: List[NodeSchema] = Field(default_factory=list)
     groups: List[GroupSchema] = Field(default_factory=list)
     extensions: SchemaExtension = SchemaExtension()
-
-    class Config:
-        extra = Extra.forbid
 
     @classmethod
     def has_schema(cls, values, name: str) -> bool:

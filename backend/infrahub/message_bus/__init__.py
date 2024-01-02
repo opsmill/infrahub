@@ -105,7 +105,9 @@ class InfrahubMessage(BaseModel, aio_pika.abc.AbstractMessage):
 
     @property
     def body(self) -> bytes:
-        return self.json(exclude={"meta": {"headers", "priority"}, "value": True}, exclude_none=True).encode("UTF-8")
+        return self.model_dump_json(exclude={"meta": {"headers", "priority"}, "value": True}, exclude_none=True).encode(
+            "UTF-8"
+        )
 
     @property
     def locked(self) -> bool:
