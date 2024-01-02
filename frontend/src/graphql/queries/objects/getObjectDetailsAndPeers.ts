@@ -52,7 +52,7 @@ query {{kind}} {
     }
   }
   {{#each peers}}
-    {{this}} {
+    peer_{{this}}: {{this}} {
       edges {
         node {
           id
