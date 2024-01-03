@@ -1,24 +1,24 @@
 ---
 "group/ci":
   - changed-files:
-    - any-glob-to-any-file: [".github/**"]
+      - any-glob-to-any-file: [".github/**"]
 
 "group/backend":
   - changed-files:
-    - any-glob-to-any-file: ["backend/**"]
+      - any-glob-to-any-file: ["backend/**"]
 
 "group/frontend":
   - changed-files:
-    - any-glob-to-any-file: ["frontend/**"]
+      - any-glob-to-any-file: ["frontend/**"]
 
 "group/python-sdk":
   - changed-files:
-    - any-glob-to-any-file: ["python_sdk/**"]
+      - any-glob-to-any-file: ["python_sdk/**"]
 
 "group/sync-engine":
   - changed-files:
-    - any-glob-to-any-file: ["sync/**"]
+      - any-glob-to-any-file: ["sync/**"]
 
 "type/documentation":
   - changed-files:
-    - any-glob-to-any-file: ["docs/**"]
+      - any-glob-to-any-file: ["docs/**"]
