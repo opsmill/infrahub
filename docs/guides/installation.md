@@ -13,18 +13,49 @@ The main components are:
 - A **Graph database** based on `Neo4j` 5.x or `memgraph`.
 - A **Message bus** based on `RabbitMQ`.
 
-## Docker Compose
+## From Git Repository
 
-The recommended way to run Infrahub is to use the Docker Compose project included with the project combined with the helper commands defined in `invoke`.
+Create the base directory for the Infrahub installation. For this guide, we'll use /opt/infrahub.
+
+```sh
+sudo mkdir -p /opt/infrahub/
+cd /opt/infrahub/
+```
+
+Next, clone the `stable` branch of the Infrahub GitHub repository into the current directory. (This branch always holds the current stable release.)
+
+```sh
+git clone -b stable --depth 1 git@github.com:opsmill/infrahub.git .
+```
+
+!!! note
+    The `git clone` command above utilizes a "shallow clone" to retrieve only the most recent commit. If you need to download the entire history, omit the `--depth 1` argument.
+
+The `git clone` command should generate output similar to the following:
+
+```
+Cloning into '.'...
+remote: Enumerating objects: 1312, done.
+remote: Counting objects: 100% (1312/1312), done.
+remote: Compressing objects: 100% (1150/1150), done.
+remote: Total 1312 (delta 187), reused 691 (delta 104), pack-reused 0
+Receiving objects: 100% (1312/1312), 33.37 MiB | 14.46 MiB/s, done.
+Resolving deltas: 100% (187/187), done.
+```
+
+### Docker Compose
+
+The recommended way to run Infrahub is to use the Docker Compose files included with the project combined with the helper commands defined in `invoke`.
 
 The pre-requisites for this type of deployment are to have:
 
-- [Invoke](https://www.pyinvoke.org) (version 2 minimum) and TOML
+- [Invoke](https://www.pyinvoke.org) (version 2 minimum)
+- [Toml](https://toml.io/en/)
 - [Docker](https://docs.docker.com/engine/install/) (version 24.x minimum)
 
 +++ MacOS
 
-### Invoke
+#### Invoke
 
 On MacOS, Python is installed by default so you should be able to install `invoke` directly.
 Invoke works best when you install it in the main Python environment, but you can also install it in a virtual environment if you prefer. To install `invoke` and `toml`, run the following command:
@@ -33,7 +64,7 @@ Invoke works best when you install it in the main Python environment, but you ca
 pip install invoke toml
 ```
 
-### Docker
+#### Docker
 
 To install Docker, follow the [official instructions on the Docker website](https://docs.docker.com/desktop/install/mac-install/) for your platform.
 
@@ -52,12 +83,12 @@ Please add a comment to the issue if this is something that would be useful to y
 On Ubuntu, depending on which distribution you're running, there is a good chance your version of Docker might be outdated. Please ensure your installation meets the version requirements mentioned below.
 !!!
 
-### Invoke
+#### Invoke
 
 Invoke is a Python package commonly installed by running `pip install invoke toml`.
 If Python is not already installed on your system, install it first with `sudo apt install python3-pip`.
 
-### Docker
+#### Docker
 
 Check if Docker is installed and which version is installed with `docker --version`
 The version should be at least `24.x`. If the version is `20.x`, it's recommended to upgrade.
@@ -95,6 +126,6 @@ GitPod has a generous free tier of 50/hours per month for free.
 
 ## K8s with Helm charts
 
-Support for K8s is not yet available, but we are actively tracking this effort in our short/mid-term roadmap. You can follow [this issue for updates](https://github.com/opsmill/infrahub/issues/506).
+A first version of our K8S helm-chart is available in our repository.
 
-Please reach out and let us know if you are interested in this feature. It helps us prioritize what the team needs to focus on.
+[!ref Helm Chart](https://github.com/opsmill/infrahub/tree/stable/helm)

@@ -37,7 +37,6 @@ The `infrahubctl` command can be used to load individual schema files or multipl
 infrahubctl schema load <path to schema file or a directory> <path to schema file or a directory>
 ```
 
-
 #### Git integration
 
 You can defined a schema in an [external repository](/topics/repository).

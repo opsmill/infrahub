@@ -4,13 +4,15 @@ label: Extend the schema
 tags: [tutorial]
 order: 850
 ---
-# Extend the schema
+# Extend the Schema
 
-Infrahub can be extended by providing your own schema (or models). The version of Infrahub we currently use for the demo is bare-bones and doesn't include many models.
+Infrahub can be extended by providing your own schema (or models).
+
+## Default Schema
+
+The version of Infrahub we currently use for the demo only included a default schema, composed of 25+ models that are either mandatory for Infrahub to function like `Account`, `StandardGroup`, `Repository` or that are very generic like `Tag`.
 
 ## Visualize the active schema
-
-The default schema is composed of 25+ models that are either mandatory for Infrahub to function like `Account`, `StandardGroup`, `Repository` or that are very generic like `Tag`.
 
 You can explore the current schema by visiting the schema page at the bottom of the left menu.
 
@@ -24,7 +26,7 @@ You can explore the current schema by visiting the schema page at the bottom of 
 
 In order to model a network, we need to extend the current models to capture more information like: `Device`, `Interface`, `IPAddress`, `BGPSession`, `Location`, `Role`, `Status` etc.
 
-A schema extension with these types of models and more is available in the `models/` directory
+A "base" schema with these types of models and more is available in the `models/` directory
 
 ==- Infrastructure Base Schema
 :::code source="../../../models/infrastructure_base.yml" :::
