@@ -1,6 +1,7 @@
-import logging
 import re
 from collections import defaultdict
+
+from infrahub.log import get_logger
 
 # flake8: noqa
 # pylint: skip-file
@@ -70,7 +71,7 @@ ACCOUNTS = (
     # ("mary", "User", ("manager",)),
 )
 
-LOGGER = logging.getLogger("infrahub")
+log = get_logger()
 
 
 def load_data():
@@ -90,7 +91,7 @@ def load_data():
     #     grp = registry.attr_group[perm[2]]
     #     add_relationship(obj, grp, f"CAN_{obj.type.value}")
 
-    #     LOGGER.info(f"Permission Created: {obj.name.value}")
+    #     log.info(f"Permission Created: {obj.name.value}")
 
     # # Import the existing groups into the dict
     # groups = Group.get_list()
@@ -101,7 +102,7 @@ def load_data():
         obj = Group.init(label=group[0], name=group[1])
         obj.save()
         groups_dict[group[1]] = obj
-        LOGGER.info(f"Group Created: {obj.label.value}")
+        log.info(f"Group Created: {obj.label.value}")
 
         # for perm_name in group[2]:
         #     perm = perms_dict[perm_name]
@@ -117,7 +118,7 @@ def load_data():
         for group in account[2]:
             groups_dict[group].add_account(obj)
 
-        LOGGER.info(f"Account Created: {obj.name.value}")
+        log.info(f"Account Created: {obj.name.value}")
 
     # ------------------------------------------
     # Create Status, Role & DeviceProfile
@@ -125,31 +126,31 @@ def load_data():
     statuses_dict = {}
     roles_dict = {}
 
-    LOGGER.info("Creating Roles & Status")
+    log.info("Creating Roles & Status")
     for role in ROLES:
         obj = Role.init(label=role.title(), slug=role)
         obj.save()
         roles_dict[role] = obj
-        LOGGER.info(f"Created Role: {role}")
+        log.info(f"Created Role: {role}")
 
     STATUSES = ["active", "provisionning", "maintenance", "drained"]
     for status in STATUSES:
         obj = Status.init(label=status.title(), slug=status)
         obj.save()
         statuses_dict[status] = obj
-        LOGGER.info(f"Created Status: {status}")
+        log.info(f"Created Status: {status}")
 
     TAGS = ["blue", "green", "red"]
     for tag in TAGS:
         obj = Tag.init(name=tag)
         obj.save()
         tags_dict[tag] = obj
-        LOGGER.info(f"Created Tag: {tag}")
+        log.info(f"Created Tag: {tag}")
 
     active_status = statuses_dict["active"]
     site_builder_account = accounts_dict["site-builder"]
 
-    LOGGER.info("Creating Device")
+    log.info("Creating Device")
     for idx, device in enumerate(DEVICES):
         status_id = statuses_dict[device[1]].id
         role_id = roles_dict[device[4]].id
@@ -163,7 +164,7 @@ def load_data():
             obj.tags.add_peer(tag)
 
         obj.save()
-        LOGGER.info(f"- Created Device: {device[0]}")
+        log.info(f"- Created Device: {device[0]}")
 
         # # Add a special interface for spine1
         # if device[0] == "spine1":

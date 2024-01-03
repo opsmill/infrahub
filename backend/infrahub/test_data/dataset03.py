@@ -1,5 +1,4 @@
 import copy
-import logging
 from collections import defaultdict
 from ipaddress import IPv4Network
 
@@ -8,6 +7,7 @@ from infrahub_sdk import UUIDT
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.log import get_logger
 
 # flake8: noqa
 # pylint: skip-file
@@ -121,7 +121,7 @@ BGP_PEER_GROUPS = (
 )
 
 
-LOGGER = logging.getLogger("infrahub")
+log = get_logger()
 
 
 async def load_data(db: InfrahubDatabase):
@@ -147,7 +147,7 @@ async def load_data(db: InfrahubDatabase):
         # for group in account[2]:
         #     groups_dict[group].add_account(obj)
 
-        LOGGER.info(f"Account Created: {obj.name.value}")
+        log.info(f"Account Created: {obj.name.value}")
 
     for org in ORGANIZATIONS:
         obj = await Node.init(db=db, schema="Organization")
@@ -160,7 +160,7 @@ async def load_data(db: InfrahubDatabase):
 
         asn_dict[org[0]] = asn
         orgs_dict[org[0]] = obj
-        LOGGER.info(f"Organization Created: {obj.name.value} | {asn.asn.value}")
+        log.info(f"Organization Created: {obj.name.value} | {asn.asn.value}")
 
     for peer_group in BGP_PEER_GROUPS:
         obj = await Node.init(db=db, schema="BGPPeerGroup")
@@ -175,7 +175,7 @@ async def load_data(db: InfrahubDatabase):
         await obj.save(db=db)
 
         peer_group_dict[peer_group[0]] = obj
-        LOGGER.info(f"Peer Group Created: {obj.name.value}")
+        log.info(f"Peer Group Created: {obj.name.value}")
 
     # ------------------------------------------
     # Create Status, Role & DeviceProfile
@@ -185,18 +185,18 @@ async def load_data(db: InfrahubDatabase):
         await obj.new(db=db, name=tag)
         await obj.save(db=db)
         tags_dict[tag] = obj
-        LOGGER.info(f" Created Tag: {tag}")
+        log.info(f" Created Tag: {tag}")
 
     active_status = "active"
     internal_as = asn_dict["Duff"]
 
-    LOGGER.info("Creating Site & Device")
+    log.info("Creating Site & Device")
 
     for site_idx, site_name in enumerate(SITES):
         site = await Node.init(db=db, schema="Location")
         await site.new(db=db, name=site_name, type="SITE")
         await site.save(db=db)
-        LOGGER.info(f"Created Site: {site_name}")
+        log.info(f"Created Site: {site_name}")
 
         # site_networks = next(NETWORKS_POOL_INTERNAL).subnets(new_prefix=24)
         peer_networks = {
@@ -228,7 +228,7 @@ async def load_data(db: InfrahubDatabase):
             await obj.save(db=db)
 
             device_dict[device_name] = obj
-            LOGGER.info(f"- Created Device: {device_name}")
+            log.info(f"- Created Device: {device_name}")
 
             # Loopback Interface
             intf = await Node.init(db=db, schema="Interface")
@@ -375,7 +375,7 @@ async def load_data(db: InfrahubDatabase):
                         )
                         await bgp_session.save(db=db)
 
-                        LOGGER.info(
+                        log.info(
                             f" Created BGP Session '{device_name}' >> '{provider_name}': '{peer_group_name}' '{ip.address.value}' >> '{peer_ip.address.value}'"
                         )
 
@@ -391,9 +391,7 @@ async def load_data(db: InfrahubDatabase):
             intf2.description.value = f"Connected to {site_name}-edge1 {intf1.name.value}"
             await intf2.save(db=db)
 
-            LOGGER.debug(
-                f"Connected  '{site_name}-edge1::{intf1.name.value}' <> '{site_name}-edge2::{intf2.name.value}'"
-            )
+            log.debug(f"Connected  '{site_name}-edge1::{intf1.name.value}' <> '{site_name}-edge2::{intf2.name.value}'")
 
     # --------------------------------------------------
     # CREATE iBGP SESSION
@@ -423,7 +421,7 @@ async def load_data(db: InfrahubDatabase):
             )
             await obj.save(db=db)
 
-            LOGGER.info(
+            log.info(
                 f" Created BGP Session '{device1}' >> '{device2}': '{peer_group_name}' '{loopback1.address.value}' >> '{loopback2.address.value}'"
             )
 
@@ -482,4 +480,4 @@ async def load_data(db: InfrahubDatabase):
         intf21.description.value = f"Connected to {site1}-{device} via {circuit_id}"
         await intf21.save(db=db)
 
-        LOGGER.info(f"Connected  '{site1}-{device}::{intf1.name.value}' <> '{site2}-{device}::{intf2.name.value}'")
+        log.info(f"Connected  '{site1}-{device}::{intf1.name.value}' <> '{site2}-{device}::{intf2.name.value}'")
