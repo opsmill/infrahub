@@ -62,7 +62,7 @@ templates = Jinja2Templates(directory=f"{FRONTEND_DIRECTORY}/dist")
 
 
 @app.on_event("startup")
-async def app_initialization():
+async def app_initialization() -> None:
     if not config.SETTINGS:
         config_file_name = os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")
         config_file_path = os.path.abspath(config_file_name)
@@ -105,7 +105,7 @@ async def app_initialization():
 
 
 @app.on_event("shutdown")
-async def shutdown():
+async def shutdown() -> None:
     await close_broker_connection()
     await app.state.db.close()
 
@@ -125,7 +125,7 @@ async def logging_middleware(request: Request, call_next: Callable[[Request], Aw
 
 
 @app.middleware("http")
-async def add_process_time_header(request: Request, call_next):
+async def add_process_time_header(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
     start_time = time.time()
     response = await call_next(request)
     process_time = time.time() - start_time
@@ -168,9 +168,5 @@ if os.path.exists(FRONTEND_ASSET_DIRECTORY) and os.path.isdir(FRONTEND_ASSET_DIR
 
 
 @app.get("/{rest_of_path:path}", include_in_schema=False)
-async def react_app(req: Request, rest_of_path: str):  # pylint: disable=unused-argument
+async def react_app(req: Request, rest_of_path: str) -> Response:  # pylint: disable=unused-argument
     return templates.TemplateResponse("index.html", {"request": req})
-
-
-if __name__ != "main":
-    logger.setLevel(gunicorn_logger.level)
