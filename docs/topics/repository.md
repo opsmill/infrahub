@@ -3,6 +3,14 @@ label: Repository
 ---
 # External Git repository
 
+An external Git repository will be loading into Infrahub, using `infrahubctl`. By default, `infrahubctl` is looking for a `.infrahub.yml` at the root of the repository.
+
+## `.infrahub.yml` file
+
+This configuration file will be use to link the different repository files to Infrahub type of objects:
+- [RFile](/topics/transformation)
+- [Python Transformation](/topics/transformation)
+- [Artifact](/topics/artifact) Definition
 
 !!!warning
 Coming Soon
