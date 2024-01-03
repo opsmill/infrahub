@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Any, Dict, Iterator, Optional, TypeVar
 
 import aio_pika
@@ -63,26 +65,26 @@ class Meta(BaseModel):
     check_execution_id: Optional[str] = Field(default=None, description="Check execution ID related to this message")
     priority: int = Field(default=3, description="Message Priority")
 
+    @classmethod
+    def default(cls) -> Meta:
+        return cls()
+
 
 class InfrahubMessage(BaseModel, aio_pika.abc.AbstractMessage):
     """Base Model for messages"""
 
-    meta: Optional[Meta] = None
+    meta: Meta = Field(default_factory=Meta.default, description="Meta properties for the message")
 
     def assign_meta(self, parent: "InfrahubMessage") -> None:
         """Assign relevant meta properties from a parent message."""
-        self.meta = self.meta or Meta()
-        if parent.meta:
-            self.meta.request_id = parent.meta.request_id
-            self.meta.initiator_id = parent.meta.initiator_id
+        self.meta.request_id = parent.meta.request_id
+        self.meta.initiator_id = parent.meta.initiator_id
 
     def assign_header(self, key: str, value: Any) -> None:
-        self.meta = self.meta or Meta()
         self.meta.headers = self.meta.headers or {}
         self.meta.headers[key] = value
 
     def assign_priority(self, priority: int) -> None:
-        self.meta = self.meta or Meta()
         self.meta.priority = priority
 
     def set_log_data(self, routing_key: str) -> None:
@@ -126,7 +128,6 @@ class InfrahubMessage(BaseModel, aio_pika.abc.AbstractMessage):
         )
 
     def increase_retry_count(self, count: int = 1) -> None:
-        self.meta = self.meta or Meta()
         current_retry = self.meta.retry_count or 0
         self.meta.retry_count = current_retry + count
 

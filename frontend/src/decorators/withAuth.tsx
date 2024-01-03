@@ -9,6 +9,7 @@ import SignIn from "../screens/sign-in/sign-in";
 import { configState } from "../state/atoms/config.atom";
 import { parseJwt } from "../utils/common";
 import { fetchUrl } from "../utils/fetch";
+import { components } from "../infraops";
 
 type tPermissions = {
   write?: boolean;
@@ -60,7 +61,10 @@ export const getNewToken = async () => {
     },
   };
 
-  const result = await fetchUrl(CONFIG.AUTH_REFRESH_TOKEN_URL, payload);
+  const result: components["schemas"]["AccessTokenResponse"] = await fetchUrl(
+    CONFIG.AUTH_REFRESH_TOKEN_URL,
+    payload
+  );
 
   if (!result?.access_token) {
     return signOut();

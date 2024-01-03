@@ -1,16 +1,18 @@
+import LoadingScreen from "../screens/loading-screen/loading-screen";
 import { classNames } from "../utils/common";
 
 export enum AVATAR_SIZE {
   SMALL,
 }
 interface tAvatar {
-  name: string;
+  name?: string;
   image?: string;
   className?: string;
   size?: AVATAR_SIZE;
+  isLoading?: boolean;
 }
 
-export const initials = (name: string) =>
+export const initials = (name?: string) =>
   name
     ? name
         .split(" ")
@@ -31,7 +33,20 @@ const getAvatarSize = (size?: AVATAR_SIZE) => {
 };
 
 export const Avatar = (props: tAvatar) => {
-  const { name, image, size, className, ...otherProps } = props;
+  const { name, image, size, className, isLoading, ...otherProps } = props;
+
+  if (isLoading) {
+    return (
+      <div
+        className={classNames(
+          getAvatarSize(size),
+          "rounded-full bg-custom-blue-200 text-custom-white flex justify-center items-center",
+          className ?? ""
+        )}>
+        <LoadingScreen colorClass={"custom-white"} size={16} hideText />
+      </div>
+    );
+  }
 
   if (image) {
     return (
@@ -42,17 +57,17 @@ export const Avatar = (props: tAvatar) => {
         {...otherProps}
       />
     );
-  } else {
-    return (
-      <div
-        className={classNames(
-          getAvatarSize(size),
-          "rounded-full bg-custom-blue-200 text-custom-white flex justify-center items-center",
-          className ?? ""
-        )}
-        {...otherProps}>
-        {initials(name)}
-      </div>
-    );
   }
+
+  return (
+    <div
+      className={classNames(
+        getAvatarSize(size),
+        "rounded-full bg-custom-blue-200 text-custom-white flex justify-center items-center",
+        className ?? ""
+      )}
+      {...otherProps}>
+      {initials(name)}
+    </div>
+  );
 };

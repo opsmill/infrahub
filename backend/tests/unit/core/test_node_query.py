@@ -10,10 +10,8 @@ from infrahub.core.query.node import (
     NodeGetListQuery,
     NodeListGetAttributeQuery,
     NodeListGetInfoQuery,
-    NodeListGetLocalAttributeValueQuery,
     NodeListGetRelationshipsQuery,
 )
-from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 
 
@@ -218,35 +216,6 @@ async def test_query_NodeListGetInfoQuery(
     query = await NodeListGetInfoQuery.init(db=db, branch=branch, ids=ids)
     await query.execute(db=db)
     assert len(list(query.get_results_group_by(("n", "uuid")))) == 3
-
-
-async def test_query_NodeListGetLocalAttributeValueQuery(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema
-):
-    p1 = await Node.init(db=db, schema="TestPerson")
-    await p1.new(db=db, name="John", height=180)
-    await p1.save(db=db)
-    car1 = await Node.init(db=db, schema="TestCar")
-    await car1.new(db=db, name="accord", nbr_seats=5, is_electric=False, owner=p1)
-    await car1.save(db=db)
-    car2 = await Node.init(db=db, schema="TestCar")
-    await car2.new(db=db, name="model3", nbr_seats=5, is_electric=True, owner=p1)
-    await car2.save(db=db)
-
-    ids = [
-        car1.name.id,
-        car1.nbr_seats.id,
-        car1.is_electric.id,
-        car1.color.id,
-        car2.name.id,
-        car2.nbr_seats.id,
-        car2.is_electric.id,
-        car2.color.id,
-    ]
-
-    query = await NodeListGetLocalAttributeValueQuery.init(db=db, ids=ids, branch=default_branch, at=Timestamp())
-    await query.execute(db=db)
-    assert len(query.get_results_by_id()) == 8
 
 
 async def test_query_NodeListGetAttributeQuery_all_fields(db: InfrahubDatabase, base_dataset_02):

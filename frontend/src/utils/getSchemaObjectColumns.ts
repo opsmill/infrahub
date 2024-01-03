@@ -24,7 +24,8 @@ export const getSchemaRelationshipColumns = (schema?: iNodeSchema | iGenericSche
       (relationship) =>
         relationship.kind === "Attribute" ||
         relationship.kind === "Parent" ||
-        (relationship.kind === "Component" && relationship.cardinality === "one")
+        (relationship.kind === "Component" && relationship.cardinality === "one") ||
+        (relationship.kind === "Generic" && relationship.cardinality === "one")
     )
     .map((relationship) => ({
       label: relationship.label ?? "",
