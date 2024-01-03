@@ -612,8 +612,29 @@ query InternalAccountTokenBis {
                 __typename
               }
           }
-
-
+          account {
+            node {
+              id
+              display_label
+              __typename
+            }
+            properties {
+              updated_at
+              is_protected
+              is_visible
+              source {
+                id
+                display_label
+                __typename
+              }
+              owner {
+                id
+                display_label
+                __typename
+              }
+              __typename
+            }
+          }
       }
     }
   }
@@ -983,8 +1004,8 @@ query InternalAccountToken {
 `;
 
 export const accountTokenEditMocksQueryBis = `
-query InternalAccountTokenBis {
-  InternalAccountTokenBis (ids: ["${accountTokenId}"]) {
+query getInternalAccountTokenBisDetailsAndPeers {
+  InternalAccountTokenBisDetailsAndPeers: InternalAccountTokenBis (ids: ["${accountTokenId}"]) {
     edges {
       node {
         id
@@ -1037,6 +1058,21 @@ query InternalAccountTokenBis {
                 __typename
               }
           }
+        account {
+            node {
+              id
+              display_label
+              __typename
+            }
+            properties {
+              is_protected
+              owner {
+                id
+                display_label
+                __typename
+              }
+            }
+        }
       }
     }
   }
@@ -1225,7 +1261,7 @@ export const accountTokenEditMocksData = {
 };
 
 export const accountTokenEditMocksDataBis = {
-  InternalAccountTokenBis: {
+  InternalAccountTokenBisDetailsAndPeers: {
     edges: [
       {
         node: {

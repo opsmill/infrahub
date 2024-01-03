@@ -2,6 +2,7 @@ import { useMutation } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { format, formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
+import { useAtomValue } from "jotai/index";
 import { useCallback, useContext, useState } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "../config/qsp";
@@ -16,7 +17,6 @@ import { POPOVER_SIZE, PopOver } from "./popover";
 import { Select, SelectOption } from "./select";
 import { SelectButton } from "./select-button";
 import { Switch } from "./switch";
-import { useAtomValue } from "jotai/index";
 
 export default function BranchSelector() {
   const [branches, setBranches] = useAtom(branchesState);
@@ -52,7 +52,13 @@ export default function BranchSelector() {
   );
 
   const branchesOptions: SelectOption[] = branches
-    .map((branch) => ({ id: branch.id, name: branch.name }))
+    .map((branch) => ({
+      id: branch.id,
+      name: branch.name,
+      is_data_only: branch.is_data_only,
+      is_default: branch.is_default,
+      created_at: branch.created_at,
+    }))
     .sort((branch1, branch2) => {
       if (branch1.name === "main") {
         return -1;

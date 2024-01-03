@@ -115,7 +115,7 @@ async def test_create_artifact_definition(
     assert ad1.name.value == "Artifact 01"
 
     assert (
-        messages.RequestArtifactDefinitionGenerate(meta=None, artifact_definition=ad_id, branch=branch.name, limit=[])
+        messages.RequestArtifactDefinitionGenerate(artifact_definition=ad_id, branch=branch.name, limit=[])
         in rpc_client.sent
     )
 
@@ -162,8 +162,6 @@ async def test_update_artifact_definition(
     assert ad1_post.artifact_name.value == "myartifact2"
 
     assert (
-        messages.RequestArtifactDefinitionGenerate(
-            meta=None, artifact_definition=definition1.id, branch=branch.name, limit=[]
-        )
+        messages.RequestArtifactDefinitionGenerate(artifact_definition=definition1.id, branch=branch.name, limit=[])
         in rpc_client.sent
     )

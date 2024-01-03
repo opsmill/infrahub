@@ -81,7 +81,7 @@ Now that we have modified some data in a controlled environment, and after valid
 
 To view changes and merge a branch you need to:
 
-1. Navigate to the branch menu at the very bottom of the menu on the left (or [follow this link](http://localhost:8000/branches/))
+1. Navigate to the branch page in the menu on the left under the Change Control section (or [follow this link](http://localhost:8000/branches/))
 
 ![Branches list](../../media/tutorial/tutorial-1-branch-and-version-control.cy.ts/tutorial_1_branch_list.png)
 

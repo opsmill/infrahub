@@ -14,7 +14,7 @@ The version of Infrahub we currently use for the demo only included a default sc
 
 ## Visualize the active schema
 
-You can explore the current schema by visiting the schema page at the bottom of the left menu.
+You can explore the current schema by visiting the schema page, you can find it in the left menu under the Unified Storage section.
 
 [!ref Explore the current schema](http://localhost:8000/api/schema)
 
