@@ -140,12 +140,14 @@ Here the query will require an input parameter called `$name` what will refer to
 The next step is to create the actual Jinja Template file. Create a file called tags_tpl.j2
 
 ```jinja2
-{% for tag in data.BuiltinTag.edges[0].node %}
-{{ tag.node.name.value }}
-{% if tag.node["description"]["value"] %}
-{{ tag.node.description.value }}
+{%% if data.BuiltinTag.edges and data.BuiltinTag.edges is iterable }
+{% for tag in ["BuiltinTag"]["edges"][0]["node"] %}
+"{{ tag.name.value }}"
+{% if tag["description"]["value"] %}
+description: "{{ tag.description.value }}
 {% endif %}
 {% endfor %}
+{% endif %}
 ```
 
 ## 3. Create a .infrahub.yml file

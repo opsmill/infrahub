@@ -56,7 +56,7 @@ After adding the `infrahub-demo-edge` repository you will be able to see several
 - 3 Jinja Rendered File under [RFiles](http://localhost:8000/objects/CoreRFile/)
 - 4 Python Transformation under [Python Transformation](http://localhost:8000/objects/CoreTransformation)
 - 4 [Artifact Definition](http://localhost:8000/objects/CoreArtifactDefinition)
-- 7 GraphQL [Queries](/topics/grapql) under [Objects / GraphQL Query](http://localhost:8000/objects/GraphQLQuery/)
+- 7 GraphQL [Queries](/topics/graphql) under [Objects / GraphQL Query](http://localhost:8000/objects/GraphQLQuery/)
 !!!
 
 !!!secondary Troubleshooting

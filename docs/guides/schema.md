@@ -22,7 +22,7 @@ extensions:
 ```
 
 ==- Example of schema file that is defining new nodes and adding  a relationship to an existing one
-:::code source="../../../models/infrastructure_extension_rack.yml" :::
+:::code source="../../models/infrastructure_extension_rack.yml" :::
 ==-
 
 ## Load a schema file

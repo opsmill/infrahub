@@ -12,7 +12,7 @@ Within Infrahub, it is possible to add [external repository](/topics/repository)
   2. Go to Unified Storage > Repository
   3. Click on the `+` plus sign
   4. Complete the required informations
-  ![Add a Git Repository ](../../media/create_repository.png)
+  ![Add a Git Repository ](../media/create_repository.png)
 
 !!!success Validate that everything is correct
 In the UI, you should see your new repository. If the repository you added doesn't have the commit property populated it means that the initial sync didn't work. Verify the location and credentials.
