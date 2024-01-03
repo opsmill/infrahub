@@ -4,11 +4,11 @@ label: Extend the schema
 tags: [tutorial]
 order: 850
 ---
-# Extend the Schema
+# Extend the schema
 
 Infrahub can be extended by providing your own schema (or models).
 
-## Default Schema
+## Default schema
 
 The version of Infrahub we currently use for the demo only included a default schema, composed of 25+ models that are either mandatory for Infrahub to function like `Account`, `StandardGroup`, `Repository` or that are very generic like `Tag`.
 

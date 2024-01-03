@@ -13,7 +13,7 @@ The main components are:
 - A **Graph database** based on `Neo4j` 5.x or `memgraph`.
 - A **Message bus** based on `RabbitMQ`.
 
-## From Git Repository
+## From Git repository
 
 Create the base directory for the Infrahub installation. For this guide, we'll use /opt/infrahub.
 

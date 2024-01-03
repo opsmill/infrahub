@@ -1,22 +1,22 @@
 ---
 icon: file-code
-label: Creating a Jinja Rendered File (RFile)
+label: Creating a Jinja rendered File (RFile)
 ---
-# Creating a Jinja Rendered File (RFile)
+# Creating a Jinja rendered File (RFile)
 
 Within Infrahub a [Transform](/topics/transformation) is defined in an [external repository](/topics/repository). However, during development and troubleshooting it is easiest to start from your local computer and run the render using [infrahubctl render](/infrahubctl/infrahubctl-render).
 
-The goal of this guide is to develop a Jinja Rfile and add it to Infrahub, we will achieve this by following these steps.
+The goal of this guide is to develop a Jinja RFile and add it to Infrahub, we will achieve this by following these steps.
 
 1. Identify the relevant data you want to extract from the database using a [GraphQL query](/topics/graphql), that can take an input parameter to filter the data
 2. Write a Jinja2 file that use the GraphQL query to read information from the system and render the data into a new format
-3. Create an entry for the Rfile within an .infrahub.yml file.
+3. Create an entry for the RFile within an .infrahub.yml file.
 4. Create a Git repository
-5. Test the Rfile rendering with infrahubctl
+5. Test the RFile rendering with infrahubctl
 6. Add the repository to Infrahub as an external repository
-7. Validate that the Rfile works by using the render API endpoint
+7. Validate that the RFile works by using the render API endpoint
 
-In this guide we are going to work with the builtin tag objects in Infrahub. It won't provide a Rfile that is very useful, the goal is instead to show how the Jinja Rendering works. Once you have mastered the basics you will be ready to go on to create more advanced template.
+In this guide we are going to work with the builtin tag objects in Infrahub. It won't provide a RFile that is very useful, the goal is instead to show how the Jinja Rendering works. Once you have mastered the basics you will be ready to go on to create more advanced template.
 
 ## 1. Creating a query to collect the desired data
 
@@ -135,7 +135,7 @@ Here the query will require an input parameter called `$name` what will refer to
 }
 ```
 
-## 2. Create the Jina Template
+## 2. Create the Jinja Template
 
 The next step is to create the actual Jinja Template file. Create a file called tags_tpl.j2
 
@@ -167,7 +167,7 @@ rfiles:
 
 > The main Jinja2 template can import other templates
 
-Three parts here are required, first the `name` of the Rfile which should be unique across Infrahub, `query` the GraphqlQuery linked to our Rfile and also the `template_path` that should point to the Jinja2 file within the repository.
+Three parts here are required, first the `name` of the RFile which should be unique across Infrahub, `query` the GraphqlQuery linked to our RFile and also the `template_path` that should point to the Jinja2 file within the repository.
 
 ## 4. Create a Git repository
 
@@ -175,7 +175,7 @@ Within the `tags_render` folder you should now have tree files:
 
 * tags_query.gql: Contains the GraphQL query
 * tags_tpl.j2: Contains the Jinja2 Template
-* .infrahub.yml: Contains the definition for the Rfile
+* .infrahub.yml: Contains the definition for the RFile
 
 Before we can test our transform we must add the files to a local Git repository.
 
@@ -187,7 +187,7 @@ git commit -m "First commit"
 
 ## 5. Test the render using infrahubctl
 
-Using infrahubctl you can first verify that the `.infrahub.yml` file is formatted correctly by listing available Rfile.
+Using infrahubctl you can first verify that the `.infrahub.yml` file is formatted correctly by listing available RFile.
 
 ```sh
  Usage: infrahubctl render [OPTIONS] RFILE [VARIABLES]...

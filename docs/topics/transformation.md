@@ -52,13 +52,13 @@ The transformation will automatically inherit the parameters (variables) defined
 | Core      | **RFile**           | A file rendered from a Jinja2 template | Jinja2   | Plain Text    |
 | Core      | **TransformPython** | A transform function written in Python | Python   | JSON          |
 
-### Rendered File (Jinja2 plugin)
+### Rendered file (Jinja2 plugin)
 
 Infrahub can natively render any Jinja templates dynamically. Internally it's referred to as `RFile` for `Rendered File`.
 
 An RFile is a transformation plugin for Jinja2, it can generate any file in plain text format and must be composed of 1 main Jinja2 template and 1 GraphQL query.
 
-#### Create a Jinja Rendered File (RFile)
+#### Create a Jinja rendered file (RFile)
 
 The recommended way to create an RFile is to import it from a Git Repository.
 
