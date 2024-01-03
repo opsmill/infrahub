@@ -1,11 +1,8 @@
 from infrahub import lock
 from infrahub.exceptions import RepositoryError
-from infrahub.log import get_logger
 from infrahub.services import InfrahubServices
 
 from .repository import InfrahubRepository
-
-log = get_logger(name="infrahub.git")
 
 
 async def sync_remote_repositories(service: InfrahubServices) -> None:
@@ -24,7 +21,7 @@ async def sync_remote_repositories(service: InfrahubServices) -> None:
                     client=service.client,
                 )
             except RepositoryError as exc:
-                log.error(exc.message, repository=exc.identifier)
+                service.log.error(exc.message, repository=exc.identifier)
                 init_failed = True
 
             if init_failed:
@@ -38,7 +35,7 @@ async def sync_remote_repositories(service: InfrahubServices) -> None:
                     )
                     await repo.import_objects_from_files(branch_name=repo.default_branch_name)
                 except RepositoryError as exc:
-                    log.error(exc.message, repository=exc.identifier)
+                    service.log.error(exc.message, repository=exc.identifier)
                     continue
 
             await repo.sync()
