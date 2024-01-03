@@ -10,7 +10,7 @@ Out of the box, Infrahub doesn't have a schema for most things and it's up to us
 
 Unlike traditional databases that can only have one schema at a time, in Infrahub it is possible to have a different schema per branch. This is possible because the schema itself is stored in the database like any other object.
 
-New schema can be uploaded via the `infrahubctl schema load` command or via the REST API directly.
+There is several way to [load a new schema](/guides/schema)
 
 !!!info
 In the Tech Preview not all features of the schema are available yet. There are still some important changes coming like support for schema migration and schema dependencies.

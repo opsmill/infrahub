@@ -40,6 +40,7 @@ infrahubctl schema load <path to schema file or a directory> <path to schema fil
 
 #### Git integration
 
+You can defined a schema in an [external repository](/topics/repository).
 The schemas that should be loaded must be declared in the ``.infrahub.yml`` directory, under schemas.
 
 > Individual files and directory are both supported.
