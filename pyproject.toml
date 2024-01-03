@@ -16,7 +16,7 @@ pydantic-settings = "^2.1"
 fastapi-storages = "~0.2"
 
 [tool.poetry.group.server.dependencies]
-fastapi = "~0.105"
+fastapi = "~0.108"
 starlette-exporter = "^0.12.0"
 python-multipart = "^0.0.6"         # Required by FastAPI to upload large files
 asgi-correlation-id = "4.2.0"       # Middleware for FastAPI to generate ID per request
