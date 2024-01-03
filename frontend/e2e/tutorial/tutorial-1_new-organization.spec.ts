@@ -21,4 +21,18 @@ test.describe("Getting started with Infrahub", () => {
     await expect(page.locator("tbody")).toContainText("My-First-Org");
     await expect(page.locator("tbody")).toContainText("Testing Infrahub");
   });
+
+  test("Create a new branch", async ({ page }) => {
+    await page.goto("/");
+    await page.getByTestId("create-branch-button").click();
+
+    // Form
+    await expect(page.getByText("Create a new branch")).toBeVisible();
+    await page.locator("#new-branch-name").fill("cr1234");
+    await page.getByRole("button", { name: "Create" }).click();
+
+    // After submit
+    await expect(page.getByTestId("branch-select-menu")).toContainText("cr1234");
+    await expect(page).toHaveURL(/.*?branch=cr1234/);
+  });
 });
