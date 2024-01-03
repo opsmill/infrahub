@@ -402,7 +402,10 @@ async def test_schema_load_endpoint_not_valid_simple_05(
         )
 
     assert response.status_code == 422
-    assert response.json()["detail"][0]["msg"] == "Name can not be set to a reserved keyword 'None' is not allowed."
+    assert (
+        response.json()["detail"][0]["msg"]
+        == "Value error, Name can not be set to a reserved keyword 'None' is not allowed."
+    )
 
 
 async def test_schema_load_endpoint_not_valid_with_generics_02(
