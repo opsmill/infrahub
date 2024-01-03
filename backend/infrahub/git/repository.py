@@ -53,7 +53,7 @@ if TYPE_CHECKING:
     from infrahub.message_bus import messages
 # pylint: disable=too-few-public-methods,too-many-lines
 
-LOGGER = get_logger("infrahub.git")
+log = get_logger("infrahub.git")
 
 COMMITS_DIRECTORY_NAME = "commits"
 BRANCHES_DIRECTORY_NAME = "branches"
@@ -80,10 +80,10 @@ def initialize_repositories_directory() -> bool:
     repos_dir = get_repositories_directory()
     if not os.path.isdir(repos_dir):
         os.makedirs(repos_dir)
-        LOGGER.debug(f"Initialized the repositories_directory at {repos_dir}")
+        log.debug(f"Initialized the repositories_directory at {repos_dir}")
         return True
 
-    LOGGER.debug(f"Repositories_directory already present at {repos_dir}")
+    log.debug(f"Repositories_directory already present at {repos_dir}")
     return False
 
 
@@ -458,10 +458,10 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         # Check if the root, commits and branches directories are already present, create them if needed
         if os.path.isdir(self.directory_root):
             shutil.rmtree(self.directory_root)
-            LOGGER.warning(f"Found an existing directory at {self.directory_root}, deleted it")
+            log.warning(f"Found an existing directory at {self.directory_root}, deleted it", repository=self.name)
         elif os.path.isfile(self.directory_root):
             os.remove(self.directory_root)
-            LOGGER.warning(f"Found an existing file at {self.directory_root}, deleted it")
+            log.warning(f"Found an existing file at {self.directory_root}, deleted it", repository=self.name)
 
         # Initialize directory structure
         os.makedirs(self.directory_root)
@@ -502,7 +502,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         service = service or InfrahubServices()
         self = cls(service=service, **kwargs)
         await self.create_locally()
-        LOGGER.info(f"{self.name} | Created the new project locally.")
+        log.info("Created the new project locally.", repository=self.name)
         return self
 
     @classmethod
@@ -510,7 +510,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         service = service or InfrahubServices()
         self = cls(service=service, **kwargs)
         self.validate_local_directories()
-        LOGGER.debug(f"{self.name} | Initiated the object on an existing directory.")
+        log.debug("Initiated the object on an existing directory.", repository=self.name)
         return self
 
     def has_worktree(self, identifier: str) -> bool:
@@ -648,10 +648,15 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         """
 
         if not self.client:
-            LOGGER.warning("Unable to update the value of the commit because a valid client hasn't been provided.")
+            log.warning(
+                "Unable to update the value of the commit because a valid client hasn't been provided.",
+                repository=self.name,
+            )
             return
 
-        LOGGER.debug(f"{self.name} | Updating commit value to {commit} for branch {branch_name}")
+        log.debug(
+            f"Updating commit value to {commit} for branch {branch_name}", repository=self.name, branch=branch_name
+        )
         await self.client.repository_update_commit(branch_name=branch_name, repository_id=self.id, commit=commit)
 
         return True
@@ -676,7 +681,11 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         #  Since the branch is a match for the main branch we don't need to create a commit worktree
         # If there is a remote, Check if there is an existing remote branch with the same name and if so track it.
         if not self.has_origin:
-            LOGGER.debug("%s | Branch %s created in Git without tracking a remote branch.", self.name, branch_name)
+            log.debug(
+                f"Branch {branch_name} created in Git without tracking a remote branch.",
+                repository=self.name,
+                branch=branch_name,
+            )
             return True
 
         remote_branch = [br for br in repo.remotes.origin.refs if br.name == f"origin/{branch_name}"]
@@ -686,11 +695,13 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             br_repo.head.reference.set_tracking_branch(remote_branch[0])
             br_repo.remotes.origin.pull(branch_name)
             self.create_commit_worktree(str(br_repo.head.reference.commit))
-            LOGGER.debug(
-                "%s | Branch %s  created in Git, tracking remote branch %s.", self.name, branch_name, remote_branch[0]
+            log.debug(
+                f"Branch {branch_name} created in Git, tracking remote branch {remote_branch[0]}.",
+                repository=self.name,
+                branch=branch_name,
             )
         else:
-            LOGGER.debug(f"{self.name} | Branch {branch_name} created in Git without tracking a remote branch.")
+            log.debug(f"Branch {branch_name} created in Git without tracking a remote branch.", repository=self.name)
 
         if push_origin:
             await self.push(branch_name)
@@ -707,7 +718,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         # TODO need to handle the exception properly
         branch = await self.client.branch.create(branch_name=branch_name, background_execution=True)
 
-        LOGGER.debug(f"{self.name} | Branch {branch_name} created in the Graph")
+        log.debug(f"Branch {branch_name} created in the Graph", repository=self.name, branch=branch_name)
         return branch
 
     def create_commit_worktree(self, commit: str) -> Union[bool, Worktree]:
@@ -723,7 +734,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         repo = self.get_git_repo_main()
         try:
             repo.git.worktree("add", directory, commit)
-            LOGGER.debug(f"{self.name} | Commit worktree created {commit}")
+            log.debug(f"Commit worktree created {commit}", repository=self.name)
             return worktree
         except GitCommandError as exc:
             if "invalid reference" in exc.stderr:
@@ -746,7 +757,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         except GitCommandError as exc:
             raise RepositoryError(identifier=self.name, message=exc.stderr) from exc
 
-        LOGGER.debug(f"{self.name} | Branch worktree created {branch_name}")
+        log.debug(f"Branch worktree created {branch_name}", repository=self.name)
         return True
 
     async def calculate_diff_between_commits(
@@ -783,7 +794,9 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         if not self.has_origin:
             return False
 
-        LOGGER.debug(f"{self.name} | Pushing the latest update to the remote origin for the branch '{branch_name}'")
+        log.debug(
+            f"Pushing the latest update to the remote origin for the branch '{branch_name}'", repository=self.name
+        )
 
         # TODO Catch potential exceptions coming from origin.push
         repo = self.get_git_repo_worktree(identifier=branch_name)
@@ -796,7 +809,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         if not self.has_origin:
             return False
 
-        LOGGER.debug(f"{self.name} | Fetching the latest updates from remote origin.")
+        log.debug("Fetching the latest updates from remote origin.", repository=self.name)
 
         repo = self.get_git_repo_main()
         repo.remotes.origin.fetch()
@@ -809,7 +822,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         By default the sync will focus only on the branches pulled from origin that have some differences with the local one.
         """
 
-        LOGGER.info(f"{self.name} | Starting the synchronization.")
+        log.info("Starting the synchronization.", repository=self.name)
 
         await self.fetch()
 
@@ -818,7 +831,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         if not new_branches and not updated_branches:
             return True
 
-        LOGGER.debug(f"{self.name} | New Branches {new_branches}, Updated Branches {updated_branches} ")
+        log.debug(f"New Branches {new_branches}, Updated Branches {updated_branches}", repository=self.name)
 
         # TODO need to handle properly the situation when a branch is not valid.
         for branch_name in new_branches:
@@ -850,8 +863,10 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             await self.import_objects_from_files(branch_name=branch_name, commit=commit_after)
 
             if commit_after is True:
-                LOGGER.warning(
-                    f"{self.name} | An update was detected on {branch_name} but the commit remained the same after pull() ({commit_after}) ."
+                log.warning(
+                    f"An update was detected but the commit remained the same after pull() ({commit_after}).",
+                    repository=self.name,
+                    branch=branch_name,
                 )
 
         return True
@@ -881,7 +896,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 and branch_name in local_branches
                 and remote_branches[branch_name].commit != local_branches[branch_name].commit
             ):
-                LOGGER.info(f"New commit detected in branch {branch_name}")
+                log.info("New commit detected", repository=self.name, branch=branch_name)
                 updated_branches.append(branch_name)
 
         return sorted(list(new_branches)), sorted(updated_branches)
@@ -999,7 +1014,10 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
     async def import_objects_from_files(self, branch_name: str, commit: Optional[str] = None):
         if not self.client:
-            LOGGER.warning("Unable to import the objects from the files because a valid client hasn't been provided.")
+            log.warning(
+                "Unable to import the objects from the files because a valid client hasn't been provided.",
+                repository=self.name,
+            )
             return
 
         if not commit:
@@ -1018,7 +1036,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             await self.import_artifact_definitions(branch_name=branch_name, commit=commit, config_file=config_file)
 
     async def import_rfiles(self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig):
-        LOGGER.debug(f"{self.name} | Importing all RFiles in branch {branch_name} ({commit}) ")
+        log.debug("Importing all RFiles", repository=self.name, branch=branch_name, commit=commit)
 
         schema = await self.client.schema.get(kind="CoreRFile", branch=branch_name)
 
@@ -1037,10 +1055,10 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 )
             except PydanticValidationError as exc:
                 for error in exc.errors():
-                    LOGGER.error(f"  {'/'.join(error['loc'])} | {error['msg']} ({error['type']})")
+                    log.error(f"  {'/'.join(error['loc'])} | {error['msg']} ({error['type']})")
                 continue
             except ValidationError as exc:
-                LOGGER.error(exc.message)
+                log.error(exc.message)
                 continue
 
             rfile = InfrahubRepositoryRFile(repository=str(self.id), **config_rfile.dict())
@@ -1058,22 +1076,26 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         )
 
         for rfile_name in only_local:
-            LOGGER.info(f"{self.name}: New RFile {rfile_name!r} found on branch {branch_name!r}, creating")
+            log.info(f"New RFile {rfile_name!r} found, creating", repository=self.name, branch=branch_name)
             await self.create_rfile(branch_name=branch_name, data=local_rfiles[rfile_name])
 
         for rfile_name in present_in_both:
             if not await self.compare_rfile(
                 existing_rfile=rfiles_in_graph[rfile_name], local_rfile=local_rfiles[rfile_name]
             ):
-                LOGGER.info(
-                    f"{self.name} | New version of the RFile '{rfile_name}' found on branch {branch_name}, updating"
+                log.info(
+                    f"New version of the RFile '{rfile_name}' found, updating", repository=self.name, branch=branch_name
                 )
                 await self.update_rfile(
                     existing_rfile=rfiles_in_graph[rfile_name], local_rfile=local_rfiles[rfile_name]
                 )
 
         for rfile_name in only_graph:
-            LOGGER.info(f"{self.name} | RFile '{rfile_name}' not found locally in branch {branch_name}, deleting")
+            log.info(
+                f"RFile '{rfile_name}' not found locally in branch {branch_name}, deleting",
+                repository=self.name,
+                branch=branch_name,
+            )
             await rfiles_in_graph[rfile_name].delete()
 
     async def create_rfile(self, branch_name: str, data: InfrahubRepositoryRFile) -> InfrahubNode:
@@ -1111,7 +1133,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         await existing_rfile.save()
 
     async def import_artifact_definitions(self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig):
-        LOGGER.debug(f"{self.name} | Importing all Artifact Definitions in branch {branch_name} ({commit}) ")
+        log.debug("Importing all Artifact Definitions", repository=self.name, branch=branch_name, commit=commit)
 
         schema = await self.client.schema.get(kind="CoreArtifactDefinition", branch=branch_name)
 
@@ -1128,10 +1150,10 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 self.client.schema.validate_data_against_schema(schema=schema, data=artdef.dict(exclude_none=True))
             except PydanticValidationError as exc:
                 for error in exc.errors():
-                    LOGGER.error(f"  {'/'.join(error['loc'])} | {error['msg']} ({error['type']})")
+                    log.error(f"  {'/'.join(error['loc'])} | {error['msg']} ({error['type']})")
                 continue
             except ValidationError as exc:
-                LOGGER.error(exc.message)
+                log.error(exc.message)
                 continue
 
             local_artifact_defs[artdef.name] = artdef
@@ -1141,8 +1163,8 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         )
 
         for artdef_name in only_local:
-            LOGGER.info(
-                f"{self.name} | New Artifact Definition {artdef_name!r} found on branch {branch_name!r}, creating"
+            log.info(
+                f"New Artifact Definition {artdef_name!r} found, creating", repository=self.name, branch=branch_name
             )
             await self.create_artifact_definition(branch_name=branch_name, data=local_artifact_defs[artdef_name])
 
@@ -1151,8 +1173,10 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 existing_artifact_definition=artifact_defs_in_graph[artdef_name],
                 local_artifact_definition=local_artifact_defs[artdef_name],
             ):
-                LOGGER.info(
-                    f"{self.name} | New version of the Artifact Definition '{artdef_name}' found on branch {branch_name}, updating"
+                log.info(
+                    f"New version of the Artifact Definition '{artdef_name}' found, updating",
+                    repository=self.name,
+                    branch=branch_name,
                 )
                 await self.update_artifact_definition(
                     existing_artifact_definition=artifact_defs_in_graph[artdef_name],
@@ -1209,23 +1233,34 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         config_file_name = ".infrahub.yml"
         config_file = Path(os.path.join(branch_wt.directory, config_file_name))
         if not config_file.is_file():
-            LOGGER.debug(f"{self.name} | Unable to find the configuration file {config_file_name}, skipping")
+            log.debug(
+                f"Unable to find the configuration file {config_file_name}, skipping",
+                repository=self.name,
+                branch=branch_name,
+                commit=commit,
+            )
             return
 
         config_file_content = config_file.read_text(encoding="utf-8")
         try:
             data = yaml.safe_load(config_file_content)
         except yaml.YAMLError as exc:
-            LOGGER.error(
-                f"{self.name} | Unable to load the configuration file in YAML format {config_file_name} : {exc}"
+            log.error(
+                f"Unable to load the configuration file in YAML format {config_file_name} : {exc}",
+                repository=self.name,
+                branch=branch_name,
+                commit=commit,
             )
             return
 
         try:
             return InfrahubRepositoryConfig(**data)
         except PydanticValidationError as exc:
-            LOGGER.error(
-                f"{self.name} | Unable to load the configuration file {config_file_name}, the format is not valid  : {exc}"
+            log.error(
+                f"Unable to load the configuration file {config_file_name}, the format is not valid  : {exc}",
+                repository=self.name,
+                branch=branch_name,
+                commit=commit,
             )
             return
 
@@ -1238,7 +1273,9 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         for schema in config_file.schemas:
             full_schema = Path(os.path.join(branch_wt.directory, schema))
             if not full_schema.exists():
-                LOGGER.warning(f"{self.name} | Unable to find the schema {schema}")
+                log.warning(
+                    f"Unable to find the schema {schema}", repository=self.name, branch=branch_name, commit=commit
+                )
                 continue
 
             if full_schema.is_file():
@@ -1263,8 +1300,10 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         for schema_file in schemas_data:
             if schema_file.valid:
                 continue
-            LOGGER.error(
-                f"{self.name} | Unable to load the file {schema_file.identifier}, {schema_file.error_message}",
+            log.error(
+                f"Unable to load the file {schema_file.identifier}, {schema_file.error_message}",
+                repository=self.name,
+                branch=branch_name,
                 commit=commit,
             )
             has_error = True
@@ -1277,8 +1316,10 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             try:
                 self.client.schema.validate(schema_file.content)
             except PydanticValidationError as exc:
-                LOGGER.error(
-                    f"{self.name} | Schema not valid, found '{len(exc.errors())}' error(s) in {schema_file.identifier} : {exc}",
+                log.error(
+                    f"Schema not valid, found '{len(exc.errors())}' error(s) in {schema_file.identifier} : {exc}",
+                    repository=self.name,
+                    branch=branch_name,
                     commit=commit,
                 )
                 has_error = True
@@ -1300,16 +1341,16 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             else:
                 error_messages.append(f"{errors}")
 
-            LOGGER.error(f"{self.name} | Unable to load the schema : {', '.join(error_messages)}", commit=commit)
+            log.error(f"Unable to load the schema : {', '.join(error_messages)}", repository=self.name, commit=commit)
 
         else:
             for schema_file in schemas_data:
-                LOGGER.info(f"{self.name} | schema '{schema_file.identifier}' loaded successfully!", commit=commit)
+                log.info(f"schema '{schema_file.identifier}' loaded successfully!", repository=self.name, commit=commit)
 
     async def import_all_graphql_query(self, branch_name: str, commit: str) -> None:
         """Search for all .gql file and import them as GraphQL query."""
 
-        LOGGER.debug(f"{self.name} | Importing all GraphQL Queries in branch {branch_name}")
+        log.debug("Importing all GraphQL Queriess", repository=self.name, branch=branch_name, commit=commit)
 
         local_queries = {query.name: query for query in await self.find_graphql_queries(commit=commit)}
         if not local_queries:
@@ -1328,23 +1369,34 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         for query_name in only_local:
             query = local_queries[query_name]
-            LOGGER.info(f"{self.name} | New Graphql Query '{query_name}' found on branch {branch_name}, creating")
+            log.info(
+                f"New Graphql Query {query_name!r} found, creating",
+                repository=self.name,
+                branch=branch_name,
+                commit=commit,
+            )
             await self.create_graphql_query(branch_name=branch_name, name=query_name, query_string=query.query)
 
         for query_name in present_in_both:
             local_query = local_queries[query_name]
             graph_query = queries_in_graph[query_name]
             if local_query.query != graph_query.query.value:
-                LOGGER.info(
-                    f"{self.name} | New version of the Graphql Query '{query_name}' found on branch {branch_name}, updating"
+                log.info(
+                    f"New version of the Graphql Query {query_name!r} found, updating",
+                    repository=self.name,
+                    branch=branch_name,
+                    commit=commit,
                 )
                 graph_query.query.value = local_query.query
                 await graph_query.save()
 
         for query_name in only_graph:
             graph_query = queries_in_graph[query_name]
-            LOGGER.info(
-                f"{self.name} | Graphql Query '{query_name}' not found locally in branch {branch_name}, deleting"
+            log.info(
+                f"Graphql Query {query_name!r} not found locally, deleting",
+                repository=self.name,
+                branch=branch_name,
+                commit=commit,
             )
             await graph_query.delete()
 
@@ -1374,7 +1426,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         checks = []
         for check in config_file.check_definitions:
-            LOGGER.debug(self.name, import_type="check_definition", file=check.file_path)
+            log.debug(self.name, import_type="check_definition", file=check.file_path)
 
             file_info = extract_repo_file_information(
                 full_filename=os.path.join(branch_wt.directory, check.file_path.as_posix()),
@@ -1384,9 +1436,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             try:
                 module = importlib.import_module(file_info.module_name)
             except ModuleNotFoundError as exc:
-                LOGGER.warning(
-                    self.name, import_type="check_definition", file=check.file_path.as_posix(), error=str(exc)
-                )
+                log.warning(self.name, import_type="check_definition", file=check.file_path.as_posix(), error=str(exc))
                 continue
 
             checks.extend(
@@ -1411,8 +1461,11 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         )
 
         for check_name in only_local:
-            LOGGER.info(
-                f"{self.name} | New CheckDefinition '{check_name}' found on branch {branch_name} ({commit[:8]}), creating"
+            log.info(
+                f"New CheckDefinition {check_name!r} found, creating",
+                repository=self.name,
+                branch=branch_name,
+                commit=commit,
             )
             await self.create_python_check_definition(
                 branch_name=branch_name, check=local_check_definitions[check_name]
@@ -1423,8 +1476,11 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 check=local_check_definitions[check_name],
                 existing_check=check_definition_in_graph[check_name],
             ):
-                LOGGER.info(
-                    f"{self.name} | New version of CheckDefinition '{check_name}' found on branch {branch_name} ({commit[:8]}), updating"
+                log.info(
+                    f"New version of CheckDefinition {check_name!r} found, updating",
+                    repository=self.name,
+                    branch=branch_name,
+                    commit=commit,
                 )
                 await self.update_python_check_definition(
                     check=local_check_definitions[check_name],
@@ -1432,8 +1488,11 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 )
 
         for check_name in only_graph:
-            LOGGER.info(
-                f"{self.name} | CheckDefinition '{check_name}' not found locally in branch {branch_name}, deleting"
+            log.info(
+                f"CheckDefinition '{check_name!r}' not found locally, deleting",
+                repository=self.name,
+                branch=branch_name,
+                commit=commit,
             )
             await check_definition_in_graph[check_name].delete()
 
@@ -1449,7 +1508,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         transforms = []
         for transform in config_file.python_transforms:
-            LOGGER.debug(self.name, import_type="python_transform", file=transform.file_path)
+            log.debug(self.name, import_type="python_transform", file=transform.file_path)
 
             file_info = extract_repo_file_information(
                 full_filename=os.path.join(branch_wt.directory, transform.file_path.as_posix()),
@@ -1459,7 +1518,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             try:
                 module = importlib.import_module(file_info.module_name)
             except ModuleNotFoundError as exc:
-                LOGGER.warning(
+                log.warning(
                     self.name, import_type="python_transform", file=transform.file_path.as_posix(), error=str(exc)
                 )
                 continue
@@ -1486,8 +1545,11 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         )
 
         for transform_name in only_local:
-            LOGGER.info(
-                f"{self.name} | New TransformPython '{transform_name}' found on branch {branch_name} ({commit[:8]}), creating"
+            log.info(
+                f"New TransformPython {transform_name!r} found, creating",
+                repository=self.name,
+                branch=branch_name,
+                commit=commit,
             )
             await self.create_python_transform(
                 branch_name=branch_name, transform=local_transform_definitions[transform_name]
@@ -1498,8 +1560,11 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 local_transform=local_transform_definitions[transform_name],
                 existing_transform=transform_definition_in_graph[transform_name],
             ):
-                LOGGER.info(
-                    f"{self.name} | New version of TransformPython '{transform_name}' found on branch {branch_name} ({commit[:8]}), updating"
+                log.info(
+                    f"New version of TransformPython {transform_name!r} found, updating",
+                    repository=self.name,
+                    branch=branch_name,
+                    commit=commit,
                 )
                 await self.update_python_transform(
                     local_transform=local_transform_definitions[transform_name],
@@ -1507,8 +1572,11 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 )
 
         for transform_name in only_graph:
-            LOGGER.info(
-                f"{self.name} | TransformPython '{transform_name}' not found locally in branch {branch_name}, deleting"
+            log.info(
+                f"TransformPython {transform_name!r} not found locally, deleting",
+                repository=self.name,
+                branch=branch_name,
+                commit=commit,
             )
             await transform_definition_in_graph[transform_name].delete()
 
@@ -1544,8 +1612,10 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             )
 
         except Exception as exc:  # pylint: disable=broad-exception-caught
-            LOGGER.error(
-                f"{self.name} | An error occured while processing the CheckDefinition {check_class.__name__} from {file_path} : {exc} "
+            log.error(
+                f"An error occured while processing the CheckDefinition {check_class.__name__} from {file_path} : {exc} ",
+                repository=self.name,
+                branch=branch_name,
             )
         return checks
 
@@ -1576,8 +1646,10 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             )
 
         except Exception as exc:  # pylint: disable=broad-exception-caught
-            LOGGER.error(
-                f"{self.name} | An error occured while processing the PythonTransform {transform.name} from {file_path} : {exc} "
+            log.error(
+                f"An error occured while processing the PythonTransform {transform.name} from {file_path} : {exc} ",
+                repository=self.name,
+                branch=branch_name,
             )
 
         return transforms
@@ -1778,7 +1850,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             template = templateEnv.get_template(location)
             return template.render(**data)
         except Exception as exc:
-            LOGGER.critical(exc, exc_info=True)
+            log.critical(exc, exc_info=True, repository=self.name, commit=commit, location=location)
             raise TransformError(repository_name=self.name, commit=commit, location=location, message=str(exc)) from exc
 
     async def execute_python_check(
@@ -1819,21 +1891,36 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             return check
 
         except ModuleNotFoundError as exc:
-            error_msg = f"Unable to load the check file {location} ({commit})"
-            LOGGER.error(f"{self.name} | {error_msg}")
+            error_msg = "Unable to load the check file"
+            log.error(error_msg, repository=self.name, branch=branch_name, commit=commit, location=location)
             raise CheckError(
                 repository_name=self.name, class_name=class_name, commit=commit, location=location, message=error_msg
             ) from exc
 
         except AttributeError as exc:
-            error_msg = f"Unable to find the class {class_name} in {location} ({commit})"
-            LOGGER.error(f"{self.name} | {error_msg}")
+            error_msg = f"Unable to find the class {class_name}"
+            log.error(
+                error_msg,
+                repository=self.name,
+                branch=branch_name,
+                commit=commit,
+                class_name=class_name,
+                location=location,
+            )
             raise CheckError(
                 repository_name=self.name, class_name=class_name, commit=commit, location=location, message=error_msg
             ) from exc
 
         except Exception as exc:
-            LOGGER.critical(exc, exc_info=True)
+            log.critical(
+                exc,
+                exc_info=True,
+                repository=self.name,
+                branch=branch_name,
+                commit=commit,
+                class_name=class_name,
+                location=location,
+            )
             raise CheckError(
                 repository_name=self.name, class_name=class_name, commit=commit, location=location, message=str(exc)
             ) from exc
@@ -1849,7 +1936,13 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         file_path, class_name = location.split("::")
         commit_worktree = self.get_commit_worktree(commit=commit)
 
-        LOGGER.debug(f"Will run Python Transform from {class_name} at {location} ({commit})")
+        log.debug(
+            f"Will run Python Transform from {class_name} at {location}",
+            repository=self.name,
+            branch=branch_name,
+            commit=commit,
+            location=location,
+        )
 
         self.validate_location(commit=commit, worktree_directory=commit_worktree.directory, file_path=file_path)
 
@@ -1874,21 +1967,21 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             return await transform.run(data=data)
 
         except ModuleNotFoundError as exc:
-            error_msg = f"Unable to load the transform file {location} ({commit})"
-            LOGGER.error(f"{self.name} | {error_msg}")
+            error_msg = f"Unable to load the transform file {location}"
+            log.error(error_msg, repository=self.name, branch=branch_name, commit=commit, location=location)
             raise TransformError(
                 repository_name=self.name, commit=commit, location=location, message=error_msg
             ) from exc
 
         except AttributeError as exc:
-            error_msg = f"Unable to find the class {class_name} in {location} ({commit})"
-            LOGGER.error(f"{self.name} | {error_msg}")
+            error_msg = f"Unable to find the class {class_name} in {location}"
+            log.error(error_msg, repository=self.name, branch=branch_name, commit=commit, location=location)
             raise TransformError(
                 repository_name=self.name, commit=commit, location=location, message=error_msg
             ) from exc
 
         except Exception as exc:
-            LOGGER.critical(exc, exc_info=True)
+            log.critical(exc, exc_info=True, repository=self.name, branch=branch_name, commit=commit, location=location)
             raise TransformError(repository_name=self.name, commit=commit, location=location, message=str(exc)) from exc
 
     async def artifact_generate(
