@@ -2,7 +2,7 @@
 icon: repo
 label: Loading a Schema file
 ---
-## Schema file
+# Schema file
 
 The recommended way to manage and load a schema is to create a schema file in YAML format. With a schema file it's possible to:
 
@@ -25,11 +25,11 @@ extensions:
 :::code source="../../../models/infrastructure_extension_rack.yml" :::
 ==-
 
-### Load a schema file
+## Load a schema file
 
 Schema files can be loaded into Infrahub with the `infrahubctl` command or directly via the Git integration
 <!-- vale off -->
-#### infrahubctl command
+### infrahubctl command
 <!-- vale on -->
 The `infrahubctl` command can be used to load individual schema files or multiple files as part of a directory.
 
@@ -37,7 +37,7 @@ The `infrahubctl` command can be used to load individual schema files or multipl
 infrahubctl schema load <path to schema file or a directory> <path to schema file or a directory>
 ```
 
-#### Git integration
+### Git integration
 
 You can defined a schema in an [external repository](/topics/repository).
 The schemas that should be loaded must be declared in the ``.infrahub.yml`` directory, under schemas.

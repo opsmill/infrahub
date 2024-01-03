@@ -50,37 +50,13 @@ If other branches are present, it's recommended that you delete them for now.
 
 Currently the easiest way to add a repository is to use the GraphQL interface.
 
-!!!info
-Before moving to the next step, you'll need your personal access token previously generated in GitHub.
-!!!
+Refer to [Adding a repository guide](/guides/repository)
 
-[!ref Open the GraphQL Interface](http://127.0.0.1:8000/graphql/main)
-
-```graphqls
-# Endpoint : http://127.0.0.1:8000/graphql/main
-mutation {
-  CoreRepositoryCreate(
-    data: {
-      name: { value: "infrahub-demo-edge" }
-      location: { value: "https://github.com/<YOUR GITHUB USERNAME>/infrahub-demo-edge.git" }
-      username: { value: "<YOUR GITHUB USERNAME>" }
-      password: { value: "<YOUR PERSONAL ACCESS TOKEN>" }
-    }
-  ) {
-    ok
-    object {
-      id
-    }
-  }
-}
-```
-
-!!!success Validate that everything is correct
-In the UI, new objects that have been imported from the Git Repository should now be available:
-
-- The repository should be visible under [Unified Storage / Repository](http://localhost:8000/objects/CoreRepository/). If the repository you added doesn't have the commit property populated it means that the initial sync didn't work. Verify the location and credentials.
-- 2 [RFiles](http://localhost:8000/objects/CoreRFile/)
-- 5 GraphQL Queries under [Objects / GraphQL Query](http://localhost:8000/objects/GraphQLQuery/)
+After adding the `infrahub-demo-edge` repository you will be able to see several new [Transformation](/topics/transformation) and related objects :
+- 3 Jinja Rendered File under [RFiles](http://localhost:8000/objects/CoreRFile/)
+- 4 Python Transformation under [Python Transformation](http://localhost:8000/objects/CoreTransformation)
+- 4 [Artifact Definition](http://localhost:8000/objects/CoreArtifactDefinition)
+- 7 GraphQL [Queries](/topics/grapql) under [Objects / GraphQL Query](http://localhost:8000/objects/GraphQLQuery/)
 !!!
 
 !!!secondary Troubleshooting
