@@ -681,13 +681,11 @@ export const Select = (props: SelectProps) => {
                 <Combobox.Option
                   key={index}
                   value={option}
-                  className={
-                    "relative cursor-pointer select-none py-2 pl-3 pr-9 first:rounded-t-md"
-                  }
+                  className="cursor-pointer select-none py-2 px-3"
                   style={getOptionStyle(option)}>
                   {({ selected }) => (
-                    <>
-                      <div className="z-10">
+                    <div className="z-10 flex items-center gap-2">
+                      <div className="grow truncate">
                         <span
                           className={classNames("block truncate", selected ? "font-semibold" : "")}>
                           {option.name}
@@ -702,27 +700,21 @@ export const Select = (props: SelectProps) => {
                             {option.description}
                           </span>
                         )}
-
-                        {selected && (
-                          <span
-                            className={classNames(
-                              "absolute inset-y-0 flex items-center pr-4 text-custom-blue-700",
-                              canRemoveOption(option.id) ? "right-2" : "right-0"
-                            )}>
-                            <CheckIcon className="w-4 h-4" aria-hidden="true" />
-                          </span>
-                        )}
-
-                        {canRemoveOption(option.id) && (
-                          <Button
-                            buttonType={BUTTON_TYPES.INVISIBLE}
-                            className="absolute inset-y-0 right-0 flex items-center p-1"
-                            onClick={() => setOptionToDelete(option.id)}>
-                            <Icon icon="mdi:trash" className="text-red-500" />
-                          </Button>
-                        )}
                       </div>
-                    </>
+
+                      {selected && (
+                        <CheckIcon className="w-4 h-4 text-custom-blue-700" aria-hidden="true" />
+                      )}
+
+                      {canRemoveOption(option.id) && (
+                        <Button
+                          buttonType={BUTTON_TYPES.INVISIBLE}
+                          className="p-0"
+                          onClick={() => setOptionToDelete(option.id)}>
+                          <Icon icon="mdi:trash" className="text-red-500" />
+                        </Button>
+                      )}
+                    </div>
                   )}
                 </Combobox.Option>
               ))}
