@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../tests/utils";
 
 test.describe("Getting started with Infrahub", () => {
+  test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
   test("1. Create a new organization", async ({ page }) => {
@@ -22,7 +23,7 @@ test.describe("Getting started with Infrahub", () => {
     await expect(page.locator("tbody")).toContainText("Testing Infrahub");
   });
 
-  test("Create a new branch", async ({ page }) => {
+  test("2. Create a new branch", async ({ page }) => {
     await page.goto("/");
     await page.getByTestId("create-branch-button").click();
 
@@ -34,5 +35,25 @@ test.describe("Getting started with Infrahub", () => {
     // After submit
     await expect(page.getByTestId("branch-select-menu")).toContainText("cr1234");
     await expect(page).toHaveURL(/.*?branch=cr1234/);
+  });
+
+  test("3. Update an organization", async ({ page }) => {
+    await page.goto("/?branch=cr1234");
+    await page.getByRole("link", { name: "Organization" }).click();
+    await page.getByRole("cell", { name: "my-first-org", exact: true }).click();
+    await page.getByRole("button", { name: "Edit" }).click();
+
+    // Edit form
+    await page.getByLabel("Description").fill("Changes from branch cr1234");
+    await page.getByRole("button", { name: "Save" }).click();
+
+    // After submit
+    await expect(page.locator("#alert-success")).toContainText("Organization updated");
+    await expect(page.getByText("Changes from branch cr1234")).toBeVisible();
+
+    // See initial value on main branch
+    await page.getByTestId("branch-list-display-button").click();
+    await page.getByText("main", { exact: true }).click();
+    await expect(page.getByText("Testing Infrahub")).toBeVisible();
   });
 });

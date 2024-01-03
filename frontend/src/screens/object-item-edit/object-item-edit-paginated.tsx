@@ -137,7 +137,8 @@ export default function ObjectItemEditComponent(props: Props) {
         });
 
         toast(
-          <Alert type={ALERT_TYPES.SUCCESS} message={`${schemaKindName[schema.kind]} updated`} />
+          <Alert type={ALERT_TYPES.SUCCESS} message={`${schemaKindName[schema.kind]} updated`} />,
+          { toastId: "alert-success" }
         );
 
         closeDrawer();
