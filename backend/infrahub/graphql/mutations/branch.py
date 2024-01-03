@@ -56,7 +56,7 @@ class BranchCreate(Mutation):
 
         try:
             obj = Branch(**data)
-        except pydantic.error_wrappers.ValidationError as exc:
+        except pydantic.ValidationError as exc:
             error_msgs = [f"invalid field {error['loc'][0]}: {error['msg']}" for error in exc.errors()]
             raise ValueError("\n".join(error_msgs)) from exc
 
