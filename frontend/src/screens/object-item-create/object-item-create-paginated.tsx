@@ -132,7 +132,8 @@ export default function ObjectItemCreate(props: iProps) {
         <Alert
           type={ALERT_TYPES.SUCCESS}
           message={`${schema?.kind && schemaKindName[schema?.kind]} created`}
-        />
+        />,
+        { toastId: "alert-success" }
       );
 
       if (onCreate) {
