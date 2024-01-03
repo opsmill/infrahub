@@ -24,7 +24,9 @@ test.describe("/signin", () => {
       await page.getByLabel("Password").fill("wrong password");
       await page.getByRole("button", { name: "Sign in" }).click();
 
-      await expect(page.getByRole("alert")).toContainText("Invalid username and password");
+      await expect(page.locator("#alert-error-sign-in")).toContainText(
+        "Invalid username and password"
+      );
     });
   });
 
