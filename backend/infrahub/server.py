@@ -36,7 +36,7 @@ from infrahub.trace import add_span_exception, configure_trace, get_traceid, get
 from infrahub.worker import WORKER_IDENTITY
 
 
-async def app_initialization() -> None:
+async def app_initialization(application: FastAPI) -> None:
     if not config.SETTINGS:
         config_file_name = os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")
         config_file_path = os.path.abspath(config_file_name)
@@ -53,11 +53,11 @@ async def app_initialization() -> None:
         )
 
     # Initialize database Driver and load local registry
-    database = app.state.db = InfrahubDatabase(mode=InfrahubDatabaseMode.DRIVER, driver=await get_db())
+    database = application.state.db = InfrahubDatabase(mode=InfrahubDatabaseMode.DRIVER, driver=await get_db())
 
     initialize_lock()
 
-    async with app.state.db.start_session() as db:
+    async with application.state.db.start_session() as db:
         await initialization(db=db)
 
     # Initialize connection to the RabbitMQ bus
@@ -69,25 +69,25 @@ async def app_initialization() -> None:
         cache=cache, database=database, message_bus=message_bus, component_type=ComponentType.API_SERVER
     )
     await service.initialize()
-    # service.message_bus = app.state.rpc_client.rabbitmq
+    # service.message_bus = application.state.rpc_client.rabbitmq
     services.prepare(service=service)
     # Initialize RPC Client
     rpc_client = InfrahubRpcClient()
     rpc_client.exchange = message_bus.rpc_exchange
-    app.state.rpc_client = rpc_client
-    app.state.service = service
+    application.state.rpc_client = rpc_client
+    application.state.service = service
 
 
-async def shutdown() -> None:
+async def shutdown(application: FastAPI) -> None:
     await close_broker_connection()
-    await app.state.db.close()
+    await application.state.db.close()
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    await app_initialization()
+async def lifespan(application: FastAPI):
+    await app_initialization(application)
     yield
-    await shutdown()
+    await shutdown(application)
 
 
 app = FastAPI(
