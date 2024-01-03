@@ -69,23 +69,35 @@ class FileSystemStorageSettings(BaseSettings):
 
 
 class S3StorageSettings(BaseSettings):
-    access_key_id: str = Field(default="", validation_alias="AWS_ACCESS_KEY_ID")
-    secret_access_key: str = Field(default="", validation_alias="AWS_SECRET_ACCESS_KEY")
+    access_key_id: str = Field(default="", alias="AWS_ACCESS_KEY_ID", validation_alias="AWS_ACCESS_KEY_ID")
+    secret_access_key: str = Field(default="", alias="AWS_SECRET_ACCESS_KEY", validation_alias="AWS_SECRET_ACCESS_KEY")
     bucket_name: str = Field(
-        default="", validation_alias=AliasChoices("AWS_S3_BUCKET_NAME", "INFRAHUB_STORAGE_BUCKET_NAME")
+        default="",
+        alias="AWS_S3_BUCKET_NAME",
+        validation_alias=AliasChoices("AWS_S3_BUCKET_NAME", "INFRAHUB_STORAGE_BUCKET_NAME"),
     )
     endpoint_url: str = Field(
-        default="", validation_alias=AliasChoices("AWS_S3_ENDPOINT_URL", "INFRAHUB_STORAGE_ENDPOINT_URL")
+        default="",
+        alias="AWS_S3_ENDPOINT_URL",
+        validation_alias=AliasChoices("AWS_S3_ENDPOINT_URL", "INFRAHUB_STORAGE_ENDPOINT_URL"),
     )
-    use_ssl: bool = Field(default=True, validation_alias=AliasChoices("AWS_S3_US_SSL", "INFRAHUB_STORAGE_USE_SSL"))
+    use_ssl: bool = Field(
+        default=True, alias="AWS_S3_US_SSL", validation_alias=AliasChoices("AWS_S3_US_SSL", "INFRAHUB_STORAGE_USE_SSL")
+    )
     default_acl: str = Field(
-        default="", validation_alias=AliasChoices("AWS_DEFAULT_ACL", "INFRAHUB_STORAGE_DEFAULT_ACL")
+        default="",
+        alias="AWS_DEFAULT_ACL",
+        validation_alias=AliasChoices("AWS_DEFAULT_ACL", "INFRAHUB_STORAGE_DEFAULT_ACL"),
     )
     querystring_auth: bool = Field(
-        default=False, validation_alias=AliasChoices("AWS_QUERYSTRING_AUTH", "INFRAHUB_STORAGE_QUERYTSTRING_AUTH")
+        default=False,
+        alias="AWS_QUERYSTRING_AUTH",
+        validation_alias=AliasChoices("AWS_QUERYSTRING_AUTH", "INFRAHUB_STORAGE_QUERYTSTRING_AUTH"),
     )
     custom_domain: str = Field(
-        default="", validation_alias=AliasChoices("AWS_S3_CUSTOM_DOMAIN", "INFRAHUB_STORAGE_CUSTOM_DOMAIN")
+        default="",
+        alias="AWS_S3_CUSTOM_DOMAIN",
+        validation_alias=AliasChoices("AWS_S3_CUSTOM_DOMAIN", "INFRAHUB_STORAGE_CUSTOM_DOMAIN"),
     )
 
 
