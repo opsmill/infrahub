@@ -62,9 +62,9 @@ const errorLink = onError(({ graphQLErrors, operation, forward }) => {
         )}, Path: ${graphQLError.path}`
       );
 
-      return new Observable((observer) => {
-        switch (graphQLError.extensions.code) {
-          case 401: {
+      switch (graphQLError.extensions?.code) {
+        case 401: {
+          return new Observable((observer) => {
             // Modify the operation context with a new token
             const oldHeaders = operation.getContext().headers;
 
@@ -91,14 +91,15 @@ const errorLink = onError(({ graphQLErrors, operation, forward }) => {
               .catch((err) => observer.error(err));
 
             forward(operation);
-            break;
-          }
-          default:
-            if (graphQLError.message) {
-              toast(<Alert type={ALERT_TYPES.ERROR} message={graphQLError.message} />);
-            }
+          });
         }
-      });
+        default:
+          if (graphQLError.message) {
+            toast(<Alert type={ALERT_TYPES.ERROR} message={graphQLError.message} />, {
+              toastId: "alert-error",
+            });
+          }
+      }
     }
   }
 });
