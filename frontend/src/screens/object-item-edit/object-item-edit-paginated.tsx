@@ -85,11 +85,11 @@ export default function ObjectItemEditComponent(props: Props) {
     return <LoadingScreen />;
   }
 
-  if (!data || (data && !data[schema.kind])) {
+  if (!data || (data && !data[`${schema.kind}DetailsAndPeers`])) {
     return <NoDataFound message="No details found." />;
   }
 
-  const objectDetailsData = data[schema.kind]?.edges[0]?.node;
+  const objectDetailsData = data[`${schema.kind}DetailsAndPeers`]?.edges[0]?.node;
 
   const peerDropdownOptions = Object.entries(data).reduce((acc, [k, v]: [string, any]) => {
     if (peers.includes(k)) {
