@@ -9,7 +9,6 @@ import graphene
 
 import infrahub.config as config
 from infrahub.core import get_branch, registry
-from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema
 from infrahub.core.attribute import String
 from infrahub.core.constants import InfrahubKind, RelationshipKind
 from infrahub.core.schema import AttributeSchema, GenericSchema, GroupSchema, NodeSchema

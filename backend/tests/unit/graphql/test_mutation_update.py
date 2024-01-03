@@ -1,6 +1,7 @@
 import pytest
 from graphql import graphql
 
+from infrahub import config
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -71,6 +72,74 @@ async def test_update_simple_object_with_ok_return(db: InfrahubDatabase, person_
     obj1 = await NodeManager.get_one(db=db, id=person_john_main.id, branch=branch)
     assert obj1.name.value == "Jim"
     assert obj1.height.value == 180
+
+
+@pytest.mark.parametrize(
+    "graphql_enums_on,enum_value,response_value",
+    [(True, "flintstone_feet", "flintstone_feet"), (False, '"flintstone-feet"', "flintstone-feet")],
+)
+async def test_update_simple_object_with_enum(
+    db: InfrahubDatabase,
+    default_branch,
+    person_john_main,
+    car_person_schema,
+    graphql_enums_on,
+    enum_value,
+    response_value,
+):
+    config.SETTINGS.experimental_features.graphql_enums = graphql_enums_on
+    graphql_schema = await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch)
+    query = """
+    mutation {
+        TestCarCreate(data: {
+                name: { value: "JetTricycle"},
+                nbr_seats: { value: 1 },
+                is_electric: { value: false },
+                owner: { id: "John" }
+            }) {
+            ok
+            object {
+                id
+            }
+        }
+    }
+    """
+    result = await graphql(
+        schema=graphql_schema,
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+    car_id = result.data["TestCarCreate"]["object"]["id"]
+
+    query = f"""
+    mutation {{
+        TestCarUpdate(data: {{
+                id: "{car_id}",
+                transmission: {{ value: {enum_value} }},
+            }}) {{
+            ok
+            object {{
+                id
+                transmission {{
+                    value
+                }}
+            }}
+        }}
+    }}
+    """
+    result = await graphql(
+        schema=graphql_schema,
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["TestCarUpdate"]["ok"] is True
+    assert result.data["TestCarUpdate"]["object"]["transmission"]["value"] == response_value
 
 
 async def test_update_check_unique(db: InfrahubDatabase, person_john_main: Node, person_jim_main: Node, branch: Branch):

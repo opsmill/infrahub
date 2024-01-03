@@ -2,7 +2,7 @@ import pytest
 from deepdiff import DeepDiff
 from graphql import graphql
 
-from infrahub import __version__
+from infrahub import __version__, config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType, InfrahubKind
@@ -807,6 +807,44 @@ async def test_query_filter_local_attrs(db: InfrahubDatabase, default_branch: Br
 
     assert result.errors is None
     assert len(result.data["TestCriticality"]["edges"]) == 1
+
+
+@pytest.mark.parametrize("graphql_enums_on,enum_value", [(True, "manual"), (False, '"manual"')])
+async def test_query_filter_on_enum(
+    db: InfrahubDatabase, default_branch: Branch, person_john_main, car_person_schema, graphql_enums_on, enum_value
+):
+    config.SETTINGS.experimental_features.graphql_enums = graphql_enums_on
+    car = registry.get_schema(name="TestCar")
+
+    c1 = await Node.init(db=db, schema=car)
+    await c1.new(db=db, name="GoKart", nbr_seats=1, is_electric=True, owner=person_john_main, transmission="manual")
+    await c1.save(db=db)
+
+    query = f"""
+    query {{
+        TestCar(transmission__value: {enum_value}) {{
+            edges {{
+                node {{
+                    name {{
+                        value
+                    }}
+                }}
+            }}
+        }}
+    }}
+    """
+
+    result = await graphql(
+        await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert len(result.data["TestCar"]["edges"]) == 1
+    assert result.data["TestCar"]["edges"][0]["node"]["name"]["value"] == "GoKart"
 
 
 async def test_query_multiple_filters(db: InfrahubDatabase, default_branch: Branch, car_person_manufacturer_schema):

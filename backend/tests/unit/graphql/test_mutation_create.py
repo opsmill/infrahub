@@ -1,6 +1,7 @@
 import pytest
 from graphql import graphql
 
+from infrahub import config
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -53,9 +54,45 @@ async def test_create_simple_object_with_ok_return(db: InfrahubDatabase, default
         root_value=None,
         variable_values={},
     )
-
     assert result.errors is None
     assert result.data["TestPersonCreate"]["ok"] is True
+
+
+@pytest.mark.parametrize("graphql_enums_on,enum_value", [(True, "manual"), (False, '"manual"')])
+async def test_create_simple_object_with_enum(
+    db: InfrahubDatabase, default_branch, person_john_main, car_person_schema, graphql_enums_on, enum_value
+):
+    config.SETTINGS.experimental_features.graphql_enums = graphql_enums_on
+    query = f"""
+    mutation {{
+        TestCarCreate(data: {{
+                name: {{ value: "JetTricycle"}},
+                nbr_seats: {{ value: 1 }},
+                is_electric: {{ value: false }},
+                transmission: {{ value: {enum_value} }},
+                owner: {{ id: "John" }}
+            }}) {{
+            ok
+            object {{
+                id
+                transmission {{
+                    value
+                }}
+            }}
+        }}
+    }}
+    """
+    result = await graphql(
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["TestCarCreate"]["ok"] is True
+    assert result.data["TestCarCreate"]["object"]["transmission"]["value"] == "manual"
 
 
 async def test_create_with_id(db: InfrahubDatabase, default_branch, car_person_schema):
