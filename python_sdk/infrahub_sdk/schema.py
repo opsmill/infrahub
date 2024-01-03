@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from enum import Enum
 from pathlib import Path  # noqa: TCH003
-from typing import TYPE_CHECKING, Any, Dict, List, MutableMapping, Optional, Tuple, TypedDict, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Dict, List, MutableMapping, Optional, Tuple, Type, TypedDict, Union
 from urllib.parse import urlencode
 
 try:
@@ -35,10 +35,11 @@ class DropdownMutationOptionalArgs(TypedDict):
 # ---------------------------------------------------------------------------------
 
 
-ResourceClass = TypeVar("ResourceClass")
+class InfrahubRepositoryConfigElement(pydantic.BaseModel):
+    """Class to regroup all elements of the infrahub configuration for a repository for typing purpose."""
 
 
-class InfrahubRepositoryArtifactDefinitionConfig(pydantic.BaseModel):
+class InfrahubRepositoryArtifactDefinitionConfig(InfrahubRepositoryConfigElement):
     name: str = pydantic.Field(..., description="The name of the artifact definition")
     artifact_name: Optional[str] = pydantic.Field(
         default=None, description="Name of the artifact created from this definition"
@@ -51,7 +52,7 @@ class InfrahubRepositoryArtifactDefinitionConfig(pydantic.BaseModel):
     transformation: str = pydantic.Field(..., description="The transformation to use.")
 
 
-class InfrahubRepositoryRFileConfig(pydantic.BaseModel):
+class InfrahubRepositoryRFileConfig(InfrahubRepositoryConfigElement):
     name: str = pydantic.Field(..., description="The name of the RFile")
     query: str = pydantic.Field(..., description="The name of the GraphQL Query")
     template_path: Path = pydantic.Field(..., description="The path within the repository of the template file")
@@ -68,7 +69,7 @@ class InfrahubRepositoryRFileConfig(pydantic.BaseModel):
         return data
 
 
-class InfrahubCheckDefinitionConfig(pydantic.BaseModel):
+class InfrahubCheckDefinitionConfig(InfrahubRepositoryConfigElement):
     name: str = pydantic.Field(..., description="The name of the Check Definition")
     file_path: Path = pydantic.Field(..., description="The file within the repo with the check code.")
     parameters: Dict[str, Any] = pydantic.Field(
@@ -80,13 +81,13 @@ class InfrahubCheckDefinitionConfig(pydantic.BaseModel):
     class_name: str = pydantic.Field(default="Check", description="The name of the check class to run.")
 
 
-class InfrahubPythonTransformConfig(pydantic.BaseModel):
+class InfrahubPythonTransformConfig(InfrahubRepositoryConfigElement):
     name: str = pydantic.Field(..., description="The name of the Transform")
     file_path: Path = pydantic.Field(..., description="The file within the repo with the transform code.")
     class_name: str = pydantic.Field(default="Transform", description="The name of the transform class to run.")
 
 
-RESOURCE_MAP = {
+RESOURCE_MAP: Dict[Type[InfrahubRepositoryConfigElement], str] = {
     InfrahubRepositoryRFileConfig: "rfiles",
     InfrahubCheckDefinitionConfig: "check_definitions",
     InfrahubRepositoryArtifactDefinitionConfig: "artifact_definitions",
@@ -109,15 +110,17 @@ class InfrahubRepositoryConfig(pydantic.BaseModel):
             raise ValueError(f"Found multiples element with the same names: {dups}")
         return v
 
-    def _has_resource(self, resource_id: str, resource_type: type[ResourceClass], resource_field: str = "name") -> bool:
+    def _has_resource(
+        self, resource_id: str, resource_type: type[InfrahubRepositoryConfigElement], resource_field: str = "name"
+    ) -> bool:
         for item in getattr(self, RESOURCE_MAP[resource_type]):
             if getattr(item, resource_field) == resource_id:
                 return True
         return False
 
     def _get_resource(
-        self, resource_id: str, resource_type: type[ResourceClass], resource_field: str = "name"
-    ) -> ResourceClass:
+        self, resource_id: str, resource_type: type[InfrahubRepositoryConfigElement], resource_field: str = "name"
+    ) -> InfrahubRepositoryConfigElement:
         for item in getattr(self, RESOURCE_MAP[resource_type]):
             if getattr(item, resource_field) == resource_id:
                 return item
