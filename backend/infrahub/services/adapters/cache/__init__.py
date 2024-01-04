@@ -4,6 +4,10 @@ from typing import List, Optional
 class InfrahubCache:
     """Base class for caching services"""
 
+    async def delete(self, key: str) -> None:
+        """Delete a key from the cache."""
+        raise NotImplementedError()
+
     async def get(self, key: str) -> Optional[str]:
         """Retrieve a value from the cache."""
         raise NotImplementedError()

@@ -2255,5 +2255,28 @@ core_models = {
                 },
             ],
         },
+        {
+            "name": "Webhook",
+            "namespace": "Core",
+            "description": "A webhook that connects to an external integration",
+            "label": "Webhook",
+            "default_filter": "name__value",
+            "order_by": ["name__value"],
+            "display_labels": ["name__value"],
+            "include_in_menu": False,
+            "branch": BranchSupportType.AGNOSTIC.value,
+            "attributes": [
+                {"name": "name", "kind": "Text", "unique": True},
+                {"name": "shared_key", "kind": "Password", "unique": False},
+                {"name": "description", "kind": "Text", "optional": True},
+                {"name": "url", "kind": "URL"},
+                {
+                    "name": "validate_certificates",
+                    "kind": "Boolean",
+                    "default_value": True,
+                    "optional": True,
+                },
+            ],
+        },
     ],
 }

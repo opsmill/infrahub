@@ -1,3 +1,3 @@
-from . import registry
+from . import registry, webhook
 
-__all__ = ["registry"]
+__all__ = ["registry", "webhook"]

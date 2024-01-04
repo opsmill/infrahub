@@ -117,7 +117,11 @@ async def get_menu(
         ],
     )
     admin = InterfaceMenu(
-        title="Admin", children=[InterfaceMenu(title="Accounts", path="/objects/CoreAccount", icon="mdi:account")]
+        title="Admin",
+        children=[
+            InterfaceMenu(title="Accounts", path="/objects/CoreAccount", icon="mdi:account"),
+            InterfaceMenu(title="Webhook", path="/objects/CoreWebhook", icon="mdi:webhook"),
+        ],
     )
 
     return [objects, groups, unified_storage, change_control, deployment, admin]

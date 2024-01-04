@@ -99,7 +99,9 @@ class RabbitMQMessageBus(InfrahubMessageBus):
             "event.*.*",
             "finalize.*.*",
             "git.*.*",
+            "refresh.webhook.*",
             "request.*.*",
+            "send.*.*",
             "transform.*.*",
             "trigger.*.*",
         ]
