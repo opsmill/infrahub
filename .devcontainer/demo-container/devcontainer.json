@@ -1,27 +1,27 @@
 {
-  "name": "infrahub",
+  "name": "infrahub-demo",
   "build": {
-    "dockerfile": "./Dockerfile",
-    "context": "."
+    "dockerfile": "../Dockerfile",
+    "context": ".."
   },
   "customizations": {
-    "settings": {
+      "settings": {
       "python.pythonPath": "/usr/bin/python3",
       "terminal.integrated.shell.linux": "/bin/bash",
       "python.venvPath": "/workspace/.venv",
       "python.linting.enabled": true
-    },
-    "vscode": {
+      },
+      "vscode": {
       "extensions": [
-        "pomdtr.excalidraw-editor",
-        "wholroyd.jinja",
-        "ms-python.vscode-pylance",
-        "shardulm94.trailing-spaces",
-        "nickmillerdev.pytest-fixtures",
-        "yzhang.markdown-all-in-one",
-        "GraphQL.vscode-graphql-syntax"
+          "pomdtr.excalidraw-editor",
+          "wholroyd.jinja",
+          "ms-python.vscode-pylance",
+          "shardulm94.trailing-spaces",
+          "nickmillerdev.pytest-fixtures",
+          "yzhang.markdown-all-in-one",
+          "GraphQL.vscode-graphql-syntax"
       ]
-    }
+      }
   },
   "remoteUser": "vscode",
   "remoteEnv": {
@@ -35,11 +35,11 @@
   "postStartCommand": "./.devcontainer/postStartCommand.sh",
   "postAttachCommand": "./.devcontainer/postAttachCommand.sh",
   "features": {
-    "docker-in-docker": "latest",
-    "github-cli": "latest"
+      "docker-in-docker": "latest",
+      "github-cli": "latest"
   },
   "hostRequirements": {
-    "cpus": 8,
-    "memory": "16gb"
- }
+      "cpus": 8,
+      "memory": "16gb"
+  }
 }
