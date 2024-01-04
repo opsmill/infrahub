@@ -214,7 +214,8 @@ export default function ObjectItems(props: any) {
               {rows?.map((row: any, index: number) => (
                 <tr
                   key={index}
-                  className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer">
+                  className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer"
+                  data-cy="object-table-row">
                   {columns?.map((attribute) => (
                     <td key={row.id + "-" + attribute.name} className="p-0">
                       <a
