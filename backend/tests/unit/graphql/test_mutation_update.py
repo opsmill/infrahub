@@ -76,7 +76,7 @@ async def test_update_simple_object_with_ok_return(db: InfrahubDatabase, person_
 
 @pytest.mark.parametrize(
     "graphql_enums_on,enum_value,response_value",
-    [(True, "flintstone_feet", "flintstone_feet"), (False, '"flintstone-feet"', "flintstone-feet")],
+    [(True, "FLINTSTONE_FEET", "FLINTSTONE_FEET"), (False, '"flintstone-feet"', "flintstone-feet")],
 )
 async def test_update_simple_object_with_enum(
     db: InfrahubDatabase,
@@ -140,6 +140,9 @@ async def test_update_simple_object_with_enum(
     assert result.errors is None
     assert result.data["TestCarUpdate"]["ok"] is True
     assert result.data["TestCarUpdate"]["object"]["transmission"]["value"] == response_value
+
+    updated_car = await NodeManager.get_one(db=db, id=car_id)
+    assert updated_car.transmission.value == "flintstone-feet"
 
 
 async def test_update_check_unique(db: InfrahubDatabase, person_john_main: Node, person_jim_main: Node, branch: Branch):

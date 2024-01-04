@@ -809,7 +809,7 @@ async def test_query_filter_local_attrs(db: InfrahubDatabase, default_branch: Br
     assert len(result.data["TestCriticality"]["edges"]) == 1
 
 
-@pytest.mark.parametrize("graphql_enums_on,enum_value", [(True, "manual"), (False, '"manual"')])
+@pytest.mark.parametrize("graphql_enums_on,enum_value", [(True, "MANUAL"), (False, '"manual"')])
 async def test_query_filter_on_enum(
     db: InfrahubDatabase, default_branch: Branch, person_john_main, car_person_schema, graphql_enums_on, enum_value
 ):

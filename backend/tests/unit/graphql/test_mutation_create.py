@@ -58,9 +58,17 @@ async def test_create_simple_object_with_ok_return(db: InfrahubDatabase, default
     assert result.data["TestPersonCreate"]["ok"] is True
 
 
-@pytest.mark.parametrize("graphql_enums_on,enum_value", [(True, "manual"), (False, '"manual"')])
+@pytest.mark.parametrize(
+    "graphql_enums_on,enum_value,response_value", [(True, "MANUAL", "MANUAL"), (False, '"manual"', "manual")]
+)
 async def test_create_simple_object_with_enum(
-    db: InfrahubDatabase, default_branch, person_john_main, car_person_schema, graphql_enums_on, enum_value
+    db: InfrahubDatabase,
+    default_branch,
+    person_john_main,
+    car_person_schema,
+    graphql_enums_on,
+    enum_value,
+    response_value,
 ):
     config.SETTINGS.experimental_features.graphql_enums = graphql_enums_on
     query = f"""
@@ -92,7 +100,11 @@ async def test_create_simple_object_with_enum(
 
     assert result.errors is None
     assert result.data["TestCarCreate"]["ok"] is True
-    assert result.data["TestCarCreate"]["object"]["transmission"]["value"] == "manual"
+    assert result.data["TestCarCreate"]["object"]["transmission"]["value"] == response_value
+
+    car_id = result.data["TestCarCreate"]["object"]["id"]
+    database_car = await NodeManager.get_one(db=db, id=car_id)
+    assert database_car.transmission.value == "manual"
 
 
 async def test_create_with_id(db: InfrahubDatabase, default_branch, car_person_schema):

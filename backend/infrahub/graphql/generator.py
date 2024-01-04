@@ -1,22 +1,19 @@
 from __future__ import annotations
 
-import re
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Type, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
 
 import graphene
 
 import infrahub.config as config
 from infrahub.core import get_branch, registry
-from infrahub.core.attribute import String
 from infrahub.core.constants import InfrahubKind, RelationshipKind
 from infrahub.core.schema import AttributeSchema, GenericSchema, GroupSchema, NodeSchema
-from infrahub.graphql.mutations.attribute import BaseAttributeInput
 from infrahub.graphql.mutations.graphql_query import InfrahubGraphQLQueryMutation
-from infrahub.graphql.types.attribute import AttributeInterface
-from infrahub.types import ATTRIBUTE_TYPES, InfrahubDataType, get_attribute_type
+from infrahub.types import ATTRIBUTE_TYPES, get_attribute_type
 
+from .enums import get_enum_attribute_type_name, load_all_enum_types_in_registry
 from .mutations import (
     InfrahubArtifactDefinitionMutation,
     InfrahubMutation,
@@ -32,7 +29,6 @@ from .resolver import (
 )
 from .schema import account_resolver, default_paginated_list_resolver
 from .types import InfrahubInterface, InfrahubObject, InfrahubUnion, RelatedNodeInput
-from .types.attribute import BaseAttribute
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -52,63 +48,6 @@ def load_attribute_types_in_registry(branch: Branch):
         )
 
 
-def load_enum_types_in_registry(
-    node_schemas: Iterable[Union[NodeSchema, GenericSchema, GroupSchema]], branch: Branch
-) -> None:
-    if not config.SETTINGS.experimental_features.graphql_enums:
-        return
-    for node_schema in node_schemas:
-        for attr_schema in node_schema.attributes:
-            if not attr_schema.enum:
-                continue
-            base_enum_name = get_enum_attribute_type_name(node_schema, attr_schema)
-            enum_tuples = []
-            default_value = None
-            for value in attr_schema.enum:
-                clean_name = "_".join(re.findall("[_a-zA-Z0-9]+", value))
-                if attr_schema.default_value and value == attr_schema.default_value:
-                    default_value = value
-                enum_tuples.append((clean_name, value))
-            enum_value_name = f"{base_enum_name}Value"
-            input_class_name = f"{base_enum_name}AttributeInput"
-            attribute_name = f"{base_enum_name}Attribute"
-            attribute_type_class_name = f"{base_enum_name}AttributeType"
-            data_type_class_name = f"{base_enum_name}EnumType"
-            graphene_enum = graphene.Enum(enum_value_name, enum_tuples)
-            graphene_field = graphene.Field(graphene_enum, default_value=default_value)
-            input_class = type(input_class_name, (BaseAttributeInput,), {"value": graphene_field})
-            attribute_type_metaclass = type(
-                "Meta",
-                (),
-                {
-                    "description": f"Attribute of type {attribute_name}",
-                    "name": attribute_name,
-                    "interfaces": {AttributeInterface},
-                },
-            )
-            attribute_type_class = type(
-                attribute_type_class_name, (BaseAttribute,), {"value": graphene_field, "Meta": attribute_type_metaclass}
-            )
-            data_type_class = type(
-                data_type_class_name,
-                (InfrahubDataType,),
-                {
-                    "label": data_type_class_name,
-                    "graphql": graphene.String,
-                    "graphql_query": attribute_type_class,
-                    "graphql_input": input_class,
-                    "graphql_filter": graphene_enum,
-                    "infrahub": String,
-                },
-            )
-            registry.set_graphql_type(
-                name=data_type_class.get_graphql_type_name(),
-                graphql_type=data_type_class.get_graphql_type(),
-                branch=branch.name,
-            )
-            ATTRIBUTE_TYPES[base_enum_name] = data_type_class
-
-
 def load_node_interface(branch: Branch):
     node_interface_schema = GenericSchema(
         name="Node", namespace="Core", description="Interface for all nodes in Infrahub"
@@ -120,10 +59,6 @@ def load_node_interface(branch: Branch):
     registry.set_graphql_type(name=interface._meta.name, graphql_type=interface, branch=branch.name)
     registry.set_graphql_type(name=edged_interface._meta.name, graphql_type=edged_interface, branch=branch.name)
     registry.set_graphql_type(name=paginated_interface._meta.name, graphql_type=paginated_interface, branch=branch.name)
-
-
-def get_enum_attribute_type_name(node_schema: NodeSchema, attr_schema: AttributeSchema) -> str:
-    return f"{node_schema.kind}{attr_schema.name.title()}"
 
 
 def get_attr_kind(node_schema: NodeSchema, attr_schema: AttributeSchema) -> str:
@@ -142,7 +77,8 @@ async def generate_object_types(db: InfrahubDatabase, branch: Union[Branch, str]
     group_memberships = defaultdict(list)
 
     load_attribute_types_in_registry(branch=branch)
-    load_enum_types_in_registry(full_schema.values(), branch=branch)
+    if config.SETTINGS.experimental_features.graphql_enums:
+        load_all_enum_types_in_registry(full_schema.values(), branch=branch)
     load_node_interface(branch=branch)
 
     # Generate all GraphQL Interface  Object first and store them in the registry
