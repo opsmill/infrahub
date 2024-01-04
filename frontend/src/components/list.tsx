@@ -14,7 +14,6 @@ type OpsListProps = {
 
 export default function List(props: OpsListProps) {
   const { value, onChange, label, error, isProtected } = props;
-  console.log("value: ", value);
 
   const [inputValue, sertInputValue] = useState("");
 
