@@ -32,7 +32,7 @@ export const Input = forwardRef((props: any, ref: any) => {
         onChange={(event) => {
           const value = type === "number" ? event.target.valueAsNumber : event.target.value;
 
-          onChange(value);
+          onChange(value, event);
         }}
         className={classNames(
           `block w-full rounded-md border-0 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400
