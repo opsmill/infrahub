@@ -12,10 +12,11 @@ type OpsListProps = {
   onChange: (value: (string | SelectOption)[]) => void;
   error?: FormFieldError;
   isProtected?: boolean;
+  disabled?: boolean;
 };
 
 export default function List(props: OpsListProps) {
-  const { value = [], onChange, label, error, isProtected } = props;
+  const { value = [], onChange, label, error, isProtected, disabled } = props;
 
   const [inputValue, sertInputValue] = useState("");
 
@@ -55,7 +56,7 @@ export default function List(props: OpsListProps) {
         onKeyDown={handleKeyDown}
         value={inputValue}
       />
-      <MultipleInput value={value} onChange={onChange} />
+      <MultipleInput value={value} onChange={onChange} disabled={disabled} />
     </>
   );
 }

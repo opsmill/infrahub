@@ -8,6 +8,7 @@ type OpsListProps = {
   onChange: (value: (string | SelectOption)[]) => void;
   error?: FormFieldError;
   isProtected?: boolean;
+  disabled?: boolean;
 };
 
 export default function OpsList(props: OpsListProps) {
@@ -16,7 +17,7 @@ export default function OpsList(props: OpsListProps) {
       <label className="block text-sm font-medium leading-6 text-gray-900" htmlFor={props.label}>
         {props.label}
       </label>
-      <List {...props} />
+      <List {...props} disabled={props.isProtected || props.disabled} />
     </>
   );
 }
