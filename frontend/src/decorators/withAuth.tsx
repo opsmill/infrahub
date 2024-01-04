@@ -110,7 +110,9 @@ export const withAuth = (AppComponent: any) => (props: any) => {
     setIsLoading(false);
 
     if (!result?.access_token) {
-      toast(<Alert type={ALERT_TYPES.ERROR} message="Invalid username and password" />);
+      toast(<Alert type={ALERT_TYPES.ERROR} message="Invalid username and password" />, {
+        toastId: "alert-error-sign-in",
+      });
 
       return;
     }

@@ -5,7 +5,6 @@
 ### Code linting
 
 - **yamllint**
-- **Black**
 - **ruff**
 - **pylint**
 - (soon) **mypy**
@@ -16,9 +15,8 @@
 To help format the code correctly, the project is also recommending:
 
 - **autoflake** to automatically remove all unused variables and all unused import
-- **isort** to automatically sort all imports
 
-> `invoke format` will run Black, autoflake and isort together to ensure all files are as close as possible to the expected format.
+> `invoke format` will run Ruff and autoflake together to ensure all files are as close as possible to the expected format.
 
 ### Run tests
 
@@ -103,21 +101,16 @@ Full documentation: https://docs.cypress.io/guides/end-to-end-testing/writing-yo
 - Better Toml: https://marketplace.visualstudio.com/items?itemName=bungcip.better-toml
 - GraphQL: https://marketplace.visualstudio.com/items?itemName=GraphQL.vscode-graphql
 - Ruff: https://marketplace.visualstudio.com/items?itemName=charliermarsh.ruff
-- Black Formatter: https://marketplace.visualstudio.com/items?itemName=ms-python.black-formatter
-- isort: https://marketplace.visualstudio.com/items?itemName=ms-python.isort
 
 Sample .vscode/settings.json
 
 ```json
 {
-    "black-formatter.importStrategy": "fromEnvironment",
-    "python.formatting.provider": "none",
-    "editor.formatOnSave": true,
     "[python]": {
-        "editor.defaultFormatter": "ms-python.black-formatter",
+        "editor.defaultFormatter": "charliermarsh.ruff",
         "editor.formatOnSave": true,
         "editor.codeActionsOnSave": {
-            "source.organizeImports": true
+            "source.organizeImports": "explicit"
         }
     },
     "python.analysis.typeCheckingMode": "basic",
@@ -125,6 +118,7 @@ Sample .vscode/settings.json
         "backend"
     ],
     "python.testing.unittestEnabled": false,
-    "python.testing.pytestEnabled": true
+    "python.testing.pytestEnabled": true,
+    "ruff.enable": true,
 }
 ```
