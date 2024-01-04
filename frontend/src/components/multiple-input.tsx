@@ -30,6 +30,23 @@ export const MultipleInput = React.forwardRef((props: MultipleInputProps, ref: a
     return onChange(newValues);
   };
 
+  if (!value?.length) {
+    return (
+      <div
+        className={classNames(
+          `flex items-center justify-center flex-wrap w-full rounded-md border-0 shadow-sm ring-1 ring-inset ring-gray-300 min-h-[44px]
+          border-gray-300 bg-custom-white
+          sm:text-sm sm:leading-6 px-2
+          text-gray-400 italic
+        `,
+          className ?? "",
+          disabled ? "cursor-not-allowed bg-gray-100" : ""
+        )}>
+        Empty list
+      </div>
+    );
+  }
+
   return (
     <div
       className={classNames(
@@ -41,8 +58,6 @@ export const MultipleInput = React.forwardRef((props: MultipleInputProps, ref: a
         className ?? "",
         disabled ? "cursor-not-allowed bg-gray-100" : ""
       )}>
-      {!value?.length && <span className="italic">No item</span>}
-
       {value?.map((item: string | SelectOption, index: number) => (
         <Badge
           key={index}
