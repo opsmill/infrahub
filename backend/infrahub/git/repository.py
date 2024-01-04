@@ -7,6 +7,7 @@ import os
 import shutil
 import sys
 import types
+from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 from uuid import UUID
@@ -303,7 +304,7 @@ class BranchInLocal(BaseModel):
     has_worktree: bool = False
 
 
-class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
+class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public-methods
     """
     Local version of a Git repository organized to work with Infrahub.
     The idea is that all commits that are being tracked in the graph will be checkout out
@@ -316,17 +317,24 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         <repo_name>/commit     Directory for worktrees of individual commits
     """
 
-    id: UUID
-    name: str
-    default_branch_name: Optional[str] = None
+    id: UUID = Field(..., description="Internal UUID of the repository")
+    name: str = Field(..., description="Primary name of the repository")
+    default_branch_name: Optional[str] = Field(None, description="Default branch to use when pulling the repository")
     type: Optional[str] = None
-    location: Optional[str] = None
-    has_origin: bool = False
+    location: Optional[str] = Field(None, description="Location of the remote repository")
+    has_origin: bool = Field(
+        False, description="Flag to indicate if a remote repository (named origin) is present in the config."
+    )
 
-    client: Optional[InfrahubClient] = None
+    client: Optional[InfrahubClient] = Field(
+        None,
+        description="Infrahub Client, used to query the Repository and Branch information in the graph and to update the commit.",
+    )
 
-    cache_repo: Optional[Repo] = None
-    service: InfrahubServices
+    cache_repo: Optional[Repo] = Field(None, description="Internal cache of the GitPython Repo object")
+    service: InfrahubServices = Field(
+        ..., description="Service object with access to the message queue, the database etc.."
+    )
 
     class Config:
         arbitrary_types_allowed = True
@@ -667,53 +675,6 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         return True
 
-    async def create_branch_in_git(
-        self, branch_name: str, branch_id: Optional[str] = None, push_origin: bool = True
-    ) -> bool:
-        """Create new branch in the repository, assuming the branch has been created in the graph already."""
-
-        repo = self.get_git_repo_main()
-
-        # Check if the branch already exist locally, if it does do nothing
-        local_branches = self.get_branches_from_local(include_worktree=False)
-        if branch_name in local_branches:
-            return False
-
-        # TODO Catch potential exceptions coming from repo.git.branch & repo.git.worktree
-        repo.git.branch(branch_name)
-        self.create_branch_worktree(branch_name=branch_name, branch_id=branch_id or branch_name)
-
-        # If there is not remote configured, we are done
-        #  Since the branch is a match for the main branch we don't need to create a commit worktree
-        # If there is a remote, Check if there is an existing remote branch with the same name and if so track it.
-        if not self.has_origin:
-            log.debug(
-                f"Branch {branch_name} created in Git without tracking a remote branch.",
-                repository=self.name,
-                branch=branch_name,
-            )
-            return True
-
-        remote_branch = [br for br in repo.remotes.origin.refs if br.name == f"origin/{branch_name}"]
-
-        if remote_branch:
-            br_repo = self.get_git_repo_worktree(identifier=branch_name)
-            br_repo.head.reference.set_tracking_branch(remote_branch[0])
-            br_repo.remotes.origin.pull(branch_name)
-            self.create_commit_worktree(str(br_repo.head.reference.commit))
-            log.debug(
-                f"Branch {branch_name} created in Git, tracking remote branch {remote_branch[0]}.",
-                repository=self.name,
-                branch=branch_name,
-            )
-        else:
-            log.debug(f"Branch {branch_name} created in Git without tracking a remote branch.", repository=self.name)
-
-        if push_origin:
-            await self.push(branch_name)
-
-        return True
-
     async def create_branch_in_graph(self, branch_name: str) -> BranchData:
         """Create a new branch in the graph.
 
@@ -794,21 +755,9 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         return changed_files, added_files, removed_files
 
-    async def push(self, branch_name: str) -> bool:
-        """Push a given branch to the remote Origin repository"""
-
-        if not self.has_origin:
-            return False
-
-        log.debug(
-            f"Pushing the latest update to the remote origin for the branch '{branch_name}'", repository=self.name
-        )
-
-        # TODO Catch potential exceptions coming from origin.push
-        repo = self.get_git_repo_worktree(identifier=branch_name)
-        repo.remotes.origin.push(branch_name)
-
-        return True
+    @abstractmethod
+    async def sync(self) -> None:
+        raise NotImplementedError()
 
     async def fetch(self) -> bool:
         """Fetch the latest update from the remote repository and bring a copy locally."""
@@ -819,61 +768,6 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         repo = self.get_git_repo_main()
         repo.remotes.origin.fetch()
-
-        return True
-
-    async def sync(self):
-        """Synchronize the repository with its remote origin and with the database.
-
-        By default the sync will focus only on the branches pulled from origin that have some differences with the local one.
-        """
-
-        log.info("Starting the synchronization.", repository=self.name)
-
-        await self.fetch()
-
-        new_branches, updated_branches = await self.compare_local_remote()
-
-        if not new_branches and not updated_branches:
-            return True
-
-        log.debug(f"New Branches {new_branches}, Updated Branches {updated_branches}", repository=self.name)
-
-        # TODO need to handle properly the situation when a branch is not valid.
-        for branch_name in new_branches:
-            is_valid = await self.validate_remote_branch(branch_name=branch_name)
-            if not is_valid:
-                continue
-
-            try:
-                branch = await self.create_branch_in_graph(branch_name=branch_name)
-            except GraphQLError as exc:
-                if "already exist" not in exc.errors[0]["message"]:
-                    raise
-                branch = await self.client.branch.get(branch_name=branch_name)
-
-            await self.create_branch_in_git(branch_name=branch.name, branch_id=branch.id)
-
-            commit = self.get_commit_value(branch_name=branch_name, remote=False)
-            self.create_commit_worktree(commit=commit)
-            await self.update_commit_value(branch_name=branch_name, commit=commit)
-
-            await self.import_objects_from_files(branch_name=branch_name, commit=commit)
-
-        for branch_name in updated_branches:
-            is_valid = await self.validate_remote_branch(branch_name=branch_name)
-            if not is_valid:
-                continue
-
-            commit_after = await self.pull(branch_name=branch_name)
-            await self.import_objects_from_files(branch_name=branch_name, commit=commit_after)
-
-            if commit_after is True:
-                log.warning(
-                    f"An update was detected but the commit remained the same after pull() ({commit_after}).",
-                    repository=self.name,
-                    branch=branch_name,
-                )
 
         return True
 
@@ -971,52 +865,6 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         conflict_files = [filename[3:] for filename in changed_files if filename.startswith("UU ")]
 
         return conflict_files
-
-    async def merge(self, source_branch: str, dest_branch: str, push_remote: bool = True) -> bool:
-        """Merge the source branch into the destination branch.
-
-        After the rebase we need to resync the data
-        """
-        repo = self.get_git_repo_worktree(identifier=dest_branch)
-        if not repo:
-            raise ValueError(f"Unable to identify the worktree for the branch : {dest_branch}")
-
-        commit_before = str(repo.head.commit)
-        commit = self.get_commit_value(branch_name=source_branch, remote=False)
-
-        try:
-            repo.git.merge(commit)
-        except GitCommandError as exc:
-            repo.git.merge("--abort")
-            raise RepositoryError(identifier=self.name, message=exc.stderr) from exc
-
-        commit_after = str(repo.head.commit)
-
-        if commit_after == commit_before:
-            return False
-
-        self.create_commit_worktree(commit_after)
-        await self.update_commit_value(branch_name=dest_branch, commit=commit_after)
-
-        if self.has_origin and push_remote:
-            await self.push(branch_name=dest_branch)
-
-        return str(commit_after)
-
-    async def rebase(self, branch_name: str, source_branch: str = "main", push_remote: bool = True) -> bool:
-        """Rebase the current branch with main.
-
-        Technically we are not doing a Git rebase because it will change the git history
-        We'll merge the content of the source_branch into branch_name instead to keep the history clear.
-
-        TODO need to see how we manage conflict
-
-        After the rebase we need to resync the data
-        """
-
-        response = await self.merge(dest_branch=branch_name, source_branch=source_branch, push_remote=push_remote)
-
-        return response
 
     async def import_objects_from_files(self, branch_name: str, commit: Optional[str] = None):
         if not self.client:
@@ -2099,3 +1947,222 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
     def validate_location(self, commit: str, worktree_directory: str, file_path: str) -> None:
         if not os.path.exists(os.path.join(worktree_directory, file_path)):
             raise FileNotFound(repository_name=self.name, commit=commit, location=file_path)
+
+
+class InfrahubRepository(InfrahubRepositoryBase):
+    """
+    Primary type of Git repository, with deep integration within Infrahub.
+
+    Eventually we should rename this class InfrahubIntegratedRepository
+    """
+
+    async def create_branch_in_git(
+        self, branch_name: str, branch_id: Optional[str] = None, push_origin: bool = True
+    ) -> bool:
+        """Create new branch in the repository, assuming the branch has been created in the graph already."""
+
+        repo = self.get_git_repo_main()
+
+        # Check if the branch already exist locally, if it does do nothing
+        local_branches = self.get_branches_from_local(include_worktree=False)
+        if branch_name in local_branches:
+            return False
+
+        # TODO Catch potential exceptions coming from repo.git.branch & repo.git.worktree
+        repo.git.branch(branch_name)
+        self.create_branch_worktree(branch_name=branch_name, branch_id=branch_id or branch_name)
+
+        # If there is not remote configured, we are done
+        #  Since the branch is a match for the main branch we don't need to create a commit worktree
+        # If there is a remote, Check if there is an existing remote branch with the same name and if so track it.
+        if not self.has_origin:
+            log.debug(
+                f"Branch {branch_name} created in Git without tracking a remote branch.",
+                repository=self.name,
+                branch=branch_name,
+            )
+            return True
+
+        remote_branch = [br for br in repo.remotes.origin.refs if br.name == f"origin/{branch_name}"]
+
+        if remote_branch:
+            br_repo = self.get_git_repo_worktree(identifier=branch_name)
+            br_repo.head.reference.set_tracking_branch(remote_branch[0])
+            br_repo.remotes.origin.pull(branch_name)
+            self.create_commit_worktree(str(br_repo.head.reference.commit))
+            log.debug(
+                f"Branch {branch_name} created in Git, tracking remote branch {remote_branch[0]}.",
+                repository=self.name,
+                branch=branch_name,
+            )
+        else:
+            log.debug(f"Branch {branch_name} created in Git without tracking a remote branch.", repository=self.name)
+
+        if push_origin:
+            await self.push(branch_name)
+
+        return True
+
+    async def sync(self) -> None:
+        """Synchronize the repository with its remote origin and with the database.
+
+        By default the sync will focus only on the branches pulled from origin that have some differences with the local one.
+        """
+
+        log.info("Starting the synchronization.", repository=self.name)
+
+        await self.fetch()
+
+        new_branches, updated_branches = await self.compare_local_remote()
+
+        if not new_branches and not updated_branches:
+            return
+
+        log.debug(f"New Branches {new_branches}, Updated Branches {updated_branches}", repository=self.name)
+
+        # TODO need to handle properly the situation when a branch is not valid.
+        for branch_name in new_branches:
+            is_valid = await self.validate_remote_branch(branch_name=branch_name)
+            if not is_valid:
+                continue
+
+            try:
+                branch = await self.create_branch_in_graph(branch_name=branch_name)
+            except GraphQLError as exc:
+                if "already exist" not in exc.errors[0]["message"]:
+                    raise
+                branch = await self.client.branch.get(branch_name=branch_name)
+
+            await self.create_branch_in_git(branch_name=branch.name, branch_id=branch.id)
+
+            commit = self.get_commit_value(branch_name=branch_name, remote=False)
+            self.create_commit_worktree(commit=commit)
+            await self.update_commit_value(branch_name=branch_name, commit=commit)
+
+            await self.import_objects_from_files(branch_name=branch_name, commit=commit)
+
+        for branch_name in updated_branches:
+            is_valid = await self.validate_remote_branch(branch_name=branch_name)
+            if not is_valid:
+                continue
+
+            commit_after = await self.pull(branch_name=branch_name)
+            await self.import_objects_from_files(branch_name=branch_name, commit=commit_after)
+
+            if commit_after is True:
+                log.warning(
+                    f"An update was detected but the commit remained the same after pull() ({commit_after}).",
+                    repository=self.name,
+                    branch=branch_name,
+                )
+
+        return
+
+    async def push(self, branch_name: str) -> bool:
+        """Push a given branch to the remote Origin repository"""
+
+        if not self.has_origin:
+            return False
+
+        log.debug(
+            f"Pushing the latest update to the remote origin for the branch '{branch_name}'", repository=self.name
+        )
+
+        # TODO Catch potential exceptions coming from origin.push
+        repo = self.get_git_repo_worktree(identifier=branch_name)
+        repo.remotes.origin.push(branch_name)
+
+        return True
+
+    async def merge(self, source_branch: str, dest_branch: str, push_remote: bool = True) -> bool:
+        """Merge the source branch into the destination branch.
+
+        After the rebase we need to resync the data
+        """
+        repo = self.get_git_repo_worktree(identifier=dest_branch)
+        if not repo:
+            raise ValueError(f"Unable to identify the worktree for the branch : {dest_branch}")
+
+        commit_before = str(repo.head.commit)
+        commit = self.get_commit_value(branch_name=source_branch, remote=False)
+
+        try:
+            repo.git.merge(commit)
+        except GitCommandError as exc:
+            repo.git.merge("--abort")
+            raise RepositoryError(identifier=self.name, message=exc.stderr) from exc
+
+        commit_after = str(repo.head.commit)
+
+        if commit_after == commit_before:
+            return False
+
+        self.create_commit_worktree(commit_after)
+        await self.update_commit_value(branch_name=dest_branch, commit=commit_after)
+
+        if self.has_origin and push_remote:
+            await self.push(branch_name=dest_branch)
+
+        return str(commit_after)
+
+    async def rebase(self, branch_name: str, source_branch: str = "main", push_remote: bool = True) -> bool:
+        """Rebase the current branch with main.
+
+        Technically we are not doing a Git rebase because it will change the git history
+        We'll merge the content of the source_branch into branch_name instead to keep the history clear.
+
+        TODO need to see how we manage conflict
+
+        After the rebase we need to resync the data
+        """
+
+        response = await self.merge(dest_branch=branch_name, source_branch=source_branch, push_remote=push_remote)
+
+        return response
+
+
+class InfrahubReadOnlyRepository(InfrahubRepositoryBase):
+    """
+    Repository with only read-only access to the remote repo
+    """
+
+    branch: str = Field(False, description="Branch to track on the remote repository.")
+
+    async def push(self):
+        raise NotImplementedError("read-only repository cannot push to remote")
+
+    async def sync(self) -> None:
+        """Retrieve changes from the remote origin and update the database."""
+
+        log.info("Starting the synchronization.", repository=self.name)
+
+        await self.fetch()
+
+        remote_branches = self.get_branches_from_remote()
+        if self.branch not in remote_branches:
+            return
+
+        local_branches = self.get_branches_from_local()
+        if self.branch not in local_branches:
+            raise ValueError("SOMETHING IS WRONG")
+
+        remote_branch = remote_branches[self.branch]
+        local_branch = local_branches[self.branch]
+        if remote_branch.commit == local_branch.commit:
+            return
+
+        log.info("New commit detected", repository=self.name, branch=self.branch)
+
+        await self.validate_remote_branch(branch_name=self.branch)
+
+        commit_after = await self.pull(branch_name=self.branch)
+        await self.import_objects_from_files(branch_name=self.branch, commit=commit_after)
+
+        if commit_after is True:
+            log.warning(
+                f"An update was detected but the commit remained the same after pull() ({commit_after}).",
+                repository=self.name,
+                branch=self.branch,
+            )
+
+        return

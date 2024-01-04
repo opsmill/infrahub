@@ -31,7 +31,7 @@ from infrahub_sdk.node import (
     InfrahubNodeSync,
 )
 from infrahub_sdk.object_store import ObjectStore, ObjectStoreSync
-from infrahub_sdk.queries import MUTATION_COMMIT_UPDATE, QUERY_ALL_REPOSITORIES
+from infrahub_sdk.queries import MUTATION_COMMIT_UPDATE
 from infrahub_sdk.schema import InfrahubSchema, InfrahubSchemaSync, NodeSchema
 from infrahub_sdk.store import NodeStore, NodeStoreSync
 from infrahub_sdk.timestamp import Timestamp
@@ -639,34 +639,32 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
 
         branch_names = sorted(branches.keys())  # type: ignore
 
-        tasks = []
+        batch = await self.create_batch()
         for branch_name in branch_names:
-            tasks.append(
-                self.execute_graphql(
-                    query=QUERY_ALL_REPOSITORIES,
-                    branch_name=branch_name,
-                    tracker="query-repository-all",
-                )
+            batch.add(
+                task=self.all,
+                kind="CoreGenericRepository",
+                branch=branch_name,
+                fragment=True,
+                include=["id", "name", "location", "commit"],
             )
-            # TODO need to rate limit how many requests we are sending at once to avoid doing a DOS on the API
 
-        responses = await asyncio.gather(*tasks)
+        responses = []
+        async for _, response in batch.execute():
+            responses.append(response)
 
         repositories = {}
 
         for branch_name, response in zip(branch_names, responses):
-            repos = response["CoreRepository"]["edges"]
-            for repository in repos:
-                repo_name = repository["node"]["name"]["value"]
+            for repository in response:
+                repo_name = repository.name.value
                 if repo_name not in repositories:
                     repositories[repo_name] = RepositoryData(
-                        id=repository["node"]["id"],
-                        name=repo_name,
-                        location=repository["node"]["location"]["value"],
+                        repository=repository,
                         branches={},
                     )
 
-                repositories[repo_name].branches[branch_name] = repository["node"]["commit"]["value"]
+                repositories[repo_name].branches[branch_name] = repository.commit.value
 
         return repositories
 
