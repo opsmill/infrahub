@@ -37,7 +37,7 @@ export const BranchDetails = () => {
   const { branchname } = useParams();
   const date = useAtomValue(datetimeAtom);
   const auth = useContext(AuthContext);
-  const [branches] = useAtom(branchesState);
+  const [branches, setBranches] = useAtom(branchesState);
   const [schemaList] = useAtom(schemaState);
 
   const [isLoadingRequest, setIsLoadingRequest] = useState(false);
@@ -153,8 +153,8 @@ export const BranchDetails = () => {
               : constructPath("/branches");
 
             navigate(path);
-
-            window.location.reload();
+            const nextBranches = branches.filter(({ name }) => name !== branch.name);
+            setBranches(nextBranches);
           }}
           open={displayModal}
           setOpen={() => setDisplayModal(false)}
