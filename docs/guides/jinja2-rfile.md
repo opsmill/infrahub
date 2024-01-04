@@ -139,13 +139,13 @@ Here the query will require an input parameter called `$name` what will refer to
 
 The next step is to create the actual Jinja Template file. Create a file called tags_tpl.j2
 
-```jinja2
+```jinja
 {% if data.BuiltinTag.edges and data.BuiltinTag.edges is iterable %}
 {% for tag in ["BuiltinTag"]["edges"][0]["node"] %}
 {% set tag_name = tag.name.value %}
 {% set tag_description = tag.description.value %}
-{{ tag_name }}
-description: {{ tag_description }}
+{{ "{{ tag_name }}" }}
+description: {{ "{{ tag_description }}" }}
 {% endfor %}
 {% endif %}
 ```
@@ -161,8 +161,8 @@ Create a .infrahub.yml file in the root of the directory.
 rfiles:
   - name: my-rfile                   # Unique name for your rfile
     description: "short description" # (optional)
-    query: "tags_query"            # Name or ID of the GraphQLQuery
-    template_path: "tags_tpl.j2" # path to the main Jinja2 template
+    query: "tags_query"              # Name or ID of the GraphQLQuery
+    template_path: "tags_tpl.j2"     # Path to the main Jinja2 template
 ```
 
 > The main Jinja2 template can import other templates
@@ -216,6 +216,7 @@ infrahubctl render <rfile name or ID> my-param=XXXXX my-other-param=YYYYY
 
 !!!info
 If `--branch` is not provided it will automatically use the name of the local branch.
+!!!
 
 ## 6. Adding the repository to Infrahub
 

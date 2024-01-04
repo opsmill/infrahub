@@ -1,5 +1,6 @@
 ---
 icon: terminal
+order: 1000
 ---
 # Installing Infrahub
 
@@ -12,6 +13,8 @@ The main components are:
 - A **Git agent** to manage the interaction with external Git repositories.
 - A **Graph database** based on `Neo4j` 5.x or `memgraph`.
 - A **Message bus** based on `RabbitMQ`.
+
+Refer to [Architecture](/topics/architecture) for a more in-depth view of the components interaction.
 
 ## From Git repository
 
@@ -28,8 +31,9 @@ Next, clone the `stable` branch of the Infrahub GitHub repository into the curre
 git clone -b stable --depth 1 git@github.com:opsmill/infrahub.git .
 ```
 
-!!! note
-    The `git clone` command above utilizes a "shallow clone" to retrieve only the most recent commit. If you need to download the entire history, omit the `--depth 1` argument.
+!!!note
+The command above utilizes a "shallow clone" to retrieve only the most recent commit. If you need to download the entire history, omit the --depth 1 argument.
+!!!
 
 The `git clone` command should generate output similar to the following:
 
@@ -72,7 +76,7 @@ To install Docker, follow the [official instructions on the Docker website](http
 
 On Windows, install a Linux VM via WSL2 and follow the installation guide for Ubuntu.
 
-!!!
+!!!warning
 The native support on Windows is currently under investigation and is being tracked in [issue 794](https://github.com/opsmill/infrahub/issues/794).
 Please add a comment to the issue if this is something that would be useful to you.
 !!!

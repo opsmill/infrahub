@@ -1,6 +1,7 @@
 ---
 icon: repo
 label: Loading a Schema file
+order: 900
 ---
 # Schema file
 
