@@ -12,6 +12,8 @@ This configuration file will be use to link the different repository files to In
 - [Python Transformation](/topics/transformation)
 - [Artifact](/topics/artifact) Definition
 
+It is also possible to declare [Schema](/topics/schema) to be [load via the git integration](/guide/schema)
+
 !!!warning
-Coming Soon
+Under construction
 !!!
