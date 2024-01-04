@@ -13,7 +13,7 @@ const mocks: any[] = [
     },
     result: {
       data: {
-        branch: branchesMocks,
+        Branch: branchesMocks,
       },
     },
   },
