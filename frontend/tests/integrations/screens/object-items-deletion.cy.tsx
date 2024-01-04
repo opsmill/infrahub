@@ -96,26 +96,26 @@ describe("List screen", () => {
       }
     );
 
-    cy.get(".min-w-full > .bg-custom-white > :nth-child(1) > :nth-child(1)").should(
-      "have.text",
-      objectToDelete
-    );
+    cy.get("[data-cy='object-table-row']")
+      .first()
+      .within(() => {
+        cy.contains(objectToDelete).should("be.visible");
 
-    // Open delete modal
-    cy.get(":nth-child(1) > :nth-child(5) > .rounded-md").click();
+        // Open delete modal
+        cy.get("[data-cy='delete']").click();
+      });
 
-    // The obejct should be correctly deplsayed
-    cy.get(".mt-2 > .text-sm").invoke("text").should("include", objectToDelete);
+    cy.get("[data-cy='modal-delete']").within(() => {
+      // The object should be correctly displayed
+      cy.contains(objectToDelete).should("be.visible");
 
-    // Submit
-    cy.get(".bg-red-600").click();
+      // Submit
+      cy.contains("button", "Delete").click();
+    });
 
     // Wait for the mutation to be done
     cy.wait("@delete");
 
-    cy.get(".min-w-full > .bg-custom-white > :nth-child(1) > :nth-child(1)").should(
-      "not.have.text",
-      objectToDelete
-    );
+    cy.get("[data-cy='object-table-row']").should("not.have.text", objectToDelete);
   });
 });
