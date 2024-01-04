@@ -1,4 +1,3 @@
-import logging
 from typing import List, Optional
 
 from infrahub import config, lock
@@ -11,9 +10,10 @@ from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema_manager import SchemaManager
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import DatabaseError
+from infrahub.log import get_logger
 from infrahub.storage import InfrahubObjectStorage
 
-LOGGER = logging.getLogger("infrahub")
+log = get_logger()
 
 
 async def initialization(db: InfrahubDatabase):
@@ -27,7 +27,7 @@ async def initialization(db: InfrahubDatabase):
     # Initialize the database and Load the Root node
     # ---------------------------------------------------
     async with lock.registry.initialization():
-        LOGGER.debug("Checking Root Node")
+        log.debug("Checking Root Node")
 
         roots = await Root.get_list(db=db)
         if len(roots) == 0:
@@ -65,9 +65,10 @@ async def initialization(db: InfrahubDatabase):
         hash_in_db = default_branch.schema_hash.main
         await registry.schema.load_schema_from_db(db=db, branch=default_branch)
         if default_branch.update_schema_hash():
-            LOGGER.warning(
-                f"{default_branch.name} | New schema detected after pulling the schema from the db :"
-                f" {hash_in_db!r} >> {default_branch.schema_hash.main!r}"
+            log.warning(
+                f"New schema detected after pulling the schema from the db :"
+                f" {hash_in_db!r} >> {default_branch.schema_hash.main!r}",
+                branch=default_branch.name,
             )
 
         for branch in branches:
@@ -75,13 +76,14 @@ async def initialization(db: InfrahubDatabase):
                 continue
 
             hash_in_db = branch.schema_hash.main
-            LOGGER.info(f"{branch.name} | importing schema")
+            log.info("Importing schema", branch=branch.name)
             await registry.schema.load_schema(db=db, branch=branch)
 
             if branch.update_schema_hash():
-                LOGGER.warning(
-                    f"{branch.name} | New schema detected after pulling the schema from the db :"
-                    f" {hash_in_db!r} >> {branch.schema_hash.main!r}"
+                log.warning(
+                    f"New schema detected after pulling the schema from the db :"
+                    f" {hash_in_db!r} >> {branch.schema_hash.main!r}",
+                    branch=branch.name,
                 )
 
     # ---------------------------------------------------
@@ -106,7 +108,7 @@ async def initialization(db: InfrahubDatabase):
 async def create_root_node(db: InfrahubDatabase) -> Root:
     root = Root()
     await root.save(db=db)
-    LOGGER.info(f"Generated instance ID : {root.uuid}")
+    log.info(f"Generated instance ID : {root.uuid}")
 
     registry.id = root.id
 
@@ -125,7 +127,7 @@ async def create_default_branch(db: InfrahubDatabase) -> Branch:
     await branch.save(db=db)
     registry.branch[branch.name] = branch
 
-    LOGGER.info(f"Created default branch : {branch.name}")
+    log.info("Created default branch", branch=branch.name)
 
     return branch
 
@@ -142,7 +144,7 @@ async def create_global_branch(db: InfrahubDatabase) -> Branch:
     await branch.save(db=db)
     registry.branch[branch.name] = branch
 
-    LOGGER.info(f"Created global branch : {branch.name}")
+    log.info("Created global branch", branch=branch.name)
 
     return branch
 
@@ -172,7 +174,7 @@ async def create_branch(
     await branch.save(db=db)
     registry.branch[branch.name] = branch
 
-    LOGGER.info(f"Created branch : {branch.name}")
+    log.info("Created branch", branch=branch.name)
 
     return branch
 
@@ -197,7 +199,7 @@ async def first_time_initialization(db: InfrahubDatabase):
     default_branch.update_schema_hash()
     await default_branch.save(db=db)
 
-    LOGGER.info("Created the Schema in the database")
+    log.info("Created the Schema in the database")
 
     # --------------------------------------------------
     # Create Default Users and Groups
@@ -224,7 +226,7 @@ async def first_time_initialization(db: InfrahubDatabase):
         # groups=[admin_grp],
     )
     await obj.save(db=db)
-    LOGGER.info(f"Created Account: {obj.name.value}")
+    log.info(f"Created Account: {obj.name.value}", account_name=obj.name.value)
 
     if config.SETTINGS.security.initial_admin_token:
         token = await Node.init(db=db, schema=token_schema)
