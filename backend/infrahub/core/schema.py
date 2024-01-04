@@ -2134,12 +2134,14 @@ core_models = {
                     "name": "operations",
                     "kind": "List",
                     "description": "Operations in use in the query, valid operations: 'query', 'mutation' or 'subscription'",
+                    "read_only": True,
                     "optional": True,
                 },
                 {
                     "name": "models",
                     "kind": "List",
                     "description": "List of models associated with this query",
+                    "read_only": True,
                     "optional": True,
                 },
                 {
