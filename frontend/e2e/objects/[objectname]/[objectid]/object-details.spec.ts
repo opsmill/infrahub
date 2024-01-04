@@ -17,7 +17,7 @@ test.describe("/objects/:objectname/:objectid", () => {
 
     test("should be able to edit object", async ({ page }) => {
       await page.goto("/objects/InfraBGPSession");
-      await page.getByRole("cell", { name: "EXTERNAL" }).first().click();
+      await page.getByRole("link", { name: "EXTERNAL" }).first().click();
 
       await expect(page.getByRole("button", { name: "Edit" })).toBeEnabled();
       await expect(page.getByRole("button", { name: "Manage groups" })).toBeEnabled();

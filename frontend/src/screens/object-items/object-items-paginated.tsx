@@ -227,7 +227,11 @@ export default function ObjectItems(props: any) {
                         index !== rows.length - 1 ? "border-b border-gray-200" : "",
                         "whitespace-wrap px-2 py-1 text-xs text-gray-900"
                       )}>
-                      {getObjectItemDisplayValue(row, attribute)}
+                      <a
+                        className="block whitespace-wrap px-2 py-1 text-xs text-gray-900"
+                        href={constructPath(getObjectDetailsUrl(row.id, row.__typename))}>
+                        {getObjectItemDisplayValue(row, attribute)}
+                      </a>
                     </td>
                   ))}
 
