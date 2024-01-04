@@ -6,7 +6,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from infrahub_sdk.utils import duplicates, intersection
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 
 import infrahub.config as config
 from infrahub import lock
@@ -806,7 +806,7 @@ class SchemaManager(NodeManager):
         new_node = node.duplicate()
 
         # Create the node first
-        schema_dict = node.model_dump(exclude={"id", "filters", "relationships", "attributes"})
+        schema_dict = node.dict(exclude={"id", "filters", "relationships", "attributes"})
         obj = await Node.init(schema=node_schema, branch=branch, db=db)
         await obj.new(**schema_dict, db=db)
         await obj.save(db=db)
@@ -851,7 +851,7 @@ class SchemaManager(NodeManager):
             raise ValueError(f"Only schema node of type {SUPPORTED_SCHEMA_NODE_TYPE} are supported: {node_type}")
 
         # Update the node First
-        schema_dict = node.model_dump(exclude={"id", "filters", "relationships", "attributes"})
+        schema_dict = node.dict(exclude={"id", "filters", "relationships", "attributes"})
         obj = await self.get_one(id=node.id, branch=branch, db=db, include_owner=True, include_source=True)
 
         if not obj:
@@ -912,7 +912,7 @@ class SchemaManager(NodeManager):
         schema: NodeSchema, item: AttributeSchema, branch: Branch, parent: Node, db: InfrahubDatabase
     ) -> AttributeSchema:
         obj = await Node.init(schema=schema, branch=branch, db=db)
-        await obj.new(**item.model_dump(exclude={"id", "filters"}), node=parent, db=db)
+        await obj.new(**item.dict(exclude={"id", "filters"}), node=parent, db=db)
         await obj.save(db=db)
         new_item = item.duplicate()
         new_item.id = obj.id
@@ -923,7 +923,7 @@ class SchemaManager(NodeManager):
         schema: NodeSchema, item: RelationshipSchema, branch: Branch, parent: Node, db: InfrahubDatabase
     ) -> RelationshipSchema:
         obj = await Node.init(schema=schema, branch=branch, db=db)
-        await obj.new(**item.model_dump(exclude={"id", "filters"}), node=parent, db=db)
+        await obj.new(**item.dict(exclude={"id", "filters"}), node=parent, db=db)
         await obj.save(db=db)
         new_item = item.duplicate()
         new_item.id = obj.id
@@ -931,14 +931,14 @@ class SchemaManager(NodeManager):
 
     @staticmethod
     async def update_attribute_in_db(item: AttributeSchema, attr: Node, db: InfrahubDatabase) -> None:
-        item_dict = item.model_dump(exclude={"id", "filters"})
+        item_dict = item.dict(exclude={"id", "filters"})
         for key, value in item_dict.items():
             getattr(attr, key).value = value
         await attr.save(db=db)
 
     @staticmethod
     async def update_relationship_in_db(item: RelationshipSchema, rel: Node, db: InfrahubDatabase) -> None:
-        item_dict = item.model_dump(exclude={"id", "filters"})
+        item_dict = item.dict(exclude={"id", "filters"})
         for key, value in item_dict.items():
             getattr(rel, key).value = value
         await rel.save(db=db)

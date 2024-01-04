@@ -6,7 +6,7 @@ from collections import defaultdict
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic.v1 import BaseModel, Field, validator
 
 from infrahub import config
 from infrahub.core.constants import (
@@ -79,7 +79,7 @@ class Branch(StandardNode):
 
     _exclude_attrs: List[str] = ["id", "uuid", "owner", "ephemeral_rebase"]
 
-    @field_validator("name", mode="before")
+    @validator("name", pre=True, always=True)
     @classmethod
     def validate_branch_name(cls, value):
         checks = [
@@ -110,12 +110,12 @@ class Branch(StandardNode):
 
         return value
 
-    @field_validator("branched_from", mode="before")
+    @validator("branched_from", pre=True, always=True)
     @classmethod
     def set_branched_from(cls, value):
         return Timestamp(value).to_string()
 
-    @field_validator("created_at", mode="before")
+    @validator("created_at", pre=True, always=True)
     @classmethod
     def set_created_at(cls, value):
         return Timestamp(value).to_string()
@@ -779,7 +779,8 @@ class RelationshipPath(BaseModel):
 
 
 class BaseDiffElement(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    class Config:
+        arbitrary_types_allowed = True
 
     def to_graphql(self):
         """Recursively Export the model to a dict for GraphQL.
@@ -793,7 +794,7 @@ class BaseDiffElement(BaseModel):
                 resp[key] = value.to_graphql()
             elif isinstance(value, dict):
                 resp[key] = [item.to_graphql() for item in value.values()]
-            elif self.model_fields[key].exclude:
+            elif self.__fields__[key].field_info.exclude:
                 continue
             elif isinstance(value, Enum):
                 resp[key] = value.value

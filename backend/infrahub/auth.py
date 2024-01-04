@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Callable, Dict, List, Optional
 
 import bcrypt
 import jwt
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 
 from infrahub import config, models
 from infrahub.core import get_branch

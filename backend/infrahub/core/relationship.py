@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 from infrahub_sdk import UUIDT
 from infrahub_sdk.utils import intersection
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 
 from infrahub.core import registry
 from infrahub.core.constants import BranchSupportType

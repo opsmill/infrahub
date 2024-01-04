@@ -4,7 +4,7 @@ from typing import Any, Dict, Iterator, Optional, TypeVar
 
 import aio_pika
 import aiormq
-from pydantic.v1 import BaseModel, ConfigDict, Field
+from pydantic.v1 import BaseModel, Field
 
 from infrahub import config
 from infrahub.exceptions import Error, RPCError
@@ -73,8 +73,10 @@ class Meta(BaseModel):
 class InfrahubMessage(BaseModel, aio_pika.abc.AbstractMessage):
     """Base Model for messages"""
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
     meta: Meta = Field(default_factory=Meta.default, description="Meta properties for the message")
+
+    class Config:
+        arbitrary_types_allowed = True
 
     def assign_meta(self, parent: "InfrahubMessage") -> None:
         """Assign relevant meta properties from a parent message."""

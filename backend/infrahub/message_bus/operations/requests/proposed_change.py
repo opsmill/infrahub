@@ -105,7 +105,7 @@ async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, s
                     "path": conflict.conflict_path,
                     "property_name": conflict.property_name,
                     "change_type": conflict.change_type,
-                    "changes": [change.model_dump() for change in conflict.changes],
+                    "changes": [change.dict() for change in conflict.changes],
                 }
             ]
             conflict_obj = None

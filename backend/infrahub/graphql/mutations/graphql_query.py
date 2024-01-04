@@ -50,7 +50,7 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
         query_info["operations"] = {
             "value": sorted([operation.operation_type.value for operation in analyzer.operations])
         }
-        query_info["variables"] = {"value": [variable.model_dump() for variable in analyzer.variables]}
+        query_info["variables"] = {"value": [variable.dict() for variable in analyzer.variables]}
 
         return query_info
 

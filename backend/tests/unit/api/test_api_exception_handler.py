@@ -1,24 +1,24 @@
 from json import loads
-from typing import Any, Optional
+from typing import Optional
 
-from pydantic import BaseModel, Field, ValidationError, field_validator
+from pydantic.v1 import BaseModel, root_validator, validator
+from pydantic.v1.error_wrappers import ValidationError
 
 from infrahub.api.exception_handlers import generic_api_exception_handler
 from infrahub.exceptions import Error
 
 
 class ModelForTesting(BaseModel):
-    field_1: Optional[str] = Field(default=None, validate_default=True)
-    field_2: Optional[str] = Field(default=None, validate_default=True)
+    field_1: Optional[str] = None
 
-    @field_validator("field_1")
+    @validator("field_1", always=True)
     @classmethod
-    def always_fail_1(cls, values: Any):
+    def always_fail(cls, *args, **kwargs):
         raise ValueError("this is the error message")
 
-    @field_validator("field_2")
+    @root_validator()
     @classmethod
-    def always_fail_2(cls, values: Any):
+    def always_fail_2(cls, values):
         raise ValueError("another error message")
 
 
@@ -53,8 +53,8 @@ class TestAPIExceptionHandler:
         error_response = await generic_api_exception_handler(None, exception, http_code=400)
 
         error_dict = loads(error_response.body.decode())
-        assert {"message": f"Value error, {self.error_message}", "extensions": {"code": 400}} in error_dict["errors"]
-        assert {"message": f"Value error, {error_message_2}", "extensions": {"code": 400}} in error_dict["errors"]
+        assert {"message": self.error_message, "extensions": {"code": 400}} in error_dict["errors"]
+        assert {"message": error_message_2, "extensions": {"code": 400}} in error_dict["errors"]
         assert len(error_dict) == 2
 
     async def test_infrahub_api_error(self):

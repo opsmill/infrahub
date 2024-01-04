@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 from fastapi import APIRouter, Depends, Request
 from fastapi.logger import logger
 from infrahub_sdk.utils import compare_lists
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic.v1 import BaseModel, Extra, Field
 
 from infrahub import config
 from infrahub.api.dependencies import get_branch_dep, get_current_user, get_db
@@ -19,11 +19,7 @@ from infrahub.core.branch import (
     NodeDiffElement,  # noqa: TCH001
     RelationshipDiffElement,  # noqa: TCH001
 )
-from infrahub.core.constants import (
-    BranchSupportType,
-    DiffAction,
-    RelationshipCardinality,
-)
+from infrahub.core.constants import BranchSupportType, DiffAction, RelationshipCardinality
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema_manager import INTERNAL_SCHEMA_NODE_KINDS
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
@@ -171,7 +167,6 @@ class BranchDiffRelationshipMany(BaseModel):
 
 # NEW
 class BranchDiffElementAttribute(BaseModel):
-    model_config = ConfigDict(extra="forbid")
     type: DiffElementType = DiffElementType.ATTRIBUTE
     branches: List[str] = Field(default_factory=list)
     id: str = ""
@@ -179,6 +174,9 @@ class BranchDiffElementAttribute(BaseModel):
     action: DiffAction = DiffAction.UNCHANGED
     value: Optional[BranchDiffPropertyCollection] = None
     properties: Dict[str, BranchDiffPropertyCollection] = Field(default_factory=dict)
+
+    class Config:
+        extra = Extra.forbid
 
 
 # NEW
@@ -203,7 +201,6 @@ class BranchDiffRelationshipOnePeerCollection(BaseModel):
 
 # NEW
 class BranchDiffElementRelationshipOne(BaseModel):
-    model_config = ConfigDict(extra="forbid")
     type: DiffElementType = DiffElementType.RELATIONSHIP_ONE
     id: str = ""
     identifier: str = ""
@@ -214,9 +211,11 @@ class BranchDiffElementRelationshipOne(BaseModel):
     changed_at: Optional[str] = None
     action: Dict[str, DiffAction] = Field(default_factory=dict)
 
+    class Config:
+        extra = Extra.forbid
+
 
 class BranchDiffElementRelationshipManyPeer(BaseModel):
-    model_config = ConfigDict(extra="forbid")
     branches: Set[str] = Field(default_factory=set)
     peer: BranchDiffRelationshipPeerNode
     path: str
@@ -224,10 +223,12 @@ class BranchDiffElementRelationshipManyPeer(BaseModel):
     changed_at: Optional[str] = None
     action: Dict[str, DiffAction] = Field(default_factory=dict)
 
+    class Config:
+        extra = Extra.forbid
+
 
 # NEW
 class BranchDiffElementRelationshipMany(BaseModel):
-    model_config = ConfigDict(extra="forbid")
     type: DiffElementType = DiffElementType.RELATIONSHIP_MANY
     identifier: str = ""
     branches: Set[str] = Field(default_factory=set)
@@ -235,9 +236,12 @@ class BranchDiffElementRelationshipMany(BaseModel):
     peers: Dict[str, BranchDiffElementRelationshipManyPeer] = Field(default_factory=dict)
     # action: Dict[str, DiffAction] = Field(default_factory=dict)
 
+    class Config:
+        extra = Extra.forbid
+
 
 # NEW
-class BranchDiffElement(BaseModel):
+class BranchDiffElement(BaseModel, smart_union=True):
     type: DiffElementType
     name: str
     path: str

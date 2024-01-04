@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import inspect
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, get_args, get_origin
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from uuid import UUID  # noqa: TCH003
 
 import ujson
 from infrahub_sdk import UUIDT
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 
 from infrahub.core.query.standard_node import (
     StandardNodeCreateQuery,
@@ -21,7 +21,6 @@ from infrahub.exceptions import Error
 
 if TYPE_CHECKING:
     from neo4j.graph import Node as Neo4jNode
-    from pydantic.fields import FieldInfo
     from typing_extensions import Self
 
     from infrahub.core.query import Query
@@ -39,27 +38,6 @@ class StandardNode(BaseModel):
     @classmethod
     def get_type(cls) -> str:
         return cls.__name__
-
-    @staticmethod
-    def guess_field_type(field: FieldInfo) -> Any:
-        """Return the type of an annotation.
-
-        Here we mimic a fraction of the old Pydantic type analysis.
-        https://github.com/pydantic/pydantic/blob/2e939dc3bfb88f54efb66f8f1a031ff22e4f9865/pydantic/fields.py#L539%23L758
-
-        Inspect lists and return the type within the list itself.
-        Unions are unpacked to look for nested types.
-        Unions having 2 items, of which one is a none type, are (most likely) Optional annotations.
-        """
-        if get_origin(field.annotation) == Union:
-            args = get_args(field.annotation)
-            if len(args) == 2 and type(None) in args:
-                return get_origin(args[0]) or args[0]
-        elif get_origin(field.annotation) is list:
-            args = get_args(field.annotation)
-            return get_origin(args[0]) or args[0]
-
-        return get_origin(field.annotation) or field.annotation
 
     async def to_graphql(self, fields: dict) -> dict:
         response = {"id": self.uuid}
@@ -167,10 +145,10 @@ class StandardNode(BaseModel):
         node_data = dict(node)
         attrs["id"] = node.element_id
         for key, value in node_data.items():
-            if key not in cls.model_fields:
+            if key not in cls.__fields__:
                 continue
 
-            field_type = cls.guess_field_type(cls.model_fields[key])
+            field_type = cls.__fields__[key].type_
 
             if value == "NULL":
                 attrs[key] = None
@@ -189,21 +167,21 @@ class StandardNode(BaseModel):
         else:
             data["uuid"] = self.uuid
 
-        for attr_name, field in self.model_fields.items():
+        for attr_name, field in self.__fields__.items():
             if attr_name in self._exclude_attrs:
                 continue
 
             attr_value = getattr(self, attr_name)
-            field_type = self.guess_field_type(field)
+            field_type = field.type_
 
             if attr_value is None:
                 data[attr_name] = "NULL"
             elif inspect.isclass(field_type) and issubclass(field_type, BaseModel):
                 if isinstance(attr_value, list):
-                    clean_value = [item.model_dump() for item in attr_value]
+                    clean_value = [item.dict() for item in attr_value]
                     data[attr_name] = ujson.dumps(clean_value)
                 else:
-                    data[attr_name] = attr_value.model_dump_json()
+                    data[attr_name] = attr_value.json()
             elif issubclass(field_type, (int, float, bool, str, UUID)):
                 data[attr_name] = attr_value
             else:

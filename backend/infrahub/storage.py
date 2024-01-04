@@ -38,7 +38,7 @@ class InfrahubObjectStorage:
         driver = getattr(fastapi_storages, self._settings.driver.name)
 
         driver_settings = getattr(self._settings, self._settings.driver.value.lower())
-        self._storage = driver(**driver_settings.model_dump(by_alias=True))
+        self._storage = driver(**driver_settings.dict(by_alias=True))
 
     @classmethod
     async def init(cls, settings: StorageSettings) -> Self:

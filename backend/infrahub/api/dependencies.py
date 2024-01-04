@@ -4,15 +4,10 @@ from typing import TYPE_CHECKING, AsyncIterator, Optional
 
 from fastapi import Depends, Query, Request
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel, ConfigDict
+from pydantic.v1 import BaseModel
 
 from infrahub import config
-from infrahub.auth import (
-    AccountSession,
-    authentication_token,
-    validate_jwt_access_token,
-    validate_jwt_refresh_token,
-)
+from infrahub.auth import AccountSession, authentication_token, validate_jwt_access_token, validate_jwt_refresh_token
 from infrahub.core import get_branch
 from infrahub.core.branch import Branch  # noqa: TCH001
 from infrahub.core.timestamp import Timestamp
@@ -33,10 +28,12 @@ async def cookie_auth_scheme(request: Request) -> Optional[str]:
 
 
 class BranchParams(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
     branch: Branch
     at: Timestamp
     rebase: bool
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 async def get_session(request: Request) -> AsyncIterator[AsyncSession]:

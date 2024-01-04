@@ -2,7 +2,7 @@ from typing import Hashable, List, Optional
 
 import pytest
 from deepdiff import DeepDiff
-from pydantic import ValidationError
+from pydantic.v1 import ValidationError
 
 from infrahub.core import registry
 from infrahub.core.constants import BranchSupportType
@@ -118,7 +118,7 @@ def test_base_schema_update():
         "value3": ["one", "two", "three"],
     }
 
-    assert DeepDiff(expected_result, node1.update(node2).model_dump()).to_dict() == {}
+    assert DeepDiff(expected_result, node1.update(node2).dict()).to_dict() == {}
 
 
 def test_schema_root_no_generic():

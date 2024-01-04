@@ -1,5 +1,5 @@
 from fastapi.responses import JSONResponse
-from pydantic import ValidationError
+from pydantic.v1 import ValidationError
 
 from infrahub.exceptions import Error
 

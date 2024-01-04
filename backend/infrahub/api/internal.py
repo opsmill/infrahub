@@ -3,12 +3,7 @@ from pydantic import BaseModel
 
 import infrahub.config as config
 from infrahub import __version__
-from infrahub.config import (
-    AnalyticsSettings,
-    ExperimentalFeaturesSettings,
-    LoggingSettings,
-    MainSettings,
-)
+from infrahub.config import AnalyticsSettings, ExperimentalFeaturesSettings, LoggingSettings, MainSettings
 from infrahub.core import registry
 
 router = APIRouter()
