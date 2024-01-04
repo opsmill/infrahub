@@ -59,6 +59,7 @@ export type ControlType =
   | "select"
   | "select2step"
   | "multiselect"
+  | "list"
   | "number"
   | "checkbox"
   | "switch"
@@ -72,7 +73,7 @@ export type RelationshipCardinality = "one" | "many";
 export const getInputTypeFromKind = (kind: SchemaAttributeType): ControlType => {
   switch (kind) {
     case "List":
-      return "multiselect";
+      return "list";
     case "Dropdown":
       return "dropdown";
     case "TextArea":

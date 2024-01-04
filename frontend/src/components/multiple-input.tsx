@@ -4,8 +4,8 @@ import { Badge } from "./badge";
 import { SelectOption } from "./select";
 
 type MultipleInputProps = {
-  value: SelectOption[] | undefined;
-  onChange: (item: SelectOption[] | undefined) => void;
+  value: (string | SelectOption)[];
+  onChange: (items: (string | SelectOption)[]) => void;
   className?: string;
   disabled?: boolean;
 };
@@ -16,10 +16,18 @@ export const MultipleInput = React.forwardRef((props: MultipleInputProps, ref: a
   const { className, onChange, value, disabled } = props;
 
   // Remove item from list
-  const handleDelete = (item: SelectOption) => {
-    const newValue = value?.filter((v: SelectOption) => v.id !== item.id);
+  const handleDelete = (item: string | SelectOption) => {
+    const newValues = value?.filter((v: string | SelectOption) => {
+      if (typeof v === "string" && typeof item === "string") {
+        return v !== item;
+      }
 
-    return onChange(newValue);
+      if (typeof v === "object" && typeof item === "object") {
+        return v.id !== item.id;
+      }
+    });
+
+    return onChange(newValues);
   };
 
   return (
@@ -33,14 +41,14 @@ export const MultipleInput = React.forwardRef((props: MultipleInputProps, ref: a
         className ?? "",
         disabled ? "cursor-not-allowed bg-gray-100" : ""
       )}>
-      {value?.map((item: SelectOption, index: number) => (
+      {value?.map((item: string | SelectOption, index: number) => (
         <Badge
           key={index}
           value={item}
           onDelete={handleDelete}
           className="mt-2"
           disabled={disabled}>
-          {item.name}
+          {typeof item === "object" ? item.name : item}
         </Badge>
       ))}
     </div>
