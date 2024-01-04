@@ -113,7 +113,18 @@ Once docker desktop and invoke are installed you can build, start, and initializ
 invoke demo.build demo.start demo.load-infra-schema demo.load-infra-data
 ```
 
-[!ref Check the documentation of the demo environment for more information](../topics/local-demo-environment.md)
+[!ref Check the documentation of the demo environment for more information](/topics/local-demo-environment.md)
+
+<!-- vale off -->
+### GitHub Codespace
+<!-- vale on -->
+The project is pre-configured to run in GitHub Codespace. We have two devcontainer configuration:
+- Infrahub: bare-bones container with the app running without any [Schema extension](/tutorials/getting-started/schema) or data
+- Infrahub-demo: container running the [demo environment](/topics/local-demo-environment.md)
+
+The default devcontainer `.devcontainer/devcontainer.json` is the bare-bones one. If you want to run the demo, you will need to choose it in your GitHGub Codespace options.
+
+[!ref Infrahub decontainer file](https://github.com/opsmill/infrahub/tree/stable/.devcontainer/devcontainer.json)
 
 ## GitPod
 
@@ -132,4 +143,4 @@ GitPod has a generous free tier of 50/hours per month for free.
 
 A first version of our K8S helm-chart is available in our repository.
 
-[!ref Helm Chart](https://github.com/opsmill/infrahub/tree/stable/helm)
+[!ref Infrahub Helm Chart](https://github.com/opsmill/infrahub/tree/stable/helm)

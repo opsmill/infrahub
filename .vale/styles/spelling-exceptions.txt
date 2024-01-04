@@ -2,10 +2,12 @@ agent
 APIs
 async
 autoflake
+codespace
 config
 cypher
 datastore
 dev
+devcontainer
 docker
 dockerfile
 e2e
