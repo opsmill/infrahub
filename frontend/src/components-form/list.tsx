@@ -13,7 +13,9 @@ type OpsListProps = {
 export default function OpsList(props: OpsListProps) {
   return (
     <>
-      <label className="block text-sm font-medium leading-6 text-gray-900">{props.label}</label>
+      <label className="block text-sm font-medium leading-6 text-gray-900" htmlFor={props.label}>
+        {props.label}
+      </label>
       <List {...props} />
     </>
   );
