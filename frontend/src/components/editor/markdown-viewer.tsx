@@ -1,8 +1,8 @@
 import { FC } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import "../../styles/markdown.css";
 import { classNames } from "../../utils/common";
-import "../styles/markdown.css";
 
 type MarkdownViewerProps = {
   className?: string;
