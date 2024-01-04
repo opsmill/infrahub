@@ -2,10 +2,11 @@ import { gql } from "@apollo/client";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
+import { useAtomValue } from "jotai/index";
 import { useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { RoundedButton } from "../../components/rounded-button";
-import SlideOver from "../../components/slide-over";
+import { RoundedButton } from "../../components/buttons/rounded-button";
+import SlideOver from "../../components/display/slide-over";
 import {
   ACCOUNT_OBJECT,
   DEFAULT_BRANCH_NAME,
@@ -23,7 +24,6 @@ import LoadingScreen from "../loading-screen/loading-screen";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
 import { getFormStructure } from "./conversations";
 import { ProposedChange } from "./proposed-changes-item";
-import { useAtomValue } from "jotai/index";
 
 export const ProposedChanges = () => {
   const [schemaList] = useAtom(schemaState);

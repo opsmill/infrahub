@@ -12,9 +12,9 @@ import { useAtomValue } from "jotai/index";
 import { useContext, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { BUTTON_TYPES, Button } from "../../components/button";
-import MetaDetailsTooltip from "../../components/meta-details-tooltips";
-import SlideOver from "../../components/slide-over";
+import { BUTTON_TYPES, Button } from "../../components/buttons/button";
+import MetaDetailsTooltip from "../../components/display/meta-details-tooltips";
+import SlideOver from "../../components/display/slide-over";
 import { Tabs } from "../../components/tabs";
 import {
   ARTIFACT_DEFINITION_OBJECT,

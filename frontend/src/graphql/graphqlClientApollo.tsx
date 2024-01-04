@@ -10,7 +10,7 @@ import { setContext } from "@apollo/client/link/context";
 import { onError } from "@apollo/client/link/error";
 import fetch from "cross-fetch";
 import { toast } from "react-toastify";
-import { ALERT_TYPES, Alert } from "../components/alert";
+import { ALERT_TYPES, Alert } from "../components/utils/alert";
 import { CONFIG } from "../config/config";
 import { ACCESS_TOKEN_KEY } from "../config/constants";
 import { getNewToken } from "../decorators/withAuth";

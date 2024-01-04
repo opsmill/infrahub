@@ -3,9 +3,9 @@ import { ArrowPathIcon, CheckCircleIcon, ExclamationCircleIcon } from "@heroicon
 import { useAtom } from "jotai";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import { ALERT_TYPES, Alert } from "../../../components/alert";
-import { Badge } from "../../../components/badge";
-import { Retry } from "../../../components/retry";
+import { Retry } from "../../../components/buttons/retry";
+import { Badge } from "../../../components/display/badge";
+import { ALERT_TYPES, Alert } from "../../../components/utils/alert";
 import {
   PROPOSED_CHANGES_VALIDATOR_OBJECT,
   VALIDATIONS_ENUM_MAP,

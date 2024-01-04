@@ -7,11 +7,11 @@ import {
   QuestionMarkCircleIcon,
 } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
-import { Badge } from "../../../components/badge";
-import { DateDisplay } from "../../../components/date-display";
-import { Link } from "../../../components/link";
-import { PopOver } from "../../../components/popover";
-import { Tooltip } from "../../../components/tooltip";
+import { Badge } from "../../../components/display/badge";
+import { DateDisplay } from "../../../components/display/date-display";
+import { PopOver } from "../../../components/display/popover";
+import { Link } from "../../../components/utils/link";
+import { Tooltip } from "../../../components/utils/tooltip";
 import { getCheckDetails } from "../../../graphql/queries/diff/getCheckDetails";
 import useQuery from "../../../hooks/useQuery";
 import { schemaKindNameState } from "../../../state/atoms/schemaKindName.atom";

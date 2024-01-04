@@ -1,4 +1,4 @@
-import { DatePicker } from "../components/date-picker";
+import { DatePicker } from "../components/inputs/date-picker";
 import { FormFieldError } from "../screens/edit-form-hook/form";
 import { classNames } from "../utils/common";
 

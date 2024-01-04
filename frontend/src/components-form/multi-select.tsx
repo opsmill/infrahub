@@ -1,4 +1,4 @@
-import { Select, SelectOption } from "../components/select";
+import { Select, SelectOption } from "../components/inputs/select";
 import { FormFieldError } from "../screens/edit-form-hook/form";
 
 type OpsMultiSelectProps = {

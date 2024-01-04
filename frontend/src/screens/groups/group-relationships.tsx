@@ -2,7 +2,7 @@ import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import { useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { Pagination } from "../../components/pagination";
+import { Pagination } from "../../components/utils/pagination";
 import { QSP } from "../../config/qsp";
 import { getObjectRelationshipsDetailsPaginated } from "../../graphql/queries/objects/getObjectRelationshipDetails";
 import usePagination from "../../hooks/usePagination";

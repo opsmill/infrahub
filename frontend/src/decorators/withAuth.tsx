@@ -2,14 +2,14 @@ import { useAtom } from "jotai";
 import { createContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { ALERT_TYPES, Alert } from "../components/alert";
+import { ALERT_TYPES, Alert } from "../components/utils/alert";
 import { CONFIG } from "../config/config";
 import { ACCESS_TOKEN_KEY, ADMIN_ROLES, REFRESH_TOKEN_KEY, WRITE_ROLES } from "../config/constants";
+import { components } from "../infraops";
 import SignIn from "../screens/sign-in/sign-in";
 import { configState } from "../state/atoms/config.atom";
 import { parseJwt } from "../utils/common";
 import { fetchUrl } from "../utils/fetch";
-import { components } from "../infraops";
 
 type tPermissions = {
   write?: boolean;

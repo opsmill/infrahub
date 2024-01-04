@@ -1,6 +1,6 @@
 import { MouseEventHandler, ReactElement } from "react";
 import { FieldValues, FormProvider, SubmitHandler, useForm } from "react-hook-form";
-import { BUTTON_TYPES, Button } from "../../components/button";
+import { BUTTON_TYPES, Button } from "../../components/buttons/button";
 import { resolve } from "../../utils/objects";
 import { DynamicControl } from "./dynamic-control";
 import { DynamicFieldData } from "./dynamic-control-types";

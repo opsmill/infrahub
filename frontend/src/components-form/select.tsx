@@ -1,5 +1,5 @@
 import { LockClosedIcon } from "@heroicons/react/24/outline";
-import { Select, SelectOption } from "../components/select";
+import { Select, SelectOption } from "../components/inputs/select";
 import { FormFieldError } from "../screens/edit-form-hook/form";
 
 type SelectProps = {

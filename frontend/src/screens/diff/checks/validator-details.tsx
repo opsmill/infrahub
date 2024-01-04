@@ -2,7 +2,7 @@ import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import { useEffect } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
-import { Pagination } from "../../../components/pagination";
+import { Pagination } from "../../../components/utils/pagination";
 import { QSP } from "../../../config/qsp";
 import { getValidatorDetails } from "../../../graphql/queries/diff/getValidatorDetails";
 import usePagination from "../../../hooks/usePagination";

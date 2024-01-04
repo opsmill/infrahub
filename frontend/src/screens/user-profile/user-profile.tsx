@@ -1,7 +1,7 @@
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import { StringParam, useQueryParam } from "use-query-params";
-import { Avatar } from "../../components/avatar";
+import { Avatar } from "../../components/display/avatar";
 import { Tabs } from "../../components/tabs";
 import { ACCESS_TOKEN_KEY, ACCOUNT_OBJECT } from "../../config/constants";
 import { QSP } from "../../config/qsp";

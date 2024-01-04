@@ -1,5 +1,5 @@
 import { FieldValues, RegisterOptions, UseFormRegister, UseFormSetValue } from "react-hook-form";
-import { SelectOption } from "../components/select";
+import { SelectOption } from "../components/inputs/select";
 import { FormFieldError } from "../screens/edit-form-hook/form";
 import { OpsSelect2Step, iTwoStepDropdownData } from "./select-2-step";
 

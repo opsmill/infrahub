@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
-import { ALERT_TYPES, Alert } from "../../components/alert";
+import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import { CONFIG } from "../../config/config";
 import { QSP } from "../../config/qsp";
 import { fetchUrl, getUrlWithQsp } from "../../utils/fetch";

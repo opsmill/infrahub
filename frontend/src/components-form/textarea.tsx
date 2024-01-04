@@ -1,5 +1,5 @@
 import { LockClosedIcon } from "@heroicons/react/24/outline";
-import { TextareaWithEditor } from "../components/TextareaWithEditor";
+import { TextareaWithEditor } from "../components/inputs/textarea-with-editor";
 import { FormFieldError } from "../screens/edit-form-hook/form";
 import { classNames } from "../utils/common";
 

@@ -1,4 +1,4 @@
-import { CodeEditor } from "../components/code-editor";
+import { CodeEditor } from "../components/editor/code-editor";
 import { FormFieldError } from "../screens/edit-form-hook/form";
 import { classNames } from "../utils/common";
 

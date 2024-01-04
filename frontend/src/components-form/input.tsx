@@ -1,5 +1,5 @@
 import { LockClosedIcon } from "@heroicons/react/24/outline";
-import { Input } from "../components/input";
+import { Input } from "../components/inputs/input";
 import { FormFieldError } from "../screens/edit-form-hook/form";
 import { classNames } from "../utils/common";
 

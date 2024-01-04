@@ -1,9 +1,10 @@
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
+import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import { ALERT_TYPES, Alert } from "../../components/alert";
+import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import { GROUP_OBJECT } from "../../config/constants";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { addRelationship } from "../../graphql/mutations/relationships/addRelationship";
@@ -11,16 +12,15 @@ import { removeRelationship } from "../../graphql/mutations/relationships/remove
 import { getGroups } from "../../graphql/queries/groups/getGroups";
 import usePagination from "../../hooks/usePagination";
 import useQuery from "../../hooks/useQuery";
+import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 import { getFormStructureForAddObjectToGroup } from "../../utils/formStructureForAddObjectToGroup";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
-import { useAtomValue } from "jotai/index";
-import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { datetimeAtom } from "../../state/atoms/time.atom";
 
 interface Props {
   closeDrawer: Function;
