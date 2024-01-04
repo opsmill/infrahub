@@ -1,8 +1,8 @@
 {
     "name": "infrahub",
     "build": {
-        "dockerfile": "./Dockerfile",
-        "context": "."
+        "dockerfile": "../Dockerfile",
+        "context": ".."
     },
     "customizations": {
         "settings": {
