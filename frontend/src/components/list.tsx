@@ -1,6 +1,8 @@
 import { useState } from "react";
+import { toast } from "react-toastify";
 import { Input } from "../components/input";
 import { FormFieldError } from "../screens/edit-form-hook/form";
+import { ALERT_TYPES, Alert } from "./alert";
 import { MultipleInput } from "./multiple-input";
 import { SelectOption } from "./select";
 
@@ -13,7 +15,7 @@ type OpsListProps = {
 };
 
 export default function List(props: OpsListProps) {
-  const { value, onChange, label, error, isProtected } = props;
+  const { value = [], onChange, label, error, isProtected } = props;
 
   const [inputValue, sertInputValue] = useState("");
 
@@ -28,11 +30,16 @@ export default function List(props: OpsListProps) {
       event.stopPropagation();
 
       // Build new array with unique items
-      const newArray = Array.from(new Set([...value, inputValue]));
+      const newArray = Array.from(new Set([...(value || []), inputValue]));
+
       onChange(newArray);
 
       // Init input
       sertInputValue("");
+
+      if (newArray.length === value.length) {
+        toast(<Alert message="Item already in the list" type={ALERT_TYPES.INFO} />);
+      }
     }
   };
 
@@ -43,7 +50,7 @@ export default function List(props: OpsListProps) {
         onChange={handleInputChange}
         error={error}
         disabled={isProtected}
-        placeholder="Add a new item"
+        placeholder="Add a new item + hit 'enter'"
         className="mb-1"
         onKeyDown={handleKeyDown}
         value={inputValue}

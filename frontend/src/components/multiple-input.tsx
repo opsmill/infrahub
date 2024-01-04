@@ -41,6 +41,8 @@ export const MultipleInput = React.forwardRef((props: MultipleInputProps, ref: a
         className ?? "",
         disabled ? "cursor-not-allowed bg-gray-100" : ""
       )}>
+      {!value?.length && <span className="italic">No item</span>}
+
       {value?.map((item: string | SelectOption, index: number) => (
         <Badge
           key={index}
