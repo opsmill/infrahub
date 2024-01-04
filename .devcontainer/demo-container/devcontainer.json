@@ -1,5 +1,5 @@
 {
-  "name": "infrahub",
+  "name": "infrahub-demo",
   "build": {
       "dockerfile": "./Dockerfile",
       "context": "."
