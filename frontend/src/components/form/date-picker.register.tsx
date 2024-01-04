@@ -1,27 +1,29 @@
 import { FieldValues, RegisterOptions, UseFormRegister, UseFormSetValue } from "react-hook-form";
-import { FormFieldError } from "../screens/edit-form-hook/form";
-import { OpsTextarea } from "./textarea";
+import { FormFieldError } from "../../screens/edit-form-hook/form";
+import { OpsDatePicker } from "./date-picker";
 
 interface Props {
   name: string;
   label: string;
-  value: string;
+  value?: Date;
   register: UseFormRegister<FieldValues>;
   config?: RegisterOptions<FieldValues, string> | undefined;
   setValue: UseFormSetValue<FieldValues>;
   error?: FormFieldError;
-  isProtected?: boolean;
-  isOptional?: boolean;
-  disabled?: boolean;
 }
 
-export const OpsTextareaRegister = (props: Props) => {
+export const OpsDatePickerRegister = (props: Props) => {
   const { name, register, setValue, config, ...propsToPass } = props;
 
   const inputRegister = register(name, {
-    value: props.value ?? "",
+    value: props.value || null,
     ...config,
   });
 
-  return <OpsTextarea {...propsToPass} onChange={(value) => setValue(inputRegister.name, value)} />;
+  return (
+    <OpsDatePicker
+      {...propsToPass}
+      onChange={(value?: Date) => setValue(inputRegister.name, value)}
+    />
+  );
 };

@@ -1,6 +1,6 @@
-import { DatePicker } from "../components/inputs/date-picker";
-import { FormFieldError } from "../screens/edit-form-hook/form";
-import { classNames } from "../utils/common";
+import { FormFieldError } from "../../screens/edit-form-hook/form";
+import { classNames } from "../../utils/common";
+import { DatePicker } from "../inputs/date-picker";
 
 type OpsDatePickerProps = {
   label: string;

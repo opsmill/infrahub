@@ -2,13 +2,13 @@ import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { SelectOption } from "../components/inputs/select";
-import graphqlClient from "../graphql/graphqlClientApollo";
-import { getDropdownOptionsForRelatedPeersPaginated } from "../graphql/queries/objects/dropdownOptionsForRelatedPeers";
-import { FormFieldError } from "../screens/edit-form-hook/form";
-import { currentBranchAtom } from "../state/atoms/branches.atom";
-import { datetimeAtom } from "../state/atoms/time.atom";
-import { classNames } from "../utils/common";
+import graphqlClient from "../../graphql/graphqlClientApollo";
+import { getDropdownOptionsForRelatedPeersPaginated } from "../../graphql/queries/objects/dropdownOptionsForRelatedPeers";
+import { FormFieldError } from "../../screens/edit-form-hook/form";
+import { currentBranchAtom } from "../../state/atoms/branches.atom";
+import { datetimeAtom } from "../../state/atoms/time.atom";
+import { classNames } from "../../utils/common";
+import { SelectOption } from "../inputs/select";
 import { OpsSelect } from "./select";
 
 export interface iTwoStepDropdownData {

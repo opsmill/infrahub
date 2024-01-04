@@ -1,13 +1,13 @@
 import { FieldValues, RegisterOptions, UseFormRegister, UseFormSetValue } from "react-hook-form";
-import { SelectOption } from "../components/inputs/select";
-import { FormFieldError } from "../screens/edit-form-hook/form";
-import { OpsSelect } from "./select";
+import { FormFieldError } from "../../screens/edit-form-hook/form";
+import { SelectOption } from "../inputs/select";
+import { OpsSelect2Step, iTwoStepDropdownData } from "./select-2-step";
 
-type SelectRegisterProps = {
-  name: string;
-  value: string;
+interface Props {
   label: string;
   options: SelectOption[];
+  value: iTwoStepDropdownData;
+  name: string;
   register: UseFormRegister<FieldValues>;
   config?: RegisterOptions<FieldValues, string> | undefined;
   setValue: UseFormSetValue<FieldValues>;
@@ -15,11 +15,10 @@ type SelectRegisterProps = {
   isProtected?: boolean;
   isOptional?: boolean;
   disabled?: boolean;
-  dropdown?: boolean;
-};
+}
 
-export const OpsSelectRegister = (props: SelectRegisterProps) => {
-  const { register, setValue, config, isProtected, disabled, name, ...propsToPass } = props;
+export const OpsSelect2StepRegister = (props: Props) => {
+  const { name, register, setValue, config, isProtected, disabled, ...propsToPass } = props;
 
   const inputRegister = register(name, {
     value: props.value ?? "",
@@ -27,12 +26,11 @@ export const OpsSelectRegister = (props: SelectRegisterProps) => {
   });
 
   return (
-    <OpsSelect
+    <OpsSelect2Step
       {...propsToPass}
-      disabled={!!disabled}
-      onChange={(item: SelectOption) =>
-        setValue(inputRegister.name, (item.id || item.name) ?? null)
-      }
+      onChange={(option) => {
+        setValue(inputRegister.name, option.child);
+      }}
       isProtected={isProtected || disabled}
     />
   );

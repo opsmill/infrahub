@@ -1,7 +1,7 @@
 import { LockClosedIcon } from "@heroicons/react/24/outline";
-import { TextareaWithEditor } from "../components/inputs/textarea-with-editor";
-import { FormFieldError } from "../screens/edit-form-hook/form";
-import { classNames } from "../utils/common";
+import { FormFieldError } from "../../screens/edit-form-hook/form";
+import { classNames } from "../../utils/common";
+import { TextareaWithEditor } from "../inputs/textarea-with-editor";
 
 type OpsInputProps = {
   label: string;

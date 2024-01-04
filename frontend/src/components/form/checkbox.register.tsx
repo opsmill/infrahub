@@ -1,34 +1,35 @@
 import { FieldValues, RegisterOptions, UseFormRegister, UseFormSetValue } from "react-hook-form";
-import { FormFieldError } from "../screens/edit-form-hook/form";
-import { OpsInput } from "./input";
+import { FormFieldError } from "../../screens/edit-form-hook/form";
+import OpsCheckox from "./checkbox";
 
 interface Props {
-  inputType: string;
   name: string;
   label: string;
-  value: string;
+  value: boolean;
   register: UseFormRegister<FieldValues>;
   config?: RegisterOptions<FieldValues, string> | undefined;
   setValue: UseFormSetValue<FieldValues>;
-  error?: FormFieldError;
   isProtected?: boolean;
   isOptional?: boolean;
   disabled?: boolean;
+  error?: FormFieldError;
 }
 
-export const OpsInputRegister = (props: Props) => {
-  const { name, register, setValue, config, inputType, ...propsToPass } = props;
+export const OpsCheckboxRegister = (props: Props) => {
+  const { name, register, setValue, config, isProtected, ...propsToPass } = props;
 
   const inputRegister = register(name, {
-    value: props.value || "",
+    value: props.value ?? "",
     ...config,
   });
 
   return (
-    <OpsInput
+    <OpsCheckox
       {...propsToPass}
-      type={inputType}
-      onChange={(value) => setValue(inputRegister.name, value)}
+      onChange={(value) => {
+        setValue(inputRegister.name, value);
+      }}
+      isProtected={isProtected || props.disabled}
     />
   );
 };

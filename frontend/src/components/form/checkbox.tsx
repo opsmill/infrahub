@@ -1,7 +1,7 @@
 import { LockClosedIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
-import { Checkbox } from "../components/inputs/checkbox";
-import { FormFieldError } from "../screens/edit-form-hook/form";
+import { FormFieldError } from "../../screens/edit-form-hook/form";
+import { Checkbox } from "../inputs/checkbox";
 
 interface Props {
   label: string;

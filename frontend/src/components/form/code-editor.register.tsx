@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { FieldValues, RegisterOptions, UseFormRegister, UseFormSetValue } from "react-hook-form";
-import { FormFieldError } from "../screens/edit-form-hook/form";
+import { FormFieldError } from "../../screens/edit-form-hook/form";
 import { OpsCodeEditor } from "./code-editor";
 
 interface Props {

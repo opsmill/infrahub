@@ -1,7 +1,7 @@
 import { LockClosedIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
-import { Switch } from "../components/inputs/switch";
-import { FormFieldError } from "../screens/edit-form-hook/form";
+import { FormFieldError } from "../../screens/edit-form-hook/form";
+import { Switch } from "../inputs/switch";
 
 interface Props {
   label: string;

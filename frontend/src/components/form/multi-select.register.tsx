@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FieldValues, RegisterOptions, UseFormRegister, UseFormSetValue } from "react-hook-form";
-import { SelectOption } from "../components/inputs/select";
-import { FormFieldError } from "../screens/edit-form-hook/form";
+import { FormFieldError } from "../../screens/edit-form-hook/form";
+import { SelectOption } from "../inputs/select";
 import OpsMultiSelect from "./multi-select";
 
 interface Props {
