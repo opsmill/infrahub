@@ -76,16 +76,19 @@ describe("List screen", () => {
 
     // Should check that the last item in pagination is page number 100
     cy.get("[data-cy='create']").should("exist");
+
+    // last pagination number
     cy.get(":nth-child(7) > .cursor-pointer").should("have.text", "100");
 
     // Should display the last item for the current page
-    cy.get(":nth-child(10) > :nth-child(1)").should("exist");
+    cy.contains("query-0010").should("be.visible");
 
     // Should display a tag in the tags list for the 4th item in the list
-    cy.get(":nth-child(4) > :nth-child(4) > div.flex > :nth-child(3)").should(
-      "have.text",
-      "maroon"
-    );
+    cy.get("[data-cy='object-table-row']")
+      .first()
+      .within(() => {
+        cy.contains("span", "maroon").should("be.visible");
+      });
 
     // Select the limit 50
     cy.get("[id^=headlessui-combobox-button-]").click();

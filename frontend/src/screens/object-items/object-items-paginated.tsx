@@ -24,7 +24,6 @@ import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { iComboBoxFilter } from "../../state/atoms/filters.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
-import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
 import {
@@ -195,47 +194,39 @@ export default function ObjectItems(props: any) {
       {loading && !rows && <LoadingScreen />}
 
       {rows && (
-        <div className="flex-1 shadow-sm ring-1 ring-custom-black ring-opacity-5 overflow-x-auto">
-          <table className="min-w-full border-separate" style={{ borderSpacing: 0 }}>
-            <thead className="bg-gray-50 text-left">
+        <div>
+          <table className="table-auto border-spacing-0 w-full">
+            <thead className="bg-gray-50 text-left border-b border-gray-300">
               <tr>
                 {columns?.map((attribute) => (
                   <th
                     key={attribute.name}
                     scope="col"
-                    className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 p-2 text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter">
+                    className="p-2 text-xs font-semibold text-gray-900">
                     {attribute.label}
                   </th>
                 ))}
-                <th
-                  scope="col"
-                  className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 p-2 text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter"></th>
+                <th scope="col"></th>
               </tr>
             </thead>
+
             <tbody className="bg-custom-white text-left">
               {rows?.map((row: any, index: number) => (
                 <tr
-                  onClick={() =>
-                    navigate(constructPath(getObjectDetailsUrl(row.id, row.__typename)))
-                  }
                   key={index}
-                  className="hover:bg-gray-50 cursor-pointer">
+                  className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer"
+                  data-cy="object-table-row">
                   {columns?.map((attribute) => (
-                    <td
-                      key={row.id + "-" + attribute.name}
-                      className={classNames(
-                        index !== rows.length - 1 ? "border-b border-gray-200" : "",
-                        "whitespace-wrap px-2 py-1 text-xs text-gray-900"
-                      )}>
-                      {getObjectItemDisplayValue(row, attribute)}
+                    <td key={row.id + "-" + attribute.name} className="p-0">
+                      <a
+                        className="whitespace-wrap px-2 py-1 text-xs text-gray-900 min-h-7 flex items-center"
+                        href={constructPath(getObjectDetailsUrl(row.id, row.__typename))}>
+                        <div className="flex-grow">{getObjectItemDisplayValue(row, attribute)}</div>
+                      </a>
                     </td>
                   ))}
 
-                  <td
-                    className={classNames(
-                      index !== rows.length - 1 ? "border-b border-gray-200" : "",
-                      "whitespace-wrap text-xs text-gray-900 text-right"
-                    )}>
+                  <td className="text-right w-8">
                     <Button
                       data-cy="delete"
                       disabled={!auth?.permissions?.write}

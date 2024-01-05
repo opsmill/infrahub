@@ -12,7 +12,7 @@ export default function NoDataFound(props: tNoData) {
   const { message, icon } = props;
 
   return (
-    <div className="flex flex-col flex-1 items-center justify-center p-8">
+    <div className="flex flex-col items-center justify-center p-8 border-b border-gray-200">
       <div className="bg-custom-white rounded-full p-4 text-custom-blue-green">
         {icon || <DocumentTextIcon className="h-8 w-8" />}
       </div>
