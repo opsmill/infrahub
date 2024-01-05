@@ -39,6 +39,7 @@
     "src/__tests__",
     "tests/unit/components",
     "tests/unit/utils",
-    "tests/unit/data"
+    "tests/unit/data",
+    "tests/integrations/tests"
   ],
 }

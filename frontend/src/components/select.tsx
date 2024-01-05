@@ -58,6 +58,7 @@ type SelectProps = {
   relationship?: any;
   schema?: any;
   preventEmpty?: boolean;
+  isOptional?: boolean;
 };
 
 export const Select = (props: SelectProps) => {
@@ -76,6 +77,8 @@ export const Select = (props: SelectProps) => {
     attribute,
     schema,
     preventEmpty,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
+    isOptional, // Avoid proving useless props
     ...otherProps
   } = props;
 

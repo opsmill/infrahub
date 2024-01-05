@@ -59,6 +59,7 @@ export type ControlType =
   | "select"
   | "select2step"
   | "multiselect"
+  | "list"
   | "number"
   | "checkbox"
   | "switch"
@@ -71,6 +72,8 @@ export type RelationshipCardinality = "one" | "many";
 
 export const getInputTypeFromKind = (kind: SchemaAttributeType): ControlType => {
   switch (kind) {
+    case "List":
+      return "list";
     case "Dropdown":
       return "dropdown";
     case "TextArea":
@@ -98,7 +101,6 @@ export const getInputTypeFromKind = (kind: SchemaAttributeType): ControlType => 
     case "Color":
     case "IPHost":
     case "IPNetwork":
-    case "List":
     case "Any":
     case "String":
     default:
@@ -126,7 +128,14 @@ export const getInputTypeFromRelationship = (relationship: any, isInherited: boo
   return "select";
 };
 
-export const getOptionsFromAttribute = (attribute: any) => {
+export const getOptionsFromAttribute = (attribute: any, value: any) => {
+  if (attribute.kind === "List") {
+    return value?.map((option: any) => ({
+      name: option,
+      id: option,
+    }));
+  }
+
   if (attribute.enum) {
     return attribute.enum?.map((option: any) => ({
       name: option,

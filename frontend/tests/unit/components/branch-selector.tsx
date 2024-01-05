@@ -1,6 +1,6 @@
 import { StringParam, useQueryParam } from "use-query-params";
-import { QSP } from "../../config/qsp";
-import { Button } from "../button";
+import { Button } from "../../../src/components/button";
+import { QSP } from "../../../src/config/qsp";
 
 export default function BranchSelectorTest() {
   const [branchInQueryString, setBranchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);

@@ -1,5 +1,5 @@
 import { gql } from "@apollo/client";
-import useQuery from "../../hooks/useQuery";
+import useQuery from "../../../src/hooks/useQuery";
 
 export const QUERY = gql`
   query {

@@ -1,8 +1,8 @@
 import { useAtom } from "jotai";
 import { useParams } from "react-router-dom";
-import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
-import { schemaState } from "../../state/atoms/schema.atom";
-import { cleanTabsAndNewLines } from "../../utils/string";
+import { getObjectDetailsPaginated } from "../../../src/graphql/queries/objects/getObjectDetails";
+import { schemaState } from "../../../src/state/atoms/schema.atom";
+import { cleanTabsAndNewLines } from "../../../src/utils/string";
 
 export default function ObjectItemDetails() {
   const { objectname, objectid } = useParams();
