@@ -65,7 +65,6 @@ export default function ObjectItems(props: any) {
   const [deleteModal, setDeleteModal] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const navigate = useNavigate();
-  useTitle(`${schemaKindName[objectname]} list`);
 
   const schema = schemaList.find((s) => s.kind === objectname);
   const generic = genericList.find((s) => s.kind === objectname);
@@ -119,6 +118,8 @@ export default function ObjectItems(props: any) {
   const result = data && schemaData?.kind ? data[schemaData?.kind] ?? {} : {};
 
   const { count, edges } = result;
+
+  useTitle(`${schemaKindName[objectname]} list ${count ? `(${count})` : ""}`);
 
   const rows = edges?.map((edge: any) => edge.node);
 

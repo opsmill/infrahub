@@ -47,7 +47,6 @@ export default function GroupItems() {
   const [deleteModal, setDeleteModal] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const navigate = useNavigate();
-  useTitle(groupname ? `${groupname} details` : "Groups list");
 
   const schemaData =
     genericList.find((s) => s.kind === kind) || schemaList.find((s) => s.kind === kind);
@@ -84,6 +83,8 @@ export default function GroupItems() {
   const result = data && schemaData?.kind ? data[schemaData?.kind] ?? {} : {};
 
   const { count, edges } = result;
+
+  useTitle(groupname ? `${groupname} details` : `Groups list ${count ? `(${count})` : ""}`);
 
   const rows = edges?.map((edge: any) => edge.node);
 

@@ -33,7 +33,6 @@ export const ProposedChanges = () => {
   const branch = useAtomValue(currentBranchAtom);
   const navigate = useNavigate();
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
-  useTitle("Proposed changes list");
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_OBJECT);
   const accountSchemaData = schemaList.find((s) => s.kind === ACCOUNT_OBJECT);
@@ -58,6 +57,9 @@ export const ProposedChanges = () => {
   const result = data && schemaData?.kind ? data[schemaData?.kind] ?? {} : {};
 
   const { count, edges } = result;
+
+  useTitle(`Proposed changes list ${count ? `(${count})` : ""}`);
+  useTitle(`Proposed changes list ${count ? `(${count})` : ""}`);
 
   const rows = edges?.map((edge: any) => edge.node);
 
