@@ -60,10 +60,7 @@ if TYPE_CHECKING:
 
 class Branch(StandardNode):
     name: str = FieldV2(
-        max_length=32,
-        min_length=3,
-        description="Name of the branch (git ref standard)",
-        validate_default=True
+        max_length=32, min_length=3, description="Name of the branch (git ref standard)", validate_default=True
     )
     status: str = "OPEN"  # OPEN, CLOSED
     description: str = ""

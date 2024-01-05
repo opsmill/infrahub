@@ -52,7 +52,9 @@ class StandardNode(BaseModel):
         annotation_origin = get_origin(field.annotation)
         annotation_args = get_args(field.annotation)
 
-        if (annotation_origin == Union and len(annotation_args) == 2 and type(None) in annotation_args) or (annotation_origin is list):
+        if (annotation_origin == Union and len(annotation_args) == 2 and type(None) in annotation_args) or (
+            annotation_origin is list
+        ):
             return get_origin(annotation_args[0]) or annotation_args[0]
 
         return annotation_origin or field.annotation
