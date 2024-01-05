@@ -14,10 +14,10 @@ except ImportError:
 from rich.console import Console
 from ujson import JSONDecodeError
 
-import infrahub_ctl.config as config
-from infrahub_ctl.client import initialize_client, initialize_client_sync
-from infrahub_ctl.exceptions import QueryNotFoundError
-from infrahub_ctl.utils import find_graphql_query, parse_cli_vars
+from infrahub_sdk.ctl import config
+from infrahub_sdk.ctl.client import initialize_client, initialize_client_sync
+from infrahub_sdk.ctl.exceptions import QueryNotFoundError
+from infrahub_sdk.ctl.utils import find_graphql_query, parse_cli_vars
 from infrahub_sdk.exceptions import GraphQLError
 from infrahub_sdk.utils import get_branch
 

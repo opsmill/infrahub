@@ -100,14 +100,16 @@ const getFormStructureForCreateEdit = (
       return;
     }
 
+    const fieldValue = getFieldValue(row, attribute);
+
     formFields.push({
       name: attribute.name + ".value",
       kind: attribute.kind as SchemaAttributeType,
       type: getInputTypeFromAttribute(attribute),
       label: attribute.label || attribute.name,
-      value: getFieldValue(row, attribute),
+      value: fieldValue,
       options: {
-        values: getOptionsFromAttribute(attribute),
+        values: getOptionsFromAttribute(attribute, fieldValue),
       },
       config: {
         validate: (value: any) => validate(value, attribute, attribute.optional),

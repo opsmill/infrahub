@@ -33,17 +33,17 @@ export const getObjectItemDisplayValue = (
   }
 
   if (attribute?.kind === "List") {
-    const items = row[attribute?.name]?.value.map((value?: string) => value ?? "-").slice(0, 5);
+    const items = row[attribute?.name]?.value?.map((value?: string) => value ?? "-").slice(0, 5);
 
     const rest = row[attribute?.name]?.value?.slice(5)?.length;
 
     return (
       <div className="flex flex-wrap items-center">
-        {items.map((item: string, index: number) => (
+        {items?.map((item: string, index: number) => (
           <Badge key={index}>{item}</Badge>
         ))}
 
-        {items.length !== row[attribute?.name]?.value?.length && <i>{`(${rest} more)`}</i>}
+        {items?.length !== row[attribute?.name]?.value?.length && <i>{`(${rest} more)`}</i>}
       </div>
     );
   }

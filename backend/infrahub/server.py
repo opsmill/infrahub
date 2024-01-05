@@ -32,6 +32,7 @@ from infrahub.services import InfrahubServices, services
 from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
 from infrahub.trace import add_span_exception, configure_trace, get_traceid, get_tracer
+from infrahub.worker import WORKER_IDENTITY
 
 app = FastAPI(
     title="Infrahub",
@@ -118,6 +119,7 @@ async def logging_middleware(request: Request, call_next: Callable[[Request], Aw
         trace_id = get_traceid()
         set_log_data(key="request_id", value=request_id)
         set_log_data(key="app", value="infrahub.api")
+        set_log_data(key="worker", value=WORKER_IDENTITY)
         if trace_id:
             set_log_data(key="trace_id", value=trace_id)
         response = await call_next(request)

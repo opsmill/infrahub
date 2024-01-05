@@ -4,6 +4,7 @@ from infrahub import lock
 from infrahub.core import registry
 from infrahub.database import InfrahubDatabase
 from infrahub.log import get_logger
+from infrahub.worker import WORKER_IDENTITY
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -26,7 +27,11 @@ async def refresh_branches(db: InfrahubDatabase):
                 branch_registry: Branch = registry.branch[new_branch.name]
                 if branch_registry.schema_hash and branch_registry.schema_hash.main != new_branch.schema_hash.main:
                     log.info(
-                        f"{new_branch.name}: New hash detected OLD {branch_registry.schema_hash.main} >> {new_branch.schema_hash.main} NEW"
+                        "New hash detected",
+                        branch=new_branch.name,
+                        hash_current=branch_registry.schema_hash.main,
+                        hash_new=new_branch.schema_hash.main,
+                        worker=WORKER_IDENTITY,
                     )
                     registry.branch[new_branch.name] = new_branch
 
@@ -34,10 +39,12 @@ async def refresh_branches(db: InfrahubDatabase):
 
             else:
                 registry.branch[new_branch.name] = new_branch
-                log.info(f"{new_branch.name}: New branch detected, pulling schema")
+                log.info("New branch detected, pulling schema", branch=new_branch.name, worker=WORKER_IDENTITY)
                 await registry.schema.load_schema(db=db, branch=new_branch)
 
         for branch_name in list(registry.branch.keys()):
             if branch_name not in active_branches:
                 del registry.branch[branch_name]
-                log.info(f"Removed branch {branch_name} from the registry")
+                log.info(
+                    f"Removed branch {branch_name!r} from the registry", branch=branch_name, worker=WORKER_IDENTITY
+                )

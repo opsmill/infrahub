@@ -11,13 +11,13 @@ from typing import Dict, List, Optional
 import typer
 from rich.logging import RichHandler
 
-from infrahub_ctl import config
-from infrahub_ctl.client import initialize_client
-from infrahub_ctl.exceptions import QueryNotFoundError
-from infrahub_ctl.repository import get_repository_config
-from infrahub_ctl.utils import execute_graphql_query
 from infrahub_sdk import InfrahubClient
 from infrahub_sdk.checks import InfrahubCheck
+from infrahub_sdk.ctl import config
+from infrahub_sdk.ctl.client import initialize_client
+from infrahub_sdk.ctl.exceptions import QueryNotFoundError
+from infrahub_sdk.ctl.repository import get_repository_config
+from infrahub_sdk.ctl.utils import execute_graphql_query
 from infrahub_sdk.schema import InfrahubCheckDefinitionConfig
 
 app = typer.Typer()
