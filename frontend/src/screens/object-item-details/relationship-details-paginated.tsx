@@ -7,7 +7,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useContext, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { BUTTON_TYPES, Button } from "../../components/buttons/button";
 import { RoundedButton } from "../../components/buttons/rounded-button";
@@ -16,7 +16,6 @@ import SlideOver from "../../components/display/slide-over";
 import { SelectOption } from "../../components/inputs/select";
 import ModalDelete from "../../components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
-import { Link } from "../../components/utils/link";
 import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
@@ -113,8 +112,6 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
       config: {},
     },
   ];
-
-  const navigate = useNavigate();
 
   const [, setShowMetaEditModal] = useAtom(showMetaEditState);
   const [, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
@@ -350,9 +347,6 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                   <tbody className="bg-custom-white">
                     {relationshipsData?.map(({ node, properties }: any, index: number) => (
                       <tr
-                        onClick={() =>
-                          navigate(constructPath(getObjectDetailsUrl(node.id, node.__typename)))
-                        }
                         key={index}
                         className="hover:bg-gray-50 cursor-pointer"
                         data-cy="relationship-row">
@@ -365,7 +359,11 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                 : "",
                               "whitespace-nowrap px-2 py-1 text-xs font-medium text-gray-900"
                             )}>
-                            {getObjectItemDisplayValue(node, column)}
+                            <Link
+                              className="whitespace-wrap px-2 py-1 text-xs text-gray-900 min-h-7 flex items-center"
+                              to={constructPath(getObjectDetailsUrl(node.id, node.__typename))}>
+                              {getObjectItemDisplayValue(node, column)}
+                            </Link>
                           </td>
                         ))}
                         <td
