@@ -1,12 +1,16 @@
 import { useAtom } from "jotai";
 import { useState } from "react";
+import { useTitle } from "../../hooks/useTitle";
 import { iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
 import { classNames } from "../../utils/common";
 import ObjectRows from "./object-rows";
 
 export default function OpsObjects() {
   const [schema] = useAtom(schemaState);
+  useTitle("Schema");
+
   const [selectedSchema, setSelectedSchema] = useState<iNodeSchema>();
+
   return (
     <div className="flex overflow-auto">
       <div className="flex-1 overflow-auto">

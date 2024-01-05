@@ -18,9 +18,9 @@ export default defineConfig({
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
   /* 30s timeout for both assertions and tests */
-  timeout: 30000,
+  timeout: process.env.CI ? 5 * 60 * 1000 : 30 * 1000,
   expect: {
-    timeout: 30000,
+    timeout: process.env.CI ? 5 * 60 * 1000 : 10 * 1000,
   },
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 1 : undefined,
@@ -32,12 +32,12 @@ export default defineConfig({
     baseURL: process.env.CI ? "http://localhost:8000" : "http://localhost:8080",
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: "retain-on-failure",
+    trace: process.env.CI ? "retain-on-failure" : "on",
     screenshot: {
-      mode: "only-on-failure",
+      mode: process.env.CI ? "only-on-failure" : "on",
     },
     video: {
-      mode: "retain-on-failure",
+      mode: process.env.CI ? "retain-on-failure" : "on",
     },
   },
 

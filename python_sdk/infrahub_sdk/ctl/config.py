@@ -32,7 +32,8 @@ class Settings(pydantic.BaseSettings):
         }
 
     @pydantic.root_validator
-    def cleanup_server_address(cls, values: Dict[str, Any]) -> Dict[str, Any]:  # pylint: disable=no-self-argument
+    @classmethod
+    def cleanup_server_address(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         values["server_address"] = values["server_address"].rstrip("/")
         return values
 

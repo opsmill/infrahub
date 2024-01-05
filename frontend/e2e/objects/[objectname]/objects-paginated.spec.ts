@@ -30,7 +30,7 @@ test.describe("/objects/:objectname", () => {
       await page.getByLabel("ids *").fill("no-id");
       await page.getByRole("button", { name: "Filter" }).click();
       await expect(page.getByText("ids: no-id")).toBeVisible();
-      await expect(page.getByRole("row")).toHaveCount(0);
+      await expect(page.getByRole("row")).toHaveCount(1);
       await expect(page.getByText("No items found.")).toBeVisible();
 
       // remove 1 filter

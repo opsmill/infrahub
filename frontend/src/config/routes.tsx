@@ -9,6 +9,7 @@ import OpsObjects from "../screens/ops-objects/ops-objects";
 import { ProposedChangesDetails } from "../screens/proposed-changes/proposed-changes-details";
 import { ProposedChanges } from "../screens/proposed-changes/proposed-changes-items";
 import UserProfile from "../screens/user-profile/user-profile";
+import { ARTIFACT_OBJECT } from "./constants";
 
 export const MAIN_ROUTES = [
   {
@@ -32,7 +33,7 @@ export const MAIN_ROUTES = [
     element: <GroupItems />,
   },
   {
-    path: "/objects/CoreArtifact/:objectid",
+    path: `/objects/${ARTIFACT_OBJECT}/:objectid`,
     element: <ArtifactsObjectItemDetailsPaginated />,
   },
   {

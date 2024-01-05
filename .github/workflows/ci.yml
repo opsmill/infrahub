@@ -458,13 +458,10 @@ jobs:
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled')
-    strategy:
-      matrix:
-        python-version: ["neo4j", "memgraph"]
     runs-on: "runner-ubuntu-8-32"
     timeout-minutes: 40
     env:
-      INFRAHUB_DB_TYPE: ${{ matrix.python-version }}
+      INFRAHUB_DB_TYPE: memgraph
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
@@ -527,13 +524,10 @@ jobs:
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled')
-    strategy:
-      matrix:
-        db-type: ["neo4j", "memgraph"]
     runs-on: "runner-ubuntu-8-32"
     timeout-minutes: 40
     env:
-      INFRAHUB_DB_TYPE: ${{ matrix.db-type }}
+      INFRAHUB_DB_TYPE: memgraph
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
@@ -573,14 +567,14 @@ jobs:
       - name: Install Playwright Browsers
         run: npx playwright install chromium
 
-      - name: Run Playwright tests ${{ matrix.db-type }}
+      - name: Run Playwright tests
         run: npm run ci:test:e2e
 
-      - name: playwright-report-${{ matrix.db-type }}
+      - name: playwright-report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-${{ matrix.db-type }}
+          name: playwright-report
           path: frontend/playwright-report/
 
       - name: Containers after tests

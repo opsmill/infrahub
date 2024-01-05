@@ -15,6 +15,7 @@ import {
 import { AuthContext } from "../../decorators/withAuth";
 import { getProposedChanges } from "../../graphql/queries/proposed-changes/getProposedChanges";
 import useQuery from "../../hooks/useQuery";
+import { useTitle } from "../../hooks/useTitle";
 import { branchesState, currentBranchAtom } from "../../state/atoms/branches.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { constructPath } from "../../utils/fetch";
@@ -56,6 +57,9 @@ export const ProposedChanges = () => {
   const result = data && schemaData?.kind ? data[schemaData?.kind] ?? {} : {};
 
   const { count, edges } = result;
+
+  useTitle(`Proposed changes list ${count ? `(${count})` : ""}`);
+  useTitle(`Proposed changes list ${count ? `(${count})` : ""}`);
 
   const rows = edges?.map((edge: any) => edge.node);
 
