@@ -72,7 +72,6 @@ export default function ObjectItemDetails(props: any) {
   const schema = schemaList.find((s) => s.kind === objectname);
   const generic = genericList.find((s) => s.kind === objectname);
   const navigate = useNavigate();
-  useTitle(`${schemaKindName[objectname]} details`);
 
   const schemaData = generic || schema;
 
@@ -109,6 +108,14 @@ export default function ObjectItemDetails(props: any) {
   // TODO: Find a way to avoid querying object details if we are on a tab
   const { loading, error, data, refetch } = useQuery(query, { skip: !schemaData });
 
+  const objectDetailsData = schemaData && data && data[schemaData?.kind]?.edges[0]?.node;
+
+  useTitle(
+    objectDetailsData?.display_label
+      ? `${objectDetailsData?.display_label} details`
+      : `${schemaKindName[objectname]} details`
+  );
+
   if (error) {
     return <ErrorScreen message="Something went wrong when fetching the object details." />;
   }
@@ -127,8 +134,6 @@ export default function ObjectItemDetails(props: any) {
       </div>
     );
   }
-
-  const objectDetailsData = data[schemaData.kind]?.edges[0]?.node;
 
   const tabs = [
     {
