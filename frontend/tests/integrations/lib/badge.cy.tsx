@@ -1,7 +1,7 @@
 /// <reference types="cypress" />
 
 import React from "react";
-import { BADGE_TYPES, Badge } from "../../../src/components/badge";
+import { BADGE_TYPES, Badge } from "../../../src/components/display/badge";
 
 describe("Badge component", () => {
   it("should render VALIDATE badge correctly", () => {
