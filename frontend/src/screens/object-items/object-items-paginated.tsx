@@ -20,9 +20,11 @@ import { getObjectItemsPaginated } from "../../graphql/queries/objects/getObject
 import useFilters from "../../hooks/useFilters";
 import usePagination from "../../hooks/usePagination";
 import useQuery from "../../hooks/useQuery";
+import { useTitle } from "../../hooks/useTitle";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { iComboBoxFilter } from "../../state/atoms/filters.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
+import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
 import { constructPath } from "../../utils/fetch";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
@@ -55,6 +57,7 @@ export default function ObjectItems(props: any) {
   const [genericList] = useAtom(genericsState);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
+  const [schemaKindName] = useAtom(schemaKindNameState);
   const [filters] = useFilters();
   const [pagination] = usePagination();
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
@@ -115,6 +118,8 @@ export default function ObjectItems(props: any) {
   const result = data && schemaData?.kind ? data[schemaData?.kind] ?? {} : {};
 
   const { count, edges } = result;
+
+  useTitle(`${schemaKindName[objectname]} list ${count ? `(${count})` : ""}`);
 
   const rows = edges?.map((edge: any) => edge.node);
 

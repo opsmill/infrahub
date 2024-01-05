@@ -22,6 +22,7 @@ import { QSP } from "../../config/qsp";
 import { AuthContext } from "../../decorators/withAuth";
 import { getGroupDetails } from "../../graphql/queries/groups/getGroupDetails";
 import useQuery from "../../hooks/useQuery";
+import { useTitle } from "../../hooks/useTitle";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
@@ -50,6 +51,7 @@ export default function GroupItemDetails() {
   const schema = schemaList.filter((s) => s.kind === groupname)[0];
   const generic = genericList.filter((s) => s.kind === groupname)[0];
   const navigate = useNavigate();
+  useTitle(`${groupname} details`);
 
   const schemaData = generic || schema;
 

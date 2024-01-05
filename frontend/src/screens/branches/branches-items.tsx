@@ -5,12 +5,14 @@ import { useNavigate } from "react-router-dom";
 import { Badge } from "../../components/display/badge";
 import { DateDisplay } from "../../components/display/date-display";
 import { Tooltip } from "../../components/utils/tooltip";
+import { useTitle } from "../../hooks/useTitle";
 import { branchesState } from "../../state/atoms/branches.atom";
 import { constructPath } from "../../utils/fetch";
 
 export const BranchesItems = () => {
   const [storedBranches] = useAtom(branchesState);
   const navigate = useNavigate();
+  useTitle(`Branches list (${storedBranches.length})`);
 
   const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
 
