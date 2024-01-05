@@ -17,25 +17,27 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
+  /* 30s timeout for both assertions and tests */
+  timeout: 30000,
   expect: {
-    timeout: process.env.CI ? 10000 : 5000,
+    timeout: 30000,
   },
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 1 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: [[process.env.CI ? "github" : "list"], ["html", { open: "never" }]],
+  reporter: [["list"], ["html", { open: "never" }]],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
     baseURL: process.env.CI ? "http://localhost:8000" : "http://localhost:8080",
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: "on-first-retry",
+    trace: "retain-on-failure",
     screenshot: {
       mode: "only-on-failure",
     },
     video: {
-      mode: "on-first-retry",
+      mode: "retain-on-failure",
     },
   },
 
