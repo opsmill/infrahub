@@ -47,7 +47,7 @@ To run all these services, we will use Docker, but for local development some po
 cp development/docker-compose.dev-override.yml.tmp development/docker-compose.dev-override.yml
 ```
 
-Now we need to make sure we have a compatible version of Python that Infrahub can run on top of, Poetry to create virtual environment and Invoke to run commands. Invoke can be installed in many ways, but we recommend to use the `pipx` way to get it available user wide while withotu messing with the system Python. Assuming we have these utilies ready, we can run the following commands to build a proper Python environment:
+Now we need to make sure we have a compatible version of Python that Infrahub can run on top of, Poetry to create virtual environment and Invoke to run commands. Invoke can be installed in many ways, but we recommend to use the `pipx` way to get it available user wide while without messing with the system Python. Assuming we have these utilities ready, we can run the following commands to build a proper Python environment:
 
 ```bash
 cd infrahub # or the directory of your choice
