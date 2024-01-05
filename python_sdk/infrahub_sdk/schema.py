@@ -3,17 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from enum import Enum
 from pathlib import Path  # noqa: TCH003
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Dict,
-    List,
-    MutableMapping,
-    Optional,
-    Tuple,
-    TypedDict,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Dict, List, MutableMapping, Optional, Tuple, TypedDict, TypeVar, Union
 from urllib.parse import urlencode
 
 try:
@@ -23,6 +13,7 @@ except ImportError:
 
 from infrahub_sdk.exceptions import SchemaNotFound, ValidationError
 from infrahub_sdk.graphql import Mutation
+from infrahub_sdk.utils import duplicates
 
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient, InfrahubClientSync
@@ -39,12 +30,18 @@ class DropdownMutationOptionalArgs(TypedDict):
     label: Optional[str]
 
 
+ResourceClass = TypeVar("ResourceClass")
+
 # ---------------------------------------------------------------------------------
 # Repository Configuration file
 # ---------------------------------------------------------------------------------
 
 
-class InfrahubRepositoryArtifactDefinitionConfig(pydantic.BaseModel):
+class InfrahubRepositoryConfigElement(pydantic.BaseModel):
+    """Class to regroup all elements of the infrahub configuration for a repository for typing purpose."""
+
+
+class InfrahubRepositoryArtifactDefinitionConfig(InfrahubRepositoryConfigElement):
     name: str = pydantic.Field(..., description="The name of the artifact definition")
     artifact_name: Optional[str] = pydantic.Field(
         default=None, description="Name of the artifact created from this definition"
@@ -57,7 +54,7 @@ class InfrahubRepositoryArtifactDefinitionConfig(pydantic.BaseModel):
     transformation: str = pydantic.Field(..., description="The transformation to use.")
 
 
-class InfrahubRepositoryRFileConfig(pydantic.BaseModel):
+class InfrahubRepositoryRFileConfig(InfrahubRepositoryConfigElement):
     name: str = pydantic.Field(..., description="The name of the RFile")
     query: str = pydantic.Field(..., description="The name of the GraphQL Query")
     template_path: Path = pydantic.Field(..., description="The path within the repository of the template file")
@@ -74,7 +71,7 @@ class InfrahubRepositoryRFileConfig(pydantic.BaseModel):
         return data
 
 
-class InfrahubCheckDefinitionConfig(pydantic.BaseModel):
+class InfrahubCheckDefinitionConfig(InfrahubRepositoryConfigElement):
     name: str = pydantic.Field(..., description="The name of the Check Definition")
     file_path: Path = pydantic.Field(..., description="The file within the repo with the check code.")
     parameters: Dict[str, Any] = pydantic.Field(
@@ -86,10 +83,18 @@ class InfrahubCheckDefinitionConfig(pydantic.BaseModel):
     class_name: str = pydantic.Field(default="Check", description="The name of the check class to run.")
 
 
-class InfrahubPythonTransformConfig(pydantic.BaseModel):
+class InfrahubPythonTransformConfig(InfrahubRepositoryConfigElement):
     name: str = pydantic.Field(..., description="The name of the Transform")
     file_path: Path = pydantic.Field(..., description="The file within the repo with the transform code.")
     class_name: str = pydantic.Field(default="Transform", description="The name of the transform class to run.")
+
+
+RESOURCE_MAP: Dict[Any, str] = {
+    InfrahubRepositoryRFileConfig: "rfiles",
+    InfrahubCheckDefinitionConfig: "check_definitions",
+    InfrahubRepositoryArtifactDefinitionConfig: "artifact_definitions",
+    InfrahubPythonTransformConfig: "python_transforms",
+}
 
 
 class InfrahubRepositoryConfig(pydantic.BaseModel):
@@ -98,6 +103,52 @@ class InfrahubRepositoryConfig(pydantic.BaseModel):
     rfiles: List[InfrahubRepositoryRFileConfig] = pydantic.Field(default_factory=list)
     artifact_definitions: List[InfrahubRepositoryArtifactDefinitionConfig] = pydantic.Field(default_factory=list)
     python_transforms: List[InfrahubPythonTransformConfig] = pydantic.Field(default_factory=list)
+
+    @pydantic.validator("rfiles", "check_definitions", "artifact_definitions", "python_transforms")
+    @classmethod
+    def unique_items(cls, v: Any, **kwargs: Dict[str, Any]) -> Any:  # pylint: disable=unused-argument
+        names = [item.name for item in v]
+        if dups := duplicates(names):
+            raise ValueError(f"Found multiples element with the same names: {dups}")
+        return v
+
+    def _has_resource(self, resource_id: str, resource_type: type[ResourceClass], resource_field: str = "name") -> bool:
+        for item in getattr(self, RESOURCE_MAP[resource_type]):
+            if getattr(item, resource_field) == resource_id:
+                return True
+        return False
+
+    def _get_resource(
+        self, resource_id: str, resource_type: type[ResourceClass], resource_field: str = "name"
+    ) -> ResourceClass:
+        for item in getattr(self, RESOURCE_MAP[resource_type]):
+            if getattr(item, resource_field) == resource_id:
+                return item
+        raise KeyError(f"Unable to find {resource_id!r} in {RESOURCE_MAP[resource_type]!r}")
+
+    def has_rfile(self, name: str) -> bool:
+        return self._has_resource(resource_id=name, resource_type=InfrahubRepositoryRFileConfig)
+
+    def get_rfile(self, name: str) -> InfrahubRepositoryRFileConfig:
+        return self._get_resource(resource_id=name, resource_type=InfrahubRepositoryRFileConfig)
+
+    def has_check_definition(self, name: str) -> bool:
+        return self._has_resource(resource_id=name, resource_type=InfrahubCheckDefinitionConfig)
+
+    def get_check_definition(self, name: str) -> InfrahubCheckDefinitionConfig:
+        return self._get_resource(resource_id=name, resource_type=InfrahubCheckDefinitionConfig)
+
+    def has_artifact_definition(self, name: str) -> bool:
+        return self._has_resource(resource_id=name, resource_type=InfrahubRepositoryArtifactDefinitionConfig)
+
+    def get_artifact_definition(self, name: str) -> InfrahubRepositoryArtifactDefinitionConfig:
+        return self._get_resource(resource_id=name, resource_type=InfrahubRepositoryArtifactDefinitionConfig)
+
+    def has_python_transform(self, name: str) -> bool:
+        return self._has_resource(resource_id=name, resource_type=InfrahubPythonTransformConfig)
+
+    def get_python_transform(self, name: str) -> InfrahubPythonTransformConfig:
+        return self._get_resource(resource_id=name, resource_type=InfrahubPythonTransformConfig)
 
 
 # ---------------------------------------------------------------------------------
