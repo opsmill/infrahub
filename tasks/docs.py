@@ -94,17 +94,17 @@ def _generate(context: Context):
 
 def _generate_infrahubctl_documentation(context: Context):
     """Generate the documentation for infrahubctl using typer-cli."""
-    from infrahub_ctl.cli import app
+    from infrahub_sdk.ctl.cli import app
 
     print(" - Generate infrahubctl CLI documentation")
     for cmd in app.registered_commands:
-        exec_cmd = f'poetry run typer --func {cmd.name} infrahub_ctl.cli utils docs --name "infrahubctl {cmd.name}"'
+        exec_cmd = f'poetry run typer --func {cmd.name} infrahub_sdk.ctl.cli utils docs --name "infrahubctl {cmd.name}"'
         exec_cmd += f" --output docs/infrahubctl/infrahubctl-{cmd.name}.md"
         with context.cd(ESCAPED_REPO_PATH):
             context.run(exec_cmd)
 
     for cmd in app.registered_groups:
-        exec_cmd = f"poetry run typer infrahub_ctl.{cmd.name} utils docs"
+        exec_cmd = f"poetry run typer infrahub_sdk.ctl.{cmd.name} utils docs"
         exec_cmd += f' --name "infrahubctl {cmd.name}" --output docs/infrahubctl/infrahubctl-{cmd.name}.md'
         with context.cd(ESCAPED_REPO_PATH):
             context.run(exec_cmd)

@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from infrahub_ctl import config
+from infrahub_sdk.ctl import config
 
 
 @pytest.fixture(scope="session")

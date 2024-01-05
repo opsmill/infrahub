@@ -153,11 +153,11 @@ jobs:
       - name: "Install Package"
         run: "poetry install"
       - name: "Pylint Tests"
-        run: "poetry run pylint infrahub_sdk/ infrahub_ctl/"
+        run: "poetry run pylint infrahub_sdk/"
       - name: "Mypy Tests"
-        run: "poetry run mypy --show-error-codes infrahub_sdk/ infrahub_ctl/"
+        run: "poetry run mypy --show-error-codes infrahub_sdk/"
       - name: "Unit Tests"
-        run: "poetry run pytest -v --cov=infrahub_sdk --cov=infrahub_ctl tests/unit"
+        run: "poetry run pytest -v --cov=infrahub_sdk tests/unit/"
         env:
           BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_SDK_UNIT }}
       - name: "Coveralls : Unit Tests"

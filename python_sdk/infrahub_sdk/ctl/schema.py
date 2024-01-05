@@ -15,8 +15,8 @@ except ImportError:
 from rich.console import Console
 from rich.logging import RichHandler
 
-import infrahub_ctl.config as config
-from infrahub_ctl.client import initialize_client
+from infrahub_sdk.ctl import config
+from infrahub_sdk.ctl.client import initialize_client
 from infrahub_sdk.utils import find_files
 
 app = typer.Typer()

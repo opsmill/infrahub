@@ -9,8 +9,7 @@ homepage = "https://opsmill.io"
 repository = "https://opsmill.io"
 documentation = "https://opsmill.io"
 packages = [
-    {include = "infrahub_sdk"},
-    {include = "infrahub_ctl"}
+    {include = "infrahub_sdk"}
 ]
 classifiers = [
     "Intended Audience :: Developers",
@@ -65,8 +64,7 @@ buildkite-test-collector = "^0.1.7"
 types-python-slugify = "^8.0.0.3"
 
 [tool.poetry.scripts]
-infrahub = "infrahub.cli:app"
-infrahubctl = "infrahub_ctl.cli:app"
+infrahubctl = "infrahub_sdk.ctl.cli:app"
 
 [tool.coverage.run]
 branch = true
@@ -139,7 +137,7 @@ ignore_missing_imports = true
 disallow_untyped_defs = true
 
 [[tool.mypy.overrides]]
-module = "infrahub_ctl.*"
+module = "infrahub_sdk.ctl.*"
 ignore_errors = true
 
 

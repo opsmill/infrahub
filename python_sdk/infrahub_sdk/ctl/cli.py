@@ -16,19 +16,19 @@ from rich.logging import RichHandler
 from rich.syntax import Syntax
 from rich.traceback import Frame, Traceback
 
-from infrahub_ctl import config
-from infrahub_ctl.branch import app as branch_app
-from infrahub_ctl.check import app as check_app
-from infrahub_ctl.client import initialize_client
-from infrahub_ctl.exceptions import InfrahubTransformNotFoundError, QueryNotFoundError
-from infrahub_ctl.repository import get_repository_config
-from infrahub_ctl.schema import app as schema
-from infrahub_ctl.transform import list_transforms
-from infrahub_ctl.utils import (
+from infrahub_sdk.ctl import config
+from infrahub_sdk.ctl.branch import app as branch_app
+from infrahub_sdk.ctl.check import app as check_app
+from infrahub_sdk.ctl.client import initialize_client
+from infrahub_sdk.ctl.exceptions import InfrahubTransformNotFoundError, QueryNotFoundError
+from infrahub_sdk.ctl.repository import get_repository_config
+from infrahub_sdk.ctl.schema import app as schema
+from infrahub_sdk.ctl.transform import list_transforms
+from infrahub_sdk.ctl.utils import (
     execute_graphql_query,
     parse_cli_vars,
 )
-from infrahub_ctl.validate import app as validate_app
+from infrahub_sdk.ctl.validate import app as validate_app
 from infrahub_sdk.exceptions import GraphQLError
 from infrahub_sdk.schema import InfrahubPythonTransformConfig, InfrahubRepositoryConfig, InfrahubRepositoryRFileConfig
 from infrahub_sdk.transforms import InfrahubTransform

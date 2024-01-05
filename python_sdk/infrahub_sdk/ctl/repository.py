@@ -10,7 +10,7 @@ except ImportError:
 
 from rich.console import Console
 
-from infrahub_ctl.exceptions import FileNotValidError
+from infrahub_sdk.ctl.exceptions import FileNotValidError
 from infrahub_sdk.schema import InfrahubRepositoryConfig
 
 

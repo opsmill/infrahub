@@ -8,7 +8,7 @@ from pendulum.datetime import DateTime
 from rich.console import Console
 from rich.markup import escape
 
-from infrahub_ctl.exceptions import QueryNotFoundError
+from infrahub_sdk.ctl.exceptions import QueryNotFoundError
 
 from .client import initialize_client_sync
 
@@ -95,6 +95,6 @@ def render_action_rich(value: str) -> str:
 def get_fixtures_dir() -> Path:
     """Get the directory which stores fixtures that are common to multiple unit/integration tests."""
     here = os.path.abspath(os.path.dirname(__file__))
-    fixtures_dir = os.path.join(here, "..", "tests", "fixtures")
+    fixtures_dir = os.path.join(here, "..", "..", "tests", "fixtures")
 
     return Path(os.path.abspath(fixtures_dir))
