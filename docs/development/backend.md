@@ -17,7 +17,7 @@ git switch development
 
 ## Basic settings
 
-Most of Infrahub and tools around it rely on some settings. These settings are in general set as environment variables. While this is a very simple, it can be hard to maintain and manage. We can use a tool such as [direnv](https://direnv.net/) to help. With this, it is very simple to define environment variables (or pretty much anything bash can make sense of) in a file that will be interpreted when `cd`ing to a given directory. Here is an example of a `.envrc` file providing development friendly setting values:
+Most of Infrahub and tools around it rely on some settings. These settings are in general set as environment variables, dealing with many of these can be hard to maintain and manage. We can use a tool such as [direnv](https://direnv.net/) to help. It allows to define environment variables (or pretty much anything bash can make sense of) in a file that will be interpreted when entering a given directory. Here is an example of a `.envrc` file providing development friendly setting values:
 
 ```bash
 export INFRAHUB_PRODUCTION=false
