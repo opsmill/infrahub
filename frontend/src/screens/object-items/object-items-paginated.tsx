@@ -4,7 +4,7 @@ import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
 import { useContext, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { BUTTON_TYPES, Button } from "../../components/buttons/button";
 import { RoundedButton } from "../../components/buttons/rounded-button";
@@ -223,11 +223,11 @@ export default function ObjectItems(props: any) {
                   data-cy="object-table-row">
                   {columns?.map((attribute) => (
                     <td key={row.id + "-" + attribute.name} className="p-0">
-                      <a
+                      <Link
                         className="whitespace-wrap px-2 py-1 text-xs text-gray-900 min-h-7 flex items-center"
-                        href={constructPath(getObjectDetailsUrl(row.id, row.__typename))}>
+                        to={constructPath(getObjectDetailsUrl(row.id, row.__typename))}>
                         <div className="flex-grow">{getObjectItemDisplayValue(row, attribute)}</div>
-                      </a>
+                      </Link>
                     </td>
                   ))}
 
