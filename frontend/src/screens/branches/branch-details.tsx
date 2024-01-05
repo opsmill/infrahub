@@ -71,7 +71,9 @@ export const BranchDetails = () => {
 
       setDetailsContent(result);
 
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={successMessage} />);
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message={successMessage} />, {
+        toastId: "alert-success",
+      });
     } catch (error: any) {
       console.log("error: ", error);
       setDetailsContent(error);

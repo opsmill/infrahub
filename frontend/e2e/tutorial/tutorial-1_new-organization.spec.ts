@@ -56,4 +56,33 @@ test.describe("Getting started with Infrahub", () => {
     await page.getByText("main", { exact: true }).click();
     await expect(page.getByText("Testing Infrahub")).toBeVisible();
   });
+
+  test("4. View the Diff and Merge the branch cr1234 into main", async ({ page }) => {
+    await page.goto("/?branch=cr1234");
+
+    await page.getByTestId("sidebar-menu").getByRole("link", { name: "Branches" }).click();
+    await page.getByTestId("branches-items").getByText("cr1234").click();
+    await expect(page.locator("dl")).toContainText("cr1234");
+
+    // View diff
+    await page.getByRole("button", { name: "Diff" }).click();
+    await page.getByText("My-First-Org").click();
+    await expect(page.getByText("Testing Infrahub")).toBeVisible();
+    await expect(page.getByText("Changes from branch cr1234")).toBeVisible();
+
+    // Merge cr1234 into main branch
+    await page.getByRole("button", { name: "Details" }).click();
+    await page.getByRole("button", { name: "Merge" }).click();
+    await expect(page.locator("#alert-success")).toContainText("Branch merged successfully!");
+    await expect(page.locator("pre")).toContainText(
+      // eslint-disable-next-line quotes
+      '{ "data": { "BranchMerge": { "ok": true, "__typename": "BranchMerge" } } }'
+    );
+
+    // Validate that merge is correct
+    await page.getByTestId("branch-list-display-button").click();
+    await page.getByTestId("branch-list-dropdown").getByText("main", { exact: true }).click();
+    await page.getByTestId("sidebar-menu").getByRole("link", { name: "Organization" }).click();
+    await expect(page.locator("tbody")).toContainText("Changes from branch cr1234");
+  });
 });
