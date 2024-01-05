@@ -69,8 +69,8 @@ class FileSystemStorageSettings(BaseSettings):
 
 
 class S3StorageSettings(BaseSettings):
-    access_key_id: str = Field(default="", alias="AWS_ACCESS_KEY_ID", validation_alias="AWS_ACCESS_KEY_ID")
-    secret_access_key: str = Field(default="", alias="AWS_SECRET_ACCESS_KEY", validation_alias="AWS_SECRET_ACCESS_KEY")
+    access_key_id: str = Field(default="", validation_alias="AWS_ACCESS_KEY_ID")
+    secret_access_key: str = Field(default="", validation_alias="AWS_SECRET_ACCESS_KEY")
     bucket_name: str = Field(
         default="",
         alias="AWS_S3_BUCKET_NAME",
@@ -109,24 +109,26 @@ class StorageSettings(BaseSettings):
 
 
 class DatabaseSettings(BaseSettings):
-    db_type: DatabaseType = Field(default=DatabaseType.MEMGRAPH, validation_alias="INFRAHUB_DB_TYPE")
-    protocol: str = Field(default="bolt", validation_alias="NEO4J_PROTOCOL")
-    username: str = Field(default="neo4j", validation_alias="NEO4J_USERNAME")
-    password: str = Field(default="admin", validation_alias="NEO4J_PASSWORD")
-    address: str = Field(default="localhost", validation_alias="NEO4J_ADDRESS")
-    port: int = Field(default=7687, validation_alias="NEO4J_PORT")
+    db_type: DatabaseType = Field(
+        default=DatabaseType.MEMGRAPH, validation_alias=AliasChoices("db_type", "INFRAHUB_DB_TYPE")
+    )
+    protocol: str = Field(default="bolt", validation_alias=AliasChoices("protocol", "NEO4J_PROTOCOL"))
+    username: str = Field(default="neo4j", validation_alias=AliasChoices("username", "NEO4J_USERNAME"))
+    password: str = Field(default="admin", validation_alias=AliasChoices("password", "NEO4J_PASSWORD"))
+    address: str = Field(default="localhost", validation_alias=AliasChoices("address", "NEO4J_ADDRESS"))
+    port: int = Field(default=7687, validation_alias=AliasChoices("port", "NEO4J_PORT"))
     database: Optional[str] = Field(
         default=None,
         pattern=VALID_DATABASE_NAME_REGEX,
         description="Name of the database",
-        validation_alias="NEO4J_DATABASE",
+        validation_alias=AliasChoices("database", "NEO4J_DATABASE"),
     )
     query_size_limit: int = Field(
         default=5000,
         ge=1,
         le=20000,
         description="The max number of records to fetch in a single query before performing internal pagination.",
-        validation_alias="INFRAHUB_DB_QUERY_SIZE_LIMIT",
+        validation_alias=AliasChoices("query_size_limit", "INFRAHUB_DB_QUERY_SIZE_LIMIT"),
     )
 
     @property
