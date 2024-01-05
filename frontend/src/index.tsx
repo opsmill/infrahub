@@ -9,7 +9,7 @@ import "react-toastify/dist/ReactToastify.css";
 import { QueryParamProvider } from "use-query-params";
 import { ReactRouter6Adapter } from "use-query-params/adapters/react-router-6";
 import App from "./App";
-import { ALERT_TYPES, Alert } from "./components/alert";
+import { ALERT_TYPES, Alert } from "./components/utils/alert";
 import { CONFIG } from "./config/config";
 import SentryClient from "./config/sentry";
 import graphqlClient from "./graphql/graphqlClientApollo";
@@ -18,12 +18,11 @@ import reportWebVitals from "./reportWebVitals";
 import { branchesState, currentBranchAtom } from "./state/atoms/branches.atom";
 import { Config, configState } from "./state/atoms/config.atom";
 
-import LoadingScreen from "./screens/loading-screen/loading-screen";
-import "./styles/index.css";
-import { fetchUrl, getCurrentQsp } from "./utils/fetch";
-import { Branch } from "./generated/graphql";
 import { QSP } from "./config/qsp";
+import { Branch } from "./generated/graphql";
+import LoadingScreen from "./screens/loading-screen/loading-screen";
 import {
+  SchemaSummary,
   currentSchemaHashAtom,
   genericsState,
   iGenericSchema,
@@ -31,11 +30,12 @@ import {
   iNodeSchema,
   namespacesState,
   schemaState,
-  SchemaSummary,
 } from "./state/atoms/schema.atom";
 import { schemaKindNameState } from "./state/atoms/schemaKindName.atom";
-import { sortByName, sortByOrderWeight } from "./utils/common";
+import "./styles/index.css";
 import { findSelectedBranch } from "./utils/branches";
+import { sortByName, sortByOrderWeight } from "./utils/common";
+import { fetchUrl, getCurrentQsp } from "./utils/fetch";
 
 const root = ReactDOM.createRoot(
   (document.getElementById("root") || document.createElement("div")) as HTMLElement

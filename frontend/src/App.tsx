@@ -7,7 +7,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { StringParam, useQueryParam } from "use-query-params";
-import { ALERT_TYPES, Alert } from "./components/alert";
+import { ALERT_TYPES, Alert } from "./components/utils/alert";
 import { CONFIG } from "./config/config";
 import { QSP } from "./config/qsp";
 import { MAIN_ROUTES } from "./config/routes";
@@ -26,9 +26,9 @@ import {
 } from "./state/atoms/schema.atom";
 import { schemaKindNameState } from "./state/atoms/schemaKindName.atom";
 import "./styles/index.css";
+import { findSelectedBranch } from "./utils/branches";
 import { sortByName, sortByOrderWeight } from "./utils/common";
 import { fetchUrl } from "./utils/fetch";
-import { findSelectedBranch } from "./utils/branches";
 addCollection(mdiIcons);
 
 function App() {

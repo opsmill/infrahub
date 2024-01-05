@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { toast } from "react-toastify";
-import { Input } from "../components/input";
+
 import { FormFieldError } from "../screens/edit-form-hook/form";
-import { ALERT_TYPES, Alert } from "./alert";
-import { MultipleInput } from "./multiple-input";
-import { SelectOption } from "./select";
+import { Input } from "./inputs/input";
+import { MultipleInput } from "./inputs/multiple-input";
+import { SelectOption } from "./inputs/select";
+import { ALERT_TYPES, Alert } from "./utils/alert";
 
 type OpsListProps = {
   label: string;

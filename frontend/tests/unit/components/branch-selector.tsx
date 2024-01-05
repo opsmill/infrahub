@@ -1,5 +1,6 @@
 import { StringParam, useQueryParam } from "use-query-params";
-import { Button } from "../../../src/components/button";
+
+import { Button } from "../../../src/components/buttons/button";
 import { QSP } from "../../../src/config/qsp";
 
 export default function BranchSelectorTest() {

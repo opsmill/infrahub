@@ -30,7 +30,7 @@ test.describe("/objects/:objectname", () => {
       await page.getByLabel("ids *").fill("no-id");
       await page.getByRole("button", { name: "Filter" }).click();
       await expect(page.getByText("ids: no-id")).toBeVisible();
-      await expect(page.getByRole("row")).toHaveCount(0);
+      await expect(page.getByRole("row")).toHaveCount(1);
       await expect(page.getByText("No items found.")).toBeVisible();
 
       // remove 1 filter
@@ -42,6 +42,20 @@ test.describe("/objects/:objectname", () => {
       // clear all
       await page.getByRole("button", { name: "Clear all" }).click();
       await expect(page.getByRole("row")).toHaveCount(4);
+    });
+
+    test("should be able to open object details in a new tab", async ({ page, context }) => {
+      await page.goto("/objects/BuiltinTag");
+
+      // When
+      const objectDetailsLink = page.getByRole("link", { name: "blue" });
+      const linkHref = await objectDetailsLink.getAttribute("href");
+      await objectDetailsLink.click({ button: "middle" });
+
+      // then
+      const newTab = await context.waitForEvent("page");
+      await newTab.waitForURL(linkHref);
+      expect(newTab.url()).toContain(linkHref);
     });
   });
 

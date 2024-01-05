@@ -1,7 +1,7 @@
 import { gql } from "@apollo/client";
 import { useState } from "react";
 import { toast } from "react-toastify";
-import { ALERT_TYPES, Alert } from "../../components/alert";
+import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import { ACCOUNT_SELF_UPDATE_OBJECT } from "../../config/constants";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";

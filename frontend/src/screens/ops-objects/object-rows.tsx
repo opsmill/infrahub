@@ -1,6 +1,6 @@
-import { iNodeSchema } from "../../state/atoms/schema.atom";
 import { Icon } from "@iconify-icon/react";
-import { Tooltip } from "../../components/tooltip";
+import { Tooltip } from "../../components/utils/tooltip";
+import { iNodeSchema } from "../../state/atoms/schema.atom";
 
 interface Props {
   schema: iNodeSchema;

@@ -1,7 +1,7 @@
 import { ChevronRightIcon } from "@heroicons/react/24/outline";
-import { BADGE_TYPES, Badge } from "../components/badge";
-import { BadgeCircle, CIRCLE_BADGE_TYPES } from "../components/badge-circle";
-import { Tooltip } from "../components/tooltip";
+import { BADGE_TYPES, Badge } from "../components/display/badge";
+import { BadgeCircle, CIRCLE_BADGE_TYPES } from "../components/display/badge-circle";
+import { Tooltip } from "../components/utils/tooltip";
 import { NODE_PATH_EXCLUDELIST } from "../config/constants";
 import {
   tDataDiffNode,

@@ -5,8 +5,8 @@ import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
 import { useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { RoundedButton } from "../../components/rounded-button";
-import SlideOver from "../../components/slide-over";
+import { RoundedButton } from "../../components/buttons/rounded-button";
+import SlideOver from "../../components/display/slide-over";
 import {
   ACCOUNT_OBJECT,
   DEFAULT_BRANCH_NAME,

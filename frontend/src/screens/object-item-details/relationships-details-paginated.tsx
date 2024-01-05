@@ -1,25 +1,25 @@
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
+import { useAtomValue } from "jotai/index";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { StringParam, useQueryParam } from "use-query-params";
-import { ALERT_TYPES, Alert } from "../../components/alert";
-import { Pagination } from "../../components/pagination";
+import { ALERT_TYPES, Alert } from "../../components/utils/alert";
+import { Pagination } from "../../components/utils/pagination";
 import { QSP } from "../../config/qsp";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { removeRelationship } from "../../graphql/mutations/relationships/removeRelationship";
 import { getObjectRelationshipsDetailsPaginated } from "../../graphql/queries/objects/getObjectRelationshipDetails";
 import usePagination from "../../hooks/usePagination";
 import useQuery from "../../hooks/useQuery";
+import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { genericsState, iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 import { getAttributeColumnsFromNodeOrGenericSchema } from "../../utils/getSchemaObjectColumns";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import RelationshipDetails from "./relationship-details-paginated";
-import { useAtomValue } from "jotai/index";
-import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { datetimeAtom } from "../../state/atoms/time.atom";
 
 interface RelationshipsDetailsProps {
   parentNode: any;

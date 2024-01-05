@@ -30,7 +30,7 @@ from infrahub_sdk.ctl.utils import (
 )
 from infrahub_sdk.ctl.validate import app as validate_app
 from infrahub_sdk.exceptions import GraphQLError
-from infrahub_sdk.schema import InfrahubPythonTransformConfig, InfrahubRepositoryConfig, InfrahubRepositoryRFileConfig
+from infrahub_sdk.schema import InfrahubPythonTransformConfig
 from infrahub_sdk.transforms import InfrahubTransform
 from infrahub_sdk.utils import get_branch
 
@@ -155,15 +155,6 @@ def render_jinja2_template(template_path: Path, variables: Dict[str, str], data:
     return rendered_tpl
 
 
-def find_rfile_in_repository_config(
-    rfile: str, repository_config: InfrahubRepositoryConfig
-) -> InfrahubRepositoryRFileConfig:
-    filtered = [entry for entry in repository_config.rfiles if entry.name == rfile]
-    if len(filtered) == 0 or len(filtered) > 1:
-        raise ValueError
-    return filtered[0]
-
-
 def _run_transform(query: str, variables: Dict[str, Any], transformer: Callable, branch: str, debug: bool):
     branch = get_branch(branch)
 
@@ -209,8 +200,8 @@ def render(
     repository_config = get_repository_config(Path(config.INFRAHUB_REPO_CONFIG_FILE))
 
     try:
-        rfile = find_rfile_in_repository_config(rfile_name, repository_config)
-    except ValueError as exc:
+        rfile = repository_config.get_rfile(name=rfile_name)
+    except KeyError as exc:
         console.print(f"[red]Unable to find {rfile_name} in {config.INFRAHUB_REPO_CONFIG_FILE}")
         raise typer.Exit(1) from exc
 

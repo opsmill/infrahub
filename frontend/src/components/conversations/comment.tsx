@@ -1,8 +1,8 @@
 import React from "react";
 import { classNames } from "../../utils/common";
-import { AVATAR_SIZE, Avatar } from "../avatar";
-import { DateDisplay } from "../date-display";
-import { MarkdownViewer } from "../MarkdownViewer";
+import { AVATAR_SIZE, Avatar } from "../display/avatar";
+import { DateDisplay } from "../display/date-display";
+import { MarkdownViewer } from "../editor/markdown-viewer";
 
 type CommentProps = {
   author: string;
