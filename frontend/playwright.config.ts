@@ -32,12 +32,12 @@ export default defineConfig({
     baseURL: process.env.CI ? "http://localhost:8000" : "http://localhost:8080",
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: "retain-on-failure",
+    trace: process.env.CI ? "retain-on-failure" : "on",
     screenshot: {
-      mode: "only-on-failure",
+      mode: process.env.CI ? "only-on-failure" : "on",
     },
     video: {
-      mode: "retain-on-failure",
+      mode: process.env.CI ? "retain-on-failure" : "on",
     },
   },
 
