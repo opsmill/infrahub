@@ -13,6 +13,11 @@ export const getObjectRelationshipsDetailsPaginated = Handlebars.compile(`query 
               {{#each columns}}
               {{this.name}} {
                 value
+                {{#if (eq this.kind "Dropdown")}}
+                  color
+                  description
+                  label
+                {{/if}}
               }
               {{/each}}
               __typename
