@@ -16,7 +16,7 @@ class ModelForTesting(BaseModel):
     def always_fail(cls, *args, **kwargs):
         raise ValueError("this is the error message")
 
-    @root_validator()
+    @root_validator
     @classmethod
     def always_fail_2(cls, values):
         raise ValueError("another error message")

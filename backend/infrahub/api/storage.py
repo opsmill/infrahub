@@ -2,7 +2,7 @@ import hashlib
 
 from fastapi import APIRouter, Depends, File, Response, UploadFile
 from infrahub_sdk import UUIDT
-from pydantic.v1 import BaseModel
+from pydantic import BaseModel
 
 from infrahub.api.dependencies import get_current_user
 from infrahub.core import registry

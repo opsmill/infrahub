@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Dict, List
 
 from fastapi import APIRouter, Depends
-from pydantic.v1 import BaseModel, Field
+from pydantic import BaseModel, Field
 
 from infrahub.api.dependencies import get_branch_dep
 from infrahub.core import registry

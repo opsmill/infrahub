@@ -75,9 +75,6 @@ class InfrahubMessage(BaseModel, aio_pika.abc.AbstractMessage):
 
     meta: Meta = Field(default_factory=Meta.default, description="Meta properties for the message")
 
-    class Config:
-        arbitrary_types_allowed = True
-
     def assign_meta(self, parent: "InfrahubMessage") -> None:
         """Assign relevant meta properties from a parent message."""
         self.meta.request_id = parent.meta.request_id

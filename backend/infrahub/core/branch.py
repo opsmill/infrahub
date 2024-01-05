@@ -6,7 +6,9 @@ from collections import defaultdict
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
-from pydantic.v1 import BaseModel, Field, validator
+from pydantic import Field as FieldV2
+from pydantic import field_validator
+from pydantic.v1 import BaseModel, Field
 
 from infrahub import config
 from infrahub.core.constants import (
@@ -57,17 +59,18 @@ if TYPE_CHECKING:
 
 
 class Branch(StandardNode):
-    name: str = Field(
+    name: str = FieldV2(
         max_length=32,
         min_length=3,
         description="Name of the branch (git ref standard)",
+        validate_default=True
     )
     status: str = "OPEN"  # OPEN, CLOSED
     description: str = ""
     origin_branch: str = "main"
-    branched_from: Optional[str] = Field(default=None, validate_default=True)
+    branched_from: Optional[str] = FieldV2(default=None, validate_default=True)
     hierarchy_level: int = 2
-    created_at: Optional[str] = Field(default=None, validate_default=True)
+    created_at: Optional[str] = FieldV2(default=None, validate_default=True)
     is_default: bool = False
     is_global: bool = False
     is_protected: bool = False
@@ -79,7 +82,7 @@ class Branch(StandardNode):
 
     _exclude_attrs: List[str] = ["id", "uuid", "owner", "ephemeral_rebase"]
 
-    @validator("name", pre=True, always=True)
+    @field_validator("name", mode="before")
     @classmethod
     def validate_branch_name(cls, value):
         checks = [
@@ -110,12 +113,12 @@ class Branch(StandardNode):
 
         return value
 
-    @validator("branched_from", pre=True, always=True)
+    @field_validator("branched_from", mode="before")
     @classmethod
     def set_branched_from(cls, value):
         return Timestamp(value).to_string()
 
-    @validator("created_at", pre=True, always=True)
+    @field_validator("created_at", mode="before")
     @classmethod
     def set_created_at(cls, value):
         return Timestamp(value).to_string()
