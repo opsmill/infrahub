@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from enum import Enum
 from pathlib import Path  # noqa: TCH003
-from typing import TYPE_CHECKING, Any, Dict, List, MutableMapping, Optional, Tuple, Type, TypedDict, Union
+from typing import TYPE_CHECKING, Any, Dict, List, MutableMapping, Optional, Tuple, TypedDict, TypeVar, Union
 from urllib.parse import urlencode
 
 try:
@@ -29,6 +29,8 @@ class DropdownMutationOptionalArgs(TypedDict):
     description: Optional[str]
     label: Optional[str]
 
+
+ResourceClass = TypeVar("ResourceClass")
 
 # ---------------------------------------------------------------------------------
 # Repository Configuration file
@@ -87,7 +89,7 @@ class InfrahubPythonTransformConfig(InfrahubRepositoryConfigElement):
     class_name: str = pydantic.Field(default="Transform", description="The name of the transform class to run.")
 
 
-RESOURCE_MAP: Dict[Type[InfrahubRepositoryConfigElement], str] = {
+RESOURCE_MAP: Dict[Any, str] = {
     InfrahubRepositoryRFileConfig: "rfiles",
     InfrahubCheckDefinitionConfig: "check_definitions",
     InfrahubRepositoryArtifactDefinitionConfig: "artifact_definitions",
@@ -110,17 +112,15 @@ class InfrahubRepositoryConfig(pydantic.BaseModel):
             raise ValueError(f"Found multiples element with the same names: {dups}")
         return v
 
-    def _has_resource(
-        self, resource_id: str, resource_type: type[InfrahubRepositoryConfigElement], resource_field: str = "name"
-    ) -> bool:
+    def _has_resource(self, resource_id: str, resource_type: type[ResourceClass], resource_field: str = "name") -> bool:
         for item in getattr(self, RESOURCE_MAP[resource_type]):
             if getattr(item, resource_field) == resource_id:
                 return True
         return False
 
     def _get_resource(
-        self, resource_id: str, resource_type: type[InfrahubRepositoryConfigElement], resource_field: str = "name"
-    ) -> InfrahubRepositoryConfigElement:
+        self, resource_id: str, resource_type: type[ResourceClass], resource_field: str = "name"
+    ) -> ResourceClass:
         for item in getattr(self, RESOURCE_MAP[resource_type]):
             if getattr(item, resource_field) == resource_id:
                 return item
