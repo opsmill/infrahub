@@ -16,6 +16,7 @@ import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
 import { getGroups } from "../../graphql/queries/groups/getGroups";
 import usePagination from "../../hooks/usePagination";
 import useQuery from "../../hooks/useQuery";
+import { useTitle } from "../../hooks/useTitle";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
@@ -46,6 +47,7 @@ export default function GroupItems() {
   const [deleteModal, setDeleteModal] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const navigate = useNavigate();
+  useTitle(groupname ? `${groupname} details` : "Groups list");
 
   const schemaData =
     genericList.find((s) => s.kind === kind) || schemaList.find((s) => s.kind === kind);

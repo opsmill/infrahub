@@ -8,6 +8,7 @@ import { PROPOSED_CHANGES_OBJECT } from "../../config/constants";
 import { QSP } from "../../config/qsp";
 import { getProposedChanges } from "../../graphql/queries/proposed-changes/getProposedChanges";
 import useQuery from "../../hooks/useQuery";
+import { useTitle } from "../../hooks/useTitle";
 import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { constructPath } from "../../utils/fetch";
@@ -52,6 +53,7 @@ export const ProposedChangesDetails = () => {
   const [schemaList] = useAtom(schemaState);
   const [, setProposedChange] = useAtom(proposedChangedState);
   const navigate = useNavigate();
+  useTitle(`${proposedchange} details`);
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_OBJECT);
 

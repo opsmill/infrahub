@@ -18,6 +18,7 @@ import { QSP } from "../../config/qsp";
 import { AuthContext } from "../../decorators/withAuth";
 import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
 import useQuery from "../../hooks/useQuery";
+import { useTitle } from "../../hooks/useTitle";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
@@ -42,7 +43,7 @@ import ObjectItemEditComponent from "../object-item-edit/object-item-edit-pagina
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 import { Generate } from "./generate";
 
-export default function ObjectItemDetails() {
+export default function ArtifactsDetails() {
   const { objectid } = useParams();
 
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
@@ -59,6 +60,7 @@ export default function ObjectItemDetails() {
   const schema = schemaList.find((s) => s.kind === ARTIFACT_OBJECT);
   const generic = genericList.find((s) => s.kind === ARTIFACT_OBJECT);
   const navigate = useNavigate();
+  useTitle("Artifact details");
 
   const schemaData = generic || schema;
 

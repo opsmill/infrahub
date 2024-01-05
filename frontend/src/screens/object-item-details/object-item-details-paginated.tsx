@@ -25,6 +25,7 @@ import { QSP } from "../../config/qsp";
 import { AuthContext } from "../../decorators/withAuth";
 import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
 import useQuery from "../../hooks/useQuery";
+import { useTitle } from "../../hooks/useTitle";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
@@ -71,6 +72,7 @@ export default function ObjectItemDetails(props: any) {
   const schema = schemaList.find((s) => s.kind === objectname);
   const generic = genericList.find((s) => s.kind === objectname);
   const navigate = useNavigate();
+  useTitle(`${schemaKindName[objectname]} details`);
 
   const schemaData = generic || schema;
 

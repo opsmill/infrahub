@@ -2,6 +2,7 @@ import { gql } from "@apollo/client";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
+import { useAtomValue } from "jotai/index";
 import { useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { RoundedButton } from "../../components/rounded-button";
@@ -14,6 +15,7 @@ import {
 import { AuthContext } from "../../decorators/withAuth";
 import { getProposedChanges } from "../../graphql/queries/proposed-changes/getProposedChanges";
 import useQuery from "../../hooks/useQuery";
+import { useTitle } from "../../hooks/useTitle";
 import { branchesState, currentBranchAtom } from "../../state/atoms/branches.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { constructPath } from "../../utils/fetch";
@@ -23,7 +25,6 @@ import LoadingScreen from "../loading-screen/loading-screen";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
 import { getFormStructure } from "./conversations";
 import { ProposedChange } from "./proposed-changes-item";
-import { useAtomValue } from "jotai/index";
 
 export const ProposedChanges = () => {
   const [schemaList] = useAtom(schemaState);
@@ -32,6 +33,7 @@ export const ProposedChanges = () => {
   const branch = useAtomValue(currentBranchAtom);
   const navigate = useNavigate();
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
+  useTitle("Proposed changes list");
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_OBJECT);
   const accountSchemaData = schemaList.find((s) => s.kind === ACCOUNT_OBJECT);

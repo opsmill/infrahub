@@ -20,9 +20,11 @@ import { getObjectItemsPaginated } from "../../graphql/queries/objects/getObject
 import useFilters from "../../hooks/useFilters";
 import usePagination from "../../hooks/usePagination";
 import useQuery from "../../hooks/useQuery";
+import { useTitle } from "../../hooks/useTitle";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { iComboBoxFilter } from "../../state/atoms/filters.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
+import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
 import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
@@ -56,6 +58,7 @@ export default function ObjectItems(props: any) {
   const [genericList] = useAtom(genericsState);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
+  const [schemaKindName] = useAtom(schemaKindNameState);
   const [filters] = useFilters();
   const [pagination] = usePagination();
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
@@ -63,6 +66,7 @@ export default function ObjectItems(props: any) {
   const [deleteModal, setDeleteModal] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const navigate = useNavigate();
+  useTitle(`${schemaKindName[objectname]} list`);
 
   const schema = schemaList.find((s) => s.kind === objectname);
   const generic = genericList.find((s) => s.kind === objectname);
