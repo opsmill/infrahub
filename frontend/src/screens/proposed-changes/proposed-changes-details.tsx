@@ -51,9 +51,13 @@ export const ProposedChangesDetails = () => {
   const [qspTab] = useQueryParam(QSP.PROPOSED_CHANGES_TAB, StringParam);
   const [, setValidatorQsp] = useQueryParam(QSP.VALIDATOR_DETAILS, StringParam);
   const [schemaList] = useAtom(schemaState);
-  const [, setProposedChange] = useAtom(proposedChangedState);
+  const [proposedChange, setProposedChange] = useAtom(proposedChangedState);
   const navigate = useNavigate();
-  useTitle(`${proposedchange} details`);
+  useTitle(
+    proposedChange?.display_label
+      ? `${proposedChange.display_label} details`
+      : "Proposed changes details"
+  );
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_OBJECT);
 
