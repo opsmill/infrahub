@@ -1,15 +1,18 @@
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
+import { useAtomValue } from "jotai/index";
 import { useContext, useState } from "react";
 import { toast } from "react-toastify";
-import { ALERT_TYPES, Alert } from "../../components/alert";
+import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
 import { getObjectDetailsAndPeers } from "../../graphql/queries/objects/getObjectDetailsAndPeers";
 import useQuery from "../../hooks/useQuery";
+import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdit";
 import getMutationDetailsFromFormData from "../../utils/getMutationDetailsFromFormData";
 import {
@@ -22,9 +25,6 @@ import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
-import { useAtomValue } from "jotai/index";
-import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { datetimeAtom } from "../../state/atoms/time.atom";
 
 interface Props {
   objectname: string;

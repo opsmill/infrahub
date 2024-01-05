@@ -1,14 +1,14 @@
 import { useFormContext } from "react-hook-form";
-import { OpsCheckboxRegister } from "../../components-form/checkbox.register";
-import { CodeEditorRegister } from "../../components-form/code-editor.register";
-import { OpsDatePickerRegister } from "../../components-form/date-picker.register";
-import { OpsInputRegister } from "../../components-form/input.register";
-import { OpsListRegister } from "../../components-form/list.register";
-import { OpsMultiSelectRegister } from "../../components-form/multi-select.register";
-import { OpsSelect2StepRegister } from "../../components-form/select-2-step.register";
-import { OpsSelectRegister } from "../../components-form/select.register";
-import { OpsSwitchRegister } from "../../components-form/switch.register";
-import { OpsTextareaRegister } from "../../components-form/textarea.register";
+import { OpsCheckboxRegister } from "../../components/form/checkbox.register";
+import { CodeEditorRegister } from "../../components/form/code-editor.register";
+import { OpsDatePickerRegister } from "../../components/form/date-picker.register";
+import { OpsInputRegister } from "../../components/form/input.register";
+import { OpsListRegister } from "../../components/form/list.register";
+import { OpsMultiSelectRegister } from "../../components/form/multi-select.register";
+import { OpsSelect2StepRegister } from "../../components/form/select-2-step.register";
+import { OpsSelectRegister } from "../../components/form/select.register";
+import { OpsSwitchRegister } from "../../components/form/switch.register";
+import { OpsTextareaRegister } from "../../components/form/textarea.register";
 import { DynamicFieldData } from "./dynamic-control-types";
 
 export const DynamicControl = (props: DynamicFieldData) => {

@@ -7,15 +7,15 @@ import { useAtomValue } from "jotai/index";
 import { useContext, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import { Alert, ALERT_TYPES } from "../../components/alert";
-import { Avatar, AVATAR_SIZE } from "../../components/avatar";
-import { Badge } from "../../components/badge";
-import { Button, BUTTON_TYPES } from "../../components/button";
+import { Button, BUTTON_TYPES } from "../../components/buttons/button";
 import { AddComment } from "../../components/conversations/add-comment";
 import { Thread } from "../../components/conversations/thread";
-import { DateDisplay } from "../../components/date-display";
-import SlideOver from "../../components/slide-over";
-import { Tooltip } from "../../components/tooltip";
+import { Avatar, AVATAR_SIZE } from "../../components/display/avatar";
+import { Badge } from "../../components/display/badge";
+import { DateDisplay } from "../../components/display/date-display";
+import SlideOver from "../../components/display/slide-over";
+import { Alert, ALERT_TYPES } from "../../components/utils/alert";
+import { Tooltip } from "../../components/utils/tooltip";
 import {
   ACCOUNT_OBJECT,
   DEFAULT_BRANCH_NAME,

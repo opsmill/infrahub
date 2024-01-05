@@ -11,12 +11,12 @@ import { Branch } from "../generated/graphql";
 import { BRANCH_CREATE } from "../graphql/mutations/branches/createBranch";
 import { branchesState, currentBranchAtom } from "../state/atoms/branches.atom";
 import { classNames } from "../utils/common";
-import { BUTTON_TYPES, Button } from "./button";
-import { Input } from "./input";
-import { POPOVER_SIZE, PopOver } from "./popover";
-import { Select, SelectOption } from "./select";
-import { SelectButton } from "./select-button";
-import { Switch } from "./switch";
+import { BUTTON_TYPES, Button } from "./buttons/button";
+import { SelectButton } from "./buttons/select-button";
+import { POPOVER_SIZE, PopOver } from "./display/popover";
+import { Input } from "./inputs/input";
+import { Select, SelectOption } from "./inputs/select";
+import { Switch } from "./inputs/switch";
 
 export default function BranchSelector() {
   const [branches, setBranches] = useAtom(branchesState);

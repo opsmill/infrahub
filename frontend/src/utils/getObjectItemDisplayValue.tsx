@@ -1,8 +1,8 @@
 import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import { PasswordDisplay } from "../components/PasswordDisplay";
-import { Badge } from "../components/badge";
-import { CodeEditor } from "../components/code-editor";
-import { DateDisplay } from "../components/date-display";
+import { Badge } from "../components/display/badge";
+import { DateDisplay } from "../components/display/date-display";
+import { PasswordDisplay } from "../components/display/password-display";
+import { CodeEditor } from "../components/editor/code-editor";
 import { MAX_VALUE_LENGTH_DISPLAY } from "../config/constants";
 import { iSchemaKindNameMap } from "../state/atoms/schemaKindName.atom";
 import { getTextColor } from "./common";

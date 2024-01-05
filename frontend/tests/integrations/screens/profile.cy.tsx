@@ -3,7 +3,7 @@
 import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
 import React from "react";
-import { initials } from "../../../src/components/avatar";
+import { initials } from "../../../src/components/display/avatar";
 import { ACCESS_TOKEN_KEY } from "../../../src/config/constants";
 import { withAuth } from "../../../src/decorators/withAuth";
 import Header from "../../../src/screens/layout/header";

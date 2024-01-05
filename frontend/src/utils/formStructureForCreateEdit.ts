@@ -1,5 +1,5 @@
 import { isValid, parseISO } from "date-fns";
-import { SelectOption } from "../components/select";
+import { SelectOption } from "../components/inputs/select";
 import { iPeerDropdownOptions } from "../graphql/queries/objects/dropdownOptionsForRelatedPeers";
 import {
   DynamicFieldData,

@@ -1,26 +1,26 @@
 import { gql } from "@apollo/client";
 import { ArrowTopRightOnSquareIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
+import { useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { toast } from "react-toastify";
-import { ALERT_TYPES, Alert } from "../../../components/alert";
-import { Badge } from "../../../components/badge";
-import { Id } from "../../../components/id";
-import { Link } from "../../../components/link";
-import { ToggleButtons } from "../../../components/toggle-buttons";
-import { Tooltip, TooltipPosition } from "../../../components/tooltip";
+import { ToggleButtons } from "../../../components/buttons/toggle-buttons";
+import { Badge } from "../../../components/display/badge";
+import { ALERT_TYPES, Alert } from "../../../components/utils/alert";
+import { Id } from "../../../components/utils/id";
+import { Link } from "../../../components/utils/link";
+import { Tooltip, TooltipPosition } from "../../../components/utils/tooltip";
 import { DATA_CHECK_OBJECT } from "../../../config/constants";
+import { QSP } from "../../../config/qsp";
 import graphqlClient from "../../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../../graphql/mutations/objects/updateObjectWithId";
+import { currentBranchAtom } from "../../../state/atoms/branches.atom";
+import { datetimeAtom } from "../../../state/atoms/time.atom";
 import { classNames } from "../../../utils/common";
 import { diffContent, getBadgeType } from "../../../utils/diff";
 import { constructPath } from "../../../utils/fetch";
 import { getObjectDetailsUrl } from "../../../utils/objects";
 import { stringifyWithoutQuotes } from "../../../utils/string";
 import { getNodeClassName } from "../data-diff-node";
-import { QSP } from "../../../config/qsp";
-import { useAtomValue } from "jotai/index";
-import { currentBranchAtom } from "../../../state/atoms/branches.atom";
-import { datetimeAtom } from "../../../state/atoms/time.atom";
 
 const renderConflict = {
   attribute_value: (name: string) => {

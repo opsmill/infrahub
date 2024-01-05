@@ -2,9 +2,9 @@ import { ChevronLeftIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import * as R from "ramda";
 import { useNavigate } from "react-router-dom";
-import { Badge } from "../../components/badge";
-import { DateDisplay } from "../../components/date-display";
-import { Tooltip } from "../../components/tooltip";
+import { Badge } from "../../components/display/badge";
+import { DateDisplay } from "../../components/display/date-display";
+import { Tooltip } from "../../components/utils/tooltip";
 import { branchesState } from "../../state/atoms/branches.atom";
 import { constructPath } from "../../utils/fetch";
 
