@@ -1214,7 +1214,7 @@ testing = ["pytest (>=6)", "pytest-black (>=0.3.7)", "pytest-checkdocs (>=2.4)",
 
 [[package]]
 name = "infrahub-sdk"
-version = "0.3.0"
+version = "0.4.0"
 description = "Python Client to interact with Infrahub"
 optional = false
 python-versions = "^3.8"
@@ -1227,6 +1227,7 @@ gitpython = "3.1.40"
 httpx = "^0.23"
 Jinja2 = "^3.1"
 jsonlines = "^3.1"
+numpy = {version = "^1.24.2", markers = "python_version >= \"3.8\" and python_version < \"3.12\""}
 pendulum = "~3.0"
 pyarrow = "^14.0.1"
 pydantic = ">=1.7.4,!=1.8,!=1.8.1,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0"
