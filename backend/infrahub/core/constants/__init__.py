@@ -150,6 +150,7 @@ class RelationshipKind(InfrahubStringEnum):
     COMPONENT = "Component"
     PARENT = "Parent"
     GROUP = "Group"
+    HIERARCHY = "Hierarchy"
 
 
 class RelationshipStatus(InfrahubStringEnum):

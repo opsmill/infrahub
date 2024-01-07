@@ -2290,6 +2290,42 @@ async def data_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
 
 
 @pytest.fixture
+async def hierarchical_location_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
+    SCHEMA = {
+        "generics": [
+            {
+                "name": "Generic",
+                "namespace": "Location",
+                "default_filter": "name__value",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+            }
+        ],
+        "nodes": [
+            {
+                "name": "Region",
+                "namespace": "Location",
+                "hierarchical": "LocationGeneric",
+            },
+            {
+                "name": "Site",
+                "namespace": "Location",
+                "hierarchical": "LocationGeneric",
+            },
+            {
+                "name": "Rack",
+                "namespace": "Location",
+                "hierarchical": "LocationGeneric",
+            },
+        ],
+    }
+
+    schema = SchemaRoot(**SCHEMA)
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+
+@pytest.fixture
 async def prefix_schema(db: InfrahubDatabase, default_branch: Branch) -> SchemaRoot:
     SCHEMA = {
         "nodes": [

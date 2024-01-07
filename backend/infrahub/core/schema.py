@@ -358,13 +358,14 @@ class RelationshipSchema(BaseSchemaModel):
     peer: str = Field(pattern=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH)
     kind: RelationshipKind = RelationshipKind.GENERIC
     direction: RelationshipDirection = RelationshipDirection.BIDIR
-    label: Optional[str] = None
+    label: Optional[str] = Field(default=None)
     description: Optional[str] = Field(None, max_length=DEFAULT_DESCRIPTION_LENGTH)
     identifier: Optional[str] = Field(None, max_length=DEFAULT_REL_IDENTIFIER_LENGTH)
     inherited: bool = False
     cardinality: RelationshipCardinality = RelationshipCardinality.MANY
-    branch: Optional[BranchSupportType] = None
+    branch: Optional[BranchSupportType] = Field(default=None)
     optional: bool = True
+    hierarchical: Optional[str] = Field(default=None)
     filters: List[FilterSchema] = Field(default_factory=list)
     order_weight: Optional[int] = None
 
@@ -472,14 +473,28 @@ class RelationshipSchema(BaseSchemaModel):
         if filter_field_name not in peer_schema.valid_input_names:
             return query_filter, query_params, query_where
 
-        query_filter.extend(
-            [
-                QueryRel(name="r1", labels=[rel_type], direction=rels_direction["r1"]),
-                QueryNode(name="rl", labels=["Relationship"], params={"name": f"${prefix}_rel_name"}),
-                QueryRel(name="r2", labels=[rel_type], direction=rels_direction["r2"]),
-                QueryNode(name="peer", labels=["Node"]),
-            ]
-        )
+        if self.hierarchical:
+            query_filter.extend(
+                [
+                    QueryRel(
+                        labels=[rel_type],
+                        direction=rels_direction["r1"],
+                        lenght_min=2,
+                        lenght_max=6,
+                        params={"hierarchy": self.hierarchical},
+                    ),
+                    QueryNode(name="peer", labels=[self.hierarchical]),
+                ]
+            )
+        else:
+            query_filter.extend(
+                [
+                    QueryRel(name="r1", labels=[rel_type], direction=rels_direction["r1"]),
+                    QueryNode(name="rl", labels=["Relationship"], params={"name": f"${prefix}_rel_name"}),
+                    QueryRel(name="r2", labels=[rel_type], direction=rels_direction["r2"]),
+                    QueryNode(name="peer", labels=["Node"]),
+                ]
+            )
 
         field = peer_schema.get_field(filter_field_name)
 
@@ -672,6 +687,9 @@ class GenericSchema(BaseNodeSchema):
 class NodeSchema(BaseNodeSchema):
     inherit_from: List[str] = Field(default_factory=list)
     groups: Optional[List[str]] = Field(default_factory=list)
+    hierarchical: Optional[str] = Field(default=None)
+    parent: Optional[str] = Field(default=None)
+    children: Optional[str] = Field(default=None)
 
     def inherit_from_interface(self, interface: GenericSchema) -> NodeSchema:
         existing_inherited_attributes = {item.name: idx for idx, item in enumerate(self.attributes) if item.inherited}
@@ -854,6 +872,24 @@ internal_schema = {
                     "name": "groups",
                     "kind": "List",
                     "description": "List of Group that this Node is part of.",
+                    "optional": True,
+                },
+                {
+                    "name": "hierarchical",
+                    "kind": "Text",
+                    "description": "Name of the Hierarchy, must match the name of a Generic.",
+                    "optional": True,
+                },
+                {
+                    "name": "parent",
+                    "kind": "Text",
+                    "description": "Expected Kind for the parent node in a Hierarchy, default to the main generic defined if not defined.",
+                    "optional": True,
+                },
+                {
+                    "name": "children",
+                    "kind": "Text",
+                    "description": "Expected Kind for the children nodes in a Hierarchy, default to the main generic defined if not defined.",
                     "optional": True,
                 },
             ],
@@ -1103,6 +1139,12 @@ internal_schema = {
                     " Unidirectional relationship are required when the same model is on both side.",
                     "enum": RelationshipDirection.available_types(),
                     "default_value": RelationshipDirection.BIDIR.value,
+                    "optional": True,
+                },
+                {
+                    "name": "hierarchical",
+                    "kind": "Text",
+                    "description": "Internal attribute to track the type of hierarchy this relationship is part of, must match a valid Generic Kind",
                     "optional": True,
                 },
             ],

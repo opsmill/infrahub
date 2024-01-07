@@ -144,6 +144,9 @@ class NodeCreateAllQuery(NodeQuery):
             "status": "active",
             "from": at.to_string(),
         }
+
+        rel_prop_str = "{ branch: rel.branch, branch_level: rel.branch_level, status: rel.status, hierarchy: rel.hierarchical, from: $at, to: null }"
+
         query = """
         MATCH (root:Root)
         CREATE (n:Node:%s $node_prop )
@@ -170,8 +173,8 @@ class NodeCreateAllQuery(NodeQuery):
         FOREACH ( rel IN $rels_bidir |
             MERGE (d:Node { uuid: rel.destination_id })
             CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
-            CREATE (n)-[:IS_RELATED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(rl)
-            CREATE (d)-[:IS_RELATED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null  }]->(rl)
+            CREATE (n)-[:IS_RELATED %s ]->(rl)
+            CREATE (d)-[:IS_RELATED %s ]->(rl)
             MERGE (ip:Boolean { value: rel.is_protected })
             MERGE (iv:Boolean { value: rel.is_visible })
             CREATE (rl)-[:IS_PROTECTED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(ip)
@@ -188,8 +191,8 @@ class NodeCreateAllQuery(NodeQuery):
         FOREACH ( rel IN $rels_out |
             MERGE (d:Node { uuid: rel.destination_id })
             CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
-            CREATE (n)-[:IS_RELATED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(rl)
-            CREATE (d)<-[:IS_RELATED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null  }]-(rl)
+            CREATE (n)-[:IS_RELATED %s ]->(rl)
+            CREATE (d)<-[:IS_RELATED %s ]-(rl)
             MERGE (ip:Boolean { value: rel.is_protected })
             MERGE (iv:Boolean { value: rel.is_visible })
             CREATE (rl)-[:IS_PROTECTED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(ip)
@@ -206,8 +209,8 @@ class NodeCreateAllQuery(NodeQuery):
         FOREACH ( rel IN $rels_in |
             MERGE (d:Node { uuid: rel.destination_id })
             CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
-            CREATE (n)<-[:IS_RELATED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]-(rl)
-            CREATE (d)-[:IS_RELATED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null  }]->(rl)
+            CREATE (n)<-[:IS_RELATED %s ]-(rl)
+            CREATE (d)-[:IS_RELATED %s ]->(rl)
             MERGE (ip:Boolean { value: rel.is_protected })
             MERGE (iv:Boolean { value: rel.is_visible })
             CREATE (rl)-[:IS_PROTECTED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(ip)
@@ -223,7 +226,15 @@ class NodeCreateAllQuery(NodeQuery):
         )
         WITH distinct n
         MATCH (n)-[:HAS_ATTRIBUTE|IS_RELATED]-(rn)-[:HAS_VALUE|IS_RELATED]-(rv)
-        """ % ":".join(self.node.get_labels())
+        """ % (
+            ":".join(self.node.get_labels()),
+            rel_prop_str,
+            rel_prop_str,
+            rel_prop_str,
+            rel_prop_str,
+            rel_prop_str,
+            rel_prop_str,
+        )
 
         self.params["at"] = at.to_string()
 

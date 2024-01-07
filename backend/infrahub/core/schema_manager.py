@@ -254,6 +254,7 @@ class SchemaBranch:
     def process_pre_validation(self) -> None:
         self.generate_identifiers()
         self.process_default_values()
+        self.process_hierarchy()
         self.process_inheritance()
         self.process_branch_support()
 
@@ -265,6 +266,7 @@ class SchemaBranch:
 
     def process_post_validation(self) -> None:
         self.add_groups()
+        self.add_hierarchy()
         self.process_filters()
         self.generate_weight()
         self.process_labels()
@@ -441,6 +443,43 @@ class SchemaBranch:
             if changed:
                 self.set(name=name, schema=node)
 
+    def process_hierarchy(self) -> None:
+        for name in self.nodes.keys():
+            node = self.get(name=name)
+            if not node.hierarchical and not node.parent and not node.children:
+                continue
+
+            if not node.hierarchical and (node.parent is not None or node.children is not None):
+                raise ValueError(f"{node.kind} Hierarchical must be provided if either parent or children is defined.")
+
+            changed = False
+            if node.hierarchical not in self.generics.keys():
+                # TODO add a proper exception for all schema related issue
+                raise ValueError(
+                    f"{node.kind} Unable to find the generic {node.hierarchical!r} provided in 'hierarchical'."
+                )
+
+            if node.hierarchical not in node.inherit_from:
+                node.inherit_from.append(node.hierarchical)
+                changed = True
+
+            if node.parent is None:
+                node.parent = node.hierarchical
+                changed = True
+            elif node.parent != "":
+                if node.parent not in list(self.nodes.keys()) + list(self.generics.keys()):
+                    raise ValueError(f"{node.kind} Unable to find the node {node.parent!r} provided in 'parent'.")
+
+            if node.children is None:
+                node.children = node.hierarchical
+                changed = True
+            elif node.children != "":
+                if node.children not in list(self.nodes.keys()) + list(self.generics.keys()):
+                    raise ValueError(f"{node.kind} Unable to find the node {node.children!r} provided in 'children'.")
+
+            if changed:
+                self.set(name=name, schema=node)
+
     def process_inheritance(self) -> None:
         """Extend all the nodes with the attributes and relationships
         from the Interface objects defined in inherited_from.
@@ -587,6 +626,43 @@ class SchemaBranch:
                 )
 
             self.set(name=node_name, schema=schema)
+
+    def add_hierarchy(self):
+        for node_name in self.nodes.keys():
+            node: NodeSchema = self.get(name=node_name)
+
+            if node.parent is None and node.children is None:
+                continue
+
+            if node.parent and "parent" not in node.relationship_names:
+                node.relationships.append(
+                    RelationshipSchema(
+                        name="parent",
+                        identifier="parent__child",
+                        peer=node.parent,
+                        kind=RelationshipKind.HIERARCHY,
+                        cardinality=RelationshipCardinality.ONE,
+                        branch=BranchSupportType.AWARE,
+                        direction=RelationshipDirection.OUTBOUND,
+                        hierarchical=node.hierarchical,
+                    )
+                )
+
+            if node.children and "children" not in node.relationship_names:
+                node.relationships.append(
+                    RelationshipSchema(
+                        name="children",
+                        identifier="parent__child",
+                        peer=node.children,
+                        kind=RelationshipKind.HIERARCHY,
+                        cardinality=RelationshipCardinality.MANY,
+                        branch=BranchSupportType.AWARE,
+                        direction=RelationshipDirection.INBOUND,
+                        hierarchical=node.hierarchical,
+                    )
+                )
+
+            self.set(name=node_name, schema=node)
 
     def generate_filters(
         self, schema: Union[NodeSchema, GenericSchema], include_relationships: bool = False

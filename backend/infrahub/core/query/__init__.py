@@ -115,7 +115,12 @@ class QueryRel(QueryElement):
                 self.lenght_max,
             )
 
-        main_str = "[%s%s%s%s]" % (self.name or "", self.labels_as_str, self.params_as_str, lenght_str)
+        main_str = "[%s%s%s%s]" % (
+            self.name or "",
+            self.labels_as_str,
+            lenght_str,
+            self.params_as_str,
+        )
 
         if self.direction == QueryRelDirection.INBOUND:
             return "<-%s-" % main_str
