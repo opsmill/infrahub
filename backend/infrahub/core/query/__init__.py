@@ -104,9 +104,18 @@ class QueryNode(QueryElement):
 class QueryRel(QueryElement):
     type: QueryElementType = QueryElementType.RELATIONSHIP
     direction: QueryRelDirection = QueryRelDirection.BIDIR
+    lenght_min: int = 1
+    lenght_max: Optional[int] = None
 
     def __str__(self):
-        main_str = "[%s%s%s]" % (self.name or "", self.labels_as_str, self.params_as_str)
+        lenght_str = ""
+        if self.lenght_max:
+            lenght_str = "*%s..%s" % (
+                self.lenght_min,
+                self.lenght_max,
+            )
+
+        main_str = "[%s%s%s%s]" % (self.name or "", self.labels_as_str, self.params_as_str, lenght_str)
 
         if self.direction == QueryRelDirection.INBOUND:
             return "<-%s-" % main_str
