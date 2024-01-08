@@ -8,6 +8,7 @@ from infrahub.core.node import Node
 from infrahub.core.query.node import (
     NodeCreateAllQuery,
     NodeDeleteQuery,
+    NodeGetHierarchyQuery,
     NodeGetListQuery,
     NodeListGetAttributeQuery,
     NodeListGetInfoQuery,
@@ -334,3 +335,28 @@ async def test_query_NodeDeleteQuery(
 
     tags_after = await NodeManager.query(db=db, schema=InfrahubKind.TAG, branch=default_branch)
     assert len(tags_after) == len(tags_before) - 1
+
+
+async def test_query_NodeGetHierarchyQuery_ancestors(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    hierarchical_location_data,
+):
+    hierarchy_schema = registry.schema.get(name="LocationGeneric", branch=default_branch)
+    node_schema = registry.schema.get(name="LocationRack", branch=default_branch)
+
+    europe = hierarchical_location_data["europe"]
+    paris = hierarchical_location_data["paris"]
+    paris_r1 = hierarchical_location_data["paris-r1"]
+
+    query = await NodeGetHierarchyQuery.init(
+        db=db,
+        direction="ancestors",
+        node_id=paris_r1.id,
+        node_schema=node_schema,
+        hierarchy_schema=hierarchy_schema,
+        branch=default_branch,
+    )
+
+    await query.execute(db=db)
+    assert sorted(list(query.get_peer_ids())) == sorted([paris.id, europe.id])

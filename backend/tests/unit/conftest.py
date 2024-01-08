@@ -2326,6 +2326,50 @@ async def hierarchical_location_schema(db: InfrahubDatabase, default_branch: Bra
 
 
 @pytest.fixture
+async def hierarchical_location_data(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema
+) -> None:
+    REGIONS = (
+        ("north-america",),
+        ("europe",),
+        ("asia",),
+    )
+
+    SITES = (
+        ("paris", "europe"),
+        ("london", "europe"),
+        ("chicago", "north-america"),
+        ("seattle", "north-america"),
+        ("beijing", "asia"),
+        ("singapore", "asia"),
+    )
+    NBR_RACKS_PER_SITE = 2
+
+    nodes = {}
+
+    for region in REGIONS:
+        obj = await Node.init(db=db, schema="LocationRegion")
+        await obj.new(db=db, name=region[0])
+        await obj.save(db=db)
+        nodes[obj.name.value] = obj
+
+    for site in SITES:
+        obj = await Node.init(db=db, schema="LocationSite")
+        await obj.new(db=db, name=site[0], parent=site[1])
+        await obj.save(db=db)
+        nodes[obj.name.value] = obj
+
+        for idx in range(1, NBR_RACKS_PER_SITE + 1):
+            rack_name = f"{site[0]}-r{idx}"
+            obj = await Node.init(db=db, schema="LocationRack")
+            await obj.new(db=db, name=rack_name, parent=site[0])
+            await obj.save(db=db)
+            nodes[obj.name.value] = obj
+
+    return nodes
+
+
+@pytest.fixture
 async def prefix_schema(db: InfrahubDatabase, default_branch: Branch) -> SchemaRoot:
     SCHEMA = {
         "nodes": [
