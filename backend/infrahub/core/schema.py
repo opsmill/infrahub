@@ -1554,7 +1554,7 @@ core_models = {
             "name": "GraphQLQueryGroup",
             "namespace": "Core",
             "description": "Group of nodes associated with a given GraphQLQuery.",
-            "include_in_menu": True,
+            "include_in_menu": False,
             "icon": "mdi:account-group",
             "label": "GraphQL Query Group",
             "default_filter": "name__value",
@@ -1562,6 +1562,9 @@ core_models = {
             "display_labels": ["name__value"],
             "branch": BranchSupportType.LOCAL.value,
             "inherit_from": ["CoreGroup"],
+            "attributes": [
+                {"name": "parameters", "kind": "JSON"},
+            ],
             "relationships": [
                 {
                     "name": "query",
