@@ -124,7 +124,7 @@ The project is pre-configured to run in GitHub Codespace. We have two devcontain
 
 The default devcontainer `.devcontainer/devcontainer.json` is the bare-bones one. If you want to run the demo, you will need to choose it in your GitHGub Codespace options.
 
-[!ref Infrahub decontainer file](https://github.com/opsmill/infrahub/tree/stable/.devcontainer/devcontainer.json)
+[!ref Infrahub devcontainer file](https://github.com/opsmill/infrahub/tree/stable/.devcontainer/devcontainer.json)
 
 ## GitPod
 
