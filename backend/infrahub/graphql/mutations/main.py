@@ -246,11 +246,12 @@ class InfrahubMutationMixin:
             if unique_attr.inherited:
                 for generic_parent_schema_name in cls._meta.schema.inherit_from:
                     generic_parent_schema = registry.get_schema(generic_parent_schema_name, branch=branch)
-                    if unique_attr.name in generic_parent_schema.attribute_names:
-                        parent_attr = generic_parent_schema.get_attribute(unique_attr.name)
-                        if parent_attr.unique is True:
-                            comparison_schema = generic_parent_schema
-                            break
+                    parent_attr = generic_parent_schema.get_attribute(unique_attr.name, raise_on_error=False)
+                    if parent_attr is None:
+                        continue
+                    if parent_attr.unique is True:
+                        comparison_schema = generic_parent_schema
+                        break
             nodes = await NodeManager.query(
                 schema=comparison_schema,
                 filters={f"{unique_attr.name}__value": attr.value},
