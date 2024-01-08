@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, List
 
-from fastapi import APIRouter, Depends, Request, Response
-from pydantic.v1 import BaseModel, Field
+from fastapi import APIRouter, Body, Depends, Request, Response
+from pydantic import BaseModel, Field
 
 from infrahub import config
 from infrahub.api.dependencies import BranchParams, get_branch_params, get_current_user, get_db
@@ -50,7 +50,10 @@ async def get_artifact(
 async def generate_artifact(
     request: Request,
     artifact_definition_id: str,
-    payload: ArtifactGeneratePayload = ArtifactGeneratePayload(),
+    payload: ArtifactGeneratePayload = Body(
+        ArtifactGeneratePayload(),
+        description="Payload of the request, can be used to limit the scope of the query to a specific list of hosts",
+    ),
     db: InfrahubDatabase = Depends(get_db),
     branch_params: BranchParams = Depends(get_branch_params),
     _: str = Depends(get_current_user),
