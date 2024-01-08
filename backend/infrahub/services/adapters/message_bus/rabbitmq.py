@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import TYPE_CHECKING, MutableMapping, Optional
+from typing import TYPE_CHECKING, Awaitable, Callable, List, MutableMapping, Optional
 
 from infrahub_sdk import UUIDT
 
@@ -26,6 +26,13 @@ if TYPE_CHECKING:
 
     from infrahub.services import InfrahubServices
 
+MessageFunction = Callable[[InfrahubMessage], Awaitable[None]]
+
+
+async def _add_request_id(message: InfrahubMessage) -> None:
+    log_data = get_log_data()
+    message.meta.request_id = log_data.get("request_id", "")
+
 
 class RabbitMQMessageBus(InfrahubMessageBus):
     def __init__(
@@ -39,6 +46,7 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         self.callback_queue: AbstractQueue
         self.events_queue: AbstractQueue
         self.dlx: AbstractExchange
+        self.message_enrichers: List[MessageFunction] = []
 
         self.loop = asyncio.get_running_loop()
         self.futures: MutableMapping[str, asyncio.Future] = {}
@@ -119,6 +127,8 @@ class RabbitMQMessageBus(InfrahubMessageBus):
 
         await self.events_queue.bind(self.exchange, routing_key="refresh.registry.*")
 
+        self.message_enrichers.append(_add_request_id)
+
     async def _initialize_git_worker(self) -> None:
         connection = await get_broker()
         # Create a channel and subscribe to the incoming RPC queue
@@ -135,6 +145,8 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         await events_queue.consume(callback=self.on_callback, no_ack=True)
 
     async def publish(self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None) -> None:
+        for enricher in self.message_enrichers:
+            await enricher(message)
         message.assign_priority(priority=messages.message_priority(routing_key=routing_key))
         if delay:
             message.assign_header(key="delay", value=delay.value)

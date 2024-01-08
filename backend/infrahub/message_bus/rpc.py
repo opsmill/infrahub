@@ -3,17 +3,14 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING, Any, List, MutableMapping
 
-from infrahub.log import get_log_data, get_logger
-
-from . import InfrahubMessage, Meta
-from .messages import ROUTING_KEY_MAP
+from infrahub.services import services
 
 if TYPE_CHECKING:
     from aio_pika.abc import (
         AbstractExchange,
     )
 
-log = get_logger()
+    from . import InfrahubMessage
 
 
 class InfrahubRpcClientBase:
@@ -24,15 +21,7 @@ class InfrahubRpcClientBase:
         self.loop = asyncio.get_running_loop()
 
     async def send(self, message: InfrahubMessage) -> None:
-        routing_key = ROUTING_KEY_MAP.get(type(message))
-
-        if not routing_key:
-            raise ValueError("Unable to determine routing key")
-
-        log_data = get_log_data()
-        request_id = log_data.get("request_id", "")
-        message.meta = message.meta or Meta(request_id=request_id)
-        await self.exchange.publish(message, routing_key=routing_key)
+        await services.send(message=message)
 
 
 class InfrahubRpcClient(InfrahubRpcClientBase):
