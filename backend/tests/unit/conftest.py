@@ -1168,6 +1168,159 @@ async def car_person_schema(db: InfrahubDatabase, default_branch: Branch, node_g
                 ],
                 "relationships": [{"name": "cars", "peer": "TestCar", "cardinality": "many", "direction": "inbound"}],
             },
+            {
+                "name": "Cylon",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "display_labels": ["name__value"],
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "height", "kind": "Number", "optional": True},
+                    {"name": "model_number", "kind": "Number"},
+                ],
+                "relationships": [{"name": "cars", "peer": "TestCar", "cardinality": "many", "direction": "inbound"}],
+            },
+        ],
+    }
+
+    schema = SchemaRoot(**SCHEMA)
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+
+@pytest.fixture
+async def car_person_schema_with_generic(
+    db: InfrahubDatabase, default_branch: Branch, node_group_schema, data_schema
+) -> None:
+    SCHEMA = {
+        "generics": [
+            {
+                "name": "Humanoid",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "display_labels": ["name__value"],
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "height", "kind": "Number", "optional": True},
+                ],
+                "relationships": [{"name": "cars", "peer": "TestCar", "cardinality": "many", "direction": "inbound"}],
+            },
+        ],
+        "nodes": [
+            {
+                "name": "Car",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "display_labels": ["name__value", "color__value"],
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "nbr_seats", "kind": "Number"},
+                    {"name": "color", "kind": "Text", "default_value": "#444444", "max_length": 7},
+                    {"name": "is_electric", "kind": "Boolean"},
+                ],
+                "relationships": [
+                    {
+                        "name": "owner",
+                        "peer": "TestPerson",
+                        "optional": False,
+                        "cardinality": "one",
+                        "direction": "outbound",
+                    },
+                ],
+            },
+            {
+                "name": "Person",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "display_labels": ["name__value"],
+                "branch": BranchSupportType.AWARE.value,
+                "inherit_from": ["TestHumanoid"],
+            },
+            {
+                "name": "Cylon",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "display_labels": ["name__value"],
+                "branch": BranchSupportType.AWARE.value,
+                "inherit_from": ["TestHumanoid"],
+                "attributes": [
+                    {"name": "model_number", "kind": "Number"},
+                ],
+            },
+        ],
+    }
+
+    schema = SchemaRoot(**SCHEMA)
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+
+@pytest.fixture
+async def car_person_schema_generic_with_unique_override(
+    db: InfrahubDatabase, default_branch: Branch, node_group_schema, data_schema
+) -> None:
+    SCHEMA = {
+        "generics": [
+            {
+                "name": "Humanoid",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "display_labels": ["name__value"],
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text"},
+                    {"name": "height", "kind": "Number", "optional": True},
+                ],
+                "relationships": [{"name": "cars", "peer": "TestCar", "cardinality": "many", "direction": "inbound"}],
+            },
+        ],
+        "nodes": [
+            {
+                "name": "Car",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "display_labels": ["name__value", "color__value"],
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "nbr_seats", "kind": "Number"},
+                    {"name": "color", "kind": "Text", "default_value": "#444444", "max_length": 7},
+                    {"name": "is_electric", "kind": "Boolean"},
+                ],
+                "relationships": [
+                    {
+                        "name": "owner",
+                        "peer": "TestPerson",
+                        "optional": False,
+                        "cardinality": "one",
+                        "direction": "outbound",
+                    },
+                ],
+            },
+            {
+                "name": "Person",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "display_labels": ["name__value"],
+                "branch": BranchSupportType.AWARE.value,
+                "inherit_from": ["TestHumanoid"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+            },
+            {
+                "name": "Cylon",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "display_labels": ["name__value"],
+                "branch": BranchSupportType.AWARE.value,
+                "inherit_from": ["TestHumanoid"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "model_number", "kind": "Number"},
+                ],
+            },
         ],
     }
 

@@ -161,21 +161,7 @@ class InfrahubMutationMixin:
         try:
             await obj.from_graphql(db=db, data=data)
 
-            # Check if the new object is conform with the uniqueness constraints
-            for unique_attr in cls._meta.schema.unique_attributes:
-                attr = getattr(obj, unique_attr.name)
-                nodes = await NodeManager.query(
-                    schema=cls._meta.schema,
-                    filters={f"{unique_attr.name}__value": attr.value},
-                    fields={},
-                    db=db,
-                    branch=branch,
-                    at=at,
-                )
-                if [node for node in nodes if node.id != obj.id]:
-                    raise ValidationError(
-                        {unique_attr.name: f"An object already exist with this value: {unique_attr.name}: {attr.value}"}
-                    )
+            await cls.validate_constraints(db=db, node=obj, branch=branch, at=at, id_to_ignore=obj.id)
             node_id = data.pop("id", obj.id)
             fields = list(data.keys())
             validate_mutation_permissions_update_node(
@@ -245,17 +231,36 @@ class InfrahubMutationMixin:
         return obj, cls(ok=ok)
 
     @classmethod
-    async def validate_constraints(cls, db: InfrahubDatabase, node: Node, branch: Optional[str] = None) -> None:
-        """Check if the new object is conform with the uniqueness constraints."""
+    async def validate_constraints(
+        cls,
+        db: InfrahubDatabase,
+        node: Node,
+        branch: Optional[str] = None,
+        at: Optional[str] = None,
+        id_to_ignore: Optional[str] = None,
+    ) -> None:
+        """Check if the new object violates the uniqueness constraints."""
         for unique_attr in cls._meta.schema.unique_attributes:
+            comparison_schema = cls._meta.schema
             attr = getattr(node, unique_attr.name)
+            if unique_attr.inherited:
+                for generic_parent_schema_name in cls._meta.schema.inherit_from:
+                    generic_parent_schema = registry.get_schema(generic_parent_schema_name, branch=branch)
+                    if unique_attr.name in generic_parent_schema.attribute_names:
+                        parent_attr = generic_parent_schema.get_attribute(unique_attr.name)
+                        if parent_attr.unique is True:
+                            comparison_schema = generic_parent_schema
+                            break
             nodes = await NodeManager.query(
-                schema=cls._meta.schema,
+                schema=comparison_schema,
                 filters={f"{unique_attr.name}__value": attr.value},
                 fields={},
                 db=db,
                 branch=branch,
+                at=at,
             )
+            if id_to_ignore:
+                nodes = [node for node in nodes if node.id != id_to_ignore]
             if nodes:
                 raise ValidationError(
                     {unique_attr.name: f"An object already exist with this value: {unique_attr.name}: {attr.value}"}
