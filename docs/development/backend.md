@@ -7,12 +7,12 @@ In order start developing Infrahub, it is recommended to have a decent knowledge
 * [Poetry](https://python-poetry.org/) to manage our Python virtual environment, and,
 * [Docker](https://www.docker.com/) and its Compose extension to run dependencies such as the database, cache and queueing system.
 
-To fetch Infrahub's code, we will use git and we will use the `development` branch.
+To fetch Infrahub's code, we will use git and we will use the `develop` branch.
 
 ```bash
 git clone git@github.com:opsmill/infrahub.git
 cd infrahub
-git switch development
+git switch develop
 ```
 
 ## Basic settings
