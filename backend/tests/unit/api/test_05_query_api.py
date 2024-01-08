@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
-from infrahub_sdk.utils import dict_hash
 
+from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.database import InfrahubDatabase
 from infrahub.message_bus import messages
@@ -13,6 +13,16 @@ def patch_rpc_client():
     import infrahub.message_bus.rpc
 
     infrahub.message_bus.rpc.InfrahubRpcClient = InfrahubRpcClientTesting
+
+
+@pytest.fixture
+async def base_authentication(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    create_test_admin,
+    register_core_models_schema,
+):
+    pass
 
 
 async def test_query_endpoint_group_no_params(
@@ -48,13 +58,12 @@ async def test_query_endpoint_group_no_params(
 
     assert (
         messages.RequestGraphQLQueryGroupUpdate(
-            meta=None,
             query_id=q1.id,
             query_name="query01",
             branch="main",
             related_node_ids={p1.id, p2.id, c1.id, c2.id, c3.id},
             subscribers={"AAAAAA", "BBBBBB"},
-            params_hash=dict_hash({}),
+            params={},
         )
         in client.app.state.rpc_client.sent
     )
@@ -87,19 +96,18 @@ async def test_query_endpoint_group_params(
 
     assert (
         messages.RequestGraphQLQueryGroupUpdate(
-            meta=None,
             query_id=q2.id,
             query_name="query02",
             branch="main",
             related_node_ids={p1.id},
             subscribers=[],
-            params_hash=dict_hash({"person": "John"}),
+            params={"person": "John"},
         )
         in client.app.state.rpc_client.sent
     )
 
 
-async def test_query_endpoint_default_branch(
+async def test_query_endpoint_get_default_branch(
     db: InfrahubDatabase, client, client_headers, default_branch, car_person_data
 ):
     # Must execute in a with block to execute the startup/shutdown events
@@ -120,7 +128,56 @@ async def test_query_endpoint_default_branch(
     assert len(result_per_name["Jane"]["node"]["cars"]["edges"]) == 1
 
 
-async def test_query_endpoint_branch1(db: InfrahubDatabase, client, client_headers, default_branch, car_person_data):
+async def test_query_endpoint_post_no_payload(
+    db: InfrahubDatabase,
+    client,
+    admin_headers,
+    default_branch,
+    car_person_data,
+    base_authentication,
+):
+    # Must execute in a with block to execute the startup/shutdown events
+    with client:
+        response = client.post(
+            "/api/query/query01",
+            headers=admin_headers,
+        )
+
+    assert "errors" not in response.json()
+    assert response.status_code == 200
+    assert response.json()["data"] is not None
+    result = response.json()["data"]
+
+    result_per_name = {result["node"]["name"]["value"]: result for result in result["TestPerson"]["edges"]}
+    assert sorted(result_per_name.keys()) == ["Jane", "John"]
+    assert len(result_per_name["John"]["node"]["cars"]["edges"]) == 2
+    assert len(result_per_name["Jane"]["node"]["cars"]["edges"]) == 1
+
+
+async def test_query_endpoint_post_with_params(
+    db: InfrahubDatabase,
+    client,
+    admin_headers,
+    default_branch,
+    car_person_data,
+    base_authentication,
+):
+    # Must execute in a with block to execute the startup/shutdown events
+    with client:
+        response = client.post("/api/query/query02", headers=admin_headers, json={"variables": {"person": "John"}})
+
+    assert "errors" not in response.json()
+    assert response.status_code == 200
+    assert response.json()["data"] is not None
+    result = response.json()["data"]
+
+    result_per_name = {result["node"]["name"]["value"]: result for result in result["TestPerson"]["edges"]}
+    assert sorted(result_per_name.keys()) == ["John"]
+
+
+async def test_query_endpoint_branch1(
+    db: InfrahubDatabase, client, client_headers, default_branch, car_person_data, authentication_base
+):
     await create_branch(branch_name="branch1", db=db)
 
     # Must execute in a with block to execute the startup/shutdown events
