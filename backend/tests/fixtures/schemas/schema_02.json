@@ -211,6 +211,23 @@
                     "branch": "aware",
                     "optional": true,
                     "order_weight": 3000
+                },
+                {
+                    "name": "parameters",
+                    "kind": "JSON",
+                    "namespace": "Attribute",
+                    "label": null,
+                    "description": null,
+                    "default_value": null,
+                    "enum": null,
+                    "regex": null,
+                    "max_length": null,
+                    "min_length": null,
+                    "inherited": false,
+                    "unique": false,
+                    "branch": "aware",
+                    "optional": true,
+                    "order_weight": 3000
                 }
             ],
             "relationships": [

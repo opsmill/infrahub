@@ -65,7 +65,7 @@ class Attribute:
         self.name = name
         self._schema = schema
 
-        if not isinstance(data, dict):
+        if not isinstance(data, dict) or "value" not in data.keys():
             data = {"value": data}
 
         self._properties_flag = PROPERTIES_FLAG
@@ -97,7 +97,7 @@ class Attribute:
 
         for prop_name in self._properties_object:
             if data.get(prop_name):
-                setattr(self, prop_name, NodeProperty(data=data.get(prop_name)))
+                setattr(self, prop_name, NodeProperty(data=data.get(prop_name)))  # type: ignore[arg-type]
 
     def _generate_input_data(self) -> Optional[Dict]:
         data: Dict[str, Any] = {}

@@ -568,7 +568,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         self.refresh_token = response.json()["refresh_token"]
         self.headers["Authorization"] = f"Bearer {self.access_token}"
 
-    async def query_gql_query(
+    async def query_gql_query(  # pylint: disable=too-many-branches
         self,
         name: str,
         variables: Optional[dict] = None,
@@ -613,7 +613,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
 
         payload = None
         if variables:
-            payload = {"variables": variables }
+            payload = {"variables": variables}
 
         resp = await self._request(
             url=url,
@@ -1047,7 +1047,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             "This method is deprecated in the async client and won't be implemented in the sync client."
         )
 
-    def query_gql_query(
+    def query_gql_query(  # pylint: disable=too-many-branches
         self,
         name: str,
         variables: Optional[dict] = None,
@@ -1061,7 +1061,6 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         tracker: Optional[str] = None,
         raise_for_error: bool = True,
     ) -> Dict:
-
         url = f"{self.address}/api/query/{name}"
         url_params = copy.deepcopy(params or {})
         headers = copy.copy(self.headers or {})
@@ -1093,7 +1092,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
 
         payload = None
         if variables:
-            payload = {"variables": variables }
+            payload = {"variables": variables}
 
         resp = self._request(
             url=url,
