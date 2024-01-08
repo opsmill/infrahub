@@ -33,7 +33,6 @@ import { getProposedChangesThreads } from "../../graphql/queries/proposed-change
 import useQuery from "../../hooks/useQuery";
 import { branchesState, currentBranchAtom } from "../../state/atoms/branches.atom";
 import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
-import { schemaState } from "../../state/atoms/schema.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
 import { constructPath } from "../../utils/fetch";
 import { getProposedChangesStateBadgeType } from "../../utils/proposed-changes";
@@ -100,7 +99,6 @@ export const Conversations = (props: tConversations) => {
   const { refetch: detailsRefetch } = props;
   const { proposedchange } = useParams();
   const [branches] = useAtom(branchesState);
-  const [schemaList] = useAtom(schemaState);
   const [proposedChangesDetails] = useAtom(proposedChangedState);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
@@ -111,12 +109,10 @@ export const Conversations = (props: tConversations) => {
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const navigate = useNavigate();
 
-  const accountSchemaData = schemaList.find((s) => s.kind === ACCOUNT_OBJECT);
-
   const queryString = getProposedChangesThreads({
     id: proposedchange,
     kind: PROPOSED_CHANGES_THREAD_OBJECT,
-    accountKind: accountSchemaData.kind,
+    accountKind: ACCOUNT_OBJECT,
   });
 
   const query = gql`
@@ -286,7 +282,9 @@ export const Conversations = (props: tConversations) => {
 
       toast(<Alert type={ALERT_TYPES.SUCCESS} message="Proposed change approved" />);
 
-      refetch();
+      if (detailsRefetch) {
+        await detailsRefetch();
+      }
 
       setIsLoadingApprove(false);
 
@@ -403,7 +401,7 @@ export const Conversations = (props: tConversations) => {
     .map((branch) => ({ id: branch.name, name: branch.name }));
 
   const reviewersOptions: any[] = data
-    ? data[accountSchemaData.kind]?.edges.map((edge: any) => ({
+    ? data[ACCOUNT_OBJECT]?.edges.map((edge: any) => ({
         id: edge?.node.id,
         name: edge?.node?.display_label,
       }))
