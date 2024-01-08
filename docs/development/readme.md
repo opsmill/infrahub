@@ -91,9 +91,9 @@ Now we can:
 Full documentation: https://docs.cypress.io/guides/end-to-end-testing/writing-your-first-end-to-end-test
 
 ## Developer environment
-
+<!-- vale off -->
 ### VS Code extensions
-
+<!-- vale on -->
 - Excalidraw: https://marketplace.visualstudio.com/items?itemName=pomdtr.excalidraw-editor
 - Jinja: https://marketplace.visualstudio.com/items?itemName=wholroyd.jinja
 - Pylance: https://marketplace.visualstudio.com/items?itemName=ms-python.vscode-pylance

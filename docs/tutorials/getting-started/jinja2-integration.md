@@ -8,15 +8,8 @@ order: 550
 # Rendering Jinja templates
 
 Infrahub can natively render any Jinja templates dynamically. Internally it's referred to as `RFile` for `Rendered File`.
-There are many systems that can render Jinja Templates. What sets Infrahub apart is the deep integration with the `Unified Version Control System` and the Jinja rendering engine. It allows users to prepare and render a change in a branch, including changes on the data AND on the template without affecting the rendering on the main branch.
 
-!!!
-The `infrahub-demo-edge` repository that we integrated in the previous step includes one RFile that can generate a full configuration for each device.
-!!!
-
-## RFile
-
-An `RFile` is an internal concept that represents a Jinja Template coupled with a `GraphQL Query`. Combined, they can render any file in text format.
+Please refer to [Transform](/topics/transformation) to learn more about it.
 
 ## Generate the configuration of a device
 
