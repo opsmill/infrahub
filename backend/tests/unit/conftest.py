@@ -2297,6 +2297,7 @@ async def hierarchical_location_schema(db: InfrahubDatabase, default_branch: Bra
                 "name": "Generic",
                 "namespace": "Location",
                 "default_filter": "name__value",
+                "hierarchical": True,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                 ],
@@ -2306,17 +2307,26 @@ async def hierarchical_location_schema(db: InfrahubDatabase, default_branch: Bra
             {
                 "name": "Region",
                 "namespace": "Location",
-                "hierarchical": "LocationGeneric",
+                "default_filter": "name__value",
+                "inherit_from": ["LocationGeneric"],
+                "parent": "",
+                "children": "LocationSite",
             },
             {
                 "name": "Site",
                 "namespace": "Location",
-                "hierarchical": "LocationGeneric",
+                "default_filter": "name__value",
+                "inherit_from": ["LocationGeneric"],
+                "parent": "LocationRegion",
+                "children": "LocationSite",
             },
             {
                 "name": "Rack",
                 "namespace": "Location",
-                "hierarchical": "LocationGeneric",
+                "default_filter": "name__value",
+                "inherit_from": ["LocationGeneric"],
+                "parent": "LocationSite",
+                "children": "",
             },
         ],
     }

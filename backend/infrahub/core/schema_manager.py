@@ -254,8 +254,8 @@ class SchemaBranch:
     def process_pre_validation(self) -> None:
         self.generate_identifiers()
         self.process_default_values()
-        self.process_hierarchy()
         self.process_inheritance()
+        self.process_hierarchy()
         self.process_branch_support()
 
     def process_validate(self) -> None:
@@ -446,32 +446,31 @@ class SchemaBranch:
     def process_hierarchy(self) -> None:
         for name in self.nodes.keys():
             node = self.get(name=name)
-            if not node.hierarchical and not node.parent and not node.children:
+
+            if not node.hierarchy and not node.parent and not node.children:
                 continue
 
-            if not node.hierarchical and (node.parent is not None or node.children is not None):
-                raise ValueError(f"{node.kind} Hierarchical must be provided if either parent or children is defined.")
+            if not node.hierarchy and (node.parent is not None or node.children is not None):
+                raise ValueError(f"{node.kind} Hierarchy must be provided if either parent or children is defined.")
 
             changed = False
-            if node.hierarchical not in self.generics.keys():
+            if node.hierarchy not in self.generics.keys():
                 # TODO add a proper exception for all schema related issue
-                raise ValueError(
-                    f"{node.kind} Unable to find the generic {node.hierarchical!r} provided in 'hierarchical'."
-                )
+                raise ValueError(f"{node.kind} Unable to find the generic {node.hierarchy!r} provided in 'hierarchy'.")
 
-            if node.hierarchical not in node.inherit_from:
-                node.inherit_from.append(node.hierarchical)
+            if node.hierarchy not in node.inherit_from:
+                node.inherit_from.append(node.hierarchy)
                 changed = True
 
             if node.parent is None:
-                node.parent = node.hierarchical
+                node.parent = node.hierarchy
                 changed = True
             elif node.parent != "":
                 if node.parent not in list(self.nodes.keys()) + list(self.generics.keys()):
                     raise ValueError(f"{node.kind} Unable to find the node {node.parent!r} provided in 'parent'.")
 
             if node.children is None:
-                node.children = node.hierarchical
+                node.children = node.hierarchy
                 changed = True
             elif node.children != "":
                 if node.children not in list(self.nodes.keys()) + list(self.generics.keys()):
@@ -495,14 +494,25 @@ class SchemaBranch:
 
             generics_used_by["CoreNode"].append(node.kind)
 
+            generic_with_hierarchical_support = []
             for generic_kind in node.inherit_from:
                 if generic_kind not in self.generics.keys():
                     # TODO add a proper exception for all schema related issue
                     raise ValueError(f"{node.kind} Unable to find the generic {generic_kind}")
 
+                if self.get(generic_kind).hierarchical:
+                    generic_with_hierarchical_support.append(generic_kind)
+
                 # Store the list of node referencing a specific generics
                 generics_used_by[generic_kind].append(node.kind)
                 node.inherit_from_interface(interface=self.get(name=generic_kind))
+
+            if len(generic_with_hierarchical_support) > 1:
+                raise ValueError(
+                    f"{node.kind} Only one generic with hierarchical support is allowed per node {generic_with_hierarchical_support}"
+                )
+            if len(generic_with_hierarchical_support) == 1 and node.hierarchy is None:
+                node.hierarchy = generic_with_hierarchical_support[0]
 
             self.set(name=name, schema=node)
 
@@ -644,7 +654,7 @@ class SchemaBranch:
                         cardinality=RelationshipCardinality.ONE,
                         branch=BranchSupportType.AWARE,
                         direction=RelationshipDirection.OUTBOUND,
-                        hierarchical=node.hierarchical,
+                        hierarchical=node.hierarchy,
                     )
                 )
 
@@ -658,7 +668,7 @@ class SchemaBranch:
                         cardinality=RelationshipCardinality.MANY,
                         branch=BranchSupportType.AWARE,
                         direction=RelationshipDirection.INBOUND,
-                        hierarchical=node.hierarchical,
+                        hierarchical=node.hierarchy,
                     )
                 )
 

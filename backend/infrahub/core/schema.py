@@ -682,13 +682,14 @@ class BaseNodeSchema(BaseSchemaModel):
 class GenericSchema(BaseNodeSchema):
     """A Generic can be either an Interface or a Union depending if there are some Attributes or Relationships defined."""
 
+    hierarchical: bool = Field(default=False)
     used_by: List[str] = Field(default_factory=list)
 
 
 class NodeSchema(BaseNodeSchema):
     inherit_from: List[str] = Field(default_factory=list)
     groups: Optional[List[str]] = Field(default_factory=list)
-    hierarchical: Optional[str] = Field(default=None)
+    hierarchy: Optional[str] = Field(default=None)
     parent: Optional[str] = Field(default=None)
     children: Optional[str] = Field(default=None)
 
@@ -720,7 +721,7 @@ class NodeSchema(BaseNodeSchema):
                 self.relationships[item_idx] = new_item
 
     def get_hierarchy_schema(self, branch: Optional[Union[Branch, str]] = None) -> GenericSchema:
-        schema = registry.schema.get(name=self.hierarchical, branch=branch)
+        schema = registry.schema.get(name=self.hierarchy, branch=branch)
         if not isinstance(schema, GenericSchema):
             raise TypeError
         return schema
@@ -882,9 +883,9 @@ internal_schema = {
                     "optional": True,
                 },
                 {
-                    "name": "hierarchical",
+                    "name": "hierarchy",
                     "kind": "Text",
-                    "description": "Name of the Hierarchy, must match the name of a Generic.",
+                    "description": "Internal value to track the name of the Hierarchy, must match the name of a Generic supporting hierarchical mode"
                     "optional": True,
                 },
                 {
@@ -1250,6 +1251,13 @@ internal_schema = {
                     "optional": True,
                     "description": "Short description of the Generic.",
                     "max_length": DEFAULT_DESCRIPTION_LENGTH,
+                },
+                {
+                    "name": "hierarchical",
+                    "kind": "Boolean",
+                    "description": "Defines if the Generic support the hierarchical mode.",
+                    "optional": True,
+                    "default_value": False,
                 },
                 {
                     "name": "used_by",
