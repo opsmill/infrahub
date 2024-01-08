@@ -49,3 +49,5 @@ toml
 uncheck
 validators
 yamllint
+include_in_menu
+menu_placement
