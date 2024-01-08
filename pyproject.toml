@@ -90,6 +90,8 @@ no-docstring-rgx="^(_|test_)"
 [tool.pylint.messages_control]
 # Line length is enforced by Black, so pylint doesn't need to check it.
 # Pylint and Black disagree about how to format multi-line arrays; Black wins.
+# assigning-non-slot,no-member,unsupported-membership-test,unsubscriptable-object,unsupported-assignment-operation,not-an-iterable
+# are disabled because of our move to pydantic 2, pylint does not seem to respect the type hint for pydantic 2 model fields.
 disable = """,
     line-too-long,
     missing-module-docstring,
@@ -107,6 +109,12 @@ disable = """,
     protected-access,
     import-self,
     wrong-import-order,
+    assigning-non-slot,
+    no-member,
+    unsupported-membership-test,
+    unsubscriptable-object,
+    unsupported-assignment-operation,
+    not-an-iterable,
     """
 
 [tool.pylint.miscellaneous]
