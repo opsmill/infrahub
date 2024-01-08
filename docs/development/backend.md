@@ -27,8 +27,8 @@ export INFRAHUB_SDK_PASSWORD=infrahub
 export INFRAHUB_SDK_TIMEOUT=20
 export INFRAHUB_METRICS_PORT=8001
 export INFRAHUB_DB_TYPE=memgraph # Accepts neo4j or memgraph
-export INFRAHUB_SECURITY_INITIAL_ADMIN_TOKEN="${ADMIN_TOKEN}"
-export INFRAHUB_STORAGE_LOCAL_PATH="/Users/${USER}/Development/infrahub-storage"
+export INFRAHUB_SECURITY_INITIAL_ADMIN_TOKEN="${ADMIN_TOKEN}" # Random string which can be generated using: openssl rand -hex 16
+export INFRAHUB_STORAGE_LOCAL_PATH="${HOME}/Development/infrahub-storage"
 ```
 
 The exported environment variables are very important and must be set before moving to another step. Without these, you will likely face some errors or issues later.
