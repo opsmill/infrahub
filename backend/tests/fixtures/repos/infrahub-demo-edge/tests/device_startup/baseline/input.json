@@ -1,0 +1,746 @@
+{
+    "data": {
+      "InfraDevice": {
+        "edges": [
+          {
+            "node": {
+              "id": "17a49cb4-f436-4208-45b0-2fc3e8a69b5e",
+              "name": {
+                "value": "atl-spine1"
+              },
+              "asn": {
+                "node": {
+                  "asn": {
+                    "value": 64496
+                  }
+                }
+              },
+              "interfaces": {
+                "edges": [
+                  {
+                    "node": {
+                      "id": "17a49cb5-40c7-ba98-45bb-2fc35123c445",
+                      "name": {
+                        "value": "Ethernet1"
+                      },
+                      "description": {
+                        "value": null
+                      },
+                      "enabled": {
+                        "value": true
+                      },
+                      "role": {
+                        "value": "transit"
+                      },
+                      "ip_addresses": {
+                        "edges": [
+                          {
+                            "node": {
+                              "address": {
+                                "value": "203.0.113.1/29"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "node": {
+                      "id": "17a49cb6-58b8-95b8-45bd-2fc344c745a9",
+                      "name": {
+                        "value": "Ethernet10"
+                      },
+                      "description": {
+                        "value": null
+                      },
+                      "enabled": {
+                        "value": true
+                      },
+                      "role": {
+                        "value": "spare"
+                      },
+                      "ip_addresses": {
+                        "edges": []
+                      }
+                    }
+                  },
+                  {
+                    "node": {
+                      "id": "17a49cb6-5fa5-1b58-45ba-2fc31665bddd",
+                      "name": {
+                        "value": "Ethernet11"
+                      },
+                      "description": {
+                        "value": null
+                      },
+                      "enabled": {
+                        "value": true
+                      },
+                      "role": {
+                        "value": "server"
+                      }
+                    }
+                  },
+                  {
+                    "node": {
+                      "id": "17a49cb6-66fb-8270-45bf-2fc35467cd2a",
+                      "name": {
+                        "value": "Ethernet12"
+                      },
+                      "description": {
+                        "value": null
+                      },
+                      "enabled": {
+                        "value": true
+                      },
+                      "role": {
+                        "value": "server"
+                      }
+                    }
+                  },
+                  {
+                    "node": {
+                      "id": "17a49cb5-f691-1900-45b3-2fc3f988eccf",
+                      "name": {
+                        "value": "Ethernet2"
+                      },
+                      "description": {
+                        "value": null
+                      },
+                      "enabled": {
+                        "value": true
+                      },
+                      "role": {
+                        "value": "transit"
+                      },
+                      "ip_addresses": {
+                        "edges": [
+                          {
+                            "node": {
+                              "address": {
+                                "value": "203.0.113.9/29"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "node": {
+                      "id": "17a49cb6-287c-1eb0-45bf-2fc373e12f43",
+                      "name": {
+                        "value": "Ethernet3"
+                      },
+                      "description": {
+                        "value": "Connected to atl-leaf1 Ethernet3"
+                      },
+                      "enabled": {
+                        "value": true
+                      },
+                      "role": {
+                        "value": "backbone"
+                      },
+                      "ip_addresses": {
+                        "edges": []
+                      }
+                    }
+                  },
+                  {
+                    "node": {
+                      "id": "17a49cb6-2f82-98d8-45b0-2fc3e78b8c96",
+                      "name": {
+                        "value": "Ethernet4"
+                      },
+                      "description": {
+                        "value": "Connected to atl-leaf2 Ethernet3"
+                      },
+                      "enabled": {
+                        "value": true
+                      },
+                      "role": {
+                        "value": "backbone"
+                      },
+                      "ip_addresses": {
+                        "edges": []
+                      }
+                    }
+                  },
+                  {
+                    "node": {
+                      "id": "17a49cb6-3642-49e8-45bb-2fc36f860291",
+                      "name": {
+                        "value": "Ethernet5"
+                      },
+                      "description": {
+                        "value": "Connected to atl-leaf3 Ethernet3"
+                      },
+                      "enabled": {
+                        "value": true
+                      },
+                      "role": {
+                        "value": "backbone"
+                      },
+                      "ip_addresses": {
+                        "edges": []
+                      }
+                    }
+                  },
+                  {
+                    "node": {
+                      "id": "17a49cb6-3d1e-aab8-45b5-2fc320d4d273",
+                      "name": {
+                        "value": "Ethernet6"
+                      },
+                      "description": {
+                        "value": "Connected to atl-leaf4 Ethernet3"
+                      },
+                      "enabled": {
+                        "value": true
+                      },
+                      "role": {
+                        "value": "backbone"
+                      },
+                      "ip_addresses": {
+                        "edges": []
+                      }
+                    }
+                  },
+                  {
+                    "node": {
+                      "id": "17a49cb6-43b3-4488-45b3-2fc38bb1050c",
+                      "name": {
+                        "value": "Ethernet7"
+                      },
+                      "description": {
+                        "value": null
+                      },
+                      "enabled": {
+                        "value": true
+                      },
+                      "role": {
+                        "value": "spare"
+                      },
+                      "ip_addresses": {
+                        "edges": []
+                      }
+                    }
+                  },
+                  {
+                    "node": {
+                      "id": "17a49cb6-4a74-4970-45bb-2fc38dbef7e2",
+                      "name": {
+                        "value": "Ethernet8"
+                      },
+                      "description": {
+                        "value": null
+                      },
+                      "enabled": {
+                        "value": true
+                      },
+                      "role": {
+                        "value": "spare"
+                      },
+                      "ip_addresses": {
+                        "edges": []
+                      }
+                    }
+                  },
+                  {
+                    "node": {
+                      "id": "17a49cb6-51ab-16b0-45bb-2fc37efe2d05",
+                      "name": {
+                        "value": "Ethernet9"
+                      },
+                      "description": {
+                        "value": null
+                      },
+                      "enabled": {
+                        "value": true
+                      },
+                      "role": {
+                        "value": "spare"
+                      },
+                      "ip_addresses": {
+                        "edges": []
+                      }
+                    }
+                  },
+                  {
+                    "node": {
+                      "id": "17a49cb5-12b4-f5a8-45bb-2fc3bce2aace",
+                      "name": {
+                        "value": "Loopback0"
+                      },
+                      "description": {
+                        "value": null
+                      },
+                      "enabled": {
+                        "value": true
+                      },
+                      "role": {
+                        "value": "loopback"
+                      },
+                      "ip_addresses": {
+                        "edges": [
+                          {
+                            "node": {
+                              "address": {
+                                "value": "10.0.0.7/32"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "node": {
+                      "id": "17a49cb5-1e95-ea08-45b4-2fc33f8df0f3",
+                      "name": {
+                        "value": "Management0"
+                      },
+                      "description": {
+                        "value": null
+                      },
+                      "enabled": {
+                        "value": true
+                      },
+                      "role": {
+                        "value": "management"
+                      },
+                      "ip_addresses": {
+                        "edges": [
+                          {
+                            "node": {
+                              "address": {
+                                "value": "172.100.100.23/24"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "InfraBGPPeerGroup": {
+        "edges": [
+          {
+            "node": {
+              "name": {
+                "value": "IX_DEFAULT"
+              },
+              "local_as": {
+                "node": {
+                  "asn": {
+                    "value": 64496
+                  }
+                }
+              },
+              "remote_as": {
+                "node": null
+              }
+            }
+          },
+          {
+            "node": {
+              "name": {
+                "value": "POP_GLOBAL"
+              },
+              "local_as": {
+                "node": {
+                  "asn": {
+                    "value": 64496
+                  }
+                }
+              },
+              "remote_as": {
+                "node": null
+              }
+            }
+          },
+          {
+            "node": {
+              "name": {
+                "value": "POP_INTERNAL"
+              },
+              "local_as": {
+                "node": {
+                  "asn": {
+                    "value": 64496
+                  }
+                }
+              },
+              "remote_as": {
+                "node": {
+                  "asn": {
+                    "value": 64496
+                  }
+                }
+              }
+            }
+          },
+          {
+            "node": {
+              "name": {
+                "value": "TRANSIT_DEFAULT"
+              },
+              "local_as": {
+                "node": {
+                  "asn": {
+                    "value": 64496
+                  }
+                }
+              },
+              "remote_as": {
+                "node": null
+              }
+            }
+          },
+          {
+            "node": {
+              "name": {
+                "value": "TRANSIT_TELIA"
+              },
+              "local_as": {
+                "node": {
+                  "asn": {
+                    "value": 64496
+                  }
+                }
+              },
+              "remote_as": {
+                "node": {
+                  "asn": {
+                    "value": 1299
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "InfraTopology": {
+        "edges": [
+          {
+            "node": {
+              "dns": {
+                "value": "8.8.8.8"
+              },
+              "ntp": {
+                "value": "pool.ntp.org"
+              }
+            }
+          },
+          {
+            "node": {
+              "dns": {
+                "value": "8.8.8.8"
+              },
+              "ntp": {
+                "value": "pool.ntp.org"
+              }
+            }
+          }
+        ]
+      },
+      "InfraBGPSession": {
+        "edges": [
+          {
+            "node": {
+              "remote_ip": {
+                "node": {
+                  "address": {
+                    "value": "10.0.0.7/32"
+                  }
+                }
+              },
+              "device": {
+                "node": {
+                  "name": {
+                    "value": "atl-leaf1"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "node": {
+              "remote_ip": {
+                "node": {
+                  "address": {
+                    "value": "10.0.0.8/32"
+                  }
+                }
+              },
+              "device": {
+                "node": {
+                  "name": {
+                    "value": "atl-leaf1"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "node": {
+              "remote_ip": {
+                "node": {
+                  "address": {
+                    "value": "10.0.0.7/32"
+                  }
+                }
+              },
+              "device": {
+                "node": {
+                  "name": {
+                    "value": "atl-leaf2"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "node": {
+              "remote_ip": {
+                "node": {
+                  "address": {
+                    "value": "10.0.0.8/32"
+                  }
+                }
+              },
+              "device": {
+                "node": {
+                  "name": {
+                    "value": "atl-leaf2"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "node": {
+              "remote_ip": {
+                "node": {
+                  "address": {
+                    "value": "10.0.0.7/32"
+                  }
+                }
+              },
+              "device": {
+                "node": {
+                  "name": {
+                    "value": "atl-leaf3"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "node": {
+              "remote_ip": {
+                "node": {
+                  "address": {
+                    "value": "10.0.0.8/32"
+                  }
+                }
+              },
+              "device": {
+                "node": {
+                  "name": {
+                    "value": "atl-leaf3"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "node": {
+              "remote_ip": {
+                "node": {
+                  "address": {
+                    "value": "10.0.0.7/32"
+                  }
+                }
+              },
+              "device": {
+                "node": {
+                  "name": {
+                    "value": "atl-leaf4"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "node": {
+              "remote_ip": {
+                "node": {
+                  "address": {
+                    "value": "10.0.0.8/32"
+                  }
+                }
+              },
+              "device": {
+                "node": {
+                  "name": {
+                    "value": "atl-leaf4"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "node": {
+              "remote_ip": {
+                "node": {
+                  "address": {
+                    "value": "10.0.0.3/32"
+                  }
+                }
+              },
+              "device": {
+                "node": {
+                  "name": {
+                    "value": "atl-spine1"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "node": {
+              "remote_ip": {
+                "node": {
+                  "address": {
+                    "value": "10.0.0.4/32"
+                  }
+                }
+              },
+              "device": {
+                "node": {
+                  "name": {
+                    "value": "atl-spine1"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "node": {
+              "remote_ip": {
+                "node": {
+                  "address": {
+                    "value": "10.0.0.5/32"
+                  }
+                }
+              },
+              "device": {
+                "node": {
+                  "name": {
+                    "value": "atl-spine1"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "node": {
+              "remote_ip": {
+                "node": {
+                  "address": {
+                    "value": "10.0.0.6/32"
+                  }
+                }
+              },
+              "device": {
+                "node": {
+                  "name": {
+                    "value": "atl-spine1"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "node": {
+              "remote_ip": {
+                "node": {
+                  "address": {
+                    "value": "10.0.0.3/32"
+                  }
+                }
+              },
+              "device": {
+                "node": {
+                  "name": {
+                    "value": "atl-spine2"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "node": {
+              "remote_ip": {
+                "node": {
+                  "address": {
+                    "value": "10.0.0.4/32"
+                  }
+                }
+              },
+              "device": {
+                "node": {
+                  "name": {
+                    "value": "atl-spine2"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "node": {
+              "remote_ip": {
+                "node": {
+                  "address": {
+                    "value": "10.0.0.5/32"
+                  }
+                }
+              },
+              "device": {
+                "node": {
+                  "name": {
+                    "value": "atl-spine2"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "node": {
+              "remote_ip": {
+                "node": {
+                  "address": {
+                    "value": "10.0.0.6/32"
+                  }
+                }
+              },
+              "device": {
+                "node": {
+                  "name": {
+                    "value": "atl-spine2"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
