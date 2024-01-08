@@ -219,7 +219,7 @@ export const Select = (props: SelectProps) => {
         name: "color",
         label: "Color",
         value: "",
-        type: "text",
+        type: "color",
         isOptional: true,
       },
       {

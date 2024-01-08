@@ -54,16 +54,14 @@ export const Form = ({
     const { field, error, disabled } = props;
 
     return (
-      <>
-        <div className="sm:col-span-7">
-          <DynamicControl
-            {...field}
-            error={error}
-            disabled={disabled}
-            preventObjectsCreation={preventObjectsCreation}
-          />
-        </div>
-      </>
+      <div className="col-span-7">
+        <DynamicControl
+          {...field}
+          error={error}
+          disabled={disabled}
+          preventObjectsCreation={preventObjectsCreation}
+        />
+      </div>
     );
   };
 

@@ -51,8 +51,8 @@ export const PopOver = ({
   height,
 }: PopoverPros) => {
   return (
-    <Popover className="flex relative" onClick={preventClick}>
-      <Popover.Button as="div" className="flex" disabled={disabled}>
+    <Popover className="relative" onClick={preventClick}>
+      <Popover.Button as="div" disabled={disabled}>
         {buttonComponent}
       </Popover.Button>
 
@@ -77,7 +77,7 @@ export const PopOver = ({
           )}>
           {({ close }) => (
             <>
-              {title && <div className="font-semibold text-center p-4">{title}</div>}
+              {title && <div className="font-semibold text-center p-2">{title}</div>}
 
               <div className="p-2">{children({ close })}</div>
             </>
