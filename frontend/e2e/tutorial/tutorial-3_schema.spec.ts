@@ -7,5 +7,6 @@ test.describe("Getting started with Infrahub - Data lineage and metadata", () =>
   test("1. Visualize the active schema", async ({ page }) => {
     await page.goto("/schema");
     await expect(page.getByText("Account Token")).toBeVisible();
+    await page.screenshot({ path: "e2e/screenshots/schema-view.png" });
   });
 });
