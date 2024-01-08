@@ -10,7 +10,7 @@ from graphql import (
     parse,
     validate,
 )
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -30,7 +30,7 @@ class GraphQLQueryVariable(BaseModel):
 
 
 class GraphQLOperation(BaseModel):
-    name: Optional[str]
+    name: Optional[str] = None
     operation_type: OperationType
 
 

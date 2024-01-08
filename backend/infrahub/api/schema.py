@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Query
-from pydantic import BaseModel, Field, root_validator
+from pydantic import BaseModel, Field, model_validator
 from starlette.responses import JSONResponse
 
 from infrahub import config, lock
@@ -31,35 +31,29 @@ router = APIRouter(prefix="/schema")
 class APISchemaMixin:
     @classmethod
     def from_schema(cls, schema: NodeSchema) -> Self:
-        data = schema.dict()
+        data = schema.model_dump()
         data["hash"] = schema.get_hash()
         return cls(**data)
 
 
 class APINodeSchema(NodeSchema, APISchemaMixin):
-    api_kind: Optional[str] = Field(default=None, alias="kind")
+    api_kind: Optional[str] = Field(default=None, alias="kind", validate_default=True)
     hash: str
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
     @classmethod
-    def set_kind(
-        cls,
-        values,
-    ):
+    def set_kind(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         values["kind"] = f'{values["namespace"]}{values["name"]}'
         return values
 
 
 class APIGenericSchema(GenericSchema, APISchemaMixin):
-    api_kind: Optional[str] = Field(default=None, alias="kind")
+    api_kind: Optional[str] = Field(default=None, alias="kind", validate_default=True)
     hash: str
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
     @classmethod
-    def set_kind(
-        cls,
-        values,
-    ):
+    def set_kind(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         values["kind"] = f'{values["namespace"]}{values["name"]}'
         return values
 

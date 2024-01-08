@@ -4,7 +4,7 @@ from typing import Any, Dict, Iterator, Optional, TypeVar
 
 import aio_pika
 import aiormq
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 
 from infrahub import config
 from infrahub.exceptions import Error, RPCError

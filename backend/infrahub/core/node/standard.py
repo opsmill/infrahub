@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, get_args, get_origin
 from uuid import UUID  # noqa: TCH003
 
 import ujson
@@ -21,6 +21,7 @@ from infrahub.exceptions import Error
 
 if TYPE_CHECKING:
     from neo4j.graph import Node as Neo4jNode
+    from pydantic.fields import FieldInfo
     from typing_extensions import Self
 
     from infrahub.core.query import Query
@@ -38,6 +39,23 @@ class StandardNode(BaseModel):
     @classmethod
     def get_type(cls) -> str:
         return cls.__name__
+
+    @staticmethod
+    def guess_field_type(field: FieldInfo) -> Any:
+        """Return the type of a Pydantic model field.
+
+        Here we mimic a fraction of the old Pydantic type analysis.
+        https://github.com/pydantic/pydantic/blob/2e939dc3bfb88f54efb66f8f1a031ff22e4f9865/pydantic/fields.py#L539%23L758
+        """
+        annotation_origin = get_origin(field.annotation)
+        annotation_args = get_args(field.annotation)
+
+        if (annotation_origin == Union and len(annotation_args) == 2 and type(None) in annotation_args) or (
+            annotation_origin is list and len(annotation_args)
+        ):
+            return get_origin(annotation_args[0]) or annotation_args[0]
+
+        return annotation_origin or field.annotation
 
     async def to_graphql(self, fields: dict) -> dict:
         response = {"id": self.uuid}
@@ -145,10 +163,10 @@ class StandardNode(BaseModel):
         node_data = dict(node)
         attrs["id"] = node.element_id
         for key, value in node_data.items():
-            if key not in cls.__fields__:
+            if key not in cls.model_fields:
                 continue
 
-            field_type = cls.__fields__[key].type_
+            field_type = cls.guess_field_type(cls.model_fields[key])
 
             if value == "NULL":
                 attrs[key] = None
@@ -167,12 +185,12 @@ class StandardNode(BaseModel):
         else:
             data["uuid"] = self.uuid
 
-        for attr_name, field in self.__fields__.items():
+        for attr_name, field in self.model_fields.items():
             if attr_name in self._exclude_attrs:
                 continue
 
             attr_value = getattr(self, attr_name)
-            field_type = field.type_
+            field_type = self.guess_field_type(field)
 
             if attr_value is None:
                 data[attr_name] = "NULL"
@@ -181,8 +199,7 @@ class StandardNode(BaseModel):
                     clean_value = [item.dict() for item in attr_value]
                     data[attr_name] = ujson.dumps(clean_value)
                 else:
-                    data[attr_name] = attr_value.json()
-
+                    data[attr_name] = attr_value.model_dump_json()
             elif issubclass(field_type, (int, float, bool, str, UUID)):
                 data[attr_name] = attr_value
             else:

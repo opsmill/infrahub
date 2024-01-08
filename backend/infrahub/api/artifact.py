@@ -3,15 +3,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, List
 
 from fastapi import APIRouter, Depends, Request, Response
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 
 from infrahub import config
-from infrahub.api.dependencies import (
-    BranchParams,
-    get_branch_params,
-    get_current_user,
-    get_db,
-)
+from infrahub.api.dependencies import BranchParams, get_branch_params, get_current_user, get_db
 from infrahub.core import registry
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
 from infrahub.exceptions import NodeNotFound

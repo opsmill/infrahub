@@ -11,11 +11,12 @@ packages = [
 [tool.poetry.dependencies]
 python = "^3.8, < 3.12"
 infrahub-sdk = {path = "python_sdk", develop=true}
-pydantic = "^1.10"
+pydantic = "^2.5"
+pydantic-settings = "^2.1"
 fastapi-storages = "~0.2"
 
 [tool.poetry.group.server.dependencies]
-fastapi = "~0.95"
+fastapi = "~0.108"
 starlette-exporter = "^0.12.0"
 python-multipart = "^0.0.6"         # Required by FastAPI to upload large files
 asgi-correlation-id = "4.2.0"       # Middleware for FastAPI to generate ID per request
@@ -89,6 +90,8 @@ no-docstring-rgx="^(_|test_)"
 [tool.pylint.messages_control]
 # Line length is enforced by Black, so pylint doesn't need to check it.
 # Pylint and Black disagree about how to format multi-line arrays; Black wins.
+# assigning-non-slot,no-member,unsupported-membership-test,unsubscriptable-object,unsupported-assignment-operation,not-an-iterable
+# are disabled because of our move to pydantic 2, pylint does not seem to respect the type hint for pydantic 2 model fields.
 disable = """,
     line-too-long,
     missing-module-docstring,
@@ -106,6 +109,12 @@ disable = """,
     protected-access,
     import-self,
     wrong-import-order,
+    assigning-non-slot,
+    no-member,
+    unsupported-membership-test,
+    unsubscriptable-object,
+    unsupported-assignment-operation,
+    not-an-iterable,
     """
 
 [tool.pylint.miscellaneous]

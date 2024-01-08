@@ -795,7 +795,7 @@ async def test_schema_branch_process_filters(
     schema_branch.process_filters()
 
     assert len(schema_branch.nodes) == 2
-    criticality_dict = schema_branch.get("BuiltinCriticality").dict()
+    criticality_dict = schema_branch.get("BuiltinCriticality").model_dump()
 
     expected_filters = [
         {"name": "ids", "kind": FilterSchemaKind.TEXT, "enum": None, "object_kind": None, "description": None},
@@ -1085,7 +1085,7 @@ async def test_schema_branch_diff(
     new_schema.set(name="BuiltinCriticality", schema=node)
 
     diff = schema_branch.diff(obj=new_schema)
-    assert diff.dict() == {"added": [], "changed": ["BuiltinCriticality"], "removed": []}
+    assert diff.model_dump() == {"added": [], "changed": ["BuiltinCriticality"], "removed": []}
 
 
 # -----------------------------------------------------------------

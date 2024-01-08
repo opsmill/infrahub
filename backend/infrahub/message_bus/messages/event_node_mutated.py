@@ -1,6 +1,6 @@
 from typing import Any, Dict
 
-from pydantic import Field
+from pydantic.v1 import Field
 
 from infrahub.message_bus import InfrahubMessage
 
