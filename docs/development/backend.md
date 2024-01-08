@@ -1,11 +1,11 @@
-# Setting up a backend development environment
+# Backend guide
 
-In order start developing Infrahub, it is recommended to have a decent knowledge about topics such as Docker, Python and generally UNIX systems. Tools such as Docker and Python virtual environment help us in isolating the development work without interfering with the system itself. In this guide, we will use:
+In order start developing on Infrahub backend, it is recommended to have a decent knowledge about topics such as Docker, Python and generally UNIX systems. Tools such as Docker and Python virtual environment help us in isolating the development work without interfering with the system itself. In this guide, we will use:
 
-* [Python](https://www.python.org/) to be able to run the code,
-* [Invoke](https://www.pyinvoke.org/) to run some commands bundled with Infrahub,
-* [Poetry](https://python-poetry.org/) to manage our Python virtual environment, and,
-* [Docker](https://www.docker.com/) and its Compose extension to run dependencies such as the database, cache and queueing system.
+* [Python](https://www.python.org/) to be able to run the code
+* [Invoke](https://www.pyinvoke.org/) to run some commands bundled with Infrahub
+* [Poetry](https://python-poetry.org/) to manage our Python virtual environment
+* [Docker](https://www.docker.com/) and its Compose extension to run dependencies such as the database, cache and queueing system
 
 To fetch Infrahub's code, we will use git and we will use the `develop` branch.
 
@@ -37,9 +37,9 @@ The exported environment variables are very important and must be set before mov
 
 Infrahub uses several external services to work:
 
-* A database such as neo4j or memgraph (faster for local development),
-* A Redis cache, and,
-* A RabbitMQ message broker.
+* A database such as neo4j or memgraph (faster for local development)
+* A Redis in-memory store
+* A RabbitMQ message broker
 
 To run all these services, we will use Docker, but for local development some ports will need to be bound to local ones. To do so, a very basic Docker Compose override file is provided in the `development` directory, but it has a `tmp` extension which makes Compose ignore it by default. We will copy this file to a new one without the `tmp` extension.
 
