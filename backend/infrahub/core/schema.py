@@ -834,7 +834,7 @@ internal_schema = {
                 {
                     "name": "icon",
                     "kind": "Text",
-                    "description": "Defines the icon to be used for this object type.",
+                    "description": "Defines the icon to be used for this object type. Must be a valid value from https://iconify.design/",
                     "optional": True,
                 },
                 {
