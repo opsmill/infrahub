@@ -5,20 +5,15 @@ import os.path
 import sys
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import toml
 from infrahub_sdk import generate_uuid
-from pydantic import AliasChoices, BaseModel, Field, ValidationError
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-if TYPE_CHECKING:
-    from infrahub.services.adapters.cache import InfrahubCache
-    from infrahub.services.adapters.message_bus import InfrahubMessageBus
-else:
-    # Avoid pydantic complaints
-    # TODO: Is there a better way to fix this?
-    InfrahubCache = InfrahubMessageBus = None
+from infrahub.services.adapters.cache import InfrahubCache  # noqa: TCH001
+from infrahub.services.adapters.message_bus import InfrahubMessageBus  # noqa: TCH001
 
 SETTINGS: Settings = None
 
@@ -273,6 +268,7 @@ class TraceSettings(BaseSettings):
 
 
 class Override(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     message_bus: Optional[InfrahubMessageBus] = None
     cache: Optional[InfrahubCache] = None
 
