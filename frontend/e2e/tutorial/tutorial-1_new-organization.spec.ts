@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../tests/utils";
+import { format, subMinutes } from "date-fns";
 
 test.describe("Getting started with Infrahub", () => {
   test.describe.configure({ mode: "serial" });
@@ -84,5 +85,24 @@ test.describe("Getting started with Infrahub", () => {
     await page.getByTestId("branch-list-dropdown").getByText("main", { exact: true }).click();
     await page.getByTestId("sidebar-menu").getByRole("link", { name: "Organization" }).click();
     await expect(page.locator("tbody")).toContainText("Changes from branch cr1234");
+  });
+
+  test("5. Browse historical data", async ({ page }) => {
+    await page.goto("/objects/CoreOrganization");
+
+    await test.step("Row my-first-org is visible at current time", async () => {
+      await expect(page.locator("tbody")).toContainText("my-first-org");
+    });
+
+    await test.step("Row my-first-org is not visible when date prior to its creation is selected", async () => {
+      const dateAt5MinAgo = format(subMinutes(new Date(), 5), "dd/MM/yyyy HH:mm");
+      await page.getByTestId("date-picker").locator("input").fill(dateAt5MinAgo);
+      await expect(page.locator("tbody")).not.toContainText("my-first-org");
+    });
+
+    await test.step("Row my-first-org is visible again when we reset date input", async () => {
+      await page.getByRole("button", { name: "Reset" }).click();
+      await expect(page.locator("tbody")).toContainText("my-first-org");
+    });
   });
 });

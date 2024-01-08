@@ -68,7 +68,7 @@ export const DatePicker = (props: any) => {
   ));
 
   return (
-    <div className="flex">
+    <div className="flex" data-testid="date-picker">
       <DateTimePicker
         selected={currentDate}
         onChange={handleChangeDate}
