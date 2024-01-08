@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { ACCOUNT_STATE_PATH } from "../../tests/utils";
+import { ACCOUNT_STATE_PATH, takeScreenshot } from "../../tests/utils";
 import { format, subMinutes } from "date-fns";
 
 test.describe("Getting started with Infrahub - Object and branch creation, update, diff and merge", () => {
@@ -15,7 +15,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     // Form
     await page.getByLabel("Name *").fill("my-first-org");
     await page.getByLabel("Description").fill("Testing Infrahub");
-    await page.screenshot({ path: "e2e/screenshots/tutorial_1_organization_create.png" });
+    await takeScreenshot(page, "tutorial-1_organization_create");
     await page.getByRole("button", { name: "Create" }).click();
 
     // Then
@@ -32,7 +32,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     // Form
     await expect(page.getByText("Create a new branch")).toBeVisible();
     await page.locator("#new-branch-name").fill("cr1234");
-    await page.screenshot({ path: "e2e/screenshots/tutorial_1_branch_creation.png" });
+    await takeScreenshot(page, "tutorial-1_branch-creation");
     await page.getByRole("button", { name: "Create" }).click();
 
     // After submit
@@ -43,14 +43,18 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
   test("3. Update an organization", async ({ page }) => {
     await page.goto("/?branch=cr1234");
     await page.getByRole("link", { name: "Organization" }).click();
-    await page.screenshot({ path: "e2e/screenshots/tutorial_1_organizations.png" });
-    await page.getByRole("cell", { name: "my-first-org", exact: true }).click();
-    await page.screenshot({ path: "e2e/screenshots/tutorial_1_organization_details.png" });
-    await page.getByRole("button", { name: "Edit" }).click();
+    const myFirstOrgLink = page.getByRole("cell", { name: "my-first-org", exact: true });
+    await expect(myFirstOrgLink).toBeVisible();
+    await takeScreenshot(page, "tutorial-1_organization_list");
+    await myFirstOrgLink.click();
+    const editButton = page.getByRole("button", { name: "Edit" });
+    await expect(editButton).toBeVisible();
+    await takeScreenshot(page, "tutorial-1_organization_details");
+    await editButton.click();
 
     // Edit form
     await page.getByLabel("Description").fill("Changes from branch cr1234");
-    await page.screenshot({ path: "e2e/screenshots/tutorial_1_organization_edit.png" });
+    await takeScreenshot(page, "tutorial-1_organization_edit");
     await page.getByRole("button", { name: "Save" }).click();
 
     // After submit
@@ -67,7 +71,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     await page.goto("/?branch=cr1234");
 
     await page.getByTestId("sidebar-menu").getByRole("link", { name: "Branches" }).click();
-    await page.screenshot({ path: "e2e/screenshots/tutorial_1_branch_list.png" });
+    await takeScreenshot(page, "tutorial-1_branch_list");
     await page.getByTestId("branches-items").getByText("cr1234").click();
     await expect(page.locator("dl")).toContainText("cr1234");
 
@@ -75,13 +79,15 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     await page.getByRole("button", { name: "Diff" }).click();
     await page.getByText("My-First-Org").click();
     await expect(page.getByText("Testing Infrahub")).toBeVisible();
-    await page.screenshot({ path: "e2e/screenshots/tutorial_1_branch_diff.png" });
+    await takeScreenshot(page, "tutorial-1_branch_diff");
     await expect(page.getByText("Changes from branch cr1234")).toBeVisible();
 
     // Merge cr1234 into main branch
     await page.getByRole("button", { name: "Details" }).click();
-    await page.screenshot({ path: "e2e/screenshots/tutorial_1_branch_details.png" });
-    await page.getByRole("button", { name: "Merge" }).click();
+    const mergeButton = page.getByRole("button", { name: "Merge" });
+    await expect(mergeButton).toBeVisible();
+    await takeScreenshot(page, "tutorial-1_branch_details");
+    await mergeButton.click();
     await expect(page.locator("#alert-success")).toContainText("Branch merged successfully!");
     await expect(page.locator("pre")).toContainText(
       // eslint-disable-next-line quotes
@@ -103,10 +109,10 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     });
 
     await test.step("Row my-first-org is not visible when date prior to its creation is selected", async () => {
-      const dateAt5MinAgo = format(subMinutes(new Date(), 5), "dd/MM/yyyy HH:mm");
+      const dateAt5MinAgo = format(subMinutes(new Date(), 50), "iiii, MMMM do,");
       await page.getByTestId("date-picker").locator("input").click();
-      await page.screenshot({ path: "e2e/screenshots/tutorial_1_historical_data.png" });
-      await page.getByTestId("date-picker").locator("input").fill(dateAt5MinAgo);
+      await takeScreenshot(page, "tutorial-1_historical_data");
+      await page.getByLabel(`Choose ${dateAt5MinAgo}`).click();
       await expect(page.locator("tbody")).not.toContainText("my-first-org");
     });
 

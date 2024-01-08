@@ -1,3 +1,5 @@
+import { Page } from "@playwright/test";
+
 type ScreenshotConfig = {
   overwrite: boolean;
   scale: boolean;
@@ -45,5 +47,13 @@ export const waitFor = (alias, checkFn, maxRequests = 10, level = 0) => {
     if (!checkFn(interception)) {
       return waitFor(alias, checkFn, maxRequests, level + 1);
     }
+  });
+};
+
+export const takeScreenshot = async (page: Page, filename: string) => {
+  await page.waitForLoadState("networkidle");
+  await page.screenshot({
+    path: `playwright-report/screenshots/${filename}.png`,
+    animations: "disabled",
   });
 };
