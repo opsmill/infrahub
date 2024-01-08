@@ -30,7 +30,7 @@ If you are using GitHub as your Git Server, you need to have a Personal Access T
   2. Add your [authentication token](/topics/auth) with the `Headers`
   3. Copy-paste the mutation below and complete the information
 
-```graphqls
+```GraphQL #2-3
 # Endpoint : http://127.0.0.1:8000/graphql/main
 mutation {
   CoreRepositoryCreate(

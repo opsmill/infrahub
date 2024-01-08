@@ -24,7 +24,7 @@ As the first step we need to have some data in the database to actually query.
 
 Create three tags, called "red", "green", "blue", either using the frontend or by submitting three GraphQL mutations as per below (just swapping out the name of the color each time).
 
-```GraphQL
+```GraphQL #1-2
 mutation CreateTags {
   BuiltinTagCreate(
     data: {name: {value: "red"}, description: {value: "The red tag"}}
@@ -39,7 +39,7 @@ mutation CreateTags {
 
 The next step is to create a query that returns the data we just created. The rest of this guide assumes that the following query will return a response similar to the response below the query.
 
-```GraphQL
+```GraphQL  #1-2
 query TagsQuery {
   BuiltinTag {
     edges {
@@ -109,7 +109,7 @@ mkdir tags_render
 
 Then save the below query as a text file named tags_query.gql.
 
-```GraphQL
+```GraphQL #1-2
 query TagsQuery($tag: String!) {
   BuiltinTag(name__value: $tag) {
     edges {
@@ -142,10 +142,10 @@ The next step is to create the actual Jinja Template file. Create a file called 
 ```jinja
 {% if data.BuiltinTag.edges and data.BuiltinTag.edges is iterable %}
 {% for tag in ["BuiltinTag"]["edges"][0]["node"] %}
-{% set tag_name = tag.name.value %}
-{% set tag_description = tag.description.value %}
-{{ "{{ tag_name }}" }}
-description: {{ "{{ tag_description }}" }}
+{%     set tag_name = tag.name.value %}
+{%     set tag_description = tag.description.value %}
+   {{ "{{ tag_name }}" }}
+      description: {{ "{{ tag_description }}" }}
 {% endfor %}
 {% endif %}
 ```
