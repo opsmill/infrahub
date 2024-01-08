@@ -1,26 +1,3 @@
-QUERY_ALL_REPOSITORIES = """
-query {
-    CoreRepository {
-        count
-        edges {
-            node {
-                id
-                name {
-                    value
-                }
-                location {
-                    value
-                }
-                commit {
-                    value
-                }
-            }
-        }
-    }
-}
-"""
-
-
 QUERY_ALL_BRANCHES = """
 query {
     Branch {
