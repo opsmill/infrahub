@@ -127,11 +127,10 @@ export const Conversations = (props: tConversations) => {
     notifyOnNetworkStatusChange: true,
   });
 
-  const isGetProposedChangesThreadsLoadingForthFistTime = () =>
-    networkStatus === NetworkStatus.loading;
-  const isGetProposedChangesThreadsReloading = () => networkStatus === NetworkStatus.refetch;
+  const isGetProposedChangesThreadsLoadingForthFistTime = networkStatus === NetworkStatus.loading;
+  const isGetProposedChangesThreadsReloading = networkStatus === NetworkStatus.refetch;
 
-  if (isGetProposedChangesThreadsLoadingForthFistTime()) {
+  if (isGetProposedChangesThreadsLoadingForthFistTime) {
     return <LoadingScreen />;
   }
 
@@ -243,7 +242,6 @@ export const Conversations = (props: tConversations) => {
           mutation,
           context: { branch: branch?.name, date },
         });
-        return;
       }
 
       console.error("An error occured while creating the comment: ", error);
@@ -423,8 +421,8 @@ export const Conversations = (props: tConversations) => {
         <div className="bg-custom-white p-4 m-4 rounded-lg relative">
           <AddComment
             onSubmit={handleSubmit}
-            isLoading={isGetProposedChangesThreadsReloading()}
-            disabled={isGetProposedChangesThreadsReloading() || !auth?.permissions?.write}
+            isLoading={isGetProposedChangesThreadsReloading}
+            disabled={isGetProposedChangesThreadsReloading || !auth?.permissions?.write}
           />
         </div>
       </div>

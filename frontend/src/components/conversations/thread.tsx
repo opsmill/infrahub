@@ -53,6 +53,7 @@ export const Thread = (props: tThread) => {
   const handleSubmit = async ({ comment }: { comment: string }) => {
     try {
       setIsLoading(true);
+
       const newObject = {
         text: {
           value: comment,
