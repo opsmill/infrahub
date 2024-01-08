@@ -22,7 +22,9 @@ def pytest_addoption(parser: Parser) -> None:
 
 def pytest_sessionstart(session: Session) -> None:
     config_path = Path(session.config.option.infrahub_repo_config)
-    session.infrahub_repo_config = load_repository_config(repo_config_file=config_path)  # type: ignore[attr-defined]
+
+    if config_path.is_file():
+        session.infrahub_repo_config = load_repository_config(repo_config_file=config_path)  # type: ignore[attr-defined]
 
 
 def pytest_collect_file(parent: Union[Collector, Item], file_path: Path) -> Optional[InfrahubYamlFile]:
