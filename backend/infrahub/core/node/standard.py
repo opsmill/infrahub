@@ -46,14 +46,12 @@ class StandardNode(BaseModel):
 
         Here we mimic a fraction of the old Pydantic type analysis.
         https://github.com/pydantic/pydantic/blob/2e939dc3bfb88f54efb66f8f1a031ff22e4f9865/pydantic/fields.py#L539%23L758
-
-        FIXME: Make it more robust and elegant.
         """
         annotation_origin = get_origin(field.annotation)
         annotation_args = get_args(field.annotation)
 
         if (annotation_origin == Union and len(annotation_args) == 2 and type(None) in annotation_args) or (
-            annotation_origin is list
+            annotation_origin is list and len(annotation_args)
         ):
             return get_origin(annotation_args[0]) or annotation_args[0]
 
