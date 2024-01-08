@@ -219,7 +219,7 @@ export const BranchDetails = () => {
                   disabled={!auth?.permissions?.write || branch.is_default}
                   className="mr-0 md:mr-3"
                   onClick={() => setShowCreateDrawer(true)}>
-                  Contribute
+                  Propose change
                   <PlusIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
                 </Button>
 
