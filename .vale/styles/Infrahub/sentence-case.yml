@@ -24,6 +24,7 @@ exceptions:
   - GitPod
   - GraphQL
   - GraphQLQuery
+  - include_in_menu & menu_placement
   - Helm
   - Infrahub
   - infrahubctl
@@ -40,4 +41,3 @@ exceptions:
   - Vale
   - VS Code
   - VS Code extensions
-  - include_in_menu & menu_placement
