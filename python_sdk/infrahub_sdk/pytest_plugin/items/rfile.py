@@ -56,7 +56,7 @@ class InfrahubRFileUnitRenderItem(pytest.Item):
                     console.print(f"{frame.filename} on line {frame.lineno}\n", soft_wrap=True)
                     console.print(syntax, soft_wrap=True)
             str_output = capture.get()
-            if self.test.spec.expect == InfrahubTestExpectedResult.PASS:
+            if self.test.expect == InfrahubTestExpectedResult.PASS:
                 raise RFileUndefinedError(name=self.name, message=str_output, rtb=traceback, errors=errors) from exc
             return
 
