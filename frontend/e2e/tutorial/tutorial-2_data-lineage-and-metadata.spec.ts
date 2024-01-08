@@ -4,7 +4,7 @@ import { ACCOUNT_STATE_PATH } from "../../tests/utils";
 test.describe("Getting started with Infrahub - Data lineage and metadata", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.READ_WRITE });
 
-  test.only("1. Explore and update object metadata", async ({ page }) => {
+  test("1. Explore and update object metadata", async ({ page }) => {
     await test.step("Go to the detailed page of any device", async () => {
       await page.goto("/objects/InfraDevice");
       await page.getByRole("link", { name: "atl1-core1" }).click();
