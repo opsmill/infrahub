@@ -1188,7 +1188,7 @@ class InfrahubNode(InfrahubNodeBase):
             query=mutation_query,
             variables=input_data["mutation_variables"],
         )
-        await self._client.execute_graphql(
+        response = await self._client.execute_graphql(
             query=query.render(),
             branch_name=self._branch,
             at=at,
@@ -1196,6 +1196,10 @@ class InfrahubNode(InfrahubNodeBase):
             variables=input_data["variables"],
         )
         self._existing = True
+
+        # If Upsert was use we need to read back the ID from the response in case the node already existed
+        if allow_update:
+            self.id = response["CoreGraphQLQueryGroupUpsert"]["object"]["id"]
 
     async def update(self, at: Timestamp, do_full_update: bool = False) -> None:
         input_data = self._generate_input_data(exclude_unmodified=not do_full_update)
@@ -1497,7 +1501,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
             variables=input_data["mutation_variables"],
         )
 
-        self._client.execute_graphql(
+        response = self._client.execute_graphql(
             query=query.render(),
             branch_name=self._branch,
             at=at,
@@ -1505,6 +1509,10 @@ class InfrahubNodeSync(InfrahubNodeBase):
             variables=input_data["variables"],
         )
         self._existing = True
+
+        # If Upsert was use we need to read back the ID from the response in case the node already existed
+        if allow_update:
+            self.id = response["CoreGraphQLQueryGroupUpsert"]["object"]["id"]
 
     def update(self, at: Timestamp, do_full_update: bool = False) -> None:
         input_data = self._generate_input_data(exclude_unmodified=not do_full_update)
