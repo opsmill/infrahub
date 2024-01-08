@@ -10,7 +10,7 @@ from .shared import (
     build_test_envs,
     get_env_vars,
 )
-from .utils import ESCAPED_REPO_PATH
+from .utils import ESCAPED_REPO_PATH, check_if_command_available
 
 CURRENT_DIRECTORY = os.path.abspath(os.path.dirname(__file__))
 DOCUMENTATION_DIRECTORY = os.path.join(CURRENT_DIRECTORY, "../docs")
@@ -65,6 +65,22 @@ def serve(context: Context):
 
     exec_cmd = "npx retypeapp start docs"
 
+    with context.cd(ESCAPED_REPO_PATH):
+        context.run(exec_cmd)
+
+
+@task
+def lint(context: Context):
+    """Run vale to validate the documentation."""
+
+    has_vale = check_if_command_available(context=context, command_name="vale")
+
+    if not has_vale:
+        print("Warning, Vale is not installed")
+        return
+
+    exec_cmd = "vale ."
+    print(" - [docs] Lint docs with vale")
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
