@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 from infrahub_sdk.utils import duplicates, intersection
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from infrahub import config
 from infrahub.core import registry
 from infrahub.core.constants import (
     RESTRICTED_NAMESPACES,
@@ -480,7 +481,7 @@ class RelationshipSchema(BaseSchemaModel):
                         labels=[rel_type],
                         direction=rels_direction["r1"],
                         lenght_min=2,
-                        lenght_max=6,
+                        lenght_max=config.SETTINGS.schema_.max_depth_search_hierarchy * 2,
                         params={"hierarchy": self.hierarchical},
                     ),
                     QueryNode(name="peer", labels=[self.hierarchical]),
@@ -717,6 +718,12 @@ class NodeSchema(BaseNodeSchema):
             elif isinstance(item, RelationshipSchema) and item.name in existing_inherited_fields:
                 item_idx = existing_inherited_relationships[item.name]
                 self.relationships[item_idx] = new_item
+
+    def get_hierarchy_schema(self, branch: Optional[Union[Branch, str]] = None) -> GenericSchema:
+        schema = registry.schema.get(name=self.hierarchical, branch=branch)
+        if not isinstance(schema, GenericSchema):
+            raise TypeError
+        return schema
 
 
 class GroupSchema(BaseSchemaModel):

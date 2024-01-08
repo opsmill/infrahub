@@ -2346,42 +2346,12 @@ async def test_member_of_groups(db: InfrahubDatabase, default_branch: Branch, ca
     assert DeepDiff(result.data, expected_response, ignore_order=True).to_dict() == {}
 
 
-async def test_hierarchical_location(db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema):
-    REGIONS = (
-        ("north-america",),
-        ("europe",),
-        ("asia",),
-    )
-
-    SITES = (
-        ("paris", "europe"),
-        ("london", "europe"),
-        ("chicago", "north-america"),
-        ("seattle", "north-america"),
-        ("beijing", "asia"),
-        ("singapore", "asia"),
-    )
-    NBR_RACKS_PER_SITE = 2
-
-    for region in REGIONS:
-        obj = await Node.init(db=db, schema="LocationRegion")
-        await obj.new(db=db, name=region[0])
-        await obj.save(db=db)
-
-    for site in SITES:
-        obj = await Node.init(db=db, schema="LocationSite")
-        await obj.new(db=db, name=site[0], parent=site[1])
-        await obj.save(db=db)
-
-        for idx in range(1, NBR_RACKS_PER_SITE + 1):
-            rack_name = f"{site[0]}-r{idx}"
-            obj = await Node.init(db=db, schema="LocationRack")
-            await obj.new(db=db, name=rack_name, parent=site[0])
-            await obj.save(db=db)
-
+async def test_hierarchical_location_parent_filter(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data
+):
     query = """
-    query GetRegion {
-        LocationRack(parent__name__value: "europe") {
+    query GetRack {
+        LocationRack(parent__name__values: "europe") {
             edges {
                 node {
                     id
@@ -2406,7 +2376,122 @@ async def test_hierarchical_location(db: InfrahubDatabase, default_branch: Branc
     nodes = [node["node"]["name"]["value"] for node in result.data["LocationRack"]["edges"]]
 
     assert result.errors is None
-    assert nodes == ["paris-r1", "paris-r2"]
+    assert nodes == ["paris-r1", "paris-r2", "london-r1", "london-r2"]
+
+
+async def test_hierarchical_location_ancestors(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data
+):
+    query = """
+    query GetRack {
+        LocationRack(name__value: "paris-r1") {
+            edges {
+                node {
+                    id
+                    display_label
+                    ancestors {
+                        edges {
+                            node {
+                                id
+                                display_label
+                                __typename
+                                name {
+                                    value
+                                }
+                            }
+                        }
+                    }
+                    descendants {
+                        edges {
+                            node {
+                                id
+                                display_label
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    result = await graphql(
+        await generate_graphql_schema(db=db, branch=default_branch, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    rack = result.data["LocationRack"]["edges"][0]["node"]
+    ancestors = rack["ancestors"]["edges"]
+    descendants = rack["descendants"]["edges"]
+    ancestor_names = [node["node"]["name"]["value"] for node in ancestors]
+
+    assert ancestor_names == ["europe", "paris"]
+    assert descendants == []
+
+
+async def test_hierarchical_location_descendants(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data
+):
+    query = """
+    query GetRack {
+        LocationRegion(name__value: "asia") {
+            edges {
+                node {
+                    id
+                    display_label
+                    descendants {
+                        edges {
+                            node {
+                                id
+                                display_label
+                                __typename
+                                name {
+                                    value
+                                }
+                            }
+                        }
+                    }
+                    ancestors {
+                        edges {
+                            node {
+                                id
+                                display_label
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    result = await graphql(
+        await generate_graphql_schema(db=db, branch=default_branch, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    asia = result.data["LocationRegion"]["edges"][0]["node"]
+    ancestors = asia["ancestors"]["edges"]
+    descendants = asia["descendants"]["edges"]
+    descendants_names = [node["node"]["name"]["value"] for node in descendants]
+
+    assert descendants_names == [
+        "beijing",
+        "beijing-r1",
+        "beijing-r2",
+        "singapore",
+        "singapore-r1",
+        "singapore-r2",
+    ]
+    assert ancestors == []
 
 
 @pytest.mark.skip(reason="Union is not supported at the root of the GraphQL Schema yet .. ")

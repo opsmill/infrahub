@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, List, Optional, Type, Union
+from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Type, Union
 
 from infrahub_sdk.utils import deep_merge_dict
 
 from infrahub.core import get_branch, registry
 from infrahub.core.node import Node
 from infrahub.core.query.node import (
+    NodeGetHierarchyQuery,
     NodeGetListQuery,
     NodeListGetAttributeQuery,
     NodeListGetInfoQuery,
@@ -210,6 +211,81 @@ class NodeManager:
             )
             for peer in peers_info
         ]
+
+    @classmethod
+    async def count_hierarchy(
+        cls,
+        id: str,
+        direction: Literal["ancestors", "descendants"],
+        node_schema: NodeSchema,
+        hierarchy_schema: GenericSchema,
+        filters: dict,
+        db: InfrahubDatabase,
+        at: Optional[Union[Timestamp, str]] = None,
+        branch: Optional[Union[Branch, str]] = None,
+    ) -> int:
+        branch = await get_branch(branch=branch, db=db)
+        at = Timestamp(at)
+
+        query = await NodeGetHierarchyQuery.init(
+            db=db,
+            direction=direction,
+            node_id=id,
+            node_schema=node_schema,
+            hierarchy_schema=hierarchy_schema,
+            filters=filters,
+            at=at,
+            branch=branch,
+        )
+
+        return await query.count(db=db)
+
+    @classmethod
+    async def query_hierarchy(
+        cls,
+        db: InfrahubDatabase,
+        id: UUID,
+        direction: Literal["ancestors", "descendants"],
+        node_schema: NodeSchema,
+        hierarchy_schema: GenericSchema,
+        filters: dict,
+        fields: Optional[dict] = None,
+        offset: Optional[int] = None,
+        limit: Optional[int] = None,
+        at: Union[Timestamp, str] = None,
+        branch: Union[Branch, str] = None,
+    ) -> Dict[str, Node]:
+        branch = await get_branch(branch=branch, db=db)
+        at = Timestamp(at)
+
+        query = await NodeGetHierarchyQuery.init(
+            db=db,
+            direction=direction,
+            node_id=id,
+            node_schema=node_schema,
+            hierarchy_schema=hierarchy_schema,
+            filters=filters,
+            offset=offset,
+            limit=limit,
+            at=at,
+            branch=branch,
+        )
+        await query.execute(db=db)
+
+        peers_ids = list(query.get_peer_ids())
+
+        # if display_label has been requested we need to ensure we are querying the right fields
+        if fields and "display_label" in fields:
+            if hierarchy_schema.display_labels:
+                display_label_fields = hierarchy_schema.generate_fields_for_display_label()
+                fields = deep_merge_dict(fields, display_label_fields)
+
+        if not peers_ids:
+            return []
+
+        return await cls.get_many(
+            db=db, ids=peers_ids, fields=fields, at=at, branch=branch, include_owner=True, include_source=True
+        )
 
     @classmethod
     async def get_one_by_default_filter(

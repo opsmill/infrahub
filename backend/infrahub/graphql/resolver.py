@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any, Dict, Literal
 
 from infrahub.core.manager import NodeManager
 
@@ -220,6 +220,88 @@ async def many_relationship_resolver(parent: dict, info: GraphQLResolveInfo, **k
                 value = node.pop(key, None)
                 if value:
                     entry["properties"][mapped] = value
+            entry["node"] = node
+            entries.append(entry)
+        response["edges"] = entries
+
+        return response
+
+
+async def ancestors_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> Dict[str, Any]:
+    return await hierarchy_resolver(direction="ancestors", parent=parent, info=info, **kwargs)
+
+
+async def descendants_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> Dict[str, Any]:
+    return await hierarchy_resolver(direction="descendants", parent=parent, info=info, **kwargs)
+
+
+async def hierarchy_resolver(
+    direction: Literal["ancestors", "descendants"], parent: dict, info: GraphQLResolveInfo, **kwargs
+) -> Dict[str, Any]:
+    """Resolver for ancestors and dependants for Hierarchical nodes
+
+    This resolver is used for paginated responses and as such we redefined the requested
+    fields by only reusing information below the 'node' key.
+    """
+    # Extract the InfraHub schema by inspecting the GQL Schema
+    node_schema: NodeSchema = info.parent_type.graphene_type._meta.schema
+
+    # Extract the contextual information from the request context
+    at = info.context.get("infrahub_at")
+    branch: Branch = info.context.get("infrahub_branch")
+    db: InfrahubDatabase = info.context.get("infrahub_database")
+
+    # Extract the name of the fields in the GQL query
+    fields = await extract_fields(info.field_nodes[0].selection_set)
+    edges = fields.get("edges", {})
+    node_fields = edges.get("node", {})
+
+    hierarchy_schema = node_schema.get_hierarchy_schema(branch=branch)
+
+    # Extract only the filters from the kwargs and prepend the name of the field to the filters
+    offset = kwargs.pop("offset", None)
+    limit = kwargs.pop("limit", None)
+    filters = {
+        f"{info.field_name}__{key}": value
+        for key, value in kwargs.items()
+        if "__" in key and value or key in ["id", "ids"]
+    }
+
+    response: Dict[str, Any] = {"edges": [], "count": None}
+
+    async with db.start_session() as db:
+        if "count" in fields:
+            response["count"] = await NodeManager.count_hierarchy(
+                db=db,
+                id=parent["id"],
+                direction=direction,
+                node_schema=node_schema,
+                hierarchy_schema=hierarchy_schema,
+                filters=filters,
+                at=at,
+                branch=branch,
+            )
+        objs = await NodeManager.query_hierarchy(
+            db=db,
+            id=parent["id"],
+            direction=direction,
+            node_schema=node_schema,
+            hierarchy_schema=hierarchy_schema,
+            filters=filters,
+            fields=node_fields,
+            offset=offset,
+            limit=limit,
+            at=at,
+            branch=branch,
+        )
+
+        if not objs:
+            return response
+        node_graph = [await obj.to_graphql(db=db, fields=node_fields) for obj in objs.values()]
+
+        entries = []
+        for node in node_graph:
+            entry = {"node": {}, "properties": {}}
             entry["node"] = node
             entries.append(entry)
         response["edges"] = entries
