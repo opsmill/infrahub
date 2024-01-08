@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../tests/utils";
 import { format, subMinutes } from "date-fns";
 
-test.describe("Getting started with Infrahub", () => {
+test.describe("Getting started with Infrahub - Object and branch creation, update, diff and merge", () => {
   test.describe.configure({ mode: "serial" });
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
