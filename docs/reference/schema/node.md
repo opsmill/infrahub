@@ -15,11 +15,13 @@ Below is the list of all available options to define a Node in the schema
 | Name | Type | Description | Mandatory | { class="compact" }
 | ---- | ---- | ----------- | --------- |
 | [**branch**](#branch) | Attribute | Type of branch support for the model. | False |
+| [**children**](#children) | Attribute | Expected Kind for the children nodes in a Hierarchy, default to the main generic defined if not defined. | False |
 | [**default_filter**](#default_filter) | Attribute | Default filter used to search for a node in addition to its ID. | False |
 | [**description**](#description) | Attribute | Short description of the model, will be visible in the frontend. | False |
 | [**display_labels**](#display_labels) | Attribute | List of attributes to use to generate the display label | False |
 | [**groups**](#groups) | Attribute | List of Group that this Node is part of. | False |
-| [**icon**](#icon) | Attribute | Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/ | False |
+| [**hierarchy**](#hierarchy) | Attribute | Internal value to track the name of the Hierarchy, must match the name of a Generic supporting hierarchical mode | False |
+| [**icon**](#icon) | Attribute | Defines the icon to be used for this object type. | False |
 | [**include_in_menu**](#include_in_menu) | Attribute | Defines if objects of this kind should be included in the menu. | False |
 | [**inherit_from**](#inherit_from) | Attribute | List of Generic Kind that this node is inheriting from | False |
 | [**label**](#label) | Attribute | Human friendly representation of the name/kind | False |
@@ -27,6 +29,7 @@ Below is the list of all available options to define a Node in the schema
 | [**name**](#name) | Attribute | Node name, must be unique within a namespace and must start with an uppercase letter. | True |
 | [**namespace**](#namespace) | Attribute | Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions. | True |
 | [**order_by**](#order_by) | Attribute | List of attributes to use to order the results by default | False |
+| [**parent**](#parent) | Attribute | Expected Kind for the parent node in a Hierarchy, default to the main generic defined if not defined. | False |
 | [**attributes**](#attributes) | Relationship | List of supported Attributes for the Node. | False |
 | [**relationships**](#relationships) | Relationship | List of supported Relationships for the Node. | False |
 
@@ -43,6 +46,18 @@ Below is the list of all available options to define a Node in the schema
 | **Default Value** | aware |
 | **Constraints** |  |
 | **Accepted Values** | `aware` `agnostic` `local`  |
+
+### children
+
+| Key | Value | { class="compact" }
+| ---- | --------------- |
+| **Name** | children |
+| **Kind** | `Text` |
+| **Description** | Expected Kind for the children nodes in a Hierarchy, default to the main generic defined if not defined. |
+| **Optional**  | True |
+| **Default Value** |  |
+| **Constraints** |  |
+
 
 ### default_filter
 
@@ -87,6 +102,19 @@ Below is the list of all available options to define a Node in the schema
 | **Optional**  | True |
 | **Default Value** |  |
 | **Constraints** |  |
+
+
+### hierarchy
+
+| Key | Value | { class="compact" }
+| ---- | --------------- |
+| **Name** | hierarchy |
+| **Kind** | `Text` |
+| **Description** | Internal value to track the name of the Hierarchy, must match the name of a Generic supporting hierarchical mode |
+| **Optional**  | True |
+| **Default Value** |  |
+| **Constraints** |  |
+
 
 ### icon
 
@@ -176,6 +204,23 @@ Below is the list of all available options to define a Node in the schema
 | **Default Value** |  |
 | **Constraints** |  |
 
+<<<<<<< HEAD
+=======
+
+### parent
+
+| Key | Value | { class="compact" }
+| ---- | --------------- |
+| **Name** | parent |
+| **Kind** | `Text` |
+| **Description** | Expected Kind for the parent node in a Hierarchy, default to the main generic defined if not defined. |
+| **Optional**  | True |
+| **Default Value** |  |
+| **Constraints** |  |
+
+
+
+>>>>>>> 179d871a (Update schema reference)
 ## attributes
 
 | Key | Value | { class="compact" }

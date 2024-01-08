@@ -885,7 +885,7 @@ internal_schema = {
                 {
                     "name": "hierarchy",
                     "kind": "Text",
-                    "description": "Internal value to track the name of the Hierarchy, must match the name of a Generic supporting hierarchical mode"
+                    "description": "Internal value to track the name of the Hierarchy, must match the name of a Generic supporting hierarchical mode",
                     "optional": True,
                 },
                 {
