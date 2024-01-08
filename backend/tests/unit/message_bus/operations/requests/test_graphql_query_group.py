@@ -5,7 +5,6 @@ from pathlib import Path
 import pytest
 import ujson
 from infrahub_sdk import Config, InfrahubClient
-from infrahub_sdk.utils import dict_hash
 from pytest_httpx import HTTPXMock
 
 from infrahub.database import InfrahubDatabase
@@ -34,13 +33,12 @@ async def test_graphql_group_update(db: InfrahubDatabase, httpx_mock: HTTPXMock,
     r1 = str(uuid.uuid4())
 
     message = messages.RequestGraphQLQueryGroupUpdate(
-        meta=None,
         query_id=q1,
         query_name="query01",
         branch="main",
         related_node_ids={p1, p2, c1, c2, c3},
         subscribers={r1},
-        params_hash=dict_hash({}),
+        params={},
     )
     config = Config(address="http://mock")
     client = InfrahubClient(config=config, insert_tracker=True)
@@ -52,6 +50,13 @@ async def test_graphql_group_update(db: InfrahubDatabase, httpx_mock: HTTPXMock,
         method="POST",
         json=response1,
         match_headers={"X-Infrahub-Tracker": "mutation-coregraphqlquerygroup-upsert"},
+    )
+
+    response2 = {"data": {"RelationshipAdd": {"ok": True}}}
+    httpx_mock.add_response(
+        method="POST",
+        json=response2,
+        match_headers={"X-Infrahub-Tracker": "mutation-relationshipadd"},
     )
 
     await update(message=message, service=service)

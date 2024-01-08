@@ -493,7 +493,7 @@ async def test_execute_python_transform_w_query(
     repo = git_repo_transforms
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
 
-    expected_data = {"DATA": {"mock": []}}
+    expected_data = {"MOCK": []}
 
     result = await repo.execute_python_transform(
         branch_name="main", commit=commit_main, location="transform01.py::Transform01", client=client

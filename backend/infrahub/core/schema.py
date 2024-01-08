@@ -1563,7 +1563,7 @@ core_models = {
             "branch": BranchSupportType.LOCAL.value,
             "inherit_from": ["CoreGroup"],
             "attributes": [
-                {"name": "parameters", "kind": "JSON"},
+                {"name": "parameters", "kind": "JSON", "optional": True},
             ],
             "relationships": [
                 {

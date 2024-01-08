@@ -1995,9 +1995,11 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         query: InfrahubNode,
     ) -> ArtifactGenerateResult:
         variables = target.extract(params=definition.parameters.value)
-        data = await self.client.execute_graphql(
-            query=query.query.value,
+        data = await self.client.query_gql_query(
+            name=query.name.value,
             variables=variables,
+            update_group=True,
+            subscribers=[artifact.id],
             tracker="artifact-query-graphql-data",
             branch_name=branch_name,
             rebase=transformation.rebase.value,
@@ -2039,9 +2041,11 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
     async def render_artifact(
         self, artifact: InfrahubNode, message: Union[messages.CheckArtifactCreate, messages.RequestArtifactGenerate]
     ) -> ArtifactGenerateResult:
-        data = await self.client.execute_graphql(
-            query=message.query,
+        data = await self.client.query_gql_query(
+            name=message.query,
             variables=message.variables,
+            update_group=True,
+            subscribers=[artifact.id],
             tracker="artifact-query-graphql-data",
             branch_name=message.branch_name,
             rebase=message.rebase,

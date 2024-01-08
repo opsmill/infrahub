@@ -29,7 +29,7 @@ async def group_add_subscriber(client: InfrahubClient, group: InfrahubNode, subs
         ", ".join(subscribers_str),
     )
 
-    return await client.execute_graphql(query=query, branch_name=branch)
+    return await client.execute_graphql(query=query, branch_name=branch, tracker="mutation-relationshipadd")
 
 
 async def update(message: messages.RequestGraphQLQueryGroupUpdate, service: InfrahubServices) -> None:
@@ -37,10 +37,12 @@ async def update(message: messages.RequestGraphQLQueryGroupUpdate, service: Infr
 
     params_hash = dict_hash(message.params)
     group_name = f"{message.query_name}__{params_hash}"
+    group_label = f"Query {message.query_name} Hash({params_hash[:8]})"
     group = await service.client.create(
         kind="CoreGraphQLQueryGroup",
         branch=message.branch,
         name=group_name,
+        label=group_label,
         query=message.query_id,
         parameters=message.params or {},
         members=list(message.related_node_ids),
@@ -48,6 +50,6 @@ async def update(message: messages.RequestGraphQLQueryGroupUpdate, service: Infr
     await group.create(at=Timestamp(), allow_update=True)
 
     if message.subscribers:
-        group_add_subscriber(
+        await group_add_subscriber(
             client=service.client, group=group, subscribers=list(message.subscribers), branch=message.branch
         )

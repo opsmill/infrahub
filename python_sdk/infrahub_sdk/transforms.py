@@ -69,7 +69,7 @@ class InfrahubTransform:
         pass
 
     async def collect_data(self) -> Dict:
-        """Query the result of the GraphQL Query defined in sef.query and return the result"""
+        """Query the result of the GraphQL Query defined in self.query and return the result"""
 
         return await self.client.query_gql_query(name=self.query, branch_name=self.branch_name, rebase=self.rebase)
 
