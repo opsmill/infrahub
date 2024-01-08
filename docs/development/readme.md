@@ -89,6 +89,7 @@ Now we can:
 ```cy.get("...").click()```
 
 Full documentation: https://docs.cypress.io/guides/end-to-end-testing/writing-your-first-end-to-end-test
+<<<<<<< HEAD
 
 ## Developer environment
 <!-- vale off -->
@@ -122,3 +123,5 @@ Sample .vscode/settings.json
     "ruff.enable": true,
 }
 ```
+=======
+>>>>>>> 7ee45fd6 (Re-organise development pages)

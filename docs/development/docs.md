@@ -1,6 +1,7 @@
 ---
 title: Documentation guide
 icon: pencil
+order: 70
 ---
 
 # Documentation guide
