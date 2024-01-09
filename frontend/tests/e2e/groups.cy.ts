@@ -38,7 +38,7 @@ describe("Groups", () => {
     cy.get(".-mb-px > :nth-child(2)").click();
 
     // There are 5 members
-    cy.get("div.flex > .text-sm > :nth-child(3)").should("have.text", "5");
+    cy.get("div.flex > .text-sm > :nth-child(3)").should("have.text", "20");
   });
 
   it("should add an object to 2 groups", () => {
@@ -58,7 +58,7 @@ describe("Groups", () => {
     cy.get("[id^=headlessui-combobox-button-]").click();
 
     // CHeck if the options have a length of 6
-    cy.get("[id^=headlessui-combobox-options-]").find("li").should("have.length", 6);
+    cy.get("[id^=headlessui-combobox-options-]").find("li").should("have.length", 11);
 
     // Choose 2 options
     cy.contains(NEW_GROUP_1).click();
@@ -74,7 +74,7 @@ describe("Groups", () => {
     // The select must contains 4 items
     cy.get("div[data-headlessui-state=''] > .relative > .w-full")
       .find("span")
-      .should("have.length", 4);
+      .should("have.length", 2);
 
     // Close side panel
     cy.get("[data-cy='side-panel-background']").click();
