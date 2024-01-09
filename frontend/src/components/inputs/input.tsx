@@ -27,7 +27,7 @@ export const Input = forwardRef((props: any, ref: any) => {
   );
 
   return (
-    <div className="relative">
+    <div className="relative w-full">
       <input
         onChange={(event) => {
           const value = type === "number" ? event.target.valueAsNumber : event.target.value;
