@@ -113,6 +113,19 @@ jobs:
       - name: "Linting: ruff format"
         run: "ruff format --check --diff ."
 
+  markdown-lint:
+    if: needs.files-changed.outputs.documentation == 'true'
+    needs: ["files-changed"]
+    runs-on: "ubuntu-latest"
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v4"
+      - name: "Setup environment"
+        run: "npm install markdownlint-cli2 --global"
+      - name: "Linting: markdownlint"
+        run: "markdownlint-cli2 **/*.md"
+
   python-sdk-unit-tests:
     strategy:
       matrix:
