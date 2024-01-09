@@ -20,6 +20,7 @@ RESERVED_ATTR_REL_NAMES = [
     "relationships",
     "rel",
     "rels",
+    "save",
 ]
 
 
