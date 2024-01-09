@@ -20,7 +20,7 @@ class Info(ObjectType):
     @staticmethod
     async def resolve(
         root: dict,  # pylint: disable=unused-argument
-        info: GraphQLResolveInfo,
+        info: GraphQLResolveInfo,  # pylint: disable=unused-argument
     ):
         return {"deployment_id": str(registry.id), "version": __version__, "worker_identity": WORKER_IDENTITY}
 
