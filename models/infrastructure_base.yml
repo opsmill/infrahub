@@ -682,7 +682,7 @@ nodes:
     default_filter: name__value
     display_labels: [label__value]
     icon: mdi:list-status
-    include_in_menu: true
+    include_in_menu: false
     attributes:
       - kind: Text
         name: name
@@ -702,7 +702,7 @@ nodes:
     display_labels: [label__value]
     order_by: [name__value]
     icon: mdi:ballot
-    include_in_menu: true
+    include_in_menu: false
     attributes:
       - kind: Text
         name: name
