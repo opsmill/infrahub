@@ -66,6 +66,9 @@ types-python-slugify = "^8.0.0.3"
 [tool.poetry.scripts]
 infrahubctl = "infrahub_sdk.ctl.cli:app"
 
+[tool.poetry.plugins."pytest11"]
+"pytest-infrahub"="infrahub_sdk.pytest_plugin.plugin"
+
 [tool.coverage.run]
 branch = true
 
