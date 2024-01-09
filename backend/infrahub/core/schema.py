@@ -1554,7 +1554,7 @@ core_models = {
             "name": "GraphQLQueryGroup",
             "namespace": "Core",
             "description": "Group of nodes associated with a given GraphQLQuery.",
-            "include_in_menu": False,
+            "include_in_menu": True,
             "icon": "mdi:account-group",
             "label": "GraphQL Query Group",
             "default_filter": "name__value",
