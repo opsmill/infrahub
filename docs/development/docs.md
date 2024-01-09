@@ -158,7 +158,7 @@ For a deeper dive into reference docs, refer to the [diátaxis reference page](h
 
 ## Creating application screenshots
 
-In an effort to keep application screenshots up to date, use [Cypress](https://docs.cypress.io/guides/overview/why-cypress) to generate images whenever possible. Refer to the [E2E tests section](/development/#e2e-tests) of the development docs for details, and reference `frontend/tests/e2e/tutorial` for examples from the [getting started](/tutorials/getting-started/) tutorial.
+In an effort to keep application screenshots up to date, use [Cypress](https://docs.cypress.io/guides/overview/why-cypress) to generate images whenever possible. Refer to the [E2E tests section](/development/frontend/#e2e-tests) of the development docs for details, and reference `frontend/tests/e2e/tutorial` for examples from the [getting started](/tutorials/getting-started/) tutorial.
 
 ## Style guide
 
