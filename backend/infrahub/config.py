@@ -224,11 +224,8 @@ class SecuritySettings(BaseSettings):
 
 
 class SchemaSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_SCHEMA_")
     max_depth_search_hierarchy: int = Field(default=5, description="Maximum number of level to search in a hierarchy.")
-
-    class Config:
-        env_prefix = "INFRAHUB_SCHEMA_"
-        case_sensitive = False
 
 
 class TraceSettings(BaseSettings):

@@ -189,11 +189,11 @@ async def generate_object_types(db: InfrahubDatabase, branch: Union[Branch, str]
                     peer_type, required=False, resolver=many_relationship_resolver, **peer_filters
                 )
 
-        if isinstance(node_schema, NodeSchema) and node_schema.hierarchical:
-            schema = registry.schema.get(name=node_schema.hierarchical, branch=branch)
+        if isinstance(node_schema, NodeSchema) and node_schema.hierarchy:
+            schema = registry.schema.get(name=node_schema.hierarchy, branch=branch)
 
             peer_filters = await generate_filters(db=db, schema=schema, top_level=False)
-            peer_type = registry.get_graphql_type(name=f"NestedPaginated{node_schema.hierarchical}", branch=branch.name)
+            peer_type = registry.get_graphql_type(name=f"NestedPaginated{node_schema.hierarchy}", branch=branch.name)
 
             node_type._meta.fields["ancestors"] = graphene.Field(
                 peer_type, required=False, resolver=ancestors_resolver, **peer_filters
