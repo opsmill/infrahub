@@ -5,7 +5,7 @@ Import node(s).
 **Usage**:
 
 ```console
-$ infrahubctl load [OPTIONS] [DIRECTORY]
+infrahubctl load [OPTIONS] [DIRECTORY]
 ```
 
 **Arguments**:

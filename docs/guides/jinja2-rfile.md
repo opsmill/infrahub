@@ -128,7 +128,6 @@ query TagsQuery($tag: String!) {
 
 Here the query will require an input parameter called `$name` what will refer to the name of each tag. When we want to query for the red tag the input variables to the query would look like this:
 
-
 ```json
 {
   "tag": "red"
@@ -228,8 +227,8 @@ An RFile can be rendered on demand via the REST API with the endpoint: `https://
 
 This endpoint is branch-aware and it accepts the name of the branch and/or the time as URL parameters.
 
-- `https://<host>/api/rfile/<rfile name or ID>?branch=main`
-- `https://<host>/api/rfile/<rfile name or ID>?branch=main&at=<time of your choice>`
+* `https://<host>/api/rfile/<rfile name or ID>?branch=main`
+* `https://<host>/api/rfile/<rfile name or ID>?branch=main&at=<time of your choice>`
 
 !!!info
 The name of the branch used in the query will be used to retrieve the right Jinja template and to execute the GraphQL query.

@@ -8,6 +8,7 @@ An external Git repository will be loading into Infrahub, using `infrahubctl`. B
 ## `.infrahub.yml` file
 
 This configuration file will be use to link the different repository files to Infrahub type of objects:
+
 - [RFile](/topics/transformation#rendered-file-jinja2-plugin)
 - [Python Transformation](/topics/transformation#transformpython-python-plugin)
 - [Artifact](/topics/artifact) Definition

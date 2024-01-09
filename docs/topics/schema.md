@@ -253,10 +253,10 @@ Any icon from the [Material Design Icons library / iconify.design](https://icon-
 
 The full identifier of the icon must be used. Example `mdi:domain`
 
-
 ### Examples
 
 ||| Schema
+
 ```yaml
 ---
 version: '1.0'
@@ -279,6 +279,7 @@ nodes:
     menu_placement: "LocationRack"
     label: "Rack"
 ```
+
 ||| Rendering
 ![Location Menu](../media/reference/schema/location_menu.png)
 |||

@@ -37,7 +37,7 @@ The command above utilizes a "shallow clone" to retrieve only the most recent co
 
 The `git clone` command should generate output similar to the following:
 
-```
+```sh
 Cloning into '.'...
 remote: Enumerating objects: 1312, done.
 remote: Counting objects: 100% (1312/1312), done.
@@ -119,6 +119,7 @@ invoke demo.build demo.start demo.load-infra-schema demo.load-infra-data
 ### GitHub Codespace
 <!-- vale on -->
 The project is pre-configured to run in GitHub Codespace. We have two devcontainer configuration:
+
 - Infrahub: bare-bones container with the app running without any [Schema extension](/tutorials/getting-started/schema) or data
 - Infrahub-demo: container running the [demo environment](/topics/local-demo-environment.md)
 

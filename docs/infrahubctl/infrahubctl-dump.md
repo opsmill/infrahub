@@ -5,7 +5,7 @@ Export node(s).
 **Usage**:
 
 ```console
-$ infrahubctl dump [OPTIONS]
+infrahubctl dump [OPTIONS]
 ```
 
 **Options**:

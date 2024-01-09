@@ -5,8 +5,6 @@ order: 800
 ---
 <!-- vale off -->
 
-
-
 # Attribute
 
 In a schema file, an attribute can be defined inside a `node`, a `generic` or a `node extension`.
@@ -79,7 +77,6 @@ extensions:
 | **Default Value** |  |
 | **Constraints** |  |
 
-
 ### default_value
 
 | Key | Value | { class="compact" }
@@ -90,7 +87,6 @@ extensions:
 | **Optional**  | True |
 | **Default Value** |  |
 | **Constraints** |  |
-
 
 ### description
 
@@ -103,7 +99,6 @@ extensions:
 | **Default Value** |  |
 | **Constraints** |  Length: min -, max 128 |
 
-
 ### enum
 
 | Key | Value | { class="compact" }
@@ -114,8 +109,6 @@ extensions:
 | **Optional**  | True |
 | **Default Value** |  |
 | **Constraints** |  |
-
-
 
 ### kind
 
@@ -140,7 +133,6 @@ extensions:
 | **Default Value** |  |
 | **Constraints** |  Length: min -, max 32 |
 
-
 ### max_length
 
 | Key | Value | { class="compact" }
@@ -151,7 +143,6 @@ extensions:
 | **Optional**  | True |
 | **Default Value** |  |
 | **Constraints** |  |
-
 
 ### min_length
 
@@ -164,7 +155,6 @@ extensions:
 | **Default Value** |  |
 | **Constraints** |  |
 
-
 ### name
 
 | Key | Value | { class="compact" }
@@ -175,7 +165,6 @@ extensions:
 | **Optional**  | False |
 | **Default Value** |  |
 | **Constraints** |  Regex: `^[a-z0-9\_]+$`<br> Length: min 3, max 32 |
-
 
 ### optional
 
@@ -188,7 +177,6 @@ extensions:
 | **Default Value** | True |
 | **Constraints** |  |
 
-
 ### order_weight
 
 | Key | Value | { class="compact" }
@@ -199,7 +187,6 @@ extensions:
 | **Optional**  | True |
 | **Default Value** |  |
 | **Constraints** |  |
-
 
 ### read_only
 
@@ -212,7 +199,6 @@ extensions:
 | **Default Value** | False |
 | **Constraints** |  |
 
-
 ### regex
 
 | Key | Value | { class="compact" }
@@ -224,7 +210,6 @@ extensions:
 | **Default Value** |  |
 | **Constraints** |  |
 
-
 ### unique
 
 | Key | Value | { class="compact" }
@@ -235,6 +220,3 @@ extensions:
 | **Optional**  | True |
 | **Default Value** | False |
 | **Constraints** |  |
-
-
-
