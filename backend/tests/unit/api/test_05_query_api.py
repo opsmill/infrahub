@@ -61,8 +61,8 @@ async def test_query_endpoint_group_no_params(
             query_id=q1.id,
             query_name="query01",
             branch="main",
-            related_node_ids={p1.id, p2.id, c1.id, c2.id, c3.id},
-            subscribers={"AAAAAA", "BBBBBB"},
+            related_node_ids=sorted([p1.id, p2.id, c1.id, c2.id, c3.id]),
+            subscribers=sorted(["AAAAAA", "BBBBBB"]),
             params={},
         )
         in client.app.state.rpc_client.sent

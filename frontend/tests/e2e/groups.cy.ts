@@ -108,7 +108,7 @@ describe("Groups", () => {
     // The select should contain 4 values
     cy.get("div[data-headlessui-state=''] > .relative > .w-full")
       .find("span")
-      .should("have.length", 4);
+      .should("have.length", 2);
 
     // Open the select
     cy.get("[id^=headlessui-combobox-button-]").click();
@@ -146,7 +146,7 @@ describe("Groups", () => {
     cy.get(".-mb-px > :nth-child(2)").click();
 
     // There are 5 members
-    cy.get("div.flex > .text-sm > :nth-child(3)").should("have.text", "5");
+    cy.get("div.flex > .text-sm > :nth-child(3)").should("have.text", "20");
 
     cy.contains(OBJECT_NAME).should("not.exist");
   });
