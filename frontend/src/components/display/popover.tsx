@@ -35,12 +35,6 @@ const heightClass = {
   [POPOVER_SIZE.LARGE]: "h-[800px]",
 };
 
-// Stop propagation for clicks
-const preventClick = (event: any) => {
-  event?.preventDefault();
-  event?.stopPropagation();
-};
-
 export const PopOver = ({
   children,
   className,
@@ -51,8 +45,8 @@ export const PopOver = ({
   height,
 }: PopoverPros) => {
   return (
-    <Popover className="relative" onClick={preventClick}>
-      <Popover.Button as="div" disabled={disabled}>
+    <Popover className="flex-1">
+      <Popover.Button as="div" className="h-full" disabled={disabled}>
         {buttonComponent}
       </Popover.Button>
 

@@ -43,7 +43,7 @@ export default function BranchSelector() {
     <Button
       disabled={!auth?.permissions?.write}
       buttonType={BUTTON_TYPES.MAIN}
-      className="flex-1 rounded-r-md border border-transparent"
+      className="h-full rounded-r-md border border-transparent"
       type="submit"
       data-cy="create-branch-button"
       data-testid="create-branch-button">
@@ -164,7 +164,10 @@ export default function BranchSelector() {
   }
 
   return (
-    <div className="flex" data-cy="branch-select-menu" data-testid="branch-select-menu">
+    <div
+      className="flex items-stretch"
+      data-cy="branch-select-menu"
+      data-testid="branch-select-menu">
       <SelectButton
         value={branch}
         valueLabel={valueLabel}
