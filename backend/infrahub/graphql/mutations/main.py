@@ -161,7 +161,7 @@ class InfrahubMutationMixin:
         try:
             await obj.from_graphql(db=db, data=data)
 
-            await cls.validate_constraints(db=db, node=obj, branch=branch, at=at, id_to_ignore=obj.id)
+            await cls.validate_constraints(db=db, node=obj, branch=branch, at=at, ignore_existing_node=True)
             node_id = data.pop("id", obj.id)
             fields = list(data.keys())
             validate_mutation_permissions_update_node(
@@ -237,7 +237,7 @@ class InfrahubMutationMixin:
         node: Node,
         branch: Optional[str] = None,
         at: Optional[str] = None,
-        id_to_ignore: Optional[str] = None,
+        ignore_existing_node: bool = False,
     ) -> None:
         """Check if the new object violates the uniqueness constraints."""
         for unique_attr in cls._meta.schema.unique_attributes:
@@ -260,8 +260,8 @@ class InfrahubMutationMixin:
                 branch=branch,
                 at=at,
             )
-            if id_to_ignore:
-                nodes = [node for node in nodes if node.id != id_to_ignore]
+            if ignore_existing_node:
+                nodes = [n for n in nodes if n.id != node.id]
             if nodes:
                 raise ValidationError(
                     {unique_attr.name: f"An object already exist with this value: {unique_attr.name}: {attr.value}"}
