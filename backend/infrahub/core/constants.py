@@ -23,6 +23,8 @@ RESERVED_ATTR_REL_NAMES = [
     "save",
 ]
 
+RESERVED_ATTR_GEN_NAMES = ["type"]
+
 
 class PermissionLevel(enum.Flag):
     READ = 1
