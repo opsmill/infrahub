@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { ACCOUNT_STATE_PATH, takeScreenshot } from "../../tests/utils";
+import { ACCOUNT_STATE_PATH, saveScreenshotForDocs } from "../../tests/utils";
 
 test.describe("Getting started with Infrahub - Data lineage and metadata", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.READ_WRITE });
@@ -17,7 +17,7 @@ test.describe("Getting started with Infrahub - Data lineage and metadata", () =>
         .getByTestId("view-metadata-button")
         .click();
       await expect(page.getByText("Is protected: False")).toBeVisible();
-      await takeScreenshot(page, "tutorial-2_attribute-metadata_view");
+      await saveScreenshotForDocs(page, "tutorial/tutorial-4-data.cy.ts/tutorial_4_metadata");
     });
 
     await test.step("Update Description attribute to make it protected", async () => {
@@ -27,7 +27,7 @@ test.describe("Getting started with Infrahub - Data lineage and metadata", () =>
       await page.getByTestId("select2step-2").first().getByRole("button").click();
       await page.getByRole("option", { name: "Admin" }).click();
       await page.getByLabel("is protected *").check();
-      await takeScreenshot(page, "tutorial-2_attribute-metadata_edit");
+      await saveScreenshotForDocs(page, "tutorial/tutorial-4-data.cy.ts/tutorial_4_metadata_edit");
       await page.getByRole("button", { name: "Save" }).click();
 
       await page

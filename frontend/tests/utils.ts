@@ -50,10 +50,12 @@ export const waitFor = (alias, checkFn, maxRequests = 10, level = 0) => {
   });
 };
 
-export const takeScreenshot = async (page: Page, filename: string) => {
+export const saveScreenshotForDocs = async (page: Page, filename: string) => {
+  if (!process.env.UPDATE_DOCS_SCREENSHOTS) return;
+
   await page.waitForLoadState("networkidle");
   await page.screenshot({
-    path: `playwright-report/screenshots/${filename}.png`,
+    path: `../docs/media/${filename}.png`,
     animations: "disabled",
   });
 };
