@@ -44,7 +44,9 @@ async def test_graphql_group_update(db: InfrahubDatabase, httpx_mock: HTTPXMock,
     client = InfrahubClient(config=config, insert_tracker=True)
     service = InfrahubServices(client=client)
 
-    response1 = {"data": {"CoreGraphQLQueryGroupUpsert": {"ok": True}}}
+    response1 = {
+        "data": {"CoreGraphQLQueryGroupUpsert": {"ok": True, "object": {"id": "957aea37-4510-4386-916f-3febd6665ae6"}}}
+    }
 
     httpx_mock.add_response(
         method="POST",
