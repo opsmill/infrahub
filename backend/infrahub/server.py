@@ -69,11 +69,9 @@ async def app_initialization(application: FastAPI) -> None:
         cache=cache, database=database, message_bus=message_bus, component_type=ComponentType.API_SERVER
     )
     await service.initialize()
-    # service.message_bus = application.state.rpc_client.rabbitmq
     services.prepare(service=service)
     # Initialize RPC Client
     rpc_client = InfrahubRpcClient()
-    rpc_client.exchange = message_bus.rpc_exchange
     application.state.rpc_client = rpc_client
     application.state.service = service
 
