@@ -626,7 +626,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         if raise_for_error:
             resp.raise_for_status()
 
-        return resp.json().get("data")
+        return resp.json()
 
     async def create_batch(self, return_exceptions: bool = False) -> InfrahubBatch:
         return InfrahubBatch(semaphore=self.concurrent_execution_limit, return_exceptions=return_exceptions)
@@ -1105,7 +1105,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         if raise_for_error:
             resp.raise_for_status()
 
-        return resp.json().get("data")
+        return resp.json()
 
     def repository_update_commit(self, branch_name: str, repository_id: str, commit: str) -> bool:
         raise NotImplementedError(
