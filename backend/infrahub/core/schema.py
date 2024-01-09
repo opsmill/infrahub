@@ -834,7 +834,7 @@ internal_schema = {
                 {
                     "name": "icon",
                     "kind": "Text",
-                    "description": "Defines the icon to be used for this object type.",
+                    "description": "Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/",
                     "optional": True,
                 },
                 {
@@ -1191,7 +1191,7 @@ internal_schema = {
                 {
                     "name": "icon",
                     "kind": "Text",
-                    "description": "Defines the icon to be used for this object type.",
+                    "description": "Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/",
                     "optional": True,
                 },
                 {

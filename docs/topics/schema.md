@@ -234,3 +234,51 @@ By default, if a specific value is not defined:
 - **relationships** will become:
   - **branch-agnostic** only if both models on each end of the relationship are **branch-agnostic**. If either model is **branch-aware** the relationship will be set as **branch-aware**.
   - **branch-local** if either model, on each end of the relationship, is **branch-local**.
+
+## Menu
+
+The position of a model in the frontend sidebar menu, is controlled by the schema itself.
+At the node (or generic) level, 3 attributes are available to control where a given model should be displayed in the menu and what icon it should have.
+
+### include_in_menu & menu_placement
+
+`include_in_menu` is a Boolean to indicate if a given model should be displayed in the menu or not. By default, all models will be displayed directly under `Objects` in the frontend.
+
+`menu_placement` makes it possible to create a nested structure within the menu to display a given model under another one.
+
+### icon
+
+`icon` can be used to indicate which icon should be displayed next to the model in the menu.
+Any icon from the [Material Design Icons library / iconify.design](https://icon-sets.iconify.design/mdi/) can be used.
+
+The full identifier of the icon must be used. Example `mdi:domain`
+
+
+### Examples
+
+||| Schema
+```yaml
+---
+version: '1.0'
+nodes:
+  - name: Region
+    namespace: Location
+    icon: "mdi:web"
+    include_in_menu: true
+    label: "Region"
+  - name: Site
+    namespace: Location
+    icon: "mdi:domain"
+    include_in_menu: true
+    menu_placement: "LocationRegion"
+    label: "Site"
+  - name: Rack
+    namespace: Location
+    icon: "mdi:server-outline"
+    include_in_menu: true
+    menu_placement: "LocationRack"
+    label: "Rack"
+```
+||| Rendering
+![Location Menu](../media/reference/schema/location_menu.png)
+|||

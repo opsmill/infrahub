@@ -20,7 +20,7 @@ Below is the list of all available options to define a Node in the schema
 | [**description**](#description) | Attribute | Short description of the model, will be visible in the frontend. | False |
 | [**display_labels**](#display_labels) | Attribute | List of attributes to use to generate the display label | False |
 | [**groups**](#groups) | Attribute | List of Group that this Node is part of. | False |
-| [**icon**](#icon) | Attribute | Defines the icon to be used for this object type. | False |
+| [**icon**](#icon) | Attribute | Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/ | False |
 | [**include_in_menu**](#include_in_menu) | Attribute | Defines if objects of this kind should be included in the menu. | False |
 | [**inherit_from**](#inherit_from) | Attribute | List of Generic Kind that this node is inheriting from | False |
 | [**label**](#label) | Attribute | Human friendly representation of the name/kind | False |
@@ -98,7 +98,7 @@ Below is the list of all available options to define a Node in the schema
 | ---- | --------------- |
 | **Name** | icon |
 | **Kind** | `Text` |
-| **Description** | Defines the icon to be used for this object type. |
+| **Description** | Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/ |
 | **Optional**  | True |
 | **Default Value** |  |
 | **Constraints** |  |
