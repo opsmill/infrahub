@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, List
 
 from pydantic.v1 import Field
 
@@ -11,6 +11,6 @@ class RequestGraphQLQueryGroupUpdate(InfrahubMessage):
     branch: str = Field(..., description="The branch to target")
     query_name: str = Field(..., description="The name of the GraphQLQuery that should be associated with the group")
     query_id: str = Field(..., description="The ID of the GraphQLQuery that should be associated with the group")
-    related_node_ids: set[str] = Field(..., description="List of nodes related to the GraphQLQuery")
-    subscribers: set[str] = Field(..., description="List of subscribers to add to the group")
+    related_node_ids: List[str] = Field(..., description="List of nodes related to the GraphQLQuery")
+    subscribers: List[str] = Field(..., description="List of subscribers to add to the group")
     params: Dict[str, str] = Field(..., description="Params sent with the query")

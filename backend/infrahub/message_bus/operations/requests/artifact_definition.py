@@ -139,8 +139,9 @@ async def check(  # pylint: disable=too-many-statements
 
 async def generate(message: messages.RequestArtifactDefinitionGenerate, service: InfrahubServices) -> None:
     log.info(
-        f"Received request to generate artifacts for artifact_definition={message.artifact_definition}",
+        "Received request to generate artifacts for an artifact_definition",
         branch=message.branch,
+        artifact_definition=message.artifact_definition,
         limit=message.limit,
     )
     artifact_definition = await service.client.get(

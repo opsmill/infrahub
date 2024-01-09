@@ -1199,7 +1199,7 @@ class InfrahubNode(InfrahubNodeBase):
 
         # If Upsert was use we need to read back the ID from the response in case the node already existed
         if allow_update:
-            self.id = response["CoreGraphQLQueryGroupUpsert"]["object"]["id"]
+            self.id = response[mutation_name]["object"]["id"]
 
     async def update(self, at: Timestamp, do_full_update: bool = False) -> None:
         input_data = self._generate_input_data(exclude_unmodified=not do_full_update)
@@ -1512,7 +1512,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
 
         # If Upsert was use we need to read back the ID from the response in case the node already existed
         if allow_update:
-            self.id = response["CoreGraphQLQueryGroupUpsert"]["object"]["id"]
+            self.id = response[mutation_name]["object"]["id"]
 
     def update(self, at: Timestamp, do_full_update: bool = False) -> None:
         input_data = self._generate_input_data(exclude_unmodified=not do_full_update)

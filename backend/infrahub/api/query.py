@@ -69,8 +69,8 @@ async def execute_query(
                 branch=branch_params.branch.name,
                 query_id=gql_query.id,
                 query_name=gql_query.name.value,  # type: ignore[attr-defined]
-                related_node_ids=related_node_ids,
-                subscribers=set(subscribers),
+                related_node_ids=list(related_node_ids),
+                subscribers=subscribers,
                 params=params,
             )
         )
