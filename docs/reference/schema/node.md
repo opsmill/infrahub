@@ -4,6 +4,7 @@ layout: default
 order: 900
 ---
 <!-- vale off -->
+<!-- markdownlint-disable MD012 -->
 
 # Node
 
@@ -190,3 +191,4 @@ Below is the list of all available options to define a Node in the schema
 | **Name** | relationships |
 | **Kind** | `List` |
 | **Description** | List of supported Relationships for the Node. |
+

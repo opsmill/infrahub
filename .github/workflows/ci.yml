@@ -120,11 +120,10 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v4"
-      - name: "Setup environment"
-        run: "npm install markdownlint-cli2 --global"
-      - name: "Linting: markdownlint"
-        run: "markdownlint-cli2 **/*.md"
+        uses: DavidAnson/markdownlint-cli2-action@v14
+        with:
+          config: .markdownlint.yaml
+          globs: '**/*.md'
 
   python-sdk-unit-tests:
     strategy:

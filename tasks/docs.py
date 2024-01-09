@@ -68,6 +68,7 @@ def serve(context: Context):
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
+
 @task
 def vale(context: Context):
     """Run vale to validate the documentation."""
@@ -82,6 +83,7 @@ def vale(context: Context):
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
+
 @task
 def markdownlint(context: Context):
     has_markdownlint = check_if_command_available(context=context, command_name="markdownlint-cli2")
@@ -94,6 +96,7 @@ def markdownlint(context: Context):
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
+
 @task
 def format_markdownlint(context: Context):
     """Run markdownlint-cli2 to format all .md files."""
@@ -103,16 +106,19 @@ def format_markdownlint(context: Context):
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
+
 @task
 def format(context: Context):
     """This will run all formatter."""
     format_markdownlint(context)
+
 
 @task
 def lint(context: Context):
     """This will run all linter."""
     vale(context)
     markdownlint(context)
+
 
 def _generate_infrahub_cli_documentation(context: Context):
     """Generate the documentation for infrahub cli using typer-cli."""

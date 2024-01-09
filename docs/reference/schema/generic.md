@@ -4,6 +4,7 @@ layout: default
 order: 600
 ---
 <!-- vale off -->
+<!-- markdownlint-disable MD012 -->
 
 # Generic
 
@@ -165,7 +166,7 @@ Below is the list of all available options to define a Generic in the schema
 
 ## attributes
 
-| -- | -- | { class="compact" }
+| Key | Value | { class="compact" }
 | ---- | --------------- |
 | **Name** | attributes |
 | **Kind** | `List` |
@@ -173,8 +174,9 @@ Below is the list of all available options to define a Generic in the schema
 
 ## relationships
 
-| -- | -- | { class="compact" }
+| Key | Value | { class="compact" }
 | ---- | --------------- |
 | **Name** | relationships |
 | **Kind** | `List` |
 | **Description** |  |
+

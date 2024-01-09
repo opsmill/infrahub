@@ -5,7 +5,7 @@ Helper to validate the format of various files.
 **Usage**:
 
 ```console
-infrahubctl validate [OPTIONS] COMMAND [ARGS]...
+$ infrahubctl validate [OPTIONS] COMMAND [ARGS]...
 ```
 
 **Options**:
@@ -26,7 +26,7 @@ Validate the format of a GraphQL Query stored locally by executing it on a remot
 **Usage**:
 
 ```console
-infrahubctl validate graphql-query [OPTIONS] QUERY [VARIABLES]...
+$ infrahubctl validate graphql-query [OPTIONS] QUERY [VARIABLES]...
 ```
 
 **Arguments**:
@@ -48,7 +48,7 @@ Validate the format of a schema file either in JSON or YAML
 **Usage**:
 
 ```console
-infrahubctl validate schema [OPTIONS] SCHEMA
+$ infrahubctl validate schema [OPTIONS] SCHEMA
 ```
 
 **Arguments**:

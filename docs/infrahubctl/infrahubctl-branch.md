@@ -7,7 +7,7 @@ List, create, merge, rebase ..
 **Usage**:
 
 ```console
-infrahubctl branch [OPTIONS] COMMAND [ARGS]...
+$ infrahubctl branch [OPTIONS] COMMAND [ARGS]...
 ```
 
 **Options**:
@@ -33,7 +33,7 @@ Create a new branch.
 **Usage**:
 
 ```console
-infrahubctl branch create [OPTIONS] BRANCH_NAME [DESCRIPTION]
+$ infrahubctl branch create [OPTIONS] BRANCH_NAME [DESCRIPTION]
 ```
 
 **Arguments**:
@@ -54,7 +54,7 @@ Delete a branch.
 **Usage**:
 
 ```console
-infrahubctl branch delete [OPTIONS] BRANCH_NAME
+$ infrahubctl branch delete [OPTIONS] BRANCH_NAME
 ```
 
 **Arguments**:
@@ -73,7 +73,7 @@ Show the differences between a Branch and main.
 **Usage**:
 
 ```console
-infrahubctl branch diff [OPTIONS] BRANCH_NAME
+$ infrahubctl branch diff [OPTIONS] BRANCH_NAME
 ```
 
 **Arguments**:
@@ -95,7 +95,7 @@ List all existing branches.
 **Usage**:
 
 ```console
-infrahubctl branch list [OPTIONS]
+$ infrahubctl branch list [OPTIONS]
 ```
 
 **Options**:
@@ -110,7 +110,7 @@ Merge a Branch with main.
 **Usage**:
 
 ```console
-infrahubctl branch merge [OPTIONS] BRANCH_NAME
+$ infrahubctl branch merge [OPTIONS] BRANCH_NAME
 ```
 
 **Arguments**:
@@ -129,7 +129,7 @@ Rebase a Branch with main.
 **Usage**:
 
 ```console
-infrahubctl branch rebase [OPTIONS] BRANCH_NAME
+$ infrahubctl branch rebase [OPTIONS] BRANCH_NAME
 ```
 
 **Arguments**:
@@ -148,7 +148,7 @@ Validate if a branch has some conflict and is passing all the tests (NOT IMPLEME
 **Usage**:
 
 ```console
-infrahubctl branch validate [OPTIONS] BRANCH_NAME
+$ infrahubctl branch validate [OPTIONS] BRANCH_NAME
 ```
 
 **Arguments**:

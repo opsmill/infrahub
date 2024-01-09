@@ -5,7 +5,7 @@ Render a local Jinja Template (RFile) for debugging purpose.
 **Usage**:
 
 ```console
-infrahubctl render [OPTIONS] RFILE_NAME [VARIABLES]...
+$ infrahubctl render [OPTIONS] RFILE_NAME [VARIABLES]...
 ```
 
 **Arguments**:

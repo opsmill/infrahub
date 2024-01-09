@@ -5,7 +5,7 @@ Control the Git Agent.
 **Usage**:
 
 ```console
-infrahub git-agent [OPTIONS] COMMAND [ARGS]...
+$ infrahub git-agent [OPTIONS] COMMAND [ARGS]...
 ```
 
 **Options**:
@@ -25,7 +25,7 @@ Start Infrahub Git Agent.
 **Usage**:
 
 ```console
-infrahub git-agent start [OPTIONS] [PORT]
+$ infrahub git-agent start [OPTIONS] [PORT]
 ```
 
 **Arguments**:

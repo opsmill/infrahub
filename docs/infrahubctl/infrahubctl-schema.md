@@ -5,7 +5,7 @@ Manage the schema in a remote Infrahub instance.
 **Usage**:
 
 ```console
-infrahubctl schema [OPTIONS] COMMAND [ARGS]...
+$ infrahubctl schema [OPTIONS] COMMAND [ARGS]...
 ```
 
 **Options**:
@@ -26,7 +26,7 @@ Load a schema file into Infrahub.
 **Usage**:
 
 ```console
-infrahubctl schema load [OPTIONS] SCHEMAS...
+$ infrahubctl schema load [OPTIONS] SCHEMAS...
 ```
 
 **Arguments**:
@@ -47,7 +47,7 @@ Migrate the schema to the latest version. (Not Implemented Yet)
 **Usage**:
 
 ```console
-infrahubctl schema migrate [OPTIONS]
+$ infrahubctl schema migrate [OPTIONS]
 ```
 
 **Options**:

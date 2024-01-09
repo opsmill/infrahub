@@ -5,7 +5,7 @@ Execute user-defined checks.
 **Usage**:
 
 ```console
-infrahubctl check [OPTIONS] COMMAND [ARGS]...
+$ infrahubctl check [OPTIONS] COMMAND [ARGS]...
 ```
 
 **Options**:
@@ -25,7 +25,7 @@ Locate and execute all checks under the defined path.
 **Usage**:
 
 ```console
-infrahubctl check run [OPTIONS] [PATH]
+$ infrahubctl check run [OPTIONS] [PATH]
 ```
 
 **Arguments**:

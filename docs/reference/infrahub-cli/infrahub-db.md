@@ -5,7 +5,7 @@ Manage the graph in the database.
 **Usage**:
 
 ```console
-infrahub db [OPTIONS] COMMAND [ARGS]...
+$ infrahub db [OPTIONS] COMMAND [ARGS]...
 ```
 
 **Options**:
@@ -26,7 +26,7 @@ Erase the content of the database and initialize it with the core schema.
 **Usage**:
 
 ```console
-infrahub db init [OPTIONS]
+$ infrahub db init [OPTIONS]
 ```
 
 **Options**:
@@ -41,7 +41,7 @@ Load test data into the database from the `test_data` directory.
 **Usage**:
 
 ```console
-infrahub db load-test-data [OPTIONS]
+$ infrahub db load-test-data [OPTIONS]
 ```
 
 **Options**:

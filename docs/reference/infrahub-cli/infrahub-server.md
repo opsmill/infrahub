@@ -5,7 +5,7 @@ Control the API Server.
 **Usage**:
 
 ```console
-infrahub server [OPTIONS] COMMAND [ARGS]...
+$ infrahub server [OPTIONS] COMMAND [ARGS]...
 ```
 
 **Options**:
@@ -25,7 +25,7 @@ Start Infrahub in Debug Mode with reload enabled.
 **Usage**:
 
 ```console
-infrahub server start [OPTIONS]
+$ infrahub server start [OPTIONS]
 ```
 
 **Options**:

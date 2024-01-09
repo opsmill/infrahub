@@ -5,7 +5,7 @@ Render a local transform (TransformPython) for debugging purpose.
 **Usage**:
 
 ```console
-infrahubctl transform [OPTIONS] [TRANSFORM_NAME] [VARIABLES]...
+$ infrahubctl transform [OPTIONS] [TRANSFORM_NAME] [VARIABLES]...
 ```
 
 **Arguments**:

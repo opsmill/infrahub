@@ -5,7 +5,7 @@ Execute a script.
 **Usage**:
 
 ```console
-infrahubctl run [OPTIONS] SCRIPT
+$ infrahubctl run [OPTIONS] SCRIPT
 ```
 
 **Arguments**:

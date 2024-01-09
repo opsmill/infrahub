@@ -4,6 +4,7 @@ layout: default
 order: 700
 ---
 <!-- vale off -->
+<!-- markdownlint-disable MD012 -->
 
 # Relationship
 
@@ -164,3 +165,12 @@ Below is the list of all available options to define a Relationship in the schem
 | **Optional** | False |
 | **Default Value** |  |
 | **Constraints** |  Regex: `^[A-Z][a-zA-Z0-9]+$`<br> Length: min 3, max 32 |
+
+## node
+
+| Key | Value | { class="compact" }
+| ---- | --------------- |
+| **Name** | node |
+| **Kind** | `Object` |
+| **Description** |  |
+
