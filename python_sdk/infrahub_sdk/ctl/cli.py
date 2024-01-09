@@ -81,7 +81,7 @@ async def _run(
 def identify_faulty_jinja_code(traceback: Traceback, nbr_context_lines: int = 3) -> List[Tuple[Frame, Syntax]]:
     response = []
 
-    # The Traceback from rich is very helpfull to parse the entire stack trace
+    # The Traceback from rich is very helpful to parse the entire stack trace
     # to will generate a Frame object for each exception in the trace
 
     # Extract only the Jinja related exceptioin from the stack
