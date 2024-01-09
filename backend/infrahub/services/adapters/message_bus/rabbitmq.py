@@ -135,7 +135,7 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         connection = await get_broker()
         # Create a channel and subscribe to the incoming RPC queue
         self.channel = await connection.channel()
-
+        await self.channel.set_qos(prefetch_count=1)
         events_queue = await self.channel.declare_queue(name=f"worker-events-{WORKER_IDENTITY}", exclusive=True)
 
         self.exchange = await self.channel.declare_exchange(
@@ -174,3 +174,25 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         response = await future
         data = json.loads(response.body)
         return InfrahubResponse(**data)
+
+    async def subscribe(self) -> None:
+        queue = await self.channel.get_queue(f"{config.SETTINGS.broker.namespace}.rpcs")
+        self.service.log.info("Waiting for RPC instructions to execute .. ")
+        async with queue.iterator() as qiterator:
+            async for message in qiterator:
+                try:
+                    async with message.process(requeue=False):
+                        clear_log_context()
+                        if message.routing_key in messages.MESSAGE_MAP:
+                            await execute_message(
+                                routing_key=message.routing_key, message_body=message.body, service=self.service
+                            )
+                        else:
+                            self.service.log.error(
+                                "Unhandled routing key for message",
+                                routing_key=message.routing_key,
+                                message=message.body,
+                            )
+
+                except Exception:  # pylint: disable=broad-except
+                    self.service.log.exception("Processing error for message %r" % message)
