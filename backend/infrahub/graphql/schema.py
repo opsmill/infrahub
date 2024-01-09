@@ -26,7 +26,7 @@ from .mutations import (
     SchemaEnumAdd,
     SchemaEnumRemove,
 )
-from .queries import BranchQueryList, DiffSummary
+from .queries import BranchQueryList, DiffSummary, InfrahubInfo
 from .utils import extract_fields
 
 if TYPE_CHECKING:
@@ -67,6 +67,8 @@ class InfrahubBaseQuery(ObjectType):
     Branch = BranchQueryList
 
     DiffSummary = DiffSummary
+
+    InfrahubInfo = InfrahubInfo
 
 
 class InfrahubBaseMutation(ObjectType):
