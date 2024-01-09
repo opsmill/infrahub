@@ -4,7 +4,7 @@ import { classNames } from "../../utils/common";
 // type SwitchProps = {}
 
 export const Switch = (props: any) => {
-  const { checked, onChange, error, disabled } = props;
+  const { checked, onChange, error, disabled, testId } = props;
 
   return (
     <div
@@ -16,6 +16,7 @@ export const Switch = (props: any) => {
         disabled={disabled}
         checked={checked}
         onChange={onChange}
+        data-testid={testId}
         className={`${
           checked ? "bg-custom-blue-500" : "bg-gray-200"
         } relative inline-flex h-6 w-11 items-center rounded-full`}>

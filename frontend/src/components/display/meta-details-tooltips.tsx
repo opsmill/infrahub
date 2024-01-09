@@ -34,7 +34,7 @@ export default function MetaDetailsTooltip(props: Props) {
   // TODO: use the popover component
   return (
     <Popover className="relative flex">
-      <Popover.Button>
+      <Popover.Button data-testid="view-metadata-button">
         <div className="w-4 h-4" data-cy="metadata-button">
           <InformationCircleIcon className="w-4 h-4 text-gray-500" />
         </div>
@@ -52,6 +52,7 @@ export default function MetaDetailsTooltip(props: Props) {
             "absolute z-10 bg-custom-white rounded-lg border shadow-xl",
             position === "LEFT" ? "right-0" : ""
           )}
+          data-testid="metadata-tooltip"
           data-cy="metadata-tooltip">
           <div className="w-80 text-sm divide-y">
             {!!header && header}

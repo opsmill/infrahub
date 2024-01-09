@@ -203,7 +203,7 @@ export default function BranchSelector() {
                 disabled
               />
               Is data only:
-              <Switch checked={isDataOnly} onChange={setIsDataOnly} />
+              <Switch checked={isDataOnly} onChange={setIsDataOnly} testId="is-data-only-switch" />
             </div>
 
             <div className="flex justify-center">

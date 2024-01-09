@@ -280,6 +280,7 @@ export default function ObjectItemDetails(props: any) {
                                   });
                                   setShowMetaEditModal(true);
                                 }}
+                                data-testid="edit-metadata-button"
                                 data-cy="metadata-edit-button">
                                 <PencilSquareIcon className="w-4 h-4 text-custom-blue-500" />
                               </Button>
