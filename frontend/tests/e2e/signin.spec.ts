@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { ACCOUNT_STATE_PATH, ADMIN_CREDENTIALS } from "../tests/utils";
+import { ACCOUNT_STATE_PATH, ADMIN_CREDENTIALS } from "../utils";
 
 test.describe("/signin", () => {
   test.describe("When is not logged in", () => {

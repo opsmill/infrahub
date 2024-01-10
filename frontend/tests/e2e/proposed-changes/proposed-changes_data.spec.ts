@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { ACCOUNT_STATE_PATH } from "../../tests/utils";
+import { ACCOUNT_STATE_PATH } from "../../utils";
 
 test.describe("/proposed-changes diff data", () => {
   test.describe.configure({ mode: "serial" });

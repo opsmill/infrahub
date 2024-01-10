@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { ACCOUNT_STATE_PATH, saveScreenshotForDocs } from "../../tests/utils";
+import { ACCOUNT_STATE_PATH, saveScreenshotForDocs } from "../../utils";
 
 test.describe("Getting started with Infrahub - Data lineage and metadata", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });

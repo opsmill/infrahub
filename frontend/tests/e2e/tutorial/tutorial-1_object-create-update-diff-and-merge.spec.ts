@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { ACCOUNT_STATE_PATH, saveScreenshotForDocs } from "../../tests/utils";
+import { ACCOUNT_STATE_PATH, saveScreenshotForDocs } from "../../utils";
 import { format, subMinutes } from "date-fns";
 
 test.describe("Getting started with Infrahub - Object and branch creation, update, diff and merge", () => {
