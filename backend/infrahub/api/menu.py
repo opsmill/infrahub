@@ -125,7 +125,13 @@ async def get_menu(
         title="Admin",
         children=[
             InterfaceMenu(title="Accounts", path=f"/objects/{InfrahubKind.ACCOUNT}", icon="mdi:account"),
-            InterfaceMenu(title="Webhook", path=f"/objects/{InfrahubKind.WEBHOOK}", icon="mdi:webhook"),
+            InterfaceMenu(
+                title="Webhooks",
+                children=[
+                    InterfaceMenu(title="Webhook", path=f"/objects/{InfrahubKind.WEBHOOK}", icon="mdi:webhook"),
+                    InterfaceMenu(title="Custom Webhook", path="/objects/CoreCustomWebhook", icon="mdi:cog-outline"),
+                ],
+            ),
         ],
     )
 

@@ -50,6 +50,7 @@ if TYPE_CHECKING:
     from infrahub_sdk.branch import BranchData
     from infrahub_sdk.checks import InfrahubCheck
     from infrahub_sdk.schema import InfrahubRepositoryArtifactDefinitionConfig
+    from infrahub_sdk.transforms import InfrahubTransform
 
     from infrahub.message_bus import messages
 # pylint: disable=too-few-public-methods,too-many-lines
@@ -334,6 +335,10 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
     @classmethod
     def set_default_branch_name(cls, value):
         return value or config.SETTINGS.main.default_branch
+
+    @property
+    def default_branch(self) -> str:
+        return self.default_branch_name or config.SETTINGS.main.default_branch
 
     @property
     def directory_root(self) -> str:
@@ -1962,7 +1967,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
             module = importlib.import_module(file_info.module_name)
 
-            transform_class = getattr(module, class_name)
+            transform_class: InfrahubTransform = getattr(module, class_name)
 
             transform = await transform_class.init(
                 root_directory=commit_worktree.directory, branch=branch_name, client=client
