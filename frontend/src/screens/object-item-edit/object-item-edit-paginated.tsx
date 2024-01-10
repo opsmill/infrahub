@@ -15,10 +15,7 @@ import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
 import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdit";
 import getMutationDetailsFromFormData from "../../utils/getMutationDetailsFromFormData";
-import {
-  getSchemaAttributeColumns,
-  getSchemaRelationshipColumns,
-} from "../../utils/getSchemaObjectColumns";
+import { getObjectAttributes, getObjectRelationships } from "../../utils/getSchemaObjectColumns";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
@@ -53,9 +50,8 @@ export default function ObjectItemEditComponent(props: Props) {
   const [isLoading, setIsLoading] = useState(false);
 
   const schema = schemaList.find((s) => s.kind === objectname);
-
-  const attributes = getSchemaAttributeColumns(schema, true);
-  const relationships = getSchemaRelationshipColumns(schema);
+  const attributes = getObjectAttributes(schema);
+  const relationships = getObjectRelationships(schema);
 
   const peers = (schema?.relationships || []).map((r) => r.peer).filter(Boolean);
 

@@ -35,10 +35,10 @@ import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
 import {
+  getObjectAttributes,
+  getObjectRelationships,
   getObjectTabs,
-  getSchemaAttributeColumns,
-  getSchemaRelationshipColumns,
-  getSchemaRelationshipsTabs,
+  getTabs,
 } from "../../utils/getSchemaObjectColumns";
 import { Generate } from "../artifacts/generate";
 import ErrorScreen from "../error-screen/error-screen";
@@ -84,11 +84,11 @@ export default function ObjectItemDetails(props: any) {
     navigate("/");
   }
 
-  const attributes = getSchemaAttributeColumns(schemaData, true);
+  const attributes = getObjectAttributes(schemaData);
 
-  const relationships = getSchemaRelationshipColumns(schemaData);
+  const relationships = getObjectRelationships(schemaData);
 
-  const relationshipsTabs = getSchemaRelationshipsTabs(schemaData);
+  const relationshipsTabs = getTabs(schemaData);
 
   const queryString = schemaData
     ? getObjectDetailsPaginated({

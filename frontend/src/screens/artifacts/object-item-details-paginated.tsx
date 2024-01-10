@@ -28,10 +28,9 @@ import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
 import {
-  getObjectTabs,
-  getSchemaAttributeColumns,
-  getSchemaRelationshipColumns,
-  getSchemaRelationshipsTabs,
+  getObjectAttributes,
+  getObjectRelationships,
+  getTabs,
 } from "../../utils/getSchemaObjectColumns";
 import ErrorScreen from "../error-screen/error-screen";
 import AddObjectToGroup from "../groups/add-object-to-group";
@@ -73,11 +72,10 @@ export default function ArtifactsDetails() {
     navigate("/");
   }
 
-  const attributes = getSchemaAttributeColumns(schemaData, true);
+  const attributes = getObjectAttributes(schemaData);
+  const relationships = getObjectRelationships(schemaData);
+  const relationshipsTabs = getTabs(schemaData);
 
-  const relationships = getSchemaRelationshipColumns(schemaData);
-
-  const relationshipsTabs = getSchemaRelationshipsTabs(schemaData);
   const queryString = schemaData
     ? getObjectDetailsPaginated({
         ...schemaData,
@@ -118,7 +116,7 @@ export default function ArtifactsDetails() {
       label: schemaData?.label,
       name: schemaData?.label,
     },
-    ...getObjectTabs(relationshipsTabs, objectDetailsData),
+    ...getTabs(schemaData, objectDetailsData),
   ];
 
   if (!objectDetailsData) {

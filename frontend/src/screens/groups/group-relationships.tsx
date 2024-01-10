@@ -38,7 +38,8 @@ export default function GroupRelationships(props: RelationshipsDetailsProps) {
   const columns = getAttributeColumnsFromNodeOrGenericSchema(
     schemaList,
     generics,
-    relationshipSchema?.peer!
+    relationshipSchema?.peer!,
+    true
   );
 
   const filtersString = [

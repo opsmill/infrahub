@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
-  getSchemaAttributeColumns,
+  getObjectAttributes,
+  getObjectRelationships,
   getSchemaObjectColumns,
-  getSchemaRelationshipColumns,
 } from "../../../src/utils/getSchemaObjectColumns";
 import {
   C_deviceAttributeColumns,
@@ -13,12 +13,12 @@ import {
 
 describe("Schema object columns for list view", () => {
   it("should return correct attribute columns", () => {
-    const calculatedAttributes = getSchemaAttributeColumns(C_deviceSchema);
+    const calculatedAttributes = getObjectAttributes(C_deviceSchema);
     expect(calculatedAttributes).toStrictEqual(C_deviceAttributeColumns);
   });
 
   it("should return correct relationship columns", () => {
-    const calculatedRelationships = getSchemaRelationshipColumns(C_deviceSchema);
+    const calculatedRelationships = getObjectRelationships(C_deviceSchema);
     expect(calculatedRelationships).toStrictEqual(C_deviceRelationshipColumns);
   });
 
