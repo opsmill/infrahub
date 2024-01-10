@@ -30,6 +30,7 @@ COMMAND_MAP = {
     "refresh.webhook.configuration": refresh.webhook.configuration,
     "request.git.create_branch": requests.git.create_branch,
     "request.git.sync": requests.git.sync,
+    "request.graphql_query_group.update": requests.graphql_query_group.update,
     "request.artifact.generate": requests.artifact.generate,
     "request.artifact_definition.check": requests.artifact_definition.check,
     "request.artifact_definition.generate": requests.artifact_definition.generate,

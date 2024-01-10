@@ -10,6 +10,7 @@ from infrahub_sdk.utils import (
     base36encode,
     compare_lists,
     deep_merge_dict,
+    dict_hash,
     duplicates,
     get_flat_value,
     is_valid_url,
@@ -121,3 +122,11 @@ def test_get_flat_value(client, tag_schema, tag_green_data):
     assert get_flat_value(obj=tag, key="name__value") == "green"
     assert get_flat_value(obj=tag, key="name__source__display_label") == "CRM"
     assert get_flat_value(obj=tag, key="name.source.display_label", separator=".") == "CRM"
+
+
+def test_dict_hash():
+    assert dict_hash({"a": 1, "b": 2}) == "8aacdb17187e6acf2b175d4aa08d7213"
+    assert dict_hash({"b": 2, "a": 1}) == "8aacdb17187e6acf2b175d4aa08d7213"
+    assert dict_hash({"b": 2, "a": {"c": 1, "d": 2}}) == "729f4b898271d3fa95a7363bdd7c215d"
+    assert dict_hash({"b": 2, "a": {"d": 2, "c": 1}}) == "729f4b898271d3fa95a7363bdd7c215d"
+    assert dict_hash({}) == "99914b932bd37a50b983c5e7c90ae93b"

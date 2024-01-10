@@ -1995,14 +1995,17 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         query: InfrahubNode,
     ) -> ArtifactGenerateResult:
         variables = target.extract(params=definition.parameters.value)
-        data = await self.client.execute_graphql(
-            query=query.query.value,
+        response = await self.client.query_gql_query(
+            name=query.name.value,
             variables=variables,
+            update_group=True,
+            subscribers=[artifact.id],
             tracker="artifact-query-graphql-data",
             branch_name=branch_name,
             rebase=transformation.rebase.value,
             timeout=transformation.timeout.value,
         )
+        data = response.get("data")
 
         if transformation.typename == "CoreRFile":
             artifact_content = await self.render_jinja2_template(
@@ -2039,14 +2042,17 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
     async def render_artifact(
         self, artifact: InfrahubNode, message: Union[messages.CheckArtifactCreate, messages.RequestArtifactGenerate]
     ) -> ArtifactGenerateResult:
-        data = await self.client.execute_graphql(
-            query=message.query,
+        response = await self.client.query_gql_query(
+            name=message.query,
             variables=message.variables,
+            update_group=True,
+            subscribers=[artifact.id],
             tracker="artifact-query-graphql-data",
             branch_name=message.branch_name,
             rebase=message.rebase,
             timeout=message.timeout,
         )
+        data = response.get("data")
 
         if message.transform_type == "CoreRFile":
             artifact_content = await self.render_jinja2_template(
