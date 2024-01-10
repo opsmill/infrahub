@@ -1,12 +1,12 @@
 import pytest
 from graphql import DocumentNode, GraphQLSchema, OperationType
 from graphql.error import GraphQLSyntaxError
+from infrahub_sdk.analyzer import GraphQLOperation, GraphQLQueryAnalyzer
 
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql import generate_graphql_schema
-from infrahub.graphql.analyzer import GraphQLOperation, GraphQLQueryAnalyzer
 
 
 async def test_analyzer_init_query_only(query_01, bad_query_01):

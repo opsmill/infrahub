@@ -38,6 +38,7 @@ from graphql import (  # pylint: disable=no-name-in-module
 from graphql.utilities import (  # pylint: disable=no-name-in-module,import-error
     get_operation_ast,
 )
+from infrahub_sdk.analyzer import GraphQLQueryAnalyzer
 from starlette.background import BackgroundTasks
 from starlette.datastructures import UploadFile
 from starlette.requests import HTTPConnection, Request
@@ -46,7 +47,6 @@ from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 
 from infrahub.api.dependencies import api_key_scheme, cookie_auth_scheme, jwt_scheme
 from infrahub.auth import AccountSession, authentication_token
-from infrahub.graphql.analyzer import GraphQLQueryAnalyzer
 
 # pylint: disable=no-name-in-module,unused-argument,ungrouped-imports,raise-missing-from
 

@@ -10,8 +10,6 @@ from graphql import (
     parse,
     validate,
 )
-from pydantic.v1 import BaseModel
-
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.graphql.utils import (
@@ -20,6 +18,7 @@ from infrahub.graphql.utils import (
     extract_fields,
     extract_schema_models,
 )
+from pydantic.v1 import BaseModel
 
 
 class GraphQLQueryVariable(BaseModel):
@@ -44,6 +43,9 @@ class GraphQLQueryAnalyzer:
 
     @property
     def is_valid(self) -> Tuple[bool, Optional[List[GraphQLError]]]:
+        if self.schema is None:
+            return False, [GraphQLError("Schema is not provided")]
+
         errors = validate(schema=self.schema, document_ast=self.document)
         if errors:
             return False, errors
@@ -114,6 +116,8 @@ class GraphQLQueryAnalyzer:
         if not self._fields:
             fields = {}
             for definition in self.document.definitions:
+                if not isinstance(definition, OperationDefinitionNode):\
+                    continue
                 fields.update(await extract_fields(definition.selection_set))
             self._fields = fields
         return self._fields
@@ -127,6 +131,8 @@ class GraphQLQueryAnalyzer:
             raise ValueError("Schema and Branch must be provided to extract the models in use.")
 
         for definition in self.document.definitions:
+            if not isinstance(definition, OperationDefinitionNode):\
+                continue
             fields = await extract_fields(definition.selection_set)
 
             operation = getattr(definition, "operation", None)

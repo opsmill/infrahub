@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
 
+from infrahub_sdk.analyzer import GraphQLQueryAnalyzer
+
 from infrahub.auth import AccountSession
-from infrahub.graphql.analyzer import GraphQLQueryAnalyzer
 
 
 class GraphQLQueryPermissionCheckerInterface(ABC):

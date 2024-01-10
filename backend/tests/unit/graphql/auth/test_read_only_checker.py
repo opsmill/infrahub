@@ -2,11 +2,11 @@ from unittest.mock import AsyncMock
 
 import pytest
 from graphql import OperationType
+from infrahub_sdk.analyzer import GraphQLOperation, GraphQLQueryAnalyzer
 
 from infrahub.auth import AccountSession, AuthType
 from infrahub.core.constants import AccountRole
 from infrahub.exceptions import PermissionDeniedError
-from infrahub.graphql.analyzer import GraphQLOperation, GraphQLQueryAnalyzer
 from infrahub.graphql.auth.query_permission_checker.read_only_checker import ReadOnlyGraphQLPermissionChecker
 
 
