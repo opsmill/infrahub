@@ -20,7 +20,10 @@ RESERVED_ATTR_REL_NAMES = [
     "relationships",
     "rel",
     "rels",
+    "save",
 ]
+
+RESERVED_ATTR_GEN_NAMES = ["type"]
 
 
 class PermissionLevel(enum.Flag):

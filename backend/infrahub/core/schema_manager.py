@@ -12,6 +12,7 @@ import infrahub.config as config
 from infrahub import lock
 from infrahub.core import get_branch, get_branch_from_registry
 from infrahub.core.constants import (
+    RESERVED_ATTR_GEN_NAMES,
     RESERVED_ATTR_REL_NAMES,
     RESTRICTED_NAMESPACES,
     BranchSupportType,
@@ -348,10 +349,14 @@ class SchemaBranch:
                 continue
 
             for attr in node.attributes:
-                if attr.name in RESERVED_ATTR_REL_NAMES:
+                if attr.name in RESERVED_ATTR_REL_NAMES or (
+                    isinstance(node, GenericSchema) and attr.name in RESERVED_ATTR_GEN_NAMES
+                ):
                     raise ValueError(f"{node.kind}: {attr.name} isn't allowed as an attribute name.")
             for rel in node.relationships:
-                if rel.name in RESERVED_ATTR_REL_NAMES:
+                if rel.name in RESERVED_ATTR_REL_NAMES or (
+                    isinstance(node, GenericSchema) and rel.name in RESERVED_ATTR_GEN_NAMES
+                ):
                     raise ValueError(f"{node.kind}: {rel.name} isn't allowed as a relationship name.")
 
     def validate_menu_placements(self) -> None:
