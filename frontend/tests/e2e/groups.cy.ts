@@ -21,7 +21,7 @@ describe("Groups", () => {
     cy.get("[href='/groups']").click();
 
     // 5 groups should be present
-    cy.get("div.flex > .text-sm > :nth-child(3)").should("have.text", "5");
+    cy.get("div.flex > .text-sm > :nth-child(3)").should("have.text", "20");
 
     // Access group details
     cy.contains(GROUP_NAME).click();
@@ -114,7 +114,7 @@ describe("Groups", () => {
     cy.get("[id^=headlessui-combobox-button-]").click();
 
     // CHeck if the options have a length of 6
-    cy.get("[id^=headlessui-combobox-options-]").find("li").should("have.length", 6);
+    cy.get("[id^=headlessui-combobox-options-]").find("li").should("have.length", 11);
 
     // Choose the 2 same options to remove the groups
     cy.contains(NEW_GROUP_1).click();
