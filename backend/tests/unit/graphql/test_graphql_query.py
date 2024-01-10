@@ -2,6 +2,7 @@ import pytest
 from deepdiff import DeepDiff
 from graphql import graphql
 
+from infrahub import __version__
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType
@@ -17,6 +18,26 @@ from infrahub.graphql import generate_graphql_schema
 @pytest.fixture(autouse=True)
 def load_graphql_requirements(group_graphql):
     pass
+
+
+async def test_info_query(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+    query = """
+    query {
+        InfrahubInfo {
+            version
+        }
+    }
+    """
+    result = await graphql(
+        await generate_graphql_schema(db=db, include_mutation=False, include_subscription=False, branch=default_branch),
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["InfrahubInfo"]["version"] == __version__
 
 
 async def test_simple_query(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
