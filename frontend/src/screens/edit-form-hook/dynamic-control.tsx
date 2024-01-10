@@ -1,6 +1,7 @@
 import { useFormContext } from "react-hook-form";
 import { OpsCheckboxRegister } from "../../components/form/checkbox.register";
 import { CodeEditorRegister } from "../../components/form/code-editor.register";
+import { OpsColorPickerRegister } from "../../components/form/color-picker.register";
 import { OpsDatePickerRegister } from "../../components/form/date-picker.register";
 import { OpsInputRegister } from "../../components/form/input.register";
 import { OpsListRegister } from "../../components/form/list.register";
@@ -162,6 +163,9 @@ export const DynamicControl = (props: DynamicFieldData) => {
       return (
         <CodeEditorRegister {...props} value={jsonValue} register={register} setValue={setValue} />
       );
+    }
+    case "color": {
+      return <OpsColorPickerRegister {...props} register={register} setValue={setValue} />;
     }
     default:
       return null;

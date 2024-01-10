@@ -66,7 +66,8 @@ export type ControlType =
   | "datepicker"
   | "json"
   | "dropdown"
-  | "enum";
+  | "enum"
+  | "color";
 
 export type RelationshipCardinality = "one" | "many";
 

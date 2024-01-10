@@ -49,6 +49,7 @@
     "@types/node": "^16.18.12",
     "@types/react": "^18.0.28",
     "@types/react-dom": "^18.0.10",
+    "@uiw/react-color": "^2.0.5",
     "@vitejs/plugin-react": "^4.0.0",
     "autoprefixer": "^10.4.14",
     "cm6-theme-basic-light": "^0.2.0",

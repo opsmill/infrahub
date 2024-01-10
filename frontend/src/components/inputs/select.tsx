@@ -219,7 +219,7 @@ export const Select = (props: SelectProps) => {
         name: "color",
         label: "Color",
         value: "",
-        type: "text",
+        type: "color",
         isOptional: true,
       },
       {
@@ -273,8 +273,11 @@ export const Select = (props: SelectProps) => {
         const newOption = {
           id: value,
           name: label,
+          description,
+          color,
         };
 
+        console.log("newOption: ", newOption);
         setLocalOptions([...localOptions, newOption]);
 
         handleChange(newOption);
