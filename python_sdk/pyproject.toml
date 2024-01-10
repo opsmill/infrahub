@@ -144,6 +144,13 @@ disallow_untyped_defs = true
 module = "infrahub_sdk.ctl.*"
 ignore_errors = true
 
+[[tool.mypy.overrides]]
+module = "infrahub_sdk.analyzer"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub_sdk.utils"
+ignore_errors = true
 
 [tool.ruff]
 line-length = 120

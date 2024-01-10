@@ -2,7 +2,6 @@ from typing import Optional, Set
 
 from graphql import (
     GraphQLSchema,
-    OperationDefinitionNode,
     OperationType,
 )
 from infrahub_sdk.analyzer import GraphQLQueryAnalyzerBase

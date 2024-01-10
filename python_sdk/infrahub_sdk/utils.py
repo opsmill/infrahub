@@ -281,19 +281,6 @@ def calculate_dict_height(data: dict, cnt: int = 0) -> int:
     return cnt
 
 
-async def extract_field(node: Union[FieldNode, InlineFragmentNode]) -> Optional[Dict[str, Dict]]:
-    """Extract fields from a single node."""
-    sub_selection_set = getattr(node, "selection_set", None)
-    if not isinstance(sub_selection_set, SelectionSetNode):
-        return None
-
-    value = await extract_fields(sub_selection_set)
-    if not isinstance(value, dict):
-        return None
-
-    return {node.name.value: value} if isinstance(node, FieldNode) else value
-
-
 async def extract_fields(selection_set: SelectionSetNode) -> Optional[Dict[str, Dict]]:
     """This function extract all the requested fields in a tree of Dict from a SelectionSetNode
 
@@ -305,15 +292,27 @@ async def extract_fields(selection_set: SelectionSetNode) -> Optional[Dict[str, 
 
     In the future we'll probably need to redesign how we read GraphQL queries to generate better Database query.
     """
+
     if not selection_set:
         return None
 
-    fields: Dict[Any, Any] = {}
+    fields = {}
     for node in getattr(selection_set, "selections", []):
-        if isinstance(node, (FieldNode, InlineFragmentNode)):
-            node_value = await extract_field(node)
-            if node_value:
-                for key, value in node_value.items():
-                    fields.setdefault(key, {}).update(value)
+        sub_selection_set = getattr(node, "selection_set", None)
+        if isinstance(node, FieldNode):
+            value = await extract_fields(sub_selection_set)
+            if node.name.value not in fields:
+                fields[node.name.value] = value
+            elif isinstance(fields[node.name.value], dict) and isinstance(value, dict):
+                fields[node.name.value].update(value)
+
+        elif isinstance(node, InlineFragmentNode):
+            for sub_node in node.selection_set.selections:
+                sub_sub_selection_set = getattr(sub_node, "selection_set", None)
+                value = await extract_fields(sub_sub_selection_set)
+                if sub_node.name.value not in fields:
+                    fields[sub_node.name.value] = await extract_fields(sub_sub_selection_set)
+                elif isinstance(fields[sub_node.name.value], dict) and isinstance(value, dict):
+                    fields[sub_node.name.value].update(value)
 
     return fields
