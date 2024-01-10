@@ -13,22 +13,29 @@ from graphql import (
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.graphql.utils import (
-    calculate_dict_depth,
-    calculate_dict_height,
     extract_fields,
     extract_schema_models,
 )
-from pydantic.v1 import BaseModel
+
+try:
+    from pydantic import v1 as pydantic  # type: ignore[attr-defined]
+except ImportError:
+    import pydantic  # type: ignore[no-redef]
+
+from infrahub_sdk.utils import (
+    calculate_dict_depth,
+    calculate_dict_height,
+)
 
 
-class GraphQLQueryVariable(BaseModel):
+class GraphQLQueryVariable(pydantic.BaseModel):
     name: str
     type: str
     required: bool = False
     default_value: Optional[Any] = None
 
 
-class GraphQLOperation(BaseModel):
+class GraphQLOperation(pydantic.BaseModel):
     name: Optional[str] = None
     operation_type: OperationType
 

@@ -23,23 +23,6 @@ if TYPE_CHECKING:
     from graphql.execution import ExecutionResult
 
 
-def calculate_dict_depth(data: dict, level: int = 1) -> int:
-    """Calculate the depth of a nested dictionnary recursively."""
-    if not isinstance(data, dict) or not data:
-        return level
-    return max(calculate_dict_depth(data=data[key], level=level + 1) for key in data)
-
-
-def calculate_dict_height(data: dict, cnt: int = 0) -> int:
-    """Calculate the number of fields (height) in a nested dictionnary recursively."""
-    for key in data:
-        if isinstance(data[key], dict):
-            cnt = calculate_dict_height(data=data[key], cnt=cnt + 1)
-        else:
-            cnt += 1
-    return cnt
-
-
 async def extract_fields(selection_set: SelectionSetNode) -> Optional[Dict[str, Dict]]:
     """This function extract all the requested fields in a tree of Dict from a SelectionSetNode
 
