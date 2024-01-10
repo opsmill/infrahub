@@ -116,7 +116,7 @@ class GraphQLQueryAnalyzer:
         if not self._fields:
             fields = {}
             for definition in self.document.definitions:
-                if not isinstance(definition, OperationDefinitionNode):\
+                if not isinstance(definition, OperationDefinitionNode):
                     continue
                 fields.update(await extract_fields(definition.selection_set))
             self._fields = fields
@@ -131,7 +131,7 @@ class GraphQLQueryAnalyzer:
             raise ValueError("Schema and Branch must be provided to extract the models in use.")
 
         for definition in self.document.definitions:
-            if not isinstance(definition, OperationDefinitionNode):\
+            if not isinstance(definition, OperationDefinitionNode):
                 continue
             fields = await extract_fields(definition.selection_set)
 
