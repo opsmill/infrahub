@@ -246,17 +246,17 @@ At the node (or generic) level, 3 attributes are available to control where a gi
 
 `menu_placement` makes it possible to create a nested structure within the menu to display a given model under another one.
 
-### icon
+### Icon
 
 `icon` can be used to indicate which icon should be displayed next to the model in the menu.
 Any icon from the [Material Design Icons library / iconify.design](https://icon-sets.iconify.design/mdi/) can be used.
 
 The full identifier of the icon must be used. Example `mdi:domain`
 
-
 ### Examples
 
 ||| Schema
+
 ```yaml
 ---
 version: '1.0'
@@ -279,6 +279,7 @@ nodes:
     menu_placement: "LocationRack"
     label: "Rack"
 ```
+
 ||| Rendering
 ![Location Menu](../media/reference/schema/location_menu.png)
 |||

@@ -4,8 +4,7 @@ layout: default
 order: 700
 ---
 <!-- vale off -->
-
-
+<!-- markdownlint-disable MD012 -->
 
 # Relationship
 
@@ -14,8 +13,6 @@ In a schema file, a relationship can be defined inside a `node`, a `generic` or 
 ## Summary
 
 Below is the list of all available options to define a Relationship in the schema
-
-
 
 | Name | Type | Description | Mandatory | { class="compact" }
 | ---- | ---- | ---- | --------- |
@@ -32,6 +29,7 @@ Below is the list of all available options to define a Relationship in the schem
 | [**peer**](#peer) | Attribute | Type (kind) of objects supported on the other end of the relationship. | True |
 
 ## Reference Guide
+
 ### branch
 
 | Key | Value | { class="compact" }
@@ -67,7 +65,6 @@ Below is the list of all available options to define a Relationship in the schem
 | **Default Value** |  |
 | **Constraints** |  Length: min -, max 128 |
 
-
 ### direction
 
 | Key | Value | { class="compact" }
@@ -91,7 +88,6 @@ Below is the list of all available options to define a Relationship in the schem
 | **Default Value** |  |
 | **Constraints** |  Regex: `^[a-z0-9\_]+$`<br> Length: min -, max 128 |
 
-
 ### inherited
 
 | Key | Value | { class="compact" }
@@ -102,7 +98,6 @@ Below is the list of all available options to define a Relationship in the schem
 | **Optional** | True |
 | **Default Value** | False |
 | **Constraints** |  |
-
 
 ### kind
 
@@ -127,7 +122,6 @@ Below is the list of all available options to define a Relationship in the schem
 | **Default Value** |  |
 | **Constraints** |  Length: min -, max 32 |
 
-
 ### name
 
 | Key | Value | { class="compact" }
@@ -138,7 +132,6 @@ Below is the list of all available options to define a Relationship in the schem
 | **Optional** | False |
 | **Default Value** |  |
 | **Constraints** |  Regex: `^[a-z0-9\_]+$`<br> Length: min 3, max 32 |
-
 
 ### optional
 
@@ -151,7 +144,6 @@ Below is the list of all available options to define a Relationship in the schem
 | **Default Value** | False |
 | **Constraints** |  |
 
-
 ### order_weight
 
 | Key | Value | { class="compact" }
@@ -162,7 +154,6 @@ Below is the list of all available options to define a Relationship in the schem
 | **Optional** | True |
 | **Default Value** |  |
 | **Constraints** |  |
-
 
 ### peer
 
@@ -175,6 +166,11 @@ Below is the list of all available options to define a Relationship in the schem
 | **Default Value** |  |
 | **Constraints** |  Regex: `^[A-Z][a-zA-Z0-9]+$`<br> Length: min 3, max 32 |
 
+## node
 
-
+| Key | Value | { class="compact" }
+| ---- | --------------- |
+| **Name** | node |
+| **Kind** | `Object` |
+| **Description** |  |
 

@@ -4,6 +4,7 @@
         "prepare": "husky install"
     },
     "dependencies": {
+        "markdownlint-cli2": "^0.11.0",
         "retypeapp": "^3.3.0"
     },
     "devDependencies": {

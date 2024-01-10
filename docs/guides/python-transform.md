@@ -128,7 +128,6 @@ query TagsQuery($tag: String!) {
 
 Here the query will require an input parameter called `$name` what will refer to the name of each tag. When we want to query for the red tag the input variables to the query would look like this:
 
-
 ```json
 {
   "tag": "red"

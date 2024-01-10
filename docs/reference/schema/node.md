@@ -4,8 +4,7 @@ layout: default
 order: 900
 ---
 <!-- vale off -->
-
-
+<!-- markdownlint-disable MD012 -->
 
 # Node
 
@@ -32,6 +31,7 @@ Below is the list of all available options to define a Node in the schema
 | [**relationships**](#relationships) | Relationship | List of supported Relationships for the Node. | False |
 
 ## Reference Guide
+
 ### branch
 
 | Key | Value | { class="compact" }
@@ -55,7 +55,6 @@ Below is the list of all available options to define a Node in the schema
 | **Default Value** |  |
 | **Constraints** |  Regex: `^[a-z0-9\_]+$` |
 
-
 ### description
 
 | Key | Value | { class="compact" }
@@ -66,7 +65,6 @@ Below is the list of all available options to define a Node in the schema
 | **Optional**  | True |
 | **Default Value** |  |
 | **Constraints** |  Length: min -, max 128 |
-
 
 ### display_labels
 
@@ -79,7 +77,6 @@ Below is the list of all available options to define a Node in the schema
 | **Default Value** |  |
 | **Constraints** |  |
 
-
 ### groups
 
 | Key | Value | { class="compact" }
@@ -90,7 +87,6 @@ Below is the list of all available options to define a Node in the schema
 | **Optional**  | True |
 | **Default Value** |  |
 | **Constraints** |  |
-
 
 ### icon
 
@@ -103,7 +99,6 @@ Below is the list of all available options to define a Node in the schema
 | **Default Value** |  |
 | **Constraints** |  |
 
-
 ### include_in_menu
 
 | Key | Value | { class="compact" }
@@ -114,7 +109,6 @@ Below is the list of all available options to define a Node in the schema
 | **Optional**  | True |
 | **Default Value** | True |
 | **Constraints** |  |
-
 
 ### inherit_from
 
@@ -127,7 +121,6 @@ Below is the list of all available options to define a Node in the schema
 | **Default Value** |  |
 | **Constraints** |  |
 
-
 ### label
 
 | Key | Value | { class="compact" }
@@ -138,7 +131,6 @@ Below is the list of all available options to define a Node in the schema
 | **Optional**  | True |
 | **Default Value** |  |
 | **Constraints** |  Length: min -, max 32 |
-
 
 ### menu_placement
 
@@ -151,7 +143,6 @@ Below is the list of all available options to define a Node in the schema
 | **Default Value** |  |
 | **Constraints** |  |
 
-
 ### name
 
 | Key | Value | { class="compact" }
@@ -162,7 +153,6 @@ Below is the list of all available options to define a Node in the schema
 | **Optional**  | False |
 | **Default Value** |  |
 | **Constraints** |  Regex: `^[A-Z][a-zA-Z0-9]+$`<br> Length: min 2, max 32 |
-
 
 ### namespace
 
@@ -175,7 +165,6 @@ Below is the list of all available options to define a Node in the schema
 | **Default Value** |  |
 | **Constraints** |  Regex: `^[A-Z][a-zA-Z0-9]+$`<br> Length: min 3, max 32 |
 
-
 ### order_by
 
 | Key | Value | { class="compact" }
@@ -186,8 +175,6 @@ Below is the list of all available options to define a Node in the schema
 | **Optional**  | True |
 | **Default Value** |  |
 | **Constraints** |  |
-
-
 
 ## attributes
 
