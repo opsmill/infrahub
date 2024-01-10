@@ -466,22 +466,32 @@ class RelationshipGetPeerQuery(RelationshipQuery):
 
         arrows = self.schema.get_query_arrows()
 
+        ordering_var_str = (
+            "extract(r in relationships(path) | r.branch_level) + extract(r in relationships(path) | r.from)"
+        )
         query = """
-        MATCH (rl { name: $rel_identifier })
+        MATCH (rl:Relationship { name: $rel_identifier })
         CALL {
             WITH rl
-            MATCH p = (source:Node { uuid: $source_id })%s[f0r1:IS_RELATED]%s(rl:Relationship)%s[f0r2:IS_RELATED]%s(peer:Node)
-            WHERE peer.uuid <> $source_id AND all(r IN relationships(p) WHERE (%s))
-            RETURN peer as peer, rl as rl1, f0r1 as r1, f0r2 as r2
-            ORDER BY f0r1.branch_level DESC, f0r2.branch_level DESC, f0r2.from DESC, f0r2.from DESC
+            MATCH path = (source:Node { uuid: $source_id })%s[:IS_RELATED]%s(rl)%s[:IS_RELATED]%s(peer:Node)
+            WHERE peer.uuid <> $source_id AND all(r IN relationships(path) WHERE (%s))
+            WITH peer, rl, relationships(path) as rels, %s as ordering
+            RETURN peer as peer, rels, rl as rl1
+            ORDER BY ordering[0] DESC, ordering[1] DESC, ordering[2] DESC, ordering[3] DESC
             LIMIT 1
         }
-        WITH peer, rl1 as rl, r1, r2
-        """ % (arrows.left.start, arrows.left.end, arrows.right.start, arrows.right.end, branch_filter)
+        WITH peer, rl1 as rl, rels
+        """ % (
+            arrows.left.start,
+            arrows.left.end,
+            arrows.right.start,
+            arrows.right.end,
+            branch_filter,
+            ordering_var_str,
+        )
 
         self.add_to_query(query)
-        where_clause = ['r1.status = "active"', 'r2.status = "active"']
-
+        where_clause = ['all(r IN rels WHERE r.status = "active")']
         clean_filters = extract_field_filters(field_name=self.schema.name, filters=self.filters)
 
         if clean_filters and "id" in clean_filters or "ids" in clean_filters:
@@ -492,7 +502,7 @@ class RelationshipGetPeerQuery(RelationshipQuery):
 
         self.add_to_query("WHERE " + " AND ".join(where_clause))
 
-        self.return_labels = ["rl", "peer", "r1", "r2"]
+        self.return_labels = ["rl", "peer", "rels"]
 
         # ----------------------------------------------------------------------------
         # FILTER Results
@@ -608,12 +618,13 @@ class RelationshipGetPeerQuery(RelationshipQuery):
 
     def get_peers(self) -> Generator[RelationshipPeerData, None, None]:
         for result in self.get_results_group_by(("peer", "uuid")):
+            rels = result.get("rels")
             data = RelationshipPeerData(
                 peer_id=result.get("peer").get("uuid"),
                 rel_node_db_id=result.get("rl").element_id,
                 rel_node_id=result.get("rl").get("uuid"),
-                updated_at=result.get("r1").get("from"),
-                rels=[RelData.from_db(result.get("r1")), RelData.from_db(result.get("r2"))],
+                updated_at=rels[0]["from"],
+                rels=[RelData.from_db(rel) for rel in rels],
                 branch=self.branch,
                 properties={},
             )
