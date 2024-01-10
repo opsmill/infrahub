@@ -36,10 +36,9 @@ class GraphQLOperation(pydantic.BaseModel):
 
 
 class GraphQLQueryAnalyzerBase:
-    def __init__(self, query: str, schema: Optional[GraphQLSchema] = None, branch: Optional[str] = None):
+    def __init__(self, query: str, schema: Optional[GraphQLSchema] = None):
         self.query: str = query
         self.schema: Optional[GraphQLSchema] = schema
-        self.branch: Optional[str] = branch
         self.document: DocumentNode = parse(self.query)
         self._fields: Optional[Dict] = None
 

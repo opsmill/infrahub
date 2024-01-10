@@ -9,12 +9,14 @@ from infrahub_sdk.analyzer import GraphQLQueryAnalyzerBase
 from infrahub_sdk.utils import extract_fields
 
 from infrahub.core import registry
+from infrahub.core.branch import Branch
 from infrahub.graphql.utils import extract_schema_models
 
 
 class GraphQLQueryAnalyzer(GraphQLQueryAnalyzerBase):
-    def __init__(self, query: str, schema: Optional[GraphQLSchema] = None, branch: Optional[str] = None):
-        super().__init__(query=query, schema=schema, branch=branch)
+    def __init__(self, query: str, schema: Optional[GraphQLSchema] = None, branch: Optional[Branch] = None):
+        self.branch: Optional[Branch] = branch
+        super().__init__(query=query, schema=schema)
 
     async def get_models_in_use(self) -> Set[str]:
         """List of Infrahub models that are referenced in the query."""
@@ -25,8 +27,6 @@ class GraphQLQueryAnalyzer(GraphQLQueryAnalyzerBase):
             raise ValueError("Schema and Branch must be provided to extract the models in use.")
 
         for definition in self.document.definitions:
-            if not isinstance(definition, OperationDefinitionNode):
-                continue
             fields = await extract_fields(definition.selection_set)
 
             operation = getattr(definition, "operation", None)
@@ -38,8 +38,7 @@ class GraphQLQueryAnalyzer(GraphQLQueryAnalyzerBase):
                 # Subscription not supported right now
                 continue
 
-            if fields:
-                graphql_types.update(await extract_schema_models(fields=fields, schema=schema, root_schema=self.schema))
+            graphql_types.update(await extract_schema_models(fields=fields, schema=schema, root_schema=self.schema))
 
         for graphql_type_name in graphql_types:
             try:
