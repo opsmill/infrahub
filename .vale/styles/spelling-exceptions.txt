@@ -8,6 +8,7 @@ cypher
 datastore
 dev
 devcontainer
+direnv
 docker
 dockerfile
 e2e
