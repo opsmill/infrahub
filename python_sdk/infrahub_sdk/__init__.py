@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from infrahub_sdk.analyzer import GraphQLOperation, GraphQLQueryAnalyzer, GraphQLQueryVariable
 from infrahub_sdk.batch import InfrahubBatch
 from infrahub_sdk.branch import InfrahubBranchManager, InfrahubBranchManagerSync
 from infrahub_sdk.client import InfrahubClient, InfrahubClientSync
