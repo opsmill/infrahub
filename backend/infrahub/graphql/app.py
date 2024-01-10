@@ -38,15 +38,11 @@ from graphql import (  # pylint: disable=no-name-in-module
 from graphql.utilities import (  # pylint: disable=no-name-in-module,import-error
     get_operation_ast,
 )
-from infrahub_sdk.analyzer import GraphQLQueryAnalyzer
 from starlette.background import BackgroundTasks
 from starlette.datastructures import UploadFile
 from starlette.requests import HTTPConnection, Request
 from starlette.responses import JSONResponse, Response
 from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
-
-from infrahub.api.dependencies import api_key_scheme, cookie_auth_scheme, jwt_scheme
-from infrahub.auth import AccountSession, authentication_token
 
 # pylint: disable=no-name-in-module,unused-argument,ungrouped-imports,raise-missing-from
 
@@ -63,9 +59,12 @@ except ImportError:
 from infrahub_sdk.utils import str_to_bool
 
 import infrahub.config as config
+from infrahub.api.dependencies import api_key_scheme, cookie_auth_scheme, jwt_scheme
+from infrahub.auth import AccountSession, authentication_token
 from infrahub.core import get_branch, registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFound
+from infrahub.graphql.analyzer import GraphQLQueryAnalyzer
 
 if TYPE_CHECKING:
     import graphene

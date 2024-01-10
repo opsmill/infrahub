@@ -1,10 +1,10 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from infrahub_sdk.analyzer import GraphQLQueryAnalyzer
 
 from infrahub.auth import AccountSession, AuthType
 from infrahub.exceptions import AuthorizationError
+from infrahub.graphql.analyzer import GraphQLQueryAnalyzer
 from infrahub.graphql.auth.query_permission_checker.anonymous_checker import AnonymousGraphQLPermissionChecker
 
 

@@ -2,12 +2,12 @@ from typing import Any, Dict, Optional
 
 from graphene import InputObjectType, Mutation
 from graphql import GraphQLResolveInfo
-from infrahub_sdk.analyzer import GraphQLQueryAnalyzer
 
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase
+from infrahub.graphql.analyzer import GraphQLQueryAnalyzer
 from infrahub.graphql.mutations.main import InfrahubMutationMixin
 
 from .main import InfrahubMutationOptions
