@@ -81,6 +81,8 @@ infrahub-database-1        memgraph/memgraph:2.13.0   "/usr/lib/memgraph/m…"  
 infrahub-message-queue-1   rabbitmq:3.12-management   "docker-entrypoint.s…"   message-queue   2 hours ago   Up 2 hours (healthy)   4369/tcp, 5671/tcp, 0.0.0.0:5672->5672/tcp, 15671/tcp, 15691-15692/tcp, 25672/tcp, 0.0.0.0:15672->15672/tcp
 ```
 
+When following a guide, like the [installation guide](../guides/installation.md), the command `demo.start` is mentioned. It is slightly different from the `demo.dev-start` that is mentioned here. The `demo.start` will bring up a demo environment as a whole including services and Infrahub while the `demo.dev-start` will only start the services as seen in the code block above.
+
 ## Running Infrahub test suite
 
 With the required services working and properly setup Python virtual environment we can now run the Infrahub test suite to make sure the code works as intended.
