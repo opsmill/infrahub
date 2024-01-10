@@ -257,7 +257,6 @@ class SchemaBranch:
         self.process_branch_support()
 
     def process_validate(self) -> None:
-        self.validate_generics_names()
         self.validate_names()
         self.validate_menu_placements()
         self.validate_kinds()
@@ -337,27 +336,8 @@ class SchemaBranch:
                             f" {rels[0].direction.value} <> {peer_direction.value}"
                         ) from None
 
-    def validate_generics_names(self) -> None:
-        for name in list(self.generics.keys()):
-            node = self.get(name=name)
-
-            if names_dup := duplicates(node.attribute_names + node.relationship_names):
-                raise ValueError(
-                    f"{node.kind}: Names of attributes and relationships must be unique : {names_dup}"
-                ) from None
-
-            if node.kind in INTERNAL_SCHEMA_NODE_KINDS:
-                continue
-
-            for attr in node.attributes:
-                if attr.name in RESERVED_ATTR_GEN_NAMES + RESERVED_ATTR_REL_NAMES:
-                    raise ValueError(f"{node.kind}: {attr.name} isn't allowed as a generics attribute name.")
-            for rel in node.relationships:
-                if rel.name in RESERVED_ATTR_GEN_NAMES + RESERVED_ATTR_REL_NAMES:
-                    raise ValueError(f"{node.kind}: {rel.name} isn't allowed as a generics relationship name.")
-
     def validate_names(self) -> None:
-        for name in list(self.nodes.keys()):
+        for name in list(self.nodes.keys()) + list(self.generics.keys()):
             node = self.get(name=name)
 
             if names_dup := duplicates(node.attribute_names + node.relationship_names):
@@ -369,10 +349,14 @@ class SchemaBranch:
                 continue
 
             for attr in node.attributes:
-                if attr.name in RESERVED_ATTR_REL_NAMES:
+                if attr.name in RESERVED_ATTR_REL_NAMES or (
+                    isinstance(node, GenericSchema) and attr.name in RESERVED_ATTR_GEN_NAMES
+                ):
                     raise ValueError(f"{node.kind}: {attr.name} isn't allowed as an attribute name.")
             for rel in node.relationships:
-                if rel.name in RESERVED_ATTR_REL_NAMES:
+                if rel.name in RESERVED_ATTR_REL_NAMES or (
+                    isinstance(node, GenericSchema) and rel.name in RESERVED_ATTR_GEN_NAMES
+                ):
                     raise ValueError(f"{node.kind}: {rel.name} isn't allowed as a relationship name.")
 
     def validate_menu_placements(self) -> None:
