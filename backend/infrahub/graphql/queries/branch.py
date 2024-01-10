@@ -3,9 +3,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from graphene import ID, Field, List, String
+from infrahub_sdk.utils import extract_fields
 
 from infrahub.graphql.types import BranchType
-from infrahub.graphql.utils import extract_fields
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo

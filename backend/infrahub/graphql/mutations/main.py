@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, List, Optional
 
 from graphene import InputObjectType, Mutation
 from graphene.types.mutation import MutationOptions
+from infrahub_sdk.utils import extract_fields
 
 from infrahub import config
 from infrahub.auth import (
@@ -21,7 +22,6 @@ from infrahub.message_bus import Meta, messages
 from infrahub.services import services
 from infrahub.worker import WORKER_IDENTITY
 
-from ..utils import extract_fields
 from .node_getter.by_default_filter import MutationNodeGetterByDefaultFilter
 from .node_getter.by_id import MutationNodeGetterById
 

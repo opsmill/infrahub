@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
+from infrahub_sdk.utils import extract_fields
+
 from infrahub.core.constants import RelationshipHierarchyDirection
 from infrahub.core.manager import NodeManager
 from infrahub.core.query.node import NodeGetHierarchyQuery
 
 from .types import RELATIONS_PROPERTY_MAP, RELATIONS_PROPERTY_MAP_REVERSED
-from .utils import extract_fields
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo

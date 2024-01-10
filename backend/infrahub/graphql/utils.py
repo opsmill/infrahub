@@ -1,16 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, List, Optional, Set, Union
+from typing import TYPE_CHECKING, Dict, Union
 
-from graphene.types.definitions import GrapheneInterfaceType, GrapheneObjectType
 from graphql import (  # pylint: disable=no-name-in-module
     ExecutionContext,
     FieldNode,
     FragmentSpreadNode,
-    GraphQLList,
     GraphQLObjectType,
     GraphQLResolveInfo,
-    GraphQLSchema,
     InlineFragmentNode,
     SelectionSetNode,
 )
@@ -21,43 +18,6 @@ if TYPE_CHECKING:
     import abc
 
     from graphql.execution import ExecutionResult
-
-
-async def extract_fields(selection_set: SelectionSetNode) -> Optional[Dict[str, Dict]]:
-    """This function extract all the requested fields in a tree of Dict from a SelectionSetNode
-
-    The goal of this function is to limit the fields that we need to query from the backend.
-
-    Currently the function support Fields and InlineFragments but in a combined tree where the fragments are merged together
-    This implementation may seam counter intuitive but in the current implementation
-    it's better to have slightly more information at time passed to the query manager.
-
-    In the future we'll probably need to redesign how we read GraphQL queries to generate better Database query.
-    """
-
-    if not selection_set:
-        return None
-
-    fields = {}
-    for node in getattr(selection_set, "selections", []):
-        sub_selection_set = getattr(node, "selection_set", None)
-        if isinstance(node, FieldNode):
-            value = await extract_fields(sub_selection_set)
-            if node.name.value not in fields:
-                fields[node.name.value] = value
-            elif isinstance(fields[node.name.value], dict) and isinstance(value, dict):
-                fields[node.name.value].update(value)
-
-        elif isinstance(node, InlineFragmentNode):
-            for sub_node in node.selection_set.selections:
-                sub_sub_selection_set = getattr(sub_node, "selection_set", None)
-                value = await extract_fields(sub_sub_selection_set)
-                if sub_node.name.value not in fields:
-                    fields[sub_node.name.value] = await extract_fields(sub_sub_selection_set)
-                elif isinstance(fields[sub_node.name.value], dict) and isinstance(value, dict):
-                    fields[sub_node.name.value].update(value)
-
-    return fields
 
 
 def extract_data(query_name: str, result: ExecutionResult) -> Dict:
@@ -76,53 +36,6 @@ def extract_data(query_name: str, result: ExecutionResult) -> Dict:
         raise GraphQLQueryError(errors=errors)
 
     return result.data or {}
-
-
-def find_types_implementing_interface(
-    interface: GrapheneInterfaceType, root_schema: GraphQLSchema
-) -> List[GrapheneObjectType]:
-    results = []
-    for _, value in root_schema.type_map.items():
-        if not hasattr(value, "interfaces"):
-            continue
-
-        for item in value.interfaces:
-            if item.name == interface.name:
-                results.append(value)
-
-    return results
-
-
-async def extract_schema_models(fields: dict, schema: GrapheneObjectType, root_schema: GraphQLSchema) -> Set[str]:
-    response = set()
-    for field_name, value in fields.items():
-        if field_name not in schema.fields:
-            continue
-
-        if isinstance(schema.fields[field_name].type, GrapheneObjectType):
-            object_type = schema.fields[field_name].type
-        elif isinstance(schema.fields[field_name].type, GraphQLList):
-            object_type = schema.fields[field_name].type.of_type
-        elif isinstance(schema.fields[field_name].type, GrapheneInterfaceType):
-            object_type = schema.fields[field_name].type
-            sub_types = find_types_implementing_interface(interface=object_type, root_schema=root_schema)
-            for sub_type in sub_types:
-                response.add(sub_type.name)
-                response.update(await extract_schema_models(fields=value, schema=sub_type, root_schema=root_schema))
-        else:
-            continue
-
-        response.add(object_type.name)
-
-        if isinstance(value, dict):
-            response.update(await extract_schema_models(fields=value, schema=object_type, root_schema=root_schema))
-        elif isinstance(value, str) and value in schema.fields:
-            if isinstance(schema.fields[value].type, GrapheneObjectType):
-                response.add(schema.fields[value].type.name)
-            elif isinstance(schema.fields[value].type, GraphQLList):
-                response.add(schema.fields[value].type.of_type.name)
-
-    return response
 
 
 # --------------------------------------------------------------

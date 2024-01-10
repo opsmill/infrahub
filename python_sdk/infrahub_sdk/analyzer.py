@@ -11,11 +11,6 @@ from graphql import (
     validate,
 )
 from infrahub.core import registry
-from infrahub.core.branch import Branch
-from infrahub.graphql.utils import (
-    extract_fields,
-    extract_schema_models,
-)
 
 try:
     from pydantic import v1 as pydantic  # type: ignore[attr-defined]
@@ -25,6 +20,8 @@ except ImportError:
 from infrahub_sdk.utils import (
     calculate_dict_depth,
     calculate_dict_height,
+    extract_fields,
+    extract_schema_models,
 )
 
 
@@ -41,10 +38,10 @@ class GraphQLOperation(pydantic.BaseModel):
 
 
 class GraphQLQueryAnalyzer:
-    def __init__(self, query: str, schema: Optional[GraphQLSchema] = None, branch: Optional[Branch] = None):
+    def __init__(self, query: str, schema: Optional[GraphQLSchema] = None, branch: Optional[str] = None):
         self.query: str = query
         self.schema: Optional[GraphQLSchema] = schema
-        self.branch: Optional[Branch] = branch
+        self.branch: Optional[str] = branch
         self.document: DocumentNode = parse(self.query)
         self._fields: Optional[Dict] = None
 
@@ -125,7 +122,9 @@ class GraphQLQueryAnalyzer:
             for definition in self.document.definitions:
                 if not isinstance(definition, OperationDefinitionNode):
                     continue
-                fields.update(await extract_fields(definition.selection_set))
+                fields_to_update = await extract_fields(definition.selection_set)
+                if fields_to_update is not None:
+                    fields.update(fields_to_update)
             self._fields = fields
         return self._fields
 
@@ -151,7 +150,8 @@ class GraphQLQueryAnalyzer:
                 # Subscription not supported right now
                 continue
 
-            graphql_types.update(await extract_schema_models(fields=fields, schema=schema, root_schema=self.schema))
+            if fields:
+                graphql_types.update(await extract_schema_models(fields=fields, schema=schema, root_schema=self.schema))
 
         for graphql_type_name in graphql_types:
             try:

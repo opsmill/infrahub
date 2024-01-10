@@ -1,10 +1,10 @@
 from graphql import parse
+from infrahub_sdk.utils import extract_fields, extract_schema_models
 
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql import generate_graphql_schema
-from infrahub.graphql.utils import extract_fields, extract_schema_models
 
 
 async def test_extract_fields(query_01):
