@@ -1,6 +1,6 @@
 from typing import Dict, Union
 
-from infrahub.core.constants import ValidatorConclusion
+from infrahub.core.constants import InfrahubKind, ValidatorConclusion
 from infrahub.core.timestamp import Timestamp
 from infrahub.git.repository import InfrahubRepository
 from infrahub.log import get_logger
@@ -14,7 +14,9 @@ log = get_logger()
 
 async def create(message: messages.CheckArtifactCreate, service: InfrahubServices):
     log.debug("Creating artifact", message=message)
-    validator = await service.client.get(kind="CoreArtifactValidator", id=message.validator_id, include=["checks"])
+    validator = await service.client.get(
+        kind=InfrahubKind.ARTIFACTVALIDATOR, id=message.validator_id, include=["checks"]
+    )
 
     repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=service.client)
     artifact = await define_artifact(message=message, service=service)
@@ -47,7 +49,7 @@ async def create(message: messages.CheckArtifactCreate, service: InfrahubService
     check = None
     check_name = f"{message.artifact_name}: {message.target_name}"
     existing_check = await service.client.filters(
-        kind="CoreArtifactCheck", validator__ids=validator.id, name__value=check_name
+        kind=InfrahubKind.ARTIFACTCHECK, validator__ids=validator.id, name__value=check_name
     )
     if existing_check:
         check = existing_check[0]
@@ -63,7 +65,7 @@ async def create(message: messages.CheckArtifactCreate, service: InfrahubService
         await check.save()
     else:
         check = await service.client.create(
-            kind="CoreArtifactCheck",
+            kind=InfrahubKind.ARTIFACTCHECK,
             data={
                 "name": check_name,
                 "origin": message.repository_id,

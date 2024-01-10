@@ -3,17 +3,19 @@ import re
 import pytest
 from pytest_httpx import HTTPXMock
 
+from infrahub.core.constants import InfrahubKind
+
 
 @pytest.fixture
 async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
     response1 = {
         "data": {
-            "CoreRepository": {
+            InfrahubKind.REPOSITORY: {
                 "count": 1,
                 "edges": [
                     {
                         "node": {
-                            "__typename": "CoreRepository",
+                            "__typename": InfrahubKind.REPOSITORY,
                             "id": "9486cfce-87db-479d-ad73-07d80ba96a0f",
                             "name": {"value": "infrahub-demo-edge"},
                             "location": {"value": "git@github.com:dgarros/infrahub-demo-edge.git"},

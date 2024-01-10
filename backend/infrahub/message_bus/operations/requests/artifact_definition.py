@@ -2,7 +2,7 @@ from typing import List
 
 from infrahub_sdk import UUIDT
 
-from infrahub.core.constants import ValidatorConclusion, ValidatorState
+from infrahub.core.constants import InfrahubKind, ValidatorConclusion, ValidatorState
 from infrahub.core.timestamp import Timestamp
 from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubMessage, Meta, messages
@@ -22,9 +22,9 @@ async def check(  # pylint: disable=too-many-statements
     events: List[InfrahubMessage] = []
 
     artifact_definition = await service.client.get(
-        kind="CoreArtifactDefinition", id=message.artifact_definition, branch=message.source_branch
+        kind=InfrahubKind.ARTIFACTDEFINITION, id=message.artifact_definition, branch=message.source_branch
     )
-    proposed_change = await service.client.get(kind="CoreProposedChange", id=message.proposed_change)
+    proposed_change = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=message.proposed_change)
 
     validator_name = f"Artifact Validator: {artifact_definition.name.value}"
     validator_execution_id = str(UUIDT())
@@ -36,7 +36,7 @@ async def check(  # pylint: disable=too-many-statements
     for relationship in proposed_change.validations.peers:
         existing_validator = relationship.peer
         if (
-            existing_validator.typename == "CoreArtifactValidator"
+            existing_validator.typename == InfrahubKind.ARTIFACTVALIDATOR
             and existing_validator.definition.id == message.artifact_definition
         ):
             validator = existing_validator
@@ -49,7 +49,7 @@ async def check(  # pylint: disable=too-many-statements
         await validator.save()
     else:
         validator = await service.client.create(
-            kind="CoreArtifactValidator",
+            kind=InfrahubKind.ARTIFACTVALIDATOR,
             data={
                 "label": validator_name,
                 "proposed_change": message.proposed_change,
@@ -63,7 +63,7 @@ async def check(  # pylint: disable=too-many-statements
     await group.members.fetch()
 
     existing_artifacts = await service.client.filters(
-        kind="CoreArtifact",
+        kind=InfrahubKind.ARTIFACT,
         definition__ids=[message.artifact_definition],
         include=["object"],
         branch=message.source_branch,
@@ -83,10 +83,12 @@ async def check(  # pylint: disable=too-many-statements
     repository = transformation_repository.peer
     branch = await service.client.branch.get(branch_name=message.source_branch)
     if not branch.is_data_only:
-        repository = await service.client.get(kind="CoreRepository", id=repository.id, branch=message.source_branch)
+        repository = await service.client.get(
+            kind=InfrahubKind.REPOSITORY, id=repository.id, branch=message.source_branch
+        )
     transform_location = ""
 
-    if transform.typename == "CoreRFile":
+    if transform.typename == InfrahubKind.RFILE:
         transform_location = transform.template_path.value
     elif transform.typename == "CoreTransformPython":
         transform_location = f"{transform.file_path.value}::{transform.class_name.value}"
@@ -128,7 +130,7 @@ async def check(  # pylint: disable=too-many-statements
             start_time=Timestamp().to_string(),
             validator_id=validator.id,
             validator_execution_id=validator_execution_id,
-            validator_type="CoreArtifactValidator",
+            validator_type=InfrahubKind.ARTIFACTVALIDATOR,
         )
     )
 
@@ -145,7 +147,7 @@ async def generate(message: messages.RequestArtifactDefinitionGenerate, service:
         limit=message.limit,
     )
     artifact_definition = await service.client.get(
-        kind="CoreArtifactDefinition", id=message.artifact_definition, branch=message.branch
+        kind=InfrahubKind.ARTIFACTDEFINITION, id=message.artifact_definition, branch=message.branch
     )
 
     await artifact_definition.targets.fetch()
@@ -153,7 +155,7 @@ async def generate(message: messages.RequestArtifactDefinitionGenerate, service:
     await group.members.fetch()
 
     existing_artifacts = await service.client.filters(
-        kind="CoreArtifact",
+        kind=InfrahubKind.ARTIFACT,
         definition__ids=[message.artifact_definition],
         include=["object"],
         branch=message.branch,
@@ -173,10 +175,10 @@ async def generate(message: messages.RequestArtifactDefinitionGenerate, service:
     repository = transformation_repository.peer
     branch = await service.client.branch.get(branch_name=message.branch)
     if not branch.is_data_only:
-        repository = await service.client.get(kind="CoreRepository", id=repository.id, branch=message.branch)
+        repository = await service.client.get(kind=InfrahubKind.REPOSITORY, id=repository.id, branch=message.branch)
     transform_location = ""
 
-    if transform.typename == "CoreRFile":
+    if transform.typename == InfrahubKind.RFILE:
         transform_location = transform.template_path.value
     elif transform.typename == "CoreTransformPython":
         transform_location = f"{transform.file_path.value}::{transform.class_name.value}"

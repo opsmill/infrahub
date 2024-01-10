@@ -12,6 +12,7 @@ from pydantic.v1 import BaseModel
 from infrahub import config, models
 from infrahub.core import get_branch
 from infrahub.core.account import validate_token
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.exceptions import AuthorizationError, NodeNotFound
@@ -45,7 +46,7 @@ async def authenticate_with_password(
 ) -> models.UserToken:
     selected_branch = await get_branch(db=db, branch=branch)
     response = await NodeManager.query(
-        schema="CoreAccount",
+        schema=InfrahubKind.ACCOUNT,
         db=db,
         branch=selected_branch,
         filters={"name__value": credentials.username},
@@ -54,7 +55,7 @@ async def authenticate_with_password(
     if not response:
         raise NodeNotFound(
             branch_name=selected_branch.name,
-            node_type="CoreAccount",
+            node_type=InfrahubKind.ACCOUNT,
             identifier=credentials.username,
             message="That login user doesn't exist in the system",
         )
@@ -74,7 +75,7 @@ async def authenticate_with_password(
 
 
 async def create_db_refresh_token(db: InfrahubDatabase, account_id: str, expiration: datetime) -> uuid.UUID:
-    obj = await Node.init(db=db, schema="InternalRefreshToken")
+    obj = await Node.init(db=db, schema=InfrahubKind.REFRESHTOKEN)
     await obj.new(
         db=db,
         account=account_id,

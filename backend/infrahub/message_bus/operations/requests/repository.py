@@ -2,6 +2,7 @@ from typing import List
 
 from infrahub_sdk import UUIDT
 
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.timestamp import Timestamp
 from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubMessage, messages
@@ -20,8 +21,10 @@ async def checks(message: messages.RequestRepositoryChecks, service: InfrahubSer
 
     events: List[InfrahubMessage] = []
 
-    repository = await service.client.get(kind="CoreRepository", id=message.repository, branch=message.source_branch)
-    proposed_change = await service.client.get(kind="CoreProposedChange", id=message.proposed_change)
+    repository = await service.client.get(
+        kind=InfrahubKind.REPOSITORY, id=message.repository, branch=message.source_branch
+    )
+    proposed_change = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=message.proposed_change)
 
     validator_execution_id = str(UUIDT())
     check_execution_ids: List[str] = []
@@ -34,7 +37,7 @@ async def checks(message: messages.RequestRepositoryChecks, service: InfrahubSer
         existing_validator = relationship.peer
 
         if (
-            existing_validator.typename == "CoreRepositoryValidator"
+            existing_validator.typename == InfrahubKind.REPOSITORYVALIDATOR
             and existing_validator.repository.id == message.repository
         ):
             validator = existing_validator
@@ -47,7 +50,7 @@ async def checks(message: messages.RequestRepositoryChecks, service: InfrahubSer
         await validator.save()
     else:
         validator = await service.client.create(
-            kind="CoreRepositoryValidator",
+            kind=InfrahubKind.REPOSITORYVALIDATOR,
             data={
                 "label": validator_name,
                 "proposed_change": message.proposed_change,
@@ -83,7 +86,7 @@ async def checks(message: messages.RequestRepositoryChecks, service: InfrahubSer
             start_time=Timestamp().to_string(),
             validator_id=validator.id,
             validator_execution_id=validator_execution_id,
-            validator_type="CoreRepositoryValidator",
+            validator_type=InfrahubKind.REPOSITORYVALIDATOR,
         )
     )
 
@@ -102,7 +105,7 @@ async def user_checks(message: messages.RequestRepositoryUserChecks, service: In
     events: List[InfrahubMessage] = []
 
     repository = await service.client.get(
-        kind="CoreRepository",
+        kind=InfrahubKind.REPOSITORY,
         id=message.repository,
         branch=message.source_branch,
     )

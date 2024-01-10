@@ -1,3 +1,4 @@
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.log import get_logger
@@ -81,7 +82,7 @@ async def load_data(db: InfrahubDatabase, nbr_devices: int = None):
     # tags_dict = {}
 
     for group in GROUPS:
-        obj = await Node.init(db=db, schema="CoreGroup")
+        obj = await Node.init(db=db, schema=InfrahubKind.GENERICGROUP)
         await obj.new(db=db, description=group[0], name=group[1])
         await obj.save(db=db)
         groups_dict[group[1]] = obj

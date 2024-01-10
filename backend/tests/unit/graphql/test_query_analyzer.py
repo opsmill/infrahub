@@ -3,6 +3,7 @@ from graphql import DocumentNode, GraphQLSchema, OperationType
 from graphql.error import GraphQLSyntaxError
 
 from infrahub.core.branch import Branch
+from infrahub.core.constants import InfrahubKind
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql import generate_graphql_schema
 from infrahub.graphql.analyzer import GraphQLOperation, GraphQLQueryAnalyzer
@@ -144,9 +145,9 @@ async def test_get_models_in_use(
 
     gqa = GraphQLQueryAnalyzer(query=query_02, schema=schema, branch=default_branch)
     assert await gqa.get_models_in_use() == {
-        "CoreGraphQLQueryGroup",
-        "CoreGroup",
-        "CoreStandardGroup",
+        InfrahubKind.GRAPHQLQUERYGROUP,
+        InfrahubKind.GENERICGROUP,
+        InfrahubKind.STANDARDGROUP,
         "TestCar",
         "TestElectricCar",
         "TestGazCar",

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
 import graphene
 
 from infrahub.core import get_branch, registry
-from infrahub.core.constants import RelationshipKind
+from infrahub.core.constants import InfrahubKind, RelationshipKind
 from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema
 from infrahub.graphql.mutations.graphql_query import InfrahubGraphQLQueryMutation
 from infrahub.types import ATTRIBUTE_TYPES, get_attribute_type
@@ -208,8 +208,8 @@ async def generate_query_mixin(db: InfrahubDatabase, branch: Union[Branch, str] 
             resolver=default_paginated_list_resolver,
             **node_filters,
         )
-        if node_name == "CoreAccount":
-            node_type = registry.get_graphql_type(name="CoreAccount", branch=branch)
+        if node_name == InfrahubKind.ACCOUNT:
+            node_type = registry.get_graphql_type(name=InfrahubKind.ACCOUNT, branch=branch)
             class_attrs["AccountProfile"] = graphene.Field(
                 node_type,
                 resolver=account_resolver,
@@ -231,10 +231,10 @@ async def generate_mutation_mixin(db: InfrahubDatabase, branch: Union[Branch, st
 
         base_class = InfrahubMutation
         mutation_map = {
-            "CoreArtifactDefinition": InfrahubArtifactDefinitionMutation,
-            "CoreRepository": InfrahubRepositoryMutation,
-            "CoreProposedChange": InfrahubProposedChangeMutation,
-            "CoreGraphQLQuery": InfrahubGraphQLQueryMutation,
+            InfrahubKind.ARTIFACTDEFINITION: InfrahubArtifactDefinitionMutation,
+            InfrahubKind.REPOSITORY: InfrahubRepositoryMutation,
+            InfrahubKind.PROPOSEDCHANGE: InfrahubProposedChangeMutation,
+            InfrahubKind.GRAPHQLQUERY: InfrahubGraphQLQueryMutation,
         }
         base_class = mutation_map.get(node_schema.kind, InfrahubMutation)
 
@@ -263,7 +263,7 @@ def generate_graphql_object(schema: NodeSchema, branch: Branch) -> Type[Infrahub
             generic = registry.get_graphql_type(name=generic, branch=branch.name)
             meta_attrs["interfaces"].add(generic)
 
-    if not schema.inherit_from or "CoreGroup" not in schema.inherit_from:
+    if not schema.inherit_from or InfrahubKind.GENERICGROUP not in schema.inherit_from:
         node_interface = registry.get_graphql_type(name="CoreNode", branch=branch.name)
         meta_attrs["interfaces"].add(node_interface)
 

@@ -3,7 +3,7 @@ from infrahub_sdk import UUIDT
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import BranchSupportType
+from infrahub.core.constants import BranchSupportType, InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -556,7 +556,7 @@ async def test_node_create_with_single_relationship(db: InfrahubDatabase, defaul
 
 async def test_node_create_with_multiple_relationship(db: InfrahubDatabase, default_branch: Branch, fruit_tag_schema):
     fruit = registry.get_schema(name="GardenFruit")
-    tag = registry.get_schema(name="BuiltinTag")
+    tag = registry.get_schema(name=InfrahubKind.TAG)
 
     t1 = await Node.init(db=db, schema=tag)
     await t1.new(db=db, name="tag1")
@@ -698,13 +698,13 @@ async def test_update_related_node(db: InfrahubDatabase, default_branch, data_sc
     await p1.new(db=db, firstname="John", lastname="Doe")
     await p1.save(db=db)
 
-    t1 = await Node.init(db=db, schema="BuiltinTag")
+    t1 = await Node.init(db=db, schema=InfrahubKind.TAG)
     await t1.new(db=db, name="Blue", description="The Blue tag", person=p1)
     await t1.save(db=db)
-    t2 = await Node.init(db=db, schema="BuiltinTag")
+    t2 = await Node.init(db=db, schema=InfrahubKind.TAG)
     await t2.new(db=db, name="Red", description="The Red tag", person=p1)
     await t2.save(db=db)
-    t3 = await Node.init(db=db, schema="BuiltinTag")
+    t3 = await Node.init(db=db, schema=InfrahubKind.TAG)
     await t3.new(db=db, name="Black", description="The Black tag", person=p1)
     await t3.save(db=db)
 
@@ -915,7 +915,7 @@ async def test_node_update_in_branch_global(db: InfrahubDatabase, default_branch
 async def test_node_update_attribute_hybrid_in_branch_global(
     db: InfrahubDatabase, default_branch: Branch, fruit_tag_schema_global
 ):
-    red = await Node.init(db=db, schema="BuiltinTag")
+    red = await Node.init(db=db, schema=InfrahubKind.TAG)
     await red.new(db=db, name="red")
     await red.save(db=db)
 
@@ -929,7 +929,7 @@ async def test_node_update_attribute_hybrid_in_branch_global(
 
     branch1 = await create_branch(branch_name="branch1", db=db)
 
-    blue = await Node.init(db=db, schema="BuiltinTag", branch=branch1)
+    blue = await Node.init(db=db, schema=InfrahubKind.TAG, branch=branch1)
     await blue.new(db=db, name="blue")
     await blue.save(db=db)
 
@@ -952,7 +952,7 @@ async def test_node_update_attribute_hybrid_in_branch_global(
 async def test_node_relationship_in_branch_global(
     db: InfrahubDatabase, default_branch: Branch, fruit_tag_schema_global
 ):
-    red = await Node.init(db=db, schema="BuiltinTag")
+    red = await Node.init(db=db, schema=InfrahubKind.TAG)
     await red.new(db=db, name="red")
     await red.save(db=db)
 
@@ -966,7 +966,7 @@ async def test_node_relationship_in_branch_global(
 
     branch1 = await create_branch(branch_name="branch1", db=db)
 
-    blue = await Node.init(db=db, schema="BuiltinTag", branch=branch1)
+    blue = await Node.init(db=db, schema=InfrahubKind.TAG, branch=branch1)
     await blue.new(db=db, name="blue")
     await blue.save(db=db)
 
@@ -1002,7 +1002,7 @@ async def test_node_relationship_in_branch_global(
 
 
 async def test_node_delete_in_branch_global(db: InfrahubDatabase, default_branch: Branch, fruit_tag_schema_global):
-    red = await Node.init(db=db, schema="BuiltinTag")
+    red = await Node.init(db=db, schema=InfrahubKind.TAG)
     await red.new(db=db, name="red")
     await red.save(db=db)
 

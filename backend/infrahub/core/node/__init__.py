@@ -6,7 +6,7 @@ from infrahub_sdk import UUIDT
 from infrahub_sdk.utils import is_valid_uuid
 
 from infrahub.core import registry
-from infrahub.core.constants import BranchSupportType
+from infrahub.core.constants import BranchSupportType, InfrahubKind
 from infrahub.core.query.node import (
     NodeCheckIDQuery,
     NodeCreateAllQuery,
@@ -66,7 +66,10 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         if isinstance(self._schema, NodeSchema):
             labels: List[str] = [self.get_kind()] + self._schema.inherit_from
-            if self._schema.namespace not in ["Schema", "Internal"] and "CoreGroup" not in self._schema.inherit_from:
+            if (
+                self._schema.namespace not in ["Schema", "Internal"]
+                and InfrahubKind.GENERICGROUP not in self._schema.inherit_from
+            ):
                 labels.append("CoreNode")
             return labels
 

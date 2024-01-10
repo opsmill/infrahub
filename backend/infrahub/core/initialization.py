@@ -3,7 +3,7 @@ from typing import List, Optional
 from infrahub import config, lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import GLOBAL_BRANCH_NAME
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
 from infrahub.core.node import Node
 from infrahub.core.root import Root
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
@@ -204,7 +204,7 @@ async def first_time_initialization(db: InfrahubDatabase):
     # --------------------------------------------------
     # Create Default Users and Groups
     # --------------------------------------------------
-    token_schema = registry.get_schema(name="InternalAccountToken")
+    token_schema = registry.get_schema(name=InfrahubKind.ACCOUNTTOKEN)
     # admin_grp = await Node.init(db=db, schema=group_schema)
     # await admin_grp.new(db=db, name="admin")
     # await admin_grp.save(db=db)
@@ -216,7 +216,7 @@ async def first_time_initialization(db: InfrahubDatabase):
     # await admin_grp.save(db=db)
     # default_grp = obj = Node(group_schema).new(name="default").save()
     # account_schema = registry.get_schema(name="Account")
-    obj = await Node.init(db=db, schema="CoreAccount")
+    obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
     await obj.new(
         db=db,
         name="admin",
