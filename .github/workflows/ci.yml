@@ -120,6 +120,8 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: "Check out repository code"
+        uses: "actions/checkout@v4"
+      - name: "Linting: markdownlint"
         uses: DavidAnson/markdownlint-cli2-action@v14
         with:
           config: .markdownlint.yaml
