@@ -74,7 +74,7 @@ poetry run invoke demo.status
 
 This should yield a Docker output like the following:
 
-```
+```text
 NAME                       IMAGE                      COMMAND                  SERVICE         CREATED       STATUS                 PORTS
 infrahub-cache-1           redis:7.2                  "docker-entrypoint.s…"   cache           2 hours ago   Up 2 hours (healthy)   0.0.0.0:6379->6379/tcp
 infrahub-database-1        memgraph/memgraph:2.13.0   "/usr/lib/memgraph/m…"   database        2 hours ago   Up 2 hours (healthy)   0.0.0.0:7444->7444/tcp, 0.0.0.0:7474->7474/tcp, 0.0.0.0:7687->7687/tcp
