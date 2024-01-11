@@ -67,7 +67,9 @@ async def get_menu(
             continue
 
         if isinstance(model, NodeSchema) and "CoreGroup" in model.inherit_from:
-            groups.children.append(InterfaceMenu(title=model.menu_title, path=f"/objects/{model.kind}", icon="mdi:group"))
+            groups.children.append(
+              InterfaceMenu(title=model.menu_title, path=f"/objects/{model.kind}", icon="mdi:group")
+            )
             continue
 
         menu_name = model.menu_placement or "base"
