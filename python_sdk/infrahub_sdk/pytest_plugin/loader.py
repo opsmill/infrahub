@@ -32,7 +32,7 @@ class InfrahubYamlFile(pytest.File):
             if test_group.resource == InfrahubTestResource.RFILE.value:
                 marker = pytest.mark.infrahub_rfile(name=test_group.resource_name)
                 try:
-                    resource_config = self.session.infrahub_repo_config.get_rfile(test_group.resource_name)
+                    resource_config = self.session.infrahub_repo_config.get_rfile(test_group.resource_name)  # type: ignore[attr-defined]
                 except KeyError:
                     warnings.warn(
                         Warning(f"Unable to find the rfile {test_group.resource_name!r} in the repository config file.")
@@ -42,7 +42,7 @@ class InfrahubYamlFile(pytest.File):
             if test_group.resource == InfrahubTestResource.PYTHON_TRANSFORM.value:
                 marker = pytest.mark.infrahub_python_transform(name=test_group.resource_name)
                 try:
-                    resource_config = self.session.infrahub_repo_config.get_python_transform(test_group.resource_name)
+                    resource_config = self.session.infrahub_repo_config.get_python_transform(test_group.resource_name)  # type: ignore[attr-defined]
                 except KeyError:
                     warnings.warn(
                         Warning(

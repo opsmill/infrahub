@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import functools
-import importlib
 from typing import TYPE_CHECKING, Any, Dict, Literal, Tuple
 
 import pytest
 
-from infrahub_sdk.ctl.exceptions import InfrahubTransformNotFoundError
+from infrahub_sdk.ctl.transform import get_transform_class_instance
 
 from ..exceptions import PythonTransformDefinitionError, PythonTransformException
 from ..models import InfrahubTest, InfrahubTestExpectedResult
@@ -16,23 +15,6 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from infrahub_sdk.schema import InfrahubPythonTransformConfig
-    from infrahub_sdk.transforms import InfrahubTransform
-
-
-def get_transform_class_instance(transform_config: InfrahubPythonTransformConfig) -> InfrahubTransform:
-    """FIXME: Move it somewhere else to avoid having the exact same function as in sdk/ctl/cli"""
-    try:
-        spec = importlib.util.spec_from_file_location(transform_config.class_name, transform_config.file_path)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-
-        transform_class = getattr(module, transform_config.class_name)
-
-        transform_instance = transform_class()
-    except (FileNotFoundError, AttributeError) as e:
-        raise InfrahubTransformNotFoundError(name=transform_config.name) from e
-
-    return transform_instance
 
 
 class InfrahubPythonTransformUnitProcessItem(pytest.Item):
