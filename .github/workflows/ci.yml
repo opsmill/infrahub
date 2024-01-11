@@ -1,4 +1,4 @@
-bkr-cherry-pick-release-drafter-sdk---
+---
 # yamllint disable rule:truthy rule:truthy rule:line-length
 name: "CI"
 on:
