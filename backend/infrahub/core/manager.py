@@ -220,7 +220,6 @@ class NodeManager:
         id: str,
         direction: Literal["ancestors", "descendants"],
         node_schema: NodeSchema,
-        hierarchy_schema: GenericSchema,
         filters: dict,
         db: InfrahubDatabase,
         at: Optional[Union[Timestamp, str]] = None,
@@ -234,7 +233,6 @@ class NodeManager:
             direction=direction,
             node_id=id,
             node_schema=node_schema,
-            hierarchy_schema=hierarchy_schema,
             filters=filters,
             at=at,
             branch=branch,
@@ -249,7 +247,6 @@ class NodeManager:
         id: UUID,
         direction: Literal["ancestors", "descendants"],
         node_schema: NodeSchema,
-        hierarchy_schema: GenericSchema,
         filters: dict,
         fields: Optional[dict] = None,
         offset: Optional[int] = None,
@@ -265,7 +262,6 @@ class NodeManager:
             direction=direction,
             node_id=id,
             node_schema=node_schema,
-            hierarchy_schema=hierarchy_schema,
             filters=filters,
             offset=offset,
             limit=limit,
@@ -275,6 +271,8 @@ class NodeManager:
         await query.execute(db=db)
 
         peers_ids = list(query.get_peer_ids())
+
+        hierarchy_schema = node_schema.get_hierarchy_schema()
 
         # if display_label has been requested we need to ensure we are querying the right fields
         if fields and "display_label" in fields:

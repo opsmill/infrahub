@@ -685,6 +685,12 @@ class GenericSchema(BaseNodeSchema):
     hierarchical: bool = Field(default=False)
     used_by: List[str] = Field(default_factory=list)
 
+    def get_hierarchy_schema(self, branch: Optional[Union[Branch, str]] = None) -> GenericSchema:  # pylint: disable=unused-argument
+        if self.hierarchical:
+            return self
+
+        raise ValueError(f"hierarchical mode is not enabled on {self.kind}")
+
 
 class NodeSchema(BaseNodeSchema):
     inherit_from: List[str] = Field(default_factory=list)

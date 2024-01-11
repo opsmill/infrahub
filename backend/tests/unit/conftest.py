@@ -2301,6 +2301,7 @@ async def hierarchical_location_schema(db: InfrahubDatabase, default_branch: Bra
                 "hierarchical": True,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "status", "kind": "Text", "enum": ["online", "offline"], "default_value": "online"},
                 ],
                 "relationships": [
                     {"name": "things", "peer": "TestThing", "cardinality": "many", "optional": True},
@@ -2386,8 +2387,9 @@ async def hierarchical_location_data(
 
         for idx in range(1, NBR_RACKS_PER_SITE + 1):
             rack_name = f"{site[0]}-r{idx}"
+            statuses = ["online", "offline"]
             obj = await Node.init(db=db, schema="LocationRack")
-            await obj.new(db=db, name=rack_name, parent=site[0])
+            await obj.new(db=db, name=rack_name, parent=site[0], status=statuses[idx - 1])
             await obj.save(db=db)
             nodes[obj.name.value] = obj
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, Generator, List, Literal, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Generator, List, Literal, Optional, Tuple, Union
 
 from infrahub import config
 from infrahub.core.constants import RelationshipDirection
@@ -711,8 +711,7 @@ class NodeGetHierarchyQuery(Query):
         self,
         node_id: str,
         direction: Literal["ancestors", "descendants"],
-        node_schema: NodeSchema,
-        hierarchy_schema: GenericSchema,
+        node_schema: Union[NodeSchema, GenericSchema],
         filters: Optional[dict] = None,
         *args,
         **kwargs,
@@ -721,9 +720,10 @@ class NodeGetHierarchyQuery(Query):
         self.direction = direction
         self.node_id = node_id
         self.node_schema = node_schema
-        self.hierarchy_schema = hierarchy_schema
 
         super().__init__(*args, **kwargs)
+
+        self.hierarchy_schema = node_schema.get_hierarchy_schema(self.branch)
 
     async def query_init(self, db: InfrahubDatabase, *args, **kwargs):  # pylint: disable=too-many-statements
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
@@ -741,11 +741,6 @@ class NodeGetHierarchyQuery(Query):
         else:
             filter_str = f"<-{filter_str}-"
 
-        with_clause = (
-            "peer, path, extract(r in relationships(path) | r.branch_level) as branch_levels,"
-            " extract(r in relationships(path) | r.from) as froms"
-        )
-
         query = """
         MATCH path = (n:Node { uuid: $uuid } )%s(peer:Node)
         WHERE $hierarchy IN LABELS(peer) and all(r IN relationships(path) WHERE (%s))
@@ -753,24 +748,24 @@ class NodeGetHierarchyQuery(Query):
             WITH n, last(nodes(path)) as peer
             MATCH path = (n)%s(peer)
             WHERE all(r IN relationships(path) WHERE (%s))
-            WITH %s
+            WITH peer, path, reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level) AS branch_level
             RETURN peer as peer1, path as path1
-            ORDER BY reduce(acc = [], i in RANGE(1,size(branch_levels)) | acc + branch_levels[i] + froms[i]) DESC
+            ORDER BY branch_level DESC
             LIMIT 1
         }
         WITH peer1 as peer, path1 as path
-        """ % (filter_str, branch_filter, filter_str, branch_filter, with_clause)
+        """ % (filter_str, branch_filter, filter_str, branch_filter)
 
         self.add_to_query(query)
         where_clause = ['all(r IN relationships(path) WHERE (r.status = "active"))']
 
-        # clean_filters = extract_field_filters(field_name=self.schema.name, filters=self.filters)
+        clean_filters = extract_field_filters(field_name=self.direction, filters=self.filters)
 
-        if self.filters and "id" in self.filters or "ids" in self.filters:
+        if clean_filters and "id" in clean_filters or "ids" in clean_filters:
             where_clause.append("peer.uuid IN $peer_ids")
-            self.params["peer_ids"] = self.filters.get("ids", [])
-            if self.filters.get("id", None):
-                self.params["peer_ids"].append(self.filters.get("id"))
+            self.params["peer_ids"] = clean_filters.get("ids", [])
+            if clean_filters.get("id", None):
+                self.params["peer_ids"].append(clean_filters.get("id"))
 
         self.add_to_query("WHERE " + " AND ".join(where_clause))
 
@@ -779,78 +774,77 @@ class NodeGetHierarchyQuery(Query):
         # ----------------------------------------------------------------------------
         # FILTER Results
         # ----------------------------------------------------------------------------
-        # filter_cnt = 0
-        # for peer_filter_name, peer_filter_value in clean_filters.items():
-        #     if "__" not in peer_filter_name:
-        #         continue
+        filter_cnt = 0
+        for peer_filter_name, peer_filter_value in clean_filters.items():
+            if "__" not in peer_filter_name:
+                continue
 
-        #     filter_cnt += 1
+            filter_cnt += 1
 
-        #     filter_field_name, filter_next_name = peer_filter_name.split("__", maxsplit=1)
+            filter_field_name, filter_next_name = peer_filter_name.split("__", maxsplit=1)
 
-        #     if filter_field_name not in peer_schema.valid_input_names:
-        #         continue
+            if filter_field_name not in self.hierarchy_schema.valid_input_names:
+                continue
 
-        #     field = peer_schema.get_field(filter_field_name)
+            field = self.hierarchy_schema.get_field(filter_field_name)
 
-        #     subquery, subquery_params, subquery_result_name = await build_subquery_filter(
-        #         db=db,
-        #         node_alias="peer",
-        #         field=field,
-        #         name=filter_field_name,
-        #         filter_name=filter_next_name,
-        #         filter_value=peer_filter_value,
-        #         branch_filter=branch_filter,
-        #         branch=self.branch,
-        #         subquery_idx=filter_cnt,
-        #     )
-        #     self.params.update(subquery_params)
+            subquery, subquery_params, subquery_result_name = await build_subquery_filter(
+                db=db,
+                node_alias="peer",
+                field=field,
+                name=filter_field_name,
+                filter_name=filter_next_name,
+                filter_value=peer_filter_value,
+                branch_filter=branch_filter,
+                branch=self.branch,
+                subquery_idx=filter_cnt,
+            )
+            self.params.update(subquery_params)
 
-        #     with_str = ", ".join(
-        #         [f"{subquery_result_name} as {label}" if label == "peer" else label for label in self.return_labels]
-        #     )
+            with_str = ", ".join(
+                [f"{subquery_result_name} as {label}" if label == "peer" else label for label in self.return_labels]
+            )
 
-        #     self.add_to_query("CALL {")
-        #     self.add_to_query(subquery)
-        #     self.add_to_query("}")
-        #     self.add_to_query(f"WITH {with_str}")
+            self.add_to_query("CALL {")
+            self.add_to_query(subquery)
+            self.add_to_query("}")
+            self.add_to_query(f"WITH {with_str}")
 
         # ----------------------------------------------------------------------------
         # ORDER Results
         # ----------------------------------------------------------------------------
-        # if hasattr(peer_schema, "order_by") and peer_schema.order_by:
-        #     order_cnt = 1
+        if hasattr(self.hierarchy_schema, "order_by") and self.hierarchy_schema.order_by:
+            order_cnt = 1
 
-        #     for order_by_value in peer_schema.order_by:
-        #         order_by_field_name, order_by_next_name = order_by_value.split("__", maxsplit=1)
+            for order_by_value in self.hierarchy_schema.order_by:
+                order_by_field_name, order_by_next_name = order_by_value.split("__", maxsplit=1)
 
-        #         field = peer_schema.get_field(order_by_field_name)
+                field = self.hierarchy_schema.get_field(order_by_field_name)
 
-        #         subquery, subquery_params, subquery_result_name = await build_subquery_order(
-        #             db=db,
-        #             field=field,
-        #             node_alias="peer",
-        #             name=order_by_field_name,
-        #             order_by=order_by_next_name,
-        #             branch_filter=branch_filter,
-        #             branch=self.branch,
-        #             subquery_idx=order_cnt,
-        #         )
-        #         self.order_by.append(subquery_result_name)
-        #         self.params.update(subquery_params)
+                subquery, subquery_params, subquery_result_name = await build_subquery_order(
+                    db=db,
+                    field=field,
+                    node_alias="peer",
+                    name=order_by_field_name,
+                    order_by=order_by_next_name,
+                    branch_filter=branch_filter,
+                    branch=self.branch,
+                    subquery_idx=order_cnt,
+                )
+                self.order_by.append(subquery_result_name)
+                self.params.update(subquery_params)
 
-        #         with_str = ", ".join(
-        #             [f"{subquery_result_name} as {label}" if label == "n" else label for label in self.return_labels]
-        #         )
+                with_str = ", ".join(
+                    [f"{subquery_result_name} as {label}" if label == "n" else label for label in self.return_labels]
+                )
 
-        #         self.add_to_query("CALL {")
-        #         self.add_to_query(subquery)
-        #         self.add_to_query("}")
+                self.add_to_query("CALL {")
+                self.add_to_query(subquery)
+                self.add_to_query("}")
 
-        #         order_cnt += 1
-
-        # else:
-        self.order_by.append("peer.uuid")
+                order_cnt += 1
+        else:
+            self.order_by.append("peer.uuid")
 
     def get_peer_ids(self) -> Generator[str, None, None]:
         for result in self.get_results_group_by(("peer", "uuid")):

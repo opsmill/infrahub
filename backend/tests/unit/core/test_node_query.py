@@ -1,4 +1,5 @@
 import time
+from typing import Dict
 
 from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch
@@ -342,7 +343,6 @@ async def test_query_NodeGetHierarchyQuery_ancestors(
     default_branch: Branch,
     hierarchical_location_data,
 ):
-    hierarchy_schema = registry.schema.get(name="LocationGeneric", branch=default_branch)
     node_schema = registry.schema.get(name="LocationRack", branch=default_branch)
 
     europe = hierarchical_location_data["europe"]
@@ -354,9 +354,35 @@ async def test_query_NodeGetHierarchyQuery_ancestors(
         direction="ancestors",
         node_id=paris_r1.id,
         node_schema=node_schema,
-        hierarchy_schema=hierarchy_schema,
         branch=default_branch,
     )
 
     await query.execute(db=db)
     assert sorted(list(query.get_peer_ids())) == sorted([paris.id, europe.id])
+
+
+async def test_query_NodeGetHierarchyQuery_filters(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    hierarchical_location_data: Dict[str, Node],
+):
+    node_schema = registry.schema.get(name="LocationRack", branch=default_branch)
+
+    europe = hierarchical_location_data["europe"]
+
+    ids_to_names = {value.id: value for _, value in hierarchical_location_data.items()}
+
+    query = await NodeGetHierarchyQuery.init(
+        db=db,
+        direction="descendants",
+        node_id=europe.id,
+        filters={"descendants__status__value": "online"},
+        node_schema=node_schema,
+        branch=default_branch,
+    )
+
+    await query.execute(db=db)
+    descendants_ids = list(query.get_peer_ids())
+    descendants_names = [ids_to_names[descendants_id].name.value for descendants_id in descendants_ids]
+
+    assert sorted(descendants_names) == ["london", "london-r1", "paris", "paris-r1"]

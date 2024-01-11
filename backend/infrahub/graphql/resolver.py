@@ -197,7 +197,6 @@ async def many_relationship_resolver(
                 direction="descendants",
                 node_id=parent["id"],
                 node_schema=node_schema,
-                hierarchy_schema=node_schema.get_hierarchy_schema(),
                 at=at,
                 branch=branch,
             )
@@ -275,8 +274,6 @@ async def hierarchy_resolver(
     edges = fields.get("edges", {})
     node_fields = edges.get("node", {})
 
-    hierarchy_schema = node_schema.get_hierarchy_schema(branch=branch)
-
     # Extract only the filters from the kwargs and prepend the name of the field to the filters
     offset = kwargs.pop("offset", None)
     limit = kwargs.pop("limit", None)
@@ -295,7 +292,6 @@ async def hierarchy_resolver(
                 id=parent["id"],
                 direction=direction,
                 node_schema=node_schema,
-                hierarchy_schema=hierarchy_schema,
                 filters=filters,
                 at=at,
                 branch=branch,
@@ -305,7 +301,6 @@ async def hierarchy_resolver(
             id=parent["id"],
             direction=direction,
             node_schema=node_schema,
-            hierarchy_schema=hierarchy_schema,
             filters=filters,
             fields=node_fields,
             offset=offset,

@@ -2494,6 +2494,105 @@ async def test_hierarchical_location_descendants(
     assert ancestors == []
 
 
+async def test_hierarchical_location_descendants_filters_attr(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data
+):
+    query = """
+    query {
+        LocationRegion(name__value: "asia") {
+            edges {
+                node {
+                    id
+                    display_label
+                    descendants(status__value: "offline") {
+                        edges {
+                            node {
+                                id
+                                display_label
+                                __typename
+                                name {
+                                    value
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    result = await graphql(
+        await generate_graphql_schema(db=db, branch=default_branch, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    asia = result.data["LocationRegion"]["edges"][0]["node"]
+    descendants = asia["descendants"]["edges"]
+    descendants_names = [node["node"]["name"]["value"] for node in descendants]
+
+    assert descendants_names == [
+        "beijing-r2",
+        "singapore-r2",
+    ]
+
+
+async def test_hierarchical_location_descendants_filters_ids(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data
+):
+    query = """
+    query {
+        LocationRegion(name__value: "asia") {
+            edges {
+                node {
+                    id
+                    display_label
+                    descendants(ids: ["%s", "%s", "%s"]) {
+                        edges {
+                            node {
+                                id
+                                display_label
+                                __typename
+                                name {
+                                    value
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """ % (
+        hierarchical_location_data["beijing"].id,
+        hierarchical_location_data["beijing-r1"].id,
+        hierarchical_location_data["singapore-r2"].id,
+    )
+
+    result = await graphql(
+        await generate_graphql_schema(db=db, branch=default_branch, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    asia = result.data["LocationRegion"]["edges"][0]["node"]
+    descendants = asia["descendants"]["edges"]
+    descendants_names = [node["node"]["name"]["value"] for node in descendants]
+
+    assert descendants_names == [
+        "beijing",
+        "beijing-r1",
+        "singapore-r2",
+    ]
+
+
 async def test_hierarchical_location_include_descendants(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_thing
 ):
