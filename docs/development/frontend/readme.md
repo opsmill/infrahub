@@ -15,9 +15,9 @@ Infrahub frontend is developed with:
 
 For testing, we rely on:
 
-- **Unit Testing**: [Vitest](https://vitest.dev/)
-- **Integration Testing**: [Cypress Component Testing](https://docs.cypress.io/guides/component-testing/overview)
-- **End-to-End Testing**: [Playwright](https://playwright.dev/)
+- **Unit testing**: [Vitest](https://vitest.dev/)
+- **Integration testing**: [Cypress Component Testing](https://docs.cypress.io/guides/component-testing/overview)
+- **end-to-end testing**: [Playwright](https://playwright.dev/)
 
 ## Accessing the Frontend Code
 

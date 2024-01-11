@@ -3,7 +3,7 @@ title: Running & writing tests
 icon: beaker
 ---
 
-# Running & Writing tests for frontend
+# Running & writing tests for frontend
 
 !!!info Before we start
 If you have never run Infrahub tests before, we highly suggest to follow the [frontend guide](getting-started.md).
@@ -15,9 +15,9 @@ Infrahub frontend has 3 types of testing:
 
 - [E2E tests](#end-to-end-e2e-tests)
 - [Integration tests (Documentation WIP)](#integration-tests)
-- [Unit Tests (Documentation WIP)](#unit-tests)
+- [Unit tests (Documentation WIP)](#unit-tests)
 
-## End-to-End (E2E) Tests
+## end-to-end (E2E) tests
 
 Infrahub uses [Playwright](https://playwright.dev/) for E2E testing.
 
@@ -27,7 +27,7 @@ E2E tests are located in `/frontend/tests/e2e` and are structured based on routi
 
 For example, a test linked to the route `/objects/:objectname/:objectid` will be found in the `/objects/[objectname]/[objectid]` folder.
 
-### Writing E2E Tests
+### Writing E2E tests
 
 [Playwright](https://playwright.dev/) is our E2E testing tool. It can automatically generate tests as you perform actions in the browser, making it a quick way to start testing:
 
@@ -54,7 +54,7 @@ test.skip('test name', async ({ page }) => {
 });
 ```
 
-### Debugging E2E Tests
+### Debugging E2E tests
 
 To debug a test, you need to run tests in debug mode. You can pause script execution using:
 
@@ -96,7 +96,7 @@ npm run test:e2e:debug
 npm run test:e2e:ui
 ```
 
-## Integration Tests
+## Integration tests
 
 ```sh
 npm run cypress:run:component

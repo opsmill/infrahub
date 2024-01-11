@@ -113,7 +113,7 @@ They should:
 - Describe practical steps, rather than abstract concepts.
 - Provide immediate results.
 
-The "Getting Started" tutorial is a good example, as it walks the user through a scripted scenario in a demo environment.
+The "Getting started" tutorial is a good example, as it walks the user through a scripted scenario in a demo environment.
 
 For a deeper dive into tutorials, refer to the [diátaxis tutorials page](https://diataxis.fr/tutorials/).
 
@@ -156,9 +156,9 @@ Reference docs serve a single purpose. To provide quick, clear information when 
 
 For a deeper dive into reference docs, refer to the [diátaxis reference page](https://diataxis.fr/reference/).
 
-## Creating and Updating Application Screenshots
+## Creating and updating application screenshots
 
-To ensure that Infrahub's screenshots remain up to date and to check that our guides work properly, we use [End-to-End (E2E) tests](/development/frontend/testing-guidelines/#end-to-end-e2e-tests). You'll find the E2E tests specifically designed for tutorials located in `frontend/tests/e2e/tutorial`.
+To ensure that Infrahub's screenshots remain up to date and to check that our guides work properly, we use [end-to-end (E2E) tests](/development/frontend/testing-guidelines/#end-to-end-e2e-tests). You'll find the E2E tests specifically designed for tutorials located in `frontend/tests/e2e/tutorial`.
 
 To add a new screenshot in the documentation, use this command within the tutorial E2E test:
 
