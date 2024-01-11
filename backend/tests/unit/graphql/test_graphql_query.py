@@ -2494,6 +2494,59 @@ async def test_hierarchical_location_descendants(
     assert ancestors == []
 
 
+async def test_hierarchical_location_include_descendants(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_thing
+):
+    query = """
+    query GetRack {
+        LocationRegion(name__value: "asia") {
+            edges {
+                node {
+                    id
+                    display_label
+                    things(include_descendants: true) {
+                        count
+                        edges {
+                            node {
+                                id
+                                display_label
+                                name {
+                                    value
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    result = await graphql(
+        await generate_graphql_schema(db=db, branch=default_branch, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    asia = result.data["LocationRegion"]["edges"][0]["node"]
+    things = asia["things"]["edges"]
+    things_names = [node["node"]["name"]["value"] for node in things]
+
+    assert things_names == [
+        "thing-asia",
+        "thing-beijing",
+        "thing-beijing-r1",
+        "thing-beijing-r2",
+        "thing-singapore",
+        "thing-singapore-r1",
+        "thing-singapore-r2",
+    ]
+    assert asia["things"]["count"] == 7
+
+
 @pytest.mark.skip(reason="Union is not supported at the root of the GraphQL Schema yet .. ")
 async def test_union_root(
     db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema, car_schema, truck_schema, motorcycle_schema

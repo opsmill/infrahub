@@ -185,6 +185,12 @@ async def generate_object_types(db: InfrahubDatabase, branch: Union[Branch, str]
                     peer_type = registry.get_graphql_type(name=peer_schema.kind, branch=branch.name)
                 else:
                     peer_type = registry.get_graphql_type(name=f"NestedPaginated{peer_schema.kind}", branch=branch.name)
+
+                if (isinstance(node_schema, NodeSchema) and node_schema.hierarchy) or (
+                    isinstance(node_schema, GenericSchema) and node_schema.hierarchical
+                ):
+                    peer_filters["include_descendants"] = graphene.Boolean()
+
                 node_type._meta.fields[rel.name] = graphene.Field(
                     peer_type, required=False, resolver=many_relationship_resolver, **peer_filters
                 )

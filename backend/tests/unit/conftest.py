@@ -2301,6 +2301,9 @@ async def hierarchical_location_schema(db: InfrahubDatabase, default_branch: Bra
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                 ],
+                "relationships": [
+                    {"name": "things", "peer": "TestThing", "cardinality": "many", "optional": True},
+                ],
             }
         ],
         "nodes": [
@@ -2328,6 +2331,17 @@ async def hierarchical_location_schema(db: InfrahubDatabase, default_branch: Bra
                 "parent": "LocationSite",
                 "children": "",
             },
+            {
+                "name": "Thing",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+                "relationships": [
+                    {"name": "location", "peer": "LocationGeneric", "cardinality": "one", "optional": False},
+                ],
+            },
         ],
     }
 
@@ -2338,7 +2352,7 @@ async def hierarchical_location_schema(db: InfrahubDatabase, default_branch: Bra
 @pytest.fixture
 async def hierarchical_location_data(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema
-) -> None:
+) -> Dict[str, Node]:
     REGIONS = (
         ("north-america",),
         ("europe",),
@@ -2376,6 +2390,22 @@ async def hierarchical_location_data(
             await obj.save(db=db)
             nodes[obj.name.value] = obj
 
+    return nodes
+
+
+@pytest.fixture
+async def hierarchical_location_data_thing(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: Dict[str, Node]
+) -> Dict[str, Node]:
+    nodes = {}
+    for item_name, item in hierarchical_location_data.items():
+        obj = await Node.init(db=db, schema="TestThing")
+        obj_name = f"thing-{item_name}"
+        await obj.new(db=db, name=obj_name, location=item.id)
+        await obj.save(db=db)
+        nodes[obj_name] = obj
+
+    nodes.update(hierarchical_location_data)
     return nodes
 
 
