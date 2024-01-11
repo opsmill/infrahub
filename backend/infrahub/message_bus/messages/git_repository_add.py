@@ -11,4 +11,4 @@ class GitRepositoryAdd(InfrahubMessage):
     location: str = Field(..., description="The external URL of the repository")
     repository_id: str = Field(..., description="The unique ID of the Repository")
     repository_name: str = Field(..., description="The name of the repository")
-    default_branch_name: Optional[str] = Field(..., description="Default branch for this repository")
+    default_branch_name: Optional[str] = Field(None, description="Default branch for this repository")

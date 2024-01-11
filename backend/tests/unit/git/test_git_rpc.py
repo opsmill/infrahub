@@ -1,4 +1,5 @@
 from typing import Any, Dict, Optional
+from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
@@ -8,6 +9,7 @@ from infrahub_sdk.types import HTTPMethod
 
 from infrahub.exceptions import RepositoryError
 from infrahub.git import InfrahubRepository
+from infrahub.lock import InfrahubLockRegistry
 from infrahub.message_bus import Meta, messages
 from infrahub.message_bus.operations import git
 from infrahub.message_bus.responses import DiffNamesResponse
@@ -24,15 +26,36 @@ async def dummy_async_request(
 
 
 async def test_git_rpc_create_successful(git_upstream_repo_02):
+    repo_id = str(UUIDT())
+    branch_name = "b12"
     message = messages.GitRepositoryAdd(
-        repository_id=str(UUIDT()),
+        repository_id=repo_id,
         repository_name=git_upstream_repo_02["name"],
         location=git_upstream_repo_02["path"],
+        default_branch_name=branch_name,
     )
-
     client_config = Config(requester=dummy_async_request)
-    services = InfrahubServices(client=InfrahubClient(config=client_config))
-    await git.repository.add(message=message, service=services)
+    client = InfrahubClient(config=client_config)
+    services = InfrahubServices(client=client)
+    with (
+        patch(
+            "infrahub.message_bus.operations.git.repository.InfrahubRepository", spec=InfrahubRepository
+        ) as mock_repo_class,
+        patch("infrahub.message_bus.operations.git.repository.lock") as mock_infra_lock,
+    ):
+        mock_repo = AsyncMock(spec=InfrahubRepository)
+        mock_repo.default_branch_name = branch_name
+        mock_repo_class.new.return_value = mock_repo
+        mock_infra_lock.registry = AsyncMock(spec=InfrahubLockRegistry)
+
+        await git.repository.add(message=message, service=services)
+
+        mock_infra_lock.registry.get.assert_called_once_with(name=git_upstream_repo_02["name"], namespace="repository")
+        mock_repo_class.new.assert_awaited_once_with(
+            id=repo_id, name=git_upstream_repo_02["name"], location=git_upstream_repo_02["path"], client=client
+        )
+        mock_repo.import_objects_from_files.assert_awaited_once_with(branch_name=branch_name)
+        mock_repo.sync.assert_awaited_once_with()
 
 
 async def test_git_rpc_create_error(git_upstream_repo_01, tmp_path):
