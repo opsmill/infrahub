@@ -31,7 +31,7 @@ from infrahub_sdk.node import (
     InfrahubNodeSync,
 )
 from infrahub_sdk.object_store import ObjectStore, ObjectStoreSync
-from infrahub_sdk.queries import MUTATION_COMMIT_UPDATE
+from infrahub_sdk.queries import get_commit_update_mutation
 from infrahub_sdk.schema import InfrahubSchema, InfrahubSchemaSync, NodeSchema
 from infrahub_sdk.store import NodeStore, NodeStoreSync
 from infrahub_sdk.timestamp import Timestamp
@@ -646,7 +646,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
                 kind="CoreGenericRepository",
                 branch=branch_name,
                 fragment=True,
-                include=["id", "name", "location", "commit"],
+                include=["id", "name", "location", "commit", "ref"],
             )
 
         responses = []
@@ -668,10 +668,12 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
 
         return repositories
 
-    async def repository_update_commit(self, branch_name: str, repository_id: str, commit: str) -> bool:
+    async def repository_update_commit(
+        self, branch_name: str, repository_id: str, commit: str, is_read_only: bool = False
+    ) -> bool:
         variables = {"repository_id": str(repository_id), "commit": str(commit)}
         await self.execute_graphql(
-            query=MUTATION_COMMIT_UPDATE,
+            query=get_commit_update_mutation(is_read_only=is_read_only),
             variables=variables,
             branch_name=branch_name,
             tracker="mutation-repository-update-commit",

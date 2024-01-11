@@ -17,7 +17,7 @@ import jinja2
 import ujson
 import yaml
 from git import Repo
-from git.exc import GitCommandError, InvalidGitRepositoryError
+from git.exc import BadName, GitCommandError, InvalidGitRepositoryError
 from infrahub_sdk import (
     GraphQLError,
     InfrahubClient,
@@ -335,6 +335,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
     service: InfrahubServices = Field(
         ..., description="Service object with access to the message queue, the database etc.."
     )
+    is_read_only: bool = Field(False, description="If true, changes will not be synced to remote")
 
     class Config:
         arbitrary_types_allowed = True
@@ -453,14 +454,15 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         return True
 
-    async def create_locally(self) -> bool:
+    async def create_locally(
+        self, checkout_ref: Optional[str] = None, infrahub_branch_name: Optional[str] = None
+    ) -> bool:
         """Ensure the required directory already exist in the filesystem or create them if needed.
 
         Returns
             True if the directory has been created,
             False if the directory was already present.
         """
-
         initialize_repositories_directory()
 
         if not self.location:
@@ -485,7 +487,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         try:
             repo = Repo.clone_from(self.location, self.directory_default)
-            repo.git.checkout(self.default_branch_name)
+            repo.git.checkout(checkout_ref or self.default_branch_name)
         except GitCommandError as exc:
             if "Repository not found" in exc.stderr or "does not appear to be a git" in exc.stderr:
                 raise RepositoryError(
@@ -507,7 +509,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         # TODO Need to handle the potential exceptions coming from repo.git.worktree
         commit = str(repo.head.commit)
         self.create_commit_worktree(commit=commit)
-        await self.update_commit_value(branch_name=self.default_branch_name, commit=commit)
+        await self.update_commit_value(branch_name=infrahub_branch_name or self.default_branch_name, commit=commit)
 
         return True
 
@@ -640,17 +642,9 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         return branches
 
-    def get_commit_value(self, branch_name, remote: bool = False) -> str:
-        branches = None
-        if remote:
-            branches = self.get_branches_from_remote()
-        else:
-            branches = self.get_branches_from_local(include_worktree=False)
-
-        if branch_name not in branches:
-            raise ValueError(f"Branch {branch_name} not found.")
-
-        return str(branches[branch_name].commit)
+    @abstractmethod
+    def get_commit_value(self, branch_name: str, remote: bool = False) -> str:
+        raise NotImplementedError()
 
     async def update_commit_value(self, branch_name: str, commit: str) -> bool:
         """Compare the value of the commit in the graph with the current commit on the filesystem.
@@ -671,7 +665,9 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         log.debug(
             f"Updating commit value to {commit} for branch {branch_name}", repository=self.name, branch=branch_name
         )
-        await self.client.repository_update_commit(branch_name=branch_name, repository_id=self.id, commit=commit)
+        await self.client.repository_update_commit(
+            branch_name=branch_name, repository_id=self.id, commit=commit, is_read_only=self.is_read_only
+        )
 
         return True
 
@@ -877,6 +873,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         if not commit:
             commit = self.get_commit_value(branch_name=branch_name)
 
+        self.create_commit_worktree(commit)
         config_file = await self.get_repository_config(branch_name=branch_name, commit=commit)
 
         if config_file:
@@ -1206,7 +1203,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
     async def import_all_graphql_query(self, branch_name: str, commit: str) -> None:
         """Search for all .gql file and import them as GraphQL query."""
 
-        log.debug("Importing all GraphQL Queriess", repository=self.name, branch=branch_name, commit=commit)
+        log.debug("Importing all GraphQL Queries", repository=self.name, branch=branch_name, commit=commit)
 
         local_queries = {query.name: query for query in await self.find_graphql_queries(commit=commit)}
         if not local_queries:
@@ -1956,6 +1953,19 @@ class InfrahubRepository(InfrahubRepositoryBase):
     Eventually we should rename this class InfrahubIntegratedRepository
     """
 
+    def get_commit_value(self, branch_name: str, remote: bool = False) -> str:
+        
+        branches = None
+        if remote:
+            branches = self.get_branches_from_remote()
+        else:
+            branches = self.get_branches_from_local(include_worktree=False)
+
+        if branch_name not in branches:
+            raise ValueError(f"Branch {branch_name} not found.")
+
+        return str(branches[branch_name].commit)
+
     async def create_branch_in_git(
         self, branch_name: str, branch_id: Optional[str] = None, push_origin: bool = True
     ) -> bool:
@@ -1963,7 +1973,7 @@ class InfrahubRepository(InfrahubRepositoryBase):
 
         repo = self.get_git_repo_main()
 
-        # Check if the branch already exist locally, if it does do nothing
+        # Check if the branch already exists locally, if it does do nothing
         local_branches = self.get_branches_from_local(include_worktree=False)
         if branch_name in local_branches:
             return False
@@ -2125,44 +2135,46 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryBase):
     """
     Repository with only read-only access to the remote repo
     """
-
-    branch: str = Field(False, description="Branch to track on the remote repository.")
+    is_read_only: bool = True
+    ref: str = Field(..., description="Ref to track on the external repository")
+    infrahub_branch_name: str = Field(..., description="Infrahub branch on which to sync the remote repository")
 
     async def push(self):
         raise NotImplementedError("read-only repository cannot push to remote")
 
-    async def sync(self) -> None:
-        """Retrieve changes from the remote origin and update the database."""
+    @classmethod
+    async def new(cls, service: Optional[InfrahubServices] = None, **kwargs):
+        service = service or InfrahubServices()
+        self = cls(service=service, **kwargs)
+        await self.create_locally(checkout_ref=self.ref, infrahub_branch_name=self.infrahub_branch_name)
+        log.info("Created the new project locally.", repository=self.name)
+        return self
 
-        log.info("Starting the synchronization.", repository=self.name)
+    def get_commit_value(self, branch_name: str, remote: bool = False) -> str:
+        """Always get the latest commit for this repository's ref on the remote"""
+        git_repo = self.get_git_repo_main()
+        git_repo.remotes.origin.fetch()
 
-        await self.fetch()
+        refs = (self.ref, f"origin/{self.ref}")
+        commit = None
+        for possible_ref in refs:
+            try:
+                commit = git_repo.commit(possible_ref)
+                break
+            except BadName:
+                ...
+        if not commit:
+            log.error(f"No object found for refs {refs} on repository {self.name}")
+            raise ValueError(f"Ref {self.ref} not found.")
 
-        remote_branches = self.get_branches_from_remote()
-        if self.branch not in remote_branches:
-            return
+        return str(commit)
 
+    async def sync_from_remote(self, commit: Optional[str] = None) -> None:
+        if not commit:
+            commit = self.get_commit_value(branch_name=self.ref, remote=True)
         local_branches = self.get_branches_from_local()
-        if self.branch not in local_branches:
-            raise ValueError("SOMETHING IS WRONG")
-
-        remote_branch = remote_branches[self.branch]
-        local_branch = local_branches[self.branch]
-        if remote_branch.commit == local_branch.commit:
-            return
-
-        log.info("New commit detected", repository=self.name, branch=self.branch)
-
-        await self.validate_remote_branch(branch_name=self.branch)
-
-        commit_after = await self.pull(branch_name=self.branch)
-        await self.import_objects_from_files(branch_name=self.branch, commit=commit_after)
-
-        if commit_after is True:
-            log.warning(
-                f"An update was detected but the commit remained the same after pull() ({commit_after}).",
-                repository=self.name,
-                branch=self.branch,
-            )
-
-        return
+        local_branch = local_branches[self.ref]
+        if commit != local_branch.commit:
+            self.create_commit_worktree(commit=commit)
+            await self.import_objects_from_files(branch_name=self.infrahub_branch_name, commit=commit)
+        await self.update_commit_value(branch_name=self.infrahub_branch_name, commit=commit)

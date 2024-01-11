@@ -27,18 +27,22 @@ query GetBranch($branch_name: String!) {
 """
 
 
-MUTATION_COMMIT_UPDATE = """
-mutation ($repository_id: String!, $commit: String!) {
-    CoreRepositoryUpdate(data: { id: $repository_id, commit: { is_protected: true, source: $repository_id, value: $commit } }) {
-        ok
-        object {
-            commit {
-                value
-            }
-        }
-    }
-}
-"""
+def get_commit_update_mutation(is_read_only: bool = False) -> str:
+    mutation_commit_update_base = """
+    mutation ($repository_id: String!, $commit: String!) {{
+        {repo_class}Update(data: {{ id: $repository_id, commit: {{ is_protected: true, source: $repository_id, value: $commit }} }}) {{
+            ok
+            object {{
+                commit {{
+                    value
+                }}
+            }}
+        }}
+    }}
+    """
+    if is_read_only:
+        return mutation_commit_update_base.format(repo_class="CoreReadOnlyRepository")
+    return mutation_commit_update_base.format(repo_class="CoreRepository")
 
 
 QUERY_SCHEMA = """

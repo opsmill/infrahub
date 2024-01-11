@@ -846,13 +846,23 @@ class InfrahubNodeBase:
     def _strip_alias(data: dict) -> Dict[str, Dict]:
         clean = {}
 
-        for key, value in data.items():
+        under_node = False
+        data_to_clean = data
+        if "node" in data:
+            under_node = True
+            data_to_clean = data["node"]
+
+        for key, value in data_to_clean.items():
             if "__alias__" in key:
                 clean_key = key.split("__")[-1]
                 clean[clean_key] = value
             else:
                 clean[key] = value
 
+        if under_node:
+            complete = {k: v for k, v in data.items() if k != "node"}
+            complete["node"] = clean
+            return complete
         return clean
 
     def _validate_artifact_support(self, message: str) -> None:
