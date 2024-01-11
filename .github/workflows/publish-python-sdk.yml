@@ -1,7 +1,7 @@
 ---
 name: Publish Infrahub Python SDK
 
-on:
+on:  # yamllint disable rule:truthy
   push:
     tags:
       - "python-sdk-v*"
