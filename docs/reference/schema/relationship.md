@@ -89,7 +89,6 @@ Below is the list of all available options to define a Relationship in the schem
 | **Default Value** |  |
 | **Constraints** |  |
 
-
 ### identifier
 
 | Key | Value | { class="compact" }

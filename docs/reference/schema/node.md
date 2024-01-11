@@ -58,7 +58,6 @@ Below is the list of all available options to define a Node in the schema
 | **Default Value** |  |
 | **Constraints** |  |
 
-
 ### default_filter
 
 | Key | Value | { class="compact" }
@@ -103,7 +102,6 @@ Below is the list of all available options to define a Node in the schema
 | **Default Value** |  |
 | **Constraints** |  |
 
-
 ### hierarchy
 
 | Key | Value | { class="compact" }
@@ -114,7 +112,6 @@ Below is the list of all available options to define a Node in the schema
 | **Optional**  | True |
 | **Default Value** |  |
 | **Constraints** |  |
-
 
 ### icon
 
@@ -204,9 +201,6 @@ Below is the list of all available options to define a Node in the schema
 | **Default Value** |  |
 | **Constraints** |  |
 
-<<<<<<< HEAD
-=======
-
 ### parent
 
 | Key | Value | { class="compact" }
@@ -218,9 +212,6 @@ Below is the list of all available options to define a Node in the schema
 | **Default Value** |  |
 | **Constraints** |  |
 
-
-
->>>>>>> 179d871a (Update schema reference)
 ## attributes
 
 | Key | Value | { class="compact" }

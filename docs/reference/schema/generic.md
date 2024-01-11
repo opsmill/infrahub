@@ -77,7 +77,6 @@ Below is the list of all available options to define a Generic in the schema
 | **Default Value** |  |
 | **Constraints** |  |
 
-
 ### hierarchical
 
 | Key | Value | { class="compact" }
@@ -88,7 +87,6 @@ Below is the list of all available options to define a Generic in the schema
 | **Optional** | True |
 | **Default Value** | False |
 | **Constraints** |  |
-
 
 ### icon
 
