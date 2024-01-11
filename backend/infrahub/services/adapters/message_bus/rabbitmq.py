@@ -4,6 +4,7 @@ import asyncio
 import json
 from typing import TYPE_CHECKING, Awaitable, Callable, List, MutableMapping, Optional
 
+import aio_pika
 from infrahub_sdk import UUIDT
 
 from infrahub import config
@@ -152,12 +153,12 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         message.assign_priority(priority=messages.message_priority(routing_key=routing_key))
         if delay:
             message.assign_header(key="delay", value=delay.value)
-            await self.delayed_exchange.publish(message, routing_key=routing_key)
+            await self.delayed_exchange.publish(self.format_message(message=message), routing_key=routing_key)
         else:
-            await self.exchange.publish(message, routing_key=routing_key)
+            await self.exchange.publish(self.format_message(message=message), routing_key=routing_key)
 
     async def reply(self, message: InfrahubMessage, routing_key: str) -> None:
-        await self.channel.default_exchange.publish(message, routing_key=routing_key)
+        await self.channel.default_exchange.publish(self.format_message(message=message), routing_key=routing_key)
 
     async def rpc(self, message: InfrahubMessage) -> InfrahubResponse:
         correlation_id = str(UUIDT())
@@ -196,3 +197,16 @@ class RabbitMQMessageBus(InfrahubMessageBus):
 
                 except Exception:  # pylint: disable=broad-except
                     self.service.log.exception("Processing error for message %r" % message)
+
+    @staticmethod
+    def format_message(message: InfrahubMessage) -> aio_pika.Message:
+        pika_message = aio_pika.Message(
+            body=message.body,
+            content_type="application/json",
+            content_encoding="utf-8",
+            correlation_id=message.meta.correlation_id,
+            reply_to=message.meta.reply_to,
+            priority=message.meta.priority,
+            headers=message.meta.headers,
+        )
+        return pika_message
