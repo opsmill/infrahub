@@ -2,39 +2,17 @@ from __future__ import annotations
 
 import asyncio
 import functools
-from typing import TYPE_CHECKING, Any, Dict, Literal, Tuple
-
-import pytest
 
 from infrahub_sdk.ctl.transform import get_transform_class_instance
 
 from ..exceptions import PythonTransformDefinitionError, PythonTransformException
-from ..models import InfrahubTest, InfrahubTestExpectedResult
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from infrahub_sdk.schema import InfrahubPythonTransformConfig
+from ..models import InfrahubTestExpectedResult
+from .base import InfrahubItem
 
 
-class InfrahubPythonTransformUnitProcessItem(pytest.Item):
-    def __init__(
-        self,
-        *args: Any,
-        resource_name: str,
-        resource_config: InfrahubPythonTransformConfig,
-        test: InfrahubTest,
-        **kwargs: Dict[str, Any],
-    ):
-        super().__init__(*args, **kwargs)  # type: ignore[arg-type]
-
-        self.resource_name: str = resource_name
-        self.resource_config: InfrahubPythonTransformConfig = resource_config
-        test.spec.update_paths(base_dir=self.fspath.dirpath())
-        self.test: InfrahubTest = test
-
+class InfrahubPythonTransformUnitProcessItem(InfrahubItem):
     def runtest(self) -> None:
-        transform_instance = get_transform_class_instance(self.resource_config)
+        transform_instance = get_transform_class_instance(self.resource_config)  # type: ignore[arg-type]
 
         for attr in ("query", "url", "transform"):
             if not hasattr(transform_instance, attr):
@@ -56,6 +34,3 @@ class InfrahubPythonTransformUnitProcessItem(pytest.Item):
                 raise PythonTransformException(
                     name=self.name, message=f"Expected:\n{expected_output}\nGot:\n{computed_output}"
                 )
-
-    def reportinfo(self) -> Tuple[Path, Literal[0], str]:
-        return self.path, 0, f"resource: {self.name}"

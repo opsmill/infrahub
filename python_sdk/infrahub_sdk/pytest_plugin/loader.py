@@ -7,8 +7,7 @@ import pytest
 import yaml
 from pytest import Item
 
-from .items.rfile import InfrahubRFileUnitRenderItem
-from .items.transform_python import InfrahubPythonTransformUnitProcessItem
+from .items import InfrahubPythonTransformUnitProcessItem, InfrahubRFileUnitRenderItem
 from .models import InfrahubTestFileV1, InfrahubTestResource
 
 MARKER_MAPPING = {"RFile": pytest.mark.infrahub_rfile, "PythonTransform": pytest.mark.infrahub_python_transform}
