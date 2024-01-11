@@ -38,6 +38,7 @@ memgraph
 menu_placement
 namespace
 namespaces
+npm
 o'brian
 openconfig
 opentelemetry

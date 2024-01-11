@@ -108,7 +108,7 @@ Note that this will only make the backend service usable, the frontend will not 
 * http://localhost:8000/api/docs/
 * http://localhost:8000/graphql
 
-For running the frontend, please refer to its dedicated documentation [section](./frontend.md).
+For running the frontend, please refer to its dedicated documentation [section](./frontend).
 
 ## Loading a new schema via CLI
 

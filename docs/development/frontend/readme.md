@@ -1,0 +1,32 @@
+# Frontend guide
+
+Welcome to the Infrahub Frontend Guide! This guide details the technologies and steps required to contribute effectively to the Infrahub frontend.
+
+## Infrahub stack
+
+Infrahub frontend is developed with:
+
+- **UI Framework**: [React](https://react.dev/)
+- **Typing**: [TypeScript](https://www.typescriptlang.org/)
+- **Component Library**: [Headless UI](https://headlessui.com/)
+- **CSS Framework**: [Tailwind CSS](https://tailwindcss.com/)
+- **GraphQL Client**: [Apollo Client](https://www.apollographql.com/docs/react/)
+- **State Management**: [Jotai](https://jotai.org/)
+
+For testing, we rely on:
+
+- **Unit Testing**: [Vitest](https://vitest.dev/)
+- **Integration Testing**: [Cypress Component Testing](https://docs.cypress.io/guides/component-testing/overview)
+- **End-to-End Testing**: [Playwright](https://playwright.dev/)
+
+## Accessing the Frontend Code
+
+To access Infrahub's codebase, use git and switch to the `develop` branch to access the latest changes. All frontend code resides in `/frontend`.
+
+```shell
+git clone git@github.com:opsmill/infrahub.git
+cd infrahub/frontend
+git switch develop
+```
+
+Before contributing, we recommended starting with [Getting set up with frontend](getting-started.md).
