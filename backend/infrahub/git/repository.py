@@ -1954,7 +1954,7 @@ class InfrahubRepository(InfrahubRepositoryBase):
     """
 
     def get_commit_value(self, branch_name: str, remote: bool = False) -> str:
-        
+
         branches = None
         if remote:
             branches = self.get_branches_from_remote()
