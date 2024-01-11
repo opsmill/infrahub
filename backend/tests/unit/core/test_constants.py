@@ -1,6 +1,7 @@
 import pytest
 
-from infrahub.core.constants import ProposedChangeState
+from infrahub.core.constants import InfrahubKind, ProposedChangeState
+from infrahub.core.schema import core_models
 from infrahub.exceptions import ValidationError
 
 
@@ -27,3 +28,12 @@ def test_proposed_state_transitions() -> None:
     for disallowed in ProposedChangeState.available_types():
         with pytest.raises(ValidationError):
             merged.validate_state_transition(ProposedChangeState(disallowed))
+
+
+def test_infrahubkind_constant_for_all_core_schema_nodes() -> None:
+    "There should be an InfrahubKind constant defined for all the nodes in the core schema"
+
+    expected_constants = sorted([node["name"].upper() for node in core_models["nodes"]])
+
+    for constant in expected_constants:
+        assert hasattr(InfrahubKind, constant)

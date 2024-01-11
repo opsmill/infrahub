@@ -2,6 +2,7 @@ from fastapi.testclient import TestClient
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.schema import SchemaRoot, core_models
 from infrahub.core.utils import count_relationships
@@ -103,7 +104,7 @@ async def test_schema_summary_default_branch(
 
     assert "nodes" in schema
     assert "generics" in schema
-    assert isinstance(schema["nodes"]["BuiltinTag"], str)
+    assert isinstance(schema["nodes"][InfrahubKind.TAG], str)
 
 
 async def test_schema_kind_default_branch(
@@ -116,7 +117,7 @@ async def test_schema_kind_default_branch(
 ):
     with client:
         response = client.get(
-            "/api/schema/BuiltinTag",
+            f"/api/schema/{InfrahubKind.TAG}",
             headers=client_headers,
         )
 

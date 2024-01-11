@@ -3,8 +3,12 @@ from __future__ import annotations
 import enum
 from typing import List
 
+from infrahub.core.constants import infrahubkind as InfrahubKind
 from infrahub.exceptions import ValidationError
 from infrahub.utils import InfrahubStringEnum
+
+__all__ = ["InfrahubKind"]
+
 
 GLOBAL_BRANCH_NAME = "-global-"
 

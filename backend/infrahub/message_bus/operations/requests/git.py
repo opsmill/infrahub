@@ -1,5 +1,6 @@
 from typing import List
 
+from infrahub.core.constants import InfrahubKind
 from infrahub.git.actions import sync_remote_repositories
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
@@ -11,7 +12,7 @@ log = get_logger()
 async def create_branch(message: messages.RequestGitCreateBranch, service: InfrahubServices) -> None:
     """Request to the creation of git branches in available repositories."""
     log.info("Querying repositories for branch creation")
-    repositories = await service.client.filters(kind="CoreRepository")
+    repositories = await service.client.filters(kind=InfrahubKind.REPOSITORY)
     events: List[messages.GitBranchCreate] = []
     for repository in repositories:
         events.append(

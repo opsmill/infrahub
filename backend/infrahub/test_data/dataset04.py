@@ -3,6 +3,7 @@ import time
 from typing import List
 
 from infrahub.core import registry
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase, get_db
 from infrahub.log import get_logger
@@ -89,9 +90,9 @@ async def load_data(
     repository = {}
     gqlquery = {}
 
-    tag_schema = registry.schema.get(name="BuiltinTag", branch=default_branch)
-    repository_schema = registry.schema.get(name="CoreRepository", branch=default_branch)
-    gqlquery_schema = registry.schema.get(name="CoreGraphQLQuery", branch=default_branch)
+    tag_schema = registry.schema.get(name=InfrahubKind.TAG, branch=default_branch)
+    repository_schema = registry.schema.get(name=InfrahubKind.REPOSITORY, branch=default_branch)
+    gqlquery_schema = registry.schema.get(name=InfrahubKind.GRAPHQLQUERY, branch=default_branch)
 
     # -------------------------------------------------------------------------------------
     # TAG

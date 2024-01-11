@@ -6,7 +6,7 @@ from graphql import GraphQLResolveInfo
 from infrahub import config, lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import ProposedChangeState, ValidatorConclusion
+from infrahub.core.constants import InfrahubKind, ProposedChangeState, ValidatorConclusion
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
@@ -111,12 +111,12 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
                 for validation in validations.values():
                     validator_kind = validation.get_kind()
                     if (
-                        validator_kind != "CoreDataValidator"
+                        validator_kind != InfrahubKind.DATAVALIDATOR
                         and validation.conclusion.value != ValidatorConclusion.SUCCESS.value
                     ):
                         # Ignoring Data integrity checks as they are handled again later
                         raise ValidationError("Unable to merge proposed change containing failing checks")
-                    if validator_kind == "CoreDataValidator":
+                    if validator_kind == InfrahubKind.DATAVALIDATOR:
                         data_checks = await validation.checks.get_peers(db=dbt)
                         for check in data_checks.values():
                             if check.conflicts.value and not check.keep_branch.value:
@@ -178,7 +178,7 @@ class ProposedChangeRequestRefreshArtifacts(Mutation):
 
         identifier = data.get("id", "")
         proposed_change = await NodeManager.get_one_by_id_or_default_filter(
-            id=identifier, schema_name="CoreProposedChange", db=db
+            id=identifier, schema_name=InfrahubKind.PROPOSEDCHANGE, db=db
         )
         state = ProposedChangeState(proposed_change.state.value)
         state.validate_state_check_run()
@@ -207,7 +207,7 @@ class ProposedChangeRequestRunCheck(Mutation):
 
         identifier = data.get("id", "")
         proposed_change = await NodeManager.get_one_by_id_or_default_filter(
-            id=identifier, schema_name="CoreProposedChange", db=db
+            id=identifier, schema_name=InfrahubKind.PROPOSEDCHANGE, db=db
         )
         state = ProposedChangeState(proposed_change.state.value)
         state.validate_state_check_run()

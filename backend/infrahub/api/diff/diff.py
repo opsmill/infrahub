@@ -19,7 +19,7 @@ from infrahub.core.branch import (
     NodeDiffElement,  # noqa: TCH001
     RelationshipDiffElement,  # noqa: TCH001
 )
-from infrahub.core.constants import BranchSupportType, DiffAction, RelationshipCardinality
+from infrahub.core.constants import BranchSupportType, DiffAction, InfrahubKind, RelationshipCardinality
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema_manager import INTERNAL_SCHEMA_NODE_KINDS
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
@@ -1006,10 +1006,10 @@ async def get_diff_artifacts(
         diff_from=time_from,
         diff_to=time_to,
         branch_only=branch_only,
-        kinds_include=["CoreArtifact"],
+        kinds_include=[InfrahubKind.ARTIFACT],
         branch_support=[BranchSupportType.AWARE, BranchSupportType.LOCAL],
     )
-    payload = await generate_diff_payload(diff=diff, db=db, kinds_to_include=["CoreArtifact"])
+    payload = await generate_diff_payload(diff=diff, db=db, kinds_to_include=[InfrahubKind.ARTIFACT])
 
     # Extract the ids of all the targets associated with these artifacts and query the display label for all of them
     artifact_ids_branch = [node.id for node in payload[branch.name]]

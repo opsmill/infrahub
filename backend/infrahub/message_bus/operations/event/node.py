@@ -1,5 +1,6 @@
 from typing import List
 
+from infrahub.core.constants import InfrahubKind
 from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubMessage, messages
 from infrahub.services import InfrahubServices
@@ -20,7 +21,7 @@ async def mutated(
         data=message.data,
     )
     events: List[InfrahubMessage] = []
-    kind_map = {"CoreWebhook": [messages.RefreshWebhookConfiguration()]}
+    kind_map = {InfrahubKind.WEBHOOK: [messages.RefreshWebhookConfiguration()]}
     events.extend(kind_map.get(message.kind, []))
     events.append(
         messages.TriggerWebhookActions(event_type=f"{message.kind}.{message.action}", event_data=message.data)

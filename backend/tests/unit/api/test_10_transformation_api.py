@@ -1,6 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
@@ -22,8 +23,8 @@ async def test_transform_endpoint(
 
     client = TestClient(app)
 
-    repositories = await NodeManager.query(db=db, schema="CoreRepository")
-    queries = await NodeManager.query(db=db, schema="CoreGraphQLQuery")
+    repositories = await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY)
+    queries = await NodeManager.query(db=db, schema=InfrahubKind.GRAPHQLQUERY)
 
     t1 = await Node.init(db=db, schema="CoreTransformPython")
     await t1.new(
@@ -63,8 +64,8 @@ async def test_transform_endpoint_path(db: InfrahubDatabase, client_headers, rpc
 
     client = TestClient(app)
 
-    repositories = await NodeManager.query(db=db, schema="CoreRepository")
-    queries = await NodeManager.query(db=db, schema="CoreGraphQLQuery")
+    repositories = await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY)
+    queries = await NodeManager.query(db=db, schema=InfrahubKind.GRAPHQLQUERY)
 
     t1 = await Node.init(db=db, schema="CoreTransformPython")
     await t1.new(
@@ -105,10 +106,10 @@ async def test_rfile_endpoint(
 
     client = TestClient(app)
 
-    repositories = await NodeManager.query(db=db, schema="CoreRepository")
-    queries = await NodeManager.query(db=db, schema="CoreGraphQLQuery")
+    repositories = await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY)
+    queries = await NodeManager.query(db=db, schema=InfrahubKind.GRAPHQLQUERY)
 
-    t1 = await Node.init(db=db, schema="CoreRFile")
+    t1 = await Node.init(db=db, schema=InfrahubKind.RFILE)
     await t1.new(
         db=db,
         name="test-rfile",

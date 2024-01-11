@@ -1,6 +1,7 @@
 from graphql import parse
 
 from infrahub.core.branch import Branch
+from infrahub.core.constants import InfrahubKind
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql import generate_graphql_schema
 from infrahub.graphql.utils import extract_fields, extract_schema_models
@@ -75,9 +76,9 @@ async def test_schema_models_generics(
     fields = await extract_fields(document.definitions[0].selection_set)
 
     expected_response = {
-        "CoreGraphQLQueryGroup",
-        "CoreGroup",
-        "CoreStandardGroup",
+        InfrahubKind.GRAPHQLQUERYGROUP,
+        InfrahubKind.GENERICGROUP,
+        InfrahubKind.STANDARDGROUP,
         "EdgedTestPerson",
         "NestedEdgedCoreGroup",
         "NestedEdgedTestCar",

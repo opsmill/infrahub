@@ -17,6 +17,7 @@ from infrahub.core.constants import (
     RESTRICTED_NAMESPACES,
     BranchSupportType,
     FilterSchemaKind,
+    InfrahubKind,
     RelationshipCardinality,
     RelationshipDirection,
     RelationshipKind,
@@ -384,7 +385,7 @@ class SchemaBranch:
                     ) from None
 
             for rel in node.relationships:
-                if rel.peer in ["CoreGroup"]:
+                if rel.peer in [InfrahubKind.GENERICGROUP]:
                     continue
                 if not self.has(rel.peer):
                     raise ValueError(
@@ -549,16 +550,16 @@ class SchemaBranch:
                 self.set(name=name, schema=node)
 
     def add_groups(self):
-        if not self.has(name="CoreGroup"):
+        if not self.has(name=InfrahubKind.GENERICGROUP):
             return
 
         for node_name in list(self.nodes.keys()) + list(self.generics.keys()):
             schema: Union[NodeSchema, GenericSchema] = self.get(name=node_name)
 
-            if isinstance(schema, NodeSchema) and "CoreGroup" in schema.inherit_from:
+            if isinstance(schema, NodeSchema) and InfrahubKind.GENERICGROUP in schema.inherit_from:
                 continue
 
-            if schema.kind in INTERNAL_SCHEMA_NODE_KINDS or schema.kind == "CoreGroup":
+            if schema.kind in INTERNAL_SCHEMA_NODE_KINDS or schema.kind == InfrahubKind.GENERICGROUP:
                 continue
 
             if "member_of_groups" not in schema.relationship_names:
@@ -566,7 +567,7 @@ class SchemaBranch:
                     RelationshipSchema(
                         name="member_of_groups",
                         identifier="group_member",
-                        peer="CoreGroup",
+                        peer=InfrahubKind.GENERICGROUP,
                         kind=RelationshipKind.GROUP,
                         cardinality=RelationshipCardinality.MANY,
                         branch=BranchSupportType.AWARE,
@@ -578,7 +579,7 @@ class SchemaBranch:
                     RelationshipSchema(
                         name="subscriber_of_groups",
                         identifier="group_subscriber",
-                        peer="CoreGroup",
+                        peer=InfrahubKind.GENERICGROUP,
                         kind=RelationshipKind.GROUP,
                         cardinality=RelationshipCardinality.MANY,
                         branch=BranchSupportType.AWARE,

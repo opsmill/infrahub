@@ -1,12 +1,13 @@
 from infrahub.core import registry
 from infrahub.core.account import validate_token
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 
 
 async def test_validate_user_create(db: InfrahubDatabase, default_branch, register_core_models_schema):
-    account_schema = registry.get_schema(name="CoreAccount", branch=default_branch)
-    account_token_schema = registry.get_schema(name="InternalAccountToken", branch=default_branch)
+    account_schema = registry.get_schema(name=InfrahubKind.ACCOUNT, branch=default_branch)
+    account_token_schema = registry.get_schema(name=InfrahubKind.ACCOUNTTOKEN, branch=default_branch)
 
     user1 = await Node.init(db=db, schema=account_schema)
     await user1.new(db=db, name="user1", password="User1Password123")
@@ -17,8 +18,8 @@ async def test_validate_user_create(db: InfrahubDatabase, default_branch, regist
 
 
 async def test_validate_token(db: InfrahubDatabase, default_branch, register_core_models_schema):
-    account_schema = registry.get_schema(name="CoreAccount", branch=default_branch)
-    account_token_schema = registry.get_schema(name="InternalAccountToken", branch=default_branch)
+    account_schema = registry.get_schema(name=InfrahubKind.ACCOUNT, branch=default_branch)
+    account_token_schema = registry.get_schema(name=InfrahubKind.ACCOUNTTOKEN, branch=default_branch)
 
     user1 = await Node.init(db=db, schema=account_schema)
     await user1.new(db=db, name="user1", password="User1Password123", role="read-write")
