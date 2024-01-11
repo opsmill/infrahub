@@ -6,16 +6,16 @@ icon: beaker
 # Running & writing tests for frontend
 
 !!!info Before we start
-If you have never run Infrahub tests before, we highly suggest to follow the [frontend guide](getting-started.md).
+If you have never run Infrahub tests before, we highly suggest to follow the [frontend guide](getting-set-up).
 !!!
 
 We're expecting to see proper tests for each feature/bugfix you make. If you're not sure how to write these tests, this page is made to help you get started.
 
 Infrahub frontend has 3 types of testing:
 
-- [e2e tests](#end-to-end-e2e-tests)
-- [Integration tests (Documentation WIP)](#integration-tests)
-- [Unit tests (Documentation WIP)](#unit-tests)
+- [end-to-end (e2e) tests](#end-to-end-e2e-tests)
+- [integration tests (documentation WIP)](#integration-tests)
+- [unit tests (documentation WIP)](#unit-tests)
 
 ## end-to-end (e2e) tests
 
@@ -29,7 +29,7 @@ For example, a test linked to the route `/objects/:objectname/:objectid` will be
 
 ### Writing e2e tests
 
-[Playwright](https://playwright.dev/) is our e2e testing tool. It can automatically generate tests as you perform actions in the browser, making it a quick way to start testing:
+[Playwright](https://playwright.dev/docs/codegen) can automatically generate tests as you perform actions in the browser, making it a quick way to start testing:
 
 ```shell
 npx playwright codegen

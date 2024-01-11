@@ -3,7 +3,7 @@ title: Getting set up
 icon: rocket
 order: 1000
 ---
-# Getting set up with Frontend
+# Getting set up with frontend
 
 !!!warning Before we start
 Make sure [Infrahub Backend](../backend.md) is up and running. If not, in your terminal execute:

@@ -1,6 +1,6 @@
 # Frontend guide
 
-Welcome to the Infrahub Frontend Guide! This guide details the technologies and steps required to contribute effectively to the Infrahub frontend.
+Welcome to the Infrahub frontend guide! This guide details the technologies and steps required to contribute effectively to the Infrahub frontend.
 
 ## Infrahub stack
 
@@ -29,4 +29,4 @@ cd infrahub/frontend
 git switch develop
 ```
 
-Before contributing, we recommended starting with [Getting set up with frontend](getting-started.md).
+Before contributing, we recommended starting with [Getting set up with frontend](getting-set-up).
