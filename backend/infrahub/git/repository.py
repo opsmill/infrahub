@@ -751,10 +751,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         return changed_files, added_files, removed_files
 
-    @abstractmethod
-    async def sync(self) -> None:
-        raise NotImplementedError()
-
     async def fetch(self) -> bool:
         """Fetch the latest update from the remote repository and bring a copy locally."""
         if not self.has_origin:
@@ -2155,7 +2151,7 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryBase):
         git_repo = self.get_git_repo_main()
         git_repo.remotes.origin.fetch()
 
-        refs = (self.ref, f"origin/{self.ref}")
+        refs = (f"origin/{self.ref}", self.ref)
         commit = None
         for possible_ref in refs:
             try:
@@ -2177,4 +2173,4 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryBase):
         if commit != local_branch.commit:
             self.create_commit_worktree(commit=commit)
             await self.import_objects_from_files(branch_name=self.infrahub_branch_name, commit=commit)
-        await self.update_commit_value(branch_name=self.infrahub_branch_name, commit=commit)
+            await self.update_commit_value(branch_name=self.infrahub_branch_name, commit=commit)

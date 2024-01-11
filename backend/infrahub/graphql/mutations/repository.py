@@ -125,7 +125,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
             repository_id=obj.id,
             repository_name=obj.name.value,
             location=obj.location.value,
-            ref=new_ref,
+            ref=obj.ref.value,
             commit=new_commit,
             infrahub_branch_name=branch.name,
         )
