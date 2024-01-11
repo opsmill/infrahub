@@ -470,6 +470,7 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                 "edges": [
                     {
                         "node": {
+                            "__typename": "CoreRepository",
                             "id": "9486cfce-87db-479d-ad73-07d80ba96a0f",
                             "name": {"value": "infrahub-test-fixture-01"},
                             "location": {"value": "git@github.com:mock/infrahub-test-fixture-01.git"},
@@ -486,6 +487,7 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                 "edges": [
                     {
                         "node": {
+                            "__typename": "CoreRepository",
                             "id": "9486cfce-87db-479d-ad73-07d80ba96a0f",
                             "name": {"value": "infrahub-test-fixture-01"},
                             "location": {"value": "git@github.com:mock/infrahub-test-fixture-01.git"},

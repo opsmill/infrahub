@@ -11,7 +11,7 @@ LOGGER = logging.getLogger("infrahub.git")
 
 async def sync_remote_repositories(service: InfrahubServices) -> None:
     branches = await service.client.branch.all()
-    repositories = await service.client.get_list_repositories(branches=branches)
+    repositories = await service.client.get_list_repositories(branches=branches, kind="CoreRepository")
 
     for repo_name, repository in repositories.items():
         async with lock.registry.get(name=repo_name, namespace="repository"):

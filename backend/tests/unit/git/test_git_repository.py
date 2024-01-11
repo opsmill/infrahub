@@ -215,7 +215,7 @@ async def test_get_branches_from_remote(git_repo_01: InfrahubRepository):
 
 
 async def test_get_branches_from_graph(
-    git_repo_01_w_client: InfrahubRepository, mock_branches_list_query, mock_repositories_query
+    git_repo_01_w_client: InfrahubRepository, mock_branches_list_query, mock_schema_query_01, mock_repositories_query
 ):
     repo = git_repo_01_w_client
 

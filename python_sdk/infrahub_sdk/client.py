@@ -632,7 +632,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         return InfrahubBatch(semaphore=self.concurrent_execution_limit, return_exceptions=return_exceptions)
 
     async def get_list_repositories(
-        self, branches: Optional[Dict[str, BranchData]] = None
+        self, branches: Optional[Dict[str, BranchData]] = None, kind: str = "CoreGenericRepository"
     ) -> Dict[str, RepositoryData]:
         if not branches:
             branches = await self.branch.all()  # type: ignore
@@ -643,7 +643,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         for branch_name in branch_names:
             batch.add(
                 task=self.all,
-                kind="CoreGenericRepository",
+                kind=kind,
                 branch=branch_name,
                 fragment=True,
                 include=["id", "name", "location", "commit", "ref"],
@@ -1106,7 +1106,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
 
         return resp.json()
 
-    def repository_update_commit(self, branch_name: str, repository_id: str, commit: str) -> bool:
+    def repository_update_commit(self, branch_name: str, repository_id: str, commit: str, is_read_only: bool = False) -> bool:
         raise NotImplementedError(
             "This method is deprecated in the async client and won't be implemented in the sync client."
         )

@@ -581,7 +581,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         branches = await self.client.branch.all()
 
         # TODO Need to optimize this query, right now we are querying everything unnecessarily
-        repositories = await self.client.get_list_repositories(branches=branches)
+        repositories = await self.client.get_list_repositories(branches=branches, kind="CoreRepository")
         repository = repositories[self.name]
 
         for branch_name, branch in branches.items():
