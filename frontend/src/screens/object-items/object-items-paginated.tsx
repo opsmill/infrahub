@@ -74,10 +74,12 @@ export default function ObjectItems(props: any) {
   if ((schemaList?.length || genericList?.length) && !schemaData) {
     // If there is no schema nor generics, go to home page
     navigate("/");
+    return null;
   }
 
   if (schemaData && MENU_EXCLUDELIST.includes(schemaData.kind) && !preventBlock) {
     navigate("/");
+    return null;
   }
 
   // All the fiter values are being sent out as strings inside quotes.
