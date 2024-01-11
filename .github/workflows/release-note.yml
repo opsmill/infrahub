@@ -31,7 +31,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  update_infrahub_sdk_release_draft:
+  update_python_sdk_release_draft:
     permissions:
       contents: write
       pull-requests: read
@@ -39,8 +39,8 @@ jobs:
     steps:
       - uses: release-drafter/release-drafter@v5
         with:
-          config-name: infrahub_sdk-release-drafter.yml
+          config-name: python_sdk-release-drafter.yml
           disable-autolabeler: true
-          name: infrahub_sdk-draft
+          name: python_sdk-draft
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
