@@ -6,9 +6,9 @@ generics:
     namespace: Location
     description: "Generic Location Interface."
     label: "Location"
-    icon: "mingcute:location-line"
+    icon: "mdi:map-marker-multiple-outline"
     include_in_menu: true
-    hierarchical: True
+    hierarchical: true
     display_labels:
       - name__value
     order_by:
@@ -22,7 +22,7 @@ generics:
 nodes:
   - name: Region
     namespace: Location
-    icon: "jam:world"
+    icon: "mdi:web"
     include_in_menu: true
     menu_placement: "LocationGeneric"
     label: "Region"
@@ -31,7 +31,7 @@ nodes:
     children: "LocationSite"
   - name: Site
     namespace: Location
-    icon: "ri:building-line"
+    icon: "mdi:city"
     include_in_menu: true
     menu_placement: "LocationGeneric"
     label: "Site"
@@ -40,7 +40,7 @@ nodes:
     children: "LocationRack"
   - name: Rack
     namespace: Location
-    icon: "clarity:rack-server-line"
+    icon: "mdi:server-outline"
     include_in_menu: true
     menu_placement: "LocationGeneric"
     label: "Rack"

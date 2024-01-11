@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, Literal, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
+from infrahub.core.constants import RelationshipHierarchyDirection
 from infrahub.core.manager import NodeManager
 from infrahub.core.query.node import NodeGetHierarchyQuery
 
@@ -246,15 +247,19 @@ async def many_relationship_resolver(
 
 
 async def ancestors_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> Dict[str, Any]:
-    return await hierarchy_resolver(direction="ancestors", parent=parent, info=info, **kwargs)
+    return await hierarchy_resolver(
+        direction=RelationshipHierarchyDirection.ANCESTORS, parent=parent, info=info, **kwargs
+    )
 
 
 async def descendants_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> Dict[str, Any]:
-    return await hierarchy_resolver(direction="descendants", parent=parent, info=info, **kwargs)
+    return await hierarchy_resolver(
+        direction=RelationshipHierarchyDirection.DESCENDANTS, parent=parent, info=info, **kwargs
+    )
 
 
 async def hierarchy_resolver(
-    direction: Literal["ancestors", "descendants"], parent: dict, info: GraphQLResolveInfo, **kwargs
+    direction: RelationshipHierarchyDirection, parent: dict, info: GraphQLResolveInfo, **kwargs
 ) -> Dict[str, Any]:
     """Resolver for ancestors and dependants for Hierarchical nodes
 

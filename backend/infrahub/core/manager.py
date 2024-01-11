@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Type, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Type, Union
 
 from infrahub_sdk.utils import deep_merge_dict
 
@@ -21,9 +21,8 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import NodeNotFound, SchemaNotFound
 
 if TYPE_CHECKING:
-    from uuid import UUID
-
     from infrahub.core.branch import Branch
+    from infrahub.core.constants import RelationshipHierarchyDirection
     from infrahub.database import InfrahubDatabase
 
 
@@ -154,7 +153,7 @@ class NodeManager:
         branch = await get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
-        rel = Relationship(schema=schema, branch=branch, node_id=ids[0])
+        rel = Relationship(schema=schema, branch=branch, node_id="PLACEHOLDER")
 
         query = await RelationshipGetPeerQuery.init(
             db=db, source_ids=ids, schema=schema, filters=filters, rel=rel, at=at
@@ -177,7 +176,7 @@ class NodeManager:
         branch = await get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
-        rel = Relationship(schema=schema, branch=branch, node_id=id)
+        rel = Relationship(schema=schema, branch=branch, node_id="PLACEHOLDER")
 
         query = await RelationshipGetPeerQuery.init(
             db=db,
@@ -192,6 +191,8 @@ class NodeManager:
         await query.execute(db=db)
 
         peers_info = list(query.get_peers())
+        if not peers_info:
+            return []
 
         # if display_label has been requested we need to ensure we are querying the right fields
         if fields and "display_label" in fields:
@@ -199,9 +200,6 @@ class NodeManager:
             if peer_schema.display_labels:
                 display_label_fields = peer_schema.generate_fields_for_display_label()
                 fields = deep_merge_dict(fields, display_label_fields)
-
-        if not peers_info:
-            return []
 
         return [
             await Relationship(schema=schema, branch=branch, at=at, node_id=peer.source_id).load(
@@ -218,7 +216,7 @@ class NodeManager:
     async def count_hierarchy(
         cls,
         id: str,
-        direction: Literal["ancestors", "descendants"],
+        direction: RelationshipHierarchyDirection,
         node_schema: NodeSchema,
         filters: dict,
         db: InfrahubDatabase,
@@ -244,8 +242,8 @@ class NodeManager:
     async def query_hierarchy(
         cls,
         db: InfrahubDatabase,
-        id: UUID,
-        direction: Literal["ancestors", "descendants"],
+        id: str,
+        direction: RelationshipHierarchyDirection,
         node_schema: NodeSchema,
         filters: dict,
         fields: Optional[dict] = None,
@@ -272,6 +270,9 @@ class NodeManager:
 
         peers_ids = list(query.get_peer_ids())
 
+        if not peers_ids:
+            return []
+
         hierarchy_schema = node_schema.get_hierarchy_schema()
 
         # if display_label has been requested we need to ensure we are querying the right fields
@@ -279,9 +280,6 @@ class NodeManager:
             if hierarchy_schema.display_labels:
                 display_label_fields = hierarchy_schema.generate_fields_for_display_label()
                 fields = deep_merge_dict(fields, display_label_fields)
-
-        if not peers_ids:
-            return []
 
         return await cls.get_many(
             db=db, ids=peers_ids, fields=fields, at=at, branch=branch, include_owner=True, include_source=True

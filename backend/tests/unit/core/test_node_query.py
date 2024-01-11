@@ -3,7 +3,7 @@ from typing import Dict
 
 from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, RelationshipHierarchyDirection
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.query.node import (
@@ -351,12 +351,11 @@ async def test_query_NodeGetHierarchyQuery_ancestors(
 
     query = await NodeGetHierarchyQuery.init(
         db=db,
-        direction="ancestors",
+        direction=RelationshipHierarchyDirection.ANCESTORS,
         node_id=paris_r1.id,
         node_schema=node_schema,
         branch=default_branch,
     )
-
     await query.execute(db=db)
     assert sorted(list(query.get_peer_ids())) == sorted([paris.id, europe.id])
 
@@ -374,7 +373,7 @@ async def test_query_NodeGetHierarchyQuery_filters(
 
     query = await NodeGetHierarchyQuery.init(
         db=db,
-        direction="descendants",
+        direction=RelationshipHierarchyDirection.DESCENDANTS,
         node_id=europe.id,
         filters={"descendants__status__value": "online"},
         node_schema=node_schema,

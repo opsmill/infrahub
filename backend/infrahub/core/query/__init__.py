@@ -104,15 +104,15 @@ class QueryNode(QueryElement):
 class QueryRel(QueryElement):
     type: QueryElementType = QueryElementType.RELATIONSHIP
     direction: QueryRelDirection = QueryRelDirection.BIDIR
-    lenght_min: int = 1
-    lenght_max: Optional[int] = None
+    length_min: int = 1
+    length_max: Optional[int] = None
 
     def __str__(self):
         lenght_str = ""
-        if self.lenght_max:
+        if self.length_max:
             lenght_str = "*%s..%s" % (
-                self.lenght_min,
-                self.lenght_max,
+                self.length_min,
+                self.length_max,
             )
 
         main_str = "[%s%s%s%s]" % (
@@ -308,6 +308,13 @@ class Query(ABC):
                 self.add_to_query(query=item)
         else:
             self.query_lines.extend([line.strip() for line in query.split("\n") if line.strip()])
+
+    def add_subquery(self, subquery: str, with_clause: Optional[str] = None) -> None:
+        self.add_to_query("CALL {")
+        self.add_to_query(subquery)
+        self.add_to_query("}")
+        if with_clause:
+            self.add_to_query(f"WITH {with_clause}")
 
     def get_query(
         self, var: bool = False, inline: bool = False, limit: Optional[int] = None, offset: Optional[int] = None

@@ -164,6 +164,11 @@ class RelationshipDirection(InfrahubStringEnum):
     INBOUND = "inbound"
 
 
+class RelationshipHierarchyDirection(InfrahubStringEnum):
+    ANCESTORS = "ancestors"
+    DESCENDANTS = "descendants"
+
+
 class Severity(InfrahubStringEnum):
     SUCCESS = "success"
     INFO = "info"

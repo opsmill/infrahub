@@ -482,12 +482,10 @@ class RelationshipGetPeerQuery(Query):
 
         self.branch = branch or self.rel.branch
 
-        if at:
-            self.at = Timestamp(at)
-        elif inspect.isclass(rel) and hasattr(rel, "at"):
+        if not at and inspect.isclass(rel) and hasattr(rel, "at"):
             self.at = self.rel.at
         else:
-            self.at = Timestamp()
+            self.at = Timestamp(at)
 
         super().__init__(*args, **kwargs)
 
@@ -571,11 +569,7 @@ class RelationshipGetPeerQuery(Query):
             with_str = ", ".join(
                 [f"{subquery_result_name} as {label}" if label == "peer" else label for label in self.return_labels]
             )
-
-            self.add_to_query("CALL {")
-            self.add_to_query(subquery)
-            self.add_to_query("}")
-            self.add_to_query(f"WITH {with_str}")
+            self.add_subquery(subquery=subquery, with_clause=with_str)
 
         # ----------------------------------------------------------------------------
         # QUERY Properties
@@ -632,13 +626,7 @@ class RelationshipGetPeerQuery(Query):
                 self.order_by.append(subquery_result_name)
                 self.params.update(subquery_params)
 
-                with_str = ", ".join(
-                    [f"{subquery_result_name} as {label}" if label == "n" else label for label in self.return_labels]
-                )
-
-                self.add_to_query("CALL {")
-                self.add_to_query(subquery)
-                self.add_to_query("}")
+                self.add_subquery(subquery=subquery)
 
                 order_cnt += 1
 

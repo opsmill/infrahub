@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, Generator, List, Literal, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Tuple, Union
 
 from infrahub import config
-from infrahub.core.constants import RelationshipDirection
+from infrahub.core.constants import RelationshipDirection, RelationshipHierarchyDirection
 from infrahub.core.query import Query, QueryResult, QueryType
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
 from infrahub.core.query.utils import find_node_schema
@@ -150,7 +150,7 @@ class NodeCreateAllQuery(NodeQuery):
 
         query = """
         MATCH (root:Root)
-        CREATE (n:Node:%s $node_prop )
+        CREATE (n:Node:%(labels)s $node_prop )
         CREATE (n)-[r:IS_PART_OF $node_branch_prop ]->(root)
         WITH distinct n
         FOREACH ( attr IN $attrs |
@@ -174,8 +174,8 @@ class NodeCreateAllQuery(NodeQuery):
         FOREACH ( rel IN $rels_bidir |
             MERGE (d:Node { uuid: rel.destination_id })
             CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
-            CREATE (n)-[:IS_RELATED %s ]->(rl)
-            CREATE (d)-[:IS_RELATED %s ]->(rl)
+            CREATE (n)-[:IS_RELATED %(rel_prop)s ]->(rl)
+            CREATE (d)-[:IS_RELATED %(rel_prop)s ]->(rl)
             MERGE (ip:Boolean { value: rel.is_protected })
             MERGE (iv:Boolean { value: rel.is_visible })
             CREATE (rl)-[:IS_PROTECTED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(ip)
@@ -192,8 +192,8 @@ class NodeCreateAllQuery(NodeQuery):
         FOREACH ( rel IN $rels_out |
             MERGE (d:Node { uuid: rel.destination_id })
             CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
-            CREATE (n)-[:IS_RELATED %s ]->(rl)
-            CREATE (d)<-[:IS_RELATED %s ]-(rl)
+            CREATE (n)-[:IS_RELATED %(rel_prop)s ]->(rl)
+            CREATE (d)<-[:IS_RELATED %(rel_prop)s ]-(rl)
             MERGE (ip:Boolean { value: rel.is_protected })
             MERGE (iv:Boolean { value: rel.is_visible })
             CREATE (rl)-[:IS_PROTECTED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(ip)
@@ -210,8 +210,8 @@ class NodeCreateAllQuery(NodeQuery):
         FOREACH ( rel IN $rels_in |
             MERGE (d:Node { uuid: rel.destination_id })
             CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
-            CREATE (n)<-[:IS_RELATED %s ]-(rl)
-            CREATE (d)-[:IS_RELATED %s ]->(rl)
+            CREATE (n)<-[:IS_RELATED %(rel_prop)s ]-(rl)
+            CREATE (d)-[:IS_RELATED %(rel_prop)s ]->(rl)
             MERGE (ip:Boolean { value: rel.is_protected })
             MERGE (iv:Boolean { value: rel.is_visible })
             CREATE (rl)-[:IS_PROTECTED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(ip)
@@ -227,15 +227,7 @@ class NodeCreateAllQuery(NodeQuery):
         )
         WITH distinct n
         MATCH (n)-[:HAS_ATTRIBUTE|IS_RELATED]-(rn)-[:HAS_VALUE|IS_RELATED]-(rv)
-        """ % (
-            ":".join(self.node.get_labels()),
-            rel_prop_str,
-            rel_prop_str,
-            rel_prop_str,
-            rel_prop_str,
-            rel_prop_str,
-            rel_prop_str,
-        )
+        """ % {"labels": ":".join(self.node.get_labels()), "rel_prop": rel_prop_str}
 
         self.params["at"] = at.to_string()
 
@@ -644,9 +636,7 @@ class NodeGetListQuery(Query):
                 self.order_by.append(subquery_result_name)
                 self.params.update(subquery_params)
 
-                self.add_to_query("CALL {")
-                self.add_to_query(subquery)
-                self.add_to_query("}")
+                self.add_subquery(subquery=subquery)
 
                 order_cnt += 1
 
@@ -705,12 +695,11 @@ class NodeGetHierarchyQuery(Query):
     name = "node_get_hierarchy"
 
     type: QueryType = QueryType.READ
-    # insert_return: bool = False
 
     def __init__(
         self,
         node_id: str,
-        direction: Literal["ancestors", "descendants"],
+        direction: RelationshipHierarchyDirection,
         node_schema: Union[NodeSchema, GenericSchema],
         filters: Optional[dict] = None,
         *args,
@@ -732,11 +721,11 @@ class NodeGetHierarchyQuery(Query):
         self.params["uuid"] = self.node_id
 
         filter_str = "[:IS_RELATED*2..%s { hierarchy: $hierarchy }]" % (
-            config.SETTINGS.schema_.max_depth_search_hierarchy * 2,
+            config.SETTINGS.database.max_depth_search_hierarchy * 2,
         )
         self.params["hierarchy"] = self.hierarchy_schema.kind
 
-        if self.direction == "ancestors":
+        if self.direction == RelationshipHierarchyDirection.ANCESTORS:
             filter_str = f"-{filter_str}->"
         else:
             filter_str = f"<-{filter_str}-"
@@ -759,7 +748,7 @@ class NodeGetHierarchyQuery(Query):
         self.add_to_query(query)
         where_clause = ['all(r IN relationships(path) WHERE (r.status = "active"))']
 
-        clean_filters = extract_field_filters(field_name=self.direction, filters=self.filters)
+        clean_filters = extract_field_filters(field_name=self.direction.value, filters=self.filters)
 
         if clean_filters and "id" in clean_filters or "ids" in clean_filters:
             where_clause.append("peer.uuid IN $peer_ids")
@@ -805,10 +794,7 @@ class NodeGetHierarchyQuery(Query):
                 [f"{subquery_result_name} as {label}" if label == "peer" else label for label in self.return_labels]
             )
 
-            self.add_to_query("CALL {")
-            self.add_to_query(subquery)
-            self.add_to_query("}")
-            self.add_to_query(f"WITH {with_str}")
+            self.add_subquery(subquery=subquery, with_clause=with_str)
 
         # ----------------------------------------------------------------------------
         # ORDER Results
@@ -834,13 +820,7 @@ class NodeGetHierarchyQuery(Query):
                 self.order_by.append(subquery_result_name)
                 self.params.update(subquery_params)
 
-                with_str = ", ".join(
-                    [f"{subquery_result_name} as {label}" if label == "n" else label for label in self.return_labels]
-                )
-
-                self.add_to_query("CALL {")
-                self.add_to_query(subquery)
-                self.add_to_query("}")
+                self.add_subquery(subquery=subquery)
 
                 order_cnt += 1
         else:

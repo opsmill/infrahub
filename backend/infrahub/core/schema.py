@@ -480,8 +480,8 @@ class RelationshipSchema(BaseSchemaModel):
                     QueryRel(
                         labels=[rel_type],
                         direction=rels_direction["r1"],
-                        lenght_min=2,
-                        lenght_max=config.SETTINGS.schema_.max_depth_search_hierarchy * 2,
+                        length_min=2,
+                        length_max=config.SETTINGS.database.max_depth_search_hierarchy * 2,
                         params={"hierarchy": self.hierarchical},
                     ),
                     QueryNode(name="peer", labels=[self.hierarchical]),

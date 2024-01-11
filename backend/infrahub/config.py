@@ -125,6 +125,12 @@ class DatabaseSettings(BaseSettings):
         description="The max number of records to fetch in a single query before performing internal pagination.",
         validation_alias=AliasChoices("query_size_limit", "INFRAHUB_DB_QUERY_SIZE_LIMIT"),
     )
+    max_depth_search_hierarchy: int = Field(
+        default=5,
+        le=20,
+        description="Maximum number of level to search in a hierarchy.",
+        validation_alias=AliasChoices("max_depth_search_hierarchy", "INFRAHUB_DB_MAX_DEPTH_SEARCH_HIERARCHY"),
+    )
 
     @property
     def database_name(self) -> str:
@@ -223,11 +229,6 @@ class SecuritySettings(BaseSettings):
     )
 
 
-class SchemaSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="INFRAHUB_SCHEMA_")
-    max_depth_search_hierarchy: int = Field(default=5, description="Maximum number of level to search in a hierarchy.")
-
-
 class TraceSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_TRACE_")
     enable: bool = Field(default=False)
@@ -290,7 +291,6 @@ class Settings(BaseSettings):
     miscellaneous: MiscellaneousSettings = MiscellaneousSettings()
     logging: LoggingSettings = LoggingSettings()
     analytics: AnalyticsSettings = AnalyticsSettings()
-    schema_: SchemaSettings = SchemaSettings()
     security: SecuritySettings = SecuritySettings()
     storage: StorageSettings = StorageSettings()
     trace: TraceSettings = TraceSettings()

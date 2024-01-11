@@ -235,6 +235,6 @@ def test_query_rel():
         == "-[:HAS_VALUE { name: $myvar }]->"
     )
     assert (
-        str(QueryRel(labels=["HAS_VALUE"], direction=QueryRelDirection.OUTBOUND, lenght_max=3))
+        str(QueryRel(labels=["HAS_VALUE"], direction=QueryRelDirection.OUTBOUND, length_max=3))
         == "-[:HAS_VALUE*1..3]->"
     )
