@@ -12,7 +12,7 @@ import { constructPath } from "../../utils/fetch";
 export const BranchesItems = () => {
   const [storedBranches] = useAtom(branchesState);
   const navigate = useNavigate();
-  useTitle(`Branches list (${storedBranches.length})`);
+  useTitle("Branches list");
 
   const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
 

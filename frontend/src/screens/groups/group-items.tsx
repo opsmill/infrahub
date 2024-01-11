@@ -84,7 +84,7 @@ export default function GroupItems() {
 
   const { count, edges } = result;
 
-  useTitle(groupname ? `${groupname} details` : `Groups list ${count ? `(${count})` : ""}`);
+  useTitle(groupname ? `${groupname} details` : "Groups list");
 
   const rows = edges?.map((edge: any) => edge.node);
 

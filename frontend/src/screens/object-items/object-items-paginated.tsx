@@ -121,9 +121,7 @@ export default function ObjectItems(props: any) {
 
   const { count, edges } = result;
 
-  console.log("schemaKindName: ", schemaKindName);
-  console.log("objectname: ", objectname);
-  useTitle(`${schemaKindName[objectname]} list ${count ? `(${count})` : ""}`);
+  useTitle(`${schemaKindName[objectname]} list`);
 
   const rows = edges?.map((edge: any) => edge.node);
 
