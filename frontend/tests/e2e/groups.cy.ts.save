@@ -21,7 +21,7 @@ describe("Groups", () => {
     cy.get("[href='/groups']").click();
 
     // 5 groups should be present
-    cy.get("div.flex > .text-sm > :nth-child(3)").should("have.text", "5");
+    cy.get("div.flex > .text-sm > :nth-child(3)").should("have.text", "20");
 
     // Access group details
     cy.contains(GROUP_NAME).click();
@@ -38,7 +38,7 @@ describe("Groups", () => {
     cy.get(".-mb-px > :nth-child(2)").click();
 
     // There are 5 members
-    cy.get("div.flex > .text-sm > :nth-child(3)").should("have.text", "5");
+    cy.get("div.flex > .text-sm > :nth-child(3)").should("have.text", "20");
   });
 
   it("should add an object to 2 groups", () => {
@@ -57,8 +57,8 @@ describe("Groups", () => {
     // Open the select
     cy.get("[id^=headlessui-combobox-button-]").click();
 
-    // CHeck if the options have a length of 6
-    cy.get("[id^=headlessui-combobox-options-]").find("li").should("have.length", 6);
+    // CHeck if the options have a length of 11
+    cy.get("[id^=headlessui-combobox-options-]").find("li").should("have.length", 11);
 
     // Choose 2 options
     cy.contains(NEW_GROUP_1).click();
@@ -71,10 +71,10 @@ describe("Groups", () => {
     // Open again the group side panel
     cy.contains("Manage groups").click();
 
-    // The select must contains 4 items
+    // The select must contains 2 items
     cy.get("div[data-headlessui-state=''] > .relative > .w-full")
       .find("span")
-      .should("have.length", 4);
+      .should("have.length", 2);
 
     // Close side panel
     cy.get("[data-cy='side-panel-background']").click();
@@ -108,13 +108,13 @@ describe("Groups", () => {
     // The select should contain 4 values
     cy.get("div[data-headlessui-state=''] > .relative > .w-full")
       .find("span")
-      .should("have.length", 4);
+      .should("have.length", 2);
 
     // Open the select
     cy.get("[id^=headlessui-combobox-button-]").click();
 
-    // CHeck if the options have a length of 6
-    cy.get("[id^=headlessui-combobox-options-]").find("li").should("have.length", 6);
+    // CHeck if the options have a length of 11
+    cy.get("[id^=headlessui-combobox-options-]").find("li").should("have.length", 11);
 
     // Choose the 2 same options to remove the groups
     cy.contains(NEW_GROUP_1).click();
@@ -145,8 +145,8 @@ describe("Groups", () => {
     // Access the members
     cy.get(".-mb-px > :nth-child(2)").click();
 
-    // There are 5 members
-    cy.get("div.flex > .text-sm > :nth-child(3)").should("have.text", "5");
+    // There are 20 members
+    cy.get("div.flex > .text-sm > :nth-child(3)").should("have.text", "20");
 
     cy.contains(OBJECT_NAME).should("not.exist");
   });

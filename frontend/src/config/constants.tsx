@@ -1,25 +1,3 @@
-export const ADMIN_MENU_ITEMS = [
-  {
-    path: "/schema",
-    label: "Schema",
-  },
-  {
-    path: "/groups",
-    label: "Groups",
-  },
-];
-
-export const BRANCHES_MENU_ITEMS = [
-  {
-    path: "/branches",
-    label: "List",
-  },
-  {
-    path: "/proposed-changes",
-    label: "Proposed changes",
-  },
-];
-
 export const DEFAULT_BRANCH_NAME = "main";
 
 export const ACCESS_TOKEN_KEY = "access_token";
@@ -81,7 +59,6 @@ export const MENU_EXCLUDELIST = [
   "CoreObjectThread",
   "CoreProposedChange",
   "InternalRefreshToken",
-  "CoreStandardGroup",
   "CoreThreadComment",
   "CoreArtifactCheck",
   "CoreStandardCheck",

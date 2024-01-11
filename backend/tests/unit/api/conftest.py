@@ -58,7 +58,7 @@ async def car_person_data(
     await c3.new(db=db, name="nolt", nbr_seats=4, is_electric=True, owner=p2)
     await c3.save(db=db)
 
-    query = """
+    query1 = """
     query {
         TestPerson {
             edges {
@@ -81,9 +81,27 @@ async def car_person_data(
     }
     """
 
+    query2 = """
+    query($person: String!) {
+        TestPerson(name__value: $person) {
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                }
+            }
+        }
+    }
+    """
+
     q1 = await Node.init(db=db, schema="CoreGraphQLQuery")
-    await q1.new(db=db, name="query01", query=query)
+    await q1.new(db=db, name="query01", query=query1)
     await q1.save(db=db)
+
+    q2 = await Node.init(db=db, schema="CoreGraphQLQuery")
+    await q2.new(db=db, name="query02", query=query2)
+    await q2.save(db=db)
 
     r1 = await Node.init(db=db, schema="CoreRepository")
     await r1.new(
@@ -101,6 +119,7 @@ async def car_person_data(
         "c2": c2,
         "c3": c3,
         "q1": q1,
+        "q2": q2,
         "r1": r1,
     }
 

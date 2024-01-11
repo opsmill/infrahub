@@ -1,5 +1,5 @@
 import { test, expect, Page } from "@playwright/test";
-import { ACCOUNT_STATE_PATH } from "../tests/utils";
+import { ACCOUNT_STATE_PATH } from "../utils";
 
 const createBranch = async (page: Page, branchName: string) => {
   await page.getByTestId("create-branch-button").click();

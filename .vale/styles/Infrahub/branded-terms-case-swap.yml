@@ -8,7 +8,7 @@ action:
 swap:
   (?i:Github): GitHub
   (?i:gitpod): GitPod
-  (?i:Graphql): GraphQL
+  (?i:[^/]Graphql): GraphQL
   infrahub(?:\s|$): Infrahub
   (?i:Openconfig): OpenConfig
   "[Rr]file": RFile
