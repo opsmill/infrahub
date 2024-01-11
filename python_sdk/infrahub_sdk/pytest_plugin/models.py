@@ -41,13 +41,13 @@ class InfrahubInputOutputTest(pydantic.BaseModel):
     )
 
     @staticmethod
-    def parse_user_provided_data(path: Path) -> Any:
+    def parse_user_provided_data(path: Union[Path, None]) -> Any:
         """Read and parse user provided data depending on a file extension.
 
         This function handles JSON and YAML as they can be used to achieve the same goal. However some users may be more used to one format or
         another. If the file extension isn't known, assume the content is plain text.
         """
-        if not path:
+        if path is None:
             return None
 
         suffix = path.suffix.lower()[1:] if path.suffix else ""
