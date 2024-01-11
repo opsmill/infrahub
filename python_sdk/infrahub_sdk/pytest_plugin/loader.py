@@ -10,7 +10,6 @@ from pytest import Item
 from .items.rfile import InfrahubRFileUnitRenderItem
 from .items.transform_python import InfrahubPythonTransformUnitProcessItem
 from .models import InfrahubTestFileV1, InfrahubTestResource
-from .utils import find_python_transform_in_repository_config, find_rfile_in_repository_config
 
 MARKER_MAPPING = {"RFile": pytest.mark.infrahub_rfile, "PythonTransform": pytest.mark.infrahub_python_transform}
 
@@ -33,11 +32,8 @@ class InfrahubYamlFile(pytest.File):
             if test_group.resource == InfrahubTestResource.RFILE.value:
                 marker = pytest.mark.infrahub_rfile(name=test_group.resource_name)
                 try:
-                    resource_config = find_rfile_in_repository_config(
-                        rfile=test_group.resource_name,
-                        repository_config=self.session.infrahub_repo_config,  # type: ignore[attr-defined]
-                    )
-                except ValueError:
+                    resource_config = self.session.infrahub_repo_config.get_rfile(test_group.resource_name)
+                except KeyError:
                     warnings.warn(
                         Warning(f"Unable to find the rfile {test_group.resource_name!r} in the repository config file.")
                     )
@@ -46,11 +42,8 @@ class InfrahubYamlFile(pytest.File):
             if test_group.resource == InfrahubTestResource.PYTHON_TRANSFORM.value:
                 marker = pytest.mark.infrahub_python_transform(name=test_group.resource_name)
                 try:
-                    resource_config = find_python_transform_in_repository_config(
-                        transform=test_group.resource_name,
-                        repository_config=self.session.infrahub_repo_config,  # type: ignore[attr-defined]
-                    )
-                except ValueError:
+                    resource_config = self.session.infrahub_repo_config.get_python_transform(test_group.resource_name)
+                except KeyError:
                     warnings.warn(
                         Warning(
                             f"Unable to find the python transform {test_group.resource_name!r} in the repository config file."

@@ -6,7 +6,7 @@ import yaml
 from rich.syntax import Syntax
 from rich.traceback import Frame, Traceback
 
-from infrahub_sdk.schema import InfrahubPythonTransformConfig, InfrahubRepositoryConfig, InfrahubRepositoryRFileConfig
+from infrahub_sdk.schema import InfrahubRepositoryConfig
 
 from .exceptions import FileNotValidError
 
@@ -22,24 +22,6 @@ def load_repository_config(repo_config_file: Path) -> InfrahubRepositoryConfig:
         raise FileNotValidError(name=str(repo_config_file)) from exc
 
     return InfrahubRepositoryConfig(**data)
-
-
-def find_rfile_in_repository_config(
-    rfile: str, repository_config: InfrahubRepositoryConfig
-) -> InfrahubRepositoryRFileConfig:
-    filtered = [entry for entry in repository_config.rfiles if entry.name == rfile]
-    if len(filtered) == 0 or len(filtered) > 1:
-        raise ValueError
-    return filtered[0]
-
-
-def find_python_transform_in_repository_config(
-    transform: str, repository_config: InfrahubRepositoryConfig
-) -> InfrahubPythonTransformConfig:
-    filtered = [entry for entry in repository_config.python_transforms if entry.name == transform]
-    if len(filtered) == 0 or len(filtered) > 1:
-        raise ValueError
-    return filtered[0]
 
 
 def identify_faulty_jinja_code(traceback: Traceback, nbr_context_lines: int = 3) -> List[Tuple[Frame, Syntax]]:
