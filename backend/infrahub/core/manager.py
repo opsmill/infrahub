@@ -144,7 +144,7 @@ class NodeManager:
     @classmethod
     async def count_peers(
         cls,
-        id: str,
+        ids: List[str],
         schema: RelationshipSchema,
         filters: dict,
         db: InfrahubDatabase,
@@ -154,16 +154,18 @@ class NodeManager:
         branch = await get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
-        rel = Relationship(schema=schema, branch=branch, node_id=id)
+        rel = Relationship(schema=schema, branch=branch, node_id=ids[0])
 
-        query = await RelationshipGetPeerQuery.init(db=db, source_id=id, schema=schema, filters=filters, rel=rel, at=at)
+        query = await RelationshipGetPeerQuery.init(
+            db=db, source_ids=ids, schema=schema, filters=filters, rel=rel, at=at
+        )
         return await query.count(db=db)
 
     @classmethod
     async def query_peers(
         cls,
         db: InfrahubDatabase,
-        id: UUID,
+        ids: List[str],
         schema: RelationshipSchema,
         filters: dict,
         fields: Optional[dict] = None,
@@ -179,7 +181,7 @@ class NodeManager:
 
         query = await RelationshipGetPeerQuery.init(
             db=db,
-            source_id=id,
+            source_ids=ids,
             schema=schema,
             filters=filters,
             rel=rel,
@@ -202,7 +204,7 @@ class NodeManager:
             return []
 
         return [
-            await Relationship(schema=schema, branch=branch, at=at, node_id=id).load(
+            await Relationship(schema=schema, branch=branch, at=at, node_id=peer.source_id).load(
                 db=db,
                 id=peer.rel_node_id,
                 db_id=peer.rel_node_db_id,

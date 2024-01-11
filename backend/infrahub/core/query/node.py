@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Generator, List, Literal, Optional, Tuple
 
 from infrahub import config
 from infrahub.core.constants import RelationshipDirection
@@ -710,7 +710,7 @@ class NodeGetHierarchyQuery(Query):
     def __init__(
         self,
         node_id: str,
-        direction: str,
+        direction: Literal["ancestors", "descendants"],
         node_schema: NodeSchema,
         hierarchy_schema: GenericSchema,
         filters: Optional[dict] = None,

@@ -60,6 +60,9 @@ class NodePropertyData:
 class RelationshipPeerData:
     branch: str
 
+    source_id: UUID
+    """UUID of the Source Node."""
+
     peer_id: UUID
     """UUID of the Peer Node."""
 
@@ -439,7 +442,7 @@ class RelationshipDeleteQuery(RelationshipQuery):
         self.return_labels = ["s", "d", "rl", "r1", "r2"]
 
 
-class RelationshipGetPeerQuery(RelationshipQuery):
+class RelationshipGetPeerQuery(Query):
     name = "relationship_get_peer"
 
     type: QueryType = QueryType.READ
@@ -447,10 +450,44 @@ class RelationshipGetPeerQuery(RelationshipQuery):
     def __init__(
         self,
         filters: Optional[dict] = None,
+        source: Optional[Node] = None,
+        source_ids: Optional[List[str]] = None,
+        rel: Union[Type[Relationship], Relationship] = None,
+        rel_type: Optional[str] = None,
+        schema: RelationshipSchema = None,
+        branch: Branch = None,
+        at: Union[Timestamp, str] = None,
         *args,
         **kwargs,
     ):
+        if not source and not source_ids:
+            raise ValueError("Either source or source_ids must be provided.")
+        if not rel and not rel_type:
+            raise ValueError("Either rel or rel_type must be provided.")
+        if not inspect.isclass(rel) and not hasattr(rel, "schema"):
+            raise ValueError("Rel must be a Relationship class or an instance of Relationship.")
+        if not schema and inspect.isclass(rel) and not hasattr(rel, "schema"):
+            raise ValueError("Either an instance of Relationship or a valid schema must be provided.")
+
         self.filters = filters or {}
+        self.source_ids = source_ids or [source.id]
+        self.source = source
+
+        self.rel = rel
+        self.rel_type = rel_type or self.rel.rel_type
+        self.schema = schema or self.rel.schema
+
+        if not branch and inspect.isclass(rel) and not hasattr(rel, "branch"):
+            raise ValueError("Either an instance of Relationship or a valid branch must be provided.")
+
+        self.branch = branch or self.rel.branch
+
+        if at:
+            self.at = Timestamp(at)
+        elif inspect.isclass(rel) and hasattr(rel, "at"):
+            self.at = self.rel.at
+        else:
+            self.at = Timestamp()
 
         super().__init__(*args, **kwargs)
 
@@ -461,33 +498,30 @@ class RelationshipGetPeerQuery(RelationshipQuery):
 
         peer_schema = await self.schema.get_peer_schema(branch=self.branch)
 
-        self.params["source_id"] = self.source_id
+        self.params["source_ids"] = self.source_ids
         self.params["rel_identifier"] = self.schema.identifier
 
         arrows = self.schema.get_query_arrows()
 
-        ordering_var_str = (
-            "extract(r in relationships(path) | r.branch_level) + extract(r in relationships(path) | r.from)"
-        )
+        # ruff: noqa: E501
         query = """
         MATCH (rl:Relationship { name: $rel_identifier })
         CALL {
             WITH rl
-            MATCH path = (source:Node { uuid: $source_id })%s[:IS_RELATED]%s(rl)%s[:IS_RELATED]%s(peer:Node)
-            WHERE peer.uuid <> $source_id AND all(r IN relationships(path) WHERE (%s))
-            WITH peer, rl, relationships(path) as rels, %s as ordering
-            RETURN peer as peer, rels, rl as rl1
-            ORDER BY ordering[0] DESC, ordering[1] DESC, ordering[2] DESC, ordering[3] DESC
+            MATCH path = (source_node:Node)%s[:IS_RELATED]%s(rl)%s[:IS_RELATED]%s(peer:Node)
+            WHERE source_node.uuid IN $source_ids AND peer.uuid <> source_node.uuid AND all(r IN relationships(path) WHERE (%s))
+            WITH source_node, peer, rl, relationships(path) as rels, reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level) AS branch_level
+            RETURN source_node, peer as peer, rels, rl as rl1
+            ORDER BY branch_level DESC
             LIMIT 1
         }
-        WITH peer, rl1 as rl, rels
+        WITH peer, rl1 as rl, rels, source_node
         """ % (
             arrows.left.start,
             arrows.left.end,
             arrows.right.start,
             arrows.right.end,
             branch_filter,
-            ordering_var_str,
         )
 
         self.add_to_query(query)
@@ -502,7 +536,7 @@ class RelationshipGetPeerQuery(RelationshipQuery):
 
         self.add_to_query("WHERE " + " AND ".join(where_clause))
 
-        self.return_labels = ["rl", "peer", "rels"]
+        self.return_labels = ["rl", "peer", "rels", "source_node"]
 
         # ----------------------------------------------------------------------------
         # FILTER Results
@@ -620,6 +654,7 @@ class RelationshipGetPeerQuery(RelationshipQuery):
         for result in self.get_results_group_by(("peer", "uuid")):
             rels = result.get("rels")
             data = RelationshipPeerData(
+                source_id=result.get("source_node").get("uuid"),
                 peer_id=result.get("peer").get("uuid"),
                 rel_node_db_id=result.get("rl").element_id,
                 rel_node_id=result.get("rl").get("uuid"),
