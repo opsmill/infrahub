@@ -1954,7 +1954,6 @@ class InfrahubRepository(InfrahubRepositoryBase):
     """
 
     def get_commit_value(self, branch_name: str, remote: bool = False) -> str:
-
         branches = None
         if remote:
             branches = self.get_branches_from_remote()
@@ -2135,6 +2134,7 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryBase):
     """
     Repository with only read-only access to the remote repo
     """
+
     is_read_only: bool = True
     ref: str = Field(..., description="Ref to track on the external repository")
     infrahub_branch_name: str = Field(..., description="Infrahub branch on which to sync the remote repository")
