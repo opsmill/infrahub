@@ -1,6 +1,7 @@
 import { ApolloProvider } from "@apollo/client";
 import { useAtom, useSetAtom } from "jotai";
 import queryString from "query-string";
+import * as R from "ramda";
 import { useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
@@ -176,13 +177,10 @@ const AppInitializer = () => {
         s.relationships = sortByOrderWeight(s.relationships || []);
       });
 
-      const schemaKindNameMap = schema.reduce(
-        (kindNameMap: Record<string, string>, { name, kind }) => ({
-          ...kindNameMap,
-          [kind as string]: name,
-        }),
-        {}
-      );
+      const schemaNames = [...schema.map((s) => s.name), ...generics.map((s) => s.name)];
+      const schemaKinds = [...schema.map((s) => s.kind), ...generics.map((s) => s.kind)];
+      const schemaKindNameTuples = R.zip(schemaKinds, schemaNames);
+      const schemaKindNameMap = R.fromPairs(schemaKindNameTuples);
 
       setGenerics(generics);
       setSchema(schema);
