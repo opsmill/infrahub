@@ -20,6 +20,7 @@ While it's always possible to generate [Transformations](./transformation.md) on
 - **Caching**: Generated artifacts are stored in the internal [object storage](./object-storage.md). For resource intensive transformations, it will significantly reduce the load of the system if an artifact can be serve from the cache instead of regenerating each time.
 - **Traceability**: Past values of an artifact remain available. In a future release, it will be possible to compare the value of an artifact over time.
 - **Peer Review**: Artifacts are automatically part of the [Proposed Change](./proposed-change.md) review process.
+- **Database**: Artifact nodes are stored in the database and other nodes can optionally have a relationship with them, which makes it easy to perform certain artifact related queries.
 
 While the content of an artifact can change, its identifier will remain the same over time.
 
@@ -34,5 +35,21 @@ An **artifact definition** centralizes all the information required to generate 
 - Format of the output
 - Information to extract from each target that must be passed to the transformation.
 
-![](../media/artifact.excalidraw.svg)
+From an **artifact definition** artifact nodes are created, for each target which is part of the group. The result of the transformation is stored in the [object storage](./object-storage.md). The generation of the artifacts is performed by the git agent(s).
 
+![](../media/topics/artifact/architecture.excalidraw.svg)
+
+## CoreArtifactTarget
+
+Optionally, a Node can have a relation to an Artifact. The relation will be created when the Artifact is generated the first time. This has the benefit that querying the artifacts for a node becomes easier and that an extra artifacts tab will appear in the Node's detailed view in the UI.
+
+![artifact tab](../media/topics/artifact/node_detail_view_artifact_tab.png)
+
+To achieve this we have to inherit from the **CoreArtifactTarget** Generic in the [schema](./schema.md) of the node.
+
+```yaml
+nodes:
+  - name: "Device"
+    namespace: "Infra"
+    inherit_from: ["CoreArtifactTarget"]
+```
