@@ -1423,6 +1423,7 @@ core_models = {
             "order_by": ["name__value"],
             "display_labels": ["label__value"],
             "include_in_menu": False,
+            "hierarchical": True,
             "branch": BranchSupportType.AWARE.value,
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},

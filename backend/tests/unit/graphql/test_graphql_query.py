@@ -2383,7 +2383,7 @@ async def test_hierarchical_location_ancestors(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data
 ):
     query = """
-    query GetRack {
+    query {
         LocationRack(name__value: "paris-r1") {
             edges {
                 node {
@@ -2437,7 +2437,7 @@ async def test_hierarchical_location_descendants(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data
 ):
     query = """
-    query GetRack {
+    query {
         LocationRegion(name__value: "asia") {
             edges {
                 node {
@@ -2498,7 +2498,7 @@ async def test_hierarchical_location_include_descendants(
     db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_thing
 ):
     query = """
-    query GetRack {
+    query {
         LocationRegion(name__value: "asia") {
             edges {
                 node {
@@ -2545,6 +2545,64 @@ async def test_hierarchical_location_include_descendants(
         "thing-singapore-r2",
     ]
     assert asia["things"]["count"] == 7
+
+
+async def test_hierarchical_groups_descendants(db: InfrahubDatabase, default_branch: Branch, hierarchical_groups_data):
+    query = """
+    query {
+        CoreStandardGroup(name__value: "grp1") {
+            edges {
+                node {
+                    id
+                    display_label
+                    members(include_descendants: true) {
+                        count
+                        edges {
+                            node {
+                                id
+                                display_label
+                                __typename
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    result = await graphql(
+        await generate_graphql_schema(db=db, branch=default_branch, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    grp1 = result.data["CoreStandardGroup"]["edges"][0]["node"]
+    members = grp1["members"]["edges"]
+    members_ids = [node["node"]["id"] for node in members]
+
+    member_names = [hierarchical_groups_data[member_id].name.value for member_id in members_ids]
+
+    assert member_names == [
+        "tag-0",
+        "tag-1",
+        "tag-2",
+        "tag-3",
+        "tag-4",
+        "tag-5",
+        "tag-6",
+        "tag-7",
+        "tag-8",
+        "tag-9",
+        "tag-10",
+        "tag-11",
+        "tag-12",
+        "tag-13",
+    ]
+    assert grp1["members"]["count"] == 14
 
 
 @pytest.mark.skip(reason="Union is not supported at the root of the GraphQL Schema yet .. ")
