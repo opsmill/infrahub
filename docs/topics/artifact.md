@@ -20,6 +20,7 @@ While it's always possible to generate [Transformations](./transformation.md) on
 - **Caching**: Generated artifacts are stored in the internal [object storage](./object-storage.md). For resource intensive transformations, it will significantly reduce the load of the system if an artifact can be serve from the cache instead of regenerating each time.
 - **Traceability**: Past values of an artifact remain available. In a future release, it will be possible to compare the value of an artifact over time.
 - **Peer Review**: Artifacts are automatically part of the [Proposed Change](./proposed-change.md) review process.
+- **Database**: Artifact nodes are stored in the database and other nodes can optionally have a relationship with them, which makes it easy to perform certain artifact related queries.
 
 While the content of an artifact can change, its identifier will remain the same over time.
 
@@ -34,48 +35,21 @@ An **artifact definition** centralizes all the information required to generate 
 - Format of the output
 - Information to extract from each target that must be passed to the transformation.
 
-![](../media/artifact.excalidraw.svg)
+From an **artifact definition** artifact nodes are created, for each target which is part of the group. The result of the transformation is stored in the [object storage](./object-storage.md). The generation of the artifacts is performed by the git agent(s).
 
-## Creating an artifact definition
+![](../media/topics/artifact/architecture.excalidraw.svg)
 
-Artifact definitions can be created via the frontend, via GraphQL or via a Git repository
+## CoreArtifactTarget
 
-For Infrahub to automatically import an artifact definition from a repository, it must be declared in the `.infrahub.yml` file at the root of the repository under the key `artifact_definitions`.
+Optionally, a Node can have a relation to an Artifact. The relation will be created when the Artifact is generated the first time. This has the benefit that querying the artifacts for a node becomes easier and that an extra artifacts tab will appear in the Node's detailed view in the UI.
 
-```yaml
----
-artifact_definitions:
-  - name: "<name of the artifact definition"
-    artifact_name: "<name of the artifact generate for each member of the group"
-    parameters:
-      key1: "value1"
-    content_type: "text/plain"
-    targets: "<name or ID of a groups>"
-    transformation: "<name or ID of a transformation>"
-```
+![artifact tab](../media/topics/artifact/node_detail_view_artifact_tab.png)
 
-You can access an artifact via the frontend or GraphQL, but you shouldn't manually create them. Infrahub should generate and manage all artifacts.
-
-## Examples
-
-### Startup configuration for edge devices
-
-The project [`infrahub-demo-edge`](https://github.com/opsmill/infrahub-demo-edge) includes most elements required to generate the startup configuration of all edge devices.
-
-In the `.infrahub.yml` the artifact definition is configured as follows:
+To achieve this we have to inherit from the **CoreArtifactTarget** Generic in the [schema](./schema.md) of the node.
 
 ```yaml
-artifact_definitions:
-  - name: "Startup Config for Edge devices"
-    artifact_name: "startup-config"
-    parameters:
-      device: "name__value"
-    content_type: "text/plain"
-    targets: "edge_router"
-    transformation: "device_startup"
+nodes:
+  - name: "Device"
+    namespace: "Infra"
+    inherit_from: ["CoreArtifactTarget"]
 ```
-
-- `transformation: "device_startup"` references the transformation RFile and defines it in the same repository.
-- The GraphQLQuery `device_startup_info` is indirectly connected to the artifact definition via the transformation.
-- `targets: "edge_router"` references a group of Edge routers named `edge_router`. It must be already present in Infrahub.
-- `parameters` define the information that must be extracted from each member of the group and that must be passed to the transformation. Here, the transformation `device_startup` must have a parameter `device` (coming from the GraphQL Query) to render the configuration properly. The value of `device` for each member of the group will be constructed by accessing the value of the name `name__value`.
