@@ -67,7 +67,7 @@ async def get_menu(
             continue
 
         if isinstance(model, NodeSchema) and "CoreGroup" in model.inherit_from:
-            groups.children.append(InterfaceMenu(title=model.menu_title, path=f"/groups/{model.kind}"))
+            groups.children.append(InterfaceMenu(title=model.menu_title, path=f"/objects/{model.kind}"))
             continue
 
         menu_name = model.menu_placement or "base"
@@ -86,7 +86,7 @@ async def get_menu(
 
     objects.children.sort()
     groups.children.sort()
-    groups.children.insert(0, InterfaceMenu(title="All Groups", path="/groups"))
+    groups.children.insert(0, InterfaceMenu(title="All Groups", path="/objects/CoreGroup"))
     unified_storage = InterfaceMenu(
         title="Unified Storage",
         children=[

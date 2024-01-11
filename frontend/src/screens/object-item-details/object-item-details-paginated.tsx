@@ -78,16 +78,16 @@ export default function ObjectItemDetails(props: any) {
   if ((schemaList?.length || genericList?.length) && !schemaData) {
     // If there is no schema nor generics, go to home page
     navigate("/");
+    return null;
   }
 
   if (schemaData && MENU_EXCLUDELIST.includes(schemaData.kind)) {
     navigate("/");
+    return null;
   }
 
   const attributes = getSchemaAttributeColumns(schemaData, true);
-
   const relationships = getSchemaRelationshipColumns(schemaData);
-
   const relationshipsTabs = getSchemaRelationshipsTabs(schemaData);
 
   const queryString = schemaData
@@ -125,9 +125,6 @@ export default function ObjectItemDetails(props: any) {
   }
 
   if (!data || (data && !data[schemaData.kind]?.edges?.length)) {
-    // Redirect to the main list if there is no item for this is
-    // navigate(`/objects/${objectname}`);
-
     return (
       <div className="flex column justify-center">
         <NoDataFound message="No item found for that id." />
@@ -180,13 +177,15 @@ export default function ObjectItemDetails(props: any) {
                   <PencilIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
                 </Button>
 
-                <Button
-                  disabled={!auth?.permissions?.write}
-                  onClick={() => setShowAddToGroupDrawer(true)}
-                  className="mr-4">
-                  Manage groups
-                  <RectangleGroupIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
-                </Button>
+                {!schemaData.kind?.match(/Core.*Group/g)?.length && ( // Hide group buttons on group list view
+                  <Button
+                    disabled={!auth?.permissions?.write}
+                    onClick={() => setShowAddToGroupDrawer(true)}
+                    className="mr-4">
+                    Manage groups
+                    <RectangleGroupIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+                  </Button>
+                )}
               </>
             }
           />
