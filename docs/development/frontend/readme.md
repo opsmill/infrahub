@@ -19,7 +19,7 @@ For testing, we rely on:
 - **Integration testing**: [Cypress Component Testing](https://docs.cypress.io/guides/component-testing/overview)
 - **end-to-end testing**: [Playwright](https://playwright.dev/)
 
-## Accessing the Frontend Code
+## Accessing the frontend code
 
 To access Infrahub's codebase, use git and switch to the `develop` branch to access the latest changes. All frontend code resides in `/frontend`.
 

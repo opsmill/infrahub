@@ -158,9 +158,9 @@ For a deeper dive into reference docs, refer to the [diátaxis reference page](h
 
 ## Creating and updating application screenshots
 
-To ensure that Infrahub's screenshots remain up to date and to check that our guides work properly, we use [end-to-end (E2E) tests](/development/frontend/testing-guidelines/#end-to-end-e2e-tests). You'll find the E2E tests specifically designed for tutorials located in `frontend/tests/e2e/tutorial`.
+To ensure that Infrahub's screenshots remain up to date and to check that our guides work properly, we use [end-to-end (e2e) tests](/development/frontend/testing-guidelines/#end-to-end-e2e-tests). You'll find the e2e tests specifically designed for tutorials located in `frontend/tests/e2e/tutorial`.
 
-To add a new screenshot in the documentation, use this command within the tutorial E2E test:
+To add a new screenshot in the documentation, use this command within the tutorial e2e test:
 
 ```ts
 await saveScreenshotForDocs(page, "my-screenshot-name");

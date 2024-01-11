@@ -32,6 +32,7 @@ IPHost
 IPNetwork
 isort
 jinja
+Jotai
 kbps
 markdownlint
 memgraph
@@ -52,4 +53,5 @@ sdk
 toml
 uncheck
 validators
+Vitest
 yamllint

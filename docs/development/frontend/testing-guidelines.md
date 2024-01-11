@@ -13,23 +13,23 @@ We're expecting to see proper tests for each feature/bugfix you make. If you're 
 
 Infrahub frontend has 3 types of testing:
 
-- [E2E tests](#end-to-end-e2e-tests)
+- [e2e tests](#end-to-end-e2e-tests)
 - [Integration tests (Documentation WIP)](#integration-tests)
 - [Unit tests (Documentation WIP)](#unit-tests)
 
-## end-to-end (E2E) tests
+## end-to-end (e2e) tests
 
-Infrahub uses [Playwright](https://playwright.dev/) for E2E testing.
+Infrahub uses [Playwright](https://playwright.dev/) for e2e testing.
 
 ### Folder structure
 
-E2E tests are located in `/frontend/tests/e2e` and are structured based on routing.
+e2e tests are located in `/frontend/tests/e2e` and are structured based on routing.
 
 For example, a test linked to the route `/objects/:objectname/:objectid` will be found in the `/objects/[objectname]/[objectid]` folder.
 
-### Writing E2E tests
+### Writing e2e tests
 
-[Playwright](https://playwright.dev/) is our E2E testing tool. It can automatically generate tests as you perform actions in the browser, making it a quick way to start testing:
+[Playwright](https://playwright.dev/) is our e2e testing tool. It can automatically generate tests as you perform actions in the browser, making it a quick way to start testing:
 
 ```shell
 npx playwright codegen
@@ -54,7 +54,7 @@ test.skip('test name', async ({ page }) => {
 });
 ```
 
-### Debugging E2E tests
+### Debugging e2e tests
 
 To debug a test, you need to run tests in debug mode. You can pause script execution using:
 
