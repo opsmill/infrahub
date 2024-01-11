@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import glob
+import json
 from enum import Enum
 from pathlib import Path
-from typing import List, Literal, Optional, Union
+from typing import Any, List, Literal, Optional, Union
+
+import yaml
 
 try:
     from pydantic import v1 as pydantic  # type: ignore[attr-defined]
@@ -37,6 +40,26 @@ class InfrahubInputOutputTest(pydantic.BaseModel):
         description="Path to the file with the expected output for the test, can be a relative path from the config file or from the directory.",
     )
 
+    @staticmethod
+    def parse_user_provided_data(path: Path) -> Any:
+        """Read and parse user provided data depending on a file extension.
+
+        This function handles JSON and YAML as they can be used to achieve the same goal. However some users may be more used to one format or
+        another. If the file extension isn't known, assume the content is plain text.
+        """
+        if not path:
+            return None
+
+        suffix = path.suffix.lower()[1:] if path.suffix else ""
+        text = path.read_text()
+
+        if suffix and suffix == "json":
+            return json.loads(text)
+        if suffix in ("yml", "yaml"):
+            return yaml.safe_load(text)
+
+        return text
+
     def update_paths(self, base_dir: Path) -> None:
         if self.directory and not self.directory.is_absolute() and not self.directory.is_dir():
             self.directory = Path(base_dir / self.directory)
@@ -62,10 +85,16 @@ class InfrahubInputOutputTest(pydantic.BaseModel):
             results = glob.glob(str(self.directory / search_input))
             if results and len(results) != 1:
                 raise FileNotFoundError(
-                    f"Too many files are mathing: {self.output}, please adjust the value to match only one file."
+                    f"Too many files are matching: {self.output}, please adjust the value to match only one file."
                 )
             if results:
                 self.output = Path(results[0])
+
+    def get_input_data(self) -> Any:
+        return self.parse_user_provided_data(self.input)
+
+    def get_output_data(self) -> Any:
+        return self.parse_user_provided_data(self.output)
 
 
 class InfrahubRFileUnitRenderTest(InfrahubInputOutputTest):

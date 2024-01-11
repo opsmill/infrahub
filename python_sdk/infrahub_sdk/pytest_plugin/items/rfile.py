@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import difflib
 from typing import TYPE_CHECKING, Any, Dict, Literal, Optional, Tuple
 
 import jinja2
 import pytest
-import yaml
 from rich.console import Console
 from rich.traceback import Traceback
 
@@ -39,10 +39,11 @@ class InfrahubRFileUnitRenderItem(pytest.Item):
         templateEnv = jinja2.Environment(loader=templateLoader, trim_blocks=True, lstrip_blocks=True)
         template = templateEnv.get_template(str(self.resource_config.template_path))
 
-        input_data = yaml.safe_load(self.test.spec.input.read_text())
+        input_data = self.test.spec.get_input_data()
+        expected_output = self.test.spec.get_output_data()
 
         try:
-            rendered_tpl = template.render(data=input_data["data"])
+            rendered_output = template.render(data=input_data["data"])
         except jinja2.UndefinedError as exc:
             traceback = Traceback(show_locals=False)
             errors = identify_faulty_jinja_code(traceback=traceback)
@@ -60,9 +61,13 @@ class InfrahubRFileUnitRenderItem(pytest.Item):
                 raise RFileUndefinedError(name=self.name, message=str_output, rtb=traceback, errors=errors) from exc
             return
 
-        if self.test.spec.output and rendered_tpl != self.test.spec.output.read_text():
+        if self.test.spec.output and expected_output != rendered_output:
             if self.test.expect == InfrahubTestExpectedResult.PASS:
-                raise RFileException(name=self.name, message="Output don't match")
+                # Provide a line by line sequence for unified diff to run
+                differences = difflib.unified_diff(expected_output.split("\n"), rendered_output.split("\n"))
+                # Join the diff back into one string
+                diff_string = "\n".join(differences)
+                raise RFileException(name=self.name, message=f"Outputs don't match.\n{diff_string}")
 
     def repr_failure(self, excinfo: pytest.ExceptionInfo, style: Optional[str] = None) -> str:
         """Called when self.runtest() raises an exception."""
