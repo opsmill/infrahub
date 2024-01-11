@@ -84,7 +84,7 @@ async def check(  # pylint: disable=too-many-statements
     branch = await service.client.branch.get(branch_name=message.source_branch)
     if not branch.is_data_only:
         repository = await service.client.get(
-            kind=InfrahubKind.REPOSITORY, id=repository.id, branch=message.source_branch
+            kind=InfrahubKind.REPOSITORYGENERIC, id=repository.id, branch=message.source_branch
         )
     transform_location = ""
 

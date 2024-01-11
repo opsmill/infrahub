@@ -1626,8 +1626,8 @@ core_models = {
                     "default_value": True,
                     "optional": True,
                     "order_weight": 5000,
-                }
-            ]
+                },
+            ],
         },
         {
             "name": "GenericRepository",
@@ -1654,7 +1654,13 @@ core_models = {
                     "optional": True,
                     "cardinality": "one",
                 },
-                {"name": "tags", "peer": InfrahubKind.TAG, "kind": "Attribute", "optional": True, "cardinality": "many"},
+                {
+                    "name": "tags",
+                    "peer": InfrahubKind.TAG,
+                    "kind": "Attribute",
+                    "optional": True,
+                    "cardinality": "many",
+                },
                 {
                     "name": "transformations",
                     "peer": "CoreTransformation",
