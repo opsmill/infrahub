@@ -63,8 +63,8 @@ function App() {
         s.relationships = sortByOrderWeight(s.relationships || []);
       });
 
-      const schemaNames = schema.map((s) => s.name);
-      const schemaKinds = schema.map((s) => s.kind);
+      const schemaNames = [...schema.map((s) => s.name), ...generics.map((s) => s.name)];
+      const schemaKinds = [...schema.map((s) => s.kind), ...generics.map((s) => s.kind)];
       const schemaKindNameTuples = R.zip(schemaKinds, schemaNames);
       const schemaKindNameMap = R.fromPairs(schemaKindNameTuples);
 
