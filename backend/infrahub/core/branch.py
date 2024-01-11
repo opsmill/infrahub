@@ -2024,14 +2024,17 @@ class Diff:
         tasks = []
         files = []
 
-        # TODO: not sure if this should include read-only repos
         repos_to = {
             repo.id: repo
-            for repo in await NodeManager.query(schema=InfrahubKind.REPOSITORY, db=db, branch=branch, at=self.diff_to)
+            for repo in await NodeManager.query(
+                schema=InfrahubKind.REPOSITORYGENERIC, db=db, branch=branch, at=self.diff_to
+            )
         }
         repos_from = {
             repo.id: repo
-            for repo in await NodeManager.query(schema=InfrahubKind.REPOSITORY, db=db, branch=branch, at=self.diff_from)
+            for repo in await NodeManager.query(
+                schema=InfrahubKind.REPOSITORYGENERIC, db=db, branch=branch, at=self.diff_from
+            )
         }
 
         # For now we are ignoring the repos that are either not present at to time or at from time.
