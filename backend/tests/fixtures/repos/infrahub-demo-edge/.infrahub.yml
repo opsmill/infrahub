@@ -35,9 +35,10 @@ check_definitions:
     class_name: "InfrahubCheckBackboneLinkRedundancy"
 
 python_transforms:
-  - name: oc_interfaces
-    class_name: OCInterfaces
-    file_path: "transforms/openconfig.py"
   - name: oc_bgp
     class_name: OCBGPNeighbors
+    file_path: "transforms/openconfig.py"
+
+  - name: oc_interfaces
+    class_name: OCInterfaces
     file_path: "transforms/openconfig.py"

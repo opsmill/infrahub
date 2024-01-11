@@ -23,7 +23,7 @@ class InfrahubTestExpectedResult(str, Enum):
 
 class InfrahubTestResource(str, Enum):
     RFILE = "RFile"
-    TRANSFORMPYTHON = "TransformPython"
+    PYTHON_TRANSFORM = "PythonTransform"
     GRAPHQL = "GraphQLQuery"
 
 
@@ -75,7 +75,7 @@ class InfrahubInputOutputTest(pydantic.BaseModel):
                 raise FileNotFoundError(self.input)
             if len(results) != 1:
                 raise FileNotFoundError(
-                    f"Too many files are mathing: {self.input}, please adjust the value to match only one file."
+                    f"Too many files are matching: {self.input}, please adjust the value to match only one file."
                 )
             self.input = Path(results[0])
 
@@ -101,14 +101,14 @@ class InfrahubRFileUnitRenderTest(InfrahubInputOutputTest):
     kind: Literal["rfile-unit-render"]
 
 
-class InfrahubTransformPythonUnitProcessTest(InfrahubInputOutputTest):
-    kind: Literal["transform-python-unit-process"]
+class InfrahubPythonTransformUnitProcessTest(InfrahubInputOutputTest):
+    kind: Literal["python-transform-unit-process"]
 
 
 class InfrahubTest(pydantic.BaseModel):
     name: str = pydantic.Field(..., description="Name of the test, must be unique")
     expect: InfrahubTestExpectedResult
-    spec: Union[InfrahubRFileUnitRenderTest, InfrahubTransformPythonUnitProcessTest] = pydantic.Field(
+    spec: Union[InfrahubRFileUnitRenderTest, InfrahubPythonTransformUnitProcessTest] = pydantic.Field(
         ..., discriminator="kind"
     )
 
