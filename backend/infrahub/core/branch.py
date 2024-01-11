@@ -2024,6 +2024,7 @@ class Diff:
         tasks = []
         files = []
 
+        # TODO: not sure if this should include read-only repos
         repos_to = {
             repo.id: repo
             for repo in await NodeManager.query(schema=InfrahubKind.REPOSITORY, db=db, branch=branch, at=self.diff_to)

@@ -1574,7 +1574,7 @@ core_models = {
                 },
                 {
                     "name": "repository",
-                    "peer": InfrahubKind.REPOSITORY,
+                    "peer": InfrahubKind.REPOSITORYGENERIC,
                     "kind": "Attribute",
                     "cardinality": "one",
                     "identifier": "repository__transformation",
@@ -2016,7 +2016,7 @@ core_models = {
             "branch": BranchSupportType.AWARE.value,
             "inherit_from": ["LineageOwner", "LineageSource", "CoreGenericRepository"],
             "attributes": [
-                {"name": "branch", "kind": "Text", "default_value": "main"},
+                {"name": "ref", "kind": "Text", "default_value": "main"},
                 {"name": "commit", "kind": "Text", "optional": True},
             ],
         },
@@ -2125,7 +2125,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "repository",
-                    "peer": InfrahubKind.REPOSITORY,
+                    "peer": InfrahubKind.REPOSITORYGENERIC,
                     "kind": "Attribute",
                     "optional": False,
                     "cardinality": "one",
@@ -2153,7 +2153,7 @@ core_models = {
                 },
                 {
                     "name": "repository",
-                    "peer": InfrahubKind.REPOSITORY,
+                    "peer": InfrahubKind.REPOSITORYGENERIC,
                     "kind": "Attribute",
                     "optional": False,
                     "cardinality": "one",
@@ -2212,7 +2212,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "repository",
-                    "peer": InfrahubKind.REPOSITORY,
+                    "peer": InfrahubKind.REPOSITORYGENERIC,
                     "kind": "Attribute",
                     "cardinality": "one",
                     "identifier": "check_definition__repository",
@@ -2307,7 +2307,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "repository",
-                    "peer": InfrahubKind.REPOSITORY,
+                    "peer": InfrahubKind.REPOSITORYGENERIC,
                     "kind": "Attribute",
                     "identifier": "graphql_query__repository",
                     "cardinality": "one",
