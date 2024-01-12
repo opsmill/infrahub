@@ -12,7 +12,10 @@ from .base import InfrahubItem
 
 class InfrahubPythonTransformUnitProcessItem(InfrahubItem):
     def runtest(self) -> None:
-        transform_instance = get_transform_class_instance(self.resource_config)  # type: ignore[arg-type]
+        transform_instance = get_transform_class_instance(
+            transform_config=self.resource_config,  # type: ignore[arg-type]
+            search_path=self.session.infrahub_config_path.parent,  # type: ignore[attr-defined]
+        )
 
         for attr in ("query", "url", "transform"):
             if not hasattr(transform_instance, attr):
