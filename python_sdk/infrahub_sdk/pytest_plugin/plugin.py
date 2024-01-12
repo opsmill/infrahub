@@ -34,7 +34,6 @@ def pytest_collect_file(parent: Union[Collector, Item], file_path: Path) -> Opti
 
 
 def pytest_configure(config: Config) -> None:
-    # register an additional marker
     config.addinivalue_line(
         "markers", "infrahub_python_transform(name: str): Test related to a Python Transform for Infrahub"
     )
