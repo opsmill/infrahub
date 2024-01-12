@@ -2,6 +2,7 @@ import time
 
 from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.query.node import (
@@ -199,7 +200,7 @@ async def test_query_NodeGetListQuery_filter_and_sort_with_revision(
 
 
 async def test_query_NodeGetListQuery_with_generics(db: InfrahubDatabase, group_group1_main, branch: Branch):
-    schema = registry.schema.get(name="CoreGroup", branch=branch)
+    schema = registry.schema.get(name=InfrahubKind.GENERICGROUP, branch=branch)
     query = await NodeGetListQuery.init(
         db=db,
         branch=branch,
@@ -326,10 +327,10 @@ async def test_query_NodeDeleteQuery(
     person_jack_tags_main: Node,
     tag_blue_main: Node,
 ):
-    tags_before = await NodeManager.query(db=db, schema="BuiltinTag", branch=default_branch)
+    tags_before = await NodeManager.query(db=db, schema=InfrahubKind.TAG, branch=default_branch)
 
     query = await NodeDeleteQuery.init(db=db, node=tag_blue_main, branch=default_branch)
     await query.execute(db=db)
 
-    tags_after = await NodeManager.query(db=db, schema="BuiltinTag", branch=default_branch)
+    tags_after = await NodeManager.query(db=db, schema=InfrahubKind.TAG, branch=default_branch)
     assert len(tags_after) == len(tags_before) - 1

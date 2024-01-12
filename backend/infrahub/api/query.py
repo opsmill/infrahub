@@ -13,6 +13,7 @@ from infrahub.api.dependencies import (
     get_db,
 )
 from infrahub.core import registry
+from infrahub.core.constants import InfrahubKind
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
 from infrahub.graphql.utils import extract_data
 from infrahub.log import get_logger
@@ -39,7 +40,7 @@ async def execute_query(
     subscribers: List[str],
 ) -> Dict[str, Any]:
     gql_query = await registry.manager.get_one_by_id_or_default_filter(
-        db=db, id=query_id, schema_name="CoreGraphQLQuery", branch=branch_params.branch, at=branch_params.at
+        db=db, id=query_id, schema_name=InfrahubKind.GRAPHQLQUERY, branch=branch_params.branch, at=branch_params.at
     )
 
     schema_branch = registry.schema.get_schema_branch(name=branch_params.branch.name)
@@ -85,9 +86,12 @@ async def graphql_query_post(
         QueryPayload(), description="Payload of the request, must be used to provide the variables"
     ),
     query_id: str = Path(description="ID or Name of the GraphQL query to execute"),
-    subscribers: List[str] = Query([], description="List of subscribers to attach to the CoreGraphQLQueryGroup"),
+    subscribers: List[str] = Query(
+        [], description=f"List of subscribers to attach to the {InfrahubKind.GRAPHQLQUERYGROUP}"
+    ),
     update_group: bool = Query(
-        False, description="When True create or update a CoreGraphQLQueryGroup with all nodes related to this query."
+        False,
+        description=f"When True create or update a {InfrahubKind.GRAPHQLQUERYGROUP} with all nodes related to this query.",
     ),
     db: InfrahubDatabase = Depends(get_db),
     branch_params: BranchParams = Depends(get_branch_params),
@@ -108,9 +112,12 @@ async def graphql_query_post(
 async def graphql_query_get(
     request: Request,
     query_id: str = Path(description="ID or Name of the GraphQL query to execute"),
-    subscribers: List[str] = Query([], description="List of subscribers to attach to the CoreGraphQLQueryGroup"),
+    subscribers: List[str] = Query(
+        [], description=f"List of subscribers to attach to the {InfrahubKind.GRAPHQLQUERYGROUP}"
+    ),
     update_group: bool = Query(
-        False, description="When True create or update a CoreGraphQLQueryGroup with all nodes related to this query."
+        False,
+        description=f"When True create or update a {InfrahubKind.GRAPHQLQUERYGROUP} with all nodes related to this query.",
     ),
     db: InfrahubDatabase = Depends(get_db),
     branch_params: BranchParams = Depends(get_branch_params),

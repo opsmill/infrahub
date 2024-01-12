@@ -59,7 +59,7 @@ export const ProposedChanges = () => {
 
   const { count, edges } = result;
 
-  useTitle(`Proposed changes list ${count ? `(${count})` : ""}`);
+  useTitle("Proposed changes list");
 
   const rows = edges?.map((edge: any) => edge.node);
 

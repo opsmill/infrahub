@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Optional, Tuple, Union
 
 from infrahub.core import get_branch, registry
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.query import Query
 
@@ -92,7 +93,7 @@ async def get_account(
     if not account:
         return None
 
-    if hasattr(account, "schema") and account.schema.kind == "CoreAccount":
+    if hasattr(account, "schema") and account.schema.kind == InfrahubKind.ACCOUNT:
         return account
 
     # Try to get it from the registry
@@ -101,7 +102,7 @@ async def get_account(
     if account in registry.account:
         return registry.account[account]
 
-    account_schema = registry.get_schema(name="CoreAccount")
+    account_schema = registry.get_schema(name=InfrahubKind.ACCOUNT)
 
     obj = await NodeManager.query(
         schema=account_schema, filters={account_schema.default_filter: account}, branch=branch, at=at, db=db

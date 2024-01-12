@@ -12,6 +12,7 @@ from infrahub_sdk.types import HTTPMethod
 
 from infrahub import config
 from infrahub.core import registry
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import first_time_initialization, initialization
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
@@ -81,7 +82,7 @@ class TestInfrahubClient:
 
     @pytest.fixture(scope="class")
     async def query_99(self, db: InfrahubDatabase, test_client):
-        obj = await Node.init(schema="CoreGraphQLQuery", db=db)
+        obj = await Node.init(schema=InfrahubKind.GRAPHQLQUERY, db=db)
         await obj.new(
             db=db,
             name="query99",
@@ -93,7 +94,7 @@ class TestInfrahubClient:
     @pytest.fixture
     async def repo(self, test_client, client, db: InfrahubDatabase, git_upstream_repo_10, git_repos_dir):
         # Create the repository in the Graph
-        obj = await Node.init(schema="CoreRepository", db=db)
+        obj = await Node.init(schema=InfrahubKind.REPOSITORY, db=db)
         await obj.new(
             db=db,
             name=git_upstream_repo_10["name"],
@@ -127,7 +128,7 @@ class TestInfrahubClient:
         commit = repo.get_commit_value(branch_name="main")
         await repo.import_all_graphql_query(branch_name="main", commit=commit)
 
-        queries = await client.all(kind="CoreGraphQLQuery")
+        queries = await client.all(kind=InfrahubKind.GRAPHQLQUERY)
         assert len(queries) == 5
 
         # Validate if the function is idempotent, another import just after the first one shouldn't change anything
@@ -141,7 +142,7 @@ class TestInfrahubClient:
         queries[0].query.value = "query myquery { BuiltinLocation { edges { node { id }}}}"
         await queries[0].save()
 
-        obj = await Node.init(schema="CoreGraphQLQuery", db=db)
+        obj = await Node.init(schema=InfrahubKind.GRAPHQLQUERY, db=db)
         await obj.new(
             db=db,
             name="soontobedeletedquery",
@@ -152,11 +153,11 @@ class TestInfrahubClient:
 
         await repo.import_all_graphql_query(branch_name="main", commit=commit)
 
-        modified_query = await client.get(kind="CoreGraphQLQuery", id=queries[0].id)
+        modified_query = await client.get(kind=InfrahubKind.GRAPHQLQUERY, id=queries[0].id)
         assert modified_query.query.value == value_before_change
 
         with pytest.raises(NodeNotFound):
-            await client.get(kind="CoreGraphQLQuery", id=obj.id)
+            await client.get(kind=InfrahubKind.GRAPHQLQUERY, id=obj.id)
 
     async def test_import_all_python_files(
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, query_99
@@ -167,7 +168,7 @@ class TestInfrahubClient:
 
         await repo.import_all_python_files(branch_name="main", commit=commit, config_file=config_file)
 
-        check_definitions = await client.all(kind="CoreCheckDefinition")
+        check_definitions = await client.all(kind=InfrahubKind.CHECKDEFINITION)
         assert len(check_definitions) >= 1
 
         transforms = await client.all(kind="CoreTransformPython")
@@ -195,7 +196,7 @@ class TestInfrahubClient:
         await transforms[1].save()
 
         # Create Object that will be deleted
-        obj1 = await Node.init(schema="CoreCheckDefinition", db=db)
+        obj1 = await Node.init(schema=InfrahubKind.CHECKDEFINITION, db=db)
         await obj1.new(
             db=db,
             name="soontobedeletedcheck",
@@ -220,7 +221,7 @@ class TestInfrahubClient:
 
         await repo.import_all_python_files(branch_name="main", commit=commit, config_file=config_file)
 
-        modified_check0 = await client.get(kind="CoreCheckDefinition", id=check_definitions[0].id)
+        modified_check0 = await client.get(kind=InfrahubKind.CHECKDEFINITION, id=check_definitions[0].id)
         assert modified_check0.timeout.value == check_timeout_value_before_change
         assert modified_check0.query.id == check_query_value_before_change
 
@@ -232,7 +233,7 @@ class TestInfrahubClient:
 
         # FIXME not implemented yet
         with pytest.raises(NodeNotFound):
-            await client.get(kind="CoreCheckDefinition", id=obj1.id)
+            await client.get(kind=InfrahubKind.CHECKDEFINITION, id=obj1.id)
 
         with pytest.raises(NodeNotFound):
             await client.get(kind="CoreTransformPython", id=obj2.id)
@@ -245,7 +246,7 @@ class TestInfrahubClient:
         assert config_file
         await repo.import_rfiles(branch_name="main", commit=commit, config_file=config_file)
 
-        rfiles = await client.all(kind="CoreRFile")
+        rfiles = await client.all(kind=InfrahubKind.RFILE)
         assert len(rfiles) == 2
 
         # Validate if the function is idempotent, another import just after the first one shouldn't change anything
@@ -261,7 +262,7 @@ class TestInfrahubClient:
         rfiles[0].query = query_99.id
         await rfiles[0].save()
 
-        obj = await Node.init(schema="CoreRFile", db=db)
+        obj = await Node.init(schema=InfrahubKind.RFILE, db=db)
         await obj.new(
             db=db,
             name="soontobedeletedrfile",
@@ -273,10 +274,10 @@ class TestInfrahubClient:
 
         await repo.import_rfiles(branch_name="main", commit=commit, config_file=config_file)
 
-        modified_rfile = await client.get(kind="CoreRFile", id=rfiles[0].id)
+        modified_rfile = await client.get(kind=InfrahubKind.RFILE, id=rfiles[0].id)
         assert modified_rfile.template_path.value == rfile_template_path_value_before_change
         assert modified_rfile.query.id == rfile_query_value_before_change
 
         # FIXME not implemented yet
         with pytest.raises(NodeNotFound):
-            await client.get(kind="CoreRFile", id=obj.id)
+            await client.get(kind=InfrahubKind.RFILE, id=obj.id)

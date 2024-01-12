@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from graphene import ObjectType
 
 from infrahub import config
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.exceptions import NodeNotFound
 
@@ -50,7 +51,7 @@ async def account_resolver(root, info: GraphQLResolveInfo):
     db: InfrahubDatabase = info.context.get("infrahub_database")
     async with db.start_session() as db:
         results = await NodeManager.query(
-            schema="CoreAccount", filters={"ids": [account_session.account_id]}, fields=fields, db=db
+            schema=InfrahubKind.ACCOUNT, filters={"ids": [account_session.account_id]}, fields=fields, db=db
         )
         if results:
             account_profile = await results[0].to_graphql(db=db, fields=fields)
@@ -58,7 +59,7 @@ async def account_resolver(root, info: GraphQLResolveInfo):
 
         raise NodeNotFound(
             branch_name=config.SETTINGS.main.default_branch,
-            node_type="CoreAccount",
+            node_type=InfrahubKind.ACCOUNT,
             identifier=account_session.account_id,
         )
 

@@ -3,6 +3,7 @@ from graphql import graphql
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
@@ -11,19 +12,19 @@ from infrahub.graphql import generate_graphql_schema
 
 @pytest.fixture
 async def repos_and_checks_in_main(db: InfrahubDatabase, register_core_models_schema):
-    repo01 = await Node.init(db=db, schema="CoreRepository")
+    repo01 = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
     await repo01.new(db=db, name="repo01", location="git@github.com:user/repo01.git")
     await repo01.save(db=db)
 
-    repo02 = await Node.init(db=db, schema="CoreRepository")
+    repo02 = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
     await repo02.new(db=db, name="repo02", location="git@github.com:user/repo02.git")
     await repo02.save(db=db)
 
-    query01 = await Node.init(db=db, schema="CoreGraphQLQuery")
+    query01 = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERY)
     await query01.new(db=db, name="my_query", query="query { check { id } }")
     await query01.save(db=db)
 
-    checkdef01 = await Node.init(db=db, schema="CoreCheckDefinition")
+    checkdef01 = await Node.init(db=db, schema=InfrahubKind.CHECKDEFINITION)
     await checkdef01.new(
         db=db,
         name="check01",
@@ -35,7 +36,7 @@ async def repos_and_checks_in_main(db: InfrahubDatabase, register_core_models_sc
     )
     await checkdef01.save(db=db)
 
-    checkdef02 = await Node.init(db=db, schema="CoreCheckDefinition")
+    checkdef02 = await Node.init(db=db, schema=InfrahubKind.CHECKDEFINITION)
     await checkdef02.new(
         db=db,
         name="check02",

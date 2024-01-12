@@ -1,8 +1,8 @@
 import { ApolloProvider } from "@apollo/client";
 import { useAtom, useSetAtom } from "jotai";
 import queryString from "query-string";
+import * as R from "ramda";
 import { useEffect, useState } from "react";
-import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { Slide, ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -36,10 +36,6 @@ import "./styles/index.css";
 import { findSelectedBranch } from "./utils/branches";
 import { sortByName, sortByOrderWeight } from "./utils/common";
 import { fetchUrl, getCurrentQsp } from "./utils/fetch";
-
-const root = ReactDOM.createRoot(
-  (document.getElementById("root") || document.createElement("div")) as HTMLElement
-);
 
 export const Root = () => {
   const setBranches = useSetAtom(branchesState);
@@ -176,13 +172,10 @@ const AppInitializer = () => {
         s.relationships = sortByOrderWeight(s.relationships || []);
       });
 
-      const schemaKindNameMap = schema.reduce(
-        (kindNameMap: Record<string, string>, { name, kind }) => ({
-          ...kindNameMap,
-          [kind as string]: name,
-        }),
-        {}
-      );
+      const schemaNames = [...schema.map((s) => s.name), ...generics.map((s) => s.name)];
+      const schemaKinds = [...schema.map((s) => s.kind), ...generics.map((s) => s.kind)];
+      const schemaKindNameTuples = R.zip(schemaKinds, schemaNames);
+      const schemaKindNameMap = R.fromPairs(schemaKindNameTuples);
 
       setGenerics(generics);
       setSchema(schema);
@@ -234,7 +227,7 @@ const AppInitializer = () => {
   return <App />;
 };
 
-root.render(
+export const Infrahub = () => (
   <BrowserRouter basename="/">
     <QueryParamProvider
       adapter={ReactRouter6Adapter}

@@ -5,7 +5,7 @@ from graphql import graphql
 from infrahub import __version__
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import BranchSupportType
+from infrahub.core.constants import BranchSupportType, InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -1295,10 +1295,10 @@ async def test_query_relationship_multiple_values(db: InfrahubDatabase, default_
 
 
 async def test_query_oneway_relationship(db: InfrahubDatabase, default_branch: Branch, person_tag_schema):
-    t1 = await Node.init(db=db, schema="BuiltinTag")
+    t1 = await Node.init(db=db, schema=InfrahubKind.TAG)
     await t1.new(db=db, name="Blue", description="The Blue tag")
     await t1.save(db=db)
-    t2 = await Node.init(db=db, schema="BuiltinTag")
+    t2 = await Node.init(db=db, schema=InfrahubKind.TAG)
     await t2.new(db=db, name="Red")
     await t2.save(db=db)
     p1 = await Node.init(db=db, schema="TestPerson")
@@ -1338,10 +1338,10 @@ async def test_query_oneway_relationship(db: InfrahubDatabase, default_branch: B
 
 
 async def test_query_at_specific_time(db: InfrahubDatabase, default_branch: Branch, person_tag_schema):
-    t1 = await Node.init(db=db, schema="BuiltinTag")
+    t1 = await Node.init(db=db, schema=InfrahubKind.TAG)
     await t1.new(db=db, name="Blue", description="The Blue tag")
     await t1.save(db=db)
-    t2 = await Node.init(db=db, schema="BuiltinTag")
+    t2 = await Node.init(db=db, schema=InfrahubKind.TAG)
     await t2.new(db=db, name="Red")
     await t2.save(db=db)
 
@@ -1372,8 +1372,8 @@ async def test_query_at_specific_time(db: InfrahubDatabase, default_branch: Bran
     )
 
     assert result.errors is None
-    assert len(result.data["BuiltinTag"]["edges"]) == 2
-    names = sorted([tag["node"]["name"]["value"] for tag in result.data["BuiltinTag"]["edges"]])
+    assert len(result.data[InfrahubKind.TAG]["edges"]) == 2
+    names = sorted([tag["node"]["name"]["value"] for tag in result.data[InfrahubKind.TAG]["edges"]])
     assert names == ["Blue", "Green"]
 
     # Now query at a specific time
@@ -1405,8 +1405,8 @@ async def test_query_at_specific_time(db: InfrahubDatabase, default_branch: Bran
     )
 
     assert result.errors is None
-    assert len(result.data["BuiltinTag"]["edges"]) == 2
-    names = sorted([tag["node"]["name"]["value"] for tag in result.data["BuiltinTag"]["edges"]])
+    assert len(result.data[InfrahubKind.TAG]["edges"]) == 2
+    names = sorted([tag["node"]["name"]["value"] for tag in result.data[InfrahubKind.TAG]["edges"]])
     assert names == ["Blue", "Red"]
 
 
@@ -1523,10 +1523,10 @@ async def test_query_node_updated_at(db: InfrahubDatabase, default_branch: Branc
 
 
 async def test_query_relationship_updated_at(db: InfrahubDatabase, default_branch: Branch, person_tag_schema):
-    t1 = await Node.init(db=db, schema="BuiltinTag")
+    t1 = await Node.init(db=db, schema=InfrahubKind.TAG)
     await t1.new(db=db, name="Blue", description="The Blue tag")
     await t1.save(db=db)
-    t2 = await Node.init(db=db, schema="BuiltinTag")
+    t2 = await Node.init(db=db, schema=InfrahubKind.TAG)
     await t2.new(db=db, name="Red")
     await t2.save(db=db)
 
@@ -2267,10 +2267,10 @@ async def test_member_of_groups(db: InfrahubDatabase, default_branch: Branch, ca
     c2 = car_person_generics_data["c2"]
     c3 = car_person_generics_data["c3"]
 
-    g1 = await Node.init(db=db, schema="CoreStandardGroup")
+    g1 = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
     await g1.new(db=db, name="group1", members=[c1, c2])
     await g1.save(db=db)
-    g2 = await Node.init(db=db, schema="CoreStandardGroup")
+    g2 = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
     await g2.new(db=db, name="group2", members=[c2, c3])
     await g2.save(db=db)
 

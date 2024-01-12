@@ -15,6 +15,7 @@ from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
     BranchSupportType,
     DiffAction,
+    InfrahubKind,
     PathType,
     RelationshipCardinality,
     RelationshipStatus,
@@ -704,10 +705,10 @@ class Branch(StandardNode):
 
     async def merge_repositories(self, rpc_client: InfrahubRpcClient, db: InfrahubDatabase):
         # Collect all Repositories in Main because we'll need the commit in Main for each one.
-        repos_in_main_list = await NodeManager.query(schema="CoreRepository", db=db)
+        repos_in_main_list = await NodeManager.query(schema=InfrahubKind.REPOSITORY, db=db)
         repos_in_main = {repo.id: repo for repo in repos_in_main_list}
 
-        repos_in_branch_list = await NodeManager.query(schema="CoreRepository", db=db, branch=self)
+        repos_in_branch_list = await NodeManager.query(schema=InfrahubKind.REPOSITORY, db=db, branch=self)
         events = []
         for repo in repos_in_branch_list:
             # Check if the repo, exist in main, if not ignore this repo
@@ -2025,11 +2026,11 @@ class Diff:
 
         repos_to = {
             repo.id: repo
-            for repo in await NodeManager.query(schema="CoreRepository", db=db, branch=branch, at=self.diff_to)
+            for repo in await NodeManager.query(schema=InfrahubKind.REPOSITORY, db=db, branch=branch, at=self.diff_to)
         }
         repos_from = {
             repo.id: repo
-            for repo in await NodeManager.query(schema="CoreRepository", db=db, branch=branch, at=self.diff_from)
+            for repo in await NodeManager.query(schema=InfrahubKind.REPOSITORY, db=db, branch=branch, at=self.diff_from)
         }
 
         # For now we are ignoring the repos that are either not present at to time or at from time.

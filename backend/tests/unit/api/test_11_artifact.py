@@ -1,6 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.message_bus import messages
@@ -29,7 +30,7 @@ async def test_artifact_definition_endpoint(
 
     client = TestClient(app)
 
-    g1 = await Node.init(db=db, schema="CoreStandardGroup")
+    g1 = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
     await g1.new(db=db, name="group1", members=[car_person_data_generic["c1"], car_person_data_generic["c2"]])
     await g1.save(db=db)
 
@@ -46,7 +47,7 @@ async def test_artifact_definition_endpoint(
     )
     await t1.save(db=db)
 
-    ad1 = await Node.init(db=db, schema="CoreArtifactDefinition")
+    ad1 = await Node.init(db=db, schema=InfrahubKind.ARTIFACTDEFINITION)
     await ad1.new(
         db=db,
         name="artifactdef01",

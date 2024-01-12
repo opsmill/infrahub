@@ -20,6 +20,7 @@ from infrahub.core.constants import (
     BranchSupportType,
     ContentType,
     FilterSchemaKind,
+    InfrahubKind,
     ProposedChangeState,
     RelationshipCardinality,
     RelationshipDirection,
@@ -1310,7 +1311,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "created_by",
-                    "peer": "CoreAccount",
+                    "peer": InfrahubKind.ACCOUNT,
                     "optional": True,
                     "branch": BranchSupportType.AGNOSTIC.value,
                     "cardinality": "one",
@@ -1333,7 +1334,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "change",
-                    "peer": "CoreProposedChange",
+                    "peer": InfrahubKind.PROPOSEDCHANGE,
                     "identifier": "proposedchange__thread",
                     "kind": "Parent",
                     "optional": False,
@@ -1341,7 +1342,7 @@ core_models = {
                 },
                 {
                     "name": "comments",
-                    "peer": "CoreThreadComment",
+                    "peer": InfrahubKind.THREADCOMMENT,
                     "identifier": "thread__threadcomment",
                     "kind": "Component",
                     "optional": True,
@@ -1349,7 +1350,7 @@ core_models = {
                 },
                 {
                     "name": "created_by",
-                    "peer": "CoreAccount",
+                    "peer": InfrahubKind.ACCOUNT,
                     "optional": True,
                     "branch": BranchSupportType.AGNOSTIC.value,
                     "cardinality": "one",
@@ -1417,7 +1418,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "proposed_change",
-                    "peer": "CoreProposedChange",
+                    "peer": InfrahubKind.PROPOSEDCHANGE,
                     "kind": "Parent",
                     "optional": False,
                     "cardinality": "one",
@@ -1501,7 +1502,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "query",
-                    "peer": "CoreGraphQLQuery",
+                    "peer": InfrahubKind.GRAPHQLQUERY,
                     "identifier": "graphql_query__transformation",
                     "kind": "Attribute",
                     "cardinality": "one",
@@ -1509,13 +1510,19 @@ core_models = {
                 },
                 {
                     "name": "repository",
-                    "peer": "CoreRepository",
+                    "peer": InfrahubKind.REPOSITORY,
                     "kind": "Attribute",
                     "cardinality": "one",
                     "identifier": "repository__transformation",
                     "optional": False,
                 },
-                {"name": "tags", "peer": "BuiltinTag", "kind": "Attribute", "optional": True, "cardinality": "many"},
+                {
+                    "name": "tags",
+                    "peer": InfrahubKind.TAG,
+                    "kind": "Attribute",
+                    "optional": True,
+                    "cardinality": "many",
+                },
             ],
         },
         {
@@ -1527,11 +1534,34 @@ core_models = {
             "relationships": [
                 {
                     "name": "artifacts",
-                    "peer": "CoreArtifact",
+                    "peer": InfrahubKind.ARTIFACT,
                     "optional": True,
                     "cardinality": "many",
                     "kind": "Generic",
                     "identifier": "artifact__node",
+                },
+            ],
+        },
+        {
+            "name": "Webhook",
+            "namespace": "Core",
+            "description": "A webhook that connects to an external integration",
+            "label": "Webhook",
+            "default_filter": "name__value",
+            "order_by": ["name__value"],
+            "display_labels": ["name__value"],
+            "include_in_menu": False,
+            "branch": BranchSupportType.AGNOSTIC.value,
+            "attributes": [
+                {"name": "name", "kind": "Text", "unique": True, "order_weight": 1000},
+                {"name": "description", "kind": "Text", "optional": True, "order_weight": 2000},
+                {"name": "url", "kind": "URL", "order_weight": 3000},
+                {
+                    "name": "validate_certificates",
+                    "kind": "Boolean",
+                    "default_value": True,
+                    "optional": True,
+                    "order_weight": 5000,
                 },
             ],
         },
@@ -1548,7 +1578,7 @@ core_models = {
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "branch": BranchSupportType.AWARE.value,
-            "inherit_from": ["CoreGroup"],
+            "inherit_from": [InfrahubKind.GENERICGROUP],
         },
         {
             "name": "GraphQLQueryGroup",
@@ -1622,7 +1652,7 @@ core_models = {
                 },
             ],
             "relationships": [
-                {"name": "tokens", "peer": "InternalAccountToken", "optional": True, "cardinality": "many"},
+                {"name": "tokens", "peer": InfrahubKind.ACCOUNTTOKEN, "optional": True, "cardinality": "many"},
             ],
         },
         {
@@ -1642,7 +1672,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "account",
-                    "peer": "CoreAccount",
+                    "peer": InfrahubKind.ACCOUNT,
                     "optional": False,
                     "cardinality": "one",
                 },
@@ -1662,7 +1692,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "account",
-                    "peer": "CoreAccount",
+                    "peer": InfrahubKind.ACCOUNT,
                     "optional": False,
                     "cardinality": "one",
                 },
@@ -1692,7 +1722,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "approved_by",
-                    "peer": "CoreAccount",
+                    "peer": InfrahubKind.ACCOUNT,
                     "optional": True,
                     "cardinality": "many",
                     "kind": "Attribute",
@@ -1701,7 +1731,7 @@ core_models = {
                 },
                 {
                     "name": "reviewers",
-                    "peer": "CoreAccount",
+                    "peer": InfrahubKind.ACCOUNT,
                     "optional": True,
                     "kind": "Attribute",
                     "cardinality": "many",
@@ -1710,7 +1740,7 @@ core_models = {
                 },
                 {
                     "name": "created_by",
-                    "peer": "CoreAccount",
+                    "peer": InfrahubKind.ACCOUNT,
                     "optional": True,
                     "cardinality": "one",
                     "branch": BranchSupportType.AGNOSTIC.value,
@@ -1718,7 +1748,7 @@ core_models = {
                 },
                 {
                     "name": "comments",
-                    "peer": "CoreChangeComment",
+                    "peer": InfrahubKind.CHANGECOMMENT,
                     "kind": "Component",
                     "optional": True,
                     "cardinality": "many",
@@ -1768,7 +1798,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "repository",
-                    "peer": "CoreRepository",
+                    "peer": InfrahubKind.REPOSITORY,
                     "optional": False,
                     "cardinality": "one",
                     "branch": BranchSupportType.AGNOSTIC.value,
@@ -1817,7 +1847,7 @@ core_models = {
                 {
                     "name": "change",
                     "kind": "Parent",
-                    "peer": "CoreProposedChange",
+                    "peer": InfrahubKind.PROPOSEDCHANGE,
                     "cardinality": "one",
                     "optional": False,
                 },
@@ -1868,13 +1898,19 @@ core_models = {
             "relationships": [
                 {
                     "name": "account",
-                    "peer": "CoreAccount",
+                    "peer": InfrahubKind.ACCOUNT,
                     "branch": BranchSupportType.AGNOSTIC.value,
                     "kind": "Attribute",
                     "optional": True,
                     "cardinality": "one",
                 },
-                {"name": "tags", "peer": "BuiltinTag", "kind": "Attribute", "optional": True, "cardinality": "many"},
+                {
+                    "name": "tags",
+                    "peer": InfrahubKind.TAG,
+                    "kind": "Attribute",
+                    "optional": True,
+                    "cardinality": "many",
+                },
                 {
                     "name": "transformations",
                     "peer": "CoreTransformation",
@@ -1884,14 +1920,14 @@ core_models = {
                 },
                 {
                     "name": "queries",
-                    "peer": "CoreGraphQLQuery",
+                    "peer": InfrahubKind.GRAPHQLQUERY,
                     "identifier": "graphql_query__repository",
                     "optional": True,
                     "cardinality": "many",
                 },
                 {
                     "name": "checks",
-                    "peer": "CoreCheckDefinition",
+                    "peer": InfrahubKind.CHECKDEFINITION,
                     "identifier": "check_definition__repository",
                     "optional": True,
                     "cardinality": "many",
@@ -2003,7 +2039,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "repository",
-                    "peer": "CoreRepository",
+                    "peer": InfrahubKind.REPOSITORY,
                     "kind": "Attribute",
                     "optional": False,
                     "cardinality": "one",
@@ -2023,7 +2059,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "check_definition",
-                    "peer": "CoreCheckDefinition",
+                    "peer": InfrahubKind.CHECKDEFINITION,
                     "kind": "Attribute",
                     "optional": False,
                     "cardinality": "one",
@@ -2031,7 +2067,7 @@ core_models = {
                 },
                 {
                     "name": "repository",
-                    "peer": "CoreRepository",
+                    "peer": InfrahubKind.REPOSITORY,
                     "kind": "Attribute",
                     "optional": False,
                     "cardinality": "one",
@@ -2061,7 +2097,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "definition",
-                    "peer": "CoreArtifactDefinition",
+                    "peer": InfrahubKind.ARTIFACTDEFINITION,
                     "kind": "Attribute",
                     "optional": False,
                     "cardinality": "one",
@@ -2090,7 +2126,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "repository",
-                    "peer": "CoreRepository",
+                    "peer": InfrahubKind.REPOSITORY,
                     "kind": "Attribute",
                     "cardinality": "one",
                     "identifier": "check_definition__repository",
@@ -2098,7 +2134,7 @@ core_models = {
                 },
                 {
                     "name": "query",
-                    "peer": "CoreGraphQLQuery",
+                    "peer": InfrahubKind.GRAPHQLQUERY,
                     "kind": "Attribute",
                     "identifier": "check_definition__graphql_query",
                     "cardinality": "one",
@@ -2106,13 +2142,19 @@ core_models = {
                 },
                 {
                     "name": "targets",
-                    "peer": "CoreGroup",
+                    "peer": InfrahubKind.GENERICGROUP,
                     "kind": "Attribute",
                     "identifier": "check_definition___group",
                     "cardinality": "one",
                     "optional": True,
                 },
-                {"name": "tags", "peer": "BuiltinTag", "kind": "Attribute", "optional": True, "cardinality": "many"},
+                {
+                    "name": "tags",
+                    "peer": InfrahubKind.TAG,
+                    "kind": "Attribute",
+                    "optional": True,
+                    "cardinality": "many",
+                },
             ],
         },
         {
@@ -2179,13 +2221,19 @@ core_models = {
             "relationships": [
                 {
                     "name": "repository",
-                    "peer": "CoreRepository",
+                    "peer": InfrahubKind.REPOSITORY,
                     "kind": "Attribute",
                     "identifier": "graphql_query__repository",
                     "cardinality": "one",
                     "optional": True,
                 },
-                {"name": "tags", "peer": "BuiltinTag", "kind": "Attribute", "optional": True, "cardinality": "many"},
+                {
+                    "name": "tags",
+                    "peer": InfrahubKind.TAG,
+                    "kind": "Attribute",
+                    "optional": True,
+                    "cardinality": "many",
+                },
             ],
         },
         {
@@ -2233,7 +2281,7 @@ core_models = {
                 },
                 {
                     "name": "definition",
-                    "peer": "CoreArtifactDefinition",
+                    "peer": InfrahubKind.ARTIFACTDEFINITION,
                     "kind": "Attribute",
                     "identifier": "artifact__artifact_definition",
                     "cardinality": "one",
@@ -2264,7 +2312,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "targets",
-                    "peer": "CoreGroup",
+                    "peer": InfrahubKind.GENERICGROUP,
                     "kind": "Attribute",
                     "identifier": "artifact_definition___group",
                     "cardinality": "one",
@@ -2281,25 +2329,41 @@ core_models = {
             ],
         },
         {
-            "name": "Webhook",
+            "name": "StandardWebhook",
             "namespace": "Core",
             "description": "A webhook that connects to an external integration",
-            "label": "Webhook",
+            "label": "Standard Webhook",
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "include_in_menu": False,
             "branch": BranchSupportType.AGNOSTIC.value,
+            "inherit_from": [InfrahubKind.WEBHOOK],
             "attributes": [
-                {"name": "name", "kind": "Text", "unique": True},
-                {"name": "shared_key", "kind": "Password", "unique": False},
-                {"name": "description", "kind": "Text", "optional": True},
-                {"name": "url", "kind": "URL"},
+                {"name": "shared_key", "kind": "Password", "unique": False, "order_weight": 4000},
+            ],
+        },
+        {
+            "name": "CustomWebhook",
+            "namespace": "Core",
+            "description": "A webhook that connects to an external integration",
+            "label": "Custom Webhook",
+            "default_filter": "name__value",
+            "order_by": ["name__value"],
+            "display_labels": ["name__value"],
+            "include_in_menu": False,
+            "branch": BranchSupportType.AGNOSTIC.value,
+            "inherit_from": [InfrahubKind.WEBHOOK],
+            "attributes": [],
+            "relationships": [
                 {
-                    "name": "validate_certificates",
-                    "kind": "Boolean",
-                    "default_value": True,
+                    "name": "transformation",
+                    "peer": InfrahubKind.TRANSFORMPYTHON,
+                    "kind": "Attribute",
+                    "identifier": "webhook___transformation",
+                    "cardinality": "one",
                     "optional": True,
+                    "order_weight": 7000,
                 },
             ],
         },

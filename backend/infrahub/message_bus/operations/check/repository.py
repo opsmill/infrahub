@@ -3,6 +3,7 @@ from typing import List
 from infrahub_sdk import UUIDT
 
 from infrahub import lock
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import CheckError
 from infrahub.git.repository import InfrahubRepository
@@ -14,9 +15,9 @@ log = get_logger()
 
 
 async def check_definition(message: messages.CheckRepositoryCheckDefinition, service: InfrahubServices):
-    definition = await service.client.get(kind="CoreCheckDefinition", id=message.check_definition_id)
+    definition = await service.client.get(kind=InfrahubKind.CHECKDEFINITION, id=message.check_definition_id)
 
-    proposed_change = await service.client.get(kind="CoreProposedChange", id=message.proposed_change)
+    proposed_change = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=message.proposed_change)
     validator_execution_id = str(UUIDT())
     check_execution_ids: List[str] = []
     await proposed_change.validations.fetch()
@@ -27,7 +28,7 @@ async def check_definition(message: messages.CheckRepositoryCheckDefinition, ser
         existing_validator = relationship.peer
 
         if (
-            existing_validator.typename == "CoreUserValidator"
+            existing_validator.typename == InfrahubKind.USERVALIDATOR
             and existing_validator.repository.id == message.repository_id
             and existing_validator.check_definition.id == message.check_definition_id
         ):
@@ -42,7 +43,7 @@ async def check_definition(message: messages.CheckRepositoryCheckDefinition, ser
         await validator.save()
     else:
         validator = await service.client.create(
-            kind="CoreUserValidator",
+            kind=InfrahubKind.USERVALIDATOR,
             data={
                 "label": f"Check: {definition.name.value}",
                 "proposed_change": message.proposed_change,
@@ -110,7 +111,7 @@ async def check_definition(message: messages.CheckRepositoryCheckDefinition, ser
             start_time=Timestamp().to_string(),
             validator_id=validator.id,
             validator_execution_id=validator_execution_id,
-            validator_type="CoreUserValidator",
+            validator_type=InfrahubKind.USERVALIDATOR,
         )
     )
 
@@ -128,7 +129,7 @@ async def merge_conflicts(message: messages.CheckRepositoryMergeConflicts, servi
     )
 
     success_condition = "-"
-    validator = await service.client.get(kind="CoreRepositoryValidator", id=message.validator_id)
+    validator = await service.client.get(kind=InfrahubKind.REPOSITORYVALIDATOR, id=message.validator_id)
     await validator.checks.fetch()
 
     repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name)
@@ -138,7 +139,7 @@ async def merge_conflicts(message: messages.CheckRepositoryMergeConflicts, servi
     existing_checks = {}
     for relationship in validator.checks.peers:
         existing_check = relationship.peer
-        if existing_check.typename == "CoreFileCheck" and existing_check.kind.value == "MergeConflictCheck":
+        if existing_check.typename == InfrahubKind.FILECHECK and existing_check.kind.value == "MergeConflictCheck":
             check_key = ""
             if existing_check.files.value:
                 check_key = "".join(existing_check.files.value)
@@ -157,7 +158,7 @@ async def merge_conflicts(message: messages.CheckRepositoryMergeConflicts, servi
                 existing_checks.pop(conflict_key)
             else:
                 check = await service.client.create(
-                    kind="CoreFileCheck",
+                    kind=InfrahubKind.FILECHECK,
                     data={
                         "name": conflict,
                         "origin": "ConflictCheck",
@@ -178,7 +179,7 @@ async def merge_conflicts(message: messages.CheckRepositoryMergeConflicts, servi
             existing_checks.pop(success_condition)
         else:
             check = await service.client.create(
-                kind="CoreFileCheck",
+                kind=InfrahubKind.FILECHECK,
                 data={
                     "name": "Merge Conflict Check",
                     "origin": "ConflictCheck",
@@ -202,7 +203,7 @@ async def merge_conflicts(message: messages.CheckRepositoryMergeConflicts, servi
 
 
 async def user_check(message: messages.CheckRepositoryUserCheck, service: InfrahubServices):
-    validator = await service.client.get(kind="CoreUserValidator", id=message.validator_id)
+    validator = await service.client.get(kind=InfrahubKind.USERVALIDATOR, id=message.validator_id)
     await validator.checks.fetch()
 
     repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name)
@@ -233,7 +234,7 @@ async def user_check(message: messages.CheckRepositoryUserCheck, service: Infrah
     for relationship in validator.checks.peers:
         existing_check = relationship.peer
         if (
-            existing_check.typename == "CoreStandardCheck"
+            existing_check.typename == InfrahubKind.STANDARDCHECK
             and existing_check.kind.value == "CheckDefinition"
             and existing_check.name.value == message.name
         ):
@@ -247,7 +248,7 @@ async def user_check(message: messages.CheckRepositoryUserCheck, service: Infrah
         await check.save()
     else:
         check = await service.client.create(
-            kind="CoreStandardCheck",
+            kind=InfrahubKind.STANDARDCHECK,
             data={
                 "name": message.name,
                 "origin": message.repository_id,

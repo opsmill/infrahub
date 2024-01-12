@@ -3,6 +3,7 @@ from typing import List
 from infrahub_sdk import InfrahubClient, InfrahubNode, Timestamp
 from infrahub_sdk.utils import dict_hash
 
+from infrahub.core.constants import InfrahubKind
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
 from infrahub.services import InfrahubServices
@@ -39,7 +40,7 @@ async def update(message: messages.RequestGraphQLQueryGroupUpdate, service: Infr
     group_name = f"{message.query_name}__{params_hash}"
     group_label = f"Query {message.query_name} Hash({params_hash[:8]})"
     group = await service.client.create(
-        kind="CoreGraphQLQueryGroup",
+        kind=InfrahubKind.GRAPHQLQUERYGROUP,
         branch=message.branch,
         name=group_name,
         label=group_label,

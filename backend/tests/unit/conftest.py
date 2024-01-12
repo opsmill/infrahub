@@ -13,7 +13,7 @@ from pytest_httpx import HTTPXMock
 from infrahub import config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, InfrahubKind
 from infrahub.core.initialization import (
     create_branch,
     create_default_branch,
@@ -1005,15 +1005,15 @@ async def base_dataset_04(
         "time_m35": time0.subtract(seconds=35).to_iso8601_string(),
     }
 
-    blue = await Node.init(db=db, schema="BuiltinTag", branch=default_branch)
+    blue = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
     await blue.new(db=db, name="Blue", description="The Blue tag")
     await blue.save(db=db, at=params["time_m30"])
 
-    red = await Node.init(db=db, schema="BuiltinTag", branch=default_branch)
+    red = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
     await red.new(db=db, name="red", description="The red tag")
     await red.save(db=db, at=params["time_m30"])
 
-    yellow = await Node.init(db=db, schema="BuiltinTag", branch=default_branch)
+    yellow = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
     await yellow.new(db=db, name="yellow", description="The yellow tag")
     await yellow.save(db=db, at=params["time_m30"])
 
@@ -1067,7 +1067,7 @@ async def group_schema(db: InfrahubDatabase, default_branch: Branch, data_schema
                 "order_by": ["name__value"],
                 "display_labels": ["name__value"],
                 "branch": BranchSupportType.AWARE.value,
-                "inherit_from": ["CoreGroup"],
+                "inherit_from": [InfrahubKind.GENERICGROUP],
             },
         ],
     }
@@ -1458,11 +1458,11 @@ async def car_person_data_generic(db: InfrahubDatabase, register_core_models_sch
     }
     """
 
-    q1 = await Node.init(db=db, schema="CoreGraphQLQuery")
+    q1 = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERY)
     await q1.new(db=db, name="query01", query=query)
     await q1.save(db=db)
 
-    r1 = await Node.init(db=db, schema="CoreRepository")
+    r1 = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
     await r1.new(db=db, name="repo01", location="git@github.com:user/repo01.git", commit="aaaaaaaaa")
     await r1.save(db=db)
 
@@ -1605,7 +1605,7 @@ async def car_person_schema_generics(
             {
                 "name": "StandardGroup",
                 "namespace": "Core",
-                "inherit_from": ["CoreGroup"],
+                "inherit_from": [InfrahubKind.GENERICGROUP],
                 "attributes": [
                     {"name": "name", "kind": "Text", "label": "Name", "unique": True},
                 ],
@@ -1710,10 +1710,10 @@ async def person_tag_schema(db: InfrahubDatabase, default_branch: Branch, data_s
                     {"name": "lastname", "kind": "Text"},
                 ],
                 "relationships": [
-                    {"name": "tags", "peer": "BuiltinTag", "cardinality": "many", "direction": "inbound"},
+                    {"name": "tags", "peer": InfrahubKind.TAG, "cardinality": "many", "direction": "inbound"},
                     {
                         "name": "primary_tag",
-                        "peer": "BuiltinTag",
+                        "peer": InfrahubKind.TAG,
                         "identifier": "person_primary_tag",
                         "cardinality": "one",
                         "direction": "outbound",
@@ -1819,7 +1819,7 @@ async def car_yaris_main(db: InfrahubDatabase, default_branch: Branch, person_ja
 
 @pytest.fixture
 async def tag_blue_main(db: InfrahubDatabase, default_branch: Branch, person_tag_schema) -> Node:
-    tag = await Node.init(db=db, schema="BuiltinTag", branch=default_branch)
+    tag = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
     await tag.new(db=db, name="Blue", description="The Blue tag")
     await tag.save(db=db)
 
@@ -1828,7 +1828,7 @@ async def tag_blue_main(db: InfrahubDatabase, default_branch: Branch, person_tag
 
 @pytest.fixture
 async def tag_red_main(db: InfrahubDatabase, default_branch: Branch, person_tag_schema) -> Node:
-    tag = await Node.init(db=db, schema="BuiltinTag", branch=default_branch)
+    tag = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
     await tag.new(db=db, name="Red", description="The Red tag")
     await tag.save(db=db)
 
@@ -1837,7 +1837,7 @@ async def tag_red_main(db: InfrahubDatabase, default_branch: Branch, person_tag_
 
 @pytest.fixture
 async def tag_black_main(db: InfrahubDatabase, default_branch: Branch, person_tag_schema) -> Node:
-    tag = await Node.init(db=db, schema="BuiltinTag", branch=default_branch)
+    tag = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
     await tag.new(db=db, name="Black", description="The Black tag")
     await tag.save(db=db)
 
@@ -1877,7 +1877,7 @@ async def group_group1_main(
     default_branch: Branch,
     group_schema,
 ) -> Node:
-    obj = await Node.init(db=db, schema="CoreStandardGroup", branch=default_branch)
+    obj = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP, branch=default_branch)
     await obj.new(db=db, name="group1")
     await obj.save(db=db)
     return obj
@@ -1891,7 +1891,7 @@ async def group_group1_members_main(
     person_john_main: Node,
     person_jim_main: Node,
 ) -> Node:
-    obj = await Node.init(db=db, schema="CoreStandardGroup", branch=default_branch)
+    obj = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP, branch=default_branch)
     await obj.new(db=db, name="group1", members=[person_john_main, person_jim_main])
     await obj.save(db=db)
 
@@ -1906,7 +1906,7 @@ async def group_group2_members_main(
     person_john_main: Node,
     person_albert_main: Node,
 ) -> Node:
-    obj = await Node.init(db=db, schema="CoreStandardGroup", branch=default_branch)
+    obj = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP, branch=default_branch)
     await obj.new(db=db, name="group2", members=[person_john_main, person_albert_main])
     await obj.save(db=db)
 
@@ -1922,7 +1922,7 @@ async def group_group1_subscribers_main(
     person_jim_main: Node,
     person_albert_main: Node,
 ) -> Node:
-    obj = await Node.init(db=db, schema="CoreStandardGroup", branch=default_branch)
+    obj = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP, branch=default_branch)
     await obj.new(db=db, name="group1", subscribers=[person_john_main, person_jim_main, person_albert_main])
     await obj.save(db=db)
 
@@ -1939,7 +1939,7 @@ async def group_group2_subscribers_main(
     car_volt_main: Node,
     car_accord_main: Node,
 ) -> Node:
-    obj = await Node.init(db=db, schema="CoreStandardGroup", branch=default_branch)
+    obj = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP, branch=default_branch)
     await obj.new(db=db, name="group2", subscribers=[person_john_main, person_jim_main, car_volt_main, car_accord_main])
     await obj.save(db=db)
 
@@ -2199,7 +2199,7 @@ async def fruit_tag_schema(db: InfrahubDatabase, group_schema, data_schema) -> S
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "description", "kind": "Text", "optional": True},
                 ],
-                "relationships": [{"name": "tags", "peer": "BuiltinTag", "cardinality": "many", "optional": False}],
+                "relationships": [{"name": "tags", "peer": InfrahubKind.TAG, "cardinality": "many", "optional": False}],
             },
         ],
     }
@@ -2229,7 +2229,7 @@ async def fruit_tag_schema_global(db: InfrahubDatabase, group_schema, data_schem
                     {"name": "description", "kind": "Text", "optional": True},
                 ],
                 "relationships": [
-                    {"name": "related_tags", "peer": "BuiltinTag", "cardinality": "many", "optional": True},
+                    {"name": "related_tags", "peer": InfrahubKind.TAG, "cardinality": "many", "optional": True},
                     {"name": "related_fruits", "peer": "GardenFruit", "cardinality": "many", "optional": True},
                 ],
             },
@@ -2249,7 +2249,7 @@ async def fruit_tag_schema_global(db: InfrahubDatabase, group_schema, data_schem
                     },
                 ],
                 "relationships": [
-                    {"name": "tags", "peer": "BuiltinTag", "cardinality": "many", "optional": True},
+                    {"name": "tags", "peer": InfrahubKind.TAG, "cardinality": "many", "optional": True},
                     {"name": "related_fruits", "peer": "GardenFruit", "cardinality": "many", "optional": True},
                 ],
             },
@@ -2383,7 +2383,7 @@ async def organization_schema() -> SchemaRoot:
                 "relationships": [
                     {
                         "name": "tags",
-                        "peer": "BuiltinTag",
+                        "peer": InfrahubKind.TAG,
                         "kind": "Attribute",
                         "optional": True,
                         "cardinality": "many",
@@ -2452,7 +2452,7 @@ async def builtin_schema() -> SchemaRoot:
                 "relationships": [
                     {
                         "name": "tags",
-                        "peer": "BuiltinTag",
+                        "peer": InfrahubKind.TAG,
                         "kind": "Attribute",
                         "optional": True,
                         "cardinality": "many",
@@ -2505,7 +2505,12 @@ async def register_core_schema_db(db: InfrahubDatabase, default_branch: Branch, 
 
 @pytest.fixture
 async def register_account_schema(db: InfrahubDatabase) -> None:
-    SCHEMAS_TO_REGISTER = ["CoreAccount", "InternalAccountToken", "CoreGroup", "InternalRefreshToken"]
+    SCHEMAS_TO_REGISTER = [
+        InfrahubKind.ACCOUNT,
+        InfrahubKind.ACCOUNTTOKEN,
+        InfrahubKind.GENERICGROUP,
+        InfrahubKind.REFRESHTOKEN,
+    ]
     nodes = [item for item in core_models["nodes"] if f'{item["namespace"]}{item["name"]}' in SCHEMAS_TO_REGISTER]
     generics = [item for item in core_models["generics"] if f'{item["namespace"]}{item["name"]}' in SCHEMAS_TO_REGISTER]
     registry.schema.register_schema(schema=SchemaRoot(nodes=nodes, generics=generics))
@@ -2513,7 +2518,7 @@ async def register_account_schema(db: InfrahubDatabase) -> None:
 
 @pytest.fixture
 async def create_test_admin(db: InfrahubDatabase, register_core_schema_db, data_schema) -> Node:
-    account = await Node.init(db=db, schema="CoreAccount")
+    account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
     await account.new(
         db=db,
         name="test-admin",
@@ -2522,7 +2527,7 @@ async def create_test_admin(db: InfrahubDatabase, register_core_schema_db, data_
         role="admin",
     )
     await account.save(db=db)
-    token = await Node.init(db=db, schema="InternalAccountToken")
+    token = await Node.init(db=db, schema=InfrahubKind.ACCOUNTTOKEN)
     await token.new(
         db=db,
         token="admin-security",
@@ -2547,7 +2552,7 @@ async def authentication_base(
 
 @pytest.fixture
 async def first_account(db: InfrahubDatabase, data_schema, node_group_schema, register_account_schema) -> Node:
-    obj = await Node.init(db=db, schema="CoreAccount")
+    obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
     await obj.new(db=db, name="First Account", type="Git", password="FirstPassword123", role="read-write")
     await obj.save(db=db)
     return obj
@@ -2555,7 +2560,7 @@ async def first_account(db: InfrahubDatabase, data_schema, node_group_schema, re
 
 @pytest.fixture
 async def second_account(db: InfrahubDatabase, data_schema, node_group_schema, register_account_schema) -> Node:
-    obj = await Node.init(db=db, schema="CoreAccount")
+    obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
     await obj.new(db=db, name="Second Account", type="Git", password="SecondPassword123")
     await obj.save(db=db)
     return obj
@@ -2563,7 +2568,7 @@ async def second_account(db: InfrahubDatabase, data_schema, node_group_schema, r
 
 @pytest.fixture
 async def repos_in_main(db: InfrahubDatabase, register_core_models_schema):
-    repo01 = await Node.init(db=db, schema="CoreRepository")
+    repo01 = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
     await repo01.new(
         db=db,
         name="repo01",
@@ -2573,7 +2578,7 @@ async def repos_in_main(db: InfrahubDatabase, register_core_models_schema):
     )
     await repo01.save(db=db)
 
-    repo02 = await Node.init(db=db, schema="CoreRepository")
+    repo02 = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
     await repo02.new(
         db=db,
         name="repo02",

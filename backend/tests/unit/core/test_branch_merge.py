@@ -1,4 +1,5 @@
 from infrahub.core.branch import Branch
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -63,15 +64,15 @@ async def test_merge_graph_delete(db: InfrahubDatabase, base_dataset_02, registe
 async def test_merge_relationship_many(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, register_organization_schema
 ):
-    blue = await Node.init(db=db, schema="BuiltinTag", branch=default_branch)
+    blue = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
     await blue.new(db=db, name="Blue", description="The Blue tag")
     await blue.save(db=db)
 
-    red = await Node.init(db=db, schema="BuiltinTag", branch=default_branch)
+    red = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
     await red.new(db=db, name="red", description="The red tag")
     await red.save(db=db)
 
-    yellow = await Node.init(db=db, schema="BuiltinTag", branch=default_branch)
+    yellow = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
     await yellow.new(db=db, name="yellow", description="The yellow tag")
     await yellow.save(db=db)
 

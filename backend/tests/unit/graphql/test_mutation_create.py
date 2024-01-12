@@ -1,6 +1,7 @@
 import pytest
 from graphql import graphql
 
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -568,13 +569,13 @@ async def test_create_object_with_single_relationship_node_property(
 
 
 async def test_create_object_with_multiple_relationships(db: InfrahubDatabase, default_branch, fruit_tag_schema):
-    t1 = await Node.init(db=db, schema="BuiltinTag")
+    t1 = await Node.init(db=db, schema=InfrahubKind.TAG)
     await t1.new(db=db, name="tag1")
     await t1.save(db=db)
-    t2 = await Node.init(db=db, schema="BuiltinTag")
+    t2 = await Node.init(db=db, schema=InfrahubKind.TAG)
     await t2.new(db=db, name="tag2")
     await t2.save(db=db)
-    t3 = await Node.init(db=db, schema="BuiltinTag")
+    t3 = await Node.init(db=db, schema=InfrahubKind.TAG)
     await t3.new(db=db, name="tag3")
     await t3.save(db=db)
 
@@ -613,13 +614,13 @@ async def test_create_object_with_multiple_relationships(db: InfrahubDatabase, d
 async def test_create_object_with_multiple_relationships_with_node_property(
     db: InfrahubDatabase, default_branch, fruit_tag_schema, first_account, second_account
 ):
-    t1 = await Node.init(db=db, schema="BuiltinTag")
+    t1 = await Node.init(db=db, schema=InfrahubKind.TAG)
     await t1.new(db=db, name="tag1")
     await t1.save(db=db)
-    t2 = await Node.init(db=db, schema="BuiltinTag")
+    t2 = await Node.init(db=db, schema=InfrahubKind.TAG)
     await t2.new(db=db, name="tag2")
     await t2.save(db=db)
-    t3 = await Node.init(db=db, schema="BuiltinTag")
+    t3 = await Node.init(db=db, schema=InfrahubKind.TAG)
     await t3.new(db=db, name="tag3")
     await t3.save(db=db)
 
@@ -688,13 +689,13 @@ async def test_create_object_with_multiple_relationships_with_node_property(
 async def test_create_object_with_multiple_relationships_flag_property(
     db: InfrahubDatabase, default_branch, fruit_tag_schema
 ):
-    t1 = await Node.init(db=db, schema="BuiltinTag")
+    t1 = await Node.init(db=db, schema=InfrahubKind.TAG)
     await t1.new(db=db, name="tag1")
     await t1.save(db=db)
-    t2 = await Node.init(db=db, schema="BuiltinTag")
+    t2 = await Node.init(db=db, schema=InfrahubKind.TAG)
     await t2.new(db=db, name="tag2")
     await t2.save(db=db)
-    t3 = await Node.init(db=db, schema="BuiltinTag")
+    t3 = await Node.init(db=db, schema=InfrahubKind.TAG)
     await t3.new(db=db, name="tag3")
     await t3.save(db=db)
 
