@@ -126,9 +126,6 @@ describe("List screen", () => {
 
     cy.get("div.flex > .text-sm > :nth-child(3)").should("have.text", interfacesArrayCount);
 
-    cy.get(".min-w-full > .bg-custom-white > :nth-child(2) > :nth-child(2)").should(
-      "have.text",
-      interfaceDescription
-    );
+    cy.contains(interfaceDescription).should("be.visible");
   });
 });
