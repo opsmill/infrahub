@@ -479,7 +479,7 @@ nodes:
       - name: l2_mode
         label: Layer2 Mode
         kind: Text
-        enum: ["Access", "Trunk"]
+        enum: ["Access", "Trunk", "Trunk (ALL)"]
     relationships:
       - name: untagged_vlan
         label: Untagged VLAN
