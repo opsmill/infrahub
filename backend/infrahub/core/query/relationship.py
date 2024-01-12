@@ -501,26 +501,25 @@ class RelationshipGetPeerQuery(Query):
 
         arrows = self.schema.get_query_arrows()
 
-        # ruff: noqa: E501
+        path_str = (
+            f"{arrows.left.start}[:IS_RELATED]{arrows.left.end}(rl){arrows.right.start}[:IS_RELATED]{arrows.right.end}"
+        )
+
+        branch_level_str = "reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level)"
+        froms_str = "extract(r in relationships(path) | r.from)"
         query = """
         MATCH (rl:Relationship { name: $rel_identifier })
         CALL {
             WITH rl
-            MATCH path = (source_node:Node)%s[:IS_RELATED]%s(rl)%s[:IS_RELATED]%s(peer:Node)
-            WHERE source_node.uuid IN $source_ids AND peer.uuid <> source_node.uuid AND all(r IN relationships(path) WHERE (%s))
-            WITH source_node, peer, rl, relationships(path) as rels, reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level) AS branch_level
+            MATCH path = (source_node:Node)%(path)s(peer:Node)
+            WHERE source_node.uuid IN $source_ids AND peer.uuid <> source_node.uuid AND all(r IN relationships(path) WHERE (%(branch_filter)s))
+            WITH source_node, peer, rl, relationships(path) as rels, %(branch_level)s AS branch_level, %(froms)s as froms
             RETURN source_node, peer as peer, rels, rl as rl1
-            ORDER BY branch_level DESC
+            ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC
             LIMIT 1
         }
         WITH peer, rl1 as rl, rels, source_node
-        """ % (
-            arrows.left.start,
-            arrows.left.end,
-            arrows.right.start,
-            arrows.right.end,
-            branch_filter,
-        )
+        """ % {"path": path_str, "branch_filter": branch_filter, "branch_level": branch_level_str, "froms": froms_str}
 
         self.add_to_query(query)
         where_clause = ['all(r IN rels WHERE r.status = "active")']

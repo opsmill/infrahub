@@ -50,13 +50,15 @@ async def build_subquery_filter(
     field_where.append("all(r IN relationships(path) WHERE (%s))" % branch_filter)
     filter_str = f"({node_alias})" + "".join([str(item) for item in field_filter])
     where_str = " AND ".join(field_where)
+    branch_level_str = "reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level)"
+    froms_str = "extract(r in relationships(path) | r.from)"
     query = f"""
     WITH {node_alias}
     MATCH path = {filter_str}
     WHERE {where_str}
-    WITH {node_alias}, path, reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level) AS branch_level
+    WITH {node_alias}, path, {branch_level_str} AS branch_level, {froms_str} as froms
     RETURN {node_alias} as {prefix}
-    ORDER BY branch_level DESC
+    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC
     LIMIT 1
     """
     return query, params, prefix
@@ -97,13 +99,15 @@ async def build_subquery_order(
     field_where.append("all(r IN relationships(path) WHERE (%s))" % branch_filter)
     filter_str = f"({node_alias})" + "".join([str(item) for item in field_filter])
     where_str = " AND ".join(field_where)
+    branch_level_str = "reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level)"
+    froms_str = "extract(r in relationships(path) | r.from)"
     query = f"""
     WITH {node_alias}
     MATCH path = {filter_str}
     WHERE {where_str}
-    WITH last, path, reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level) AS branch_level
+    WITH last, path, {branch_level_str} AS branch_level, {froms_str} as froms
     RETURN last.value as {prefix}
-    ORDER BY branch_level DESC
+    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC
     LIMIT 1
     """
 

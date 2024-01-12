@@ -730,20 +730,26 @@ class NodeGetHierarchyQuery(Query):
         else:
             filter_str = f"<-{filter_str}-"
 
+        with_clause = (
+            "peer, path,"
+            " reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level) AS branch_level,"
+            " extract(r in relationships(path) | r.from) AS froms"
+        )
+
         query = """
-        MATCH path = (n:Node { uuid: $uuid } )%s(peer:Node)
-        WHERE $hierarchy IN LABELS(peer) and all(r IN relationships(path) WHERE (%s))
+        MATCH path = (n:Node { uuid: $uuid } )%(filter)s(peer:Node)
+        WHERE $hierarchy IN LABELS(peer) and all(r IN relationships(path) WHERE (%(branch_filter)s))
         CALL {
             WITH n, last(nodes(path)) as peer
-            MATCH path = (n)%s(peer)
-            WHERE all(r IN relationships(path) WHERE (%s))
-            WITH peer, path, reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level) AS branch_level
+            MATCH path = (n)%(filter)s(peer)
+            WHERE all(r IN relationships(path) WHERE (%(branch_filter)s))
+            WITH %(with_clause)s
             RETURN peer as peer1, path as path1
-            ORDER BY branch_level DESC
+            ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC
             LIMIT 1
         }
         WITH peer1 as peer, path1 as path
-        """ % (filter_str, branch_filter, filter_str, branch_filter)
+        """ % {"filter": filter_str, "branch_filter": branch_filter, "with_clause": with_clause}
 
         self.add_to_query(query)
         where_clause = ['all(r IN relationships(path) WHERE (r.status = "active"))']

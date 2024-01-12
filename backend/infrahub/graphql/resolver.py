@@ -195,7 +195,7 @@ async def many_relationship_resolver(
         if include_descendants:
             query = await NodeGetHierarchyQuery.init(
                 db=db,
-                direction="descendants",
+                direction=RelationshipHierarchyDirection.DESCENDANTS,
                 node_id=parent["id"],
                 node_schema=node_schema,
                 at=at,
