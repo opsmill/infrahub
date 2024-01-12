@@ -1,4 +1,4 @@
-from typing import List
+from typing import Dict, List
 
 from infrahub.core.branch import ObjectConflict
 from infrahub.core.constants import InfrahubKind, ProposedChangeState
@@ -183,13 +183,83 @@ async def refresh_artifacts(message: messages.RequestProposedChangeRefreshArtifa
     artifact_definitions = await service.client.all(
         kind=InfrahubKind.ARTIFACTDEFINITION, branch=proposed_change.source_branch.value
     )
+    query = """
+    query {
+        DiffSummary {
+            node
+        }
+        Branch(name: "%s") {
+            is_data_only
+        }
+    }
+    """ % (proposed_change.source_branch.value)
+
+    response = await service.client.execute_graphql(query=query, branch_name=proposed_change.source_branch.value)
+    source_branch_is_data_only = _extract_branch_only(data=response["Branch"])
+
+    impacted_artifacts = []
+    if source_branch_is_data_only:
+        # Currently ignore artifact filtering if the repository is not data only where we can have changes
+        # to the transforms in the Git repository
+        changed_nodes = _extract_nodes_filter(data=response["DiffSummary"])
+
+        query = (
+            """
+        query {
+            CoreGraphQLQueryGroup(
+                members__ids: [%s]
+            ) {
+                edges {
+                    node {
+                        subscribers {
+                            edges {
+                                node {
+                                    id
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        """
+            % changed_nodes
+        )
+
+        impacted_artifacts_response = await service.client.execute_graphql(
+            query=query, branch_name=proposed_change.source_branch.value
+        )
+        impacted_artifacts = _extract_impacted_artifacts(data=impacted_artifacts_response)
+
     for artifact_definition in artifact_definitions:
         msg = messages.RequestArtifactDefinitionCheck(
             artifact_definition=artifact_definition.id,
             proposed_change=message.proposed_change,
             source_branch=proposed_change.source_branch.value,
+            source_branch_is_data_only=source_branch_is_data_only,
             target_branch=proposed_change.destination_branch.value,
+            impacted_artifacts=impacted_artifacts,
         )
 
         msg.assign_meta(parent=message)
         await service.send(message=msg)
+
+
+def _extract_nodes_filter(data: List[Dict[str, str]]) -> str:
+    nodes = [f'"{entry["node"]}"' for entry in data]
+    return ", ".join(nodes)
+
+
+def _extract_branch_only(data: List[Dict[str, bool]]) -> bool:
+    for branch in data:
+        return branch.get("is_data_only", False)
+
+    return False
+
+
+def _extract_impacted_artifacts(data: Dict) -> List[str]:
+    artifacts = []
+    for node in data["CoreGraphQLQueryGroup"]["edges"]:
+        for subscriber in node["node"]["subscribers"]["edges"]:
+            artifacts.append(subscriber["node"]["id"])
+    return artifacts

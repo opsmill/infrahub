@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from infrahub_sdk import UUIDT
 
@@ -90,36 +90,37 @@ async def check(  # pylint: disable=too-many-statements
 
     if transform.typename == InfrahubKind.RFILE:
         transform_location = transform.template_path.value
-    elif transform.typename == "CoreTransformPython":
+    elif transform.typename == InfrahubKind.TRANSFORMPYTHON:
         transform_location = f"{transform.file_path.value}::{transform.class_name.value}"
-
     for relationship in group.members.peers:
         member = relationship.peer
-        check_execution_id = str(UUIDT())
-        check_execution_ids.append(check_execution_id)
+        artifact_id = artifacts_by_member.get(member.id)
+        if _render_artifact(artifact_id=artifact_id, message=message):
+            check_execution_id = str(UUIDT())
+            check_execution_ids.append(check_execution_id)
 
-        events.append(
-            messages.CheckArtifactCreate(
-                artifact_name=artifact_definition.name.value,
-                artifact_id=artifacts_by_member.get(member.id),
-                artifact_definition=message.artifact_definition,
-                commit=repository.commit.value,
-                content_type=artifact_definition.content_type.value,
-                transform_type=transform.typename,
-                transform_location=transform_location,
-                repository_id=repository.id,
-                repository_name=repository.name.value,
-                branch_name=message.source_branch,
-                query=query.name.value,
-                variables=member.extract(params=artifact_definition.parameters.value),
-                target_id=member.id,
-                target_name=member.name.value,
-                timeout=transform.timeout.value,
-                rebase=transform.rebase.value,
-                validator_id=validator.id,
-                meta=Meta(validator_execution_id=validator_execution_id, check_execution_id=check_execution_id),
+            events.append(
+                messages.CheckArtifactCreate(
+                    artifact_name=artifact_definition.name.value,
+                    artifact_id=artifact_id,
+                    artifact_definition=message.artifact_definition,
+                    commit=repository.commit.value,
+                    content_type=artifact_definition.content_type.value,
+                    transform_type=transform.typename,
+                    transform_location=transform_location,
+                    repository_id=repository.id,
+                    repository_name=repository.name.value,
+                    branch_name=message.source_branch,
+                    query=query.name.value,
+                    variables=member.extract(params=artifact_definition.parameters.value),
+                    target_id=member.id,
+                    target_name=member.name.value,
+                    timeout=transform.timeout.value,
+                    rebase=transform.rebase.value,
+                    validator_id=validator.id,
+                    meta=Meta(validator_execution_id=validator_execution_id, check_execution_id=check_execution_id),
+                )
             )
-        )
 
     checks_in_execution = ",".join(check_execution_ids)
     await service.cache.set(
@@ -214,3 +215,19 @@ async def generate(message: messages.RequestArtifactDefinitionGenerate, service:
     for event in events:
         event.assign_meta(parent=message)
         await service.send(message=event)
+
+
+def _render_artifact(artifact_id: Optional[str], message: messages.RequestArtifactDefinitionCheck) -> bool:
+    """Returns a boolean to indicate if an artifact should be generated or not.
+
+    Will return true if:
+        * The artifact_id wasn't set which could be that it's a new object that doesn't have a previous artifact
+        * The source brance is not data only which would indicate that it could contain updates in git to the transform
+        * The artifact_id exists in the impaced_artifacts list
+
+    Will return false if:
+        * The source branch is a data only branch and the artifact_id exists and is not in the impacted list
+    """
+    if not artifact_id or not message.source_branch_is_data_only:
+        return True
+    return artifact_id in message.impacted_artifacts
