@@ -506,7 +506,7 @@ class RelationshipGetPeerQuery(Query):
         )
 
         branch_level_str = "reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level)"
-        froms_str = "extract(r in relationships(path) | r.from)"
+        froms_str = db.render_list_comprehension(items="relationships(path)", item_name="from")
         query = """
         MATCH (rl:Relationship { name: $rel_identifier })
         CALL {

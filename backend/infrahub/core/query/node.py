@@ -730,17 +730,19 @@ class NodeGetHierarchyQuery(Query):
         else:
             filter_str = f"<-{filter_str}-"
 
+        froms_var = db.render_list_comprehension(items="relationships(path)", item_name="from")
         with_clause = (
             "peer, path,"
             " reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level) AS branch_level,"
-            " extract(r in relationships(path) | r.from) AS froms"
+            f" {froms_var} AS froms"
         )
 
         query = """
         MATCH path = (n:Node { uuid: $uuid } )%(filter)s(peer:Node)
         WHERE $hierarchy IN LABELS(peer) and all(r IN relationships(path) WHERE (%(branch_filter)s))
+        WITH n, last(nodes(path)) as peer
         CALL {
-            WITH n, last(nodes(path)) as peer
+            WITH n, peer
             MATCH path = (n)%(filter)s(peer)
             WHERE all(r IN relationships(path) WHERE (%(branch_filter)s))
             WITH %(with_clause)s

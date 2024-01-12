@@ -51,7 +51,7 @@ async def build_subquery_filter(
     filter_str = f"({node_alias})" + "".join([str(item) for item in field_filter])
     where_str = " AND ".join(field_where)
     branch_level_str = "reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level)"
-    froms_str = "extract(r in relationships(path) | r.from)"
+    froms_str = db.render_list_comprehension(items="relationships(path)", item_name="from")
     query = f"""
     WITH {node_alias}
     MATCH path = {filter_str}
@@ -100,7 +100,7 @@ async def build_subquery_order(
     filter_str = f"({node_alias})" + "".join([str(item) for item in field_filter])
     where_str = " AND ".join(field_where)
     branch_level_str = "reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level)"
-    froms_str = "extract(r in relationships(path) | r.from)"
+    froms_str = db.render_list_comprehension(items="relationships(path)", item_name="from")
     query = f"""
     WITH {node_alias}
     MATCH path = {filter_str}

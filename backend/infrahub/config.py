@@ -12,6 +12,7 @@ from infrahub_sdk import generate_uuid
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from infrahub.database.constants import DatabaseType
 from infrahub.services.adapters.cache import InfrahubCache  # noqa: TCH001
 from infrahub.services.adapters.message_bus import InfrahubMessageBus  # noqa: TCH001
 
@@ -19,11 +20,6 @@ SETTINGS: Settings = None
 
 VALID_DATABASE_NAME_REGEX = r"^[a-z][a-z0-9\.]+$"
 THIRTY_DAYS_IN_SECONDS = 3600 * 24 * 30
-
-
-class DatabaseType(str, Enum):
-    NEO4J = "neo4j"
-    MEMGRAPH = "memgraph"
 
 
 class StorageDriver(str, Enum):
