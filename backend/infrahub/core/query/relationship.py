@@ -513,7 +513,7 @@ class RelationshipGetPeerQuery(Query):
             WITH rl
             MATCH path = (source_node:Node)%(path)s(peer:Node)
             WHERE source_node.uuid IN $source_ids AND peer.uuid <> source_node.uuid AND all(r IN relationships(path) WHERE (%(branch_filter)s))
-            WITH source_node, peer, rl, relationships(path) as rels, %(branch_level)s AS branch_level, %(froms)s as froms
+            WITH source_node, peer, rl, relationships(path) as rels, %(branch_level)s AS branch_level, %(froms)s AS froms
             RETURN source_node, peer as peer, rels, rl as rl1
             ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC
             LIMIT 1

@@ -56,7 +56,7 @@ async def build_subquery_filter(
     WITH {node_alias}
     MATCH path = {filter_str}
     WHERE {where_str}
-    WITH {node_alias}, path, {branch_level_str} AS branch_level, {froms_str} as froms
+    WITH {node_alias}, path, {branch_level_str} AS branch_level, {froms_str} AS froms
     RETURN {node_alias} as {prefix}
     ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC
     LIMIT 1
@@ -105,7 +105,7 @@ async def build_subquery_order(
     WITH {node_alias}
     MATCH path = {filter_str}
     WHERE {where_str}
-    WITH last, path, {branch_level_str} AS branch_level, {froms_str} as froms
+    WITH last, path, {branch_level_str} AS branch_level, {froms_str} AS froms
     RETURN last.value as {prefix}
     ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC
     LIMIT 1
