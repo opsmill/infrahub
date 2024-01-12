@@ -55,6 +55,7 @@ class RelationshipCreateData(BaseModel):
     status: str
     is_protected: bool
     is_visible: bool
+    hierarchical: Optional[str] = None
     source_prop: List[ValuePropertyData] = Field(default_factory=list)
     owner_prop: List[NodePropertyData] = Field(default_factory=list)
 
@@ -420,6 +421,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             direction=self.schema.direction.value,
             branch_level=self.branch.hierarchy_level,
             branch_support=self.schema.branch.value,
+            hierarchical=self.schema.hierarchical,
             is_protected=self.is_protected,
             is_visible=self.is_visible,
         )

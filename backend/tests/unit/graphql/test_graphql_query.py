@@ -2346,6 +2346,364 @@ async def test_member_of_groups(db: InfrahubDatabase, default_branch: Branch, ca
     assert DeepDiff(result.data, expected_response, ignore_order=True).to_dict() == {}
 
 
+async def test_hierarchical_location_parent_filter(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data
+):
+    query = """
+    query GetRack {
+        LocationRack(parent__name__values: "europe") {
+            edges {
+                node {
+                    id
+                    display_label
+                    name {
+                        value
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    result = await graphql(
+        await generate_graphql_schema(db=db, branch=default_branch, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    nodes = [node["node"]["name"]["value"] for node in result.data["LocationRack"]["edges"]]
+
+    assert result.errors is None
+    assert nodes == ["paris-r1", "paris-r2", "london-r1", "london-r2"]
+
+
+async def test_hierarchical_location_ancestors(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data
+):
+    query = """
+    query {
+        LocationRack(name__value: "paris-r1") {
+            edges {
+                node {
+                    id
+                    display_label
+                    ancestors {
+                        edges {
+                            node {
+                                id
+                                display_label
+                                __typename
+                                name {
+                                    value
+                                }
+                            }
+                        }
+                    }
+                    descendants {
+                        edges {
+                            node {
+                                id
+                                display_label
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    result = await graphql(
+        await generate_graphql_schema(db=db, branch=default_branch, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    rack = result.data["LocationRack"]["edges"][0]["node"]
+    ancestors = rack["ancestors"]["edges"]
+    descendants = rack["descendants"]["edges"]
+    ancestor_names = [node["node"]["name"]["value"] for node in ancestors]
+
+    assert ancestor_names == ["europe", "paris"]
+    assert descendants == []
+
+
+async def test_hierarchical_location_descendants(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data
+):
+    query = """
+    query {
+        LocationRegion(name__value: "asia") {
+            edges {
+                node {
+                    id
+                    display_label
+                    descendants {
+                        edges {
+                            node {
+                                id
+                                display_label
+                                __typename
+                                name {
+                                    value
+                                }
+                            }
+                        }
+                    }
+                    ancestors {
+                        edges {
+                            node {
+                                id
+                                display_label
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    result = await graphql(
+        await generate_graphql_schema(db=db, branch=default_branch, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    asia = result.data["LocationRegion"]["edges"][0]["node"]
+    ancestors = asia["ancestors"]["edges"]
+    descendants = asia["descendants"]["edges"]
+    descendants_names = [node["node"]["name"]["value"] for node in descendants]
+
+    assert descendants_names == [
+        "beijing",
+        "beijing-r1",
+        "beijing-r2",
+        "singapore",
+        "singapore-r1",
+        "singapore-r2",
+    ]
+    assert ancestors == []
+
+
+async def test_hierarchical_location_descendants_filters_attr(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data
+):
+    query = """
+    query {
+        LocationRegion(name__value: "asia") {
+            edges {
+                node {
+                    id
+                    display_label
+                    descendants(status__value: "offline") {
+                        edges {
+                            node {
+                                id
+                                display_label
+                                __typename
+                                name {
+                                    value
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    result = await graphql(
+        await generate_graphql_schema(db=db, branch=default_branch, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    asia = result.data["LocationRegion"]["edges"][0]["node"]
+    descendants = asia["descendants"]["edges"]
+    descendants_names = [node["node"]["name"]["value"] for node in descendants]
+
+    assert descendants_names == [
+        "beijing-r2",
+        "singapore-r2",
+    ]
+
+
+async def test_hierarchical_location_descendants_filters_ids(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data
+):
+    query = """
+    query {
+        LocationRegion(name__value: "asia") {
+            edges {
+                node {
+                    id
+                    display_label
+                    descendants(ids: ["%s", "%s", "%s"]) {
+                        edges {
+                            node {
+                                id
+                                display_label
+                                __typename
+                                name {
+                                    value
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """ % (
+        hierarchical_location_data["beijing"].id,
+        hierarchical_location_data["beijing-r1"].id,
+        hierarchical_location_data["singapore-r2"].id,
+    )
+
+    result = await graphql(
+        await generate_graphql_schema(db=db, branch=default_branch, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    asia = result.data["LocationRegion"]["edges"][0]["node"]
+    descendants = asia["descendants"]["edges"]
+    descendants_names = [node["node"]["name"]["value"] for node in descendants]
+
+    assert descendants_names == [
+        "beijing",
+        "beijing-r1",
+        "singapore-r2",
+    ]
+
+
+async def test_hierarchical_location_include_descendants(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_thing
+):
+    query = """
+    query {
+        LocationRegion(name__value: "asia") {
+            edges {
+                node {
+                    id
+                    display_label
+                    things(include_descendants: true) {
+                        count
+                        edges {
+                            node {
+                                id
+                                display_label
+                                name {
+                                    value
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    result = await graphql(
+        await generate_graphql_schema(db=db, branch=default_branch, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    asia = result.data["LocationRegion"]["edges"][0]["node"]
+    things = asia["things"]["edges"]
+    things_names = [node["node"]["name"]["value"] for node in things]
+
+    assert things_names == [
+        "thing-asia",
+        "thing-beijing",
+        "thing-beijing-r1",
+        "thing-beijing-r2",
+        "thing-singapore",
+        "thing-singapore-r1",
+        "thing-singapore-r2",
+    ]
+    assert asia["things"]["count"] == 7
+
+
+async def test_hierarchical_groups_descendants(db: InfrahubDatabase, default_branch: Branch, hierarchical_groups_data):
+    query = """
+    query {
+        CoreStandardGroup(name__value: "grp1") {
+            edges {
+                node {
+                    id
+                    display_label
+                    members(include_descendants: true) {
+                        count
+                        edges {
+                            node {
+                                id
+                                display_label
+                                __typename
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    result = await graphql(
+        await generate_graphql_schema(db=db, branch=default_branch, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    grp1 = result.data["CoreStandardGroup"]["edges"][0]["node"]
+    members = grp1["members"]["edges"]
+    members_ids = [node["node"]["id"] for node in members]
+
+    member_names = [hierarchical_groups_data[member_id].name.value for member_id in members_ids]
+
+    assert member_names == [
+        "tag-0",
+        "tag-1",
+        "tag-2",
+        "tag-3",
+        "tag-4",
+        "tag-5",
+        "tag-6",
+        "tag-7",
+        "tag-8",
+        "tag-9",
+        "tag-10",
+        "tag-11",
+        "tag-12",
+        "tag-13",
+    ]
+    assert grp1["members"]["count"] == 14
+
+
 @pytest.mark.skip(reason="Union is not supported at the root of the GraphQL Schema yet .. ")
 async def test_union_root(
     db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema, car_schema, truck_schema, motorcycle_schema

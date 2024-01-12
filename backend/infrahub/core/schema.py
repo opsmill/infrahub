@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 from infrahub_sdk.utils import duplicates, intersection
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from infrahub import config
 from infrahub.core import registry
 from infrahub.core.constants import (
     RESTRICTED_NAMESPACES,
@@ -358,13 +359,14 @@ class RelationshipSchema(BaseSchemaModel):
     peer: str = Field(pattern=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH)
     kind: RelationshipKind = RelationshipKind.GENERIC
     direction: RelationshipDirection = RelationshipDirection.BIDIR
-    label: Optional[str] = None
+    label: Optional[str] = Field(default=None)
     description: Optional[str] = Field(None, max_length=DEFAULT_DESCRIPTION_LENGTH)
     identifier: Optional[str] = Field(None, max_length=DEFAULT_REL_IDENTIFIER_LENGTH)
     inherited: bool = False
     cardinality: RelationshipCardinality = RelationshipCardinality.MANY
-    branch: Optional[BranchSupportType] = None
+    branch: Optional[BranchSupportType] = Field(default=None)
     optional: bool = True
+    hierarchical: Optional[str] = Field(default=None)
     filters: List[FilterSchema] = Field(default_factory=list)
     order_weight: Optional[int] = None
 
@@ -472,14 +474,28 @@ class RelationshipSchema(BaseSchemaModel):
         if filter_field_name not in peer_schema.valid_input_names:
             return query_filter, query_params, query_where
 
-        query_filter.extend(
-            [
-                QueryRel(name="r1", labels=[rel_type], direction=rels_direction["r1"]),
-                QueryNode(name="rl", labels=["Relationship"], params={"name": f"${prefix}_rel_name"}),
-                QueryRel(name="r2", labels=[rel_type], direction=rels_direction["r2"]),
-                QueryNode(name="peer", labels=["Node"]),
-            ]
-        )
+        if self.hierarchical:
+            query_filter.extend(
+                [
+                    QueryRel(
+                        labels=[rel_type],
+                        direction=rels_direction["r1"],
+                        length_min=2,
+                        length_max=config.SETTINGS.database.max_depth_search_hierarchy * 2,
+                        params={"hierarchy": self.hierarchical},
+                    ),
+                    QueryNode(name="peer", labels=[self.hierarchical]),
+                ]
+            )
+        else:
+            query_filter.extend(
+                [
+                    QueryRel(name="r1", labels=[rel_type], direction=rels_direction["r1"]),
+                    QueryNode(name="rl", labels=["Relationship"], params={"name": f"${prefix}_rel_name"}),
+                    QueryRel(name="r2", labels=[rel_type], direction=rels_direction["r2"]),
+                    QueryNode(name="peer", labels=["Node"]),
+                ]
+            )
 
         field = peer_schema.get_field(filter_field_name)
 
@@ -666,12 +682,22 @@ class BaseNodeSchema(BaseSchemaModel):
 class GenericSchema(BaseNodeSchema):
     """A Generic can be either an Interface or a Union depending if there are some Attributes or Relationships defined."""
 
+    hierarchical: bool = Field(default=False)
     used_by: List[str] = Field(default_factory=list)
+
+    def get_hierarchy_schema(self, branch: Optional[Union[Branch, str]] = None) -> GenericSchema:  # pylint: disable=unused-argument
+        if self.hierarchical:
+            return self
+
+        raise ValueError(f"hierarchical mode is not enabled on {self.kind}")
 
 
 class NodeSchema(BaseNodeSchema):
     inherit_from: List[str] = Field(default_factory=list)
     groups: Optional[List[str]] = Field(default_factory=list)
+    hierarchy: Optional[str] = Field(default=None)
+    parent: Optional[str] = Field(default=None)
+    children: Optional[str] = Field(default=None)
 
     def inherit_from_interface(self, interface: GenericSchema) -> NodeSchema:
         existing_inherited_attributes = {item.name: idx for idx, item in enumerate(self.attributes) if item.inherited}
@@ -699,6 +725,12 @@ class NodeSchema(BaseNodeSchema):
             elif isinstance(item, RelationshipSchema) and item.name in existing_inherited_fields:
                 item_idx = existing_inherited_relationships[item.name]
                 self.relationships[item_idx] = new_item
+
+    def get_hierarchy_schema(self, branch: Optional[Union[Branch, str]] = None) -> GenericSchema:
+        schema = registry.schema.get(name=self.hierarchy, branch=branch)
+        if not isinstance(schema, GenericSchema):
+            raise TypeError
+        return schema
 
 
 class GroupSchema(BaseSchemaModel):
@@ -854,6 +886,24 @@ internal_schema = {
                     "name": "groups",
                     "kind": "List",
                     "description": "List of Group that this Node is part of.",
+                    "optional": True,
+                },
+                {
+                    "name": "hierarchy",
+                    "kind": "Text",
+                    "description": "Internal value to track the name of the Hierarchy, must match the name of a Generic supporting hierarchical mode",
+                    "optional": True,
+                },
+                {
+                    "name": "parent",
+                    "kind": "Text",
+                    "description": "Expected Kind for the parent node in a Hierarchy, default to the main generic defined if not defined.",
+                    "optional": True,
+                },
+                {
+                    "name": "children",
+                    "kind": "Text",
+                    "description": "Expected Kind for the children nodes in a Hierarchy, default to the main generic defined if not defined.",
                     "optional": True,
                 },
             ],
@@ -1105,6 +1155,12 @@ internal_schema = {
                     "default_value": RelationshipDirection.BIDIR.value,
                     "optional": True,
                 },
+                {
+                    "name": "hierarchical",
+                    "kind": "Text",
+                    "description": "Internal attribute to track the type of hierarchy this relationship is part of, must match a valid Generic Kind",
+                    "optional": True,
+                },
             ],
             "relationships": [
                 {
@@ -1201,6 +1257,13 @@ internal_schema = {
                     "optional": True,
                     "description": "Short description of the Generic.",
                     "max_length": DEFAULT_DESCRIPTION_LENGTH,
+                },
+                {
+                    "name": "hierarchical",
+                    "kind": "Boolean",
+                    "description": "Defines if the Generic support the hierarchical mode.",
+                    "optional": True,
+                    "default_value": False,
                 },
                 {
                     "name": "used_by",
@@ -1366,6 +1429,7 @@ core_models = {
             "order_by": ["name__value"],
             "display_labels": ["label__value"],
             "include_in_menu": False,
+            "hierarchical": True,
             "branch": BranchSupportType.AWARE.value,
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},

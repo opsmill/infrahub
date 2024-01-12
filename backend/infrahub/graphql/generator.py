@@ -19,7 +19,9 @@ from .mutations import (
     InfrahubRepositoryMutation,
 )
 from .resolver import (
+    ancestors_resolver,
     default_resolver,
+    descendants_resolver,
     many_relationship_resolver,
     single_relationship_resolver,
 )
@@ -183,9 +185,28 @@ async def generate_object_types(db: InfrahubDatabase, branch: Union[Branch, str]
                     peer_type = registry.get_graphql_type(name=peer_schema.kind, branch=branch.name)
                 else:
                     peer_type = registry.get_graphql_type(name=f"NestedPaginated{peer_schema.kind}", branch=branch.name)
+
+                if (isinstance(node_schema, NodeSchema) and node_schema.hierarchy) or (
+                    isinstance(node_schema, GenericSchema) and node_schema.hierarchical
+                ):
+                    peer_filters["include_descendants"] = graphene.Boolean()
+
                 node_type._meta.fields[rel.name] = graphene.Field(
                     peer_type, required=False, resolver=many_relationship_resolver, **peer_filters
                 )
+
+        if isinstance(node_schema, NodeSchema) and node_schema.hierarchy:
+            schema = registry.schema.get(name=node_schema.hierarchy, branch=branch)
+
+            peer_filters = await generate_filters(db=db, schema=schema, top_level=False)
+            peer_type = registry.get_graphql_type(name=f"NestedPaginated{node_schema.hierarchy}", branch=branch.name)
+
+            node_type._meta.fields["ancestors"] = graphene.Field(
+                peer_type, required=False, resolver=ancestors_resolver, **peer_filters
+            )
+            node_type._meta.fields["descendants"] = graphene.Field(
+                peer_type, required=False, resolver=descendants_resolver, **peer_filters
+            )
 
 
 async def generate_query_mixin(db: InfrahubDatabase, branch: Union[Branch, str] = None) -> Type[object]:
