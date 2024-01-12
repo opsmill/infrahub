@@ -492,8 +492,8 @@ nodes:
         label: Tagged VLANs
         peer: InfraVLAN
         optional: true
-        cardinality: one
-        kind: Component
+        cardinality: many
+        kind: Attribute
         identifier: interface_l2__tagged_vlan
   - name: IPAddress
     namespace: Infra
