@@ -2135,9 +2135,6 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryBase):
     ref: str = Field(..., description="Ref to track on the external repository")
     infrahub_branch_name: str = Field(..., description="Infrahub branch on which to sync the remote repository")
 
-    async def push(self):
-        raise NotImplementedError("read-only repository cannot push to remote")
-
     @classmethod
     async def new(cls, service: Optional[InfrahubServices] = None, **kwargs):
         service = service or InfrahubServices()
@@ -2169,8 +2166,8 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryBase):
         if not commit:
             commit = self.get_commit_value(branch_name=self.ref, remote=True)
         local_branches = self.get_branches_from_local()
-        local_branch = local_branches[self.ref]
-        if commit != local_branch.commit:
-            self.create_commit_worktree(commit=commit)
-            await self.import_objects_from_files(branch_name=self.infrahub_branch_name, commit=commit)
-            await self.update_commit_value(branch_name=self.infrahub_branch_name, commit=commit)
+        if self.ref in local_branches and commit == local_branches[self.ref].commit:
+            return
+        self.create_commit_worktree(commit=commit)
+        await self.import_objects_from_files(branch_name=self.infrahub_branch_name, commit=commit)
+        await self.update_commit_value(branch_name=self.infrahub_branch_name, commit=commit)

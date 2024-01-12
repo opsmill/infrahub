@@ -19,7 +19,9 @@ async def add(message: messages.GitRepositoryAdd, service: InfrahubServices) -> 
 
 
 async def add_read_only(message: messages.GitRepositoryAddReadOnly, service: InfrahubServices) -> None:
-    log.info("Cloning and importing repository", repository=message.repository_name, location=message.location)
+    log.info(
+        "Cloning and importing read-only repository", repository=message.repository_name, location=message.location
+    )
     async with lock.registry.get(name=message.repository_name, namespace="repository"):
         repo = await InfrahubReadOnlyRepository.new(
             id=message.repository_id,

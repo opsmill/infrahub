@@ -16,6 +16,7 @@ from pytest_httpx import HTTPXMock
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.schema import SchemaRoot, core_models
 from infrahub.git import InfrahubRepository
+from infrahub.git.repository import InfrahubReadOnlyRepository
 from infrahub.utils import find_first_file_in_directory, get_fixtures_dir
 
 
@@ -127,6 +128,21 @@ async def git_repo_01(client, git_upstream_repo_01, git_repos_dir) -> InfrahubRe
         id=UUIDT.new(),
         name=git_upstream_repo_01["name"],
         location=git_upstream_repo_01["path"],
+    )
+
+    return repo
+
+
+@pytest.fixture
+async def git_repo_01_read_only(client, git_upstream_repo_01, git_repos_dir) -> InfrahubReadOnlyRepository:
+    """Git Repository with git_upstream_repo_01 as remote"""
+
+    repo = await InfrahubReadOnlyRepository.new(
+        id=UUIDT.new(),
+        name=git_upstream_repo_01["name"],
+        location=git_upstream_repo_01["path"],
+        ref="branch01",
+        infrahub_branch_name="main",
     )
 
     return repo
