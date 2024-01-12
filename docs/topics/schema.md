@@ -235,6 +235,101 @@ By default, if a specific value is not defined:
   - **branch-agnostic** only if both models on each end of the relationship are **branch-agnostic**. If either model is **branch-aware** the relationship will be set as **branch-aware**.
   - **branch-local** if either model, on each end of the relationship, is **branch-local**.
 
+## Hierarchical Mode
+
+It's possible to organize some nodes of similar types in a hierarchy or a tree, to enable additional capabilities.
+
+
+!!!success Examples
+
+- `Groups` can be organized in a hierarchy by default which makes it possible to query the members of all sub-groups at once.
+- Assuming we have defined a `Person` object connected to a `City` object, which itself is part of a hierarchy of `Location` (`Region` > `Country` > `City`) , it will be possible to query all `Person` per `Country` or per `Region` natively without having a direct relationship between `Person` and `Country`
+
+!!!
+
+A hierarchy must be defined around a specific `Generic` to ensure that all nodes that are part of a given hierarchy share some attributes. 
+In the schema the attribute `hierarchical: true` on a `Generic` activate the hierarchical mode.
+
+> All nodes inheriting from this main `Generic` will automatically have the hierarchical mode enabled as well.
+> Each node can only inherit from one `Generic` with hierarchical mode at the same time.
+
+All nodes with hierarchical support will automatically have 2 new relationships:
+- `parent` of cardinality one
+- `children` of cardinality many
+
+### Specific the structure of the hierarchy
+By default any node inheriting from the main `Generic` can be a parent or a children, which might not be always desirable. It's possible to limit which type of models are valid `parent` or `children` in the schema with the attributes `parent` & `children` at the node level.
+
+In the example below, we are defining a hierarchy of `Location` with `Region`, `Country` and `City`.
+Only `Country` can be defined as children of a `Region` and only `City` can be defined as children of a `Country`
+
+```yaml
+version: '1.0'
+generics:
+  - name: Generic
+    namespace: Location
+    hierarchical: true
+    attributes:
+      - name: name
+        kind: Text
+nodes:
+  - name: Region
+    namespace: Location
+    inherit_from: ["LocationGeneric"]
+    parent: ""
+    children: "LocationCountry"
+  - name: Country
+    namespace: Location
+    inherit_from: ["LocationGeneric"]
+    parent: "LocationRegion"
+    children: "LocationCity"
+  - name: City
+    namespace: Location
+    inherit_from: ["LocationGeneric"]
+    parent: "LocationCountry"
+    children: ""
+```
+
+### Query data around a hierarchy in GraphQL
+
+In GraphQL query , all nodes with hierarchical support will have 2 additional fields:
+- `ancestors` to access all ancestors of a given nodes (parent of parents`)
+- `descendants` to access all descendants of a given nodes (children of children)
+
+!!!info
+
+`ancestors` and `descendants` are separated from `parent` and `children` to clearly indicate that we need to query the hierarchy and not the directly connected nodes.
+
+!!!
+
+For all relationships of cardinality many, it's possible to query all the objects associated with `descendants` nodes as well by providing the `include_descendants` flag.
+
+As an example, The GraphQL query below will query the members of all groups that are defined as children of `Group1`.
+Assuming that `Group1` has 2 sub-groups defined `Group A` and `Group B` (AKA children), the query will return the members of `Group1`, `Group A` and `Group B` together.
+
+```graphql
+query {
+    CoreStandardGroup(name__value: "Group1") {
+        edges {
+            node {
+                id
+                display_label
+                members(include_descendants: true) {
+                    count
+                    edges {
+                        node {
+                            id
+                            display_label
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+
 ## Menu
 
 The position of a model in the frontend sidebar menu, is controlled by the schema itself.
