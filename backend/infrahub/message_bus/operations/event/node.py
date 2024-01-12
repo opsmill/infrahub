@@ -21,7 +21,10 @@ async def mutated(
         data=message.data,
     )
     events: List[InfrahubMessage] = []
-    kind_map = {InfrahubKind.WEBHOOK: [messages.RefreshWebhookConfiguration()]}
+    kind_map = {
+        InfrahubKind.STANDARDWEBHOOK: [messages.RefreshWebhookConfiguration()],
+        InfrahubKind.CUSTOMWEBHOOK: [messages.RefreshWebhookConfiguration()],
+    }
     events.extend(kind_map.get(message.kind, []))
     events.append(
         messages.TriggerWebhookActions(event_type=f"{message.kind}.{message.action}", event_data=message.data)
