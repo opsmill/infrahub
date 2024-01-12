@@ -1042,7 +1042,9 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
 
         return results[0]
 
-    def get_list_repositories(self, branches: Optional[Dict[str, BranchData]] = None) -> Dict[str, RepositoryData]:
+    def get_list_repositories(
+        self, branches: Optional[Dict[str, BranchData]] = None, kind: str = "CoreGenericRepository"
+    ) -> Dict[str, RepositoryData]:
         raise NotImplementedError(
             "This method is deprecated in the async client and won't be implemented in the sync client."
         )
