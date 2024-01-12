@@ -1574,7 +1574,7 @@ core_models = {
                 },
                 {
                     "name": "repository",
-                    "peer": InfrahubKind.REPOSITORYGENERIC,
+                    "peer": InfrahubKind.GENERICREPOSITORY,
                     "kind": "Attribute",
                     "cardinality": "one",
                     "identifier": "repository__transformation",
@@ -2131,7 +2131,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "repository",
-                    "peer": InfrahubKind.REPOSITORYGENERIC,
+                    "peer": InfrahubKind.GENERICREPOSITORY,
                     "kind": "Attribute",
                     "optional": False,
                     "cardinality": "one",
@@ -2159,7 +2159,7 @@ core_models = {
                 },
                 {
                     "name": "repository",
-                    "peer": InfrahubKind.REPOSITORYGENERIC,
+                    "peer": InfrahubKind.GENERICREPOSITORY,
                     "kind": "Attribute",
                     "optional": False,
                     "cardinality": "one",
@@ -2218,7 +2218,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "repository",
-                    "peer": InfrahubKind.REPOSITORYGENERIC,
+                    "peer": InfrahubKind.GENERICREPOSITORY,
                     "kind": "Attribute",
                     "cardinality": "one",
                     "identifier": "check_definition__repository",
@@ -2313,7 +2313,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "repository",
-                    "peer": InfrahubKind.REPOSITORYGENERIC,
+                    "peer": InfrahubKind.GENERICREPOSITORY,
                     "kind": "Attribute",
                     "identifier": "graphql_query__repository",
                     "cardinality": "one",

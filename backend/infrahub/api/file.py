@@ -41,7 +41,7 @@ async def get_file(
     repo = await NodeManager.get_one_by_id_or_default_filter(
         db=db,
         id=repository_id,
-        schema_name=InfrahubKind.REPOSITORYGENERIC,
+        schema_name=InfrahubKind.GENERICREPOSITORY,
         branch=branch_params.branch,
         at=branch_params.at,
     )

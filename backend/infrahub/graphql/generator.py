@@ -254,7 +254,7 @@ async def generate_mutation_mixin(db: InfrahubDatabase, branch: Union[Branch, st
         mutation_map = {
             InfrahubKind.ARTIFACTDEFINITION: InfrahubArtifactDefinitionMutation,
             InfrahubKind.REPOSITORY: InfrahubRepositoryMutation,
-            InfrahubKind.REPOSITORYREADONLY: InfrahubRepositoryMutation,
+            InfrahubKind.READONLYREPOSITORY: InfrahubRepositoryMutation,
             InfrahubKind.PROPOSEDCHANGE: InfrahubProposedChangeMutation,
             InfrahubKind.GRAPHQLQUERY: InfrahubGraphQLQueryMutation,
         }
