@@ -24,7 +24,7 @@ In order to run the demo environment, the following applications must be install
 
 - [pyinvoke](https://www.pyinvoke.org/)
 - git
-- Docker & Docker Compose
+- Docker (version 24.x minimum) & Docker Compose
 
 > On a Laptop, both Docker & Docker Compose can be installed by installing [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 
