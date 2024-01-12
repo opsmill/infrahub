@@ -305,8 +305,6 @@ async def test_schema_load_endpoint_idempotent_with_generics(
         assert response4.status_code == 200
 
         nbr_rels_after = await count_relationships(db=db)
-        # if nbr_rels != nbr_rels_after:
-        #     breakpoint()
         assert nbr_rels == nbr_rels_after
 
 
