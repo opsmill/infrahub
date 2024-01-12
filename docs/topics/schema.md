@@ -239,7 +239,6 @@ By default, if a specific value is not defined:
 
 It's possible to organize some nodes of similar types in a hierarchy or a tree, to enable additional capabilities.
 
-
 !!!success Examples
 
 - `Groups` can be organized in a hierarchy by default which makes it possible to query the members of all sub-groups at once.
@@ -247,7 +246,7 @@ It's possible to organize some nodes of similar types in a hierarchy or a tree, 
 
 !!!
 
-A hierarchy must be defined around a specific `Generic` to ensure that all nodes that are part of a given hierarchy share some attributes. 
+A hierarchy must be defined around a specific `Generic` to ensure that all nodes that are part of a given hierarchy share some attributes.
 In the schema the attribute `hierarchical: true` on a `Generic` activate the hierarchical mode.
 
 > All nodes inheriting from this main `Generic` will automatically have the hierarchical mode enabled as well.
@@ -293,6 +292,7 @@ nodes:
 ### Query data around a hierarchy in GraphQL
 
 In GraphQL query , all nodes with hierarchical support will have 2 additional fields:
+
 - `ancestors` to access all ancestors of a given nodes (parent of parents`)
 - `descendants` to access all descendants of a given nodes (children of children)
 
@@ -328,7 +328,6 @@ query {
     }
 }
 ```
-
 
 ## Menu
 
