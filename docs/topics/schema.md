@@ -91,6 +91,8 @@ nodes:
 | `ID`         | No                    | Yes                       |
 | `Text`       | Yes                   | Yes                       |
 | `Number`     | Yes                   | Yes                       |
+| `Boolean`    | Yes                   | Yes                       |
+| `Dropdown`   | Yes                   | Yes                       |
 | `TextArea`   | No                    | Yes                       |
 | `DateTime`   | No                    | Yes                       |
 | `Email`      | Yes                   | Yes                       |
