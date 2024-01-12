@@ -26,7 +26,6 @@ export default function GroupRelationships(props: RelationshipsDetailsProps) {
   const [pagination] = usePagination();
   const [schemaList] = useAtom(schemaState);
   const [genericList] = useAtom(genericsState);
-  const [generics] = useAtom(genericsState);
 
   const schema = schemaList.filter((s) => s.kind === groupname)[0];
   const generic = genericList.filter((s) => s.kind === groupname)[0];
@@ -35,12 +34,7 @@ export default function GroupRelationships(props: RelationshipsDetailsProps) {
 
   const schemaData = generic || schema;
 
-  const columns = getAttributeColumnsFromNodeOrGenericSchema(
-    schemaList,
-    generics,
-    relationshipSchema?.peer!,
-    true
-  );
+  const columns = getAttributeColumnsFromNodeOrGenericSchema(schema, generic);
 
   const filtersString = [
     { name: "offset", value: pagination?.offset },

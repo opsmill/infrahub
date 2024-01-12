@@ -1,7 +1,9 @@
 import Handlebars from "handlebars";
 
-export const getObjectRelationshipsDetailsPaginated = Handlebars.compile(`query {{kind}} {
+export const getObjectRelationshipsDetailsPaginated = Handlebars.compile(`
+query {{kind}} {
   {{kind}} (ids: ["{{objectid}}"]) {
+    count
     edges {
       node {
         {{relationship}}{{#if filters}}({{{filters}}}){{/if}} {
@@ -10,32 +12,32 @@ export const getObjectRelationshipsDetailsPaginated = Handlebars.compile(`query 
             node {
               id
               display_label
-              {{#each columns}}
-              {{this.name}} {
-                value
-                {{#if (eq this.kind "Dropdown")}}
-                  color
-                  description
-                  label
-                {{/if}}
-              }
-              {{/each}}
               __typename
-            }
-            properties {
-              updated_at
-              is_protected
-              is_visible
-              source {
-                id
-                display_label
-                __typename
-              }
-              owner {
-                id
-                display_label
-                __typename
-              }
+
+              {{#each attributes}}
+                {{this.name}} {
+                    value
+                    {{#if (eq this.kind "Dropdown")}}
+                    color
+                    description
+                    label
+                    {{/if}}
+                }
+              {{/each}}
+
+              {{#each relationships}}
+                {{this.name}} {
+                  {{#if this.paginated}}
+                    edges {
+                  {{/if}}
+                    node {
+                      display_label
+                    }
+                  {{#if this.paginated}}
+                    }
+                  {{/if}}
+                }
+              {{/each}}
             }
           }
         }

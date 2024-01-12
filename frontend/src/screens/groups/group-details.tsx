@@ -327,7 +327,6 @@ export default function GroupItemDetails() {
           attributeOrRelationshipToEdit={
             objectDetailsData[metaEditFieldDetails?.attributeOrRelationshipName]
           }
-          schemaList={schemaList}
           schema={schemaData}
           attributeOrRelationshipName={metaEditFieldDetails?.attributeOrRelationshipName}
           type={metaEditFieldDetails?.type!}

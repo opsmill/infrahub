@@ -9,13 +9,13 @@ import { Pagination } from "../../components/utils/pagination";
 import { QSP } from "../../config/qsp";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { removeRelationship } from "../../graphql/mutations/relationships/removeRelationship";
-import { getObjectRelationshipsDetailsPaginated } from "../../graphql/queries/objects/getObjectRelationshipDetails";
+import { getObjectItemsPaginated } from "../../graphql/queries/objects/getObjectItems";
 import usePagination from "../../hooks/usePagination";
 import useQuery from "../../hooks/useQuery";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { genericsState, iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
-import { getAttributeColumnsFromNodeOrGenericSchema } from "../../utils/getSchemaObjectColumns";
+import { getObjectAttributes, getObjectRelationships } from "../../utils/getSchemaObjectColumns";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
@@ -28,7 +28,7 @@ interface RelationshipsDetailsProps {
 }
 
 export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
-  const { parentNode, parentSchema, refetchObjectDetails } = props;
+  const { parentNode, refetchObjectDetails } = props;
 
   const { objectname, objectid } = useParams();
   const [relationshipTab] = useQueryParam(QSP.TAB, StringParam);
@@ -38,13 +38,19 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
 
-  const schema = schemaList.find((s) => s.kind === objectname);
-  const relationshipSchema = schema?.relationships?.find((r) => r?.name === relationshipTab);
-  const columns = getAttributeColumnsFromNodeOrGenericSchema(
-    schemaList,
-    generics,
-    relationshipSchema?.peer!
+  const parentSchema = schemaList.find((s) => s.kind === objectname);
+  const parentGeneric = generics.find((s) => s.kind === objectname);
+  const relationshipSchema = parentSchema?.relationships?.find((r) => r?.name === relationshipTab);
+  const relationshipGeneric = parentGeneric?.relationships?.find(
+    (r) => r?.name === relationshipTab
   );
+  const relationshipSchemaData = relationshipSchema || relationshipGeneric;
+  const schema = schemaList.find((s) => s.kind === relationshipSchemaData?.peer);
+  const generic = generics.find((s) => s.kind === relationshipSchemaData?.peer);
+  const schemaData = schema || generic;
+
+  const attributes = getObjectAttributes(schemaData, true);
+  const relationships = getObjectRelationships(schemaData, true);
 
   const filtersString = [
     { name: "offset", value: pagination?.offset },
@@ -53,13 +59,16 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
     .map((row: any) => `${row.name}: ${row.value}`)
     .join(",");
 
-  const queryString = getObjectRelationshipsDetailsPaginated({
-    ...schema,
-    relationship: relationshipTab,
-    objectid,
-    columns,
-    filters: filtersString,
-  });
+  const queryString = schemaData
+    ? getObjectItemsPaginated({
+        kind: schemaData.kind,
+        attributes,
+        relationships,
+        filters: filtersString,
+      })
+    : // Empty query to make the gql parsing work
+      // TODO: Find another solution for queries while loading schemaData
+      "query { ok }";
 
   const query = gql`
     ${queryString}
@@ -83,9 +92,8 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
     return null;
   }
 
-  const result = data[schema.kind]?.edges;
-
-  const relationships = result?.length ? result[0]?.node[relationshipTab]?.edges : null;
+  const result = data[schemaData?.kind]?.edges;
+  console.log("result: ", result);
 
   const handleDeleteRelationship = async (name: string, id: string) => {
     const mutationString = removeRelationship({
@@ -119,9 +127,9 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
       <RelationshipDetails
         parentNode={parentNode}
         mode="TABLE"
-        parentSchema={parentSchema}
-        relationshipsData={relationships}
+        relationshipsData={result}
         relationshipSchema={relationshipSchema}
+        relationshipSchemaData={schemaData}
         refetch={updatePageData}
         onDeleteRelationship={handleDeleteRelationship}
       />

@@ -99,8 +99,8 @@ export default function ObjectItems(props: any) {
   ].join(",");
 
   // Get all the needed columns (attributes + relationships)
-  const columns = getSchemaObjectColumns(schemaData);
-  const attributes = getObjectAttributes(schemaData, true);
+  const columns = getSchemaObjectColumns(schemaData, true);
+  const attributes = getObjectAttributes(schemaData);
   const relationships = getObjectRelationships(schemaData, true);
 
   const queryString = schemaData

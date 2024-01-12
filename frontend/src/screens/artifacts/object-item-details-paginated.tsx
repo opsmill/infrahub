@@ -320,7 +320,7 @@ export default function ArtifactsDetails() {
         </div>
       )}
 
-      {qspTab && <RelationshipsDetails parentNode={objectDetailsData} parentSchema={schemaData} />}
+      {qspTab && <RelationshipsDetails parentNode={objectDetailsData} />}
 
       <SlideOver
         title={
@@ -456,7 +456,6 @@ export default function ArtifactsDetails() {
           attributeOrRelationshipToEdit={
             objectDetailsData[metaEditFieldDetails?.attributeOrRelationshipName]
           }
-          schemaList={schemaList}
           schema={schemaData}
           attributeOrRelationshipName={metaEditFieldDetails?.attributeOrRelationshipName}
           type={metaEditFieldDetails?.type!}

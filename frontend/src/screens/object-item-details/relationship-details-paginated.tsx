@@ -27,13 +27,13 @@ import { addRelationship } from "../../graphql/mutations/relationships/addRelati
 import UnlinkIcon from "../../images/icons/unlink.svg";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
-import { genericsState, iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
+import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom copy";
 import { datetimeAtom } from "../../state/atoms/time.atom";
 import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
-import { getAttributeColumnsFromNodeOrGenericSchema } from "../../utils/getSchemaObjectColumns";
+import { getSchemaObjectColumns } from "../../utils/getSchemaObjectColumns";
 import { getObjectDetailsUrl } from "../../utils/objects";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
@@ -44,9 +44,9 @@ import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 
 type iRelationDetailsProps = {
   parentNode: any;
-  parentSchema: iNodeSchema;
   relationshipsData: any;
   relationshipSchema: any;
+  relationshipSchemaData: any;
   mode: "TABLE" | "DESCRIPTION-LIST";
   refetch?: Function;
   onDeleteRelationship?: Function;
@@ -55,7 +55,14 @@ type iRelationDetailsProps = {
 const regex = /^Related/; // starts with Related
 
 export default function RelationshipDetails(props: iRelationDetailsProps) {
-  const { mode, relationshipsData, relationshipSchema, refetch, onDeleteRelationship } = props;
+  const {
+    mode,
+    relationshipsData,
+    relationshipSchema,
+    relationshipSchemaData,
+    refetch,
+    onDeleteRelationship,
+  } = props;
 
   const { objectname, objectid } = useParams();
   const auth = useContext(AuthContext);
@@ -71,11 +78,11 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   const [relatedRowToDelete, setRelatedRowToDelete] = useState<any>();
   const [relatedObjectToEdit, setRelatedObjectToEdit] = useState<any>();
 
-  const schema = schemaList.find((s) => s.kind === objectname);
+  const parentSchema = schemaList.find((s) => s.kind === objectname);
+  const generic = generics.find((g) => g.kind === relationshipSchemaData?.kind);
+  const columns = getSchemaObjectColumns(relationshipSchemaData);
 
   let options: SelectOption[] = [];
-
-  const generic = generics.find((g) => g.kind === relationshipSchema.peer);
 
   if (generic) {
     (generic.used_by || []).forEach((kind) => {
@@ -116,12 +123,6 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   const [, setShowMetaEditModal] = useAtom(showMetaEditState);
   const [, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
 
-  const columns = getAttributeColumnsFromNodeOrGenericSchema(
-    schemaList,
-    generics,
-    relationshipSchema.peer
-  );
-
   if (relationshipsData && relationshipsData?.properties?.is_visible === false) {
     return null;
   }
@@ -146,7 +147,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
       .filter((item: any) => item.id !== id);
 
     const mutationString = updateObjectWithId({
-      kind: schema.kind,
+      kind: parentSchema?.kind,
       data: stringifyWithoutQuotes({
         id: objectid,
         [relationshipSchema.name]: newList,
@@ -337,6 +338,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                           {column.label}
                         </th>
                       ))}
+
                       <th
                         scope="col"
                         className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 p-2 text-left text-xs font-semibold text-gray-900">
@@ -344,6 +346,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                       </th>
                     </tr>
                   </thead>
+
                   <tbody className="bg-custom-white">
                     {relationshipsData?.map(({ node, properties }: any, index: number) => (
                       <tr
@@ -366,6 +369,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                             </Link>
                           </td>
                         ))}
+
                         <td
                           className={classNames(
                             index !== relationshipsData.length - 1
@@ -500,15 +504,6 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                       {properties.is_protected && <LockClosedIcon className="w-4 h-4" />}
 
                       {properties.is_visible === false && <EyeSlashIcon className="w-4 h-4" />}
-
-                      {/* {<TrashIcon className="w-4 h-4" onClick={async () => {
-                            const newList  = relationshipsData.map((row: any) => ({ id: row.id })).filter((row: any) =>  row.id !== item.id);
-                            await updateObjectWithId(objectid!, schema, {
-                              [relationshipSchema.name]: newList
-                            });
-                            props.refreshObject();
-                            setShowAddDrawer(false);
-                          }}/>} */}
                     </dd>
                   ))}
                 </dl>
@@ -593,8 +588,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
             }}
             onUpdateComplete={() => setShowRelationMetaEditModal(false)}
             attributeOrRelationshipToEdit={relationshipsData?.properties}
-            schemaList={schemaList}
-            schema={schema}
+            schema={parentSchema}
             attributeOrRelationshipName={relationshipSchema.name}
             type="relationship"
             row={{
@@ -626,6 +620,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
             setOpen={() => setRelatedRowToDelete(undefined)}
           />
         )}
+
         {relatedObjectToEdit && (
           <SlideOver
             title={

@@ -68,16 +68,13 @@ export const getTabs = (schema: iNodeSchema | iGenericSchema) => {
   return relationships;
 };
 
-export const getSchemaObjectColumns = (
-  schema?: iNodeSchema | iGenericSchema,
-  fromListView?: boolean
-) => {
+export const getSchemaObjectColumns = (schema?: iNodeSchema | iGenericSchema) => {
   if (!schema) {
     return [];
   }
 
-  const attributes = getObjectAttributes(schema, fromListView);
-  const relationships = getObjectRelationships(schema, fromListView);
+  const attributes = getObjectAttributes(schema, true);
+  const relationships = getObjectRelationships(schema, true);
 
   const columns = R.concat(attributes, relationships);
   return columns;
@@ -98,20 +95,17 @@ export const getGroupColumns = (schema?: iNodeSchema | iGenericSchema) => {
 };
 
 export const getAttributeColumnsFromNodeOrGenericSchema = (
-  schemaList: iNodeSchema[],
-  generics: iGenericSchema[],
-  kind: String,
-  fromListView?: boolean
+  schema: iNodeSchema | undefined,
+  generic: iGenericSchema | undefined
 ) => {
-  const generic = generics.find((g) => g.kind === kind);
-  const peerSchema = schemaList.find((s) => s.kind === kind);
-
   if (generic) {
-    return getObjectAttributes(generic, fromListView);
+    return getSchemaObjectColumns(generic);
   }
-  if (peerSchema) {
-    return getObjectAttributes(peerSchema, fromListView);
+
+  if (schema) {
+    return getSchemaObjectColumns(schema);
   }
+
   return [];
 };
 

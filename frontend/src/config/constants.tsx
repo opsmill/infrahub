@@ -115,6 +115,8 @@ export const MAX_VALUE_LENGTH_DISPLAY = 40;
 export const attributesKindForListView = [
   "Text",
   "Number",
+  "Boolean",
+  "Dropdown",
   "Email",
   "URL",
   "File",
@@ -129,6 +131,8 @@ export const attributesKindForDetailsView = [
   "ID",
   "Text",
   "Number",
+  "Boolean",
+  "Dropdown",
   "TextArea",
   "DateTime",
   "Email",

@@ -460,7 +460,6 @@ export default function ObjectItemDetails(props: any) {
             objectDetailsData[metaEditFieldDetails?.attributeOrRelationshipName]?.properties ||
             objectDetailsData[metaEditFieldDetails?.attributeOrRelationshipName]
           }
-          schemaList={schemaList}
           schema={schemaData}
           attributeOrRelationshipName={metaEditFieldDetails?.attributeOrRelationshipName}
           type={metaEditFieldDetails?.type!}
