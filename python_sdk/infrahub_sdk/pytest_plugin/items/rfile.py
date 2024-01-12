@@ -1,48 +1,33 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, Literal, Optional, Tuple
+import difflib
+from typing import TYPE_CHECKING, Optional
 
 import jinja2
-import pytest
-import yaml
 from rich.console import Console
 from rich.traceback import Traceback
 
 from ..exceptions import RFileException, RFileUndefinedError
-from ..models import InfrahubTest, InfrahubTestExpectedResult
+from ..models import InfrahubTestExpectedResult
 from ..utils import identify_faulty_jinja_code
+from .base import InfrahubItem
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
-    from infrahub_sdk.schema import InfrahubRepositoryRFileConfig
+    from pytest import ExceptionInfo
 
 
-class InfrahubRFileUnitRenderItem(pytest.Item):
-    def __init__(
-        self,
-        *args: Any,
-        resource_name: str,
-        resource_config: InfrahubRepositoryRFileConfig,
-        test: InfrahubTest,
-        **kwargs: Dict[str, Any],
-    ):
-        super().__init__(*args, **kwargs)  # type: ignore[arg-type]
-
-        self.resource_name: str = resource_name
-        self.resource_config: InfrahubRepositoryRFileConfig = resource_config
-        test.spec.update_paths(base_dir=self.fspath.dirpath())
-        self.test: InfrahubTest = test
-
+class InfrahubRFileUnitRenderItem(InfrahubItem):
     def runtest(self) -> None:
-        templateLoader = jinja2.FileSystemLoader(searchpath=".")
-        templateEnv = jinja2.Environment(loader=templateLoader, trim_blocks=True, lstrip_blocks=True)
-        template = templateEnv.get_template(str(self.resource_config.template_path))
+        # Search for template based on rfile config, then repo directory
+        template_loader = jinja2.FileSystemLoader(self.session.infrahub_config_path.parent)  # type: ignore[attr-defined]
+        template_env = jinja2.Environment(loader=template_loader, trim_blocks=True, lstrip_blocks=True)
+        template = template_env.get_template(str(self.resource_config.template_path))  # type: ignore[attr-defined]
 
-        input_data = yaml.safe_load(self.test.spec.input.read_text())
+        input_data = self.test.spec.get_input_data()
+        expected_output = self.test.spec.get_output_data()
 
         try:
-            rendered_tpl = template.render(data=input_data["data"])
+            rendered_output = template.render(data=input_data["data"])
         except jinja2.UndefinedError as exc:
             traceback = Traceback(show_locals=False)
             errors = identify_faulty_jinja_code(traceback=traceback)
@@ -60,11 +45,15 @@ class InfrahubRFileUnitRenderItem(pytest.Item):
                 raise RFileUndefinedError(name=self.name, message=str_output, rtb=traceback, errors=errors) from exc
             return
 
-        if self.test.spec.output and rendered_tpl != self.test.spec.output.read_text():
+        if self.test.spec.output and expected_output != rendered_output:
             if self.test.expect == InfrahubTestExpectedResult.PASS:
-                raise RFileException(name=self.name, message="Output don't match")
+                # Provide a line by line sequence for unified diff to run
+                differences = difflib.unified_diff(expected_output.split("\n"), rendered_output.split("\n"))
+                # Join the diff back into one string
+                diff_string = "\n".join(differences)
+                raise RFileException(name=self.name, message=f"Outputs don't match.\n{diff_string}")
 
-    def repr_failure(self, excinfo: pytest.ExceptionInfo, style: Optional[str] = None) -> str:
+    def repr_failure(self, excinfo: ExceptionInfo, style: Optional[str] = None) -> str:
         """Called when self.runtest() raises an exception."""
 
         if isinstance(excinfo.value, jinja2.TemplateSyntaxError):
@@ -73,7 +62,4 @@ class InfrahubRFileUnitRenderItem(pytest.Item):
         if isinstance(excinfo.value, (RFileUndefinedError, RFileException)):
             return excinfo.value.message
 
-        return str(excinfo.value)
-
-    def reportinfo(self) -> Tuple[Path, Literal[0], str]:
-        return self.path, 0, f"resource: {self.name}"
+        return super().repr_failure(excinfo, style=style)

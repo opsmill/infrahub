@@ -21,10 +21,10 @@ def pytest_addoption(parser: Parser) -> None:
 
 
 def pytest_sessionstart(session: Session) -> None:
-    config_path = Path(session.config.option.infrahub_repo_config)
+    session.infrahub_config_path = Path(session.config.option.infrahub_repo_config)  # type: ignore[attr-defined]
 
-    if config_path.is_file():
-        session.infrahub_repo_config = load_repository_config(repo_config_file=config_path)  # type: ignore[attr-defined]
+    if session.infrahub_config_path.is_file():  # type: ignore[attr-defined]
+        session.infrahub_repo_config = load_repository_config(repo_config_file=session.infrahub_config_path)  # type: ignore[attr-defined]
 
 
 def pytest_collect_file(parent: Union[Collector, Item], file_path: Path) -> Optional[InfrahubYamlFile]:
@@ -34,9 +34,8 @@ def pytest_collect_file(parent: Union[Collector, Item], file_path: Path) -> Opti
 
 
 def pytest_configure(config: Config) -> None:
-    # register an additional marker
     config.addinivalue_line(
-        "markers", "infrahub_transform_python(name: str): Test related to a Transform Python for Infrahub"
+        "markers", "infrahub_python_transform(name: str): Test related to a Python Transform for Infrahub"
     )
     config.addinivalue_line("markers", "infrahub_rfile(name: str): Test related to a RFile for Infrahub")
     config.addinivalue_line("markers", "infrahub_check(name: str): Test related to a User defined Check for Infrahub")
