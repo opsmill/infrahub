@@ -64,7 +64,7 @@ from infrahub.auth import AccountSession, authentication_token
 from infrahub.core import get_branch, registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFound
-from infrahub.graphql.analyzer import GraphQLQueryAnalyzer
+from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 
 if TYPE_CHECKING:
     import graphene
@@ -206,7 +206,7 @@ class InfrahubGraphQLApp:
         query = operation["query"]
         schema_branch = registry.schema.get_schema_branch(name=branch.name)
         graphql_schema = await schema_branch.get_graphql_schema(db=db)
-        analyzed_query = GraphQLQueryAnalyzer(query=query, schema=graphql_schema, branch=branch)
+        analyzed_query = InfrahubGraphQLQueryAnalyzer(query=query, schema=graphql_schema, branch=branch)
         await self.permission_checker.check(account_session=account_session, analyzed_query=analyzed_query)
 
         variable_values = operation.get("variables")

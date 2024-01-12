@@ -4,14 +4,14 @@ import pytest
 
 from infrahub.auth import AccountSession, AuthType
 from infrahub.core.constants import AccountRole
-from infrahub.graphql.analyzer import GraphQLQueryAnalyzer
+from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.auth.query_permission_checker.read_write_checker import ReadWriteGraphQLPermissionChecker
 
 
 class TestReadWriteAuthChecker:
     def setup_method(self):
         self.account_session = AccountSession(account_id="abc", auth_type=AuthType.JWT, role=AccountRole.ADMIN)
-        self.graphql_query = AsyncMock(spec=GraphQLQueryAnalyzer)
+        self.graphql_query = AsyncMock(spec=InfrahubGraphQLQueryAnalyzer)
         self.checker = ReadWriteGraphQLPermissionChecker()
 
     @pytest.mark.parametrize("role", [AccountRole.ADMIN, AccountRole.READ_WRITE])

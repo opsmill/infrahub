@@ -35,7 +35,7 @@ class GraphQLOperation(pydantic.BaseModel):
     operation_type: OperationType
 
 
-class GraphQLQueryAnalyzerBase:
+class GraphQLQueryAnalyzer:
     def __init__(self, query: str, schema: Optional[GraphQLSchema] = None):
         self.query: str = query
         self.schema: Optional[GraphQLSchema] = schema
