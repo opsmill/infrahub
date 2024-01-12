@@ -2338,7 +2338,7 @@ core_models = {
             "display_labels": ["name__value"],
             "include_in_menu": False,
             "branch": BranchSupportType.AGNOSTIC.value,
-            "inherit_from": ["CoreWebhook"],
+            "inherit_from": [InfrahubKind.WEBHOOK],
             "attributes": [
                 {"name": "shared_key", "kind": "Password", "unique": False, "order_weight": 4000},
             ],
@@ -2353,12 +2353,12 @@ core_models = {
             "display_labels": ["name__value"],
             "include_in_menu": False,
             "branch": BranchSupportType.AGNOSTIC.value,
-            "inherit_from": ["CoreWebhook"],
+            "inherit_from": [InfrahubKind.WEBHOOK],
             "attributes": [],
             "relationships": [
                 {
                     "name": "transformation",
-                    "peer": "CoreTransformPython",
+                    "peer": InfrahubKind.TRANSFORMPYTHON,
                     "kind": "Attribute",
                     "identifier": "webhook___transformation",
                     "cardinality": "one",

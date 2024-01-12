@@ -10,8 +10,8 @@ async def configuration(
     service: InfrahubServices,
 ) -> None:
     service.log.debug("Refreshing webhook configuration")
-    standard_webhooks = await service.client.all(kind=InfrahubKind.WEBHOOK)
-    custom_webhooks = await service.client.all(kind="CoreCustomWebhook")
+    standard_webhooks = await service.client.all(kind=InfrahubKind.STANDARDWEBHOOK)
+    custom_webhooks = await service.client.all(kind=InfrahubKind.CUSTOMWEBHOOK)
 
     expected_webhooks = []
     for webhook in standard_webhooks:

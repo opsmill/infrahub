@@ -128,8 +128,10 @@ async def get_menu(
             InterfaceMenu(
                 title="Webhooks",
                 children=[
-                    InterfaceMenu(title="Webhook", path=f"/objects/{InfrahubKind.WEBHOOK}", icon="mdi:webhook"),
-                    InterfaceMenu(title="Custom Webhook", path="/objects/CoreCustomWebhook", icon="mdi:cog-outline"),
+                    InterfaceMenu(title="Webhook", path=f"/objects/{InfrahubKind.STANDARDWEBHOOK}", icon="mdi:webhook"),
+                    InterfaceMenu(
+                        title="Custom Webhook", path=f"/objects/{InfrahubKind.CUSTOMWEBHOOK}", icon="mdi:cog-outline"
+                    ),
                 ],
             ),
         ],
