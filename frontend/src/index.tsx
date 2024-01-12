@@ -3,7 +3,6 @@ import { useAtom, useSetAtom } from "jotai";
 import queryString from "query-string";
 import * as R from "ramda";
 import { useEffect, useState } from "react";
-import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { Slide, ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -37,10 +36,6 @@ import "./styles/index.css";
 import { findSelectedBranch } from "./utils/branches";
 import { sortByName, sortByOrderWeight } from "./utils/common";
 import { fetchUrl, getCurrentQsp } from "./utils/fetch";
-
-const root = ReactDOM.createRoot(
-  (document.getElementById("root") || document.createElement("div")) as HTMLElement
-);
 
 export const Root = () => {
   const setBranches = useSetAtom(branchesState);
@@ -232,7 +227,7 @@ const AppInitializer = () => {
   return <App />;
 };
 
-root.render(
+export const Infrahub = () => (
   <BrowserRouter basename="/">
     <QueryParamProvider
       adapter={ReactRouter6Adapter}
