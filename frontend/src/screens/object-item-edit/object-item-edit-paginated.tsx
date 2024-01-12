@@ -109,7 +109,8 @@ export default function ObjectItemEditComponent(props: Props) {
       genericsList,
       peerDropdownOptions,
       objectDetailsData,
-      user
+      user,
+      true
     );
 
   async function onSubmit(data: any) {

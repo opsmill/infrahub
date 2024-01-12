@@ -86,7 +86,8 @@ const getFormStructureForCreateEdit = (
   generics: iGenericSchema[],
   dropdownOptions: iPeerDropdownOptions,
   row?: any,
-  user?: any
+  user?: any,
+  isUpdate?: boolean
 ): DynamicFieldData[] => {
   if (!schema) {
     return [];
@@ -102,6 +103,10 @@ const getFormStructureForCreateEdit = (
 
     const fieldValue = getFieldValue(row, attribute);
 
+    // Quick fix to prevent password in update field,
+    // TODO: remove after new mutations are available to better handle accounts
+    const isOptional = attribute.optional || (isUpdate && attribute.kind === "HashedPassword");
+
     formFields.push({
       name: attribute.name + ".value",
       kind: attribute.kind as SchemaAttributeType,
@@ -112,9 +117,9 @@ const getFormStructureForCreateEdit = (
         values: getOptionsFromAttribute(attribute, fieldValue),
       },
       config: {
-        validate: (value: any) => validate(value, attribute, attribute.optional),
+        validate: (value: any) => validate(value, attribute, isOptional),
       },
-      isOptional: attribute.optional,
+      isOptional,
       isReadOnly: attribute.read_only,
       isProtected: getIsDisabled({
         owner: row && row[attribute.name]?.owner,
