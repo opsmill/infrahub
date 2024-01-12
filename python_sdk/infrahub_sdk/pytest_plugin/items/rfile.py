@@ -18,9 +18,10 @@ if TYPE_CHECKING:
 
 class InfrahubRFileUnitRenderItem(InfrahubItem):
     def runtest(self) -> None:
-        templateLoader = jinja2.FileSystemLoader(searchpath=".")
-        templateEnv = jinja2.Environment(loader=templateLoader, trim_blocks=True, lstrip_blocks=True)
-        template = templateEnv.get_template(str(self.resource_config.template_path))  # type: ignore[attr-defined]
+        # Search for template based on rfile config, then repo directory
+        template_loader = jinja2.FileSystemLoader(self.session.infrahub_config_path.parent)  # type: ignore[attr-defined]
+        template_env = jinja2.Environment(loader=template_loader, trim_blocks=True, lstrip_blocks=True)
+        template = template_env.get_template(str(self.resource_config.template_path))  # type: ignore[attr-defined]
 
         input_data = self.test.spec.get_input_data()
         expected_output = self.test.spec.get_output_data()
