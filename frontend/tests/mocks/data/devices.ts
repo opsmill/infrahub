@@ -3754,47 +3754,43 @@ export const deviceDetailsUpdateMocksData = {
 };
 
 export const deviceDetailsInterfacesMocksQuery = `
-query InfraDevice {
-  InfraDevice (ids: ["${deviceDetailsMocksId}"]) {
+query InfraInterface {
+  InfraInterface(offset: 0, limit: 10) {
+    count
     edges {
       node {
-        interfaces(offset: 0,limit: 10) {
-          count
+        id
+        display_label
+        __typename
+        name {
+          value
+        }
+        description {
+          value
+        }
+        speed {
+          value
+        }
+        mtu {
+          value
+        }
+        enabled {
+          value
+        }
+        status {
+          node {
+            display_label
+          }
+        }
+        role {
+          node {
+            display_label
+          }
+        }
+        tags {
           edges {
             node {
-              id
               display_label
-              name {
-                value
-              }
-              description {
-                value
-              }
-              speed {
-                value
-              }
-              mtu {
-                value
-              }
-              enabled {
-                value
-              }
-              __typename
-            }
-            properties {
-              updated_at
-              is_protected
-              is_visible
-              source {
-                id
-                display_label
-                __typename
-              }
-              owner {
-                id
-                display_label
-                __typename
-              }
             }
           }
         }

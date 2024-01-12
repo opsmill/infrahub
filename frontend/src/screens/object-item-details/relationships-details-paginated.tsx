@@ -9,7 +9,7 @@ import { Pagination } from "../../components/utils/pagination";
 import { QSP } from "../../config/qsp";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { removeRelationship } from "../../graphql/mutations/relationships/removeRelationship";
-import { getObjectItemsPaginated } from "../../graphql/queries/objects/getObjectItems";
+import { getObjectRelationshipsDetailsPaginated } from "../../graphql/queries/objects/getObjectRelationshipDetails";
 import usePagination from "../../hooks/usePagination";
 import useQuery from "../../hooks/useQuery";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
@@ -59,9 +59,22 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
     .map((row: any) => `${row.name}: ${row.value}`)
     .join(",");
 
+  // const queryString = schemaData
+  //   ? getObjectItemsPaginated({
+  //       kind: schemaData.kind,
+  //       attributes,
+  //       relationships,
+  //       filters: filtersString,
+  //     })
+  //   : // Empty query to make the gql parsing work
+  //     // TODO: Find another solution for queries while loading schemaData
+  //     "query { ok }";
+
   const queryString = schemaData
-    ? getObjectItemsPaginated({
-        kind: schemaData.kind,
+    ? getObjectRelationshipsDetailsPaginated({
+        kind: objectname,
+        objectid: parentNode.id,
+        relationship: relationshipTab,
         attributes,
         relationships,
         filters: filtersString,
@@ -92,8 +105,6 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
     return null;
   }
 
-  const result = data[schemaData?.kind]?.edges;
-
   const handleDeleteRelationship = async (name: string, id: string) => {
     const mutationString = removeRelationship({
       data: stringifyWithoutQuotes({
@@ -121,19 +132,24 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
     toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Item removed from the group"} />);
   };
 
+  // const count = data[schemaData?.kind].count;
+  const count = data[objectname]?.edges[0]?.node[relationshipTab]?.count;
+  // const relationshipsData = data[schemaData?.kind]?.edges;
+  const relationshipsData = data[objectname]?.edges[0]?.node[relationshipTab]?.edges;
+
   return (
     <div className="border-t border-gray-200 px-4 py-5 sm:p-0 flex flex-col flex-1 overflow-auto">
       <RelationshipDetails
         parentNode={parentNode}
         mode="TABLE"
-        relationshipsData={result}
+        relationshipsData={relationshipsData}
         relationshipSchema={relationshipSchema}
         relationshipSchemaData={schemaData}
         refetch={updatePageData}
         onDeleteRelationship={handleDeleteRelationship}
       />
 
-      <Pagination count={result[0]?.node[relationshipTab]?.count} />
+      <Pagination count={count} />
     </div>
   );
 }
