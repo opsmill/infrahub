@@ -1106,7 +1106,9 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
 
         return resp.json()
 
-    def repository_update_commit(self, branch_name: str, repository_id: str, commit: str, is_read_only: bool = False) -> bool:
+    def repository_update_commit(
+        self, branch_name: str, repository_id: str, commit: str, is_read_only: bool = False
+    ) -> bool:
         raise NotImplementedError(
             "This method is deprecated in the async client and won't be implemented in the sync client."
         )
