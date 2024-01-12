@@ -46,7 +46,6 @@ export type SchemaAttributeType =
   | "List"
   | "Any"
   | "String"
-  | "Integer"
   | "Boolean"
   | "JSON"
   | "Dropdown";
@@ -81,7 +80,6 @@ export const getInputTypeFromKind = (kind: SchemaAttributeType): ControlType => 
       return "textarea";
     case "Number":
     case "Bandwidth":
-    case "Integer":
       return "number";
     case "Checkbox":
     case "Boolean":
