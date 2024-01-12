@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Optional
 
 from graphene import InputObjectType, Mutation
 
+from infrahub.core.constants import infrahubkind
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema import NodeSchema
 from infrahub.log import get_logger
@@ -95,6 +96,9 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
                 include_owner=True,
                 include_source=True,
             )
+        if node.get_kind() != infrahubkind.READONLYREPOSITORY:
+            return await super().mutate_update(root, info, data, branch, at, database=db, node=node)
+
         current_commit = node.commit.value
         current_ref = node.ref.value
         new_commit = None
@@ -106,11 +110,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
 
         obj, result = await super().mutate_update(root, info, data, branch, at, database=db, node=node)
 
-        send_update_message = False
-
-        if obj.get_kind() == "CoreReadOnlyRepository":
-            if (new_commit and new_commit != current_commit) or (new_ref and new_ref != current_ref):
-                send_update_message = True
+        send_update_message = (new_commit and new_commit != current_commit) or (new_ref and new_ref != current_ref)
         if not send_update_message:
             return obj, result
 
