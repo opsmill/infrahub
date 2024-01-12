@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from graphene import ObjectType
+from infrahub_sdk.utils import extract_fields
 
 from infrahub import config
 from infrahub.core.constants import InfrahubKind
@@ -28,7 +29,6 @@ from .mutations import (
     SchemaEnumRemove,
 )
 from .queries import BranchQueryList, DiffSummary, InfrahubInfo
-from .utils import extract_fields
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo  # pylint: disable=no-name-in-module

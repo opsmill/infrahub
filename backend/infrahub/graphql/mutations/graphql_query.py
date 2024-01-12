@@ -7,7 +7,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql.analyzer import GraphQLQueryAnalyzer
+from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.mutations.main import InfrahubMutationMixin
 
 from .main import InfrahubMutationOptions
@@ -38,7 +38,7 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
             return {}
 
         query_info = {}
-        analyzer = GraphQLQueryAnalyzer(query=query_value, schema=info.schema, branch=branch)
+        analyzer = InfrahubGraphQLQueryAnalyzer(query=query_value, schema=info.schema, branch=branch)
 
         valid, errors = analyzer.is_valid
         if not valid:

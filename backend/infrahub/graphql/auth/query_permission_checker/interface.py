@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 from infrahub.auth import AccountSession
-from infrahub.graphql.analyzer import GraphQLQueryAnalyzer
+from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 
 
 class GraphQLQueryPermissionCheckerInterface(ABC):
@@ -10,5 +10,5 @@ class GraphQLQueryPermissionCheckerInterface(ABC):
         ...
 
     @abstractmethod
-    async def check(self, analyzed_query: GraphQLQueryAnalyzer):
+    async def check(self, analyzed_query: InfrahubGraphQLQueryAnalyzer):
         ...
