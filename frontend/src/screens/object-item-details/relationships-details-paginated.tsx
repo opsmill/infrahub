@@ -93,7 +93,6 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
   }
 
   const result = data[schemaData?.kind]?.edges;
-  console.log("result: ", result);
 
   const handleDeleteRelationship = async (name: string, id: string) => {
     const mutationString = removeRelationship({
