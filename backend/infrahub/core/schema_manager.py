@@ -412,6 +412,8 @@ class SchemaBranch:
                         choice.color = select_color(defined_colors)
                     if not choice.label:
                         choice.label = format_label(choice.name)
+                    if not choice.description:
+                        choice.description = ""
 
                 if attr.choices != sorted_choices:
                     attr.choices = sorted_choices
