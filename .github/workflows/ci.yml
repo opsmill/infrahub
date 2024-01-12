@@ -601,6 +601,8 @@ jobs:
 
       - name: Run Playwright tests
         run: npm run ci:test:e2e
+        env:
+          BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_E2E_PLAYWRIGHT }}
 
       - name: playwright-report
         if: always()
