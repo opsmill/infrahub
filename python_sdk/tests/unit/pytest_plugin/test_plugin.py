@@ -26,7 +26,7 @@ def test_emptyconfig(pytester):
 
 
 def test_rfile_config_missing_directory(pytester):
-    """Make sure that the plugin load the test file properly."""
+    """Make sure tests raise errors if directories are not found."""
     pytester.makefile(
         ".yml",
         test_rfile="""
@@ -64,7 +64,7 @@ def test_rfile_config_missing_directory(pytester):
 
 
 def test_rfile_config_missing_input(pytester):
-    """Make sure that the plugin load the test file properly."""
+    """Make sure tests raise errors if no inputs are provided."""
     pytester.makefile(
         ".yml",
         test_rfile="""
@@ -105,7 +105,7 @@ def test_rfile_config_missing_input(pytester):
 
 
 def test_rfile_no_expected_output(pytester):
-    """Make sure that the plugin load the test file properly."""
+    """Make sure tests succeed if no expect outputs are provided."""
     pytester.makefile(
         ".yml",
         test_rfile="""
@@ -161,7 +161,7 @@ def test_rfile_no_expected_output(pytester):
 
 
 def test_rfile_unexpected_output(pytester):
-    """Make sure that the plugin load the test file properly."""
+    """Make sure tests fail if the expected and computed outputs don't match."""
     pytester.makefile(
         ".yml",
         test_rfile="""
