@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, List
 from fastapi import APIRouter, Body, Depends, Request, Response
 from pydantic import BaseModel, Field
 
-from infrahub import config
 from infrahub.api.dependencies import BranchParams, get_branch_params, get_current_user, get_db
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
@@ -39,7 +38,7 @@ async def get_artifact(
     artifact = await registry.manager.get_one(db=db, id=artifact_id, branch=branch_params.branch, at=branch_params.at)
     if not artifact:
         raise NodeNotFound(
-            branch_name=config.SETTINGS.main.default_branch, node_type=InfrahubKind.ARTIFACT, identifier=artifact_id
+            branch_name=branch_params.branch.name, node_type=InfrahubKind.ARTIFACT, identifier=artifact_id
         )
 
     content = await registry.storage.retrieve(identifier=artifact.storage_id.value)

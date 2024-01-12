@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 from graphene import ObjectType
 from infrahub_sdk.utils import extract_fields
 
-from infrahub import config
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.exceptions import NodeNotFound
@@ -58,7 +57,6 @@ async def account_resolver(root, info: GraphQLResolveInfo):
             return account_profile
 
         raise NodeNotFound(
-            branch_name=config.SETTINGS.main.default_branch,
             node_type=InfrahubKind.ACCOUNT,
             identifier=account_session.account_id,
         )
