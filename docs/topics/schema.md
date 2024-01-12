@@ -253,10 +253,12 @@ In the schema the attribute `hierarchical: true` on a `Generic` activate the hie
 > Each node can only inherit from one `Generic` with hierarchical mode at the same time.
 
 All nodes with hierarchical support will automatically have 2 new relationships:
+
 - `parent` of cardinality one
 - `children` of cardinality many
 
 ### Specific the structure of the hierarchy
+
 By default any node inheriting from the main `Generic` can be a parent or a children, which might not be always desirable. It's possible to limit which type of models are valid `parent` or `children` in the schema with the attributes `parent` & `children` at the node level.
 
 In the example below, we are defining a hierarchy of `Location` with `Region`, `Country` and `City`.
