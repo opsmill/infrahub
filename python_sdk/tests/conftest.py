@@ -4,6 +4,8 @@ import pytest
 
 from infrahub_sdk.ctl import config
 
+pytest_plugins = ["pytester"]
+
 
 @pytest.fixture(scope="session")
 def event_loop():
