@@ -105,8 +105,8 @@ def get_transform_class_instance(
 
     try:
         spec = importlib.util.spec_from_file_location(transform_config.class_name, search_location)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
+        module = importlib.util.module_from_spec(spec)  # type: ignore[arg-type]
+        spec.loader.exec_module(module)  # type: ignore[union-attr]
 
         # Get the specified class from the module
         transform_class = getattr(module, transform_config.class_name)
