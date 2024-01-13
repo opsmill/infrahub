@@ -97,7 +97,7 @@ async def get_menu(
             InterfaceMenu(title="Repository", path=f"/objects/{InfrahubKind.REPOSITORY}", icon="mdi:source-repository"),
             InterfaceMenu(
                 title="Read-only Repository",
-                path=f"/objects/{InfrahubKind.REPOSITORYREADONLY}",
+                path=f"/objects/{InfrahubKind.READONLYREPOSITORY}",
                 icon="mdi:source-repository",
             ),
             InterfaceMenu(title="GraphQL Query", path=f"/objects/{InfrahubKind.GRAPHQLQUERY}", icon="mdi:graphql"),

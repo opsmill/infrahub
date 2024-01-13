@@ -335,7 +335,7 @@ async def test_diff_get_nodes_entire_branch(db: InfrahubDatabase, default_branch
     expected_response_branch2_repo01_time01 = {
         "branch": "branch2",
         "labels": [
-            InfrahubKind.REPOSITORYGENERIC,
+            InfrahubKind.GENERICREPOSITORY,
             "CoreNode",
             InfrahubKind.REPOSITORY,
             "LineageOwner",
@@ -380,7 +380,7 @@ async def test_diff_get_nodes_entire_branch(db: InfrahubDatabase, default_branch
     expected_response_branch2_repo01_time02 = {
         "branch": "branch2",
         "labels": [
-            InfrahubKind.REPOSITORYGENERIC,
+            InfrahubKind.GENERICREPOSITORY,
             "CoreNode",
             InfrahubKind.REPOSITORY,
             "LineageOwner",

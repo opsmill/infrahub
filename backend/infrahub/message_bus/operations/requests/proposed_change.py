@@ -154,7 +154,7 @@ async def repository_checks(message: messages.RequestProposedChangeRepositoryChe
     change_proposal = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=message.proposed_change)
 
     repositories = await service.client.all(
-        kind=InfrahubKind.REPOSITORYGENERIC, branch=change_proposal.source_branch.value
+        kind=InfrahubKind.GENERICREPOSITORY, branch=change_proposal.source_branch.value
     )
     events: List[InfrahubMessage] = []
     for repository in repositories:

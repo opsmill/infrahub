@@ -22,7 +22,7 @@ async def checks(message: messages.RequestRepositoryChecks, service: InfrahubSer
     events: List[InfrahubMessage] = []
 
     repository = await service.client.get(
-        kind=InfrahubKind.REPOSITORYGENERIC, id=message.repository, branch=message.source_branch
+        kind=InfrahubKind.GENERICREPOSITORY, id=message.repository, branch=message.source_branch
     )
     proposed_change = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=message.proposed_change)
 
@@ -105,7 +105,7 @@ async def user_checks(message: messages.RequestRepositoryUserChecks, service: In
     events: List[InfrahubMessage] = []
 
     repository = await service.client.get(
-        kind=InfrahubKind.REPOSITORYGENERIC,
+        kind=InfrahubKind.GENERICREPOSITORY,
         id=message.repository,
         branch=message.source_branch,
     )

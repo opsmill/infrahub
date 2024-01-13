@@ -2027,13 +2027,13 @@ class Diff:
         repos_to = {
             repo.id: repo
             for repo in await NodeManager.query(
-                schema=InfrahubKind.REPOSITORYGENERIC, db=db, branch=branch, at=self.diff_to
+                schema=InfrahubKind.GENERICREPOSITORY, db=db, branch=branch, at=self.diff_to
             )
         }
         repos_from = {
             repo.id: repo
             for repo in await NodeManager.query(
-                schema=InfrahubKind.REPOSITORYGENERIC, db=db, branch=branch, at=self.diff_from
+                schema=InfrahubKind.GENERICREPOSITORY, db=db, branch=branch, at=self.diff_from
             )
         }
 
