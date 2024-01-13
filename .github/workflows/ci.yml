@@ -588,6 +588,7 @@ jobs:
     timeout-minutes: 40
     env:
       INFRAHUB_DB_TYPE: neo4j
+      INFRAHUB_LB: true
       METRICS_ENDPOINT: ${{ secrets.METRICS_ENDPOINT }}
     steps:
       - name: Check out repository code
@@ -693,9 +694,21 @@ jobs:
         if: always()
         run: docker ps -a
 
-      - name: Display server logs
+      - name: Display server 1 logs
         if: always()
         run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-server-1"
+
+      - name: Display server 2 logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-server-2"
+
+      - name: Display server 3 logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-server-3"
+
+      - name: Display server 4 logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-server-4"
 
       - name: Display git 1 logs
         if: always()
@@ -704,6 +717,10 @@ jobs:
       - name: Display git 2 logs
         if: always()
         run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-git-2"
+
+      - name: Display lb logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-lb-1"
 
       - name: Display database logs
         if: always()

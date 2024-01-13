@@ -3,10 +3,21 @@ global:
   scrape_interval: 2s
 
 scrape_configs:
-  - job_name: "ci"
+  - job_name: "ci-database"
     static_configs:
       - targets:
           - "database:2004"
           # - "memgraph-exporter:2004" # requires enterprise license
-          - "infrahub-server:8000/metrics"
-          - "infrahub-git:8000"
+  - job_name: "ci-infrahub-server"
+    dns_sd_configs:
+      - names:
+          - "infrahub-server"
+        port: 8000
+        type: A
+  - job_name: "ci-infrahub-git"
+    metrics_path: "/"
+    dns_sd_configs:
+      - names:
+          - "infrahub-git"
+        port: 8000
+        type: A

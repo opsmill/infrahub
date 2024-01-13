@@ -1,0 +1,30 @@
+---
+# yamllint disable rule:line-length
+services:
+  infrahub-lb:
+    image: haproxy:2.9-alpine
+    ports:
+      - "${INFRAHUB_SERVER_PORT:-8000}:8000"
+    volumes:
+      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg
+    depends_on:
+      infrahub-server:
+        condition: service_started
+    healthcheck:
+      test: wget -O /dev/null http://localhost:8000/api/schema/summary || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  infrahub-server:
+    deploy:
+      mode: replicated
+      replicas: 4
+    command: >
+      gunicorn --config backend/infrahub/serve/gunicorn_config.py -w 1 --logger-class infrahub.serve.log.GunicornLogger infrahub.server:app
+
+  infrahub-git:
+    environment:
+      INFRAHUB_INTERNAL_ADDRESS: http://infrahub-lb:8000
+      INFRAHUB_ADDRESS: http://infrahub-lb:8000

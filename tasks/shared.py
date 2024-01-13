@@ -79,6 +79,7 @@ IMAGE_VER = REQUESTED_IMAGE_VER or "stable"
 
 OVERRIDE_FILE_NAME = "development/docker-compose.override.yml"
 DEFAULT_FILE_NAME = "development/docker-compose.default.yml"
+LB_FILE_NAME = "development/docker-compose.lb.yml"
 LOCAL_FILE_NAME = "development/docker-compose.local-build.yml"
 COMPOSE_FILES_MEMGRAPH = [
     "development/docker-compose-deps.yml",
@@ -203,6 +204,8 @@ def build_compose_files_cmd(database: str, namespace: str = "") -> str:
     if os.path.exists(OVERRIDE_FILE_NAME):
         print("!! Found an override file for docker-compose !!")
         COMPOSE_FILES.append(OVERRIDE_FILE_NAME)
+    elif os.getenv("INFRAHUB_LB") is not None:
+        COMPOSE_FILES.append(LB_FILE_NAME)
     else:
         COMPOSE_FILES.append(DEFAULT_FILE_NAME)
 

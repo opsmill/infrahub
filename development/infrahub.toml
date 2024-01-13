@@ -1,6 +1,3 @@
-[main]
-internal_address = "http://infrahub-server:8000"
-
 [git]
 repositories_directory = "/opt/infrahub/git"
 
