@@ -184,17 +184,21 @@ async def refresh_artifacts(message: messages.RequestProposedChangeRefreshArtifa
         kind=InfrahubKind.ARTIFACTDEFINITION, branch=proposed_change.source_branch.value
     )
     query = """
-    query {
+    query BranchSummary($branch_name: String!) {
         DiffSummary {
             node
         }
-        Branch(name: "%s") {
+        Branch(name: $branch_name) {
             is_data_only
         }
     }
-    """ % (proposed_change.source_branch.value)
+    """
 
-    response = await service.client.execute_graphql(query=query, branch_name=proposed_change.source_branch.value)
+    response = await service.client.execute_graphql(
+        query=query,
+        branch_name=proposed_change.source_branch.value,
+        variables={"branch_name": proposed_change.source_branch.value},
+    )
     source_branch_is_data_only = _extract_branch_only(data=response["Branch"])
 
     impacted_artifacts = []
@@ -203,18 +207,16 @@ async def refresh_artifacts(message: messages.RequestProposedChangeRefreshArtifa
         # to the transforms in the Git repository
         changed_nodes = _extract_nodes_filter(data=response["DiffSummary"])
 
-        query = (
-            """
-        query {
-            CoreGraphQLQueryGroup(
-                members__ids: [%s]
-            ) {
+        query = """
+        query FindImpactedArtifacts($members: [ID!]) {
+            CoreGraphQLQueryGroup(members__ids: $members) {
                 edges {
                     node {
                         subscribers {
                             edges {
                                 node {
                                     id
+                                    __typename
                                 }
                             }
                         }
@@ -223,11 +225,9 @@ async def refresh_artifacts(message: messages.RequestProposedChangeRefreshArtifa
             }
         }
         """
-            % changed_nodes
-        )
 
         impacted_artifacts_response = await service.client.execute_graphql(
-            query=query, branch_name=proposed_change.source_branch.value
+            query=query, branch_name=proposed_change.source_branch.value, variables={"members": changed_nodes}
         )
         impacted_artifacts = _extract_impacted_artifacts(data=impacted_artifacts_response)
 
@@ -245,9 +245,8 @@ async def refresh_artifacts(message: messages.RequestProposedChangeRefreshArtifa
         await service.send(message=msg)
 
 
-def _extract_nodes_filter(data: List[Dict[str, str]]) -> str:
-    nodes = [f'"{entry["node"]}"' for entry in data]
-    return ", ".join(nodes)
+def _extract_nodes_filter(data: List[Dict[str, str]]) -> List[str]:
+    return [entry["node"] for entry in data]
 
 
 def _extract_branch_only(data: List[Dict[str, bool]]) -> bool:
@@ -261,5 +260,6 @@ def _extract_impacted_artifacts(data: Dict) -> List[str]:
     artifacts = []
     for node in data["CoreGraphQLQueryGroup"]["edges"]:
         for subscriber in node["node"]["subscribers"]["edges"]:
-            artifacts.append(subscriber["node"]["id"])
-    return artifacts
+            if subscriber["node"]["__typename"] == InfrahubKind.ARTIFACT:
+                artifacts.append(subscriber["node"]["id"])
+    return list(set(artifacts))

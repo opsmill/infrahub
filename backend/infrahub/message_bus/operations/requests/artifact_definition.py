@@ -81,8 +81,7 @@ async def check(  # pylint: disable=too-many-statements
     await transform.query.fetch()
     query = transform.query.peer
     repository = transformation_repository.peer
-    branch = await service.client.branch.get(branch_name=message.source_branch)
-    if not branch.is_data_only:
+    if not message.source_branch_is_data_only:
         repository = await service.client.get(
             kind=InfrahubKind.REPOSITORY, id=repository.id, branch=message.source_branch
         )
