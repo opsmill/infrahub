@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import functools
 
-from infrahub_sdk.ctl.transform import get_transform_class_instance
+from infrahub_sdk.transforms import get_transform_class_instance
 
 from ..exceptions import PythonTransformDefinitionError, PythonTransformException
 from ..models import InfrahubTestExpectedResult
