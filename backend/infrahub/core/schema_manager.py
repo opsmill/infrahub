@@ -1068,7 +1068,7 @@ class SchemaManager(NodeManager):
 
         current_schema = self.get_schema_branch(name=branch.name)
         schema_diff = branch.schema_hash.compare(current_schema.get_hash_full())
-        return await self.load_schema_from_db(db=db, branch=branch, schema_diff=schema_diff)
+        return await self.load_schema_from_db(db=db, branch=branch, schema=current_schema, schema_diff=schema_diff)
 
     async def load_schema_from_db(
         self,
@@ -1097,7 +1097,7 @@ class SchemaManager(NodeManager):
         filters = {"generics": {}, "groups": {}, "nodes": {}}
         has_filters = False
         if schema_diff:
-            log.info(f"Loading schema from DB to update : {schema_diff.to_string()}")
+            log.info(f"Loading schema from DB", schema_to_update=schema_diff.to_list())
 
             for node_type in list(filters.keys()):
                 filter_value = {

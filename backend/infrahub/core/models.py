@@ -21,6 +21,8 @@ class SchemaBranchDiff(BaseModel):
     def to_string(self) -> str:
         return ", ".join(self.nodes + self.generics + self.groups)
 
+    def to_list(self) -> List[str]:
+        return self.nodes + self.generics + self.groups
 
 class SchemaBranchHash(BaseModel):
     main: str
