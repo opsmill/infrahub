@@ -9,7 +9,7 @@ class NodeKind(BaseModel):
     namespace: str
     name: str
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.namespace}{self.name}"
 
 
@@ -23,6 +23,7 @@ class SchemaBranchDiff(BaseModel):
 
     def to_list(self) -> List[str]:
         return self.nodes + self.generics + self.groups
+
 
 class SchemaBranchHash(BaseModel):
     main: str

@@ -1097,7 +1097,7 @@ class SchemaManager(NodeManager):
         filters = {"generics": {}, "groups": {}, "nodes": {}}
         has_filters = False
         if schema_diff:
-            log.info(f"Loading schema from DB", schema_to_update=schema_diff.to_list())
+            log.info("Loading schema from DB", schema_to_update=schema_diff.to_list())
 
             for node_type in list(filters.keys()):
                 filter_value = {
