@@ -13,7 +13,7 @@ exclude-labels:
   - 'ci/skip-changelog'
   - 'group/python-sdk'
 change-title-escapes: '\<*_&'  # You can add # and @ to disable mentions, and add ` to disable code blocks.
-tag-prefix: infrahub-v
+# tag-prefix: infrahub-v
 tag-template: infrahub-v
 template: |
   ## Changelog
