@@ -75,9 +75,6 @@ export const getObjectItemDisplayValue = (
     return schemaKindName[row[attribute?.name]] ?? "-";
   }
 
-  console.log("attribute: ", attribute);
-  console.log("row: ", row);
-
   const textValue =
     row[attribute?.name]?.label ??
     row[attribute?.name]?.display_label ??
