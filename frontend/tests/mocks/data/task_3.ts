@@ -11,7 +11,7 @@ export const taskMocksSchema = [
       {
         id: "374125ad-4bfe-49ac-b6d2-059b7bba19ce",
         name: "counter",
-        kind: "Integer",
+        kind: "Number",
         namespace: "Attribute",
         label: "Counter",
         description: null,
@@ -49,7 +49,7 @@ export const taskMocksSchemaWithDefaultValue = [
       {
         id: "374125ad-4bfe-49ac-b6d2-059b7bba19ce",
         name: "counter",
-        kind: "Integer",
+        kind: "Number",
         namespace: "Attribute",
         label: "Counter",
         description: null,
@@ -88,7 +88,7 @@ export const taskMocksSchemaOptional = [
       {
         id: "374125ad-4bfe-49ac-b6d2-059b7bba19ce",
         name: "counter",
-        kind: "Integer",
+        kind: "Number",
         namespace: "Attribute",
         label: "Counter",
         description: null,

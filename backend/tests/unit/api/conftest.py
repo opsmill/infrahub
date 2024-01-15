@@ -5,6 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from infrahub import config
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -58,7 +59,7 @@ async def car_person_data(
     await c3.new(db=db, name="nolt", nbr_seats=4, is_electric=True, owner=p2)
     await c3.save(db=db)
 
-    query = """
+    query1 = """
     query {
         TestPerson {
             edges {
@@ -81,11 +82,29 @@ async def car_person_data(
     }
     """
 
-    q1 = await Node.init(db=db, schema="CoreGraphQLQuery")
-    await q1.new(db=db, name="query01", query=query)
+    query2 = """
+    query($person: String!) {
+        TestPerson(name__value: $person) {
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    q1 = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERY)
+    await q1.new(db=db, name="query01", query=query1)
     await q1.save(db=db)
 
-    r1 = await Node.init(db=db, schema="CoreRepository")
+    q2 = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERY)
+    await q2.new(db=db, name="query02", query=query2)
+    await q2.save(db=db)
+
+    r1 = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
     await r1.new(
         db=db,
         name="repo01",
@@ -101,6 +120,7 @@ async def car_person_data(
         "c2": c2,
         "c3": c3,
         "q1": q1,
+        "q2": q2,
         "r1": r1,
     }
 
@@ -173,7 +193,7 @@ async def car_person_data_generic_diff(db: InfrahubDatabase, default_branch, car
     persons_list = await NodeManager.query(db=db, schema="TestPerson", branch=branch2)
     persons = {item.name.value: item for item in persons_list}
 
-    repos_list = await NodeManager.query(db=db, schema="CoreRepository", branch=branch2)
+    repos_list = await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY, branch=branch2)
     repos = {item.name.value: item for item in repos_list}
 
     ecars_list = await NodeManager.query(db=db, schema="TestElectricCar", branch=branch2)
@@ -269,15 +289,15 @@ async def car_person_data_artifact_diff(db: InfrahubDatabase, default_branch, ca
     }
     """
 
-    q1 = await Node.init(db=db, schema="CoreGraphQLQuery")
+    q1 = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERY)
     await q1.new(db=db, name="query01", query=query)
     await q1.save(db=db)
 
-    r1 = await Node.init(db=db, schema="CoreRepository")
+    r1 = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
     await r1.new(db=db, name="repo01", location="git@github.com:user/repo01.git", commit="aaaaaaaaa")
     await r1.save(db=db)
 
-    g1 = await Node.init(db=db, schema="CoreStandardGroup")
+    g1 = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
     await g1.new(db=db, name="group1", members=[car_person_data_generic_diff["c1"], car_person_data_generic_diff["c2"]])
     await g1.save(db=db)
 
@@ -294,7 +314,7 @@ async def car_person_data_artifact_diff(db: InfrahubDatabase, default_branch, ca
     )
     await t1.save(db=db)
 
-    ad1 = await Node.init(db=db, schema="CoreArtifactDefinition")
+    ad1 = await Node.init(db=db, schema=InfrahubKind.ARTIFACTDEFINITION)
     await ad1.new(
         db=db,
         name="artifactdef01",
@@ -306,7 +326,7 @@ async def car_person_data_artifact_diff(db: InfrahubDatabase, default_branch, ca
     )
     await ad1.save(db=db)
 
-    art1 = await Node.init(db=db, schema="CoreArtifact")
+    art1 = await Node.init(db=db, schema=InfrahubKind.ARTIFACT)
     await art1.new(
         db=db,
         name="myyartifact",
@@ -327,7 +347,7 @@ async def car_person_data_artifact_diff(db: InfrahubDatabase, default_branch, ca
     artifacts[art1.id].checksum.value = "zxcv9063c26263353de24e1b911z1x2c3v"
     await artifacts[art1.id].save(db=db)
 
-    art2 = await Node.init(db=db, schema="CoreArtifact", branch=branch3)
+    art2 = await Node.init(db=db, schema=InfrahubKind.ARTIFACT, branch=branch3)
     await art2.new(
         db=db,
         name="myyartifact",
@@ -340,7 +360,7 @@ async def car_person_data_artifact_diff(db: InfrahubDatabase, default_branch, ca
     )
     await art2.save(db=db)
 
-    art3_main = await Node.init(db=db, schema="CoreArtifact", branch=default_branch)
+    art3_main = await Node.init(db=db, schema=InfrahubKind.ARTIFACT, branch=default_branch)
     await art3_main.new(
         db=db,
         name="myyartifact",
@@ -353,7 +373,7 @@ async def car_person_data_artifact_diff(db: InfrahubDatabase, default_branch, ca
     )
     await art3_main.save(db=db)
 
-    art3_branch = await Node.init(db=db, schema="CoreArtifact", branch=branch3)
+    art3_branch = await Node.init(db=db, schema=InfrahubKind.ARTIFACT, branch=branch3)
     await art3_branch.new(
         db=db,
         name="myyartifact",
@@ -384,7 +404,7 @@ async def data_diff_attribute(db: InfrahubDatabase, default_branch, car_person_d
     persons_list = await NodeManager.query(db=db, schema="TestPerson", branch=branch2)
     persons = {item.name.value: item for item in persons_list}
 
-    repos_list = await NodeManager.query(db=db, schema="CoreRepository", branch=branch2)
+    repos_list = await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY, branch=branch2)
     repos = {item.name.value: item for item in repos_list}
 
     ecars_list = await NodeManager.query(db=db, schema="TestElectricCar", branch=branch2)
@@ -459,10 +479,10 @@ async def data_conflict_attribute(db: InfrahubDatabase, default_branch, car_pers
     persons_list_main = await NodeManager.query(db=db, schema="TestPerson", branch=default_branch)
     persons_main = {item.name.value: item for item in persons_list_main}
 
-    repos_list_branch = await NodeManager.query(db=db, schema="CoreRepository", branch=branch2)
+    repos_list_branch = await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY, branch=branch2)
     repos_branch = {item.name.value: item for item in repos_list_branch}
 
-    repos_list_main = await NodeManager.query(db=db, schema="CoreRepository", branch=default_branch)
+    repos_list_main = await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY, branch=default_branch)
     repos_main = {item.name.value: item for item in repos_list_main}
 
     # Update Repo 01 in Branch2 a first time
@@ -642,27 +662,27 @@ async def data_conflict_relationship_one(db: InfrahubDatabase, default_branch, c
 
 @pytest.fixture
 async def data_relationship_many_base(db: InfrahubDatabase, default_branch, register_core_models_schema, first_account):
-    red = await Node.init(db=db, schema="BuiltinTag")
+    red = await Node.init(db=db, schema=InfrahubKind.TAG)
     await red.new(db=db, name="red")
     await red.save(db=db)
 
-    green = await Node.init(db=db, schema="BuiltinTag")
+    green = await Node.init(db=db, schema=InfrahubKind.TAG)
     await green.new(db=db, name="green")
     await green.save(db=db)
 
-    blue = await Node.init(db=db, schema="BuiltinTag")
+    blue = await Node.init(db=db, schema=InfrahubKind.TAG)
     await blue.new(db=db, name="blue")
     await blue.save(db=db)
 
-    yellow = await Node.init(db=db, schema="BuiltinTag")
+    yellow = await Node.init(db=db, schema=InfrahubKind.TAG)
     await yellow.new(db=db, name="yellow")
     await yellow.save(db=db)
 
-    orange = await Node.init(db=db, schema="BuiltinTag")
+    orange = await Node.init(db=db, schema=InfrahubKind.TAG)
     await orange.new(db=db, name="orange")
     await orange.save(db=db)
 
-    pink = await Node.init(db=db, schema="BuiltinTag")
+    pink = await Node.init(db=db, schema=InfrahubKind.TAG)
     await pink.new(db=db, name="pink")
     await pink.save(db=db)
 

@@ -6,7 +6,7 @@ from infrahub_sdk.utils import compare_lists
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import BranchSupportType, FilterSchemaKind
+from infrahub.core.constants import BranchSupportType, FilterSchemaKind, InfrahubKind
 from infrahub.core.schema import (
     GenericSchema,
     GroupSchema,
@@ -39,7 +39,13 @@ def schema_all_in_one():
                     {"name": "description", "kind": "Text", "optional": True},
                 ],
                 "relationships": [
-                    {"name": "tags", "peer": "BuiltinTag", "label": "Tags", "optional": True, "cardinality": "many"},
+                    {
+                        "name": "tags",
+                        "peer": InfrahubKind.TAG,
+                        "label": "Tags",
+                        "optional": True,
+                        "cardinality": "many",
+                    },
                 ],
             },
             {
@@ -77,7 +83,7 @@ def schema_all_in_one():
             {
                 "name": "StandardGroup",
                 "namespace": "Core",
-                "inherit_from": ["CoreGroup"],
+                "inherit_from": [InfrahubKind.GENERICGROUP],
                 "attributes": [
                     {"name": "name", "kind": "Text", "label": "Name", "unique": True},
                 ],
@@ -95,7 +101,7 @@ def schema_all_in_one():
                 "relationships": [
                     {
                         "name": "primary_tag",
-                        "peer": "BuiltinTag",
+                        "peer": InfrahubKind.TAG,
                         "label": "Primary Tag",
                         "identifier": "primary_tag__criticality",
                         "optional": True,
@@ -251,7 +257,7 @@ async def test_schema_branch_process_branch_support(schema_all_in_one):
     assert criticality.get_relationship(name="status").branch == BranchSupportType.AGNOSTIC
     assert criticality.get_relationship(name="badges").branch == BranchSupportType.LOCAL
 
-    criticality = schema.get(name="BuiltinTag")
+    criticality = schema.get(name=InfrahubKind.TAG)
     assert criticality.get_attribute(name="name").branch == BranchSupportType.AWARE
     assert criticality.get_attribute(name="description").branch == BranchSupportType.AGNOSTIC
 
@@ -281,7 +287,7 @@ async def test_schema_branch_add_groups(schema_all_in_one):
     assert criticality.get_relationship(name="member_of_groups")
     assert criticality.get_relationship(name="subscriber_of_groups")
 
-    std_group = schema.get(name="CoreStandardGroup")
+    std_group = schema.get(name=InfrahubKind.STANDARDGROUP)
     assert std_group.get_relationship(name="member_of_groups", raise_on_error=False) is None
     assert std_group.get_relationship(name="subscriber_of_groups", raise_on_error=False) is None
 
@@ -833,10 +839,16 @@ async def test_schema_branch_process_filters(
                     {"name": "description", "kind": "Text", "label": "Description", "optional": True},
                 ],
                 "relationships": [
-                    {"name": "tags", "peer": "BuiltinTag", "label": "Tags", "optional": True, "cardinality": "many"},
+                    {
+                        "name": "tags",
+                        "peer": InfrahubKind.TAG,
+                        "label": "Tags",
+                        "optional": True,
+                        "cardinality": "many",
+                    },
                     {
                         "name": "primary_tag",
-                        "peer": "BuiltinTag",
+                        "peer": InfrahubKind.TAG,
                         "label": "Primary Tag",
                         "identifier": "primary_tag__criticality",
                         "optional": True,
@@ -862,7 +874,7 @@ async def test_schema_branch_process_filters(
     schema_branch.process_filters()
 
     assert len(schema_branch.nodes) == 2
-    criticality_dict = schema_branch.get("BuiltinCriticality").dict()
+    criticality_dict = schema_branch.get("BuiltinCriticality").model_dump()
 
     expected_filters = [
         {"name": "ids", "kind": FilterSchemaKind.TEXT, "enum": None, "object_kind": None, "description": None},
@@ -1067,10 +1079,16 @@ async def test_schema_branch_copy(
                     {"name": "description", "kind": "Text", "label": "Description", "optional": True},
                 ],
                 "relationships": [
-                    {"name": "tags", "peer": "BuiltinTag", "label": "Tags", "optional": True, "cardinality": "many"},
+                    {
+                        "name": "tags",
+                        "peer": InfrahubKind.TAG,
+                        "label": "Tags",
+                        "optional": True,
+                        "cardinality": "many",
+                    },
                     {
                         "name": "primary_tag",
-                        "peer": "BuiltinTag",
+                        "peer": InfrahubKind.TAG,
                         "label": "Primary Tag",
                         "identifier": "primary_tag__criticality",
                         "optional": True,
@@ -1119,10 +1137,16 @@ async def test_schema_branch_diff(
                     {"name": "description", "kind": "Text", "label": "Description", "optional": True},
                 ],
                 "relationships": [
-                    {"name": "tags", "peer": "BuiltinTag", "label": "Tags", "optional": True, "cardinality": "many"},
+                    {
+                        "name": "tags",
+                        "peer": InfrahubKind.TAG,
+                        "label": "Tags",
+                        "optional": True,
+                        "cardinality": "many",
+                    },
                     {
                         "name": "primary_tag",
-                        "peer": "BuiltinTag",
+                        "peer": InfrahubKind.TAG,
                         "label": "Primary Tag",
                         "identifier": "primary_tag__criticality",
                         "optional": True,
@@ -1152,7 +1176,7 @@ async def test_schema_branch_diff(
     new_schema.set(name="BuiltinCriticality", schema=node)
 
     diff = schema_branch.diff(obj=new_schema)
-    assert diff.dict() == {"added": [], "changed": ["BuiltinCriticality"], "removed": []}
+    assert diff.model_dump() == {"added": [], "changed": ["BuiltinCriticality"], "removed": []}
 
 
 # -----------------------------------------------------------------
@@ -1385,10 +1409,16 @@ async def test_load_schema_from_db(
                     {"name": "description", "kind": "Text", "label": "Description", "optional": True},
                 ],
                 "relationships": [
-                    {"name": "tags", "peer": "BuiltinTag", "label": "Tags", "optional": True, "cardinality": "many"},
+                    {
+                        "name": "tags",
+                        "peer": InfrahubKind.TAG,
+                        "label": "Tags",
+                        "optional": True,
+                        "cardinality": "many",
+                    },
                     {
                         "name": "primary_tag",
-                        "peer": "BuiltinTag",
+                        "peer": InfrahubKind.TAG,
                         "label": "Primary Tag",
                         "identifier": "primary_tag__criticality",
                         "optional": True,
@@ -1437,7 +1467,7 @@ async def test_load_schema_from_db(
     assert len(schema2.groups) == 1
 
     assert schema11.get(name="TestCriticality").get_hash() == schema2.get(name="TestCriticality").get_hash()
-    assert schema11.get(name="BuiltinTag").get_hash() == schema2.get(name="BuiltinTag").get_hash()
+    assert schema11.get(name=InfrahubKind.TAG).get_hash() == schema2.get(name="BuiltinTag").get_hash()
     assert schema11.get(name="TestGenericInterface").get_hash() == schema2.get(name="TestGenericInterface").get_hash()
     assert schema11.get(name="GenericGroup").get_hash() == schema2.get(name="GenericGroup").get_hash()
 
@@ -1460,10 +1490,16 @@ async def test_load_schema(
                     {"name": "description", "kind": "Text", "label": "Description", "optional": True},
                 ],
                 "relationships": [
-                    {"name": "tags", "peer": "BuiltinTag", "label": "Tags", "optional": True, "cardinality": "many"},
+                    {
+                        "name": "tags",
+                        "peer": InfrahubKind.TAG,
+                        "label": "Tags",
+                        "optional": True,
+                        "cardinality": "many",
+                    },
                     {
                         "name": "primary_tag",
-                        "peer": "BuiltinTag",
+                        "peer": InfrahubKind.TAG,
                         "label": "Primary Tag",
                         "identifier": "primary_tag__criticality",
                         "optional": True,
@@ -1512,6 +1548,6 @@ async def test_load_schema(
     assert len(schema2.groups) == 1
 
     assert schema11.get(name="TestCriticality").get_hash() == schema2.get(name="TestCriticality").get_hash()
-    assert schema11.get(name="BuiltinTag").get_hash() == schema2.get(name="BuiltinTag").get_hash()
+    assert schema11.get(name=InfrahubKind.TAG).get_hash() == schema2.get(name=InfrahubKind.TAG).get_hash()
     assert schema11.get(name="TestGenericInterface").get_hash() == schema2.get(name="TestGenericInterface").get_hash()
     assert schema11.get(name="GenericGroup").get_hash() == schema2.get(name="GenericGroup").get_hash()

@@ -3,12 +3,12 @@ import { formatISO, isEqual, isValid } from "date-fns";
 import { useAtom } from "jotai";
 import React, { useEffect } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
+import { AccountMenu } from "../../components/account-menu";
 import BranchSelector from "../../components/branch-selector";
-import { DatePicker } from "../../components/date-picker";
+import { DatePicker } from "../../components/inputs/date-picker";
 import { QSP } from "../../config/qsp";
-import { debounce } from "../../utils/common";
 import { datetimeAtom } from "../../state/atoms/time.atom";
-import { AccountMenu } from "../../components/AccountMenu";
+import { debounce } from "../../utils/common";
 
 interface Props {
   setSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -53,7 +53,7 @@ export default function Header(props: Props) {
   };
 
   return (
-    <div className="flex justify-between flex-shrink-0 h-16 bg-custom-white shadow pr-4">
+    <div className="z-10 flex justify-between flex-shrink-0 h-16 bg-custom-white shadow pr-4">
       <button
         type="button"
         className="border-r border-gray-200 p-4 text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-custom-blue-500 md:hidden"

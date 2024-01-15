@@ -16,10 +16,25 @@ export const interfacesArray = [
       id: "3e37838b-823e-46d6-9143-af1336d098a2",
       display_label: "Ethernet12",
       name: { value: "Ethernet12", __typename: "TextAttribute" },
-      description: { value: null, __typename: "TextAttribute" },
+      description: { value: interfaceDescription, __typename: "TextAttribute" },
       speed: { value: 10000, __typename: "NumberAttribute" },
       mtu: { value: 1500, __typename: "NumberAttribute" },
       enabled: { value: true, __typename: "CheckboxAttribute" },
+      role: {
+        value: "loopback",
+        color: "#93e9be",
+        description: "Internal interface.",
+        label: "Loopback",
+        __typename: "Dropdown",
+      },
+      status: {
+        value: "active",
+        color: "#7fbf7f",
+        description: "Fully operational and currently in service.",
+        label: "Active",
+        __typename: "Dropdown",
+      },
+      tags: { edges: Array(0), __typename: "NestedPaginatedBuiltinTag" },
       __typename: "InterfaceL2",
     },
     properties: {
@@ -34,41 +49,32 @@ export const interfacesArray = [
   },
   {
     node: {
-      id: "40283f08-ec1c-42f8-93e7-d359e5878d9a",
-      display_label: "Ethernet1",
-      name: { value: "Ethernet1", __typename: "TextAttribute" },
-      description: {
-        value: interfaceDescription,
-        __typename: "TextAttribute",
+      id: "3e37838b-823e-46d6-9143-af1336d098a2",
+      display_label: "Ethernet12",
+      name: { value: "Ethernet12", __typename: "TextAttribute" },
+      description: { value: interfaceDescription, __typename: "TextAttribute" },
+      speed: { value: 10000, __typename: "NumberAttribute" },
+      mtu: { value: 1500, __typename: "NumberAttribute" },
+      enabled: { value: true, __typename: "CheckboxAttribute" },
+      role: {
+        value: "loopback",
+        color: "#93e9be",
+        description: "Internal interface.",
+        label: "Loopback",
+        __typename: "Dropdown",
       },
-      speed: { value: 10000, __typename: "NumberAttribute" },
-      mtu: { value: 1500, __typename: "NumberAttribute" },
-      enabled: { value: true, __typename: "CheckboxAttribute" },
-      __typename: "InterfaceL3",
-    },
-    properties: {
-      updated_at: "2023-06-01T11:58:18.546535+00:00",
-      is_protected: true,
-      is_visible: true,
-      source: null,
-      owner: null,
-      __typename: "RelationshipProperty",
-    },
-    __typename: "NestedEdgedInterface",
-  },
-  {
-    node: {
-      id: "43daf533-0099-480a-b7bb-12218c883b16",
-      display_label: "Ethernet11",
-      name: { value: "Ethernet11", __typename: "TextAttribute" },
-      description: { value: null, __typename: "TextAttribute" },
-      speed: { value: 10000, __typename: "NumberAttribute" },
-      mtu: { value: 1500, __typename: "NumberAttribute" },
-      enabled: { value: true, __typename: "CheckboxAttribute" },
+      status: {
+        value: "active",
+        color: "#7fbf7f",
+        description: "Fully operational and currently in service.",
+        label: "Active",
+        __typename: "Dropdown",
+      },
+      tags: { edges: Array(0), __typename: "NestedPaginatedBuiltinTag" },
       __typename: "InterfaceL2",
     },
     properties: {
-      updated_at: "2023-06-01T11:58:22.080132+00:00",
+      updated_at: "2023-06-01T11:58:22.313265+00:00",
       is_protected: true,
       is_visible: true,
       source: null,
@@ -79,17 +85,32 @@ export const interfacesArray = [
   },
   {
     node: {
-      id: "4aac95e1-631c-4608-b75d-7ed6539746f5",
-      display_label: "Ethernet8",
-      name: { value: "Ethernet8", __typename: "TextAttribute" },
-      description: { value: null, __typename: "TextAttribute" },
+      id: "3e37838b-823e-46d6-9143-af1336d098a2",
+      display_label: "Ethernet12",
+      name: { value: "Ethernet12", __typename: "TextAttribute" },
+      description: { value: interfaceDescription, __typename: "TextAttribute" },
       speed: { value: 10000, __typename: "NumberAttribute" },
       mtu: { value: 1500, __typename: "NumberAttribute" },
       enabled: { value: true, __typename: "CheckboxAttribute" },
-      __typename: "InterfaceL3",
+      role: {
+        value: "loopback",
+        color: "#93e9be",
+        description: "Internal interface.",
+        label: "Loopback",
+        __typename: "Dropdown",
+      },
+      status: {
+        value: "active",
+        color: "#7fbf7f",
+        description: "Fully operational and currently in service.",
+        label: "Active",
+        __typename: "Dropdown",
+      },
+      tags: { edges: Array(0), __typename: "NestedPaginatedBuiltinTag" },
+      __typename: "InterfaceL2",
     },
     properties: {
-      updated_at: "2023-06-01T11:58:21.378940+00:00",
+      updated_at: "2023-06-01T11:58:22.313265+00:00",
       is_protected: true,
       is_visible: true,
       source: null,
@@ -100,17 +121,32 @@ export const interfacesArray = [
   },
   {
     node: {
-      id: "5183bc8b-c271-4c62-a3f7-cd225aed600e",
-      display_label: "Ethernet4",
-      name: { value: "Ethernet4", __typename: "TextAttribute" },
-      description: { value: null, __typename: "TextAttribute" },
+      id: "3e37838b-823e-46d6-9143-af1336d098a2",
+      display_label: "Ethernet12",
+      name: { value: "Ethernet12", __typename: "TextAttribute" },
+      description: { value: interfaceDescription, __typename: "TextAttribute" },
       speed: { value: 10000, __typename: "NumberAttribute" },
       mtu: { value: 1500, __typename: "NumberAttribute" },
       enabled: { value: true, __typename: "CheckboxAttribute" },
-      __typename: "InterfaceL3",
+      role: {
+        value: "loopback",
+        color: "#93e9be",
+        description: "Internal interface.",
+        label: "Loopback",
+        __typename: "Dropdown",
+      },
+      status: {
+        value: "active",
+        color: "#7fbf7f",
+        description: "Fully operational and currently in service.",
+        label: "Active",
+        __typename: "Dropdown",
+      },
+      tags: { edges: Array(0), __typename: "NestedPaginatedBuiltinTag" },
+      __typename: "InterfaceL2",
     },
     properties: {
-      updated_at: "2023-06-01T11:58:19.139467+00:00",
+      updated_at: "2023-06-01T11:58:22.313265+00:00",
       is_protected: true,
       is_visible: true,
       source: null,
@@ -121,17 +157,32 @@ export const interfacesArray = [
   },
   {
     node: {
-      id: "5601f63f-baff-4ac2-99da-acb7a15d8f3f",
-      display_label: "Ethernet3",
-      name: { value: "Ethernet3", __typename: "TextAttribute" },
-      description: { value: null, __typename: "TextAttribute" },
+      id: "3e37838b-823e-46d6-9143-af1336d098a2",
+      display_label: "Ethernet12",
+      name: { value: "Ethernet12", __typename: "TextAttribute" },
+      description: { value: interfaceDescription, __typename: "TextAttribute" },
       speed: { value: 10000, __typename: "NumberAttribute" },
       mtu: { value: 1500, __typename: "NumberAttribute" },
       enabled: { value: true, __typename: "CheckboxAttribute" },
-      __typename: "InterfaceL3",
+      role: {
+        value: "loopback",
+        color: "#93e9be",
+        description: "Internal interface.",
+        label: "Loopback",
+        __typename: "Dropdown",
+      },
+      status: {
+        value: "active",
+        color: "#7fbf7f",
+        description: "Fully operational and currently in service.",
+        label: "Active",
+        __typename: "Dropdown",
+      },
+      tags: { edges: Array(0), __typename: "NestedPaginatedBuiltinTag" },
+      __typename: "InterfaceL2",
     },
     properties: {
-      updated_at: "2023-06-01T11:58:18.971388+00:00",
+      updated_at: "2023-06-01T11:58:22.313265+00:00",
       is_protected: true,
       is_visible: true,
       source: null,
@@ -142,17 +193,32 @@ export const interfacesArray = [
   },
   {
     node: {
-      id: "569dcfa9-7690-464a-b6bc-91861cf34870",
-      display_label: "Ethernet7",
-      name: { value: "Ethernet7", __typename: "TextAttribute" },
-      description: { value: null, __typename: "TextAttribute" },
+      id: "3e37838b-823e-46d6-9143-af1336d098a2",
+      display_label: "Ethernet12",
+      name: { value: "Ethernet12", __typename: "TextAttribute" },
+      description: { value: interfaceDescription, __typename: "TextAttribute" },
       speed: { value: 10000, __typename: "NumberAttribute" },
       mtu: { value: 1500, __typename: "NumberAttribute" },
       enabled: { value: true, __typename: "CheckboxAttribute" },
-      __typename: "InterfaceL3",
+      role: {
+        value: "loopback",
+        color: "#93e9be",
+        description: "Internal interface.",
+        label: "Loopback",
+        __typename: "Dropdown",
+      },
+      status: {
+        value: "active",
+        color: "#7fbf7f",
+        description: "Fully operational and currently in service.",
+        label: "Active",
+        __typename: "Dropdown",
+      },
+      tags: { edges: Array(0), __typename: "NestedPaginatedBuiltinTag" },
+      __typename: "InterfaceL2",
     },
     properties: {
-      updated_at: "2023-06-01T11:58:21.193380+00:00",
+      updated_at: "2023-06-01T11:58:22.313265+00:00",
       is_protected: true,
       is_visible: true,
       source: null,
@@ -163,17 +229,32 @@ export const interfacesArray = [
   },
   {
     node: {
-      id: "5df2b034-6f1f-4700-8e40-a17fb7131c0d",
-      display_label: "Ethernet10",
-      name: { value: "Ethernet10", __typename: "TextAttribute" },
-      description: { value: null, __typename: "TextAttribute" },
+      id: "3e37838b-823e-46d6-9143-af1336d098a2",
+      display_label: "Ethernet12",
+      name: { value: "Ethernet12", __typename: "TextAttribute" },
+      description: { value: interfaceDescription, __typename: "TextAttribute" },
       speed: { value: 10000, __typename: "NumberAttribute" },
       mtu: { value: 1500, __typename: "NumberAttribute" },
       enabled: { value: true, __typename: "CheckboxAttribute" },
-      __typename: "InterfaceL3",
+      role: {
+        value: "loopback",
+        color: "#93e9be",
+        description: "Internal interface.",
+        label: "Loopback",
+        __typename: "Dropdown",
+      },
+      status: {
+        value: "active",
+        color: "#7fbf7f",
+        description: "Fully operational and currently in service.",
+        label: "Active",
+        __typename: "Dropdown",
+      },
+      tags: { edges: Array(0), __typename: "NestedPaginatedBuiltinTag" },
+      __typename: "InterfaceL2",
     },
     properties: {
-      updated_at: "2023-06-01T11:58:21.909594+00:00",
+      updated_at: "2023-06-01T11:58:22.313265+00:00",
       is_protected: true,
       is_visible: true,
       source: null,
@@ -184,38 +265,248 @@ export const interfacesArray = [
   },
   {
     node: {
-      id: "81cac377-1844-4e6c-b6cc-a04b44f93b33",
-      display_label: "Management0",
-      name: { value: "Management0", __typename: "TextAttribute" },
-      description: { value: null, __typename: "TextAttribute" },
-      speed: { value: 1000, __typename: "NumberAttribute" },
-      mtu: { value: 1500, __typename: "NumberAttribute" },
-      enabled: { value: true, __typename: "CheckboxAttribute" },
-      __typename: "InterfaceL3",
-    },
-    properties: {
-      updated_at: "2023-06-01T11:58:18.317816+00:00",
-      is_protected: true,
-      is_visible: true,
-      source: null,
-      owner: null,
-      __typename: "RelationshipProperty",
-    },
-    __typename: "NestedEdgedInterface",
-  },
-  {
-    node: {
-      id: "d6e6567d-cd98-4708-abc8-e5a8bc18730e",
-      display_label: "Ethernet6",
-      name: { value: "Ethernet6", __typename: "TextAttribute" },
-      description: { value: null, __typename: "TextAttribute" },
+      id: "3e37838b-823e-46d6-9143-af1336d098a2",
+      display_label: "Ethernet12",
+      name: { value: "Ethernet12", __typename: "TextAttribute" },
+      description: { value: interfaceDescription, __typename: "TextAttribute" },
       speed: { value: 10000, __typename: "NumberAttribute" },
       mtu: { value: 1500, __typename: "NumberAttribute" },
       enabled: { value: true, __typename: "CheckboxAttribute" },
-      __typename: "InterfaceL3",
+      role: {
+        value: "loopback",
+        color: "#93e9be",
+        description: "Internal interface.",
+        label: "Loopback",
+        __typename: "Dropdown",
+      },
+      status: {
+        value: "active",
+        color: "#7fbf7f",
+        description: "Fully operational and currently in service.",
+        label: "Active",
+        __typename: "Dropdown",
+      },
+      tags: { edges: Array(0), __typename: "NestedPaginatedBuiltinTag" },
+      __typename: "InterfaceL2",
     },
     properties: {
-      updated_at: "2023-06-01T11:58:20.029709+00:00",
+      updated_at: "2023-06-01T11:58:22.313265+00:00",
+      is_protected: true,
+      is_visible: true,
+      source: null,
+      owner: null,
+      __typename: "RelationshipProperty",
+    },
+    __typename: "NestedEdgedInterface",
+  },
+  {
+    node: {
+      id: "3e37838b-823e-46d6-9143-af1336d098a2",
+      display_label: "Ethernet12",
+      name: { value: "Ethernet12", __typename: "TextAttribute" },
+      description: { value: interfaceDescription, __typename: "TextAttribute" },
+      speed: { value: 10000, __typename: "NumberAttribute" },
+      mtu: { value: 1500, __typename: "NumberAttribute" },
+      enabled: { value: true, __typename: "CheckboxAttribute" },
+      role: {
+        value: "loopback",
+        color: "#93e9be",
+        description: "Internal interface.",
+        label: "Loopback",
+        __typename: "Dropdown",
+      },
+      status: {
+        value: "active",
+        color: "#7fbf7f",
+        description: "Fully operational and currently in service.",
+        label: "Active",
+        __typename: "Dropdown",
+      },
+      tags: { edges: Array(0), __typename: "NestedPaginatedBuiltinTag" },
+      __typename: "InterfaceL2",
+    },
+    properties: {
+      updated_at: "2023-06-01T11:58:22.313265+00:00",
+      is_protected: true,
+      is_visible: true,
+      source: null,
+      owner: null,
+      __typename: "RelationshipProperty",
+    },
+    __typename: "NestedEdgedInterface",
+  },
+  {
+    node: {
+      id: "3e37838b-823e-46d6-9143-af1336d098a2",
+      display_label: "Ethernet12",
+      name: { value: "Ethernet12", __typename: "TextAttribute" },
+      description: { value: interfaceDescription, __typename: "TextAttribute" },
+      speed: { value: 10000, __typename: "NumberAttribute" },
+      mtu: { value: 1500, __typename: "NumberAttribute" },
+      enabled: { value: true, __typename: "CheckboxAttribute" },
+      role: {
+        value: "loopback",
+        color: "#93e9be",
+        description: "Internal interface.",
+        label: "Loopback",
+        __typename: "Dropdown",
+      },
+      status: {
+        value: "active",
+        color: "#7fbf7f",
+        description: "Fully operational and currently in service.",
+        label: "Active",
+        __typename: "Dropdown",
+      },
+      tags: { edges: Array(0), __typename: "NestedPaginatedBuiltinTag" },
+      __typename: "InterfaceL2",
+    },
+    properties: {
+      updated_at: "2023-06-01T11:58:22.313265+00:00",
+      is_protected: true,
+      is_visible: true,
+      source: null,
+      owner: null,
+      __typename: "RelationshipProperty",
+    },
+    __typename: "NestedEdgedInterface",
+  },
+  {
+    node: {
+      id: "3e37838b-823e-46d6-9143-af1336d098a2",
+      display_label: "Ethernet12",
+      name: { value: "Ethernet12", __typename: "TextAttribute" },
+      description: { value: interfaceDescription, __typename: "TextAttribute" },
+      speed: { value: 10000, __typename: "NumberAttribute" },
+      mtu: { value: 1500, __typename: "NumberAttribute" },
+      enabled: { value: true, __typename: "CheckboxAttribute" },
+      role: {
+        value: "loopback",
+        color: "#93e9be",
+        description: "Internal interface.",
+        label: "Loopback",
+        __typename: "Dropdown",
+      },
+      status: {
+        value: "active",
+        color: "#7fbf7f",
+        description: "Fully operational and currently in service.",
+        label: "Active",
+        __typename: "Dropdown",
+      },
+      tags: { edges: Array(0), __typename: "NestedPaginatedBuiltinTag" },
+      __typename: "InterfaceL2",
+    },
+    properties: {
+      updated_at: "2023-06-01T11:58:22.313265+00:00",
+      is_protected: true,
+      is_visible: true,
+      source: null,
+      owner: null,
+      __typename: "RelationshipProperty",
+    },
+    __typename: "NestedEdgedInterface",
+  },
+  {
+    node: {
+      id: "3e37838b-823e-46d6-9143-af1336d098a2",
+      display_label: "Ethernet12",
+      name: { value: "Ethernet12", __typename: "TextAttribute" },
+      description: { value: interfaceDescription, __typename: "TextAttribute" },
+      speed: { value: 10000, __typename: "NumberAttribute" },
+      mtu: { value: 1500, __typename: "NumberAttribute" },
+      enabled: { value: true, __typename: "CheckboxAttribute" },
+      role: {
+        value: "loopback",
+        color: "#93e9be",
+        description: "Internal interface.",
+        label: "Loopback",
+        __typename: "Dropdown",
+      },
+      status: {
+        value: "active",
+        color: "#7fbf7f",
+        description: "Fully operational and currently in service.",
+        label: "Active",
+        __typename: "Dropdown",
+      },
+      tags: { edges: Array(0), __typename: "NestedPaginatedBuiltinTag" },
+      __typename: "InterfaceL2",
+    },
+    properties: {
+      updated_at: "2023-06-01T11:58:22.313265+00:00",
+      is_protected: true,
+      is_visible: true,
+      source: null,
+      owner: null,
+      __typename: "RelationshipProperty",
+    },
+    __typename: "NestedEdgedInterface",
+  },
+  {
+    node: {
+      id: "3e37838b-823e-46d6-9143-af1336d098a2",
+      display_label: "Ethernet12",
+      name: { value: "Ethernet12", __typename: "TextAttribute" },
+      description: { value: interfaceDescription, __typename: "TextAttribute" },
+      speed: { value: 10000, __typename: "NumberAttribute" },
+      mtu: { value: 1500, __typename: "NumberAttribute" },
+      enabled: { value: true, __typename: "CheckboxAttribute" },
+      role: {
+        value: "loopback",
+        color: "#93e9be",
+        description: "Internal interface.",
+        label: "Loopback",
+        __typename: "Dropdown",
+      },
+      status: {
+        value: "active",
+        color: "#7fbf7f",
+        description: "Fully operational and currently in service.",
+        label: "Active",
+        __typename: "Dropdown",
+      },
+      tags: { edges: Array(0), __typename: "NestedPaginatedBuiltinTag" },
+      __typename: "InterfaceL2",
+    },
+    properties: {
+      updated_at: "2023-06-01T11:58:22.313265+00:00",
+      is_protected: true,
+      is_visible: true,
+      source: null,
+      owner: null,
+      __typename: "RelationshipProperty",
+    },
+    __typename: "NestedEdgedInterface",
+  },
+  {
+    node: {
+      id: "3e37838b-823e-46d6-9143-af1336d098a2",
+      display_label: "Ethernet12",
+      name: { value: "Ethernet12", __typename: "TextAttribute" },
+      description: { value: interfaceDescription, __typename: "TextAttribute" },
+      speed: { value: 10000, __typename: "NumberAttribute" },
+      mtu: { value: 1500, __typename: "NumberAttribute" },
+      enabled: { value: true, __typename: "CheckboxAttribute" },
+      role: {
+        value: "loopback",
+        color: "#93e9be",
+        description: "Internal interface.",
+        label: "Loopback",
+        __typename: "Dropdown",
+      },
+      status: {
+        value: "active",
+        color: "#7fbf7f",
+        description: "Fully operational and currently in service.",
+        label: "Active",
+        __typename: "Dropdown",
+      },
+      tags: { edges: Array(0), __typename: "NestedPaginatedBuiltinTag" },
+      __typename: "InterfaceL2",
+    },
+    properties: {
+      updated_at: "2023-06-01T11:58:22.313265+00:00",
       is_protected: true,
       is_visible: true,
       source: null,
@@ -1219,8 +1510,8 @@ export const deviceDetailsMocksData = {
 };
 
 export const deviceDetailsUpdateMocksQuery = `
-query InfraDevice {
-  InfraDevice (ids: ["${deviceDetailsMocksId}"]) {
+query getInfraDeviceDetailsAndPeers {
+  InfraDeviceDetailsAndPeers: InfraDevice (ids: ["${deviceDetailsMocksId}"]) {
     edges {
       node {
         id
@@ -1450,7 +1741,7 @@ query InfraDevice {
 }`;
 
 export const deviceDetailsUpdateMocksData = {
-  InfraDevice: {
+  InfraDeviceDetailsAndPeers: {
     edges: [
       {
         node: {
@@ -3754,16 +4045,18 @@ export const deviceDetailsUpdateMocksData = {
 };
 
 export const deviceDetailsInterfacesMocksQuery = `
-query InfraDevice {
-  InfraDevice (ids: ["${deviceDetailsMocksId}"]) {
+query GetObjectRelationships_InfraDevice {
+  InfraDevice(ids: ["${deviceDetailsMocksId}"]) {
+    count
     edges {
       node {
-        interfaces(offset: 0,limit: 10) {
+        interfaces(offset: 0, limit: 10) {
           count
           edges {
             node {
               id
               display_label
+              __typename
               name {
                 value
               }
@@ -3779,21 +4072,22 @@ query InfraDevice {
               enabled {
                 value
               }
-              __typename
-            }
-            properties {
-              updated_at
-              is_protected
-              is_visible
-              source {
-                id
-                display_label
-                __typename
+              status {
+                node {
+                  display_label
+                }
               }
-              owner {
-                id
-                display_label
-                __typename
+              role {
+                node {
+                  display_label
+                }
+              }
+              tags {
+                edges {
+                  node {
+                    display_label
+                  }
+                }
               }
             }
           }
@@ -3806,6 +4100,7 @@ query InfraDevice {
 
 export const deviceDetailsInterfacesMocksData = {
   InfraDevice: {
+    count: 1,
     edges: [
       {
         node: {

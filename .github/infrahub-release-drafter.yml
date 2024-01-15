@@ -1,0 +1,21 @@
+---
+categories:
+  - title: '🚀 Features'
+    labels:
+      - 'type/feature'
+  - title: '🐛 Bug Fixes'
+    labels:
+      - 'type/bug'
+  - title: '🧰 Maintenance'
+    label: 'type/housekeeping'
+change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
+exclude-labels:
+  - 'ci/skip-changelog'
+  - 'group/python-sdk'
+change-title-escapes: '\<*_&'  # You can add # and @ to disable mentions, and add ` to disable code blocks.
+tag-prefix: infrahub-v
+tag-template: infrahub-v
+template: |
+  ## Changelog
+
+  $CHANGES

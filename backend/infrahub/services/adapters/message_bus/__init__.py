@@ -26,3 +26,6 @@ class InfrahubMessageBus:
 
     async def rpc(self, message: InfrahubMessage) -> InfrahubResponse:
         raise NotImplementedError()
+
+    async def subscribe(self) -> None:
+        raise NotImplementedError()

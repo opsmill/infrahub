@@ -1,0 +1,17 @@
+---
+version: "1.0"
+nodes:
+  - name: "Node"
+    namespace: "Infra"
+    description: "InfraNode for load testing purposes"
+    label: "InfraNode"
+    icon: "mdi:application-cog-outline"
+    default_filter: name__value
+    order_by:
+      - name__value
+    display_labels:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        unique: true

@@ -44,10 +44,6 @@ from starlette.requests import HTTPConnection, Request
 from starlette.responses import JSONResponse, Response
 from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 
-from infrahub.api.dependencies import api_key_scheme, cookie_auth_scheme, jwt_scheme
-from infrahub.auth import AccountSession, authentication_token
-from infrahub.graphql.analyzer import GraphQLQueryAnalyzer
-
 # pylint: disable=no-name-in-module,unused-argument,ungrouped-imports,raise-missing-from
 
 try:
@@ -63,9 +59,12 @@ except ImportError:
 from infrahub_sdk.utils import str_to_bool
 
 import infrahub.config as config
+from infrahub.api.dependencies import api_key_scheme, cookie_auth_scheme, jwt_scheme
+from infrahub.auth import AccountSession, authentication_token
 from infrahub.core import get_branch, registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFound
+from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 
 if TYPE_CHECKING:
     import graphene
@@ -187,6 +186,7 @@ class InfrahubGraphQLApp:
             "infrahub_database": db,
             "infrahub_rpc_client": request.app.state.rpc_client,
             "account_session": account_session,
+            "related_node_ids": set(),
         }
 
         return context_value
@@ -206,7 +206,7 @@ class InfrahubGraphQLApp:
         query = operation["query"]
         schema_branch = registry.schema.get_schema_branch(name=branch.name)
         graphql_schema = await schema_branch.get_graphql_schema(db=db)
-        analyzed_query = GraphQLQueryAnalyzer(query=query, schema=graphql_schema, branch=branch)
+        analyzed_query = InfrahubGraphQLQueryAnalyzer(query=query, schema=graphql_schema, branch=branch)
         await self.permission_checker.check(account_session=account_session, analyzed_query=analyzed_query)
 
         variable_values = operation.get("variables")

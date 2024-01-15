@@ -1,7 +1,7 @@
 from typing import List
 
 from infrahub.core.branch import ObjectConflict
-from infrahub.core.constants import ProposedChangeState
+from infrahub.core.constants import InfrahubKind, ProposedChangeState
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
@@ -19,10 +19,10 @@ async def _create_data_check(db: InfrahubDatabase, proposed_change: Node) -> Nod
     validations = await proposed_change.validations.get_peers(db=db)
 
     for validation in validations.values():
-        if validation._schema.kind == "CoreDataValidator":
+        if validation._schema.kind == InfrahubKind.DATAVALIDATOR:
             return validation
 
-    validator_obj = await Node.init(db=db, schema="CoreDataValidator")
+    validator_obj = await Node.init(db=db, schema=InfrahubKind.DATAVALIDATOR)
     await validator_obj.new(
         db=db,
         label="Data Integrity",
@@ -43,7 +43,7 @@ async def _get_conflicts(db: InfrahubDatabase, proposed_change: Node) -> List[Ob
 async def cancel(message: messages.RequestProposedChangeCancel, service: InfrahubServices) -> None:
     """Cancel a proposed change."""
     log.info("Cancelling proposed change", id=message.proposed_change)
-    proposed_change = await service.client.get(kind="CoreProposedChange", id=message.proposed_change)
+    proposed_change = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=message.proposed_change)
     proposed_change.state.value = ProposedChangeState.CANCELED.value
     await proposed_change.save()
 
@@ -53,7 +53,7 @@ async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, s
     log.info(f"Got a request to process data integrity defined in proposed_change: {message.proposed_change}")
     async with service.database.start_transaction() as db:
         proposed_change = await NodeManager.get_one_by_id_or_default_filter(
-            id=message.proposed_change, schema_name="CoreProposedChange", db=db
+            id=message.proposed_change, schema_name=InfrahubKind.PROPOSEDCHANGE, db=db
         )
 
         data_check = await _create_data_check(db=db, proposed_change=proposed_change)
@@ -81,7 +81,7 @@ async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, s
                     keep_check.append(check.id)
 
             if not check:
-                check = await Node.init(db=db, schema="CoreDataCheck")
+                check = await Node.init(db=db, schema=InfrahubKind.DATACHECK)
                 await check.new(
                     db=db,
                     label="Data Conflict",
@@ -115,7 +115,7 @@ async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, s
                     keep_check.append(conflict_obj.id)
 
             if not conflict_obj:
-                conflict_obj = await Node.init(db=db, schema="CoreDataCheck")
+                conflict_obj = await Node.init(db=db, schema=InfrahubKind.DATACHECK)
 
                 await conflict_obj.new(
                     db=db,
@@ -151,9 +151,9 @@ async def schema_integrity(
 
 async def repository_checks(message: messages.RequestProposedChangeRepositoryChecks, service: InfrahubServices) -> None:
     log.info(f"Got a request to process checks defined in proposed_change: {message.proposed_change}")
-    change_proposal = await service.client.get(kind="CoreProposedChange", id=message.proposed_change)
+    change_proposal = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=message.proposed_change)
 
-    repositories = await service.client.all(kind="CoreRepository", branch=change_proposal.source_branch.value)
+    repositories = await service.client.all(kind=InfrahubKind.REPOSITORY, branch=change_proposal.source_branch.value)
     events: List[InfrahubMessage] = []
     for repository in repositories:
         events.append(
@@ -179,9 +179,9 @@ async def repository_checks(message: messages.RequestProposedChangeRepositoryChe
 
 async def refresh_artifacts(message: messages.RequestProposedChangeRefreshArtifacts, service: InfrahubServices) -> None:
     log.info(f"Refreshing artifacts for change_proposal={message.proposed_change}")
-    proposed_change = await service.client.get(kind="CoreProposedChange", id=message.proposed_change)
+    proposed_change = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=message.proposed_change)
     artifact_definitions = await service.client.all(
-        kind="CoreArtifactDefinition", branch=proposed_change.source_branch.value
+        kind=InfrahubKind.ARTIFACTDEFINITION, branch=proposed_change.source_branch.value
     )
     for artifact_definition in artifact_definitions:
         msg = messages.RequestArtifactDefinitionCheck(

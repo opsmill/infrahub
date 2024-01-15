@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import TYPE_CHECKING, MutableMapping, Optional
+from typing import TYPE_CHECKING, Awaitable, Callable, List, MutableMapping, Optional
 
+import aio_pika
 from infrahub_sdk import UUIDT
 
 from infrahub import config
@@ -26,6 +27,13 @@ if TYPE_CHECKING:
 
     from infrahub.services import InfrahubServices
 
+MessageFunction = Callable[[InfrahubMessage], Awaitable[None]]
+
+
+async def _add_request_id(message: InfrahubMessage) -> None:
+    log_data = get_log_data()
+    message.meta.request_id = log_data.get("request_id", "")
+
 
 class RabbitMQMessageBus(InfrahubMessageBus):
     def __init__(
@@ -39,6 +47,7 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         self.callback_queue: AbstractQueue
         self.events_queue: AbstractQueue
         self.dlx: AbstractExchange
+        self.message_enrichers: List[MessageFunction] = []
 
         self.loop = asyncio.get_running_loop()
         self.futures: MutableMapping[str, asyncio.Future] = {}
@@ -91,7 +100,9 @@ class RabbitMQMessageBus(InfrahubMessageBus):
             "event.*.*",
             "finalize.*.*",
             "git.*.*",
+            "refresh.webhook.*",
             "request.*.*",
+            "send.*.*",
             "transform.*.*",
             "trigger.*.*",
         ]
@@ -119,11 +130,13 @@ class RabbitMQMessageBus(InfrahubMessageBus):
 
         await self.events_queue.bind(self.exchange, routing_key="refresh.registry.*")
 
+        self.message_enrichers.append(_add_request_id)
+
     async def _initialize_git_worker(self) -> None:
         connection = await get_broker()
         # Create a channel and subscribe to the incoming RPC queue
         self.channel = await connection.channel()
-
+        await self.channel.set_qos(prefetch_count=1)
         events_queue = await self.channel.declare_queue(name=f"worker-events-{WORKER_IDENTITY}", exclusive=True)
 
         self.exchange = await self.channel.declare_exchange(
@@ -135,15 +148,17 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         await events_queue.consume(callback=self.on_callback, no_ack=True)
 
     async def publish(self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None) -> None:
+        for enricher in self.message_enrichers:
+            await enricher(message)
         message.assign_priority(priority=messages.message_priority(routing_key=routing_key))
         if delay:
             message.assign_header(key="delay", value=delay.value)
-            await self.delayed_exchange.publish(message, routing_key=routing_key)
+            await self.delayed_exchange.publish(self.format_message(message=message), routing_key=routing_key)
         else:
-            await self.exchange.publish(message, routing_key=routing_key)
+            await self.exchange.publish(self.format_message(message=message), routing_key=routing_key)
 
     async def reply(self, message: InfrahubMessage, routing_key: str) -> None:
-        await self.channel.default_exchange.publish(message, routing_key=routing_key)
+        await self.channel.default_exchange.publish(self.format_message(message=message), routing_key=routing_key)
 
     async def rpc(self, message: InfrahubMessage) -> InfrahubResponse:
         correlation_id = str(UUIDT())
@@ -160,3 +175,38 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         response = await future
         data = json.loads(response.body)
         return InfrahubResponse(**data)
+
+    async def subscribe(self) -> None:
+        queue = await self.channel.get_queue(f"{config.SETTINGS.broker.namespace}.rpcs")
+        self.service.log.info("Waiting for RPC instructions to execute .. ")
+        async with queue.iterator() as qiterator:
+            async for message in qiterator:
+                try:
+                    async with message.process(requeue=False):
+                        clear_log_context()
+                        if message.routing_key in messages.MESSAGE_MAP:
+                            await execute_message(
+                                routing_key=message.routing_key, message_body=message.body, service=self.service
+                            )
+                        else:
+                            self.service.log.error(
+                                "Unhandled routing key for message",
+                                routing_key=message.routing_key,
+                                message=message.body,
+                            )
+
+                except Exception:  # pylint: disable=broad-except
+                    self.service.log.exception("Processing error for message %r" % message)
+
+    @staticmethod
+    def format_message(message: InfrahubMessage) -> aio_pika.Message:
+        pika_message = aio_pika.Message(
+            body=message.body,
+            content_type="application/json",
+            content_encoding="utf-8",
+            correlation_id=message.meta.correlation_id,
+            reply_to=message.meta.reply_to,
+            priority=message.meta.priority,
+            headers=message.meta.headers,
+        )
+        return pika_message

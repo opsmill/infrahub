@@ -1,7 +1,7 @@
-import logging
-
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
+from infrahub.log import get_logger
 
 # pylint: skip-file
 
@@ -71,7 +71,7 @@ INTERFACE_ROLES = {
     "leaf": ["spine", "spine", "spine", "spine", "server", "server"],
 }
 
-LOGGER = logging.getLogger("infrahub")
+log = get_logger()
 
 
 async def load_data(db: InfrahubDatabase, nbr_devices: int = None):
@@ -82,11 +82,11 @@ async def load_data(db: InfrahubDatabase, nbr_devices: int = None):
     # tags_dict = {}
 
     for group in GROUPS:
-        obj = await Node.init(db=db, schema="CoreGroup")
+        obj = await Node.init(db=db, schema=InfrahubKind.GENERICGROUP)
         await obj.new(db=db, description=group[0], name=group[1])
         await obj.save(db=db)
         groups_dict[group[1]] = obj
-        LOGGER.info(f"Group Created: {obj.name.value}")
+        log.info(f"Group Created: {obj.name.value}")
 
     # ------------------------------------------
     # Create Status, Role & DeviceProfile
@@ -94,7 +94,7 @@ async def load_data(db: InfrahubDatabase, nbr_devices: int = None):
     # statuses_dict = {}
     # roles_dict = {}
 
-    LOGGER.info("Creating Site")
+    log.info("Creating Site")
     site_hq = await Node.init(db=db, schema="BuiltinLocation")
     await site_hq.new(db=db, name="HQ", type="Site")
     await site_hq.save(db=db)
@@ -102,7 +102,7 @@ async def load_data(db: InfrahubDatabase, nbr_devices: int = None):
     active_status = "active"
     role_loopback = "loopback"
 
-    LOGGER.info("Creating Device")
+    log.info("Creating Device")
     for idx, device in enumerate(DEVICES):
         if nbr_devices and nbr_devices <= idx:
             continue
@@ -116,7 +116,7 @@ async def load_data(db: InfrahubDatabase, nbr_devices: int = None):
         await obj.new(db=db, name=device[0], status=status, type=device[2], role=role, site=site_hq)
 
         await obj.save(db=db)
-        LOGGER.info(f"- Created Device: {device[0]}")
+        log.info(f"- Created Device: {device[0]}")
 
         # Add a special interface for spine1
         if device[0] == "spine1":

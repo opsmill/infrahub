@@ -3,11 +3,11 @@ from typing import Dict
 import pendulum
 import pytest
 from deepdiff import DeepDiff
-from pydantic import Field
+from pydantic.v1 import Field
 
 from infrahub.core import get_branch
 from infrahub.core.branch import BaseDiffElement, Branch, Diff
-from infrahub.core.constants import DiffAction
+from infrahub.core.constants import DiffAction, InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -197,7 +197,7 @@ async def test_diff_get_files_repositories_for_branch_case01(
 
     branch2 = await create_branch(branch_name="branch2", db=db)
 
-    repos_list = await NodeManager.query(db=db, schema="CoreRepository", branch=branch2)
+    repos_list = await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY, branch=branch2)
     repos = {repo.name.value: repo for repo in repos_list}
 
     repo01 = repos["repo01"]
@@ -241,7 +241,7 @@ async def test_diff_get_files_repositories_for_branch_case02(
 
     branch2 = await create_branch(branch_name="branch2", db=db)
 
-    repos_list = await NodeManager.query(db=db, schema="CoreRepository", branch=branch2)
+    repos_list = await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY, branch=branch2)
     repos = {repo.name.value: repo for repo in repos_list}
 
     repo01 = repos["repo01"]
@@ -289,7 +289,7 @@ async def test_diff_get_files(
 
     branch2 = await create_branch(branch_name="branch2", db=db)
 
-    repos_list = await NodeManager.query(db=db, schema="CoreRepository", branch=branch2)
+    repos_list = await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY, branch=branch2)
     repos = {repo.name.value: repo for repo in repos_list}
 
     repo01 = repos["repo01"]
@@ -334,8 +334,8 @@ async def test_diff_get_nodes_entire_branch(db: InfrahubDatabase, default_branch
 
     expected_response_branch2_repo01_time01 = {
         "branch": "branch2",
-        "labels": ["CoreNode", "CoreRepository", "LineageOwner", "LineageSource", "Node"],
-        "kind": "CoreRepository",
+        "labels": ["CoreNode", InfrahubKind.REPOSITORY, "LineageOwner", "LineageSource", "Node"],
+        "kind": InfrahubKind.REPOSITORY,
         "id": repo01b2.id,
         "path": f"data/{repo01b2.id}",
         "action": "updated",
@@ -372,8 +372,8 @@ async def test_diff_get_nodes_entire_branch(db: InfrahubDatabase, default_branch
 
     expected_response_branch2_repo01_time02 = {
         "branch": "branch2",
-        "labels": ["CoreNode", "CoreRepository", "LineageOwner", "LineageSource", "Node"],
-        "kind": "CoreRepository",
+        "labels": ["CoreNode", InfrahubKind.REPOSITORY, "LineageOwner", "LineageSource", "Node"],
+        "kind": InfrahubKind.REPOSITORY,
         "id": repo01b2.id,
         "path": f"data/{repo01b2.id}",
         "action": "updated",
@@ -933,7 +933,11 @@ async def test_diff_relationship_many(db: InfrahubDatabase, default_branch: Bran
         "conflict_paths": [f"data/{org1.id}/tags/peer", f"data/{red.id}/-undefined-/peer"],
         "nodes": {
             org1.id: {"id": org1.id, "labels": ["CoreOrganization", "Node", "CoreNode"], "kind": "CoreOrganization"},
-            red.id: {"id": red.id, "labels": ["BuiltinTag", "Node", "CoreNode"], "kind": "BuiltinTag"},
+            red.id: {
+                "id": red.id,
+                "labels": [InfrahubKind.TAG, "Node", "CoreNode"],
+                "kind": InfrahubKind.TAG,
+            },
         },
         "properties": {
             "IS_VISIBLE": {
@@ -977,7 +981,11 @@ async def test_diff_relationship_many(db: InfrahubDatabase, default_branch: Bran
         "conflict_paths": [f"data/{org1.id}/tags/peer", f"data/{yellow.id}/-undefined-/peer"],
         "nodes": {
             org1.id: {"id": org1.id, "labels": ["CoreOrganization", "Node", "CoreNode"], "kind": "CoreOrganization"},
-            yellow.id: {"id": yellow.id, "labels": ["BuiltinTag", "Node", "CoreNode"], "kind": "BuiltinTag"},
+            yellow.id: {
+                "id": yellow.id,
+                "labels": [InfrahubKind.TAG, "Node", "CoreNode"],
+                "kind": InfrahubKind.TAG,
+            },
         },
         "properties": {
             "IS_VISIBLE": {

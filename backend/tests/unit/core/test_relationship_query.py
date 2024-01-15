@@ -146,6 +146,7 @@ async def test_query_RelationshipDeleteQuery(
     rel_node = [node for node in paths[0][0]._nodes if "Relationship" in node.labels][0]
 
     rel_data = RelationshipPeerData(
+        source_id=person_jack_tags_main.id,
         branch=branch.name,
         peer_id=tag_blue_main.id,
         peer_db_id=tag_blue_main.db_id,
@@ -211,6 +212,7 @@ async def test_query_RelationshipDeleteQuery(
     active_path, latest_rel_node = get_active_path_and_rel(all_paths=paths, previous_rel=rel_node.get("uuid"))
 
     rel_data = RelationshipPeerData(
+        source_id=person_jack_tags_main.id,
         branch=branch.name,
         peer_id=tag_blue_main.id,
         peer_db_id=tag_blue_main.db_id,
@@ -255,7 +257,7 @@ async def test_query_RelationshipGetPeerQuery(
 
     query = await RelationshipGetPeerQuery.init(
         db=db,
-        source_id=person_jack_tags_main.id,
+        source_ids=[person_jack_tags_main.id],
         schema=rel_schema,
         rel=Relationship,
         branch=branch,
@@ -292,7 +294,7 @@ async def test_query_RelationshipGetPeerQuery_with_filter(
 
     query = await RelationshipGetPeerQuery.init(
         db=db,
-        source_id=person_john_main.id,
+        source_ids=[person_john_main.id],
         schema=rel_schema,
         filters={"cars__is_electric__value": True},
         rel=Relationship,
@@ -320,7 +322,7 @@ async def test_query_RelationshipGetPeerQuery_with_id(
 
     query = await RelationshipGetPeerQuery.init(
         db=db,
-        source_id=person_john_main.id,
+        source_ids=[person_john_main.id],
         schema=rel_schema,
         filters={"cars__ids": [car_accord_main.id]},
         rel=Relationship,
@@ -347,7 +349,7 @@ async def test_query_RelationshipGetPeerQuery_with_ids(
 
     query = await RelationshipGetPeerQuery.init(
         db=db,
-        source_id=person_john_main.id,
+        source_ids=[person_john_main.id],
         schema=rel_schema,
         filters={"cars__ids": [car_accord_main.id, car_prius_main.id]},
         rel=Relationship,
@@ -378,7 +380,7 @@ async def test_query_RelationshipGetPeerQuery_with_sort(
 
     query = await RelationshipGetPeerQuery.init(
         db=db,
-        source_id=person_john_main.id,
+        source_ids=[person_john_main.id],
         schema=rel_schema,
         rel=Relationship,
         branch=branch,
@@ -408,7 +410,7 @@ async def test_query_RelationshipGetPeerQuery_deleted_node(
 
     query = await RelationshipGetPeerQuery.init(
         db=db,
-        source_id=person_john_main.id,
+        source_ids=[person_john_main.id],
         schema=rel_schema,
         rel=Relationship,
         branch=branch,
@@ -434,7 +436,7 @@ async def test_query_RelationshipGetPeerQuery_with_multiple_filter(
 
     query = await RelationshipGetPeerQuery.init(
         db=db,
-        source_id=person_john_main.id,
+        source_ids=[person_john_main.id],
         schema=rel_schema,
         filters={"cars__is_electric__value": True, "cars__nbr_seats__value": 4},
         rel=Relationship,

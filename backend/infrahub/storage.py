@@ -5,7 +5,6 @@ import botocore.exceptions
 import fastapi_storages
 from typing_extensions import Self
 
-from infrahub import config
 from infrahub.config import StorageSettings
 from infrahub.exceptions import NodeNotFound
 
@@ -38,7 +37,7 @@ class InfrahubObjectStorage:
         driver = getattr(fastapi_storages, self._settings.driver.name)
 
         driver_settings = getattr(self._settings, self._settings.driver.value.lower())
-        self._storage = driver(**driver_settings.dict(by_alias=True))
+        self._storage = driver(**driver_settings.model_dump(by_alias=True))
 
     @classmethod
     async def init(cls, settings: StorageSettings) -> Self:
@@ -55,5 +54,5 @@ class InfrahubObjectStorage:
                 return f.read().decode()
         except (FileNotFoundError, botocore.exceptions.ClientError):
             raise NodeNotFound(  # pylint: disable=raise-missing-from
-                branch_name=config.SETTINGS.main.default_branch, node_type="StorageObject", identifier=identifier
+                node_type="StorageObject", identifier=identifier
             )

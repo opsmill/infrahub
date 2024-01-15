@@ -3,8 +3,8 @@ import { toast } from "react-toastify";
 import LoadingScreen from "../screens/loading-screen/loading-screen";
 import NoDataFound from "../screens/no-data-found/no-data-found";
 import { fetchStream } from "../utils/fetch";
-import { ALERT_TYPES, Alert } from "./alert";
-import { CodeEditor } from "./code-editor";
+import { CodeEditor } from "./editor/code-editor";
+import { ALERT_TYPES, Alert } from "./utils/alert";
 
 type tFile = {
   url: string;

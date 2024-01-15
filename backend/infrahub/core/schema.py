@@ -8,8 +8,9 @@ import re
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
 from infrahub_sdk.utils import duplicates, intersection
-from pydantic import BaseModel, Extra, Field, root_validator, validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from infrahub import config
 from infrahub.core import registry
 from infrahub.core.constants import (
     RESTRICTED_NAMESPACES,
@@ -20,6 +21,7 @@ from infrahub.core.constants import (
     BranchSupportType,
     ContentType,
     FilterSchemaKind,
+    InfrahubKind,
     ProposedChangeState,
     RelationshipCardinality,
     RelationshipDirection,
@@ -89,12 +91,9 @@ class QueryArrows(BaseModel):
 
 
 class BaseSchemaModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     _exclude_from_hash: List[str] = []
     _sort_by: List[str] = []
-
-    class Config:
-        extra = Extra.forbid
-        underscore_attrs_are_private = True
 
     def __hash__(self):
         return hash(self.get_hash())
@@ -115,7 +114,7 @@ class BaseSchemaModel(BaseModel):
 
         values = []
         md5hash = hashlib.md5()
-        for field_name in sorted(self.__fields__.keys()):
+        for field_name in sorted(self.model_fields.keys()):
             if field_name.startswith("_") or field_name in self._exclude_from_hash:
                 continue
 
@@ -181,7 +180,7 @@ class BaseSchemaModel(BaseModel):
 
     def duplicate(self) -> Self:
         """Duplicate the current object by doing a deep copy of everything and recreating a new object."""
-        return self.__class__(**copy.deepcopy(self.dict()))
+        return self.__class__(**copy.deepcopy(self.model_dump()))
 
     @staticmethod
     def is_list_composed_of_schema_model(items) -> bool:
@@ -233,14 +232,14 @@ class BaseSchemaModel(BaseModel):
     def update(self, other: Self) -> Self:
         """Update the current object with the new value from the new one if they are defined.
 
-        Currently this method works for the following type of field
+        Currently this method works for the following type of fields
             int, str, bool, float: If present the value from Other is overwriting the local value
             list[BaseSchemaModel]: The list will be merge if all elements in the list have a _sorting_id and if it's unique.
 
         TODO Implement other fields type like dict
         """
 
-        for field_name, _ in other.__fields__.items():
+        for field_name, _ in other.model_fields.items():
             if not hasattr(self, field_name):
                 setattr(self, field_name, getattr(other, field_name))
                 continue
@@ -284,62 +283,54 @@ class FilterSchema(BaseSchemaModel):
 
 class DropdownChoice(BaseSchemaModel):
     name: str
-    description: str = ""
-    color: str = ""
-    label: str = ""
+    description: Optional[str] = None
+    color: Optional[str] = None
+    label: Optional[str] = None
 
     _sort_by: List[str] = ["name"]
 
-    @validator("color")
-    def kind_options(
-        cls,
-        v: str,
-    ) -> str:
-        if v == "":
+    @field_validator("color")
+    @classmethod
+    def kind_options(cls, v: str) -> str:
+        if not v:
             return v
-        if HTML_COLOR.match(v):
+        if isinstance(v, str) and HTML_COLOR.match(v):
             return v.lower()
 
         raise ValueError("Color must be a valid HTML color code")
 
 
 class AttributeSchema(BaseSchemaModel):
-    id: Optional[str]
-    name: str = Field(
-        regex=NAME_REGEX,
-        min_length=DEFAULT_NAME_MIN_LENGTH,
-        max_length=DEFAULT_NAME_MAX_LENGTH,
-    )
+    id: Optional[str] = None
+    name: str = Field(pattern=NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
     kind: str  # AttributeKind
-    label: Optional[str]
-    description: Optional[str] = Field(max_length=DEFAULT_DESCRIPTION_LENGTH)
-    default_value: Optional[Any]
-    enum: Optional[List]
-    regex: Optional[str]
-    max_length: Optional[int]
-    min_length: Optional[int]
+    label: Optional[str] = None
+    description: Optional[str] = Field(None, max_length=DEFAULT_DESCRIPTION_LENGTH)
+    default_value: Optional[Any] = None
+    enum: Optional[List] = None
+    regex: Optional[str] = None
+    max_length: Optional[int] = None
+    min_length: Optional[int] = None
     read_only: bool = False
     inherited: bool = False
     unique: bool = False
-    branch: Optional[BranchSupportType]
+    branch: Optional[BranchSupportType] = None
     optional: bool = False
-    order_weight: Optional[int]
+    order_weight: Optional[int] = None
     choices: Optional[List[DropdownChoice]] = Field(
         default=None, description="The available choices if the kind is Dropdown."
     )
 
     _sort_by: List[str] = ["name"]
 
-    @validator("kind")
-    def kind_options(
-        cls,
-        v,
-    ):
+    @field_validator("kind")
+    @classmethod
+    def kind_options(cls, v):
         if v not in ATTRIBUTE_KIND_LABELS:
             raise ValueError(f"Only valid Attribute Kind are : {ATTRIBUTE_KIND_LABELS} ")
         return v
 
-    @root_validator
+    @model_validator(mode="before")
     def validate_dropdown_choices(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         """Validate that choices are defined for a dropdown but not for other kinds."""
         if values.get("kind") != "Dropdown" and values.get("choices"):
@@ -363,30 +354,21 @@ class AttributeSchema(BaseSchemaModel):
 
 
 class RelationshipSchema(BaseSchemaModel):
-    id: Optional[str]
-    name: str = Field(
-        regex=NAME_REGEX,
-        min_length=DEFAULT_NAME_MIN_LENGTH,
-        max_length=DEFAULT_NAME_MAX_LENGTH,
-    )
-    peer: str = Field(
-        regex=NODE_KIND_REGEX,
-        min_length=DEFAULT_KIND_MIN_LENGTH,
-        max_length=DEFAULT_KIND_MAX_LENGTH,
-    )
+    id: Optional[str] = None
+    name: str = Field(pattern=NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
+    peer: str = Field(pattern=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH)
     kind: RelationshipKind = RelationshipKind.GENERIC
     direction: RelationshipDirection = RelationshipDirection.BIDIR
-    label: Optional[str]
-    description: Optional[str] = Field(max_length=DEFAULT_DESCRIPTION_LENGTH)
-    identifier: Optional[str] = Field(max_length=DEFAULT_REL_IDENTIFIER_LENGTH)
+    label: Optional[str] = Field(default=None)
+    description: Optional[str] = Field(None, max_length=DEFAULT_DESCRIPTION_LENGTH)
+    identifier: Optional[str] = Field(None, max_length=DEFAULT_REL_IDENTIFIER_LENGTH)
     inherited: bool = False
     cardinality: RelationshipCardinality = RelationshipCardinality.MANY
-    min_count: int = Field(default=0)
-    max_count: int = Field(default=0)
-    branch: Optional[BranchSupportType]
+    branch: Optional[BranchSupportType] = Field(default=None)
     optional: bool = True
+    hierarchical: Optional[str] = Field(default=None)
     filters: List[FilterSchema] = Field(default_factory=list)
-    order_weight: Optional[int]
+    order_weight: Optional[int] = None
 
     _exclude_from_hash: List[str] = ["filters"]
     _sort_by: List[str] = ["name"]
@@ -492,14 +474,28 @@ class RelationshipSchema(BaseSchemaModel):
         if filter_field_name not in peer_schema.valid_input_names:
             return query_filter, query_params, query_where
 
-        query_filter.extend(
-            [
-                QueryRel(name="r1", labels=[rel_type], direction=rels_direction["r1"]),
-                QueryNode(name="rl", labels=["Relationship"], params={"name": f"${prefix}_rel_name"}),
-                QueryRel(name="r2", labels=[rel_type], direction=rels_direction["r2"]),
-                QueryNode(name="peer", labels=["Node"]),
-            ]
-        )
+        if self.hierarchical:
+            query_filter.extend(
+                [
+                    QueryRel(
+                        labels=[rel_type],
+                        direction=rels_direction["r1"],
+                        length_min=2,
+                        length_max=config.SETTINGS.database.max_depth_search_hierarchy * 2,
+                        params={"hierarchy": self.hierarchical},
+                    ),
+                    QueryNode(name="peer", labels=[self.hierarchical]),
+                ]
+            )
+        else:
+            query_filter.extend(
+                [
+                    QueryRel(name="r1", labels=[rel_type], direction=rels_direction["r1"]),
+                    QueryNode(name="rl", labels=["Relationship"], params={"name": f"${prefix}_rel_name"}),
+                    QueryRel(name="r2", labels=[rel_type], direction=rels_direction["r2"]),
+                    QueryNode(name="peer", labels=["Node"]),
+                ]
+            )
 
         field = peer_schema.get_field(filter_field_name)
 
@@ -524,29 +520,23 @@ NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
 
 
 class BaseNodeSchema(BaseSchemaModel):
-    id: Optional[str]
-    name: str = Field(
-        regex=NODE_NAME_REGEX,
-        min_length=DEFAULT_NAME_MIN_LENGTH,
-        max_length=DEFAULT_NAME_MAX_LENGTH,
-    )
+    id: Optional[str] = None
+    name: str = Field(pattern=NODE_NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
     namespace: str = Field(
-        regex=NODE_KIND_REGEX,
-        min_length=DEFAULT_KIND_MIN_LENGTH,
-        max_length=DEFAULT_KIND_MAX_LENGTH,
+        pattern=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH
     )
-    description: Optional[str] = Field(max_length=DEFAULT_DESCRIPTION_LENGTH)
-    default_filter: Optional[str]
+    description: Optional[str] = Field(None, max_length=DEFAULT_DESCRIPTION_LENGTH)
+    default_filter: Optional[str] = None
     branch: BranchSupportType = BranchSupportType.AWARE
-    order_by: Optional[List[str]]
-    display_labels: Optional[List[str]]
+    order_by: Optional[List[str]] = None
+    display_labels: Optional[List[str]] = None
     attributes: List[AttributeSchema] = Field(default_factory=list)
     relationships: List[RelationshipSchema] = Field(default_factory=list)
     filters: List[FilterSchema] = Field(default_factory=list)
     include_in_menu: Optional[bool] = Field(default=None)
     menu_placement: Optional[str] = Field(default=None)
     icon: Optional[str] = Field(default=None)
-    label: Optional[str]
+    label: Optional[str] = None
 
     _exclude_from_hash: List[str] = ["attributes", "relationships"]
     _sort_by: List[str] = ["name"]
@@ -680,7 +670,8 @@ class BaseNodeSchema(BaseSchemaModel):
 
         return fields
 
-    @validator("name")
+    @field_validator("name")
+    @classmethod
     def name_is_not_keyword(cls, value: str) -> str:
         if keyword.iskeyword(value):
             raise ValueError(f"Name can not be set to a reserved keyword '{value}' is not allowed.")
@@ -691,12 +682,22 @@ class BaseNodeSchema(BaseSchemaModel):
 class GenericSchema(BaseNodeSchema):
     """A Generic can be either an Interface or a Union depending if there are some Attributes or Relationships defined."""
 
+    hierarchical: bool = Field(default=False)
     used_by: List[str] = Field(default_factory=list)
+
+    def get_hierarchy_schema(self, branch: Optional[Union[Branch, str]] = None) -> GenericSchema:  # pylint: disable=unused-argument
+        if self.hierarchical:
+            return self
+
+        raise ValueError(f"hierarchical mode is not enabled on {self.kind}")
 
 
 class NodeSchema(BaseNodeSchema):
     inherit_from: List[str] = Field(default_factory=list)
     groups: Optional[List[str]] = Field(default_factory=list)
+    hierarchy: Optional[str] = Field(default=None)
+    parent: Optional[str] = Field(default=None)
+    children: Optional[str] = Field(default=None)
 
     def inherit_from_interface(self, interface: GenericSchema) -> NodeSchema:
         existing_inherited_attributes = {item.name: idx for idx, item in enumerate(self.attributes) if item.inherited}
@@ -725,20 +726,18 @@ class NodeSchema(BaseNodeSchema):
                 item_idx = existing_inherited_relationships[item.name]
                 self.relationships[item_idx] = new_item
 
+    def get_hierarchy_schema(self, branch: Optional[Union[Branch, str]] = None) -> GenericSchema:
+        schema = registry.schema.get(name=self.hierarchy, branch=branch)
+        if not isinstance(schema, GenericSchema):
+            raise TypeError
+        return schema
+
 
 class GroupSchema(BaseSchemaModel):
-    id: Optional[str]
-    name: str = Field(
-        regex=NAME_REGEX,
-        min_length=DEFAULT_NAME_MIN_LENGTH,
-        max_length=DEFAULT_NAME_MAX_LENGTH,
-    )
-    kind: str = Field(
-        regex=NODE_KIND_REGEX,
-        min_length=DEFAULT_KIND_MIN_LENGTH,
-        max_length=DEFAULT_KIND_MAX_LENGTH,
-    )
-    description: Optional[str] = Field(max_length=DEFAULT_DESCRIPTION_LENGTH)
+    id: Optional[str] = None
+    name: str = Field(pattern=NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
+    kind: str = Field(pattern=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH)
+    description: Optional[str] = Field(None, max_length=DEFAULT_DESCRIPTION_LENGTH)
 
 
 # -----------------------------------------------------
@@ -761,14 +760,12 @@ class SchemaExtension(BaseSchemaModel):
 
 
 class SchemaRoot(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     version: Optional[str] = Field(default=None)
     generics: List[GenericSchema] = Field(default_factory=list)
     nodes: List[NodeSchema] = Field(default_factory=list)
     groups: List[GroupSchema] = Field(default_factory=list)
     extensions: SchemaExtension = SchemaExtension()
-
-    class Config:
-        extra = Extra.forbid
 
     @classmethod
     def has_schema(cls, values, name: str) -> bool:
@@ -870,7 +867,7 @@ internal_schema = {
                 {
                     "name": "icon",
                     "kind": "Text",
-                    "description": "Defines the icon to be used for this object type.",
+                    "description": "Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/",
                     "optional": True,
                 },
                 {
@@ -889,6 +886,24 @@ internal_schema = {
                     "name": "groups",
                     "kind": "List",
                     "description": "List of Group that this Node is part of.",
+                    "optional": True,
+                },
+                {
+                    "name": "hierarchy",
+                    "kind": "Text",
+                    "description": "Internal value to track the name of the Hierarchy, must match the name of a Generic supporting hierarchical mode",
+                    "optional": True,
+                },
+                {
+                    "name": "parent",
+                    "kind": "Text",
+                    "description": "Expected Kind for the parent node in a Hierarchy, default to the main generic defined if not defined.",
+                    "optional": True,
+                },
+                {
+                    "name": "children",
+                    "kind": "Text",
+                    "description": "Expected Kind for the children nodes in a Hierarchy, default to the main generic defined if not defined.",
                     "optional": True,
                 },
             ],
@@ -1154,6 +1169,12 @@ internal_schema = {
                     "default_value": RelationshipDirection.BIDIR.value,
                     "optional": True,
                 },
+                {
+                    "name": "hierarchical",
+                    "kind": "Text",
+                    "description": "Internal attribute to track the type of hierarchy this relationship is part of, must match a valid Generic Kind",
+                    "optional": True,
+                },
             ],
             "relationships": [
                 {
@@ -1241,7 +1262,7 @@ internal_schema = {
                 {
                     "name": "icon",
                     "kind": "Text",
-                    "description": "Defines the icon to be used for this object type.",
+                    "description": "Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/",
                     "optional": True,
                 },
                 {
@@ -1250,6 +1271,13 @@ internal_schema = {
                     "optional": True,
                     "description": "Short description of the Generic.",
                     "max_length": DEFAULT_DESCRIPTION_LENGTH,
+                },
+                {
+                    "name": "hierarchical",
+                    "kind": "Boolean",
+                    "description": "Defines if the Generic support the hierarchical mode.",
+                    "optional": True,
+                    "default_value": False,
                 },
                 {
                     "name": "used_by",
@@ -1360,7 +1388,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "created_by",
-                    "peer": "CoreAccount",
+                    "peer": InfrahubKind.ACCOUNT,
                     "optional": True,
                     "branch": BranchSupportType.AGNOSTIC.value,
                     "cardinality": "one",
@@ -1383,7 +1411,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "change",
-                    "peer": "CoreProposedChange",
+                    "peer": InfrahubKind.PROPOSEDCHANGE,
                     "identifier": "proposedchange__thread",
                     "kind": "Parent",
                     "optional": False,
@@ -1391,7 +1419,7 @@ core_models = {
                 },
                 {
                     "name": "comments",
-                    "peer": "CoreThreadComment",
+                    "peer": InfrahubKind.THREADCOMMENT,
                     "identifier": "thread__threadcomment",
                     "kind": "Component",
                     "optional": True,
@@ -1399,7 +1427,7 @@ core_models = {
                 },
                 {
                     "name": "created_by",
-                    "peer": "CoreAccount",
+                    "peer": InfrahubKind.ACCOUNT,
                     "optional": True,
                     "branch": BranchSupportType.AGNOSTIC.value,
                     "cardinality": "one",
@@ -1415,6 +1443,7 @@ core_models = {
             "order_by": ["name__value"],
             "display_labels": ["label__value"],
             "include_in_menu": False,
+            "hierarchical": True,
             "branch": BranchSupportType.AWARE.value,
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
@@ -1467,7 +1496,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "proposed_change",
-                    "peer": "CoreProposedChange",
+                    "peer": InfrahubKind.PROPOSEDCHANGE,
                     "kind": "Parent",
                     "optional": False,
                     "cardinality": "one",
@@ -1551,7 +1580,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "query",
-                    "peer": "CoreGraphQLQuery",
+                    "peer": InfrahubKind.GRAPHQLQUERY,
                     "identifier": "graphql_query__transformation",
                     "kind": "Attribute",
                     "cardinality": "one",
@@ -1559,13 +1588,19 @@ core_models = {
                 },
                 {
                     "name": "repository",
-                    "peer": "CoreRepository",
+                    "peer": InfrahubKind.REPOSITORY,
                     "kind": "Attribute",
                     "cardinality": "one",
                     "identifier": "repository__transformation",
                     "optional": False,
                 },
-                {"name": "tags", "peer": "BuiltinTag", "kind": "Attribute", "optional": True, "cardinality": "many"},
+                {
+                    "name": "tags",
+                    "peer": InfrahubKind.TAG,
+                    "kind": "Attribute",
+                    "optional": True,
+                    "cardinality": "many",
+                },
             ],
         },
         {
@@ -1577,11 +1612,34 @@ core_models = {
             "relationships": [
                 {
                     "name": "artifacts",
-                    "peer": "CoreArtifact",
+                    "peer": InfrahubKind.ARTIFACT,
                     "optional": True,
                     "cardinality": "many",
                     "kind": "Generic",
                     "identifier": "artifact__node",
+                },
+            ],
+        },
+        {
+            "name": "Webhook",
+            "namespace": "Core",
+            "description": "A webhook that connects to an external integration",
+            "label": "Webhook",
+            "default_filter": "name__value",
+            "order_by": ["name__value"],
+            "display_labels": ["name__value"],
+            "include_in_menu": False,
+            "branch": BranchSupportType.AGNOSTIC.value,
+            "attributes": [
+                {"name": "name", "kind": "Text", "unique": True, "order_weight": 1000},
+                {"name": "description", "kind": "Text", "optional": True, "order_weight": 2000},
+                {"name": "url", "kind": "URL", "order_weight": 3000},
+                {
+                    "name": "validate_certificates",
+                    "kind": "Boolean",
+                    "default_value": True,
+                    "optional": True,
+                    "order_weight": 5000,
                 },
             ],
         },
@@ -1598,7 +1656,32 @@ core_models = {
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "branch": BranchSupportType.AWARE.value,
+            "inherit_from": [InfrahubKind.GENERICGROUP],
+        },
+        {
+            "name": "GraphQLQueryGroup",
+            "namespace": "Core",
+            "description": "Group of nodes associated with a given GraphQLQuery.",
+            "include_in_menu": True,
+            "icon": "mdi:account-group",
+            "label": "GraphQL Query Group",
+            "default_filter": "name__value",
+            "order_by": ["name__value"],
+            "display_labels": ["name__value"],
+            "branch": BranchSupportType.LOCAL.value,
             "inherit_from": ["CoreGroup"],
+            "attributes": [
+                {"name": "parameters", "kind": "JSON", "optional": True},
+            ],
+            "relationships": [
+                {
+                    "name": "query",
+                    "peer": "CoreGraphQLQuery",
+                    "optional": False,
+                    "cardinality": "one",
+                    "kind": "Attribute",
+                },
+            ],
         },
         {
             "name": "Tag",
@@ -1647,7 +1730,7 @@ core_models = {
                 },
             ],
             "relationships": [
-                {"name": "tokens", "peer": "InternalAccountToken", "optional": True, "cardinality": "many"},
+                {"name": "tokens", "peer": InfrahubKind.ACCOUNTTOKEN, "optional": True, "cardinality": "many"},
             ],
         },
         {
@@ -1667,7 +1750,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "account",
-                    "peer": "CoreAccount",
+                    "peer": InfrahubKind.ACCOUNT,
                     "optional": False,
                     "cardinality": "one",
                 },
@@ -1687,7 +1770,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "account",
-                    "peer": "CoreAccount",
+                    "peer": InfrahubKind.ACCOUNT,
                     "optional": False,
                     "cardinality": "one",
                 },
@@ -1717,7 +1800,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "approved_by",
-                    "peer": "CoreAccount",
+                    "peer": InfrahubKind.ACCOUNT,
                     "optional": True,
                     "cardinality": "many",
                     "kind": "Attribute",
@@ -1726,7 +1809,7 @@ core_models = {
                 },
                 {
                     "name": "reviewers",
-                    "peer": "CoreAccount",
+                    "peer": InfrahubKind.ACCOUNT,
                     "optional": True,
                     "kind": "Attribute",
                     "cardinality": "many",
@@ -1735,7 +1818,7 @@ core_models = {
                 },
                 {
                     "name": "created_by",
-                    "peer": "CoreAccount",
+                    "peer": InfrahubKind.ACCOUNT,
                     "optional": True,
                     "cardinality": "one",
                     "branch": BranchSupportType.AGNOSTIC.value,
@@ -1743,7 +1826,7 @@ core_models = {
                 },
                 {
                     "name": "comments",
-                    "peer": "CoreChangeComment",
+                    "peer": InfrahubKind.CHANGECOMMENT,
                     "kind": "Component",
                     "optional": True,
                     "cardinality": "many",
@@ -1793,7 +1876,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "repository",
-                    "peer": "CoreRepository",
+                    "peer": InfrahubKind.REPOSITORY,
                     "optional": False,
                     "cardinality": "one",
                     "branch": BranchSupportType.AGNOSTIC.value,
@@ -1842,7 +1925,7 @@ core_models = {
                 {
                     "name": "change",
                     "kind": "Parent",
-                    "peer": "CoreProposedChange",
+                    "peer": InfrahubKind.PROPOSEDCHANGE,
                     "cardinality": "one",
                     "optional": False,
                 },
@@ -1893,13 +1976,19 @@ core_models = {
             "relationships": [
                 {
                     "name": "account",
-                    "peer": "CoreAccount",
+                    "peer": InfrahubKind.ACCOUNT,
                     "branch": BranchSupportType.AGNOSTIC.value,
                     "kind": "Attribute",
                     "optional": True,
                     "cardinality": "one",
                 },
-                {"name": "tags", "peer": "BuiltinTag", "kind": "Attribute", "optional": True, "cardinality": "many"},
+                {
+                    "name": "tags",
+                    "peer": InfrahubKind.TAG,
+                    "kind": "Attribute",
+                    "optional": True,
+                    "cardinality": "many",
+                },
                 {
                     "name": "transformations",
                     "peer": "CoreTransformation",
@@ -1909,14 +1998,14 @@ core_models = {
                 },
                 {
                     "name": "queries",
-                    "peer": "CoreGraphQLQuery",
+                    "peer": InfrahubKind.GRAPHQLQUERY,
                     "identifier": "graphql_query__repository",
                     "optional": True,
                     "cardinality": "many",
                 },
                 {
                     "name": "checks",
-                    "peer": "CoreCheckDefinition",
+                    "peer": InfrahubKind.CHECKDEFINITION,
                     "identifier": "check_definition__repository",
                     "optional": True,
                     "cardinality": "many",
@@ -2028,7 +2117,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "repository",
-                    "peer": "CoreRepository",
+                    "peer": InfrahubKind.REPOSITORY,
                     "kind": "Attribute",
                     "optional": False,
                     "cardinality": "one",
@@ -2048,7 +2137,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "check_definition",
-                    "peer": "CoreCheckDefinition",
+                    "peer": InfrahubKind.CHECKDEFINITION,
                     "kind": "Attribute",
                     "optional": False,
                     "cardinality": "one",
@@ -2056,7 +2145,7 @@ core_models = {
                 },
                 {
                     "name": "repository",
-                    "peer": "CoreRepository",
+                    "peer": InfrahubKind.REPOSITORY,
                     "kind": "Attribute",
                     "optional": False,
                     "cardinality": "one",
@@ -2086,7 +2175,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "definition",
-                    "peer": "CoreArtifactDefinition",
+                    "peer": InfrahubKind.ARTIFACTDEFINITION,
                     "kind": "Attribute",
                     "optional": False,
                     "cardinality": "one",
@@ -2115,7 +2204,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "repository",
-                    "peer": "CoreRepository",
+                    "peer": InfrahubKind.REPOSITORY,
                     "kind": "Attribute",
                     "cardinality": "one",
                     "identifier": "check_definition__repository",
@@ -2123,7 +2212,7 @@ core_models = {
                 },
                 {
                     "name": "query",
-                    "peer": "CoreGraphQLQuery",
+                    "peer": InfrahubKind.GRAPHQLQUERY,
                     "kind": "Attribute",
                     "identifier": "check_definition__graphql_query",
                     "cardinality": "one",
@@ -2131,13 +2220,19 @@ core_models = {
                 },
                 {
                     "name": "targets",
-                    "peer": "CoreGroup",
+                    "peer": InfrahubKind.GENERICGROUP,
                     "kind": "Attribute",
                     "identifier": "check_definition___group",
                     "cardinality": "one",
                     "optional": True,
                 },
-                {"name": "tags", "peer": "BuiltinTag", "kind": "Attribute", "optional": True, "cardinality": "many"},
+                {
+                    "name": "tags",
+                    "peer": InfrahubKind.TAG,
+                    "kind": "Attribute",
+                    "optional": True,
+                    "cardinality": "many",
+                },
             ],
         },
         {
@@ -2176,12 +2271,14 @@ core_models = {
                     "name": "operations",
                     "kind": "List",
                     "description": "Operations in use in the query, valid operations: 'query', 'mutation' or 'subscription'",
+                    "read_only": True,
                     "optional": True,
                 },
                 {
                     "name": "models",
                     "kind": "List",
                     "description": "List of models associated with this query",
+                    "read_only": True,
                     "optional": True,
                 },
                 {
@@ -2202,13 +2299,19 @@ core_models = {
             "relationships": [
                 {
                     "name": "repository",
-                    "peer": "CoreRepository",
+                    "peer": InfrahubKind.REPOSITORY,
                     "kind": "Attribute",
                     "identifier": "graphql_query__repository",
                     "cardinality": "one",
                     "optional": True,
                 },
-                {"name": "tags", "peer": "BuiltinTag", "kind": "Attribute", "optional": True, "cardinality": "many"},
+                {
+                    "name": "tags",
+                    "peer": InfrahubKind.TAG,
+                    "kind": "Attribute",
+                    "optional": True,
+                    "cardinality": "many",
+                },
             ],
         },
         {
@@ -2256,7 +2359,7 @@ core_models = {
                 },
                 {
                     "name": "definition",
-                    "peer": "CoreArtifactDefinition",
+                    "peer": InfrahubKind.ARTIFACTDEFINITION,
                     "kind": "Attribute",
                     "identifier": "artifact__artifact_definition",
                     "cardinality": "one",
@@ -2287,7 +2390,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "targets",
-                    "peer": "CoreGroup",
+                    "peer": InfrahubKind.GENERICGROUP,
                     "kind": "Attribute",
                     "identifier": "artifact_definition___group",
                     "cardinality": "one",
@@ -2300,6 +2403,45 @@ core_models = {
                     "identifier": "artifact_definition___transformation",
                     "cardinality": "one",
                     "optional": False,
+                },
+            ],
+        },
+        {
+            "name": "StandardWebhook",
+            "namespace": "Core",
+            "description": "A webhook that connects to an external integration",
+            "label": "Standard Webhook",
+            "default_filter": "name__value",
+            "order_by": ["name__value"],
+            "display_labels": ["name__value"],
+            "include_in_menu": False,
+            "branch": BranchSupportType.AGNOSTIC.value,
+            "inherit_from": [InfrahubKind.WEBHOOK],
+            "attributes": [
+                {"name": "shared_key", "kind": "Password", "unique": False, "order_weight": 4000},
+            ],
+        },
+        {
+            "name": "CustomWebhook",
+            "namespace": "Core",
+            "description": "A webhook that connects to an external integration",
+            "label": "Custom Webhook",
+            "default_filter": "name__value",
+            "order_by": ["name__value"],
+            "display_labels": ["name__value"],
+            "include_in_menu": False,
+            "branch": BranchSupportType.AGNOSTIC.value,
+            "inherit_from": [InfrahubKind.WEBHOOK],
+            "attributes": [],
+            "relationships": [
+                {
+                    "name": "transformation",
+                    "peer": InfrahubKind.TRANSFORMPYTHON,
+                    "kind": "Attribute",
+                    "identifier": "webhook___transformation",
+                    "cardinality": "one",
+                    "optional": True,
+                    "order_weight": 7000,
                 },
             ],
         },

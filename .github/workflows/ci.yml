@@ -113,6 +113,20 @@ jobs:
       - name: "Linting: ruff format"
         run: "ruff format --check --diff ."
 
+  markdown-lint:
+    if: needs.files-changed.outputs.documentation == 'true'
+    needs: ["files-changed"]
+    runs-on: "ubuntu-latest"
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v4"
+      - name: "Linting: markdownlint"
+        uses: DavidAnson/markdownlint-cli2-action@v14
+        with:
+          config: .markdownlint.yaml
+          globs: '**/*.md'
+
   python-sdk-unit-tests:
     strategy:
       matrix:
@@ -153,11 +167,11 @@ jobs:
       - name: "Install Package"
         run: "poetry install"
       - name: "Pylint Tests"
-        run: "poetry run pylint infrahub_sdk/ infrahub_ctl/"
+        run: "poetry run pylint infrahub_sdk/"
       - name: "Mypy Tests"
-        run: "poetry run mypy --show-error-codes infrahub_sdk/ infrahub_ctl/"
+        run: "poetry run mypy --show-error-codes infrahub_sdk/"
       - name: "Unit Tests"
-        run: "poetry run pytest -v --cov=infrahub_sdk --cov=infrahub_ctl tests/unit"
+        run: "poetry run pytest -v --cov=infrahub_sdk tests/unit/"
         env:
           BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_SDK_UNIT }}
       - name: "Coveralls : Unit Tests"
@@ -458,13 +472,10 @@ jobs:
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled')
-    strategy:
-      matrix:
-        python-version: ["neo4j", "memgraph"]
     runs-on: "runner-ubuntu-8-32"
     timeout-minutes: 40
     env:
-      INFRAHUB_DB_TYPE: ${{ matrix.python-version }}
+      INFRAHUB_DB_TYPE: memgraph
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
@@ -527,13 +538,10 @@ jobs:
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled')
-    strategy:
-      matrix:
-        db-type: ["neo4j", "memgraph"]
     runs-on: "runner-ubuntu-8-32"
     timeout-minutes: 40
     env:
-      INFRAHUB_DB_TYPE: ${{ matrix.db-type }}
+      INFRAHUB_DB_TYPE: memgraph
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
@@ -573,14 +581,14 @@ jobs:
       - name: Install Playwright Browsers
         run: npx playwright install chromium
 
-      - name: Run Playwright tests ${{ matrix.db-type }}
+      - name: Run Playwright tests
         run: npm run ci:test:e2e
 
-      - name: playwright-report-${{ matrix.db-type }}
+      - name: playwright-report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-${{ matrix.db-type }}
+          name: playwright-report
           path: frontend/playwright-report/
 
       - name: Containers after tests

@@ -2,9 +2,10 @@ import pytest
 from deepdiff import DeepDiff
 from graphql import graphql
 
+from infrahub import __version__
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import BranchSupportType
+from infrahub.core.constants import BranchSupportType, InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -17,6 +18,26 @@ from infrahub.graphql import generate_graphql_schema
 @pytest.fixture(autouse=True)
 def load_graphql_requirements(group_graphql):
     pass
+
+
+async def test_info_query(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+    query = """
+    query {
+        InfrahubInfo {
+            version
+        }
+    }
+    """
+    result = await graphql(
+        await generate_graphql_schema(db=db, include_mutation=False, include_subscription=False, branch=default_branch),
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["InfrahubInfo"]["version"] == __version__
 
 
 async def test_simple_query(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
@@ -41,10 +62,17 @@ async def test_simple_query(db: InfrahubDatabase, default_branch: Branch, critic
         }
     }
     """
+
+    related_node_ids = set()
+
     result = await graphql(
         await generate_graphql_schema(db=db, include_mutation=False, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={
+            "infrahub_database": db,
+            "infrahub_branch": default_branch,
+            "related_node_ids": related_node_ids,
+        },
         root_value=None,
         variable_values={},
     )
@@ -52,6 +80,7 @@ async def test_simple_query(db: InfrahubDatabase, default_branch: Branch, critic
     assert result.errors is None
     assert result.data["TestCriticality"]["count"] == 2
     assert len(result.data["TestCriticality"]["edges"]) == 2
+    assert related_node_ids == {obj1.id, obj2.id}
 
 
 async def test_simple_query_with_offset_and_limit(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
@@ -79,7 +108,7 @@ async def test_simple_query_with_offset_and_limit(db: InfrahubDatabase, default_
     result = await graphql(
         await generate_graphql_schema(db=db, include_mutation=False, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -123,7 +152,7 @@ async def test_display_label_one_item(db: InfrahubDatabase, default_branch: Bran
     result = await graphql(
         await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -172,7 +201,7 @@ async def test_display_label_multiple_items(db: InfrahubDatabase, default_branch
     result = await graphql(
         await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -220,7 +249,7 @@ async def test_display_label_default_value(db: InfrahubDatabase, default_branch:
     result = await graphql(
         await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -266,7 +295,7 @@ async def test_all_attributes(db: InfrahubDatabase, default_branch: Branch, data
     result = await graphql(
         await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -332,10 +361,16 @@ async def test_nested_query(db: InfrahubDatabase, default_branch: Branch, car_pe
         }
     }
     """
+
+    related_node_ids = set()
     result = await graphql(
         await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={
+            "infrahub_database": db,
+            "infrahub_branch": default_branch,
+            "related_node_ids": related_node_ids,
+        },
         root_value=None,
         variable_values={},
     )
@@ -346,6 +381,7 @@ async def test_nested_query(db: InfrahubDatabase, default_branch: Branch, car_pe
     assert sorted(result_per_name.keys()) == ["Jane", "John"]
     assert len(result_per_name["John"]["cars"]["edges"]) == 2
     assert len(result_per_name["Jane"]["cars"]["edges"]) == 1
+    assert related_node_ids == {p1.id, p2.id, c1.id, c2.id, c3.id}
 
 
 async def test_double_nested_query(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
@@ -399,10 +435,15 @@ async def test_double_nested_query(db: InfrahubDatabase, default_branch: Branch,
         }
     }
     """
+    related_node_ids = set()
     result = await graphql(
         await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={
+            "infrahub_database": db,
+            "infrahub_branch": default_branch,
+            "related_node_ids": related_node_ids,
+        },
         root_value=None,
         variable_values={},
     )
@@ -416,6 +457,8 @@ async def test_double_nested_query(db: InfrahubDatabase, default_branch: Branch,
     assert result_per_name["John"]["cars"]["count"] == 2
     assert result_per_name["Jane"]["cars"]["count"] == 1
     assert result_per_name["John"]["cars"]["edges"][0]["node"]["owner"]["node"]["name"]["value"] == "John"
+
+    assert related_node_ids == {p1.id, p2.id, c1.id, c2.id, c3.id}
 
 
 async def test_display_label_nested_query(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
@@ -469,7 +512,7 @@ async def test_display_label_nested_query(db: InfrahubDatabase, default_branch: 
     result = await graphql(
         await generate_graphql_schema(db=db, branch=default_branch, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -646,7 +689,7 @@ async def test_query_typename(db: InfrahubDatabase, default_branch: Branch, car_
     result = await graphql(
         await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -696,7 +739,7 @@ async def test_query_filter_ids(db: InfrahubDatabase, default_branch: Branch, cr
     result = await graphql(
         await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -724,7 +767,7 @@ async def test_query_filter_ids(db: InfrahubDatabase, default_branch: Branch, cr
     result = await graphql(
         await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -757,7 +800,7 @@ async def test_query_filter_local_attrs(db: InfrahubDatabase, default_branch: Br
     result = await graphql(
         await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -812,7 +855,7 @@ async def test_query_multiple_filters(db: InfrahubDatabase, default_branch: Bran
     result = await graphql(
         await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
         source=query01,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -838,7 +881,7 @@ async def test_query_multiple_filters(db: InfrahubDatabase, default_branch: Bran
     result = await graphql(
         await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
         source=query02,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -864,7 +907,7 @@ async def test_query_multiple_filters(db: InfrahubDatabase, default_branch: Bran
     result = await graphql(
         await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
         source=query03,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -894,7 +937,7 @@ async def test_query_multiple_filters(db: InfrahubDatabase, default_branch: Bran
     result = await graphql(
         await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
         source=query04,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -952,7 +995,7 @@ async def test_query_filter_relationships(db: InfrahubDatabase, default_branch: 
     result = await graphql(
         await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -995,7 +1038,7 @@ async def test_query_filter_relationships_with_generic(
     result = await graphql(
         await generate_graphql_schema(db=db, branch=default_branch, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -1036,7 +1079,7 @@ async def test_query_filter_relationships_with_generic_filter(
     result = await graphql(
         await generate_graphql_schema(db=db, branch=default_branch, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -1107,7 +1150,7 @@ async def test_query_filter_relationship_id(db: InfrahubDatabase, default_branch
     result = await graphql(
         await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -1147,7 +1190,7 @@ async def test_query_filter_relationship_id(db: InfrahubDatabase, default_branch
     result = await graphql(
         await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -1180,7 +1223,7 @@ async def test_query_attribute_multiple_values(db: InfrahubDatabase, default_bra
     result = await graphql(
         await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -1236,11 +1279,11 @@ async def test_query_relationship_multiple_values(db: InfrahubDatabase, default_
         }
     }
     """
-    # (name__values: ["John", "Jane"])
+
     result = await graphql(
         await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -1252,10 +1295,10 @@ async def test_query_relationship_multiple_values(db: InfrahubDatabase, default_
 
 
 async def test_query_oneway_relationship(db: InfrahubDatabase, default_branch: Branch, person_tag_schema):
-    t1 = await Node.init(db=db, schema="BuiltinTag")
+    t1 = await Node.init(db=db, schema=InfrahubKind.TAG)
     await t1.new(db=db, name="Blue", description="The Blue tag")
     await t1.save(db=db)
-    t2 = await Node.init(db=db, schema="BuiltinTag")
+    t2 = await Node.init(db=db, schema=InfrahubKind.TAG)
     await t2.new(db=db, name="Red")
     await t2.save(db=db)
     p1 = await Node.init(db=db, schema="TestPerson")
@@ -1285,7 +1328,7 @@ async def test_query_oneway_relationship(db: InfrahubDatabase, default_branch: B
     result = await graphql(
         await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -1295,10 +1338,10 @@ async def test_query_oneway_relationship(db: InfrahubDatabase, default_branch: B
 
 
 async def test_query_at_specific_time(db: InfrahubDatabase, default_branch: Branch, person_tag_schema):
-    t1 = await Node.init(db=db, schema="BuiltinTag")
+    t1 = await Node.init(db=db, schema=InfrahubKind.TAG)
     await t1.new(db=db, name="Blue", description="The Blue tag")
     await t1.save(db=db)
-    t2 = await Node.init(db=db, schema="BuiltinTag")
+    t2 = await Node.init(db=db, schema=InfrahubKind.TAG)
     await t2.new(db=db, name="Red")
     await t2.save(db=db)
 
@@ -1323,14 +1366,14 @@ async def test_query_at_specific_time(db: InfrahubDatabase, default_branch: Bran
     result = await graphql(
         await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
 
     assert result.errors is None
-    assert len(result.data["BuiltinTag"]["edges"]) == 2
-    names = sorted([tag["node"]["name"]["value"] for tag in result.data["BuiltinTag"]["edges"]])
+    assert len(result.data[InfrahubKind.TAG]["edges"]) == 2
+    names = sorted([tag["node"]["name"]["value"] for tag in result.data[InfrahubKind.TAG]["edges"]])
     assert names == ["Blue", "Green"]
 
     # Now query at a specific time
@@ -1355,14 +1398,15 @@ async def test_query_at_specific_time(db: InfrahubDatabase, default_branch: Bran
             "infrahub_database": db,
             "infrahub_at": time1,
             "infrahub_branch": default_branch,
+            "related_node_ids": set(),
         },
         root_value=None,
         variable_values={},
     )
 
     assert result.errors is None
-    assert len(result.data["BuiltinTag"]["edges"]) == 2
-    names = sorted([tag["node"]["name"]["value"] for tag in result.data["BuiltinTag"]["edges"]])
+    assert len(result.data[InfrahubKind.TAG]["edges"]) == 2
+    names = sorted([tag["node"]["name"]["value"] for tag in result.data[InfrahubKind.TAG]["edges"]])
     assert names == ["Blue", "Red"]
 
 
@@ -1393,7 +1437,7 @@ async def test_query_attribute_updated_at(db: InfrahubDatabase, default_branch: 
     result1 = await graphql(
         await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -1412,7 +1456,7 @@ async def test_query_attribute_updated_at(db: InfrahubDatabase, default_branch: 
     result2 = await graphql(
         await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -1445,7 +1489,7 @@ async def test_query_node_updated_at(db: InfrahubDatabase, default_branch: Branc
     result1 = await graphql(
         await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -1460,7 +1504,7 @@ async def test_query_node_updated_at(db: InfrahubDatabase, default_branch: Branc
     result2 = await graphql(
         await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -1479,10 +1523,10 @@ async def test_query_node_updated_at(db: InfrahubDatabase, default_branch: Branc
 
 
 async def test_query_relationship_updated_at(db: InfrahubDatabase, default_branch: Branch, person_tag_schema):
-    t1 = await Node.init(db=db, schema="BuiltinTag")
+    t1 = await Node.init(db=db, schema=InfrahubKind.TAG)
     await t1.new(db=db, name="Blue", description="The Blue tag")
     await t1.save(db=db)
-    t2 = await Node.init(db=db, schema="BuiltinTag")
+    t2 = await Node.init(db=db, schema=InfrahubKind.TAG)
     await t2.new(db=db, name="Red")
     await t2.save(db=db)
 
@@ -1513,7 +1557,7 @@ async def test_query_relationship_updated_at(db: InfrahubDatabase, default_branc
     result1 = await graphql(
         await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -1528,7 +1572,7 @@ async def test_query_relationship_updated_at(db: InfrahubDatabase, default_branc
     result2 = await graphql(
         await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -1573,10 +1617,15 @@ async def test_query_attribute_node_property_source(
         }
     }
     """
+    related_node_ids = set()
     result1 = await graphql(
         await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={
+            "infrahub_database": db,
+            "infrahub_branch": default_branch,
+            "related_node_ids": related_node_ids,
+        },
         root_value=None,
         variable_values={},
     )
@@ -1587,6 +1636,7 @@ async def test_query_attribute_node_property_source(
         result1.data["TestPerson"]["edges"][0]["node"]["firstname"]["source"]["name"]["value"]
         == first_account.name.value
     )
+    assert related_node_ids == {p1.id, first_account.id}
 
 
 async def test_query_attribute_node_property_owner(
@@ -1615,10 +1665,15 @@ async def test_query_attribute_node_property_owner(
         }
     }
     """
+    related_node_ids = set()
     result1 = await graphql(
         await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={
+            "infrahub_database": db,
+            "infrahub_branch": default_branch,
+            "related_node_ids": related_node_ids,
+        },
         root_value=None,
         variable_values={},
     )
@@ -1629,6 +1684,7 @@ async def test_query_attribute_node_property_owner(
         result1.data["TestPerson"]["edges"][0]["node"]["firstname"]["owner"]["name"]["value"]
         == first_account.name.value
     )
+    assert related_node_ids == {p1.id, first_account.id}
 
 
 async def test_query_relationship_node_property(
@@ -1695,14 +1751,18 @@ async def test_query_relationship_node_property(
     }
     """
 
+    related_node_ids = set()
     result = await graphql(
         await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={
+            "infrahub_database": db,
+            "infrahub_branch": default_branch,
+            "related_node_ids": related_node_ids,
+        },
         root_value=None,
         variable_values={},
     )
-
     assert result.errors is None
 
     results = {item["node"]["name"]["value"]: item["node"] for item in result.data["TestPerson"]["edges"]}
@@ -1719,6 +1779,7 @@ async def test_query_relationship_node_property(
     assert results["Jane"]["cars"]["edges"][0]["properties"]["owner"] is None
     assert results["Jane"]["cars"]["edges"][0]["properties"]["source"]
     assert results["Jane"]["cars"]["edges"][0]["properties"]["source"]["id"] == first_account.id
+    assert related_node_ids == {p1.id, p2.id, c1.id, c2.id, first_account.id}
 
 
 async def test_query_attribute_flag_property(
@@ -1755,7 +1816,7 @@ async def test_query_attribute_flag_property(
     result1 = await graphql(
         await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -1779,7 +1840,7 @@ async def test_query_branches(db: InfrahubDatabase, default_branch: Branch, regi
     result1 = await graphql(
         await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -1808,7 +1869,7 @@ async def test_query_multiple_branches(db: InfrahubDatabase, default_branch: Bra
     result1 = await graphql(
         await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -1852,10 +1913,15 @@ async def test_multiple_queries(db: InfrahubDatabase, default_branch: Branch, pe
         }
     }
     """
+    related_node_ids = set()
     result1 = await graphql(
         await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={
+            "infrahub_database": db,
+            "infrahub_branch": default_branch,
+            "related_node_ids": related_node_ids,
+        },
         root_value=None,
         variable_values={},
     )
@@ -1863,6 +1929,7 @@ async def test_multiple_queries(db: InfrahubDatabase, default_branch: Branch, pe
     assert result1.errors is None
     assert result1.data["firstperson"]["edges"][0]["node"]["firstname"]["value"] == "John"
     assert result1.data["secondperson"]["edges"][0]["node"]["firstname"]["value"] == "Jane"
+    assert related_node_ids == {p1.id, p2.id}
 
 
 async def test_model_node_interface(db: InfrahubDatabase, default_branch: Branch, car_schema):
@@ -1893,10 +1960,15 @@ async def test_model_node_interface(db: InfrahubDatabase, default_branch: Branch
         }
     }
     """
+    related_node_ids = set()
     result = await graphql(
         await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={
+            "infrahub_database": db,
+            "infrahub_branch": default_branch,
+            "related_node_ids": related_node_ids,
+        },
         root_value=None,
         variable_values={},
     )
@@ -1907,6 +1979,7 @@ async def test_model_node_interface(db: InfrahubDatabase, default_branch: Branch
         "Renaud Clio",
     ]
     assert sorted([car["node"]["nbr_doors"]["value"] for car in result.data["TestCar"]["edges"]]) == [2, 4]
+    assert related_node_ids == {d1.id, d2.id}
 
 
 async def test_model_rel_interface(db: InfrahubDatabase, default_branch: Branch, vehicule_person_schema):
@@ -1960,7 +2033,7 @@ async def test_model_rel_interface(db: InfrahubDatabase, default_branch: Branch,
             branch=default_branch, db=db, include_mutation=False, include_subscription=False
         ),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -2019,7 +2092,7 @@ async def test_model_rel_interface_reverse(db: InfrahubDatabase, default_branch:
     result = await graphql(
         await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -2098,7 +2171,7 @@ async def test_union_relationship(
     result = await graphql(
         schema=schema,
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -2136,7 +2209,7 @@ async def test_generic_root_with_pagination(db: InfrahubDatabase, default_branch
     result = await graphql(
         await generate_graphql_schema(db=db, branch=default_branch, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -2172,7 +2245,7 @@ async def test_generic_root_with_filters(db: InfrahubDatabase, default_branch: B
     result = await graphql(
         await generate_graphql_schema(db=db, branch=default_branch, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -2194,10 +2267,10 @@ async def test_member_of_groups(db: InfrahubDatabase, default_branch: Branch, ca
     c2 = car_person_generics_data["c2"]
     c3 = car_person_generics_data["c3"]
 
-    g1 = await Node.init(db=db, schema="CoreStandardGroup")
+    g1 = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
     await g1.new(db=db, name="group1", members=[c1, c2])
     await g1.save(db=db)
-    g2 = await Node.init(db=db, schema="CoreStandardGroup")
+    g2 = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
     await g2.new(db=db, name="group2", members=[c2, c3])
     await g2.save(db=db)
 
@@ -2228,7 +2301,7 @@ async def test_member_of_groups(db: InfrahubDatabase, default_branch: Branch, ca
     result = await graphql(
         await generate_graphql_schema(db=db, branch=default_branch, include_mutation=False, include_subscription=False),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -2271,6 +2344,364 @@ async def test_member_of_groups(db: InfrahubDatabase, default_branch: Branch, ca
     }
     assert result.errors is None
     assert DeepDiff(result.data, expected_response, ignore_order=True).to_dict() == {}
+
+
+async def test_hierarchical_location_parent_filter(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data
+):
+    query = """
+    query GetRack {
+        LocationRack(parent__name__values: "europe") {
+            edges {
+                node {
+                    id
+                    display_label
+                    name {
+                        value
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    result = await graphql(
+        await generate_graphql_schema(db=db, branch=default_branch, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    nodes = [node["node"]["name"]["value"] for node in result.data["LocationRack"]["edges"]]
+
+    assert result.errors is None
+    assert nodes == ["paris-r1", "paris-r2", "london-r1", "london-r2"]
+
+
+async def test_hierarchical_location_ancestors(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data
+):
+    query = """
+    query {
+        LocationRack(name__value: "paris-r1") {
+            edges {
+                node {
+                    id
+                    display_label
+                    ancestors {
+                        edges {
+                            node {
+                                id
+                                display_label
+                                __typename
+                                name {
+                                    value
+                                }
+                            }
+                        }
+                    }
+                    descendants {
+                        edges {
+                            node {
+                                id
+                                display_label
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    result = await graphql(
+        await generate_graphql_schema(db=db, branch=default_branch, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    rack = result.data["LocationRack"]["edges"][0]["node"]
+    ancestors = rack["ancestors"]["edges"]
+    descendants = rack["descendants"]["edges"]
+    ancestor_names = [node["node"]["name"]["value"] for node in ancestors]
+
+    assert ancestor_names == ["europe", "paris"]
+    assert descendants == []
+
+
+async def test_hierarchical_location_descendants(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data
+):
+    query = """
+    query {
+        LocationRegion(name__value: "asia") {
+            edges {
+                node {
+                    id
+                    display_label
+                    descendants {
+                        edges {
+                            node {
+                                id
+                                display_label
+                                __typename
+                                name {
+                                    value
+                                }
+                            }
+                        }
+                    }
+                    ancestors {
+                        edges {
+                            node {
+                                id
+                                display_label
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    result = await graphql(
+        await generate_graphql_schema(db=db, branch=default_branch, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    asia = result.data["LocationRegion"]["edges"][0]["node"]
+    ancestors = asia["ancestors"]["edges"]
+    descendants = asia["descendants"]["edges"]
+    descendants_names = [node["node"]["name"]["value"] for node in descendants]
+
+    assert descendants_names == [
+        "beijing",
+        "beijing-r1",
+        "beijing-r2",
+        "singapore",
+        "singapore-r1",
+        "singapore-r2",
+    ]
+    assert ancestors == []
+
+
+async def test_hierarchical_location_descendants_filters_attr(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data
+):
+    query = """
+    query {
+        LocationRegion(name__value: "asia") {
+            edges {
+                node {
+                    id
+                    display_label
+                    descendants(status__value: "offline") {
+                        edges {
+                            node {
+                                id
+                                display_label
+                                __typename
+                                name {
+                                    value
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    result = await graphql(
+        await generate_graphql_schema(db=db, branch=default_branch, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    asia = result.data["LocationRegion"]["edges"][0]["node"]
+    descendants = asia["descendants"]["edges"]
+    descendants_names = [node["node"]["name"]["value"] for node in descendants]
+
+    assert descendants_names == [
+        "beijing-r2",
+        "singapore-r2",
+    ]
+
+
+async def test_hierarchical_location_descendants_filters_ids(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data
+):
+    query = """
+    query {
+        LocationRegion(name__value: "asia") {
+            edges {
+                node {
+                    id
+                    display_label
+                    descendants(ids: ["%s", "%s", "%s"]) {
+                        edges {
+                            node {
+                                id
+                                display_label
+                                __typename
+                                name {
+                                    value
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """ % (
+        hierarchical_location_data["beijing"].id,
+        hierarchical_location_data["beijing-r1"].id,
+        hierarchical_location_data["singapore-r2"].id,
+    )
+
+    result = await graphql(
+        await generate_graphql_schema(db=db, branch=default_branch, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    asia = result.data["LocationRegion"]["edges"][0]["node"]
+    descendants = asia["descendants"]["edges"]
+    descendants_names = [node["node"]["name"]["value"] for node in descendants]
+
+    assert descendants_names == [
+        "beijing",
+        "beijing-r1",
+        "singapore-r2",
+    ]
+
+
+async def test_hierarchical_location_include_descendants(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_thing
+):
+    query = """
+    query {
+        LocationRegion(name__value: "asia") {
+            edges {
+                node {
+                    id
+                    display_label
+                    things(include_descendants: true) {
+                        count
+                        edges {
+                            node {
+                                id
+                                display_label
+                                name {
+                                    value
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    result = await graphql(
+        await generate_graphql_schema(db=db, branch=default_branch, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    asia = result.data["LocationRegion"]["edges"][0]["node"]
+    things = asia["things"]["edges"]
+    things_names = [node["node"]["name"]["value"] for node in things]
+
+    assert things_names == [
+        "thing-asia",
+        "thing-beijing",
+        "thing-beijing-r1",
+        "thing-beijing-r2",
+        "thing-singapore",
+        "thing-singapore-r1",
+        "thing-singapore-r2",
+    ]
+    assert asia["things"]["count"] == 7
+
+
+async def test_hierarchical_groups_descendants(db: InfrahubDatabase, default_branch: Branch, hierarchical_groups_data):
+    query = """
+    query {
+        CoreStandardGroup(name__value: "grp1") {
+            edges {
+                node {
+                    id
+                    display_label
+                    members(include_descendants: true) {
+                        count
+                        edges {
+                            node {
+                                id
+                                display_label
+                                __typename
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    result = await graphql(
+        await generate_graphql_schema(db=db, branch=default_branch, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    grp1 = result.data["CoreStandardGroup"]["edges"][0]["node"]
+    members = grp1["members"]["edges"]
+    members_ids = [node["node"]["id"] for node in members]
+
+    member_names = [hierarchical_groups_data[member_id].name.value for member_id in members_ids]
+
+    assert member_names == [
+        "tag-0",
+        "tag-1",
+        "tag-2",
+        "tag-3",
+        "tag-4",
+        "tag-5",
+        "tag-6",
+        "tag-7",
+        "tag-8",
+        "tag-9",
+        "tag-10",
+        "tag-11",
+        "tag-12",
+        "tag-13",
+    ]
+    assert grp1["members"]["count"] == 14
 
 
 @pytest.mark.skip(reason="Union is not supported at the root of the GraphQL Schema yet .. ")
@@ -2347,7 +2778,7 @@ async def test_union_root(
     result = await graphql(
         schema=schema,
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )

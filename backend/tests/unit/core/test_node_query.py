@@ -1,19 +1,20 @@
 import time
+from typing import Dict
 
 from infrahub.core import get_branch, registry
 from infrahub.core.branch import Branch
+from infrahub.core.constants import InfrahubKind, RelationshipHierarchyDirection
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.query.node import (
     NodeCreateAllQuery,
     NodeDeleteQuery,
+    NodeGetHierarchyQuery,
     NodeGetListQuery,
     NodeListGetAttributeQuery,
     NodeListGetInfoQuery,
-    NodeListGetLocalAttributeValueQuery,
     NodeListGetRelationshipsQuery,
 )
-from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 
 
@@ -201,7 +202,7 @@ async def test_query_NodeGetListQuery_filter_and_sort_with_revision(
 
 
 async def test_query_NodeGetListQuery_with_generics(db: InfrahubDatabase, group_group1_main, branch: Branch):
-    schema = registry.schema.get(name="CoreGroup", branch=branch)
+    schema = registry.schema.get(name=InfrahubKind.GENERICGROUP, branch=branch)
     query = await NodeGetListQuery.init(
         db=db,
         branch=branch,
@@ -218,35 +219,6 @@ async def test_query_NodeListGetInfoQuery(
     query = await NodeListGetInfoQuery.init(db=db, branch=branch, ids=ids)
     await query.execute(db=db)
     assert len(list(query.get_results_group_by(("n", "uuid")))) == 3
-
-
-async def test_query_NodeListGetLocalAttributeValueQuery(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema
-):
-    p1 = await Node.init(db=db, schema="TestPerson")
-    await p1.new(db=db, name="John", height=180)
-    await p1.save(db=db)
-    car1 = await Node.init(db=db, schema="TestCar")
-    await car1.new(db=db, name="accord", nbr_seats=5, is_electric=False, owner=p1)
-    await car1.save(db=db)
-    car2 = await Node.init(db=db, schema="TestCar")
-    await car2.new(db=db, name="model3", nbr_seats=5, is_electric=True, owner=p1)
-    await car2.save(db=db)
-
-    ids = [
-        car1.name.id,
-        car1.nbr_seats.id,
-        car1.is_electric.id,
-        car1.color.id,
-        car2.name.id,
-        car2.nbr_seats.id,
-        car2.is_electric.id,
-        car2.color.id,
-    ]
-
-    query = await NodeListGetLocalAttributeValueQuery.init(db=db, ids=ids, branch=default_branch, at=Timestamp())
-    await query.execute(db=db)
-    assert len(query.get_results_by_id()) == 8
 
 
 async def test_query_NodeListGetAttributeQuery_all_fields(db: InfrahubDatabase, base_dataset_02):
@@ -357,10 +329,59 @@ async def test_query_NodeDeleteQuery(
     person_jack_tags_main: Node,
     tag_blue_main: Node,
 ):
-    tags_before = await NodeManager.query(db=db, schema="BuiltinTag", branch=default_branch)
+    tags_before = await NodeManager.query(db=db, schema=InfrahubKind.TAG, branch=default_branch)
 
     query = await NodeDeleteQuery.init(db=db, node=tag_blue_main, branch=default_branch)
     await query.execute(db=db)
 
-    tags_after = await NodeManager.query(db=db, schema="BuiltinTag", branch=default_branch)
+    tags_after = await NodeManager.query(db=db, schema=InfrahubKind.TAG, branch=default_branch)
     assert len(tags_after) == len(tags_before) - 1
+
+
+async def test_query_NodeGetHierarchyQuery_ancestors(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    hierarchical_location_data,
+):
+    node_schema = registry.schema.get(name="LocationRack", branch=default_branch)
+
+    europe = hierarchical_location_data["europe"]
+    paris = hierarchical_location_data["paris"]
+    paris_r1 = hierarchical_location_data["paris-r1"]
+
+    query = await NodeGetHierarchyQuery.init(
+        db=db,
+        direction=RelationshipHierarchyDirection.ANCESTORS,
+        node_id=paris_r1.id,
+        node_schema=node_schema,
+        branch=default_branch,
+    )
+    await query.execute(db=db)
+    assert sorted(list(query.get_peer_ids())) == sorted([paris.id, europe.id])
+
+
+async def test_query_NodeGetHierarchyQuery_filters(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    hierarchical_location_data: Dict[str, Node],
+):
+    node_schema = registry.schema.get(name="LocationRack", branch=default_branch)
+
+    europe = hierarchical_location_data["europe"]
+
+    ids_to_names = {value.id: value for _, value in hierarchical_location_data.items()}
+
+    query = await NodeGetHierarchyQuery.init(
+        db=db,
+        direction=RelationshipHierarchyDirection.DESCENDANTS,
+        node_id=europe.id,
+        filters={"descendants__status__value": "online"},
+        node_schema=node_schema,
+        branch=default_branch,
+    )
+
+    await query.execute(db=db)
+    descendants_ids = list(query.get_peer_ids())
+    descendants_names = [ids_to_names[descendants_id].name.value for descendants_id in descendants_ids]
+
+    assert sorted(descendants_names) == ["london", "london-r1", "paris", "paris-r1"]

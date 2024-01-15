@@ -1,3 +1,4 @@
+from infrahub.core.constants import InfrahubKind
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
 from infrahub.services import InfrahubServices
@@ -7,7 +8,7 @@ log = get_logger()
 
 async def generate(message: messages.TriggerArtifactDefinitionGenerate, service: InfrahubServices) -> None:
     artifact_definitions = await service.client.all(
-        kind="CoreArtifactDefinition", branch=message.branch, include=["id"]
+        kind=InfrahubKind.ARTIFACTDEFINITION, branch=message.branch, include=["id"]
     )
 
     events = [

@@ -3,6 +3,7 @@ from graphql import graphql
 from infrahub_sdk import UUIDT
 
 from infrahub.core.branch import Branch
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.utils import count_relationships
@@ -300,7 +301,9 @@ async def test_relationship_wrong_node(
     )
 
     assert result.errors
-    assert result.errors[0].message == f"'{person_jack_main.id}' 'TestPerson' is not a valid peer for 'BuiltinTag'"
+    assert (
+        result.errors[0].message == f"'{person_jack_main.id}' 'TestPerson' is not a valid peer for '{InfrahubKind.TAG}'"
+    )
 
 
 async def test_relationship_groups_add(db: InfrahubDatabase, default_branch: Branch, car_person_generics_data):
@@ -308,10 +311,10 @@ async def test_relationship_groups_add(db: InfrahubDatabase, default_branch: Bra
     c2 = car_person_generics_data["c2"]
     c3 = car_person_generics_data["c3"]
 
-    g1 = await Node.init(db=db, schema="CoreStandardGroup")
+    g1 = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
     await g1.new(db=db, name="group1", members=[c1])
     await g1.save(db=db)
-    g2 = await Node.init(db=db, schema="CoreStandardGroup")
+    g2 = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
     await g2.new(db=db, name="group2", members=[c2, c3])
     await g2.save(db=db)
 
@@ -333,7 +336,7 @@ async def test_relationship_groups_add(db: InfrahubDatabase, default_branch: Bra
     result = await graphql(
         schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -363,7 +366,7 @@ async def test_relationship_groups_add(db: InfrahubDatabase, default_branch: Bra
     result = await graphql(
         schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -384,10 +387,10 @@ async def test_relationship_groups_remove(db: InfrahubDatabase, default_branch: 
     c2 = car_person_generics_data["c2"]
     c3 = car_person_generics_data["c3"]
 
-    g1 = await Node.init(db=db, schema="CoreStandardGroup")
+    g1 = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
     await g1.new(db=db, name="group1", members=[c1])
     await g1.save(db=db)
-    g2 = await Node.init(db=db, schema="CoreStandardGroup")
+    g2 = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
     await g2.new(db=db, name="group2", members=[c2, c3])
     await g2.save(db=db)
 
@@ -409,7 +412,7 @@ async def test_relationship_groups_remove(db: InfrahubDatabase, default_branch: 
     result = await graphql(
         schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -439,7 +442,7 @@ async def test_relationship_groups_remove(db: InfrahubDatabase, default_branch: 
     result = await graphql(
         schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -460,10 +463,10 @@ async def test_relationship_groups_add_remove(db: InfrahubDatabase, default_bran
     c2 = car_person_generics_data["c2"]
     c3 = car_person_generics_data["c3"]
 
-    g1 = await Node.init(db=db, schema="CoreStandardGroup")
+    g1 = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
     await g1.new(db=db, name="group1", members=[c1])
     await g1.save(db=db)
-    g2 = await Node.init(db=db, schema="CoreStandardGroup")
+    g2 = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
     await g2.new(db=db, name="group2", members=[c2])
     await g2.save(db=db)
 
@@ -487,7 +490,7 @@ async def test_relationship_groups_add_remove(db: InfrahubDatabase, default_bran
     result = await graphql(
         schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -521,7 +524,7 @@ async def test_relationship_groups_add_remove(db: InfrahubDatabase, default_bran
     result = await graphql(
         schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -559,7 +562,7 @@ async def test_relationship_groups_add_remove(db: InfrahubDatabase, default_bran
     result = await graphql(
         schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -593,7 +596,7 @@ async def test_relationship_groups_add_remove(db: InfrahubDatabase, default_bran
     result = await graphql(
         schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )

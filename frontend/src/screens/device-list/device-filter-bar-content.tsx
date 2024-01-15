@@ -2,7 +2,7 @@ import { gql, useQuery } from "@apollo/client";
 import { FunnelIcon } from "@heroicons/react/20/solid";
 import { useAtom } from "jotai";
 import { FormProvider, useForm } from "react-hook-form";
-import { Button } from "../../components/button";
+import { Button } from "../../components/buttons/button";
 import { getDropdownOptionsForRelatedPeersPaginated } from "../../graphql/queries/objects/dropdownOptionsForRelatedPeers";
 import useFilters from "../../hooks/useFilters";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";

@@ -77,9 +77,10 @@ describe("List screen", () => {
 
     cy.get(":nth-child(5) > .underline").should("have.text", deviceDetailsMocksOwnerName);
 
-    cy.get(".px-2 > .flex-col > :nth-child(1) > .cursor-pointer").should(
-      "have.text",
-      deviceDetailsMocksTagName
-    );
+    cy.contains("Tags")
+      .parent()
+      .within(() => {
+        cy.contains(deviceDetailsMocksTagName).should("be.visible");
+      });
   });
 });

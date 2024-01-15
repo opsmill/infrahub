@@ -1,12 +1,11 @@
 from infrahub.log import get_logger
-from infrahub.message_bus import InfrahubMessage, Meta
+from infrahub.message_bus import InfrahubMessage
 from infrahub.services import InfrahubServices
 
 log = get_logger()
 
 
 async def set_check_status(message: InfrahubMessage, conclusion: str, service: InfrahubServices) -> None:
-    message.meta = message.meta or Meta()
     if message.meta.validator_execution_id and message.meta.check_execution_id:
         key = f"validator_execution_id:{message.meta.validator_execution_id}:check_execution_id:{message.meta.check_execution_id}"
         await service.cache.set(

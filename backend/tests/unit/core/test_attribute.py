@@ -3,6 +3,7 @@ from infrahub_sdk import UUIDT
 
 from infrahub.core.attribute import URL, Dropdown, Integer, IPHost, IPNetwork, String
 from infrahub.core.branch import Branch
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
@@ -462,7 +463,7 @@ async def test_to_graphql(db: InfrahubDatabase, default_branch: Branch, critical
         "source": {
             "id": first_account.id,
             "display_label": "First Account",
-            "type": "CoreAccount",
+            "type": InfrahubKind.ACCOUNT,
         },
         "value": "mystring",
     }
@@ -511,10 +512,10 @@ async def test_to_graphql_no_fields(
         "is_visible": True,
         "owner": None,
         "source": {
-            "__typename": "CoreAccount",
+            "__typename": InfrahubKind.ACCOUNT,
             "display_label": "First Account",
             "id": first_account.id,
-            "type": "CoreAccount",
+            "type": InfrahubKind.ACCOUNT,
         },
         "value": "mystring",
     }

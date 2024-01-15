@@ -1,6 +1,6 @@
 from typing import Any, Dict, Optional
 
-from pydantic import BaseModel, root_validator, validator
+from pydantic.v1 import BaseModel, root_validator, validator
 
 from infrahub.core.branch import Branch
 from infrahub.core.timestamp import Timestamp
@@ -8,8 +8,8 @@ from infrahub.core.timestamp import Timestamp
 
 class DiffQueryValidated(BaseModel):
     branch: Branch
-    time_from: Optional[str]
-    time_to: Optional[str]
+    time_from: Optional[str] = None
+    time_to: Optional[str] = None
     branch_only: bool
 
     class Config:

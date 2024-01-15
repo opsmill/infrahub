@@ -1,17 +1,18 @@
-import logging
 import random
 import time
 from typing import List
 
 from infrahub.core import registry
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase, get_db
+from infrahub.log import get_logger
 
 # flake8: noqa
 # pylint: skip-file
 
 
-LOGGER = logging.getLogger("infrahub")
+log = get_logger()
 
 TAGS = [
     "black",
@@ -63,7 +64,7 @@ async def execute_query(db: InfrahubDatabase, query: List[str], deps: List[Node]
     query_str = "\n".join(QUERY_START + deps_query + QUERY_MERGE + query + QUERY_END)
     result = await db.execute_query(query=query_str)
     duration = time.time() - start_time
-    LOGGER.info(f"Executed query in {duration:.3f} sec")
+    log.info(f"Executed query in {duration:.3f} sec")
 
     return result
 
@@ -89,9 +90,9 @@ async def load_data(
     repository = {}
     gqlquery = {}
 
-    tag_schema = registry.schema.get(name="BuiltinTag", branch=default_branch)
-    repository_schema = registry.schema.get(name="CoreRepository", branch=default_branch)
-    gqlquery_schema = registry.schema.get(name="CoreGraphQLQuery", branch=default_branch)
+    tag_schema = registry.schema.get(name=InfrahubKind.TAG, branch=default_branch)
+    repository_schema = registry.schema.get(name=InfrahubKind.REPOSITORY, branch=default_branch)
+    gqlquery_schema = registry.schema.get(name=InfrahubKind.GRAPHQLQUERY, branch=default_branch)
 
     # -------------------------------------------------------------------------------------
     # TAG
@@ -132,4 +133,4 @@ async def load_data(
         gqlquery[name] = obj
 
     duration = time.time() - start_time
-    LOGGER.info(f"Total Execution time script in {duration:.3f} sec")
+    log.info(f"Total Execution time script in {duration:.3f} sec")

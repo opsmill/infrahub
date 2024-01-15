@@ -4,8 +4,7 @@ layout: default
 order: 600
 ---
 <!-- vale off -->
-
-
+<!-- markdownlint-disable MD012 -->
 
 # Generic
 
@@ -19,7 +18,8 @@ Below is the list of all available options to define a Generic in the schema
 | [**default_filter**](#default_filter) | Attribute | Default filter used to search for a node in addition to its ID. | False |
 | [**description**](#description) | Attribute | Short description of the Generic. | False |
 | [**display_labels**](#display_labels) | Attribute | List of attributes to use to generate the display label | False |
-| [**icon**](#icon) | Attribute | Defines the icon to be used for this object type. | False |
+| [**hierarchical**](#hierarchical) | Attribute | Defines if the Generic support the hierarchical mode. | False |
+| [**icon**](#icon) | Attribute | Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/ | False |
 | [**include_in_menu**](#include_in_menu) | Attribute | Defines if objects of this kind should be included in the menu. | False |
 | [**label**](#label) | Attribute | Human friendly representation of the name/kind | False |
 | [**menu_placement**](#menu_placement) | Attribute | Defines where in the menu this object should be placed. | False |
@@ -31,6 +31,7 @@ Below is the list of all available options to define a Generic in the schema
 | [**relationships**](#relationships) | Relationship |  | False |
 
 ## Reference Guide
+
 ### branch
 
 | Key | Value | { class="compact" }
@@ -54,7 +55,6 @@ Below is the list of all available options to define a Generic in the schema
 | **Default Value** |  |
 | **Constraints** |  Regex: `^[a-z0-9\_]+$` |
 
-
 ### description
 
 | Key | Value | { class="compact" }
@@ -65,7 +65,6 @@ Below is the list of all available options to define a Generic in the schema
 | **Optional** | True |
 | **Default Value** |  |
 | **Constraints** |  Length: min -, max 128 |
-
 
 ### display_labels
 
@@ -78,6 +77,16 @@ Below is the list of all available options to define a Generic in the schema
 | **Default Value** |  |
 | **Constraints** |  |
 
+### hierarchical
+
+| Key | Value | { class="compact" }
+| ---- | --------------- |
+| **Name** | hierarchical |
+| **Kind** | `Boolean` |
+| **Description** | Defines if the Generic support the hierarchical mode. |
+| **Optional** | True |
+| **Default Value** | False |
+| **Constraints** |  |
 
 ### icon
 
@@ -85,11 +94,10 @@ Below is the list of all available options to define a Generic in the schema
 | ---- | --------------- |
 | **Name** | icon |
 | **Kind** | `Text` |
-| **Description** | Defines the icon to be used for this object type. |
+| **Description** | Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/ |
 | **Optional** | True |
 | **Default Value** |  |
 | **Constraints** |  |
-
 
 ### include_in_menu
 
@@ -102,7 +110,6 @@ Below is the list of all available options to define a Generic in the schema
 | **Default Value** | True |
 | **Constraints** |  |
 
-
 ### label
 
 | Key | Value | { class="compact" }
@@ -113,7 +120,6 @@ Below is the list of all available options to define a Generic in the schema
 | **Optional** | True |
 | **Default Value** |  |
 | **Constraints** |  Length: min -, max 32 |
-
 
 ### menu_placement
 
@@ -126,7 +132,6 @@ Below is the list of all available options to define a Generic in the schema
 | **Default Value** |  |
 | **Constraints** |  |
 
-
 ### name
 
 | Key | Value | { class="compact" }
@@ -137,7 +142,6 @@ Below is the list of all available options to define a Generic in the schema
 | **Optional** | False |
 | **Default Value** |  |
 | **Constraints** |  Regex: `^[A-Z][a-zA-Z0-9]+$`<br> Length: min 2, max 32 |
-
 
 ### namespace
 
@@ -150,7 +154,6 @@ Below is the list of all available options to define a Generic in the schema
 | **Default Value** |  |
 | **Constraints** |  Regex: `^[A-Z][a-zA-Z0-9]+$`<br> Length: min 3, max 32 |
 
-
 ### order_by
 
 | Key | Value | { class="compact" }
@@ -161,7 +164,6 @@ Below is the list of all available options to define a Generic in the schema
 | **Optional** | True |
 | **Default Value** |  |
 | **Constraints** |  |
-
 
 ### used_by
 
@@ -174,11 +176,9 @@ Below is the list of all available options to define a Generic in the schema
 | **Default Value** |  |
 | **Constraints** |  |
 
-
-
 ## attributes
 
-| -- | -- | { class="compact" }
+| Key | Value | { class="compact" }
 | ---- | --------------- |
 | **Name** | attributes |
 | **Kind** | `List` |
@@ -186,7 +186,7 @@ Below is the list of all available options to define a Generic in the schema
 
 ## relationships
 
-| -- | -- | { class="compact" }
+| Key | Value | { class="compact" }
 | ---- | --------------- |
 | **Name** | relationships |
 | **Kind** | `List` |

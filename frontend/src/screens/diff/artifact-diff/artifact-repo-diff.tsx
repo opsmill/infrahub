@@ -1,8 +1,8 @@
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import "react-diff-view/style/index.css";
-import Accordion from "../../../components/accordion";
-import { Badge } from "../../../components/badge";
+import Accordion from "../../../components/display/accordion";
+import { Badge } from "../../../components/display/badge";
 import { getArtifactDetails } from "../../../graphql/queries/getArtifacts";
 import useQuery from "../../../hooks/useQuery";
 import { schemaState } from "../../../state/atoms/schema.atom";

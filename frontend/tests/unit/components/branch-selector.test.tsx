@@ -4,8 +4,8 @@ import { BrowserRouter } from "react-router-dom";
 import { QueryParamProvider } from "use-query-params";
 import { ReactRouter6Adapter } from "use-query-params/adapters/react-router-6";
 import { afterAll, describe, expect, it } from "vitest";
-import BranchSelector from "../../../src/components/tests/branch-selector-test";
 import { QSP } from "../../../src/config/qsp";
+import BranchSelector from "./branch-selector";
 
 afterAll(cleanup);
 

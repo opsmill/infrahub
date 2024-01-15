@@ -135,10 +135,6 @@ describe("Main application", () => {
 
         // Mark as resolved once commented
         cy.contains("Resolve thread").click();
-
-        if (this.screenshots) {
-          cy.screenshot("proposed-changes-4-comments-confirm-resolution", screenshotConfig);
-        }
       });
 
     cy.intercept("/graphql/main").as("CreateComment3");

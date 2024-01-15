@@ -1,12 +1,12 @@
 import { render, screen } from "@testing-library/react";
 import { Params } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
-import ObjectItemDetails from "../../../src/components/tests/object-item-details";
 import { schemaState } from "../../../src/state/atoms/schema.atom";
 import { cleanTabsAndNewLines } from "../../../src/utils/string";
 import { accountDetailsMocksQuery, accountId } from "../../../tests/mocks/data/account";
 import { schemaMocks } from "../../../tests/mocks/data/schema";
 import { TestProvider } from "../../../tests/mocks/jotai/atom";
+import ObjectItemDetails from "./object-item-details";
 
 vi.mock("react-router-dom", () => ({
   useParams: (): Readonly<Params<string>> => ({ objectname: "CoreAccount", objectid: accountId }),

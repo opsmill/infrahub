@@ -2,7 +2,7 @@ import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import { useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { Pagination } from "../../components/pagination";
+import { Pagination } from "../../components/utils/pagination";
 import { QSP } from "../../config/qsp";
 import { getObjectRelationshipsDetailsPaginated } from "../../graphql/queries/objects/getObjectRelationshipDetails";
 import usePagination from "../../hooks/usePagination";
@@ -26,7 +26,6 @@ export default function GroupRelationships(props: RelationshipsDetailsProps) {
   const [pagination] = usePagination();
   const [schemaList] = useAtom(schemaState);
   const [genericList] = useAtom(genericsState);
-  const [generics] = useAtom(genericsState);
 
   const schema = schemaList.filter((s) => s.kind === groupname)[0];
   const generic = genericList.filter((s) => s.kind === groupname)[0];
@@ -35,11 +34,7 @@ export default function GroupRelationships(props: RelationshipsDetailsProps) {
 
   const schemaData = generic || schema;
 
-  const columns = getAttributeColumnsFromNodeOrGenericSchema(
-    schemaList,
-    generics,
-    relationshipSchema?.peer!
-  );
+  const columns = getAttributeColumnsFromNodeOrGenericSchema(schema, generic);
 
   const filtersString = [
     { name: "offset", value: pagination?.offset },

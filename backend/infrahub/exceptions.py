@@ -125,10 +125,12 @@ class BranchNotFound(Error):
 class NodeNotFound(Error):
     HTTP_CODE: int = 404
 
-    def __init__(self, branch_name: str, node_type: str, identifier: str, message=None):
-        self.branch_name = branch_name
+    def __init__(
+        self, node_type: str, identifier: str, branch_name: Optional[str] = None, message: Optional[str] = None
+    ):
         self.node_type = node_type
         self.identifier = identifier
+        self.branch_name = branch_name
         self.message = message or f"Unable to find the node {identifier} / {node_type} in the database."
         super().__init__(self.message)
 

@@ -13,22 +13,23 @@ import { useAtomValue } from "jotai/index";
 import { useContext, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { BUTTON_TYPES, Button } from "../../components/button";
-import MetaDetailsTooltip from "../../components/meta-details-tooltips";
-import SlideOver from "../../components/slide-over";
+import { BUTTON_TYPES, Button } from "../../components/buttons/button";
+import MetaDetailsTooltip from "../../components/display/meta-details-tooltips";
+import SlideOver from "../../components/display/slide-over";
 import { Tabs } from "../../components/tabs";
 import { DEFAULT_BRANCH_NAME, GROUP_OBJECT } from "../../config/constants";
 import { QSP } from "../../config/qsp";
 import { AuthContext } from "../../decorators/withAuth";
 import { getGroupDetails } from "../../graphql/queries/groups/getGroupDetails";
 import useQuery from "../../hooks/useQuery";
+import { useTitle } from "../../hooks/useTitle";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom copy";
 import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
-import { getObjectTabs, getSchemaRelationshipsTabs } from "../../utils/getSchemaObjectColumns";
+import { getObjectTabs, getTabs } from "../../utils/getSchemaObjectColumns";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
@@ -50,6 +51,7 @@ export default function GroupItemDetails() {
   const schema = schemaList.filter((s) => s.kind === groupname)[0];
   const generic = genericList.filter((s) => s.kind === groupname)[0];
   const navigate = useNavigate();
+  useTitle(`${groupname} details`);
 
   const schemaData = generic || schema;
 
@@ -60,7 +62,7 @@ export default function GroupItemDetails() {
     return null;
   }
 
-  const relationshipsTabs = getSchemaRelationshipsTabs(schemaData);
+  const relationshipsTabs = getTabs(schemaData);
 
   const queryString = schemaData
     ? getGroupDetails({
@@ -325,7 +327,6 @@ export default function GroupItemDetails() {
           attributeOrRelationshipToEdit={
             objectDetailsData[metaEditFieldDetails?.attributeOrRelationshipName]
           }
-          schemaList={schemaList}
           schema={schemaData}
           attributeOrRelationshipName={metaEditFieldDetails?.attributeOrRelationshipName}
           type={metaEditFieldDetails?.type!}

@@ -83,7 +83,7 @@ def mypy(context: Context, docker: bool = False):
     """This will run mypy for the specified name and Python version."""
 
     print(f" - [{NAMESPACE}] Check code with mypy")
-    exec_cmd = "mypy --show-error-codes infrahub_sdk/ infrahub_ctl/"
+    exec_cmd = "mypy --show-error-codes infrahub_sdk/"
     exec_directory = MAIN_DIRECTORY_PATH
 
     if docker:
@@ -104,7 +104,7 @@ def pylint(context: Context, docker: bool = False):
     """This will run pylint for the specified name and Python version."""
 
     print(f" - [{NAMESPACE}] Check code with pylint")
-    exec_cmd = "pylint infrahub_sdk/ infrahub_ctl/"
+    exec_cmd = "pylint infrahub_sdk/"
     exec_directory = MAIN_DIRECTORY_PATH
 
     if docker:

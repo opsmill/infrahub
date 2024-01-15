@@ -5,10 +5,10 @@ import { useAtomValue } from "jotai/index";
 import { useContext, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import { ALERT_TYPES, Alert } from "../../components/alert";
-import { BUTTON_TYPES, Button } from "../../components/button";
-import ModalDelete from "../../components/modal-delete";
-import { Pagination } from "../../components/pagination";
+import { BUTTON_TYPES, Button } from "../../components/buttons/button";
+import ModalDelete from "../../components/modals/modal-delete";
+import { ALERT_TYPES, Alert } from "../../components/utils/alert";
+import { Pagination } from "../../components/utils/pagination";
 import { GROUP_OBJECT } from "../../config/constants";
 import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
@@ -16,6 +16,7 @@ import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
 import { getGroups } from "../../graphql/queries/groups/getGroups";
 import usePagination from "../../hooks/usePagination";
 import useQuery from "../../hooks/useQuery";
+import { useTitle } from "../../hooks/useTitle";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
@@ -82,6 +83,8 @@ export default function GroupItems() {
   const result = data && schemaData?.kind ? data[schemaData?.kind] ?? {} : {};
 
   const { count, edges } = result;
+
+  useTitle(groupname ? `${groupname} details` : "Groups list");
 
   const rows = edges?.map((edge: any) => edge.node);
 

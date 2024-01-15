@@ -71,6 +71,7 @@ describe("Object creation and deletion", () => {
       // Get the delete button for the new account
       cy.contains(NEW_ACCOUNT.name).scrollIntoView();
       cy.contains(NEW_ACCOUNT.name)
+        .parent()
         .siblings("td")
         .last()
         .within(() => cy.get("[data-cy='delete']").click());

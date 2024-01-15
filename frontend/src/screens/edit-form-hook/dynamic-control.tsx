@@ -1,13 +1,15 @@
 import { useFormContext } from "react-hook-form";
-import { OpsCheckboxRegister } from "../../components-form/checkbox.register";
-import { CodeEditorRegister } from "../../components-form/code-editor.register";
-import { OpsDatePickerRegister } from "../../components-form/date-picker.register";
-import { OpsInputRegister } from "../../components-form/input.register";
-import { OpsMultiSelectRegister } from "../../components-form/multi-select.register";
-import { OpsSelect2StepRegister } from "../../components-form/select-2-step.register";
-import { OpsSelectRegister } from "../../components-form/select.register";
-import { OpsSwitchRegister } from "../../components-form/switch.register";
-import { OpsTextareaRegister } from "../../components-form/textarea.register";
+import { OpsCheckboxRegister } from "../../components/form/checkbox.register";
+import { CodeEditorRegister } from "../../components/form/code-editor.register";
+import { OpsColorPickerRegister } from "../../components/form/color-picker.register";
+import { OpsDatePickerRegister } from "../../components/form/date-picker.register";
+import { OpsInputRegister } from "../../components/form/input.register";
+import { OpsListRegister } from "../../components/form/list.register";
+import { OpsMultiSelectRegister } from "../../components/form/multi-select.register";
+import { OpsSelect2StepRegister } from "../../components/form/select-2-step.register";
+import { OpsSelectRegister } from "../../components/form/select.register";
+import { OpsSwitchRegister } from "../../components/form/switch.register";
+import { OpsTextareaRegister } from "../../components/form/textarea.register";
 import { DynamicFieldData } from "./dynamic-control-types";
 
 export const DynamicControl = (props: DynamicFieldData) => {
@@ -123,7 +125,9 @@ export const DynamicControl = (props: DynamicFieldData) => {
       );
     }
     case "multiselect": {
-      const currentValue = options.values.filter((option) => (value || []).indexOf(option.id) > -1);
+      const selectOptions = options?.values ?? value;
+
+      const currentValue = selectOptions.filter((option) => (value || []).indexOf(option.id) > -1);
 
       return (
         <OpsMultiSelectRegister
@@ -137,6 +141,9 @@ export const DynamicControl = (props: DynamicFieldData) => {
       // If user does not change anything in the multi-select dropdown, the field value in the form data remains undefined
       // Not a problem currently, as if nothing get's changed, we are not sending out that field in the update mutation
       // but something that we can look into later on
+    }
+    case "list": {
+      return <OpsListRegister {...props} register={register} setValue={setValue} />;
     }
     case "datepicker": {
       return (
@@ -156,6 +163,9 @@ export const DynamicControl = (props: DynamicFieldData) => {
       return (
         <CodeEditorRegister {...props} value={jsonValue} register={register} setValue={setValue} />
       );
+    }
+    case "color": {
+      return <OpsColorPickerRegister {...props} register={register} setValue={setValue} />;
     }
     default:
       return null;

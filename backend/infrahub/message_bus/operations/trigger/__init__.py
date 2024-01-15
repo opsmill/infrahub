@@ -1,3 +1,3 @@
-from . import artifact_definition, proposed_change
+from . import artifact_definition, proposed_change, webhook
 
-__all__ = ["artifact_definition", "proposed_change"]
+__all__ = ["artifact_definition", "proposed_change", "webhook"]

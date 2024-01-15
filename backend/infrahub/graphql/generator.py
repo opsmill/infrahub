@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
 import graphene
 
 from infrahub.core import get_branch, registry
-from infrahub.core.constants import RelationshipKind
+from infrahub.core.constants import InfrahubKind, RelationshipKind
 from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema
 from infrahub.graphql.mutations.graphql_query import InfrahubGraphQLQueryMutation
 from infrahub.types import ATTRIBUTE_TYPES, get_attribute_type
@@ -19,7 +19,9 @@ from .mutations import (
     InfrahubRepositoryMutation,
 )
 from .resolver import (
+    ancestors_resolver,
     default_resolver,
+    descendants_resolver,
     many_relationship_resolver,
     single_relationship_resolver,
 )
@@ -183,9 +185,28 @@ async def generate_object_types(db: InfrahubDatabase, branch: Union[Branch, str]
                     peer_type = registry.get_graphql_type(name=peer_schema.kind, branch=branch.name)
                 else:
                     peer_type = registry.get_graphql_type(name=f"NestedPaginated{peer_schema.kind}", branch=branch.name)
+
+                if (isinstance(node_schema, NodeSchema) and node_schema.hierarchy) or (
+                    isinstance(node_schema, GenericSchema) and node_schema.hierarchical
+                ):
+                    peer_filters["include_descendants"] = graphene.Boolean()
+
                 node_type._meta.fields[rel.name] = graphene.Field(
                     peer_type, required=False, resolver=many_relationship_resolver, **peer_filters
                 )
+
+        if isinstance(node_schema, NodeSchema) and node_schema.hierarchy:
+            schema = registry.schema.get(name=node_schema.hierarchy, branch=branch)
+
+            peer_filters = await generate_filters(db=db, schema=schema, top_level=False)
+            peer_type = registry.get_graphql_type(name=f"NestedPaginated{node_schema.hierarchy}", branch=branch.name)
+
+            node_type._meta.fields["ancestors"] = graphene.Field(
+                peer_type, required=False, resolver=ancestors_resolver, **peer_filters
+            )
+            node_type._meta.fields["descendants"] = graphene.Field(
+                peer_type, required=False, resolver=descendants_resolver, **peer_filters
+            )
 
 
 async def generate_query_mixin(db: InfrahubDatabase, branch: Union[Branch, str] = None) -> Type[object]:
@@ -208,8 +229,8 @@ async def generate_query_mixin(db: InfrahubDatabase, branch: Union[Branch, str] 
             resolver=default_paginated_list_resolver,
             **node_filters,
         )
-        if node_name == "CoreAccount":
-            node_type = registry.get_graphql_type(name="CoreAccount", branch=branch)
+        if node_name == InfrahubKind.ACCOUNT:
+            node_type = registry.get_graphql_type(name=InfrahubKind.ACCOUNT, branch=branch)
             class_attrs["AccountProfile"] = graphene.Field(
                 node_type,
                 resolver=account_resolver,
@@ -231,10 +252,10 @@ async def generate_mutation_mixin(db: InfrahubDatabase, branch: Union[Branch, st
 
         base_class = InfrahubMutation
         mutation_map = {
-            "CoreArtifactDefinition": InfrahubArtifactDefinitionMutation,
-            "CoreRepository": InfrahubRepositoryMutation,
-            "CoreProposedChange": InfrahubProposedChangeMutation,
-            "CoreGraphQLQuery": InfrahubGraphQLQueryMutation,
+            InfrahubKind.ARTIFACTDEFINITION: InfrahubArtifactDefinitionMutation,
+            InfrahubKind.REPOSITORY: InfrahubRepositoryMutation,
+            InfrahubKind.PROPOSEDCHANGE: InfrahubProposedChangeMutation,
+            InfrahubKind.GRAPHQLQUERY: InfrahubGraphQLQueryMutation,
         }
         base_class = mutation_map.get(node_schema.kind, InfrahubMutation)
 
@@ -263,7 +284,7 @@ def generate_graphql_object(schema: NodeSchema, branch: Branch) -> Type[Infrahub
             generic = registry.get_graphql_type(name=generic, branch=branch.name)
             meta_attrs["interfaces"].add(generic)
 
-    if not schema.inherit_from or "CoreGroup" not in schema.inherit_from:
+    if not schema.inherit_from or InfrahubKind.GENERICGROUP not in schema.inherit_from:
         node_interface = registry.get_graphql_type(name="CoreNode", branch=branch.name)
         meta_attrs["interfaces"].add(node_interface)
 

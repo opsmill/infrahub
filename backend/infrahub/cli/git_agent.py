@@ -1,4 +1,3 @@
-import asyncio
 import logging
 import signal
 import sys
@@ -17,9 +16,7 @@ from infrahub.database import InfrahubDatabase, get_db
 from infrahub.git import initialize_repositories_directory
 from infrahub.git.actions import sync_remote_repositories
 from infrahub.lock import initialize_lock
-from infrahub.log import clear_log_context, get_logger
-from infrahub.message_bus import get_broker, messages
-from infrahub.message_bus.operations import execute_message
+from infrahub.log import get_logger
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
@@ -42,36 +39,6 @@ def callback() -> None:
     """
     Control the Git Agent.
     """
-
-
-async def subscribe_rpcs_queue(service: InfrahubServices) -> None:
-    """Subscribe to the RPCs queue and execute the corresponding action when a valid RPC is received."""
-    # TODO generate an exception if the broker is not properly configured
-    # and return a proper message to the user
-    connection = await get_broker()
-
-    # Create a channel and subscribe to the incoming RPC queue
-    channel = await connection.channel()
-    await channel.set_qos(prefetch_count=1)
-
-    queue = await channel.get_queue(f"{config.SETTINGS.broker.namespace}.rpcs")
-    log.info("Waiting for RPC instructions to execute .. ")
-    async with queue.iterator() as qiterator:
-        async for message in qiterator:
-            try:
-                async with message.process(requeue=False):
-                    clear_log_context()
-                    if message.routing_key in messages.MESSAGE_MAP:
-                        await execute_message(
-                            routing_key=message.routing_key, message_body=message.body, service=service
-                        )
-                    else:
-                        log.error(
-                            "Unhandled routing key for message", routing_key=message.routing_key, message=message.body
-                        )
-
-            except Exception:  # pylint: disable=broad-except
-                log.exception("Processing error for message %r" % message)
 
 
 async def initialize_git_agent(service: InfrahubServices) -> None:
@@ -116,11 +83,7 @@ async def _start(debug: bool, port: int) -> None:
     async with service.database.start_session() as db:
         await initialization(db=db)
 
-    tasks = [
-        asyncio.create_task(subscribe_rpcs_queue(service=service)),
-    ]
-
-    await asyncio.gather(*tasks)
+    await service.message_bus.subscribe()
 
 
 @app.command()

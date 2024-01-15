@@ -13,6 +13,7 @@ from infrahub.api.dependencies import (
     get_db,
 )
 from infrahub.core import registry
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
 from infrahub.graphql.utils import extract_data
@@ -97,7 +98,7 @@ async def generate_rfile(
     params = {key: value for key, value in request.query_params.items() if key not in ["branch", "rebase", "at"]}
 
     rfile = await NodeManager.get_one_by_id_or_default_filter(
-        db=db, id=rfile_id, schema_name="CoreRFile", branch=branch_params.branch, at=branch_params.at
+        db=db, id=rfile_id, schema_name=InfrahubKind.RFILE, branch=branch_params.branch, at=branch_params.at
     )
 
     query = await rfile.query.get_peer(db=db)  # type: ignore[attr-defined]

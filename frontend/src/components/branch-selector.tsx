@@ -2,6 +2,7 @@ import { useMutation } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { format, formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
+import { useAtomValue } from "jotai/index";
 import { useCallback, useContext, useState } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "../config/qsp";
@@ -10,13 +11,12 @@ import { Branch } from "../generated/graphql";
 import { BRANCH_CREATE } from "../graphql/mutations/branches/createBranch";
 import { branchesState, currentBranchAtom } from "../state/atoms/branches.atom";
 import { classNames } from "../utils/common";
-import { BUTTON_TYPES, Button } from "./button";
-import { Input } from "./input";
-import { POPOVER_SIZE, PopOver } from "./popover";
-import { Select, SelectOption } from "./select";
-import { SelectButton } from "./select-button";
-import { Switch } from "./switch";
-import { useAtomValue } from "jotai/index";
+import { BUTTON_TYPES, Button } from "./buttons/button";
+import { SelectButton } from "./buttons/select-button";
+import { POPOVER_SIZE, PopOver } from "./display/popover";
+import { Input } from "./inputs/input";
+import { Select, SelectOption } from "./inputs/select";
+import { Switch } from "./inputs/switch";
 
 export default function BranchSelector() {
   const [branches, setBranches] = useAtom(branchesState);
@@ -43,7 +43,7 @@ export default function BranchSelector() {
     <Button
       disabled={!auth?.permissions?.write}
       buttonType={BUTTON_TYPES.MAIN}
-      className="flex-1 rounded-r-md border border-transparent"
+      className="h-full rounded-r-md border border-transparent"
       type="submit"
       data-cy="create-branch-button"
       data-testid="create-branch-button">
@@ -52,7 +52,13 @@ export default function BranchSelector() {
   );
 
   const branchesOptions: SelectOption[] = branches
-    .map((branch) => ({ id: branch.id, name: branch.name }))
+    .map((branch) => ({
+      id: branch.id,
+      name: branch.name,
+      is_data_only: branch.is_data_only,
+      is_default: branch.is_default,
+      created_at: branch.created_at,
+    }))
     .sort((branch1, branch2) => {
       if (branch1.name === "main") {
         return -1;
@@ -158,7 +164,10 @@ export default function BranchSelector() {
   }
 
   return (
-    <div className="flex" data-cy="branch-select-menu" data-testid="branch-select-menu">
+    <div
+      className="flex items-stretch"
+      data-cy="branch-select-menu"
+      data-testid="branch-select-menu">
       <SelectButton
         value={branch}
         valueLabel={valueLabel}
@@ -197,7 +206,7 @@ export default function BranchSelector() {
                 disabled
               />
               Is data only:
-              <Switch checked={isDataOnly} onChange={setIsDataOnly} />
+              <Switch checked={isDataOnly} onChange={setIsDataOnly} testId="is-data-only-switch" />
             </div>
 
             <div className="flex justify-center">

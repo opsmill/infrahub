@@ -12,10 +12,12 @@ import infrahub.config as config
 from infrahub import lock
 from infrahub.core import get_branch, get_branch_from_registry
 from infrahub.core.constants import (
+    RESERVED_ATTR_GEN_NAMES,
     RESERVED_ATTR_REL_NAMES,
     RESTRICTED_NAMESPACES,
     BranchSupportType,
     FilterSchemaKind,
+    InfrahubKind,
     RelationshipCardinality,
     RelationshipDirection,
     RelationshipKind,
@@ -112,9 +114,7 @@ class SchemaBranch:
         return md5hash.hexdigest()
 
     def get_hash_full(self) -> SchemaBranchHash:
-        return SchemaBranchHash(
-            main=self.get_hash(), nodes=self.nodes.items(), generics=self.generics.items(), groups=self.groups.items()
-        )
+        return SchemaBranchHash(main=self.get_hash(), nodes=self.nodes, generics=self.generics, groups=self.groups)
 
     def to_dict(self) -> Dict[str, Any]:
         # TODO need to implement a flag to return the real objects if needed
@@ -256,6 +256,7 @@ class SchemaBranch:
         self.process_default_values()
         self.process_cardinality_counts()
         self.process_inheritance()
+        self.process_hierarchy()
         self.process_branch_support()
 
     def process_validate(self) -> None:
@@ -267,6 +268,7 @@ class SchemaBranch:
 
     def process_post_validation(self) -> None:
         self.add_groups()
+        self.add_hierarchy()
         self.process_filters()
         self.generate_weight()
         self.process_labels()
@@ -352,10 +354,14 @@ class SchemaBranch:
                 continue
 
             for attr in node.attributes:
-                if attr.name in RESERVED_ATTR_REL_NAMES:
+                if attr.name in RESERVED_ATTR_REL_NAMES or (
+                    isinstance(node, GenericSchema) and attr.name in RESERVED_ATTR_GEN_NAMES
+                ):
                     raise ValueError(f"{node.kind}: {attr.name} isn't allowed as an attribute name.")
             for rel in node.relationships:
-                if rel.name in RESERVED_ATTR_REL_NAMES:
+                if rel.name in RESERVED_ATTR_REL_NAMES or (
+                    isinstance(node, GenericSchema) and rel.name in RESERVED_ATTR_GEN_NAMES
+                ):
                     raise ValueError(f"{node.kind}: {rel.name} isn't allowed as a relationship name.")
 
     def validate_menu_placements(self) -> None:
@@ -383,7 +389,7 @@ class SchemaBranch:
                     ) from None
 
             for rel in node.relationships:
-                if rel.peer in ["CoreGroup"]:
+                if rel.peer in [InfrahubKind.GENERICGROUP]:
                     continue
                 if not self.has(rel.peer):
                     raise ValueError(
@@ -433,6 +439,8 @@ class SchemaBranch:
                         choice.color = select_color(defined_colors)
                     if not choice.label:
                         choice.label = format_label(choice.name)
+                    if not choice.description:
+                        choice.description = ""
 
                 if attr.choices != sorted_choices:
                     attr.choices = sorted_choices
@@ -464,6 +472,42 @@ class SchemaBranch:
             if changed:
                 self.set(name=name, schema=node)
 
+    def process_hierarchy(self) -> None:
+        for name in self.nodes.keys():
+            node = self.get(name=name)
+
+            if not node.hierarchy and not node.parent and not node.children:
+                continue
+
+            if not node.hierarchy and (node.parent is not None or node.children is not None):
+                raise ValueError(f"{node.kind} Hierarchy must be provided if either parent or children is defined.")
+
+            changed = False
+            if node.hierarchy not in self.generics.keys():
+                # TODO add a proper exception for all schema related issue
+                raise ValueError(f"{node.kind} Unable to find the generic {node.hierarchy!r} provided in 'hierarchy'.")
+
+            if node.hierarchy not in node.inherit_from:
+                node.inherit_from.append(node.hierarchy)
+                changed = True
+
+            if node.parent is None:
+                node.parent = node.hierarchy
+                changed = True
+            elif node.parent != "":
+                if node.parent not in list(self.nodes.keys()) + list(self.generics.keys()):
+                    raise ValueError(f"{node.kind} Unable to find the node {node.parent!r} provided in 'parent'.")
+
+            if node.children is None:
+                node.children = node.hierarchy
+                changed = True
+            elif node.children != "":
+                if node.children not in list(self.nodes.keys()) + list(self.generics.keys()):
+                    raise ValueError(f"{node.kind} Unable to find the node {node.children!r} provided in 'children'.")
+
+            if changed:
+                self.set(name=name, schema=node)
+
     def process_inheritance(self) -> None:
         """Extend all the nodes with the attributes and relationships
         from the Interface objects defined in inherited_from.
@@ -479,14 +523,25 @@ class SchemaBranch:
 
             generics_used_by["CoreNode"].append(node.kind)
 
+            generic_with_hierarchical_support = []
             for generic_kind in node.inherit_from:
                 if generic_kind not in self.generics.keys():
                     # TODO add a proper exception for all schema related issue
                     raise ValueError(f"{node.kind} Unable to find the generic {generic_kind}")
 
+                if self.get(generic_kind).hierarchical:
+                    generic_with_hierarchical_support.append(generic_kind)
+
                 # Store the list of node referencing a specific generics
                 generics_used_by[generic_kind].append(node.kind)
                 node.inherit_from_interface(interface=self.get(name=generic_kind))
+
+            if len(generic_with_hierarchical_support) > 1:
+                raise ValueError(
+                    f"{node.kind} Only one generic with hierarchical support is allowed per node {generic_with_hierarchical_support}"
+                )
+            if len(generic_with_hierarchical_support) == 1 and node.hierarchy is None:
+                node.hierarchy = generic_with_hierarchical_support[0]
 
             self.set(name=name, schema=node)
 
@@ -593,16 +648,16 @@ class SchemaBranch:
                 self.set(name=name, schema=node)
 
     def add_groups(self):
-        if not self.has(name="CoreGroup"):
+        if not self.has(name=InfrahubKind.GENERICGROUP):
             return
 
         for node_name in list(self.nodes.keys()) + list(self.generics.keys()):
             schema: Union[NodeSchema, GenericSchema] = self.get(name=node_name)
 
-            if isinstance(schema, NodeSchema) and "CoreGroup" in schema.inherit_from:
+            if isinstance(schema, NodeSchema) and InfrahubKind.GENERICGROUP in schema.inherit_from:
                 continue
 
-            if schema.kind in INTERNAL_SCHEMA_NODE_KINDS or schema.kind == "CoreGroup":
+            if schema.kind in INTERNAL_SCHEMA_NODE_KINDS or schema.kind == InfrahubKind.GENERICGROUP:
                 continue
 
             if "member_of_groups" not in schema.relationship_names:
@@ -610,7 +665,7 @@ class SchemaBranch:
                     RelationshipSchema(
                         name="member_of_groups",
                         identifier="group_member",
-                        peer="CoreGroup",
+                        peer=InfrahubKind.GENERICGROUP,
                         kind=RelationshipKind.GROUP,
                         cardinality=RelationshipCardinality.MANY,
                         branch=BranchSupportType.AWARE,
@@ -622,7 +677,7 @@ class SchemaBranch:
                     RelationshipSchema(
                         name="subscriber_of_groups",
                         identifier="group_subscriber",
-                        peer="CoreGroup",
+                        peer=InfrahubKind.GENERICGROUP,
                         kind=RelationshipKind.GROUP,
                         cardinality=RelationshipCardinality.MANY,
                         branch=BranchSupportType.AWARE,
@@ -630,6 +685,43 @@ class SchemaBranch:
                 )
 
             self.set(name=node_name, schema=schema)
+
+    def add_hierarchy(self):
+        for node_name in self.nodes.keys():
+            node: NodeSchema = self.get(name=node_name)
+
+            if node.parent is None and node.children is None:
+                continue
+
+            if node.parent and "parent" not in node.relationship_names:
+                node.relationships.append(
+                    RelationshipSchema(
+                        name="parent",
+                        identifier="parent__child",
+                        peer=node.parent,
+                        kind=RelationshipKind.HIERARCHY,
+                        cardinality=RelationshipCardinality.ONE,
+                        branch=BranchSupportType.AWARE,
+                        direction=RelationshipDirection.OUTBOUND,
+                        hierarchical=node.hierarchy,
+                    )
+                )
+
+            if node.children and "children" not in node.relationship_names:
+                node.relationships.append(
+                    RelationshipSchema(
+                        name="children",
+                        identifier="parent__child",
+                        peer=node.children,
+                        kind=RelationshipKind.HIERARCHY,
+                        cardinality=RelationshipCardinality.MANY,
+                        branch=BranchSupportType.AWARE,
+                        direction=RelationshipDirection.INBOUND,
+                        hierarchical=node.hierarchy,
+                    )
+                )
+
+            self.set(name=node_name, schema=node)
 
     def generate_filters(
         self, schema: Union[NodeSchema, GenericSchema], include_relationships: bool = False
@@ -855,7 +947,7 @@ class SchemaManager(NodeManager):
         new_node = node.duplicate()
 
         # Create the node first
-        schema_dict = node.dict(exclude={"id", "filters", "relationships", "attributes"})
+        schema_dict = node.model_dump(exclude={"id", "filters", "relationships", "attributes"})
         obj = await Node.init(schema=node_schema, branch=branch, db=db)
         await obj.new(**schema_dict, db=db)
         await obj.save(db=db)
@@ -900,7 +992,7 @@ class SchemaManager(NodeManager):
             raise ValueError(f"Only schema node of type {SUPPORTED_SCHEMA_NODE_TYPE} are supported: {node_type}")
 
         # Update the node First
-        schema_dict = node.dict(exclude={"id", "filters", "relationships", "attributes"})
+        schema_dict = node.model_dump(exclude={"id", "filters", "relationships", "attributes"})
         obj = await self.get_one(id=node.id, branch=branch, db=db, include_owner=True, include_source=True)
 
         if not obj:
@@ -961,7 +1053,7 @@ class SchemaManager(NodeManager):
         schema: NodeSchema, item: AttributeSchema, branch: Branch, parent: Node, db: InfrahubDatabase
     ) -> AttributeSchema:
         obj = await Node.init(schema=schema, branch=branch, db=db)
-        await obj.new(**item.dict(exclude={"id", "filters"}), node=parent, db=db)
+        await obj.new(**item.model_dump(exclude={"id", "filters"}), node=parent, db=db)
         await obj.save(db=db)
         new_item = item.duplicate()
         new_item.id = obj.id
@@ -972,7 +1064,7 @@ class SchemaManager(NodeManager):
         schema: NodeSchema, item: RelationshipSchema, branch: Branch, parent: Node, db: InfrahubDatabase
     ) -> RelationshipSchema:
         obj = await Node.init(schema=schema, branch=branch, db=db)
-        await obj.new(**item.dict(exclude={"id", "filters"}), node=parent, db=db)
+        await obj.new(**item.model_dump(exclude={"id", "filters"}), node=parent, db=db)
         await obj.save(db=db)
         new_item = item.duplicate()
         new_item.id = obj.id
@@ -980,14 +1072,14 @@ class SchemaManager(NodeManager):
 
     @staticmethod
     async def update_attribute_in_db(item: AttributeSchema, attr: Node, db: InfrahubDatabase) -> None:
-        item_dict = item.dict(exclude={"id", "filters"})
+        item_dict = item.model_dump(exclude={"id", "filters"})
         for key, value in item_dict.items():
             getattr(attr, key).value = value
         await attr.save(db=db)
 
     @staticmethod
     async def update_relationship_in_db(item: RelationshipSchema, rel: Node, db: InfrahubDatabase) -> None:
-        item_dict = item.dict(exclude={"id", "filters"})
+        item_dict = item.model_dump(exclude={"id", "filters"})
         for key, value in item_dict.items():
             getattr(rel, key).value = value
         await rel.save(db=db)

@@ -2,7 +2,7 @@
 
 import { ADMIN_CREDENTIALS } from "../utils";
 
-const ETHERNET_DEVICE_NAME = "den1-edge2";
+const ETHERNET_NAME = "Ethernet11";
 
 const ACCOUNT = "Account";
 
@@ -22,7 +22,7 @@ describe("Object update", () => {
     });
 
     // Access an interface
-    cy.contains(ETHERNET_DEVICE_NAME).click();
+    cy.contains(ETHERNET_NAME).first().click();
 
     // Open the metadata panel
     cy.get(".sm\\:p-0").within(() => {
@@ -92,7 +92,7 @@ describe("Object update", () => {
     cy.contains("Interface").click();
 
     // Access an interface
-    cy.contains(ETHERNET_DEVICE_NAME).click();
+    cy.contains(ETHERNET_NAME).first().click();
 
     // Open the metadata panel
     cy.get(".sm\\:p-0").within(() => {

@@ -4,15 +4,10 @@ from typing import TYPE_CHECKING, AsyncIterator, Optional
 
 from fastapi import Depends, Query, Request
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 
 from infrahub import config
-from infrahub.auth import (
-    AccountSession,
-    authentication_token,
-    validate_jwt_access_token,
-    validate_jwt_refresh_token,
-)
+from infrahub.auth import AccountSession, authentication_token, validate_jwt_access_token, validate_jwt_refresh_token
 from infrahub.core import get_branch
 from infrahub.core.branch import Branch  # noqa: TCH001
 from infrahub.core.timestamp import Timestamp

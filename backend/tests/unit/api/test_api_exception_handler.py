@@ -1,20 +1,23 @@
 from json import loads
 from typing import Optional
 
-from pydantic import BaseModel, ValidationError, root_validator, validator
+from pydantic.v1 import BaseModel, root_validator, validator
+from pydantic.v1.error_wrappers import ValidationError
 
 from infrahub.api.exception_handlers import generic_api_exception_handler
 from infrahub.exceptions import Error
 
 
 class ModelForTesting(BaseModel):
-    field_1: Optional[str]
+    field_1: Optional[str] = None
 
     @validator("field_1", always=True)
+    @classmethod
     def always_fail(cls, *args, **kwargs):
         raise ValueError("this is the error message")
 
-    @root_validator()
+    @root_validator
+    @classmethod
     def always_fail_2(cls, values):
         raise ValueError("another error message")
 

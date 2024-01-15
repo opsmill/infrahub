@@ -24,7 +24,7 @@ As the first step we need to have some data in the database to actually query.
 
 Create three tags, called "red", "green", "blue", either using the frontend or by submitting three GraphQL mutations as per below (just swapping out the name of the color each time).
 
-```GraphQL
+```GraphQL #1-2
 mutation CreateTags {
   BuiltinTagCreate(
     data: {name: {value: "red"}, description: {value: "The red tag"}}
@@ -39,7 +39,7 @@ mutation CreateTags {
 
 The next step is to create a query that returns the data we just created. The rest of this guide assumes that the following query will return a response similar to the response below the query.
 
-```GraphQL
+```GraphQL #1-2
 query TagsQuery {
   BuiltinTag {
     edges {
@@ -109,7 +109,7 @@ mkdir tags_transform
 
 Then save the below query as a text file named tags_query.gql.
 
-```GraphQL
+```GraphQL #1-2
 query TagsQuery($tag: String!) {
   BuiltinTag(name__value: $tag) {
     edges {
@@ -127,7 +127,6 @@ query TagsQuery($tag: String!) {
 ```
 
 Here the query will require an input parameter called `$name` what will refer to the name of each tag. When we want to query for the red tag the input variables to the query would look like this:
-
 
 ```json
 {

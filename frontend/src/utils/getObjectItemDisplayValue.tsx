@@ -1,11 +1,11 @@
 import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import { PasswordDisplay } from "../components/PasswordDisplay";
-import { Badge } from "../components/badge";
-import { CodeEditor } from "../components/code-editor";
-import { DateDisplay } from "../components/date-display";
+import { Badge } from "../components/display/badge";
+import { ColorDisplay } from "../components/display/color-display";
+import { DateDisplay } from "../components/display/date-display";
+import { PasswordDisplay } from "../components/display/password-display";
+import { CodeEditor } from "../components/editor/code-editor";
 import { MAX_VALUE_LENGTH_DISPLAY } from "../config/constants";
 import { iSchemaKindNameMap } from "../state/atoms/schemaKindName.atom";
-import { getTextColor } from "./common";
 
 export const getObjectItemDisplayValue = (
   row: any,
@@ -24,8 +24,28 @@ export const getObjectItemDisplayValue = (
     return <CheckIcon className="h-4 w-4" />;
   }
 
-  if (row[attribute?.name]?.__typename === "JSONAttribute") {
+  if (attribute?.kind === "TextArea") {
+    return <pre>{row[attribute?.name]?.value}</pre>;
+  }
+
+  if (attribute?.kind === "JSON") {
     return <CodeEditor value={JSON.stringify(row[attribute?.name]?.value)} disabled />;
+  }
+
+  if (attribute?.kind === "List") {
+    const items = row[attribute?.name]?.value?.map((value?: string) => value ?? "-").slice(0, 5);
+
+    const rest = row[attribute?.name]?.value?.slice(5)?.length;
+
+    return (
+      <div className="flex flex-wrap items-center">
+        {items?.map((item: string, index: number) => (
+          <Badge key={index}>{item}</Badge>
+        ))}
+
+        {items?.length !== row[attribute?.name]?.value?.length && <i>{`(${rest} more)`}</i>}
+      </div>
+    );
   }
 
   if (row[attribute?.name]?.edges) {
@@ -73,17 +93,12 @@ export const getObjectItemDisplayValue = (
     return `${textValue.substr(0, MAX_VALUE_LENGTH_DISPLAY)} ...`;
   }
 
+  if (attribute?.kind === "Color" && row[attribute?.name]?.value) {
+    return <ColorDisplay color={row[attribute?.name]?.value} />;
+  }
+
   if (row[attribute?.name]?.color) {
-    return (
-      <div
-        className="px-2 py-1 rounded-md flex flex-col"
-        style={{
-          backgroundColor: row[attribute?.name]?.color || "",
-          color: row[attribute?.name]?.color ? getTextColor(row[attribute?.name]?.color) : "",
-        }}>
-        {textValue}
-      </div>
-    );
+    return <ColorDisplay value={textValue} color={row[attribute?.name]?.color} />;
   }
 
   return textValue;

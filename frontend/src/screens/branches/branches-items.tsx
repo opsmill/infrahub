@@ -2,15 +2,17 @@ import { ChevronLeftIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import * as R from "ramda";
 import { useNavigate } from "react-router-dom";
-import { Badge } from "../../components/badge";
-import { DateDisplay } from "../../components/date-display";
-import { Tooltip } from "../../components/tooltip";
+import { Badge } from "../../components/display/badge";
+import { DateDisplay } from "../../components/display/date-display";
+import { Tooltip } from "../../components/utils/tooltip";
+import { useTitle } from "../../hooks/useTitle";
 import { branchesState } from "../../state/atoms/branches.atom";
 import { constructPath } from "../../utils/fetch";
 
 export const BranchesItems = () => {
   const [storedBranches] = useAtom(branchesState);
   const navigate = useNavigate();
+  useTitle("Branches list");
 
   const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
 

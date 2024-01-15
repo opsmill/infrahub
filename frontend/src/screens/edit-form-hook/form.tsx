@@ -1,6 +1,6 @@
 import { MouseEventHandler, ReactElement } from "react";
 import { FieldValues, FormProvider, SubmitHandler, useForm } from "react-hook-form";
-import { BUTTON_TYPES, Button } from "../../components/button";
+import { BUTTON_TYPES, Button } from "../../components/buttons/button";
 import { resolve } from "../../utils/objects";
 import { DynamicControl } from "./dynamic-control";
 import { DynamicFieldData } from "./dynamic-control-types";
@@ -30,6 +30,7 @@ export type FormProps = {
   disabled?: boolean;
   additionalButtons?: ReactElement;
   preventObjectsCreation?: boolean;
+  resetAfterSubmit?: boolean;
 };
 
 export const Form = ({
@@ -41,10 +42,11 @@ export const Form = ({
   disabled,
   additionalButtons,
   preventObjectsCreation,
+  resetAfterSubmit,
 }: FormProps) => {
   const formMethods = useForm();
 
-  const { handleSubmit, formState } = formMethods;
+  const { handleSubmit, formState, reset } = formMethods;
 
   const { errors } = formState;
 
@@ -52,26 +54,28 @@ export const Form = ({
     const { field, error, disabled } = props;
 
     return (
-      <>
-        <div className="sm:col-span-7">
-          <DynamicControl
-            {...field}
-            error={error}
-            disabled={disabled}
-            preventObjectsCreation={preventObjectsCreation}
-          />
-        </div>
-      </>
+      <div className="col-span-7">
+        <DynamicControl
+          {...field}
+          error={error}
+          disabled={disabled}
+          preventObjectsCreation={preventObjectsCreation}
+        />
+      </div>
     );
   };
 
-  const handleFormSubmit = (event: any) => {
+  const handleFormSubmit = async (event: any) => {
     // Stop propagation for nested forms on related objects creation
     if (event && event.stopPropagation) {
       event.stopPropagation();
     }
 
-    return handleSubmit(onSubmit)(event);
+    await handleSubmit(onSubmit)(event);
+
+    if (resetAfterSubmit) {
+      reset();
+    }
   };
 
   return (

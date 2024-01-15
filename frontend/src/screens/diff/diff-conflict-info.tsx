@@ -1,7 +1,7 @@
 import { QuestionMarkCircleIcon } from "@heroicons/react/24/outline";
 import { useContext } from "react";
-import { Id } from "../../components/id";
-import { POPOVER_SIZE, PopOver } from "../../components/popover";
+import { POPOVER_SIZE, PopOver } from "../../components/display/popover";
+import { Id } from "../../components/utils/id";
 import { reduceArrays } from "../../utils/array";
 import { Check } from "./checks/check";
 import { DiffContext } from "./data-diff";

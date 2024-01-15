@@ -2,10 +2,13 @@ agent
 APIs
 async
 autoflake
+codespace
 config
 cypher
 datastore
 dev
+devcontainer
+direnv
 docker
 dockerfile
 e2e
@@ -20,6 +23,7 @@ graphene
 graphiql
 graphql
 greymatter
+include_in_menu
 Infrahub
 Infrahub's
 infrahubctl
@@ -28,11 +32,14 @@ IPHost
 IPNetwork
 isort
 jinja
+Jotai
 kbps
 markdownlint
 memgraph
+menu_placement
 namespace
 namespaces
+npm
 o'brian
 openconfig
 opentelemetry
@@ -46,4 +53,5 @@ sdk
 toml
 uncheck
 validators
+Vitest
 yamllint

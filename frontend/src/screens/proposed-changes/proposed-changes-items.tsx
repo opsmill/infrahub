@@ -2,10 +2,11 @@ import { gql } from "@apollo/client";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
+import { useAtomValue } from "jotai/index";
 import { useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { RoundedButton } from "../../components/rounded-button";
-import SlideOver from "../../components/slide-over";
+import { RoundedButton } from "../../components/buttons/rounded-button";
+import SlideOver from "../../components/display/slide-over";
 import {
   ACCOUNT_OBJECT,
   DEFAULT_BRANCH_NAME,
@@ -14,16 +15,16 @@ import {
 import { AuthContext } from "../../decorators/withAuth";
 import { getProposedChanges } from "../../graphql/queries/proposed-changes/getProposedChanges";
 import useQuery from "../../hooks/useQuery";
+import { useTitle } from "../../hooks/useTitle";
 import { branchesState, currentBranchAtom } from "../../state/atoms/branches.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { constructPath } from "../../utils/fetch";
-import { getSchemaRelationshipColumns } from "../../utils/getSchemaObjectColumns";
+import { getObjectRelationships } from "../../utils/getSchemaObjectColumns";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
 import { getFormStructure } from "./conversations";
 import { ProposedChange } from "./proposed-changes-item";
-import { useAtomValue } from "jotai/index";
 
 export const ProposedChanges = () => {
   const [schemaList] = useAtom(schemaState);
@@ -35,13 +36,14 @@ export const ProposedChanges = () => {
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_OBJECT);
   const accountSchemaData = schemaList.find((s) => s.kind === ACCOUNT_OBJECT);
+  const relationships = getObjectRelationships(schemaData, true);
 
   const queryString = schemaData
     ? getProposedChanges({
         kind: schemaData.kind,
         accountKind: accountSchemaData?.kind,
         attributes: schemaData.attributes,
-        relationships: getSchemaRelationshipColumns(schemaData),
+        relationships,
       })
     : // Empty query to make the gql parsing work
       // TODO: Find another solution for queries while loading schemaData
@@ -56,6 +58,8 @@ export const ProposedChanges = () => {
   const result = data && schemaData?.kind ? data[schemaData?.kind] ?? {} : {};
 
   const { count, edges } = result;
+
+  useTitle("Proposed changes list");
 
   const rows = edges?.map((edge: any) => edge.node);
 

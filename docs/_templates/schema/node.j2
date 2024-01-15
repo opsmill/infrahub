@@ -4,15 +4,16 @@ layout: default
 order: 900
 ---
 <!-- vale off -->
+<!-- markdownlint-disable MD012 -->
 {% macro attribute_constraints(attr) -%}
-{% if attr.regex %} Regex: `{{attr.regex}}`{% endif %}{% if attr.regex and (attr.min_length or attr.max_length) %}<br>{% endif %}{% if attr.min_length or attr.max_length %} Length: min {{attr.min_length | default("-")}}, max {{attr.max_length | default("-")}}{% endif %}
+{% if attr.regex %} Regex: `{{attr.regex}}`{% endif %}{% if attr.regex and (attr.min_length or attr.max_length) %}<br>{% endif %}{% if attr.min_length or attr.max_length %} Length: min {{attr.min_length | default("-")}}, max {{attr.max_length | default("-")}}{% endif -%}
 {%- endmacro %}
 {% macro bool_to_str(value) -%}
-{% if value == true %}True{% else %}False{% endif %}
-{%- endmacro %}
+{% if value == true %}True{% else %}False{% endif -%}
+{%- endmacro -%}
 {% macro reverse_bool_to_str(value) -%}
-{% if value == true %}False{% else %}True{% endif %}
-{%- endmacro %}
+{% if value == true %}False{% else %}True{% endif -%}
+{%- endmacro -%}
 {% set ns = namespace(node=none) -%}
 {% for node in schema.nodes -%}
 {%   if node.name == "Node" -%}
@@ -37,6 +38,7 @@ Below is the list of all available options to define a Node in the schema
 {%- endfor %}
 
 ## Reference Guide
+
 {% for attr in ns.node.attributes | sort(attribute='name') -%}
 ### {{ attr.name }}
 
@@ -50,9 +52,9 @@ Below is the list of all available options to define a Node in the schema
 | **Constraints** | {{attribute_constraints(attr)}} |
 {% if attr.enum -%}
 | **Accepted Values** | {% for value in  attr.enum %}`{{ value }}` {% endfor %} |
-{%- endif %}
+{% endif %}
+{% endfor -%}
 
-{% endfor %}
 {% for rel in ns.node.relationships | sort(attribute='name') -%}
 ## {{ rel.name }}
 
@@ -62,4 +64,4 @@ Below is the list of all available options to define a Node in the schema
 | **Kind** | {% if rel.cardinality == "one" %}`Object`{%else%}`List`{%endif%} |
 | **Description** | {{ rel.description }} |
 
-{% endfor %}
+{% endfor -%}

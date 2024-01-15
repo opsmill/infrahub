@@ -18,6 +18,7 @@ class GetListMixin:
         account = context.get("infrahub_account", None)
         branch: Branch = context.get("infrahub_branch")
         db: InfrahubDatabase = context.get("infrahub_database")
+        related_node_ids: set = context.get("related_node_ids")
 
         async with db.start_session() as db:
             filters = {key: value for key, value in kwargs.items() if ("__" in key and value) or key == "ids"}
@@ -36,8 +37,7 @@ class GetListMixin:
 
             if not objs:
                 return []
-
-            return [await obj.to_graphql(db=db, fields=fields) for obj in objs]
+            return [await obj.to_graphql(db=db, fields=fields, related_node_ids=related_node_ids) for obj in objs]
 
     @classmethod
     async def get_paginated_list(cls, fields: dict, context: dict, **kwargs):
@@ -45,6 +45,7 @@ class GetListMixin:
         branch = context.get("infrahub_branch")
         account = context.get("infrahub_account", None)
         db: InfrahubDatabase = context.get("infrahub_database")
+        related_node_ids: set = context.get("related_node_ids")
 
         async with db.start_session() as db:
             response: Dict[str, Any] = {"edges": []}
@@ -77,7 +78,10 @@ class GetListMixin:
             )
 
             if objs:
-                objects = [{"node": await obj.to_graphql(db=db, fields=node_fields)} for obj in objs]
+                objects = [
+                    {"node": await obj.to_graphql(db=db, fields=node_fields, related_node_ids=related_node_ids)}
+                    for obj in objs
+                ]
                 response["edges"] = objects
 
             return response

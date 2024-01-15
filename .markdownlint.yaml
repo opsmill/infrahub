@@ -9,3 +9,4 @@ MD033: false  # allows inline html to override markdown styles
 MD034: false  # no-bare-urls
 MD045: false  # no alt text around images
 MD047: false  # single trailing newline
+MD014: false  # dollar signs used before commands
