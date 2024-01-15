@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from pydantic.v1 import Field
+from pydantic import Field
 
 from infrahub.message_bus import InfrahubMessage
 
