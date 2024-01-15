@@ -1637,13 +1637,13 @@ core_models = {
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
-            "branch": BranchSupportType.AWARE.value,
+            "branch": BranchSupportType.AGNOSTIC.value,
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "description", "kind": "Text", "optional": True},
                 {"name": "location", "kind": "Text", "unique": True},
-                {"name": "username", "kind": "Text", "optional": True},
-                {"name": "password", "kind": "Password", "optional": True},
+                {"name": "username", "kind": "Text", "optional": True, "branch": BranchSupportType.AGNOSTIC.value},
+                {"name": "password", "kind": "Password", "optional": True, "branch": BranchSupportType.AGNOSTIC.value},
             ],
             "relationships": [
                 {
@@ -2004,7 +2004,7 @@ core_models = {
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "branch": BranchSupportType.AWARE.value,
-            "inherit_from": ["LineageOwner", "LineageSource", "CoreGenericRepository"],
+            "inherit_from": ["LineageOwner", "LineageSource", InfrahubKind.GENERICREPOSITORY],
             "attributes": [
                 {"name": "default_branch", "kind": "Text", "default_value": "main"},
                 {"name": "commit", "kind": "Text", "optional": True, "branch": BranchSupportType.LOCAL.value},
@@ -2020,10 +2020,10 @@ core_models = {
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "branch": BranchSupportType.AWARE.value,
-            "inherit_from": ["LineageOwner", "LineageSource", "CoreGenericRepository"],
+            "inherit_from": ["LineageOwner", "LineageSource", InfrahubKind.GENERICREPOSITORY],
             "attributes": [
                 {"name": "ref", "kind": "Text", "default_value": "main"},
-                {"name": "commit", "kind": "Text", "optional": True},
+                {"name": "commit", "kind": "Text", "optional": True, "branch": BranchSupportType.AWARE.value},
             ],
         },
         {
