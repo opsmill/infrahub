@@ -16,7 +16,7 @@ The recommended way to run and build the docs locally is with Infrahub's suite o
 2. Install [`invoke`](https://www.pyinvoke.org/).
 3. Install [`poetry`](https://python-poetry.org/).
 4. Run `poetry install` from the Infrahub project directory.
-5. Install [Node.js(and NPM)](https://nodejs.org/en).
+5. Install [Node.js (and npm)](https://nodejs.org/en).
 
 Once these requirements are met, you'll have access to the doc task list.
 
@@ -113,7 +113,7 @@ They should:
 - Describe practical steps, rather than abstract concepts.
 - Provide immediate results.
 
-The "Getting Started" tutorial is a good example, as it walks the user through a scripted scenario in a demo environment.
+The "Getting started" tutorial is a good example, as it walks the user through a scripted scenario in a demo environment.
 
 For a deeper dive into tutorials, refer to the [diátaxis tutorials page](https://diataxis.fr/tutorials/).
 
@@ -156,9 +156,28 @@ Reference docs serve a single purpose. To provide quick, clear information when 
 
 For a deeper dive into reference docs, refer to the [diátaxis reference page](https://diataxis.fr/reference/).
 
-## Creating application screenshots
+## Creating and updating application screenshots
 
-In an effort to keep application screenshots up to date, use [Cypress](https://docs.cypress.io/guides/overview/why-cypress) to generate images whenever possible. Refer to the [E2E tests section](/development/frontend/#e2e-tests) of the development docs for details, and reference `frontend/tests/e2e/tutorial` for examples from the [getting started](/tutorials/getting-started/) tutorial.
+To ensure that Infrahub's screenshots remain up to date and to check that our guides work properly, we use [end-to-end (e2e) tests](/development/frontend/testing-guidelines/#end-to-end-e2e-tests). You'll find the e2e tests specifically designed for tutorials located in `frontend/tests/e2e/tutorial`.
+
+To add a new screenshot in the documentation, use this command within the tutorial e2e test:
+
+```ts
+await saveScreenshotForDocs(page, "my-screenshot-name");
+```
+
+To update all documentation screenshots, run:
+
+```shell
+cd frontend
+npm run test:e2e:screenshots
+```
+
+The screenshots will be saved in `docs/media`. You can then use them in our documentation:
+
+```markdown
+![optional caption](../../media/my-screenshot-name.png)
+```
 
 ## Style guide
 
@@ -284,7 +303,7 @@ Before publishing new changes to documentation, complete the following tasks:
   - [ ] Confirm build of `infrahubctl` pages.
   - [ ] Confirm build of `infrahub-cli` pages.
   - [ ] Confirm build of schema pages.
-- [ ] [Generate application screenshots](#creating-application-screenshots).
+- [ ] [Generate application screenshots](#creating-and-updating-application-screenshots).
 - [ ] If there is a new app version, create a new release notes document in `docs/release-notes`.
 - [ ] Run [linters](#linting-and-automation) and fix valid errors on all source files.
 - [ ] Perform test build of docs, `invoke docs.build`.

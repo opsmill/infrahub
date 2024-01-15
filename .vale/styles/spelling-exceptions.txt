@@ -32,12 +32,14 @@ IPHost
 IPNetwork
 isort
 jinja
+Jotai
 kbps
 markdownlint
 memgraph
 menu_placement
 namespace
 namespaces
+npm
 o'brian
 openconfig
 opentelemetry
@@ -51,4 +53,5 @@ sdk
 toml
 uncheck
 validators
+Vitest
 yamllint
