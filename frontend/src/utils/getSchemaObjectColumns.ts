@@ -10,13 +10,13 @@ import { iGenericSchema, iNodeSchema } from "../state/atoms/schema.atom";
 
 export const getObjectAttributes = (
   schema: iNodeSchema | iGenericSchema,
-  fromListView?: boolean
+  forListView?: boolean
 ) => {
   if (!schema) {
     return [];
   }
 
-  const kinds = fromListView ? attributesKindForListView : attributesKindForDetailsView;
+  const kinds = forListView ? attributesKindForListView : attributesKindForDetailsView;
 
   const attributes = (schema.attributes || [])
     .filter((attribute) => kinds.includes(attribute.kind))
@@ -31,13 +31,13 @@ export const getObjectAttributes = (
 
 export const getObjectRelationships = (
   schema?: iNodeSchema | iGenericSchema,
-  fromListView?: boolean
+  forListView?: boolean
 ) => {
   if (!schema) {
     return [];
   }
 
-  const kinds = fromListView ? relationshipsForListView : relationshipsForDetailsView;
+  const kinds = forListView ? relationshipsForListView : relationshipsForDetailsView;
 
   const relationships = (schema.relationships || [])
     .filter((relationship) => kinds[relationship.cardinality].includes(relationship.kind ?? ""))

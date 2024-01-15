@@ -1,7 +1,7 @@
 import Handlebars from "handlebars";
 
 export const getObjectRelationshipsDetailsPaginated = Handlebars.compile(`
-query {{kind}} {
+query GetObjectRelationships_{{kind}} {
   {{kind}} (ids: ["{{objectid}}"]) {
     count
     edges {
