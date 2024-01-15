@@ -2,7 +2,6 @@
 
 import { ADMIN_CREDENTIALS } from "../utils";
 
-const DEVICE_NAME = "den1-edge2";
 const ETHERNET_NAME = "Ethernet11";
 const ETHERNET_NEW_NAME = "Ethernet117";
 const ETHERNET_SPEED = 10000;
@@ -20,7 +19,7 @@ describe("Object update", () => {
     cy.contains("Interface").click();
 
     // Access an interface
-    cy.contains(DEVICE_NAME).click();
+    cy.contains(ETHERNET_NAME).first().click();
 
     // The name should be the original one
     cy.get(":nth-child(3) > div.items-center > .mt-1").should("have.text", ETHERNET_NAME);
