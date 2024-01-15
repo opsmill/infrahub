@@ -1,11 +1,11 @@
 import { CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { Badge } from "../components/display/badge";
+import { ColorDisplay } from "../components/display/color-display";
 import { DateDisplay } from "../components/display/date-display";
 import { PasswordDisplay } from "../components/display/password-display";
 import { CodeEditor } from "../components/editor/code-editor";
 import { MAX_VALUE_LENGTH_DISPLAY } from "../config/constants";
 import { iSchemaKindNameMap } from "../state/atoms/schemaKindName.atom";
-import { getTextColor } from "./common";
 
 export const getObjectItemDisplayValue = (
   row: any,
@@ -93,17 +93,12 @@ export const getObjectItemDisplayValue = (
     return `${textValue.substr(0, MAX_VALUE_LENGTH_DISPLAY)} ...`;
   }
 
+  if (attribute?.kind === "Color" && row[attribute?.name]?.value) {
+    return <ColorDisplay color={row[attribute?.name]?.value} />;
+  }
+
   if (row[attribute?.name]?.color) {
-    return (
-      <div
-        className="px-2 py-1 rounded-md flex flex-col"
-        style={{
-          backgroundColor: row[attribute?.name]?.color || "",
-          color: row[attribute?.name]?.color ? getTextColor(row[attribute?.name]?.color) : "",
-        }}>
-        {textValue}
-      </div>
-    );
+    return <ColorDisplay value={textValue} color={row[attribute?.name]?.color} />;
   }
 
   return textValue;
