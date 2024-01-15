@@ -57,9 +57,7 @@ class AccountMixin:
             schema=InfrahubKind.ACCOUNT, filters={"ids": [account_session.account_id]}, db=db
         )
         if not results:
-            raise NodeNotFound(
-                branch_name="main", node_type=InfrahubKind.ACCOUNT, identifier=account_session.account_id
-            )
+            raise NodeNotFound(node_type=InfrahubKind.ACCOUNT, identifier=account_session.account_id)
 
         account = results[0]
 

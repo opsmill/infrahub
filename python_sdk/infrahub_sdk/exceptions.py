@@ -57,14 +57,14 @@ class SchemaNotFound(Error):
 class NodeNotFound(Error):
     def __init__(
         self,
-        branch_name: str,
         node_type: str,
         identifier: Mapping[str, List[str]],
         message: str = "Unable to find the node in the database.",
+        branch_name: Optional[str] = None,
     ):
-        self.branch_name = branch_name
         self.node_type = node_type
         self.identifier = identifier
+        self.branch_name = branch_name
 
         self.message = message
         super().__init__(self.message)
