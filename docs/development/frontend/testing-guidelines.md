@@ -6,7 +6,7 @@ icon: beaker
 # Running & writing tests for frontend
 
 !!!info Before we start
-If you have never run Infrahub tests before, we highly suggest to follow the [frontend guide](getting-set-up).
+If you have never run Infrahub tests before, we highly suggest following the [frontend guide](getting-set-up).
 !!!
 
 We're expecting to see proper tests for each feature/bugfix you make. If you're not sure how to write these tests, this page is made to help you get started.
