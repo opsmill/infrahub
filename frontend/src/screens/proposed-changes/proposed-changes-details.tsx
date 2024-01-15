@@ -12,7 +12,7 @@ import { useTitle } from "../../hooks/useTitle";
 import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { constructPath } from "../../utils/fetch";
-import { getSchemaRelationshipColumns } from "../../utils/getSchemaObjectColumns";
+import { getObjectRelationships } from "../../utils/getSchemaObjectColumns";
 import { ArtifactsDiff } from "../diff/artifact-diff/artifacts-diff";
 import { Checks } from "../diff/checks/checks";
 import { DataDiff } from "../diff/data-diff";
@@ -60,13 +60,14 @@ export const ProposedChangesDetails = () => {
   );
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_OBJECT);
+  const relationships = getObjectRelationships(schemaData);
 
   const queryString = schemaData
     ? getProposedChanges({
         id: proposedchange,
         kind: schemaData.kind,
         attributes: schemaData.attributes,
-        relationships: getSchemaRelationshipColumns(schemaData),
+        relationships,
       })
     : // Empty query to make the gql parsing work
       // TODO: Find another solution for queries while loading schemaData

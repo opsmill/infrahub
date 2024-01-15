@@ -29,8 +29,9 @@ import { datetimeAtom } from "../../state/atoms/time.atom";
 import { constructPath } from "../../utils/fetch";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
 import {
+  getObjectAttributes,
+  getObjectRelationships,
   getSchemaObjectColumns,
-  getSchemaRelationshipColumns,
 } from "../../utils/getSchemaObjectColumns";
 import { getObjectDetailsUrl } from "../../utils/objects";
 import { stringifyWithoutQuotes } from "../../utils/string";
@@ -98,13 +99,15 @@ export default function ObjectItems(props: any) {
   ].join(",");
 
   // Get all the needed columns (attributes + relationships)
-  const columns = getSchemaObjectColumns(schemaData);
+  const columns = getSchemaObjectColumns(schemaData, true);
+  const attributes = getObjectAttributes(schemaData);
+  const relationships = getObjectRelationships(schemaData, true);
 
   const queryString = schemaData
     ? getObjectItemsPaginated({
         kind: schemaData.kind,
-        attributes: schemaData.attributes,
-        relationships: getSchemaRelationshipColumns(schemaData),
+        attributes,
+        relationships,
         filters: filtersString,
       })
     : // Empty query to make the gql parsing work

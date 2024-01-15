@@ -19,7 +19,7 @@ import { useTitle } from "../../hooks/useTitle";
 import { branchesState, currentBranchAtom } from "../../state/atoms/branches.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { constructPath } from "../../utils/fetch";
-import { getSchemaRelationshipColumns } from "../../utils/getSchemaObjectColumns";
+import { getObjectRelationships } from "../../utils/getSchemaObjectColumns";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
@@ -36,13 +36,14 @@ export const ProposedChanges = () => {
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_OBJECT);
   const accountSchemaData = schemaList.find((s) => s.kind === ACCOUNT_OBJECT);
+  const relationships = getObjectRelationships(schemaData, true);
 
   const queryString = schemaData
     ? getProposedChanges({
         kind: schemaData.kind,
         accountKind: accountSchemaData?.kind,
         attributes: schemaData.attributes,
-        relationships: getSchemaRelationshipColumns(schemaData),
+        relationships,
       })
     : // Empty query to make the gql parsing work
       // TODO: Find another solution for queries while loading schemaData

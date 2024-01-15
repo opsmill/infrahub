@@ -49,7 +49,7 @@ const validate = (value: any, attribute: any = {}, optional?: boolean) => {
   }
 
   // If the attribute is of kind integer, then it should be a number
-  if (attribute.kind === "Integer" && Number.isInteger(value)) {
+  if (attribute.kind === "Number" && Number.isInteger(value)) {
     return true;
   }
 

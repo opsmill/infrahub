@@ -35,10 +35,10 @@ import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
 import {
+  getObjectAttributes,
+  getObjectRelationships,
   getObjectTabs,
-  getSchemaAttributeColumns,
-  getSchemaRelationshipColumns,
-  getSchemaRelationshipsTabs,
+  getTabs,
 } from "../../utils/getSchemaObjectColumns";
 import { Generate } from "../artifacts/generate";
 import ErrorScreen from "../error-screen/error-screen";
@@ -86,9 +86,9 @@ export default function ObjectItemDetails(props: any) {
     return null;
   }
 
-  const attributes = getSchemaAttributeColumns(schemaData, true);
-  const relationships = getSchemaRelationshipColumns(schemaData);
-  const relationshipsTabs = getSchemaRelationshipsTabs(schemaData);
+  const attributes = getObjectAttributes(schemaData);
+  const relationships = getObjectRelationships(schemaData);
+  const relationshipsTabs = getTabs(schemaData);
 
   const queryString = schemaData
     ? getObjectDetailsPaginated({
@@ -460,7 +460,6 @@ export default function ObjectItemDetails(props: any) {
             objectDetailsData[metaEditFieldDetails?.attributeOrRelationshipName]?.properties ||
             objectDetailsData[metaEditFieldDetails?.attributeOrRelationshipName]
           }
-          schemaList={schemaList}
           schema={schemaData}
           attributeOrRelationshipName={metaEditFieldDetails?.attributeOrRelationshipName}
           type={metaEditFieldDetails?.type!}

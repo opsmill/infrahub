@@ -29,7 +29,7 @@ import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom copy";
 import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
-import { getObjectTabs, getSchemaRelationshipsTabs } from "../../utils/getSchemaObjectColumns";
+import { getObjectTabs, getTabs } from "../../utils/getSchemaObjectColumns";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
@@ -62,7 +62,7 @@ export default function GroupItemDetails() {
     return null;
   }
 
-  const relationshipsTabs = getSchemaRelationshipsTabs(schemaData);
+  const relationshipsTabs = getTabs(schemaData);
 
   const queryString = schemaData
     ? getGroupDetails({
@@ -327,7 +327,6 @@ export default function GroupItemDetails() {
           attributeOrRelationshipToEdit={
             objectDetailsData[metaEditFieldDetails?.attributeOrRelationshipName]
           }
-          schemaList={schemaList}
           schema={schemaData}
           attributeOrRelationshipName={metaEditFieldDetails?.attributeOrRelationshipName}
           type={metaEditFieldDetails?.type!}
