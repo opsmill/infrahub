@@ -15,7 +15,7 @@ export const ColorDisplay = (props: tColorDisplay) => {
         backgroundColor: color || "",
         color: color ? getTextColor(color) : "",
       }}>
-      {value ?? " "}
+      {value}
     </div>
   );
 };
