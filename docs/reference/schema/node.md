@@ -188,7 +188,7 @@ Below is the list of all available options to define a Node in the schema
 | **Description** | Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions. |
 | **Optional**  | False |
 | **Default Value** |  |
-| **Constraints** |  Regex: `^[A-Z][a-zA-Z0-9]+$`<br> Length: min 3, max 32 |
+| **Constraints** |  Regex: `^[A-Z][a-z0-9]+$`<br> Length: min 3, max 32 |
 
 ### order_by
 
