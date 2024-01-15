@@ -18,6 +18,8 @@ exclude-labels:
 include-labels:
   - 'group/python-sdk'
 change-title-escapes: '\<*_&'  # You can add # and @ to disable mentions, and add ` to disable code blocks.
+tag-prefix: python-sdk-v
+tag-template: python-sdk-v
 template: |
   ## Changelog
 
