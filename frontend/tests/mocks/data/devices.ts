@@ -4045,7 +4045,7 @@ export const deviceDetailsUpdateMocksData = {
 };
 
 export const deviceDetailsInterfacesMocksQuery = `
-query InfraDevice {
+query GetObjectRelationships_InfraDevice {
   InfraDevice(ids: ["${deviceDetailsMocksId}"]) {
     count
     edges {
