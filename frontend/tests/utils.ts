@@ -33,9 +33,9 @@ export const ENG_TEAM_ONLY_CREDENTIALS = {
 };
 
 export const ACCOUNT_STATE_PATH = {
-  ADMIN: "e2e/.auth/admin.json",
-  READ_WRITE: "e2e/.auth/read-write.json",
-  READ_ONLY: "e2e/.auth/read-only.json",
+  ADMIN: "tests/e2e/.auth/admin.json",
+  READ_WRITE: "tests/e2e/.auth/read-write.json",
+  READ_ONLY: "tests/e2e/.auth/read-only.json",
 };
 
 export const waitFor = (alias, checkFn, maxRequests = 10, level = 0) => {
