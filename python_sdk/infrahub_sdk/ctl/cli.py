@@ -20,16 +20,17 @@ from infrahub_sdk.ctl import config
 from infrahub_sdk.ctl.branch import app as branch_app
 from infrahub_sdk.ctl.check import app as check_app
 from infrahub_sdk.ctl.client import initialize_client
-from infrahub_sdk.ctl.exceptions import InfrahubTransformNotFoundError, QueryNotFoundError
+from infrahub_sdk.ctl.exceptions import QueryNotFoundError
 from infrahub_sdk.ctl.repository import get_repository_config
 from infrahub_sdk.ctl.schema import app as schema
-from infrahub_sdk.ctl.transform import get_transform_class_instance, list_transforms
+from infrahub_sdk.ctl.transform import list_transforms
 from infrahub_sdk.ctl.utils import (
     execute_graphql_query,
     parse_cli_vars,
 )
 from infrahub_sdk.ctl.validate import app as validate_app
-from infrahub_sdk.exceptions import GraphQLError
+from infrahub_sdk.exceptions import GraphQLError, InfrahubTransformNotFoundError
+from infrahub_sdk.transforms import get_transform_class_instance
 from infrahub_sdk.utils import get_branch
 
 from .exporter import dump
