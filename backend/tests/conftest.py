@@ -72,14 +72,16 @@ def execute_before_any_test(worker_id, tmpdir_factory):
 class BusRPCMock(InfrahubMessageBus):
     def __init__(self):
         self.response: List[InfrahubResponse] = []
+        self.messages: List[InfrahubMessage] = []
 
     async def publish(self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None) -> None:
-        pass
+        self.messages.append(message)
 
     def add_mock_reply(self, response: InfrahubResponse):
         self.response.append(response)
 
     async def rpc(self, message: InfrahubMessage) -> InfrahubResponse:
+        self.messages.append(message)
         return self.response.pop()
 
 

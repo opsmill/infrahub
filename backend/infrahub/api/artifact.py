@@ -15,7 +15,7 @@ from infrahub.log import get_logger
 from infrahub.message_bus import messages
 
 if TYPE_CHECKING:
-    from infrahub.message_bus.rpc import InfrahubRpcClient
+    from infrahub.services import InfrahubServices
 
 log = get_logger()
 router = APIRouter(prefix="/artifact")
@@ -67,8 +67,8 @@ async def generate_artifact(
         branch=branch_params.branch,
     )
 
-    rpc_client: InfrahubRpcClient = request.app.state.rpc_client
-    await rpc_client.send(
+    service: InfrahubServices = request.app.state.service
+    await service.send(
         message=messages.RequestArtifactDefinitionGenerate(
             artifact_definition=artifact_definition.id, branch=branch_params.branch.name, limit=payload.nodes
         )
