@@ -1,5 +1,6 @@
 import logging
 import uuid
+import asyncio
 from collections import defaultdict
 from ipaddress import IPv4Network
 from typing import Dict, List
@@ -315,6 +316,7 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
     # --------------------------------------------------
     # Create the site specific VLAN
     # --------------------------------------------------
+    batch = await client.create_batch()
     for vlan in VLANS:
         vlan_role = vlan[1]
         vlan_name = f"{site_name}_{vlan[1]}"
@@ -327,15 +329,22 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
             status={"value": ACTIVE_STATUS, "owner": group_ops.id},
             role={"value": vlan_role, "source": account_pop.id, "is_protected": True, "owner": group_eng.id},
         )
-        await obj.save()
+        batch.add(task=obj.save, node=obj)
         store.set(key=vlan_name, node=obj)
+
+    async for node, _ in batch.execute():
+        log.info(f"- Created {node._schema.kind} - {node.name.value}")
 
     # --------------------------------------------------
     # Create the site specific IP prefixes
     # --------------------------------------------------
+    batch = await client.create_batch()
     for net in peer_networks:
         prefix = await client.create(branch=branch, kind="IpamIPPrefix", prefix=str(net))
-        await prefix.save()
+        batch.add(task=prefix.save, node=prefix)
+
+    async for node, _ in batch.execute():
+        log.info(f"- Created {node._schema.kind} - {node.prefix.value}")
 
     for idx, device in enumerate(DEVICES):
         device_name = f"{site_name}-{device[0]}"
@@ -537,6 +546,7 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
                     )
 
         # L2 Interfaces
+        batch = await client.create_batch()
         for intf_idx, intf_name in enumerate(INTERFACE_L2_NAMES[device_type]):
             intf_role = "server"
 
@@ -552,21 +562,25 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
                 l2_mode="Access",
                 untagged_vlan={"id": store.get(kind="InfraVLAN", key=f"{site_name}_server").id},
             )
-            await intf.save()
+            batch.add(task=intf.save, node=intf)
+
+        async for node, _ in batch.execute():
+            log.debug(f"- Created L2 Intf {node}")
 
     # --------------------------------------------------
     # Connect both devices within the Site together with 2 interfaces
     # --------------------------------------------------
+    batch = await client.create_batch()
     for idx in range(0, 2):
         intf1 = store.get(kind="InfraInterfaceL3", key=f"{site_name}-edge1-l3-{idx}")
         intf2 = store.get(kind="InfraInterfaceL3", key=f"{site_name}-edge2-l3-{idx}")
 
         intf1.description.value = f"Connected to {site_name}-edge2 {intf2.name.value}"
         intf1.connected_endpoint = intf2
-        await intf1.save()
+        batch.add(task=intf1.save, node=intf1)
 
         intf2.description.value = f"Connected to {site_name}-edge1 {intf1.name.value}"
-        await intf2.save()
+        batch.add(task=intf2.save, node=intf2)
 
         log.info(f" - Connected '{site_name}-edge1::{intf1.name.value}' <> '{site_name}-edge2::{intf2.name.value}'")
 
@@ -599,11 +613,14 @@ async def generate_site(client: InfrahubClient, log: logging.Logger, branch: str
             status=ACTIVE_STATUS,
             role=BACKBONE_ROLE,
         )
-        await obj.save()
+        batch.add(task=obj.save, node=obj)
 
         log.info(
             f" - Created BGP Session '{device1}' >> '{device2}': '{peer_group_name}' '{loopback1.address.value}' >> '{loopback2.address.value}'"
         )
+
+    async for node, _ in batch.execute():
+        log.debug(f"- Connected interfaces and created bgp sessions")
 
     return site_name
 
@@ -944,24 +961,16 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     # Create User Accounts, Groups, Organizations & Platforms
     # ------------------------------------------
     log.info(f"Creating User Accounts, Groups & Organizations & Platforms")
-    for account in ACCOUNTS:
-        try:
-            obj = await client.create(
-                branch=branch,
-                kind="CoreAccount",
-                data={"name": account[0], "password": account[2], "type": account[1], "role": account[3]},
-            )
-            await obj.save()
-        except GraphQLError:
-            pass
-        store.set(key=account[0], node=obj)
-        log.info(f"- Created {obj._schema.kind} - {obj.name.value}")
-
-    account_pop = store.get("pop-builder")
-    account_chloe = store.get("Chloe O'Brian")
-    account_crm = store.get("CRM Synchronization")
-
     batch = await client.create_batch()
+    for account in ACCOUNTS:
+        obj = await client.create(
+            branch=branch,
+            kind="CoreAccount",
+            data={"name": account[0], "password": account[2], "type": account[1], "role": account[3]},
+        )
+        batch.add(task=obj.save, node=obj)
+        store.set(key=account[0], node=obj)
+
     for group in GROUPS:
         obj = await client.create(branch=branch, kind="CoreStandardGroup", data={"name": group[0], "label": group[1]})
 
@@ -978,6 +987,10 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     async for node, _ in batch.execute():
         accessor = f"{node._schema.default_filter.split('__')[0]}"
         log.info(f"- Created {node._schema.kind} - {getattr(node, accessor).value}")
+
+    account_pop = store.get("pop-builder")
+    account_chloe = store.get("Chloe O'Brian")
+    account_crm = store.get("CRM Synchronization")
 
     # Autonomous System
     organizations_dict = {name: type for name, type in ORGANIZATIONS}
@@ -1089,12 +1102,11 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     # ------------------------------------------
     log.info("Creating Site and associated objects (Device, Circuit, BGP Sessions)")
     sites = site_generator(nbr_site=5)
-    batch = await client.create_batch()
+    tasks = []
     for site in sites:
-        batch.add(task=generate_site, site=site, client=client, branch=branch, log=log)
+        tasks.append(generate_site(site=site, client=client, branch=branch, log=log))
 
-    async for _, response in batch.execute():
-        log.debug(f"{response} - Creation Completed")
+    await asyncio.gather(*tasks)
 
     # --------------------------------------------------
     # CREATE Full Mesh iBGP SESSION between all the Edge devices
@@ -1142,6 +1154,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     # CREATE Backbone Links & Circuits
     # --------------------------------------------------
     log.info("Creating Backbone Links & Circuits")
+    batch = await client.create_batch()
     for idx, backbone_link in enumerate(P2P_NETWORKS_POOL.keys()):
         site1 = backbone_link[0]
         site2 = backbone_link[2]
@@ -1181,7 +1194,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
             circuit=obj,
             connected_endpoint=intf1,
         )
-        await endpoint1.save()
+        batch.add(task=endpoint1.save, node=endpoint1)
 
         endpoint2 = await client.create(
             branch=branch,
@@ -1191,7 +1204,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
             circuit=obj,
             connected_endpoint=intf2,
         )
-        await endpoint2.save()
+        batch.add(task=endpoint2.save, node=endpoint2)
 
         # Create IP Address
         intf11_address = f"{str(next(P2P_NETWORKS_POOL[backbone_link]))}/31"
@@ -1202,25 +1215,28 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
             interface={"id": intf1.id, "source": account_pop.id},
             address={"value": intf11_address, "source": account_pop.id},
         )
-        await intf11_ip.save()
+        batch.add(task=intf11_ip.save, node=intf11_ip)
         intf21_ip = await client.create(
             branch=branch,
             kind="IpamIPAddress",
             interface={"id": intf2.id, "source": account_pop.id},
             address={"value": intf21_address, "source": account_pop.id},
         )
-        await intf21_ip.save()
+        batch.add(task=intf21_ip.save, node=intf21_ip)
 
         # Update Interface
         intf11 = await client.get(branch=branch, kind="InfraInterfaceL3", id=intf1.id)
         intf11.description.value = f"Backbone: Connected to {site2}-{device} via {circuit_id}"
-        await intf11.save()
+        batch.add(task=intf11.save, node=intf11)
 
         intf21 = await client.get(branch=branch, kind="InfraInterfaceL3", id=intf2.id)
         intf21.description.value = f"Backbone: Connected to {site1}-{device} via {circuit_id}"
-        await intf21.save()
+        batch.add(task=intf21.save, node=intf21)
 
         log.info(f" - Connected '{site1}-{device}::{intf1.name.value}' <> '{site2}-{device}::{intf2.name.value}'")
+
+    async for node, _ in batch.execute():
+        log.debug(f"Backbone Links & Circuits completed")
 
     # --------------------------------------------------
     # Create some changes in additional branches
@@ -1231,12 +1247,14 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     #  Scenario 5 - Create some Node ADD and DELETE conflicts on some platform objects
     # --------------------------------------------------
     if branch == "main":
-        await branch_scenario_add_upstream(
-            site_name=sites[1]["name"],
-            client=client,
-            log=log,
-        )
-        await branch_scenario_replace_ip_addresses(site_name=sites[2]["name"], client=client, log=log)
-        await branch_scenario_remove_colt(site_name=sites[0]["name"], client=client, log=log)
-        await branch_scenario_conflict_device(site_name=sites[3]["name"], client=client, log=log)
-        await branch_scenario_conflict_platform(client=client, log=log)
+        batch = await client.create_batch()
+
+        batch.add(task=branch_scenario_add_upstream, site_name=sites[1]["name"], client=client, log=log)
+
+        batch.add(task=branch_scenario_replace_ip_addresses, site_name=sites[2]["name"], client=client, log=log)
+        batch.add(task=branch_scenario_remove_colt, site_name=sites[0]["name"], client=client, log=log)
+        batch.add(task=branch_scenario_conflict_device, site_name=sites[3]["name"], client=client, log=log)
+        batch.add(task=branch_scenario_conflict_platform, client=client, log=log)
+
+        async for node, _ in batch.execute():
+            log.debug(f"Branch scenario {node} completed")
