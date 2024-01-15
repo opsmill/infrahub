@@ -10,8 +10,8 @@ from .models import (
     InfraCircuit,
     InfraDevice,
     InfraFrontPort,
-    InfraInterfaceL2L3,
     InfraIPAddress,
+    InfraInterfaceL2L3,
     InfraPlatform,
     InfraPrefix,
     InfraProviderNetwork,
@@ -35,9 +35,6 @@ from .models import (
 class InfrahubSync(InfrahubAdapter):
     CoreStandardGroup = CoreStandardGroup
     BuiltinTag = BuiltinTag
-    CoreOrganization = CoreOrganization
-    BuiltinRole = BuiltinRole
-    BuiltinLocation = BuiltinLocation
     InfraAutonomousSystem = InfraAutonomousSystem
     InfraCircuit = InfraCircuit
     TemplateCircuitType = TemplateCircuitType
@@ -56,3 +53,6 @@ class InfrahubSync(InfrahubAdapter):
     InfraRouteTarget = InfraRouteTarget
     InfraVLAN = InfraVLAN
     InfraVRF = InfraVRF
+    CoreOrganization = CoreOrganization
+    BuiltinRole = BuiltinRole
+    BuiltinLocation = BuiltinLocation
