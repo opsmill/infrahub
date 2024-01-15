@@ -8,6 +8,10 @@ packages = [
     { include = "infrahub", from = "backend" }
 ]
 
+
+[tool.poetry.group.test-scale]
+optional = true
+
 [tool.poetry.dependencies]
 python = "^3.8, < 3.12"
 infrahub-sdk = {path = "python_sdk", develop=true}
@@ -58,6 +62,10 @@ typer-cli = "*"
 ruff = "0.1.8"
 buildkite-test-collector = "^0.1.7"
 invoke = "2.2.0"
+
+[tool.poetry.group.test-scale.dependencies]
+locust = "^2.20.1"
+docker = "^7.0.0"
 
 [tool.poetry.scripts]
 infrahub = "infrahub.cli:app"

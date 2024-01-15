@@ -23,15 +23,13 @@ from infrahub_sdk.ctl.client import initialize_client
 from infrahub_sdk.ctl.exceptions import InfrahubTransformNotFoundError, QueryNotFoundError
 from infrahub_sdk.ctl.repository import get_repository_config
 from infrahub_sdk.ctl.schema import app as schema
-from infrahub_sdk.ctl.transform import list_transforms
+from infrahub_sdk.ctl.transform import get_transform_class_instance, list_transforms
 from infrahub_sdk.ctl.utils import (
     execute_graphql_query,
     parse_cli_vars,
 )
 from infrahub_sdk.ctl.validate import app as validate_app
 from infrahub_sdk.exceptions import GraphQLError
-from infrahub_sdk.schema import InfrahubPythonTransformConfig
-from infrahub_sdk.transforms import InfrahubTransform
 from infrahub_sdk.utils import get_branch
 
 from .exporter import dump
@@ -106,23 +104,6 @@ def identify_faulty_jinja_code(traceback: Traceback, nbr_context_lines: int = 3)
         response.append((frame, syntax))
 
     return response
-
-
-def get_transform_class_instance(transform_config: InfrahubPythonTransformConfig) -> InfrahubTransform:
-    try:
-        spec = importlib.util.spec_from_file_location(transform_config.class_name, transform_config.file_path)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-
-        # Get the specified class from the module
-        transform_class = getattr(module, transform_config.class_name)
-
-        # Create an instance of the class
-        transform_instance = transform_class()
-    except (FileNotFoundError, AttributeError) as exc:
-        raise InfrahubTransformNotFoundError(name=transform_config.name) from exc
-
-    return transform_instance
 
 
 def render_jinja2_template(template_path: Path, variables: Dict[str, str], data: str) -> str:

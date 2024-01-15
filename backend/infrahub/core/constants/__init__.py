@@ -150,6 +150,7 @@ class RelationshipKind(InfrahubStringEnum):
     COMPONENT = "Component"
     PARENT = "Parent"
     GROUP = "Group"
+    HIERARCHY = "Hierarchy"
 
 
 class RelationshipStatus(InfrahubStringEnum):
@@ -161,6 +162,11 @@ class RelationshipDirection(InfrahubStringEnum):
     BIDIR = "bidirectional"
     OUTBOUND = "outbound"
     INBOUND = "inbound"
+
+
+class RelationshipHierarchyDirection(InfrahubStringEnum):
+    ANCESTORS = "ancestors"
+    DESCENDANTS = "descendants"
 
 
 class Severity(InfrahubStringEnum):

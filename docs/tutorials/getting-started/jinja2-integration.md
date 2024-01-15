@@ -61,7 +61,7 @@ In GitHub:
 ![Update the template in GitHub](../../media/tutorial_rfile_update_jinja.gif)
 
 !!!success Validate that everything is correct
-After making these changes, you should be able to render the RFile for the branch `update-ethernet1` and see the changes made to the data AND to the schema at the same time at the address [`/rfile/device_startup?device=ord1-edge1&branch=update-ethernet1`](http://localhost:8000/api/rfile/device_startup?device=ord1-edge1&branch=update-ethernet1)
+After making these changes, you should be able to render the RFile for the branch `update-ethernet1` and see the changes made to the data AND to the schema at the same time at the address [`/rfile/device_startup?device=atl1-edge1&branch=update-ethernet1`](http://localhost:8000/api/rfile/device_startup?device=atl1-edge1&branch=update-ethernet1)
 !!!
 
 ### 4. Merge the Branch `update-ethernet1`

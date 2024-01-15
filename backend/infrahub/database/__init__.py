@@ -21,6 +21,7 @@ from infrahub.exceptions import DatabaseError
 from infrahub.log import get_logger
 from infrahub.utils import InfrahubStringEnum
 
+from .constants import DatabaseType
 from .metrics import QUERY_EXECUTION_METRICS
 
 if TYPE_CHECKING:
@@ -83,6 +84,7 @@ class InfrahubDatabase:
         self,
         driver: AsyncDriver,
         mode: InfrahubDatabaseMode = InfrahubDatabaseMode.DRIVER,
+        db_type: Optional[DatabaseType] = None,
         session: Optional[AsyncSession] = None,
         session_mode: InfrahubDatabaseSessionMode = InfrahubDatabaseSessionMode.WRITE,
         transaction: Optional[AsyncTransaction] = None,
@@ -93,6 +95,10 @@ class InfrahubDatabase:
         self._session_mode = session_mode
         self._is_session_local = False
         self._transaction = transaction
+        if db_type and isinstance(db_type, DatabaseType):
+            self.db_type = db_type
+        else:
+            self.db_type = config.SETTINGS.database.db_type
 
     @property
     def is_session(self):
@@ -112,11 +118,14 @@ class InfrahubDatabase:
         if read_only:
             session_mode = InfrahubDatabaseSessionMode.READ
 
-        return self.__class__(mode=InfrahubDatabaseMode.SESSION, driver=self._driver, session_mode=session_mode)
+        return self.__class__(
+            mode=InfrahubDatabaseMode.SESSION, db_type=self.db_type, driver=self._driver, session_mode=session_mode
+        )
 
     def start_transaction(self) -> InfrahubDatabase:
         return self.__class__(
             mode=InfrahubDatabaseMode.TRANSACTION,
+            db_type=self.db_type,
             driver=self._driver,
             session=self._session,
             session_mode=self._session_mode,
@@ -196,6 +205,11 @@ class InfrahubDatabase:
                 raise DatabaseError(message="Unable to connect to the database") from exc
 
             return [item async for item in response]
+
+    def render_list_comprehension(self, items: str, item_name: str) -> str:
+        if self.db_type == DatabaseType.MEMGRAPH:
+            return f"extract(i in {items} | i.{item_name})"
+        return f"[i IN {items} | i.{item_name}]"
 
 
 async def create_database(driver: AsyncDriver, database_name: str) -> None:

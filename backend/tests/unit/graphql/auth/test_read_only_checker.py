@@ -2,18 +2,19 @@ from unittest.mock import AsyncMock
 
 import pytest
 from graphql import OperationType
+from infrahub_sdk.analyzer import GraphQLOperation
 
 from infrahub.auth import AccountSession, AuthType
 from infrahub.core.constants import AccountRole
 from infrahub.exceptions import PermissionDeniedError
-from infrahub.graphql.analyzer import GraphQLOperation, GraphQLQueryAnalyzer
+from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.auth.query_permission_checker.read_only_checker import ReadOnlyGraphQLPermissionChecker
 
 
 class TestReadOnlyAuthChecker:
     def setup_method(self):
         self.account_session = AccountSession(account_id="abc", auth_type=AuthType.JWT, role=AccountRole.READ_ONLY)
-        self.graphql_query = AsyncMock(spec=GraphQLQueryAnalyzer)
+        self.graphql_query = AsyncMock(spec=InfrahubGraphQLQueryAnalyzer)
         self.checker = ReadOnlyGraphQLPermissionChecker()
 
     @pytest.mark.parametrize("role", [AccountRole.ADMIN, AccountRole.READ_WRITE])

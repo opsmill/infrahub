@@ -7,6 +7,7 @@ from infrahub_sdk.utils import deep_merge_dict
 from infrahub.core import get_branch, registry
 from infrahub.core.node import Node
 from infrahub.core.query.node import (
+    NodeGetHierarchyQuery,
     NodeGetListQuery,
     NodeListGetAttributeQuery,
     NodeListGetInfoQuery,
@@ -20,9 +21,8 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import NodeNotFound, SchemaNotFound
 
 if TYPE_CHECKING:
-    from uuid import UUID
-
     from infrahub.core.branch import Branch
+    from infrahub.core.constants import RelationshipHierarchyDirection
     from infrahub.database import InfrahubDatabase
 
 
@@ -143,7 +143,7 @@ class NodeManager:
     @classmethod
     async def count_peers(
         cls,
-        id: str,
+        ids: List[str],
         schema: RelationshipSchema,
         filters: dict,
         db: InfrahubDatabase,
@@ -153,16 +153,18 @@ class NodeManager:
         branch = await get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
-        rel = Relationship(schema=schema, branch=branch, node_id=id)
+        rel = Relationship(schema=schema, branch=branch, node_id="PLACEHOLDER")
 
-        query = await RelationshipGetPeerQuery.init(db=db, source_id=id, schema=schema, filters=filters, rel=rel, at=at)
+        query = await RelationshipGetPeerQuery.init(
+            db=db, source_ids=ids, schema=schema, filters=filters, rel=rel, at=at
+        )
         return await query.count(db=db)
 
     @classmethod
     async def query_peers(
         cls,
         db: InfrahubDatabase,
-        id: UUID,
+        ids: List[str],
         schema: RelationshipSchema,
         filters: dict,
         fields: Optional[dict] = None,
@@ -174,11 +176,11 @@ class NodeManager:
         branch = await get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
-        rel = Relationship(schema=schema, branch=branch, node_id=id)
+        rel = Relationship(schema=schema, branch=branch, node_id="PLACEHOLDER")
 
         query = await RelationshipGetPeerQuery.init(
             db=db,
-            source_id=id,
+            source_ids=ids,
             schema=schema,
             filters=filters,
             rel=rel,
@@ -189,6 +191,8 @@ class NodeManager:
         await query.execute(db=db)
 
         peers_info = list(query.get_peers())
+        if not peers_info:
+            return []
 
         # if display_label has been requested we need to ensure we are querying the right fields
         if fields and "display_label" in fields:
@@ -197,11 +201,8 @@ class NodeManager:
                 display_label_fields = peer_schema.generate_fields_for_display_label()
                 fields = deep_merge_dict(fields, display_label_fields)
 
-        if not peers_info:
-            return []
-
         return [
-            await Relationship(schema=schema, branch=branch, at=at, node_id=id).load(
+            await Relationship(schema=schema, branch=branch, at=at, node_id=peer.source_id).load(
                 db=db,
                 id=peer.rel_node_id,
                 db_id=peer.rel_node_db_id,
@@ -210,6 +211,79 @@ class NodeManager:
             )
             for peer in peers_info
         ]
+
+    @classmethod
+    async def count_hierarchy(
+        cls,
+        id: str,
+        direction: RelationshipHierarchyDirection,
+        node_schema: NodeSchema,
+        filters: dict,
+        db: InfrahubDatabase,
+        at: Optional[Union[Timestamp, str]] = None,
+        branch: Optional[Union[Branch, str]] = None,
+    ) -> int:
+        branch = await get_branch(branch=branch, db=db)
+        at = Timestamp(at)
+
+        query = await NodeGetHierarchyQuery.init(
+            db=db,
+            direction=direction,
+            node_id=id,
+            node_schema=node_schema,
+            filters=filters,
+            at=at,
+            branch=branch,
+        )
+
+        return await query.count(db=db)
+
+    @classmethod
+    async def query_hierarchy(
+        cls,
+        db: InfrahubDatabase,
+        id: str,
+        direction: RelationshipHierarchyDirection,
+        node_schema: NodeSchema,
+        filters: dict,
+        fields: Optional[dict] = None,
+        offset: Optional[int] = None,
+        limit: Optional[int] = None,
+        at: Union[Timestamp, str] = None,
+        branch: Union[Branch, str] = None,
+    ) -> Dict[str, Node]:
+        branch = await get_branch(branch=branch, db=db)
+        at = Timestamp(at)
+
+        query = await NodeGetHierarchyQuery.init(
+            db=db,
+            direction=direction,
+            node_id=id,
+            node_schema=node_schema,
+            filters=filters,
+            offset=offset,
+            limit=limit,
+            at=at,
+            branch=branch,
+        )
+        await query.execute(db=db)
+
+        peers_ids = list(query.get_peer_ids())
+
+        if not peers_ids:
+            return []
+
+        hierarchy_schema = node_schema.get_hierarchy_schema()
+
+        # if display_label has been requested we need to ensure we are querying the right fields
+        if fields and "display_label" in fields:
+            if hierarchy_schema.display_labels:
+                display_label_fields = hierarchy_schema.generate_fields_for_display_label()
+                fields = deep_merge_dict(fields, display_label_fields)
+
+        return await cls.get_many(
+            db=db, ids=peers_ids, fields=fields, at=at, branch=branch, include_owner=True, include_source=True
+        )
 
     @classmethod
     async def get_one_by_default_filter(

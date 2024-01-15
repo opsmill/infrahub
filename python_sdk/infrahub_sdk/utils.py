@@ -10,10 +10,19 @@ from uuid import UUID, uuid4
 import httpx
 import yaml
 from git.repo import Repo
-from pydantic import BaseModel
+from graphql import (  # pylint: disable=no-name-in-module
+    FieldNode,
+    InlineFragmentNode,
+    SelectionSetNode,
+)
+
+try:
+    from pydantic import v1 as pydantic  # type: ignore[attr-defined]
+except ImportError:
+    import pydantic  # type: ignore[no-redef]
 
 
-class YamlFile(BaseModel):
+class YamlFile(pydantic.BaseModel):
     identifier: str
     location: Path
     content: Optional[dict] = None
@@ -253,3 +262,57 @@ def dict_hash(dictionary: Dict[str, Any]) -> str:
     encoded = json.dumps(dictionary, sort_keys=True).encode()
     dhash = hashlib.md5(encoded)
     return dhash.hexdigest()
+
+
+def calculate_dict_depth(data: dict, level: int = 1) -> int:
+    """Calculate the depth of a nested dictionnary recursively."""
+    if not isinstance(data, dict) or not data:
+        return level
+    return max(calculate_dict_depth(data=data[key], level=level + 1) for key in data)
+
+
+def calculate_dict_height(data: dict, cnt: int = 0) -> int:
+    """Calculate the number of fields (height) in a nested dictionnary recursively."""
+    for key in data:
+        if isinstance(data[key], dict):
+            cnt = calculate_dict_height(data=data[key], cnt=cnt + 1)
+        else:
+            cnt += 1
+    return cnt
+
+
+async def extract_fields(selection_set: SelectionSetNode) -> Optional[Dict[str, Dict]]:
+    """This function extract all the requested fields in a tree of Dict from a SelectionSetNode
+
+    The goal of this function is to limit the fields that we need to query from the backend.
+
+    Currently the function support Fields and InlineFragments but in a combined tree where the fragments are merged together
+    This implementation may seam counter intuitive but in the current implementation
+    it's better to have slightly more information at time passed to the query manager.
+
+    In the future we'll probably need to redesign how we read GraphQL queries to generate better Database query.
+    """
+
+    if not selection_set:
+        return None
+
+    fields = {}
+    for node in getattr(selection_set, "selections", []):
+        sub_selection_set = getattr(node, "selection_set", None)
+        if isinstance(node, FieldNode):
+            value = await extract_fields(sub_selection_set)
+            if node.name.value not in fields:
+                fields[node.name.value] = value
+            elif isinstance(fields[node.name.value], dict) and isinstance(value, dict):
+                fields[node.name.value].update(value)
+
+        elif isinstance(node, InlineFragmentNode):
+            for sub_node in node.selection_set.selections:
+                sub_sub_selection_set = getattr(sub_node, "selection_set", None)
+                value = await extract_fields(sub_sub_selection_set)
+                if sub_node.name.value not in fields:
+                    fields[sub_node.name.value] = await extract_fields(sub_sub_selection_set)
+                elif isinstance(fields[sub_node.name.value], dict) and isinstance(value, dict):
+                    fields[sub_node.name.value].update(value)
+
+    return fields

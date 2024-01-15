@@ -1,6 +1,7 @@
 import asyncio
 import os
 import shutil
+from itertools import islice
 from typing import Dict
 
 import pendulum
@@ -2287,6 +2288,172 @@ async def data_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
 
     schema = SchemaRoot(**SCHEMA)
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+
+@pytest.fixture
+async def hierarchical_location_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
+    SCHEMA = {
+        "generics": [
+            {
+                "name": "Generic",
+                "namespace": "Location",
+                "default_filter": "name__value",
+                "hierarchical": True,
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {"name": "status", "kind": "Text", "enum": ["online", "offline"], "default_value": "online"},
+                ],
+                "relationships": [
+                    {"name": "things", "peer": "TestThing", "cardinality": "many", "optional": True},
+                ],
+            }
+        ],
+        "nodes": [
+            {
+                "name": "Region",
+                "namespace": "Location",
+                "default_filter": "name__value",
+                "inherit_from": ["LocationGeneric"],
+                "parent": "",
+                "children": "LocationSite",
+            },
+            {
+                "name": "Site",
+                "namespace": "Location",
+                "default_filter": "name__value",
+                "inherit_from": ["LocationGeneric"],
+                "parent": "LocationRegion",
+                "children": "LocationSite",
+            },
+            {
+                "name": "Rack",
+                "namespace": "Location",
+                "default_filter": "name__value",
+                "inherit_from": ["LocationGeneric"],
+                "parent": "LocationSite",
+                "children": "",
+            },
+            {
+                "name": "Thing",
+                "namespace": "Test",
+                "default_filter": "name__value",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                ],
+                "relationships": [
+                    {"name": "location", "peer": "LocationGeneric", "cardinality": "one", "optional": False},
+                ],
+            },
+        ],
+    }
+
+    schema = SchemaRoot(**SCHEMA)
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+
+@pytest.fixture
+async def hierarchical_location_data(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema
+) -> Dict[str, Node]:
+    REGIONS = (
+        ("north-america",),
+        ("europe",),
+        ("asia",),
+    )
+
+    SITES = (
+        ("paris", "europe"),
+        ("london", "europe"),
+        ("chicago", "north-america"),
+        ("seattle", "north-america"),
+        ("beijing", "asia"),
+        ("singapore", "asia"),
+    )
+    NBR_RACKS_PER_SITE = 2
+
+    nodes = {}
+
+    for region in REGIONS:
+        obj = await Node.init(db=db, schema="LocationRegion")
+        await obj.new(db=db, name=region[0])
+        await obj.save(db=db)
+        nodes[obj.name.value] = obj
+
+    for site in SITES:
+        obj = await Node.init(db=db, schema="LocationSite")
+        await obj.new(db=db, name=site[0], parent=site[1])
+        await obj.save(db=db)
+        nodes[obj.name.value] = obj
+
+        for idx in range(1, NBR_RACKS_PER_SITE + 1):
+            rack_name = f"{site[0]}-r{idx}"
+            statuses = ["online", "offline"]
+            obj = await Node.init(db=db, schema="LocationRack")
+            await obj.new(db=db, name=rack_name, parent=site[0], status=statuses[idx - 1])
+            await obj.save(db=db)
+            nodes[obj.name.value] = obj
+
+    return nodes
+
+
+@pytest.fixture
+async def hierarchical_location_data_thing(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data: Dict[str, Node]
+) -> Dict[str, Node]:
+    nodes = {}
+    for item_name, item in hierarchical_location_data.items():
+        obj = await Node.init(db=db, schema="TestThing")
+        obj_name = f"thing-{item_name}"
+        await obj.new(db=db, name=obj_name, location=item.id)
+        await obj.save(db=db)
+        nodes[obj_name] = obj
+
+    nodes.update(hierarchical_location_data)
+    return nodes
+
+
+@pytest.fixture
+async def hierarchical_groups_data(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema
+) -> Dict[str, Node]:
+    def batched(iterable, n):
+        """
+        Local implementation of the new batched function that was added to itertools in 3.12
+        https://docs.python.org/3/library/itertools.html
+        """
+        # batched('ABCDEFG', 3) --> ABC DEF G
+        if n < 1:
+            raise ValueError("n must be at least one")
+        it = iter(iterable)
+        while batch := tuple(islice(it, n)):
+            yield batch
+
+    GROUPS_DATA = (
+        ("grp1", None),
+        ("grp11", "grp1"),
+        ("grp12", "grp1"),
+        ("grp111", "grp11"),
+        ("grp112", "grp11"),
+        ("grp121", "grp12"),
+        ("grp122", "grp12"),
+    )
+
+    tags = []
+    nbr_tags_per_group = 2
+    for idx in range(0, len(GROUPS_DATA) * nbr_tags_per_group):
+        obj = await Node.init(db=db, schema="BuiltinTag")
+        await obj.new(db=db, name=f"tag-{idx}")
+        await obj.save(db=db)
+        tags.append(obj)
+
+    batched_tags = list(batched(tags, nbr_tags_per_group))
+
+    for idx, group in enumerate(GROUPS_DATA):
+        grp = await Node.init(db=db, schema="CoreStandardGroup")
+        await grp.new(db=db, name=group[0], parent=group[1], members=[tag.id for tag in batched_tags[idx]])
+        await grp.save(db=db)
+
+    return {tag.id: tag for tag in tags}
 
 
 @pytest.fixture

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Optional, Tuple, Union
 
-from infrahub.core.query import QueryNode, QueryRel
+from infrahub.core.query import QueryNode
 from infrahub.types import get_attribute_type
 
 if TYPE_CHECKING:
@@ -47,31 +47,20 @@ async def build_subquery_filter(
     )
     params.update(field_params)
 
-    # Assign new names to all of the relationships to ensure they are not conflicting with anything
-    # The relationship will be used to generate the ordering of the results
-    nbr_relationships = 0
-    rel_names = []
-    for item in field_filter:
-        if not isinstance(item, QueryRel):
-            continue
-        nbr_relationships += 1
-        rel_name = f"f{subquery_idx}r{nbr_relationships}"
-        item.name = rel_name
-        rel_names.append(rel_name)
-
-    field_where.append("all(r IN relationships(p) WHERE (%s))" % branch_filter)
+    field_where.append("all(r IN relationships(path) WHERE (%s))" % branch_filter)
     filter_str = f"({node_alias})" + "".join([str(item) for item in field_filter])
     where_str = " AND ".join(field_where)
-    order_str = ", ".join([f"{rel}.branch_level DESC, {rel}.from DESC" for rel in rel_names])
+    branch_level_str = "reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level)"
+    froms_str = db.render_list_comprehension(items="relationships(path)", item_name="from")
     query = f"""
     WITH {node_alias}
-    MATCH p = {filter_str}
+    MATCH path = {filter_str}
     WHERE {where_str}
+    WITH {node_alias}, path, {branch_level_str} AS branch_level, {froms_str} AS froms
     RETURN {node_alias} as {prefix}
-    ORDER BY {order_str}
+    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC
     LIMIT 1
     """
-
     return query, params, prefix
 
 
@@ -99,36 +88,26 @@ async def build_subquery_order(
     )
     params.update(field_params)
 
-    # Assign new names to all of the relationships to ensure they are not conflicting with anything
-    # The relationship will be used to generate the ordering of the results
-    # Just in case, clear the name on all the nodes except the last one that will be called last
-    nbr_relationships = 0
-    rel_names = []
     for item in field_filter:
-        if isinstance(item, QueryRel):
-            nbr_relationships += 1
-            rel_name = f"ord{subquery_idx}r{nbr_relationships}"
-            item.name = rel_name
-            rel_names.append(rel_name)
-        elif isinstance(item, QueryNode):
-            item.name = None
+        item.name = None
 
     if not isinstance(field_filter[-1], QueryNode):
         raise IndexError(f"The last item in field_filter must be a QueryNode not {type(field_filter[-1])}")
 
     field_filter[-1].name = "last"
 
-    field_where.append("all(r IN relationships(p) WHERE (%s))" % branch_filter)
+    field_where.append("all(r IN relationships(path) WHERE (%s))" % branch_filter)
     filter_str = f"({node_alias})" + "".join([str(item) for item in field_filter])
     where_str = " AND ".join(field_where)
-    order_str = ", ".join([f"{rel}.branch_level DESC, {rel}.from DESC" for rel in rel_names])
-
+    branch_level_str = "reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level)"
+    froms_str = db.render_list_comprehension(items="relationships(path)", item_name="from")
     query = f"""
     WITH {node_alias}
-    MATCH p = {filter_str}
+    MATCH path = {filter_str}
     WHERE {where_str}
+    WITH last, path, {branch_level_str} AS branch_level, {froms_str} AS froms
     RETURN last.value as {prefix}
-    ORDER BY {order_str}
+    ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC
     LIMIT 1
     """
 

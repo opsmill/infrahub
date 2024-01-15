@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict, Optional, TypeVar
 
 import aio_pika
-from pydantic.v1 import BaseModel, Field
+from pydantic import BaseModel, Field
 
 from infrahub import config
 from infrahub.exceptions import Error, RPCError
@@ -99,7 +99,9 @@ class InfrahubMessage(BaseModel):
 
     @property
     def body(self) -> bytes:
-        return self.json(exclude={"meta": {"headers", "priority"}, "value": True}, exclude_none=True).encode("UTF-8")
+        return self.model_dump_json(exclude={"meta": {"headers", "priority"}, "value": True}, exclude_none=True).encode(
+            "UTF-8"
+        )
 
     def increase_retry_count(self, count: int = 1) -> None:
         current_retry = self.meta.retry_count or 0

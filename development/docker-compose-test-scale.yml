@@ -1,0 +1,46 @@
+---
+# yamllint disable rule:line-length
+
+version: "3.4"
+services:
+  infrahub-server:
+    build:
+      context: ../
+      dockerfile: development/Dockerfile
+      target: backend
+    image: "${IMAGE_NAME}:${IMAGE_VER}"
+    command: >
+      gunicorn --config backend/infrahub/serve/gunicorn_config.py --logger-class infrahub.serve.log.GunicornLogger infrahub.server:app
+    depends_on:
+      database:
+        condition: service_healthy
+      message-queue:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      - "INFRAHUB_CONFIG=/source/development/infrahub.toml"
+      - "INFRAHUB_PRODUCTION=false"
+      - "INFRAHUB_LOG_LEVEL=INFO"
+      - "INFRAHUB_SECURITY_INITIAL_ADMIN_TOKEN=06438eb2-8019-4776-878c-0941b1f1d1ec"
+      - "INFRAHUB_SECURITY_SECRET_KEY=327f747f-efac-42be-9e73-999f08f86b92"
+      - "INFRAHUB_ALLOW_ANONYMOUS_ACCESS=true"
+      - "INFRAHUB_DB_TYPE=${INFRAHUB_DB_TYPE}"
+    volumes:
+      - ../:/source
+      - "storage_data:/opt/infrahub/storage"
+    tty: true
+    healthcheck:
+      test: wget -O /dev/null http://localhost:8000/api/schema/summary || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+  database:
+    ports:
+      - "7687:7687"
+
+volumes:
+  storage_data:
