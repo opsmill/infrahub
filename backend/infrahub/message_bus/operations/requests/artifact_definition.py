@@ -110,7 +110,7 @@ async def check(  # pylint: disable=too-many-statements
                 repository_id=repository.id,
                 repository_name=repository.name.value,
                 branch_name=message.source_branch,
-                query=query.query.value,
+                query=query.name.value,
                 variables=member.extract(params=artifact_definition.parameters.value),
                 target_id=member.id,
                 target_name=member.name.value,

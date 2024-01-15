@@ -1,26 +1,16 @@
-import pytest
 from fastapi.testclient import TestClient
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.message_bus import messages
-from infrahub.message_bus.rpc import InfrahubRpcClientTesting
 
 
-@pytest.fixture
-def patch_rpc_client():
-    import infrahub.message_bus.rpc
-
-    infrahub.message_bus.rpc.InfrahubRpcClient = InfrahubRpcClientTesting
-
-
-@pytest.mark.xfail(reason="FIXME: #1627, working in standalone but failing when it's part of the testsuite")
 async def test_artifact_definition_endpoint(
     db: InfrahubDatabase,
     admin_headers,
     default_branch,
-    patch_rpc_client,
+    rpc_bus,
     register_core_models_schema,
     register_builtin_models_schema,
     car_person_data_generic,
@@ -68,6 +58,6 @@ async def test_artifact_definition_endpoint(
 
     assert response.status_code == 200
     assert (
-        messages.RequestArtifactDefinitionGenerate(meta=None, artifact_definition=ad1.id, branch="main", limit=[])
-        in client.app.state.rpc_client.sent
+        messages.RequestArtifactDefinitionGenerate(artifact_definition=ad1.id, branch="main", limit=[])
+        in rpc_bus.messages
     )

@@ -48,7 +48,7 @@ If other branches are present, it's recommended that you delete them for now.
 
 ## Integrate the Git repository with Infrahub
 
-Currently the easiest way to add a repository is to use the GraphQL interface.
+Currently the easiest way to add a repository is to use the web interface.
 
 Refer to [Adding a repository guide](/guides/repository)
 

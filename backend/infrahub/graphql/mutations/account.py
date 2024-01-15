@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Dict
 from graphene import Boolean, Field, InputField, InputObjectType, Mutation, String
 from graphql import GraphQLResolveInfo
 from infrahub_sdk import UUIDT
+from infrahub_sdk.utils import extract_fields
 
 from infrahub.auth import AuthType
 from infrahub.core.constants import InfrahubKind
@@ -12,7 +13,6 @@ from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import NodeNotFound, PermissionDeniedError
 
 from ..types import InfrahubObjectType
-from ..utils import extract_fields
 
 if TYPE_CHECKING:
     from infrahub.auth import AccountSession

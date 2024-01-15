@@ -91,6 +91,12 @@ class FilterNotFound(Error):
         super().__init__(self.message)
 
 
+class InfrahubTransformNotFoundError(Error):
+    def __init__(self, name: str, message: Optional[str] = None):
+        self.message = message or f"The requested InfrahubTransform '{name}' was not found."
+        super().__init__(self.message)
+
+
 class ValidationError(Error):
     def __init__(self, identifier: str, message: str):
         self.identifier = identifier

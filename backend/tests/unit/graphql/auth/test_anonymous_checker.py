@@ -4,14 +4,14 @@ import pytest
 
 from infrahub.auth import AccountSession, AuthType
 from infrahub.exceptions import AuthorizationError
-from infrahub.graphql.analyzer import GraphQLQueryAnalyzer
+from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.auth.query_permission_checker.anonymous_checker import AnonymousGraphQLPermissionChecker
 
 
 class TestAnonymousAuthChecker:
     def setup_method(self):
         self.account_session = AccountSession(account_id="abc", auth_type=AuthType.JWT)
-        self.graphql_query = AsyncMock(spec=GraphQLQueryAnalyzer)
+        self.graphql_query = AsyncMock(spec=InfrahubGraphQLQueryAnalyzer)
         self.mock_anonymous_setting_get = MagicMock(return_value=True)
         self.checker = AnonymousGraphQLPermissionChecker(self.mock_anonymous_setting_get)
 

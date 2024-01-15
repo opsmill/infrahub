@@ -232,7 +232,7 @@ class BaseSchemaModel(BaseModel):
     def update(self, other: Self) -> Self:
         """Update the current object with the new value from the new one if they are defined.
 
-        Currently this method works for the following type of field
+        Currently this method works for the following type of fields
             int, str, bool, float: If present the value from Other is overwriting the local value
             list[BaseSchemaModel]: The list will be merge if all elements in the list have a _sorting_id and if it's unique.
 
@@ -283,18 +283,18 @@ class FilterSchema(BaseSchemaModel):
 
 class DropdownChoice(BaseSchemaModel):
     name: str
-    description: str = ""
-    color: str = ""
-    label: str = ""
+    description: Optional[str] = None
+    color: Optional[str] = None
+    label: Optional[str] = None
 
     _sort_by: List[str] = ["name"]
 
     @field_validator("color")
     @classmethod
     def kind_options(cls, v: str) -> str:
-        if v == "":
+        if not v:
             return v
-        if HTML_COLOR.match(v):
+        if isinstance(v, str) and HTML_COLOR.match(v):
             return v.lower()
 
         raise ValueError("Color must be a valid HTML color code")

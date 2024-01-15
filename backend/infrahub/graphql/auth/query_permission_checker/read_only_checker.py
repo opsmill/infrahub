@@ -2,7 +2,7 @@ from graphql import OperationType
 
 from infrahub.auth import AccountSession
 from infrahub.exceptions import PermissionDeniedError
-from infrahub.graphql.analyzer import GraphQLQueryAnalyzer
+from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 
 from .interface import GraphQLQueryPermissionCheckerInterface
 
@@ -13,7 +13,7 @@ class ReadOnlyGraphQLPermissionChecker(GraphQLQueryPermissionCheckerInterface):
     async def supports(self, account_session: AccountSession) -> bool:
         return account_session.authenticated and account_session.read_only
 
-    async def check(self, analyzed_query: GraphQLQueryAnalyzer):
+    async def check(self, analyzed_query: InfrahubGraphQLQueryAnalyzer):
         for operation in analyzed_query.operations:
             if (
                 operation.operation_type == OperationType.MUTATION
