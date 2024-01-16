@@ -29,12 +29,12 @@ class FakeLogger:
         """Send an exception event."""
 
 
-async def nothing_to_see(service: InfrahubServices) -> None:
+async def nothing_to_see(service: InfrahubServices, expiration: Optional[int] = None) -> None:
     service.scheduler.running = False
     raise NotImplementedError("This function has not been implemented")
 
 
-async def log_once_and_stop(service: InfrahubServices) -> None:
+async def log_once_and_stop(service: InfrahubServices, expiration: Optional[int] = None) -> None:
     service.log.info("Writing entry to the log")
     if len(service.log.info_logs) == 3:
         service.scheduler.running = False
