@@ -63,6 +63,7 @@ class Meta(BaseModel):
     )
     check_execution_id: Optional[str] = Field(default=None, description="Check execution ID related to this message")
     priority: int = Field(default=3, description="Message Priority")
+    expiration: Optional[int] = Field(default=None, description="TTL before this message expires in seconds")
 
     @classmethod
     def default(cls) -> Meta:
@@ -86,6 +87,9 @@ class InfrahubMessage(BaseModel):
     def assign_priority(self, priority: int) -> None:
         self.meta.priority = priority
 
+    def assign_expiration(self, expiration: int) -> None:
+        self.meta.expiration = expiration
+
     def set_log_data(self, routing_key: str) -> None:
         set_log_data(key="routing_key", value=routing_key)
         if self.meta.request_id:
@@ -99,9 +103,9 @@ class InfrahubMessage(BaseModel):
 
     @property
     def body(self) -> bytes:
-        return self.model_dump_json(exclude={"meta": {"headers", "priority"}, "value": True}, exclude_none=True).encode(
-            "UTF-8"
-        )
+        return self.model_dump_json(
+            exclude={"meta": {"headers", "priority", "expiration"}, "value": True}, exclude_none=True
+        ).encode("UTF-8")
 
     def increase_retry_count(self, count: int = 1) -> None:
         current_retry = self.meta.retry_count or 0

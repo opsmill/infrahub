@@ -208,5 +208,6 @@ class RabbitMQMessageBus(InfrahubMessageBus):
             reply_to=message.meta.reply_to,
             priority=message.meta.priority,
             headers=message.meta.headers,
+            expiration=message.meta.expiration,
         )
         return pika_message
