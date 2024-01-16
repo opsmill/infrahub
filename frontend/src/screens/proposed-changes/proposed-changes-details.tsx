@@ -8,10 +8,11 @@ import { PROPOSED_CHANGES_OBJECT } from "../../config/constants";
 import { QSP } from "../../config/qsp";
 import { getProposedChanges } from "../../graphql/queries/proposed-changes/getProposedChanges";
 import useQuery from "../../hooks/useQuery";
+import { useTitle } from "../../hooks/useTitle";
 import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { constructPath } from "../../utils/fetch";
-import { getSchemaRelationshipColumns } from "../../utils/getSchemaObjectColumns";
+import { getObjectRelationships } from "../../utils/getSchemaObjectColumns";
 import { ArtifactsDiff } from "../diff/artifact-diff/artifacts-diff";
 import { Checks } from "../diff/checks/checks";
 import { DataDiff } from "../diff/data-diff";
@@ -50,17 +51,23 @@ export const ProposedChangesDetails = () => {
   const [qspTab] = useQueryParam(QSP.PROPOSED_CHANGES_TAB, StringParam);
   const [, setValidatorQsp] = useQueryParam(QSP.VALIDATOR_DETAILS, StringParam);
   const [schemaList] = useAtom(schemaState);
-  const [, setProposedChange] = useAtom(proposedChangedState);
+  const [proposedChange, setProposedChange] = useAtom(proposedChangedState);
   const navigate = useNavigate();
+  useTitle(
+    proposedChange?.display_label
+      ? `${proposedChange.display_label} details`
+      : "Proposed changes details"
+  );
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_OBJECT);
+  const relationships = getObjectRelationships(schemaData);
 
   const queryString = schemaData
     ? getProposedChanges({
         id: proposedchange,
         kind: schemaData.kind,
         attributes: schemaData.attributes,
-        relationships: getSchemaRelationshipColumns(schemaData),
+        relationships,
       })
     : // Empty query to make the gql parsing work
       // TODO: Find another solution for queries while loading schemaData

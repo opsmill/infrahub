@@ -1,7 +1,7 @@
 import Handlebars from "handlebars";
 
 export const getProposedChangesObjectThreadComments = Handlebars.compile(`
-query {
+query getProposedChangesObjectThreadCommentsFor{{kind}}{
   {{kind}}(
     change__ids: "{{id}}"
     object_path__value: "{{path}}"

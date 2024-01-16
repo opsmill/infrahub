@@ -1,15 +1,18 @@
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
+import { useAtomValue } from "jotai/index";
 import * as R from "ramda";
 import { useState } from "react";
 import { toast } from "react-toastify";
-import { ALERT_TYPES, Alert } from "../../components/alert";
+import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { createObject } from "../../graphql/mutations/objects/createObject";
 import { getDropdownOptionsForRelatedPeersPaginated } from "../../graphql/queries/objects/dropdownOptionsForRelatedPeers";
 import useQuery from "../../hooks/useQuery";
+import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdit";
 import getMutationDetailsFromFormData from "../../utils/getMutationDetailsFromFormData";
 import { stringifyWithoutQuotes } from "../../utils/string";
@@ -18,9 +21,6 @@ import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
-import { useAtomValue } from "jotai/index";
-import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { datetimeAtom } from "../../state/atoms/time.atom";
 
 interface iProps {
   objectname?: string;
@@ -132,7 +132,8 @@ export default function ObjectItemCreate(props: iProps) {
         <Alert
           type={ALERT_TYPES.SUCCESS}
           message={`${schema?.kind && schemaKindName[schema?.kind]} created`}
-        />
+        />,
+        { toastId: "alert-success" }
       );
 
       if (onCreate) {

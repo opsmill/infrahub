@@ -2,6 +2,7 @@ import pytest
 from graphql import graphql
 
 from infrahub.core import registry
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql import generate_graphql_schema
@@ -52,7 +53,7 @@ async def test_create_query_no_vars(db: InfrahubDatabase, default_branch, regist
     result = await graphql(
         schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -67,7 +68,7 @@ async def test_create_query_no_vars(db: InfrahubDatabase, default_branch, regist
     assert query1.height.value == 7
     assert query1.operations.value == ["mutation", "query"]
     assert query1.variables.value == []
-    assert query1.models.value == ["CoreRepository"]
+    assert query1.models.value == [InfrahubKind.REPOSITORY]
 
 
 async def test_create_query_with_vars(db: InfrahubDatabase, default_branch, register_core_models_schema):
@@ -117,7 +118,7 @@ async def test_create_query_with_vars(db: InfrahubDatabase, default_branch, regi
     result = await graphql(
         schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -132,7 +133,7 @@ async def test_create_query_with_vars(db: InfrahubDatabase, default_branch, regi
     assert query2.height.value == 11
     assert query2.operations.value == ["mutation", "query"]
     assert query2.variables.value == [{"default_value": None, "name": "myvar", "required": False, "type": "String"}]
-    assert query2.models.value == ["BuiltinTag", "CoreRepository"]
+    assert query2.models.value == [InfrahubKind.TAG, InfrahubKind.REPOSITORY]
 
 
 async def test_update_query(db: InfrahubDatabase, default_branch, register_core_models_schema):
@@ -150,7 +151,7 @@ async def test_update_query(db: InfrahubDatabase, default_branch, register_core_
     }
     """
 
-    obj = await Node.init(db=db, branch=default_branch, schema="CoreGraphQLQuery")
+    obj = await Node.init(db=db, branch=default_branch, schema=InfrahubKind.GRAPHQLQUERY)
     await obj.new(
         db=db,
         name="query1",
@@ -159,7 +160,7 @@ async def test_update_query(db: InfrahubDatabase, default_branch, register_core_
         height=7,
         operations=["query"],
         variables=[],
-        models=["CoreRepository"],
+        models=[InfrahubKind.REPOSITORY],
     )
     await obj.save(db=db)
 
@@ -212,7 +213,7 @@ async def test_update_query(db: InfrahubDatabase, default_branch, register_core_
     result = await graphql(
         schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -225,7 +226,7 @@ async def test_update_query(db: InfrahubDatabase, default_branch, register_core_
     assert obj2.height.value == 11
     assert obj2.operations.value == ["mutation", "query"]
     assert obj2.variables.value == []
-    assert obj2.models.value == ["BuiltinTag", "CoreRepository"]
+    assert obj2.models.value == [InfrahubKind.TAG, InfrahubKind.REPOSITORY]
 
 
 async def test_update_query_no_update(db: InfrahubDatabase, default_branch, register_core_models_schema):
@@ -243,7 +244,7 @@ async def test_update_query_no_update(db: InfrahubDatabase, default_branch, regi
     }
     """
 
-    obj = await Node.init(db=db, branch=default_branch, schema="CoreGraphQLQuery")
+    obj = await Node.init(db=db, branch=default_branch, schema=InfrahubKind.GRAPHQLQUERY)
     await obj.new(
         db=db,
         name="query1",
@@ -252,7 +253,7 @@ async def test_update_query_no_update(db: InfrahubDatabase, default_branch, regi
         height=7,
         operations=["query"],
         variables=[],
-        models=["CoreRepository"],
+        models=[InfrahubKind.REPOSITORY],
     )
     await obj.save(db=db)
 
@@ -273,7 +274,7 @@ async def test_update_query_no_update(db: InfrahubDatabase, default_branch, regi
     result = await graphql(
         schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -286,4 +287,4 @@ async def test_update_query_no_update(db: InfrahubDatabase, default_branch, regi
     assert obj2.height.value == 7
     assert obj2.operations.value == ["query"]
     assert obj2.variables.value == []
-    assert obj2.models.value == ["CoreRepository"]
+    assert obj2.models.value == [InfrahubKind.REPOSITORY]

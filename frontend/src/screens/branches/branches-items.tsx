@@ -2,15 +2,17 @@ import { ChevronLeftIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import * as R from "ramda";
 import { useNavigate } from "react-router-dom";
-import { Badge } from "../../components/badge";
-import { DateDisplay } from "../../components/date-display";
-import { Tooltip } from "../../components/tooltip";
+import { Badge } from "../../components/display/badge";
+import { DateDisplay } from "../../components/display/date-display";
+import { Tooltip } from "../../components/utils/tooltip";
+import { useTitle } from "../../hooks/useTitle";
 import { branchesState } from "../../state/atoms/branches.atom";
 import { constructPath } from "../../utils/fetch";
 
 export const BranchesItems = () => {
   const [storedBranches] = useAtom(branchesState);
   const navigate = useNavigate();
+  useTitle("Branches list");
 
   const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
 
@@ -19,7 +21,10 @@ export const BranchesItems = () => {
   const branches = [...storedBranches.filter((b) => b.name === "main"), ...sortedBranches];
 
   return (
-    <ul className="grid gap-6 grid-cols-1 p-6" data-cy="branches-items">
+    <ul
+      className="grid gap-6 grid-cols-1 p-6"
+      data-cy="branches-items"
+      data-testid="branches-items">
       {branches.map((branch) => (
         <li
           className="col-span-1 rounded-lg bg-custom-white shadow cursor-pointer hover:bg-gray-50"

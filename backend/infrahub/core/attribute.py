@@ -6,7 +6,8 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 import ujson
 from infrahub_sdk import UUIDT
-from pydantic import BaseModel, Field
+from infrahub_sdk.utils import is_valid_url
+from pydantic.v1 import BaseModel, Field
 
 from infrahub.core import registry
 from infrahub.core.constants import BranchSupportType, RelationshipStatus
@@ -48,7 +49,7 @@ class AttributeCreateData(BaseModel):
     branch_level: int
     branch_support: str
     status: str
-    value: Any
+    value: Any = None
     is_protected: bool
     is_visible: bool
     source_prop: List[ValuePropertyData] = Field(default_factory=list)
@@ -437,7 +438,9 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         return query_filter, query_params, query_where
 
-    async def to_graphql(self, db: InfrahubDatabase, fields: Optional[dict] = None) -> dict:
+    async def to_graphql(
+        self, db: InfrahubDatabase, fields: Optional[dict] = None, related_node_ids: Optional[set] = None
+    ) -> dict:
         """Generate GraphQL Payload for this attribute."""
         # pylint: disable=too-many-branches
 
@@ -469,10 +472,14 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 if not node_attr:
                     response[field_name] = None
                 elif fields and isinstance(fields, dict):
-                    response[field_name] = await node_attr.to_graphql(db=db, fields=fields[field_name])
+                    response[field_name] = await node_attr.to_graphql(
+                        db=db, fields=fields[field_name], related_node_ids=related_node_ids
+                    )
                 else:
                     response[field_name] = await node_attr.to_graphql(
-                        db=db, fields={"id": None, "display_label": None, "__typename": None}
+                        db=db,
+                        fields={"id": None, "display_label": None, "__typename": None},
+                        related_node_ids=related_node_ids,
                     )
                 continue
 
@@ -582,6 +589,17 @@ class Dropdown(BaseAttribute):
         values = [choice.name for choice in schema.choices]
         if value not in values:
             raise ValidationError({name: f"{value} must be one of {', '.join(sorted(values))!r}"})
+
+
+class URL(BaseAttribute):
+    type = str
+
+    @classmethod
+    def validate_format(cls, value: str, name: str, schema: AttributeSchema) -> None:
+        super().validate_format(value=value, name=name, schema=schema)
+
+        if not is_valid_url(value):
+            raise ValidationError({name: f"{value} is not a valid {schema.kind}"})
 
 
 class IPNetwork(BaseAttribute):

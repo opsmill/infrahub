@@ -7,16 +7,15 @@ import {
 } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useContext, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import { ALERT_TYPES, Alert } from "../../components/alert";
-import { BUTTON_TYPES, Button } from "../../components/button";
-import { Link } from "../../components/link";
-import MetaDetailsTooltip from "../../components/meta-details-tooltips";
-import ModalDelete from "../../components/modal-delete";
-import { RoundedButton } from "../../components/rounded-button";
-import { SelectOption } from "../../components/select";
-import SlideOver from "../../components/slide-over";
+import { BUTTON_TYPES, Button } from "../../components/buttons/button";
+import { RoundedButton } from "../../components/buttons/rounded-button";
+import MetaDetailsTooltip from "../../components/display/meta-details-tooltips";
+import SlideOver from "../../components/display/slide-over";
+import { SelectOption } from "../../components/inputs/select";
+import ModalDelete from "../../components/modals/modal-delete";
+import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import { DEFAULT_BRANCH_NAME } from "../../config/constants";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
@@ -28,13 +27,13 @@ import { addRelationship } from "../../graphql/mutations/relationships/addRelati
 import UnlinkIcon from "../../images/icons/unlink.svg";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
-import { genericsState, iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
+import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { metaEditFieldDetailsState } from "../../state/atoms/showMetaEdit.atom copy";
 import { datetimeAtom } from "../../state/atoms/time.atom";
 import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
-import { getAttributeColumnsFromNodeOrGenericSchema } from "../../utils/getSchemaObjectColumns";
+import { getSchemaObjectColumns } from "../../utils/getSchemaObjectColumns";
 import { getObjectDetailsUrl } from "../../utils/objects";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
@@ -45,9 +44,9 @@ import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 
 type iRelationDetailsProps = {
   parentNode: any;
-  parentSchema: iNodeSchema;
   relationshipsData: any;
   relationshipSchema: any;
+  relationshipSchemaData: any;
   mode: "TABLE" | "DESCRIPTION-LIST";
   refetch?: Function;
   onDeleteRelationship?: Function;
@@ -56,7 +55,14 @@ type iRelationDetailsProps = {
 const regex = /^Related/; // starts with Related
 
 export default function RelationshipDetails(props: iRelationDetailsProps) {
-  const { mode, relationshipsData, relationshipSchema, refetch, onDeleteRelationship } = props;
+  const {
+    mode,
+    relationshipsData,
+    relationshipSchema,
+    relationshipSchemaData,
+    refetch,
+    onDeleteRelationship,
+  } = props;
 
   const { objectname, objectid } = useParams();
   const auth = useContext(AuthContext);
@@ -72,11 +78,11 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   const [relatedRowToDelete, setRelatedRowToDelete] = useState<any>();
   const [relatedObjectToEdit, setRelatedObjectToEdit] = useState<any>();
 
-  const schema = schemaList.find((s) => s.kind === objectname);
+  const parentSchema = schemaList.find((s) => s.kind === objectname);
+  const generic = generics.find((g) => g.kind === relationshipSchemaData?.kind);
+  const columns = getSchemaObjectColumns(relationshipSchemaData);
 
   let options: SelectOption[] = [];
-
-  const generic = generics.find((g) => g.kind === relationshipSchema.peer);
 
   if (generic) {
     (generic.used_by || []).forEach((kind) => {
@@ -114,16 +120,8 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
     },
   ];
 
-  const navigate = useNavigate();
-
   const [, setShowMetaEditModal] = useAtom(showMetaEditState);
   const [, setMetaEditFieldDetails] = useAtom(metaEditFieldDetailsState);
-
-  const columns = getAttributeColumnsFromNodeOrGenericSchema(
-    schemaList,
-    generics,
-    relationshipSchema.peer
-  );
 
   if (relationshipsData && relationshipsData?.properties?.is_visible === false) {
     return null;
@@ -149,7 +147,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
       .filter((item: any) => item.id !== id);
 
     const mutationString = updateObjectWithId({
-      kind: schema.kind,
+      kind: parentSchema?.kind,
       data: stringifyWithoutQuotes({
         id: objectid,
         [relationshipSchema.name]: newList,
@@ -340,6 +338,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                           {column.label}
                         </th>
                       ))}
+
                       <th
                         scope="col"
                         className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 p-2 text-left text-xs font-semibold text-gray-900">
@@ -347,12 +346,10 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                       </th>
                     </tr>
                   </thead>
+
                   <tbody className="bg-custom-white">
                     {relationshipsData?.map(({ node, properties }: any, index: number) => (
                       <tr
-                        onClick={() =>
-                          navigate(constructPath(getObjectDetailsUrl(node.id, node.__typename)))
-                        }
                         key={index}
                         className="hover:bg-gray-50 cursor-pointer"
                         data-cy="relationship-row">
@@ -365,9 +362,14 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                                 : "",
                               "whitespace-nowrap px-2 py-1 text-xs font-medium text-gray-900"
                             )}>
-                            {getObjectItemDisplayValue(node, column)}
+                            <Link
+                              className="whitespace-wrap px-2 py-1 text-xs text-gray-900 min-h-7 flex items-center"
+                              to={constructPath(getObjectDetailsUrl(node.id, node.__typename))}>
+                              {getObjectItemDisplayValue(node, column)}
+                            </Link>
                           </td>
                         ))}
+
                         <td
                           className={classNames(
                             index !== relationshipsData.length - 1
@@ -502,15 +504,6 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                       {properties.is_protected && <LockClosedIcon className="w-4 h-4" />}
 
                       {properties.is_visible === false && <EyeSlashIcon className="w-4 h-4" />}
-
-                      {/* {<TrashIcon className="w-4 h-4" onClick={async () => {
-                            const newList  = relationshipsData.map((row: any) => ({ id: row.id })).filter((row: any) =>  row.id !== item.id);
-                            await updateObjectWithId(objectid!, schema, {
-                              [relationshipSchema.name]: newList
-                            });
-                            props.refreshObject();
-                            setShowAddDrawer(false);
-                          }}/>} */}
                     </dd>
                   ))}
                 </dl>
@@ -595,8 +588,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
             }}
             onUpdateComplete={() => setShowRelationMetaEditModal(false)}
             attributeOrRelationshipToEdit={relationshipsData?.properties}
-            schemaList={schemaList}
-            schema={schema}
+            schema={parentSchema}
             attributeOrRelationshipName={relationshipSchema.name}
             type="relationship"
             row={{
@@ -628,6 +620,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
             setOpen={() => setRelatedRowToDelete(undefined)}
           />
         )}
+
         {relatedObjectToEdit && (
           <SlideOver
             title={

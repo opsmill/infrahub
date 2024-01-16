@@ -571,31 +571,55 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
     async def query_gql_query(
         self,
         name: str,
+        variables: Optional[dict] = None,
+        update_group: bool = False,
+        subscribers: Optional[List[str]] = None,
         params: Optional[dict] = None,
         branch_name: Optional[str] = None,
         at: Optional[str] = None,
         rebase: bool = False,
         timeout: Optional[int] = None,
+        tracker: Optional[str] = None,
         raise_for_error: bool = True,
     ) -> Dict:
         url = f"{self.address}/api/query/{name}"
         url_params = copy.deepcopy(params or {})
         headers = copy.copy(self.headers or {})
 
+        if self.insert_tracker and tracker:
+            headers["X-Infrahub-Tracker"] = tracker
+
         if branch_name:
             url_params["branch"] = branch_name
         if at:
             url_params["at"] = at
-        if rebase:
-            url_params["rebase"] = "true"
+
+        if subscribers:
+            url_params["subscribers"] = subscribers
+
+        url_params["rebase"] = str(rebase).lower()
+        url_params["update_group"] = str(update_group).lower()
 
         if url_params:
-            url += "?" + "&".join([f"{key}={value}" for key, value in url_params.items()])
+            url_params_str = []
+            for key, value in url_params.items():
+                if isinstance(value, (list)):
+                    for item in value:
+                        url_params_str.append(f"{key}={item}")
+                else:
+                    url_params_str.append(f"{key}={value}")
+
+            url += "?" + "&".join(url_params_str)
+
+        payload = None
+        if variables:
+            payload = {"variables": variables}
 
         resp = await self._request(
             url=url,
-            method=HTTPMethod.GET,
+            method=HTTPMethod.POST,
             headers=headers,
+            payload=payload,
             timeout=timeout or self.default_timeout,
         )
 
@@ -604,8 +628,8 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
 
         return resp.json()
 
-    async def create_batch(self) -> InfrahubBatch:
-        return InfrahubBatch(semaphore=self.concurrent_execution_limit)
+    async def create_batch(self, return_exceptions: bool = False) -> InfrahubBatch:
+        return InfrahubBatch(semaphore=self.concurrent_execution_limit, return_exceptions=return_exceptions)
 
     async def get_list_repositories(
         self, branches: Optional[Dict[str, BranchData]] = None
@@ -685,7 +709,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
 
         return InfrahubNodeSync(client=self, schema=schema, branch=branch, data=data or kwargs)
 
-    def create_batch(self) -> InfrahubBatch:
+    def create_batch(self, return_exceptions: bool = False) -> InfrahubBatch:
         raise NotImplementedError("This method hasn't been implemented in the sync client yet.")
 
     def execute_graphql(  # pylint: disable=too-many-branches
@@ -1026,16 +1050,61 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
     def query_gql_query(
         self,
         name: str,
+        variables: Optional[dict] = None,
+        update_group: bool = False,
+        subscribers: Optional[List[str]] = None,
         params: Optional[dict] = None,
         branch_name: Optional[str] = None,
         at: Optional[str] = None,
         rebase: bool = False,
         timeout: Optional[int] = None,
+        tracker: Optional[str] = None,
         raise_for_error: bool = True,
     ) -> Dict:
-        raise NotImplementedError(
-            "This method is deprecated in the async client and won't be implemented in the sync client."
+        url = f"{self.address}/api/query/{name}"
+        url_params = copy.deepcopy(params or {})
+        headers = copy.copy(self.headers or {})
+
+        if self.insert_tracker and tracker:
+            headers["X-Infrahub-Tracker"] = tracker
+
+        if branch_name:
+            url_params["branch"] = branch_name
+        if at:
+            url_params["at"] = at
+        if subscribers:
+            url_params["subscribers"] = subscribers
+
+        url_params["rebase"] = str(rebase).lower()
+        url_params["update_group"] = str(update_group).lower()
+
+        if url_params:
+            url_params_str = []
+            for key, value in url_params.items():
+                if isinstance(value, (list)):
+                    for item in value:
+                        url_params_str.append(f"{key}={item}")
+                else:
+                    url_params_str.append(f"{key}={value}")
+
+            url += "?" + "&".join(url_params_str)
+
+        payload = None
+        if variables:
+            payload = {"variables": variables}
+
+        resp = self._request(
+            url=url,
+            method=HTTPMethod.POST,
+            headers=headers,
+            payload=payload,
+            timeout=timeout or self.default_timeout,
         )
+
+        if raise_for_error:
+            resp.raise_for_status()
+
+        return resp.json()
 
     def repository_update_commit(self, branch_name: str, repository_id: str, commit: str) -> bool:
         raise NotImplementedError(

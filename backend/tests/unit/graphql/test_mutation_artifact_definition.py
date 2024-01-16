@@ -4,6 +4,7 @@ import pytest
 from graphql import graphql
 
 from infrahub.core.branch import Branch
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
@@ -19,7 +20,7 @@ def load_graphql_requirements(group_graphql):
 
 @pytest.fixture
 async def group1(db: InfrahubDatabase, default_branch: Branch, car_person_data_generic: Dict[str, Node]) -> Node:
-    g1 = await Node.init(db=db, schema="CoreStandardGroup")
+    g1 = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
     await g1.new(db=db, name="group1", members=[car_person_data_generic["c1"], car_person_data_generic["c2"]])
     await g1.save(db=db)
     return g1
@@ -52,7 +53,7 @@ async def definition1(
     group1: Node,
     transformation1: Node,
 ) -> Node:
-    ad1 = await Node.init(db=db, schema="CoreArtifactDefinition")
+    ad1 = await Node.init(db=db, schema=InfrahubKind.ARTIFACTDEFINITION)
     await ad1.new(
         db=db,
         name="artifactdef01",
@@ -115,7 +116,7 @@ async def test_create_artifact_definition(
     assert ad1.name.value == "Artifact 01"
 
     assert (
-        messages.RequestArtifactDefinitionGenerate(meta=None, artifact_definition=ad_id, branch=branch.name, limit=[])
+        messages.RequestArtifactDefinitionGenerate(artifact_definition=ad_id, branch=branch.name, limit=[])
         in rpc_client.sent
     )
 
@@ -162,8 +163,6 @@ async def test_update_artifact_definition(
     assert ad1_post.artifact_name.value == "myartifact2"
 
     assert (
-        messages.RequestArtifactDefinitionGenerate(
-            meta=None, artifact_definition=definition1.id, branch=branch.name, limit=[]
-        )
+        messages.RequestArtifactDefinitionGenerate(artifact_definition=definition1.id, branch=branch.name, limit=[])
         in rpc_client.sent
     )

@@ -1,5 +1,5 @@
 import pytest
-from pydantic.error_wrappers import ValidationError as PydanticValidationError
+from pydantic import ValidationError as PydanticValidationError
 
 from infrahub.core import get_branch
 from infrahub.core.branch import Branch

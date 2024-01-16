@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from infrahub.api.dependencies import get_branch_dep
 from infrahub.core import registry
 from infrahub.core.branch import Branch  # noqa: TCH001
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.schema import GroupSchema, NodeSchema
 from infrahub.log import get_logger
 
@@ -66,8 +67,10 @@ async def get_menu(
         if isinstance(model, GroupSchema) or not model.include_in_menu:
             continue
 
-        if isinstance(model, NodeSchema) and "CoreGroup" in model.inherit_from:
-            groups.children.append(InterfaceMenu(title=model.menu_title, path=f"/groups/{model.kind}"))
+        if isinstance(model, NodeSchema) and InfrahubKind.GENERICGROUP in model.inherit_from:
+            groups.children.append(
+                InterfaceMenu(title=model.menu_title, path=f"/objects/{model.kind}", icon="mdi:group")
+            )
             continue
 
         menu_name = model.menu_placement or "base"
@@ -86,13 +89,13 @@ async def get_menu(
 
     objects.children.sort()
     groups.children.sort()
-    groups.children.insert(0, InterfaceMenu(title="All Groups", path="/groups"))
+    groups.children.insert(0, InterfaceMenu(title="All Groups", path="/objects/CoreGroup", icon="mdi:group"))
     unified_storage = InterfaceMenu(
         title="Unified Storage",
         children=[
             InterfaceMenu(title="Schema", path="/schema", icon="mdi:file-code"),
-            InterfaceMenu(title="Repository", path="/objects/CoreRepository", icon="mdi:source-repository"),
-            InterfaceMenu(title="GraphQL Query", path="/objects/CoreGraphQLQuery", icon="mdi:graphql"),
+            InterfaceMenu(title="Repository", path=f"/objects/{InfrahubKind.REPOSITORY}", icon="mdi:source-repository"),
+            InterfaceMenu(title="GraphQL Query", path=f"/objects/{InfrahubKind.GRAPHQLQUERY}", icon="mdi:graphql"),
         ],
     )
 
@@ -101,23 +104,37 @@ async def get_menu(
         children=[
             InterfaceMenu(title="Branches", path="/branches", icon="mdi:layers-triple"),
             InterfaceMenu(title="Proposed Changes", path="/proposed-changes", icon="mdi:file-replace-outline"),
-            InterfaceMenu(title="Check Definition", path="/objects/CoreCheckDefinition", icon="mdi:check-all"),
+            InterfaceMenu(
+                title="Check Definition", path=f"/objects/{InfrahubKind.CHECKDEFINITION}", icon="mdi:check-all"
+            ),
         ],
     )
     deployment = InterfaceMenu(
         title="Deployment",
         children=[
-            InterfaceMenu(title="Artifact", path="/objects/CoreArtifact", icon="mdi:file-document-outline"),
+            InterfaceMenu(title="Artifact", path=f"/objects/{InfrahubKind.ARTIFACT}", icon="mdi:file-document-outline"),
             InterfaceMenu(
                 title="Artifact Definition",
-                path="/objects/CoreArtifactDefinition",
+                path=f"/objects/{InfrahubKind.ARTIFACTDEFINITION}",
                 icon="mdi:file-document-multiple-outline",
             ),
             InterfaceMenu(title="Transformation", path="/objects/CoreTransformation", icon="mdi:cog-transfer"),
         ],
     )
     admin = InterfaceMenu(
-        title="Admin", children=[InterfaceMenu(title="Accounts", path="/objects/CoreAccount", icon="mdi:account")]
+        title="Admin",
+        children=[
+            InterfaceMenu(title="Accounts", path=f"/objects/{InfrahubKind.ACCOUNT}", icon="mdi:account"),
+            InterfaceMenu(
+                title="Webhooks",
+                children=[
+                    InterfaceMenu(title="Webhook", path=f"/objects/{InfrahubKind.STANDARDWEBHOOK}", icon="mdi:webhook"),
+                    InterfaceMenu(
+                        title="Custom Webhook", path=f"/objects/{InfrahubKind.CUSTOMWEBHOOK}", icon="mdi:cog-outline"
+                    ),
+                ],
+            ),
+        ],
     )
 
     return [objects, groups, unified_storage, change_control, deployment, admin]

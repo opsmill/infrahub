@@ -54,7 +54,7 @@ class Timestamp:
     def to_string(self) -> str:
         return self.obj.to_iso8601_string()
 
-    def to_timestamp(self) -> str:
+    def to_timestamp(self) -> int:
         return self.obj.int_timestamp
 
     def __eq__(self, other: object) -> bool:

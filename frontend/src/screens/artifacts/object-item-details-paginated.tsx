@@ -7,10 +7,10 @@ import { useAtomValue } from "jotai/index";
 import { useContext, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { BUTTON_TYPES, Button } from "../../components/button";
+import { BUTTON_TYPES, Button } from "../../components/buttons/button";
+import MetaDetailsTooltip from "../../components/display/meta-details-tooltips";
+import SlideOver from "../../components/display/slide-over";
 import { File } from "../../components/file";
-import MetaDetailsTooltip from "../../components/meta-details-tooltips";
-import SlideOver from "../../components/slide-over";
 import { Tabs } from "../../components/tabs";
 import { CONFIG } from "../../config/config";
 import { ARTIFACT_OBJECT, DEFAULT_BRANCH_NAME, MENU_EXCLUDELIST } from "../../config/constants";
@@ -18,6 +18,7 @@ import { QSP } from "../../config/qsp";
 import { AuthContext } from "../../decorators/withAuth";
 import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
 import useQuery from "../../hooks/useQuery";
+import { useTitle } from "../../hooks/useTitle";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
@@ -27,10 +28,9 @@ import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
 import {
-  getObjectTabs,
-  getSchemaAttributeColumns,
-  getSchemaRelationshipColumns,
-  getSchemaRelationshipsTabs,
+  getObjectAttributes,
+  getObjectRelationships,
+  getTabs,
 } from "../../utils/getSchemaObjectColumns";
 import ErrorScreen from "../error-screen/error-screen";
 import AddObjectToGroup from "../groups/add-object-to-group";
@@ -42,7 +42,7 @@ import ObjectItemEditComponent from "../object-item-edit/object-item-edit-pagina
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 import { Generate } from "./generate";
 
-export default function ObjectItemDetails() {
+export default function ArtifactsDetails() {
   const { objectid } = useParams();
 
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
@@ -59,6 +59,7 @@ export default function ObjectItemDetails() {
   const schema = schemaList.find((s) => s.kind === ARTIFACT_OBJECT);
   const generic = genericList.find((s) => s.kind === ARTIFACT_OBJECT);
   const navigate = useNavigate();
+  useTitle("Artifact details");
 
   const schemaData = generic || schema;
 
@@ -71,11 +72,10 @@ export default function ObjectItemDetails() {
     navigate("/");
   }
 
-  const attributes = getSchemaAttributeColumns(schemaData, true);
+  const attributes = getObjectAttributes(schemaData);
+  const relationships = getObjectRelationships(schemaData);
+  const relationshipsTabs = getTabs(schemaData);
 
-  const relationships = getSchemaRelationshipColumns(schemaData);
-
-  const relationshipsTabs = getSchemaRelationshipsTabs(schemaData);
   const queryString = schemaData
     ? getObjectDetailsPaginated({
         ...schemaData,
@@ -116,7 +116,7 @@ export default function ObjectItemDetails() {
       label: schemaData?.label,
       name: schemaData?.label,
     },
-    ...getObjectTabs(relationshipsTabs, objectDetailsData),
+    ...getTabs(schemaData, objectDetailsData),
   ];
 
   if (!objectDetailsData) {
@@ -320,7 +320,7 @@ export default function ObjectItemDetails() {
         </div>
       )}
 
-      {qspTab && <RelationshipsDetails parentNode={objectDetailsData} parentSchema={schemaData} />}
+      {qspTab && <RelationshipsDetails parentNode={objectDetailsData} />}
 
       <SlideOver
         title={
@@ -456,7 +456,6 @@ export default function ObjectItemDetails() {
           attributeOrRelationshipToEdit={
             objectDetailsData[metaEditFieldDetails?.attributeOrRelationshipName]
           }
-          schemaList={schemaList}
           schema={schemaData}
           attributeOrRelationshipName={metaEditFieldDetails?.attributeOrRelationshipName}
           type={metaEditFieldDetails?.type!}

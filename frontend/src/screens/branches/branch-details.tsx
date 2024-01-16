@@ -7,12 +7,12 @@ import { useAtomValue } from "jotai/index";
 import { useContext, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import { ALERT_TYPES, Alert } from "../../components/alert";
-import { Badge } from "../../components/badge";
-import { BUTTON_TYPES, Button } from "../../components/button";
-import { DateDisplay } from "../../components/date-display";
-import ModalDelete from "../../components/modal-delete";
-import SlideOver from "../../components/slide-over";
+import { BUTTON_TYPES, Button } from "../../components/buttons/button";
+import { Badge } from "../../components/display/badge";
+import { DateDisplay } from "../../components/display/date-display";
+import SlideOver from "../../components/display/slide-over";
+import ModalDelete from "../../components/modals/modal-delete";
+import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import { ACCOUNT_OBJECT, PROPOSED_CHANGES_OBJECT } from "../../config/constants";
 import { QSP } from "../../config/qsp";
 import { AuthContext } from "../../decorators/withAuth";
@@ -37,7 +37,7 @@ export const BranchDetails = () => {
   const { branchname } = useParams();
   const date = useAtomValue(datetimeAtom);
   const auth = useContext(AuthContext);
-  const [branches] = useAtom(branchesState);
+  const [branches, setBranches] = useAtom(branchesState);
   const [schemaList] = useAtom(schemaState);
 
   const [isLoadingRequest, setIsLoadingRequest] = useState(false);
@@ -71,7 +71,9 @@ export const BranchDetails = () => {
 
       setDetailsContent(result);
 
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={successMessage} />);
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message={successMessage} />, {
+        toastId: "alert-success",
+      });
     } catch (error: any) {
       console.log("error: ", error);
       setDetailsContent(error);
@@ -153,8 +155,8 @@ export const BranchDetails = () => {
               : constructPath("/branches");
 
             navigate(path);
-
-            window.location.reload();
+            const nextBranches = branches.filter(({ name }) => name !== branch.name);
+            setBranches(nextBranches);
           }}
           open={displayModal}
           setOpen={() => setDisplayModal(false)}
@@ -219,7 +221,7 @@ export const BranchDetails = () => {
                   disabled={!auth?.permissions?.write || branch.is_default}
                   className="mr-0 md:mr-3"
                   onClick={() => setShowCreateDrawer(true)}>
-                  Contribute
+                  Propose change
                   <PlusIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
                 </Button>
 

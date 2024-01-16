@@ -1,30 +1,27 @@
-import { gql } from "@apollo/client";
+import { useMutation } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { format, formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
+import { useAtomValue } from "jotai/index";
 import { useCallback, useContext, useState } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "../config/qsp";
 import { AuthContext } from "../decorators/withAuth";
 import { Branch } from "../generated/graphql";
-import graphqlClient from "../graphql/graphqlClientApollo";
-import { createBranch } from "../graphql/mutations/branches/createBranch";
+import { BRANCH_CREATE } from "../graphql/mutations/branches/createBranch";
 import { branchesState, currentBranchAtom } from "../state/atoms/branches.atom";
-import { classNames, objectToString } from "../utils/common";
-import { BUTTON_TYPES, Button } from "./button";
-import { Input } from "./input";
-import { POPOVER_SIZE, PopOver } from "./popover";
-import { Select, SelectOption } from "./select";
-import { SelectButton } from "./select-button";
-import { Switch } from "./switch";
-import { useAtomValue } from "jotai/index";
-import { datetimeAtom } from "../state/atoms/time.atom";
+import { classNames } from "../utils/common";
+import { BUTTON_TYPES, Button } from "./buttons/button";
+import { SelectButton } from "./buttons/select-button";
+import { POPOVER_SIZE, PopOver } from "./display/popover";
+import { Input } from "./inputs/input";
+import { Select, SelectOption } from "./inputs/select";
+import { Switch } from "./inputs/switch";
 
 export default function BranchSelector() {
-  const [branches] = useAtom(branchesState);
+  const [branches, setBranches] = useAtom(branchesState);
   const [, setBranchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
   const branch = useAtomValue(currentBranchAtom);
-  const date = useAtomValue(datetimeAtom);
   const auth = useContext(AuthContext);
 
   const [newBranchName, setNewBranchName] = useState("");
@@ -32,7 +29,8 @@ export default function BranchSelector() {
   const [originBranch, setOriginBranch] = useState();
   const [branchedFrom] = useState(); // TODO: Add calendar component
   const [isDataOnly, setIsDataOnly] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
+
+  const [createBranch, { loading }] = useMutation(BRANCH_CREATE);
 
   const valueLabel = (
     <>
@@ -45,15 +43,22 @@ export default function BranchSelector() {
     <Button
       disabled={!auth?.permissions?.write}
       buttonType={BUTTON_TYPES.MAIN}
-      className="flex-1 rounded-r-md border border-transparent"
+      className="h-full rounded-r-md border border-transparent"
       type="submit"
-      data-cy="create-branch-button">
+      data-cy="create-branch-button"
+      data-testid="create-branch-button">
       <Icon icon={"mdi:plus"} className="text-custom-white" />
     </Button>
   );
 
   const branchesOptions: SelectOption[] = branches
-    .map((branch) => ({ id: branch.id, name: branch.name }))
+    .map((branch) => ({
+      id: branch.id,
+      name: branch.name,
+      is_data_only: branch.is_data_only,
+      is_default: branch.is_default,
+      created_at: branch.created_at,
+    }))
     .sort((branch1, branch2) => {
       if (branch1.name === "main") {
         return -1;
@@ -131,41 +136,23 @@ export default function BranchSelector() {
 
   const handleSubmit = async (close: any) => {
     try {
-      setIsLoading(true);
-
-      const newBranch = {
-        name: newBranchName,
-        description: newBranchDescription,
-        // origin_branch: originBranch ?? branches[0]?.name,
-        // branched_from: formatISO(branchedFrom ?? new Date()),
-        is_data_only: isDataOnly,
-      } as Branch;
-
-      const mustationString = createBranch({ data: objectToString(newBranch) });
-
-      const mutation = gql`
-        ${mustationString}
-      `;
-
-      await graphqlClient.mutate({
-        mutation,
-        context: {
-          branch: branch?.name,
-          date,
+      const { data } = await createBranch({
+        variables: {
+          name: newBranchName,
+          description: newBranchDescription,
+          is_data_only: isDataOnly,
         },
       });
 
+      const branchCreated = data?.BranchCreate?.object;
+      if (branchCreated) {
+        setBranches([...branches, branchCreated]);
+        onBranchChange(branchCreated);
+      }
+
       close();
-
-      onBranchChange(newBranch);
-
-      // toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Branch created"} />);
-
-      window.location.reload();
     } catch (error) {
       console.error("Error while creating the branch: ", error);
-
-      setIsLoading(false);
     }
   };
 
@@ -177,7 +164,10 @@ export default function BranchSelector() {
   }
 
   return (
-    <div className="flex" data-cy="branch-select-menu">
+    <div
+      className="flex items-stretch"
+      data-cy="branch-select-menu"
+      data-testid="branch-select-menu">
       <SelectButton
         value={branch}
         valueLabel={valueLabel}
@@ -216,12 +206,12 @@ export default function BranchSelector() {
                 disabled
               />
               Is data only:
-              <Switch checked={isDataOnly} onChange={setIsDataOnly} />
+              <Switch checked={isDataOnly} onChange={setIsDataOnly} testId="is-data-only-switch" />
             </div>
 
             <div className="flex justify-center">
               <Button
-                isLoading={isLoading}
+                isLoading={loading}
                 buttonType={BUTTON_TYPES.VALIDATE}
                 onClick={() => handleSubmit(close)}
                 className="mt-2">

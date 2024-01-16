@@ -1,7 +1,8 @@
-from typing import Any, Dict, Iterator, Optional, TypeVar
+from __future__ import annotations
+
+from typing import Any, Dict, Optional, TypeVar
 
 import aio_pika
-import aiormq
 from pydantic import BaseModel, Field
 
 from infrahub import config
@@ -63,70 +64,46 @@ class Meta(BaseModel):
     check_execution_id: Optional[str] = Field(default=None, description="Check execution ID related to this message")
     priority: int = Field(default=3, description="Message Priority")
 
+    @classmethod
+    def default(cls) -> Meta:
+        return cls()
 
-class InfrahubMessage(BaseModel, aio_pika.abc.AbstractMessage):
+
+class InfrahubMessage(BaseModel):
     """Base Model for messages"""
 
-    meta: Optional[Meta] = None
+    meta: Meta = Field(default_factory=Meta.default, description="Meta properties for the message")
 
     def assign_meta(self, parent: "InfrahubMessage") -> None:
         """Assign relevant meta properties from a parent message."""
-        self.meta = self.meta or Meta()
-        if parent.meta:
-            self.meta.request_id = parent.meta.request_id
-            self.meta.initiator_id = parent.meta.initiator_id
+        self.meta.request_id = parent.meta.request_id
+        self.meta.initiator_id = parent.meta.initiator_id
 
     def assign_header(self, key: str, value: Any) -> None:
-        self.meta = self.meta or Meta()
         self.meta.headers = self.meta.headers or {}
         self.meta.headers[key] = value
 
     def assign_priority(self, priority: int) -> None:
-        self.meta = self.meta or Meta()
         self.meta.priority = priority
 
     def set_log_data(self, routing_key: str) -> None:
         set_log_data(key="routing_key", value=routing_key)
-        if self.meta:
-            if self.meta.request_id:
-                set_log_data(key="request_id", value=self.meta.request_id)
-
-    def info(self) -> aio_pika.abc.MessageInfo:
-        raise NotImplementedError
+        if self.meta.request_id:
+            set_log_data(key="request_id", value=self.meta.request_id)
 
     @property
     def reply_requested(self) -> bool:
-        if self.meta and self.meta.reply_to:
+        if self.meta.reply_to:
             return True
         return False
 
     @property
     def body(self) -> bytes:
-        return self.json(exclude={"meta": {"headers", "priority"}, "value": True}, exclude_none=True).encode("UTF-8")
-
-    @property
-    def locked(self) -> bool:
-        raise NotImplementedError
-
-    @property
-    def properties(self) -> aiormq.spec.Basic.Properties:
-        correlation_id = None
-        headers = None
-        priority = 3
-        if self.meta:
-            correlation_id = self.meta.correlation_id
-            headers = self.meta.headers
-            priority = self.meta.priority
-        return aiormq.spec.Basic.Properties(
-            content_type="application/json",
-            content_encoding="utf-8",
-            correlation_id=correlation_id,
-            headers=headers,
-            priority=priority,
+        return self.model_dump_json(exclude={"meta": {"headers", "priority"}, "value": True}, exclude_none=True).encode(
+            "UTF-8"
         )
 
     def increase_retry_count(self, count: int = 1) -> None:
-        self.meta = self.meta or Meta()
         current_retry = self.meta.retry_count or 0
         self.meta.retry_count = current_retry + count
 
@@ -135,26 +112,6 @@ class InfrahubMessage(BaseModel, aio_pika.abc.AbstractMessage):
         if self.meta and self.meta.retry_count:
             return self.meta.retry_count <= config.SETTINGS.broker.maximum_message_retries
         return False
-
-    def __iter__(self) -> Iterator[int]:
-        raise NotImplementedError
-
-    def lock(self) -> None:
-        raise NotImplementedError
-
-    def __copy__(self) -> aio_pika.Message:
-        correlation_id = None
-        headers = None
-        if self.meta:
-            correlation_id = self.meta.correlation_id
-            headers = self.meta.headers
-        return aio_pika.Message(
-            body=self.body,
-            content_type="application/json",
-            content_encoding="utf-8",
-            correlation_id=correlation_id,
-            headers=headers,
-        )
 
 
 class InfrahubResponse(InfrahubMessage):

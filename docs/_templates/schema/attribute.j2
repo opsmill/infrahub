@@ -4,15 +4,16 @@ layout: default
 order: 800
 ---
 <!-- vale off -->
+<!-- markdownlint-disable MD012 -->
 {% macro attribute_constraints(attr) -%}
-{% if attr.regex %} Regex: `{{attr.regex}}`{% endif %}{% if attr.regex and (attr.min_length or attr.max_length) %}<br>{% endif %}{% if attr.min_length or attr.max_length %} Length: min {{attr.min_length | default("-")}}, max {{attr.max_length | default("-")}}{% endif %}
+{% if attr.regex %} Regex: `{{attr.regex}}`{% endif %}{% if attr.regex and (attr.min_length or attr.max_length) %}<br>{% endif %}{% if attr.min_length or attr.max_length %} Length: min {{attr.min_length | default("-")}}, max {{attr.max_length | default("-")}}{% endif -%}
 {%- endmacro %}
 {% macro bool_to_str(value) -%}
-{% if value == true %}True{% else %}False{% endif %}
-{%- endmacro %}
+{% if value == true %}True{% else %}False{% endif -%}
+{%- endmacro -%}
 {% macro reverse_bool_to_str(value) -%}
-{% if value == true %}False{% else %}True{% endif %}
-{%- endmacro %}
+{% if value == true %}False{% else %}True{% endif -%}
+{%- endmacro -%}
 {% set ns = namespace(node=none) -%}
 {% for node in schema.nodes -%}
 {%   if node.name == "Attribute" -%}
@@ -57,8 +58,8 @@ extensions:
 ```
 
 ## Reference Guide
+
 {% for attr in ns.node.attributes | sort(attribute='name') -%}
-{%  if attr.name not in ["inherited"] %}
 ### {{ attr.name }}
 
 | Key | Value | { class="compact" }
@@ -66,18 +67,16 @@ extensions:
 | **Name** | {{ attr.name }} |
 | **Kind** | `{{ attr.kind }}` |
 | **Description** | {{ attr.description }} |
-| **Optional**  | {{ bool_to_str(attr.optional) }} |
+| **Optional** | {{ bool_to_str(attr.optional) }} |
 | **Default Value** | {{ attr.default_value }} |
 | **Constraints** | {{attribute_constraints(attr)}} |
 {% if attr.enum -%}
 | **Accepted Values** | {% for value in  attr.enum %}`{{ value }}` {% endfor %} |
-{%- endif %}
+{% endif %}
+{% endfor -%}
 
-{%- endif %}
-{% endfor %}
 {% for rel in ns.node.relationships | sort(attribute='name') -%}
-{%  if rel.name not in ["node"] %}
-### {{ rel.name }}
+## {{ rel.name }}
 
 | Key | Value | { class="compact" }
 | ---- | --------------- |
@@ -85,5 +84,4 @@ extensions:
 | **Kind** | {% if rel.cardinality == "one" %}`Object`{%else%}`List`{%endif%} |
 | **Description** | {{ rel.description }} |
 
-{%- endif %}
-{% endfor %}
+{% endfor -%}

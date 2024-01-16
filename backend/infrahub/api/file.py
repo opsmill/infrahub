@@ -11,6 +11,7 @@ from infrahub.api.dependencies import (
     get_current_user,
     get_db,
 )
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
 from infrahub.exceptions import CommitNotFoundError
@@ -40,7 +41,7 @@ async def get_file(
     repo = await NodeManager.get_one_by_id_or_default_filter(
         db=db,
         id=repository_id,
-        schema_name="CoreRepository",
+        schema_name=InfrahubKind.REPOSITORY,
         branch=branch_params.branch,
         at=branch_params.at,
     )

@@ -9,6 +9,7 @@ from infrahub_sdk import UUIDT
 
 import infrahub.config as config
 from infrahub.core import registry
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import first_time_initialization, initialization
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -80,13 +81,13 @@ class IntegrationHelper:
         token = str(UUIDT())
         account_name = account_name or "admin"
         response = await NodeManager.query(
-            schema="CoreAccount",
+            schema=InfrahubKind.ACCOUNT,
             db=self.db,
             filters={"name__value": account_name},
             limit=1,
         )
         account = response[0]
-        account_token = await Node.init(db=self.db, schema="InternalAccountToken")
+        account_token = await Node.init(db=self.db, schema=InfrahubKind.ACCOUNTTOKEN)
         await account_token.new(
             db=self.db,
             token=token,

@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 import pydantic
 from graphene import Boolean, Field, InputObjectType, List, Mutation, String
 from graphql import GraphQLResolveInfo
+from infrahub_sdk.utils import extract_fields
 
 from infrahub import config, lock
 from infrahub.core import registry
@@ -14,7 +15,6 @@ from infrahub.services import services
 from infrahub.worker import WORKER_IDENTITY
 
 from ..types import BranchType
-from ..utils import extract_fields
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -56,7 +56,7 @@ class BranchCreate(Mutation):
 
         try:
             obj = Branch(**data)
-        except pydantic.error_wrappers.ValidationError as exc:
+        except pydantic.ValidationError as exc:
             error_msgs = [f"invalid field {error['loc'][0]}: {error['msg']}" for error in exc.errors()]
             raise ValueError("\n".join(error_msgs)) from exc
 

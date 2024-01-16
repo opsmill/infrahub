@@ -1,14 +1,12 @@
-<!-- vale off -->
 ---
 label: Node Extension
 layout: default
 order: 850
 ---
-
+<!-- vale off -->
 # Node Extension
 
 Below is the list of all available options to define a node extension in the schema
-
 
 ## Summary
 
@@ -21,6 +19,7 @@ Below is the list of all available options to define a Node in the schema
 | [**relationships**](#relationships) | Relationship | List of Relationship to add to the Node.  | True |
 
 ## Reference Guide
+
 ### kind
 
 | Key | Value |  { class="compact" }

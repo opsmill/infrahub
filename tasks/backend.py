@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from invoke import Context, task
 
 from .shared import (
@@ -6,6 +8,7 @@ from .shared import (
     NBR_WORKERS,
     build_test_compose_files_cmd,
     build_test_envs,
+    build_test_scale_compose_files_cmd,
     execute_command,
     get_env_vars,
 )
@@ -144,6 +147,50 @@ def test_integration(context: Context, database: str = INFRAHUB_DATABASE):
             exec_cmd += " --neo4j"
         print(f"{base_cmd} {exec_cmd}")
         return execute_command(context=context, command=f"{base_cmd} {exec_cmd}")
+
+
+@task
+def test_scale_env_start(context: Context, database: str = INFRAHUB_DATABASE):
+    with context.cd(ESCAPED_REPO_PATH):
+        compose_files_cmd = build_test_scale_compose_files_cmd(database=database)
+        command = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} up -d"
+        return execute_command(context=context, command=command)
+
+
+@task
+def test_scale_env_destroy(context: Context, database: str = INFRAHUB_DATABASE):
+    with context.cd(ESCAPED_REPO_PATH):
+        compose_files_cmd = build_test_scale_compose_files_cmd(database=database)
+        command = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} down --remove-orphans --volumes"
+        return execute_command(context=context, command=command)
+
+
+@task(optional=["schema", "stager", "amount", "test"])
+def test_scale(
+    context: Context,
+    schema: Path = f"{ESCAPED_REPO_PATH}/backend/tests/scale/schema.yml",
+    stager: str = None,
+    amount: int = None,
+    test: str = None,
+):
+    args = []
+    if stager:
+        args.extend(["--stager", stager])
+
+    if amount:
+        args.extend(["--amount", amount])
+
+    if test:
+        args.extend(["--test", test])
+
+    if schema:
+        args.extend(["--schema", schema])
+
+    with context.cd(ESCAPED_REPO_PATH):
+        base_cmd = ["python", "backend/tests/scale/main.py"]
+        cmd = " ".join(base_cmd + args)
+        print(f"{cmd}")
+        return execute_command(context=context, command=cmd)
 
 
 @task(default=True)

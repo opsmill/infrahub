@@ -13,6 +13,7 @@ from infrahub_sdk import SchemaRoot as ClientSchemaRoot
 from infrahub_sdk.branch import BranchData
 from pytest_httpx import HTTPXMock
 
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.schema import SchemaRoot, core_models
 from infrahub.git import InfrahubRepository
 from infrahub.utils import find_first_file_in_directory, get_fixtures_dir
@@ -465,7 +466,7 @@ async def mock_branches_list_query(httpx_mock: HTTPXMock) -> HTTPXMock:
 async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
     response1 = {
         "data": {
-            "CoreRepository": {
+            InfrahubKind.REPOSITORY: {
                 "edges": [
                     {
                         "node": {
@@ -481,7 +482,7 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
     }
     response2 = {
         "data": {
-            "CoreRepository": {
+            InfrahubKind.REPOSITORY: {
                 "edges": [
                     {
                         "node": {
@@ -543,7 +544,9 @@ async def mock_update_commit_query(httpx_mock: HTTPXMock) -> HTTPXMock:
 async def mock_gql_query_my_query(httpx_mock: HTTPXMock) -> HTTPXMock:
     response = {"data": {"mock": []}}
 
-    httpx_mock.add_response(method="GET", json=response, url="http://mock/api/query/my_query?branch=main&rebase=true")
+    httpx_mock.add_response(
+        method="POST", json=response, url="http://mock/api/query/my_query?branch=main&rebase=true&update_group=false"
+    )
     return httpx_mock
 
 
@@ -611,7 +614,7 @@ async def mock_schema_query_02(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
 async def mock_check_create(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
     response = {
         "data": {
-            "CoreCheckDefinitionCreate": {
+            InfrahubKind.CHECKDEFINITION: {
                 "ok": True,
                 "object": {
                     "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
@@ -762,7 +765,7 @@ async def gql_query_data_03():
 
     data = {
         "id": "42665742-002b-4f98-b2e0-1ae716c1efbe",
-        "type": "CoreGraphQLQuery",
+        "type": InfrahubKind.GRAPHQLQUERY,
         "name": {
             "id": "55d01ee8-d839-4cc4-b312-3fbdd935f40b",
             "__typename": "Text",
@@ -789,7 +792,7 @@ async def gql_query_data_03():
             "is_visible": True,
             "is_protected": False,
         },
-        "__typename": "CoreGraphQLQuery",
+        "__typename": InfrahubKind.GRAPHQLQUERY,
         "display_label": "query01",
     }
     return data
@@ -806,7 +809,7 @@ async def schema_02(client, helper, car_data_01) -> ClientSchemaRoot:
 
 @pytest.fixture
 async def gql_query_node_03(client, gql_query_data_03) -> InfrahubNode:
-    schema = [model for model in SchemaRoot(**core_models).nodes if model.kind == "CoreGraphQLQuery"][0]
+    schema = [model for model in SchemaRoot(**core_models).nodes if model.kind == InfrahubKind.GRAPHQLQUERY][0]
     node = InfrahubNode(client=client, schema=schema, data=gql_query_data_03)
     return node
 
@@ -831,7 +834,7 @@ async def mock_gql_query_04(httpx_mock: HTTPXMock) -> HTTPXMock:
 
 @pytest.fixture
 async def mock_missing_artifact(httpx_mock: HTTPXMock) -> HTTPXMock:
-    response = {"data": {"CoreArtifact": {"edges": []}}}
+    response = {"data": {InfrahubKind.ARTIFACT: {"edges": []}}}
     httpx_mock.add_response(
         method="POST", json=response, match_headers={"X-Infrahub-Tracker": "query-coreartifact-page1"}
     )
@@ -842,7 +845,7 @@ async def mock_missing_artifact(httpx_mock: HTTPXMock) -> HTTPXMock:
 async def mock_existing_artifact_same(httpx_mock: HTTPXMock) -> HTTPXMock:
     response = {
         "data": {
-            "CoreArtifact": {
+            InfrahubKind.ARTIFACT: {
                 "edges": [
                     {
                         "node": {
@@ -869,11 +872,11 @@ async def mock_existing_artifact_same(httpx_mock: HTTPXMock) -> HTTPXMock:
                                 "node": {
                                     "id": "683afb8d-b5cf-4585-b864-d1426e13c2dc",
                                     "display_label": "Open Config Interfaces for Edge devices",
-                                    "__typename": "CoreArtifactDefinition",
+                                    "__typename": InfrahubKind.ARTIFACTDEFINITION,
                                 },
-                                "__typename": "NestedEdgedCoreArtifactDefinition",
+                                "__typename": f"NestedEdged{InfrahubKind.ARTIFACTDEFINITION}",
                             },
-                            "__typename": "CoreArtifact",
+                            "__typename": InfrahubKind.ARTIFACT,
                         },
                     }
                 ],
@@ -890,7 +893,7 @@ async def mock_existing_artifact_same(httpx_mock: HTTPXMock) -> HTTPXMock:
 async def mock_existing_artifact_different(httpx_mock: HTTPXMock) -> HTTPXMock:
     response = {
         "data": {
-            "CoreArtifact": {
+            InfrahubKind.ARTIFACT: {
                 "edges": [
                     {
                         "node": {
@@ -917,11 +920,11 @@ async def mock_existing_artifact_different(httpx_mock: HTTPXMock) -> HTTPXMock:
                                 "node": {
                                     "id": "683afb8d-b5cf-4585-b864-d1426e13c2dc",
                                     "display_label": "Open Config Interfaces for Edge devices",
-                                    "__typename": "CoreArtifactDefinition",
+                                    "__typename": InfrahubKind.ARTIFACTDEFINITION,
                                 },
-                                "__typename": "NestedEdgedCoreArtifactDefinition",
+                                "__typename": f"NestedEdged{InfrahubKind.ARTIFACTDEFINITION}",
                             },
-                            "__typename": "CoreArtifact",
+                            "__typename": InfrahubKind.ARTIFACT,
                         },
                     }
                 ],
@@ -947,7 +950,7 @@ async def mock_upload_content(httpx_mock: HTTPXMock) -> HTTPXMock:
 async def artifact_definition_data_01():
     data = {
         "id": "c4908d78-7b24-45e2-9252-96d0fb3e2c78",
-        "type": "CoreArtifactDefinition",
+        "type": InfrahubKind.ARTIFACTDEFINITION,
         "name": {
             "id": "8b0423a7-cd5c-4642-b518-db56cc8185c7",
             "__typename": "Text",
@@ -972,7 +975,7 @@ async def artifact_definition_data_01():
             "__typename": "Text",
             "value": "application/json",
         },
-        "__typename": "CoreArtifactDefinition",
+        "__typename": InfrahubKind.ARTIFACTDEFINITION,
         "display_label": "artifactdef01",
     }
     return data
@@ -980,7 +983,7 @@ async def artifact_definition_data_01():
 
 @pytest.fixture
 async def artifact_definition_node_01(client, schema_02: ClientSchemaRoot, artifact_definition_data_01) -> InfrahubNode:
-    schema = [model for model in schema_02.nodes if model.kind == "CoreArtifactDefinition"][0]
+    schema = [model for model in schema_02.nodes if model.kind == InfrahubKind.ARTIFACTDEFINITION][0]
     node = InfrahubNode(client=client, schema=schema, data=artifact_definition_data_01)
     return node
 
@@ -989,7 +992,7 @@ async def artifact_definition_node_01(client, schema_02: ClientSchemaRoot, artif
 async def artifact_definition_data_02():
     data = {
         "id": "c4908d78-7b24-45e2-9252-96d0fb3e2c78",
-        "type": "CoreArtifactDefinition",
+        "type": InfrahubKind.ARTIFACTDEFINITION,
         "name": {
             "id": "8b0423a7-cd5c-4642-b518-db56cc8185c7",
             "__typename": "Text",
@@ -1014,7 +1017,7 @@ async def artifact_definition_data_02():
             "__typename": "Text",
             "value": "text/plain",
         },
-        "__typename": "CoreArtifactDefinition",
+        "__typename": InfrahubKind.ARTIFACTDEFINITION,
         "display_label": "artifactdef02",
     }
     return data
@@ -1022,7 +1025,7 @@ async def artifact_definition_data_02():
 
 @pytest.fixture
 async def artifact_definition_node_02(client, schema_02: ClientSchemaRoot, artifact_definition_data_02) -> InfrahubNode:
-    schema = [model for model in schema_02.nodes if model.kind == "CoreArtifactDefinition"][0]
+    schema = [model for model in schema_02.nodes if model.kind == InfrahubKind.ARTIFACTDEFINITION][0]
     node = InfrahubNode(client=client, schema=schema, data=artifact_definition_data_02)
     return node
 
@@ -1047,7 +1050,7 @@ async def artifact_data_01():
             "__typename": "Text",
             "value": "Pending",
         },
-        "__typename": "CoreArtifact",
+        "__typename": InfrahubKind.ARTIFACT,
         "display_label": "artifact01",
     }
     return data
@@ -1055,7 +1058,7 @@ async def artifact_data_01():
 
 @pytest.fixture
 async def artifact_node_01(client, schema_02: ClientSchemaRoot, artifact_data_01) -> InfrahubNode:
-    schema = [model for model in schema_02.nodes if model.kind == "CoreArtifact"][0]
+    schema = [model for model in schema_02.nodes if model.kind == InfrahubKind.ARTIFACT][0]
     node = InfrahubNode(client=client, schema=schema, data=artifact_data_01)
     return node
 
@@ -1064,7 +1067,7 @@ async def artifact_node_01(client, schema_02: ClientSchemaRoot, artifact_data_01
 async def artifact_data_02():
     data = {
         "id": "c4908d78-7b24-45e2-9252-96d0fb3e2c78",
-        "type": "CoreArtifact",
+        "type": InfrahubKind.ARTIFACT,
         "name": {
             "id": "8b0423a7-cd5c-4642-b518-db56cc8185c7",
             "__typename": "Text",
@@ -1082,7 +1085,7 @@ async def artifact_data_02():
         },
         "checksum": {"value": "e889b9fab24aab3b23ea01d5342b514a", "__typename": "Text"},
         "storage_id": {"value": "13c8914b-0ac0-4c8c-83ec-a79a1f8ad483", "__typename": "Text"},
-        "__typename": "CoreArtifact",
+        "__typename": InfrahubKind.ARTIFACT,
         "display_label": "artifact01",
     }
     return data
@@ -1090,7 +1093,7 @@ async def artifact_data_02():
 
 @pytest.fixture
 async def artifact_node_02(client, schema_02: ClientSchemaRoot, artifact_data_02) -> InfrahubNode:
-    schema = [model for model in schema_02.nodes if model.kind == "CoreArtifact"][0]
+    schema = [model for model in schema_02.nodes if model.kind == InfrahubKind.ARTIFACT][0]
     node = InfrahubNode(client=client, schema=schema, data=artifact_data_02)
     return node
 
@@ -1199,26 +1202,26 @@ async def transformation_data_02() -> dict:
             "node": {
                 "id": "47800bff-adf1-450d-8388-b04ef2ffb129",
                 "display_label": "query02",
-                "__typename": "CoreGraphQLQuery",
+                "__typename": InfrahubKind.GRAPHQLQUERY,
             },
-            "__typename": "NestedEdgedCoreGraphQLQuery",
+            "__typename": f"NestedEdged{InfrahubKind.GRAPHQLQUERY}",
         },
         "repository": {
             "node": {
                 "id": "7d1ee159-97c7-4787-8728-e10f998d0122",
                 "display_label": "test-repo",
-                "__typename": "CoreRepository",
+                "__typename": InfrahubKind.REPOSITORY,
             },
-            "__typename": "NestedEdgedCoreRepository",
+            "__typename": f"NestedEdged{InfrahubKind.REPOSITORY}",
         },
-        "__typename": "CoreRFile",
+        "__typename": InfrahubKind.RFILE,
     }
     return data
 
 
 @pytest.fixture
 async def transformation_node_02(client, schema_02, transformation_data_02) -> InfrahubNode:
-    schema = [model for model in schema_02.nodes if model.kind == "CoreRFile"][0]
+    schema = [model for model in schema_02.nodes if model.kind == InfrahubKind.RFILE][0]
     node = InfrahubNode(client=client, schema=schema, data=transformation_data_02)
     return node
 

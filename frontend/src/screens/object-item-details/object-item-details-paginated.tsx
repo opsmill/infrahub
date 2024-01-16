@@ -12,9 +12,9 @@ import { useAtomValue } from "jotai/index";
 import { useContext, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import { BUTTON_TYPES, Button } from "../../components/button";
-import MetaDetailsTooltip from "../../components/meta-details-tooltips";
-import SlideOver from "../../components/slide-over";
+import { BUTTON_TYPES, Button } from "../../components/buttons/button";
+import MetaDetailsTooltip from "../../components/display/meta-details-tooltips";
+import SlideOver from "../../components/display/slide-over";
 import { Tabs } from "../../components/tabs";
 import {
   ARTIFACT_DEFINITION_OBJECT,
@@ -25,6 +25,7 @@ import { QSP } from "../../config/qsp";
 import { AuthContext } from "../../decorators/withAuth";
 import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
 import useQuery from "../../hooks/useQuery";
+import { useTitle } from "../../hooks/useTitle";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { showMetaEditState } from "../../state/atoms/metaEditFieldDetails.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
@@ -34,10 +35,10 @@ import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
 import {
+  getObjectAttributes,
+  getObjectRelationships,
   getObjectTabs,
-  getSchemaAttributeColumns,
-  getSchemaRelationshipColumns,
-  getSchemaRelationshipsTabs,
+  getTabs,
 } from "../../utils/getSchemaObjectColumns";
 import { Generate } from "../artifacts/generate";
 import ErrorScreen from "../error-screen/error-screen";
@@ -77,17 +78,17 @@ export default function ObjectItemDetails(props: any) {
   if ((schemaList?.length || genericList?.length) && !schemaData) {
     // If there is no schema nor generics, go to home page
     navigate("/");
+    return null;
   }
 
   if (schemaData && MENU_EXCLUDELIST.includes(schemaData.kind)) {
     navigate("/");
+    return null;
   }
 
-  const attributes = getSchemaAttributeColumns(schemaData, true);
-
-  const relationships = getSchemaRelationshipColumns(schemaData);
-
-  const relationshipsTabs = getSchemaRelationshipsTabs(schemaData);
+  const attributes = getObjectAttributes(schemaData);
+  const relationships = getObjectRelationships(schemaData);
+  const relationshipsTabs = getTabs(schemaData);
 
   const queryString = schemaData
     ? getObjectDetailsPaginated({
@@ -107,6 +108,14 @@ export default function ObjectItemDetails(props: any) {
   // TODO: Find a way to avoid querying object details if we are on a tab
   const { loading, error, data, refetch } = useQuery(query, { skip: !schemaData });
 
+  const objectDetailsData = schemaData && data && data[schemaData?.kind]?.edges[0]?.node;
+
+  useTitle(
+    objectDetailsData?.display_label
+      ? `${objectDetailsData?.display_label} details`
+      : `${schemaKindName[objectname]} details`
+  );
+
   if (error) {
     return <ErrorScreen message="Something went wrong when fetching the object details." />;
   }
@@ -116,17 +125,12 @@ export default function ObjectItemDetails(props: any) {
   }
 
   if (!data || (data && !data[schemaData.kind]?.edges?.length)) {
-    // Redirect to the main list if there is no item for this is
-    // navigate(`/objects/${objectname}`);
-
     return (
       <div className="flex column justify-center">
         <NoDataFound message="No item found for that id." />
       </div>
     );
   }
-
-  const objectDetailsData = data[schemaData.kind]?.edges[0]?.node;
 
   const tabs = [
     {
@@ -173,13 +177,15 @@ export default function ObjectItemDetails(props: any) {
                   <PencilIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
                 </Button>
 
-                <Button
-                  disabled={!auth?.permissions?.write}
-                  onClick={() => setShowAddToGroupDrawer(true)}
-                  className="mr-4">
-                  Manage groups
-                  <RectangleGroupIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
-                </Button>
+                {!schemaData.kind?.match(/Core.*Group/g)?.length && ( // Hide group buttons on group list view
+                  <Button
+                    disabled={!auth?.permissions?.write}
+                    onClick={() => setShowAddToGroupDrawer(true)}
+                    className="mr-4">
+                    Manage groups
+                    <RectangleGroupIcon className="-mr-0.5 h-4 w-4" aria-hidden="true" />
+                  </Button>
+                )}
               </>
             }
           />
@@ -273,6 +279,7 @@ export default function ObjectItemDetails(props: any) {
                                   });
                                   setShowMetaEditModal(true);
                                 }}
+                                data-testid="edit-metadata-button"
                                 data-cy="metadata-edit-button">
                                 <PencilSquareIcon className="w-4 h-4 text-custom-blue-500" />
                               </Button>
@@ -453,7 +460,6 @@ export default function ObjectItemDetails(props: any) {
             objectDetailsData[metaEditFieldDetails?.attributeOrRelationshipName]?.properties ||
             objectDetailsData[metaEditFieldDetails?.attributeOrRelationshipName]
           }
-          schemaList={schemaList}
           schema={schemaData}
           attributeOrRelationshipName={metaEditFieldDetails?.attributeOrRelationshipName}
           type={metaEditFieldDetails?.type!}

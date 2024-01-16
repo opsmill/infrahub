@@ -1,7 +1,7 @@
 import Handlebars from "handlebars";
 
 export const mergeBranch = Handlebars.compile(`
-mutation {
+mutation BranchMerge {
   BranchMerge (
     data: { {{{data}}} }
   ) {

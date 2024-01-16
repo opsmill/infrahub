@@ -2,6 +2,7 @@ from fastapi.testclient import TestClient
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.schema import SchemaRoot, core_models
 from infrahub.core.utils import count_relationships
@@ -103,7 +104,7 @@ async def test_schema_summary_default_branch(
 
     assert "nodes" in schema
     assert "generics" in schema
-    assert isinstance(schema["nodes"]["BuiltinTag"], str)
+    assert isinstance(schema["nodes"][InfrahubKind.TAG], str)
 
 
 async def test_schema_kind_default_branch(
@@ -116,7 +117,7 @@ async def test_schema_kind_default_branch(
 ):
     with client:
         response = client.get(
-            "/api/schema/BuiltinTag",
+            f"/api/schema/{InfrahubKind.TAG}",
             headers=client_headers,
         )
 
@@ -281,6 +282,7 @@ async def test_schema_load_endpoint_idempotent_with_generics(
             headers=admin_headers,
             json={"schemas": [helper.schema_file("infra_w_generics_01.json")]},
         )
+        assert response1.json() == {}
         assert response1.status_code == 202
 
         response2 = client.get("/api/schema", headers=admin_headers)
@@ -296,12 +298,14 @@ async def test_schema_load_endpoint_idempotent_with_generics(
             headers=admin_headers,
             json={"schemas": [helper.schema_file("infra_w_generics_01.json")]},
         )
+        assert response3.json() == {}
         assert response3.status_code == 202
 
         response4 = client.get("/api/schema", headers=admin_headers)
         assert response4.status_code == 200
 
-        assert nbr_rels == await count_relationships(db=db)
+        nbr_rels_after = await count_relationships(db=db)
+        assert nbr_rels == nbr_rels_after
 
 
 async def test_schema_load_endpoint_valid_with_extensions(
@@ -402,7 +406,10 @@ async def test_schema_load_endpoint_not_valid_simple_05(
         )
 
     assert response.status_code == 422
-    assert response.json()["detail"][0]["msg"] == "Name can not be set to a reserved keyword 'None' is not allowed."
+    assert (
+        response.json()["detail"][0]["msg"]
+        == "Value error, Name can not be set to a reserved keyword 'None' is not allowed."
+    )
 
 
 async def test_schema_load_endpoint_not_valid_with_generics_02(

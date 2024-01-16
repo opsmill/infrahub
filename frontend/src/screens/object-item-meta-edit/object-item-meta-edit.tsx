@@ -1,24 +1,23 @@
 import { gql } from "@apollo/client";
+import { useAtom, useAtomValue } from "jotai/index";
 import { useState } from "react";
 import { toast } from "react-toastify";
-import { ALERT_TYPES, Alert } from "../../components/alert";
+import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
-import { iNodeSchema } from "../../state/atoms/schema.atom";
+import { currentBranchAtom } from "../../state/atoms/branches.atom";
+import { iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 import { getFormStructureForMetaEditPaginated } from "../../utils/formStructureForCreateEdit";
 import getMutationMetaDetailsFromFormData from "../../utils/getMutationMetaDetailsFromFormData";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
-import { useAtomValue } from "jotai/index";
-import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { datetimeAtom } from "../../state/atoms/time.atom";
 interface Props {
   row: any;
   schema: iNodeSchema;
   type: "attribute" | "relationship";
   attributeOrRelationshipToEdit: any;
   attributeOrRelationshipName: any;
-  schemaList: iNodeSchema[];
   closeDrawer: Function;
   onUpdateComplete: Function;
 }
@@ -29,7 +28,6 @@ export default function ObjectItemMetaEdit(props: Props) {
     type,
     attributeOrRelationshipName,
     schema,
-    schemaList,
     attributeOrRelationshipToEdit,
     onUpdateComplete,
     closeDrawer,
@@ -37,6 +35,7 @@ export default function ObjectItemMetaEdit(props: Props) {
 
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
+  const [schemaList] = useAtom(schemaState);
   const [isLoading, setIsLoading] = useState(false);
 
   const formStructure = getFormStructureForMetaEditPaginated(

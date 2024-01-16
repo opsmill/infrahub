@@ -3,16 +3,8 @@ from __future__ import annotations
 from collections import defaultdict
 from enum import Enum
 from pathlib import Path  # noqa: TCH003
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Dict,
-    List,
-    MutableMapping,
-    Optional,
-    Tuple,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Dict, List, MutableMapping, Optional, Tuple, TypedDict, TypeVar, Union
+from urllib.parse import urlencode
 
 try:
     from pydantic import v1 as pydantic  # type: ignore[attr-defined]
@@ -20,19 +12,36 @@ except ImportError:
     import pydantic  # type: ignore[no-redef]
 
 from infrahub_sdk.exceptions import SchemaNotFound, ValidationError
+from infrahub_sdk.graphql import Mutation
+from infrahub_sdk.utils import duplicates
 
 if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient, InfrahubClientSync
+    from infrahub_sdk.node import InfrahubNode, InfrahubNodeSync
+
+    InfrahubNodeTypes = Union[InfrahubNode, InfrahubNodeSync]
 
 # pylint: disable=redefined-builtin
 
+
+class DropdownMutationOptionalArgs(TypedDict):
+    color: Optional[str]
+    description: Optional[str]
+    label: Optional[str]
+
+
+ResourceClass = TypeVar("ResourceClass")
 
 # ---------------------------------------------------------------------------------
 # Repository Configuration file
 # ---------------------------------------------------------------------------------
 
 
-class InfrahubRepositoryArtifactDefinitionConfig(pydantic.BaseModel):
+class InfrahubRepositoryConfigElement(pydantic.BaseModel):
+    """Class to regroup all elements of the infrahub configuration for a repository for typing purpose."""
+
+
+class InfrahubRepositoryArtifactDefinitionConfig(InfrahubRepositoryConfigElement):
     name: str = pydantic.Field(..., description="The name of the artifact definition")
     artifact_name: Optional[str] = pydantic.Field(
         default=None, description="Name of the artifact created from this definition"
@@ -45,7 +54,7 @@ class InfrahubRepositoryArtifactDefinitionConfig(pydantic.BaseModel):
     transformation: str = pydantic.Field(..., description="The transformation to use.")
 
 
-class InfrahubRepositoryRFileConfig(pydantic.BaseModel):
+class InfrahubRepositoryRFileConfig(InfrahubRepositoryConfigElement):
     name: str = pydantic.Field(..., description="The name of the RFile")
     query: str = pydantic.Field(..., description="The name of the GraphQL Query")
     template_path: Path = pydantic.Field(..., description="The path within the repository of the template file")
@@ -62,7 +71,7 @@ class InfrahubRepositoryRFileConfig(pydantic.BaseModel):
         return data
 
 
-class InfrahubCheckDefinitionConfig(pydantic.BaseModel):
+class InfrahubCheckDefinitionConfig(InfrahubRepositoryConfigElement):
     name: str = pydantic.Field(..., description="The name of the Check Definition")
     file_path: Path = pydantic.Field(..., description="The file within the repo with the check code.")
     parameters: Dict[str, Any] = pydantic.Field(
@@ -74,10 +83,18 @@ class InfrahubCheckDefinitionConfig(pydantic.BaseModel):
     class_name: str = pydantic.Field(default="Check", description="The name of the check class to run.")
 
 
-class InfrahubPythonTransformConfig(pydantic.BaseModel):
+class InfrahubPythonTransformConfig(InfrahubRepositoryConfigElement):
     name: str = pydantic.Field(..., description="The name of the Transform")
     file_path: Path = pydantic.Field(..., description="The file within the repo with the transform code.")
     class_name: str = pydantic.Field(default="Transform", description="The name of the transform class to run.")
+
+
+RESOURCE_MAP: Dict[Any, str] = {
+    InfrahubRepositoryRFileConfig: "rfiles",
+    InfrahubCheckDefinitionConfig: "check_definitions",
+    InfrahubRepositoryArtifactDefinitionConfig: "artifact_definitions",
+    InfrahubPythonTransformConfig: "python_transforms",
+}
 
 
 class InfrahubRepositoryConfig(pydantic.BaseModel):
@@ -86,6 +103,52 @@ class InfrahubRepositoryConfig(pydantic.BaseModel):
     rfiles: List[InfrahubRepositoryRFileConfig] = pydantic.Field(default_factory=list)
     artifact_definitions: List[InfrahubRepositoryArtifactDefinitionConfig] = pydantic.Field(default_factory=list)
     python_transforms: List[InfrahubPythonTransformConfig] = pydantic.Field(default_factory=list)
+
+    @pydantic.validator("rfiles", "check_definitions", "artifact_definitions", "python_transforms")
+    @classmethod
+    def unique_items(cls, v: Any, **kwargs: Dict[str, Any]) -> Any:  # pylint: disable=unused-argument
+        names = [item.name for item in v]
+        if dups := duplicates(names):
+            raise ValueError(f"Found multiples element with the same names: {dups}")
+        return v
+
+    def _has_resource(self, resource_id: str, resource_type: type[ResourceClass], resource_field: str = "name") -> bool:
+        for item in getattr(self, RESOURCE_MAP[resource_type]):
+            if getattr(item, resource_field) == resource_id:
+                return True
+        return False
+
+    def _get_resource(
+        self, resource_id: str, resource_type: type[ResourceClass], resource_field: str = "name"
+    ) -> ResourceClass:
+        for item in getattr(self, RESOURCE_MAP[resource_type]):
+            if getattr(item, resource_field) == resource_id:
+                return item
+        raise KeyError(f"Unable to find {resource_id!r} in {RESOURCE_MAP[resource_type]!r}")
+
+    def has_rfile(self, name: str) -> bool:
+        return self._has_resource(resource_id=name, resource_type=InfrahubRepositoryRFileConfig)
+
+    def get_rfile(self, name: str) -> InfrahubRepositoryRFileConfig:
+        return self._get_resource(resource_id=name, resource_type=InfrahubRepositoryRFileConfig)
+
+    def has_check_definition(self, name: str) -> bool:
+        return self._has_resource(resource_id=name, resource_type=InfrahubCheckDefinitionConfig)
+
+    def get_check_definition(self, name: str) -> InfrahubCheckDefinitionConfig:
+        return self._get_resource(resource_id=name, resource_type=InfrahubCheckDefinitionConfig)
+
+    def has_artifact_definition(self, name: str) -> bool:
+        return self._has_resource(resource_id=name, resource_type=InfrahubRepositoryArtifactDefinitionConfig)
+
+    def get_artifact_definition(self, name: str) -> InfrahubRepositoryArtifactDefinitionConfig:
+        return self._get_resource(resource_id=name, resource_type=InfrahubRepositoryArtifactDefinitionConfig)
+
+    def has_python_transform(self, name: str) -> bool:
+        return self._has_resource(resource_id=name, resource_type=InfrahubPythonTransformConfig)
+
+    def get_python_transform(self, name: str) -> InfrahubPythonTransformConfig:
+        return self._get_resource(resource_id=name, resource_type=InfrahubPythonTransformConfig)
 
 
 # ---------------------------------------------------------------------------------
@@ -114,6 +177,17 @@ class RelationshipKind(str, Enum):
     COMPONENT = "Component"
     PARENT = "Parent"
     GROUP = "Group"
+    HIERARCHY = "Hierarchy"
+
+
+class DropdownMutation(str, Enum):
+    add = "SchemaDropdownAdd"
+    remove = "SchemaDropdownRemove"
+
+
+class EnumMutation(str, Enum):
+    add = "SchemaEnumAdd"
+    remove = "SchemaEnumRemove"
 
 
 class AttributeSchema(pydantic.BaseModel):
@@ -127,6 +201,8 @@ class AttributeSchema(pydantic.BaseModel):
     branch: Optional[BranchSupportType] = None
     optional: bool = False
     read_only: bool = False
+    choices: Optional[List[Dict[str, str]]] = None
+    enum: Optional[List[Union[str, int]]] = None
 
 
 class RelationshipSchema(pydantic.BaseModel):
@@ -358,7 +434,7 @@ class InfrahubSchema(InfrahubSchemaBase):
         raise SchemaNotFound(identifier=kind)
 
     async def all(
-        self, branch: Optional[str] = None, refresh: bool = False
+        self, branch: Optional[str] = None, refresh: bool = False, namespaces: Optional[List[str]] = None
     ) -> MutableMapping[str, Union[NodeSchema, GenericSchema]]:
         """Retrieve the entire schema for a given branch.
 
@@ -374,7 +450,7 @@ class InfrahubSchema(InfrahubSchemaBase):
         """
         branch = branch or self.client.default_branch
         if refresh or branch not in self.cache:
-            self.cache[branch] = await self.fetch(branch=branch)
+            self.cache[branch] = await self.fetch(branch=branch, namespaces=namespaces)
 
         return self.cache[branch]
 
@@ -392,7 +468,119 @@ class InfrahubSchema(InfrahubSchemaBase):
         response.raise_for_status()
         return False, None
 
-    async def fetch(self, branch: str) -> MutableMapping[str, Union[NodeSchema, GenericSchema]]:
+    async def _get_kind_and_attribute_schema(
+        self, kind: Union[str, InfrahubNodeTypes], attribute: str, branch: Optional[str] = None
+    ) -> Tuple[str, AttributeSchema]:
+        node_kind: str = kind._schema.kind if not isinstance(kind, str) else kind
+        node_schema = await self.client.schema.get(kind=node_kind, branch=branch)
+        schema_attr = node_schema.get_attribute(attribute, raise_on_error=True)
+
+        if schema_attr is None:
+            raise ValueError(f"Unable to find attribute {attribute}")
+
+        return node_kind, schema_attr
+
+    async def _mutate_enum_attribute(
+        self,
+        mutation: EnumMutation,
+        kind: Union[str, InfrahubNodeTypes],
+        attribute: str,
+        option: Union[str, int],
+        branch: Optional[str] = None,
+    ) -> None:
+        node_kind, schema_attr = await self._get_kind_and_attribute_schema(
+            kind=kind, attribute=attribute, branch=branch
+        )
+
+        if schema_attr.enum is None:
+            raise ValueError(f"Attribute '{schema_attr.name}' is not of kind Enum")
+
+        input_data = {"data": {"kind": node_kind, "attribute": schema_attr.name, "enum": option}}
+
+        query = Mutation(mutation=mutation.value, input_data=input_data, query={"ok": None})
+        await self.client.execute_graphql(
+            query=query.render(), branch_name=branch, tracker=f"mutation-{mutation.name}-add", timeout=60
+        )
+
+    async def add_enum_option(
+        self, kind: Union[str, InfrahubNodeTypes], attribute: str, option: Union[str, int], branch: Optional[str] = None
+    ) -> None:
+        await self._mutate_enum_attribute(
+            mutation=EnumMutation.add, kind=kind, attribute=attribute, option=option, branch=branch
+        )
+
+    async def remove_enum_option(
+        self, kind: Union[str, InfrahubNodeTypes], attribute: str, option: Union[str, int], branch: Optional[str] = None
+    ) -> None:
+        await self._mutate_enum_attribute(
+            mutation=EnumMutation.remove, kind=kind, attribute=attribute, option=option, branch=branch
+        )
+
+    async def _mutate_dropdown_attribute(
+        self,
+        mutation: DropdownMutation,
+        kind: Union[str, InfrahubNodeTypes],
+        attribute: str,
+        option: str,
+        branch: Optional[str] = None,
+        dropdown_optional_args: Optional[DropdownMutationOptionalArgs] = None,
+    ) -> None:
+        dropdown_optional_args = dropdown_optional_args or DropdownMutationOptionalArgs(
+            color="", description="", label=""
+        )
+
+        node_kind, schema_attr = await self._get_kind_and_attribute_schema(
+            kind=kind, attribute=attribute, branch=branch
+        )
+
+        if schema_attr.kind != "Dropdown":
+            raise ValueError(f"Attribute '{schema_attr.name}' is not of kind Dropdown")
+
+        input_data: Dict[str, Any] = {
+            "data": {
+                "kind": node_kind,
+                "attribute": schema_attr.name,
+                "dropdown": option,
+            }
+        }
+        if mutation == DropdownMutation.add:
+            input_data["data"].update(dropdown_optional_args)
+
+        query = Mutation(mutation=mutation.value, input_data=input_data, query={"ok": None})
+        await self.client.execute_graphql(
+            query=query.render(), branch_name=branch, tracker=f"mutation-{mutation.name}-remove", timeout=60
+        )
+
+    async def remove_dropdown_option(
+        self, kind: Union[str, InfrahubNodeTypes], attribute: str, option: str, branch: Optional[str] = None
+    ) -> None:
+        await self._mutate_dropdown_attribute(
+            mutation=DropdownMutation.remove, kind=kind, attribute=attribute, option=option, branch=branch
+        )
+
+    async def add_dropdown_option(
+        self,
+        kind: Union[str, InfrahubNodeTypes],
+        attribute: str,
+        option: str,
+        color: Optional[str] = "",
+        description: Optional[str] = "",
+        label: Optional[str] = "",
+        branch: Optional[str] = None,
+    ) -> None:
+        dropdown_optional_args = DropdownMutationOptionalArgs(color=color, description=description, label=label)
+        await self._mutate_dropdown_attribute(
+            mutation=DropdownMutation.add,
+            kind=kind,
+            attribute=attribute,
+            option=option,
+            branch=branch,
+            dropdown_optional_args=dropdown_optional_args,
+        )
+
+    async def fetch(
+        self, branch: str, namespaces: Optional[List[str]] = None
+    ) -> MutableMapping[str, Union[NodeSchema, GenericSchema]]:
         """Fetch the schema from the server for a given branch.
 
         Args:
@@ -401,7 +589,12 @@ class InfrahubSchema(InfrahubSchemaBase):
         Returns:
             Dict[str, NodeSchema]: Dictionnary of all schema organized by kind
         """
-        url = f"{self.client.address}/api/schema/?branch={branch}"
+        url_parts = [("branch", branch)]
+        if namespaces:
+            url_parts.extend([("namespaces", ns) for ns in namespaces])
+        query_params = urlencode(url_parts)
+        url = f"{self.client.address}/api/schema/?{query_params}"
+
         response = await self.client._get(url=url)
         response.raise_for_status()
 
@@ -425,7 +618,7 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
         self.cache: dict = defaultdict(lambda: dict)
 
     def all(
-        self, branch: Optional[str] = None, refresh: bool = False
+        self, branch: Optional[str] = None, refresh: bool = False, namespaces: Optional[List[str]] = None
     ) -> MutableMapping[str, Union[NodeSchema, GenericSchema]]:
         """Retrieve the entire schema for a given branch.
 
@@ -441,7 +634,7 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
         """
         branch = branch or self.client.default_branch
         if refresh or branch not in self.cache:
-            self.cache[branch] = self.fetch(branch=branch)
+            self.cache[branch] = self.fetch(branch=branch, namespaces=namespaces)
 
         return self.cache[branch]
 
@@ -464,7 +657,115 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
 
         raise SchemaNotFound(identifier=kind)
 
-    def fetch(self, branch: str) -> MutableMapping[str, Union[NodeSchema, GenericSchema]]:
+    def _get_kind_and_attribute_schema(
+        self, kind: Union[str, InfrahubNodeTypes], attribute: str, branch: Optional[str] = None
+    ) -> Tuple[str, AttributeSchema]:
+        node_kind: str = kind._schema.kind if not isinstance(kind, str) else kind
+        node_schema = self.client.schema.get(kind=node_kind, branch=branch)
+        schema_attr = node_schema.get_attribute(attribute, raise_on_error=True)
+
+        if schema_attr is None:
+            raise ValueError(f"Unable to find attribute {attribute}")
+
+        return node_kind, schema_attr
+
+    def _mutate_enum_attribute(
+        self,
+        mutation: EnumMutation,
+        kind: Union[str, InfrahubNodeTypes],
+        attribute: str,
+        option: Union[str, int],
+        branch: Optional[str] = None,
+    ) -> None:
+        node_kind, schema_attr = self._get_kind_and_attribute_schema(kind=kind, attribute=attribute, branch=branch)
+
+        if schema_attr.enum is None:
+            raise ValueError(f"Attribute '{schema_attr.name}' is not of kind Enum")
+
+        input_data = {"data": {"kind": node_kind, "attribute": schema_attr.name, "enum": option}}
+
+        query = Mutation(mutation=mutation.value, input_data=input_data, query={"ok": None})
+        self.client.execute_graphql(
+            query=query.render(), branch_name=branch, tracker=f"mutation-{mutation.name}-add", timeout=60
+        )
+
+    def add_enum_option(
+        self, kind: Union[str, InfrahubNodeTypes], attribute: str, option: Union[str, int], branch: Optional[str] = None
+    ) -> None:
+        self._mutate_enum_attribute(
+            mutation=EnumMutation.add, kind=kind, attribute=attribute, option=option, branch=branch
+        )
+
+    def remove_enum_option(
+        self, kind: Union[str, InfrahubNodeTypes], attribute: str, option: Union[str, int], branch: Optional[str] = None
+    ) -> None:
+        self._mutate_enum_attribute(
+            mutation=EnumMutation.remove, kind=kind, attribute=attribute, option=option, branch=branch
+        )
+
+    def _mutate_dropdown_attribute(
+        self,
+        mutation: DropdownMutation,
+        kind: Union[str, InfrahubNodeTypes],
+        attribute: str,
+        option: str,
+        branch: Optional[str] = None,
+        dropdown_optional_args: Optional[DropdownMutationOptionalArgs] = None,
+    ) -> None:
+        dropdown_optional_args = dropdown_optional_args or DropdownMutationOptionalArgs(
+            color="", description="", label=""
+        )
+        node_kind, schema_attr = self._get_kind_and_attribute_schema(kind=kind, attribute=attribute, branch=branch)
+
+        if schema_attr.kind != "Dropdown":
+            raise ValueError(f"Attribute '{schema_attr.name}' is not of kind Dropdown")
+
+        input_data: Dict[str, Any] = {
+            "data": {
+                "kind": node_kind,
+                "attribute": schema_attr.name,
+                "dropdown": option,
+            }
+        }
+
+        if mutation == DropdownMutation.add:
+            input_data["data"].update(dropdown_optional_args)
+
+        query = Mutation(mutation=mutation.value, input_data=input_data, query={"ok": None})
+        self.client.execute_graphql(
+            query=query.render(), branch_name=branch, tracker=f"mutation-{mutation.name}-remove", timeout=60
+        )
+
+    def remove_dropdown_option(
+        self, kind: Union[str, InfrahubNodeTypes], attribute: str, option: str, branch: Optional[str] = None
+    ) -> None:
+        self._mutate_dropdown_attribute(
+            mutation=DropdownMutation.remove, kind=kind, attribute=attribute, option=option, branch=branch
+        )
+
+    def add_dropdown_option(
+        self,
+        kind: Union[str, InfrahubNodeTypes],
+        attribute: str,
+        option: str,
+        color: Optional[str] = "",
+        description: Optional[str] = "",
+        label: Optional[str] = "",
+        branch: Optional[str] = None,
+    ) -> None:
+        dropdown_optional_args = DropdownMutationOptionalArgs(color=color, description=description, label=label)
+        self._mutate_dropdown_attribute(
+            mutation=DropdownMutation.add,
+            kind=kind,
+            attribute=attribute,
+            option=option,
+            branch=branch,
+            dropdown_optional_args=dropdown_optional_args,
+        )
+
+    def fetch(
+        self, branch: str, namespaces: Optional[List[str]] = None
+    ) -> MutableMapping[str, Union[NodeSchema, GenericSchema]]:
         """Fetch the schema from the server for a given branch.
 
         Args:
@@ -473,7 +774,12 @@ class InfrahubSchemaSync(InfrahubSchemaBase):
         Returns:
             Dict[str, NodeSchema]: Dictionnary of all schema organized by kind
         """
-        url = f"{self.client.address}/api/schema/?branch={branch}"
+        url_parts = [("branch", branch)]
+        if namespaces:
+            url_parts.extend([("namespaces", ns) for ns in namespaces])
+        query_params = urlencode(url_parts)
+        url = f"{self.client.address}/api/schema/?{query_params}"
+
         response = self.client._get(url=url)
         response.raise_for_status()
 

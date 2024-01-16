@@ -2,6 +2,7 @@ import { gql } from "@apollo/client";
 import { PencilIcon } from "@heroicons/react/24/outline";
 import { formatISO } from "date-fns";
 import { useAtom } from "jotai";
+import { useAtomValue } from "jotai/index";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { Diff, Hunk, getChangeKey, parseDiff } from "react-diff-view";
 import "react-diff-view/style/index.css";
@@ -9,10 +10,10 @@ import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import sha from "sha1";
 import { diffLines, formatLines } from "unidiff";
-import { ALERT_TYPES, Alert } from "../../../components/alert";
-import { Button } from "../../../components/button";
+import { Button } from "../../../components/buttons/button";
 import { AddComment } from "../../../components/conversations/add-comment";
 import { Thread } from "../../../components/conversations/thread";
+import { ALERT_TYPES, Alert } from "../../../components/utils/alert";
 import { CONFIG } from "../../../config/config";
 import {
   PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT,
@@ -25,14 +26,13 @@ import { createObject } from "../../../graphql/mutations/objects/createObject";
 import { deleteObject } from "../../../graphql/mutations/objects/deleteObject";
 import { getProposedChangesArtifactsThreads } from "../../../graphql/queries/proposed-changes/getProposedChangesArtifactsThreads";
 import useQuery from "../../../hooks/useQuery";
+import { currentBranchAtom } from "../../../state/atoms/branches.atom";
 import { schemaState } from "../../../state/atoms/schema.atom";
+import { datetimeAtom } from "../../../state/atoms/time.atom";
 import { fetchStream } from "../../../utils/fetch";
 import { stringifyWithoutQuotes } from "../../../utils/string";
 import ErrorScreen from "../../error-screen/error-screen";
 import LoadingScreen from "../../loading-screen/loading-screen";
-import { useAtomValue } from "jotai/index";
-import { currentBranchAtom } from "../../../state/atoms/branches.atom";
-import { datetimeAtom } from "../../../state/atoms/time.atom";
 
 const fakeIndex = () => {
   return sha(Math.random() * 100000).slice(0, 9);

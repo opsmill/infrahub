@@ -10,7 +10,7 @@ from .shared import (
     build_test_envs,
     get_env_vars,
 )
-from .utils import ESCAPED_REPO_PATH
+from .utils import ESCAPED_REPO_PATH, check_if_command_available
 
 CURRENT_DIRECTORY = os.path.abspath(os.path.dirname(__file__))
 DOCUMENTATION_DIRECTORY = os.path.join(CURRENT_DIRECTORY, "../docs")
@@ -69,6 +69,57 @@ def serve(context: Context):
         context.run(exec_cmd)
 
 
+@task
+def vale(context: Context):
+    """Run vale to validate the documentation."""
+    has_vale = check_if_command_available(context=context, command_name="vale")
+
+    if not has_vale:
+        print("Warning, Vale is not installed")
+        return
+
+    exec_cmd = "vale ."
+    print(" - [docs] Lint docs with vale")
+    with context.cd(ESCAPED_REPO_PATH):
+        context.run(exec_cmd)
+
+
+@task
+def markdownlint(context: Context):
+    has_markdownlint = check_if_command_available(context=context, command_name="markdownlint-cli2")
+
+    if not has_markdownlint:
+        print("Warning, markdownlint-cli2 is not installed")
+        return
+    exec_cmd = "markdownlint-cli2 **/*.md"
+    print(" - [docs] Lint docs with markdownlint-cli2")
+    with context.cd(ESCAPED_REPO_PATH):
+        context.run(exec_cmd)
+
+
+@task
+def format_markdownlint(context: Context):
+    """Run markdownlint-cli2 to format all .md files."""
+
+    print(" - [docs] Format code with markdownlint-cli2")
+    exec_cmd = "markdownlint-cli2 **/*.md --fix"
+    with context.cd(ESCAPED_REPO_PATH):
+        context.run(exec_cmd)
+
+
+@task
+def format(context: Context):
+    """This will run all formatter."""
+    format_markdownlint(context)
+
+
+@task
+def lint(context: Context):
+    """This will run all linter."""
+    vale(context)
+    markdownlint(context)
+
+
 def _generate_infrahub_cli_documentation(context: Context):
     """Generate the documentation for infrahub cli using typer-cli."""
 
@@ -94,17 +145,17 @@ def _generate(context: Context):
 
 def _generate_infrahubctl_documentation(context: Context):
     """Generate the documentation for infrahubctl using typer-cli."""
-    from infrahub_ctl.cli import app
+    from infrahub_sdk.ctl.cli import app
 
     print(" - Generate infrahubctl CLI documentation")
     for cmd in app.registered_commands:
-        exec_cmd = f'poetry run typer --func {cmd.name} infrahub_ctl.cli utils docs --name "infrahubctl {cmd.name}"'
+        exec_cmd = f'poetry run typer --func {cmd.name} infrahub_sdk.ctl.cli utils docs --name "infrahubctl {cmd.name}"'
         exec_cmd += f" --output docs/infrahubctl/infrahubctl-{cmd.name}.md"
         with context.cd(ESCAPED_REPO_PATH):
             context.run(exec_cmd)
 
     for cmd in app.registered_groups:
-        exec_cmd = f"poetry run typer infrahub_ctl.{cmd.name} utils docs"
+        exec_cmd = f"poetry run typer infrahub_sdk.ctl.{cmd.name} utils docs"
         exec_cmd += f' --name "infrahubctl {cmd.name}" --output docs/infrahubctl/infrahubctl-{cmd.name}.md'
         with context.cd(ESCAPED_REPO_PATH):
             context.run(exec_cmd)

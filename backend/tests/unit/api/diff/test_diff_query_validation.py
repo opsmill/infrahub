@@ -1,5 +1,5 @@
 import pytest
-from pydantic import ValidationError
+from pydantic.v1 import ValidationError
 
 from infrahub.api.diff.validation_models import DiffQueryValidated
 from infrahub.core.branch import Branch

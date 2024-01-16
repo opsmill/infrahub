@@ -2,7 +2,7 @@ import json
 
 from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubResponse, messages
-from infrahub.message_bus.operations import check, event, finalize, git, refresh, requests, transform, trigger
+from infrahub.message_bus.operations import check, event, finalize, git, refresh, requests, send, transform, trigger
 from infrahub.message_bus.types import MessageTTL
 from infrahub.services import InfrahubServices
 from infrahub.tasks.check import set_check_status
@@ -19,6 +19,7 @@ COMMAND_MAP = {
     "event.branch.merge": event.branch.merge,
     "event.node.mutated": event.node.mutated,
     "event.schema.update": event.schema.update,
+    "event.worker.new_primary_api": event.worker.new_primary_api,
     "finalize.validator.execution": finalize.validator.execution,
     "git.branch.create": git.branch.create,
     "git.diff.names_only": git.diff.names_only,
@@ -26,8 +27,10 @@ COMMAND_MAP = {
     "git.repository.add": git.repository.add,
     "git.repository.merge": git.repository.merge,
     "refresh.registry.branches": refresh.registry.branches,
+    "refresh.webhook.configuration": refresh.webhook.configuration,
     "request.git.create_branch": requests.git.create_branch,
     "request.git.sync": requests.git.sync,
+    "request.graphql_query_group.update": requests.graphql_query_group.update,
     "request.artifact.generate": requests.artifact.generate,
     "request.artifact_definition.check": requests.artifact_definition.check,
     "request.artifact_definition.generate": requests.artifact_definition.generate,
@@ -38,10 +41,12 @@ COMMAND_MAP = {
     "request.proposed_change.schema_integrity": requests.proposed_change.schema_integrity,
     "request.repository.checks": requests.repository.checks,
     "request.repository.user_checks": requests.repository.user_checks,
+    "send.webhook.event": send.webhook.event,
     "transform.jinja.template": transform.jinja.template,
     "transform.python.data": transform.python.data,
     "trigger.artifact_definition.generate": trigger.artifact_definition.generate,
     "trigger.proposed_change.cancel": trigger.proposed_change.cancel,
+    "trigger.webhook.actions": trigger.webhook.actions,
 }
 
 

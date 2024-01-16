@@ -1,0 +1,45 @@
+{
+  "name": "infrahub-demo",
+  "build": {
+    "dockerfile": "../Dockerfile",
+    "context": ".."
+  },
+  "customizations": {
+      "settings": {
+      "python.pythonPath": "/usr/bin/python3",
+      "terminal.integrated.shell.linux": "/bin/bash",
+      "python.venvPath": "/workspace/.venv",
+      "python.linting.enabled": true
+      },
+      "vscode": {
+      "extensions": [
+          "pomdtr.excalidraw-editor",
+          "wholroyd.jinja",
+          "ms-python.vscode-pylance",
+          "shardulm94.trailing-spaces",
+          "nickmillerdev.pytest-fixtures",
+          "yzhang.markdown-all-in-one",
+          "GraphQL.vscode-graphql-syntax"
+      ]
+      }
+  },
+  "remoteUser": "vscode",
+  "remoteEnv": {
+      "INFRAHUB_SDK_API_TOKEN": "06438eb2-8019-4776-878c-0941b1f1d1ec",
+      "INFRAHUB_DB_TYPE": "memgraph"
+  },
+  "forwardPorts": [8000],
+  "runArgs": ["--volume=/var/lib/docker", "--privileged"],
+  "onCreateCommand": "./.devcontainer/onCreateCommand.sh",
+  "postCreateCommand": "./.devcontainer/postCreateCommand.sh",
+  "postStartCommand": "./.devcontainer/postStartCommand.sh",
+  "postAttachCommand": "./.devcontainer/postAttachCommand.sh",
+  "features": {
+      "docker-in-docker": "latest",
+      "github-cli": "latest"
+  },
+  "hostRequirements": {
+      "cpus": 8,
+      "memory": "16gb"
+  }
+}

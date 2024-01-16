@@ -7,15 +7,15 @@ import { useAtomValue } from "jotai/index";
 import { useContext, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import { Alert, ALERT_TYPES } from "../../components/alert";
-import { Avatar, AVATAR_SIZE } from "../../components/avatar";
-import { Badge } from "../../components/badge";
-import { Button, BUTTON_TYPES } from "../../components/button";
+import { Button, BUTTON_TYPES } from "../../components/buttons/button";
 import { AddComment } from "../../components/conversations/add-comment";
 import { Thread } from "../../components/conversations/thread";
-import { DateDisplay } from "../../components/date-display";
-import SlideOver from "../../components/slide-over";
-import { Tooltip } from "../../components/tooltip";
+import { Avatar, AVATAR_SIZE } from "../../components/display/avatar";
+import { Badge } from "../../components/display/badge";
+import { DateDisplay } from "../../components/display/date-display";
+import SlideOver from "../../components/display/slide-over";
+import { Alert, ALERT_TYPES } from "../../components/utils/alert";
+import { Tooltip } from "../../components/utils/tooltip";
 import {
   ACCOUNT_OBJECT,
   DEFAULT_BRANCH_NAME,
@@ -33,7 +33,6 @@ import { getProposedChangesThreads } from "../../graphql/queries/proposed-change
 import useQuery from "../../hooks/useQuery";
 import { branchesState, currentBranchAtom } from "../../state/atoms/branches.atom";
 import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
-import { schemaState } from "../../state/atoms/schema.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
 import { constructPath } from "../../utils/fetch";
 import { getProposedChangesStateBadgeType } from "../../utils/proposed-changes";
@@ -100,7 +99,6 @@ export const Conversations = (props: tConversations) => {
   const { refetch: detailsRefetch } = props;
   const { proposedchange } = useParams();
   const [branches] = useAtom(branchesState);
-  const [schemaList] = useAtom(schemaState);
   const [proposedChangesDetails] = useAtom(proposedChangedState);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
@@ -111,12 +109,10 @@ export const Conversations = (props: tConversations) => {
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const navigate = useNavigate();
 
-  const accountSchemaData = schemaList.find((s) => s.kind === ACCOUNT_OBJECT);
-
   const queryString = getProposedChangesThreads({
     id: proposedchange,
     kind: PROPOSED_CHANGES_THREAD_OBJECT,
-    accountKind: accountSchemaData.kind,
+    accountKind: ACCOUNT_OBJECT,
   });
 
   const query = gql`
@@ -127,11 +123,10 @@ export const Conversations = (props: tConversations) => {
     notifyOnNetworkStatusChange: true,
   });
 
-  const isGetProposedChangesThreadsLoadingForthFistTime = () =>
-    networkStatus === NetworkStatus.loading;
-  const isGetProposedChangesThreadsReloading = () => networkStatus === NetworkStatus.refetch;
+  const isGetProposedChangesThreadsLoadingForthFistTime = networkStatus === NetworkStatus.loading;
+  const isGetProposedChangesThreadsReloading = networkStatus === NetworkStatus.refetch;
 
-  if (isGetProposedChangesThreadsLoadingForthFistTime()) {
+  if (isGetProposedChangesThreadsLoadingForthFistTime) {
     return <LoadingScreen />;
   }
 
@@ -243,7 +238,6 @@ export const Conversations = (props: tConversations) => {
           mutation,
           context: { branch: branch?.name, date },
         });
-        return;
       }
 
       console.error("An error occured while creating the comment: ", error);
@@ -286,7 +280,9 @@ export const Conversations = (props: tConversations) => {
 
       toast(<Alert type={ALERT_TYPES.SUCCESS} message="Proposed change approved" />);
 
-      refetch();
+      if (detailsRefetch) {
+        await detailsRefetch();
+      }
 
       setIsLoadingApprove(false);
 
@@ -403,7 +399,7 @@ export const Conversations = (props: tConversations) => {
     .map((branch) => ({ id: branch.name, name: branch.name }));
 
   const reviewersOptions: any[] = data
-    ? data[accountSchemaData.kind]?.edges.map((edge: any) => ({
+    ? data[ACCOUNT_OBJECT]?.edges.map((edge: any) => ({
         id: edge?.node.id,
         name: edge?.node?.display_label,
       }))
@@ -423,8 +419,8 @@ export const Conversations = (props: tConversations) => {
         <div className="bg-custom-white p-4 m-4 rounded-lg relative">
           <AddComment
             onSubmit={handleSubmit}
-            isLoading={isGetProposedChangesThreadsReloading()}
-            disabled={isGetProposedChangesThreadsReloading() || !auth?.permissions?.write}
+            isLoading={isGetProposedChangesThreadsReloading}
+            disabled={isGetProposedChangesThreadsReloading || !auth?.permissions?.write}
           />
         </div>
       </div>

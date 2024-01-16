@@ -1,8 +1,8 @@
 import { MockedProvider } from "@apollo/client/testing";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterAll, describe, expect, it } from "vitest";
-import Apollo, { QUERY } from "../../../src/components/tests/branch-list-test";
-import { branchesMocks } from "../../../tests/mocks/data/branches";
+import { branchesMocks } from "../../mocks/data/branches";
+import Apollo, { QUERY } from "./branch-list";
 
 afterAll(cleanup);
 
@@ -13,7 +13,7 @@ const mocks: any[] = [
     },
     result: {
       data: {
-        branch: branchesMocks,
+        Branch: branchesMocks,
       },
     },
   },

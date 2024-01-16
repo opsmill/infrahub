@@ -14,6 +14,9 @@ class RedisCache(InfrahubCache):
             db=config.SETTINGS.cache.database,
         )
 
+    async def delete(self, key: str) -> None:
+        await self.connection.delete(key)
+
     async def get(self, key: str) -> Optional[str]:
         value = await self.connection.get(name=key)
         if value is not None:

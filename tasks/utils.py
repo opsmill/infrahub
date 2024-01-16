@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 from typing import Tuple
 
-from invoke import Context
+from invoke import Context, UnexpectedExit
 
 try:
     import toml
@@ -12,6 +12,14 @@ except ImportError:
 path = Path(__file__)
 TASKS_DIR = path.parent
 REPO_BASE = TASKS_DIR.parent
+
+
+def check_if_command_available(context: Context, command_name: str) -> bool:
+    try:
+        context.run(f"command -v {command_name}", hide=True)
+        return True
+    except UnexpectedExit:
+        return False
 
 
 def escape_path(path: Path) -> str:

@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
-import { EditorView, keymap, ViewUpdate, placeholder as placeholderView } from "@codemirror/view";
-import { EditorState } from "@codemirror/state";
-import { defaultKeymap, indentWithTab, history, historyKeymap } from "@codemirror/commands";
+import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { markdown, markdownKeymap, markdownLanguage } from "@codemirror/lang-markdown";
+import { EditorState } from "@codemirror/state";
+import { EditorView, ViewUpdate, keymap, placeholder as placeholderView } from "@codemirror/view";
 import { basicLight } from "cm6-theme-basic-light";
+import { useEffect, useState } from "react";
 
 export type UseCodeMirror = {
   editor?: HTMLDivElement | null;
@@ -70,7 +70,6 @@ export function useCodeMirror(
           parent: containerElement,
         });
         setView(viewCurrent);
-        viewCurrent.focus();
       }
     }
 

@@ -1,12 +1,13 @@
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import { StringParam, useQueryParam } from "use-query-params";
-import { Avatar } from "../../components/avatar";
+import { Avatar } from "../../components/display/avatar";
 import { Tabs } from "../../components/tabs";
 import { ACCESS_TOKEN_KEY, ACCOUNT_OBJECT } from "../../config/constants";
 import { QSP } from "../../config/qsp";
 import { getProfileDetails } from "../../graphql/queries/profile/getProfileDetails";
 import useQuery from "../../hooks/useQuery";
+import { useTitle } from "../../hooks/useTitle";
 import { schemaState } from "../../state/atoms/schema.atom";
 import { parseJwt } from "../../utils/common";
 import ErrorScreen from "../error-screen/error-screen";
@@ -54,6 +55,7 @@ const renderContent = (tab: string | null | undefined) => {
 export default function UserProfile() {
   const [qspTab] = useQueryParam(QSP.TAB, StringParam);
   const [schemaList] = useAtom(schemaState);
+  useTitle("Profile");
 
   const schema = schemaList.find((s) => s.kind === ACCOUNT_OBJECT);
 

@@ -1,25 +1,3 @@
-export const ADMIN_MENU_ITEMS = [
-  {
-    path: "/schema",
-    label: "Schema",
-  },
-  {
-    path: "/groups",
-    label: "Groups",
-  },
-];
-
-export const BRANCHES_MENU_ITEMS = [
-  {
-    path: "/branches",
-    label: "List",
-  },
-  {
-    path: "/proposed-changes",
-    label: "Proposed changes",
-  },
-];
-
 export const DEFAULT_BRANCH_NAME = "main";
 
 export const ACCESS_TOKEN_KEY = "access_token";
@@ -81,7 +59,6 @@ export const MENU_EXCLUDELIST = [
   "CoreObjectThread",
   "CoreProposedChange",
   "InternalRefreshToken",
-  "CoreStandardGroup",
   "CoreThreadComment",
   "CoreArtifactCheck",
   "CoreStandardCheck",
@@ -95,10 +72,6 @@ export const MENU_EXCLUDELIST = [
 ];
 
 export const ATTRIBUTES_NAME_EXCLUDELIST = ["checksum", "storage_id"];
-
-export const ATTRIBUTES_EXCLUDELIST = ["HashedPassword"];
-
-export const COLUMNS_EXCLUDELIST = ["TextArea", "JSON", "Password"];
 
 export const NODE_PATH_EXCLUDELIST = ["property"];
 
@@ -138,3 +111,55 @@ export const VALIDATIONS_ENUM_MAP: { [key: string]: string } = {
 };
 
 export const MAX_VALUE_LENGTH_DISPLAY = 40;
+
+export const attributesKindForListView = [
+  "Text",
+  "Number",
+  "Boolean",
+  "Dropdown",
+  "Email",
+  "URL",
+  "File",
+  "MacAddress",
+  "Color",
+  "Bandwidth",
+  "IPHost",
+  "IPNetwork",
+];
+
+export const attributesKindForDetailsView = [
+  "ID",
+  "Text",
+  "Number",
+  "Boolean",
+  "Dropdown",
+  "TextArea",
+  "DateTime",
+  "Email",
+  "Password",
+  "URL",
+  "File",
+  "MacAddress",
+  "Color",
+  "Bandwidth",
+  "IPHost",
+  "IPNetwork",
+  "Checkbox",
+  "List",
+  "Any",
+];
+
+export const relationshipsForListView = {
+  one: ["Attribute"],
+  many: ["Attribute"],
+};
+
+export const relationshipsForDetailsView = {
+  one: ["Generic", "Attribute", "Component", "Parent"],
+  many: ["Attribute", "Parent"],
+};
+
+export const relationshipsForTabs = {
+  one: [],
+  many: ["Generic", "Component"],
+};

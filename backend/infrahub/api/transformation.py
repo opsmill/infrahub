@@ -13,8 +13,10 @@ from infrahub.api.dependencies import (
     get_db,
 )
 from infrahub.core import registry
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
+from infrahub.graphql.utils import extract_data
 from infrahub.message_bus import messages
 from infrahub.message_bus.responses import TemplateResponse, TransformResponse
 
@@ -66,19 +68,7 @@ async def transform_python(
         variable_values=params,
     )
 
-    if result.errors:
-        errors = []
-        for error in result.errors:
-            error_locations = error.locations or []
-            errors.append(
-                {
-                    "message": f"GraphQLQuery {query.name.value}: {error.message}",
-                    "path": error.path,
-                    "locations": [{"line": location.line, "column": location.column} for location in error_locations],
-                }
-            )
-
-        return JSONResponse(status_code=500, content={"errors": errors})
+    data = extract_data(query_name=query.name.value, result=result)
 
     service: InfrahubServices = request.app.state.service
 
@@ -88,7 +78,7 @@ async def transform_python(
         commit=repository.commit.value,  # type: ignore[attr-defined]
         branch=branch_params.branch.name,
         transform_location=f"{transform.file_path.value}::{transform.class_name.value}",  # type: ignore[attr-defined]
-        data=result.data,
+        data=data,
     )
 
     response = await service.message_bus.rpc(message=message)
@@ -108,7 +98,7 @@ async def generate_rfile(
     params = {key: value for key, value in request.query_params.items() if key not in ["branch", "rebase", "at"]}
 
     rfile = await NodeManager.get_one_by_id_or_default_filter(
-        db=db, id=rfile_id, schema_name="CoreRFile", branch=branch_params.branch, at=branch_params.at
+        db=db, id=rfile_id, schema_name=InfrahubKind.RFILE, branch=branch_params.branch, at=branch_params.at
     )
 
     query = await rfile.query.get_peer(db=db)  # type: ignore[attr-defined]
@@ -129,19 +119,7 @@ async def generate_rfile(
         variable_values=params,
     )
 
-    if result.errors:
-        errors = []
-        for error in result.errors:
-            error_locations = error.locations or []
-            errors.append(
-                {
-                    "message": f"GraphQLQuery {query.name.value}: {error.message}",
-                    "path": error.path,
-                    "locations": [{"line": location.line, "column": location.column} for location in error_locations],
-                }
-            )
-
-        return JSONResponse(status_code=500, content={"errors": errors})
+    data = extract_data(query_name=query.name.value, result=result)
 
     service: InfrahubServices = request.app.state.service
 
@@ -151,7 +129,7 @@ async def generate_rfile(
         commit=repository.commit.value,  # type: ignore[attr-defined]
         branch=branch_params.branch.name,
         template_location=rfile.template_path.value,  # type: ignore[attr-defined]
-        data=result.data,
+        data=data,
     )
 
     response = await service.message_bus.rpc(message=message)

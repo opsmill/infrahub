@@ -2,11 +2,11 @@ import { ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import { useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
-import Accordion from "../../components/accordion";
-import { Badge } from "../../components/badge";
-import { DateDisplay } from "../../components/date-display";
-import { Pill } from "../../components/pill";
-import { Tooltip } from "../../components/tooltip";
+import Accordion from "../../components/display/accordion";
+import { Badge } from "../../components/display/badge";
+import { DateDisplay } from "../../components/display/date-display";
+import { Pill } from "../../components/display/pill";
+import { Tooltip } from "../../components/utils/tooltip";
 import { QSP } from "../../config/qsp";
 import { proposedChangedState } from "../../state/atoms/proposedChanges.atom";
 import { classNames } from "../../utils/common";
@@ -199,7 +199,7 @@ export const DataDiffNode = (props: tDataDiffNodeProps) => {
       </div>
 
       {commentsCount && (
-        <div className="flex items-center">
+        <div className="flex items-center" data-cy="comments-count" data-testid="comments-count">
           <Tooltip message={"Total number of comments"}>
             <ChatBubbleLeftRightIcon className="w-4 h-4 mr-2" />
             <Pill className="mr-2">{JSON.stringify(commentsCount)}</Pill>

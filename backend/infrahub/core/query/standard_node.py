@@ -31,12 +31,12 @@ class StandardNodeQuery(Query):
         super().__init__(*args, **kwargs)
 
 
-class StandardNodeCreateQuery(StandardNodeQuery):
+class RootNodeCreateQuery(StandardNodeQuery):
     name: str = "standard_node_create"
 
     type: QueryType = QueryType.WRITE
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs) -> None:
         node_type = self.node.get_type()
         self.params["node_prop"] = self.node.to_db()
 
@@ -48,12 +48,30 @@ class StandardNodeCreateQuery(StandardNodeQuery):
         self.return_labels = ["n"]
 
 
+class StandardNodeCreateQuery(StandardNodeQuery):
+    name: str = "standard_node_create"
+
+    type: QueryType = QueryType.WRITE
+
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs) -> None:
+        node_type = self.node.get_type()
+        self.params["node_prop"] = self.node.to_db()
+
+        query = """
+        MATCH (root:Root)
+        CREATE (n:%s $node_prop)-[r:IS_PART_OF]->(root)
+        """ % (node_type)
+
+        self.add_to_query(query=query)
+        self.return_labels = ["n"]
+
+
 class StandardNodeUpdateQuery(StandardNodeQuery):
     name: str = "standard_node_update"
 
     type: QueryType = QueryType.WRITE
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs) -> None:
         self.node.get_type()
         self.params["node_prop"] = self.node.to_db()
         self.params["node_prop"]["uuid"] = str(self.node.uuid)
@@ -101,7 +119,7 @@ class StandardNodeGetItemQuery(Query):
 
         super().__init__(*args, **kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs) -> None:
         query = (
             """
             MATCH (n:%s)
@@ -135,7 +153,7 @@ class StandardNodeGetListQuery(Query):
 
         super().__init__(*args, **kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs) -> None:
         filters = []
         if self.ids:
             filters.append("n.uuid in $ids_value")

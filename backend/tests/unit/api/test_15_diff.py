@@ -2,6 +2,7 @@ import pytest
 from deepdiff import DeepDiff
 
 from infrahub.api.diff.diff import get_display_labels, get_display_labels_per_kind
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -58,7 +59,7 @@ async def test_get_display_labels_with_branch(db: InfrahubDatabase, default_bran
     persons_list = await NodeManager.query(db=db, schema="TestPerson", branch=branch2)
     persons = {item.name.value: item for item in persons_list}
 
-    repos_list = await NodeManager.query(db=db, schema="CoreRepository", branch=branch2)
+    repos_list = await NodeManager.query(db=db, schema=InfrahubKind.REPOSITORY, branch=branch2)
     repos = {item.name.value: item for item in repos_list}
 
     cars_list = await NodeManager.query(db=db, schema="TestCar", branch=branch2)
@@ -103,7 +104,7 @@ async def r1_update_01(data_diff_attribute):
     r1 = data_diff_attribute["r1"]
 
     expected_response = {
-        "kind": "CoreRepository",
+        "kind": InfrahubKind.REPOSITORY,
         "id": r1,
         "path": f"data/{r1}",
         "elements": {

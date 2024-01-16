@@ -1,5 +1,5 @@
 import { isValid, parseISO } from "date-fns";
-import { SelectOption } from "../components/select";
+import { SelectOption } from "../components/inputs/select";
 import { iPeerDropdownOptions } from "../graphql/queries/objects/dropdownOptionsForRelatedPeers";
 import {
   DynamicFieldData,
@@ -49,7 +49,7 @@ const validate = (value: any, attribute: any = {}, optional?: boolean) => {
   }
 
   // If the attribute is of kind integer, then it should be a number
-  if (attribute.kind === "Integer" && Number.isInteger(value)) {
+  if (attribute.kind === "Number" && Number.isInteger(value)) {
     return true;
   }
 
@@ -86,7 +86,8 @@ const getFormStructureForCreateEdit = (
   generics: iGenericSchema[],
   dropdownOptions: iPeerDropdownOptions,
   row?: any,
-  user?: any
+  user?: any,
+  isUpdate?: boolean
 ): DynamicFieldData[] => {
   if (!schema) {
     return [];
@@ -100,19 +101,25 @@ const getFormStructureForCreateEdit = (
       return;
     }
 
+    const fieldValue = getFieldValue(row, attribute);
+
+    // Quick fix to prevent password in update field,
+    // TODO: remove after new mutations are available to better handle accounts
+    const isOptional = attribute.optional || (isUpdate && attribute.kind === "HashedPassword");
+
     formFields.push({
       name: attribute.name + ".value",
       kind: attribute.kind as SchemaAttributeType,
       type: getInputTypeFromAttribute(attribute),
       label: attribute.label || attribute.name,
-      value: getFieldValue(row, attribute),
+      value: fieldValue,
       options: {
-        values: getOptionsFromAttribute(attribute),
+        values: getOptionsFromAttribute(attribute, fieldValue),
       },
       config: {
-        validate: (value: any) => validate(value, attribute, attribute.optional),
+        validate: (value: any) => validate(value, attribute, isOptional),
       },
-      isOptional: attribute.optional,
+      isOptional,
       isReadOnly: attribute.read_only,
       isProtected: getIsDisabled({
         owner: row && row[attribute.name]?.owner,

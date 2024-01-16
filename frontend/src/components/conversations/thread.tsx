@@ -1,5 +1,6 @@
 import { gql } from "@apollo/client";
 import { formatISO, isBefore, parseISO } from "date-fns";
+import { useAtomValue } from "jotai/index";
 import * as R from "ramda";
 import { useContext, useState } from "react";
 import { toast } from "react-toastify";
@@ -11,19 +12,18 @@ import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { createObject } from "../../graphql/mutations/objects/createObject";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
+import { currentBranchAtom } from "../../state/atoms/branches.atom";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 import { classNames } from "../../utils/common";
 import { getThreadTitle } from "../../utils/diff";
 import { stringifyWithoutQuotes } from "../../utils/string";
-import { ALERT_TYPES, Alert } from "../alert";
-import { Button } from "../button";
-import { Checkbox } from "../checkbox";
-import ModalConfirm from "../modal-confirm";
-import { Tooltip } from "../tooltip";
+import { Button } from "../buttons/button";
+import { Checkbox } from "../inputs/checkbox";
+import ModalConfirm from "../modals/modal-confirm";
+import { ALERT_TYPES, Alert } from "../utils/alert";
+import { Tooltip } from "../utils/tooltip";
 import { AddComment } from "./add-comment";
 import { Comment } from "./comment";
-import { useAtomValue } from "jotai/index";
-import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { datetimeAtom } from "../../state/atoms/time.atom";
 
 type tThread = {
   thread: any;
@@ -53,6 +53,7 @@ export const Thread = (props: tThread) => {
   const handleSubmit = async ({ comment }: { comment: string }) => {
     try {
       setIsLoading(true);
+
       const newObject = {
         text: {
           value: comment,
@@ -178,6 +179,7 @@ export const Thread = (props: tThread) => {
         isResolved ? "bg-gray-200" : "bg-custom-white",
         "p-4 m-4 rounded-lg relative"
       )}
+      data-testid="thread"
       data-cy="thread">
       {displayContext && getThreadTitle(thread)}
 

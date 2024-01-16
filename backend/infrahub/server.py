@@ -1,6 +1,7 @@
 import logging
 import os
 import time
+from contextlib import asynccontextmanager
 from functools import partial
 from typing import Awaitable, Callable
 
@@ -32,10 +33,65 @@ from infrahub.services import InfrahubServices, services
 from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
 from infrahub.trace import add_span_exception, configure_trace, get_traceid, get_tracer
+from infrahub.worker import WORKER_IDENTITY
+
+
+async def app_initialization(application: FastAPI) -> None:
+    if not config.SETTINGS:
+        config_file_name = os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")
+        config_file_path = os.path.abspath(config_file_name)
+        log.info("application_init", config_file=config_file_path)
+        config.load_and_exit(config_file_path)
+
+    # Initialize trace
+    if config.SETTINGS.trace.enable:
+        configure_trace(
+            version=__version__,
+            exporter_type=config.SETTINGS.trace.exporter_type,
+            exporter_endpoint=config.SETTINGS.trace.trace_endpoint,
+            exporter_protocol=config.SETTINGS.trace.exporter_protocol,
+        )
+
+    # Initialize database Driver and load local registry
+    database = application.state.db = InfrahubDatabase(mode=InfrahubDatabaseMode.DRIVER, driver=await get_db())
+
+    initialize_lock()
+
+    async with application.state.db.start_session() as db:
+        await initialization(db=db)
+
+    # Initialize connection to the RabbitMQ bus
+    await connect_to_broker()
+
+    message_bus = config.OVERRIDE.message_bus or RabbitMQMessageBus()
+    cache = config.OVERRIDE.cache or RedisCache()
+    service = InfrahubServices(
+        cache=cache, database=database, message_bus=message_bus, component_type=ComponentType.API_SERVER
+    )
+    await service.initialize()
+    services.prepare(service=service)
+    # Initialize RPC Client
+    rpc_client = InfrahubRpcClient()
+    application.state.rpc_client = rpc_client
+    application.state.service = service
+
+
+async def shutdown(application: FastAPI) -> None:
+    await close_broker_connection()
+    await application.state.db.close()
+
+
+@asynccontextmanager
+async def lifespan(application: FastAPI):
+    await app_initialization(application)
+    yield
+    await shutdown(application)
+
 
 app = FastAPI(
     title="Infrahub",
     version=__version__,
+    lifespan=lifespan,
     contact={
         "name": "OpsMill",
         "email": "info@opsmill.com",
@@ -61,55 +117,6 @@ app.include_router(api)
 templates = Jinja2Templates(directory=f"{FRONTEND_DIRECTORY}/dist")
 
 
-@app.on_event("startup")
-async def app_initialization():
-    if not config.SETTINGS:
-        config_file_name = os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")
-        config_file_path = os.path.abspath(config_file_name)
-        log.info("application_init", config_file=config_file_path)
-        config.load_and_exit(config_file_path)
-
-    # Initialize trace
-    if config.SETTINGS.trace.enable:
-        configure_trace(
-            version=__version__,
-            exporter_type=config.SETTINGS.trace.exporter_type,
-            exporter_endpoint=config.SETTINGS.trace.trace_endpoint,
-            exporter_protocol=config.SETTINGS.trace.exporter_protocol,
-        )
-
-    # Initialize database Driver and load local registry
-    database = app.state.db = InfrahubDatabase(mode=InfrahubDatabaseMode.DRIVER, driver=await get_db())
-
-    initialize_lock()
-
-    async with app.state.db.start_session() as db:
-        await initialization(db=db)
-
-    # Initialize connection to the RabbitMQ bus
-    await connect_to_broker()
-
-    message_bus = config.OVERRIDE.message_bus or RabbitMQMessageBus()
-    cache = config.OVERRIDE.cache or RedisCache()
-    service = InfrahubServices(
-        cache=cache, database=database, message_bus=message_bus, component_type=ComponentType.API_SERVER
-    )
-    await service.initialize()
-    # service.message_bus = app.state.rpc_client.rabbitmq
-    services.prepare(service=service)
-    # Initialize RPC Client
-    rpc_client = InfrahubRpcClient()
-    rpc_client.exchange = message_bus.rpc_exchange
-    app.state.rpc_client = rpc_client
-    app.state.service = service
-
-
-@app.on_event("shutdown")
-async def shutdown():
-    await close_broker_connection()
-    await app.state.db.close()
-
-
 @app.middleware("http")
 async def logging_middleware(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
     clear_log_context()
@@ -118,6 +125,7 @@ async def logging_middleware(request: Request, call_next: Callable[[Request], Aw
         trace_id = get_traceid()
         set_log_data(key="request_id", value=request_id)
         set_log_data(key="app", value="infrahub.api")
+        set_log_data(key="worker", value=WORKER_IDENTITY)
         if trace_id:
             set_log_data(key="trace_id", value=trace_id)
         response = await call_next(request)
@@ -125,7 +133,7 @@ async def logging_middleware(request: Request, call_next: Callable[[Request], Aw
 
 
 @app.middleware("http")
-async def add_process_time_header(request: Request, call_next):
+async def add_process_time_header(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
     start_time = time.time()
     response = await call_next(request)
     process_time = time.time() - start_time
@@ -168,9 +176,5 @@ if os.path.exists(FRONTEND_ASSET_DIRECTORY) and os.path.isdir(FRONTEND_ASSET_DIR
 
 
 @app.get("/{rest_of_path:path}", include_in_schema=False)
-async def react_app(req: Request, rest_of_path: str):  # pylint: disable=unused-argument
+async def react_app(req: Request, rest_of_path: str) -> Response:  # pylint: disable=unused-argument
     return templates.TemplateResponse("index.html", {"request": req})
-
-
-if __name__ != "main":
-    logger.setLevel(gunicorn_logger.level)

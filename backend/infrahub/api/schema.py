@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
-from fastapi import APIRouter, BackgroundTasks, Depends
-from pydantic import BaseModel, Field, root_validator
+from fastapi import APIRouter, BackgroundTasks, Depends, Query
+from pydantic import BaseModel, Field, model_validator
 from starlette.responses import JSONResponse
 
 from infrahub import config, lock
@@ -31,35 +31,29 @@ router = APIRouter(prefix="/schema")
 class APISchemaMixin:
     @classmethod
     def from_schema(cls, schema: NodeSchema) -> Self:
-        data = schema.dict()
+        data = schema.model_dump()
         data["hash"] = schema.get_hash()
         return cls(**data)
 
 
 class APINodeSchema(NodeSchema, APISchemaMixin):
-    api_kind: Optional[str] = Field(default=None, alias="kind")
+    api_kind: Optional[str] = Field(default=None, alias="kind", validate_default=True)
     hash: str
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
     @classmethod
-    def set_kind(
-        cls,
-        values,
-    ):
+    def set_kind(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         values["kind"] = f'{values["namespace"]}{values["name"]}'
         return values
 
 
 class APIGenericSchema(GenericSchema, APISchemaMixin):
-    api_kind: Optional[str] = Field(default=None, alias="kind")
+    api_kind: Optional[str] = Field(default=None, alias="kind", validate_default=True)
     hash: str
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
     @classmethod
-    def set_kind(
-        cls,
-        values,
-    ):
+    def set_kind(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         values["kind"] = f'{values["namespace"]}{values["name"]}'
         return values
 
@@ -83,17 +77,16 @@ class SchemasLoadAPI(SchemaRoot):
 @router.get("/")
 async def get_schema(
     branch: Branch = Depends(get_branch_dep),
+    namespaces: Union[List[str], None] = Query(default=None),
 ) -> SchemaReadAPI:
     log.debug("schema_request", branch=branch.name)
     schema_branch = registry.schema.get_schema_branch(name=branch.name)
-    full_schema = schema_branch.get_all()
+    all_schemas = schema_branch.get_schemas_for_namespaces(namespaces=namespaces)
 
     return SchemaReadAPI(
         main=registry.schema.get_schema_branch(name=branch.name).get_hash(),
-        nodes=[APINodeSchema.from_schema(value) for value in full_schema.values() if isinstance(value, NodeSchema)],
-        generics=[
-            APIGenericSchema.from_schema(value) for value in full_schema.values() if isinstance(value, GenericSchema)
-        ],
+        nodes=[APINodeSchema.from_schema(value) for value in all_schemas if isinstance(value, NodeSchema)],
+        generics=[APIGenericSchema.from_schema(value) for value in all_schemas if isinstance(value, GenericSchema)],
         namespaces=schema_branch.get_namespaces(),
     )
 

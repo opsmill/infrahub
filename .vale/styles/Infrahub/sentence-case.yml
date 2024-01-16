@@ -14,6 +14,7 @@ exceptions:
   - API
   - Attributes
   - CI
+  - Codespaces
   - Docker Compose
   - E2E
   - Generics
@@ -23,6 +24,7 @@ exceptions:
   - GitPod
   - GraphQL
   - GraphQLQuery
+  - include_in_menu & menu_placement
   - Helm
   - Infrahub
   - infrahubctl
@@ -38,3 +40,4 @@ exceptions:
   - TransformPython
   - Vale
   - VS Code
+  - VS Code extensions

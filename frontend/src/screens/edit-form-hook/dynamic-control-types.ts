@@ -1,5 +1,5 @@
 import { RegisterOptions } from "react-hook-form";
-import { SelectOption } from "../../components/select";
+import { SelectOption } from "../../components/inputs/select";
 import { iPeerDropdownOptions } from "../../graphql/queries/objects/dropdownOptionsForRelatedPeers";
 import { FormFieldError } from "./form";
 
@@ -46,7 +46,6 @@ export type SchemaAttributeType =
   | "List"
   | "Any"
   | "String"
-  | "Integer"
   | "Boolean"
   | "JSON"
   | "Dropdown";
@@ -59,25 +58,28 @@ export type ControlType =
   | "select"
   | "select2step"
   | "multiselect"
+  | "list"
   | "number"
   | "checkbox"
   | "switch"
   | "datepicker"
   | "json"
   | "dropdown"
-  | "enum";
+  | "enum"
+  | "color";
 
 export type RelationshipCardinality = "one" | "many";
 
 export const getInputTypeFromKind = (kind: SchemaAttributeType): ControlType => {
   switch (kind) {
+    case "List":
+      return "list";
     case "Dropdown":
       return "dropdown";
     case "TextArea":
       return "textarea";
     case "Number":
     case "Bandwidth":
-    case "Integer":
       return "number";
     case "Checkbox":
     case "Boolean":
@@ -98,7 +100,6 @@ export const getInputTypeFromKind = (kind: SchemaAttributeType): ControlType => 
     case "Color":
     case "IPHost":
     case "IPNetwork":
-    case "List":
     case "Any":
     case "String":
     default:
@@ -126,7 +127,14 @@ export const getInputTypeFromRelationship = (relationship: any, isInherited: boo
   return "select";
 };
 
-export const getOptionsFromAttribute = (attribute: any) => {
+export const getOptionsFromAttribute = (attribute: any, value: any) => {
+  if (attribute.kind === "List") {
+    return value?.map((option: any) => ({
+      name: option,
+      id: option,
+    }));
+  }
+
   if (attribute.enum) {
     return attribute.enum?.map((option: any) => ({
       name: option,

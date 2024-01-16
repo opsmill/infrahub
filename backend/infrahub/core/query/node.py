@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Tuple, Union
 
-from infrahub.core.constants import RelationshipDirection
+from infrahub import config
+from infrahub.core.constants import RelationshipDirection, RelationshipHierarchyDirection
 from infrahub.core.query import Query, QueryResult, QueryType
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
 from infrahub.core.query.utils import find_node_schema
@@ -16,7 +17,7 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
     from infrahub.core.relationship import RelationshipCreateData, RelationshipManager
-    from infrahub.core.schema import NodeSchema
+    from infrahub.core.schema import GenericSchema, NodeSchema
     from infrahub.database import InfrahubDatabase
 
 # pylint: disable=consider-using-f-string,redefined-builtin
@@ -144,9 +145,12 @@ class NodeCreateAllQuery(NodeQuery):
             "status": "active",
             "from": at.to_string(),
         }
+
+        rel_prop_str = "{ branch: rel.branch, branch_level: rel.branch_level, status: rel.status, hierarchy: rel.hierarchical, from: $at, to: null }"
+
         query = """
         MATCH (root:Root)
-        CREATE (n:Node:%s $node_prop )
+        CREATE (n:Node:%(labels)s $node_prop )
         CREATE (n)-[r:IS_PART_OF $node_branch_prop ]->(root)
         WITH distinct n
         FOREACH ( attr IN $attrs |
@@ -170,8 +174,8 @@ class NodeCreateAllQuery(NodeQuery):
         FOREACH ( rel IN $rels_bidir |
             MERGE (d:Node { uuid: rel.destination_id })
             CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
-            CREATE (n)-[:IS_RELATED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(rl)
-            CREATE (d)-[:IS_RELATED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null  }]->(rl)
+            CREATE (n)-[:IS_RELATED %(rel_prop)s ]->(rl)
+            CREATE (d)-[:IS_RELATED %(rel_prop)s ]->(rl)
             MERGE (ip:Boolean { value: rel.is_protected })
             MERGE (iv:Boolean { value: rel.is_visible })
             CREATE (rl)-[:IS_PROTECTED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(ip)
@@ -188,8 +192,8 @@ class NodeCreateAllQuery(NodeQuery):
         FOREACH ( rel IN $rels_out |
             MERGE (d:Node { uuid: rel.destination_id })
             CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
-            CREATE (n)-[:IS_RELATED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(rl)
-            CREATE (d)<-[:IS_RELATED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null  }]-(rl)
+            CREATE (n)-[:IS_RELATED %(rel_prop)s ]->(rl)
+            CREATE (d)<-[:IS_RELATED %(rel_prop)s ]-(rl)
             MERGE (ip:Boolean { value: rel.is_protected })
             MERGE (iv:Boolean { value: rel.is_visible })
             CREATE (rl)-[:IS_PROTECTED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(ip)
@@ -206,8 +210,8 @@ class NodeCreateAllQuery(NodeQuery):
         FOREACH ( rel IN $rels_in |
             MERGE (d:Node { uuid: rel.destination_id })
             CREATE (rl:Relationship { uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support })
-            CREATE (n)<-[:IS_RELATED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]-(rl)
-            CREATE (d)-[:IS_RELATED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null  }]->(rl)
+            CREATE (n)<-[:IS_RELATED %(rel_prop)s ]-(rl)
+            CREATE (d)-[:IS_RELATED %(rel_prop)s ]->(rl)
             MERGE (ip:Boolean { value: rel.is_protected })
             MERGE (iv:Boolean { value: rel.is_visible })
             CREATE (rl)-[:IS_PROTECTED { branch: rel.branch, branch_level: rel.branch_level, status: rel.status, from: $at, to: null }]->(ip)
@@ -223,7 +227,7 @@ class NodeCreateAllQuery(NodeQuery):
         )
         WITH distinct n
         MATCH (n)-[:HAS_ATTRIBUTE|IS_RELATED]-(rn)-[:HAS_VALUE|IS_RELATED]-(rv)
-        """ % ":".join(self.node.get_labels())
+        """ % {"labels": ":".join(self.node.get_labels()), "rel_prop": rel_prop_str}
 
         self.params["at"] = at.to_string()
 
@@ -300,35 +304,6 @@ class NodeCheckIDQuery(Query):
 
         self.add_to_query(query)
         self.return_labels = ["n"]
-
-
-class NodeListGetLocalAttributeValueQuery(Query):
-    name: str = "node_list_get_local_attribute_value"
-
-    def __init__(self, ids: List[str], *args, **kwargs):
-        self.ids = ids
-        super().__init__(*args, **kwargs)
-
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
-        self.params["attrs_ids"] = self.ids
-
-        rel_filter, rel_params = self.branch.get_query_filter_relationships(
-            rel_labels=["r1"], at=self.at.to_string(), include_outside_parentheses=False
-        )
-
-        self.params.update(rel_params)
-
-        query = """
-        MATCH (a:Attribute) WHERE a.uuid IN $attrs_ids
-        MATCH (a)-[r1:HAS_VALUE]-(av:AttributeValue)
-        WHERE %s
-        """ % rel_filter[0]
-
-        self.add_to_query(query)
-        self.return_labels = ["a", "av", "r1"]
-
-    def get_results_by_id(self):
-        return {item.get("a").get("uuid"): item for item in self.get_results_group_by(("a", "uuid"), ("a", "name"))}
 
 
 class NodeListGetAttributeQuery(Query):
@@ -661,9 +636,7 @@ class NodeGetListQuery(Query):
                 self.order_by.append(subquery_result_name)
                 self.params.update(subquery_params)
 
-                self.add_to_query("CALL {")
-                self.add_to_query(subquery)
-                self.add_to_query("}")
+                self.add_subquery(subquery=subquery)
 
                 order_cnt += 1
 
@@ -716,3 +689,152 @@ class NodeGetListQuery(Query):
 
     def get_node_ids(self) -> List[str]:
         return [str(result.get("n.uuid")) for result in self.get_results()]
+
+
+class NodeGetHierarchyQuery(Query):
+    name = "node_get_hierarchy"
+
+    type: QueryType = QueryType.READ
+
+    def __init__(
+        self,
+        node_id: str,
+        direction: RelationshipHierarchyDirection,
+        node_schema: Union[NodeSchema, GenericSchema],
+        filters: Optional[dict] = None,
+        *args,
+        **kwargs,
+    ):
+        self.filters = filters or {}
+        self.direction = direction
+        self.node_id = node_id
+        self.node_schema = node_schema
+
+        super().__init__(*args, **kwargs)
+
+        self.hierarchy_schema = node_schema.get_hierarchy_schema(self.branch)
+
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):  # pylint: disable=too-many-statements
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        self.params.update(branch_params)
+        self.order_by = []
+        self.params["uuid"] = self.node_id
+
+        filter_str = "[:IS_RELATED*2..%s { hierarchy: $hierarchy }]" % (
+            config.SETTINGS.database.max_depth_search_hierarchy * 2,
+        )
+        self.params["hierarchy"] = self.hierarchy_schema.kind
+
+        if self.direction == RelationshipHierarchyDirection.ANCESTORS:
+            filter_str = f"-{filter_str}->"
+        else:
+            filter_str = f"<-{filter_str}-"
+
+        froms_var = db.render_list_comprehension(items="relationships(path)", item_name="from")
+        with_clause = (
+            "peer, path,"
+            " reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level) AS branch_level,"
+            f" {froms_var} AS froms"
+        )
+
+        query = """
+        MATCH path = (n:Node { uuid: $uuid } )%(filter)s(peer:Node)
+        WHERE $hierarchy IN LABELS(peer) and all(r IN relationships(path) WHERE (%(branch_filter)s))
+        WITH n, last(nodes(path)) as peer
+        CALL {
+            WITH n, peer
+            MATCH path = (n)%(filter)s(peer)
+            WHERE all(r IN relationships(path) WHERE (%(branch_filter)s))
+            WITH %(with_clause)s
+            RETURN peer as peer1, path as path1
+            ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC
+            LIMIT 1
+        }
+        WITH peer1 as peer, path1 as path
+        """ % {"filter": filter_str, "branch_filter": branch_filter, "with_clause": with_clause}
+
+        self.add_to_query(query)
+        where_clause = ['all(r IN relationships(path) WHERE (r.status = "active"))']
+
+        clean_filters = extract_field_filters(field_name=self.direction.value, filters=self.filters)
+
+        if clean_filters and "id" in clean_filters or "ids" in clean_filters:
+            where_clause.append("peer.uuid IN $peer_ids")
+            self.params["peer_ids"] = clean_filters.get("ids", [])
+            if clean_filters.get("id", None):
+                self.params["peer_ids"].append(clean_filters.get("id"))
+
+        self.add_to_query("WHERE " + " AND ".join(where_clause))
+
+        self.return_labels = ["peer"]
+
+        # ----------------------------------------------------------------------------
+        # FILTER Results
+        # ----------------------------------------------------------------------------
+        filter_cnt = 0
+        for peer_filter_name, peer_filter_value in clean_filters.items():
+            if "__" not in peer_filter_name:
+                continue
+
+            filter_cnt += 1
+
+            filter_field_name, filter_next_name = peer_filter_name.split("__", maxsplit=1)
+
+            if filter_field_name not in self.hierarchy_schema.valid_input_names:
+                continue
+
+            field = self.hierarchy_schema.get_field(filter_field_name)
+
+            subquery, subquery_params, subquery_result_name = await build_subquery_filter(
+                db=db,
+                node_alias="peer",
+                field=field,
+                name=filter_field_name,
+                filter_name=filter_next_name,
+                filter_value=peer_filter_value,
+                branch_filter=branch_filter,
+                branch=self.branch,
+                subquery_idx=filter_cnt,
+            )
+            self.params.update(subquery_params)
+
+            with_str = ", ".join(
+                [f"{subquery_result_name} as {label}" if label == "peer" else label for label in self.return_labels]
+            )
+
+            self.add_subquery(subquery=subquery, with_clause=with_str)
+
+        # ----------------------------------------------------------------------------
+        # ORDER Results
+        # ----------------------------------------------------------------------------
+        if hasattr(self.hierarchy_schema, "order_by") and self.hierarchy_schema.order_by:
+            order_cnt = 1
+
+            for order_by_value in self.hierarchy_schema.order_by:
+                order_by_field_name, order_by_next_name = order_by_value.split("__", maxsplit=1)
+
+                field = self.hierarchy_schema.get_field(order_by_field_name)
+
+                subquery, subquery_params, subquery_result_name = await build_subquery_order(
+                    db=db,
+                    field=field,
+                    node_alias="peer",
+                    name=order_by_field_name,
+                    order_by=order_by_next_name,
+                    branch_filter=branch_filter,
+                    branch=self.branch,
+                    subquery_idx=order_cnt,
+                )
+                self.order_by.append(subquery_result_name)
+                self.params.update(subquery_params)
+
+                self.add_subquery(subquery=subquery)
+
+                order_cnt += 1
+        else:
+            self.order_by.append("peer.uuid")
+
+    def get_peer_ids(self) -> Generator[str, None, None]:
+        for result in self.get_results_group_by(("peer", "uuid")):
+            data = result.get("peer").get("uuid")
+            yield data

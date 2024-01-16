@@ -5,6 +5,7 @@ from git import Repo
 from infrahub_sdk import UUIDT, InfrahubNode
 from infrahub_sdk.branch import BranchData
 
+from infrahub.core.constants import InfrahubKind
 from infrahub.exceptions import (
     CheckError,
     CommitNotFoundError,
@@ -790,7 +791,7 @@ async def test_create_python_check_definition(
     module = helper.import_module_in_fixtures(module="checks/check01")
     check_class = getattr(module, "Check01")
 
-    gql_schema = await repo.client.schema.get(kind="CoreGraphQLQuery")
+    gql_schema = await repo.client.schema.get(kind=InfrahubKind.GRAPHQLQUERY)
 
     query = InfrahubNode(client=repo.client, schema=gql_schema, data=gql_query_data_01)
 
@@ -822,8 +823,8 @@ async def test_compare_python_check(
     module = helper.import_module_in_fixtures(module="checks/check01")
     check_class = getattr(module, "Check01")
 
-    gql_schema = await repo.client.schema.get(kind="CoreGraphQLQuery")
-    check_schema = await repo.client.schema.get(kind="CoreCheckDefinition")
+    gql_schema = await repo.client.schema.get(kind=InfrahubKind.GRAPHQLQUERY)
+    check_schema = await repo.client.schema.get(kind=InfrahubKind.CHECKDEFINITION)
 
     query_01 = InfrahubNode(client=repo.client, schema=gql_schema, data=gql_query_data_01)
     query_02 = InfrahubNode(client=repo.client, schema=gql_schema, data=gql_query_data_02)

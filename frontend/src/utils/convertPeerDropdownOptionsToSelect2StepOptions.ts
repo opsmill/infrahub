@@ -1,7 +1,7 @@
 import * as R from "ramda";
+import { SelectOption } from "../components/inputs/select";
 import { iSchemaKindNameMap } from "../state/atoms/schemaKindName.atom";
 import { iPeerDropdownOptions } from "./dropdownOptionsForRelatedPeers";
-import { SelectOption } from "../components/select";
 
 export const convertPeerDropdownOptionsToSelect2StepOptions = (
   options: iPeerDropdownOptions,

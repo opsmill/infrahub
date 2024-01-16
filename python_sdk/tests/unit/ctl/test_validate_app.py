@@ -3,8 +3,8 @@ import os
 import pytest
 from typer.testing import CliRunner
 
-from infrahub_ctl.utils import get_fixtures_dir
-from infrahub_ctl.validate import app
+from infrahub_sdk.ctl.utils import get_fixtures_dir
+from infrahub_sdk.ctl.validate import app
 
 runner = CliRunner()
 

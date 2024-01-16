@@ -1,25 +1,26 @@
 import { gql } from "@apollo/client";
-import { ChevronLeftIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { ChevronLeftIcon } from "@heroicons/react/24/outline";
+import { Icon } from "@iconify-icon/react";
+import { useAtomValue } from "jotai/index";
 import { useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { ALERT_TYPES, Alert } from "../../components/alert";
-import { AVATAR_SIZE, Avatar } from "../../components/avatar";
-import { Badge } from "../../components/badge";
-import { BUTTON_TYPES, Button } from "../../components/button";
-import { DateDisplay } from "../../components/date-display";
-import ModalDelete from "../../components/modal-delete";
-import { Tooltip } from "../../components/tooltip";
+import { RoundedButton } from "../../components/buttons/rounded-button";
+import { AVATAR_SIZE, Avatar } from "../../components/display/avatar";
+import { Badge } from "../../components/display/badge";
+import { DateDisplay } from "../../components/display/date-display";
+import ModalDelete from "../../components/modals/modal-delete";
+import { ALERT_TYPES, Alert } from "../../components/utils/alert";
+import { Tooltip } from "../../components/utils/tooltip";
 import { PROPOSED_CHANGES_OBJECT } from "../../config/constants";
 import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { deleteObject } from "../../graphql/mutations/objects/deleteObject";
+import { currentBranchAtom } from "../../state/atoms/branches.atom";
+import { datetimeAtom } from "../../state/atoms/time.atom";
 import { constructPath } from "../../utils/fetch";
 import { getProposedChangesStateBadgeType } from "../../utils/proposed-changes";
 import { stringifyWithoutQuotes } from "../../utils/string";
-import { useAtomValue } from "jotai/index";
-import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { datetimeAtom } from "../../state/atoms/time.atom";
 
 export const ProposedChange = (props: any) => {
   const { row, refetch } = props;
@@ -72,13 +73,17 @@ export const ProposedChange = (props: any) => {
     <li
       className="relative col-span-1 rounded-lg bg-custom-white shadow cursor-pointer hover:bg-gray-50 group/pc"
       onClick={() => navigate(constructPath(`/proposed-changes/${row.id}`))}>
-      <Button
-        buttonType={BUTTON_TYPES.INVISIBLE}
-        className="absolute -right-4 -top-4 hidden group-hover/pc:block"
+      <RoundedButton
+        className={`
+          p-3 absolute -right-5 -top-5
+          bg-custom-white hover:bg-gray-50
+          hidden group-hover/pc:flex
+        `}
         onClick={() => setDeleteModal(true)}
+        data-testid="delete-proposed-change-button"
         disabled={!auth?.permissions?.write}>
-        <TrashIcon className="h-4 w-4 text-red-500" />
-      </Button>
+        <Icon icon="mdi:delete" height="16" width="16" className="text-red-600" />
+      </RoundedButton>
 
       <div className="flex w-full items-center justify-between space-x-6 p-6">
         <div className="flex flex-1">

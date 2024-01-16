@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 from infrahub_sdk import UUIDT
 from infrahub_sdk.utils import intersection
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 
 from infrahub.core import registry
 from infrahub.core.constants import BranchSupportType
@@ -55,6 +55,7 @@ class RelationshipCreateData(BaseModel):
     status: str
     is_protected: bool
     is_visible: bool
+    hierarchical: Optional[str] = None
     source_prop: List[ValuePropertyData] = Field(default_factory=list)
     owner_prop: List[NodePropertyData] = Field(default_factory=list)
 
@@ -369,7 +370,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
 
         return self
 
-    async def to_graphql(self, fields: dict, db: InfrahubDatabase) -> dict:
+    async def to_graphql(self, fields: dict, db: InfrahubDatabase, related_node_ids: Optional[set] = None) -> dict:
         """Generate GraphQL Payload for the associated Peer."""
 
         peer_fields = {
@@ -382,7 +383,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         }
 
         peer = await self.get_peer(db=db)
-        response = await peer.to_graphql(fields=peer_fields, db=db)
+        response = await peer.to_graphql(fields=peer_fields, db=db, related_node_ids=related_node_ids)
 
         for field_name in rel_fields.keys():
             if field_name == "updated_at":
@@ -395,7 +396,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
                     response[f"{PREFIX_PROPERTY}{field_name}"] = None
                 else:
                     response[f"{PREFIX_PROPERTY}{field_name}"] = await node_prop.to_graphql(
-                        db=db, fields=rel_fields[field_name]
+                        db=db, fields=rel_fields[field_name], related_node_ids=related_node_ids
                     )
             if field_name in self._flag_properties:
                 response[f"{PREFIX_PROPERTY}{field_name}"] = getattr(self, field_name)
@@ -420,6 +421,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
             direction=self.schema.direction.value,
             branch_level=self.branch.hierarchy_level,
             branch_support=self.schema.branch.value,
+            hierarchical=self.schema.hierarchical,
             is_protected=self.is_protected,
             is_visible=self.is_visible,
         )

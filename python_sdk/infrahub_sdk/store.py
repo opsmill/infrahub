@@ -31,7 +31,6 @@ class NodeStoreBase:
             if not raise_when_missing:
                 return None
             raise NodeNotFound(
-                branch_name="n/a",
                 node_type=kind,
                 identifier={"key": [key]},
                 message="Unable to find the node in the Store",
@@ -47,7 +46,6 @@ class NodeStoreBase:
         if not raise_when_missing:
             return None
         raise NodeNotFound(
-            branch_name="n/a",
             node_type="n/a",
             identifier={"key": [key]},
             message=f"Unable to find the node {key!r} in the Store",

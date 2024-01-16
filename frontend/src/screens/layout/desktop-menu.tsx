@@ -1,15 +1,15 @@
+import { useAtomValue } from "jotai/index";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { ALERT_TYPES, Alert } from "../../components/alert";
+import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import { CONFIG } from "../../config/config";
 import logo from "../../images/Infrahub-SVG-hori.svg";
+import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { fetchUrl } from "../../utils/fetch";
 import LoadingScreen from "../loading-screen/loading-screen";
 import DropDownMenuHeader from "./desktop-menu-header";
 import { Footer } from "./footer";
-import { useAtomValue } from "jotai/index";
-import { currentBranchAtom } from "../../state/atoms/branches.atom";
 
 export default function DesktopMenu() {
   const navigate = useNavigate();
@@ -54,7 +54,8 @@ export default function DesktopMenu() {
             <nav
               className="flex-1 bg-custom-white divide-y"
               aria-label="Sidebar"
-              data-cy="sidebar-menu">
+              data-cy="sidebar-menu"
+              data-testid="sidebar-menu">
               {menu.map((item: any, index: number) => (
                 <DropDownMenuHeader
                   key={index}

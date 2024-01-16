@@ -14,6 +14,8 @@ async def mock_gql_query_my_query(httpx_mock: HTTPXMock) -> HTTPXMock:
     response = {"data": {"mock": []}}
 
     httpx_mock.add_response(
-        method="GET", json=response, url="http://localhost:8000/api/query/my_query?branch=main&rebase=true"
+        method="POST",
+        json=response,
+        url="http://localhost:8000/api/query/my_query?branch=main&rebase=true&update_group=false",
     )
     return httpx_mock

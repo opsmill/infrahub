@@ -4,14 +4,14 @@ import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
 import { useContext, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import { ALERT_TYPES, Alert } from "../../components/alert";
-import { BUTTON_TYPES, Button } from "../../components/button";
-import ModalDelete from "../../components/modal-delete";
-import { Pagination } from "../../components/pagination";
-import { RoundedButton } from "../../components/rounded-button";
-import SlideOver from "../../components/slide-over";
+import { BUTTON_TYPES, Button } from "../../components/buttons/button";
+import { RoundedButton } from "../../components/buttons/rounded-button";
+import SlideOver from "../../components/display/slide-over";
+import ModalDelete from "../../components/modals/modal-delete";
+import { ALERT_TYPES, Alert } from "../../components/utils/alert";
+import { Pagination } from "../../components/utils/pagination";
 import { DEFAULT_BRANCH_NAME, MENU_EXCLUDELIST } from "../../config/constants";
 import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
@@ -20,16 +20,18 @@ import { getObjectItemsPaginated } from "../../graphql/queries/objects/getObject
 import useFilters from "../../hooks/useFilters";
 import usePagination from "../../hooks/usePagination";
 import useQuery from "../../hooks/useQuery";
+import { useTitle } from "../../hooks/useTitle";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { iComboBoxFilter } from "../../state/atoms/filters.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
+import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
-import { classNames } from "../../utils/common";
 import { constructPath } from "../../utils/fetch";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
 import {
+  getObjectAttributes,
+  getObjectRelationships,
   getSchemaObjectColumns,
-  getSchemaRelationshipColumns,
 } from "../../utils/getSchemaObjectColumns";
 import { getObjectDetailsUrl } from "../../utils/objects";
 import { stringifyWithoutQuotes } from "../../utils/string";
@@ -56,6 +58,7 @@ export default function ObjectItems(props: any) {
   const [genericList] = useAtom(genericsState);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
+  const [schemaKindName] = useAtom(schemaKindNameState);
   const [filters] = useFilters();
   const [pagination] = usePagination();
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
@@ -72,10 +75,12 @@ export default function ObjectItems(props: any) {
   if ((schemaList?.length || genericList?.length) && !schemaData) {
     // If there is no schema nor generics, go to home page
     navigate("/");
+    return null;
   }
 
   if (schemaData && MENU_EXCLUDELIST.includes(schemaData.kind) && !preventBlock) {
     navigate("/");
+    return null;
   }
 
   // All the fiter values are being sent out as strings inside quotes.
@@ -94,13 +99,15 @@ export default function ObjectItems(props: any) {
   ].join(",");
 
   // Get all the needed columns (attributes + relationships)
-  const columns = getSchemaObjectColumns(schemaData);
+  const columns = getSchemaObjectColumns(schemaData, true);
+  const attributes = getObjectAttributes(schemaData);
+  const relationships = getObjectRelationships(schemaData, true);
 
   const queryString = schemaData
     ? getObjectItemsPaginated({
         kind: schemaData.kind,
-        attributes: schemaData.attributes,
-        relationships: getSchemaRelationshipColumns(schemaData),
+        attributes,
+        relationships,
         filters: filtersString,
       })
     : // Empty query to make the gql parsing work
@@ -116,6 +123,8 @@ export default function ObjectItems(props: any) {
   const result = data && schemaData?.kind ? data[schemaData?.kind] ?? {} : {};
 
   const { count, edges } = result;
+
+  useTitle(`${schemaKindName[objectname]} list`);
 
   const rows = edges?.map((edge: any) => edge.node);
 
@@ -182,6 +191,7 @@ export default function ObjectItems(props: any) {
         {schema && (
           <RoundedButton
             data-cy="create"
+            data-testid="create-object-button"
             disabled={!auth?.permissions?.write}
             onClick={() => setShowCreateDrawer(true)}>
             <PlusIcon className="w-4 h-4" aria-hidden="true" />
@@ -193,48 +203,40 @@ export default function ObjectItems(props: any) {
 
       {loading && !rows && <LoadingScreen />}
 
-      {!loading && rows && (
-        <div className="flex-1 shadow-sm ring-1 ring-custom-black ring-opacity-5 overflow-x-auto">
-          <table className="min-w-full border-separate" style={{ borderSpacing: 0 }}>
-            <thead className="bg-gray-50 text-left">
+      {rows && (
+        <div>
+          <table className="table-auto border-spacing-0 w-full">
+            <thead className="bg-gray-50 text-left border-b border-gray-300">
               <tr>
                 {columns?.map((attribute) => (
                   <th
                     key={attribute.name}
                     scope="col"
-                    className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 p-2 text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter">
+                    className="p-2 text-xs font-semibold text-gray-900">
                     {attribute.label}
                   </th>
                 ))}
-                <th
-                  scope="col"
-                  className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 p-2 text-xs font-semibold text-gray-900 backdrop-blur backdrop-filter"></th>
+                <th scope="col"></th>
               </tr>
             </thead>
+
             <tbody className="bg-custom-white text-left">
               {rows?.map((row: any, index: number) => (
                 <tr
-                  onClick={() =>
-                    navigate(constructPath(getObjectDetailsUrl(row.id, row.__typename)))
-                  }
                   key={index}
-                  className="hover:bg-gray-50 cursor-pointer">
+                  className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer"
+                  data-cy="object-table-row">
                   {columns?.map((attribute) => (
-                    <td
-                      key={row.id + "-" + attribute.name}
-                      className={classNames(
-                        index !== rows.length - 1 ? "border-b border-gray-200" : "",
-                        "whitespace-wrap px-2 py-1 text-xs text-gray-900"
-                      )}>
-                      {getObjectItemDisplayValue(row, attribute)}
+                    <td key={row.id + "-" + attribute.name} className="p-0">
+                      <Link
+                        className="whitespace-wrap px-2 py-1 text-xs text-gray-900 min-h-7 flex items-center"
+                        to={constructPath(getObjectDetailsUrl(row.id, row.__typename))}>
+                        <div className="flex-grow">{getObjectItemDisplayValue(row, attribute)}</div>
+                      </Link>
                     </td>
                   ))}
 
-                  <td
-                    className={classNames(
-                      index !== rows.length - 1 ? "border-b border-gray-200" : "",
-                      "whitespace-wrap text-xs text-gray-900 text-right"
-                    )}>
+                  <td className="text-right w-8">
                     <Button
                       data-cy="delete"
                       disabled={!auth?.permissions?.write}

@@ -1,6 +1,6 @@
 from typing import Dict, Union
 
-from graphene import Boolean, InputObjectType, Mutation, String
+from graphene import Boolean, Field, InputObjectType, Mutation, String
 from graphql import GraphQLResolveInfo
 
 from infrahub import config, lock
@@ -15,6 +15,8 @@ from infrahub.log import get_logger
 from infrahub.message_bus import Meta, messages
 from infrahub.services import services
 from infrahub.worker import WORKER_IDENTITY
+
+from ..types import DropdownFields
 
 log = get_logger()
 
@@ -42,6 +44,7 @@ class SchemaDropdownAdd(Mutation):
         data = SchemaDropdownAddInput(required=True)
 
     ok = Boolean()
+    object = Field(DropdownFields)
 
     @classmethod
     async def mutate(
@@ -49,7 +52,7 @@ class SchemaDropdownAdd(Mutation):
         root: dict,  # pylint: disable=unused-argument
         info: GraphQLResolveInfo,
         data: SchemaDropdownAddInput,
-    ) -> Dict[str, bool]:
+    ):
         db: InfrahubDatabase = info.context.get("infrahub_database")
         branch: Branch = info.context.get("infrahub_branch")
         kind = registry.get_schema(name=str(data.kind), branch=branch.name)
@@ -72,7 +75,22 @@ class SchemaDropdownAdd(Mutation):
 
         await update_registry(kind=kind, branch=branch, db=db)
 
-        return {"ok": True}
+        kind = registry.get_schema(name=str(data.kind), branch=branch.name)
+        attrib = kind.get_attribute(attribute)
+        dropdown_entry = {}
+        success = False
+
+        for entry in attrib.choices:
+            if entry.name == dropdown:
+                dropdown_entry = {
+                    "value": dropdown,
+                    "color": entry.color,
+                    "label": entry.label,
+                    "description": description,
+                }
+                success = True
+
+        return cls(object=dropdown_entry, ok=success)
 
 
 class SchemaDropdownRemove(Mutation):
@@ -93,8 +111,8 @@ class SchemaDropdownRemove(Mutation):
         kind = registry.get_schema(name=str(data.kind), branch=branch.name)
 
         attribute = str(data.attribute)
-        dropdown = str(data.dropdown)
         validate_kind_dropdown(kind=kind, attribute=attribute)
+        dropdown = str(data.dropdown)
         nodes_with_dropdown = await NodeManager.query(
             db=db, schema=kind.kind, filters={f"{attribute}__value": dropdown}
         )

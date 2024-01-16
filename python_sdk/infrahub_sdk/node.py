@@ -65,7 +65,7 @@ class Attribute:
         self.name = name
         self._schema = schema
 
-        if not isinstance(data, dict):
+        if not isinstance(data, dict) or "value" not in data.keys():
             data = {"value": data}
 
         self._properties_flag = PROPERTIES_FLAG
@@ -97,7 +97,7 @@ class Attribute:
 
         for prop_name in self._properties_object:
             if data.get(prop_name):
-                setattr(self, prop_name, NodeProperty(data=data.get(prop_name)))
+                setattr(self, prop_name, NodeProperty(data=data.get(prop_name)))  # type: ignore[arg-type]
 
     def _generate_input_data(self) -> Optional[Dict]:
         data: Dict[str, Any] = {}
@@ -698,7 +698,13 @@ class InfrahubNodeBase:
 
         return f"{self._schema.kind} ({self.id}) "
 
-    def _generate_input_data(self, update: bool = False) -> Dict[str, Dict]:
+    def get_kind(self) -> str:
+        return self._schema.kind
+
+    def get_raw_graphql_data(self) -> Optional[Dict]:
+        return self._data
+
+    def _generate_input_data(self, exclude_unmodified: bool = False) -> Dict[str, Dict]:
         """Generate a dictionary that represent the input data required by a mutation.
 
         Returns:
@@ -762,7 +768,7 @@ class InfrahubNodeBase:
             elif rel_schema.cardinality == RelationshipCardinality.MANY:
                 data[item_name] = []
 
-        if update:
+        if exclude_unmodified:
             data, variables = self._strip_unmodified(data=data, variables=variables)
 
         mutation_variables = {key: type(value) for key, value in variables.items()}
@@ -1031,9 +1037,9 @@ class InfrahubNode(InfrahubNodeBase):
     async def save(self, at: Optional[Timestamp] = None) -> None:
         at = Timestamp(at)
         if self._existing is False:
-            await self._create(at=at)
+            await self.create(at=at)
         else:
-            await self._update(at=at)
+            await self.update(at=at)
 
         self._client.store.set(key=self.id, node=self)
 
@@ -1166,28 +1172,37 @@ class InfrahubNode(InfrahubNodeBase):
 
         return data
 
-    async def _create(self, at: Timestamp) -> None:
+    async def create(self, at: Timestamp, allow_update: bool = False) -> None:
         input_data = self._generate_input_data()
         input_data["data"]["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
-        mutation_name = f"{self._schema.kind}Create"
+        if allow_update:
+            mutation_name = f"{self._schema.kind}Upsert"
+            tracker = f"mutation-{str(self._schema.kind).lower()}-upsert"
+        else:
+            mutation_name = f"{self._schema.kind}Create"
+            tracker = f"mutation-{str(self._schema.kind).lower()}-create"
         query = Mutation(
             mutation=mutation_name,
             input_data=input_data["data"],
             query=mutation_query,
             variables=input_data["mutation_variables"],
         )
-        await self._client.execute_graphql(
+        response = await self._client.execute_graphql(
             query=query.render(),
             branch_name=self._branch,
             at=at,
-            tracker=f"mutation-{str(self._schema.kind).lower()}-create",
+            tracker=tracker,
             variables=input_data["variables"],
         )
         self._existing = True
 
-    async def _update(self, at: Timestamp) -> None:
-        input_data = self._generate_input_data(update=True)
+        # If Upsert was use we need to read back the ID from the response in case the node already existed
+        if allow_update:
+            self.id = response[mutation_name]["object"]["id"]
+
+    async def update(self, at: Timestamp, do_full_update: bool = False) -> None:
+        input_data = self._generate_input_data(exclude_unmodified=not do_full_update)
         input_data["data"]["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
         query = Mutation(
@@ -1335,9 +1350,9 @@ class InfrahubNodeSync(InfrahubNodeBase):
     def save(self, at: Optional[Timestamp] = None) -> None:
         at = Timestamp(at)
         if self._existing is False:
-            self._create(at=at)
+            self.create(at=at)
         else:
-            self._update(at=at)
+            self.update(at=at)
 
         self._client.store.set(key=self.id, node=self)
 
@@ -1469,11 +1484,16 @@ class InfrahubNodeSync(InfrahubNodeBase):
 
         return data
 
-    def _create(self, at: Timestamp) -> None:
+    def create(self, at: Timestamp, allow_update: bool = False) -> None:
         input_data = self._generate_input_data()
         input_data["data"]["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
-        mutation_name = f"{self._schema.kind}Create"
+        if allow_update:
+            mutation_name = f"{self._schema.kind}Upsert"
+            tracker = f"mutation-{str(self._schema.kind).lower()}-upsert"
+        else:
+            mutation_name = f"{self._schema.kind}Create"
+            tracker = f"mutation-{str(self._schema.kind).lower()}-create"
         query = Mutation(
             mutation=mutation_name,
             input_data=input_data["data"],
@@ -1481,17 +1501,21 @@ class InfrahubNodeSync(InfrahubNodeBase):
             variables=input_data["mutation_variables"],
         )
 
-        self._client.execute_graphql(
+        response = self._client.execute_graphql(
             query=query.render(),
             branch_name=self._branch,
             at=at,
-            tracker=f"mutation-{str(self._schema.kind).lower()}-create",
+            tracker=tracker,
             variables=input_data["variables"],
         )
         self._existing = True
 
-    def _update(self, at: Timestamp) -> None:
-        input_data = self._generate_input_data(update=True)
+        # If Upsert was use we need to read back the ID from the response in case the node already existed
+        if allow_update:
+            self.id = response[mutation_name]["object"]["id"]
+
+    def update(self, at: Timestamp, do_full_update: bool = False) -> None:
+        input_data = self._generate_input_data(exclude_unmodified=not do_full_update)
         input_data["data"]["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
         query = Mutation(

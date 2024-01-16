@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Mapping, Optional
+from typing import Any, Dict, List, Mapping, Optional
 
 
 class Error(Exception):
@@ -29,7 +29,7 @@ class ServerNotResponsiveError(Error):
 class GraphQLError(Error):
     def __init__(
         self,
-        errors: List[str],
+        errors: List[Dict[str, Any]],
         query: Optional[str] = None,
         variables: Optional[dict] = None,
     ):
@@ -57,14 +57,14 @@ class SchemaNotFound(Error):
 class NodeNotFound(Error):
     def __init__(
         self,
-        branch_name: str,
         node_type: str,
         identifier: Mapping[str, List[str]],
         message: str = "Unable to find the node in the database.",
+        branch_name: Optional[str] = None,
     ):
-        self.branch_name = branch_name
         self.node_type = node_type
         self.identifier = identifier
+        self.branch_name = branch_name
 
         self.message = message
         super().__init__(self.message)
@@ -88,6 +88,12 @@ class FilterNotFound(Error):
         self.kind = kind
         self.filters = filters or []
         self.message = message or f"{identifier!r} is not a valid filter for {self.kind!r} ({', '.join(self.filters)})."
+        super().__init__(self.message)
+
+
+class InfrahubTransformNotFoundError(Error):
+    def __init__(self, name: str, message: Optional[str] = None):
+        self.message = message or f"The requested InfrahubTransform '{name}' was not found."
         super().__init__(self.message)
 
 

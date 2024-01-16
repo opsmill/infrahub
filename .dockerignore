@@ -15,6 +15,7 @@ coverage.xml
 .devcontainer
 .husky
 frontend/node_modules
+frontend/playwright-report
 
 # Direnv files (https://direnv.net/)
 .direnv/

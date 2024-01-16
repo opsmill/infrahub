@@ -1,15 +1,15 @@
 import { ApolloProvider } from "@apollo/client";
 import { useAtom, useSetAtom } from "jotai";
 import queryString from "query-string";
+import * as R from "ramda";
 import { useEffect, useState } from "react";
-import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { Slide, ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { QueryParamProvider } from "use-query-params";
 import { ReactRouter6Adapter } from "use-query-params/adapters/react-router-6";
 import App from "./App";
-import { ALERT_TYPES, Alert } from "./components/alert";
+import { ALERT_TYPES, Alert } from "./components/utils/alert";
 import { CONFIG } from "./config/config";
 import SentryClient from "./config/sentry";
 import graphqlClient from "./graphql/graphqlClientApollo";
@@ -18,12 +18,11 @@ import reportWebVitals from "./reportWebVitals";
 import { branchesState, currentBranchAtom } from "./state/atoms/branches.atom";
 import { Config, configState } from "./state/atoms/config.atom";
 
-import LoadingScreen from "./screens/loading-screen/loading-screen";
-import "./styles/index.css";
-import { fetchUrl, getCurrentQsp } from "./utils/fetch";
-import { Branch } from "./generated/graphql";
 import { QSP } from "./config/qsp";
+import { Branch } from "./generated/graphql";
+import LoadingScreen from "./screens/loading-screen/loading-screen";
 import {
+  SchemaSummary,
   currentSchemaHashAtom,
   genericsState,
   iGenericSchema,
@@ -31,15 +30,12 @@ import {
   iNodeSchema,
   namespacesState,
   schemaState,
-  SchemaSummary,
 } from "./state/atoms/schema.atom";
 import { schemaKindNameState } from "./state/atoms/schemaKindName.atom";
-import { sortByName, sortByOrderWeight } from "./utils/common";
+import "./styles/index.css";
 import { findSelectedBranch } from "./utils/branches";
-
-const root = ReactDOM.createRoot(
-  (document.getElementById("root") || document.createElement("div")) as HTMLElement
-);
+import { sortByName, sortByOrderWeight } from "./utils/common";
+import { fetchUrl, getCurrentQsp } from "./utils/fetch";
 
 export const Root = () => {
   const setBranches = useSetAtom(branchesState);
@@ -47,6 +43,7 @@ export const Root = () => {
   const [config, setConfig] = useAtom(configState);
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
   const [isLoadingBranches, setIsLoadingBranches] = useState(true);
+  const branchInQueryString = getCurrentQsp().get(QSP.BRANCH);
 
   /**
    * Sentry configuration
@@ -99,6 +96,7 @@ export const Root = () => {
     try {
       const { data }: any = await graphqlClient.query({
         query: GET_BRANCHES,
+        context: { branch: branchInQueryString },
       });
 
       return data.Branch ?? [];
@@ -121,7 +119,6 @@ export const Root = () => {
   const setBranchesInState = async () => {
     const branches: Branch[] = await fetchBranches();
 
-    const branchInQueryString = getCurrentQsp().get(QSP.BRANCH);
     const selectedBranch = findSelectedBranch(branches, branchInQueryString);
 
     setBranches(branches);
@@ -175,13 +172,10 @@ const AppInitializer = () => {
         s.relationships = sortByOrderWeight(s.relationships || []);
       });
 
-      const schemaKindNameMap = schema.reduce(
-        (kindNameMap: Record<string, string>, { name, kind }) => ({
-          ...kindNameMap,
-          [kind as string]: name,
-        }),
-        {}
-      );
+      const schemaNames = [...schema.map((s) => s.name), ...generics.map((s) => s.name)];
+      const schemaKinds = [...schema.map((s) => s.kind), ...generics.map((s) => s.kind)];
+      const schemaKindNameTuples = R.zip(schemaKinds, schemaNames);
+      const schemaKindNameMap = R.fromPairs(schemaKindNameTuples);
 
       setGenerics(generics);
       setSchema(schema);
@@ -233,7 +227,7 @@ const AppInitializer = () => {
   return <App />;
 };
 
-root.render(
+export const Infrahub = () => (
   <BrowserRouter basename="/">
     <QueryParamProvider
       adapter={ReactRouter6Adapter}

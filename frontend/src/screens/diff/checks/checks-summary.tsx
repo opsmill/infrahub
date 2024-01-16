@@ -3,9 +3,9 @@ import { ArrowPathIcon, CheckCircleIcon, ExclamationCircleIcon } from "@heroicon
 import { useAtom } from "jotai";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import { ALERT_TYPES, Alert } from "../../../components/alert";
-import { Badge } from "../../../components/badge";
-import { Retry } from "../../../components/retry";
+import { Retry } from "../../../components/buttons/retry";
+import { Badge } from "../../../components/display/badge";
+import { ALERT_TYPES, Alert } from "../../../components/utils/alert";
 import {
   PROPOSED_CHANGES_VALIDATOR_OBJECT,
   VALIDATIONS_ENUM_MAP,
@@ -65,38 +65,38 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
   };
 
   return (
-    <div className="flex p-4 pb-0">
-      <div className="flex items-center justify-between p-2 mr-2 rounded-md bg-custom-white">
+    <div className="flex p-4 pb-0 gap-2">
+      <div className="flex items-center justify-between p-2 rounded-md bg-custom-white">
         Retry all:{" "}
         <Retry onClick={() => handleRetry("all")} isInProgress={!!validatorsInProgress.length} />
       </div>
 
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-4 gap-2 items-center justify-between">
+      <div className="flex-1 flex flex-wrap gap-2">
         {Object.entries(validatorsCount).map(([kind, stats]: [string, any]) => (
           <div
             key={kind}
-            className="flex flex-1 items-center justify-between p-2 rounded-md bg-custom-white">
-            <Badge>{schemaKindName[kind]}</Badge>
+            className="flex-1 flex items-center justify-between gap-2 p-2 rounded-md bg-custom-white">
+            <Badge className="!mr-0">{schemaKindName[kind]}</Badge>
 
-            <div className="flex items-center mr-2">
-              <div className="flex items-center mr-2">
-                {!!stats.failure && <ExclamationCircleIcon className="mr-2 h-4 w-4 text-red-500" />}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center">
+                {!!stats.failure && <ExclamationCircleIcon className="h-4 w-4 text-red-500" />}
 
                 {!!stats.inProgress && (
-                  <ArrowPathIcon className="mr-2 h-4 w-4 text-orange-500 animate-spin" />
+                  <ArrowPathIcon className="h-4 w-4 text-orange-500 animate-spin" />
                 )}
 
                 {!stats.failure && !stats.inProgress && (
-                  <CheckCircleIcon className="mr-2 h-4 w-4 text-green-500" />
+                  <CheckCircleIcon className="h-4 w-4 text-green-500" />
                 )}
 
                 <span>
                   {JSON.stringify(stats.success)}/{JSON.stringify(stats.total)}
                 </span>
               </div>
-            </div>
 
-            <Retry onClick={() => handleRetry(kind)} isInProgress={!!stats.inProgress} />
+              <Retry onClick={() => handleRetry(kind)} isInProgress={!!stats.inProgress} />
+            </div>
           </div>
         ))}
       </div>

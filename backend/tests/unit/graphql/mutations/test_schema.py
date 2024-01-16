@@ -20,7 +20,7 @@ async def test_delete_last_dropdown_option(db: InfrahubDatabase, default_branch,
     result = await graphql(
         schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -40,7 +40,7 @@ async def test_delete_last_enum_option(db: InfrahubDatabase, default_branch, cho
     result = await graphql(
         schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -60,7 +60,7 @@ async def test_delete_enum_option_that_does_not_exist(db: InfrahubDatabase, defa
     result = await graphql(
         schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -80,7 +80,7 @@ async def test_delete_drop_option_that_does_not_exist(db: InfrahubDatabase, defa
     result = await graphql(
         schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -100,7 +100,7 @@ async def test_add_enum_option_that_exist(db: InfrahubDatabase, default_branch, 
     result = await graphql(
         schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -124,7 +124,7 @@ async def test_delete_dropdown_option_in_use(db: InfrahubDatabase, default_branc
     result = await graphql(
         schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )
@@ -148,7 +148,7 @@ async def test_delete_enum_option_in_use(db: InfrahubDatabase, default_branch, c
     result = await graphql(
         schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
         root_value=None,
         variable_values={},
     )

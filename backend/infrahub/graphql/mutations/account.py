@@ -3,15 +3,16 @@ from typing import TYPE_CHECKING, Dict
 from graphene import Boolean, Field, InputField, InputObjectType, Mutation, String
 from graphql import GraphQLResolveInfo
 from infrahub_sdk import UUIDT
+from infrahub_sdk.utils import extract_fields
 
 from infrahub.auth import AuthType
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import NodeNotFound, PermissionDeniedError
 
 from ..types import InfrahubObjectType
-from ..utils import extract_fields
 
 if TYPE_CHECKING:
     from infrahub.auth import AccountSession
@@ -52,9 +53,11 @@ class AccountMixin:
         if account_session.auth_type != AuthType.JWT:
             raise PermissionDeniedError("This operation requires authentication with a JWT token")
 
-        results = await NodeManager.query(schema="CoreAccount", filters={"ids": [account_session.account_id]}, db=db)
+        results = await NodeManager.query(
+            schema=InfrahubKind.ACCOUNT, filters={"ids": [account_session.account_id]}, db=db
+        )
         if not results:
-            raise NodeNotFound(branch_name="main", node_type="CoreAccount", identifier=account_session.account_id)
+            raise NodeNotFound(node_type=InfrahubKind.ACCOUNT, identifier=account_session.account_id)
 
         account = results[0]
 
@@ -63,7 +66,7 @@ class AccountMixin:
 
     @classmethod
     async def create_token(cls, db: InfrahubDatabase, account: Node, data: Dict, info: GraphQLResolveInfo):
-        obj = await Node.init(db=db, schema="InternalAccountToken")
+        obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNTTOKEN)
         token = str(UUIDT())
         await obj.new(
             db=db,
