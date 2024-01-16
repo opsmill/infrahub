@@ -146,6 +146,7 @@ export const attributesKindForDetailsView = [
   "IPNetwork",
   "Checkbox",
   "List",
+  "JSON",
   "Any",
 ];
 
