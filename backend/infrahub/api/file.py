@@ -54,6 +54,7 @@ async def get_file(
     message = messages.GitFileGet(
         repository_id=repo.id,
         repository_name=repo.name.value,  # type: ignore[attr-defined]
+        repository_kind=repo.get_kind(),
         commit=commit,
         file=file_path,
     )

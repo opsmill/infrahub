@@ -2132,12 +2132,18 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryBase):
     """
 
     is_read_only: bool = True
-    ref: str = Field(..., description="Ref to track on the external repository")
-    infrahub_branch_name: str = Field(..., description="Infrahub branch on which to sync the remote repository")
+    ref: Optional[str] = Field(None, description="Ref to track on the external repository")
+    infrahub_branch_name: Optional[str] = Field(
+        None, description="Infrahub branch on which to sync the remote repository"
+    )
 
     @classmethod
     async def new(cls, service: Optional[InfrahubServices] = None, **kwargs):
         service = service or InfrahubServices()
+
+        if "ref" not in kwargs or "infrahub_branch_name" not in kwargs:
+            raise ValueError("ref and infrahub_branch_name are mandatory to initialize a new Read-Only repository")
+
         self = cls(service=service, **kwargs)
         await self.create_locally(checkout_ref=self.ref, infrahub_branch_name=self.infrahub_branch_name)
         log.info("Created the new project locally.", repository=self.name)

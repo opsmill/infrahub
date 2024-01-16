@@ -105,9 +105,7 @@ async def user_checks(message: messages.RequestRepositoryUserChecks, service: In
     events: List[InfrahubMessage] = []
 
     repository = await service.client.get(
-        kind=InfrahubKind.GENERICREPOSITORY,
-        id=message.repository,
-        branch=message.source_branch,
+        kind=InfrahubKind.GENERICREPOSITORY, id=message.repository, branch=message.source_branch, fragment=True
     )
     await repository.checks.fetch()
 

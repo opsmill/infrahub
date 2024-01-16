@@ -1,5 +1,6 @@
 from infrahub_sdk import UUIDT, InfrahubClient
 
+from infrahub.core.constants import InfrahubKind
 from infrahub.git import InfrahubRepository
 from infrahub.message_bus import Meta, messages
 from infrahub.message_bus.responses import TransformResponse
@@ -13,6 +14,7 @@ async def test_transform_python_success(git_fixture_repo: InfrahubRepository, he
     message = messages.TransformPythonData(
         repository_id=str(git_fixture_repo.id),
         repository_name=git_fixture_repo.name,
+        repository_kind=InfrahubKind.REPOSITORY,
         commit=commit,
         branch="main",
         transform_location="unit/transforms/multiplier.py::Multiplier",

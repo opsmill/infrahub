@@ -2,7 +2,7 @@ from typing import Dict, Union
 
 from infrahub.core.constants import InfrahubKind, ValidatorConclusion
 from infrahub.core.timestamp import Timestamp
-from infrahub.git.repository import InfrahubRepository
+from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
 from infrahub.services import InfrahubServices
@@ -18,7 +18,15 @@ async def create(message: messages.CheckArtifactCreate, service: InfrahubService
         kind=InfrahubKind.ARTIFACTVALIDATOR, id=message.validator_id, include=["checks"]
     )
 
-    repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=service.client)
+    if InfrahubKind.READONLYREPOSITORY:
+        repo = await InfrahubReadOnlyRepository.init(
+            id=message.repository_id, name=message.repository_name, client=service.client
+        )
+    else:
+        repo = await InfrahubRepository.init(
+            id=message.repository_id, name=message.repository_name, client=service.client
+        )
+
     artifact = await define_artifact(message=message, service=service)
 
     conclusion = ValidatorConclusion.SUCCESS.value

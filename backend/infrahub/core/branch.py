@@ -1456,6 +1456,7 @@ class Diff:
         message = messages.GitDiffNamesOnly(
             repository_id=repository.id,
             repository_name=repository.name.value,  # type: ignore[attr-defined]
+            repository_kind=repository.get_kind(),
             first_commit=commit_from,
             second_commit=commit_to,
         )

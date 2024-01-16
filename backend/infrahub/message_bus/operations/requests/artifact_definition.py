@@ -84,7 +84,7 @@ async def check(  # pylint: disable=too-many-statements
     branch = await service.client.branch.get(branch_name=message.source_branch)
     if not branch.is_data_only:
         repository = await service.client.get(
-            kind=InfrahubKind.GENERICREPOSITORY, id=repository.id, branch=message.source_branch
+            kind=InfrahubKind.GENERICREPOSITORY, id=repository.id, branch=message.source_branch, fragment=True
         )
     transform_location = ""
 
@@ -109,6 +109,7 @@ async def check(  # pylint: disable=too-many-statements
                 transform_location=transform_location,
                 repository_id=repository.id,
                 repository_name=repository.name.value,
+                repository_kind=repository.get_kind(),
                 branch_name=message.source_branch,
                 query=query.name.value,
                 variables=member.extract(params=artifact_definition.parameters.value),
@@ -175,7 +176,9 @@ async def generate(message: messages.RequestArtifactDefinitionGenerate, service:
     repository = transformation_repository.peer
     branch = await service.client.branch.get(branch_name=message.branch)
     if not branch.is_data_only:
-        repository = await service.client.get(kind=InfrahubKind.REPOSITORY, id=repository.id, branch=message.branch)
+        repository = await service.client.get(
+            kind=InfrahubKind.GENERICREPOSITORY, id=repository.id, branch=message.branch, fragment=True
+        )
     transform_location = ""
 
     if transform.typename == InfrahubKind.RFILE:
@@ -201,6 +204,7 @@ async def generate(message: messages.RequestArtifactDefinitionGenerate, service:
                 transform_location=transform_location,
                 repository_id=repository.id,
                 repository_name=repository.name.value,
+                repository_kind=repository.get_kind(),
                 branch_name=message.branch,
                 query=query.name.value,
                 variables=member.extract(params=artifact_definition.parameters.value),

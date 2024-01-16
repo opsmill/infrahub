@@ -75,6 +75,7 @@ async def transform_python(
     message = messages.TransformPythonData(
         repository_id=repository.id,  # type: ignore[attr-defined]
         repository_name=repository.name.value,  # type: ignore[attr-defined]
+        repository_kind=repository.get_kind(),
         commit=repository.commit.value,  # type: ignore[attr-defined]
         branch=branch_params.branch.name,
         transform_location=f"{transform.file_path.value}::{transform.class_name.value}",  # type: ignore[attr-defined]
@@ -126,6 +127,7 @@ async def generate_rfile(
     message = messages.TransformJinjaTemplate(
         repository_id=repository.id,  # type: ignore[attr-defined]
         repository_name=repository.name.value,  # type: ignore[attr-defined]
+        repository_kind=repository.get_kind(),
         commit=repository.commit.value,  # type: ignore[attr-defined]
         branch=branch_params.branch.name,
         template_location=rfile.template_path.value,  # type: ignore[attr-defined]
