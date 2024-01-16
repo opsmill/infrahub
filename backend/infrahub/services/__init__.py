@@ -76,7 +76,7 @@ class ServiceManager:
         self.send = self.service.send
 
 
-ServiceFunction = Callable[[InfrahubServices], Awaitable[None]]
+ServiceFunction = Callable[[InfrahubServices, Optional[int]], Awaitable[None]]
 
 
 services = ServiceManager()

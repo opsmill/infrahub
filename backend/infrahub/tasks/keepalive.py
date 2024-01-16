@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from infrahub.core.timestamp import Timestamp
 from infrahub.message_bus import messages
@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from infrahub.services import InfrahubServices
 
 
-async def refresh_api_server_components(service: InfrahubServices) -> None:
+async def refresh_api_server_components(service: InfrahubServices, expiration: Optional[int] = None) -> None:  # pylint: disable=unused-argument
     """Update API server worker information in the cache
 
     The goal of this job is to provide an updated list of API server workers in the cache, it will have a freshness

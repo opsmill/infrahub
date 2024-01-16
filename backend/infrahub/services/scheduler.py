@@ -67,7 +67,7 @@ async def run_schedule(schedule: Schedule, service: InfrahubServices) -> None:
 
     while service.scheduler.running:
         try:
-            await schedule.function(service)
+            await schedule.function(service, schedule.interval)
         except Exception as exc:  # pylint: disable=broad-exception-caught
             service.log.error(str(exc))
         for _ in range(schedule.interval):
