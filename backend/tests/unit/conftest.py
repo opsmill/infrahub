@@ -2606,6 +2606,33 @@ async def repos_in_main(db: InfrahubDatabase, register_core_models_schema):
 
 
 @pytest.fixture
+async def read_only_repos_in_main(db: InfrahubDatabase, register_core_models_schema):
+    repo01 = await Node.init(db=db, schema=InfrahubKind.READONLYREPOSITORY)
+    await repo01.new(
+        db=db,
+        name="repo01",
+        description="Repo 01 initial value",
+        location="git@github.com:user/repo01.git",
+        commit="aaaaaaaaaaa",
+        ref="branch-1",
+    )
+    await repo01.save(db=db)
+
+    repo02 = await Node.init(db=db, schema=InfrahubKind.READONLYREPOSITORY)
+    await repo02.new(
+        db=db,
+        name="repo02",
+        description="Repo 02 initial value",
+        location="git@github.com:user/repo02.git",
+        commit="bbbbbbbbbbb",
+        ref="v1.2.3",
+    )
+    await repo02.save(db=db)
+
+    return {"repo01": repo01, "repo02": repo02}
+
+
+@pytest.fixture
 async def mock_core_schema_01(helper, httpx_mock: HTTPXMock) -> HTTPXMock:
     response_text = helper.schema_file(file_name="core_schema_01.json")
     httpx_mock.add_response(method="GET", url="http://mock/api/schema/?branch=main", json=response_text)

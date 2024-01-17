@@ -310,21 +310,22 @@ async def test_diff_get_files(
     assert sorted([fde.location for fde in resp["branch2"]]) == ["anotherfile.rb", "mydir/myfile.py", "readme.md"]
 
 
-async def test_diff_get_nodes_entire_branch(db: InfrahubDatabase, default_branch, repos_in_main):
+async def test_diff_get_nodes_entire_branch(db: InfrahubDatabase, default_branch, read_only_repos_in_main):
     branch2 = await create_branch(branch_name="branch2", db=db)
 
-    repo01b2 = await NodeManager.get_one(id=repos_in_main["repo01"].id, branch=branch2, db=db)
-    repo01b2.commit.value = "1234567890"
-    repo01b2.description.value = "Repo 01 first change in branch"
+    repo01b2 = await NodeManager.get_one(id=read_only_repos_in_main["repo01"].id, branch=branch2, db=db)
+    starting_ref_value = repo01b2.ref.value
+    repo01b2.description.value = "starting branch-agnostic description"
+    repo01b2.ref.value = "branch-7"
 
     time01 = Timestamp()
     await repo01b2.save(db=db, at=time01)
 
     time02 = Timestamp()
 
-    repo01b2 = await NodeManager.get_one(id=repos_in_main["repo01"].id, branch=branch2, db=db)
-    repo01b2.commit.value = "0987654321"
-    repo01b2.description.value = "Repo 01 second change in branch"
+    repo01b2 = await NodeManager.get_one(id=read_only_repos_in_main["repo01"].id, branch=branch2, db=db)
+    repo01b2.description.value = "new branch-agnostic description"
+    repo01b2.ref.value = "v1.0.2"
     time03 = Timestamp()
     await repo01b2.save(db=db, at=time03)
 
@@ -337,32 +338,32 @@ async def test_diff_get_nodes_entire_branch(db: InfrahubDatabase, default_branch
         "labels": [
             InfrahubKind.GENERICREPOSITORY,
             "CoreNode",
-            InfrahubKind.REPOSITORY,
+            InfrahubKind.READONLYREPOSITORY,
             "LineageOwner",
             "LineageSource",
             "Node",
         ],
-        "kind": InfrahubKind.REPOSITORY,
+        "kind": InfrahubKind.READONLYREPOSITORY,
         "id": repo01b2.id,
         "path": f"data/{repo01b2.id}",
         "action": "updated",
         "changed_at": None,
         "attributes": [
             {
-                "id": repo01b2.description.id,
-                "name": "description",
+                "id": repo01b2.ref.id,
+                "name": "ref",
                 "action": "updated",
                 "changed_at": None,
-                "path": f"data/{repo01b2.id}/description",
+                "path": f"data/{repo01b2.id}/ref",
                 "properties": [
                     {
                         "branch": "branch2",
                         "type": "HAS_VALUE",
                         "action": "updated",
-                        "path": f"data/{repo01b2.id}/description/value",
+                        "path": f"data/{repo01b2.id}/ref/value",
                         "value": {
-                            "new": "Repo 01 second change in branch",
-                            "previous": "Repo 01 initial value",
+                            "new": "v1.0.2",
+                            "previous": starting_ref_value,
                         },
                         "changed_at": time03.to_string(),
                     }
@@ -382,32 +383,32 @@ async def test_diff_get_nodes_entire_branch(db: InfrahubDatabase, default_branch
         "labels": [
             InfrahubKind.GENERICREPOSITORY,
             "CoreNode",
-            InfrahubKind.REPOSITORY,
+            InfrahubKind.READONLYREPOSITORY,
             "LineageOwner",
             "LineageSource",
             "Node",
         ],
-        "kind": InfrahubKind.REPOSITORY,
+        "kind": InfrahubKind.READONLYREPOSITORY,
         "id": repo01b2.id,
         "path": f"data/{repo01b2.id}",
         "action": "updated",
         "changed_at": None,
         "attributes": [
             {
-                "id": repo01b2.description.id,
-                "name": "description",
+                "id": repo01b2.ref.id,
+                "name": "ref",
                 "action": "updated",
                 "changed_at": None,
-                "path": f"data/{repo01b2.id}/description",
+                "path": f"data/{repo01b2.id}/ref",
                 "properties": [
                     {
                         "branch": "branch2",
                         "type": "HAS_VALUE",
-                        "path": f"data/{repo01b2.id}/description/value",
+                        "path": f"data/{repo01b2.id}/ref/value",
                         "action": "updated",
                         "value": {
-                            "new": "Repo 01 first change in branch",
-                            "previous": "Repo 01 initial value",
+                            "new": "branch-7",
+                            "previous": starting_ref_value,
                         },
                         "changed_at": time01.to_string(),
                     }
