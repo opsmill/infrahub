@@ -103,19 +103,20 @@ class StorageSettings(BaseSettings):
 
 
 class DatabaseSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_DB_")
     db_type: DatabaseType = Field(
         default=DatabaseType.MEMGRAPH, validation_alias=AliasChoices("db_type", "INFRAHUB_DB_TYPE")
     )
-    protocol: str = Field(default="bolt", validation_alias=AliasChoices("protocol", "NEO4J_PROTOCOL"))
-    username: str = Field(default="neo4j", validation_alias=AliasChoices("username", "NEO4J_USERNAME"))
-    password: str = Field(default="admin", validation_alias=AliasChoices("password", "NEO4J_PASSWORD"))
-    address: str = Field(default="localhost", validation_alias=AliasChoices("address", "NEO4J_ADDRESS"))
-    port: int = Field(default=7687, validation_alias=AliasChoices("port", "NEO4J_PORT"))
+    protocol: str = Field(default="bolt", validation_alias=AliasChoices("protocol", "INFRAHUB_DB_PROTOCOL"))
+    username: str = Field(default="neo4j", validation_alias=AliasChoices("username", "INFRAHUB_DB_USERNAME"))
+    password: str = Field(default="admin", validation_alias=AliasChoices("password", "INFRAHUB_DB_PASSWORD"))
+    address: str = Field(default="localhost", validation_alias=AliasChoices("address", "INFRAHUB_DB_ADDRESS"))
+    port: int = Field(default=7687, validation_alias=AliasChoices("port", "INFRAHUB_DB_PORT"))
     database: Optional[str] = Field(
         default=None,
         pattern=VALID_DATABASE_NAME_REGEX,
         description="Name of the database",
-        validation_alias=AliasChoices("database", "NEO4J_DATABASE"),
+        validation_alias=AliasChoices("database", "INFRAHUB_DB_DATABASE"),
     )
     query_size_limit: int = Field(
         default=5000,
