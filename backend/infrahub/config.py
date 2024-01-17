@@ -176,7 +176,9 @@ class ApiSettings(BaseSettings):
 
 class GitSettings(BaseSettings):
     repositories_directory: str = "repositories"
-    sync_interval: int = Field(default=10, description="Time (in seconds) between git repositories synchronizations")
+    sync_interval: Optional[int] = Field(
+        default=10, description="Time (in seconds) between git repositories synchronizations"
+    )
 
 
 class MiscellaneousSettings(BaseSettings):
