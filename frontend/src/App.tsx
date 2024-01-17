@@ -15,7 +15,7 @@ import { SchemaContext, withSchemaContext } from "./decorators/withSchemaContext
 import "./styles/index.css";
 addCollection(mdiIcons);
 
-function App() {
+const App = () => {
   const branches = useAtomValue(branchesState);
   const [branchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
   const { checkSchemaUpdate } = useContext(SchemaContext);
@@ -34,6 +34,6 @@ function App() {
       </Route>
     </Routes>
   );
-}
+};
 
 export default withSchemaContext(withAuth(App));

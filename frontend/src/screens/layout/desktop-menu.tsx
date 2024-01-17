@@ -20,8 +20,6 @@ export default function DesktopMenu() {
   const [menu, setMenu] = useState([]);
 
   const fetchMenu = async () => {
-    if (!branch?.name) return;
-
     try {
       setIsLoading(true);
 

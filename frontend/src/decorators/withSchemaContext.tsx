@@ -95,8 +95,6 @@ export const withSchemaContext = (AppComponent: any) => (props: any) => {
   };
 
   const checkSchemaUpdate = () => {
-    console.log("CHECK SCHEMA UPDATE");
-
     const selectedBranch = findSelectedBranch(branches, branchInQueryString);
 
     updateSchemaStateIfNeeded(selectedBranch);
