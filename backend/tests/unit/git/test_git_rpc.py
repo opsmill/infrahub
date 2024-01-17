@@ -7,6 +7,7 @@ from infrahub_sdk import UUIDT, Config, InfrahubClient
 from infrahub_sdk.branch import BranchData
 from infrahub_sdk.types import HTTPMethod
 
+from infrahub.core.constants import InfrahubKind
 from infrahub.exceptions import RepositoryError
 from infrahub.git import InfrahubRepository
 from infrahub.git.repository import InfrahubReadOnlyRepository
@@ -118,6 +119,7 @@ async def test_git_rpc_diff(
     message = messages.GitDiffNamesOnly(
         repository_id=str(UUIDT()),
         repository_name=git_upstream_repo_01["name"],
+        repository_kind=InfrahubKind.REPOSITORY,
         first_commit=commit_branch01,
         second_commit=commit_branch02,
         meta=Meta(reply_to="ci-testing", correlation_id=correlation_id),
@@ -136,6 +138,7 @@ async def test_git_rpc_diff(
     message = messages.GitDiffNamesOnly(
         repository_id=str(UUIDT()),
         repository_name=git_upstream_repo_01["name"],
+        repository_kind=InfrahubKind.REPOSITORY,
         first_commit=commit_branch01,
         second_commit=commit_main,
         meta=Meta(reply_to="ci-testing", correlation_id=correlation_id),

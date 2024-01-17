@@ -12,6 +12,7 @@ async def names_only(message: messages.GitDiffNamesOnly, service: InfrahubServic
         "Collecting modifications between commits",
         repository=message.repository_name,
         repository_id=message.repository_id,
+        repository_kind=message.repository_kind,
         first_commit=message.first_commit,
         second_commit=message.second_commit,
     )
