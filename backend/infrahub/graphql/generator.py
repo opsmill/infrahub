@@ -170,7 +170,8 @@ async def generate_object_types(db: InfrahubDatabase, branch: Union[Branch, str]
 
         for rel in node_schema.relationships:
             peer_schema = await rel.get_peer_schema(branch=branch)
-
+            if not isinstance(peer_schema, GroupSchema) and peer_schema.namespace == "Internal":
+                continue
             peer_filters = await generate_filters(db=db, schema=peer_schema, top_level=False)
 
             if rel.cardinality == "one":
@@ -221,6 +222,9 @@ async def generate_query_mixin(db: InfrahubDatabase, branch: Union[Branch, str] 
         if not isinstance(node_schema, (NodeSchema, GenericSchema)):
             continue
 
+        if node_schema.namespace == "Internal":
+            continue
+
         node_type = registry.get_graphql_type(name=f"Paginated{node_name}", branch=branch)
         node_filters = await generate_filters(db=db, schema=node_schema, top_level=True)
 
@@ -248,6 +252,9 @@ async def generate_mutation_mixin(db: InfrahubDatabase, branch: Union[Branch, st
 
     for node_schema in full_schema.values():
         if not isinstance(node_schema, NodeSchema):
+            continue
+
+        if node_schema.namespace == "Internal":
             continue
 
         base_class = InfrahubMutation
@@ -531,6 +538,8 @@ def generate_graphql_mutation_create_input(schema: NodeSchema) -> Type[graphene.
         attrs[attr.name] = graphene.InputField(attr_type, required=required, description=attr.description)
 
     for rel in schema.relationships:
+        if rel.internal_peer:
+            continue
         required = not rel.optional
         if rel.cardinality == "one":
             attrs[rel.name] = graphene.InputField(RelatedNodeInput, required=required, description=rel.description)
@@ -562,6 +571,8 @@ def generate_graphql_mutation_update_input(schema: NodeSchema) -> Type[graphene.
         attrs[attr.name] = graphene.InputField(attr_type, required=False, description=attr.description)
 
     for rel in schema.relationships:
+        if rel.internal_peer:
+            continue
         if rel.cardinality == "one":
             attrs[rel.name] = graphene.InputField(RelatedNodeInput, required=False, description=rel.description)
 
@@ -691,6 +702,9 @@ async def generate_filters(
         peer_schema = await rel.get_peer_schema()
 
         if not isinstance(peer_schema, (NodeSchema, GenericSchema)):
+            continue
+
+        if peer_schema.namespace == "Internal":
             continue
 
         if rel.kind == RelationshipKind.GROUP:

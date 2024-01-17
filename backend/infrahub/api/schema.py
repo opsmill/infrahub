@@ -30,8 +30,9 @@ router = APIRouter(prefix="/schema")
 
 class APISchemaMixin:
     @classmethod
-    def from_schema(cls, schema: NodeSchema) -> Self:
-        data = schema.model_dump()
+    def from_schema(cls, schema: Union[NodeSchema, GenericSchema]) -> Self:
+        schema_instance = schema.with_public_relationships()
+        data = schema_instance.model_dump()
         data["hash"] = schema.get_hash()
         return cls(**data)
 
@@ -85,8 +86,16 @@ async def get_schema(
 
     return SchemaReadAPI(
         main=registry.schema.get_schema_branch(name=branch.name).get_hash(),
-        nodes=[APINodeSchema.from_schema(value) for value in all_schemas if isinstance(value, NodeSchema)],
-        generics=[APIGenericSchema.from_schema(value) for value in all_schemas if isinstance(value, GenericSchema)],
+        nodes=[
+            APINodeSchema.from_schema(value)
+            for value in all_schemas
+            if isinstance(value, NodeSchema) and value.namespace != "Internal"
+        ],
+        generics=[
+            APIGenericSchema.from_schema(value)
+            for value in all_schemas
+            if isinstance(value, GenericSchema) and value.namespace != "Internal"
+        ],
         namespaces=schema_branch.get_namespaces(),
     )
 
