@@ -1,6 +1,6 @@
 import * as R from "ramda";
 import {
-  attributesKindForDetailsView,
+  attributesKindForDetailsViewExclude,
   attributesKindForListView,
   relationshipsForDetailsView,
   relationshipsForListView,
@@ -16,10 +16,12 @@ export const getObjectAttributes = (
     return [];
   }
 
-  const kinds = forListView ? attributesKindForListView : attributesKindForDetailsView;
-
   const attributes = (schema.attributes || [])
-    .filter((attribute) => kinds.includes(attribute.kind))
+    .filter((attribute) =>
+      forListView
+        ? attributesKindForListView.includes(attribute.kind)
+        : !attributesKindForDetailsViewExclude.includes(attribute.kind)
+    )
     .map((row) => ({
       label: row.label ?? "",
       name: row.name,
