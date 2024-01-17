@@ -44,7 +44,7 @@ class InfrahubScheduler:
             ]
             self.schedules.extend(schedules)
 
-            if config.SETTINGS.git.sync_interval > 0:
+            if config.SETTINGS.git.sync_interval:
                 self.schedules.append(
                     Schedule(
                         name="resync_repositories",
