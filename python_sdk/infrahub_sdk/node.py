@@ -299,12 +299,7 @@ class RelatedNode(RelatedNodeBase):
         if not self.id or not self.typename:
             raise Error("Unable to fetch the peer, id and/or typename are not defined")
 
-        self._peer = await self._client.get(
-            ids=[self.id],
-            kind=self.typename,
-            populate_store=True,
-            branch=self._branch
-        )
+        self._peer = await self._client.get(ids=[self.id], kind=self.typename, populate_store=True, branch=self._branch)
 
     @property
     def peer(self) -> InfrahubNode:
