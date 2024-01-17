@@ -101,6 +101,7 @@ test.describe("/proposed-changes", () => {
 
         await test.step("not able to edit proposed change", async () => {
           await expect(page.getByRole("button", { name: "Merge" })).toBeDisabled();
+          await expect(page.getByRole("button", { name: "Edit" })).toBeDisabled();
         });
       });
 
