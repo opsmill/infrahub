@@ -1,0 +1,64 @@
+steps:
+  ##### yaml-lint
+{%- if yaml_all %}
+  - label: ":github: yaml-lint"
+    key: yaml-lint
+    depends_on:
+      - files-changed
+    allow_dependency_failure: false
+    timeout_in_minutes: 5
+    agents:
+      queue: small-runner
+    command: .buildkite/yaml-lint.sh
+{%- endif %}
+  ##### python-lint
+{%- if python_all %}
+  - label: ":github: python-lint"
+    key: python-lint
+    depends_on:
+      - files-changed
+    allow_dependency_failure: false
+    timeout_in_minutes: 5
+    agents:
+      queue: small-runner
+    command: .buildkite/python-lint.sh
+{%- endif %}
+  ##### javascript-lint
+{%- if javascript_all %}
+  - label: ":github: javascript-lint"
+    key: javascript-lint
+    depends_on:
+      - files-changed
+    allow_dependency_failure: false
+    timeout_in_minutes: 5
+    agents:
+      queue: small-runner
+    plugins:
+      - sv-oss/node-n#v0.1.2:
+          node-version: v20
+    command: .buildkite/javascript-lint.sh
+{%- endif %}
+    ##### e2e-testing-cypress
+  - label: ":github: E2E-testing-cypress"
+    key: E2E-testing-cypress
+    depends_on:
+      - files-changed
+    {%- if javascript_all %}
+      - javascript-lint
+    {%- endif %}
+    {%- if yaml_all %}
+      - yaml-lint
+    {%- endif %}
+    {%- if python_all %}
+      - python-lint
+    {%- endif %}
+    allow_dependency_failure: false
+    timeout_in_minutes: 40
+    env:
+      INFRAHUB_DB_TYPE: memgraph
+    agents:
+      queue: huge-runner
+    plugins:
+      - sv-oss/node-n#v0.1.2:
+          node-version: v20
+    command: .buildkite/e2e-testing-cypress.sh
