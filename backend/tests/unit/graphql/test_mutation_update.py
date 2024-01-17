@@ -46,6 +46,33 @@ async def test_update_simple_object(db: InfrahubDatabase, person_john_main: Node
     assert obj1.height.value == 180
 
 
+async def test_update_simple_object_with_ok_return(db: InfrahubDatabase, person_john_main: Node, branch: Branch):
+    query = (
+        """
+    mutation {
+        TestPersonUpdate(data: {id: "%s", name: { value: "Jim"}}) {
+            ok
+        }
+    }
+    """
+        % person_john_main.id
+    )
+    result = await graphql(
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=branch),
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["TestPersonUpdate"]["ok"] is True
+
+    obj1 = await NodeManager.get_one(db=db, id=person_john_main.id, branch=branch)
+    assert obj1.name.value == "Jim"
+    assert obj1.height.value == 180
+
+
 async def test_update_check_unique(db: InfrahubDatabase, person_john_main: Node, person_jim_main: Node, branch: Branch):
     query = (
         """

@@ -38,6 +38,26 @@ async def test_create_simple_object(db: InfrahubDatabase, default_branch, car_pe
     assert len(result.data["TestPersonCreate"]["object"]["id"]) == 36  # lenght of an UUID
 
 
+async def test_create_simple_object_with_ok_return(db: InfrahubDatabase, default_branch, car_person_schema):
+    query = """
+    mutation {
+        TestPersonCreate(data: {name: { value: "John"}, height: {value: 182}}) {
+            ok
+        }
+    }
+    """
+    result = await graphql(
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["TestPersonCreate"]["ok"] is True
+
+
 async def test_create_with_id(db: InfrahubDatabase, default_branch, car_person_schema):
     uuid1 = "79c83773-6b23-4537-a3ce-b214b625ff1d"
     query = (
