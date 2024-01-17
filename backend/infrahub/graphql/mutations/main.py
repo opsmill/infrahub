@@ -130,9 +130,11 @@ class InfrahubMutationMixin:
             raise ValueError(str(exc)) from exc
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
-        ok = True
+        result = {"ok": True}
+        if "object" in fields:
+            result["object"] = await obj.to_graphql(db=db, fields=fields.get("object", {}))
 
-        return obj, cls(object=await obj.to_graphql(db=db, fields=fields.get("object", {})), ok=ok)
+        return obj, cls(**result)
 
     @classmethod
     async def mutate_update(
@@ -177,11 +179,12 @@ class InfrahubMutationMixin:
         except ValidationError as exc:
             raise ValueError(str(exc)) from exc
 
-        ok = True
-
         fields = await extract_fields(info.field_nodes[0].selection_set)
+        result = {"ok": True}
+        if "object" in fields:
+            result["object"] = await obj.to_graphql(db=db, fields=fields.get("object", {}))
 
-        return obj, cls(object=await obj.to_graphql(db=db, fields=fields.get("object", {})), ok=ok)
+        return obj, cls(**result)
 
     @classmethod
     async def mutate_upsert(
