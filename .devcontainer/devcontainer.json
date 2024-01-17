@@ -19,7 +19,8 @@
             "shardulm94.trailing-spaces",
             "nickmillerdev.pytest-fixtures",
             "yzhang.markdown-all-in-one",
-            "GraphQL.vscode-graphql-syntax"
+            "GraphQL.vscode-graphql-syntax",
+            "MS-vsliveshare.vsliveshare"
         ]
         }
     },
