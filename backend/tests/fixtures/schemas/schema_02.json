@@ -5244,12 +5244,12 @@
                     "order_weight": 9000
                 },
                 {
-                    "name": "rfiles",
-                    "peer": "CoreRFile",
+                    "name": "jinja2_transforms",
+                    "peer": "CoreTransformJinja2",
                     "kind": "Generic",
                     "label": null,
                     "description": null,
-                    "identifier": "repository__rfile",
+                    "identifier": "repository__jinja2",
                     "inherited": false,
                     "cardinality": "many",
                     "branch": "aware",
@@ -5654,7 +5654,7 @@
             "kind": "CoreRepository"
         },
         {
-            "name": "RFile",
+            "name": "TransformJinja2",
             "namespace": "Core",
             "description": "A file rendered from a Jinja2 template",
             "default_filter": "name__value",
@@ -5999,7 +5999,7 @@
                     "order_weight": 11000
                 }
             ],
-            "label": "RFile",
+            "label": "Transform Jinja2",
             "inherit_from": [
                 "CoreTransformation"
             ],
@@ -6077,7 +6077,7 @@
                     "description": null
                 }
             ],
-            "kind": "CoreRFile"
+            "kind": "CoreTransformJinja2"
         },
         {
             "name": "CheckDefinition",
@@ -8825,7 +8825,7 @@
             "branch": "aware",
             "label": "Transformation",
             "used_by": [
-                "CoreRFile",
+                "CoreTransformJinja2",
                 "CoreTransformPython"
             ],
             "kind": "CoreTransformation"

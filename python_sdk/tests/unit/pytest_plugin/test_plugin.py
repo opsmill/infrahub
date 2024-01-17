@@ -50,7 +50,7 @@ def test_rfile_config_missing_directory(pytester):
         schemas:
           - schemas/demo_edge_fabric.yml
 
-        rfiles:
+        jinja2_transforms:
           - name: bgp_config
             description: "Template for BGP config base"
             query: "bgp_sessions"
@@ -88,7 +88,7 @@ def test_rfile_config_missing_input(pytester):
         schemas:
           - schemas/demo_edge_fabric.yml
 
-        rfiles:
+        jinja2_transforms:
           - name: bgp_config
             description: "Template for BGP config base"
             query: "bgp_sessions"
@@ -129,7 +129,7 @@ def test_rfile_no_expected_output(pytester):
         schemas:
           - schemas/demo_edge_fabric.yml
 
-        rfiles:
+        jinja2_transforms:
           - name: bgp_config
             description: "Template for BGP config base"
             query: "bgp_sessions"
@@ -185,7 +185,7 @@ def test_rfile_unexpected_output(pytester):
         schemas:
           - schemas/demo_edge_fabric.yml
 
-        rfiles:
+        jinja2_transforms:
           - name: bgp_config
             description: "Template for BGP config base"
             query: "bgp_sessions"

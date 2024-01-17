@@ -4,7 +4,7 @@ label: Creating an Artifact
 ---
 # Creating an artifact in Infrahub
 
-The goal of this guide is to define an artifact for a Jinja rendered File (RFile) or Python transform in Infrahub. We will be using the following steps.
+The goal of this guide is to define an artifact for a Jinja rendered Transform or Python transform in Infrahub. We will be using the following steps.
 
 1. Creating a group
 2. Adding members to the group
@@ -12,7 +12,7 @@ The goal of this guide is to define an artifact for a Jinja rendered File (RFile
 4. Accessing the artifacts
 
 !!!
-This guide has the assumption that you followed the [Creating a Jinja Rendered File (RFile)](./jinja2-rfile.md) or [Creating a Python transform](./python-transform.md) guide. This is a prerequisite.
+This guide has the assumption that you followed the [Creating a Jinja Rendered File (Transform)](./jinja2-transform.md) or [Creating a Python transform](./python-transform.md) guide. This is a prerequisite.
 !!!
 
 ## Creating a group
@@ -106,7 +106,7 @@ artifact_definitions:
       tag: "name__value"
     content_type: "text/plain"
     targets: "TagConfigGroup"
-    transformation: "my-rfile"
+    transformation: "my-transform"
 ```
 
 This defines an artifact with the following properties:
@@ -115,7 +115,7 @@ This defines an artifact with the following properties:
 - **parameters**: the parameter to pass to the transformation GraphQL query, in this case this we will pass the name of the object (tag) as the tag parameter
 - **content type**: the content type for the resulting artifact
 - **targets**: the name of a group of which the members will be a target for this artifact
-- **transformation**: the RFile or Python transformation that should be used
+- **transformation**: the Jinja2 or Python transformation that should be used
 
 More details on the `.infrahub.yml` file format can be found in [.infrahub.yml topic](../topics/infrahub-yml.md).
 

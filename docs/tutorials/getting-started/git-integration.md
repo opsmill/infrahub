@@ -54,14 +54,14 @@ Refer to [Adding a repository guide](/guides/repository)
 
 After adding the `infrahub-demo-edge` repository you will be able to see several new [Transformation](/topics/transformation) and related objects :
 
-- 3 Jinja Rendered File under [RFiles](http://localhost:8000/objects/CoreRFile/)
-- 4 Python Transformation under [Python Transformation](http://localhost:8000/objects/CoreTransformation)
+- 3 Jinja Rendered File under [Jinja2 Transformation](http://localhost:8000/objects/CoreTransformJinja2/)
+- 4 Python Transformation under [Python Transformation](http://localhost:8000/objects/CoreTransformPython)
 - 4 [Artifact Definition](http://localhost:8000/objects/CoreArtifactDefinition)
 - 7 GraphQL [Queries](/topics/graphql) under [Objects / GraphQL Query](http://localhost:8000/objects/GraphQLQuery/)
 !!!
 
 !!!secondary Troubleshooting
-If you don't seeing additional objects under `Rfile` or `GraphQL Queries`, it's possible that the `Git agent` might not be running anymore.
+If you don't seeing additional objects under the transformations or `GraphQL Queries`, it's possible that the `Git agent` might not be running anymore.
 
 In this case the recommended approach is to run `invoke demo.start` first to ensure that everything is working.
 !!!

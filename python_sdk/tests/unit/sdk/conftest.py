@@ -527,7 +527,7 @@ async def tag_green_data():
 @pytest.fixture
 async def rfile_schema() -> NodeSchema:
     data = {
-        "name": "RFile",
+        "name": "TransformJinja2",
         "namespace": "Core",
         "default_filter": "name__value",
         "display_label": ["label__value"],
@@ -542,7 +542,7 @@ async def rfile_schema() -> NodeSchema:
                 "name": "repository",
                 "peer": "CoreRepository",
                 "kind": "Attribute",
-                "identifier": "rfile__repository",
+                "identifier": "jinja2__repository",
                 "cardinality": "one",
                 "optional": False,
             },
