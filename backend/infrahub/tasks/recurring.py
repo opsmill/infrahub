@@ -25,6 +25,5 @@ async def resync_repositories(service: InfrahubServices) -> None:
             f"Primary identity={primary_identity} matches my identity={WORKER_IDENTITY}. Posting sync of repo message."
         )
         message = messages.RequestGitSync()
-        if config.SETTINGS.git.sync_interval:
-            message.assign_expiration(config.SETTINGS.git.sync_interval)
+        message.assign_expiration(config.SETTINGS.git.sync_interval)
         await service.send(message=message)
