@@ -32,7 +32,6 @@ export const Infrahub = () => {
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
   const [isLoadingBranches, setIsLoadingBranches] = useState(true);
   const branchInQueryString = getCurrentQsp().get(QSP.BRANCH);
-  console.log("branchInQueryString: ", branchInQueryString);
 
   /**
    * Sentry configuration
