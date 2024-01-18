@@ -3,15 +3,13 @@ from __future__ import annotations
 import ipaddress
 import re
 from enum import Enum
-from types import NoneType
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Mapping, Optional, Tuple, Type, Union
+from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Type, Union
 
 import ujson
 from infrahub_sdk import UUIDT
 from infrahub_sdk.utils import is_valid_url
 from pydantic.v1 import BaseModel, Field
 
-import infrahub.config as config
 from infrahub.core import registry
 from infrahub.core.constants import BranchSupportType, RelationshipStatus
 from infrahub.core.property import (
@@ -20,7 +18,6 @@ from infrahub.core.property import (
     NodePropertyMixin,
     ValuePropertyData,
 )
-from infrahub.core.query import QueryElement, QueryNode, QueryRel
 from infrahub.core.query.attribute import (
     AttributeGetQuery,
     AttributeUpdateFlagQuery,
@@ -32,6 +29,8 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import add_relationship, update_relationships_to
 from infrahub.exceptions import ValidationError
 from infrahub.helpers import hash_password
+
+from .constants.relationship_label import RELATIONSHIP_TO_NODE_LABEL, RELATIONSHIP_TO_VALUE_LABEL
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -62,8 +61,8 @@ class AttributeCreateData(BaseModel):
 class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
     type: Optional[Union[Type, Tuple[Type]]] = None
 
-    _rel_to_node_label: str = "HAS_ATTRIBUTE"
-    _rel_to_value_label: str = "HAS_VALUE"
+    _rel_to_node_label: str = RELATIONSHIP_TO_NODE_LABEL
+    _rel_to_value_label: str = RELATIONSHIP_TO_VALUE_LABEL
 
     def __init__(
         self,
@@ -106,7 +105,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         elif data is not None:
             self.value = self.from_db(data)
 
-        self.value = self.coerce_value(self.value)
+        self.value = self.schema.convert_to_attribute_enum(self.value)
 
         # Assign default values
         if self.value is None and self.schema.default_value is not None:
@@ -140,20 +139,18 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
     def get_kind(self) -> str:
         return self.schema.kind
 
-    @classmethod
-    def validate(cls, value: Any, name: str, schema: AttributeSchema) -> bool:
+    def validate(self, value: Any, name: str, schema: AttributeSchema) -> bool:
         if value is None and schema.optional is False:
             raise ValidationError({name: f"A value must be provided for {name}"})
         if value is None and schema.optional is True:
             return True
 
-        cls.validate_format(value=value, name=name, schema=schema)
-        cls.validate_content(value=value, name=name, schema=schema)
+        self.validate_format(value=value, name=name, schema=schema)
+        self.validate_content(value=value, name=name, schema=schema)
 
         return True
 
-    @classmethod
-    def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
+    def validate_format(self, value: Any, name: str, schema: AttributeSchema) -> None:
         """Validate the format of the attribute.
 
         Args:
@@ -164,11 +161,14 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         Raises:
             ValidationError: Format of the attribute value is not valid
         """
-        if not isinstance(value, cls.type):  # pylint: disable=isinstance-second-argument-not-valid-type
+        value_to_check = value
+        enum_value = self.schema.convert_to_attribute_enum(value)
+        if isinstance(enum_value, Enum):
+            value_to_check = enum_value.value
+        if not isinstance(value_to_check, self.type):  # pylint: disable=isinstance-second-argument-not-valid-type
             raise ValidationError({name: f"{name} is not of type {schema.kind}"})
 
-    @classmethod
-    def validate_content(cls, value: Any, name: str, schema: AttributeSchema) -> None:
+    def validate_content(self, value: Any, name: str, schema: AttributeSchema) -> None:
         """Validate the content of the attribute.
 
         Args:
@@ -199,9 +199,10 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             if len(value) > schema.max_length:
                 raise ValidationError({name: f"{value} must have a maximum length of {schema.max_length!r}"})
 
-        if schema.enum:
-            if value not in schema.enum:
-                raise ValidationError({name: f"{value} must be one of {schema.enum!r}"})
+        try:
+            self.schema.convert_to_attribute_enum(value)
+        except ValueError as exc:
+            raise ValidationError({name: f"{value} must be one of {schema.enum!r}"}) from exc
 
     def to_db(self):
         if self.value is None:
@@ -209,40 +210,22 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         return self.serialize(self.value)
 
-    @classmethod
-    def from_db(cls, value: Any):
+    def from_db(self, value: Any):
         if value == "NULL":
             return None
 
-        return cls.deserialize(value)
+        return self.deserialize(value)
 
-    @classmethod
-    def serialize(cls, value: Any) -> Any:
+    def serialize(self, value: Any) -> Any:
         """Serialize the value before storing it in the database."""
-        return value
-
-    @classmethod
-    def deserialize(cls, value: Any) -> Any:
-        """Deserialize the value coming from the database."""
-        return value
-
-    @classmethod
-    def coerce_value(cls, value: Any) -> Any:
-        # pylint: disable=isinstance-second-argument-not-valid-type
-        if (
-            not config.SETTINGS.experimental_features.graphql_enums
-            or isinstance(value, (str, int, bool, float, NoneType))
-            or cls.type is None
-            or cls.type == Any
-        ):
-            return value
-        if isinstance(value, Mapping):
-            return type(value)(**{k: cls.coerce_value(v) for k, v in value.items()})
-        if isinstance(value, Iterable):
-            return type(value)((cls.coerce_value(v) for v in value))
-        class_types: Tuple[Type] = (cls.type,) if not isinstance(cls.type, Tuple) else cls.type
-        if not isinstance(value, class_types) and isinstance(value, Enum) and isinstance(value.value, class_types):
+        value = self.schema.convert_to_attribute_enum(value)
+        if isinstance(value, Enum):
             return value.value
+        return value
+
+    def deserialize(self, value: Any) -> Any:
+        """Deserialize the value coming from the database."""
+        value = self.schema.convert_to_attribute_enum(value)
         return value
 
     async def save(self, db: InfrahubDatabase, at: Optional[Timestamp] = None) -> bool:
@@ -319,7 +302,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         update_at = Timestamp(at)
 
-        self.value = self.coerce_value(self.value)
         # Validate if the value is still correct, will raise a ValidationError if not
         self.validate(value=self.value, name=self.name, schema=self.schema)
 
@@ -381,90 +363,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         return True
 
-    @classmethod
-    async def get_query_filter(  # pylint: disable=unused-argument,disable=too-many-branches
-        cls,
-        name: str,
-        filter_name: str,
-        branch: Optional[Branch] = None,
-        filter_value: Optional[Union[str, int, bool, list, Enum]] = None,
-        include_match: bool = True,
-        param_prefix: Optional[str] = None,
-        db: Optional[InfrahubDatabase] = None,
-    ) -> Tuple[List[QueryElement], Dict[str, Any], List[str]]:
-        """Generate Query String Snippet to filter the right node."""
-
-        query_filter: List[QueryElement] = []
-        query_params: Dict[str, Any] = {}
-        query_where: List[str] = []
-
-        filter_value = cls.coerce_value(filter_value)
-
-        if filter_value and not isinstance(filter_value, (str, bool, int, list)):
-            raise TypeError(f"filter {filter_name}: {filter_value} ({type(filter_value)}) is not supported.")
-
-        if isinstance(filter_value, list) and not all(isinstance(value, (str, bool, int)) for value in filter_value):
-            raise TypeError(f"filter {filter_name}: {filter_value} (list) contains unsupported item")
-
-        param_prefix = param_prefix or f"attr_{name}"
-
-        if include_match:
-            query_filter.append(QueryNode(name="n"))
-
-        query_filter.append(QueryRel(labels=[cls._rel_to_node_label]))
-
-        if name in ["any", "attribute"]:
-            query_filter.append(QueryNode(name="i", labels=["Attribute"]))
-        else:
-            query_filter.append(QueryNode(name="i", labels=["Attribute"], params={"name": f"${param_prefix}_name"}))
-            query_params[f"{param_prefix}_name"] = name
-
-        if filter_name == "value":
-            query_filter.append(QueryRel(labels=["HAS_VALUE"]))
-
-            if filter_value is not None:
-                query_filter.append(
-                    QueryNode(name="av", labels=["AttributeValue"], params={"value": f"${param_prefix}_value"})
-                )
-                query_params[f"{param_prefix}_value"] = filter_value
-            else:
-                query_filter.append(QueryNode(name="av", labels=["AttributeValue"]))
-
-        elif filter_name == "values" and isinstance(filter_value, list):
-            query_filter.extend((QueryRel(labels=["HAS_VALUE"]), QueryNode(name="av", labels=["AttributeValue"])))
-            query_where.append(f"av.value IN ${param_prefix}_value")
-            query_params[f"{param_prefix}_value"] = filter_value
-
-        elif filter_name in cls._flag_properties and filter_value is not None:
-            query_filter.append(QueryRel(labels=[filter_name.upper()]))
-            query_filter.append(
-                QueryNode(name="ap", labels=["Boolean"], params={"value": f"${param_prefix}_{filter_name}"})
-            )
-            query_params[f"{param_prefix}_{filter_name}"] = filter_value
-
-        elif "__" in filter_name and filter_value is not None:
-            filter_name_split = filter_name.split(sep="__", maxsplit=1)
-            property_name: str = filter_name_split[0]
-            property_attr: str = filter_name_split[1]
-
-            if property_name not in cls._node_properties:
-                raise ValueError(f"filter {filter_name}: {filter_value}, {property_name} is not a valid property")
-
-            if property_attr not in ["id"]:
-                raise ValueError(f"filter {filter_name}: {filter_value}, {property_attr} is supported")
-
-            clean_filter_name = f"{property_name}_{property_attr}"
-
-            query_filter.extend(
-                [
-                    QueryRel(labels=[f"HAS_{property_name.upper()}"]),
-                    QueryNode(name="ap", labels=["CoreNode"], params={"uuid": f"${param_prefix}_{clean_filter_name}"}),
-                ]
-            )
-            query_params[f"{param_prefix}_{clean_filter_name}"] = filter_value
-
-        return query_filter, query_params, query_where
-
     async def to_graphql(
         self, db: InfrahubDatabase, fields: Optional[dict] = None, related_node_ids: Optional[set] = None
     ) -> dict:
@@ -515,6 +413,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             else:
                 field = getattr(self, field_name)
 
+            if field_name == "value" and isinstance(field, Enum):
+                field = field.name
             if isinstance(field, (str, int, bool, dict, list)):
                 response[field_name] = field
 
@@ -547,8 +447,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 class AnyAttribute(BaseAttribute):
     type = Any
 
-    @classmethod
-    def validate_format(cls, *args, **kwargs) -> None:
+    def validate_format(self, *args, **kwargs) -> None:
         pass
 
 
@@ -559,8 +458,7 @@ class String(BaseAttribute):
 class HashedPassword(BaseAttribute):
     type = str
 
-    @classmethod
-    def serialize(cls, value: str) -> str:
+    def serialize(self, value: str) -> str:
         """Serialize the value before storing it in the database."""
 
         return hash_password(value)
@@ -609,8 +507,7 @@ class Dropdown(BaseAttribute):
 
         return label
 
-    @classmethod
-    def validate_content(cls, value: Any, name: str, schema: AttributeSchema) -> None:
+    def validate_content(self, value: Any, name: str, schema: AttributeSchema) -> None:
         """Validate the content of the dropdown."""
         super().validate_content(value=value, name=name, schema=schema)
         values = [choice.name for choice in schema.choices]
@@ -621,8 +518,7 @@ class Dropdown(BaseAttribute):
 class URL(BaseAttribute):
     type = str
 
-    @classmethod
-    def validate_format(cls, value: str, name: str, schema: AttributeSchema) -> None:
+    def validate_format(self, value: str, name: str, schema: AttributeSchema) -> None:
         super().validate_format(value=value, name=name, schema=schema)
 
         if not is_valid_url(value):
@@ -688,8 +584,7 @@ class IPNetwork(BaseAttribute):
             return None
         return str(ipaddress.ip_network(str(self.value)).with_netmask)
 
-    @classmethod
-    def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
+    def validate_format(self, value: Any, name: str, schema: AttributeSchema) -> None:
         """Validate the format of the attribute.
 
         Args:
@@ -707,8 +602,7 @@ class IPNetwork(BaseAttribute):
         except ValueError as exc:
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"}) from exc
 
-    @classmethod
-    def serialize(cls, value: Any) -> Any:
+    def serialize(self, value: Any) -> Any:
         """Serialize the value before storing it in the database."""
 
         return ipaddress.ip_network(value).with_prefixlen
@@ -773,8 +667,7 @@ class IPHost(BaseAttribute):
             return None
         return str(ipaddress.ip_interface(str(self.value)).with_netmask)
 
-    @classmethod
-    def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
+    def validate_format(self, value: Any, name: str, schema: AttributeSchema) -> None:
         """Validate the format of the attribute.
 
         Args:
@@ -792,8 +685,7 @@ class IPHost(BaseAttribute):
         except ValueError as exc:
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"}) from exc
 
-    @classmethod
-    def serialize(cls, value: Any) -> Any:
+    def serialize(self, value: Any) -> Any:
         """Serialize the value before storing it in the database."""
 
         return ipaddress.ip_interface(value).with_prefixlen
@@ -802,14 +694,12 @@ class IPHost(BaseAttribute):
 class ListAttribute(BaseAttribute):
     type = list
 
-    @classmethod
-    def serialize(cls, value: Any) -> Any:
+    def serialize(self, value: Any) -> Any:
         """Serialize the value before storing it in the database."""
 
         return ujson.dumps(value)
 
-    @classmethod
-    def deserialize(cls, value: Any) -> Any:
+    def deserialize(self, value: Any) -> Any:
         """Deserialize the value (potentially) coming from the database."""
         if isinstance(value, (str, bytes)):
             return ujson.loads(value)
@@ -819,14 +709,12 @@ class ListAttribute(BaseAttribute):
 class JSONAttribute(BaseAttribute):
     type = (dict, list)
 
-    @classmethod
-    def serialize(cls, value: Any) -> Any:
+    def serialize(self, value: Any) -> Any:
         """Serialize the value before storing it in the database."""
 
         return ujson.dumps(value)
 
-    @classmethod
-    def deserialize(cls, value: Any) -> Any:
+    def deserialize(self, value: Any) -> Any:
         """Deserialize the value (potentially) coming from the database."""
         if value and isinstance(value, (str, bytes)):
             return ujson.loads(value)

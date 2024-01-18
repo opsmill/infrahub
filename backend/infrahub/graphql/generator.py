@@ -702,7 +702,6 @@ async def generate_filters(
 
     for attr in schema.attributes:
         attr_kind = get_attr_kind(schema, attr)
-        # TODO: probably need some changes in here
         filters.update(
             get_attribute_type(kind=attr_kind).get_graphql_filters(
                 name=attr.name, include_properties=include_properties

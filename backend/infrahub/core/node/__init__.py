@@ -466,7 +466,8 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         changed = False
 
-        STANDARD_FIELDS = ["value", "is_protected", "is_visible"]
+        VALUE_FIELD = "value"
+        STANDARD_FIELDS = [VALUE_FIELD, "is_protected", "is_visible"]
         NODE_FIELDS = ["source", "owner"]
 
         for key, value in data.items():
@@ -474,8 +475,12 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                 for field_name in value.keys():
                     if field_name in STANDARD_FIELDS:
                         attr = getattr(self, key)
-                        if getattr(attr, field_name) != value.get(field_name):
-                            setattr(attr, field_name, value.get(field_name))
+                        value_to_set = value.get(field_name)
+                        if field_name == VALUE_FIELD:
+                            attr = getattr(self, key)
+                            value_to_set = attr.schema.convert_to_attribute_enum(value_to_set)
+                        if getattr(attr, field_name) != value_to_set:
+                            setattr(attr, field_name, value_to_set)
                             changed = True
 
                     elif field_name in NODE_FIELDS:

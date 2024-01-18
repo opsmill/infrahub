@@ -30,6 +30,9 @@ from infrahub.core.constants import (
     ValidatorConclusion,
     ValidatorState,
 )
+from infrahub.core.constants.relationship_label import RELATIONSHIP_TO_NODE_LABEL, RELATIONSHIP_TO_VALUE_LABEL
+from infrahub.core.constants.schema_property import FlagProperty, NodeProperty
+from infrahub.core.enums import generate_python_enum
 from infrahub.core.query import QueryNode, QueryRel, QueryRelDirection
 from infrahub.core.relationship import Relationship
 from infrahub.types import ATTRIBUTE_TYPES
@@ -342,16 +345,117 @@ class AttributeSchema(BaseSchemaModel):
 
         return values
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._attribute_enum_class = None
+        if self.enum:
+            self._attribute_enum_class = generate_python_enum(f"{self.name.title()}Enum", {v: v for v in self.enum})
+
     def get_class(self):
         return ATTRIBUTE_TYPES[self.kind].get_infrahub_class()
 
-    async def get_query_filter(
+    def convert_to_attribute_enum(self, value: Any) -> Any:
+        if not self._attribute_enum_class or not value:
+            return value
+        if isinstance(value, self._attribute_enum_class):
+            return value
+        if isinstance(value, enum.Enum):
+            value = value.value
+        return self._attribute_enum_class(value)
+
+    def convert_to_enum_value(self, value: Any) -> Any:
+        if not self._attribute_enum_class:
+            return value
+        if isinstance(value, list):
+            value = [self.convert_to_attribute_enum(element) for element in value]
+            return [element.value if isinstance(element, enum.Enum) else element for element in value]
+        value = self.convert_to_attribute_enum(value)
+        return value.value if isinstance(value, enum.Enum) else value
+
+    async def get_query_filter(  # pylint: disable=unused-argument,disable=too-many-branches
         self,
-        db: InfrahubDatabase,
-        *args,
-        **kwargs,  # pylint: disable=unused-argument
+        name: str,
+        filter_name: str,
+        branch: Optional[Branch] = None,
+        filter_value: Optional[Union[str, int, bool, list, enum.Enum]] = None,
+        include_match: bool = True,
+        param_prefix: Optional[str] = None,
+        db: Optional[InfrahubDatabase] = None,
     ) -> Tuple[List[QueryElement], Dict[str, Any], List[str]]:
-        return await self.get_class().get_query_filter(*args, **kwargs)
+        """Generate Query String Snippet to filter the right node."""
+
+        query_filter: List[QueryElement] = []
+        query_params: Dict[str, Any] = {}
+        query_where: List[str] = []
+
+        filter_value = self.convert_to_enum_value(filter_value)
+
+        if filter_value and not isinstance(filter_value, (str, bool, int, list)):
+            raise TypeError(f"filter {filter_name}: {filter_value} ({type(filter_value)}) is not supported.")
+
+        if isinstance(filter_value, list) and not all(isinstance(value, (str, bool, int)) for value in filter_value):
+            raise TypeError(f"filter {filter_name}: {filter_value} (list) contains unsupported item")
+
+        param_prefix = param_prefix or f"attr_{name}"
+
+        if include_match:
+            query_filter.append(QueryNode(name="n"))
+
+        query_filter.append(QueryRel(labels=[RELATIONSHIP_TO_NODE_LABEL]))
+
+        if name in ["any", "attribute"]:
+            query_filter.append(QueryNode(name="i", labels=["Attribute"]))
+        else:
+            query_filter.append(QueryNode(name="i", labels=["Attribute"], params={"name": f"${param_prefix}_name"}))
+            query_params[f"{param_prefix}_name"] = name
+
+        if filter_name == "value":
+            query_filter.append(QueryRel(labels=[RELATIONSHIP_TO_VALUE_LABEL]))
+
+            if filter_value is not None:
+                query_filter.append(
+                    QueryNode(name="av", labels=["AttributeValue"], params={"value": f"${param_prefix}_value"})
+                )
+                query_params[f"{param_prefix}_value"] = filter_value
+            else:
+                query_filter.append(QueryNode(name="av", labels=["AttributeValue"]))
+
+        elif filter_name == "values" and isinstance(filter_value, list):
+            query_filter.extend(
+                (QueryRel(labels=[RELATIONSHIP_TO_VALUE_LABEL]), QueryNode(name="av", labels=["AttributeValue"]))
+            )
+            query_where.append(f"av.value IN ${param_prefix}_value")
+            query_params[f"{param_prefix}_value"] = filter_value
+
+        elif filter_name in [v.value for v in FlagProperty] and filter_value is not None:
+            query_filter.append(QueryRel(labels=[filter_name.upper()]))
+            query_filter.append(
+                QueryNode(name="ap", labels=["Boolean"], params={"value": f"${param_prefix}_{filter_name}"})
+            )
+            query_params[f"{param_prefix}_{filter_name}"] = filter_value
+
+        elif "__" in filter_name and filter_value is not None:
+            filter_name_split = filter_name.split(sep="__", maxsplit=1)
+            property_name: str = filter_name_split[0]
+            property_attr: str = filter_name_split[1]
+
+            if property_name not in [v.value for v in NodeProperty]:
+                raise ValueError(f"filter {filter_name}: {filter_value}, {property_name} is not a valid property")
+
+            if property_attr not in ["id"]:
+                raise ValueError(f"filter {filter_name}: {filter_value}, {property_attr} is supported")
+
+            clean_filter_name = f"{property_name}_{property_attr}"
+
+            query_filter.extend(
+                [
+                    QueryRel(labels=[f"HAS_{property_name.upper()}"]),
+                    QueryNode(name="ap", labels=["CoreNode"], params={"uuid": f"${param_prefix}_{clean_filter_name}"}),
+                ]
+            )
+            query_params[f"{param_prefix}_{clean_filter_name}"] = filter_value
+
+        return query_filter, query_params, query_where
 
 
 class RelationshipSchema(BaseSchemaModel):
@@ -962,8 +1066,6 @@ internal_schema = {
                     "kind": "Text",
                     "description": "Defines the type of the attribute.",
                     "enum": ATTRIBUTE_KIND_LABELS,
-                    "min_length": DEFAULT_KIND_MIN_LENGTH,
-                    "max_length": DEFAULT_KIND_MAX_LENGTH,
                 },
                 {
                     "name": "enum",
