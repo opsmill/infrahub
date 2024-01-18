@@ -104,21 +104,32 @@ class StorageSettings(BaseSettings):
 
 class DatabaseSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_DB_")
-    db_type: DatabaseType = Field(default=DatabaseType.MEMGRAPH)
-    protocol: str = Field(default="bolt")
-    username: str = Field(default="neo4j")
-    password: str = Field(default="admin")
-    address: str = Field(default="localhost")
-    port: int = Field(default=7687)
-    database: Optional[str] = Field(default=None, pattern=VALID_DATABASE_NAME_REGEX, description="Name of the database")
+    db_type: DatabaseType = Field(
+        default=DatabaseType.MEMGRAPH, validation_alias=AliasChoices("db_type", "INFRAHUB_DB_TYPE")
+    )
+    protocol: str = Field(default="bolt", validation_alias=AliasChoices("protocol", "INFRAHUB_DB_PROTOCOL"))
+    username: str = Field(default="neo4j", validation_alias=AliasChoices("username", "INFRAHUB_DB_USERNAME"))
+    password: str = Field(default="admin", validation_alias=AliasChoices("password", "INFRAHUB_DB_PASSWORD"))
+    address: str = Field(default="localhost", validation_alias=AliasChoices("address", "INFRAHUB_DB_ADDRESS"))
+    port: int = Field(default=7687, validation_alias=AliasChoices("port", "INFRAHUB_DB_PORT"))
+    database: Optional[str] = Field(
+        default=None,
+        pattern=VALID_DATABASE_NAME_REGEX,
+        description="Name of the database",
+        validation_alias=AliasChoices("database", "INFRAHUB_DB_DATABASE"),
+    )
     query_size_limit: int = Field(
         default=5000,
         ge=1,
         le=20000,
         description="The max number of records to fetch in a single query before performing internal pagination.",
+        validation_alias=AliasChoices("query_size_limit", "INFRAHUB_DB_QUERY_SIZE_LIMIT"),
     )
     max_depth_search_hierarchy: int = Field(
-        default=5, le=20, description="Maximum number of level to search in a hierarchy."
+        default=5,
+        le=20,
+        description="Maximum number of level to search in a hierarchy.",
+        validation_alias=AliasChoices("max_depth_search_hierarchy", "INFRAHUB_DB_MAX_DEPTH_SEARCH_HIERARCHY"),
     )
 
     @property
