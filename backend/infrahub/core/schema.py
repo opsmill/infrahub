@@ -348,13 +348,15 @@ class AttributeSchema(BaseSchemaModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._attribute_enum_class = None
-        if self.enum:
+        if self.enum and config.SETTINGS.experimental_features.graphql_enums:
             self._attribute_enum_class = generate_python_enum(f"{self.name.title()}Enum", {v: v for v in self.enum})
 
     def get_class(self):
         return ATTRIBUTE_TYPES[self.kind].get_infrahub_class()
 
     def convert_to_attribute_enum(self, value: Any) -> Any:
+        if not config.SETTINGS.experimental_features.graphql_enums:
+            return value
         if not self._attribute_enum_class or not value:
             return value
         if isinstance(value, self._attribute_enum_class):

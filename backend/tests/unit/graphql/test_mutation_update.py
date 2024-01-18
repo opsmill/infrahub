@@ -142,7 +142,10 @@ async def test_update_simple_object_with_enum(
     assert result.data["TestCarUpdate"]["object"]["transmission"]["value"] == response_value
 
     updated_car = await NodeManager.get_one(db=db, id=car_id)
-    assert updated_car.transmission.value == "flintstone-feet"
+    if graphql_enums_on:
+        assert updated_car.transmission.value.value == "flintstone-feet"
+    else:
+        assert updated_car.transmission.value == "flintstone-feet"
 
 
 async def test_update_check_unique(db: InfrahubDatabase, person_john_main: Node, person_jim_main: Node, branch: Branch):

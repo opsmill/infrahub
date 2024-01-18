@@ -104,7 +104,10 @@ async def test_create_simple_object_with_enum(
 
     car_id = result.data["TestCarCreate"]["object"]["id"]
     database_car = await NodeManager.get_one(db=db, id=car_id)
-    assert database_car.transmission.value == "manual"
+    if graphql_enums_on:
+        assert database_car.transmission.value.value == "manual"
+    else:
+        assert database_car.transmission.value == "manual"
 
 
 async def test_create_with_id(db: InfrahubDatabase, default_branch, car_person_schema):

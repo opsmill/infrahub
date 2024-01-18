@@ -10,6 +10,7 @@ from infrahub_sdk import UUIDT
 from infrahub_sdk.utils import is_valid_url
 from pydantic.v1 import BaseModel, Field
 
+from infrahub import config
 from infrahub.core import registry
 from infrahub.core.constants import BranchSupportType, RelationshipStatus
 from infrahub.core.property import (
@@ -199,10 +200,16 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
             if len(value) > schema.max_length:
                 raise ValidationError({name: f"{value} must have a maximum length of {schema.max_length!r}"})
 
-        try:
-            self.schema.convert_to_attribute_enum(value)
-        except ValueError as exc:
-            raise ValidationError({name: f"{value} must be one of {schema.enum!r}"}) from exc
+        if schema.enum:
+            if config.SETTINGS.experimental_features.graphql_enums:
+                try:
+                    self.schema.convert_to_attribute_enum(value)
+                except ValueError as exc:
+                    raise ValidationError({name: f"{value} must be one of {schema.enum!r}"}) from exc
+            else:
+                if schema.enum:
+                    if value not in schema.enum:
+                        raise ValidationError({name: f"{value} must be one of {schema.enum!r}"})
 
     def to_db(self):
         if self.value is None:
