@@ -30,10 +30,9 @@ from infrahub.core.constants import (
     ValidatorConclusion,
     ValidatorState,
 )
-from infrahub.core.constants.relationship_label import RELATIONSHIP_TO_NODE_LABEL, RELATIONSHIP_TO_VALUE_LABEL
-from infrahub.core.constants.schema_property import FlagProperty, NodeProperty
 from infrahub.core.enums import generate_python_enum
 from infrahub.core.query import QueryNode, QueryRel, QueryRelDirection
+from infrahub.core.query.attribute import default_attribute_query_filter
 from infrahub.core.relationship import Relationship
 from infrahub.types import ATTRIBUTE_TYPES
 
@@ -384,80 +383,16 @@ class AttributeSchema(BaseSchemaModel):
         param_prefix: Optional[str] = None,
         db: Optional[InfrahubDatabase] = None,
     ) -> Tuple[List[QueryElement], Dict[str, Any], List[str]]:
-        """Generate Query String Snippet to filter the right node."""
-
-        query_filter: List[QueryElement] = []
-        query_params: Dict[str, Any] = {}
-        query_where: List[str] = []
-
         filter_value = self.convert_to_enum_value(filter_value)
-
-        if filter_value and not isinstance(filter_value, (str, bool, int, list)):
-            raise TypeError(f"filter {filter_name}: {filter_value} ({type(filter_value)}) is not supported.")
-
-        if isinstance(filter_value, list) and not all(isinstance(value, (str, bool, int)) for value in filter_value):
-            raise TypeError(f"filter {filter_name}: {filter_value} (list) contains unsupported item")
-
-        param_prefix = param_prefix or f"attr_{name}"
-
-        if include_match:
-            query_filter.append(QueryNode(name="n"))
-
-        query_filter.append(QueryRel(labels=[RELATIONSHIP_TO_NODE_LABEL]))
-
-        if name in ["any", "attribute"]:
-            query_filter.append(QueryNode(name="i", labels=["Attribute"]))
-        else:
-            query_filter.append(QueryNode(name="i", labels=["Attribute"], params={"name": f"${param_prefix}_name"}))
-            query_params[f"{param_prefix}_name"] = name
-
-        if filter_name == "value":
-            query_filter.append(QueryRel(labels=[RELATIONSHIP_TO_VALUE_LABEL]))
-
-            if filter_value is not None:
-                query_filter.append(
-                    QueryNode(name="av", labels=["AttributeValue"], params={"value": f"${param_prefix}_value"})
-                )
-                query_params[f"{param_prefix}_value"] = filter_value
-            else:
-                query_filter.append(QueryNode(name="av", labels=["AttributeValue"]))
-
-        elif filter_name == "values" and isinstance(filter_value, list):
-            query_filter.extend(
-                (QueryRel(labels=[RELATIONSHIP_TO_VALUE_LABEL]), QueryNode(name="av", labels=["AttributeValue"]))
-            )
-            query_where.append(f"av.value IN ${param_prefix}_value")
-            query_params[f"{param_prefix}_value"] = filter_value
-
-        elif filter_name in [v.value for v in FlagProperty] and filter_value is not None:
-            query_filter.append(QueryRel(labels=[filter_name.upper()]))
-            query_filter.append(
-                QueryNode(name="ap", labels=["Boolean"], params={"value": f"${param_prefix}_{filter_name}"})
-            )
-            query_params[f"{param_prefix}_{filter_name}"] = filter_value
-
-        elif "__" in filter_name and filter_value is not None:
-            filter_name_split = filter_name.split(sep="__", maxsplit=1)
-            property_name: str = filter_name_split[0]
-            property_attr: str = filter_name_split[1]
-
-            if property_name not in [v.value for v in NodeProperty]:
-                raise ValueError(f"filter {filter_name}: {filter_value}, {property_name} is not a valid property")
-
-            if property_attr not in ["id"]:
-                raise ValueError(f"filter {filter_name}: {filter_value}, {property_attr} is supported")
-
-            clean_filter_name = f"{property_name}_{property_attr}"
-
-            query_filter.extend(
-                [
-                    QueryRel(labels=[f"HAS_{property_name.upper()}"]),
-                    QueryNode(name="ap", labels=["CoreNode"], params={"uuid": f"${param_prefix}_{clean_filter_name}"}),
-                ]
-            )
-            query_params[f"{param_prefix}_{clean_filter_name}"] = filter_value
-
-        return query_filter, query_params, query_where
+        return await default_attribute_query_filter(
+            name=name,
+            filter_name=filter_name,
+            branch=branch,
+            filter_value=filter_value,
+            include_match=include_match,
+            param_prefix=param_prefix,
+            db=db,
+        )
 
 
 class RelationshipSchema(BaseSchemaModel):
@@ -689,6 +624,7 @@ class BaseNodeSchema(BaseSchemaModel):
         return duplicate
 
     def get_field(self, name, raise_on_error=True) -> Union[AttributeSchema, RelationshipSchema]:
+    def get_field(self, name, raise_on_error=True) -> Optional[Union[AttributeSchema, RelationshipSchema]]:
         if field := self.get_attribute(name, raise_on_error=False):
             return field
 

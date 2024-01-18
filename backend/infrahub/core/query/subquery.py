@@ -3,7 +3,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Optional, Tuple, Union
 
 from infrahub.core.query import QueryNode
-from infrahub.types import get_attribute_type
+
+from .attribute import default_attribute_query_filter
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -28,15 +29,13 @@ async def build_subquery_filter(
     # If the field is not provided, it means that the query is targeting a special keyword like:: any or attribute
     # Currently any and attribute have the same effect and relationship is not supported yet
     if field:
-        get_query_filter = field.get_query_filter
+        query_filter_function = field.get_query_filter
     elif name in ["any", "attribute"]:
-        default_attribute = get_attribute_type()
-        base_attribute = default_attribute.get_infrahub_class()
-        get_query_filter = base_attribute.schema.get_query_filter
+        query_filter_function = default_attribute_query_filter
     else:
         raise ValueError("Either a field must be provided or name must be any or attribute")
 
-    field_filter, field_params, field_where = await get_query_filter(
+    field_filter, field_params, field_where = await query_filter_function(
         name=name,
         include_match=False,
         filter_name=filter_name,
