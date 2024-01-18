@@ -35,7 +35,7 @@ test.describe("Getting started with Infrahub - Integration with Git", () => {
         "tutorial/tutorial-6-git-integration.cy.ts/tutorial_6_interface_update"
       );
       await page.getByRole("button", { name: "Save" }).click();
-      await expect(page.locator("#alert-success")).toContainText("InterfaceL3 updated");
+      await expect(page.locator("#alert-success-updated")).toContainText("InterfaceL3 updated");
     });
   });
 

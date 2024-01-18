@@ -439,7 +439,9 @@ export const Conversations = (props: tConversations) => {
 
               <div className="">
                 <Button
-                  disabled={!auth?.permissions?.write}
+                  disabled={
+                    !auth?.permissions?.write || proposedChangesDetails.state.value !== "open"
+                  }
                   onClick={() => setShowEditDrawer(true)}
                   className="mr-4">
                   Edit

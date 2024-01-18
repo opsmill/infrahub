@@ -59,3 +59,15 @@ export const saveScreenshotForDocs = async (page: Page, filename: string) => {
     animations: "disabled",
   });
 };
+
+export const createBranch = async (page: Page, branchName: string) => {
+  await page.getByTestId("create-branch-button").click();
+  await page.locator("#new-branch-name").fill(branchName);
+  await page.getByRole("button", { name: "Create" }).click();
+};
+
+export const deleteBranch = async (page: Page, branchName: string) => {
+  await page.goto("/branches/" + branchName);
+  await page.getByRole("button", { name: "Delete" }).click();
+  await page.getByTestId("modal-delete-confirm").click();
+};
