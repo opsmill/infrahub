@@ -7,7 +7,7 @@ import { Button } from "../buttons/button";
 import { Input } from "./input";
 
 export const DatePicker = (props: any) => {
-  const { date, onChange, onClickNow, error } = props;
+  const { date, onChange, onClickNow, error, disabled, isProtected } = props;
 
   const currentDate = date && isValid(date) ? date : null;
 
@@ -64,6 +64,7 @@ export const DatePicker = (props: any) => {
       className="rounded-r-none"
       autoFocus={stateHasFocus}
       error={hasError}
+      disabled={disabled || isProtected}
     />
   ));
 
@@ -80,7 +81,7 @@ export const DatePicker = (props: any) => {
       <Button
         onClick={handleClickNow}
         className="rounded-none rounded-r-md border-t border-r border-b border-gray-300"
-        disabled={!currentDate && !text}>
+        disabled={disabled || isProtected || (!currentDate && !text)}>
         Reset
       </Button>
     </div>
