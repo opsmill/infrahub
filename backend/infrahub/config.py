@@ -53,7 +53,7 @@ class MainSettings(BaseSettings):
 
 
 class FileSystemStorageSettings(BaseSettings):
-    # Make variable lookup case-sensitive to avoid fetch $PATH value
+    # Make variable lookup case-sensitive to avoid fetching $PATH value
     model_config = SettingsConfigDict(case_sensitive=True)
     path_: str = Field(
         default="/opt/infrahub/storage",
