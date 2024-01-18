@@ -23,11 +23,11 @@ import { sortByName, sortByOrderWeight } from "../utils/common";
 import { fetchUrl } from "../utils/fetch";
 
 type tSchemaContext = {
-  checkSchemaUpdate: Function;
+  checkSchemaUpdate: () => Promise<void>;
 };
 
 export const SchemaContext = createContext<tSchemaContext>({
-  checkSchemaUpdate: () => null,
+  checkSchemaUpdate: async () => {},
 });
 
 export const withSchemaContext = (AppComponent: any) => (props: any) => {
@@ -94,10 +94,10 @@ export const withSchemaContext = (AppComponent: any) => (props: any) => {
     }
   };
 
-  const checkSchemaUpdate = () => {
+  const checkSchemaUpdate = async () => {
     const selectedBranch = findSelectedBranch(branches, branchInQueryString);
 
-    updateSchemaStateIfNeeded(selectedBranch);
+    await updateSchemaStateIfNeeded(selectedBranch);
 
     if (selectedBranch?.name === currentBranch?.name) return;
 
