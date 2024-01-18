@@ -85,7 +85,7 @@ async def generate_object_types(db: InfrahubDatabase, branch: Union[Branch, str]
             name=paginated_interface._meta.name, graphql_type=paginated_interface, branch=branch.name
         )
 
-    # Define DataOwner and DataOwner
+    # Define LineageSource and LineageOwner
     data_source = registry.get_graphql_type(name="LineageSource", branch=branch)
     data_owner = registry.get_graphql_type(name="LineageOwner", branch=branch)
     define_relationship_property(branch=branch, data_source=data_source, data_owner=data_owner)
