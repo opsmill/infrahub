@@ -14,7 +14,6 @@ export const DatePicker = (props: any) => {
   const [text, setText] = useState(currentDate ? format(currentDate, "MM/dd/yyy HH:mm") : "");
   const [stateHasFocus, setStateHasFocus] = useState(false);
   const [hasError, setHasError] = useState(error);
-
   const refCustomInput = useRef();
 
   const handleChangeDate = (newDate: Date) => {

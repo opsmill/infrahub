@@ -1,6 +1,6 @@
 import { useMutation } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
 import { useCallback, useContext } from "react";
@@ -192,7 +192,7 @@ export default function BranchSelector() {
       name: "at",
       label: "Branched at",
       type: "datepicker",
-      value: format(new Date(), "MM/dd/yyy HH:mm"),
+      value: new Date(),
       isProtected: true,
       isOptional: true,
     },
