@@ -67,10 +67,12 @@ class S3StorageSettings(BaseSettings):
     secret_access_key: str = Field(default="", validation_alias="AWS_SECRET_ACCESS_KEY")
     bucket_name: str = Field(
         default="",
+        alias="AWS_S3_BUCKET_NAME",
         validation_alias=AliasChoices("INFRAHUB_STORAGE_BUCKET_NAME", "AWS_S3_BUCKET_NAME"),
     )
     endpoint_url: str = Field(
         default="",
+        alias="AWS_S3_ENDPOINT_URL",
         validation_alias=AliasChoices("INFRAHUB_STORAGE_ENDPOINT_URL", "AWS_S3_ENDPOINT_URL"),
     )
     use_ssl: bool = Field(
@@ -78,14 +80,17 @@ class S3StorageSettings(BaseSettings):
     )
     default_acl: str = Field(
         default="",
+        alias="AWS_DEFAULT_ACL",
         validation_alias=AliasChoices("INFRAHUB_STORAGE_DEFAULT_ACL", "AWS_DEFAULT_ACL"),
     )
     querystring_auth: bool = Field(
         default=False,
+        alias="AWS_QUERYSTRING_AUTH",
         validation_alias=AliasChoices("INFRAHUB_STORAGE_QUERYTSTRING_AUTH", "AWS_QUERYSTRING_AUTH"),
     )
     custom_domain: str = Field(
         default="",
+        alias="AWS_S3_CUSTOM_DOMAIN",
         validation_alias=AliasChoices("INFRAHUB_STORAGE_CUSTOM_DOMAIN", "AWS_S3_CUSTOM_DOMAIN"),
     )
 
