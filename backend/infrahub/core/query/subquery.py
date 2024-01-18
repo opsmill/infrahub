@@ -32,7 +32,7 @@ async def build_subquery_filter(
     elif name in ["any", "attribute"]:
         default_attribute = get_attribute_type()
         base_attribute = default_attribute.get_infrahub_class()
-        get_query_filter = base_attribute.get_query_filter
+        get_query_filter = base_attribute.schema.get_query_filter
     else:
         raise ValueError("Either a field must be provided or name must be any or attribute")
 
