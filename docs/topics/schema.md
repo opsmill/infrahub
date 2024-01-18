@@ -106,6 +106,7 @@ nodes:
 | `IPNetwork`  | Yes                   | Yes                       |
 | `Checkbox`   | No                    | Yes                       |
 | `List`       | No                    | Yes                       |
+| `JSON`       | No                    | Yes                       |
 | `Any`        | No                    | Yes                       |
 
 ==- Relationship kinds behavior in the UI
