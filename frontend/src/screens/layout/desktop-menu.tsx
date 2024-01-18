@@ -1,4 +1,4 @@
-import { useAtom, useAtomValue } from "jotai/index";
+import { useAtomValue } from "jotai/index";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -16,7 +16,7 @@ export default function DesktopMenu() {
   const navigate = useNavigate();
 
   const branch = useAtomValue(currentBranchAtom);
-  const [currentSchemaHash] = useAtom(currentSchemaHashAtom);
+  const currentSchemaHash = useAtomValue(currentSchemaHashAtom);
 
   const [isLoading, setIsLoading] = useState(false);
   const [menu, setMenu] = useState([]);
