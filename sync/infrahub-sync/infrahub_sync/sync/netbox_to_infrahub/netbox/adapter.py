@@ -28,9 +28,6 @@ from .models import (
 class NetboxSync(NetboxAdapter):
     CoreStandardGroup = CoreStandardGroup
     BuiltinTag = BuiltinTag
-    CoreOrganization = CoreOrganization
-    BuiltinRole = BuiltinRole
-    BuiltinLocation = BuiltinLocation
     InfraCircuit = InfraCircuit
     TemplateCircuitType = TemplateCircuitType
     InfraDevice = InfraDevice
@@ -42,3 +39,6 @@ class NetboxSync(NetboxAdapter):
     InfraRouteTarget = InfraRouteTarget
     InfraVLAN = InfraVLAN
     InfraVRF = InfraVRF
+    CoreOrganization = CoreOrganization
+    BuiltinRole = BuiltinRole
+    BuiltinLocation = BuiltinLocation

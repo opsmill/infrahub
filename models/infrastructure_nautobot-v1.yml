@@ -536,7 +536,7 @@ nodes:
         label: Tagged VLANs
         peer: InfraVLAN
         optional: true
-        cardinality: one
+        cardinality: many
         kind: Attribute
         identifier: interface_l2__tagged_vlan
   - name: IPAddress
@@ -949,50 +949,123 @@ nodes:
         optional: true
         cardinality: many
         kind: Attribute
-
-extensions:
-  nodes:
-    - kind: BuiltinLocation
-      relationships:
-        - name: racks
-          peer: InfraRack
-          optional: true
-          cardinality: many
-          kind: Generic
-        - name: organization
-          peer: CoreOrganization
-          optional: true
-          cardinality: one
-          kind: Attribute
-        - name: tags
-          peer: BuiltinTag
-          optional: true
-          cardinality: many
-          kind: Attribute
-        - name: group
-          identifier: "location__group"
-          peer: CoreStandardGroup
-          optional: true
-          cardinality: one
-          kind: Generic
-        - name: location_type
-          peer: TemplateLocationType
-          optional: true
-          cardinality: one
-        - name: status
-          identifier: "location__status"
-          peer: BuiltinStatus
-          optional: true
-          cardinality: one
-    - kind: CoreOrganization
-      attributes:
-        - name: type
-          kind: Text
-          optional: true
-      relationships:
-        - name: group
-          identifier: "organization__group"
-          peer: CoreStandardGroup
-          optional: true
-          cardinality: one
-          kind: Generic
+  - name: Organization
+    namespace: Core
+    label: Organization
+    description: An organization represent a legal entity, a company.
+    default_filter: name__value
+    display_labels: [label__value]
+    order_by: [name__value]
+    icon: mdi:domain
+    include_in_menu: true
+    attributes:
+      - kind: Text
+        name: name
+        unique: true
+      - kind: Text
+        name: label
+        optional: true
+      - kind: Text
+        name: description
+        optional: true
+      - name: type
+        kind: Text
+        optional: true
+    relationships:
+      - cardinality: many
+        kind: Attribute
+        name: tags
+        optional: true
+        peer: BuiltinTag
+      - name: group
+        identifier: "organization__group"
+        peer: CoreStandardGroup
+        optional: true
+        cardinality: one
+        kind: Generic
+  - name: Status
+    namespace: Builtin
+    label: Status
+    description: 'Represent the status of an object: active, maintenance'
+    default_filter: name__value
+    display_labels: [label__value]
+    icon: mdi:list-status
+    include_in_menu: false
+    attributes:
+      - kind: Text
+        name: name
+        unique: true
+      - kind: Text
+        name: label
+        optional: true
+      - kind: Text
+        name: description
+        optional: true
+  - name: Role
+    namespace: Builtin
+    label: Role
+    description: Represent the role of an object
+    default_filter: name__value
+    display_labels: [label__value]
+    order_by: [name__value]
+    icon: mdi:ballot
+    include_in_menu: false
+    attributes:
+      - kind: Text
+        name: name
+        unique: true
+      - kind: Text
+        name: label
+        optional: true
+      - kind: Text
+        name: description
+        optional: true
+  - name: Location
+    namespace: Builtin
+    label: Location
+    description: 'A location represent a physical element: a building, a site, a city'
+    default_filter: name__value
+    display_labels: [name__value]
+    order_by: [name__value]
+    icon: mdi:map-marker-radius-outline
+    include_in_menu: true
+    attributes:
+      - kind: Text
+        name: name
+        unique: true
+      - kind: Text
+        name: description
+        optional: true
+      - kind: Text
+        name: type
+    relationships:
+      - name: racks
+        peer: InfraRack
+        optional: true
+        cardinality: many
+        kind: Generic
+      - name: organization
+        peer: CoreOrganization
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: tags
+        peer: BuiltinTag
+        optional: true
+        cardinality: many
+        kind: Attribute
+      - name: group
+        identifier: "location__group"
+        peer: CoreStandardGroup
+        optional: true
+        cardinality: one
+        kind: Generic
+      - name: location_type
+        peer: TemplateLocationType
+        optional: true
+        cardinality: one
+      - name: status
+        identifier: "location__status"
+        peer: BuiltinStatus
+        optional: true
+        cardinality: one
