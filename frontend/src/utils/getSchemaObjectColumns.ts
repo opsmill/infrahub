@@ -2,6 +2,7 @@ import * as R from "ramda";
 import {
   attributesKindForDetailsView,
   attributesKindForListView,
+  peersKindForForm,
   relationshipsForDetailsView,
   relationshipsForListView,
   relationshipsForTabs,
@@ -114,4 +115,16 @@ export const getObjectTabs = (tabs: any[], data: any) => {
     ...tab,
     count: data[tab.name].count,
   }));
+};
+
+export const getObjectPeers = (schema?: iNodeSchema | iGenericSchema) => {
+  const peers = (schema?.relationships || [])
+    .filter(
+      (relationship) =>
+        peersKindForForm.includes(relationship.kind) || relationship.cardinality === "one"
+    )
+    .map((relationship) => relationship.peer)
+    .filter(Boolean);
+
+  return peers;
 };
