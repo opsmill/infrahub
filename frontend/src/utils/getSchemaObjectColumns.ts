@@ -2,7 +2,7 @@ import * as R from "ramda";
 import {
   attributesKindForDetailsView,
   attributesKindForListView,
-  peersKindForFormExclude,
+  peersKindForForm,
   relationshipsForDetailsView,
   relationshipsForListView,
   relationshipsForTabs,
@@ -119,7 +119,7 @@ export const getObjectTabs = (tabs: any[], data: any) => {
 
 export const getObjectPeers = (schema?: iNodeSchema | iGenericSchema) => {
   const peers = (schema?.relationships || [])
-    .filter((relationship) => !peersKindForFormExclude.includes(relationship.kind))
+    .filter((relationship) => peersKindForForm.includes(relationship.kind))
     .map((relationship) => relationship.peer)
     .filter(Boolean);
 

@@ -164,4 +164,4 @@ export const relationshipsForTabs = {
   many: ["Generic", "Component"],
 };
 
-export const peersKindForFormExclude = ["Generic", "Group"];
+export const peersKindForForm = ["Attribute", "Parent"];
