@@ -56,14 +56,14 @@ describe("Tutorial - Part 1", () => {
 
     // Fill the new branch name
     cy.contains("Create a new branch").should("be.visible"); // Assert that the form is ready
-    cy.get("#new-branch-name").type(NEW_BRANCH_NAME);
+    cy.contains("New branch name").type(NEW_BRANCH_NAME);
 
     if (this.screenshots) {
       cy.screenshot("tutorial_1_branch_creation", screenshotConfig);
     }
 
     // Submit the form
-    cy.contains("button", "Create").click();
+    cy.contains("button", "Create branch").click();
 
     // Verify if the new branch is selected
     cy.get("[data-cy='branch-select-menu']").contains(NEW_BRANCH_NAME);
