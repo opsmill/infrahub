@@ -324,7 +324,7 @@ class InfrahubGraphQLApp:
         variable_values = data.get("variables")
         operation_name = data.get("operationName")
 
-        context_value = await self._get_context_value_ws(db=db, branch=branch, websocket=websocket)  # pylint: disable=no-value-for-parameter
+        context_value = await self._get_context_value_ws(db=db, branch=branch, websocket=websocket)
         errors: List[GraphQLError] = []
         operation: Optional[OperationDefinitionNode] = None
         document: Optional[DocumentNode] = None

@@ -31,12 +31,11 @@ async def resolver_graphql_query(
 
     async with driver.start_session() as db:
         # Find the GraphQLQuery and the GraphQL Schema
-        items = await NodeManager.query(
-            db=db, schema=InfrahubKind.GRAPHQLQUERY, filters={name: name}, branch=branch, at=at
+        graphql_query = await NodeManager.get_one_by_default_filter(
+            db=db, id=name, schema_name=InfrahubKind.GRAPHQLQUERY, branch=branch, at=at
         )
-        if not items:
+        if not graphql_query:
             raise ValueError(f"Unable to find the {InfrahubKind.GRAPHQLQUERY} {name}")
-        graphql_query = items[0]
 
         schema_branch = registry.schema.get_schema_branch(name=branch.name)
         graphql_schema = await schema_branch.get_graphql_schema(db=db)

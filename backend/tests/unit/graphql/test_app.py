@@ -25,7 +25,7 @@ async def test_websocket(db: InfrahubDatabase, default_branch: Branch, register_
                 {
                     "id": "1",
                     "type": "start",
-                    "payload": {"query": 'subscription {\n  query(name: "count_tags")\n}', "variables": {}},
+                    "payload": {"query": 'subscription {\n  query(name: "query01")\n}', "variables": {}},
                 }
             )
             data = websocket.receive_json()
