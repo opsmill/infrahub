@@ -87,8 +87,7 @@ test.describe("/proposed-changes", () => {
           await page.getByRole("button", { name: "Save" }).click();
           await expect(page.getByText("ProposedChange updated")).toBeVisible();
 
-          // FIXME: page data not updated after submit
-          // await expect(page.getByText("ReviewersArchitecture Team")).toBeVisible();
+          await expect(page.getByText("ReviewersArchitecture Team", { exact: true })).toBeVisible();
         });
       });
 

@@ -607,7 +607,10 @@ export const Conversations = (props: tConversations) => {
         setOpen={setShowEditDrawer}>
         <ObjectItemEditComponent
           closeDrawer={() => setShowEditDrawer(false)}
-          onUpdateComplete={() => refetch()}
+          onUpdateComplete={() => {
+            if (detailsRefetch) detailsRefetch();
+            refetch();
+          }}
           objectid={proposedchange!}
           objectname={PROPOSED_CHANGES_OBJECT!}
           formStructure={formStructure}
