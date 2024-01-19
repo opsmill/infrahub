@@ -56,7 +56,7 @@ describe("Tutorial - Part 1", () => {
 
     // Fill the new branch name
     cy.contains("Create a new branch").should("be.visible"); // Assert that the form is ready
-    cy.contains("New branch name").type(NEW_BRANCH_NAME);
+    cy.get("[id='New branch name']").type(NEW_BRANCH_NAME);
 
     if (this.screenshots) {
       cy.screenshot("tutorial_1_branch_creation", screenshotConfig);
