@@ -3,7 +3,7 @@ import { Icon } from "@iconify-icon/react";
 import { formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
-import { useCallback, useContext } from "react";
+import { useContext } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "../config/qsp";
 import { AuthContext } from "../decorators/withAuth";
@@ -75,17 +75,14 @@ export default function BranchSelector() {
 
   const defaultBranch = branches?.filter((b) => b.is_default)[0]?.id;
 
-  /**
-   * Update GraphQL client endpoint whenever branch changes
-   */
-  const onBranchChange = useCallback((branch: Branch) => {
+  const onBranchChange = (branch: Branch) => {
     if (branch?.is_default) {
       // undefined is needed to remove a parameter from the QSP
       setBranchInQueryString(undefined);
     } else {
       setBranchInQueryString(branch.name);
     }
-  }, []);
+  };
 
   const renderOption = ({ option, active, selected }: any) => (
     <div className="flex relative flex-col">
@@ -147,7 +144,6 @@ export default function BranchSelector() {
       close();
     } catch (error) {
       console.error("Error while creating the branch: ", error);
-      close();
     }
   };
 
