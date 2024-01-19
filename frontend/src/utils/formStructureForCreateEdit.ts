@@ -100,97 +100,97 @@ const getFormStructureForCreateEdit = (
     ...(getObjectRelationshipsForForm(schema) ?? []),
   ]);
 
-  return fieldsToParse.map((field) => {
-    if (field.read_only) {
-      // Hide read-only attributes
-      return;
-    }
+  const fields = fieldsToParse
+    .filter((field) => !field.read_only) // Ignore read only fields
+    .map((field) => {
+      // Parse a relationship
+      if (field.cardinality) {
+        const isInherited = !!generics.find((g) => g.kind === field.peer);
 
-    // Parse a relationship
-    if (field.cardinality) {
-      const isInherited = !!generics.find((g) => g.kind === field.peer);
+        return {
+          name: field.name + (field.cardinality === "one" ? ".id" : ".list"),
+          kind: "String" as SchemaAttributeType,
+          peer: field.peer,
+          type: getInputTypeFromRelationship(field, isInherited),
+          label: field.label ? field.label : field.name,
+          value: (() => {
+            if (!row || !row[field.name]) {
+              return "";
+            }
+
+            const value = row[field.name].node ?? row[field.name];
+
+            if (field.cardinality === "one" && !isInherited) {
+              return value.id;
+            } else if (field.cardinality === "one" && isInherited) {
+              return value;
+            } else if (value.edges) {
+              return value.edges.map((item: any) => item?.node?.id);
+            } else if (value.node) {
+              return value.node.map((item: any) => item?.node?.id);
+            }
+
+            return "";
+          })(),
+          options: {
+            values: getOptionsFromRelationship(
+              dropdownOptions,
+              field,
+              isInherited,
+              schemas,
+              generics
+            ),
+          },
+          config: {
+            validate: (value: any) => validate(value, undefined, field.optional),
+          },
+          isOptional: field.optional,
+          isProtected: getIsDisabled({
+            owner: row && row[field.name]?.properties?.owner,
+            user,
+            isProtected: row && row[field.name] && row[field.name]?.properties?.is_protected,
+            isReadOnly: field.read_only,
+          }),
+          field,
+          schema,
+        };
+      }
+
+      // Parse an attribute
+      const fieldValue = getFieldValue(row, field);
+
+      // Quick fix to prevent password in update field,
+      // TODO: remove after new mutations are available to better handle accounts
+      const isOptional = field.optional || (isUpdate && field.kind === "HashedPassword");
 
       return {
-        name: field.name + (field.cardinality === "one" ? ".id" : ".list"),
-        kind: "String",
-        peer: field.peer,
-        type: getInputTypeFromRelationship(field, isInherited),
-        label: field.label ? field.label : field.name,
-        value: (() => {
-          if (!row || !row[field.name]) {
-            return "";
-          }
-
-          const value = row[field.name].node ?? row[field.name];
-
-          if (field.cardinality === "one" && !isInherited) {
-            return value.id;
-          } else if (field.cardinality === "one" && isInherited) {
-            return value;
-          } else if (value.edges) {
-            return value.edges.map((item: any) => item?.node?.id);
-          } else if (value.node) {
-            return value.node.map((item: any) => item?.node?.id);
-          }
-
-          return "";
-        })(),
+        name: field.name + ".value",
+        kind: field.kind as SchemaAttributeType,
+        type: getInputTypeFromAttribute(field),
+        label: field.label || field.name,
+        value: fieldValue,
         options: {
-          values: getOptionsFromRelationship(
-            dropdownOptions,
-            field,
-            isInherited,
-            schemas,
-            generics
-          ),
+          values: getOptionsFromAttribute(field, fieldValue),
         },
         config: {
-          validate: (value: any) => validate(value, undefined, field.optional),
+          validate: (value: any) => validate(value, field, isOptional),
         },
-        isOptional: field.optional,
+        isOptional,
+        isReadOnly: field.read_only,
         isProtected: getIsDisabled({
-          owner: row && row[field.name]?.properties?.owner,
+          owner: row && row[field.name]?.owner,
           user,
-          isProtected: row && row[field.name] && row[field.name]?.properties?.is_protected,
+          isProtected: row && row[field.name] && row[field.name].is_protected,
           isReadOnly: field.read_only,
         }),
-        field,
+        isUnique: field.unique,
+        attribute: field,
         schema,
       };
-    }
+    })
+    .filter(Boolean);
 
-    // Parse an attribute
-    const fieldValue = getFieldValue(row, field);
-
-    // Quick fix to prevent password in update field,
-    // TODO: remove after new mutations are available to better handle accounts
-    const isOptional = field.optional || (isUpdate && field.kind === "HashedPassword");
-
-    return {
-      name: field.name + ".value",
-      kind: field.kind as SchemaAttributeType,
-      type: getInputTypeFromAttribute(field),
-      label: field.label || field.name,
-      value: fieldValue,
-      options: {
-        values: getOptionsFromAttribute(field, fieldValue),
-      },
-      config: {
-        validate: (value: any) => validate(value, field, isOptional),
-      },
-      isOptional,
-      isReadOnly: field.read_only,
-      isProtected: getIsDisabled({
-        owner: row && row[field.name]?.owner,
-        user,
-        isProtected: row && row[field.name] && row[field.name].is_protected,
-        isReadOnly: field.read_only,
-      }),
-      isUnique: field.unique,
-      attribute: field,
-      schema,
-    };
-  });
+  return fields;
 };
 
 export default getFormStructureForCreateEdit;
