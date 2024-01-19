@@ -53,9 +53,12 @@ class MainSettings(BaseSettings):
 
 
 class FileSystemStorageSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="INFRAHUB_STORAGE_")
+    # Make variable lookup case-sensitive to avoid fetch $PATH value
+    model_config = SettingsConfigDict(case_sensitive=True)
     path_: str = Field(
-        default="/opt/infrahub/storage", alias="path", validation_alias=AliasChoices("path", "local_path")
+        default="/opt/infrahub/storage",
+        alias="path",
+        validation_alias=AliasChoices("INFRAHUB_STORAGE_LOCAL_PATH", "infrahub_storage_local_path", "path"),
     )
 
 
@@ -65,30 +68,30 @@ class S3StorageSettings(BaseSettings):
     bucket_name: str = Field(
         default="",
         alias="AWS_S3_BUCKET_NAME",
-        validation_alias=AliasChoices("AWS_S3_BUCKET_NAME", "INFRAHUB_STORAGE_BUCKET_NAME"),
+        validation_alias=AliasChoices("INFRAHUB_STORAGE_BUCKET_NAME", "AWS_S3_BUCKET_NAME"),
     )
     endpoint_url: str = Field(
         default="",
         alias="AWS_S3_ENDPOINT_URL",
-        validation_alias=AliasChoices("AWS_S3_ENDPOINT_URL", "INFRAHUB_STORAGE_ENDPOINT_URL"),
+        validation_alias=AliasChoices("INFRAHUB_STORAGE_ENDPOINT_URL", "AWS_S3_ENDPOINT_URL"),
     )
     use_ssl: bool = Field(
-        default=True, alias="AWS_S3_US_SSL", validation_alias=AliasChoices("AWS_S3_US_SSL", "INFRAHUB_STORAGE_USE_SSL")
+        default=True, alias="AWS_S3_US_SSL", validation_alias=AliasChoices("INFRAHUB_STORAGE_USE_SSL", "AWS_S3_US_SSL")
     )
     default_acl: str = Field(
         default="",
         alias="AWS_DEFAULT_ACL",
-        validation_alias=AliasChoices("AWS_DEFAULT_ACL", "INFRAHUB_STORAGE_DEFAULT_ACL"),
+        validation_alias=AliasChoices("INFRAHUB_STORAGE_DEFAULT_ACL", "AWS_DEFAULT_ACL"),
     )
     querystring_auth: bool = Field(
         default=False,
         alias="AWS_QUERYSTRING_AUTH",
-        validation_alias=AliasChoices("AWS_QUERYSTRING_AUTH", "INFRAHUB_STORAGE_QUERYTSTRING_AUTH"),
+        validation_alias=AliasChoices("INFRAHUB_STORAGE_QUERYTSTRING_AUTH", "AWS_QUERYSTRING_AUTH"),
     )
     custom_domain: str = Field(
         default="",
         alias="AWS_S3_CUSTOM_DOMAIN",
-        validation_alias=AliasChoices("AWS_S3_CUSTOM_DOMAIN", "INFRAHUB_STORAGE_CUSTOM_DOMAIN"),
+        validation_alias=AliasChoices("INFRAHUB_STORAGE_CUSTOM_DOMAIN", "AWS_S3_CUSTOM_DOMAIN"),
     )
 
 
@@ -318,7 +321,7 @@ def load(config_file_name: str = "infrahub.toml", config_data: Optional[Dict[str
 def load_and_exit(config_file_name: str = "infrahub.toml", config_data: Optional[Dict[str, Any]] = None) -> None:
     """Calls load, but wraps it in a try except block.
 
-    This is done to handle a ValidationErorr which is raised when settings are specified but invalid.
+    This is done to handle a ValidationError which is raised when settings are specified but invalid.
     In such cases, a message is printed to the screen indicating the settings which don't pass validation.
 
     Args:
