@@ -592,21 +592,27 @@ jobs:
           path: frontend/playwright-report/
 
       - name: Containers after tests
+        if: always()
         run: docker ps -a
 
       - name: Display server logs
+        if: always()
         run: docker logs infrahub-infrahub-server-1
 
       - name: Display git 1 logs
+        if: always()
         run: docker logs infrahub-infrahub-git-1
 
       - name: Display git 2 logs
+        if: always()
         run: docker logs infrahub-infrahub-git-2
 
       - name: Display database logs
+        if: always()
         run: docker logs infrahub-database-1
 
       - name: Display server status
+        if: always()
         run: invoke demo.status
   # ------------------------------------------ Coverall Report  ------------------------------------------
   coverall-report:
