@@ -114,11 +114,11 @@ export default function ObjectItemEditComponent(props: Props) {
     );
 
   async function onSubmit(data: any) {
-    setIsLoading(true);
-
     const updatedObject = getMutationDetailsFromFormData(schema, data, "update", objectDetailsData);
 
     if (Object.keys(updatedObject).length) {
+      setIsLoading(true);
+
       try {
         const mutationString = updateObjectWithId({
           kind: schema?.kind,
@@ -139,14 +139,12 @@ export default function ObjectItemEditComponent(props: Props) {
 
         toast(
           <Alert type={ALERT_TYPES.SUCCESS} message={`${schemaKindName[schema.kind]} updated`} />,
-          { toastId: "alert-success" }
+          { toastId: "alert-success-updated" }
         );
 
         closeDrawer();
 
         onUpdateComplete();
-
-        setIsLoading(false);
       } catch (e) {
         console.error("Something went wrong while updating the object:", e);
       }

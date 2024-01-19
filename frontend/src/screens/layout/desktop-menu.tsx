@@ -6,6 +6,7 @@ import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import { CONFIG } from "../../config/config";
 import logo from "../../images/Infrahub-SVG-hori.svg";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
+import { currentSchemaHashAtom } from "../../state/atoms/schema.atom";
 import { fetchUrl } from "../../utils/fetch";
 import LoadingScreen from "../loading-screen/loading-screen";
 import DropDownMenuHeader from "./desktop-menu-header";
@@ -15,12 +16,19 @@ export default function DesktopMenu() {
   const navigate = useNavigate();
 
   const branch = useAtomValue(currentBranchAtom);
+  const currentSchemaHash = useAtomValue(currentSchemaHashAtom);
 
   const [isLoading, setIsLoading] = useState(false);
   const [menu, setMenu] = useState([]);
 
   const fetchMenu = async () => {
     try {
+      const schemaSummary = await fetchUrl(CONFIG.SCHEMA_SUMMARY_URL(branch?.name));
+      const isSameSchema = currentSchemaHash === schemaSummary.main;
+
+      // Do not fetch menu if already defined and the schema is the same
+      if (menu.length && isSameSchema) return;
+
       setIsLoading(true);
 
       const result = await fetchUrl(CONFIG.MENU_URL(branch?.name));
