@@ -22,6 +22,8 @@ export default function DesktopMenu() {
   const [menu, setMenu] = useState([]);
 
   const fetchMenu = async () => {
+    if (!currentSchemaHash) return;
+
     try {
       setIsLoading(true);
 
