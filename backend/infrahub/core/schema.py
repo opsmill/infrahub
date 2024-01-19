@@ -379,6 +379,10 @@ class RelationshipSchema(BaseSchemaModel):
     async def get_peer_schema(self, branch: Optional[Union[Branch, str]] = None):
         return registry.schema.get(name=self.peer, branch=branch)
 
+    @property
+    def internal_peer(self) -> bool:
+        return self.peer.startswith("Internal")
+
     def get_query_arrows(self) -> QueryArrows:
         """Return (in 4 parts) the 2 arrows for the relationship R1 and R2 based on the direction of the relationship."""
 
@@ -569,6 +573,13 @@ class BaseNodeSchema(BaseSchemaModel):
             md5hash.update(self.get_relationship(name=rel_name).get_hash(display_values=display_values).encode())
 
         return md5hash.hexdigest()
+
+    def with_public_relationships(self) -> Self:
+        duplicate = self.duplicate()
+        duplicate.relationships = [
+            relationship for relationship in self.relationships if not relationship.internal_peer
+        ]
+        return duplicate
 
     def get_field(self, name, raise_on_error=True) -> Union[AttributeSchema, RelationshipSchema]:
         if field := self.get_attribute(name, raise_on_error=False):
