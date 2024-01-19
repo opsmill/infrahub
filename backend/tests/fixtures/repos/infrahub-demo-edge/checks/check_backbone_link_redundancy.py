@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from infrahub.checks import InfrahubCheck
+from infrahub_sdk.checks import InfrahubCheck
 
 
 class InfrahubCheckBackboneLinkRedundancy(InfrahubCheck):
@@ -11,14 +11,14 @@ class InfrahubCheckBackboneLinkRedundancy(InfrahubCheck):
 
         backbone_links_per_site = defaultdict(lambda: defaultdict(int))
 
-        for circuit in self.data["data"]["circuit"]:
-            status = circuit["status"]["name"]["value"]
+        for circuit in self.data["data"]["InfraCircuit"]["edges"]:
+            status = circuit["node"]["status"]["value"]
 
-            for endpoint in circuit["endpoints"]:
-                site_name = endpoint["site"]["name"]["value"]
-                site_id_by_name[site_name] = endpoint["site"]["id"]
+            for endpoint in circuit["node"]["endpoints"]["edges"]:
+                site_name = endpoint["node"]["site"]["node"]["name"]["value"]
+                site_id_by_name[site_name] = endpoint["node"]["site"]["node"]["id"]
                 backbone_links_per_site[site_name]["total"] += 1
-                if endpoint["connected_interface"]["enabled"]["value"] and status == "active":
+                if endpoint["node"]["connected_endpoint"]["node"]["enabled"]["value"] and status == "active":
                     backbone_links_per_site[site_name]["operational"] += 1
 
         for site_name, site in backbone_links_per_site.items():
