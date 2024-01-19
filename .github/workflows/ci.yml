@@ -13,11 +13,11 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  NEO4J_USERNAME: neo4j
-  NEO4J_PASSWORD: admin
-  NEO4J_ADDRESS: localhost
-  NEO4J_PORT: 7687
-  NEO4J_PROTOCOL: bolt
+  INFRAHUB_DB_USERNAME: neo4j
+  INFRAHUB_DB_PASSWORD: admin
+  INFRAHUB_DB_ADDRESS: localhost
+  INFRAHUB_DB_PORT: 7687
+  INFRAHUB_DB_PROTOCOL: bolt
   INFRAHUB_LOG_LEVEL: CRITICAL
   INFRAHUB_IMAGE_NAME: "opsmill/infrahub"
   INFRAHUB_IMAGE_VER: "testing"
