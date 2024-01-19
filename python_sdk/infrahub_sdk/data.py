@@ -5,9 +5,14 @@ try:
 except ImportError:
     import pydantic  # type: ignore[no-redef]
 
+from infrahub_sdk.node import InfrahubNode
+
 
 class RepositoryData(pydantic.BaseModel):
-    id: str
-    name: str
-    location: str
-    branches: Dict[str, str]
+    repository: InfrahubNode = pydantic.Field(..., description="InfrahubNode representing a Repository")
+    branches: Dict[str, str] = pydantic.Field(
+        ..., description="Dictionary with the name of the branch as the key and the active commit id as the value"
+    )
+
+    class Config:
+        arbitrary_types_allowed = True

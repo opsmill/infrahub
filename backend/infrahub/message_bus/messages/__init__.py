@@ -18,6 +18,8 @@ from .git_diff_namesonly import GitDiffNamesOnly
 from .git_file_get import GitFileGet
 from .git_repository_add import GitRepositoryAdd
 from .git_repository_merge import GitRepositoryMerge
+from .git_repository_read_only_add import GitRepositoryAddReadOnly
+from .git_repository_read_only_pull import GitRepositoryPullReadOnly
 from .refresh_registry_branches import RefreshRegistryBranches
 from .refresh_webhook_configuration import RefreshWebhookConfiguration
 from .request_artifact_generate import RequestArtifactGenerate
@@ -57,6 +59,8 @@ MESSAGE_MAP: Dict[str, Type[InfrahubMessage]] = {
     "git.file.get": GitFileGet,
     "git.repository.add": GitRepositoryAdd,
     "git.repository.merge": GitRepositoryMerge,
+    "git.repository.add_read_only": GitRepositoryAddReadOnly,
+    "git.repository.pull_read_only": GitRepositoryPullReadOnly,
     "refresh.registry.branches": RefreshRegistryBranches,
     "refresh.webhook.configuration": RefreshWebhookConfiguration,
     "request.artifact.generate": RequestArtifactGenerate,

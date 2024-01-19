@@ -9,7 +9,8 @@ from uuid import uuid4
 import httpx
 from pydantic import BaseModel, ConfigDict, Field
 
-from infrahub.git.repository import InfrahubRepository
+from infrahub.core.constants import InfrahubKind
+from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
 from infrahub.services import InfrahubServices
 
 
@@ -65,12 +66,17 @@ class StandardWebhook(Webhook):
 class TransformWebhook(Webhook):
     repository_id: str = Field(...)
     repository_name: str = Field(...)
+    repository_kind: str = Field(...)
     transform_name: str = Field(...)
     transform_class: str = Field(...)
     transform_file: str = Field(...)
 
     async def _prepare_payload(self) -> None:
-        repo = await InfrahubRepository.init(id=self.repository_id, name=self.repository_name)
+        if self.repository_kind == InfrahubKind.READONLYREPOSITORY:
+            repo = await InfrahubReadOnlyRepository.init(id=self.repository_id, name=self.repository_name)
+        else:
+            repo = await InfrahubRepository.init(id=self.repository_id, name=self.repository_name)
+
         default_branch = repo.default_branch
         commit = repo.get_commit_value(branch_name=default_branch)
 

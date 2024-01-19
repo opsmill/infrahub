@@ -25,6 +25,8 @@ COMMAND_MAP = {
     "git.diff.names_only": git.diff.names_only,
     "git.file.get": git.file.get,
     "git.repository.add": git.repository.add,
+    "git.repository.add_read_only": git.repository.add_read_only,
+    "git.repository.pull_read_only": git.repository.pull_read_only,
     "git.repository.merge": git.repository.merge,
     "refresh.registry.branches": refresh.registry.branches,
     "refresh.webhook.configuration": refresh.webhook.configuration,

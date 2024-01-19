@@ -1033,8 +1033,8 @@ async def mock_query_repository_all_01_no_pagination(
 async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
     response1 = {
         "data": {
-            "CoreRepository": {
-                "count": 1,
+            "CoreGenericRepository": {
+                "count": 2,
                 "edges": [
                     {
                         "node": {
@@ -1044,14 +1044,23 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                             "location": {"value": "git@github.com:dgarros/infrahub-demo-edge.git"},
                             "commit": {"value": "aaaaaaaaaaaaaaaaaaaa"},
                         }
-                    }
+                    },
+                    {
+                        "node": {
+                            "__typename": "CoreReadOnlyRepository",
+                            "id": "aeff0feb-6a49-406e-b395-de7b7856026d",
+                            "name": {"value": "infrahub-demo-edge-read-only"},
+                            "location": {"value": "git@github.com:dgarros/infrahub-demo-edge-read-only.git"},
+                            "commit": {"value": "cccccccccccccccccccc"},
+                        }
+                    },
                 ],
             }
         }
     }
     response2 = {
         "data": {
-            "CoreRepository": {
+            "CoreGenericRepository": {
                 "count": 1,
                 "edges": [
                     {
@@ -1062,7 +1071,16 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                             "location": {"value": "git@github.com:dgarros/infrahub-demo-edge.git"},
                             "commit": {"value": "bbbbbbbbbbbbbbbbbbbb"},
                         }
-                    }
+                    },
+                    {
+                        "node": {
+                            "__typename": "CoreReadOnlyRepository",
+                            "id": "aeff0feb-6a49-406e-b395-de7b7856026d",
+                            "name": {"value": "infrahub-demo-edge-read-only"},
+                            "location": {"value": "git@github.com:dgarros/infrahub-demo-edge-read-only.git"},
+                            "commit": {"value": "dddddddddddddddddddd"},
+                        }
+                    },
                 ],
             }
         }
