@@ -30,7 +30,7 @@ Leveraging a service name [`Codespace` from Github](https://docs.github.com/en/c
 
 > The cost for running an Infrahub in Codespace is covered by OpsMill
 
-See the table below to select the right environment for you, based on the Branch and the initial data you would like in your instance.
+See the table below to select the right environment for you, based on the branch and the initial data you would like in your instance.
 
 |  | Branch `stable` | Branch `develop` |
 |---|---|---|
