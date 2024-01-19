@@ -23,12 +23,6 @@ export default function DesktopMenu() {
 
   const fetchMenu = async () => {
     try {
-      const schemaSummary = await fetchUrl(CONFIG.SCHEMA_SUMMARY_URL(branch?.name));
-      const isSameSchema = currentSchemaHash === schemaSummary.main;
-
-      // Do not fetch menu if already defined and the schema is the same
-      if (menu.length && isSameSchema) return;
-
       setIsLoading(true);
 
       const result = await fetchUrl(CONFIG.MENU_URL(branch?.name));
@@ -45,7 +39,7 @@ export default function DesktopMenu() {
 
   useEffect(() => {
     fetchMenu();
-  }, [branch?.name]);
+  }, [currentSchemaHash]);
 
   return (
     <div className="z-100 hidden w-64 md:visible md:inset-y-0 md:flex md:flex-col">
