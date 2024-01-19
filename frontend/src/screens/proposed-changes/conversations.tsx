@@ -20,6 +20,7 @@ import {
   ACCOUNT_OBJECT,
   DEFAULT_BRANCH_NAME,
   PROPOSED_CHANGES_CHANGE_THREAD_OBJECT,
+  PROPOSED_CHANGES_EDITABLE_STATE,
   PROPOSED_CHANGES_OBJECT,
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
   PROPOSED_CHANGES_THREAD_OBJECT,
@@ -439,7 +440,10 @@ export const Conversations = (props: tConversations) => {
 
               <div className="">
                 <Button
-                  disabled={!auth?.permissions?.write}
+                  disabled={
+                    !auth?.permissions?.write ||
+                    !PROPOSED_CHANGES_EDITABLE_STATE.includes(proposedChangesDetails.state.value)
+                  }
                   onClick={() => setShowEditDrawer(true)}
                   className="mr-4">
                   Edit
