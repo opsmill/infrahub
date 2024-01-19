@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { ACCOUNT_STATE_PATH, saveScreenshotForDocs } from "../../utils";
 import { format, subMinutes } from "date-fns";
+import { ACCOUNT_STATE_PATH, saveScreenshotForDocs } from "../../utils";
 
 test.describe("Getting started with Infrahub - Object and branch creation, update, diff and merge", () => {
   test.describe.configure({ mode: "serial" });
@@ -37,7 +37,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
 
     await test.step("fill and submit form for new organization", async () => {
       await expect(page.getByText("Create a new branch")).toBeVisible();
-      await page.locator("#new-branch-name").fill("cr1234");
+      await page.locator("[id='New branch name']").fill("cr1234");
       await saveScreenshotForDocs(
         page,
         "tutorial/tutorial-1-branch-and-version-control.cy.ts/tutorial_1_branch_creation"

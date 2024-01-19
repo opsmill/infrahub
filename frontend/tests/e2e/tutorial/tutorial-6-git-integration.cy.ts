@@ -21,23 +21,17 @@ describe("Tutorial - Part 6", () => {
     cy.get("[data-cy='create-branch-button']").click();
 
     // Add the new branch name
-    cy.get("#new-branch-name").type(NEW_BRANCH, { delay: 0, force: true });
+    cy.get("[id='New branch name']").type(NEW_BRANCH);
 
-    // Toggle the data-only field
-    cy.get(".px-1\\.5").within(() => {
-      // Get the switch within the last row of the form
-      cy.get("[role='switch']").click();
-
-      // Remove focus from switch
-      cy.get("[role='switch']").blur();
-    });
+    // Turn off data-only field
+    cy.contains("Data only").click();
 
     if (this.screenshots) {
       cy.screenshot("tutorial_6_branch_creation", screenshotConfig);
     }
 
     // Submit form
-    cy.get(".justify-center > .rounded-md").click();
+    cy.contains("Create").click();
   });
 
   it("should update the device and an interface", function () {
