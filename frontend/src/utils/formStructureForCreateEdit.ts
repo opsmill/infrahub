@@ -10,6 +10,8 @@ import {
   getOptionsFromRelationship,
 } from "../screens/edit-form-hook/dynamic-control-types";
 import { iGenericSchema, iNodeSchema } from "../state/atoms/schema.atom";
+import { sortByOrderWeight } from "./common";
+import { getObjectRelationshipsForForm } from "./getSchemaObjectColumns";
 
 const getIsDisabled = ({ owner, user, isProtected, isReadOnly }: any) => {
   // Field is read only
@@ -93,78 +95,37 @@ const getFormStructureForCreateEdit = (
     return [];
   }
 
-  const formFields: DynamicFieldData[] = [];
+  const fieldsToParse = sortByOrderWeight([
+    ...(schema.attributes ?? []),
+    ...(getObjectRelationshipsForForm(schema) ?? []),
+  ]);
 
-  schema.attributes?.forEach((attribute) => {
-    if (attribute.read_only) {
+  return fieldsToParse.map((field) => {
+    if (field.read_only) {
       // Hide read-only attributes
       return;
     }
 
-    const fieldValue = getFieldValue(row, attribute);
+    // Parse a relationship
+    if (field.cardinality) {
+      const isInherited = !!generics.find((g) => g.kind === field.peer);
 
-    // Quick fix to prevent password in update field,
-    // TODO: remove after new mutations are available to better handle accounts
-    const isOptional = attribute.optional || (isUpdate && attribute.kind === "HashedPassword");
-
-    formFields.push({
-      name: attribute.name + ".value",
-      kind: attribute.kind as SchemaAttributeType,
-      type: getInputTypeFromAttribute(attribute),
-      label: attribute.label || attribute.name,
-      value: fieldValue,
-      options: {
-        values: getOptionsFromAttribute(attribute, fieldValue),
-      },
-      config: {
-        validate: (value: any) => validate(value, attribute, isOptional),
-      },
-      isOptional,
-      isReadOnly: attribute.read_only,
-      isProtected: getIsDisabled({
-        owner: row && row[attribute.name]?.owner,
-        user,
-        isProtected: row && row[attribute.name] && row[attribute.name].is_protected,
-        isReadOnly: attribute.read_only,
-      }),
-      isUnique: attribute.unique,
-      attribute,
-      schema,
-    });
-  });
-
-  // TODO: Get relationships from util function for consistency
-  schema.relationships
-    ?.filter(
-      (relationship) =>
-        relationship.cardinality === "one" ||
-        relationship.kind === "Attribute" ||
-        relationship.kind === "Parent"
-    )
-    .forEach((relationship) => {
-      if (relationship.read_only) {
-        // Hide read-only relationship
-        return;
-      }
-
-      const isInherited = !!generics.find((g) => g.kind === relationship.peer);
-
-      formFields.push({
-        name: relationship.name + (relationship.cardinality === "one" ? ".id" : ".list"),
+      return {
+        name: field.name + (field.cardinality === "one" ? ".id" : ".list"),
         kind: "String",
-        peer: relationship.peer,
-        type: getInputTypeFromRelationship(relationship, isInherited),
-        label: relationship.label ? relationship.label : relationship.name,
+        peer: field.peer,
+        type: getInputTypeFromRelationship(field, isInherited),
+        label: field.label ? field.label : field.name,
         value: (() => {
-          if (!row || !row[relationship.name]) {
+          if (!row || !row[field.name]) {
             return "";
           }
 
-          const value = row[relationship.name].node ?? row[relationship.name];
+          const value = row[field.name].node ?? row[field.name];
 
-          if (relationship.cardinality === "one" && !isInherited) {
+          if (field.cardinality === "one" && !isInherited) {
             return value.id;
-          } else if (relationship.cardinality === "one" && isInherited) {
+          } else if (field.cardinality === "one" && isInherited) {
             return value;
           } else if (value.edges) {
             return value.edges.map((item: any) => item?.node?.id);
@@ -177,29 +138,59 @@ const getFormStructureForCreateEdit = (
         options: {
           values: getOptionsFromRelationship(
             dropdownOptions,
-            relationship,
+            field,
             isInherited,
             schemas,
             generics
           ),
         },
         config: {
-          validate: (value: any) => validate(value, undefined, relationship.optional),
+          validate: (value: any) => validate(value, undefined, field.optional),
         },
-        isOptional: relationship.optional,
+        isOptional: field.optional,
         isProtected: getIsDisabled({
-          owner: row && row[relationship.name]?.properties?.owner,
+          owner: row && row[field.name]?.properties?.owner,
           user,
-          isProtected:
-            row && row[relationship.name] && row[relationship.name]?.properties?.is_protected,
-          isReadOnly: relationship.read_only,
+          isProtected: row && row[field.name] && row[field.name]?.properties?.is_protected,
+          isReadOnly: field.read_only,
         }),
-        relationship,
+        field,
         schema,
-      });
-    });
+      };
+    }
 
-  return formFields;
+    // Parse an attribute
+    const fieldValue = getFieldValue(row, field);
+
+    // Quick fix to prevent password in update field,
+    // TODO: remove after new mutations are available to better handle accounts
+    const isOptional = field.optional || (isUpdate && field.kind === "HashedPassword");
+
+    return {
+      name: field.name + ".value",
+      kind: field.kind as SchemaAttributeType,
+      type: getInputTypeFromAttribute(field),
+      label: field.label || field.name,
+      value: fieldValue,
+      options: {
+        values: getOptionsFromAttribute(field, fieldValue),
+      },
+      config: {
+        validate: (value: any) => validate(value, field, isOptional),
+      },
+      isOptional,
+      isReadOnly: field.read_only,
+      isProtected: getIsDisabled({
+        owner: row && row[field.name]?.owner,
+        user,
+        isProtected: row && row[field.name] && row[field.name].is_protected,
+        isReadOnly: field.read_only,
+      }),
+      isUnique: field.unique,
+      attribute: field,
+      schema,
+    };
+  });
 };
 
 export default getFormStructureForCreateEdit;

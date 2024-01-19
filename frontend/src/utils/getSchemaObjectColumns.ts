@@ -119,12 +119,21 @@ export const getObjectTabs = (tabs: any[], data: any) => {
   }));
 };
 
-export const getObjectPeers = (schema?: iNodeSchema | iGenericSchema) => {
-  const peers = (schema?.relationships || [])
+// Used by the form to display the fields
+export const getObjectRelationshipsForForm = (schema?: iNodeSchema | iGenericSchema) => {
+  const relationships = (schema?.relationships || [])
     .filter(
       (relationship) =>
-        peersKindForForm.includes(relationship.kind) || relationship.cardinality === "one"
+        peersKindForForm.includes(relationship?.kind ?? "") || relationship.cardinality === "one"
     )
+    .filter(Boolean);
+
+  return relationships;
+};
+
+// Used by the query to retrieve the data for the form
+export const getObjectPeers = (schema?: iNodeSchema | iGenericSchema) => {
+  const peers = getObjectRelationshipsForForm(schema)
     .map((relationship) => relationship.peer)
     .filter(Boolean);
 
