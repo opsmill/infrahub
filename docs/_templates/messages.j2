@@ -1,0 +1,22 @@
+---
+label: Messages
+icon: mail
+layout: default
+---
+# Infrahub Messages
+{% for message in messages %}
+## {{ message.title }}
+
+{{ message.description }}
+
+Priority: {{ message.priority.name }} ({{ message.priority.value }})
+
+| Property | Type | Description | Mandatory | { class="compact" }
+| -------- | ---- | ----------- | --------- |
+{%- for property in message.schema.properties %}
+{%- if property != "meta" %}
+{{ property }} | {{ message.schema.properties[property].type }} | {{ message.schema.properties[property].description }} | {{ property in message.schema.required }} |
+{%- endif %}
+{%- endfor %}
+
+{% endfor %}

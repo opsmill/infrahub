@@ -150,7 +150,7 @@ class RabbitMQMessageBus(InfrahubMessageBus):
     async def publish(self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None) -> None:
         for enricher in self.message_enrichers:
             await enricher(message)
-        message.assign_priority(priority=messages.message_priority(routing_key=routing_key))
+
         if delay:
             message.assign_header(key="delay", value=delay.value)
             await self.delayed_exchange.publish(self.format_message(message=message), routing_key=routing_key)
@@ -206,7 +206,7 @@ class RabbitMQMessageBus(InfrahubMessageBus):
             content_encoding="utf-8",
             correlation_id=message.meta.correlation_id,
             reply_to=message.meta.reply_to,
-            priority=message.meta.priority,
+            priority=message.priority,
             headers=message.meta.headers,
             expiration=message.meta.expiration,
         )

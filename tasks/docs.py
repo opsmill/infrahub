@@ -138,6 +138,7 @@ def _generate_infrahub_cli_documentation(context: Context):
 
 def _generate(context: Context):
     """Generate documentation output from code."""
+    _generate_infrahub_messages()
     _generate_infrahub_cli_documentation(context=context)
     _generate_infrahubctl_documentation(context=context)
     _generate_infrahub_schema_documentation()
@@ -159,6 +160,40 @@ def _generate_infrahubctl_documentation(context: Context):
         exec_cmd += f' --name "infrahubctl {cmd.name}" --output docs/infrahubctl/infrahubctl-{cmd.name}.md'
         with context.cd(ESCAPED_REPO_PATH):
             context.run(exec_cmd)
+
+
+def _generate_infrahub_messages() -> None:
+    import jinja2
+
+    from infrahub import config
+    from infrahub.message_bus.messages import MESSAGE_MAP
+
+    messages = []
+    for entry in sorted(MESSAGE_MAP.keys()):
+        message = MESSAGE_MAP[entry]
+        messages.append(
+            {
+                "title": entry,
+                "description": message.__doc__,
+                "priority": message._priority.default,
+                "schema": message.model_json_schema(),
+            }
+        )
+    print(" - Generate Infrahub Messages documentation")
+    template_file = f"{DOCUMENTATION_DIRECTORY}/_templates/messages.j2"
+    output_file = f"{DOCUMENTATION_DIRECTORY}/reference/messages.md"
+    if not os.path.exists(template_file):
+        print(f"Unable to find the template file at {template_file}")
+        sys.exit(-1)
+
+    template_text = Path(template_file).read_text(encoding="utf-8")
+
+    environment = jinja2.Environment()
+    template = environment.from_string(template_text)
+    rendered_file = template.render(messages=messages)
+
+    with open(output_file, "w", encoding="utf-8") as f:
+        f.write(rendered_file)
 
 
 def _generate_infrahub_schema_documentation() -> None:

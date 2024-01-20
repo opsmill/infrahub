@@ -10,6 +10,8 @@ from infrahub.exceptions import Error, RPCError
 from infrahub.log import set_log_data
 from infrahub.message_bus.responses import RESPONSE_MAP
 
+from .types import MessagePriority
+
 ResponseClass = TypeVar("ResponseClass")
 
 
@@ -73,6 +75,7 @@ class Meta(BaseModel):
 class InfrahubMessage(BaseModel):
     """Base Model for messages"""
 
+    _priority: MessagePriority = MessagePriority.NORMAL
     meta: Meta = Field(default_factory=Meta.default, description="Meta properties for the message")
 
     def assign_meta(self, parent: "InfrahubMessage") -> None:
@@ -100,6 +103,10 @@ class InfrahubMessage(BaseModel):
         if self.meta.reply_to:
             return True
         return False
+
+    @property
+    def priority(self) -> MessagePriority:
+        return self._priority
 
     @property
     def body(self) -> bytes:
