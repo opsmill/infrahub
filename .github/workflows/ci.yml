@@ -13,11 +13,11 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  NEO4J_USERNAME: neo4j
-  NEO4J_PASSWORD: admin
-  NEO4J_ADDRESS: localhost
-  NEO4J_PORT: 7687
-  NEO4J_PROTOCOL: bolt
+  INFRAHUB_DB_USERNAME: neo4j
+  INFRAHUB_DB_PASSWORD: admin
+  INFRAHUB_DB_ADDRESS: localhost
+  INFRAHUB_DB_PORT: 7687
+  INFRAHUB_DB_PROTOCOL: bolt
   INFRAHUB_LOG_LEVEL: CRITICAL
   INFRAHUB_IMAGE_NAME: "opsmill/infrahub"
   INFRAHUB_IMAGE_VER: "testing"
@@ -592,21 +592,27 @@ jobs:
           path: frontend/playwright-report/
 
       - name: Containers after tests
+        if: always()
         run: docker ps -a
 
       - name: Display server logs
+        if: always()
         run: docker logs infrahub-infrahub-server-1
 
       - name: Display git 1 logs
+        if: always()
         run: docker logs infrahub-infrahub-git-1
 
       - name: Display git 2 logs
+        if: always()
         run: docker logs infrahub-infrahub-git-2
 
       - name: Display database logs
+        if: always()
         run: docker logs infrahub-database-1
 
       - name: Display server status
+        if: always()
         run: invoke demo.status
   # ------------------------------------------ Coverall Report  ------------------------------------------
   coverall-report:

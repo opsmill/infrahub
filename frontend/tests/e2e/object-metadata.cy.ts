@@ -53,8 +53,8 @@ describe("Object update", () => {
       // Open the select
       cy.get("[id^=headlessui-combobox-button-]").click();
 
-      // Check if the options have a length of 3
-      cy.get("[id^=headlessui-combobox-options-]").find("li").should("have.length", 3);
+      // Check if the options have a length of 4
+      cy.get("[id^=headlessui-combobox-options-]").find("li").should("have.length", 4);
 
       // Choose the account
       cy.contains(ACCOUNT).click();
@@ -110,10 +110,10 @@ describe("Object update", () => {
     cy.get(".w-80 > :nth-child(1) > .rounded-md").click();
 
     // Is visible
-    cy.get(":nth-child(3) > .flex-col > .relative > .w-4").should("be.checked");
+    cy.get("#is\\ visible").should("be.checked");
 
     // Is protected
-    cy.get(":nth-child(4) > .flex-col > .relative > .w-4").should("be.checked");
+    cy.get("#is\\ protected").should("be.checked");
 
     // Owner select
     cy.get(".grid-cols-1 > :nth-child(1) > .grid").within(() => {

@@ -33,48 +33,6 @@ class BuiltinTag(NetboxModel):
     local_data: Optional[Any]
 
 
-class CoreOrganization(NetboxModel):
-    _modelname = "CoreOrganization"
-    _identifiers = ("name",)
-    _attributes = ("group", "description", "type")
-
-    name: str
-    description: Optional[str]
-    type: Optional[str]
-    group: Optional[str]
-
-    local_id: Optional[str]
-    local_data: Optional[Any]
-
-
-class BuiltinRole(NetboxModel):
-    _modelname = "BuiltinRole"
-    _identifiers = ("name",)
-    _attributes = ("description",)
-
-    name: str
-    description: Optional[str]
-
-    local_id: Optional[str]
-    local_data: Optional[Any]
-
-
-class BuiltinLocation(NetboxModel):
-    _modelname = "BuiltinLocation"
-    _identifiers = ("name",)
-    _attributes = ("tags", "organization", "group", "description", "type")
-
-    name: str
-    description: Optional[str]
-    type: str
-    tags: List[str] = []
-    organization: Optional[str]
-    group: Optional[str]
-
-    local_id: Optional[str]
-    local_data: Optional[Any]
-
-
 class InfraCircuit(NetboxModel):
     _modelname = "InfraCircuit"
     _identifiers = ("circuit_id",)
@@ -113,6 +71,7 @@ class InfraDevice(NetboxModel):
     description: Optional[str]
     serial_number: Optional[str]
     asset_tag: Optional[str]
+    site: str
     model: str
     rack: Optional[str]
     role: Optional[str]
@@ -171,11 +130,12 @@ class InfraProviderNetwork(NetboxModel):
 class InfraPrefix(NetboxModel):
     _modelname = "InfraPrefix"
     _identifiers = ("prefix", "vrf")
-    _attributes = ("organization", "role", "description")
+    _attributes = ("organization", "site", "role", "description")
 
     prefix: str
     description: Optional[str]
     organization: Optional[str]
+    site: Optional[str]
     role: Optional[str]
     vrf: Optional[str]
 
@@ -223,6 +183,7 @@ class InfraVLAN(NetboxModel):
     description: Optional[str]
     vlan_id: int
     organization: Optional[str]
+    site: Optional[str]
     vlan_group: Optional[str]
 
     local_id: Optional[str]
@@ -240,6 +201,48 @@ class InfraVRF(NetboxModel):
     organization: Optional[str]
     import_rt: List[str] = []
     export_rt: List[str] = []
+
+    local_id: Optional[str]
+    local_data: Optional[Any]
+
+
+class CoreOrganization(NetboxModel):
+    _modelname = "CoreOrganization"
+    _identifiers = ("name",)
+    _attributes = ("group", "description", "type")
+
+    name: str
+    description: Optional[str]
+    type: Optional[str]
+    group: Optional[str]
+
+    local_id: Optional[str]
+    local_data: Optional[Any]
+
+
+class BuiltinRole(NetboxModel):
+    _modelname = "BuiltinRole"
+    _identifiers = ("name",)
+    _attributes = ("description",)
+
+    name: str
+    description: Optional[str]
+
+    local_id: Optional[str]
+    local_data: Optional[Any]
+
+
+class BuiltinLocation(NetboxModel):
+    _modelname = "BuiltinLocation"
+    _identifiers = ("name",)
+    _attributes = ("organization", "tags", "group", "description", "type")
+
+    name: str
+    description: Optional[str]
+    type: str
+    organization: Optional[str]
+    tags: List[str] = []
+    group: Optional[str]
 
     local_id: Optional[str]
     local_data: Optional[Any]

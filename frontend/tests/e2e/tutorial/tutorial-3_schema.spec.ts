@@ -7,7 +7,7 @@ test.describe("Getting started with Infrahub - Data lineage and metadata", () =>
   test("1. Visualize the active schema", async ({ page }) => {
     await page.goto("/");
     await page.getByTestId("sidebar-menu").getByRole("link", { name: "Schema" }).click();
-    await expect(page.getByText("Account Token")).toBeVisible();
+    await expect(page.getByText("Artifact Check")).toBeVisible();
     await saveScreenshotForDocs(page, "tutorial/tutorial-3-schema.cy.ts/tutorial_3_schema");
   });
 });

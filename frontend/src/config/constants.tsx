@@ -127,27 +127,7 @@ export const attributesKindForListView = [
   "IPNetwork",
 ];
 
-export const attributesKindForDetailsView = [
-  "ID",
-  "Text",
-  "Number",
-  "Boolean",
-  "Dropdown",
-  "TextArea",
-  "DateTime",
-  "Email",
-  "Password",
-  "URL",
-  "File",
-  "MacAddress",
-  "Color",
-  "Bandwidth",
-  "IPHost",
-  "IPNetwork",
-  "Checkbox",
-  "List",
-  "Any",
-];
+export const attributesKindForDetailsViewExclude = [];
 
 export const relationshipsForListView = {
   one: ["Attribute"],

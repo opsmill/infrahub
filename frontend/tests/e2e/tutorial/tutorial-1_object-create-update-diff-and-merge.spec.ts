@@ -81,7 +81,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     });
 
     await test.step("Update confirmation and update UI", async () => {
-      await expect(page.locator("#alert-success")).toContainText("Organization updated");
+      await expect(page.locator("#alert-success-updated")).toContainText("Organization updated");
       await expect(page.getByText("Changes from branch cr1234")).toBeVisible();
     });
 

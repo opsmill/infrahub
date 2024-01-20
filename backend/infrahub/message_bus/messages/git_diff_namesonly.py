@@ -8,5 +8,6 @@ class GitDiffNamesOnly(InfrahubMessage):
 
     repository_id: str = Field(..., description="The unique ID of the Repository")
     repository_name: str = Field(..., description="The name of the repository")
+    repository_kind: str = Field(..., description="The kind of the repository")
     first_commit: str = Field(..., description="The first commit")
     second_commit: str = Field(..., description="The second commit")

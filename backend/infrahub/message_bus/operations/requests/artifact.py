@@ -1,4 +1,5 @@
-from infrahub.git.repository import InfrahubRepository
+from infrahub.core.constants import InfrahubKind
+from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
 from infrahub.services import InfrahubServices
@@ -10,7 +11,15 @@ log = get_logger()
 async def generate(message: messages.RequestArtifactGenerate, service: InfrahubServices):
     log.debug("Generating artifact", message=message)
 
-    repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name, client=service.client)
+    if message.repository_kind == InfrahubKind.READONLYREPOSITORY:
+        repo = await InfrahubReadOnlyRepository.init(
+            id=message.repository_id, name=message.repository_name, client=service.client
+        )
+    else:
+        repo = await InfrahubRepository.init(
+            id=message.repository_id, name=message.repository_name, client=service.client
+        )
+
     artifact = await define_artifact(message=message, service=service)
 
     try:

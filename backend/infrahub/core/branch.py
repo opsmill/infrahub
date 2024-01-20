@@ -1456,6 +1456,7 @@ class Diff:
         message = messages.GitDiffNamesOnly(
             repository_id=repository.id,
             repository_name=repository.name.value,  # type: ignore[attr-defined]
+            repository_kind=repository.get_kind(),
             first_commit=commit_from,
             second_commit=commit_to,
         )
@@ -1990,6 +1991,7 @@ class Diff:
         message = messages.GitDiffNamesOnly(
             repository_id=repository.id,
             repository_name=repository.name.value,  # type: ignore[attr-defined]
+            repository_kind=repository.get_kind(),
             first_commit=commit_from,
             second_commit=commit_to,
         )
@@ -2026,11 +2028,15 @@ class Diff:
 
         repos_to = {
             repo.id: repo
-            for repo in await NodeManager.query(schema=InfrahubKind.REPOSITORY, db=db, branch=branch, at=self.diff_to)
+            for repo in await NodeManager.query(
+                schema=InfrahubKind.GENERICREPOSITORY, db=db, branch=branch, at=self.diff_to
+            )
         }
         repos_from = {
             repo.id: repo
-            for repo in await NodeManager.query(schema=InfrahubKind.REPOSITORY, db=db, branch=branch, at=self.diff_from)
+            for repo in await NodeManager.query(
+                schema=InfrahubKind.GENERICREPOSITORY, db=db, branch=branch, at=self.diff_from
+            )
         }
 
         # For now we are ignoring the repos that are either not present at to time or at from time.

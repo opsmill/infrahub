@@ -31,7 +31,7 @@ from infrahub_sdk.node import (
     InfrahubNodeSync,
 )
 from infrahub_sdk.object_store import ObjectStore, ObjectStoreSync
-from infrahub_sdk.queries import MUTATION_COMMIT_UPDATE, QUERY_ALL_REPOSITORIES
+from infrahub_sdk.queries import get_commit_update_mutation
 from infrahub_sdk.schema import InfrahubSchema, InfrahubSchemaSync, NodeSchema
 from infrahub_sdk.store import NodeStore, NodeStoreSync
 from infrahub_sdk.timestamp import Timestamp
@@ -632,48 +632,48 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         return InfrahubBatch(semaphore=self.concurrent_execution_limit, return_exceptions=return_exceptions)
 
     async def get_list_repositories(
-        self, branches: Optional[Dict[str, BranchData]] = None
+        self, branches: Optional[Dict[str, BranchData]] = None, kind: str = "CoreGenericRepository"
     ) -> Dict[str, RepositoryData]:
         if not branches:
             branches = await self.branch.all()  # type: ignore
 
         branch_names = sorted(branches.keys())  # type: ignore
 
-        tasks = []
+        batch = await self.create_batch()
         for branch_name in branch_names:
-            tasks.append(
-                self.execute_graphql(
-                    query=QUERY_ALL_REPOSITORIES,
-                    branch_name=branch_name,
-                    tracker="query-repository-all",
-                )
+            batch.add(
+                task=self.all,
+                kind=kind,
+                branch=branch_name,
+                fragment=True,
+                include=["id", "name", "location", "commit", "ref"],
             )
-            # TODO need to rate limit how many requests we are sending at once to avoid doing a DOS on the API
 
-        responses = await asyncio.gather(*tasks)
+        responses = []
+        async for _, response in batch.execute():
+            responses.append(response)
 
         repositories = {}
 
         for branch_name, response in zip(branch_names, responses):
-            repos = response["CoreRepository"]["edges"]
-            for repository in repos:
-                repo_name = repository["node"]["name"]["value"]
+            for repository in response:
+                repo_name = repository.name.value
                 if repo_name not in repositories:
                     repositories[repo_name] = RepositoryData(
-                        id=repository["node"]["id"],
-                        name=repo_name,
-                        location=repository["node"]["location"]["value"],
+                        repository=repository,
                         branches={},
                     )
 
-                repositories[repo_name].branches[branch_name] = repository["node"]["commit"]["value"]
+                repositories[repo_name].branches[branch_name] = repository.commit.value
 
         return repositories
 
-    async def repository_update_commit(self, branch_name: str, repository_id: str, commit: str) -> bool:
+    async def repository_update_commit(
+        self, branch_name: str, repository_id: str, commit: str, is_read_only: bool = False
+    ) -> bool:
         variables = {"repository_id": str(repository_id), "commit": str(commit)}
         await self.execute_graphql(
-            query=MUTATION_COMMIT_UPDATE,
+            query=get_commit_update_mutation(is_read_only=is_read_only),
             variables=variables,
             branch_name=branch_name,
             tracker="mutation-repository-update-commit",
@@ -1042,7 +1042,9 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
 
         return results[0]
 
-    def get_list_repositories(self, branches: Optional[Dict[str, BranchData]] = None) -> Dict[str, RepositoryData]:
+    def get_list_repositories(
+        self, branches: Optional[Dict[str, BranchData]] = None, kind: str = "CoreGenericRepository"
+    ) -> Dict[str, RepositoryData]:
         raise NotImplementedError(
             "This method is deprecated in the async client and won't be implemented in the sync client."
         )
@@ -1106,7 +1108,9 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
 
         return resp.json()
 
-    def repository_update_commit(self, branch_name: str, repository_id: str, commit: str) -> bool:
+    def repository_update_commit(
+        self, branch_name: str, repository_id: str, commit: str, is_read_only: bool = False
+    ) -> bool:
         raise NotImplementedError(
             "This method is deprecated in the async client and won't be implemented in the sync client."
         )

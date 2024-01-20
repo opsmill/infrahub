@@ -33,48 +33,6 @@ class BuiltinTag(NautobotModel):
     local_data: Optional[Any]
 
 
-class CoreOrganization(NautobotModel):
-    _modelname = "CoreOrganization"
-    _identifiers = ("name",)
-    _attributes = ("group", "description", "type")
-
-    name: str
-    description: Optional[str]
-    type: Optional[str]
-    group: Optional[str]
-
-    local_id: Optional[str]
-    local_data: Optional[Any]
-
-
-class BuiltinRole(NautobotModel):
-    _modelname = "BuiltinRole"
-    _identifiers = ("name",)
-    _attributes = ("label", "description")
-
-    name: str
-    label: Optional[str]
-    description: Optional[str]
-
-    local_id: Optional[str]
-    local_data: Optional[Any]
-
-
-class BuiltinLocation(NautobotModel):
-    _modelname = "BuiltinLocation"
-    _identifiers = ("name",)
-    _attributes = ("tags", "location_type", "description", "type")
-
-    name: str
-    description: Optional[str]
-    type: str
-    tags: List[str] = []
-    location_type: Optional[str]
-
-    local_id: Optional[str]
-    local_data: Optional[Any]
-
-
 class InfraAutonomousSystem(NautobotModel):
     _modelname = "InfraAutonomousSystem"
     _identifiers = ("name",)
@@ -171,7 +129,7 @@ class InfraFrontPort(NautobotModel):
 class InfraInterfaceL2L3(NautobotModel):
     _modelname = "InfraInterfaceL2L3"
     _identifiers = ("name", "device")
-    _attributes = ("tags", "l2_mode", "description", "mgmt_only", "mac_address", "interface_type")
+    _attributes = ("tagged_vlan", "tags", "l2_mode", "description", "mgmt_only", "mac_address", "interface_type")
 
     l2_mode: Optional[str]
     name: str
@@ -180,7 +138,7 @@ class InfraInterfaceL2L3(NautobotModel):
     mac_address: Optional[str]
     interface_type: Optional[str]
     untagged_vlan: Optional[str]
-    tagged_vlan: Optional[str]
+    tagged_vlan: List[str] = []
     device: str
     tags: List[str] = []
 
@@ -348,6 +306,48 @@ class InfraVRF(NautobotModel):
     namespace: Optional[str]
     import_rt: List[str] = []
     export_rt: List[str] = []
+
+    local_id: Optional[str]
+    local_data: Optional[Any]
+
+
+class CoreOrganization(NautobotModel):
+    _modelname = "CoreOrganization"
+    _identifiers = ("name",)
+    _attributes = ("group", "description", "type")
+
+    name: str
+    description: Optional[str]
+    type: Optional[str]
+    group: Optional[str]
+
+    local_id: Optional[str]
+    local_data: Optional[Any]
+
+
+class BuiltinRole(NautobotModel):
+    _modelname = "BuiltinRole"
+    _identifiers = ("name",)
+    _attributes = ("label", "description")
+
+    name: str
+    label: Optional[str]
+    description: Optional[str]
+
+    local_id: Optional[str]
+    local_data: Optional[Any]
+
+
+class BuiltinLocation(NautobotModel):
+    _modelname = "BuiltinLocation"
+    _identifiers = ("name",)
+    _attributes = ("tags", "location_type", "description", "type")
+
+    name: str
+    description: Optional[str]
+    type: str
+    tags: List[str] = []
+    location_type: Optional[str]
 
     local_id: Optional[str]
     local_data: Optional[Any]

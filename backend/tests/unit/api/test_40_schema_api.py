@@ -27,11 +27,11 @@ async def test_schema_read_endpoint_default_branch(
     assert response.json() is not None
 
     schema = response.json()
+    core_nodes = [node for node in core_models["nodes"] if node["namespace"] != "Internal"]
+    core_generics = [node for node in core_models["generics"] if node["namespace"] != "Internal"]
 
-    expected_nodes = set([dict(item).get("name") for item in core_models["nodes"] + car_person_schema_generics.nodes])
-    expected_generics = set(
-        [dict(item).get("name") for item in core_models["generics"] + car_person_schema_generics.generics]
-    )
+    expected_nodes = set([dict(item).get("name") for item in core_nodes + car_person_schema_generics.nodes])
+    expected_generics = set([dict(item).get("name") for item in core_generics + car_person_schema_generics.generics])
 
     assert "nodes" in schema
     assert "generics" in schema
@@ -64,7 +64,9 @@ async def test_schema_read_endpoint_branch1(
 
     schema = response.json()
 
-    expected_nodes = set([dict(node).get("name") for node in core_models["nodes"] + car_person_schema_generics.nodes])
+    core_nodes = [node for node in core_models["nodes"] if node["namespace"] != "Internal"]
+
+    expected_nodes = set([dict(node).get("name") for node in core_nodes + car_person_schema_generics.nodes])
     assert "nodes" in schema
     assert len(schema["nodes"]) == len(expected_nodes)
 
