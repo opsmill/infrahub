@@ -3,7 +3,6 @@ import logging
 from asyncio import run as aiorun
 
 import typer
-from rich.console import Console
 from rich.logging import RichHandler
 
 from infrahub import config
@@ -18,8 +17,6 @@ from infrahub.exceptions import DatabaseError
 app = typer.Typer()
 
 PERMISSIONS_AVAILABLE = ["read", "write", "admin"]
-
-console = Console()
 
 
 @app.callback()
@@ -65,7 +62,7 @@ async def _load_test_data(dataset: str) -> None:
         log_level = "DEBUG"
 
         FORMAT = "%(message)s"
-        logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler(console=console)])
+        logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
         logging.getLogger("infrahub")
 
         dataset_module = importlib.import_module(f"infrahub.test_data.{dataset}")
@@ -78,7 +75,7 @@ async def _migrate(check: bool, debug: bool) -> None:
     log_level = "DEBUG" if debug else "INFO"
 
     FORMAT = "%(message)s"
-    logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler(console=console)])
+    logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
     log = logging.getLogger("infrahub")
 
     dbdriver = InfrahubDatabase(driver=await get_db(retry=1))
