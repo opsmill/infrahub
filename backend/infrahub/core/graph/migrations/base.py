@@ -25,7 +25,6 @@ class InfrahubMigration(BaseModel):
     name: str = Field(..., description="Name of the migration")
     queries: Sequence[type[Query]] = Field(..., description="List of queries to execute for this migration")
     minimum_version: int = Field(..., description="Minimum version of the graph to execute this migration")
-    run_after: List[str] = Field(default_factory=list)
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
         raise NotImplementedError
