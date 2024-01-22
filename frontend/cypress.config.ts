@@ -30,7 +30,7 @@ export default defineConfig({
     // setupNodeEvents(on) {
     //   on("file:preprocessor", vitePreprocessor());
     // },
-    baseUrl: Cypress.env('INFRAHUB_ADDRESS'),
+    baseUrl: "http://localhost:8000/",
     specPattern: "tests/e2e/**/*.cy.{js,jsx,ts,tsx}",
     reporter: "junit",
     reporterOptions: {

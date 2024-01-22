@@ -24,7 +24,12 @@ export INFRAHUB_ADDRESS="http://localhost:${INFRAHUB_SERVER_PORT}"
 
 invoke demo.infra-git-import demo.infra-git-create
 
-(cd frontend && npm run cypress:run:e2e)
+if [ "$E2E_TEST_FRAMEWORK" = "playwright" ]; then
+    (cd frontend && npx playwright install chromium && npm run ci:test:e2e)
+else
+    export CYPRESS_BASE_URL=$INFRAHUB_ADDRESS
+    (cd frontend && npm run cypress:run:e2e)
+fi
 
 docker ps -a
 docker logs "${INFRAHUB_BUILD_NAME}-infrahub-server-1"

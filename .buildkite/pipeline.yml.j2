@@ -61,4 +61,32 @@ steps:
     plugins:
       - sv-oss/node-n#v0.1.2:
           node-version: v20
-    command: .buildkite/e2e-testing-cypress.sh
+    command: .buildkite/e2e-testing.sh
+    ##### e2e-testing-playwright
+  - label: ":github: E2E-testing-playwright"
+    key: E2E-testing-playwright
+    depends_on:
+      - files-changed
+    {%- if javascript_all %}
+      - javascript-lint
+    {%- endif %}
+    {%- if yaml_all %}
+      - yaml-lint
+    {%- endif %}
+    {%- if python_all %}
+      - python-lint
+    {%- endif %}
+    allow_dependency_failure: false
+    timeout_in_minutes: 40
+    env:
+      INFRAHUB_DB_TYPE: memgraph
+      E2E_TEST_FRAMEWORK: playwright
+      BUILDKITE_ANALYTICS_TOKEN: $BUILDKITE_E2E_ANALYTICS_TOKEN
+    agents:
+      queue: huge-runner
+    artifact_paths:
+      - "frontend/playwright-report/**"
+    plugins:
+      - sv-oss/node-n#v0.1.2:
+          node-version: v20
+    command: .buildkite/e2e-testing.sh
