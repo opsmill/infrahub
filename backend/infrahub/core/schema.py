@@ -623,7 +623,6 @@ class BaseNodeSchema(BaseSchemaModel):
         ]
         return duplicate
 
-    def get_field(self, name, raise_on_error=True) -> Union[AttributeSchema, RelationshipSchema]:
     def get_field(self, name, raise_on_error=True) -> Optional[Union[AttributeSchema, RelationshipSchema]]:
         if field := self.get_attribute(name, raise_on_error=False):
             return field
