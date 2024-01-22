@@ -48,9 +48,7 @@ export default function Header() {
 
   return (
     <div className="z-10 flex justify-between flex-shrink-0 h-16 bg-custom-white shadow pr-4">
-      <div className="flex flex-1">
-        <SearchBar />
-      </div>
+      <SearchBar />
 
       <div className="flex items-center justify-end gap-4 pl-4">
         <DatePicker date={date} onChange={debouncedHandleDateChange} onClickNow={handleClickNow} />
