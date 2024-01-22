@@ -18,6 +18,7 @@ $ infrahub db [OPTIONS] COMMAND [ARGS]...
 
 * `init`: Erase the content of the database and...
 * `load-test-data`: Load test data into the database from the...
+* `migrate`: Check the current format of the internal...
 
 ## `infrahub db init`
 
@@ -48,4 +49,24 @@ $ infrahub db load-test-data [OPTIONS]
 
 * `--config-file TEXT`: Location of the configuration file to use for Infrahub  [env var: INFRAHUB_CONFIG; default: infrahub.toml]
 * `--dataset TEXT`: [default: dataset01]
+* `--help`: Show this message and exit.
+
+## `infrahub db migrate`
+
+Check the current format of the internal graph and apply the necessary migrations
+
+**Usage**:
+
+```console
+$ infrahub db migrate [OPTIONS] [CONFIG_FILE]
+```
+
+**Arguments**:
+
+* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG;default: infrahub.toml]
+
+**Options**:
+
+* `--check / --no-check`: Check the state of the database without applying the migrations.  [default: no-check]
+* `--debug / --no-debug`: Enable verbose logging.  [default: no-debug]
 * `--help`: Show this message and exit.
