@@ -560,6 +560,7 @@ jobs:
     timeout-minutes: 40
     env:
       INFRAHUB_DB_TYPE: memgraph
+      INFRAHUB_ADDRESS: "http://localhost:8000"
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4

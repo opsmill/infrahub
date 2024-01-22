@@ -9,7 +9,7 @@ trap 'date' DEBUG
 pip install toml invoke
 
 export INFRAHUB_BUILD_NAME="infrahub-$(hostname)"
-export INFRAHUB_SERVER_PORT=$(shuf -n 1 -i 10000-60000)
+export INFRAHUB_SERVER_PORT=$(shuf -n 1 -i 10000-60000) # TODO: use a more deterministic method
 
 invoke demo.build
 invoke demo.pull
