@@ -15,7 +15,11 @@ import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
 import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdit";
 import getMutationDetailsFromFormData from "../../utils/getMutationDetailsFromFormData";
-import { getObjectAttributes, getObjectRelationships } from "../../utils/getSchemaObjectColumns";
+import {
+  getObjectAttributes,
+  getObjectPeers,
+  getObjectRelationships,
+} from "../../utils/getSchemaObjectColumns";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
@@ -53,7 +57,7 @@ export default function ObjectItemEditComponent(props: Props) {
   const attributes = getObjectAttributes(schema);
   const relationships = getObjectRelationships(schema);
 
-  const peers = (schema?.relationships || []).map((r) => r.peer).filter(Boolean);
+  const peers = getObjectPeers(schema);
 
   const queryString = schema
     ? getObjectDetailsAndPeers({
@@ -110,11 +114,11 @@ export default function ObjectItemEditComponent(props: Props) {
     );
 
   async function onSubmit(data: any) {
-    setIsLoading(true);
-
     const updatedObject = getMutationDetailsFromFormData(schema, data, "update", objectDetailsData);
 
     if (Object.keys(updatedObject).length) {
+      setIsLoading(true);
+
       try {
         const mutationString = updateObjectWithId({
           kind: schema?.kind,
@@ -141,8 +145,6 @@ export default function ObjectItemEditComponent(props: Props) {
         closeDrawer();
 
         onUpdateComplete();
-
-        setIsLoading(false);
       } catch (e) {
         console.error("Something went wrong while updating the object:", e);
       }

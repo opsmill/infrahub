@@ -143,3 +143,7 @@ export const relationshipsForTabs = {
   one: [],
   many: ["Generic", "Component"],
 };
+
+export const peersKindForForm = ["Attribute", "Parent"];
+
+export const PROPOSED_CHANGES_EDITABLE_STATE = ["open", "closed"];

@@ -6,6 +6,7 @@ import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import { CONFIG } from "../../config/config";
 import logo from "../../images/Infrahub-SVG-hori.svg";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
+import { currentSchemaHashAtom } from "../../state/atoms/schema.atom";
 import { fetchUrl } from "../../utils/fetch";
 import LoadingScreen from "../loading-screen/loading-screen";
 import DropDownMenuHeader from "./desktop-menu-header";
@@ -15,12 +16,13 @@ export default function DesktopMenu() {
   const navigate = useNavigate();
 
   const branch = useAtomValue(currentBranchAtom);
+  const currentSchemaHash = useAtomValue(currentSchemaHashAtom);
 
   const [isLoading, setIsLoading] = useState(false);
   const [menu, setMenu] = useState([]);
 
   const fetchMenu = async () => {
-    if (!branch?.name) return;
+    if (!currentSchemaHash) return;
 
     try {
       setIsLoading(true);
@@ -39,7 +41,7 @@ export default function DesktopMenu() {
 
   useEffect(() => {
     fetchMenu();
-  }, [branch?.name]);
+  }, [currentSchemaHash]);
 
   return (
     <div className="z-100 hidden w-64 md:visible md:inset-y-0 md:flex md:flex-col">

@@ -1,7 +1,6 @@
 import { gql } from "@apollo/client";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
-import * as R from "ramda";
 import { useState } from "react";
 import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
@@ -15,6 +14,7 @@ import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
 import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdit";
 import getMutationDetailsFromFormData from "../../utils/getMutationDetailsFromFormData";
+import { getObjectPeers } from "../../utils/getSchemaObjectColumns";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
@@ -52,7 +52,7 @@ export default function ObjectItemCreate(props: iProps) {
 
   const schema = schemaList.find((s) => s.kind === objectname);
 
-  const peers = R.uniq((schema?.relationships || []).map((r) => r.peer).filter(Boolean));
+  const peers = getObjectPeers(schema);
 
   const queryString = peers.length
     ? getDropdownOptionsForRelatedPeersPaginated({
