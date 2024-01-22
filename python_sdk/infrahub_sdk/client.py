@@ -918,7 +918,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
                 tracker=f"query-{str(schema.kind).lower()}-page{page_number}",
             )
 
-            process_result: ProcessRelationsNode = self._process_nodes_and_relationships(
+            process_result: ProcessRelationsNodeSync = self._process_nodes_and_relationships(
                 response=response, schema_kind=schema.kind, branch=branch, prefetch_relationships=prefetch_relationships
             )
             nodes.extend(process_result["nodes"])
