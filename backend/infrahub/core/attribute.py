@@ -427,6 +427,33 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
 
         return response
 
+    async def from_graphql(self, data: dict) -> bool:
+        """Update attr from GraphQL payload"""
+
+        changed = False
+
+        if "value" in data:
+            value_to_set = self.schema.convert_to_attribute_enum(data["value"])
+            if value_to_set != self.value:
+                self.value = value_to_set
+                changed = True
+
+        if "is_protected" in data and data["is_protected"] != self.is_protected:
+            self.is_protected = data["is_protected"]
+            changed = True
+        if "is_visible" in data and data["is_visible"] != self.is_protected:
+            self.is_visible = data["is_visible"]
+            changed = True
+
+        if "source" in data and data["source"] != self.source_id:
+            self.source = data["source"]
+            changed = True
+        if "owner" in data and data["owner"] != self.owner_id:
+            self.owner = data["owner"]
+            changed = True
+
+        return changed
+
     def get_create_data(self) -> AttributeCreateData:
         # pylint: disable=no-member
         branch = self.get_branch_based_on_support_type()
