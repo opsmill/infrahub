@@ -5,6 +5,14 @@ from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
 
 
+class NodeKind(BaseModel):
+    namespace: str
+    name: str
+
+    def __str__(self) -> str:
+        return f"{self.namespace}{self.name}"
+
+
 class SchemaBranchDiff(BaseModel):
     nodes: List[str] = Field(default_factory=list)
     generics: List[str] = Field(default_factory=list)
@@ -12,6 +20,9 @@ class SchemaBranchDiff(BaseModel):
 
     def to_string(self) -> str:
         return ", ".join(self.nodes + self.generics + self.groups)
+
+    def to_list(self) -> List[str]:
+        return self.nodes + self.generics + self.groups
 
 
 class SchemaBranchHash(BaseModel):
