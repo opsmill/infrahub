@@ -28,8 +28,11 @@ data:
     address = "{{ include "infrahub-helm.fullname" . }}-cache.{{ .Release.Namespace }}.svc.{{ .Values.global.kubernetesClusterDomain }}"
     port = "{{ (index .Values.cache.ports 0).port }}"
 
-    [storage.settings]
-    directory = "/opt/infrahub/storage"
+    [storage]
+    driver = "local"
+
+    [storage.local]
+    path = "/opt/infrahub/storage"
 
     [trace]
     enable = false
