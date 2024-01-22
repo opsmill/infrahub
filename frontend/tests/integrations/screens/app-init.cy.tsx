@@ -2,7 +2,7 @@
 
 import { MockedProvider } from "@apollo/client/testing";
 import React from "react";
-import { Root } from "../../../src";
+import App from "../../../src/App";
 
 describe("Config fetch", () => {
   beforeEach(function () {
@@ -23,12 +23,12 @@ describe("Config fetch", () => {
     cy.intercept("GET", "/api/info", this.info).as("getInfo");
     cy.intercept("GET", "/api/schema*", this.schema).as("getSchema");
     cy.intercept("GET", "/api/schema/summary*", this.schema).as("getSchemaSummary");
-    cy.intercept("GET", "/api/menu?branch=main", this.menu).as("getMenu");
+    cy.intercept("GET", "/api/menu*", this.menu).as("getMenu");
     cy.intercept("POST", "/graphql/main", this.branches).as("branches");
 
     cy.mount(
       <MockedProvider addTypename={false}>
-        <Root />
+        <App />
       </MockedProvider>
     );
 
