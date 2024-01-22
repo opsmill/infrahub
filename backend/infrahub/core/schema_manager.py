@@ -833,6 +833,7 @@ class SchemaManager(NodeManager):
     ):
         branch = await get_branch(branch=branch, db=db)
 
+        updated_schema = None
         if update_db:
             await self.load_schema_to_db(schema=schema, db=db, branch=branch, limit=limit)
             # After updating the schema into the db
@@ -849,7 +850,7 @@ class SchemaManager(NodeManager):
                 db=db, branch=branch, schema=schema, schema_diff=schema_diff
             )
 
-        self._branches[branch.name] = updated_schema
+        self._branches[branch.name] = updated_schema or schema
 
     def register_schema(self, schema: SchemaRoot, branch: Optional[str] = None) -> SchemaBranch:
         """Register all nodes, generics & groups from a SchemaRoot object into the registry."""
