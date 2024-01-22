@@ -71,25 +71,25 @@ async def test_create_simple_object_with_enum(
     response_value,
 ):
     config.SETTINGS.experimental_features.graphql_enums = graphql_enums_on
-    query = f"""
-    mutation {{
-        TestCarCreate(data: {{
-                name: {{ value: "JetTricycle"}},
-                nbr_seats: {{ value: 1 }},
-                is_electric: {{ value: false }},
-                transmission: {{ value: {enum_value} }},
-                owner: {{ id: "John" }}
-            }}) {{
+    query = """
+    mutation {
+        TestCarCreate(data: {
+                name: { value: "JetTricycle"},
+                nbr_seats: { value: 1 },
+                is_electric: { value: false },
+                transmission: { value: %s },
+                owner: { id: "John" }
+            }) {
             ok
-            object {{
+            object {
                 id
-                transmission {{
+                transmission {
                     value
-                }}
-            }}
-        }}
-    }}
-    """
+                }
+            }
+        }
+    }
+    """ % (enum_value)
     result = await graphql(
         schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
         source=query,

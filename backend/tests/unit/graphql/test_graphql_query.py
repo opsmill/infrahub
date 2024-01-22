@@ -820,19 +820,19 @@ async def test_query_filter_on_enum(
     await c1.new(db=db, name="GoKart", nbr_seats=1, is_electric=True, owner=person_john_main, transmission="manual")
     await c1.save(db=db)
 
-    query = f"""
-    query {{
-        TestCar(transmission__value: {enum_value}) {{
-            edges {{
-                node {{
-                    name {{
+    query = """
+    query {
+        TestCar(transmission__value: %s) {
+            edges {
+                node {
+                    name {
                         value
-                    }}
-                }}
-            }}
-        }}
-    }}
-    """
+                    }
+                }
+            }
+        }
+    }
+    """ % (enum_value)
 
     result = await graphql(
         await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),

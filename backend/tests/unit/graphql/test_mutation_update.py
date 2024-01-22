@@ -113,22 +113,22 @@ async def test_update_simple_object_with_enum(
     )
     car_id = result.data["TestCarCreate"]["object"]["id"]
 
-    query = f"""
-    mutation {{
-        TestCarUpdate(data: {{
-                id: "{car_id}",
-                transmission: {{ value: {enum_value} }},
-            }}) {{
+    query = """
+    mutation {
+        TestCarUpdate(data: {
+                id: "%(car_id)s",
+                transmission: { value: %(enum_value)s },
+            }) {
             ok
-            object {{
+            object {
                 id
-                transmission {{
+                transmission {
                     value
-                }}
-            }}
-        }}
-    }}
-    """
+                }
+            }
+        }
+    }
+    """ % {"car_id": car_id, "enum_value": enum_value}
     result = await graphql(
         schema=graphql_schema,
         source=query,
