@@ -2,10 +2,9 @@
 
 from invoke import Collection, Context, task
 
-from . import backend, ctl, demo, docs, main, performance, sdk, sync, test
+from . import backend, demo, docs, main, performance, sdk, sync, test
 
 ns = Collection()
-ns.add_collection(ctl)
 ns.add_collection(sdk)
 ns.add_collection(docs)
 ns.add_collection(performance)
