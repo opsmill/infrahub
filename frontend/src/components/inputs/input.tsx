@@ -27,7 +27,7 @@ export const Input = forwardRef((props: any, ref: any) => {
   );
 
   return (
-    <div className="relative w-full">
+    <div className="relative flex items-center h-full w-full">
       <input
         onChange={(event) => {
           const value = type === "number" ? event.target.valueAsNumber : event.target.value;
