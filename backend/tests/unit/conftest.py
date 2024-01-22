@@ -1921,9 +1921,7 @@ async def car_schema(db: InfrahubDatabase, default_branch: Branch, generic_vehic
 
 
 @pytest.fixture
-async def motorcycle_schema(
-    db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema, group_on_road_vehicule_schema
-) -> NodeSchema:
+async def motorcycle_schema(db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema) -> NodeSchema:
     SCHEMA = {
         "name": "Motorcycle",
         "namespace": "Test",
@@ -1941,9 +1939,7 @@ async def motorcycle_schema(
 
 
 @pytest.fixture
-async def truck_schema(
-    db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema, group_on_road_vehicule_schema
-) -> NodeSchema:
+async def truck_schema(db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema) -> NodeSchema:
     SCHEMA = {
         "name": "Truck",
         "namespace": "Test",

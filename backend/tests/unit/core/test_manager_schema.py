@@ -1356,12 +1356,6 @@ async def test_load_schema_from_db(
                 ],
             },
         ],
-        "groups": [
-            {
-                "name": "generic_group",
-                "kind": "GenericGroup",
-            },
-        ],
     }
 
     schema1 = registry.schema.register_schema(schema=SchemaRoot(**FULL_SCHEMA), branch=default_branch.name)
@@ -1369,14 +1363,12 @@ async def test_load_schema_from_db(
     schema11 = registry.schema.get_schema_branch(name=default_branch.name)
     schema2 = await registry.schema.load_schema_from_db(db=db, branch=default_branch.name)
 
-    assert len(schema2.nodes) == 7
+    assert len(schema2.nodes) == 6
     assert len(schema2.generics) == 1
-    assert len(schema2.groups) == 1
 
     assert schema11.get(name="TestCriticality").get_hash() == schema2.get(name="TestCriticality").get_hash()
     assert schema11.get(name=InfrahubKind.TAG).get_hash() == schema2.get(name="BuiltinTag").get_hash()
     assert schema11.get(name="TestGenericInterface").get_hash() == schema2.get(name="TestGenericInterface").get_hash()
-    assert schema11.get(name="GenericGroup").get_hash() == schema2.get(name="GenericGroup").get_hash()
 
 
 async def test_load_schema(
@@ -1437,12 +1429,6 @@ async def test_load_schema(
                 ],
             },
         ],
-        "groups": [
-            {
-                "name": "generic_group",
-                "kind": "GenericGroup",
-            },
-        ],
     }
 
     schema1 = registry.schema.register_schema(schema=SchemaRoot(**FULL_SCHEMA), branch=default_branch.name)
@@ -1450,11 +1436,9 @@ async def test_load_schema(
     schema11 = registry.schema.get_schema_branch(name=default_branch.name)
     schema2 = await registry.schema.load_schema(db=db, branch=default_branch.name)
 
-    assert len(schema2.nodes) == 7
+    assert len(schema2.nodes) == 6
     assert len(schema2.generics) == 1
-    assert len(schema2.groups) == 1
 
     assert schema11.get(name="TestCriticality").get_hash() == schema2.get(name="TestCriticality").get_hash()
     assert schema11.get(name=InfrahubKind.TAG).get_hash() == schema2.get(name=InfrahubKind.TAG).get_hash()
     assert schema11.get(name="TestGenericInterface").get_hash() == schema2.get(name="TestGenericInterface").get_hash()
-    assert schema11.get(name="GenericGroup").get_hash() == schema2.get(name="GenericGroup").get_hash()
