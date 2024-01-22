@@ -82,7 +82,6 @@ export const getObjectItemDisplayValue = (
     row[attribute?.name]?.node?.label ??
     row[attribute?.name]?.node?.display_label ??
     row[attribute?.name]?.node?.value ??
-    (typeof row[attribute?.name] === "string" ? row[attribute?.name] : "") ??
     "-";
 
   if (attribute?.kind === "Password") {

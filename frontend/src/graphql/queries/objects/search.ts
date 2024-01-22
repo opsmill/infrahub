@@ -6,7 +6,8 @@ query Search($search: String!) {
     count
     edges{
       node{
-        display_label
+        id
+        __typename
       }
     }
   }

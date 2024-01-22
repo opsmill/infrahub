@@ -65,11 +65,13 @@ query {{kind}} {
             }
         {{/each}}
 
-        {{#each relationshipsTabs}}
-          {{this.name}}(limit: 100) {
-            count
-          }
-        {{/each}}
+        {{#if relationshipsTabs}}
+          {{#each relationshipsTabs}}
+            {{this.name}}(limit: 100) {
+              count
+            }
+          {{/each}}
+        {{/if}}
       }
     }
   }

@@ -1,17 +1,18 @@
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
-import { Background } from "../../components/display/background";
-import { POPOVER_SIZE, PopOver } from "../../components/display/popover";
-import { Input } from "../../components/inputs/input";
-import Transition from "../../components/utils/transition";
 import { NODE_OBJECT } from "../../config/constants";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { searchQuery } from "../../graphql/queries/objects/search";
+import LoadingScreen from "../../screens/loading-screen/loading-screen";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
 import { debounce } from "../../utils/common";
-import LoadingScreen from "../loading-screen/loading-screen";
+import { Background } from "../display/background";
+import { POPOVER_SIZE, PopOver } from "../display/popover";
+import { Input } from "../inputs/input";
+import Transition from "../utils/transition";
+import { SearchResults } from "./search-results";
 
 type tSearchInput = {
   loading?: boolean;
@@ -21,7 +22,7 @@ type tSearchInput = {
 const SearchInput = (props: tSearchInput) => {
   const { loading, onChange } = props;
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState("atl1-core1");
 
   const handleChange = (value: string) => {
     setSearch(value);
@@ -109,7 +110,7 @@ export const SearchBar = () => {
           width={POPOVER_SIZE.NONE}
           height={POPOVER_SIZE.NONE}
           className="!left-0 !right-0 !top-14">
-          {() => <div>Test</div>}
+          {() => <SearchResults results={results} />}
         </PopOver>
       </Transition>
     </div>

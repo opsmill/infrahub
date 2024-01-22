@@ -1,14 +1,14 @@
 import { formatISO, isEqual, isValid } from "date-fns";
 import { useAtom } from "jotai";
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
 import { AccountMenu } from "../../components/account-menu";
 import BranchSelector from "../../components/branch-selector";
 import { DatePicker } from "../../components/inputs/date-picker";
+import { SearchBar } from "../../components/search/search-bar";
 import { QSP } from "../../config/qsp";
 import { datetimeAtom } from "../../state/atoms/time.atom";
 import { debounce } from "../../utils/common";
-import { SearchBar } from "./search-bar";
 
 export default function Header() {
   const [qspDate, setQspDate] = useQueryParam(QSP.DATETIME, StringParam);
