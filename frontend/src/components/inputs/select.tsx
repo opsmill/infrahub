@@ -5,7 +5,7 @@ import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
-import { useState } from "react";
+import { useContext, useState } from "react";
 import {
   DEFAULT_BRANCH_NAME,
   SCHEMA_DROPDOWN_ADD,
@@ -13,6 +13,7 @@ import {
   SCHEMA_ENUM_ADD,
   SCHEMA_ENUM_REMOVE,
 } from "../../config/constants";
+import { SchemaContext } from "../../decorators/withSchemaContext";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { basicMutation } from "../../graphql/mutations/objects/basicMutation";
 import { Form, FormFieldError } from "../../screens/edit-form-hook/form";
@@ -83,6 +84,8 @@ export const Select = (props: SelectProps) => {
   } = props;
 
   const { kind } = props;
+
+  const { checkSchemaUpdate } = useContext(SchemaContext);
 
   const [schemaList] = useAtom(schemaState);
   const [schemaKindName] = useAtom(schemaKindNameState);
@@ -283,6 +286,8 @@ export const Select = (props: SelectProps) => {
         handleChange(newOption);
 
         setIsLoading(false);
+
+        checkSchemaUpdate();
       } catch (e) {
         setIsLoading(false);
       }
