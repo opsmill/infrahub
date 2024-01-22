@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.definitions import Brancher
     from infrahub.core.manager import NodeManager
-    from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema
+    from infrahub.core.schema import GenericSchema, NodeSchema
     from infrahub.core.schema_manager import SchemaManager
     from infrahub.database import InfrahubDatabase
     from infrahub.graphql.mutations import BaseAttributeInput
@@ -129,17 +129,13 @@ class Registry:
         default_branch = config.SETTINGS.main.default_branch
         return attr[default_branch]
 
-    def set_schema(
-        self, name: str, schema: Union[NodeSchema, GenericSchema, GroupSchema], branch: Optional[str] = None
-    ) -> int:
+    def set_schema(self, name: str, schema: Union[NodeSchema, GenericSchema], branch: Optional[str] = None) -> int:
         return self.schema.set(name=name, schema=schema, branch=branch)
 
     def has_schema(self, name: str, branch: Optional[Union[Branch, str]] = None) -> bool:
         return self.schema.has(name=name, branch=branch)
 
-    def get_schema(
-        self, name: str, branch: Optional[Union[Branch, str]] = None
-    ) -> Union[NodeSchema, GenericSchema, GroupSchema]:
+    def get_schema(self, name: str, branch: Optional[Union[Branch, str]] = None) -> Union[NodeSchema, GenericSchema]:
         return self.schema.get(name=name, branch=branch)
 
     def get_node_schema(self, name: str, branch: Optional[Union[Branch, str]] = None) -> NodeSchema:
@@ -155,7 +151,7 @@ class Registry:
 
     def get_full_schema(
         self, branch: Optional[Union[Branch, str]] = None
-    ) -> Dict[str, Union[NodeSchema, GenericSchema, GroupSchema]]:
+    ) -> Dict[str, Union[NodeSchema, GenericSchema]]:
         """Return all the nodes in the schema for a given branch."""
         return self.schema.get_full(branch=branch)
 

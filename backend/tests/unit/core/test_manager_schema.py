@@ -9,7 +9,6 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType, FilterSchemaKind, InfrahubKind
 from infrahub.core.schema import (
     GenericSchema,
-    GroupSchema,
     NodeSchema,
     SchemaRoot,
     core_models,
@@ -160,12 +159,6 @@ def schema_all_in_one():
                 ],
             },
         ],
-        "groups": [
-            {
-                "name": "generic_group",
-                "kind": "GenericGroup",
-            },
-        ],
     }
 
     return FULL_SCHEMA
@@ -219,7 +212,6 @@ async def test_schema_branch_load_schema_initial(schema_all_in_one):
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
     assert isinstance(schema.get(name="BuiltinCriticality"), NodeSchema)
-    assert isinstance(schema.get(name="GenericGroup"), GroupSchema)
     assert isinstance(schema.get(name="InfraGenericInterface"), GenericSchema)
 
 
@@ -1207,24 +1199,6 @@ async def test_load_node_to_db_generic_schema(db: InfrahubDatabase, default_bran
 
     results = await SchemaManager.query(
         schema="SchemaGeneric", filters={"kind__value": "InfraGenericInterface"}, branch=default_branch, db=db
-    )
-    assert len(results) == 1
-
-
-async def test_load_node_to_db_group_schema(db: InfrahubDatabase, default_branch: Branch):
-    registry.schema = SchemaManager()
-    registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
-
-    SCHEMA = {
-        "name": "generic_group",
-        "kind": "GenericGroup",
-    }
-
-    node = GroupSchema(**SCHEMA)
-    await registry.schema.load_node_to_db(node=node, db=db, branch=default_branch)
-
-    results = await SchemaManager.query(
-        schema="SchemaGroup", filters={"kind__value": "GenericGroup"}, branch=default_branch, db=db
     )
     assert len(results) == 1
 

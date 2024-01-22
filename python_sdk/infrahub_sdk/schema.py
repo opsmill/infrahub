@@ -333,17 +333,10 @@ class NodeExtensionSchema(pydantic.BaseModel):
     relationships: List[RelationshipSchema] = pydantic.Field(default_factory=list)
 
 
-class GroupSchema(pydantic.BaseModel):
-    name: str
-    kind: str
-    description: Optional[str] = None
-
-
 class SchemaRoot(pydantic.BaseModel):
     version: str
     generics: List[GenericSchema] = pydantic.Field(default_factory=list)
     nodes: List[NodeSchema] = pydantic.Field(default_factory=list)
-    groups: List[GroupSchema] = pydantic.Field(default_factory=list)
     # node_extensions: List[NodeExtensionSchema] = pydantic.Field(default_factory=list)
 
 

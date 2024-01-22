@@ -7,7 +7,7 @@ from infrahub.core import registry
 from infrahub.core.attribute import String
 from infrahub.core.branch import Branch
 from infrahub.core.enums import generate_python_enum
-from infrahub.core.schema import AttributeSchema, GenericSchema, GroupSchema, NodeSchema
+from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema
 from infrahub.graphql.mutations.attribute import BaseAttributeInput
 from infrahub.types import ATTRIBUTE_TYPES, InfrahubDataType
 
@@ -30,14 +30,12 @@ def generate_graphql_enum(name, options):
     return graphene.Enum.from_enum(enum=py_enum, description=description_func)
 
 
-def load_all_enum_types_in_registry(
-    node_schemas: Iterable[Union[NodeSchema, GenericSchema, GroupSchema]], branch: Branch
-) -> None:
+def load_all_enum_types_in_registry(node_schemas: Iterable[Union[NodeSchema, GenericSchema]], branch: Branch) -> None:
     for node_schema in node_schemas:
         load_enum_type_in_registry(node_schema, branch)
 
 
-def load_enum_type_in_registry(node_schema: Union[NodeSchema, GenericSchema, GroupSchema], branch: Branch) -> None:
+def load_enum_type_in_registry(node_schema: Union[NodeSchema, GenericSchema], branch: Branch) -> None:
     for attr_schema in node_schema.attributes:
         if not attr_schema.enum:
             continue
