@@ -32,7 +32,7 @@ from infrahub_sdk.schema import (
 )
 from infrahub_sdk.utils import YamlFile, compare_lists
 from pydantic import ValidationError as PydanticValidationError
-from pydantic.v1 import BaseModel, Field, validator
+from pydantic.v1 import BaseModel, Field
 
 import infrahub.config as config
 from infrahub.core.constants import InfrahubKind
@@ -340,11 +340,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
     class Config:
         arbitrary_types_allowed = True
 
-    @validator("default_branch_name", pre=True, always=True)
-    @classmethod
-    def set_default_branch_name(cls, value):
-        return value or config.SETTINGS.main.default_branch
-
     @property
     def default_branch(self) -> str:
         return self.default_branch_name or config.SETTINGS.main.default_branch
@@ -487,7 +482,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         try:
             repo = Repo.clone_from(self.location, self.directory_default)
-            repo.git.checkout(checkout_ref or self.default_branch_name)
+            repo.git.checkout(checkout_ref or self.default_branch)
         except GitCommandError as exc:
             if "Repository not found" in exc.stderr or "does not appear to be a git" in exc.stderr:
                 raise RepositoryError(
@@ -498,7 +493,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             if "error: pathspec" in exc.stderr:
                 raise RepositoryError(
                     identifier=self.name,
-                    message=f"The branch {self.default_branch_name} isn't a valid branch for the repository {self.name} at {self.location}.",
+                    message=f"The branch {self.default_branch} isn't a valid branch for the repository {self.name} at {self.location}.",
                 ) from exc
 
             raise RepositoryError(identifier=self.name) from exc
@@ -509,7 +504,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         # TODO Need to handle the potential exceptions coming from repo.git.worktree
         commit = str(repo.head.commit)
         self.create_commit_worktree(commit=commit)
-        await self.update_commit_value(branch_name=infrahub_branch_name or self.default_branch_name, commit=commit)
+        await self.update_commit_value(branch_name=infrahub_branch_name or self.default_branch, commit=commit)
 
         return True
 
