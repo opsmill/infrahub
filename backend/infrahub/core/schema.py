@@ -747,7 +747,6 @@ class GenericSchema(BaseNodeSchema):
 
 class NodeSchema(BaseNodeSchema):
     inherit_from: List[str] = Field(default_factory=list)
-    groups: Optional[List[str]] = Field(default_factory=list)
     hierarchy: Optional[str] = Field(default=None)
     parent: Optional[str] = Field(default=None)
     children: Optional[str] = Field(default=None)
@@ -786,13 +785,6 @@ class NodeSchema(BaseNodeSchema):
         return schema
 
 
-class GroupSchema(BaseSchemaModel):
-    id: Optional[str] = None
-    name: str = Field(pattern=NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
-    kind: str = Field(pattern=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH)
-    description: Optional[str] = Field(None, max_length=DEFAULT_DESCRIPTION_LENGTH)
-
-
 # -----------------------------------------------------
 # Extensions
 #  For the initial implementation its possible to add attribute and relationships on Node
@@ -817,7 +809,6 @@ class SchemaRoot(BaseModel):
     version: Optional[str] = Field(default=None)
     generics: List[GenericSchema] = Field(default_factory=list)
     nodes: List[NodeSchema] = Field(default_factory=list)
-    groups: List[GroupSchema] = Field(default_factory=list)
     extensions: SchemaExtension = SchemaExtension()
 
     @classmethod
@@ -933,12 +924,6 @@ internal_schema = {
                     "name": "inherit_from",
                     "kind": "List",
                     "description": "List of Generic Kind that this node is inheriting from",
-                    "optional": True,
-                },
-                {
-                    "name": "groups",
-                    "kind": "List",
-                    "description": "List of Group that this Node is part of.",
                     "optional": True,
                 },
                 {
@@ -1342,41 +1327,10 @@ internal_schema = {
                 },
             ],
         },
-        {
-            "name": "Group",
-            "namespace": "Schema",
-            "branch": BranchSupportType.AWARE.value,
-            "default_filter": "name__value",
-            "display_labels": ["name__value"],
-            "attributes": [
-                {
-                    "name": "name",
-                    "kind": "Text",
-                    "unique": True,
-                    "min_length": DEFAULT_NAME_MIN_LENGTH,
-                    "max_length": DEFAULT_NAME_MAX_LENGTH,
-                },
-                {
-                    "name": "kind",
-                    "kind": "Text",
-                    "regex": str(NODE_KIND_REGEX),
-                    "min_length": DEFAULT_KIND_MIN_LENGTH,
-                    "max_length": DEFAULT_KIND_MAX_LENGTH,
-                },
-                {
-                    "name": "description",
-                    "kind": "Text",
-                    "description": "Short description of the Group.",
-                    "optional": True,
-                    "max_length": DEFAULT_DESCRIPTION_LENGTH,
-                },
-            ],
-        },
     ],
 }
 
 core_models = {
-    "groups": [],
     "generics": [
         {
             "name": "Node",

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections import defaultdict
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
 
@@ -9,7 +8,7 @@ import graphene
 import infrahub.config as config
 from infrahub.core import get_branch, registry
 from infrahub.core.constants import InfrahubKind, RelationshipKind
-from infrahub.core.schema import AttributeSchema, GenericSchema, GroupSchema, NodeSchema
+from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema
 from infrahub.graphql.mutations.graphql_query import InfrahubGraphQLQueryMutation
 from infrahub.types import ATTRIBUTE_TYPES, get_attribute_type
 
@@ -28,7 +27,7 @@ from .resolver import (
     single_relationship_resolver,
 )
 from .schema import account_resolver, default_paginated_list_resolver
-from .types import InfrahubInterface, InfrahubObject, InfrahubUnion, RelatedNodeInput
+from .types import InfrahubInterface, InfrahubObject, RelatedNodeInput
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -73,8 +72,6 @@ async def generate_object_types(db: InfrahubDatabase, branch: Union[Branch, str]
     branch = await get_branch(db=db, branch=branch)
 
     full_schema = await registry.schema.get_full_safe(branch=branch)
-
-    group_memberships = defaultdict(list)
 
     load_attribute_types_in_registry(branch=branch)
     if config.SETTINGS.experimental_features.graphql_enums:
@@ -155,22 +152,6 @@ async def generate_object_types(db: InfrahubDatabase, branch: Union[Branch, str]
                 name=node_type_nested_paginated._meta.name, graphql_type=node_type_nested_paginated, branch=branch.name
             )
 
-            # Register this model to all the groups it belongs to.
-            # if node_schema.groups:
-            #     for group_name in node_schema.groups:
-            #         group_memberships[group_name].append(f"Related{node_schema.kind}")
-
-    # Generate all the Groups with associated ObjectType / RelatedObjectType
-    for node_name, node_schema in full_schema.items():
-        if (
-            not isinstance(node_schema, GroupSchema)
-            or node_name not in group_memberships
-            or not group_memberships[node_name]
-        ):
-            continue
-        group = generate_union_object(schema=node_schema, members=group_memberships.get(node_name, []), branch=branch)
-        registry.set_graphql_type(name=group._meta.name, graphql_type=group, branch=branch.name)
-
     # Extend all types and related types with Relationships
     for node_name, node_schema in full_schema.items():
         if not isinstance(node_schema, (NodeSchema, GenericSchema)):
@@ -180,22 +161,16 @@ async def generate_object_types(db: InfrahubDatabase, branch: Union[Branch, str]
 
         for rel in node_schema.relationships:
             peer_schema = await rel.get_peer_schema(branch=branch)
-            if not isinstance(peer_schema, GroupSchema) and peer_schema.namespace == "Internal":
+            if peer_schema.namespace == "Internal":
                 continue
             peer_filters = await generate_filters(db=db, schema=peer_schema, top_level=False)
 
             if rel.cardinality == "one":
-                if isinstance(peer_schema, GroupSchema):
-                    peer_type = registry.get_graphql_type(name=peer_schema.kind, branch=branch.name)
-                else:
-                    peer_type = registry.get_graphql_type(name=f"NestedEdged{peer_schema.kind}", branch=branch.name)
+                peer_type = registry.get_graphql_type(name=f"NestedEdged{peer_schema.kind}", branch=branch.name)
                 node_type._meta.fields[rel.name] = graphene.Field(peer_type, resolver=single_relationship_resolver)
 
             elif rel.cardinality == "many":
-                if isinstance(peer_schema, GroupSchema):
-                    peer_type = registry.get_graphql_type(name=peer_schema.kind, branch=branch.name)
-                else:
-                    peer_type = registry.get_graphql_type(name=f"NestedPaginated{peer_schema.kind}", branch=branch.name)
+                peer_type = registry.get_graphql_type(name=f"NestedPaginated{peer_schema.kind}", branch=branch.name)
 
                 if (isinstance(node_schema, NodeSchema) and node_schema.hierarchy) or (
                     isinstance(node_schema, GenericSchema) and node_schema.hierarchical
@@ -399,30 +374,6 @@ def generate_graphql_paginated_object(
     }
 
     return type(object_name, (InfrahubObject,), main_attrs)
-
-
-def generate_union_object(
-    schema: GroupSchema,
-    members: List,
-    branch: Branch,
-) -> Type[graphene.Union]:
-    types = [registry.get_graphql_type(name=member, branch=branch.name) for member in members]
-
-    if not types:
-        return None
-
-    meta_attrs = {
-        "schema": schema,
-        "name": schema.kind,
-        "description": schema.description,
-        "types": types,
-    }
-
-    main_attrs = {
-        "Meta": type("Meta", (object,), meta_attrs),
-    }
-
-    return type(schema.kind, (InfrahubUnion,), main_attrs)
 
 
 def generate_interface_object(schema: GenericSchema, branch: Branch) -> Type[graphene.Interface]:
@@ -671,7 +622,7 @@ def generate_graphql_mutation_delete(
 
 async def generate_filters(
     db: InfrahubDatabase,
-    schema: Union[NodeSchema, GenericSchema, GroupSchema],
+    schema: Union[NodeSchema, GenericSchema],
     top_level: bool = False,
     include_properties: bool = True,
 ) -> Dict[str, Union[graphene.Scalar, graphene.List]]:
@@ -685,7 +636,7 @@ async def generate_filters(
 
     Args:
         session (AsyncSession): Active session to the database
-        schema (Union[NodeSchema, GenericSchema, GroupSchema]): Schema to generate the filters
+        schema (Union[NodeSchema, GenericSchema]): Schema to generate the filters
         top_level (bool, optional): Flag to indicate if are at the top level or not. Defaults to False.
 
     Returns:
@@ -696,9 +647,6 @@ async def generate_filters(
     default_filters: List[str] = list(filters.keys())
 
     filters["ids"] = graphene.List(graphene.ID)
-
-    if isinstance(schema, GroupSchema):
-        return filters
 
     for attr in schema.attributes:
         attr_kind = get_attr_kind(schema, attr)

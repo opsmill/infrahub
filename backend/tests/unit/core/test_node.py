@@ -1064,55 +1064,6 @@ async def test_node_relationship_interface(db: InfrahubDatabase, default_branch:
 
 
 # --------------------------------------------------------------------------
-# With Union
-# --------------------------------------------------------------------------
-
-
-async def test_union(
-    db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema, car_schema, truck_schema, motorcycle_schema
-):
-    SCHEMA = {
-        "name": "Person",
-        "namespace": "Test",
-        "default_filter": "name__value",
-        "branch": BranchSupportType.AWARE.value,
-        "attributes": [
-            {"name": "name", "kind": "Text", "unique": True},
-        ],
-        "relationships": [
-            {"name": "road_vehicules", "peer": "OnRoad", "cardinality": "many", "identifier": "person__vehicule"}
-        ],
-    }
-
-    node = NodeSchema(**SCHEMA)
-    registry.schema.set(name=node.kind, schema=node, branch=default_branch.name)
-    registry.schema.process_schema_branch(name=default_branch.name)
-
-    d1 = await Node.init(db=db, schema="TestCar")
-    await d1.new(db=db, name="Porsche 911", nbr_doors=2)
-    await d1.save(db=db)
-
-    t1 = await Node.init(db=db, schema="TestTruck")
-    await t1.new(db=db, name="Silverado", nbr_axles=4)
-    await t1.save(db=db)
-
-    m1 = await Node.init(db=db, schema="TestMotorcycle")
-    await m1.new(db=db, name="Monster", nbr_seats=1)
-    await m1.save(db=db)
-
-    p1 = await Node.init(db=db, schema="TestPerson")
-    await p1.new(db=db, name="John Doe", road_vehicules=[d1, t1, m1])
-    await p1.save(db=db)
-
-    obj1 = await NodeManager.get_one(id=p1.id, branch=default_branch, db=db)
-    peers = [await peer_rel.get_peer(db=db) for peer_rel in await obj1.road_vehicules.get(db=db)]
-    assert len(peers) == 3
-
-    kinds = sorted([peer.get_kind() for peer in peers])
-    assert kinds == ["TestCar", "TestMotorcycle", "TestTruck"]
-
-
-# --------------------------------------------------------------------------
 # Serialize
 # --------------------------------------------------------------------------
 

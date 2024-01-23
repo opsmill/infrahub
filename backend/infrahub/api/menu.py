@@ -9,7 +9,7 @@ from infrahub.api.dependencies import get_branch_dep
 from infrahub.core import registry
 from infrahub.core.branch import Branch  # noqa: TCH001
 from infrahub.core.constants import InfrahubKind
-from infrahub.core.schema import GroupSchema, NodeSchema
+from infrahub.core.schema import NodeSchema
 from infrahub.log import get_logger
 
 log = get_logger()
@@ -64,7 +64,7 @@ async def get_menu(
     for key in full_schema.keys():
         model = full_schema[key]
 
-        if isinstance(model, GroupSchema) or not model.include_in_menu:
+        if not model.include_in_menu:
             continue
 
         if isinstance(model, NodeSchema) and InfrahubKind.GENERICGROUP in model.inherit_from:
