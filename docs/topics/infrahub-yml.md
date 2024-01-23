@@ -40,7 +40,7 @@ schemas:
 
 Infrahub will attempt to import any schemas defined in `.infrahub.yml` when pulling from the external repository.
 
-## Jinja2 Transformations {#transform-jinja-2}
+## Jinja2 Transformation {#transform-jinja-2}
 
 Jinja2 Transformations can be defined as described [here](/topics/transformation#rendered-file-jinja2-plugin). To load Jinja2 Transformations into Infrahub from an external repository, you must explicitly define them in the `.infrahub.yml` file. Each Jinja2 Transformations in the `.infrahub.yml` configuration file is defined by the following
 
