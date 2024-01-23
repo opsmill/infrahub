@@ -46,7 +46,7 @@ You will need to submit an access token with your request to create a repository
     The password or Fine-grained personal access token with access to the Git repository specified in `Location`.
     +++ Commit
     Not necessary during creation. This field will be populated with the hash of the commit that the Infrahub Repository is currently using once it has pulled the data from the external repository.
-    - **CoreRepository**: ignored during creation and will be overwritten. 
+    - **CoreRepository**: ignored during creation and will be overwritten.
     - **Read-only Repository**: can be used to point at a specific commit within the given `ref`. For example, if you want to extract data from a specific commit on the `main` branch of the external repository other than the latest commit.
     +++ Default branch
     **CoreRepository only** First branch to import during initialization. All other branches on the repository will be imported in a background task after this one.
@@ -133,6 +133,7 @@ The [Infrahub Git agent](/reference/git-agent) checks for changes in external re
 Infrahub does not automatically update Read-only Repositories with changes on the external repository. To pull in changes from the external repository you must either set the `ref` **and/or** `commit` of the Read-only Repository to the desired value. You can perform this update either through the user interface or via an update mutation through the GraphQL API. Either way, the Infrahub web server will use the Git agent to retrieve the appropriate changes in a background task.
 
 ==- Example update mutation
+
 ```GraphQL
 # Endpoint : http://127.0.0.1:8000/graphql/main
 mutation {
@@ -150,6 +151,7 @@ mutation {
   }
 }
 ```
+
 ==-
 
 ## Updates to the external repository {#update-to-external}
