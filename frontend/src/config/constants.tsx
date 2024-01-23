@@ -130,12 +130,12 @@ export const attributesKindForListView = [
 export const attributesKindForDetailsViewExclude = [];
 
 export const relationshipsForListView = {
-  one: ["Attribute"],
+  one: ["Attribute", "Hierarchy"],
   many: ["Attribute"],
 };
 
 export const relationshipsForDetailsView = {
-  one: ["Generic", "Attribute", "Component", "Parent"],
+  one: ["Generic", "Attribute", "Component", "Parent", "Hierarchy"],
   many: ["Attribute", "Parent"],
 };
 
