@@ -306,7 +306,6 @@ async def car_person_data_artifact_diff(db: InfrahubDatabase, default_branch, ca
         db=db,
         name="transform01",
         query=str(q1.id),
-        url="mytransform",
         repository=str(r1.id),
         file_path="transform01.py",
         class_name="Transform01",

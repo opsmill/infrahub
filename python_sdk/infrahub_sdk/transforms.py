@@ -23,7 +23,6 @@ INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT = "INFRAHUB_TRANSFORMS"
 class InfrahubTransform:
     name: Optional[str] = None
     query: str
-    url: str
     timeout: int = 10
     rebase: bool = True
 
@@ -43,8 +42,6 @@ class InfrahubTransform:
 
         if not self.query:
             raise ValueError("A query must be provided")
-        if not self.url:
-            raise ValueError("A url must be provided")
 
     @classmethod
     async def init(cls, client: Optional[InfrahubClient] = None, *args: Any, **kwargs: Any) -> InfrahubTransform:

@@ -213,7 +213,6 @@ class TestInfrahubClient:
             name="soontobedeletedtransform",
             query=str(query_99.id),
             file_path="mytransform.py",
-            url="mytransform",
             class_name="MyTransform",
             repository=str(repo.id),
         )
@@ -244,14 +243,14 @@ class TestInfrahubClient:
         commit = repo.get_commit_value(branch_name="main")
         config_file = await repo.get_repository_config(branch_name="main", commit=commit)
         assert config_file
-        await repo.import_rfiles(branch_name="main", commit=commit, config_file=config_file)
+        await repo.import_jinja2_transforms(branch_name="main", commit=commit, config_file=config_file)
 
-        rfiles = await client.all(kind=InfrahubKind.RFILE)
+        rfiles = await client.all(kind=InfrahubKind.TRANSFORMJINJA2)
         assert len(rfiles) == 2
 
         # Validate if the function is idempotent, another import just after the first one shouldn't change anything
         nbr_relationships_before = await count_relationships(db=db)
-        await repo.import_rfiles(branch_name="main", commit=commit, config_file=config_file)
+        await repo.import_jinja2_transforms(branch_name="main", commit=commit, config_file=config_file)
         assert await count_relationships(db=db) == nbr_relationships_before
 
         # 1. Modify an object to validate if its being properly updated
@@ -262,7 +261,7 @@ class TestInfrahubClient:
         rfiles[0].query = query_99.id
         await rfiles[0].save()
 
-        obj = await Node.init(schema=InfrahubKind.RFILE, db=db)
+        obj = await Node.init(schema=InfrahubKind.TRANSFORMJINJA2, db=db)
         await obj.new(
             db=db,
             name="soontobedeletedrfile",
@@ -272,12 +271,12 @@ class TestInfrahubClient:
         )
         await obj.save(db=db)
 
-        await repo.import_rfiles(branch_name="main", commit=commit, config_file=config_file)
+        await repo.import_jinja2_transforms(branch_name="main", commit=commit, config_file=config_file)
 
-        modified_rfile = await client.get(kind=InfrahubKind.RFILE, id=rfiles[0].id)
+        modified_rfile = await client.get(kind=InfrahubKind.TRANSFORMJINJA2, id=rfiles[0].id)
         assert modified_rfile.template_path.value == rfile_template_path_value_before_change
         assert modified_rfile.query.id == rfile_query_value_before_change
 
         # FIXME not implemented yet
         with pytest.raises(NodeNotFound):
-            await client.get(kind=InfrahubKind.RFILE, id=obj.id)
+            await client.get(kind=InfrahubKind.TRANSFORMJINJA2, id=obj.id)

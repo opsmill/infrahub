@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------------------
 # Type of Nodes
 #  - Core node, wo/ branch : Branch, MergeRequest, Comment
-#  - Core node, w/ branch : Repository, RFile, GQLQuery, Permission, Account, Groups, Schema
+#  - Core node, w/ branch : Repository, GQLQuery, Permission, Account, Groups, Schema
 #  - Location Node : Location,
 #  - Select Node : Status, Role, Manufacturer etc ..
 #  -

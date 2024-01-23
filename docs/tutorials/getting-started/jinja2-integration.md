@@ -7,20 +7,20 @@ order: 550
 
 # Rendering Jinja templates
 
-Infrahub can natively render any Jinja templates dynamically. Internally it's referred to as `RFile` for `Rendered File`.
+Infrahub can natively render any Jinja templates dynamically. Internally it's referred to as `Jinja2 Transform`.
 
 Please refer to [Transform](/topics/transformation) to learn more about it.
 
 ## Generate the configuration of a device
 
-The rendered configuration is available via the REST API under `/api/rfile/<rfile_name>` followed by any additional parameters expected in the GraphQL query.
+The rendered configuration is available via the REST API under `/api/transform/jinja2/<transform_name>` followed by any additional parameters expected in the GraphQL query.
 
-The `rfile`, `device_startup`, present in the repository expects the name of the device as a parameter `/api/rfile/<rfile_name>?device=<device_name>`. As an example, below is the URL for couple of devices:
+The Jinja2 transform, `device_startup`, present in the repository expects the name of the device as a parameter `/api/transform/jinja2/<transform_name>?device=<device_name>`. As an example, below is the URL for couple of devices:
 
-- [Configuration for `ord1-edge1` (`/api/rfile/device_startup?device=ord1-edge1`)](http://localhost:8000/api/rfile/device_startup?device=ord1-edge1)
-- [Configuration for `atl1-edge2` (`/api/rfile/device_startup?device=atl1-edge2`)](http://localhost:8000/api/rfile/device_startup?device=atl1-edge2)
+- [Configuration for `ord1-edge1` (`/api/transform/jinja2/device_startup?device=ord1-edge1`)](http://localhost:8000/api/transform/jinja2/device_startup?device=ord1-edge1)
+- [Configuration for `atl1-edge2` (`/api/transform/jinja2/device_startup?device=atl1-edge2`)](http://localhost:8000/api/transform/jinja2/device_startup?device=atl1-edge2)
 
-In these examples `device_startup` is the name of an RFile defined in the `infrahub-demo-edge` repository. The query string `?device=atl1-edge2` includes all the arguments that are required by the GraphQL query associated with this RFile.
+In these examples `device_startup` is the name of an transform defined in the `infrahub-demo-edge` repository. The query string `?device=atl1-edge2` includes all the arguments that are required by the GraphQL query associated with this transform.
 
 ## Create a new branch, then change the data AND the template
 
@@ -61,7 +61,7 @@ In GitHub:
 ![Update the template in GitHub](../../media/tutorial_rfile_update_jinja.gif)
 
 !!!success Validate that everything is correct
-After making these changes, you should be able to render the RFile for the branch `update-ethernet1` and see the changes made to the data AND to the schema at the same time at the address [`/rfile/device_startup?device=atl1-edge1&branch=update-ethernet1`](http://localhost:8000/api/rfile/device_startup?device=atl1-edge1&branch=update-ethernet1)
+After making these changes, you should be able to render the transform for the branch `update-ethernet1` and see the changes made to the data AND to the schema at the same time at the address [`/api/transform/jinja2/device_startup?device=atl1-edge1&branch=update-ethernet1`](http://localhost:8000/api/transform/jinja2/device_startup?device=atl1-edge1&branch=update-ethernet1)
 !!!
 
 ### 4. Merge the Branch `update-ethernet1`

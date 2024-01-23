@@ -1232,14 +1232,14 @@ async def transformation_data_02() -> dict:
             },
             "__typename": f"NestedEdged{InfrahubKind.REPOSITORY}",
         },
-        "__typename": InfrahubKind.RFILE,
+        "__typename": InfrahubKind.TRANSFORMJINJA2,
     }
     return data
 
 
 @pytest.fixture
 async def transformation_node_02(client, schema_02, transformation_data_02) -> InfrahubNode:
-    schema = [model for model in schema_02.nodes if model.kind == InfrahubKind.RFILE][0]
+    schema = [model for model in schema_02.nodes if model.kind == InfrahubKind.TRANSFORMJINJA2][0]
     node = InfrahubNode(client=client, schema=schema, data=transformation_data_02)
     return node
 

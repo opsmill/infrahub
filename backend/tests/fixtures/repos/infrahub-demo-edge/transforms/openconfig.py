@@ -3,7 +3,6 @@ from infrahub_sdk.transforms import InfrahubTransform
 
 class OCInterfaces(InfrahubTransform):
     query = "oc_interfaces"
-    url = "openconfig/interfaces"
 
     async def transform(self, data):
         response_payload = {}

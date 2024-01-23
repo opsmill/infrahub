@@ -1,22 +1,22 @@
 ---
 icon: file-code
-label: Creating a Jinja rendered File (RFile)
+label: Creating a Jinja Transform
 ---
-# Creating a Jinja rendered File (RFile)
+# Creating a Jinja rendered File (Transform)
 
 Within Infrahub a [Transform](/topics/transformation) is defined in an [external repository](/topics/repository). However, during development and troubleshooting it is easiest to start from your local computer and run the render using [infrahubctl render](/infrahubctl/infrahubctl-render).
 
-The goal of this guide is to develop a Jinja RFile and add it to Infrahub, we will achieve this by following these steps.
+The goal of this guide is to develop a Jinja Transform and add it to Infrahub, we will achieve this by following these steps.
 
 1. Identify the relevant data you want to extract from the database using a [GraphQL query](/topics/graphql), that can take an input parameter to filter the data
 2. Write a Jinja2 file that use the GraphQL query to read information from the system and render the data into a new format
-3. Create an entry for the RFile within an .infrahub.yml file.
+3. Create an entry for the Jinja2 Transform within an .infrahub.yml file.
 4. Create a Git repository
-5. Test the RFile rendering with infrahubctl
+5. Test the transform rendering with infrahubctl
 6. Add the repository to Infrahub as an external repository
-7. Validate that the RFile works by using the render API endpoint
+7. Validate that the transform works by using the render API endpoint
 
-In this guide we are going to work with the builtin tag objects in Infrahub. It won't provide a RFile that is very useful, the goal is instead to show how the Jinja Rendering works. Once you have mastered the basics you will be ready to go on to create more advanced template.
+In this guide we are going to work with the builtin tag objects in Infrahub. It won't provide a rendered template that is very useful, the goal is instead to show how the Jinja Rendering works. Once you have mastered the basics you will be ready to go on to create more advanced template.
 
 ## 1. Creating a query to collect the desired data
 
@@ -157,8 +157,8 @@ Create a .infrahub.yml file in the root of the directory.
 
 ```yaml
 ---
-rfiles:
-  - name: my-rfile                   # Unique name for your rfile
+jinja2_transforms:
+  - name: my-jinja2-transform        # Unique name for your transform
     description: "short description" # (optional)
     query: "tags_query"              # Name or ID of the GraphQLQuery
     template_path: "tags_tpl.j2"     # Path to the main Jinja2 template
@@ -166,7 +166,7 @@ rfiles:
 
 > The main Jinja2 template can import other templates
 
-Three parts here are required, first the `name` of the RFile which should be unique across Infrahub, `query` the GraphqlQuery linked to our RFile and also the `template_path` that should point to the Jinja2 file within the repository.
+Three parts here are required, first the `name` of the transform which should be unique across Infrahub, `query` the GraphqlQuery linked to our transform and also the `template_path` that should point to the Jinja2 file within the repository.
 
 ## 4. Create a Git repository
 
@@ -174,7 +174,7 @@ Within the `tags_render` folder you should now have tree files:
 
 * tags_query.gql: Contains the GraphQL query
 * tags_tpl.j2: Contains the Jinja2 Template
-* .infrahub.yml: Contains the definition for the RFile
+* .infrahub.yml: Contains the definition for the transform
 
 Before we can test our transform we must add the files to a local Git repository.
 
@@ -186,31 +186,32 @@ git commit -m "First commit"
 
 ## 5. Test the render using infrahubctl
 
-Using infrahubctl you can first verify that the `.infrahub.yml` file is formatted correctly by listing available RFile.
+Using infrahubctl you can first verify that the `.infrahub.yml` file is formatted correctly by listing available transforms.
 
 ```sh
- Usage: infrahubctl render [OPTIONS] RFILE [VARIABLES]...
 
- Render a local Jinja Template (RFile) for debugging purpose.
+ Usage: infrahubctl render [OPTIONS] TRANSFORM_NAME [VARIABLES]...
 
-╭─ Arguments ───────────────────────────────────────────────────────────────────────────────────────╮
-│ *    rfile          TEXT            [default: None] [required]                                    │
-│      variables      [VARIABLES]...  Variables to pass along with the query. Format key=value      │
-│                                     key=value.                                                    │
-│                                     [default: None]                                               │
-╰───────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Options ─────────────────────────────────────────────────────────────────────────────────────────╮
-│ --branch                       TEXT  Branch on which to render the RFile. [default: None]         │
-│ --debug          --no-debug          [default: no-debug]                                          │
-│ --config-file                  TEXT  [env var: INFRAHUBCTL_CONFIG] [default: infrahubctl.toml]    │
-│ --help                               Show this message and exit.                                  │
-╰───────────────────────────────────────────────────────────────────────────────────────────────────╯
+ Render a local Jinja2 Transform for debugging purpose.
+
+╭─ Arguments ─────────────────────────────────────────────────────────────────────────────────────╮
+│ *    transform_name      TEXT            [default: None] [required]                             │
+│      variables           [VARIABLES]...  Variables to pass along with the query. Format         │
+│                                          key=value key=value.                                   │
+│                                          [default: None]                                        │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ───────────────────────────────────────────────────────────────────────────────────────╮
+│ --branch                       TEXT  Branch on which to render the transform. [default: None]   │
+│ --debug          --no-debug          [default: no-debug]                                        │
+│ --config-file                  TEXT  [env var: INFRAHUBCTL_CONFIG] [default: infrahubctl.toml]  │
+│ --help                               Show this message and exit.                                │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
 Examples
 
 ```sh
-infrahubctl render <rfile name or ID> my-param=XXXXX my-other-param=YYYYY
+infrahubctl render <transform name or ID> my-param=XXXXX my-other-param=YYYYY
 ```
 
 !!!info
@@ -221,14 +222,14 @@ If `--branch` is not provided it will automatically use the name of the local br
 
 In order to avoid having the same instructions over and over please refer to the guide [adding a repository to Infrahub](/guides/repository) in order to sync the repository you created and make it available within Infrahub.
 
-## 7. Accessing the RFile from the API
+## 7. Accessing the Transform from the API
 
-An RFile can be rendered on demand via the REST API with the endpoint: `https://<host>/api/rfile/<rfile name or ID>`
+A transform can be rendered on demand via the REST API with the endpoint: `https://<host>/api/transform/jinja2/<transform name or ID>`
 
 This endpoint is branch-aware and it accepts the name of the branch and/or the time as URL parameters.
 
-* `https://<host>/api/rfile/<rfile name or ID>?branch=main`
-* `https://<host>/api/rfile/<rfile name or ID>?branch=main&at=<time of your choice>`
+* `https://<host>/api/transform/jinja2/<transform name or ID>?branch=main`
+* `https://<host>/api/transform/jinja2/<transform name or ID>?branch=main&at=<time of your choice>`
 
 !!!info
 The name of the branch used in the query will be used to retrieve the right Jinja template and to execute the GraphQL query.
@@ -237,5 +238,5 @@ The name of the branch used in the query will be used to retrieve the right Jinj
 If the GraphQL query accepts parameters, they can be passed directly as URL parameters:
 
 ```txt
-https://<host>/api/rfile/<rfile name or ID>?branch=main&my-param=XXXXX&my-other-param=YYYYY
+https://<host>/api/transform/jinja2/<transform name or ID>?branch=main&my-param=XXXXX&my-other-param=YYYYY
 ```

@@ -2078,11 +2078,11 @@ core_models = {
             ],
         },
         {
-            "name": "RFile",
+            "name": "TransformJinja2",
             "namespace": "Core",
             "description": "A file rendered from a Jinja2 template",
             "include_in_menu": False,
-            "label": "RFile",
+            "label": "Transform Jinja2",
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
@@ -2314,7 +2314,6 @@ core_models = {
             "attributes": [
                 {"name": "file_path", "kind": "Text"},
                 {"name": "class_name", "kind": "Text"},
-                {"name": "url", "kind": "Text", "unique": True},
             ],
         },
         {

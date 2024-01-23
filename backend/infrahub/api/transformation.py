@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Request
+from fastapi import APIRouter, Depends, Path, Request
 from graphql import graphql
 from starlette.responses import JSONResponse, PlainTextResponse
 
@@ -26,29 +26,23 @@ if TYPE_CHECKING:
 router = APIRouter()
 
 
-@router.get("/transform/{transform_url:path}")
+@router.get("/transform/python/{transform_id:str}")
 async def transform_python(
     request: Request,
-    transform_url: str,
+    transform_id: str,
     db: InfrahubDatabase = Depends(get_db),
     branch_params: BranchParams = Depends(get_branch_params),
     _: str = Depends(get_current_user),
 ) -> JSONResponse:
     params = {key: value for key, value in request.query_params.items() if key not in ["branch", "rebase", "at"]}
 
-    transform_schema = registry.get_node_schema(name="CoreTransformPython", branch=branch_params.branch)
-    transforms = await NodeManager.query(
+    transform = await NodeManager.get_one_by_id_or_default_filter(
         db=db,
-        schema=transform_schema,
-        filters={"url__value": transform_url},
+        id=transform_id,
+        schema_name=InfrahubKind.TRANSFORMPYTHON,
         branch=branch_params.branch,
         at=branch_params.at,
     )
-
-    if not transforms:
-        raise HTTPException(status_code=404, detail="Item not found")
-
-    transform = transforms[0]
 
     query = await transform.query.get_peer(db=db)  # type: ignore[attr-defined]
     repository = await transform.repository.get_peer(db=db)  # type: ignore[attr-defined]
@@ -88,22 +82,26 @@ async def transform_python(
     return JSONResponse(content=template.transformed_data)
 
 
-@router.get("/rfile/{rfile_id}", response_class=PlainTextResponse)
-async def generate_rfile(
+@router.get("/transform/jinja2/{transform_id}", response_class=PlainTextResponse)
+async def transform_jinja2(
     request: Request,
-    rfile_id: str = Path(description="ID or Name of the RFile to render"),
+    transform_id: str = Path(description="ID or Name of the Jinja2 Transform to render"),
     db: InfrahubDatabase = Depends(get_db),
     branch_params: BranchParams = Depends(get_branch_params),
     _: str = Depends(get_current_user),
 ) -> PlainTextResponse:
     params = {key: value for key, value in request.query_params.items() if key not in ["branch", "rebase", "at"]}
 
-    rfile = await NodeManager.get_one_by_id_or_default_filter(
-        db=db, id=rfile_id, schema_name=InfrahubKind.RFILE, branch=branch_params.branch, at=branch_params.at
+    transform = await NodeManager.get_one_by_id_or_default_filter(
+        db=db,
+        id=transform_id,
+        schema_name=InfrahubKind.TRANSFORMJINJA2,
+        branch=branch_params.branch,
+        at=branch_params.at,
     )
 
-    query = await rfile.query.get_peer(db=db)  # type: ignore[attr-defined]
-    repository = await rfile.repository.get_peer(db=db)  # type: ignore[attr-defined]
+    query = await transform.query.get_peer(db=db)  # type: ignore[attr-defined]
+    repository = await transform.repository.get_peer(db=db)  # type: ignore[attr-defined]
 
     schema = registry.schema.get_schema_branch(name=branch_params.branch.name)
     gql_schema = await schema.get_graphql_schema(db=db)
@@ -130,7 +128,7 @@ async def generate_rfile(
         repository_kind=repository.get_kind(),
         commit=repository.commit.value,  # type: ignore[attr-defined]
         branch=branch_params.branch.name,
-        template_location=rfile.template_path.value,  # type: ignore[attr-defined]
+        template_location=transform.template_path.value,  # type: ignore[attr-defined]
         data=data,
     )
 

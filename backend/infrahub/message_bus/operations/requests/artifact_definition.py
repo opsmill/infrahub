@@ -88,7 +88,7 @@ async def check(  # pylint: disable=too-many-statements
         )
     transform_location = ""
 
-    if transform.typename == InfrahubKind.RFILE:
+    if transform.typename == InfrahubKind.TRANSFORMJINJA2:
         transform_location = transform.template_path.value
     elif transform.typename == "CoreTransformPython":
         transform_location = f"{transform.file_path.value}::{transform.class_name.value}"
@@ -181,7 +181,7 @@ async def generate(message: messages.RequestArtifactDefinitionGenerate, service:
         )
     transform_location = ""
 
-    if transform.typename == InfrahubKind.RFILE:
+    if transform.typename == InfrahubKind.TRANSFORMJINJA2:
         transform_location = transform.template_path.value
     elif transform.typename == "CoreTransformPython":
         transform_location = f"{transform.file_path.value}::{transform.class_name.value}"
