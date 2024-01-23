@@ -21,7 +21,7 @@ See [this topic](/topics/infrahub-yml) for a full explanation of everything that
 
 The [Infrahub web server](/reference/api-server) will never connect directly with external Git repositories. All interactions between Infrahub and remote Git repositories are handled by the [Git agent](/reference/git-agent). The Git agent(s) can work with any remote Git server that using either `git` or `http` protocols. The Infrahub web server can send commands to the Git agent via our message broker and the Git agent can send data back to the Infrahub web server via GraphQL mutations.
 
-![](../media/repository_architecture.png)
+![](../media/repository_architecture.excalidraw.svg)
 
 Infrahub stores all of the data that it needs for every remote repository in a directory defined by the `git.repositories_directory` setting in `infrahub.toml`. When the Git agent receives an instruction to update a remote repository, it pulls data from the remote repositories and saves it to the filesystem in the `git.repositories_directory` directory. The Git agent then parses the new data and sends the necessary GraphQL mutations to the Infrahub web server. Infrahub attempts to update each CoreRepository with any changes in the remote repository several times per minute. Read-only repositories are only updated when specifically requested.
 
