@@ -1,7 +1,6 @@
 import { ApolloProvider } from "@apollo/client";
 import { useAtom, useSetAtom } from "jotai";
 import queryString from "query-string";
-import * as R from "ramda";
 import { useEffect, useState } from "react";
 import { BrowserRouter } from "react-router-dom";
 import { Slide, ToastContainer, toast } from "react-toastify";
@@ -21,23 +20,12 @@ import { Config, configState } from "./state/atoms/config.atom";
 import { QSP } from "./config/qsp";
 import { Branch } from "./generated/graphql";
 import LoadingScreen from "./screens/loading-screen/loading-screen";
-import {
-  SchemaSummary,
-  currentSchemaHashAtom,
-  genericsState,
-  iGenericSchema,
-  iNamespace,
-  iNodeSchema,
-  namespacesState,
-  schemaState,
-} from "./state/atoms/schema.atom";
-import { schemaKindNameState } from "./state/atoms/schemaKindName.atom";
+
 import "./styles/index.css";
 import { findSelectedBranch } from "./utils/branches";
-import { sortByName, sortByOrderWeight } from "./utils/common";
 import { fetchUrl, getCurrentQsp } from "./utils/fetch";
 
-export const Root = () => {
+export const Infrahub = () => {
   const setBranches = useSetAtom(branchesState);
   const setCurrentBranch = useSetAtom(currentBranchAtom);
   const [config, setConfig] = useAtom(configState);
@@ -140,115 +128,29 @@ export const Root = () => {
     );
   }
 
-  return <AppInitializer />;
+  return (
+    <BrowserRouter basename="/">
+      <QueryParamProvider
+        adapter={ReactRouter6Adapter}
+        options={{
+          searchStringToObject: queryString.parse,
+          objectToSearchString: queryString.stringify,
+        }}>
+        <ApolloProvider client={graphqlClient}>
+          <ToastContainer
+            hideProgressBar={true}
+            transition={Slide}
+            autoClose={5000}
+            closeOnClick={false}
+            newestOnTop
+            position="bottom-right"
+          />
+          <App />
+        </ApolloProvider>
+      </QueryParamProvider>
+    </BrowserRouter>
+  );
 };
-
-const AppInitializer = () => {
-  const setGenerics = useSetAtom(genericsState);
-  const setNamespaces = useSetAtom(namespacesState);
-  const setSchema = useSetAtom(schemaState);
-  const setSchemaKindNameState = useSetAtom(schemaKindNameState);
-  const setCurrentSchemaHash = useSetAtom(currentSchemaHashAtom);
-  const [isSchemaLoading, setSchemaLoading] = useState(true);
-  const [isSchemaSummaryLoading, setSchemaSummaryLoading] = useState(true);
-
-  const branchInQueryString = getCurrentQsp().get(QSP.BRANCH);
-
-  const fetchAndSetSchema = async () => {
-    try {
-      const schemaData: {
-        main: string;
-        nodes: iNodeSchema[];
-        generics: iGenericSchema[];
-        namespaces: iNamespace[];
-      } = await fetchUrl(CONFIG.SCHEMA_URL(branchInQueryString));
-
-      const schema: iNodeSchema[] = sortByName(schemaData.nodes || []);
-      const generics: iGenericSchema[] = sortByName(schemaData.generics || []);
-      const namespaces: iNamespace[] = sortByName(schemaData.namespaces || []);
-
-      schema.forEach((s) => {
-        s.attributes = sortByOrderWeight(s.attributes || []);
-        s.relationships = sortByOrderWeight(s.relationships || []);
-      });
-
-      const schemaNames = [...schema.map((s) => s.name), ...generics.map((s) => s.name)];
-      const schemaKinds = [...schema.map((s) => s.kind), ...generics.map((s) => s.kind)];
-      const schemaKindNameTuples = R.zip(schemaKinds, schemaNames);
-      const schemaKindNameMap = R.fromPairs(schemaKindNameTuples);
-
-      setGenerics(generics);
-      setSchema(schema);
-      setSchemaKindNameState(schemaKindNameMap);
-      setNamespaces(namespaces);
-      setSchemaLoading(false);
-    } catch (error) {
-      toast(
-        <Alert type={ALERT_TYPES.ERROR} message="Something went wrong when fetching the schema" />
-      );
-
-      console.error("Error while fetching the schema: ", error);
-    }
-  };
-
-  const fetchAndSetSchemaSummary = async () => {
-    try {
-      const schemaSummary: SchemaSummary = await fetchUrl(
-        CONFIG.SCHEMA_SUMMARY_URL(branchInQueryString)
-      );
-
-      setCurrentSchemaHash(schemaSummary.main);
-      setSchemaSummaryLoading(false);
-    } catch (error) {
-      toast(
-        <Alert
-          type={ALERT_TYPES.ERROR}
-          message="Something went wrong when fetching the schema summary"
-        />
-      );
-
-      console.error("Error while fetching the schema summary: ", error);
-    }
-  };
-
-  useEffect(() => {
-    fetchAndSetSchema();
-    fetchAndSetSchemaSummary();
-  }, []);
-
-  if (isSchemaLoading || isSchemaSummaryLoading) {
-    return (
-      <div className="w-screen h-screen flex ">
-        <LoadingScreen />;
-      </div>
-    );
-  }
-
-  return <App />;
-};
-
-export const Infrahub = () => (
-  <BrowserRouter basename="/">
-    <QueryParamProvider
-      adapter={ReactRouter6Adapter}
-      options={{
-        searchStringToObject: queryString.parse,
-        objectToSearchString: queryString.stringify,
-      }}>
-      <ApolloProvider client={graphqlClient}>
-        <ToastContainer
-          hideProgressBar={true}
-          transition={Slide}
-          autoClose={5000}
-          closeOnClick={false}
-          newestOnTop
-          position="bottom-right"
-        />
-        <Root />
-      </ApolloProvider>
-    </QueryParamProvider>
-  </BrowserRouter>
-);
 
 // If you want to start measuring performance in your app, pass a function
 // to log results (for example: reportWebVitals(console.log))

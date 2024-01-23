@@ -1,5 +1,5 @@
-import { expect, test } from "@playwright/test";
-import { ACCOUNT_STATE_PATH } from "../../utils";
+import { expect, Page, test } from "@playwright/test";
+import { ACCOUNT_STATE_PATH, createBranch, deleteBranch } from "../../utils";
 
 test.describe("/proposed-changes", () => {
   test.describe("when not logged in", () => {
@@ -35,6 +35,83 @@ test.describe("/proposed-changes", () => {
       await expect(page.locator("#alert-error")).toContainText(
         "Field 'CoreProposedChangeCreateInput.source_branch' of required type 'TextAttributeInput!' was not provided."
       );
+    });
+
+    test.describe("Create, edit and merge proposed change", async () => {
+      test.describe.configure({ mode: "serial" });
+
+      let page: Page;
+      const pcName = "pc-e2e";
+      const pcBranchName = "main-copy-for-pc-e2e";
+
+      test.beforeAll(async ({ browser }) => {
+        page = await browser.newPage();
+        await page.goto("/proposed-changes");
+        await createBranch(page, pcBranchName);
+      });
+
+      test.afterAll(async () => {
+        await deleteBranch(page, pcBranchName);
+      });
+
+      test("create new proposed change", async () => {
+        await page.getByTestId("add-proposed-changes-button").click();
+        await expect(page.getByText("Create Proposed Change")).toBeVisible();
+        await page.getByLabel("Name *").fill(pcName);
+        await page
+          .locator("div:below(#Name)")
+          .first()
+          .getByTestId("select-open-option-button")
+          .click();
+        await page.getByRole("option", { name: pcBranchName }).click();
+        await page.getByRole("button", { name: "Create" }).click();
+        await expect(page.getByText("ProposedChange created")).toBeVisible();
+      });
+
+      test("display and edit proposed change", async () => {
+        await test.step("display created proposed change details", async () => {
+          await expect(page.getByText("Name" + pcName)).toBeVisible();
+          await expect(page.getByText("Source branch" + pcBranchName)).toBeVisible();
+          await expect(page.getByText("Stateopen")).toBeVisible();
+        });
+
+        await test.step("edit proposed change reviewers", async () => {
+          await page.getByRole("button", { name: "Edit" }).click();
+          await page
+            .getByText("Empty list")
+            .locator("..")
+            .getByTestId("select-open-option-button")
+            .click();
+          await page.getByRole("option", { name: "Architecture Team" }).click();
+          await page.getByText("CoreThread").click(); // Hack to close Reviewers select option list
+          await page.getByRole("button", { name: "Save" }).click();
+          await expect(page.getByText("ProposedChange updated")).toBeVisible();
+
+          await expect(page.getByText("ReviewersArchitecture Team", { exact: true })).toBeVisible();
+        });
+      });
+
+      test("merged proposed change", async () => {
+        await test.step("merge proposed change and update UI", async () => {
+          await page.getByRole("button", { name: "Merge" }).click();
+          await expect(page.getByText("Proposed changes merged successfully!")).toBeVisible();
+          await expect(page.getByText("Statemerged")).toBeVisible();
+        });
+
+        await test.step("not able to edit proposed change", async () => {
+          await expect(page.getByRole("button", { name: "Merge" })).toBeDisabled();
+          await expect(page.getByRole("button", { name: "Edit" })).toBeDisabled();
+        });
+      });
+
+      test("delete proposed change", async () => {
+        await page.getByRole("link", { name: "Proposed Changes" }).click();
+        await page.getByRole("list").getByText(pcName).first().hover();
+        await page.locator("[data-testid='delete-proposed-change-button']:visible").click();
+        await expect(page.getByTestId("modal-delete")).toBeVisible();
+        await page.getByTestId("modal-delete-confirm").click();
+        await expect(page.getByText("Proposed changes deleted")).toBeVisible();
+      });
     });
   });
 });

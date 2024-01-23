@@ -53,9 +53,12 @@ class MainSettings(BaseSettings):
 
 
 class FileSystemStorageSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="INFRAHUB_STORAGE_")
+    # Make variable lookup case-sensitive to avoid fetching $PATH value
+    model_config = SettingsConfigDict(case_sensitive=True)
     path_: str = Field(
-        default="/opt/infrahub/storage", alias="path", validation_alias=AliasChoices("path", "local_path")
+        default="/opt/infrahub/storage",
+        alias="path",
+        validation_alias=AliasChoices("INFRAHUB_STORAGE_LOCAL_PATH", "infrahub_storage_local_path", "path"),
     )
 
 
@@ -65,30 +68,30 @@ class S3StorageSettings(BaseSettings):
     bucket_name: str = Field(
         default="",
         alias="AWS_S3_BUCKET_NAME",
-        validation_alias=AliasChoices("AWS_S3_BUCKET_NAME", "INFRAHUB_STORAGE_BUCKET_NAME"),
+        validation_alias=AliasChoices("INFRAHUB_STORAGE_BUCKET_NAME", "AWS_S3_BUCKET_NAME"),
     )
     endpoint_url: str = Field(
         default="",
         alias="AWS_S3_ENDPOINT_URL",
-        validation_alias=AliasChoices("AWS_S3_ENDPOINT_URL", "INFRAHUB_STORAGE_ENDPOINT_URL"),
+        validation_alias=AliasChoices("INFRAHUB_STORAGE_ENDPOINT_URL", "AWS_S3_ENDPOINT_URL"),
     )
     use_ssl: bool = Field(
-        default=True, alias="AWS_S3_US_SSL", validation_alias=AliasChoices("AWS_S3_US_SSL", "INFRAHUB_STORAGE_USE_SSL")
+        default=True, alias="AWS_S3_US_SSL", validation_alias=AliasChoices("INFRAHUB_STORAGE_USE_SSL", "AWS_S3_US_SSL")
     )
     default_acl: str = Field(
         default="",
         alias="AWS_DEFAULT_ACL",
-        validation_alias=AliasChoices("AWS_DEFAULT_ACL", "INFRAHUB_STORAGE_DEFAULT_ACL"),
+        validation_alias=AliasChoices("INFRAHUB_STORAGE_DEFAULT_ACL", "AWS_DEFAULT_ACL"),
     )
     querystring_auth: bool = Field(
         default=False,
         alias="AWS_QUERYSTRING_AUTH",
-        validation_alias=AliasChoices("AWS_QUERYSTRING_AUTH", "INFRAHUB_STORAGE_QUERYTSTRING_AUTH"),
+        validation_alias=AliasChoices("INFRAHUB_STORAGE_QUERYTSTRING_AUTH", "AWS_QUERYSTRING_AUTH"),
     )
     custom_domain: str = Field(
         default="",
         alias="AWS_S3_CUSTOM_DOMAIN",
-        validation_alias=AliasChoices("AWS_S3_CUSTOM_DOMAIN", "INFRAHUB_STORAGE_CUSTOM_DOMAIN"),
+        validation_alias=AliasChoices("INFRAHUB_STORAGE_CUSTOM_DOMAIN", "AWS_S3_CUSTOM_DOMAIN"),
     )
 
 
@@ -100,32 +103,26 @@ class StorageSettings(BaseSettings):
 
 
 class DatabaseSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_DB_")
     db_type: DatabaseType = Field(
-        default=DatabaseType.MEMGRAPH, validation_alias=AliasChoices("db_type", "INFRAHUB_DB_TYPE")
+        default=DatabaseType.MEMGRAPH, validation_alias=AliasChoices("INFRAHUB_DB_TYPE", "db_type")
     )
-    protocol: str = Field(default="bolt", validation_alias=AliasChoices("protocol", "NEO4J_PROTOCOL"))
-    username: str = Field(default="neo4j", validation_alias=AliasChoices("username", "NEO4J_USERNAME"))
-    password: str = Field(default="admin", validation_alias=AliasChoices("password", "NEO4J_PASSWORD"))
-    address: str = Field(default="localhost", validation_alias=AliasChoices("address", "NEO4J_ADDRESS"))
-    port: int = Field(default=7687, validation_alias=AliasChoices("port", "NEO4J_PORT"))
-    database: Optional[str] = Field(
-        default=None,
-        pattern=VALID_DATABASE_NAME_REGEX,
-        description="Name of the database",
-        validation_alias=AliasChoices("database", "NEO4J_DATABASE"),
-    )
+    protocol: str = "bolt"
+    username: str = "neo4j"
+    password: str = "admin"
+    address: str = "localhost"
+    port: int = 7687
+    database: Optional[str] = Field(default=None, pattern=VALID_DATABASE_NAME_REGEX, description="Name of the database")
     query_size_limit: int = Field(
         default=5000,
         ge=1,
         le=20000,
         description="The max number of records to fetch in a single query before performing internal pagination.",
-        validation_alias=AliasChoices("query_size_limit", "INFRAHUB_DB_QUERY_SIZE_LIMIT"),
     )
     max_depth_search_hierarchy: int = Field(
         default=5,
         le=20,
         description="Maximum number of level to search in a hierarchy.",
-        validation_alias=AliasChoices("max_depth_search_hierarchy", "INFRAHUB_DB_MAX_DEPTH_SEARCH_HIERARCHY"),
     )
 
     @property
@@ -176,6 +173,9 @@ class ApiSettings(BaseSettings):
 
 class GitSettings(BaseSettings):
     repositories_directory: str = "repositories"
+    sync_interval: int = Field(
+        default=10, ge=0, description="Time (in seconds) between git repositories synchronizations"
+    )
 
 
 class MiscellaneousSettings(BaseSettings):
@@ -318,7 +318,7 @@ def load(config_file_name: str = "infrahub.toml", config_data: Optional[Dict[str
 def load_and_exit(config_file_name: str = "infrahub.toml", config_data: Optional[Dict[str, Any]] = None) -> None:
     """Calls load, but wraps it in a try except block.
 
-    This is done to handle a ValidationErorr which is raised when settings are specified but invalid.
+    This is done to handle a ValidationError which is raised when settings are specified but invalid.
     In such cases, a message is printed to the screen indicating the settings which don't pass validation.
 
     Args:

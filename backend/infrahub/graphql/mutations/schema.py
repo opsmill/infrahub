@@ -56,14 +56,10 @@ class SchemaDropdownAdd(Mutation):
         db: InfrahubDatabase = info.context.get("infrahub_database")
         branch: Branch = info.context.get("infrahub_branch")
         kind = registry.get_schema(name=str(data.kind), branch=branch.name)
-
         attribute = str(data.attribute)
         validate_kind_dropdown(kind=kind, attribute=attribute)
         dropdown = str(data.dropdown)
-        color = str(data.color) if data.color else ""
-        description = str(data.description) if data.description else ""
-        label = str(data.label) if data.label else ""
-        choice = DropdownChoice(name=dropdown, color=color, label=label, description=description)
+        choice = DropdownChoice(name=dropdown, color=data.color, label=data.label, description=data.description)
 
         if found_attribute := [attrib for attrib in kind.attributes if attrib.name == attribute]:
             attrib = found_attribute[0]
@@ -86,7 +82,7 @@ class SchemaDropdownAdd(Mutation):
                     "value": dropdown,
                     "color": entry.color,
                     "label": entry.label,
-                    "description": description,
+                    "description": entry.description,
                 }
                 success = True
 

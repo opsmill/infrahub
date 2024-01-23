@@ -10,7 +10,7 @@ from infrahub.core.constants import InfrahubKind
 async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
     response1 = {
         "data": {
-            InfrahubKind.REPOSITORY: {
+            InfrahubKind.GENERICREPOSITORY: {
                 "count": 1,
                 "edges": [
                     {

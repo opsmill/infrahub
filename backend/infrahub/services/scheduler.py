@@ -38,12 +38,21 @@ class InfrahubScheduler:
 
             schedules = [
                 Schedule(name="refresh_api_components", interval=10, function=refresh_api_server_components),
-                Schedule(name="resync_repositories", interval=10, function=resync_repositories),
                 Schedule(
                     name="branch_refresh", interval=10, function=trigger_branch_refresh, start_delay=random_number
                 ),
             ]
             self.schedules.extend(schedules)
+
+            if config.SETTINGS.git.sync_interval:
+                self.schedules.append(
+                    Schedule(
+                        name="resync_repositories",
+                        interval=config.SETTINGS.git.sync_interval,
+                        function=resync_repositories,
+                    )
+                )
+
         await self.start_schedule()
 
     async def start_schedule(self) -> None:

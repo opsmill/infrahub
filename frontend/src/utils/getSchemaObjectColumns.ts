@@ -1,7 +1,8 @@
 import * as R from "ramda";
 import {
-  attributesKindForDetailsView,
+  attributesKindForDetailsViewExclude,
   attributesKindForListView,
+  peersKindForForm,
   relationshipsForDetailsView,
   relationshipsForListView,
   relationshipsForTabs,
@@ -16,10 +17,12 @@ export const getObjectAttributes = (
     return [];
   }
 
-  const kinds = forListView ? attributesKindForListView : attributesKindForDetailsView;
-
   const attributes = (schema.attributes || [])
-    .filter((attribute) => kinds.includes(attribute.kind))
+    .filter((attribute) =>
+      forListView
+        ? attributesKindForListView.includes(attribute.kind)
+        : !attributesKindForDetailsViewExclude.includes(attribute.kind)
+    )
     .map((row) => ({
       label: row.label ?? "",
       name: row.name,
@@ -114,4 +117,25 @@ export const getObjectTabs = (tabs: any[], data: any) => {
     ...tab,
     count: data[tab.name].count,
   }));
+};
+
+// Used by the form to display the fields
+export const getObjectRelationshipsForForm = (schema?: iNodeSchema | iGenericSchema) => {
+  const relationships = (schema?.relationships || [])
+    .filter(
+      (relationship) =>
+        peersKindForForm.includes(relationship?.kind ?? "") || relationship.cardinality === "one"
+    )
+    .filter(Boolean);
+
+  return relationships;
+};
+
+// Used by the query to retrieve the data for the form
+export const getObjectPeers = (schema?: iNodeSchema | iGenericSchema) => {
+  const peers = getObjectRelationshipsForForm(schema)
+    .map((relationship) => relationship.peer)
+    .filter(Boolean);
+
+  return peers;
 };

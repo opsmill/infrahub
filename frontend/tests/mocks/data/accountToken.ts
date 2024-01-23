@@ -1005,101 +1005,87 @@ query InternalAccountToken {
 
 export const accountTokenEditMocksQueryBis = `
 query getInternalAccountTokenBisDetailsAndPeers {
-  InternalAccountTokenBisDetailsAndPeers: InternalAccountTokenBis (ids: ["${accountTokenId}"]) {
+  InternalAccountTokenBisDetailsAndPeers: InternalAccountTokenBis(
+    ids: ["${accountTokenId}"]
+  ) {
     edges {
       node {
         id
         display_label
-          name {
-              value
-              updated_at
-              is_protected
-              is_visible
-              source {
-                id
-                display_label
-                __typename
-              }
-              owner {
-                id
-                display_label
-                __typename
-              }
+        name {
+          value
+          updated_at
+          is_protected
+          is_visible
+          source {
+            id
+            display_label
+            __typename
           }
-          token {
-              value
-              updated_at
-              is_protected
-              is_visible
-              source {
-                id
-                display_label
-                __typename
-              }
-              owner {
-                id
-                display_label
-                __typename
-              }
+          owner {
+            id
+            display_label
+            __typename
           }
-          expiration {
-              value
-              updated_at
-              is_protected
-              is_visible
-              source {
-                id
-                display_label
-                __typename
-              }
-              owner {
-                id
-                display_label
-                __typename
-              }
+        }
+        token {
+          value
+          updated_at
+          is_protected
+          is_visible
+          source {
+            id
+            display_label
+            __typename
           }
+          owner {
+            id
+            display_label
+            __typename
+          }
+        }
+        expiration {
+          value
+          updated_at
+          is_protected
+          is_visible
+          source {
+            id
+            display_label
+            __typename
+          }
+          owner {
+            id
+            display_label
+            __typename
+          }
+        }
         account {
-            node {
+          node {
+            id
+            display_label
+            __typename
+          }
+          properties {
+            is_protected
+            owner {
               id
               display_label
               __typename
             }
-            properties {
-              is_protected
-              owner {
-                id
-                display_label
-                __typename
-              }
-            }
+          }
         }
       }
     }
   }
-    CoreAccount {
-      edges {
-        node {
-          id
-          display_label
-        }
+  CoreAccount {
+    edges {
+      node {
+        id
+        display_label
       }
     }
-    CoreGroup {
-      edges {
-        node {
-          id
-          display_label
-        }
-      }
-    }
-    CoreGroup {
-      edges {
-        node {
-          id
-          display_label
-        }
-      }
-    }
+  }
 }
 `;
 

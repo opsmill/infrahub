@@ -52,6 +52,7 @@ AttributeKind = enum.Enum("AttributeKind", dict(attribute_dict))
 RELATIONSHIPS_MAPPING = {"Relationship": Relationship}
 
 NODE_KIND_REGEX = r"^[A-Z][a-zA-Z0-9]+$"
+NAMESPACE_REGEX = r"^[A-Z][a-z0-9]+$"
 NODE_NAME_REGEX = r"^[A-Z][a-zA-Z0-9]+$"
 NAME_REGEX = r"^[a-z0-9\_]+$"
 
@@ -379,6 +380,10 @@ class RelationshipSchema(BaseSchemaModel):
     async def get_peer_schema(self, branch: Optional[Union[Branch, str]] = None):
         return registry.schema.get(name=self.peer, branch=branch)
 
+    @property
+    def internal_peer(self) -> bool:
+        return self.peer.startswith("Internal")
+
     def get_query_arrows(self) -> QueryArrows:
         """Return (in 4 parts) the 2 arrows for the relationship R1 and R2 based on the direction of the relationship."""
 
@@ -569,6 +574,13 @@ class BaseNodeSchema(BaseSchemaModel):
             md5hash.update(self.get_relationship(name=rel_name).get_hash(display_values=display_values).encode())
 
         return md5hash.hexdigest()
+
+    def with_public_relationships(self) -> Self:
+        duplicate = self.duplicate()
+        duplicate.relationships = [
+            relationship for relationship in self.relationships if not relationship.internal_peer
+        ]
+        return duplicate
 
     def get_field(self, name, raise_on_error=True) -> Union[AttributeSchema, RelationshipSchema]:
         if field := self.get_attribute(name, raise_on_error=False):
@@ -812,7 +824,7 @@ internal_schema = {
                     "name": "namespace",
                     "kind": "Text",
                     "description": "Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.",
-                    "regex": str(NODE_KIND_REGEX),
+                    "regex": str(NAMESPACE_REGEX),
                     "min_length": DEFAULT_KIND_MIN_LENGTH,
                     "max_length": DEFAULT_KIND_MAX_LENGTH,
                 },
@@ -1194,7 +1206,7 @@ internal_schema = {
                     "name": "namespace",
                     "kind": "Text",
                     "description": "Generic Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.",
-                    "regex": str(NODE_KIND_REGEX),
+                    "regex": str(NAMESPACE_REGEX),
                     "min_length": DEFAULT_KIND_MIN_LENGTH,
                     "max_length": DEFAULT_KIND_MAX_LENGTH,
                 },
@@ -1574,7 +1586,7 @@ core_models = {
                 },
                 {
                     "name": "repository",
-                    "peer": InfrahubKind.REPOSITORY,
+                    "peer": InfrahubKind.GENERICREPOSITORY,
                     "kind": "Attribute",
                     "cardinality": "one",
                     "identifier": "repository__transformation",
@@ -1626,6 +1638,61 @@ core_models = {
                     "default_value": True,
                     "optional": True,
                     "order_weight": 5000,
+                },
+            ],
+        },
+        {
+            "name": "GenericRepository",
+            "namespace": "Core",
+            "description": "A Git Repository integrated with Infrahub",
+            "include_in_menu": False,
+            "default_filter": "name__value",
+            "order_by": ["name__value"],
+            "display_labels": ["name__value"],
+            "branch": BranchSupportType.AGNOSTIC.value,
+            "attributes": [
+                {"name": "name", "kind": "Text", "unique": True, "branch": BranchSupportType.AGNOSTIC.value},
+                {"name": "description", "kind": "Text", "optional": True, "branch": BranchSupportType.AGNOSTIC.value},
+                {"name": "location", "kind": "Text", "unique": True, "branch": BranchSupportType.AGNOSTIC.value},
+                {"name": "username", "kind": "Text", "optional": True, "branch": BranchSupportType.AGNOSTIC.value},
+                {"name": "password", "kind": "Password", "optional": True, "branch": BranchSupportType.AGNOSTIC.value},
+            ],
+            "relationships": [
+                {
+                    "name": "account",
+                    "peer": InfrahubKind.ACCOUNT,
+                    "branch": BranchSupportType.AGNOSTIC.value,
+                    "kind": "Attribute",
+                    "optional": True,
+                    "cardinality": "one",
+                },
+                {
+                    "name": "tags",
+                    "peer": InfrahubKind.TAG,
+                    "kind": "Attribute",
+                    "optional": True,
+                    "cardinality": "many",
+                },
+                {
+                    "name": "transformations",
+                    "peer": "CoreTransformation",
+                    "identifier": "repository__transformation",
+                    "optional": True,
+                    "cardinality": "many",
+                },
+                {
+                    "name": "queries",
+                    "peer": InfrahubKind.GRAPHQLQUERY,
+                    "identifier": "graphql_query__repository",
+                    "optional": True,
+                    "cardinality": "many",
+                },
+                {
+                    "name": "checks",
+                    "peer": InfrahubKind.CHECKDEFINITION,
+                    "identifier": "check_definition__repository",
+                    "optional": True,
+                    "cardinality": "many",
                 },
             ],
         },
@@ -1948,54 +2015,27 @@ core_models = {
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
-            "branch": BranchSupportType.AWARE.value,
-            "inherit_from": ["LineageOwner", "LineageSource"],
+            "branch": BranchSupportType.AGNOSTIC.value,
+            "inherit_from": ["LineageOwner", "LineageSource", InfrahubKind.GENERICREPOSITORY],
             "attributes": [
-                {"name": "name", "kind": "Text", "unique": True},
-                {"name": "description", "kind": "Text", "optional": True},
-                {"name": "location", "kind": "Text", "unique": True},
                 {"name": "default_branch", "kind": "Text", "default_value": "main"},
                 {"name": "commit", "kind": "Text", "optional": True, "branch": BranchSupportType.LOCAL.value},
-                {"name": "username", "kind": "Text", "optional": True},
-                {"name": "password", "kind": "Password", "optional": True},
             ],
-            "relationships": [
-                {
-                    "name": "account",
-                    "peer": InfrahubKind.ACCOUNT,
-                    "branch": BranchSupportType.AGNOSTIC.value,
-                    "kind": "Attribute",
-                    "optional": True,
-                    "cardinality": "one",
-                },
-                {
-                    "name": "tags",
-                    "peer": InfrahubKind.TAG,
-                    "kind": "Attribute",
-                    "optional": True,
-                    "cardinality": "many",
-                },
-                {
-                    "name": "transformations",
-                    "peer": "CoreTransformation",
-                    "identifier": "repository__transformation",
-                    "optional": True,
-                    "cardinality": "many",
-                },
-                {
-                    "name": "queries",
-                    "peer": InfrahubKind.GRAPHQLQUERY,
-                    "identifier": "graphql_query__repository",
-                    "optional": True,
-                    "cardinality": "many",
-                },
-                {
-                    "name": "checks",
-                    "peer": InfrahubKind.CHECKDEFINITION,
-                    "identifier": "check_definition__repository",
-                    "optional": True,
-                    "cardinality": "many",
-                },
+        },
+        {
+            "name": "ReadOnlyRepository",
+            "namespace": "Core",
+            "description": "A Git Repository integrated with Infrahub, Git-side will not be updated",
+            "include_in_menu": False,
+            "label": "Read-Only Repository",
+            "default_filter": "name__value",
+            "order_by": ["name__value"],
+            "display_labels": ["name__value"],
+            "branch": BranchSupportType.AGNOSTIC.value,
+            "inherit_from": ["LineageOwner", "LineageSource", InfrahubKind.GENERICREPOSITORY],
+            "attributes": [
+                {"name": "ref", "kind": "Text", "default_value": "main", "branch": BranchSupportType.AWARE.value},
+                {"name": "commit", "kind": "Text", "optional": True, "branch": BranchSupportType.AWARE.value},
             ],
         },
         {
@@ -2103,7 +2143,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "repository",
-                    "peer": InfrahubKind.REPOSITORY,
+                    "peer": InfrahubKind.GENERICREPOSITORY,
                     "kind": "Attribute",
                     "optional": False,
                     "cardinality": "one",
@@ -2131,7 +2171,7 @@ core_models = {
                 },
                 {
                     "name": "repository",
-                    "peer": InfrahubKind.REPOSITORY,
+                    "peer": InfrahubKind.GENERICREPOSITORY,
                     "kind": "Attribute",
                     "optional": False,
                     "cardinality": "one",
@@ -2190,7 +2230,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "repository",
-                    "peer": InfrahubKind.REPOSITORY,
+                    "peer": InfrahubKind.GENERICREPOSITORY,
                     "kind": "Attribute",
                     "cardinality": "one",
                     "identifier": "check_definition__repository",
@@ -2285,7 +2325,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "repository",
-                    "peer": InfrahubKind.REPOSITORY,
+                    "peer": InfrahubKind.GENERICREPOSITORY,
                     "kind": "Attribute",
                     "identifier": "graphql_query__repository",
                     "cardinality": "one",

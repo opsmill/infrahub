@@ -4,7 +4,6 @@ import pytest
 from pytest_httpx import HTTPXMock
 
 from infrahub_sdk import InfrahubClient, InfrahubClientSync
-from infrahub_sdk.data import RepositoryData
 from infrahub_sdk.exceptions import FilterNotFound, NodeNotFound
 from infrahub_sdk.node import InfrahubNode, InfrahubNodeSync
 
@@ -70,17 +69,19 @@ async def test_init_with_invalid_address():
     assert "The configured address is not a valid url" in str(exc.value)
 
 
-async def test_get_repositories(client, mock_branches_list_query, mock_repositories_query):  # pylint: disable=unused-argument
+async def test_get_repositories(client, mock_branches_list_query, mock_schema_query_02, mock_repositories_query):  # pylint: disable=unused-argument
     repos = await client.get_list_repositories()
 
-    expected_response = RepositoryData(
-        id="9486cfce-87db-479d-ad73-07d80ba96a0f",
-        name="infrahub-demo-edge",
-        location="git@github.com:dgarros/infrahub-demo-edge.git",
-        branches={"cr1234": "bbbbbbbbbbbbbbbbbbbb", "main": "aaaaaaaaaaaaaaaaaaaa"},
-    )
-    assert len(repos) == 1
-    assert repos["infrahub-demo-edge"] == expected_response
+    assert len(repos) == 2
+    assert repos["infrahub-demo-edge"].repository.get_kind() == "CoreRepository"
+    assert repos["infrahub-demo-edge"].repository.id == "9486cfce-87db-479d-ad73-07d80ba96a0f"
+    assert repos["infrahub-demo-edge"].branches == {"cr1234": "bbbbbbbbbbbbbbbbbbbb", "main": "aaaaaaaaaaaaaaaaaaaa"}
+    assert repos["infrahub-demo-edge-read-only"].repository.get_kind() == "CoreReadOnlyRepository"
+    assert repos["infrahub-demo-edge-read-only"].repository.id == "aeff0feb-6a49-406e-b395-de7b7856026d"
+    assert repos["infrahub-demo-edge-read-only"].branches == {
+        "cr1234": "dddddddddddddddddddd",
+        "main": "cccccccccccccccccccc",
+    }
 
 
 @pytest.mark.parametrize("client_type", client_types)

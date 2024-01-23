@@ -51,7 +51,7 @@ def get(
     # FIXME currently we are only querying the repo in the main branch,
     # this will not work if a new repository is added in a branch first.
     client = InfrahubClientSync.init(address=config.SETTINGS.main.internal_address, insert_tracker=True)
-    repo = client.get(kind=InfrahubKind.REPOSITORY, location__value=location)
+    repo = client.get(kind=InfrahubKind.GENERICREPOSITORY, location__value=location)
 
     if not repo:
         raise typer.Exit("Repository not found in the database.")

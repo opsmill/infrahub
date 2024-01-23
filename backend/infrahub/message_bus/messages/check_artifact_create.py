@@ -16,6 +16,7 @@ class CheckArtifactCreate(InfrahubMessage):
     transform_location: str = Field(..., description="The transforms location within the repository")
     repository_id: str = Field(..., description="The unique ID of the Repository")
     repository_name: str = Field(..., description="The name of the Repository")
+    repository_kind: str = Field(..., description="The kind of the Repository")
     branch_name: str = Field(..., description="The branch where the check is run")
     target_id: str = Field(..., description="The ID of the target object for this artifact")
     target_name: str = Field(..., description="Name of the artifact target")

@@ -1,25 +1,26 @@
 /// <reference types="cypress" />
 
 import { gql } from "@apollo/client";
-import { proposedChangedState } from "../../../src/state/atoms/proposedChanges.atom";
-import { schemaState } from "../../../src/state/atoms/schema.atom";
-import { accountDetailsMocksSchema } from "../../mocks/data/account";
-import { proposedChangesId } from "../../mocks/data/conversations";
-import { proposedChangesDetails } from "../../mocks/data/proposedChanges";
-import { TestProvider } from "../../mocks/jotai/atom";
 import { MockedProvider } from "@apollo/client/testing";
 import { Route, Routes } from "react-router-dom";
+import { ACCESS_TOKEN_KEY } from "../../../src/config/constants";
+import { withAuth } from "../../../src/decorators/withAuth";
+import { withSchemaContext } from "../../../src/decorators/withSchemaContext";
 import { ArtifactsDiff } from "../../../src/screens/diff/artifact-diff/artifacts-diff";
+import { proposedChangedState } from "../../../src/state/atoms/proposedChanges.atom";
+import { schemaState } from "../../../src/state/atoms/schema.atom";
+import { encodeJwt } from "../../../src/utils/common";
+import { accountDetailsMocksSchema } from "../../mocks/data/account";
 import {
   artifactThreadMockData,
   artifactThreadMockQuery,
   artifactThreadSchema,
   artifactWithoutThreadMockData,
 } from "../../mocks/data/artifact";
-import { withAuth } from "../../../src/decorators/withAuth";
+import { proposedChangesId } from "../../mocks/data/conversations";
 import { profileId } from "../../mocks/data/profile";
-import { encodeJwt } from "../../../src/utils/common";
-import { ACCESS_TOKEN_KEY } from "../../../src/config/constants";
+import { proposedChangesDetails } from "../../mocks/data/proposedChanges";
+import { TestProvider } from "../../mocks/jotai/atom";
 
 const url = `/proposed-changes/${proposedChangesId}&pr_tab=artifacts`;
 const path = "/proposed-changes/:proposedchange";
@@ -38,7 +39,8 @@ const mocks = [
   },
 ];
 
-const AuthArtifactsDiff = withAuth(ArtifactsDiff);
+const SchemaArtifactsDiff = withSchemaContext(ArtifactsDiff);
+const AuthArtifactsDiff = withAuth(SchemaArtifactsDiff);
 
 // Provide the initial value for jotai
 const ArtifactsDiffProvider = ({ loggedIn }: { loggedIn: boolean }) => {
@@ -48,7 +50,7 @@ const ArtifactsDiffProvider = ({ loggedIn }: { loggedIn: boolean }) => {
         [schemaState, [...artifactThreadSchema, ...accountDetailsMocksSchema]],
         [proposedChangedState, proposedChangesDetails],
       ]}>
-      {loggedIn ? <AuthArtifactsDiff /> : <ArtifactsDiff />}
+      {loggedIn ? <AuthArtifactsDiff /> : <SchemaArtifactsDiff />}
     </TestProvider>
   );
 };

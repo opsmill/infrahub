@@ -1511,7 +1511,9 @@ export const deviceDetailsMocksData = {
 
 export const deviceDetailsUpdateMocksQuery = `
 query getInfraDeviceDetailsAndPeers {
-  InfraDeviceDetailsAndPeers: InfraDevice (ids: ["${deviceDetailsMocksId}"]) {
+  InfraDeviceDetailsAndPeers: InfraDevice(
+    ids: ["${deviceDetailsMocksId}"]
+  ) {
     edges {
       node {
         id
@@ -1691,14 +1693,6 @@ query getInfraDeviceDetailsAndPeers {
     }
   }
   BuiltinRole {
-    edges {
-      node {
-        id
-        display_label
-      }
-    }
-  }
-  InfraInterface {
     edges {
       node {
         id

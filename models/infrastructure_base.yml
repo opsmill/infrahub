@@ -294,7 +294,7 @@ nodes:
       - name: l2_mode
         label: Layer2 Mode
         kind: Text
-        enum: ["Access", "Trunk"]
+        enum: ["Access", "Trunk", "Trunk (ALL)"]
     relationships:
       - name: untagged_vlan
         label: Untagged VLAN
@@ -307,8 +307,8 @@ nodes:
         label: Tagged VLANs
         peer: InfraVLAN
         optional: true
-        cardinality: one
-        kind: Component
+        cardinality: many
+        kind: Attribute
         identifier: interface_l2__tagged_vlan
   - name: IPAddress
     namespace: Infra

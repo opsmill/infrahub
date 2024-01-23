@@ -1,5 +1,6 @@
 from infrahub_sdk import UUIDT, InfrahubClient
 
+from infrahub.core.constants import InfrahubKind
 from infrahub.git import InfrahubRepository
 from infrahub.message_bus import Meta, messages
 from infrahub.message_bus.responses import ContentResponse
@@ -13,6 +14,7 @@ async def test_file_get(git_fixture_repo: InfrahubRepository, helper):
     message = messages.GitFileGet(
         repository_id=str(git_fixture_repo.id),
         repository_name=git_fixture_repo.name,
+        repository_kind=InfrahubKind.REPOSITORY,
         commit=repo.head.commit.hexsha,
         file="sample.txt",
         meta=Meta(reply_to="ci-testing", correlation_id=correlation_id),

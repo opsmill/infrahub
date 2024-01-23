@@ -1,12 +1,5 @@
-import { test, expect, Page } from "@playwright/test";
-import { ACCOUNT_STATE_PATH } from "../utils";
-
-const createBranch = async (page: Page, branchName: string) => {
-  await page.getByTestId("create-branch-button").click();
-  await page.locator("#new-branch-name").fill(branchName);
-  await page.getByRole("button", { name: "Create" }).click();
-  await expect(page.getByTestId("branch-select-menu")).toContainText(branchName);
-};
+import { expect, test } from "@playwright/test";
+import { ACCOUNT_STATE_PATH, createBranch } from "../utils";
 
 test.describe("Branches creation and deletion", () => {
   test.describe("when not logged in", () => {
@@ -27,8 +20,8 @@ test.describe("Branches creation and deletion", () => {
 
       // Form
       await expect(page.getByText("Create a new branch")).toBeVisible();
-      await page.locator("#new-branch-name").fill("test123");
-      await page.locator("#new-branch-description").fill("branch creation test");
+      await page.locator("[id='New branch name']").fill("test123");
+      await page.locator("[id='New branch description']").fill("branch creation test");
       await page.getByRole("button", { name: "Create" }).click();
 
       // After submit
