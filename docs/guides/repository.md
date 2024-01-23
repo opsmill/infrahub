@@ -6,25 +6,27 @@ label: Adding/updating external repositories
 # Summary
 
 Infrahub supports two different types of connections to external Git repositories
- - [**CoreRepository**](/topics/repository#core-repository) fully integrates with Git version control, including branch tracking and two-way branch synchronization.
- - [**Read-only Repository**](/topics/repository#read-only-repository) links a particular branch in Infrahub to a particular ref in the Git repository. It will only read from the Git repository. It will never make any changes to the external repository.
 
-### Personal access token {#personal-access-token}
+- [**CoreRepository**](/topics/repository#core-repository) fully integrates with Git version control, including branch tracking and two-way branch synchronization.
+- [**Read-only Repository**](/topics/repository#read-only-repository) links a particular branch in Infrahub to a particular ref in the Git repository. It will only read from the Git repository. It will never make any changes to the external repository.
+
+## Personal access token {#personal-access-token}
 
 ==- Generate a GitHub fine-grained personal access token
+
   1. Go to settings > Developer Settings > Personal access tokens [New GitHub token](https://github.com/settings/personal-access-tokens/new)
   2. Select Fine-grained tokens
   3. Limit the scope of the token in **Repository Access** > **Only Select Repositories**
   4. Grant the token permission
       a. If you want to create a CoreRepository using this token, then you will need to give it `Read/Write` access for the **Content** of the repository
       b. If you want to create a Read-only Repository using this token, then you will only need to give it `Read` access for the **Content** of the repository.
+
   ![Fine-Grained Token](../media/github_fined_grain_access_token_setup.png)
 ==-
 
 ## Adding a repository {#add-repository}
 
 You will need to submit an access token with your request to create a repository in Infrahub. Infrahub uses your username and this token to connect to the external Git repository.
-
 
 ### Via the web interface
 
@@ -34,15 +36,15 @@ You will need to submit an access token with your request to create a repository
 2. Go to `Unified Storage` > `Repository` or `Read-only Repository`
 3. Click on the `+` plus sign
 4. Complete the required information
-    +++ Name 
+    +++ Name
     The name you want to give the repository in Infrahub.
-    +++ Location 
+    +++ Location
     The URL of the external repository, e.g. `https://github.com/opsmill/infrahub.git`.
     +++ Username
     Your username on the external Git provider.
-    +++ Password 
+    +++ Password
     The password or Fine-grained personal access token with access to the Git repository specified in `Location`.
-    +++ Commit 
+    +++ Commit
     Not necessary during creation. This field will be populated with the hash of the commit that the Infrahub Repository is currently using once it has pulled the data from the external repository.
     - **CoreRepository**: ignored during creation and will be overwritten. 
     - **Read-only Repository**: can be used to point at a specific commit within the given `ref`. For example, if you want to extract data from a specific commit on the `main` branch of the external repository other than the latest commit.
@@ -51,7 +53,6 @@ You will need to submit an access token with your request to create a repository
     +++ Ref
     **Read-only Repository only** The name of the branch, tag, or commit to import
   
-
 !!!success Validate that everything is correct
 In the UI, you should see your new repository. If the repository you added doesn't have the commit property populated it means that the initial sync didn't work. Verify the location and credentials.
 !!!
@@ -67,7 +68,9 @@ If you are using GitHub as your Git Server, you need to have a [fine-grained per
 1. Open the [GraphQL Interface](http://localhost:8000/graphql)
 2. Add your [authentication token](/topics/auth) with the `Headers`
 3. Copy-paste the correct mutation from below and complete the information
+
     +++ CoreRepository
+
     ```GraphQL
     # Endpoint : http://127.0.0.1:8000/graphql/main
     mutation {
@@ -87,8 +90,10 @@ If you are using GitHub as your Git Server, you need to have a [fine-grained per
       }
     }
     ```
+
     +++ Read-only Repository
     **Make sure that you are on the correct Infrahub branch.** Unlike a CoreRepository, a Read-only Repository will only pull files into the Infrahub branch on which it was created.
+
     ```GraphQL
     # Endpoint : http://127.0.0.1:8000/graphql/<BRANCH>
     mutation {

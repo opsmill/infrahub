@@ -23,7 +23,6 @@ Once you have created a fork in GitHub, you'll need a Personal Access Token to a
 
 [How to create a Personal Access Token in GitHub](/guides/repository#personal-access-token)
 
-
 !!!
 If you already cloned the repository in the past, ensure only the main branch is present in GitHub.
 If other branches are present, we recommend deleting them for now.

@@ -5,8 +5,9 @@ label: Repository
 # Summary
 
 Infrahub supports two different types of connections to external Git repositories
- - **CoreRepository** fully integrates with Git version control, including branch tracking and two-way branch synchronization.
- - **Read-only Repository** links a particular branch in Infrahub to a particular ref in the Git repository. It will only read from the Git repository. It will never make any changes to the external repository.
+
+- **CoreRepository** fully integrates with Git version control, including branch tracking and two-way branch synchronization.
+- **Read-only Repository** links a particular branch in Infrahub to a particular ref in the Git repository. It will only read from the Git repository. It will never make any changes to the external repository.
 
 See the [guide](/guides/repository) for instructions on creating and updating repositories in Infrahub.
 
@@ -22,7 +23,7 @@ The [Infrahub web server](/reference/api-server) will never connect directly wit
 
 ![](../media/repository_architecture.png)
 
-Infrahub stores all of the data that it needs for every remote repository in a directory defined by the `git.repositories_directory` setting in `infrahub.toml`. When the Git agent receives an instruction to update a remote repository, it pulls data from the remote repositories and saves it to the filesystem in the `git.repositories_directory` directory. The Git agent then parses the new data and sends the necessary GraphQL mutations to the Infrahub web server. Infrahub attempts to update each CoreRepository with any changes in the remote repository several times per minute. Read-only repositories are only updated when specifically requested. 
+Infrahub stores all of the data that it needs for every remote repository in a directory defined by the `git.repositories_directory` setting in `infrahub.toml`. When the Git agent receives an instruction to update a remote repository, it pulls data from the remote repositories and saves it to the filesystem in the `git.repositories_directory` directory. The Git agent then parses the new data and sends the necessary GraphQL mutations to the Infrahub web server. Infrahub attempts to update each CoreRepository with any changes in the remote repository several times per minute. Read-only repositories are only updated when specifically requested.
 
 Please note that each Git agent must have access to the same directory on the file system so that they can share work among each other.
 
