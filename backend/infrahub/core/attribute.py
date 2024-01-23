@@ -441,7 +441,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
         if "is_protected" in data and data["is_protected"] != self.is_protected:
             self.is_protected = data["is_protected"]
             changed = True
-        if "is_visible" in data and data["is_visible"] != self.is_protected:
+        if "is_visible" in data and data["is_visible"] != self.is_visible:
             self.is_visible = data["is_visible"]
             changed = True
 
