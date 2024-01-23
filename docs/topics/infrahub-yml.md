@@ -40,9 +40,9 @@ schemas:
 
 Infrahub will attempt to import any schemas defined in `.infrahub.yml` when pulling from the external repository.
 
-## TransformJinja2 {#transform-jinja-2}
+## Jinja2 Transformations {#transform-jinja-2}
 
-Jinja2 Transforms can be defined as described [here](/topics/transformation#rendered-file-jinja2-plugin). To load Jinja2 Transforms into Infrahub from an external repository, you must explicitly define them in the `.infrahub.yml` file. Each Jinja2 Transform in the `.infrahub.yml` configuration file is defined by the following
+Jinja2 Transformations can be defined as described [here](/topics/transformation#rendered-file-jinja2-plugin). To load Jinja2 Transformations into Infrahub from an external repository, you must explicitly define them in the `.infrahub.yml` file. Each Jinja2 Transformations in the `.infrahub.yml` configuration file is defined by the following
 
 - `name`: name of the transform
 - `query`: the name of an Infrahub `GraphQL query` to use with the transform
@@ -52,7 +52,7 @@ Jinja2 Transforms can be defined as described [here](/topics/transformation#rend
 ==- Example
 
 ```YAML
-rfiles:
+jinja2_transforms:
   - name: device_startup
     description: "Template to generate startup configuration for network devices"
     query: "device_startup_info"
