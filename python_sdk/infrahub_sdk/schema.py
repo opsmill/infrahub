@@ -315,7 +315,6 @@ class GenericSchema(BaseNodeSchema):
 
 class NodeSchema(BaseNodeSchema):
     inherit_from: List[str] = pydantic.Field(default_factory=list)
-    groups: List[str] = pydantic.Field(default_factory=list)
     branch: Optional[BranchSupportType] = None
     default_filter: Optional[str] = None
 
@@ -326,7 +325,6 @@ class NodeExtensionSchema(pydantic.BaseModel):
     description: Optional[str] = None
     label: Optional[str] = None
     inherit_from: List[str] = pydantic.Field(default_factory=list)
-    groups: List[str] = pydantic.Field(default_factory=list)
     branch: Optional[BranchSupportType] = None
     default_filter: Optional[str] = None
     attributes: List[AttributeSchema] = pydantic.Field(default_factory=list)
