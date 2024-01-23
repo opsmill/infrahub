@@ -8,7 +8,7 @@ from infrahub_sdk import InfrahubClient, InfrahubNode, NodeStore
 # pylint: skip-file
 
 ROLES = ["role11", "role21", "role31"]
-STATUSES = ["reserved", "provisionning", "active", "mainteance", "obsolete"]
+STATUSES = ["reserved", "provisioning", "active", "mainteance", "obsolete"]
 TAGS = ["blue", "green", "red", "tenant", "provider"]
 
 ORGANIZATIONS = (
@@ -47,7 +47,7 @@ SERVICES = (
     ("REDIS", "TCP 6379", 6379, "TCP", "active"),
     ("SSH", "TCP 22", 33, "TCP", "active"),
     ("DNS UDP", "UDP 53", 53, "UDP", "active"),
-    ("DNS TCP", "TCP 53", 53, "TCP", "provisionning"),
+    ("DNS TCP", "TCP 53", 53, "TCP", "provisioning"),
 )
 
 EXTERNAL_IPS = list(IPv4Network("203.0.113.0/29").hosts())
@@ -56,7 +56,7 @@ INTERNAL_PREFIXES = (
     # name, prefix, Status
     ("office-nyc", "192.168.0.0/16", "active"),
     ("datacenter-eu-fr", "172.16.0.0/20", "active"),
-    ("datacenter-eu-de", "172.16.16.0/20", "provisionning"),
+    ("datacenter-eu-de", "172.16.16.0/20", "provisioning"),
     ("datacenter-us-ny", "172.16.32.0/20", "reserved"),
 )
 
