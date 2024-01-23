@@ -838,17 +838,16 @@ class SchemaManager(NodeManager):
             await self.load_schema_to_db(schema=schema, db=db, branch=branch, limit=limit)
             # After updating the schema into the db
             # we need to pull a fresh version because some default value are managed/generated within the node object
-            schema_diff = None
-            if limit:
-                schema_diff = SchemaBranchDiff(
-                    nodes=[name for name in list(schema.nodes.keys()) if name in limit],
-                    generics=[name for name in list(schema.generics.keys()) if name in limit],
-                    groups=[name for name in list(schema.groups.keys()) if name in limit],
-                )
+            # REVERTED 1891
+            # schema_diff = None
+            # if limit:
+            #     schema_diff = SchemaBranchDiff(
+            #         nodes=[name for name in list(schema.nodes.keys()) if name in limit],
+            #         generics=[name for name in list(schema.generics.keys()) if name in limit],
+            #         groups=[name for name in list(schema.groups.keys()) if name in limit],
+            #     )
 
-            updated_schema = await self.load_schema_from_db(
-                db=db, branch=branch, schema=schema, schema_diff=schema_diff
-            )
+            updated_schema = await self.load_schema_from_db(db=db, branch=branch, schema=schema)
 
         self._branches[branch.name] = updated_schema or schema
 
@@ -1068,8 +1067,8 @@ class SchemaManager(NodeManager):
                 return new_branch_schema
 
         current_schema = self.get_schema_branch(name=branch.name)
-        schema_diff = current_schema.get_hash_full().compare(branch.schema_hash)
-        return await self.load_schema_from_db(db=db, branch=branch, schema=current_schema, schema_diff=schema_diff)
+        # REVERT 1891 schema_diff = current_schema.get_hash_full().compare(branch.schema_hash)
+        return await self.load_schema_from_db(db=db, branch=branch, schema=current_schema)
 
     async def load_schema_from_db(
         self,
