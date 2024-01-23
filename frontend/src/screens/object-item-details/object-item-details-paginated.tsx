@@ -197,7 +197,7 @@ export default function ObjectItemDetails(props: any) {
           <dl className="sm:divide-y sm:divide-gray-200">
             <div className="p-2 grid grid-cols-3 gap-4 text-xs">
               <dt className=" font-medium text-gray-500 flex items-center">ID</dt>
-              <dd className="mt-1  text-gray-900 sm:col-span-2 sm:mt-0">{objectDetailsData.id}</dd>
+              <dd className="mt-1  text-gray-900 ">{objectDetailsData.id}</dd>
             </div>
             {attributes?.map((attribute) => {
               if (
@@ -216,7 +216,7 @@ export default function ObjectItemDetails(props: any) {
                   <div className="flex items-center">
                     <dd
                       className={classNames(
-                        "mt-1  text-gray-900 sm:col-span-2 sm:mt-0"
+                        "mt-1  text-gray-900 "
                         // attribute.kind === "TextArea" ? "whitespace-pre-wrap mr-2" : ""
                       )}>
                       {getObjectItemDisplayValue(objectDetailsData, attribute, schemaKindName)}

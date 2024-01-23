@@ -71,14 +71,12 @@ export const ValidatorDetails = () => {
           <dl className="sm:divide-y sm:divide-gray-200">
             <div className="p-2 grid grid-cols-3 gap-4 text-xs">
               <dt className="text-sm font-medium text-gray-500 flex items-center">ID</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">{validator.id} </dd>
+              <dd className="text-sm text-gray-900 ">{validator.id} </dd>
             </div>
 
             <div className="p-2 grid grid-cols-3 gap-4 text-xs">
               <dt className="text-sm font-medium text-gray-500 flex items-center">Name</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-                {validator?.display_label}
-              </dd>
+              <dd className="text-sm text-gray-900 ">{validator?.display_label}</dd>
             </div>
 
             {attributes?.map((attribute) => {
@@ -89,7 +87,7 @@ export const ValidatorDetails = () => {
                   </dt>
 
                   <div className="flex items-center">
-                    <dd className={"mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0"}>
+                    <dd className={"text-sm text-gray-900 "}>
                       {getObjectItemDisplayValue(validator, attribute)}
                     </dd>
                   </div>

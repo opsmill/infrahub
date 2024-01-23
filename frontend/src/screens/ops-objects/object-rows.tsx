@@ -20,31 +20,27 @@ export default function ObjectRows(props: Props) {
           <dl className="sm:divide-y sm:divide-gray-200">
             <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5">
               <dt className="text-sm font-medium text-gray-500">Name</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">{schema.name}</dd>
+              <dd className="text-sm text-gray-900 ">{schema.name}</dd>
             </div>
             <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5">
               <dt className="text-sm font-medium text-gray-500">Kind</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">{schema.kind}</dd>
+              <dd className="text-sm text-gray-900 ">{schema.kind}</dd>
             </div>
             <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5">
               <dt className="text-sm font-medium text-gray-500">Label</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">{schema.label}</dd>
+              <dd className="text-sm text-gray-900 ">{schema.label}</dd>
             </div>
             <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5">
               <dt className="text-sm font-medium text-gray-500">Default filter</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-                {schema.default_filter}
-              </dd>
+              <dd className="text-sm text-gray-900 ">{schema.default_filter}</dd>
             </div>
             <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5">
               <dt className="text-sm font-medium text-gray-500">Description</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-                {schema.description}
-              </dd>
+              <dd className="text-sm text-gray-900 ">{schema.description}</dd>
             </div>
             <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5">
               <dt className="text-sm font-medium text-gray-500">Attributes</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
+              <dd className="text-sm text-gray-900 ">
                 <ul className="divide-y divide-gray-200 rounded-md border border-gray-200">
                   {schema.attributes?.map((attribute) => (
                     <li
@@ -72,7 +68,7 @@ export default function ObjectRows(props: Props) {
             </div>
             <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-5">
               <dt className="text-sm font-medium text-gray-500">Relationships</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
+              <dd className="text-sm text-gray-900 ">
                 <ul className="divide-y divide-gray-200 rounded-md border border-gray-200">
                   {schema.relationships?.map((relationship) => (
                     <li
