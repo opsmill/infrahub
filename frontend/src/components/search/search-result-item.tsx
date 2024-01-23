@@ -64,14 +64,14 @@ export const SearchResultItem = (props: tSearchResultItem) => {
       {attributes.map((attribute: any, index: number) => (
         <div key={index} className="flex flex-col px-2 mr-4">
           <div className="text-xs italic">{attribute.label}</div>
-          <div>{getObjectItemDisplayValue(objectDetailsData, attribute, schemaKindName)}</div>
+          {getObjectItemDisplayValue(objectDetailsData, attribute, schemaKindName)}
         </div>
       ))}
 
       {relationships.map((relationship: any, index: number) => (
         <div key={index} className="flex flex-col px-2 mr-4">
           <div className="text-xs italic">{relationship.label}</div>
-          <div>{getObjectItemDisplayValue(objectDetailsData, relationship, schemaKindName)}</div>
+          {getObjectItemDisplayValue(objectDetailsData, relationship, schemaKindName)}
         </div>
       ))}
     </Link>

@@ -7,11 +7,7 @@ import { CodeEditor } from "../components/editor/code-editor";
 import { MAX_VALUE_LENGTH_DISPLAY } from "../config/constants";
 import { iSchemaKindNameMap } from "../state/atoms/schemaKindName.atom";
 
-export const getObjectItemDisplayValue = (
-  row: any,
-  attribute: any,
-  schemaKindName?: iSchemaKindNameMap
-) => {
+export const getDisplayValue = (row: any, attribute: any, schemaKindName?: iSchemaKindNameMap) => {
   if (!row) {
     return;
   }
@@ -101,4 +97,16 @@ export const getObjectItemDisplayValue = (
   }
 
   return textValue;
+};
+
+export const getObjectItemDisplayValue = (
+  row: any,
+  attribute: any,
+  schemaKindName?: iSchemaKindNameMap
+) => {
+  return (
+    <div className="flex items-center min-w-[28px] min-h-[28px]">
+      {getDisplayValue(row, attribute, schemaKindName)}
+    </div>
+  );
 };
