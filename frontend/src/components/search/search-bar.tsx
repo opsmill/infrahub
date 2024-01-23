@@ -1,6 +1,7 @@
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { NODE_OBJECT } from "../../config/constants";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { searchQuery } from "../../graphql/queries/objects/search";
@@ -50,6 +51,7 @@ export const SearchBar = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState({});
   const [search, setSearch] = useState("");
+  const location = useLocation();
 
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
@@ -91,6 +93,11 @@ export const SearchBar = () => {
     // Closes the panel on background click
     setResults({});
   };
+
+  useEffect(() => {
+    // Close the panel on route change (when clicking an item)
+    setResults({});
+  }, [location]);
 
   // Open if there is a search and a result (even if empty)
   const isOpen = !!search && !!results?.edges;
