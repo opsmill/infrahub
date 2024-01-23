@@ -826,7 +826,6 @@ class SchemaManager(NodeManager):
             #     schema_diff = SchemaBranchDiff(
             #         nodes=[name for name in list(schema.nodes.keys()) if name in limit],
             #         generics=[name for name in list(schema.generics.keys()) if name in limit],
-            #         groups=[name for name in list(schema.groups.keys()) if name in limit],
             #     )
 
             updated_schema = await self.load_schema_from_db(db=db, branch=branch, schema=schema)

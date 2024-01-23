@@ -6,7 +6,6 @@
             "namespace": "Core",
             "description": null,
             "label": null,
-            "groups": [],
             "branch": "aware",
             "default_filter": "name__value",
             "attributes": [
@@ -119,7 +118,6 @@
             ],
             "label": null,
             "inherit_from": [],
-            "groups": [],
             "branch": "aware",
             "default_filter": "name__value",
             "filters": [
@@ -308,7 +306,6 @@
                 "LineageSource",
                 "CoreGenericRepository"
             ],
-            "groups": [],
             "branch": "aware",
             "default_filter": "name__value",
             "filters": [
@@ -390,7 +387,6 @@
             "relationships": [],
             "label": null,
             "inherit_from": [],
-            "groups": [],
             "branch": "aware",
             "default_filter": "name__value",
             "filters": [
