@@ -1146,6 +1146,12 @@ async def car_person_schema(db: InfrahubDatabase, default_branch: Branch, node_g
                     {"name": "nbr_seats", "kind": "Number"},
                     {"name": "color", "kind": "Text", "default_value": "#444444", "max_length": 7},
                     {"name": "is_electric", "kind": "Boolean"},
+                    {
+                        "name": "transmission",
+                        "kind": "Text",
+                        "optional": True,
+                        "enum": ["manual", "automatic", "flintstone-feet"],
+                    },
                 ],
                 "relationships": [
                     {

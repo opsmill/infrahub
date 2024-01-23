@@ -340,6 +340,14 @@ async def test_to_graphql_no_fields(db: InfrahubDatabase, default_branch: Branch
             "source": None,
             "value": 4,
         },
+        "transmission": {
+            "__typename": "Text",
+            "id": c1.transmission.id,
+            "is_protected": False,
+            "is_visible": True,
+            "owner": None,
+            "source": None,
+        },
         "type": "TestCar",
     }
     assert await c1.to_graphql(db=db) == expected_data

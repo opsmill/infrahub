@@ -466,25 +466,10 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         changed = False
 
-        STANDARD_FIELDS = ["value", "is_protected", "is_visible"]
-        NODE_FIELDS = ["source", "owner"]
-
         for key, value in data.items():
             if key in self._attributes and isinstance(value, dict):
-                for field_name in value.keys():
-                    if field_name in STANDARD_FIELDS:
-                        attr = getattr(self, key)
-                        if getattr(attr, field_name) != value.get(field_name):
-                            setattr(attr, field_name, value.get(field_name))
-                            changed = True
-
-                    elif field_name in NODE_FIELDS:
-                        attr = getattr(self, key)
-                        # Right now we assume that the UUID is provided from GraphQL
-                        # so we compare the value with <node>_id
-                        if getattr(attr, f"{field_name}_id") != value.get(field_name):
-                            setattr(attr, field_name, value.get(field_name))
-                            changed = True
+                attribute = getattr(self, key)
+                changed |= await attribute.from_graphql(value)
 
             if key in self._relationships:
                 rel: RelationshipManager = getattr(self, key)

@@ -131,7 +131,7 @@ extensions:
 | **Description** | Defines the type of the attribute. |
 | **Optional** | False |
 | **Default Value** |  |
-| **Constraints** |  Length: min 3, max 32 |
+| **Constraints** |  |
 | **Accepted Values** | `ID` `Dropdown` `Text` `TextArea` `DateTime` `Email` `Password` `HashedPassword` `URL` `File` `MacAddress` `Color` `Number` `Bandwidth` `IPHost` `IPNetwork` `Checkbox` `List` `JSON` `Any` `String` `Integer` `Boolean`  |
 
 ### label

@@ -154,6 +154,7 @@ async def test_generate_object_types(
         "nbr_seats",
         "owner",
         "subscriber_of_groups",
+        "transmission",
     ]
 
     assert sorted(list(edged_car._meta.fields.keys())) == ["node"]
