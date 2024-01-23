@@ -373,7 +373,7 @@ class AttributeSchema(BaseSchemaModel):
         value = self.convert_to_attribute_enum(value)
         return value.value if isinstance(value, enum.Enum) else value
 
-    async def get_query_filter(  # pylint: disable=unused-argument,disable=too-many-branches
+    async def get_query_filter(
         self,
         name: str,
         filter_name: str,

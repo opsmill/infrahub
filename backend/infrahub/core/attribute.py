@@ -207,9 +207,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 except ValueError as exc:
                     raise ValidationError({name: f"{value} must be one of {schema.enum!r}"}) from exc
             else:
-                if schema.enum:
-                    if value not in schema.enum:
-                        raise ValidationError({name: f"{value} must be one of {schema.enum!r}"})
+                if value not in schema.enum:
+                    raise ValidationError({name: f"{value} must be one of {schema.enum!r}"})
 
     def to_db(self):
         if self.value is None:
