@@ -1,34 +1,28 @@
 import { useMutation } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
-import { useCallback, useContext, useState } from "react";
+import { useContext } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
 import { QSP } from "../config/qsp";
 import { AuthContext } from "../decorators/withAuth";
 import { Branch } from "../generated/graphql";
 import { BRANCH_CREATE } from "../graphql/mutations/branches/createBranch";
+import { DynamicFieldData } from "../screens/edit-form-hook/dynamic-control-types";
+import { Form } from "../screens/edit-form-hook/form";
 import { branchesState, currentBranchAtom } from "../state/atoms/branches.atom";
 import { classNames } from "../utils/common";
 import { BUTTON_TYPES, Button } from "./buttons/button";
 import { SelectButton } from "./buttons/select-button";
 import { POPOVER_SIZE, PopOver } from "./display/popover";
-import { Input } from "./inputs/input";
-import { Select, SelectOption } from "./inputs/select";
-import { Switch } from "./inputs/switch";
+import { SelectOption } from "./inputs/select";
 
 export default function BranchSelector() {
   const [branches, setBranches] = useAtom(branchesState);
   const [, setBranchInQueryString] = useQueryParam(QSP.BRANCH, StringParam);
   const branch = useAtomValue(currentBranchAtom);
   const auth = useContext(AuthContext);
-
-  const [newBranchName, setNewBranchName] = useState("");
-  const [newBranchDescription, setNewBranchDescription] = useState("");
-  const [originBranch, setOriginBranch] = useState();
-  const [branchedFrom] = useState(); // TODO: Add calendar component
-  const [isDataOnly, setIsDataOnly] = useState(true);
 
   const [createBranch, { loading }] = useMutation(BRANCH_CREATE);
 
@@ -81,19 +75,14 @@ export default function BranchSelector() {
 
   const defaultBranch = branches?.filter((b) => b.is_default)[0]?.id;
 
-  /**
-   * Update GraphQL client endpoint whenever branch changes
-   */
-  const onBranchChange = useCallback((branch: Branch) => {
+  const onBranchChange = (branch: Branch) => {
     if (branch?.is_default) {
       // undefined is needed to remove a parameter from the QSP
       setBranchInQueryString(undefined);
     } else {
       setBranchInQueryString(branch.name);
     }
-  }, []);
-
-  const handleBranchedFrom = (newBranch: any) => setOriginBranch(newBranch);
+  };
 
   const renderOption = ({ option, active, selected }: any) => (
     <div className="flex relative flex-col">
@@ -134,22 +123,24 @@ export default function BranchSelector() {
     </div>
   );
 
-  const handleSubmit = async (close: any) => {
+  const handleSubmit = async (data: any, close: Function) => {
+    const { name, description, is_data_only } = data;
+
     try {
-      const { data } = await createBranch({
+      const { data: response } = await createBranch({
         variables: {
-          name: newBranchName,
-          description: newBranchDescription,
-          is_data_only: isDataOnly,
+          name,
+          description,
+          is_data_only,
         },
       });
 
-      const branchCreated = data?.BranchCreate?.object;
+      const branchCreated = response?.BranchCreate?.object;
+
       if (branchCreated) {
         setBranches([...branches, branchCreated]);
         onBranchChange(branchCreated);
       }
-
       close();
     } catch (error) {
       console.error("Error while creating the branch: ", error);
@@ -162,6 +153,53 @@ export default function BranchSelector() {
   if (!branches.length) {
     return null;
   }
+
+  const fields: DynamicFieldData[] = [
+    {
+      name: "name",
+      label: "New branch name",
+      placeholder: "New branch",
+      type: "text",
+      value: "",
+      config: {
+        required: "Required",
+      },
+    },
+    {
+      name: "description",
+      label: "New branch description",
+      placeholder: "Description",
+      type: "text",
+      value: "",
+      isOptional: true,
+    },
+    {
+      name: "from",
+      label: "Branched from",
+      type: "select",
+      value: defaultBranch,
+      options: {
+        values: branchesOptions,
+      },
+      isProtected: true,
+      isOptional: true,
+    },
+    {
+      name: "at",
+      label: "Branched at",
+      type: "datepicker",
+      value: new Date(),
+      isProtected: true,
+      isOptional: true,
+    },
+    {
+      name: "is_data_only",
+      label: "Data only",
+      type: "checkbox",
+      value: true,
+      isOptional: true,
+    },
+  ];
 
   return (
     <div
@@ -178,47 +216,18 @@ export default function BranchSelector() {
       <PopOver
         disabled={!auth?.permissions?.write}
         buttonComponent={PopOverButton}
-        className="right-0"
+        className=""
         title={"Create a new branch"}
         height={POPOVER_SIZE.NONE}>
         {({ close }: any) => (
-          <>
-            <div className="flex flex-col">
-              <label htmlFor="new-branch-name">Branch name:</label>
-              <Input id="new-branch-name" value={newBranchName} onChange={setNewBranchName} />
-              <label htmlFor="new-branch-description">Branch description:</label>
-              <Input
-                id="new-branch-description"
-                value={newBranchDescription}
-                onChange={setNewBranchDescription}
-              />
-              Branched from:
-              <Select
-                disabled
-                options={branchesOptions}
-                value={originBranch ?? defaultBranch}
-                onChange={handleBranchedFrom}
-              />
-              Branched at:
-              <Input
-                value={format(branchedFrom ?? new Date(), "MM/dd/yyy HH:mm")}
-                onChange={setNewBranchName}
-                disabled
-              />
-              Is data only:
-              <Switch checked={isDataOnly} onChange={setIsDataOnly} testId="is-data-only-switch" />
-            </div>
-
-            <div className="flex justify-center">
-              <Button
-                isLoading={loading}
-                buttonType={BUTTON_TYPES.VALIDATE}
-                onClick={() => handleSubmit(close)}
-                className="mt-2">
-                Create
-              </Button>
-            </div>
-          </>
+          <Form
+            onSubmit={(data) => handleSubmit(data, close)}
+            fields={fields}
+            submitLabel="Create branch"
+            isLoading={loading}
+            onCancel={close}
+            resetAfterSubmit
+          />
         )}
       </PopOver>
     </div>
