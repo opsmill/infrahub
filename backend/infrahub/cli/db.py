@@ -8,11 +8,10 @@ from rich.logging import RichHandler
 from infrahub import config
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.graph.migrations import get_migrations
-from infrahub.core.initialization import first_time_initialization, initialization
-from infrahub.core.root import Root
+from infrahub.core.initialization import first_time_initialization, get_root_node, initialization
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase, get_db
-from infrahub.exceptions import DatabaseError
+from infrahub.log import get_logger
 
 app = typer.Typer()
 
@@ -29,13 +28,7 @@ def callback() -> None:
 async def _init() -> None:
     """Erase the content of the database and initialize it with the core schema."""
 
-    # log_level = "DEBUG" if debug else "INFO"
-
-    log_level = "DEBUG"
-
-    FORMAT = "%(message)s"
-    logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
-    log = logging.getLogger("infrahub")
+    log = get_logger()
 
     # --------------------------------------------------
     # CLEANUP
@@ -71,25 +64,14 @@ async def _load_test_data(dataset: str) -> None:
     await dbdriver.close()
 
 
-async def _migrate(check: bool, debug: bool) -> None:
-    log_level = "DEBUG" if debug else "INFO"
-
-    FORMAT = "%(message)s"
-    logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
-    log = logging.getLogger("infrahub")
+async def _migrate(check: bool) -> None:
+    log = get_logger()
 
     dbdriver = InfrahubDatabase(driver=await get_db(retry=1))
     async with dbdriver.start_session() as db:
         log.info("Checking current state of the Database")
-        roots = await Root.get_list(db=db)
-        if len(roots) == 0:
-            await first_time_initialization(db=db)
-            roots = await Root.get_list(db=db)
 
-        if len(roots) > 1:
-            raise DatabaseError("Database is corrupted, more than 1 root node found.")
-
-        root_node = roots[0]
+        root_node = await get_root_node(db=db)
         migrations = await get_migrations(root=root_node)
 
         if not migrations:
@@ -156,11 +138,10 @@ def load_test_data(
 @app.command()
 def migrate(
     check: bool = typer.Option(False, help="Check the state of the database without applying the migrations."),
-    debug: bool = typer.Option(False, help="Enable verbose logging."),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
     """Check the current format of the internal graph and apply the necessary migrations"""
 
     config.load_and_exit(config_file_name=config_file)
 
-    aiorun(_migrate(check=check, debug=debug))
+    aiorun(_migrate(check=check))
