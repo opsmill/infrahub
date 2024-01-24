@@ -17,7 +17,7 @@ test.describe("when searching an object", () => {
     await expect(result).toBeVisible();
   });
 
-  test.only("should retrieve a result", async ({ page }) => {
+  test("should retrieve a result", async ({ page }) => {
     await page.goto("/");
 
     await page.getByTestId("search-bar").fill(OBJECT_SEARCH);
