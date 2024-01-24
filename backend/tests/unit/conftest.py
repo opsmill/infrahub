@@ -1556,7 +1556,7 @@ async def person_tag_schema(db: InfrahubDatabase, default_branch: Branch, data_s
             {
                 "name": "Person",
                 "namespace": "Test",
-                "default_filter": "name__value",
+                "default_filter": "firstname__value",
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "firstname", "kind": "Text"},
