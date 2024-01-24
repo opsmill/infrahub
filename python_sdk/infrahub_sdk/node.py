@@ -807,30 +807,6 @@ class InfrahubNodeBase:
             if not data[item]:
                 data.pop(item)
 
-        # for item_key in original_data[item].keys():
-        #     if isinstance(data[item], dict):
-                # for property_name in PROPERTIES_OBJECT:
-                #     if item_key == property_name and isinstance(original_data[item][property_name], dict):
-                #         if original_data[item][property_name].get("id"):
-                #             original_data[item][property_name] = original_data[item][property_name]["id"]
-                # if item_key in data[item].keys():
-                #     if item_key == "id" and len(data[item].keys()) > 1:
-                        # # Related nodes typically require an ID. So the ID is only
-                        # # removed if it's the last key in the current context
-                        # continue
-        #             variable_key = None
-        #             if isinstance(data[item][item_key], str):
-        #                 variable_key = data[item][item_key][1:]
-
-        #             if original_data[item][item_key] == data[item][item_key]:
-        #                 data[item].pop(item_key)
-        #             elif variable_key in variables and original_data[item][item_key] == variables[variable_key]:
-        #                 data[item].pop(item_key)
-        #                 variables.pop(variable_key)
-
-        # if not data[item]:
-        #     data.pop(item)
-
     def _strip_unmodified(self, data: dict, variables: dict) -> Tuple[dict, dict]:
         original_data = self._data or {}
         for relationship in self._relationships:
