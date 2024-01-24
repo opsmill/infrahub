@@ -11,4 +11,3 @@ swap:
   (?i:[^/]Graphql): GraphQL
   infrahub(?:\s|$): Infrahub
   (?i:Openconfig): OpenConfig
-  "[Rr]file": RFile

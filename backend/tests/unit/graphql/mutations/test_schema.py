@@ -2,7 +2,6 @@ import pytest
 from graphql import graphql
 
 from infrahub.core.node import Node
-from infrahub.core.schema import GroupSchema
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
 from infrahub.graphql import generate_graphql_schema
@@ -160,11 +159,6 @@ async def test_delete_enum_option_in_use(db: InfrahubDatabase, default_branch, c
 async def test_validate_kind_exceptions(db: InfrahubDatabase, choices_schema):
     node = await Node.init(db=db, schema="TestChoice")
     restricted_node = await Node.init(db=db, schema="LineageOwner")
-    group_schema = GroupSchema(id="blank", name="dummy", kind="Dummy", description="")
-
-    with pytest.raises(ValidationError) as exc:
-        validate_kind(kind=group_schema, attribute="status")
-    assert "Dummy is not a valid node" in str(exc.value)
 
     with pytest.raises(ValidationError) as exc:
         validate_kind(kind=restricted_node._schema, attribute="status")

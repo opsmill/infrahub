@@ -35,6 +35,7 @@ export type SchemaAttributeType =
   | "Email"
   | "Password"
   | "HashedPassword"
+  | "Hierarchy"
   | "URL"
   | "File"
   | "MacAddress"

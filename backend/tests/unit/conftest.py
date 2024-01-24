@@ -23,7 +23,6 @@ from infrahub.core.initialization import (
 from infrahub.core.node import Node
 from infrahub.core.schema import (
     GenericSchema,
-    GroupSchema,
     NodeSchema,
     SchemaRoot,
     core_models,
@@ -1112,6 +1111,12 @@ async def car_person_schema(db: InfrahubDatabase, default_branch: Branch, node_g
                     {"name": "nbr_seats", "kind": "Number"},
                     {"name": "color", "kind": "Text", "default_value": "#444444", "max_length": 7},
                     {"name": "is_electric", "kind": "Boolean"},
+                    {
+                        "name": "transmission",
+                        "kind": "Text",
+                        "optional": True,
+                        "enum": ["manual", "automatic", "flintstone-feet"],
+                    },
                 ],
                 "relationships": [
                     {
@@ -1864,22 +1869,7 @@ async def generic_vehicule_schema(db: InfrahubDatabase, default_branch: Branch) 
 
 
 @pytest.fixture
-async def group_on_road_vehicule_schema(db: InfrahubDatabase, default_branch: Branch) -> GroupSchema:
-    SCHEMA = {
-        "name": "on_road",
-        "kind": "OnRoad",
-    }
-
-    node = GroupSchema(**SCHEMA)
-    registry.schema.set(name=node.kind, schema=node, branch=default_branch.name)
-
-    return node
-
-
-@pytest.fixture
-async def car_schema(
-    db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema, group_on_road_vehicule_schema, data_schema
-) -> NodeSchema:
+async def car_schema(db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema, data_schema) -> NodeSchema:
     SCHEMA = {
         "name": "Car",
         "namespace": "Test",
@@ -1887,7 +1877,6 @@ async def car_schema(
         "attributes": [
             {"name": "nbr_doors", "kind": "Number"},
         ],
-        "groups": ["OnRoad"],
     }
 
     node = NodeSchema(**SCHEMA)
@@ -1898,9 +1887,7 @@ async def car_schema(
 
 
 @pytest.fixture
-async def motorcycle_schema(
-    db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema, group_on_road_vehicule_schema
-) -> NodeSchema:
+async def motorcycle_schema(db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema) -> NodeSchema:
     SCHEMA = {
         "name": "Motorcycle",
         "namespace": "Test",
@@ -1909,7 +1896,6 @@ async def motorcycle_schema(
             {"name": "description", "kind": "Text", "optional": True},
             {"name": "nbr_seats", "kind": "Number"},
         ],
-        "groups": ["OnRoad"],
     }
 
     node = NodeSchema(**SCHEMA)
@@ -1919,9 +1905,7 @@ async def motorcycle_schema(
 
 
 @pytest.fixture
-async def truck_schema(
-    db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema, group_on_road_vehicule_schema
-) -> NodeSchema:
+async def truck_schema(db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema) -> NodeSchema:
     SCHEMA = {
         "name": "Truck",
         "namespace": "Test",
@@ -1930,7 +1914,6 @@ async def truck_schema(
             {"name": "description", "kind": "Text", "optional": True},
             {"name": "nbr_axles", "kind": "Number"},
         ],
-        "groups": ["OnRoad"],
     }
 
     node = NodeSchema(**SCHEMA)

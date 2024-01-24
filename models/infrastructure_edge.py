@@ -24,7 +24,7 @@ DEVICES = (
     ("edge1", "active", "7280R3", "profile1", "edge", ["red", "green"], "Arista EOS"),
     ("edge2", "active", "ASR1002-HX", "profile1", "edge", ["red", "blue", "green"], "Cisco IOS"),
     ("core1", "drained", "MX204", "profile1", "core", ["blue"], "Juniper JunOS"),
-    ("core2", "provisionning", "MX204", "profile1", "core", ["red"], "Juniper JunOS"),
+    ("core2", "provisioning", "MX204", "profile1", "core", ["red"], "Juniper JunOS"),
 )
 
 
@@ -769,7 +769,7 @@ async def branch_scenario_conflict_device(client: InfrahubClient, log: logging.L
     log.info(f"- Creating branch: {new_branch_name!r}")
 
     maintenance_status = "maintenance"
-    provisionning_status = "provisionning"
+    provisioning_status = "provisioning"
     drained_status = "drained"
 
     # Update Device 1 Status both in the Branch and in Main
@@ -787,7 +787,7 @@ async def branch_scenario_conflict_device(client: InfrahubClient, log: logging.L
 
     device1_main = await client.get(kind="InfraDevice", name__value=device1_name)
 
-    device1_main.status.value = provisionning_status
+    device1_main.status.value = provisioning_status
     await device1_main.save()
 
     intf1_main = await client.get(kind="InfraInterfaceL3", device__ids=[device1_branch.id], name__value="Ethernet1")

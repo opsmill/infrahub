@@ -25,21 +25,21 @@ def test_emptyconfig(pytester):
     result.assert_outcomes()
 
 
-def test_rfile_config_missing_directory(pytester):
+def test_jinja2_transform_config_missing_directory(pytester):
     """Make sure tests raise errors if directories are not found."""
     pytester.makefile(
         ".yml",
-        test_rfile="""
+        test_jinja2_transform="""
         ---
         version: "1.0"
         infrahub_tests:
-          - resource: "RFile"
+          - resource: "Jinja2Transform"
             resource_name: "bgp_config"
             tests:
               - name: "base"
                 expect: PASS
                 spec:
-                  kind: "rfile-unit-render"
+                  kind: "jinja2-transform-unit-render"
                   directory: bgp_config/base
     """,
     )
@@ -50,7 +50,7 @@ def test_rfile_config_missing_directory(pytester):
         schemas:
           - schemas/demo_edge_fabric.yml
 
-        rfiles:
+        jinja2_transforms:
           - name: bgp_config
             description: "Template for BGP config base"
             query: "bgp_sessions"
@@ -63,21 +63,21 @@ def test_rfile_config_missing_directory(pytester):
     result.assert_outcomes(errors=1)
 
 
-def test_rfile_config_missing_input(pytester):
+def test_jinja2_transform_config_missing_input(pytester):
     """Make sure tests raise errors if no inputs are provided."""
     pytester.makefile(
         ".yml",
-        test_rfile="""
+        test_jinja2_transform="""
         ---
         version: "1.0"
         infrahub_tests:
-          - resource: "RFile"
+          - resource: "Jinja2Transform"
             resource_name: "bgp_config"
             tests:
               - name: "base"
                 expect: PASS
                 spec:
-                  kind: "rfile-unit-render"
+                  kind: "jinja2-transform-unit-render"
                   directory: bgp_config/base
     """,
     )
@@ -88,7 +88,7 @@ def test_rfile_config_missing_input(pytester):
         schemas:
           - schemas/demo_edge_fabric.yml
 
-        rfiles:
+        jinja2_transforms:
           - name: bgp_config
             description: "Template for BGP config base"
             query: "bgp_sessions"
@@ -104,21 +104,21 @@ def test_rfile_config_missing_input(pytester):
     result.assert_outcomes(errors=1)
 
 
-def test_rfile_no_expected_output(pytester):
+def test_jinja2_transform_no_expected_output(pytester):
     """Make sure tests succeed if no expect outputs are provided."""
     pytester.makefile(
         ".yml",
-        test_rfile="""
+        test_jinja2_transform="""
         ---
         version: "1.0"
         infrahub_tests:
-          - resource: "RFile"
+          - resource: "Jinja2Transform"
             resource_name: "bgp_config"
             tests:
               - name: "base"
                 expect: PASS
                 spec:
-                  kind: "rfile-unit-render"
+                  kind: "jinja2-transform-unit-render"
                   directory: bgp_config/base
     """,
     )
@@ -129,7 +129,7 @@ def test_rfile_no_expected_output(pytester):
         schemas:
           - schemas/demo_edge_fabric.yml
 
-        rfiles:
+        jinja2_transforms:
           - name: bgp_config
             description: "Template for BGP config base"
             query: "bgp_sessions"
@@ -160,21 +160,21 @@ def test_rfile_no_expected_output(pytester):
     result.assert_outcomes(passed=1)
 
 
-def test_rfile_unexpected_output(pytester):
+def test_jinja2_transform_unexpected_output(pytester):
     """Make sure tests fail if the expected and computed outputs don't match."""
     pytester.makefile(
         ".yml",
-        test_rfile="""
+        test_jinja2_transform="""
         ---
         version: "1.0"
         infrahub_tests:
-          - resource: "RFile"
+          - resource: "Jinja2Transform"
             resource_name: "bgp_config"
             tests:
               - name: "base"
                 expect: PASS
                 spec:
-                  kind: "rfile-unit-render"
+                  kind: "jinja2-transform-unit-render"
                   directory: bgp_config/base
     """,
     )
@@ -185,7 +185,7 @@ def test_rfile_unexpected_output(pytester):
         schemas:
           - schemas/demo_edge_fabric.yml
 
-        rfiles:
+        jinja2_transforms:
           - name: bgp_config
             description: "Template for BGP config base"
             query: "bgp_sessions"

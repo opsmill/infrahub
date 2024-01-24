@@ -47,8 +47,6 @@ PyPI
 rebase
 repo
 REST
-rfile
-rfiles
 sdk
 toml
 uncheck

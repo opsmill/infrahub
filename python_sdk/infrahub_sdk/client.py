@@ -295,12 +295,16 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
 
         nodes: List[InfrahubNode] = []
         related_nodes: List[InfrahubNode] = []
-        # If Offset or Limit was provided we just query as it
-        # If not, we'll query all nodes based on the size of the batch
-        if offset or limit:
+
+        has_remaining_items = True
+        page_number = 1
+
+        while has_remaining_items:
+            page_offset = (page_number - 1) * self.pagination_size
+
             query_data = await InfrahubNode(client=self, schema=schema, branch=branch).generate_query_data(
-                offset=offset,
-                limit=limit,
+                offset=offset or page_offset,
+                limit=limit or self.pagination_size,
                 filters=filters,
                 include=include,
                 exclude=exclude,
@@ -312,51 +316,20 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
                 query=query.render(),
                 branch_name=branch,
                 at=at,
-                tracker=f"query-{str(schema.kind).lower()}-page1",
+                tracker=f"query-{str(schema.kind).lower()}-page{page_number}",
             )
 
             process_result: ProcessRelationsNode = await self._process_nodes_and_relationships(
                 response=response, schema_kind=schema.kind, branch=branch, prefetch_relationships=prefetch_relationships
             )
-            nodes = process_result["nodes"]
-            related_nodes = process_result["related_nodes"]
+            nodes.extend(process_result["nodes"])
+            related_nodes.extend(process_result["related_nodes"])
 
-        else:
-            has_remaining_items = True
-            page_number = 1
-            while has_remaining_items:
-                page_offset = (page_number - 1) * self.pagination_size
+            remaining_items = response[schema.kind].get("count", 0) - (page_offset + self.pagination_size)
+            if remaining_items < 0 or offset is not None or limit is not None:
+                has_remaining_items = False
 
-                query_data = await InfrahubNode(client=self, schema=schema, branch=branch).generate_query_data(
-                    offset=page_offset,
-                    limit=self.pagination_size,
-                    filters=filters,
-                    include=include,
-                    exclude=exclude,
-                    fragment=fragment,
-                    prefetch_relationships=prefetch_relationships,
-                )
-                query = Query(query=query_data)
-                response = await self.execute_graphql(
-                    query=query.render(),
-                    branch_name=branch,
-                    at=at,
-                    tracker=f"query-{str(schema.kind).lower()}-page{page_number}",
-                )
-                _process_result: ProcessRelationsNode = await self._process_nodes_and_relationships(
-                    response=response,
-                    schema_kind=schema.kind,
-                    branch=branch,
-                    prefetch_relationships=prefetch_relationships,
-                )
-                nodes.extend(_process_result["nodes"])
-                related_nodes.extend(_process_result["related_nodes"])
-
-                remaining_items = response[schema.kind].get("count", 0) - (page_offset + self.pagination_size)
-                if remaining_items < 0:
-                    has_remaining_items = False
-
-                page_number += 1
+            page_number += 1
 
         if populate_store:
             for node in nodes:
@@ -921,12 +894,16 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
 
         nodes: List[InfrahubNodeSync] = []
         related_nodes: List[InfrahubNodeSync] = []
-        # If Offset or Limit was provided we just query as it
-        # If not, we'll query all nodes based on the size of the batch
-        if offset or limit:
+
+        has_remaining_items = True
+        page_number = 1
+
+        while has_remaining_items:
+            page_offset = (page_number - 1) * self.pagination_size
+
             query_data = InfrahubNodeSync(client=self, schema=schema, branch=branch).generate_query_data(
-                offset=offset,
-                limit=limit,
+                offset=offset or page_offset,
+                limit=limit or self.pagination_size,
                 filters=filters,
                 include=include,
                 exclude=exclude,
@@ -938,51 +915,20 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
                 query=query.render(),
                 branch_name=branch,
                 at=at,
-                tracker=f"query-{str(schema.kind).lower()}-page1",
+                tracker=f"query-{str(schema.kind).lower()}-page{page_number}",
             )
+
             process_result: ProcessRelationsNodeSync = self._process_nodes_and_relationships(
                 response=response, schema_kind=schema.kind, branch=branch, prefetch_relationships=prefetch_relationships
             )
-            nodes = process_result["nodes"]
-            related_nodes = process_result["related_nodes"]
+            nodes.extend(process_result["nodes"])
+            related_nodes.extend(process_result["related_nodes"])
 
-        else:
-            has_remaining_items = True
-            page_number = 1
-            while has_remaining_items:
-                page_offset = (page_number - 1) * self.pagination_size
+            remaining_items = response[schema.kind].get("count", 0) - (page_offset + self.pagination_size)
+            if remaining_items < 0 or offset is not None or limit is not None:
+                has_remaining_items = False
 
-                query_data = InfrahubNodeSync(client=self, schema=schema, branch=branch).generate_query_data(
-                    offset=page_offset,
-                    limit=self.pagination_size,
-                    filters=filters,
-                    include=include,
-                    exclude=exclude,
-                    fragment=fragment,
-                    prefetch_relationships=prefetch_relationships,
-                )
-                query = Query(query=query_data)
-                response = self.execute_graphql(
-                    query=query.render(),
-                    branch_name=branch,
-                    at=at,
-                    tracker=f"query-{str(schema.kind).lower()}-page{page_number}",
-                )
-
-                _process_result: ProcessRelationsNodeSync = self._process_nodes_and_relationships(
-                    response=response,
-                    schema_kind=schema.kind,
-                    branch=branch,
-                    prefetch_relationships=prefetch_relationships,
-                )
-                nodes.extend(_process_result["nodes"])
-                related_nodes.extend(_process_result["related_nodes"])
-
-                remaining_items = response[schema.kind].get("count", 0) - (page_offset + self.pagination_size)
-                if remaining_items < 0:
-                    has_remaining_items = False
-
-                page_number += 1
+            page_number += 1
 
         if populate_store:
             for node in nodes:

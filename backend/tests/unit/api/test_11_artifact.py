@@ -29,7 +29,6 @@ async def test_artifact_definition_endpoint(
         db=db,
         name="transform01",
         query=str(car_person_data_generic["q1"].id),
-        url="mytransform",
         repository=str(car_person_data_generic["r1"].id),
         file_path="transform01.py",
         class_name="Transform01",

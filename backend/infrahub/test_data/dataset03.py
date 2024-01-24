@@ -88,7 +88,7 @@ INTERFACE_ROLES_MAPPING = {
     "edge": ["peer", "peer", "backbone", "backbone", "transit", "transit", "peering", "spare"],
 }
 
-STATUSES = ["active", "provisionning", "maintenance", "drained"]
+STATUSES = ["active", "provisioning", "maintenance", "drained"]
 
 TAGS = ["blue", "green", "red"]
 

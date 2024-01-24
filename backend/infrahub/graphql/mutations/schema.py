@@ -8,7 +8,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import RESTRICTED_NAMESPACES
 from infrahub.core.manager import NodeManager
-from infrahub.core.schema import DropdownChoice, GenericSchema, GroupSchema, NodeSchema
+from infrahub.core.schema import DropdownChoice, GenericSchema, NodeSchema
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
 from infrahub.log import get_logger
@@ -203,23 +203,21 @@ class SchemaEnumRemove(Mutation):
         return {"ok": True}
 
 
-def validate_kind_dropdown(kind: Union[GenericSchema, GroupSchema, NodeSchema], attribute: str) -> None:
+def validate_kind_dropdown(kind: Union[GenericSchema, NodeSchema], attribute: str) -> None:
     validate_kind(kind=kind, attribute=attribute)
     matching_attribute = [attrib for attrib in kind.attributes if attrib.name == attribute]
     if matching_attribute and matching_attribute[0].kind != "Dropdown":
         raise ValidationError(f"Attribute {attribute} on {kind.kind} is not a Dropdown")
 
 
-def validate_kind_enum(kind: Union[GenericSchema, GroupSchema, NodeSchema], attribute: str) -> None:
+def validate_kind_enum(kind: Union[GenericSchema, NodeSchema], attribute: str) -> None:
     validate_kind(kind=kind, attribute=attribute)
     matching_attribute = [attrib for attrib in kind.attributes if attrib.name == attribute]
     if not matching_attribute[0].enum:
         raise ValidationError(f"Attribute {attribute} on {kind.kind} is not an enum")
 
 
-def validate_kind(kind: Union[GenericSchema, GroupSchema, NodeSchema], attribute: str) -> None:
-    if isinstance(kind, GroupSchema):
-        raise ValidationError(f"{kind.kind} is not a valid node")
+def validate_kind(kind: Union[GenericSchema, NodeSchema], attribute: str) -> None:
     if kind.namespace in RESTRICTED_NAMESPACES:
         raise ValidationError(f"Operation not allowed for {kind.kind} in restricted namespace {kind.namespace}")
     if attribute not in kind.attribute_names:

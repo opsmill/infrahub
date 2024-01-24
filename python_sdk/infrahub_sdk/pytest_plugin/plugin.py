@@ -35,9 +35,11 @@ def pytest_collect_file(parent: Union[Collector, Item], file_path: Path) -> Opti
 
 def pytest_configure(config: Config) -> None:
     config.addinivalue_line(
+        "markers", "infrahub_jinja2_transform(name: str): Test related to a Jinja2 Transform for Infrahub"
+    )
+    config.addinivalue_line(
         "markers", "infrahub_python_transform(name: str): Test related to a Python Transform for Infrahub"
     )
-    config.addinivalue_line("markers", "infrahub_rfile(name: str): Test related to a RFile for Infrahub")
     config.addinivalue_line("markers", "infrahub_check(name: str): Test related to a User defined Check for Infrahub")
     config.addinivalue_line("markers", "infrahub_unit: Unit test for Infrahub, should work without any dependencies")
     config.addinivalue_line("markers", "infrahub_integraton: Integation test Infrahub")

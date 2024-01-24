@@ -1,7 +1,6 @@
 import glob
 import hashlib
 import json
-import os
 from itertools import groupby
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -83,10 +82,8 @@ def base16encode(number: int) -> str:
 
 def get_fixtures_dir() -> Path:
     """Get the directory which stores fixtures that are common to multiple unit/integration tests."""
-    here = os.path.abspath(os.path.dirname(__file__))
-    fixtures_dir = os.path.join(here, "..", "tests", "fixtures")
-
-    return Path(os.path.abspath(fixtures_dir))
+    here = Path(__file__).resolve().parent
+    return here.parent / "tests" / "fixtures"
 
 
 def is_valid_uuid(value: Any) -> bool:

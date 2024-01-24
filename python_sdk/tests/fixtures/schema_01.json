@@ -71,7 +71,6 @@
             ],
             "label": null,
             "inherit_from": [],
-            "groups": [],
             "branch": "aware",
             "default_filter": "name__value",
             "filters": [
@@ -259,7 +258,6 @@
                 "DataOwner",
                 "DataSource"
             ],
-            "groups": [],
             "branch": "aware",
             "default_filter": "name__value",
             "filters": [
@@ -362,7 +360,6 @@
             "relationships": [],
             "label": null,
             "inherit_from": [],
-            "groups": [],
             "branch": "aware",
             "default_filter": "name__value",
             "filters": [

@@ -2,8 +2,8 @@
 global:
   kubernetesClusterDomain: cluster.local
   imageRegistry: 9r2s1098.c1.gra9.container-registry.ovh.net
-  infrahubRepository: opsmill/infrahub-py3.11
-  infrahubTag: "0.8.2-helm"
+  infrahubRepository: opsmill/infrahub
+  infrahubTag: "0.10.1"
   imagePullPolicy: IfNotPresent
 
 # ----------- Cache -----------

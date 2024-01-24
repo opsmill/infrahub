@@ -14,7 +14,7 @@ async def add(message: messages.GitRepositoryAdd, service: InfrahubServices) -> 
         repo = await InfrahubRepository.new(
             id=message.repository_id, name=message.repository_name, location=message.location, client=service.client
         )
-        await repo.import_objects_from_files(branch_name=repo.default_branch_name)
+        await repo.import_objects_from_files(branch_name=repo.default_branch)
         await repo.sync()
 
 

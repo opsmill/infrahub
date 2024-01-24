@@ -60,7 +60,7 @@ class TestInfrahubClient:
         )
         await obj2.save(db=db)
 
-        obj3 = await Node.init(schema="CoreRFile", db=db)
+        obj3 = await Node.init(schema="CoreTransformJinja2", db=db)
         await obj3.new(
             db=db,
             name="rfile1",
@@ -79,7 +79,6 @@ class TestInfrahubClient:
             file_path="mytransformation.py",
             class_name="Transform01",
             query=obj1,
-            url="tf01",
             repository=obj2,
             rebase=False,
         )
