@@ -30,19 +30,29 @@ const SearchInput = (props: tSearchInput) => {
     onChange(value);
   };
 
+  const handleFocus = () => {
+    if (!search) return;
+
+    // Will repoen the results for the current search
+    onChange(search, true);
+  };
+
   return (
-    <div className="flex flex-1 items-center relative z-20">
-      <Input
-        value={search}
-        onChange={handleChange}
-        id="search-bar"
-        className="h-full w-full !rounded-none !ring-transparent py-2 pl-8 placeholder-gray-500 focus:border-transparent focus:outline-none focus:ring-0"
-        placeholder="Search"
-      />
+    <div className="flex flex-1 items-center justify-center relative px-8 sm:px-4">
+      <div className="flex flex-1 items-center justify-center relative max-w-[600px] z-20">
+        <Input
+          value={search}
+          onChange={handleChange}
+          id="search-bar"
+          className="py-2 pl-10 placeholder-gray-500"
+          placeholder="Search"
+          onFocus={handleFocus}
+        />
 
-      {loading && <LoadingScreen hideText size={20} className="absolute left-2" />}
+        {loading && <LoadingScreen hideText size={20} className="absolute left-4" />}
 
-      {!loading && <Icon icon={"mdi:magnify"} className="absolute left-2 text-custom-blue-10" />}
+        {!loading && <Icon icon={"mdi:magnify"} className="absolute left-4 text-custom-blue-10" />}
+      </div>
     </div>
   );
 };
@@ -56,7 +66,7 @@ export const SearchBar = () => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
 
-  const handleChange = async (newValue: string) => {
+  const handleSearch = async (newValue: string) => {
     try {
       // Set search to set open / close if empty
       setSearch(newValue);
@@ -87,7 +97,15 @@ export const SearchBar = () => {
   };
 
   // Debounce the query
-  const debounceHandleChange = debounce(handleChange);
+  const debounceHandleSearch = debounce(handleSearch);
+
+  const handleChange = (value: string, immediate?: boolean) => {
+    // If immediate, triggers the search
+    if (immediate) return handleSearch(value);
+
+    // Debounces the search
+    return debounceHandleSearch(value);
+  };
 
   const handleClick = () => {
     // Closes the panel on background click
@@ -108,7 +126,7 @@ export const SearchBar = () => {
         <Background onClick={handleClick} />
       </Transition>
 
-      <SearchInput loading={isLoading} onChange={debounceHandleChange} />
+      <SearchInput loading={isLoading} onChange={handleChange} />
 
       <Transition show={isOpen}>
         <PopOver
@@ -116,7 +134,8 @@ export const SearchBar = () => {
           open={isOpen}
           width={POPOVER_SIZE.NONE}
           height={POPOVER_SIZE.NONE}
-          className="!left-0 !right-0 !top-14">
+          maxHeight={POPOVER_SIZE.MEDIUM}
+          className="!left-0 !right-0 !top-14 z-20">
           {() => <SearchResults results={results} />}
         </PopOver>
       </Transition>

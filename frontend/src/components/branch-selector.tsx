@@ -203,7 +203,7 @@ export default function BranchSelector() {
 
   return (
     <div
-      className="flex items-stretch"
+      className="relative flex items-stretch"
       data-cy="branch-select-menu"
       data-testid="branch-select-menu">
       <SelectButton
@@ -216,9 +216,9 @@ export default function BranchSelector() {
       <PopOver
         disabled={!auth?.permissions?.write}
         buttonComponent={PopOverButton}
-        className=""
+        className="right-0"
         title={"Create a new branch"}
-        height={POPOVER_SIZE.NONE}>
+        width={POPOVER_SIZE.SMALL}>
         {({ close }: any) => (
           <Form
             onSubmit={(data) => handleSubmit(data, close)}

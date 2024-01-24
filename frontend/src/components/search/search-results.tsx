@@ -14,7 +14,7 @@ export const SearchResults = (props: tSearchResults) => {
   }
 
   return (
-    <div className="flex">
+    <div className="flex flex-col">
       {edges.map((item: any, index: number) => (
         <SearchResultItem key={index} item={item.node} />
       ))}

@@ -46,17 +46,18 @@ export default function Header() {
     setQspDate(undefined);
   };
 
+  // Search bar after buttons to fix a z-index issue
   return (
-    <div className="z-10 flex justify-between flex-shrink-0 h-16 bg-custom-white shadow pr-4">
-      <SearchBar />
-
-      <div className="flex items-center justify-end gap-4 pl-4">
+    <div className="z-10 flex justify-between flex-row-reverse flex-shrink-0 h-16 bg-custom-white shadow pr-4">
+      <div className="flex items-center justify-end gap-4">
         <DatePicker date={date} onChange={debouncedHandleDateChange} onClickNow={handleClickNow} />
 
         <BranchSelector />
 
         <AccountMenu />
       </div>
+
+      <SearchBar />
     </div>
   );
 }

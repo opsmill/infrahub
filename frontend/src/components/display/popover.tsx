@@ -19,6 +19,8 @@ type PopOverProps = {
   disabled?: boolean;
   width?: POPOVER_SIZE;
   height?: POPOVER_SIZE;
+  maxWidth?: POPOVER_SIZE;
+  maxHeight?: POPOVER_SIZE;
   static?: boolean;
   open?: boolean;
 };
@@ -37,6 +39,20 @@ const heightClass = {
   [POPOVER_SIZE.LARGE]: "h-[800px]",
 };
 
+const maxWidthClass = {
+  [POPOVER_SIZE.NONE]: "",
+  [POPOVER_SIZE.SMALL]: "max-w-[300px]",
+  [POPOVER_SIZE.MEDIUM]: "max-w-[500px]",
+  [POPOVER_SIZE.LARGE]: "max-w-[800px]",
+};
+
+const maxHeightClass = {
+  [POPOVER_SIZE.NONE]: "",
+  [POPOVER_SIZE.SMALL]: "max-h-[300px]",
+  [POPOVER_SIZE.MEDIUM]: "max-h-[500px]",
+  [POPOVER_SIZE.LARGE]: "max-h-[800px]",
+};
+
 const PopOverPanel = ({
   className,
   title,
@@ -44,25 +60,29 @@ const PopOverPanel = ({
   static: staticProp,
   width,
   height,
+  maxWidth,
+  maxHeight,
 }: PopOverProps) => {
   return (
     <Popover.Panel
       className={classNames(
-        "absolute z-10 overflow-scroll rounded-lg border shadow-xl grid grid-cols-1 divide-y divide-gray-200",
+        "flex absolute z-10 overflow-scroll rounded-lg border shadow-xl grid grid-cols-1 divide-y divide-gray-200",
         className?.includes("bg-") ? "" : "bg-custom-white",
         // className?.includes("right-") ? "" : "right-0",
         className?.includes("top-") ? "" : "top-10",
         className?.includes("mt-") ? "" : "mt-3",
         className ?? "",
-        widthClass[width ?? POPOVER_SIZE.SMALL],
-        heightClass[height ?? POPOVER_SIZE.SMALL]
+        widthClass[width ?? POPOVER_SIZE.NONE],
+        heightClass[height ?? POPOVER_SIZE.NONE],
+        maxWidthClass[maxWidth ?? POPOVER_SIZE.NONE],
+        maxHeightClass[maxHeight ?? POPOVER_SIZE.NONE]
       )}
       static={staticProp}>
       {({ close }) => (
         <>
           {title && <div className="font-semibold text-center p-2">{title}</div>}
 
-          <div className="p-2">{children({ close })}</div>
+          <div className="flex-1 p-2">{children({ close })}</div>
         </>
       )}
     </Popover.Panel>

@@ -1,6 +1,7 @@
 import { gql } from "@apollo/client";
+import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
-import { Link } from "react-router-dom";
+import { Link as RouterLink } from "react-router-dom";
 import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
 import useQuery from "../../hooks/useQuery";
 import LoadingScreen from "../../screens/loading-screen/loading-screen";
@@ -11,6 +12,7 @@ import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue
 import { getObjectAttributes, getObjectRelationships } from "../../utils/getSchemaObjectColumns";
 import { getObjectDetailsUrl } from "../../utils/objects";
 import { Badge } from "../display/badge";
+import { Link } from "../utils/link";
 
 type tSearchResultItem = {
   item: any;
@@ -53,27 +55,47 @@ export const SearchResultItem = (props: tSearchResultItem) => {
 
   const objectDetailsData = schemaData && data && data[item.__typename]?.edges[0]?.node;
 
+  const allObjectsPath = `/objects/${item.__typename}`;
+
   if (!objectDetailsData) return <div>No data found for this object</div>;
 
   return (
-    <Link
-      to={constructPath(getObjectDetailsUrl(objectDetailsData.id, objectDetailsData.__typename))}
-      className="flex items-center px-2 mb-4 last:mb-0 text-sm rounded-md cursor-pointer hover:bg-gray-50">
-      <Badge>{schemaKindName[item.__typename]}</Badge>
+    <div className="flex flex-col flex-1 items-start mb-4 last:mb-0 ">
+      <RouterLink
+        to={constructPath(getObjectDetailsUrl(objectDetailsData.id, objectDetailsData.__typename))}
+        className="flex-1 p-2 text-sm rounded-md cursor-pointer hover:bg-gray-50">
+        <div className="flex flex-1 flex-col">
+          <div className="flex items-center mb-4">
+            <Badge>{schemaKindName[item.__typename]}</Badge>
 
-      {attributes.map((attribute: any, index: number) => (
-        <div key={index} className="flex flex-col px-2 mr-4">
-          <div className="text-xs italic">{attribute.label}</div>
-          {getObjectItemDisplayValue(objectDetailsData, attribute, schemaKindName)}
-        </div>
-      ))}
+            <div className="font-semibold">{objectDetailsData?.name?.value}</div>
+          </div>
 
-      {relationships.map((relationship: any, index: number) => (
-        <div key={index} className="flex flex-col px-2 mr-4">
-          <div className="text-xs italic">{relationship.label}</div>
-          {getObjectItemDisplayValue(objectDetailsData, relationship, schemaKindName)}
+          <div className="flex divide-x">
+            {attributes.map((attribute: any, index: number) => (
+              <div key={index} className="flex flex-col px-2 mr-4">
+                <div className="text-xs italic text-gray-600">{attribute.label}</div>
+                {getObjectItemDisplayValue(objectDetailsData, attribute, schemaKindName)}
+              </div>
+            ))}
+
+            {relationships.map((relationship: any, index: number) => (
+              <div key={index} className="flex flex-col px-2 mr-4">
+                <div className="text-xs italic text-gray-600">{relationship.label}</div>
+                {getObjectItemDisplayValue(objectDetailsData, relationship, schemaKindName)}
+              </div>
+            ))}
+          </div>
         </div>
-      ))}
-    </Link>
+      </RouterLink>
+
+      <Link
+        to={constructPath(allObjectsPath)}
+        target="_blank"
+        className="p-2 flex items-center text-xs">
+        {schemaKindName[item.__typename]} (All)
+        <Icon icon="mdi:open-in-new" className="ml-2" />
+      </Link>
+    </div>
   );
 };

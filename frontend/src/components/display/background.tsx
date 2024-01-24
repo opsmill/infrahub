@@ -7,7 +7,7 @@ type tBackground = {
 export const Background = ({ onClick, ...propsToPass }: tBackground) => {
   return (
     <div
-      className="fixed z-10 inset-0 bg-black bg-opacity-40 transition-opacity"
+      className="fixed z-20 inset-0 bg-black bg-opacity-40 transition-opacity"
       onClick={onClick}
       {...propsToPass}
     />
