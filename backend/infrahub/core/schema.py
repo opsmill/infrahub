@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 import enum
 import hashlib
 import keyword
@@ -181,7 +180,7 @@ class BaseSchemaModel(BaseModel):
 
     def duplicate(self) -> Self:
         """Duplicate the current object by doing a deep copy of everything and recreating a new object."""
-        return self.__class__(**copy.deepcopy(self.model_dump()))
+        return self.model_copy()
 
     @staticmethod
     def is_list_composed_of_schema_model(items) -> bool:
