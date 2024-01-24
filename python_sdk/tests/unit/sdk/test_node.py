@@ -849,7 +849,7 @@ async def test_create_input_data(client, location_schema, client_type):
             "type": {"value": "SITE"},
             # "primary_tag": None,
             "tags": [],
-            "member_of_groups": []
+            "member_of_groups": [],
         }
     }
 
@@ -1185,7 +1185,7 @@ async def test_update_input_data_empty_relationship(
             # "primary_tag": None,
             "tags": [],
             "type": {"is_protected": True, "is_visible": True, "value": "SITE"},
-            "member_of_groups": []
+            "member_of_groups": [],
         },
     }
 
