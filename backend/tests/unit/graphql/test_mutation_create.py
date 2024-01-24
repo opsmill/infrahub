@@ -1,6 +1,7 @@
 import pytest
 from graphql import graphql
 
+from infrahub import config
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -53,9 +54,136 @@ async def test_create_simple_object_with_ok_return(db: InfrahubDatabase, default
         root_value=None,
         variable_values={},
     )
-
     assert result.errors is None
     assert result.data["TestPersonCreate"]["ok"] is True
+
+
+@pytest.mark.parametrize(
+    "graphql_enums_on,enum_value,response_value", [(True, "MANUAL", "MANUAL"), (False, '"manual"', "manual")]
+)
+async def test_create_simple_object_with_enum(
+    db: InfrahubDatabase,
+    default_branch,
+    person_john_main,
+    car_person_schema,
+    graphql_enums_on,
+    enum_value,
+    response_value,
+):
+    config.SETTINGS.experimental_features.graphql_enums = graphql_enums_on
+    query = """
+    mutation {
+        TestCarCreate(data: {
+                name: { value: "JetTricycle"},
+                nbr_seats: { value: 1 },
+                is_electric: { value: false },
+                transmission: { value: %s },
+                owner: { id: "John" }
+            }) {
+            ok
+            object {
+                id
+                transmission {
+                    value
+                }
+            }
+        }
+    }
+    """ % (enum_value)
+    result = await graphql(
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["TestCarCreate"]["ok"] is True
+    assert result.data["TestCarCreate"]["object"]["transmission"]["value"] == response_value
+
+    car_id = result.data["TestCarCreate"]["object"]["id"]
+    database_car = await NodeManager.get_one(db=db, id=car_id)
+    if graphql_enums_on:
+        assert database_car.transmission.value.value == "manual"
+    else:
+        assert database_car.transmission.value == "manual"
+
+
+async def test_create_enum_when_enums_off_fails(
+    db: InfrahubDatabase,
+    default_branch,
+    person_john_main,
+    car_person_schema,
+):
+    config.SETTINGS.experimental_features.graphql_enums = False
+    query = """
+    mutation {
+        TestCarCreate(data: {
+                name: { value: "JetTricycle"},
+                nbr_seats: { value: 1 },
+                is_electric: { value: false },
+                transmission: { value: MANUAL },
+                owner: { id: "John" }
+            }) {
+            ok
+            object {
+                id
+                transmission {
+                    value
+                }
+            }
+        }
+    }
+    """
+    result = await graphql(
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert len(result.errors) == 1
+    assert "String cannot represent a non string value" in result.errors[0].message
+
+
+async def test_create_string_when_enums_on_fails(
+    db: InfrahubDatabase,
+    default_branch,
+    person_john_main,
+    car_person_schema,
+):
+    config.SETTINGS.experimental_features.graphql_enums = True
+    query = """
+    mutation {
+        TestCarCreate(data: {
+                name: { value: "JetTricycle"},
+                nbr_seats: { value: 1 },
+                is_electric: { value: false },
+                transmission: { value: "manual" },
+                owner: { id: "John" }
+            }) {
+            ok
+            object {
+                id
+                transmission {
+                    value
+                }
+            }
+        }
+    }
+    """
+    result = await graphql(
+        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert len(result.errors) == 1
+    assert "'TestCarTransmissionValue' cannot represent non-enum value" in result.errors[0].message
 
 
 async def test_create_with_id(db: InfrahubDatabase, default_branch, car_person_schema):

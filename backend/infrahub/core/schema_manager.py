@@ -30,7 +30,6 @@ from infrahub.core.schema import (
     AttributeSchema,
     FilterSchema,
     GenericSchema,
-    GroupSchema,
     NodeSchema,
     RelationshipSchema,
     SchemaRoot,
@@ -56,7 +55,6 @@ if TYPE_CHECKING:
 
 INTERNAL_SCHEMA_NODE_KINDS = [node["namespace"] + node["name"] for node in internal_schema["nodes"]]
 SUPPORTED_SCHEMA_NODE_TYPE = [
-    "SchemaGroup",
     "SchemaGeneric",
     "SchemaNode",
 ]
@@ -90,36 +88,34 @@ class SchemaNamespace(BaseModel):
 
 class SchemaBranch:
     def __init__(self, cache: Dict, name: Optional[str] = None, data: Optional[Dict[str, int]] = None):
-        self._cache: Dict[str, Union[NodeSchema, GenericSchema, GroupSchema]] = cache
+        self._cache: Dict[str, Union[NodeSchema, GenericSchema]] = cache
         self.name: Optional[str] = name
         self.nodes: Dict[str, str] = {}
         self.generics: Dict[str, str] = {}
-        self.groups: Dict[str, str] = {}
         self._graphql_schema = None
 
         if data:
             self.nodes = data.get("nodes", {})
             self.generics = data.get("generics", {})
-            self.groups = data.get("groups", {})
 
     def get_hash(self) -> str:
-        """Calculate the hash for this objects based on the content of nodes, generics and groups.
+        """Calculate the hash for this objects based on the content of nodes and generics.
 
         Since the object themselves are considered immuable we just need to use the hash from each object to calculate the global hash.
         """
         md5hash = hashlib.md5()
-        for key, value in sorted(tuple(self.nodes.items()) + tuple(self.generics.items()) + tuple(self.groups.items())):
+        for key, value in sorted(tuple(self.nodes.items()) + tuple(self.generics.items())):
             md5hash.update(str(key).encode())
             md5hash.update(str(value).encode())
 
         return md5hash.hexdigest()
 
     def get_hash_full(self) -> SchemaBranchHash:
-        return SchemaBranchHash(main=self.get_hash(), nodes=self.nodes, generics=self.generics, groups=self.groups)
+        return SchemaBranchHash(main=self.get_hash(), nodes=self.nodes, generics=self.generics)
 
     def to_dict(self) -> Dict[str, Any]:
         # TODO need to implement a flag to return the real objects if needed
-        return {"nodes": self.nodes, "generics": self.generics, "groups": self.groups}
+        return {"nodes": self.nodes, "generics": self.generics}
 
     async def get_graphql_schema(self, db: InfrahubDatabase) -> GraphQLSchema:
         if not self._graphql_schema:
@@ -128,8 +124,8 @@ class SchemaBranch:
         return self._graphql_schema
 
     def diff(self, obj: SchemaBranch) -> SchemaDiff:
-        local_keys = list(self.nodes.keys()) + list(self.generics.keys()) + list(self.groups.keys())
-        other_keys = list(obj.nodes.keys()) + list(obj.generics.keys()) + list(obj.groups.keys())
+        local_keys = list(self.nodes.keys()) + list(self.generics.keys())
+        other_keys = list(obj.nodes.keys()) + list(obj.generics.keys())
         present_both = intersection(local_keys, other_keys)
         present_local_only = list(set(local_keys) - set(present_both))
         present_other_only = list(set(other_keys) - set(present_both))
@@ -140,8 +136,6 @@ class SchemaBranch:
                 schema_diff.changed.append(key)
             elif key in self.generics and key in obj.generics and self.generics[key] != obj.generics[key]:
                 schema_diff.changed.append(key)
-            elif key in self.groups and key in obj.groups and self.groups[key] != obj.groups[key]:
-                schema_diff.changed.append(key)
 
         return schema_diff
 
@@ -149,8 +143,8 @@ class SchemaBranch:
         """Duplicate the current object but conserve the same cache."""
         return self.__class__(name=name, data=copy.deepcopy(self.to_dict()), cache=self._cache)
 
-    def set(self, name: str, schema: Union[NodeSchema, GenericSchema, GroupSchema]) -> str:
-        """Store a NodeSchema, GenericSchema or GroupSchema associated with a specific name.
+    def set(self, name: str, schema: Union[NodeSchema, GenericSchema]) -> str:
+        """Store a NodeSchema or GenericSchema associated with a specific name.
 
         The object will be stored in the internal cache based on its hash value.
         If a schema with the same name already exist, it will be replaced
@@ -163,13 +157,11 @@ class SchemaBranch:
             self.nodes[name] = schema_hash
         elif "Generic" in schema.__class__.__name__:
             self.generics[name] = schema_hash
-        elif "Group" in schema.__class__.__name__:
-            self.groups[name] = schema_hash
 
         return schema_hash
 
-    def get(self, name: str) -> Union[NodeSchema, GenericSchema, GroupSchema]:
-        """Access a specific NodeSchema, GenericSchema or GroupSchema, defined by its kind.
+    def get(self, name: str) -> Union[NodeSchema, GenericSchema]:
+        """Access a specific NodeSchema or GenericSchema, defined by its kind.
 
         To ensure that no-one will ever change an object in the cache,
         the function always returns a copy of the object, not the object itself
@@ -179,8 +171,6 @@ class SchemaBranch:
             key = self.nodes[name]
         elif name in self.generics:
             key = self.generics[name]
-        elif name in self.groups:
-            key = self.groups[name]
 
         if key:
             return self._cache[key].duplicate()
@@ -196,12 +186,12 @@ class SchemaBranch:
         except SchemaNotFound:
             return False
 
-    def get_all(self, include_internal: bool = False) -> Dict[str, Union[NodeSchema, GenericSchema, GroupSchema]]:
+    def get_all(self, include_internal: bool = False) -> Dict[str, Union[NodeSchema, GenericSchema]]:
         """Retrive everything in a single dictionary."""
 
         return {
             name: self.get(name=name)
-            for name in list(self.nodes.keys()) + list(self.generics.keys()) + list(self.groups.keys())
+            for name in list(self.nodes.keys()) + list(self.generics.keys())
             if include_internal or name not in INTERNAL_SCHEMA_NODE_KINDS
         }
 
@@ -209,8 +199,6 @@ class SchemaBranch:
         all_schemas = self.get_all(include_internal=include_internal)
         namespaces: Dict[str, SchemaNamespace] = {}
         for schema in all_schemas.values():
-            if isinstance(schema, GroupSchema):
-                continue
             if schema.namespace in namespaces:
                 continue
             namespaces[schema.namespace] = SchemaNamespace(
@@ -229,11 +217,11 @@ class SchemaBranch:
         return list(all_schemas.values())
 
     def load_schema(self, schema: SchemaRoot) -> None:
-        """Load a SchemaRoot object and store all NodeSchema, GenericSchema or GroupSchema.
+        """Load a SchemaRoot object and store all NodeSchema or GenericSchema.
 
         In the current implementation, if a schema object present in the SchemaRoot already exist, it will be overwritten.
         """
-        for item in schema.nodes + schema.generics + schema.groups:
+        for item in schema.nodes + schema.generics:
             try:
                 existing_item = self.get(name=item.kind)
                 new_item = existing_item.duplicate()
@@ -549,7 +537,7 @@ class SchemaBranch:
                     continue
 
                 peer_node = self.get(name=rel.peer)
-                if isinstance(peer_node, GroupSchema) or node.branch == peer_node.branch:
+                if node.branch == peer_node.branch:
                     rel.branch = node.branch
                 elif BranchSupportType.LOCAL in (node.branch, peer_node.branch):
                     rel.branch = BranchSupportType.LOCAL
@@ -580,7 +568,7 @@ class SchemaBranch:
 
             for rel in node.relationships:
                 peer_schema = self.get(name=rel.peer)
-                if not peer_schema or isinstance(peer_schema, GroupSchema):
+                if not peer_schema:
                     continue
 
                 rel.filters = self.generate_filters(schema=peer_schema, include_relationships=False)
@@ -755,9 +743,7 @@ class SchemaManager(NodeManager):
     def _get_from_cache(self, key):
         return self._cache[key]
 
-    def set(
-        self, name: str, schema: Union[NodeSchema, GenericSchema, GroupSchema], branch: Optional[str] = None
-    ) -> int:
+    def set(self, name: str, schema: Union[NodeSchema, GenericSchema], branch: Optional[str] = None) -> int:
         branch = branch or config.SETTINGS.main.default_branch
 
         if branch not in self._branches:
@@ -774,9 +760,7 @@ class SchemaManager(NodeManager):
         except SchemaNotFound:
             return False
 
-    def get(
-        self, name: str, branch: Optional[Union[Branch, str]] = None
-    ) -> Union[NodeSchema, GenericSchema, GroupSchema]:
+    def get(self, name: str, branch: Optional[Union[Branch, str]] = None) -> Union[NodeSchema, GenericSchema]:
         # For now we assume that all branches are present, will see how we need to pull new branches later.
         branch = get_branch_from_registry(branch=branch)
 
@@ -789,9 +773,7 @@ class SchemaManager(NodeManager):
         default_branch = config.SETTINGS.main.default_branch
         return self._branches[default_branch].get(name=name)
 
-    def get_full(
-        self, branch: Optional[Union[Branch, str]] = None
-    ) -> Dict[str, Union[NodeSchema, GenericSchema, GroupSchema]]:
+    def get_full(self, branch: Optional[Union[Branch, str]] = None) -> Dict[str, Union[NodeSchema, GenericSchema]]:
         branch = get_branch_from_registry(branch=branch)
 
         branch_name = None
@@ -804,7 +786,7 @@ class SchemaManager(NodeManager):
 
     async def get_full_safe(
         self, branch: Optional[Union[Branch, str]] = None
-    ) -> Dict[str, Union[NodeSchema, GenericSchema, GroupSchema]]:
+    ) -> Dict[str, Union[NodeSchema, GenericSchema]]:
         await lock.registry.local_schema_wait()
 
         return self.get_full(branch=branch)
@@ -838,17 +820,15 @@ class SchemaManager(NodeManager):
             await self.load_schema_to_db(schema=schema, db=db, branch=branch, limit=limit)
             # After updating the schema into the db
             # we need to pull a fresh version because some default value are managed/generated within the node object
-            schema_diff = None
-            if limit:
-                schema_diff = SchemaBranchDiff(
-                    nodes=[name for name in list(schema.nodes.keys()) if name in limit],
-                    generics=[name for name in list(schema.generics.keys()) if name in limit],
-                    groups=[name for name in list(schema.groups.keys()) if name in limit],
-                )
+            # REVERTED 1891
+            # schema_diff = None
+            # if limit:
+            #     schema_diff = SchemaBranchDiff(
+            #         nodes=[name for name in list(schema.nodes.keys()) if name in limit],
+            #         generics=[name for name in list(schema.generics.keys()) if name in limit],
+            #     )
 
-            updated_schema = await self.load_schema_from_db(
-                db=db, branch=branch, schema=schema, schema_diff=schema_diff
-            )
+            updated_schema = await self.load_schema_from_db(db=db, branch=branch, schema=schema)
 
         self._branches[branch.name] = updated_schema or schema
 
@@ -872,7 +852,7 @@ class SchemaManager(NodeManager):
 
         branch = await get_branch(branch=branch, db=db)
 
-        for item_kind in list(schema.generics.keys()) + list(schema.nodes.keys()) + list(schema.groups.keys()):
+        for item_kind in list(schema.generics.keys()) + list(schema.nodes.keys()):
             if limit and item_kind not in limit:
                 continue
             item = schema.get(name=item_kind)
@@ -885,7 +865,7 @@ class SchemaManager(NodeManager):
 
     async def load_node_to_db(
         self,
-        node: Union[NodeSchema, GenericSchema, GroupSchema],
+        node: Union[NodeSchema, GenericSchema],
         db: InfrahubDatabase,
         branch: Union[str, Branch] = None,
     ) -> None:
@@ -895,11 +875,9 @@ class SchemaManager(NodeManager):
         """
         branch = await get_branch(branch=branch, db=db)
 
-        node_type = "SchemaGroup"
+        node_type = "SchemaNode"
         if isinstance(node, GenericSchema):
             node_type = "SchemaGeneric"
-        elif isinstance(node, NodeSchema):
-            node_type = "SchemaNode"
 
         if node_type not in SUPPORTED_SCHEMA_NODE_TYPE:
             raise ValueError(f"Only schema node of type {SUPPORTED_SCHEMA_NODE_TYPE} are supported: {node_type}")
@@ -942,7 +920,7 @@ class SchemaManager(NodeManager):
     async def update_node_in_db(
         self,
         db: InfrahubDatabase,
-        node: Union[NodeSchema, GenericSchema, GroupSchema],
+        node: Union[NodeSchema, GenericSchema],
         branch: Union[str, Branch] = None,
     ) -> None:
         """Update a Node with its attributes and its relationships in the database."""
@@ -1068,8 +1046,8 @@ class SchemaManager(NodeManager):
                 return new_branch_schema
 
         current_schema = self.get_schema_branch(name=branch.name)
-        schema_diff = current_schema.get_hash_full().compare(branch.schema_hash)
-        return await self.load_schema_from_db(db=db, branch=branch, schema=current_schema, schema_diff=schema_diff)
+        # REVERT 1891 schema_diff = current_schema.get_hash_full().compare(branch.schema_hash)
+        return await self.load_schema_from_db(db=db, branch=branch, schema=current_schema)
 
     async def load_schema_from_db(
         self,
@@ -1078,7 +1056,7 @@ class SchemaManager(NodeManager):
         schema: Optional[SchemaBranch] = None,
         schema_diff: Optional[SchemaBranchDiff] = None,
     ) -> SchemaBranch:
-        """Query all the node of type NodeSchema, GenericSchema and GroupSchema from the database and convert them to their respective type.
+        """Query all the node of type NodeSchema and GenericSchema from the database and convert them to their respective type.
 
         Args:
             db: Database Driver
@@ -1111,16 +1089,6 @@ class SchemaManager(NodeManager):
                 if filter_value["namespace__values"]:
                     filters[node_type] = filter_value
                     has_filters = True
-
-        if not has_filters or filters["groups"]:
-            group_schema = self.get(name="SchemaGroup", branch=branch)
-            for schema_node in await self.query(
-                schema=group_schema, branch=branch, filters=filters["groups"], prefetch_relationships=True, db=db
-            ):
-                schema.set(
-                    name=schema_node.kind.value,
-                    schema=await self.convert_group_schema_to_schema(schema_node=schema_node),
-                )
 
         if not has_filters or filters["generics"]:
             generic_schema = self.get(name="SchemaGeneric", branch=branch)
@@ -1200,16 +1168,3 @@ class SchemaManager(NodeManager):
                 node_data[rel_name].append(item_data)
 
         return GenericSchema(**node_data)
-
-    @staticmethod
-    async def convert_group_schema_to_schema(schema_node: Node) -> GroupSchema:
-        """Convert a schema_node object loaded from the database into GroupSchema object."""
-
-        node_data = {"id": schema_node.id}
-
-        # First pull all the attributes at the top level, then convert all the relationships
-        #  for a standard node_schema, the relationships will be attributes and relationships
-        for attr_name in schema_node._attributes:
-            node_data[attr_name] = getattr(schema_node, attr_name).value
-
-        return GroupSchema(**node_data)

@@ -1045,10 +1045,10 @@ class InfrahubNode(InfrahubNodeBase):
             tracker=f"mutation-{str(self._schema.kind).lower()}-delete",
         )
 
-    async def save(self, at: Optional[Timestamp] = None) -> None:
+    async def save(self, at: Optional[Timestamp] = None, allow_upsert: bool = False) -> None:
         at = Timestamp(at)
-        if self._existing is False:
-            await self.create(at=at)
+        if self._existing is False or allow_upsert is True:
+            await self.create(at=at, allow_upsert=allow_upsert)
         else:
             await self.update(at=at)
 
@@ -1183,11 +1183,11 @@ class InfrahubNode(InfrahubNodeBase):
 
         return data
 
-    async def create(self, at: Timestamp, allow_update: bool = False) -> None:
+    async def create(self, at: Timestamp, allow_upsert: bool = False) -> None:
         input_data = self._generate_input_data()
         input_data["data"]["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
-        if allow_update:
+        if allow_upsert:
             mutation_name = f"{self._schema.kind}Upsert"
             tracker = f"mutation-{str(self._schema.kind).lower()}-upsert"
         else:
@@ -1209,7 +1209,7 @@ class InfrahubNode(InfrahubNodeBase):
         self._existing = True
 
         # If Upsert was use we need to read back the ID from the response in case the node already existed
-        if allow_update:
+        if allow_upsert:
             self.id = response[mutation_name]["object"]["id"]
 
     async def update(self, at: Timestamp, do_full_update: bool = False) -> None:
@@ -1358,10 +1358,10 @@ class InfrahubNodeSync(InfrahubNodeBase):
             tracker=f"mutation-{str(self._schema.kind).lower()}-delete",
         )
 
-    def save(self, at: Optional[Timestamp] = None) -> None:
+    def save(self, at: Optional[Timestamp] = None, allow_upsert: bool = False) -> None:
         at = Timestamp(at)
-        if self._existing is False:
-            self.create(at=at)
+        if self._existing is False or allow_upsert is True:
+            self.create(at=at, allow_upsert=allow_upsert)
         else:
             self.update(at=at)
 
@@ -1495,11 +1495,11 @@ class InfrahubNodeSync(InfrahubNodeBase):
 
         return data
 
-    def create(self, at: Timestamp, allow_update: bool = False) -> None:
+    def create(self, at: Timestamp, allow_upsert: bool = False) -> None:
         input_data = self._generate_input_data()
         input_data["data"]["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
-        if allow_update:
+        if allow_upsert:
             mutation_name = f"{self._schema.kind}Upsert"
             tracker = f"mutation-{str(self._schema.kind).lower()}-upsert"
         else:
@@ -1522,7 +1522,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
         self._existing = True
 
         # If Upsert was use we need to read back the ID from the response in case the node already existed
-        if allow_update:
+        if allow_upsert:
             self.id = response[mutation_name]["object"]["id"]
 
     def update(self, at: Timestamp, do_full_update: bool = False) -> None:

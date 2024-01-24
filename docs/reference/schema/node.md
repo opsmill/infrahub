@@ -19,7 +19,6 @@ Below is the list of all available options to define a Node in the schema
 | [**default_filter**](#default_filter) | Attribute | Default filter used to search for a node in addition to its ID. | False |
 | [**description**](#description) | Attribute | Short description of the model, will be visible in the frontend. | False |
 | [**display_labels**](#display_labels) | Attribute | List of attributes to use to generate the display label | False |
-| [**groups**](#groups) | Attribute | List of Group that this Node is part of. | False |
 | [**hierarchy**](#hierarchy) | Attribute | Internal value to track the name of the Hierarchy, must match the name of a Generic supporting hierarchical mode | False |
 | [**icon**](#icon) | Attribute | Defines the icon to use in the menu. Must be a valid value from the MDI library https://icon-sets.iconify.design/mdi/ | False |
 | [**include_in_menu**](#include_in_menu) | Attribute | Defines if objects of this kind should be included in the menu. | False |
@@ -87,17 +86,6 @@ Below is the list of all available options to define a Node in the schema
 | **Name** | display_labels |
 | **Kind** | `List` |
 | **Description** | List of attributes to use to generate the display label |
-| **Optional**  | True |
-| **Default Value** |  |
-| **Constraints** |  |
-
-### groups
-
-| Key | Value | { class="compact" }
-| ---- | --------------- |
-| **Name** | groups |
-| **Kind** | `List` |
-| **Description** | List of Group that this Node is part of. |
 | **Optional**  | True |
 | **Default Value** |  |
 | **Constraints** |  |

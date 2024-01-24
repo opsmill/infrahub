@@ -21,19 +21,11 @@ The goal is to have a copy of this repository under your name. This way your dem
 
 Once you have created a fork in GitHub, you'll need a Personal Access Token to authorize Infrahub to access this repository.
 
-==- How to create a Personal Access Token in GitHub
-
-  1. Go to settings > Developer Settings > Personal access tokens
-  2. Select Fine-grained tokens
-  3. Limit the scope of the token in **Repository Access** > **Only Select Repositories**
-  4. Grant the token permission to `Read/Write` the **Content** of the repository
-
-  ![Fine-Grained Token](../../media/github_fined_grain_access_token_setup.png)
-==-
+[How to create a Personal Access Token in GitHub](/guides/repository#personal-access-token)
 
 !!!
 If you already cloned the repository in the past, ensure only the main branch is present in GitHub.
-If other branches are present, it's recommended that you delete them for now.
+If other branches are present, we recommend deleting them for now.
 !!!
 
 ==- How to Delete a branch in GitHub
@@ -52,16 +44,15 @@ Currently the easiest way to add a repository is to use the web interface.
 
 Refer to [Adding a repository guide](/guides/repository)
 
-After adding the `infrahub-demo-edge` repository you will be able to see several new [Transformation](/topics/transformation) and related objects :
+After adding the `infrahub-demo-edge` repository you will be able to see several new [Transformations](/topics/transformation) and related objects:
 
-- 3 Jinja Rendered File under [RFiles](http://localhost:8000/objects/CoreRFile/)
-- 4 Python Transformation under [Python Transformation](http://localhost:8000/objects/CoreTransformation)
+- 3 Jinja Rendered File under [Jinja2 Transformation](http://localhost:8000/objects/CoreTransformJinja2/)
+- 4 Python Transformation under [Python Transformation](http://localhost:8000/objects/CoreTransformPython)
 - 4 [Artifact Definition](http://localhost:8000/objects/CoreArtifactDefinition)
 - 7 GraphQL [Queries](/topics/graphql) under [Objects / GraphQL Query](http://localhost:8000/objects/GraphQLQuery/)
-!!!
 
 !!!secondary Troubleshooting
-If you don't seeing additional objects under `Rfile` or `GraphQL Queries`, it's possible that the `Git agent` might not be running anymore.
+If you don't seeing additional objects under the transformations or `GraphQL Queries`, it's possible that the `Git agent` might not be running anymore.
 
-In this case the recommended approach is to run `invoke demo.start` first to ensure that everything is working.
+In this case, you should run `invoke demo.start` first to ensure that everything is working.
 !!!

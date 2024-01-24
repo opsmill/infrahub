@@ -165,7 +165,9 @@ async def test_password_based_login_invalid_password(db: InfrahubDatabase, defau
 
 async def test_use_expired_token(db: InfrahubDatabase, default_branch, client):
     with client:
-        response = client.get("/api/rfile/testing", headers={"Authorization": f"Bearer {EXPIRED_ACCESS_TOKEN}"})
+        response = client.get(
+            "/api/transform/jinja2/testing", headers={"Authorization": f"Bearer {EXPIRED_ACCESS_TOKEN}"}
+        )
 
     assert response.status_code == 401
     assert response.json() == {"data": None, "errors": [{"message": "Expired Signature", "extensions": {"code": 401}}]}
@@ -191,7 +193,7 @@ async def test_access_resource_using_refresh_token(db: InfrahubDatabase, default
     refresh_token = login_response.json()["refresh_token"]
 
     with client:
-        response = client.get("/api/rfile/testing", headers={"Authorization": f"Bearer {refresh_token}"})
+        response = client.get("/api/transform/jinja2/testing", headers={"Authorization": f"Bearer {refresh_token}"})
 
     assert response.status_code == 401
     assert response.json() == {"data": None, "errors": [{"message": "Invalid token", "extensions": {"code": 401}}]}

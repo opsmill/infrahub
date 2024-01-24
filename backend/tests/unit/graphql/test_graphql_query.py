@@ -2,7 +2,7 @@ import pytest
 from deepdiff import DeepDiff
 from graphql import graphql
 
-from infrahub import __version__
+from infrahub import __version__, config
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType, InfrahubKind
@@ -807,6 +807,44 @@ async def test_query_filter_local_attrs(db: InfrahubDatabase, default_branch: Br
 
     assert result.errors is None
     assert len(result.data["TestCriticality"]["edges"]) == 1
+
+
+@pytest.mark.parametrize("graphql_enums_on,enum_value", [(True, "MANUAL"), (False, '"manual"')])
+async def test_query_filter_on_enum(
+    db: InfrahubDatabase, default_branch: Branch, person_john_main, car_person_schema, graphql_enums_on, enum_value
+):
+    config.SETTINGS.experimental_features.graphql_enums = graphql_enums_on
+    car = registry.get_schema(name="TestCar")
+
+    c1 = await Node.init(db=db, schema=car)
+    await c1.new(db=db, name="GoKart", nbr_seats=1, is_electric=True, owner=person_john_main, transmission="manual")
+    await c1.save(db=db)
+
+    query = """
+    query {
+        TestCar(transmission__value: %s) {
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                }
+            }
+        }
+    }
+    """ % (enum_value)
+
+    result = await graphql(
+        await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
+        source=query,
+        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert len(result.data["TestCar"]["edges"]) == 1
+    assert result.data["TestCar"]["edges"][0]["node"]["name"]["value"] == "GoKart"
 
 
 async def test_query_multiple_filters(db: InfrahubDatabase, default_branch: Branch, car_person_manufacturer_schema):
@@ -2101,95 +2139,6 @@ async def test_model_rel_interface_reverse(db: InfrahubDatabase, default_branch:
     assert len(result.data["TestBoat"]["edges"][0]["node"]["owners"]["edges"]) == 1
 
 
-@pytest.mark.skip(reason="pending convertion - review use of fragments")
-async def test_union_relationship(
-    db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema, car_schema, truck_schema, motorcycle_schema
-):
-    SCHEMA = {
-        "name": "person",
-        "kind": "Person",
-        "default_filter": "name__value",
-        "branch": BranchSupportType.AWARE.value,
-        "attributes": [
-            {"name": "name", "kind": "Text", "unique": True},
-        ],
-        "relationships": [
-            {"name": "road_vehicules", "peer": "OnRoad", "cardinality": "many", "identifier": "person__vehicule"}
-        ],
-    }
-
-    node = NodeSchema(**SCHEMA)
-    registry.set_schema(name=node.kind, schema=node)
-
-    d1 = await Node.init(db=db, schema="Car")
-    await d1.new(db=db, name="Porsche 911", nbr_doors=2)
-    await d1.save(db=db)
-
-    t1 = await Node.init(db=db, schema="Truck")
-    await t1.new(db=db, name="Silverado", nbr_axles=4)
-    await t1.save(db=db)
-
-    m1 = await Node.init(db=db, schema="Motorcycle")
-    await m1.new(db=db, name="Monster", nbr_seats=1)
-    await m1.save(db=db)
-
-    p1 = await Node.init(db=db, schema="Person")
-    await p1.new(db=db, name="John Doe", road_vehicules=[d1, t1, m1])
-    await p1.save(db=db)
-
-    query = """
-    query {
-        person {
-            name {
-                value
-            }
-            road_vehicules {
-                ... on RelatedTruck {
-                    nbr_axles {
-                        value
-                    }
-                }
-                ... on RelatedMotorcycle {
-                    nbr_seats {
-                        value
-                    }
-                }
-                ... on RelatedCar {
-                    nbr_doors {
-                        value
-                    }
-                }
-            }
-        }
-    }
-    """
-
-    schema = await generate_graphql_schema(
-        branch=default_branch, db=db, include_mutation=False, include_subscription=False
-    )
-
-    result = await graphql(
-        schema=schema,
-        source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
-        root_value=None,
-        variable_values={},
-    )
-
-    assert result.errors is None
-    assert len(result.data["person"][0]["road_vehicules"]) == 3
-
-    expected_result = {
-        "name": {"value": "John Doe"},
-        "road_vehicules": [
-            {"nbr_doors": {"value": 2}},
-            {"nbr_axles": {"value": 4}},
-            {"nbr_seats": {"value": 1}},
-        ],
-    }
-    assert DeepDiff(result.data["person"][0], expected_result, ignore_order=True).to_dict() == {}
-
-
 async def test_generic_root_with_pagination(db: InfrahubDatabase, default_branch: Branch, car_person_generics_data):
     query = """
     query {
@@ -2702,86 +2651,3 @@ async def test_hierarchical_groups_descendants(db: InfrahubDatabase, default_bra
         "tag-13",
     ]
     assert grp1["members"]["count"] == 14
-
-
-@pytest.mark.skip(reason="Union is not supported at the root of the GraphQL Schema yet .. ")
-async def test_union_root(
-    db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema, car_schema, truck_schema, motorcycle_schema
-):
-    SCHEMA = {
-        "name": "person",
-        "kind": "Person",
-        "default_filter": "name__value",
-        "branch": BranchSupportType.AWARE.value,
-        "attributes": [
-            {"name": "name", "kind": "Text", "unique": True},
-        ],
-        "relationships": [
-            {"name": "road_vehicules", "peer": "OnRoad", "cardinality": "many", "identifier": "person__vehicule"}
-        ],
-    }
-
-    node = NodeSchema(**SCHEMA)
-    registry.set_schema(name=node.kind, schema=node)
-
-    d1 = await Node.init(db=db, schema="Car")
-    await d1.new(db=db, name="Porsche 911", nbr_doors=2)
-    await d1.save(db=db)
-
-    t1 = await Node.init(db=db, schema="Truck")
-    await t1.new(db=db, name="Silverado", nbr_axles=4)
-    await t1.save(db=db)
-
-    m1 = await Node.init(db=db, schema="Motorcycle")
-    await m1.new(db=db, name="Monster", nbr_seats=1)
-    await m1.save(db=db)
-
-    p1 = await Node.init(db=db, schema="Person")
-    await p1.new(db=db, name="John Doe", road_vehicules=[d1, t1, m1])
-    await p1.save(db=db)
-
-    query = """
-    query {
-        on_road {
-            ... on RelatedTruck {
-                name {
-                    value
-                }
-                nbr_axles {
-                    value
-                }
-            }
-            ... on RelatedMotorcycle {
-                name {
-                    value
-                }
-                nbr_seats {
-                    value
-                }
-            }
-            ... on RelatedCar {
-                name {
-                    value
-                }
-                nbr_doors {
-                    value
-                }
-            }
-        }
-    }
-    """
-
-    schema = await generate_graphql_schema(
-        branch=default_branch, db=db, include_mutation=False, include_subscription=False
-    )
-
-    result = await graphql(
-        schema=schema,
-        source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
-        root_value=None,
-        variable_values={},
-    )
-
-    assert result.errors is None
-    assert len(result.data["on_road"]) == 3

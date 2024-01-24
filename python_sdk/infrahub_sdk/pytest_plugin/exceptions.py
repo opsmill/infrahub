@@ -8,12 +8,6 @@ class Error(Exception):
     """pytest-infrahub Base exception."""
 
 
-class RFileException(Error):
-    def __init__(self, name: str, message: str = ""):
-        self.message = message or f"Unexpected error happened while processing {name!r}."
-        super().__init__(self.message)
-
-
 class DirectoryNotFoundError(Error):
     def __init__(self, name: str, message: str = ""):
         self.message = message or f"Unable to find directory {name!r}."
@@ -26,11 +20,17 @@ class FileNotValidError(Error):
         super().__init__(self.message)
 
 
-class RFileUndefinedError(Error):
+class Jinja2TransformException(Error):
+    def __init__(self, name: str, message: str = ""):
+        self.message = message or f"Unexpected error happened while processing {name!r}."
+        super().__init__(self.message)
+
+
+class Jinja2TransformUndefinedError(Error):
     def __init__(self, name: str, rtb: Traceback, errors: List[Tuple[Frame, Syntax]], message: str = ""):
         self.rtb = rtb
         self.errors = errors
-        self.message = message or f"Unable to render RFile {name!r}."
+        self.message = message or f"Unable to render Jinja2 transform {name!r}."
         super().__init__(self.message)
 
 
