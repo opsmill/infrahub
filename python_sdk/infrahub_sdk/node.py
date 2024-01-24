@@ -800,7 +800,11 @@ class InfrahubNodeBase:
 
                     if original_data[item].get(item_key) == data[item].get(item_key):
                         data[item].pop(item_key)
-                    elif variable_key and variable_key in variables and original_data[item].get(item_key) == variables.get(variable_key):
+                    elif (
+                        variable_key
+                        and variable_key in variables
+                        and original_data[item].get(item_key) == variables.get(variable_key)
+                    ):
                         data[item].pop(item_key)
                         variables.pop(variable_key)
 
