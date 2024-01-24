@@ -5,7 +5,7 @@ import hashlib
 import keyword
 import re
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
-
+import copy
 from infrahub_sdk.utils import duplicates, intersection
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -180,7 +180,7 @@ class BaseSchemaModel(BaseModel):
 
     def duplicate(self) -> Self:
         """Duplicate the current object by doing a deep copy of everything and recreating a new object."""
-        return self.model_copy()
+        return self.model_copy(deep=True)
 
     @staticmethod
     def is_list_composed_of_schema_model(items) -> bool:
