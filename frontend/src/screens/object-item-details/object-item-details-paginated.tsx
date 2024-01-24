@@ -38,6 +38,7 @@ import {
   getObjectAttributes,
   getObjectRelationships,
   getObjectTabs,
+  getSchemaObjectColumns,
   getTabs,
 } from "../../utils/getSchemaObjectColumns";
 import { Generate } from "../artifacts/generate";
@@ -88,12 +89,13 @@ export default function ObjectItemDetails(props: any) {
 
   const attributes = getObjectAttributes(schemaData);
   const relationships = getObjectRelationships(schemaData);
+  const columns = getSchemaObjectColumns(schemaData);
   const relationshipsTabs = getTabs(schemaData);
 
   const queryString = schemaData
     ? getObjectDetailsPaginated({
-        ...schemaData,
-        relationships,
+        kind: schemaData.kind,
+        columns,
         relationshipsTabs,
         objectid,
       })

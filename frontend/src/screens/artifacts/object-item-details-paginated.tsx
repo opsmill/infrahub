@@ -30,6 +30,7 @@ import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue
 import {
   getObjectAttributes,
   getObjectRelationships,
+  getSchemaObjectColumns,
   getTabs,
 } from "../../utils/getSchemaObjectColumns";
 import ErrorScreen from "../error-screen/error-screen";
@@ -71,15 +72,15 @@ export default function ArtifactsDetails() {
   if (schemaData && MENU_EXCLUDELIST.includes(schemaData.kind)) {
     navigate("/");
   }
-
   const attributes = getObjectAttributes(schemaData);
   const relationships = getObjectRelationships(schemaData);
+  const columns = getSchemaObjectColumns(schemaData);
   const relationshipsTabs = getTabs(schemaData);
 
   const queryString = schemaData
     ? getObjectDetailsPaginated({
-        ...schemaData,
-        relationships,
+        kind: schemaData.kind,
+        columns,
         relationshipsTabs,
         objectid,
       })

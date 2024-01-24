@@ -9,7 +9,7 @@ import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { constructPath } from "../../utils/fetch";
 import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue";
-import { getObjectAttributes, getObjectRelationships } from "../../utils/getSchemaObjectColumns";
+import { getSchemaObjectColumns } from "../../utils/getSchemaObjectColumns";
 import { getObjectDetailsUrl } from "../../utils/objects";
 import { Badge } from "../display/badge";
 import { Link } from "../utils/link";
@@ -30,14 +30,12 @@ export const SearchResultItem = (props: tSearchResultItem) => {
 
   const schemaData = generic || schema;
 
-  const attributes = getObjectAttributes(schemaData);
-  const relationships = getObjectRelationships(schemaData);
+  const columns = getSchemaObjectColumns(schemaData, 10);
 
   const queryString = schemaData
     ? getObjectDetailsPaginated({
         ...schemaData,
-        attributes,
-        relationships,
+        columns,
         objectid: item.id,
       })
     : // Empty query to make the gql parsing work
@@ -72,17 +70,10 @@ export const SearchResultItem = (props: tSearchResultItem) => {
           </div>
 
           <div className="flex divide-x">
-            {attributes.map((attribute: any, index: number) => (
+            {columns.map((column: any, index: number) => (
               <div key={index} className="flex flex-col px-2 mr-4">
-                <div className="text-xs italic text-gray-600">{attribute.label}</div>
-                {getObjectItemDisplayValue(objectDetailsData, attribute, schemaKindName)}
-              </div>
-            ))}
-
-            {relationships.map((relationship: any, index: number) => (
-              <div key={index} className="flex flex-col px-2 mr-4">
-                <div className="text-xs italic text-gray-600">{relationship.label}</div>
-                {getObjectItemDisplayValue(objectDetailsData, relationship, schemaKindName)}
+                <div className="text-xs italic text-gray-600">{column.label}</div>
+                {getObjectItemDisplayValue(objectDetailsData, column, schemaKindName)}
               </div>
             ))}
           </div>

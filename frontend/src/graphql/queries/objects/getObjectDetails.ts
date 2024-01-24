@@ -9,8 +9,11 @@ query {{kind}} {
         id
         display_label
 
-        {{#each attributes}}
-          {{this.name}} {
+        {{#each columns}}
+
+          {{#if this.isAttribute}}
+
+            {{this.name}} {
               value
               updated_at
               is_protected
@@ -31,39 +34,44 @@ query {{kind}} {
               label
               {{/if}}
           }
-          {{/each}}
 
-          {{#each relationships}}
-            {{this.name}}{{#if this.paginated}}(limit: 100){{/if}} {
-              {{#if this.paginated}}
-                edges {
-              {{/if}}
-                node {
+          {{/if}}
+
+          {{#if this.isRelationship}}
+
+          {{this.name}}{{#if this.paginated}}(limit: 100){{/if}} {
+            {{#if this.paginated}}
+              edges {
+            {{/if}}
+              node {
+                id
+                display_label
+                __typename
+              }
+              properties {
+                updated_at
+                is_protected
+                is_visible
+                source {
                   id
                   display_label
                   __typename
                 }
-                properties {
-                  updated_at
-                  is_protected
-                  is_visible
-                  source {
-                    id
-                    display_label
-                    __typename
-                  }
-                  owner {
-                    id
-                    display_label
-                    __typename
-                  }
+                owner {
+                  id
+                  display_label
                   __typename
                 }
-              {{#if this.paginated}}
+                __typename
               }
-              {{/if}}
+            {{#if this.paginated}}
             }
-        {{/each}}
+            {{/if}}
+          }
+
+          {{/if}}
+
+          {{/each}}
 
         {{#if relationshipsTabs}}
           {{#each relationshipsTabs}}
