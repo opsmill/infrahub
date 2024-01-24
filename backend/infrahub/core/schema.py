@@ -5,7 +5,7 @@ import hashlib
 import keyword
 import re
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
-import copy
+
 from infrahub_sdk.utils import duplicates, intersection
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
