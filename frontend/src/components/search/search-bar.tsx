@@ -43,7 +43,7 @@ const SearchInput = (props: tSearchInput) => {
         <Input
           value={search}
           onChange={handleChange}
-          id="search-bar"
+          data-testid="search-bar"
           className="py-2 pl-10 placeholder-gray-500"
           placeholder="Search"
           onFocus={handleFocus}
