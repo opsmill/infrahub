@@ -28,6 +28,7 @@ from infrahub.core.node import Node
 from infrahub.core.property import FlagPropertyMixin, NodePropertyMixin
 from infrahub.core.schema import (
     AttributeSchema,
+    BaseNodeSchema,
     FilterSchema,
     GenericSchema,
     NodeSchema,
@@ -252,6 +253,9 @@ class SchemaBranch:
         self.validate_menu_placements()
         self.validate_kinds()
         self.validate_identifiers()
+        self.validate_display_labels()
+        self.validate_order_by()
+        self.validate_default_filters()
 
     def process_post_validation(self) -> None:
         self.add_groups()
@@ -327,6 +331,63 @@ class SchemaBranch:
                             f"{node.kind}: Incompatible direction detected on Reverse Relationship for {rels[0].name!r} ({identifier!r})"
                             f" {rels[0].direction.value} <> {peer_direction.value}"
                         ) from None
+
+    def _validate_attribute_path(
+        self, node_schema: BaseNodeSchema, path: str, attribute_schema_name: Optional[str] = None
+    ) -> None:
+        error_header = f"{node_schema.kind}"
+        error_header += f".{attribute_schema_name}" if attribute_schema_name else ""
+        # TODO: not sure what this list should be, but I think we should have an explicit list of allowed attribute properties
+        allowed_attribute_properties = ["updated_at", "value"]
+
+        try:
+            attribute_name, attribute_property_name = path.split("__")
+        except ValueError as exc:
+            raise ValueError(
+                f"{error_header}: {path} must be of the format <attribute>__<property>, the separator is two underscores"
+            ) from exc
+        attribute = node_schema.get_attribute(attribute_name, raise_on_error=False)
+        if not attribute:
+            raise ValueError(f"{error_header}: {attribute_name} is not an attribute of {node_schema.kind}")
+        if attribute_property_name not in allowed_attribute_properties:
+            raise ValueError(
+                f"{error_header}: attribute property must be one of {allowed_attribute_properties}, not {attribute_property_name}"
+            )
+
+    def validate_display_labels(self) -> None:
+        for name in list(self.nodes.keys()) + list(self.generics.keys()):
+            node_schema = self.get(name=name)
+
+            if not node_schema.display_labels:
+                continue
+
+            if not isinstance(node_schema.display_labels, list):
+                raise ValueError(f"{node_schema.kind}.display_labels: must be a list")
+
+            for display_label_path in node_schema.display_labels:
+                self._validate_attribute_path(node_schema, display_label_path, "display_labels")
+
+    def validate_order_by(self) -> None:
+        for name in list(self.nodes.keys()) + list(self.generics.keys()):
+            node_schema = self.get(name=name)
+
+            if not node_schema.order_by:
+                continue
+
+            if not isinstance(node_schema.order_by, list):
+                raise ValueError(f"{node_schema.kind}.order_by: must be a list")
+
+            for order_by_path in node_schema.order_by:
+                self._validate_attribute_path(node_schema, order_by_path, "order_by")
+
+    def validate_default_filters(self) -> None:
+        for name in list(self.nodes.keys()) + list(self.generics.keys()):
+            node_schema = self.get(name=name)
+
+            if not node_schema.default_filter:
+                continue
+
+            self._validate_attribute_path(node_schema, node_schema.default_filter, "default_filter")
 
     def validate_names(self) -> None:
         for name in list(self.nodes.keys()) + list(self.generics.keys()):

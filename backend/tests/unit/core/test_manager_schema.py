@@ -720,6 +720,33 @@ async def test_schema_branch_validate_menu_placement():
     assert str(exc.value) == "TestSubObject: NoSuchObject is not a valid menu placement"
 
 
+@pytest.mark.parametrize(
+    "display_labels",
+    [["name__value", "description__value"], ["name__updated_at"], ["description__updated_at", "name__value"]],
+)
+async def test_validate_display_labels_success(schema_all_in_one, display_labels):
+    schema_all_in_one["nodes"][0]["display_labels"] = display_labels
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    schema.validate_display_labels()
+
+
+@pytest.mark.parametrize(
+    "display_labels",
+    [["name__value", "notanattribute__value"], ["name__something"], ["tags__value"], ["name"], ["tags"]],
+)
+async def test_validate_display_labels_error(schema_all_in_one, display_labels):
+    schema_all_in_one["nodes"][0]["display_labels"] = display_labels
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    with pytest.raises(ValueError):
+        schema.validate_display_labels()
+
+
 async def test_schema_branch_load_schema_extension(
     db: InfrahubDatabase, default_branch, organization_schema, builtin_schema, helper
 ):
