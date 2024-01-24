@@ -63,6 +63,7 @@ ruff = "0.1.8"
 buildkite-test-collector = "^0.1.7"
 invoke = "2.2.0"
 pytest-benchmark = "^4.0.0"
+pytest-codspeed = "^2.2.0"
 
 [tool.poetry.group.test-scale.dependencies]
 locust = "^2.20.1"
