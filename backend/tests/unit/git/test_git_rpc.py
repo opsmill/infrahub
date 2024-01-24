@@ -42,7 +42,7 @@ class TestAddRepository:
         )
         self.mock_repo_class = repo_class_patcher.start()
         self.mock_repo = AsyncMock(spec=InfrahubRepository)
-        self.mock_repo.default_branch_name = self.default_branch_name
+        self.mock_repo.default_branch = self.default_branch_name
         self.mock_repo_class.new.return_value = self.mock_repo
 
     def teardown_method(self):
