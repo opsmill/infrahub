@@ -30,14 +30,15 @@ class InfrahubMigration(BaseModel):
         raise NotImplementedError
 
     async def execute(self, db: InfrahubDatabase) -> MigrationResult:
-        result = MigrationResult()
+        async with db.start_transaction() as ts:
+            result = MigrationResult()
 
-        for migration_query in self.queries:
-            try:
-                query = await migration_query.init(db=db)
-                await query.execute(db=db)
-            except Exception as exc:  # pylint: disable=broad-exception-caught
-                result.errors.append(str(exc))
-                return result
+            for migration_query in self.queries:
+                try:
+                    query = await migration_query.init(db=ts)
+                    await query.execute(db=ts)
+                except Exception as exc:  # pylint: disable=broad-exception-caught
+                    result.errors.append(str(exc))
+                    return result
 
         return result
