@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import glob
 import hashlib
 import json
 import linecache
 from itertools import groupby
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 from uuid import UUID, uuid4
 
 import httpx
@@ -17,6 +19,9 @@ from graphql import (  # pylint: disable=no-name-in-module
 )
 from rich.syntax import Syntax
 from rich.traceback import Frame, Traceback
+
+if TYPE_CHECKING:
+    from graphql import GraphQLResolveInfo
 
 try:
     from pydantic import v1 as pydantic  # type: ignore[attr-defined]
@@ -281,7 +286,7 @@ def calculate_dict_height(data: dict, cnt: int = 0) -> int:
     return cnt
 
 
-async def extract_fields(selection_set: SelectionSetNode) -> Optional[Dict[str, Dict]]:
+async def extract_fields(selection_set: Optional[SelectionSetNode]) -> Optional[Dict[str, Dict]]:
     """This function extract all the requested fields in a tree of Dict from a SelectionSetNode
 
     The goal of this function is to limit the fields that we need to query from the backend.
@@ -342,3 +347,11 @@ def identify_faulty_jinja_code(traceback: Traceback, nbr_context_lines: int = 3)
         response.append((frame, syntax))
 
     return response
+
+
+async def extract_fields_first_node(info: GraphQLResolveInfo) -> Dict[str, Dict]:
+    fields = None
+    if info.field_nodes:
+        fields = await extract_fields(info.field_nodes[0].selection_set)
+
+    return fields or {}

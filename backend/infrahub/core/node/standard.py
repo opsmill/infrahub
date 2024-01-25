@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, get_args, get_origin
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union, get_args, get_origin
 from uuid import UUID  # noqa: TCH003
 
 import ujson
@@ -13,6 +13,7 @@ from infrahub.core.query.standard_node import (
     StandardNodeDeleteQuery,
     StandardNodeGetItemQuery,
     StandardNodeGetListQuery,
+    StandardNodeQuery,
     StandardNodeUpdateQuery,
 )
 from infrahub.exceptions import Error
@@ -32,9 +33,8 @@ class StandardNode(BaseModel):
     id: Optional[str] = None
     uuid: Optional[UUID] = None
 
-    # owner: Optional[str]
-
-    _exclude_attrs: List[str] = ["id", "uuid", "owner"]
+    _query: Type[StandardNodeQuery] = StandardNodeCreateQuery
+    _exclude_attrs: List[str] = ["id", "uuid", "_query"]
 
     @classmethod
     def get_type(cls) -> str:
@@ -102,7 +102,7 @@ class StandardNode(BaseModel):
     async def create(self, db: InfrahubDatabase) -> bool:
         """Create a new node in the database."""
 
-        query: Query = await StandardNodeCreateQuery.init(db=db, node=self)
+        query: Query = await self._query.init(db=db, node=self)
         await query.execute(db=db)
 
         result = query.get_result()

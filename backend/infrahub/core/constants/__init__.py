@@ -177,6 +177,12 @@ class Severity(InfrahubStringEnum):
     CRITICAL = "critical"
 
 
+class TaskConclusion(InfrahubStringEnum):
+    UNKNOWN = "unknown"
+    FAILURE = "failure"
+    SUCCESS = "success"
+
+
 class ValidatorConclusion(InfrahubStringEnum):
     UNKNOWN = "unknown"
     FAILURE = "failure"

@@ -26,6 +26,7 @@ from .mutations import (
     SchemaDropdownRemove,
     SchemaEnumAdd,
     SchemaEnumRemove,
+    TaskCreate,
 )
 from .queries import BranchQueryList, DiffSummary, InfrahubInfo
 
@@ -89,3 +90,4 @@ class InfrahubBaseMutation(ObjectType):
     SchemaDropdownRemove = SchemaDropdownRemove.Field()
     SchemaEnumAdd = SchemaEnumAdd.Field()
     SchemaEnumRemove = SchemaEnumRemove.Field()
+    TaskCreate = TaskCreate.Field()
