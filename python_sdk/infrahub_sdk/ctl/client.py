@@ -18,7 +18,11 @@ async def initialize_client(**kwargs: Any) -> InfrahubClient:
     context_identifier = kwargs.pop("context_identifier", None)
 
     client = await InfrahubClient.init(
-        address=config.SETTINGS.server_address, config=Config(**client_config), insert_tracker=True, context_identifier=context_identifier, **kwargs
+        address=config.SETTINGS.server_address,
+        config=Config(**client_config),
+        insert_tracker=True,
+        context_identifier=context_identifier,
+        **kwargs,
     )
 
     return client
@@ -37,7 +41,11 @@ def initialize_client_sync(**kwargs: Any) -> InfrahubClientSync:
     context_identifier = kwargs.pop("context_identifier", None)
 
     client = InfrahubClientSync.init(
-        address=config.SETTINGS.server_address, config=Config(**client_config), insert_tracker=True, context_identifier=context_identifier, **kwargs
+        address=config.SETTINGS.server_address,
+        config=Config(**client_config),
+        insert_tracker=True,
+        context_identifier=context_identifier,
+        **kwargs,
     )
 
     return client

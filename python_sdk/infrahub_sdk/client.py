@@ -104,6 +104,7 @@ class BaseClient:
     def _record(self, response: httpx.Response) -> None:
         self.config.custom_recorder.record(response)
 
+
 class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
     """GraphQL Client to interact with Infrahub."""
 
@@ -663,6 +664,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.group_context.update_group()
+
 
 class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
     def _initialize(self) -> None:

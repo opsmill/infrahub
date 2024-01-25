@@ -9,8 +9,8 @@ if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient, InfrahubClientSync
 
 
-class InfrahubGroupContextBase():
-    def __init__(self):
+class InfrahubGroupContextBase:
+    def __init__(self) -> None:
         self.related_nodes_ids: List[str] = []
         self.related_groups_ids: List[str] = []
 
@@ -24,8 +24,9 @@ class InfrahubGroupContextBase():
         if conbined_bool is True or conbined_bool is None:
             self.related_groups_ids.extend(ids)
 
+
 class InfrahubGroupContext(InfrahubGroupContextBase):
-    def __init__(self, client: InfrahubClient):
+    def __init__(self, client: InfrahubClient) -> None:
         self.client = client
         super().__init__()
 
@@ -59,8 +60,9 @@ class InfrahubGroupContext(InfrahubGroupContextBase):
         # TODO : create anoter "read" group based of the store items
         # Need to filters the store items inherited from CoreGroup to add them as children
 
+
 class InfrahubGroupContextSync(InfrahubGroupContextBase):
-    def __init__(self, client: InfrahubClientSync):
+    def __init__(self, client: InfrahubClientSync) -> None:
         self.client = client
         super().__init__()
 
