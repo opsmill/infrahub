@@ -63,6 +63,7 @@ class InfrahubGroupContext(InfrahubGroupContextBase):
         if self.related_nodes_ids:
             members = self.related_nodes_ids
 
+        if children or members:
             if self.client.context_identifier:
                 group_name = f"{self.client.context_identifier}-saved"
             else:
@@ -131,6 +132,7 @@ class InfrahubGroupContextSync(InfrahubGroupContextBase):
         if self.related_nodes_ids:
             members = self.related_nodes_ids
 
+        if children or members:
             if self.client.context_identifier:
                 group_name = f"{self.client.context_identifier}-saved"
             else:
@@ -149,4 +151,5 @@ class InfrahubGroupContextSync(InfrahubGroupContextBase):
             group.save(at=Timestamp(), allow_upsert=True, update_group_context=False)
 
         # TODO : create anoter "read" group. Could be based of the store items
+        # Need to filters the store items inherited from CoreGroup to add them as children
         # Need to validate that it's UUIDas "key" if we want to implement other methods to store item
