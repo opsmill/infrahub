@@ -62,11 +62,11 @@ class BaseClient:
         retry_delay: int = 5,
         log: Optional[Logger] = None,
         insert_tracker: bool = False,
-        update_group: bool = False,
+        update_group_context: bool = True,
         pagination_size: int = 50,
         max_concurrent_execution: int = 5,
         config: Optional[Config] = None,
-        query_group_identifier: str = "test",
+        context_identifier: str = None,
     ):
         self.client = None
         self.retry_on_failure = retry_on_failure
@@ -94,9 +94,8 @@ class BaseClient:
 
         self.max_concurrent_execution = max_concurrent_execution
 
-        self.update_group = update_group
-        print(f"When Init self.update_group is {self.update_group}")
-        self.query_group_identifier = query_group_identifier
+        self.update_group_context = update_group_context
+        self.context_identifier = context_identifier
         self._initialize()
 
     def _initialize(self) -> None:
@@ -104,7 +103,6 @@ class BaseClient:
 
     def _record(self, response: httpx.Response) -> None:
         self.config.custom_recorder.record(response)
-
 
 class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
     """GraphQL Client to interact with Infrahub."""
@@ -145,7 +143,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         id: Optional[str] = None,
         include: Optional[List[str]] = None,
         exclude: Optional[List[str]] = None,
-        populate_store: bool = False,
+        populate_store: bool = True,
         fragment: bool = False,
         prefetch_relationships: bool = False,
         **kwargs: Any,
@@ -218,7 +216,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         kind: str,
         at: Optional[Timestamp] = None,
         branch: Optional[str] = None,
-        populate_store: bool = False,
+        populate_store: bool = True,
         offset: Optional[int] = None,
         limit: Optional[int] = None,
         include: Optional[List[str]] = None,
@@ -261,7 +259,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         kind: str,
         at: Optional[Timestamp] = None,
         branch: Optional[str] = None,
-        populate_store: bool = False,
+        populate_store: bool = True,
         offset: Optional[int] = None,
         limit: Optional[int] = None,
         include: Optional[List[str]] = None,
@@ -359,7 +357,6 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         timeout: Optional[int] = None,
         raise_for_error: bool = True,
         tracker: Optional[str] = None,
-        update_group: Optional[bool] = False,
     ) -> Dict:
         """Execute a GraphQL query (or mutation).
         If retry_on_failure is True, the query will retry until the server becomes reacheable.
@@ -372,7 +369,6 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
             rebase (bool, optional): Flag to indicate if the branch should be rebased during the query. Defaults to False.
             timeout (int, optional): Timeout in second for the query. Defaults to None.
             raise_for_error (bool, optional): Flag to indicate that we need to raise an exception if the response has some errors. Defaults to True.
-            update_group (bool, optional): Flag to indicate that we want to update the GraphQLQueryGroup with all the nodes from this query"
         Raises:
             GraphQLError: _description_
 
@@ -395,12 +391,6 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
 
         if rebase:
             url_params["rebase"] = "true"
-        combined_update_group = self.update_group or update_group
-        url_params["update_group"] = str(combined_update_group).lower()
-        if combined_update_group:
-            print(f"update_group is {update_group} and self.update_group is {self.update_group}")
-            print(f"data={query}")
-            await self.group_context.create_group()
         if url_params:
             url += "?" + "&".join([f"{key}={value}" for key, value in url_params.items()])
 
@@ -445,7 +435,6 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         if "errors" in response:
             raise GraphQLError(errors=response["errors"], query=query, variables=variables)
 
-        print(f"response = {response['data']}")
         return response["data"]
 
         # TODO add a special method to execute mutation that will check if the method returned OK
@@ -586,8 +575,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
             url_params["subscribers"] = subscribers
 
         url_params["rebase"] = str(rebase).lower()
-        combined_update_group = self.update_group or update_group
-        url_params["update_group"] = str(combined_update_group).lower()
+        url_params["update_group"] = str(update_group).lower()
 
         if url_params:
             url_params_str = []
@@ -670,6 +658,12 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
 
         return True
 
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.group_context.update_group()
+
 class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
     def _initialize(self) -> None:
         self.schema = InfrahubSchemaSync(self)
@@ -711,7 +705,6 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         timeout: Optional[int] = None,
         raise_for_error: bool = True,
         tracker: Optional[str] = None,
-        update_group: Optional[bool] = False,
     ) -> Dict:
         """Execute a GraphQL query (or mutation).
         If retry_on_failure is True, the query will retry until the server becomes reacheable.
@@ -724,7 +717,6 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             rebase (bool, optional): Flag to indicate if the branch should be rebased during the query. Defaults to False.
             timeout (int, optional): Timeout in second for the query. Defaults to None.
             raise_for_error (bool, optional): Flag to indicate that we need to raise an exception if the response has some errors. Defaults to True.
-            update_group (bool, optional): Flag to indicate that we want to update the GraphQLQueryGroup with all the nodes from this query"
         Raises:
             GraphQLError: _description_
 
@@ -747,10 +739,6 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
 
         if rebase:
             url_params["rebase"] = "true"
-        combined_update_group = self.update_group or update_group
-        url_params["update_group"] = str(combined_update_group).lower()
-        if combined_update_group:
-            self.group_context.create_group()
         if url_params:
             url += "?" + "&".join([f"{key}={value}" for key, value in url_params.items()])
 
@@ -802,7 +790,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         kind: str,
         at: Optional[Timestamp] = None,
         branch: Optional[str] = None,
-        populate_store: bool = False,
+        populate_store: bool = True,
         offset: Optional[int] = None,
         limit: Optional[int] = None,
         include: Optional[List[str]] = None,
@@ -874,7 +862,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         kind: str,
         at: Optional[Timestamp] = None,
         branch: Optional[str] = None,
-        populate_store: bool = False,
+        populate_store: bool = True,
         offset: Optional[int] = None,
         limit: Optional[int] = None,
         include: Optional[List[str]] = None,
@@ -970,7 +958,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         id: Optional[str] = None,
         include: Optional[List[str]] = None,
         exclude: Optional[List[str]] = None,
-        populate_store: bool = False,
+        populate_store: bool = True,
         fragment: bool = False,
         prefetch_relationships: bool = False,
         **kwargs: Any,
@@ -1045,8 +1033,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             url_params["subscribers"] = subscribers
 
         url_params["rebase"] = str(rebase).lower()
-        combined_update_group = self.update_group or update_group
-        url_params["update_group"] = str(combined_update_group).lower()
+        url_params["update_group"] = str(update_group).lower()
 
         if url_params:
             url_params_str = []
@@ -1190,3 +1177,8 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         self.refresh_token = response.json()["refresh_token"]
         self.headers["Authorization"] = f"Bearer {self.access_token}"
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.group_context.update_group()

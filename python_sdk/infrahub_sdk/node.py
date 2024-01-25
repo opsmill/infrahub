@@ -1029,7 +1029,7 @@ class InfrahubNode(InfrahubNodeBase):
         content = await self._client.object_store.get(identifier=artifact.storage_id.value)  # type: ignore[attr-defined]
         return content
 
-    async def delete(self, at: Optional[Timestamp] = None, update_group: Optional[bool] = True) -> None:
+    async def delete(self, at: Optional[Timestamp] = None, update_group_context: Optional[bool] = None) -> None:
         at = Timestamp(at)
         input_data = {"data": {"id": self.id}}
         mutation_query = {"ok": None}
@@ -1042,17 +1042,20 @@ class InfrahubNode(InfrahubNodeBase):
             query=query.render(),
             branch_name=self._branch,
             at=at,
-            tracker=f"mutation-{str(self._schema.kind).lower()}-delete",
-            update_group=update_group
+            tracker=f"mutation-{str(self._schema.kind).lower()}-delete"
         )
 
-    async def save(self, at: Optional[Timestamp] = None, allow_upsert: bool = False, update_group: Optional[bool] = True) -> None:
+    async def save(self, at: Optional[Timestamp] = None, allow_upsert: bool = True, update_group_context: Optional[bool] = None) -> None:
         at = Timestamp(at)
         if self._existing is False or allow_upsert is True:
-            await self.create(at=at, allow_upsert=allow_upsert, update_group=update_group)
+            await self.create(at=at, allow_upsert=allow_upsert)
         else:
-            await self.update(at=at, update_group=update_group)
+            await self.update(at=at)
 
+        if "CoreGroup" in self._schema.inherit_from:
+            self._client.group_context.add_related_groups(ids=[self.id], update_group_context=update_group_context)
+        else:
+            self._client.group_context.add_related_nodes(ids=[self.id], update_group_context=update_group_context)
         self._client.store.set(key=self.id, node=self)
 
     async def generate_query_data(
@@ -1200,17 +1203,17 @@ class InfrahubNode(InfrahubNodeBase):
         }}
         """
 
-    async def add_relationships(self, relation_to_update: str, related_nodes: List[Union[InfrahubNode, str]], update_group: Optional[bool] = False) -> None:
+    async def add_relationships(self, relation_to_update: str, related_nodes: List[Union[InfrahubNode, str]], update_group_context: Optional[bool] = False) -> None:
         query = await self._relationship_mutation("Add", relation_to_update, related_nodes)
         tracker = f"mutation-{str(self._schema.kind).lower()}-relationshipadd-{relation_to_update}"
-        await self._client.execute_graphql(query=query, branch_name=self._branch, tracker=tracker, update_group=update_group)
+        await self._client.execute_graphql(query=query, branch_name=self._branch, tracker=tracker)
 
-    async def remove_relationships(self, relation_to_update: str, related_nodes: List[Union[InfrahubNode, str]], update_group: Optional[bool] = False) -> None:
+    async def remove_relationships(self, relation_to_update: str, related_nodes: List[Union[InfrahubNode, str]], update_group_context: Optional[bool] = False) -> None:
         query = await self._relationship_mutation("Remove", relation_to_update, related_nodes)
         tracker = f"mutation-{str(self._schema.kind).lower()}-relationshipremove-{relation_to_update}"
-        await self._client.execute_graphql(query=query, branch_name=self._branch, tracker=tracker, update_group=update_group)
+        await self._client.execute_graphql(query=query, branch_name=self._branch, tracker=tracker)
 
-    async def create(self, at: Timestamp, allow_upsert: bool = False, update_group: Optional[bool] = False) -> None:
+    async def create(self, at: Timestamp, allow_upsert: bool = False) -> None:
         input_data = self._generate_input_data()
         input_data["data"]["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
@@ -1231,8 +1234,7 @@ class InfrahubNode(InfrahubNodeBase):
             branch_name=self._branch,
             at=at,
             tracker=tracker,
-            variables=input_data["variables"],
-            update_group=update_group,
+            variables=input_data["variables"]
         )
         self._existing = True
 
@@ -1240,7 +1242,7 @@ class InfrahubNode(InfrahubNodeBase):
         if allow_upsert:
             self.id = response[mutation_name]["object"]["id"]
 
-    async def update(self, at: Timestamp, do_full_update: bool = False, update_group: Optional[bool] = False) -> None:
+    async def update(self, at: Timestamp, do_full_update: bool = False) -> None:
         input_data = self._generate_input_data(exclude_unmodified=not do_full_update)
         input_data["data"]["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
@@ -1255,8 +1257,7 @@ class InfrahubNode(InfrahubNodeBase):
             branch_name=self._branch,
             at=at,
             tracker=f"mutation-{str(self._schema.kind).lower()}-update",
-            variables=input_data["variables"],
-            update_group=update_group,
+            variables=input_data["variables"]
         )
 
     async def _process_relationships(
@@ -1371,7 +1372,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
         content = self._client.object_store.get(identifier=artifact.storage_id.value)  # type: ignore[attr-defined]
         return content
 
-    def delete(self, at: Optional[Timestamp] = None, update_group: Optional[bool] = True) -> None:
+    def delete(self, at: Optional[Timestamp] = None, ) -> None:
         at = Timestamp(at)
         input_data = {"data": {"id": self.id}}
         mutation_query = {"ok": None}
@@ -1384,17 +1385,20 @@ class InfrahubNodeSync(InfrahubNodeBase):
             query=query.render(),
             branch_name=self._branch,
             at=at,
-            tracker=f"mutation-{str(self._schema.kind).lower()}-delete",
-            update_group=update_group
+            tracker=f"mutation-{str(self._schema.kind).lower()}-delete"
         )
 
-    def save(self, at: Optional[Timestamp] = None, allow_upsert: bool = True) -> None:
+    def save(self, at: Optional[Timestamp] = None, allow_upsert: bool = True, update_group_context: Optional[bool] = None) -> None:
         at = Timestamp(at)
         if self._existing is False or allow_upsert is True:
             self.create(at=at, allow_upsert=allow_upsert)
         else:
             self.update(at=at)
 
+        if "CoreGroup" in self._schema.inherit_from:
+            self._client.group_context.add_related_groups(ids=[self.id], update_group_context=update_group_context)
+        else:
+            self._client.group_context.add_related_nodes(ids=[self.id], update_group_context=update_group_context)
         self._client.store.set(key=self.id, node=self)
 
     def generate_query_data(
@@ -1541,17 +1545,17 @@ class InfrahubNodeSync(InfrahubNodeBase):
         }}
         """
 
-    def add_relationships(self, relation_to_update: str, related_nodes: List[Union[InfrahubNodeSync, str]], update_group: Optional[bool] = False) -> None:
+    def add_relationships(self, relation_to_update: str, related_nodes: List[Union[InfrahubNodeSync, str]], update_group_context: Optional[bool] = False) -> None:
         query = self._relationship_mutation("Add", relation_to_update, related_nodes)
         tracker = f"mutation-{str(self._schema.kind).lower()}-relationshipadd-{relation_to_update}"
-        self._client.execute_graphql(query=query, branch_name=self._branch, tracker=tracker, update_group=update_group)
+        self._client.execute_graphql(query=query, branch_name=self._branch, tracker=tracker, update_group_context=update_group_context)
 
-    def remove_relationships(self, relation_to_update: str, related_nodes: List[Union[InfrahubNodeSync, str]], update_group: Optional[bool] = False) -> None:
+    def remove_relationships(self, relation_to_update: str, related_nodes: List[Union[InfrahubNodeSync, str]], update_group_context: Optional[bool] = False) -> None:
         query = self._relationship_mutation("Remove", relation_to_update, related_nodes)
         tracker = f"mutation-{str(self._schema.kind).lower()}-relationshipremove-{relation_to_update}"
-        self._client.execute_graphql(query=query, branch_name=self._branch, tracker=tracker, update_group=update_group)
+        self._client.execute_graphql(query=query, branch_name=self._branch, tracker=tracker, update_group_context=update_group_context)
 
-    def create(self, at: Timestamp, allow_upsert: bool = False, update_group: Optional[bool] = False) -> None:
+    def create(self, at: Timestamp, allow_upsert: bool = False) -> None:
         input_data = self._generate_input_data()
         input_data["data"]["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
@@ -1573,8 +1577,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
             branch_name=self._branch,
             at=at,
             tracker=tracker,
-            variables=input_data["variables"],
-            update_group=update_group,
+            variables=input_data["variables"]
         )
         self._existing = True
 
@@ -1582,7 +1585,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
         if allow_upsert:
             self.id = response[mutation_name]["object"]["id"]
 
-    def update(self, at: Timestamp, do_full_update: bool = False, update_group: Optional[bool] = False) -> None:
+    def update(self, at: Timestamp, do_full_update: bool = False) -> None:
         input_data = self._generate_input_data(exclude_unmodified=not do_full_update)
         input_data["data"]["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
@@ -1598,8 +1601,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
             branch_name=self._branch,
             at=at,
             tracker=f"mutation-{str(self._schema.kind).lower()}-update",
-            variables=input_data["variables"],
-            update_group=update_group,
+            variables=input_data["variables"]
         )
 
     def _process_relationships(

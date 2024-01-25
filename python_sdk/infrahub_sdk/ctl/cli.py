@@ -55,6 +55,7 @@ async def _run(
     branch: str,
     concurrent: int,
     timeout: int,
+    **kwargs,
 ) -> None:
     directory_name = os.path.dirname(script)
     filename = os.path.basename(script)
@@ -71,10 +72,9 @@ async def _run(
     if not hasattr(module, method):
         raise typer.Abort(f"Unable to Load the method {method} in the Python script at {script}")
 
-    client = await initialize_client(timeout=timeout, max_concurrent_execution=concurrent)
-
-    func = getattr(module, method)
-    await func(client=client, log=log, branch=branch)
+    async with await initialize_client(timeout=timeout, max_concurrent_execution=concurrent, context_identifier=module_name) as client:
+        func = getattr(module, method)
+        await func(client=client, log=log, branch=branch, **kwargs)
 
 
 def identify_faulty_jinja_code(traceback: Traceback, nbr_context_lines: int = 3) -> List[Tuple[Frame, Syntax]]:
@@ -250,6 +250,10 @@ def run(
         envvar="INFRAHUBCTL_CONCURRENT_EXECUTION",
     ),
     timeout: int = typer.Option(60, help="Timeout in sec", envvar="INFRAHUBCTL_TIMEOUT"),
+    extra_params: Optional[str] = typer.Option(
+        None,
+        help="Additional parameters to send to the script in the format: 'key1=value1,key2=value2'.",
+    ),
 ) -> None:
     """Execute a script."""
 
@@ -265,6 +269,12 @@ def run(
     logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
     log = logging.getLogger("infrahubctl")
 
+    extra_parameters = {}
+    if extra_params:
+        for param in extra_params.split(","):
+            key, value = param.split("=")
+            extra_parameters[key.strip()] = value.strip()
+
     asyncio.run(
         _run(
             script=script,
@@ -273,5 +283,6 @@ def run(
             branch=branch,
             concurrent=concurrent,
             timeout=timeout,
+            **extra_parameters,
         )
     )
