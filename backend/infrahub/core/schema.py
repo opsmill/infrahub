@@ -414,6 +414,8 @@ class RelationshipSchema(BaseSchemaModel):
     hierarchical: Optional[str] = Field(default=None)
     filters: List[FilterSchema] = Field(default_factory=list)
     order_weight: Optional[int] = None
+    min_count: int = Field(default=0)
+    max_count: int = Field(default=0)
 
     _exclude_from_hash: List[str] = ["filters"]
     _sort_by: List[str] = ["name"]
