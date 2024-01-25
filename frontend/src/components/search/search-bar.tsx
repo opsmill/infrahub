@@ -23,7 +23,7 @@ type tSearchInput = {
 const SearchInput = (props: tSearchInput) => {
   const { loading, onChange } = props;
 
-  const [search, setSearch] = useState("atl1-core1");
+  const [search, setSearch] = useState("");
 
   const handleChange = (value: string) => {
     setSearch(value);
