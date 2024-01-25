@@ -42,6 +42,8 @@ from infrahub.core.query.node import NodeDeleteQuery, NodeListGetInfoQuery
 from infrahub.core.registry import get_branch, registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import add_relationship, update_relationships_to
+from infrahub.core.validators.uniqueness.checker import UniquenessChecker
+from infrahub.core.validators.uniqueness.model import SchemaUniquenessCheckRequest
 from infrahub.exceptions import (
     BranchNotFound,
     DiffFromRequiredOnDefaultBranchError,
@@ -469,7 +471,73 @@ class Branch(StandardNode):
         Need to return a list of violations, must be multiple
         """
 
-        return await self.validate_graph(db=db)
+        object_conflicts = []
+        object_conflicts.extend(await self.validate_constraints(db=db))
+        object_conflicts.extend(await self.validate_graph(db=db))
+        return object_conflicts
+
+    async def validate_constraints(self, db: InfrahubDatabase) -> List[ObjectConflict]:
+        diff = await Diff.init(branch=self, db=db)
+        node_diff_map = await diff.get_nodes(db=db)
+
+        added_node_kinds = set()
+        deleted_node_ids = set()
+        all_node_diffs = node_diff_map[self.name].values()
+        for node_diff in all_node_diffs:
+            if node_diff.action == DiffAction.ADDED:
+                added_node_kinds.add(node_diff.kind)
+            if node_diff.action == DiffAction.REMOVED:
+                deleted_node_ids.add(node_diff.db_id)
+        updated_attrs_by_kind = dict()
+        for node_diff in all_node_diffs:
+            if node_diff.action == DiffAction.UPDATED and node_diff.kind not in added_node_kinds:
+                updated_attrs = [
+                    attribute_name
+                    for attribute_name, attribute_diff in node_diff.attributes.items()
+                    if attribute_diff.action in (DiffAction.ADDED, DiffAction.UPDATED)
+                ]
+                updated_attrs_by_kind[node_diff.kind] = updated_attrs
+
+        schemas_to_validate = []
+        for kind in added_node_kinds:
+            schemas_to_validate.append(
+                SchemaUniquenessCheckRequest(schema=registry.get_schema(name=kind, branch=self.name))
+            )
+        for kind, attributes in updated_attrs_by_kind:
+            schemas_to_validate.append(
+                SchemaUniquenessCheckRequest(
+                    schema=registry.get_schema(name=kind, branch=self.name), attributes=attributes
+                )
+            )
+
+        validator = UniquenessChecker(db)
+        non_unique_nodes = await validator.get_conflicts(
+            schemas_to_validate,
+            source_branch_name=self.name,
+            dest_branch_name=config.SETTINGS.main.default_branch,
+            ids_to_ignore=deleted_node_ids,
+        )
+
+        # TODO: handle relationships?
+
+        conflicts = []
+        conflicts.extend(
+            [
+                ObjectConflict(
+                    name=f"{node.get_kind()}/{non_unique_node.attribute_name}",
+                    type="non-unique",
+                    kind=node.get_kind(),
+                    id=node.id,
+                    conflict_path=f"{node.get_kind()}/{non_unique_node.attribute_name}",
+                    path="path",
+                    path_type=PathType.NODE,
+                    change_type="change_type",
+                )
+                for non_unique_node in non_unique_nodes
+                for node in non_unique_node.nodes
+            ]
+        )
+        return conflicts
 
     async def validate_graph(self, db: InfrahubDatabase) -> List[ObjectConflict]:
         # Check the diff and ensure the branch doesn't have some conflict
