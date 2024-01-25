@@ -1,6 +1,7 @@
 import glob
 import hashlib
 import json
+import linecache
 from itertools import groupby
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -14,6 +15,8 @@ from graphql import (  # pylint: disable=no-name-in-module
     InlineFragmentNode,
     SelectionSetNode,
 )
+from rich.syntax import Syntax
+from rich.traceback import Frame, Traceback
 
 try:
     from pydantic import v1 as pydantic  # type: ignore[attr-defined]
@@ -313,3 +316,29 @@ async def extract_fields(selection_set: SelectionSetNode) -> Optional[Dict[str, 
                     fields[sub_node.name.value].update(value)
 
     return fields
+
+
+def identify_faulty_jinja_code(traceback: Traceback, nbr_context_lines: int = 3) -> List[Tuple[Frame, Syntax]]:
+    """This function identifies the faulty Jinja2 code and beautify it to provide meaningful information to the user.
+
+    We use the rich's Traceback to parse the complete stack trace and extract Frames for each expection found in the trace.
+    """
+    response = []
+
+    # Extract only the Jinja related exception
+    for frame in [frame for frame in traceback.trace.stacks[0].frames if frame.filename.endswith(".j2")]:
+        code = "".join(linecache.getlines(frame.filename))
+        lexer_name = Traceback._guess_lexer(frame.filename, code)
+        syntax = Syntax(
+            code,
+            lexer_name,
+            line_numbers=True,
+            line_range=(frame.lineno - nbr_context_lines, frame.lineno + nbr_context_lines),
+            highlight_lines={frame.lineno},
+            code_width=88,
+            theme=traceback.theme,
+            dedent=False,
+        )
+        response.append((frame, syntax))
+
+    return response
