@@ -5,7 +5,7 @@ import copy
 import logging
 from logging import Logger
 from time import sleep
-from typing import Any, Dict, List, MutableMapping, Optional, TypedDict, Union
+from typing import TYPE_CHECKING, Any, Dict, List, MutableMapping, Optional, Type, TypedDict, Union
 
 import httpx
 
@@ -39,6 +39,9 @@ from infrahub_sdk.timestamp import Timestamp
 from infrahub_sdk.types import AsyncRequester, HTTPMethod, SyncRequester
 from infrahub_sdk.utils import is_valid_uuid
 
+if TYPE_CHECKING:
+    from types import TracebackType
+
 # pylint: disable=redefined-builtin  disable=too-many-lines
 
 
@@ -66,7 +69,7 @@ class BaseClient:
         pagination_size: int = 50,
         max_concurrent_execution: int = 5,
         config: Optional[Config] = None,
-        context_identifier: str = None,
+        context_identifier: Optional[str] = None,
     ):
         self.client = None
         self.retry_on_failure = retry_on_failure
@@ -659,10 +662,12 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
 
         return True
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> InfrahubClient:
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(
+        self, exc_type: Type[BaseException], exc_value: BaseException, traceback: TracebackType
+    ) -> None:  # pylint: disable=unused-argument
         await self.group_context.update_group()
 
 
@@ -1179,8 +1184,8 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         self.refresh_token = response.json()["refresh_token"]
         self.headers["Authorization"] = f"Bearer {self.access_token}"
 
-    def __enter__(self):
+    def __enter__(self) -> InfrahubClientSync:
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Type[BaseException], exc_value: BaseException, traceback: TracebackType) -> None:  # pylint: disable=unused-argument
         self.group_context.update_group()

@@ -1054,10 +1054,18 @@ class InfrahubNode(InfrahubNodeBase):
         else:
             await self.update(at=at)
 
-        if "CoreGroup" in self._schema.inherit_from:
-            self._client.group_context.add_related_groups(ids=[self.id], update_group_context=update_group_context)
+        if not isinstance(self._schema, GenericSchema):
+            if "CoreGroup" in self._schema.inherit_from:
+                await self._client.group_context.add_related_groups(
+                    ids=[self.id], update_group_context=update_group_context
+                )
+            else:
+                await self._client.group_context.add_related_nodes(
+                    ids=[self.id], update_group_context=update_group_context
+                )
+
         else:
-            self._client.group_context.add_related_nodes(ids=[self.id], update_group_context=update_group_context)
+            await self._client.group_context.add_related_nodes(ids=[self.id], update_group_context=update_group_context)
         self._client.store.set(key=self.id, node=self)
 
     async def generate_query_data(
@@ -1401,8 +1409,12 @@ class InfrahubNodeSync(InfrahubNodeBase):
         else:
             self.update(at=at)
 
-        if "CoreGroup" in self._schema.inherit_from:
-            self._client.group_context.add_related_groups(ids=[self.id], update_group_context=update_group_context)
+        if not isinstance(self._schema, GenericSchema):
+            if "CoreGroup" in self._schema.inherit_from:
+                self._client.group_context.add_related_groups(ids=[self.id], update_group_context=update_group_context)
+            else:
+                self._client.group_context.add_related_nodes(ids=[self.id], update_group_context=update_group_context)
+
         else:
             self._client.group_context.add_related_nodes(ids=[self.id], update_group_context=update_group_context)
         self._client.store.set(key=self.id, node=self)
@@ -1559,25 +1571,15 @@ class InfrahubNodeSync(InfrahubNodeBase):
         self,
         relation_to_update: str,
         related_nodes: List[Union[InfrahubNodeSync, str]],
-        update_group_context: Optional[bool] = False,
     ) -> None:
         query = self._relationship_mutation("Add", relation_to_update, related_nodes)
         tracker = f"mutation-{str(self._schema.kind).lower()}-relationshipadd-{relation_to_update}"
-        self._client.execute_graphql(
-            query=query, branch_name=self._branch, tracker=tracker, update_group_context=update_group_context
-        )
+        self._client.execute_graphql(query=query, branch_name=self._branch, tracker=tracker)
 
-    def remove_relationships(
-        self,
-        relation_to_update: str,
-        related_nodes: List[Union[InfrahubNodeSync, str]],
-        update_group_context: Optional[bool] = False,
-    ) -> None:
+    def remove_relationships(self, relation_to_update: str, related_nodes: List[Union[InfrahubNodeSync, str]]) -> None:
         query = self._relationship_mutation("Remove", relation_to_update, related_nodes)
         tracker = f"mutation-{str(self._schema.kind).lower()}-relationshipremove-{relation_to_update}"
-        self._client.execute_graphql(
-            query=query, branch_name=self._branch, tracker=tracker, update_group_context=update_group_context
-        )
+        self._client.execute_graphql(query=query, branch_name=self._branch, tracker=tracker)
 
     def create(self, at: Timestamp, allow_upsert: bool = False) -> None:
         input_data = self._generate_input_data()
