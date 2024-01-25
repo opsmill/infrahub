@@ -6,6 +6,7 @@ The tests in this directory are performance benchmark designed to work with [`py
 ## Run all the tests
 
 You can run all the tests with the following command
+
 ```sh
 INFRAHUB_LOG_LEVEL=CRITICAL pytest -v backend/tests/benchmark/test_schemabranch_process.py --dist=no --benchmark-group-by=name
 ```
