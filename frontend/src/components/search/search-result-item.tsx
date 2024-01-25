@@ -30,7 +30,7 @@ export const SearchResultItem = (props: tSearchResultItem) => {
 
   const schemaData = generic || schema;
 
-  const columns = getSchemaObjectColumns(schemaData, 10);
+  const columns = getSchemaObjectColumns(schemaData, true, 10);
 
   const queryString = schemaData
     ? getObjectDetailsPaginated({

@@ -72,13 +72,17 @@ export const getTabs = (schema: iNodeSchema | iGenericSchema) => {
 };
 
 // Get attributes and relationships from a schema, optional limit to trim the array
-export const getSchemaObjectColumns = (schema?: iNodeSchema | iGenericSchema, limit?: number) => {
+export const getSchemaObjectColumns = (
+  schema?: iNodeSchema | iGenericSchema,
+  fromListView?: boolean,
+  limit?: number
+) => {
   if (!schema) {
     return [];
   }
 
-  const attributes = getObjectAttributes(schema, true);
-  const relationships = getObjectRelationships(schema, true);
+  const attributes = getObjectAttributes(schema, fromListView);
+  const relationships = getObjectRelationships(schema, fromListView);
 
   const columns = sortByOrderWeight(R.concat(attributes, relationships));
 
@@ -95,10 +99,8 @@ export const getGroupColumns = (schema?: iNodeSchema | iGenericSchema) => {
   }
 
   const defaultColumns = [{ label: "Type", name: "__typename" }];
-  const attributes = getObjectAttributes(schema);
-  const relationships = getObjectRelationships(schema);
 
-  const columns = R.concat(attributes, relationships);
+  const columns = getSchemaObjectColumns(schema);
 
   return [...defaultColumns, ...columns];
 };
