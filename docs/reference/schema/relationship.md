@@ -136,7 +136,6 @@ Below is the list of all available options to define a Relationship in the schem
 | **Default Value** |  |
 | **Constraints** |  Length: min -, max 32 |
 
-
 ### max_count
 
 | Key | Value | { class="compact" }
@@ -148,7 +147,6 @@ Below is the list of all available options to define a Relationship in the schem
 | **Default Value** | 0 |
 | **Constraints** |  |
 
-
 ### min_count
 
 | Key | Value | { class="compact" }
@@ -159,7 +157,6 @@ Below is the list of all available options to define a Relationship in the schem
 | **Optional** | True |
 | **Default Value** | 0 |
 | **Constraints** |  |
-
 
 ### name
 
