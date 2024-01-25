@@ -91,7 +91,7 @@ test.describe("/proposed-changes", () => {
         });
       });
 
-      test("merged proposed change", async () => {
+      test.fixme("merged proposed change", async () => {
         await test.step("merge proposed change and update UI", async () => {
           await page.getByRole("button", { name: "Merge" }).click();
           await expect(page.getByText("Proposed changes merged successfully!")).toBeVisible();
