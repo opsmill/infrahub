@@ -21,12 +21,13 @@ async def execute_batch_task_in_pool(
     async with semaphore:
         try:
             result = await task.task(*task.args, **task.kwargs)
-            return (task.node, result)
+
         except Exception as exc:  # pylint: disable=broad-exception-caught
             if return_exceptions:
                 return (task.node, exc)
-            else:
-                raise exc
+            raise exc
+
+        return (task.node, result)
 
 
 class InfrahubBatch:
