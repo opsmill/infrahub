@@ -68,5 +68,4 @@ $ infrahub db migrate [OPTIONS] [CONFIG_FILE]
 **Options**:
 
 * `--check / --no-check`: Check the state of the database without applying the migrations.  [default: no-check]
-* `--debug / --no-debug`: Enable verbose logging.  [default: no-debug]
 * `--help`: Show this message and exit.
