@@ -2,6 +2,10 @@ from pathlib import Path
 from typing import Optional, Union
 
 from pytest import Collector, Config, Item, Parser, Session
+from pytest import exit as exit_test
+
+from infrahub_sdk import InfrahubClientSync
+from infrahub_sdk.utils import is_valid_url
 
 from .loader import InfrahubYamlFile
 from .utils import load_repository_config
@@ -18,6 +22,35 @@ def pytest_addoption(parser: Parser) -> None:
         metavar="INFRAHUB_REPO_CONFIG_FILE",
         help="Infrahub configuration file for the repository (default: %(default)s)",
     )
+    group.addoption(
+        "--infrahub-address",
+        action="store",
+        dest="infrahub_address",
+        default="http://localhost:8000",
+        metavar="INFRAHUB_TESTS_ADDRESS",
+        help="Address of the Infrahub instance for live testing (default: %(default)s)",
+    )
+    group.addoption(
+        "--infrahub-key",
+        action="store",
+        dest="infrahub_key",
+        metavar="INFRAHUB_TESTS_KEY",
+        help="Key to use when querying the Infrahub instance for live testing",
+    )
+    group.addoption(
+        "--infrahub-username",
+        action="store",
+        dest="infrahub_username",
+        metavar="INFRAHUB_TESTS_USERNAME",
+        help="Username to use when authenticting on the Infrahub instance for live testing",
+    )
+    group.addoption(
+        "--infrahub-password",
+        action="store",
+        dest="infrahub_password",
+        metavar="INFRAHUB_TESTS_PASSWORD",
+        help="Password to use when authenticting on the Infrahub instance for live testing",
+    )
 
 
 def pytest_sessionstart(session: Session) -> None:
@@ -25,6 +58,22 @@ def pytest_sessionstart(session: Session) -> None:
 
     if session.infrahub_config_path.is_file():  # type: ignore[attr-defined]
         session.infrahub_repo_config = load_repository_config(repo_config_file=session.infrahub_config_path)  # type: ignore[attr-defined]
+
+    if not is_valid_url(session.config.option.infrahub_address):
+        exit_test("Infrahub test instance address is not a valid URL", returncode=1)
+
+    client_config = None
+    if hasattr(session.config.option, "infrahub_key"):
+        client_config = {"api_token": session.config.option.infrahub_key}
+    elif hasattr(session.config.option, "infrahub_username") and hasattr(session.config.option, "infrahub_password"):
+        client_config = {
+            "username": session.config.option.infrahub_username,
+            "password": session.config.option.infrahub_password,
+        }
+
+    infrahub_client = InfrahubClientSync(address=session.config.option.infrahub_address, config=client_config)
+    infrahub_client.login()
+    session.infrahub_client = infrahub_client  # type: ignore[attr-defined]
 
 
 def pytest_collect_file(parent: Union[Collector, Item], file_path: Path) -> Optional[InfrahubYamlFile]:
@@ -42,4 +91,6 @@ def pytest_configure(config: Config) -> None:
     )
     config.addinivalue_line("markers", "infrahub_check(name: str): Test related to a User defined Check for Infrahub")
     config.addinivalue_line("markers", "infrahub_unit: Unit test for Infrahub, should work without any dependencies")
-    config.addinivalue_line("markers", "infrahub_integraton: Integation test Infrahub")
+    config.addinivalue_line(
+        "markers", "infrahub_integraton: Integation test with Infrahub, must be run against an instance"
+    )

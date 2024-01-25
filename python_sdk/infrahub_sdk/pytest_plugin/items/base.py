@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Any, Dict, Literal, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Union
 
 import pytest
 
@@ -30,12 +30,14 @@ class InfrahubItem(pytest.Item):
         self.test: InfrahubTest = test
 
     @abstractmethod
+    def get_result_differences(self, computed: Any) -> Any:
+        pass
+
     def runtest(self) -> None:
         pass
 
     def repr_failure(self, excinfo: pytest.ExceptionInfo, style: Optional[str] = None) -> str:
-        """Called when self.runtest() raises an exception."""
         return str(excinfo.value)
 
-    def reportinfo(self) -> Tuple[Path, Literal[0], str]:
+    def reportinfo(self) -> Tuple[Union[Path, str], Optional[int], str]:
         return self.path, 0, f"resource: {self.name}"

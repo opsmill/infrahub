@@ -7,7 +7,12 @@ import pytest
 import yaml
 from pytest import Item
 
-from .items import InfrahubJinja2TransformUnitRenderItem, InfrahubPythonTransformUnitProcessItem
+from .items import (
+    InfrahubJinja2TransformIntegrationItem,
+    InfrahubJinja2TransformUnitRenderItem,
+    InfrahubPythonTransformIntegrationItem,
+    InfrahubPythonTransformUnitProcessItem,
+)
 from .models import InfrahubTestFileV1, InfrahubTestResource
 
 MARKER_MAPPING = {
@@ -17,7 +22,9 @@ MARKER_MAPPING = {
 
 ITEMS_MAPPING = {
     "jinja2-transform-unit-render": InfrahubJinja2TransformUnitRenderItem,
+    "jinja2-transform-integration": InfrahubJinja2TransformIntegrationItem,
     "python-transform-unit-process": InfrahubPythonTransformUnitProcessItem,
+    "python-transform-integration": InfrahubPythonTransformIntegrationItem,
 }
 
 
@@ -38,7 +45,7 @@ class InfrahubYamlFile(pytest.File):
                 except KeyError:
                     warnings.warn(
                         Warning(
-                            f"Unable to find the jinja2 transform {test_group.resource_name!r} in the repository config file."
+                            f"Unable to find jinja2 transform {test_group.resource_name!r} in the repository config file."
                         )
                     )
                     continue
@@ -50,13 +57,13 @@ class InfrahubYamlFile(pytest.File):
                 except KeyError:
                     warnings.warn(
                         Warning(
-                            f"Unable to find the python transform {test_group.resource_name!r} in the repository config file."
+                            f"Unable to find python transform {test_group.resource_name!r} in the repository config file."
                         )
                     )
                     continue
 
             for test in test_group.tests:
-                name = f"{test_group.resource.value.lower()}__{test_group.resource_name}__{test.name}"
+                name = f"{test_group.resource.value.lower()}__{test.spec.kind}__{test_group.resource_name}__{test.name}"
 
                 item_class: type[pytest.Item] = ITEMS_MAPPING[test.spec.kind]  # type: ignore[assignment]
                 item: pytest.Item = item_class.from_parent(
