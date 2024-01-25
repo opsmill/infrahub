@@ -1,12 +1,12 @@
 /// <reference types="cypress" />
 
+import { ADMIN_CREDENTIALS, SCREENSHOT_ENV_VARIABLE, screenshotConfig } from "../constants";
 import {
   PROPOSED_CHANGES_BRANCH_CLEAN,
   PROPOSED_CHANGES_BRANCH_CONFLICT,
   PROPOSED_CHANGES_NAME_FAIL,
   PROPOSED_CHANGES_NAME_WARNING,
 } from "../mocks/e2e/validators";
-import { ADMIN_CREDENTIALS, SCREENSHOT_ENV_VARIABLE, screenshotConfig } from "../utils";
 
 describe("Main application", () => {
   beforeEach(function () {

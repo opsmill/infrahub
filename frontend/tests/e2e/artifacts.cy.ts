@@ -1,7 +1,7 @@
 /// <reference types="cypress" />
 
+import { ADMIN_CREDENTIALS, SCREENSHOT_ENV_VARIABLE, screenshotConfig } from "../constants";
 import { ARTIFACT_DEFINITION_FULL_NAME, ARTIFACT_DEFINITION_NAME } from "../mocks/e2e/artifacts";
-import { ADMIN_CREDENTIALS, SCREENSHOT_ENV_VARIABLE, screenshotConfig } from "../utils";
 
 describe("Main application", () => {
   beforeEach(function () {
