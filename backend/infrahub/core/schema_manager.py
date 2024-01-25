@@ -333,7 +333,11 @@ class SchemaBranch:
                         ) from None
 
     def _validate_attribute_path(
-        self, node_schema: BaseNodeSchema, path: str, schema_attribute_name: Optional[str] = None
+        self,
+        node_schema: BaseNodeSchema,
+        path: str,
+        relationship_allowed: bool = False,
+        schema_attribute_name: Optional[str] = None,
     ) -> None:
         error_header = f"{node_schema.kind}"
         error_header += f".{schema_attribute_name}" if schema_attribute_name else ""
@@ -345,11 +349,14 @@ class SchemaBranch:
             relationship_name = None
             attribute_name, attribute_property_name = path_parts
         else:
+            relationship_prefix = "[<relationship>__]" if relationship_allowed else ""
             raise ValueError(
-                f"{error_header}: {path} must be of the format [<relationship>__]<attribute>__<property>, the separator is two underscores"
+                f"{error_header}: {path} must be of the format {relationship_prefix}<attribute>__<property>, the separator is two underscores"
             )
 
         if relationship_name:
+            if not relationship_allowed:
+                raise ValueError(f"{error_header}: this property only supports attributes, not relationships")
             relationship_schema = node_schema.get_relationship(relationship_name, raise_on_error=False)
             if relationship_schema.cardinality != RelationshipCardinality.ONE:
                 raise ValueError(
@@ -374,7 +381,7 @@ class SchemaBranch:
                 continue
 
             for display_label_path in node_schema.display_labels:
-                self._validate_attribute_path(node_schema, display_label_path, "display_labels")
+                self._validate_attribute_path(node_schema, display_label_path, schema_attribute_name="display_labels")
 
     def validate_order_by(self) -> None:
         for name in list(self.nodes.keys()) + list(self.generics.keys()):
@@ -384,7 +391,9 @@ class SchemaBranch:
                 continue
 
             for order_by_path in node_schema.order_by:
-                self._validate_attribute_path(node_schema, order_by_path, "order_by")
+                self._validate_attribute_path(
+                    node_schema, order_by_path, relationship_allowed=True, schema_attribute_name="order_by"
+                )
 
     def validate_default_filters(self) -> None:
         for name in list(self.nodes.keys()) + list(self.generics.keys()):
@@ -393,7 +402,9 @@ class SchemaBranch:
             if not node_schema.default_filter:
                 continue
 
-            self._validate_attribute_path(node_schema, node_schema.default_filter, "default_filter")
+            self._validate_attribute_path(
+                node_schema, node_schema.default_filter, schema_attribute_name="default_filter"
+            )
 
     def validate_names(self) -> None:
         for name in list(self.nodes.keys()) + list(self.generics.keys()):

@@ -732,8 +732,6 @@ async def test_schema_branch_validate_menu_placement():
     [
         ["my_generic_name__value", "mybool__value"],
         ["my_generic_name__value"],
-        ["primary_tag__name__value"],
-        ["status__name__value", "mybool__value"],
     ],
 )
 async def test_validate_display_labels_success(schema_all_in_one, display_labels):
@@ -758,10 +756,14 @@ async def test_validate_display_labels_success(schema_all_in_one, display_labels
             ["status__value"],
             "InfraGenericInterface.display_labels: status is not an attribute of InfraGenericInterface",
         ),
-        (["badges__name__value"], "InfraGenericInterface.display_labels: cannot use badges relationship"),
+        (["badges__name__value"], "InfraGenericInterface.display_labels: this property only supports attributes"),
         (["mybool"], "InfraGenericInterface.display_labels: mybool must be of the format"),
         (["badges"], "InfraGenericInterface.display_labels: badges must be of the format"),
-        (["status__name__nothing"], "InfraGenericInterface.display_labels: attribute property must be one of"),
+        (["primary_tag__name__value"], "InfraGenericInterface.display_labels: this property only supports attributes"),
+        (
+            ["mybool__value", "status__name__value"],
+            "InfraGenericInterface.display_labels: this property only supports attributes",
+        ),
     ],
 )
 async def test_validate_display_labels_error(schema_all_in_one, display_labels, expected_error):
@@ -822,7 +824,7 @@ async def test_validate_order_by_error(schema_all_in_one, order_by, expected_err
 
 @pytest.mark.parametrize(
     "default_filter",
-    ["my_generic_name__value", "primary_tag__name__value", "status__name__value"],
+    ["my_generic_name__value"],
 )
 async def test_validate_default_filter_success(schema_all_in_one, default_filter):
     schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
@@ -842,11 +844,12 @@ async def test_validate_default_filter_success(schema_all_in_one, default_filter
             "InfraGenericInterface.default_filter: notanattribute is not an attribute of InfraGenericInterface",
         ),
         ("my_generic_name__something", "InfraGenericInterface.default_filter: attribute property must be one of"),
-        ("status__value", "InfraGenericInterface.default_filter: status is not an attribute of InfraGenericInterface"),
-        ("badges__name__value", "InfraGenericInterface.default_filter: cannot use badges relationship"),
+        ("badges__name__value", "InfraGenericInterface.default_filter: this property only supports attributes"),
         ("mybool", "InfraGenericInterface.default_filter: mybool must be of the format"),
         ("badges", "InfraGenericInterface.default_filter: badges must be of the format"),
-        ("status__name__nothing", "InfraGenericInterface.default_filter: attribute property must be one of"),
+        ("status__name__nothing", "InfraGenericInterface.default_filter: this property only supports attributes"),
+        ("primary_tag__name__value", "InfraGenericInterface.default_filter: this property only supports attributes"),
+        ("status__name__value", "InfraGenericInterface.default_filter: this property only supports attributes"),
     ],
 )
 async def test_validate_default_filter_error(schema_all_in_one, default_filter, expected_error):
