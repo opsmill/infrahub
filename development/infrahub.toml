@@ -30,7 +30,7 @@ enable = false
 insecure = "True"
 exporter_type = "otlp"
 exporter_protocol = "grpc"
-exporter_endpoint = "tempo"
+exporter_endpoint = "jaeger"
 exporter_port = 4317
 
 
