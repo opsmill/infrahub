@@ -65,7 +65,7 @@ class BaseClient:
         retry_delay: int = 5,
         log: Optional[Logger] = None,
         insert_tracker: bool = False,
-        update_group_context: bool = True,
+        update_group_context: bool = False,
         pagination_size: int = 50,
         max_concurrent_execution: int = 5,
         config: Optional[Config] = None,
