@@ -6,7 +6,7 @@ from infrahub.log import get_logger
 # pylint: skip-file
 
 ROLES = ["spine", "leaf", "firewall", "server", "loopback"]
-STATUSES = ["active", "provisionning", "maintenance"]
+STATUSES = ["active", "provisioning", "maintenance"]
 TAGS = ["blue", "green", "red"]
 
 DEVICES = (
@@ -21,8 +21,8 @@ DEVICES = (
 )
 
 # DEVICE_PROFILES = (
-#     ("profile1", "provisionning", "MX240", "spine"),
-#     ("profile2", "provisionning", "QFX5200", "leaf"),
+#     ("profile1", "provisioning", "MX240", "spine"),
+#     ("profile2", "provisioning", "QFX5200", "leaf"),
 # )
 
 PERMS = (

@@ -9,7 +9,6 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType, FilterSchemaKind, InfrahubKind
 from infrahub.core.schema import (
     GenericSchema,
-    GroupSchema,
     NodeSchema,
     SchemaRoot,
     core_models,
@@ -160,12 +159,6 @@ def schema_all_in_one():
                 ],
             },
         ],
-        "groups": [
-            {
-                "name": "generic_group",
-                "kind": "GenericGroup",
-            },
-        ],
     }
 
     return FULL_SCHEMA
@@ -219,7 +212,6 @@ async def test_schema_branch_load_schema_initial(schema_all_in_one):
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
     assert isinstance(schema.get(name="BuiltinCriticality"), NodeSchema)
-    assert isinstance(schema.get(name="GenericGroup"), GroupSchema)
     assert isinstance(schema.get(name="InfraGenericInterface"), GenericSchema)
 
 
@@ -1278,24 +1270,6 @@ async def test_load_node_to_db_generic_schema(db: InfrahubDatabase, default_bran
     assert len(results) == 1
 
 
-async def test_load_node_to_db_group_schema(db: InfrahubDatabase, default_branch: Branch):
-    registry.schema = SchemaManager()
-    registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
-
-    SCHEMA = {
-        "name": "generic_group",
-        "kind": "GenericGroup",
-    }
-
-    node = GroupSchema(**SCHEMA)
-    await registry.schema.load_node_to_db(node=node, db=db, branch=default_branch)
-
-    results = await SchemaManager.query(
-        schema="SchemaGroup", filters={"kind__value": "GenericGroup"}, branch=default_branch, db=db
-    )
-    assert len(results) == 1
-
-
 async def test_update_node_in_db_node_schema(db: InfrahubDatabase, default_branch: Branch):
     SCHEMA = {
         "name": "Criticality",
@@ -1449,12 +1423,6 @@ async def test_load_schema_from_db(
                 ],
             },
         ],
-        "groups": [
-            {
-                "name": "generic_group",
-                "kind": "GenericGroup",
-            },
-        ],
     }
 
     schema1 = registry.schema.register_schema(schema=SchemaRoot(**FULL_SCHEMA), branch=default_branch.name)
@@ -1462,14 +1430,12 @@ async def test_load_schema_from_db(
     schema11 = registry.schema.get_schema_branch(name=default_branch.name)
     schema2 = await registry.schema.load_schema_from_db(db=db, branch=default_branch.name)
 
-    assert len(schema2.nodes) == 7
+    assert len(schema2.nodes) == 6
     assert len(schema2.generics) == 1
-    assert len(schema2.groups) == 1
 
     assert schema11.get(name="TestCriticality").get_hash() == schema2.get(name="TestCriticality").get_hash()
     assert schema11.get(name=InfrahubKind.TAG).get_hash() == schema2.get(name="BuiltinTag").get_hash()
     assert schema11.get(name="TestGenericInterface").get_hash() == schema2.get(name="TestGenericInterface").get_hash()
-    assert schema11.get(name="GenericGroup").get_hash() == schema2.get(name="GenericGroup").get_hash()
 
 
 async def test_load_schema(
@@ -1530,12 +1496,6 @@ async def test_load_schema(
                 ],
             },
         ],
-        "groups": [
-            {
-                "name": "generic_group",
-                "kind": "GenericGroup",
-            },
-        ],
     }
 
     schema1 = registry.schema.register_schema(schema=SchemaRoot(**FULL_SCHEMA), branch=default_branch.name)
@@ -1543,11 +1503,9 @@ async def test_load_schema(
     schema11 = registry.schema.get_schema_branch(name=default_branch.name)
     schema2 = await registry.schema.load_schema(db=db, branch=default_branch.name)
 
-    assert len(schema2.nodes) == 7
+    assert len(schema2.nodes) == 6
     assert len(schema2.generics) == 1
-    assert len(schema2.groups) == 1
 
     assert schema11.get(name="TestCriticality").get_hash() == schema2.get(name="TestCriticality").get_hash()
     assert schema11.get(name=InfrahubKind.TAG).get_hash() == schema2.get(name=InfrahubKind.TAG).get_hash()
     assert schema11.get(name="TestGenericInterface").get_hash() == schema2.get(name="TestGenericInterface").get_hash()
-    assert schema11.get(name="GenericGroup").get_hash() == schema2.get(name="GenericGroup").get_hash()

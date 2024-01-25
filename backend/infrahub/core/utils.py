@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import re
 from inspect import isclass
 from typing import TYPE_CHECKING, List, Optional, Union
 
 import infrahub.config as config
 from infrahub.core.constants import RelationshipStatus
+from infrahub.core.models import NodeKind
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
@@ -158,6 +160,15 @@ def extract_field_filters(field_name: str, filters: dict) -> dict:
     return {
         key.replace(f"{field_name}__", ""): value for key, value in filters.items() if key.startswith(f"{field_name}__")
     }
+
+
+def parse_node_kind(kind: str) -> NodeKind:
+    KIND_REGEX = r"^([A-Z][a-z0-9]+)([A-Z][a-zA-Z0-9]+)$"
+
+    if match := re.search(KIND_REGEX, kind):
+        return NodeKind(namespace=match.group(1), name=match.group(2))
+
+    raise ValueError("The String provided is not a valid Node kind")
 
 
 # --------------------------------------------------------------------------------

@@ -25,7 +25,6 @@ from .interface import InfrahubInterface
 from .mixin import GetListMixin
 from .node import InfrahubObject
 from .standard_node import InfrahubObjectType
-from .union import InfrahubUnion
 
 __all__ = [
     "RelatedNodeInput",
@@ -49,7 +48,6 @@ __all__ = [
     "GetListMixin",
     "InfrahubObject",
     "InfrahubObjectType",
-    "InfrahubUnion",
 ]
 
 

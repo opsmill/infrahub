@@ -1,7 +1,5 @@
-import os
 import re
 from dataclasses import dataclass
-from pathlib import Path
 
 import pytest
 import ujson
@@ -527,7 +525,7 @@ async def tag_green_data():
 @pytest.fixture
 async def rfile_schema() -> NodeSchema:
     data = {
-        "name": "RFile",
+        "name": "TransformJinja2",
         "namespace": "Core",
         "default_filter": "name__value",
         "display_label": ["label__value"],
@@ -542,7 +540,7 @@ async def rfile_schema() -> NodeSchema:
                 "name": "repository",
                 "peer": "CoreRepository",
                 "kind": "Attribute",
-                "identifier": "rfile__repository",
+                "identifier": "jinja2__repository",
                 "cardinality": "one",
                 "optional": False,
             },
@@ -1270,7 +1268,7 @@ async def mock_query_repository_page2_2(
 
 @pytest.fixture
 async def mock_schema_query_01(httpx_mock: HTTPXMock) -> HTTPXMock:
-    response_text = Path(os.path.join(get_fixtures_dir(), "schema_01.json")).read_text(encoding="UTF-8")
+    response_text = (get_fixtures_dir() / "schema_01.json").read_text(encoding="UTF-8")
 
     httpx_mock.add_response(
         method="GET",
@@ -1282,7 +1280,7 @@ async def mock_schema_query_01(httpx_mock: HTTPXMock) -> HTTPXMock:
 
 @pytest.fixture
 async def mock_schema_query_02(httpx_mock: HTTPXMock) -> HTTPXMock:
-    response_text = Path(os.path.join(get_fixtures_dir(), "schema_02.json")).read_text(encoding="UTF-8")
+    response_text = (get_fixtures_dir() / "schema_02.json").read_text(encoding="UTF-8")
 
     httpx_mock.add_response(
         method="GET",
@@ -1300,7 +1298,7 @@ async def mock_rest_api_artifact_definition_generate(httpx_mock: HTTPXMock) -> H
 
 @pytest.fixture
 async def mock_rest_api_artifact_fetch(httpx_mock: HTTPXMock) -> HTTPXMock:
-    schema_response = Path(os.path.join(get_fixtures_dir(), "schema_03.json")).read_text(encoding="UTF-8")
+    schema_response = (get_fixtures_dir() / "schema_03.json").read_text(encoding="UTF-8")
 
     httpx_mock.add_response(
         method="GET",
@@ -1392,7 +1390,7 @@ ip name-server 1.1.1.1
 
 @pytest.fixture
 async def mock_rest_api_artifact_generate(httpx_mock: HTTPXMock) -> HTTPXMock:
-    schema_response = Path(os.path.join(get_fixtures_dir(), "schema_04.json")).read_text(encoding="UTF-8")
+    schema_response = (get_fixtures_dir() / "schema_04.json").read_text(encoding="UTF-8")
 
     httpx_mock.add_response(
         method="GET",

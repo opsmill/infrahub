@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 import enum
 import hashlib
 import keyword
@@ -30,7 +29,9 @@ from infrahub.core.constants import (
     ValidatorConclusion,
     ValidatorState,
 )
+from infrahub.core.enums import generate_python_enum
 from infrahub.core.query import QueryNode, QueryRel, QueryRelDirection
+from infrahub.core.query.attribute import default_attribute_query_filter
 from infrahub.core.relationship import Relationship
 from infrahub.types import ATTRIBUTE_TYPES
 
@@ -52,6 +53,7 @@ AttributeKind = enum.Enum("AttributeKind", dict(attribute_dict))
 RELATIONSHIPS_MAPPING = {"Relationship": Relationship}
 
 NODE_KIND_REGEX = r"^[A-Z][a-zA-Z0-9]+$"
+NAMESPACE_REGEX = r"^[A-Z][a-z0-9]+$"
 NODE_NAME_REGEX = r"^[A-Z][a-zA-Z0-9]+$"
 NAME_REGEX = r"^[a-z0-9\_]+$"
 
@@ -180,7 +182,9 @@ class BaseSchemaModel(BaseModel):
 
     def duplicate(self) -> Self:
         """Duplicate the current object by doing a deep copy of everything and recreating a new object."""
-        return self.__class__(**copy.deepcopy(self.model_dump()))
+        # import copy
+        # return self.__class__(**copy.deepcopy(self.model_dump()))
+        return self.model_copy(deep=True)
 
     @staticmethod
     def is_list_composed_of_schema_model(items) -> bool:
@@ -344,13 +348,54 @@ class AttributeSchema(BaseSchemaModel):
     def get_class(self):
         return ATTRIBUTE_TYPES[self.kind].get_infrahub_class()
 
+    @property
+    def uses_enum_class(self) -> bool:
+        return bool(self.enum) and config.SETTINGS.experimental_features.graphql_enums
+
+    def get_attribute_enum_class(self) -> Optional[enum.EnumType]:
+        if not self.uses_enum_class:
+            return None
+        return generate_python_enum(f"{self.name.title()}Enum", {v: v for v in self.enum})
+
+    def convert_to_attribute_enum(self, value: Any) -> Any:
+        if not self.uses_enum_class or not value:
+            return value
+        attribute_enum_class = self.get_attribute_enum_class()
+        if isinstance(value, attribute_enum_class):
+            return value
+        if isinstance(value, enum.Enum):
+            value = value.value
+        return attribute_enum_class(value)
+
+    def convert_to_enum_value(self, value: Any) -> Any:
+        if not self.uses_enum_class:
+            return value
+        if isinstance(value, list):
+            value = [self.convert_to_attribute_enum(element) for element in value]
+            return [element.value if isinstance(element, enum.Enum) else element for element in value]
+        value = self.convert_to_attribute_enum(value)
+        return value.value if isinstance(value, enum.Enum) else value
+
     async def get_query_filter(
         self,
-        db: InfrahubDatabase,
-        *args,
-        **kwargs,  # pylint: disable=unused-argument
+        name: str,
+        filter_name: str,
+        branch: Optional[Branch] = None,
+        filter_value: Optional[Union[str, int, bool, list, enum.Enum]] = None,
+        include_match: bool = True,
+        param_prefix: Optional[str] = None,
+        db: Optional[InfrahubDatabase] = None,
     ) -> Tuple[List[QueryElement], Dict[str, Any], List[str]]:
-        return await self.get_class().get_query_filter(*args, **kwargs)
+        filter_value = self.convert_to_enum_value(filter_value)
+        return await default_attribute_query_filter(
+            name=name,
+            filter_name=filter_name,
+            branch=branch,
+            filter_value=filter_value,
+            include_match=include_match,
+            param_prefix=param_prefix,
+            db=db,
+        )
 
 
 class RelationshipSchema(BaseSchemaModel):
@@ -581,7 +626,7 @@ class BaseNodeSchema(BaseSchemaModel):
         ]
         return duplicate
 
-    def get_field(self, name, raise_on_error=True) -> Union[AttributeSchema, RelationshipSchema]:
+    def get_field(self, name, raise_on_error=True) -> Optional[Union[AttributeSchema, RelationshipSchema]]:
         if field := self.get_attribute(name, raise_on_error=False):
             return field
 
@@ -705,7 +750,6 @@ class GenericSchema(BaseNodeSchema):
 
 class NodeSchema(BaseNodeSchema):
     inherit_from: List[str] = Field(default_factory=list)
-    groups: Optional[List[str]] = Field(default_factory=list)
     hierarchy: Optional[str] = Field(default=None)
     parent: Optional[str] = Field(default=None)
     children: Optional[str] = Field(default=None)
@@ -744,13 +788,6 @@ class NodeSchema(BaseNodeSchema):
         return schema
 
 
-class GroupSchema(BaseSchemaModel):
-    id: Optional[str] = None
-    name: str = Field(pattern=NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
-    kind: str = Field(pattern=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH)
-    description: Optional[str] = Field(None, max_length=DEFAULT_DESCRIPTION_LENGTH)
-
-
 # -----------------------------------------------------
 # Extensions
 #  For the initial implementation its possible to add attribute and relationships on Node
@@ -775,7 +812,6 @@ class SchemaRoot(BaseModel):
     version: Optional[str] = Field(default=None)
     generics: List[GenericSchema] = Field(default_factory=list)
     nodes: List[NodeSchema] = Field(default_factory=list)
-    groups: List[GroupSchema] = Field(default_factory=list)
     extensions: SchemaExtension = SchemaExtension()
 
     @classmethod
@@ -823,7 +859,7 @@ internal_schema = {
                     "name": "namespace",
                     "kind": "Text",
                     "description": "Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.",
-                    "regex": str(NODE_KIND_REGEX),
+                    "regex": str(NAMESPACE_REGEX),
                     "min_length": DEFAULT_KIND_MIN_LENGTH,
                     "max_length": DEFAULT_KIND_MAX_LENGTH,
                 },
@@ -894,12 +930,6 @@ internal_schema = {
                     "optional": True,
                 },
                 {
-                    "name": "groups",
-                    "kind": "List",
-                    "description": "List of Group that this Node is part of.",
-                    "optional": True,
-                },
-                {
                     "name": "hierarchy",
                     "kind": "Text",
                     "description": "Internal value to track the name of the Hierarchy, must match the name of a Generic supporting hierarchical mode",
@@ -961,8 +991,6 @@ internal_schema = {
                     "kind": "Text",
                     "description": "Defines the type of the attribute.",
                     "enum": ATTRIBUTE_KIND_LABELS,
-                    "min_length": DEFAULT_KIND_MIN_LENGTH,
-                    "max_length": DEFAULT_KIND_MAX_LENGTH,
                 },
                 {
                     "name": "enum",
@@ -1219,7 +1247,7 @@ internal_schema = {
                     "name": "namespace",
                     "kind": "Text",
                     "description": "Generic Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.",
-                    "regex": str(NODE_KIND_REGEX),
+                    "regex": str(NAMESPACE_REGEX),
                     "min_length": DEFAULT_KIND_MIN_LENGTH,
                     "max_length": DEFAULT_KIND_MAX_LENGTH,
                 },
@@ -1316,41 +1344,10 @@ internal_schema = {
                 },
             ],
         },
-        {
-            "name": "Group",
-            "namespace": "Schema",
-            "branch": BranchSupportType.AWARE.value,
-            "default_filter": "name__value",
-            "display_labels": ["name__value"],
-            "attributes": [
-                {
-                    "name": "name",
-                    "kind": "Text",
-                    "unique": True,
-                    "min_length": DEFAULT_NAME_MIN_LENGTH,
-                    "max_length": DEFAULT_NAME_MAX_LENGTH,
-                },
-                {
-                    "name": "kind",
-                    "kind": "Text",
-                    "regex": str(NODE_KIND_REGEX),
-                    "min_length": DEFAULT_KIND_MIN_LENGTH,
-                    "max_length": DEFAULT_KIND_MAX_LENGTH,
-                },
-                {
-                    "name": "description",
-                    "kind": "Text",
-                    "description": "Short description of the Group.",
-                    "optional": True,
-                    "max_length": DEFAULT_DESCRIPTION_LENGTH,
-                },
-            ],
-        },
     ],
 }
 
 core_models = {
-    "groups": [],
     "generics": [
         {
             "name": "Node",
@@ -2052,11 +2049,11 @@ core_models = {
             ],
         },
         {
-            "name": "RFile",
+            "name": "TransformJinja2",
             "namespace": "Core",
             "description": "A file rendered from a Jinja2 template",
             "include_in_menu": False,
-            "label": "RFile",
+            "label": "Transform Jinja2",
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
@@ -2288,7 +2285,6 @@ core_models = {
             "attributes": [
                 {"name": "file_path", "kind": "Text"},
                 {"name": "class_name", "kind": "Text"},
-                {"name": "url", "kind": "Text", "unique": True},
             ],
         },
         {

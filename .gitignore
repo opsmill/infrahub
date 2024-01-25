@@ -26,3 +26,4 @@ retype.manifest
 storage/*
 .coverage.*
 python_sdk/dist/*
+.benchmarks/*

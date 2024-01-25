@@ -48,7 +48,7 @@ async def update(message: messages.RequestGraphQLQueryGroupUpdate, service: Infr
         parameters=message.params,
         members=message.related_node_ids,
     )
-    await group.create(at=Timestamp(), allow_update=True)
+    await group.save(at=Timestamp(), allow_upsert=True)
 
     if message.subscribers:
         await group_add_subscriber(

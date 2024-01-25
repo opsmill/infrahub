@@ -1,17 +1,18 @@
 from __future__ import annotations
 
-from collections import defaultdict
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
 
 import graphene
 
+import infrahub.config as config
 from infrahub.core import get_branch, registry
 from infrahub.core.constants import InfrahubKind, RelationshipKind
-from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema
+from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema
 from infrahub.graphql.mutations.graphql_query import InfrahubGraphQLQueryMutation
 from infrahub.types import ATTRIBUTE_TYPES, get_attribute_type
 
+from .enums import get_enum_attribute_type_name, load_all_enum_types_in_registry
 from .mutations import (
     InfrahubArtifactDefinitionMutation,
     InfrahubMutation,
@@ -26,7 +27,7 @@ from .resolver import (
     single_relationship_resolver,
 )
 from .schema import account_resolver, default_paginated_list_resolver
-from .types import InfrahubInterface, InfrahubObject, InfrahubUnion, RelatedNodeInput
+from .types import InfrahubInterface, InfrahubObject, RelatedNodeInput
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -59,6 +60,12 @@ def load_node_interface(branch: Branch):
     registry.set_graphql_type(name=paginated_interface._meta.name, graphql_type=paginated_interface, branch=branch.name)
 
 
+def get_attr_kind(node_schema: NodeSchema, attr_schema: AttributeSchema) -> str:
+    if not config.SETTINGS.experimental_features.graphql_enums or not attr_schema.enum:
+        return attr_schema.kind
+    return get_enum_attribute_type_name(node_schema, attr_schema)
+
+
 async def generate_object_types(db: InfrahubDatabase, branch: Union[Branch, str]):  # pylint: disable=too-many-branches,too-many-statements
     """Generate all GraphQL objects for the schema and store them in the internal registry."""
 
@@ -66,9 +73,9 @@ async def generate_object_types(db: InfrahubDatabase, branch: Union[Branch, str]
 
     full_schema = await registry.schema.get_full_safe(branch=branch)
 
-    group_memberships = defaultdict(list)
-
     load_attribute_types_in_registry(branch=branch)
+    if config.SETTINGS.experimental_features.graphql_enums:
+        load_all_enum_types_in_registry(full_schema.values(), branch=branch)
     load_node_interface(branch=branch)
 
     # Generate all GraphQL Interface  Object first and store them in the registry
@@ -85,7 +92,7 @@ async def generate_object_types(db: InfrahubDatabase, branch: Union[Branch, str]
             name=paginated_interface._meta.name, graphql_type=paginated_interface, branch=branch.name
         )
 
-    # Define DataOwner and DataOwner
+    # Define LineageSource and LineageOwner
     data_source = registry.get_graphql_type(name="LineageSource", branch=branch)
     data_owner = registry.get_graphql_type(name="LineageOwner", branch=branch)
     define_relationship_property(branch=branch, data_source=data_source, data_owner=data_owner)
@@ -145,22 +152,6 @@ async def generate_object_types(db: InfrahubDatabase, branch: Union[Branch, str]
                 name=node_type_nested_paginated._meta.name, graphql_type=node_type_nested_paginated, branch=branch.name
             )
 
-            # Register this model to all the groups it belongs to.
-            # if node_schema.groups:
-            #     for group_name in node_schema.groups:
-            #         group_memberships[group_name].append(f"Related{node_schema.kind}")
-
-    # Generate all the Groups with associated ObjectType / RelatedObjectType
-    for node_name, node_schema in full_schema.items():
-        if (
-            not isinstance(node_schema, GroupSchema)
-            or node_name not in group_memberships
-            or not group_memberships[node_name]
-        ):
-            continue
-        group = generate_union_object(schema=node_schema, members=group_memberships.get(node_name, []), branch=branch)
-        registry.set_graphql_type(name=group._meta.name, graphql_type=group, branch=branch.name)
-
     # Extend all types and related types with Relationships
     for node_name, node_schema in full_schema.items():
         if not isinstance(node_schema, (NodeSchema, GenericSchema)):
@@ -170,22 +161,16 @@ async def generate_object_types(db: InfrahubDatabase, branch: Union[Branch, str]
 
         for rel in node_schema.relationships:
             peer_schema = await rel.get_peer_schema(branch=branch)
-            if not isinstance(peer_schema, GroupSchema) and peer_schema.namespace == "Internal":
+            if peer_schema.namespace == "Internal":
                 continue
             peer_filters = await generate_filters(db=db, schema=peer_schema, top_level=False)
 
             if rel.cardinality == "one":
-                if isinstance(peer_schema, GroupSchema):
-                    peer_type = registry.get_graphql_type(name=peer_schema.kind, branch=branch.name)
-                else:
-                    peer_type = registry.get_graphql_type(name=f"NestedEdged{peer_schema.kind}", branch=branch.name)
+                peer_type = registry.get_graphql_type(name=f"NestedEdged{peer_schema.kind}", branch=branch.name)
                 node_type._meta.fields[rel.name] = graphene.Field(peer_type, resolver=single_relationship_resolver)
 
             elif rel.cardinality == "many":
-                if isinstance(peer_schema, GroupSchema):
-                    peer_type = registry.get_graphql_type(name=peer_schema.kind, branch=branch.name)
-                else:
-                    peer_type = registry.get_graphql_type(name=f"NestedPaginated{peer_schema.kind}", branch=branch.name)
+                peer_type = registry.get_graphql_type(name=f"NestedPaginated{peer_schema.kind}", branch=branch.name)
 
                 if (isinstance(node_schema, NodeSchema) and node_schema.hierarchy) or (
                     isinstance(node_schema, GenericSchema) and node_schema.hierarchical
@@ -304,8 +289,9 @@ def generate_graphql_object(schema: NodeSchema, branch: Branch) -> Type[Infrahub
     }
 
     for attr in schema.local_attributes:
+        attr_kind = get_attr_kind(schema, attr)
         attr_type = registry.get_graphql_type(
-            name=get_attribute_type(kind=attr.kind).get_graphql_type_name(), branch=branch.name
+            name=get_attribute_type(kind=attr_kind).get_graphql_type_name(), branch=branch.name
         )
         main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
 
@@ -390,30 +376,6 @@ def generate_graphql_paginated_object(
     return type(object_name, (InfrahubObject,), main_attrs)
 
 
-def generate_union_object(
-    schema: GroupSchema,
-    members: List,
-    branch: Branch,
-) -> Type[graphene.Union]:
-    types = [registry.get_graphql_type(name=member, branch=branch.name) for member in members]
-
-    if not types:
-        return None
-
-    meta_attrs = {
-        "schema": schema,
-        "name": schema.kind,
-        "description": schema.description,
-        "types": types,
-    }
-
-    main_attrs = {
-        "Meta": type("Meta", (object,), meta_attrs),
-    }
-
-    return type(schema.kind, (InfrahubUnion,), main_attrs)
-
-
 def generate_interface_object(schema: GenericSchema, branch: Branch) -> Type[graphene.Interface]:
     meta_attrs = {
         "name": schema.kind,
@@ -426,8 +388,9 @@ def generate_interface_object(schema: GenericSchema, branch: Branch) -> Type[gra
     }
 
     for attr in schema.attributes:
+        attr_kind = get_attr_kind(schema, attr)
         attr_type = registry.get_graphql_type(
-            name=get_attribute_type(kind=attr.kind).get_graphql_type_name(), branch=branch.name
+            name=get_attribute_type(kind=attr_kind).get_graphql_type_name(), branch=branch.name
         )
         main_attrs[attr.name] = graphene.Field(attr_type, required=not attr.optional, description=attr.description)
 
@@ -531,9 +494,10 @@ def generate_graphql_mutation_create_input(schema: NodeSchema) -> Type[graphene.
         if attr.read_only:
             continue
 
-        attr_type = get_attribute_type(kind=attr.kind).get_graphql_input()
+        attr_kind = get_attr_kind(schema, attr)
+        attr_type = get_attribute_type(kind=attr_kind).get_graphql_input()
 
-        # A Field is not required if explicitely indicated or if a default value has been provided
+        # A Field is not required if explicitly indicated or if a default value has been provided
         required = not attr.optional if not attr.default_value else False
 
         attrs[attr.name] = graphene.InputField(attr_type, required=required, description=attr.description)
@@ -568,7 +532,8 @@ def generate_graphql_mutation_update_input(schema: NodeSchema) -> Type[graphene.
     for attr in schema.attributes:
         if attr.read_only:
             continue
-        attr_type = get_attribute_type(kind=attr.kind).get_graphql_input()
+        attr_kind = get_attr_kind(schema, attr)
+        attr_type = get_attribute_type(kind=attr_kind).get_graphql_input()
         attrs[attr.name] = graphene.InputField(attr_type, required=False, description=attr.description)
 
     for rel in schema.relationships:
@@ -657,7 +622,7 @@ def generate_graphql_mutation_delete(
 
 async def generate_filters(
     db: InfrahubDatabase,
-    schema: Union[NodeSchema, GenericSchema, GroupSchema],
+    schema: Union[NodeSchema, GenericSchema],
     top_level: bool = False,
     include_properties: bool = True,
 ) -> Dict[str, Union[graphene.Scalar, graphene.List]]:
@@ -671,7 +636,7 @@ async def generate_filters(
 
     Args:
         session (AsyncSession): Active session to the database
-        schema (Union[NodeSchema, GenericSchema, GroupSchema]): Schema to generate the filters
+        schema (Union[NodeSchema, GenericSchema]): Schema to generate the filters
         top_level (bool, optional): Flag to indicate if are at the top level or not. Defaults to False.
 
     Returns:
@@ -683,12 +648,10 @@ async def generate_filters(
 
     filters["ids"] = graphene.List(graphene.ID)
 
-    if isinstance(schema, GroupSchema):
-        return filters
-
     for attr in schema.attributes:
+        attr_kind = get_attr_kind(schema, attr)
         filters.update(
-            get_attribute_type(kind=attr.kind).get_graphql_filters(
+            get_attribute_type(kind=attr_kind).get_graphql_filters(
                 name=attr.name, include_properties=include_properties
             )
         )

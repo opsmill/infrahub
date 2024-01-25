@@ -130,16 +130,20 @@ export const attributesKindForListView = [
 export const attributesKindForDetailsViewExclude = [];
 
 export const relationshipsForListView = {
-  one: ["Attribute"],
+  one: ["Attribute", "Hierarchy"],
   many: ["Attribute"],
 };
 
 export const relationshipsForDetailsView = {
-  one: ["Generic", "Attribute", "Component", "Parent"],
+  one: ["Generic", "Attribute", "Component", "Parent", "Hierarchy"],
   many: ["Attribute", "Parent"],
 };
 
 export const relationshipsForTabs = {
   one: [],
-  many: ["Generic", "Component"],
+  many: ["Generic", "Component", "Hierarchy"],
 };
+
+export const peersKindForForm = ["Attribute", "Parent"];
+
+export const PROPOSED_CHANGES_EDITABLE_STATE = ["open", "closed"];

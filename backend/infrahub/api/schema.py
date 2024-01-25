@@ -11,7 +11,7 @@ from infrahub.api.dependencies import get_branch_dep, get_current_user, get_db
 from infrahub.core import registry
 from infrahub.core.branch import Branch  # noqa: TCH001
 from infrahub.core.models import SchemaBranchHash  # noqa: TCH001
-from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema, SchemaRoot
+from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema_manager import SchemaNamespace  # noqa: TCH001
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
 from infrahub.exceptions import PermissionDeniedError, SchemaNotFound
@@ -118,8 +118,6 @@ async def get_schema_by_kind(
 
     schema = registry.schema.get(name=schema_kind, branch=branch)
 
-    if isinstance(schema, GroupSchema):
-        return JSONResponse(status_code=422, content={"error": "GroupSchema aren't supported via this endpoint"})
     if isinstance(schema, NodeSchema):
         return APINodeSchema.from_schema(schema=schema)
     if isinstance(schema, GenericSchema):

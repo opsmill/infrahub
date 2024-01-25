@@ -107,7 +107,7 @@ class TestInfrahubNode:
             "tags": [tag_blue.id, tag_red.id],
         }
 
-        node = await client.create(kind="CoreRFile", data=data)
+        node = await client.create(kind="CoreTransformJinja2", data=data)
         await node.save()
 
         assert node.id is not None
@@ -135,15 +135,15 @@ class TestInfrahubNode:
             "repository": repo01.id,
             "tags": [tag_blue.id, tag_red.id],
         }
-        schema = await client.schema.get(kind="CoreRFile", branch="main")
+        schema = await client.schema.get(kind="CoreTransformJinja2", branch="main")
         create_payload = client.schema.generate_payload_create(
             schema=schema, data=data, source=repo01.id, is_protected=True
         )
-        obj = await client.create(kind="CoreRFile", branch="main", **create_payload)
+        obj = await client.create(kind="CoreTransformJinja2", branch="main", **create_payload)
         await obj.save()
 
         assert obj.id is not None
-        nodedb = await client.get(kind="CoreRFile", id=str(obj.id))
+        nodedb = await client.get(kind="CoreTransformJinja2", id=str(obj.id))
 
         input_data = nodedb._generate_input_data()["data"]["data"]
         assert input_data["name"]["value"] == "rfile10"
@@ -175,7 +175,7 @@ class TestInfrahubNode:
             "tags": [tag_blue.id, tag_red.id],
         }
 
-        node = await client.create(kind="CoreRFile", data=data)
+        node = await client.create(kind="CoreTransformJinja2", data=data)
         await node.save()
 
         assert node.id is not None

@@ -215,6 +215,10 @@ async def many_relationship_resolver(
                 at=at,
                 branch=branch,
             )
+
+        if not node_fields:
+            return response
+
         objs = await NodeManager.query_peers(
             db=db,
             ids=ids,
@@ -302,6 +306,10 @@ async def hierarchy_resolver(
                 at=at,
                 branch=branch,
             )
+
+        if not node_fields:
+            return response
+
         objs = await NodeManager.query_hierarchy(
             db=db,
             id=parent["id"],

@@ -86,7 +86,7 @@ class LineDelimitedJSONImporter(ImporterInterface):
                     if not schema_import_nodes:
                         continue
                     for node in schema_import_nodes:
-                        save_batch.add(task=node.create, node=node, at=right_now, allow_update=True)
+                        save_batch.add(task=node.create, node=node, at=right_now, allow_upsert=True)
 
         await self.execute_batches([save_batch], "Creating and/or updating nodes")
 

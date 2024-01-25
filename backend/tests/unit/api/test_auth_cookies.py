@@ -55,7 +55,7 @@ async def test_access_resource_using_refresh_token(db: InfrahubDatabase, default
     refresh_token = login_response.cookies["refresh_token"]
 
     with client:
-        response = client.get("/api/rfile/testing", cookies={"access_token": refresh_token})
+        response = client.get("/api/transform/jinja2/testing", cookies={"access_token": refresh_token})
 
     assert response.status_code == 401
     assert response.json() == {"data": None, "errors": [{"message": "Invalid token", "extensions": {"code": 401}}]}

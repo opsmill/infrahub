@@ -35,6 +35,7 @@ export type SchemaAttributeType =
   | "Email"
   | "Password"
   | "HashedPassword"
+  | "Hierarchy"
   | "URL"
   | "File"
   | "MacAddress"
@@ -107,7 +108,7 @@ export const getInputTypeFromKind = (kind: SchemaAttributeType): ControlType => 
   }
 };
 
-export const getInputTypeFromAttribute = (attribute: any) => {
+export const getInputTypeFromAttribute = (attribute: any): ControlType => {
   if (attribute.enum) {
     return "enum";
   }
@@ -115,7 +116,10 @@ export const getInputTypeFromAttribute = (attribute: any) => {
   return getInputTypeFromKind(attribute.kind);
 };
 
-export const getInputTypeFromRelationship = (relationship: any, isInherited: boolean) => {
+export const getInputTypeFromRelationship = (
+  relationship: any,
+  isInherited: boolean
+): ControlType => {
   if (relationship.cardinality === "many") {
     return "multiselect";
   }

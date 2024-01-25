@@ -27,12 +27,12 @@ from infrahub_sdk import (
 )
 from infrahub_sdk.schema import (
     InfrahubCheckDefinitionConfig,
+    InfrahubJinja2TransformConfig,
     InfrahubPythonTransformConfig,
-    InfrahubRepositoryRFileConfig,
 )
 from infrahub_sdk.utils import YamlFile, compare_lists
 from pydantic import ValidationError as PydanticValidationError
-from pydantic.v1 import BaseModel, Field, validator
+from pydantic.v1 import BaseModel, Field
 
 import infrahub.config as config
 from infrahub.core.constants import InfrahubKind
@@ -132,7 +132,7 @@ class CheckDefinitionInformation(BaseModel):
     targets: Optional[str] = Field(default=None, description="Targets if not a global check")
 
 
-class InfrahubRepositoryRFile(InfrahubRepositoryRFileConfig):
+class InfrahubRepositoryJinja2(InfrahubJinja2TransformConfig):
     repository: str
 
 
@@ -148,9 +148,6 @@ class TransformPythonInformation(BaseModel):
 
     query: str
     """ID or name of the GraphQLQuery this Transform is assocated with"""
-
-    url: str
-    """External URL for the Transform function"""
 
     class_name: str
     """Name of the Python Class of the Transform Function"""
@@ -340,11 +337,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
     class Config:
         arbitrary_types_allowed = True
 
-    @validator("default_branch_name", pre=True, always=True)
-    @classmethod
-    def set_default_branch_name(cls, value):
-        return value or config.SETTINGS.main.default_branch
-
     @property
     def default_branch(self) -> str:
         return self.default_branch_name or config.SETTINGS.main.default_branch
@@ -487,7 +479,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         try:
             repo = Repo.clone_from(self.location, self.directory_default)
-            repo.git.checkout(checkout_ref or self.default_branch_name)
+            repo.git.checkout(checkout_ref or self.default_branch)
         except GitCommandError as exc:
             if "Repository not found" in exc.stderr or "does not appear to be a git" in exc.stderr:
                 raise RepositoryError(
@@ -498,7 +490,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             if "error: pathspec" in exc.stderr:
                 raise RepositoryError(
                     identifier=self.name,
-                    message=f"The branch {self.default_branch_name} isn't a valid branch for the repository {self.name} at {self.location}.",
+                    message=f"The branch {self.default_branch} isn't a valid branch for the repository {self.name} at {self.location}.",
                 ) from exc
 
             raise RepositoryError(identifier=self.name) from exc
@@ -509,7 +501,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         # TODO Need to handle the potential exceptions coming from repo.git.worktree
         commit = str(repo.head.commit)
         self.create_commit_worktree(commit=commit)
-        await self.update_commit_value(branch_name=infrahub_branch_name or self.default_branch_name, commit=commit)
+        await self.update_commit_value(branch_name=infrahub_branch_name or self.default_branch, commit=commit)
 
         return True
 
@@ -879,28 +871,28 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         if config_file:
             await self.import_all_python_files(branch_name=branch_name, commit=commit, config_file=config_file)
-            await self.import_rfiles(branch_name=branch_name, commit=commit, config_file=config_file)
+            await self.import_jinja2_transforms(branch_name=branch_name, commit=commit, config_file=config_file)
             await self.import_artifact_definitions(branch_name=branch_name, commit=commit, config_file=config_file)
 
-    async def import_rfiles(self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig):
-        log.debug("Importing all RFiles", repository=self.name, branch=branch_name, commit=commit)
+    async def import_jinja2_transforms(self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig):
+        log.debug("Importing all Jinja2 transforms", repository=self.name, branch=branch_name, commit=commit)
 
-        schema = await self.client.schema.get(kind=InfrahubKind.RFILE, branch=branch_name)
+        schema = await self.client.schema.get(kind=InfrahubKind.TRANSFORMJINJA2, branch=branch_name)
 
-        rfiles_in_graph = {
-            rfile.name.value: rfile
-            for rfile in await self.client.filters(
-                kind=InfrahubKind.RFILE, branch=branch_name, repository__ids=[str(self.id)]
+        transforms_in_graph = {
+            transform.name.value: transform
+            for transform in await self.client.filters(
+                kind=InfrahubKind.TRANSFORMJINJA2, branch=branch_name, repository__ids=[str(self.id)]
             )
         }
 
-        local_rfiles: Dict[str, InfrahubRepositoryRFile] = {}
+        local_transforms: Dict[str, InfrahubRepositoryJinja2] = {}
 
-        # Process the list of local RFile to organize them by name
-        for config_rfile in config_file.rfiles:
+        # Process the list of local Jinja2 Transforms to organize them by name
+        for config_transform in config_file.jinja2_transforms:
             try:
                 self.client.schema.validate_data_against_schema(
-                    schema=schema, data=config_rfile.dict(exclude_none=True)
+                    schema=schema, data=config_transform.dict(exclude_none=True)
                 )
             except PydanticValidationError as exc:
                 for error in exc.errors():
@@ -910,76 +902,85 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
                 log.error(exc.message)
                 continue
 
-            rfile = InfrahubRepositoryRFile(repository=str(self.id), **config_rfile.dict())
+            transform = InfrahubRepositoryJinja2(repository=str(self.id), **config_transform.dict())
 
             # Query the GraphQL query and (eventually) replace the name with the ID
             graphql_query = await self.client.get(
-                kind=InfrahubKind.GRAPHQLQUERY, branch=branch_name, id=str(rfile.query), populate_store=True
+                kind=InfrahubKind.GRAPHQLQUERY, branch=branch_name, id=str(transform.query), populate_store=True
             )
-            rfile.query = graphql_query.id
+            transform.query = graphql_query.id
 
-            local_rfiles[rfile.name] = rfile
+            local_transforms[transform.name] = transform
 
         present_in_both, only_graph, only_local = compare_lists(
-            list1=list(rfiles_in_graph.keys()), list2=list(local_rfiles.keys())
+            list1=list(transforms_in_graph.keys()), list2=list(local_transforms.keys())
         )
 
-        for rfile_name in only_local:
-            log.info(f"New RFile {rfile_name!r} found, creating", repository=self.name, branch=branch_name)
-            await self.create_rfile(branch_name=branch_name, data=local_rfiles[rfile_name])
+        for transform_name in only_local:
+            log.info(
+                f"New Jinja2 Transform {transform_name!r} found, creating", repository=self.name, branch=branch_name
+            )
+            await self.create_jinja2_transform(branch_name=branch_name, data=local_transforms[transform_name])
 
-        for rfile_name in present_in_both:
-            if not await self.compare_rfile(
-                existing_rfile=rfiles_in_graph[rfile_name], local_rfile=local_rfiles[rfile_name]
+        for transform_name in present_in_both:
+            if not await self.compare_jinja2_transform(
+                existing_transform=transforms_in_graph[transform_name], local_transform=local_transforms[transform_name]
             ):
                 log.info(
-                    f"New version of the RFile '{rfile_name}' found, updating", repository=self.name, branch=branch_name
+                    f"New version of the Jinja2 Transform '{transform_name}' found, updating",
+                    repository=self.name,
+                    branch=branch_name,
                 )
-                await self.update_rfile(
-                    existing_rfile=rfiles_in_graph[rfile_name], local_rfile=local_rfiles[rfile_name]
+                await self.update_jinja2_transform(
+                    existing_transform=transforms_in_graph[transform_name],
+                    local_transform=local_transforms[transform_name],
                 )
 
-        for rfile_name in only_graph:
+        for transform_name in only_graph:
             log.info(
-                f"RFile '{rfile_name}' not found locally in branch {branch_name}, deleting",
+                f"Jinja2 Transform '{transform_name}' not found locally in branch {branch_name}, deleting",
                 repository=self.name,
                 branch=branch_name,
             )
-            await rfiles_in_graph[rfile_name].delete()
+            await transforms_in_graph[transform_name].delete()
 
-    async def create_rfile(self, branch_name: str, data: InfrahubRepositoryRFile) -> InfrahubNode:
-        schema = await self.client.schema.get(kind=InfrahubKind.RFILE, branch=branch_name)
+    async def create_jinja2_transform(self, branch_name: str, data: InfrahubRepositoryJinja2) -> InfrahubNode:
+        schema = await self.client.schema.get(kind=InfrahubKind.TRANSFORMJINJA2, branch=branch_name)
         create_payload = self.client.schema.generate_payload_create(
             schema=schema, data=data.payload, source=self.id, is_protected=True
         )
-        obj = await self.client.create(kind=InfrahubKind.RFILE, branch=branch_name, **create_payload)
+        obj = await self.client.create(kind=InfrahubKind.TRANSFORMJINJA2, branch=branch_name, **create_payload)
         await obj.save()
         return obj
 
     @classmethod
-    async def compare_rfile(cls, existing_rfile: InfrahubNode, local_rfile: InfrahubRepositoryRFile) -> bool:
+    async def compare_jinja2_transform(
+        cls, existing_transform: InfrahubNode, local_transform: InfrahubRepositoryJinja2
+    ) -> bool:
         # pylint: disable=no-member
         if (
-            existing_rfile.description.value != local_rfile.description
-            or existing_rfile.template_path.value != local_rfile.template_path
-            or existing_rfile.query.id != local_rfile.query
+            existing_transform.description.value != local_transform.description
+            or existing_transform.template_path.value != local_transform.template_path
+            or existing_transform.query.id != local_transform.query
         ):
             return False
 
         return True
 
-    async def update_rfile(self, existing_rfile: InfrahubNode, local_rfile: InfrahubRepositoryRFile) -> None:
+    async def update_jinja2_transform(
+        self, existing_transform: InfrahubNode, local_transform: InfrahubRepositoryJinja2
+    ) -> None:
         # pylint: disable=no-member
-        if existing_rfile.description.value != local_rfile.description:
-            existing_rfile.description.value = local_rfile.description
+        if existing_transform.description.value != local_transform.description:
+            existing_transform.description.value = local_transform.description
 
-        if existing_rfile.query.id != local_rfile.query:
-            existing_rfile.query = {"id": local_rfile.query, "source": str(self.id), "is_protected": True}
+        if existing_transform.query.id != local_transform.query:
+            existing_transform.query = {"id": local_transform.query, "source": str(self.id), "is_protected": True}
 
-        if existing_rfile.template_path.value != local_rfile.template_path_value:
-            existing_rfile.template_path.value = local_rfile.template_path_value
+        if existing_transform.template_path.value != local_transform.template_path_value:
+            existing_transform.template_path.value = local_transform.template_path_value
 
-        await existing_rfile.save()
+        await existing_transform.save()
 
     async def import_artifact_definitions(self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig):
         log.debug("Importing all Artifact Definitions", repository=self.name, branch=branch_name, commit=commit)
@@ -993,7 +994,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
 
         local_artifact_defs: Dict[str, InfrahubRepositoryArtifactDefinitionConfig] = {}
 
-        # Process the list of local RFile to organize them by name
+        # Process the list of local Artifact Definitions to organize them by name
         for artdef in config_file.artifact_definitions:
             try:
                 self.client.schema.validate_data_against_schema(schema=schema, data=artdef.dict(exclude_none=True))
@@ -1490,7 +1491,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
                     query=str(graphql_query.id),
                     timeout=transform_class.timeout,
                     rebase=transform_class.rebase,
-                    url=transform_class.url,
                 )
             )
 
@@ -1578,7 +1578,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             "repository": transform.repository,
             "query": transform.query,
             "file_path": transform.file_path,
-            "url": transform.url,
             "class_name": transform.class_name,
             "rebase": transform.rebase,
             "timeout": transform.timeout,
@@ -1605,9 +1604,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         if existing_transform.timeout.value != local_transform.timeout:
             existing_transform.timeout.value = local_transform.timeout
 
-        if existing_transform.url.value != local_transform.url:
-            existing_transform.url.value = local_transform.url
-
         if existing_transform.rebase.value != local_transform.rebase:
             existing_transform.rebase.value = local_transform.rebase
 
@@ -1621,7 +1617,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             existing_transform.query.id != local_transform.query
             or existing_transform.file_path.value != local_transform.file_path
             or existing_transform.timeout.value != local_transform.timeout
-            or existing_transform.url.value != local_transform.url
             or existing_transform.rebase.value != local_transform.rebase
         ):
             return False
@@ -1856,7 +1851,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         )
         data = response.get("data")
 
-        if transformation.typename == InfrahubKind.RFILE:
+        if transformation.typename == InfrahubKind.TRANSFORMJINJA2:
             artifact_content = await self.render_jinja2_template(
                 commit=commit, location=transformation.template_path.value, data={"data": data}
             )
@@ -1903,7 +1898,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
         )
         data = response.get("data")
 
-        if message.transform_type == InfrahubKind.RFILE:
+        if message.transform_type == InfrahubKind.TRANSFORMJINJA2:
             artifact_content = await self.render_jinja2_template(
                 commit=message.commit, location=message.transform_location, data={"data": data}
             )

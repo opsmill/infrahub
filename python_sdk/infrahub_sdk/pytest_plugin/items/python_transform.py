@@ -17,7 +17,7 @@ class InfrahubPythonTransformUnitProcessItem(InfrahubItem):
             search_path=self.session.infrahub_config_path.parent,  # type: ignore[attr-defined]
         )
 
-        for attr in ("query", "url", "transform"):
+        for attr in ("query", "transform"):
             if not hasattr(transform_instance, attr):
                 raise PythonTransformDefinitionError(f"Missing attribute or function {attr}")
 

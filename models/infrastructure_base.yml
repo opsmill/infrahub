@@ -34,7 +34,7 @@ generics:
             label: Active
             description: "Fully operational and currently in service."
             color: "#7fbf7f"
-          - name: provisionning
+          - name: provisioning
             label: Provisioning
             description: "In the process of being set up and configured."
             color: "#ffff7f"
@@ -180,7 +180,7 @@ nodes:
             label: Active
             description: "Fully operational and currently in service."
             color: "#7fbf7f"
-          - name: provisionning
+          - name: provisioning
             label: Provisioning
             description: "In the process of being set up and configured."
             color: "#ffff7f"
@@ -357,7 +357,7 @@ nodes:
             label: Active
             description: "Fully operational and currently in service."
             color: "#7fbf7f"
-          - name: provisionning
+          - name: provisioning
             label: Provisioning
             description: "In the process of being set up and configured."
             color: "#ffff7f"
@@ -424,7 +424,7 @@ nodes:
             label: Active
             description: "Fully operational and currently in service."
             color: "#7fbf7f"
-          - name: provisionning
+          - name: provisioning
             label: Provisioning
             description: "In the process of being set up and configured."
             color: "#ffff7f"
@@ -580,7 +580,7 @@ nodes:
             label: Active
             description: "Fully operational and currently in service."
             color: "#7fbf7f"
-          - name: provisionning
+          - name: provisioning
             label: Provisioning
             description: "In the process of being set up and configured."
             color: "#ffff7f"

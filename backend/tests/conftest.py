@@ -11,6 +11,21 @@ from infrahub_sdk.utils import str_to_bool
 
 from infrahub import config
 from infrahub.components import ComponentType
+from infrahub.core import registry
+from infrahub.core.branch import Branch
+from infrahub.core.initialization import (
+    create_default_branch,
+    create_global_branch,
+    create_root_node,
+)
+from infrahub.core.schema import (
+    SchemaRoot,
+    core_models,
+    internal_schema,
+)
+from infrahub.core.schema_manager import SchemaBranch, SchemaManager
+from infrahub.core.utils import delete_all_nodes
+from infrahub.database import InfrahubDatabase, get_db
 from infrahub.lock import initialize_lock
 from infrahub.message_bus import InfrahubMessage, InfrahubResponse
 from infrahub.message_bus.operations import execute_message
@@ -38,6 +53,61 @@ def event_loop():
     loop = policy.new_event_loop()
     yield loop
     loop.close()
+
+
+@pytest.fixture(scope="module")
+async def db() -> InfrahubDatabase:
+    driver = InfrahubDatabase(driver=await get_db(retry=1))
+
+    yield driver
+
+    await driver.close()
+
+
+@pytest.fixture
+async def empty_database(db: InfrahubDatabase) -> None:
+    await delete_all_nodes(db=db)
+    await create_root_node(db=db)
+
+
+@pytest.fixture
+async def reset_registry(db: InfrahubDatabase) -> None:
+    registry.delete_all()
+
+
+@pytest.fixture
+async def default_branch(reset_registry, local_storage_dir, empty_database, db: InfrahubDatabase) -> Branch:
+    branch = await create_default_branch(db=db)
+    await create_global_branch(db=db)
+    registry.schema = SchemaManager()
+    return branch
+
+
+@pytest.fixture
+def local_storage_dir(tmp_path) -> str:
+    storage_dir = os.path.join(str(tmp_path), "storage")
+    os.mkdir(storage_dir)
+
+    config.SETTINGS.storage.driver = config.StorageDriver.FileSystemStorage
+    config.SETTINGS.storage.local = config.FileSystemStorageSettings(path=storage_dir)
+
+    return storage_dir
+
+
+@pytest.fixture
+async def register_internal_models_schema(default_branch: Branch) -> SchemaBranch:
+    schema = SchemaRoot(**internal_schema)
+    schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    default_branch.update_schema_hash()
+    return schema_branch
+
+
+@pytest.fixture
+async def register_core_models_schema(default_branch: Branch, register_internal_models_schema) -> SchemaBranch:
+    schema = SchemaRoot(**core_models)
+    schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    default_branch.update_schema_hash()
+    return schema_branch
 
 
 @pytest.fixture(scope="module", autouse=True)

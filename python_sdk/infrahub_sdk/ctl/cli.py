@@ -165,15 +165,15 @@ def _run_transform(query: str, variables: Dict[str, Any], transformer: Callable,
 
 @app.command(name="render")
 def render(
-    rfile_name: str,
+    transform_name: str,
     variables: Optional[List[str]] = typer.Argument(
         None, help="Variables to pass along with the query. Format key=value key=value."
     ),
-    branch: str = typer.Option(None, help="Branch on which to render the RFile."),
+    branch: str = typer.Option(None, help="Branch on which to render the transform."),
     debug: bool = False,
     config_file: str = typer.Option(config.DEFAULT_CONFIG_FILE, envvar=config.ENVVAR_CONFIG_FILE),
 ) -> None:
-    """Render a local Jinja Template (RFile) for debugging purpose."""
+    """Render a local Jinja2 Transform for debugging purpose."""
 
     if not config.SETTINGS:
         config.load_and_exit(config_file=config_file)
@@ -182,13 +182,13 @@ def render(
     repository_config = get_repository_config(Path(config.INFRAHUB_REPO_CONFIG_FILE))
 
     try:
-        rfile = repository_config.get_rfile(name=rfile_name)
+        transform_config = repository_config.get_jinja2_transform(name=transform_name)
     except KeyError as exc:
-        console.print(f"[red]Unable to find {rfile_name} in {config.INFRAHUB_REPO_CONFIG_FILE}")
+        console.print(f"[red]Unable to find {transform_name} in {config.INFRAHUB_REPO_CONFIG_FILE}")
         raise typer.Exit(1) from exc
 
-    transformer = functools.partial(render_jinja2_template, rfile.template_path, variables_dict)
-    result = _run_transform(rfile.query, variables_dict, transformer, branch, debug)
+    transformer = functools.partial(render_jinja2_template, transform_config.template_path, variables_dict)
+    result = _run_transform(transform_config.query, variables_dict, transformer, branch, debug)
     console.print(result)
 
 

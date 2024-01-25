@@ -1,12 +1,15 @@
+from enum import Enum
+
 import pytest
 from infrahub_sdk import UUIDT
 
+from infrahub import config
 from infrahub.core.attribute import URL, Dropdown, Integer, IPHost, IPNetwork, String
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.schema import NodeSchema
+from infrahub.core.schema import AttributeSchema, NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
@@ -289,7 +292,8 @@ async def test_node_property_getter(db: InfrahubDatabase, default_branch: Branch
 
 
 async def test_get_query_filter_string_value(db: InfrahubDatabase, default_branch: Branch):
-    filters, params, matchs = await String.get_query_filter(
+    attr_schema = AttributeSchema(name="something", kind="Text")
+    filters, params, matchs = await attr_schema.get_query_filter(
         name="description", filter_name="value", filter_value="test"
     )
     expected_response = [
@@ -303,7 +307,7 @@ async def test_get_query_filter_string_value(db: InfrahubDatabase, default_branc
     assert params == {"attr_description_name": "description", "attr_description_value": "test"}
     assert matchs == []
 
-    filters, params, matchs = await String.get_query_filter(
+    filters, params, matchs = await attr_schema.get_query_filter(
         name="description", filter_name="value", filter_value="test", include_match=False
     )
     expected_response = [
@@ -318,7 +322,8 @@ async def test_get_query_filter_string_value(db: InfrahubDatabase, default_branc
 
 
 async def test_get_query_filter_any(db: InfrahubDatabase, default_branch: Branch):
-    filters, params, matchs = await String.get_query_filter(name="any", filter_name="value", filter_value="test")
+    attr_schema = AttributeSchema(name="something", kind="Text")
+    filters, params, matchs = await attr_schema.get_query_filter(name="any", filter_name="value", filter_value="test")
     expected_response = [
         "(n)",
         "-[:HAS_ATTRIBUTE]-",
@@ -332,7 +337,8 @@ async def test_get_query_filter_any(db: InfrahubDatabase, default_branch: Branch
 
 
 async def test_get_query_filter_flag_property(db: InfrahubDatabase, default_branch: Branch):
-    filters, params, matchs = await String.get_query_filter(
+    attr_schema = AttributeSchema(name="something", kind="Text")
+    filters, params, matchs = await attr_schema.get_query_filter(
         name="descr", filter_name="is_protected", filter_value=False
     )
     expected_response = [
@@ -348,7 +354,10 @@ async def test_get_query_filter_flag_property(db: InfrahubDatabase, default_bran
 
 
 async def test_get_query_filter_any_node_property(db: InfrahubDatabase, default_branch: Branch):
-    filters, params, matchs = await String.get_query_filter(name="any", filter_name="source__id", filter_value="abcdef")
+    attr_schema = AttributeSchema(name="something", kind="Text")
+    filters, params, matchs = await attr_schema.get_query_filter(
+        name="any", filter_name="source__id", filter_value="abcdef"
+    )
     expected_response = [
         "(n)",
         "-[:HAS_ATTRIBUTE]-",
@@ -362,7 +371,8 @@ async def test_get_query_filter_any_node_property(db: InfrahubDatabase, default_
 
 
 async def test_get_query_filter_multiple_values(db: InfrahubDatabase, default_branch: Branch):
-    filters, params, matchs = await String.get_query_filter(
+    attr_schema = AttributeSchema(name="something", kind="Text")
+    filters, params, matchs = await attr_schema.get_query_filter(
         name="name", filter_name="values", filter_value=["test1", "test2"]
     )
     expected_response = [
@@ -377,9 +387,33 @@ async def test_get_query_filter_multiple_values(db: InfrahubDatabase, default_br
     assert matchs == ["av.value IN $attr_name_value"]
 
 
+async def test_query_filter_enum(db: InfrahubDatabase, default_branch: Branch):
+    config.SETTINGS.experimental_features.graphql_enums = True
+
+    class ExternalEnum(Enum):
+        ALPHA = "thing-one"
+        BRAVO = "thing-two"
+
+    attr_schema = AttributeSchema(name="something", kind="Text", enum=["thing-one", "thing-two"])
+    filters, params, matchs = await attr_schema.get_query_filter(
+        name="name", filter_name="values", filter_value=[ExternalEnum.BRAVO]
+    )
+    expected_response = [
+        "(n)",
+        "-[:HAS_ATTRIBUTE]-",
+        "(i:Attribute { name: $attr_name_name })",
+        "-[:HAS_VALUE]-",
+        "(av:AttributeValue)",
+    ]
+    assert [str(item) for item in filters] == expected_response
+    assert params == {"attr_name_name": "name", "attr_name_value": ["thing-two"]}
+    assert matchs == ["av.value IN $attr_name_value"]
+
+
 async def test_get_query_filter_multiple_values_invalid_type(db: InfrahubDatabase, default_branch: Branch):
+    attr_schema = AttributeSchema(name="something", kind="Text")
     with pytest.raises(TypeError):
-        await String.get_query_filter(name="name", filter_name="values", filter_value=["test1", 1.0])
+        await attr_schema.get_query_filter(name="name", filter_name="values", filter_value=["test1", 1.0])
 
 
 async def test_base_serialization(db: InfrahubDatabase, default_branch: Branch, all_attribute_types_schema):

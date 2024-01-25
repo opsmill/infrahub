@@ -8,7 +8,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import RESTRICTED_NAMESPACES
 from infrahub.core.manager import NodeManager
-from infrahub.core.schema import DropdownChoice, GenericSchema, GroupSchema, NodeSchema
+from infrahub.core.schema import DropdownChoice, GenericSchema, NodeSchema
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
 from infrahub.log import get_logger
@@ -56,14 +56,10 @@ class SchemaDropdownAdd(Mutation):
         db: InfrahubDatabase = info.context.get("infrahub_database")
         branch: Branch = info.context.get("infrahub_branch")
         kind = registry.get_schema(name=str(data.kind), branch=branch.name)
-
         attribute = str(data.attribute)
         validate_kind_dropdown(kind=kind, attribute=attribute)
         dropdown = str(data.dropdown)
-        color = str(data.color) if data.color else ""
-        description = str(data.description) if data.description else ""
-        label = str(data.label) if data.label else ""
-        choice = DropdownChoice(name=dropdown, color=color, label=label, description=description)
+        choice = DropdownChoice(name=dropdown, color=data.color, label=data.label, description=data.description)
 
         if found_attribute := [attrib for attrib in kind.attributes if attrib.name == attribute]:
             attrib = found_attribute[0]
@@ -86,7 +82,7 @@ class SchemaDropdownAdd(Mutation):
                     "value": dropdown,
                     "color": entry.color,
                     "label": entry.label,
-                    "description": description,
+                    "description": entry.description,
                 }
                 success = True
 
@@ -207,23 +203,21 @@ class SchemaEnumRemove(Mutation):
         return {"ok": True}
 
 
-def validate_kind_dropdown(kind: Union[GenericSchema, GroupSchema, NodeSchema], attribute: str) -> None:
+def validate_kind_dropdown(kind: Union[GenericSchema, NodeSchema], attribute: str) -> None:
     validate_kind(kind=kind, attribute=attribute)
     matching_attribute = [attrib for attrib in kind.attributes if attrib.name == attribute]
     if matching_attribute and matching_attribute[0].kind != "Dropdown":
         raise ValidationError(f"Attribute {attribute} on {kind.kind} is not a Dropdown")
 
 
-def validate_kind_enum(kind: Union[GenericSchema, GroupSchema, NodeSchema], attribute: str) -> None:
+def validate_kind_enum(kind: Union[GenericSchema, NodeSchema], attribute: str) -> None:
     validate_kind(kind=kind, attribute=attribute)
     matching_attribute = [attrib for attrib in kind.attributes if attrib.name == attribute]
     if not matching_attribute[0].enum:
         raise ValidationError(f"Attribute {attribute} on {kind.kind} is not an enum")
 
 
-def validate_kind(kind: Union[GenericSchema, GroupSchema, NodeSchema], attribute: str) -> None:
-    if isinstance(kind, GroupSchema):
-        raise ValidationError(f"{kind.kind} is not a valid node")
+def validate_kind(kind: Union[GenericSchema, NodeSchema], attribute: str) -> None:
     if kind.namespace in RESTRICTED_NAMESPACES:
         raise ValidationError(f"Operation not allowed for {kind.kind} in restricted namespace {kind.namespace}")
     if attribute not in kind.attribute_names:
