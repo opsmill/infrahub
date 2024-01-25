@@ -506,6 +506,24 @@ jobs:
       - name: Run End to End Tests
         working-directory: ./frontend
         run: npm run cypress:run:e2e
+      - name: Upload JUnit to Buildkite
+        run: |
+          for REPORT in frontend/cypress/results/junit-*.xml; do
+            curl \
+              -X POST \
+              -H "Authorization: Token token=\"$BUILDKITE_ANALYTICS_TOKEN\"" \
+              -F "data=@$REPORT" \
+              -F "format=junit" \
+              -F "run_env[CI]=github_actions" \
+              -F "run_env[key]=$GITHUB_ACTION-$GITHUB_RUN_NUMBER-$GITHUB_RUN_ATTEMPT" \
+              -F "run_env[number]=$GITHUB_RUN_NUMBER" \
+              -F "run_env[branch]=$GITHUB_REF" \
+              -F "run_env[commit_sha]=$GITHUB_SHA" \
+              -F "run_env[url]=https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+              https://analytics-api.buildkite.com/v1/uploads ;
+          done
+        env:
+          BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_E2E_CYPRESS }}
       - name: Containers after tests
         run: docker ps -a
       - name: Upload cypress screenshots
@@ -542,6 +560,7 @@ jobs:
     timeout-minutes: 40
     env:
       INFRAHUB_DB_TYPE: memgraph
+      INFRAHUB_ADDRESS: "http://localhost:8000"
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
@@ -583,6 +602,8 @@ jobs:
 
       - name: Run Playwright tests
         run: npm run ci:test:e2e
+        env:
+          BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_E2E_PLAYWRIGHT }}
 
       - name: playwright-report
         if: always()

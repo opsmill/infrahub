@@ -32,7 +32,11 @@ export default defineConfig({
     // },
     baseUrl: "http://localhost:8000/",
     specPattern: "tests/e2e/**/*.cy.{js,jsx,ts,tsx}",
-    reporter: "spec",
+    reporter: "junit",
+    reporterOptions: {
+      mochaFile: "cypress/results/junit-[hash].xml",
+      toConsole: true,
+    },
     video: false,
     viewportHeight: 720,
     viewportWidth: 1280,
