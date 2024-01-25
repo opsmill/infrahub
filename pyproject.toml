@@ -24,11 +24,6 @@ structlog = "24.1.0"
 boto3 = "~1.33.11"
 email-validator = "~2.1"
 redis = { version = "^5.0.0", extras = ["hiredis"]}
-opentelemetry-api = "~1.21"
-opentelemetry-sdk = "~1.21"
-opentelemetry-instrumentation-fastapi = "^0.42b0"
-opentelemetry-exporter-otlp-proto-http = "~1.21"
-opentelemetry-exporter-otlp-proto-grpc = "~1.21"
 typer = "~0.7"
 
 # Dependencies specific to the API Server
@@ -43,6 +38,10 @@ asgi-correlation-id = "4.2.0"       # Middleware for FastAPI to generate ID per 
 bcrypt = "~4.1"                     # Used to hash and validate password
 pyjwt = "~2.8"                      # Used to manage JWT tokens
 uvicorn = {version = "~0.27", extras = ["standard"]}
+opentelemetry-instrumentation-aio-pika = "^0.45b0"
+opentelemetry-instrumentation-fastapi = "^0.45b0"
+opentelemetry-exporter-otlp-proto-grpc = "^1.24.0"
+opentelemetry-exporter-otlp-proto-http = "^1.24.0"
 
 [tool.poetry.group.dev.dependencies]
 yamllint = "*"

@@ -15,6 +15,7 @@ from neo4j import (
     Record,
 )
 from neo4j.exceptions import ClientError, Neo4jError, ServiceUnavailable, TransientError
+from opentelemetry import trace
 from typing_extensions import Self
 
 from infrahub import config
@@ -186,17 +187,23 @@ class InfrahubDatabase:
     async def execute_query(
         self, query: str, params: Optional[Dict[str, Any]] = None, name: Optional[str] = "undefined"
     ) -> List[Record]:
-        with QUERY_EXECUTION_METRICS.labels(str(self._session_mode), name).time():
-            response = await self.run_query(query=query, params=params)
-            return [item async for item in response]
+        with trace.get_tracer(__name__).start_as_current_span("execute_db_query") as span:
+            span.set_attribute("query", query)
+
+            with QUERY_EXECUTION_METRICS.labels(str(self._session_mode), name).time():
+                response = await self.run_query(query=query, params=params)
+                return [item async for item in response]
 
     async def execute_query_with_metadata(
         self, query: str, params: Optional[Dict[str, Any]] = None, name: Optional[str] = "undefined"
     ) -> Tuple[List[Record], Dict[str, Any]]:
-        with QUERY_EXECUTION_METRICS.labels(str(self._session_mode), name).time():
-            response = await self.run_query(query=query, params=params)
-            results = [item async for item in response]
-            return results, response._metadata or {}
+        with trace.get_tracer(__name__).start_as_current_span("execute_db_query_with_metadata") as span:
+            span.set_attribute("query", query)
+
+            with QUERY_EXECUTION_METRICS.labels(str(self._session_mode), name).time():
+                response = await self.run_query(query=query, params=params)
+                results = [item async for item in response]
+                return results, response._metadata or {}
 
     async def run_query(self, query: str, params: Optional[Dict[str, Any]] = None) -> AsyncResult:
         if self.is_transaction:

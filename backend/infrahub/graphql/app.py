@@ -38,6 +38,7 @@ from graphql.error.graphql_error import format_error
 from graphql.utilities import (
     get_operation_ast,
 )
+from opentelemetry import trace
 from starlette.datastructures import UploadFile
 from starlette.requests import HTTPConnection, Request
 from starlette.responses import JSONResponse, Response
@@ -222,17 +223,20 @@ class InfrahubGraphQLApp:
             "query_id": "",
         }
 
-        with GRAPHQL_DURATION_METRICS.labels(**labels).time():
-            result = await graphql(
-                schema=graphql_params.schema,
-                source=query,
-                context_value=graphql_params.context,
-                root_value=self.root_value,
-                middleware=self.middleware,
-                variable_values=variable_values,
-                operation_name=operation_name,
-                execution_context_class=self.execution_context_class,
-            )
+        with trace.get_tracer(__name__).start_as_current_span("execute_graphql") as span:
+            span.set_attributes(labels)
+
+            with GRAPHQL_DURATION_METRICS.labels(**labels).time():
+                result = await graphql(
+                    schema=graphql_params.schema,
+                    source=query,
+                    context_value=graphql_params.context,
+                    root_value=self.root_value,
+                    middleware=self.middleware,
+                    variable_values=variable_values,
+                    operation_name=operation_name,
+                    execution_context_class=self.execution_context_class,
+                )
 
         response: Dict[str, Any] = {"data": result.data}
         if result.errors:

@@ -14,7 +14,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from infrahub_sdk.timestamp import TimestampFormatError
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor, Span
 from pydantic import ValidationError
 from starlette_exporter import PrometheusMiddleware, handle_metrics
 
@@ -34,7 +34,7 @@ from infrahub.middleware import InfrahubCORSMiddleware
 from infrahub.services import InfrahubServices, services
 from infrahub.services.adapters.cache.redis import RedisCache
 from infrahub.services.adapters.message_bus.rabbitmq import RabbitMQMessageBus
-from infrahub.trace import add_span_exception, configure_trace, get_traceid, get_tracer
+from infrahub.trace import add_span_exception, configure_trace, get_traceid
 from infrahub.worker import WORKER_IDENTITY
 
 
@@ -44,6 +44,7 @@ async def app_initialization(application: FastAPI) -> None:
     # Initialize trace
     if config.SETTINGS.trace.enable:
         configure_trace(
+            service="infrahub-server",
             version=__version__,
             exporter_type=config.SETTINGS.trace.exporter_type,
             exporter_endpoint=config.SETTINGS.trace.trace_endpoint,
@@ -95,8 +96,13 @@ app = FastAPI(
     redoc_url="/api/redoc",
 )
 
-FastAPIInstrumentor().instrument_app(app, excluded_urls=".*/metrics")
-tracer = get_tracer()
+
+def server_request_hook(span: Span, scope: dict) -> None:  # pylint: disable=unused-argument
+    if span and span.is_recording():
+        span.set_attribute("worker", WORKER_IDENTITY)
+
+
+FastAPIInstrumentor().instrument_app(app, excluded_urls=".*/metrics", server_request_hook=server_request_hook)
 
 FRONTEND_DIRECTORY = os.environ.get("INFRAHUB_FRONTEND_DIRECTORY", os.path.abspath("frontend"))
 FRONTEND_ASSET_DIRECTORY = f"{FRONTEND_DIRECTORY}/dist/assets"
@@ -118,15 +124,17 @@ templates = Jinja2Templates(directory=f"{FRONTEND_DIRECTORY}/dist")
 async def logging_middleware(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
     clear_log_context()
     request_id = correlation_id.get()
-    with tracer.start_as_current_span(f"processing request {request_id}"):
-        trace_id = get_traceid()
-        set_log_data(key="request_id", value=request_id)
-        set_log_data(key="app", value="infrahub.api")
-        set_log_data(key="worker", value=WORKER_IDENTITY)
-        if trace_id:
-            set_log_data(key="trace_id", value=trace_id)
-        response = await call_next(request)
-        return response
+
+    set_log_data(key="request_id", value=request_id)
+    set_log_data(key="app", value="infrahub.api")
+    set_log_data(key="worker", value=WORKER_IDENTITY)
+
+    trace_id = get_traceid()
+    if trace_id:
+        set_log_data(key="trace_id", value=trace_id)
+
+    response = await call_next(request)
+    return response
 
 
 @app.middleware("http")
