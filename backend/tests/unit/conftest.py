@@ -1639,6 +1639,15 @@ async def car_yaris_main(db: InfrahubDatabase, default_branch: Branch, person_ja
 
 
 @pytest.fixture
+async def car_yaris2_main(db: InfrahubDatabase, default_branch: Branch, person_jane_main: Node) -> Node:
+    car = await Node.init(db=db, schema="TestCar", branch=default_branch)
+    await car.new(db=db, name="yaris2", nbr_seats=4, is_electric=False, owner=person_jane_main.id)
+    await car.save(db=db)
+
+    return car
+
+
+@pytest.fixture
 async def tag_blue_main(db: InfrahubDatabase, default_branch: Branch, person_tag_schema) -> Node:
     tag = await Node.init(db=db, schema=InfrahubKind.TAG, branch=default_branch)
     await tag.new(db=db, name="Blue", description="The Blue tag")
