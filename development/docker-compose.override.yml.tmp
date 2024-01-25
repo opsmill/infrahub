@@ -2,7 +2,7 @@
 services:
   # --------------------------------------------------------------------------------
   #  - Prometheus to collect all metrics endpoints
-  #  - Tempo to receive traces
+  #  - Tempo or Jaeger to receive traces
   #  - Grafana to visualize these metrics
   #  - Loki to receive logs from promtail
   #  - Promtail to parse logs from different source
@@ -41,6 +41,13 @@ services:
       - '-config.file=/etc/tempo.yaml'
     ports:
       - "3200:3200"
+
+  # jaeger:
+  #   image: jaegertracing/all-in-one:1.53
+  #   environment:
+  #     COLLECTOR_ZIPKIN_HOST_PORT: ":9411"
+  #   ports:
+  #     - "16686:16686"
 
   prometheus:
     image: prom/prometheus:latest
