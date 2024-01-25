@@ -12,7 +12,7 @@ test.describe("when searching an object", () => {
 
     await expect(results).toBeVisible();
 
-    const result = await results.getByText("No data found for this object");
+    const result = await results.getByText("No results found");
 
     await expect(result).toBeVisible();
   });

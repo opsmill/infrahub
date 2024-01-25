@@ -10,7 +10,7 @@ export const SearchResults = (props: tSearchResults) => {
   const { count, edges = [] } = results;
 
   if (count === 0) {
-    return <div>No results found</div>;
+    return <div data-testid="results-container">No results found</div>;
   }
 
   return (
