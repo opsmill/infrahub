@@ -739,8 +739,6 @@ class InfrahubNodeBase:
             rel_schema = self._schema.get_relationship(name=item_name)
             if not rel_schema:
                 continue
-            if rel_schema.kind in [RelationshipKind.GROUP, RelationshipKind.COMPONENT]:
-                continue
 
             rel: Union[RelatedNodeBase, RelationshipManagerBase] = getattr(self, item_name)
 
