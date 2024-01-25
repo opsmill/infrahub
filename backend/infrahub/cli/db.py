@@ -5,10 +5,13 @@ from asyncio import run as aiorun
 import typer
 from rich.logging import RichHandler
 
-import infrahub.config as config
-from infrahub.core.initialization import first_time_initialization, initialization
+from infrahub import config
+from infrahub.core.graph import GRAPH_VERSION
+from infrahub.core.graph.migrations import get_migrations
+from infrahub.core.initialization import first_time_initialization, get_root_node, initialization
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase, get_db
+from infrahub.log import get_logger
 
 app = typer.Typer()
 
@@ -25,13 +28,7 @@ def callback() -> None:
 async def _init() -> None:
     """Erase the content of the database and initialize it with the core schema."""
 
-    # log_level = "DEBUG" if debug else "INFO"
-
-    log_level = "DEBUG"
-
-    FORMAT = "%(message)s"
-    logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
-    log = logging.getLogger("infrahub")
+    log = get_logger()
 
     # --------------------------------------------------
     # CLEANUP
@@ -45,14 +42,14 @@ async def _init() -> None:
         await delete_all_nodes(db=db)
         await first_time_initialization(db=db)
 
-    await db.close()
+    await dbdriver.close()
 
 
 async def _load_test_data(dataset: str) -> None:
     """Load test data into the database from the test_data directory."""
 
-    db = InfrahubDatabase(driver=await get_db(retry=1))
-    async with db.start_session() as db:
+    dbdriver = InfrahubDatabase(driver=await get_db(retry=1))
+    async with dbdriver.start_session() as db:
         await initialization(db=db)
 
         log_level = "DEBUG"
@@ -64,7 +61,47 @@ async def _load_test_data(dataset: str) -> None:
         dataset_module = importlib.import_module(f"infrahub.test_data.{dataset}")
         await dataset_module.load_data(db=db)
 
-    await db.close()
+    await dbdriver.close()
+
+
+async def _migrate(check: bool) -> None:
+    log = get_logger()
+
+    dbdriver = InfrahubDatabase(driver=await get_db(retry=1))
+    async with dbdriver.start_session() as db:
+        log.info("Checking current state of the Database")
+
+        root_node = await get_root_node(db=db)
+        migrations = await get_migrations(root=root_node)
+
+        if not migrations:
+            log.info(f"Database up-to-date (v{root_node.graph_version}), no migration to execute.")
+        else:
+            log.info(
+                f"Database needs to be updated (v{root_node.graph_version} -> v{GRAPH_VERSION}), {len(migrations)} migrations pending"
+            )
+
+        if migrations and not check:
+            for migration in migrations:
+                log.debug(f"Execute Migration: {migration.name}")
+                execution_result = await migration.execute(db=db)
+                validation_result = None
+
+                if execution_result.success:
+                    validation_result = await migration.validate_migration(db=db)
+                    if validation_result.success:
+                        log.info(f"Migration: {migration.name} SUCCESS")
+
+                if not execution_result.success or validation_result and not validation_result.success:
+                    log.info(f"Migration: {migration.name} FAILED")
+                    for error in execution_result.errors:
+                        log.warning(f"  {error}")
+                    if validation_result and not validation_result.success:
+                        for error in validation_result.errors:
+                            log.warning(f"  {error}")
+                    break
+
+    await dbdriver.close()
 
 
 @app.command()
@@ -96,3 +133,15 @@ def load_test_data(
     config.load_and_exit(config_file_name=config_file)
 
     aiorun(_load_test_data(dataset=dataset))
+
+
+@app.command()
+def migrate(
+    check: bool = typer.Option(False, help="Check the state of the database without applying the migrations."),
+    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+) -> None:
+    """Check the current format of the internal graph and apply the necessary migrations"""
+
+    config.load_and_exit(config_file_name=config_file)
+
+    aiorun(_migrate(check=check))

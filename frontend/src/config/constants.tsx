@@ -141,7 +141,7 @@ export const relationshipsForDetailsView = {
 
 export const relationshipsForTabs = {
   one: [],
-  many: ["Generic", "Component"],
+  many: ["Generic", "Component", "Hierarchy"],
 };
 
 export const peersKindForForm = ["Attribute", "Parent"];

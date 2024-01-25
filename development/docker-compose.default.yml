@@ -3,4 +3,4 @@ version: "3.4"
 services:
   infrahub-server:
     ports:
-      - "8000:8000"
+      - "${INFRAHUB_SERVER_PORT:-8000}:8000"

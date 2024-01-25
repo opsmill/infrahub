@@ -7,13 +7,16 @@ import pytest
 import yaml
 from pytest import Item
 
-from .items import InfrahubPythonTransformUnitProcessItem, InfrahubRFileUnitRenderItem
+from .items import InfrahubJinja2TransformUnitRenderItem, InfrahubPythonTransformUnitProcessItem
 from .models import InfrahubTestFileV1, InfrahubTestResource
 
-MARKER_MAPPING = {"RFile": pytest.mark.infrahub_rfile, "PythonTransform": pytest.mark.infrahub_python_transform}
+MARKER_MAPPING = {
+    "Jinja2Transform": pytest.mark.infrahub_jinja2_transform,
+    "PythonTransform": pytest.mark.infrahub_python_transform,
+}
 
 ITEMS_MAPPING = {
-    "rfile-unit-render": InfrahubRFileUnitRenderItem,
+    "jinja2-transform-unit-render": InfrahubJinja2TransformUnitRenderItem,
     "python-transform-unit-process": InfrahubPythonTransformUnitProcessItem,
 }
 
@@ -28,18 +31,20 @@ class InfrahubYamlFile(pytest.File):
         content = InfrahubTestFileV1(**raw)
 
         for test_group in content.infrahub_tests:
-            if test_group.resource == InfrahubTestResource.RFILE.value:
-                marker = pytest.mark.infrahub_rfile(name=test_group.resource_name)
+            if test_group.resource == InfrahubTestResource.JINJA2_TRANSFORM.value:
+                marker = MARKER_MAPPING[test_group.resource](name=test_group.resource_name)
                 try:
                     resource_config = self.session.infrahub_repo_config.get_jinja2_transform(test_group.resource_name)  # type: ignore[attr-defined]
                 except KeyError:
                     warnings.warn(
-                        Warning(f"Unable to find the rfile {test_group.resource_name!r} in the repository config file.")
+                        Warning(
+                            f"Unable to find the jinja2 transform {test_group.resource_name!r} in the repository config file."
+                        )
                     )
                     continue
 
             if test_group.resource == InfrahubTestResource.PYTHON_TRANSFORM.value:
-                marker = pytest.mark.infrahub_python_transform(name=test_group.resource_name)
+                marker = MARKER_MAPPING[test_group.resource](name=test_group.resource_name)
                 try:
                     resource_config = self.session.infrahub_repo_config.get_python_transform(test_group.resource_name)  # type: ignore[attr-defined]
                 except KeyError:

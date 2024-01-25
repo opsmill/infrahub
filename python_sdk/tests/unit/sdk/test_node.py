@@ -849,6 +849,7 @@ async def test_create_input_data(client, location_schema, client_type):
             "type": {"value": "SITE"},
             # "primary_tag": None,
             "tags": [],
+            "member_of_groups": [],
         }
     }
 
@@ -880,6 +881,7 @@ async def test_create_input_data__with_relationships_02(client, location_schema,
             "type": {"value": "SITE"},
             "tags": [{"id": "aaaaaa"}, {"id": "bbbb"}],
             "primary_tag": {"id": "pppppppp"},
+            "member_of_groups": [],
         }
     }
     assert input_data["data"] == expected
@@ -906,6 +908,7 @@ async def test_create_input_data__with_relationships_01(client, location_schema,
             "type": {"value": "SITE"},
             "tags": [{"id": "aaaaaa"}, {"id": "bbbb"}],
             "primary_tag": {"id": "pppppppp"},
+            "member_of_groups": [],
         }
     }
 
@@ -1115,6 +1118,7 @@ async def test_update_input_data__with_relationships_01(
             "primary_tag": {"id": "gggggggg-gggg-gggg-gggg-gggggggggggg"},
             "tags": [{"id": "gggggggg-gggg-gggg-gggg-gggggggggggg"}],
             "type": {"is_protected": True, "is_visible": True, "value": "SITE"},
+            "member_of_groups": [],
         },
     }
 
@@ -1155,6 +1159,7 @@ async def test_update_input_data_with_relationships_02(client, location_schema, 
                 "source": "cccccccc-cccc-cccc-cccc-cccccccccccc",
                 "value": "SITE",
             },
+            "member_of_groups": [],
         },
     }
 
@@ -1180,6 +1185,7 @@ async def test_update_input_data_empty_relationship(
             # "primary_tag": None,
             "tags": [],
             "type": {"is_protected": True, "is_visible": True, "value": "SITE"},
+            "member_of_groups": [],
         },
     }
 

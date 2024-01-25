@@ -22,7 +22,7 @@ class InfrahubTestExpectedResult(str, Enum):
 
 
 class InfrahubTestResource(str, Enum):
-    RFILE = "RFile"
+    JINJA2_TRANSFORM = "Jinja2Transform"
     PYTHON_TRANSFORM = "PythonTransform"
     GRAPHQL = "GraphQLQuery"
 
@@ -97,8 +97,8 @@ class InfrahubInputOutputTest(pydantic.BaseModel):
         return self.parse_user_provided_data(self.output)
 
 
-class InfrahubRFileUnitRenderTest(InfrahubInputOutputTest):
-    kind: Literal["rfile-unit-render"]
+class InfrahubJinja2TransformUnitRenderTest(InfrahubInputOutputTest):
+    kind: Literal["jinja2-transform-unit-render"]
 
 
 class InfrahubPythonTransformUnitProcessTest(InfrahubInputOutputTest):
@@ -108,7 +108,7 @@ class InfrahubPythonTransformUnitProcessTest(InfrahubInputOutputTest):
 class InfrahubTest(pydantic.BaseModel):
     name: str = pydantic.Field(..., description="Name of the test, must be unique")
     expect: InfrahubTestExpectedResult
-    spec: Union[InfrahubRFileUnitRenderTest, InfrahubPythonTransformUnitProcessTest] = pydantic.Field(
+    spec: Union[InfrahubJinja2TransformUnitRenderTest, InfrahubPythonTransformUnitProcessTest] = pydantic.Field(
         ..., discriminator="kind"
     )
 

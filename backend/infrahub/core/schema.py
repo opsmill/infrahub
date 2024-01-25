@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 import enum
 import hashlib
 import keyword
@@ -183,7 +182,9 @@ class BaseSchemaModel(BaseModel):
 
     def duplicate(self) -> Self:
         """Duplicate the current object by doing a deep copy of everything and recreating a new object."""
-        return self.__class__(**copy.deepcopy(self.model_dump()))
+        # import copy
+        # return self.__class__(**copy.deepcopy(self.model_dump()))
+        return self.model_copy(deep=True)
 
     @staticmethod
     def is_list_composed_of_schema_model(items) -> bool:
@@ -344,28 +345,30 @@ class AttributeSchema(BaseSchemaModel):
 
         return values
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._attribute_enum_class = None
-        if self.enum and config.SETTINGS.experimental_features.graphql_enums:
-            self._attribute_enum_class = generate_python_enum(f"{self.name.title()}Enum", {v: v for v in self.enum})
-
     def get_class(self):
         return ATTRIBUTE_TYPES[self.kind].get_infrahub_class()
 
+    @property
+    def uses_enum_class(self) -> bool:
+        return bool(self.enum) and config.SETTINGS.experimental_features.graphql_enums
+
+    def get_attribute_enum_class(self) -> Optional[enum.EnumType]:
+        if not self.uses_enum_class:
+            return None
+        return generate_python_enum(f"{self.name.title()}Enum", {v: v for v in self.enum})
+
     def convert_to_attribute_enum(self, value: Any) -> Any:
-        if not config.SETTINGS.experimental_features.graphql_enums:
+        if not self.uses_enum_class or not value:
             return value
-        if not self._attribute_enum_class or not value:
-            return value
-        if isinstance(value, self._attribute_enum_class):
+        attribute_enum_class = self.get_attribute_enum_class()
+        if isinstance(value, attribute_enum_class):
             return value
         if isinstance(value, enum.Enum):
             value = value.value
-        return self._attribute_enum_class(value)
+        return attribute_enum_class(value)
 
     def convert_to_enum_value(self, value: Any) -> Any:
-        if not self._attribute_enum_class:
+        if not self.uses_enum_class:
             return value
         if isinstance(value, list):
             value = [self.convert_to_attribute_enum(element) for element in value]
