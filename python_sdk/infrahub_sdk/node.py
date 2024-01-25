@@ -1195,12 +1195,8 @@ class InfrahubNode(InfrahubNodeBase):
 
         return data
 
-    async def _relationship_mutation(
-        self, action: str, relation_to_update: str, related_nodes: List[Union[InfrahubNode, str]]
-    ) -> str:
-        related_node_str = [
-            "{ id: " + f'"{node.id if isinstance(node, InfrahubNode) else node}"' + " }" for node in related_nodes
-        ]
+    async def _relationship_mutation(self, action: str, relation_to_update: str, related_nodes: List[str]) -> str:
+        related_node_str = ["{ id: " + f'"{node}"' + " }" for node in related_nodes]
         return f"""
         mutation {{
             Relationship{action}(
@@ -1547,12 +1543,8 @@ class InfrahubNodeSync(InfrahubNodeBase):
 
         return data
 
-    def _relationship_mutation(
-        self, action: str, relation_to_update: str, related_nodes: List[Union[InfrahubNodeSync, str]]
-    ) -> str:
-        related_node_str = [
-            "{ id: " + f'"{node.id if isinstance(node, InfrahubNodeSync) else node}"' + " }" for node in related_nodes
-        ]
+    def _relationship_mutation(self, action: str, relation_to_update: str, related_nodes: List[str]) -> str:
+        related_node_str = ["{ id: " + f'"{node}"' + " }" for node in related_nodes]
         return f"""
         mutation {{
             Relationship{action}(
