@@ -6,7 +6,7 @@ test.describe("when searching an object", () => {
   test("should not retrieve a result", async ({ page }) => {
     await page.goto("/");
 
-    await page.getByTestId("search-bar").fill(OBJECT_SEARCH);
+    await page.getByTestId("search-bar").fill("test");
 
     const results = await page.locator("data-testid=results-container");
 
