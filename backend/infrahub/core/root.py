@@ -1,3 +1,5 @@
+from pydantic import Field
+
 from infrahub.core.node.standard import StandardNode
 from infrahub.core.query.standard_node import RootNodeCreateQuery
 from infrahub.database import InfrahubDatabase
@@ -5,6 +7,8 @@ from infrahub.exceptions import Error
 
 
 class Root(StandardNode):
+    graph_version: int = Field(0, description="Internal Version of the graph.")
+
     async def create(self, db: InfrahubDatabase) -> bool:
         """Create a new node in the database."""
 
