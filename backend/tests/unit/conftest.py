@@ -1,4 +1,3 @@
-import asyncio
 import os
 import shutil
 from itertools import islice
@@ -18,7 +17,6 @@ from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, Infra
 from infrahub.core.initialization import (
     create_branch,
     create_default_branch,
-    create_global_branch,
     create_root_node,
     first_time_initialization,
     initialization,
@@ -29,11 +27,10 @@ from infrahub.core.schema import (
     NodeSchema,
     SchemaRoot,
     core_models,
-    internal_schema,
 )
-from infrahub.core.schema_manager import SchemaBranch, SchemaManager
+from infrahub.core.schema_manager import SchemaBranch
 from infrahub.core.utils import delete_all_nodes
-from infrahub.database import InfrahubDatabase, get_db
+from infrahub.database import InfrahubDatabase
 from infrahub.git import InfrahubRepository
 from infrahub.graphql.generator import (
     load_attribute_types_in_registry,
@@ -41,24 +38,6 @@ from infrahub.graphql.generator import (
 )
 from infrahub.message_bus.rpc import InfrahubRpcClientTesting
 from infrahub.test_data import dataset01 as ds01
-
-
-@pytest.fixture(scope="session")
-def event_loop():
-    """Overrides pytest default function scoped event loop"""
-    policy = asyncio.get_event_loop_policy()
-    loop = policy.new_event_loop()
-    yield loop
-    loop.close()
-
-
-@pytest.fixture(scope="module")
-async def db() -> InfrahubDatabase:
-    driver = InfrahubDatabase(driver=await get_db(retry=1))
-
-    yield driver
-
-    await driver.close()
 
 
 @pytest.fixture
@@ -126,17 +105,6 @@ async def git_fixture_repo(git_sources_dir, git_repos_dir, helper) -> InfrahubRe
     await repo.create_branch_in_git(branch_name="main", branch_id="8808dcea-f7b4-4f5a-b5e9-a0605d4c11ba")
 
     return repo
-
-
-@pytest.fixture
-def local_storage_dir(tmp_path) -> str:
-    storage_dir = os.path.join(str(tmp_path), "storage")
-    os.mkdir(storage_dir)
-
-    config.SETTINGS.storage.driver = config.StorageDriver.FileSystemStorage
-    config.SETTINGS.storage.local = config.FileSystemStorageSettings(path=storage_dir)
-
-    return storage_dir
 
 
 @pytest.fixture
@@ -2322,8 +2290,12 @@ async def reset_registry(db: InfrahubDatabase) -> None:
 
 
 @pytest.fixture
-async def empty_database(db: InfrahubDatabase) -> None:
+async def delete_all_nodes_in_db(db: InfrahubDatabase) -> None:
     await delete_all_nodes(db=db)
+
+
+@pytest.fixture
+async def empty_database(db: InfrahubDatabase, delete_all_nodes_in_db) -> None:
     await create_root_node(db=db)
 
 
@@ -2331,30 +2303,6 @@ async def empty_database(db: InfrahubDatabase) -> None:
 async def init_db(empty_database, db: InfrahubDatabase) -> None:
     await first_time_initialization(db=db)
     await initialization(db=db)
-
-
-@pytest.fixture
-async def default_branch(reset_registry, local_storage_dir, empty_database, db: InfrahubDatabase) -> Branch:
-    branch = await create_default_branch(db=db)
-    await create_global_branch(db=db)
-    registry.schema = SchemaManager()
-    return branch
-
-
-@pytest.fixture
-async def register_internal_models_schema(default_branch: Branch) -> SchemaBranch:
-    schema = SchemaRoot(**internal_schema)
-    schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
-    default_branch.update_schema_hash()
-    return schema_branch
-
-
-@pytest.fixture
-async def register_core_models_schema(default_branch: Branch, register_internal_models_schema) -> SchemaBranch:
-    schema = SchemaRoot(**core_models)
-    schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
-    default_branch.update_schema_hash()
-    return schema_branch
 
 
 @pytest.fixture

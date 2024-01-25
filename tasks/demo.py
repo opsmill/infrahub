@@ -7,6 +7,7 @@ from invoke import Context, task
 from .shared import (
     AVAILABLE_SERVICES,
     BUILD_NAME,
+    INFRAHUB_ADDRESS,
     INFRAHUB_DATABASE,
     PYTHON_VER,
     build_compose_files_cmd,
@@ -230,12 +231,8 @@ def infra_git_create(
     -H "Content-Type: application/json" \
     -H "X-INFRAHUB-KEY: 06438eb2-8019-4776-878c-0941b1f1d1ec" \
     -d '{"query":"%s", "variables": {"name": "%s", "location": "%s"}}' \
-    http://localhost:8000/graphql
-    """ % (
-        clean_query,
-        name,
-        location,
-    )
+    %s/graphql
+    """ % (clean_query, name, location, INFRAHUB_ADDRESS)
     execute_command(context=context, command=exec_cmd, print_cmd=True)
 
 

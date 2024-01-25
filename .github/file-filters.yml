@@ -42,6 +42,9 @@ javascript_all: &javascript_all
 yaml_all: &yaml_all
   - "**/*.{yml,yaml}"
 
+markdown_all: &markdown_all
+  - "**/*.md"
+
 backend_all:
   - *sdk_files
   - *backend_files
@@ -51,6 +54,7 @@ backend_all:
 documentation_all:
   - *development_files
   - *doc_files
+  - *markdown_all
 
 sdk_all:
   - *sdk_files
