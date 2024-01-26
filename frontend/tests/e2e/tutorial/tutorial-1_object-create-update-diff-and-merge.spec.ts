@@ -16,10 +16,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
 
       await page.getByLabel("Name *").fill("my-first-org");
       await page.getByLabel("Description").fill("Testing Infrahub");
-      await saveScreenshotForDocs(
-        page,
-        "tutorial/tutorial-1-branch-and-version-control.cy.ts/tutorial_1_organization_create"
-      );
+      await saveScreenshotForDocs(page, "tutorial_1_organization_create");
 
       await page.getByRole("button", { name: "Create" }).click();
     });
@@ -39,10 +36,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     await test.step("fill and submit form for new organization", async () => {
       await expect(page.getByText("Create a new branch")).toBeVisible();
       await page.locator("[id='New branch name']").fill("cr1234");
-      await saveScreenshotForDocs(
-        page,
-        "tutorial/tutorial-1-branch-and-version-control.cy.ts/tutorial_1_branch_creation"
-      );
+      await saveScreenshotForDocs(page, "tutorial_1_branch_creation");
       await page.getByRole("button", { name: "Create" }).click();
     });
 
@@ -57,27 +51,18 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
       await page.getByRole("link", { name: "Organization" }).click();
       const myFirstOrgLink = page.getByRole("cell", { name: "my-first-org", exact: true });
       await expect(myFirstOrgLink).toBeVisible();
-      await saveScreenshotForDocs(
-        page,
-        "tutorial/tutorial-1-branch-and-version-control.cy.ts/tutorial_1_organizations"
-      );
+      await saveScreenshotForDocs(page, "tutorial_1_organizations");
       await myFirstOrgLink.click();
     });
 
     await test.step("Edit the organization description on branch cr1234", async () => {
       const editButton = page.getByRole("button", { name: "Edit" });
       await expect(editButton).toBeVisible();
-      await saveScreenshotForDocs(
-        page,
-        "tutorial/tutorial-1-branch-and-version-control.cy.ts/tutorial_1_organization_details"
-      );
+      await saveScreenshotForDocs(page, "tutorial_1_organization_details");
       await editButton.click();
 
       await page.getByLabel("Description").fill("Changes from branch cr1234");
-      await saveScreenshotForDocs(
-        page,
-        "tutorial/tutorial-1-branch-and-version-control.cy.ts/tutorial_1_organization_edit"
-      );
+      await saveScreenshotForDocs(page, "tutorial_1_organization_edit");
       await page.getByRole("button", { name: "Save" }).click();
     });
 
@@ -97,10 +82,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     await test.step("Go to branch cr1234 page", async () => {
       await page.goto("/?branch=cr1234");
       await page.getByTestId("sidebar-menu").getByRole("link", { name: "Branches" }).click();
-      await saveScreenshotForDocs(
-        page,
-        "tutorial/tutorial-1-branch-and-version-control.cy.ts/tutorial_1_branch_list"
-      );
+      await saveScreenshotForDocs(page, "tutorial_1_branch_list");
       await page.getByTestId("branches-items").getByText("cr1234").click();
       await expect(page.locator("dl")).toContainText("cr1234");
     });
@@ -109,10 +91,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
       await page.getByRole("button", { name: "Diff" }).click();
       await page.getByText("My-First-Org").click();
       await expect(page.getByText("Testing Infrahub")).toBeVisible();
-      await saveScreenshotForDocs(
-        page,
-        "tutorial/tutorial-1-branch-and-version-control.cy.ts/tutorial_1_branch_diff"
-      );
+      await saveScreenshotForDocs(page, "tutorial_1_branch_diff");
       await expect(page.getByText("Changes from branch cr1234")).toBeVisible();
     });
 
@@ -120,10 +99,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
       await page.getByRole("button", { name: "Details" }).click();
       const mergeButton = page.getByRole("button", { name: "Merge" });
       await expect(mergeButton).toBeVisible();
-      await saveScreenshotForDocs(
-        page,
-        "tutorial/tutorial-1-branch-and-version-control.cy.ts/tutorial_1_branch_details"
-      );
+      await saveScreenshotForDocs(page, "tutorial_1_branch_details");
       await mergeButton.click();
       await expect(page.locator("#alert-success")).toContainText("Branch merged successfully!");
       await expect(page.locator("pre")).toContainText(

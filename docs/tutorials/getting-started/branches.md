@@ -18,7 +18,7 @@ You can create a new branch in the frontend by using the button with a plus sign
 
 Branch names are fairly permissive, but must conform to [git ref format](https://git-scm.com/docs/git-check-ref-format). For example, slashes (`/`) are allowed, tildes (`~`) are not.
 
-![](../../media/tutorial/tutorial-1-branch-and-version-control.cy.ts/tutorial_1_branch_creation.png)
+![](../../media/tutorial_1_branch_creation.png)
 
 ### Other options available
 
@@ -65,9 +65,9 @@ mutation {
 4. Update the description attribute of the organization, for example with `Changes from branch cr1234`.
 5. Save your change with the button `save`.
 
-![Access the organizations](../../media/tutorial/tutorial-1-branch-and-version-control.cy.ts/tutorial_1_organizations.png)
-![Select the my-first-org organization](../../media/tutorial/tutorial-1-branch-and-version-control.cy.ts/tutorial_1_organization_details.png)
-![Select the `edit` button](../../media/tutorial/tutorial-1-branch-and-version-control.cy.ts/tutorial_1_organization_edit.png)
+![Access the organizations](../../media/tutorial_1_organizations.png)
+![Select the my-first-org organization](../../media/tutorial_1_organization_details.png)
+![Select the `edit` button](../../media/tutorial_1_organization_edit.png)
 
 !!!success Validate that everything is correct
 Go back to the detailed page for the Organization `my-first-org` and try to switch branches with the branch selection menu at the top.
@@ -83,17 +83,17 @@ To view changes and merge a branch you need to:
 
 1. Navigate to the branch page in the menu on the left under the Change Control section (or [follow this link](http://localhost:8000/branches/))
 
-![Branches list](../../media/tutorial/tutorial-1-branch-and-version-control.cy.ts/tutorial_1_branch_list.png)
+![Branches list](../../media/tutorial_1_branch_list.png)
 
 2. Select the branch `cr1234` in the list of available branches.
 3. Select on the Diff button and expand the changes to view the diff between `cr1234` and `main`.
 
-![Branch diff](../../media/tutorial/tutorial-1-branch-and-version-control.cy.ts/tutorial_1_branch_diff.png)
+![Branch diff](../../media/tutorial_1_branch_diff.png)
 
 4. Select the `Details` button to go back.
 5. Select the `Merge` button.
 
-![Branch details](../../media/tutorial/tutorial-1-branch-and-version-control.cy.ts/tutorial_1_branch_details.png)
+![Branch details](../../media/tutorial_1_branch_details.png)
 
 ### Other options available
 

@@ -23,4 +23,4 @@ Name: my-first-org
 Description: Testing Infrahub
 ```
 
-![Fill the name and the description](../../media/tutorial/tutorial-1-branch-and-version-control.cy.ts/tutorial_1_organization_create.png)
+![Fill the name and the description](../../media/tutorial_1_organization_create.png)
