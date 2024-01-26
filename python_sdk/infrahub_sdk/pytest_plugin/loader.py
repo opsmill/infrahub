@@ -8,9 +8,9 @@ import yaml
 from pytest import Item
 
 from .items import (
+    InfrahubGraphqlQueryIntegrationItem,
     InfrahubJinja2TransformIntegrationItem,
     InfrahubJinja2TransformUnitRenderItem,
-    InfrahubPythonGraphqlQueryIntegrationItem,
     InfrahubPythonTransformIntegrationItem,
     InfrahubPythonTransformUnitProcessItem,
 )
@@ -23,7 +23,7 @@ MARKER_MAPPING = {
 }
 
 ITEMS_MAPPING = {
-    "graphql-query-integration": InfrahubPythonGraphqlQueryIntegrationItem,
+    "graphql-query-integration": InfrahubGraphqlQueryIntegrationItem,
     "jinja2-transform-unit-render": InfrahubJinja2TransformUnitRenderItem,
     "jinja2-transform-integration": InfrahubJinja2TransformIntegrationItem,
     "python-transform-unit-process": InfrahubPythonTransformUnitProcessItem,

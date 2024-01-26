@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from pytest import ExceptionInfo
 
 
-class InfrahubPythonGraphqlQueryItem(InfrahubItem):
+class InfrahubGraphqlQueryItem(InfrahubItem):
     def execute_query(self) -> Any:
         return self.session.infrahub_client.query_gql_query(  # type: ignore[attr-defined]
             self.test.spec.query,  # type: ignore[union-attr]
@@ -42,10 +42,10 @@ class InfrahubPythonGraphqlQueryItem(InfrahubItem):
         return super().repr_failure(excinfo, style=style)
 
 
-class InfrahubPythonGraphqlQueryIntegrationItem(InfrahubPythonGraphqlQueryItem):
+class InfrahubGraphqlQueryIntegrationItem(InfrahubGraphqlQueryItem):
     def runtest(self) -> None:
         computed = self.execute_query()
-        expected = self.test.spec.get_output_data()
+        differences = self.get_result_differences(computed)
 
-        if self.test.spec.output and computed != expected and self.test.expect == InfrahubTestExpectedResult.PASS:
-            raise OutputMatchException(name=self.name, message=self.get_result_differences(computed))
+        if self.test.spec.output and differences and self.test.expect == InfrahubTestExpectedResult.PASS:
+            raise OutputMatchException(name=self.name, differences=differences)
