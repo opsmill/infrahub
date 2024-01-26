@@ -44,7 +44,7 @@ class InfrahubJinja2Item(InfrahubItem):
                 ) from exc
             return None
 
-    def get_result_differences(self, computed: Any) -> Any:
+    def get_result_differences(self, computed: Any) -> Optional[str]:
         if not self.test.spec.output or computed is None:
             return None
 
@@ -82,10 +82,10 @@ class InfrahubJinja2Item(InfrahubItem):
 
 class InfrahubJinja2TransformUnitRenderItem(InfrahubJinja2Item):
     def runtest(self) -> None:
-        expected_output = self.render_jinja2_template(self.test.spec.get_input_data())
-        differences = self.get_result_differences(expected_output)
+        computed = self.render_jinja2_template(self.test.spec.get_input_data())
+        differences = self.get_result_differences(computed)
 
-        if expected_output is not None and differences and self.test.expect == InfrahubTestExpectedResult.PASS:
+        if computed is not None and differences and self.test.expect == InfrahubTestExpectedResult.PASS:
             raise OutputMatchException(name=self.name, differences=differences)
 
     def repr_failure(self, excinfo: ExceptionInfo, style: Optional[str] = None) -> str:
@@ -103,8 +103,8 @@ class InfrahubJinja2TransformIntegrationItem(InfrahubJinja2Item):
             branch_name=self.session.config.option.infrahub_branch,  # type: ignore[attr-defined]
             rebase=self.test.spec.rebase,  # type: ignore[union-attr]
         )
-        expected_output = self.render_jinja2_template(graphql_result)
-        differences = self.get_result_differences(expected_output)
+        computed = self.render_jinja2_template(graphql_result)
+        differences = self.get_result_differences(computed)
 
-        if expected_output is not None and differences and self.test.expect == InfrahubTestExpectedResult.PASS:
+        if computed is not None and differences and self.test.expect == InfrahubTestExpectedResult.PASS:
             raise OutputMatchException(name=self.name, differences=differences)

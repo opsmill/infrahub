@@ -30,11 +30,11 @@ class InfrahubItem(pytest.Item):
         self.test: InfrahubTest = test
 
     @abstractmethod
-    def get_result_differences(self, computed: Any) -> Any:
-        pass
+    def get_result_differences(self, computed: Any) -> Optional[str]:
+        raise NotImplementedError()
 
     def runtest(self) -> None:
-        pass
+        raise NotImplementedError()
 
     def repr_failure(self, excinfo: pytest.ExceptionInfo, style: Optional[str] = None) -> str:
         return str(excinfo.value)

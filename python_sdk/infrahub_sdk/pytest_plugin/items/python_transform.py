@@ -41,7 +41,10 @@ class InfrahubPythonTransform(InfrahubItem):
             computed = transformer(variables)
         return computed
 
-    def get_result_differences(self, computed: Any) -> Any:
+    def get_result_differences(self, computed: Any) -> Optional[str]:
+        if not self.test.spec.output or computed is None:
+            return None
+
         expected = self.test.spec.get_output_data()
         differences = difflib.unified_diff(
             json.dumps(expected, indent=4, sort_keys=True).split("\n"),
@@ -76,10 +79,10 @@ class InfrahubPythonTransformUnitProcessItem(InfrahubPythonTransform):
     def runtest(self) -> None:
         input_data = self.test.spec.get_input_data()
         computed = self.run_transform(input_data)
-        expected = self.test.spec.get_output_data()
+        differences = self.get_result_differences(computed)
 
-        if self.test.spec.output and computed != expected and self.test.expect == InfrahubTestExpectedResult.PASS:
-            raise OutputMatchException(name=self.name, message=self.get_result_differences(computed))
+        if computed is not None and differences and self.test.expect == InfrahubTestExpectedResult.PASS:
+            raise OutputMatchException(name=self.name, message=differences)
 
 
 class InfrahubPythonTransformIntegrationItem(InfrahubPythonTransform):
@@ -91,7 +94,7 @@ class InfrahubPythonTransformIntegrationItem(InfrahubPythonTransform):
             rebase=self.test.spec.rebase,  # type: ignore[union-attr]
         )
         computed = self.run_transform(input_data)
-        expected = self.test.spec.get_output_data()
+        differences = self.get_result_differences(computed)
 
-        if self.test.spec.output and computed != expected and self.test.expect == InfrahubTestExpectedResult.PASS:
-            raise OutputMatchException(name=self.name, message=self.get_result_differences(computed))
+        if computed is not None and differences and self.test.expect == InfrahubTestExpectedResult.PASS:
+            raise OutputMatchException(name=self.name, message=differences)

@@ -23,7 +23,7 @@ class InfrahubPythonGraphqlQueryItem(InfrahubItem):
             rebase=self.test.spec.rebase,  # type: ignore[union-attr]
         )
 
-    def get_result_differences(self, computed: Any) -> Any:
+    def get_result_differences(self, computed: Any) -> Optional[str]:
         expected = self.test.spec.get_output_data()
         differences = difflib.unified_diff(
             json.dumps(expected, indent=4, sort_keys=True).split("\n"),
