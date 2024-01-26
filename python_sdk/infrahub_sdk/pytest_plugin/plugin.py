@@ -70,7 +70,7 @@ def pytest_sessionstart(session: Session) -> None:
     if not is_valid_url(session.config.option.infrahub_address):
         exit_test("Infrahub test instance address is not a valid URL", returncode=1)
 
-    client_config = None
+    client_config = {"default_branch": session.config.option.infrahub_branch}
     if hasattr(session.config.option, "infrahub_key"):
         client_config = {"api_token": session.config.option.infrahub_key}
     elif hasattr(session.config.option, "infrahub_username") and hasattr(session.config.option, "infrahub_password"):
