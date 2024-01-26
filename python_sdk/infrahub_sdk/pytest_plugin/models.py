@@ -99,7 +99,6 @@ class InfrahubInputOutputTest(pydantic.BaseModel):
 
 class InfrahubIntegrationTest(InfrahubInputOutputTest):
     query: str = pydantic.Field(description="Name of a pre-defined GraphQL query to execute")
-    branch_name: str = pydantic.Field("main", description="Name of the branch to use when executing the GraphQL query")
     variables: Union[Path, Dict[str, Any]] = pydantic.Field(
         Path("variables.json"), description="Variables and corresponding values to pass to the GraphQL query"
     )

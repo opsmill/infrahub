@@ -42,14 +42,22 @@ def pytest_addoption(parser: Parser) -> None:
         action="store",
         dest="infrahub_username",
         metavar="INFRAHUB_TESTS_USERNAME",
-        help="Username to use when authenticting on the Infrahub instance for live testing",
+        help="Username to use when authenticating on the Infrahub instance for live testing",
     )
     group.addoption(
         "--infrahub-password",
         action="store",
         dest="infrahub_password",
         metavar="INFRAHUB_TESTS_PASSWORD",
-        help="Password to use when authenticting on the Infrahub instance for live testing",
+        help="Password to use when authenticating on the Infrahub instance for live testing",
+    )
+    group.addoption(
+        "--infrahub-branch",
+        action="store",
+        dest="infrahub_branch",
+        default="main",
+        metavar="INFRAHUB_TESTS_BRANCH",
+        help="Branch to use when running integration tests with an Infrahub instance (default: %(default)s)",
     )
 
 

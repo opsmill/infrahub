@@ -100,7 +100,7 @@ class InfrahubJinja2TransformIntegrationItem(InfrahubJinja2Item):
         graphql_result = self.session.infrahub_client.query_gql_query(  # type: ignore[attr-defined]
             self.test.spec.query,  # type: ignore[union-attr]
             variables=self.test.spec.get_variables_data(),  # type: ignore[union-attr]
-            branch_name=self.test.spec.branch_name,  # type: ignore[union-attr]
+            branch_name=self.session.config.option.infrahub_branch,  # type: ignore[attr-defined]
             rebase=self.test.spec.rebase,  # type: ignore[union-attr]
         )
         expected_output = self.render_jinja2_template(graphql_result)
