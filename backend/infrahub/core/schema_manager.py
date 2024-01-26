@@ -28,6 +28,7 @@ from infrahub.core.node import Node
 from infrahub.core.property import FlagPropertyMixin, NodePropertyMixin
 from infrahub.core.schema import (
     AttributeSchema,
+    BaseNodeSchema,
     FilterSchema,
     GenericSchema,
     NodeSchema,
@@ -252,6 +253,9 @@ class SchemaBranch:
         self.validate_menu_placements()
         self.validate_kinds()
         self.validate_identifiers()
+        self.validate_display_labels()
+        self.validate_order_by()
+        self.validate_default_filters()
 
     def process_post_validation(self) -> None:
         self.add_groups()
@@ -327,6 +331,80 @@ class SchemaBranch:
                             f"{node.kind}: Incompatible direction detected on Reverse Relationship for {rels[0].name!r} ({identifier!r})"
                             f" {rels[0].direction.value} <> {peer_direction.value}"
                         ) from None
+
+    def _validate_attribute_path(
+        self,
+        node_schema: BaseNodeSchema,
+        path: str,
+        relationship_allowed: bool = False,
+        schema_attribute_name: Optional[str] = None,
+    ) -> None:
+        error_header = f"{node_schema.kind}"
+        error_header += f".{schema_attribute_name}" if schema_attribute_name else ""
+        allowed_leaf_properties = ["value"]
+        path_parts = path.split("__")
+        if len(path_parts) == 3:
+            relationship_name, attribute_name, attribute_property_name = path_parts
+        elif len(path_parts) == 2:
+            relationship_name = None
+            attribute_name, attribute_property_name = path_parts
+        else:
+            relationship_prefix = "[<relationship>__]" if relationship_allowed else ""
+            raise ValueError(
+                f"{error_header}: {path} must be of the format {relationship_prefix}<attribute>__<property>, the separator is two underscores"
+            )
+
+        if relationship_name:
+            if not relationship_allowed:
+                raise ValueError(f"{error_header}: this property only supports attributes, not relationships")
+            relationship_schema = node_schema.get_relationship(relationship_name, raise_on_error=False)
+            if relationship_schema.cardinality != RelationshipCardinality.ONE:
+                raise ValueError(
+                    f"{error_header}: cannot use {relationship_name} relationship, relationship must be of cardinality one"
+                )
+            node_schema = self.get(relationship_schema.peer)
+
+        attribute = node_schema.get_attribute(attribute_name, raise_on_error=False)
+        if not attribute:
+            raise ValueError(f"{error_header}: {attribute_name} is not an attribute of {node_schema.kind}")
+
+        if attribute_property_name not in allowed_leaf_properties:
+            raise ValueError(
+                f"{error_header}: attribute property must be one of {allowed_leaf_properties}, not {attribute_property_name}"
+            )
+
+    def validate_display_labels(self) -> None:
+        for name in list(self.nodes.keys()) + list(self.generics.keys()):
+            node_schema = self.get(name=name)
+
+            if not node_schema.display_labels:
+                continue
+
+            for display_label_path in node_schema.display_labels:
+                self._validate_attribute_path(node_schema, display_label_path, schema_attribute_name="display_labels")
+
+    def validate_order_by(self) -> None:
+        for name in list(self.nodes.keys()) + list(self.generics.keys()):
+            node_schema = self.get(name=name)
+
+            if not node_schema.order_by:
+                continue
+
+            for order_by_path in node_schema.order_by:
+                self._validate_attribute_path(
+                    node_schema, order_by_path, relationship_allowed=True, schema_attribute_name="order_by"
+                )
+
+    def validate_default_filters(self) -> None:
+        for name in list(self.nodes.keys()) + list(self.generics.keys()):
+            node_schema = self.get(name=name)
+
+            if not node_schema.default_filter:
+                continue
+
+            self._validate_attribute_path(
+                node_schema, node_schema.default_filter, schema_attribute_name="default_filter"
+            )
 
     def validate_names(self) -> None:
         for name in list(self.nodes.keys()) + list(self.generics.keys()):
