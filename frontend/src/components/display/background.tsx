@@ -1,13 +1,19 @@
 import { MouseEventHandler } from "react";
+import { classNames } from "../../utils/common";
 
 type tBackground = {
   onClick?: MouseEventHandler;
+  className?: string;
 };
 
-export const Background = ({ onClick, ...propsToPass }: tBackground) => {
+export const Background = ({ onClick, className = "", ...propsToPass }: tBackground) => {
   return (
     <div
-      className="fixed z-20 inset-0 bg-black bg-opacity-40 transition-opacity"
+      className={classNames(
+        "fixed z-20 inset-0 bg-opacity-40 transition-opacity",
+        className?.includes("bg-") ? "" : "bg-black",
+        className
+      )}
       onClick={onClick}
       {...propsToPass}
     />
