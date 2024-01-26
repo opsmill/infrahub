@@ -79,7 +79,8 @@ def pytest_sessionstart(session: Session) -> None:
             "password": session.config.option.infrahub_password,
         }
 
-    infrahub_client = InfrahubClientSync(address=session.config.option.infrahub_address, config=client_config)
+    # Typing fix needed for SDK BaseClient definition, e.g. config: Optional[Union[Config, Dict[str, Any]]] = None,
+    infrahub_client = InfrahubClientSync(address=session.config.option.infrahub_address, config=client_config)  # type: ignore[arg-type]
     infrahub_client.login()
     session.infrahub_client = infrahub_client  # type: ignore[attr-defined]
 

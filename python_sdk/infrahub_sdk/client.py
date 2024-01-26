@@ -63,7 +63,7 @@ class BaseClient:
         insert_tracker: bool = False,
         pagination_size: int = 50,
         max_concurrent_execution: int = 5,
-        config: Optional[Union[Config, Dict[str, Any]]] = None,
+        config: Optional[Config] = None,
     ):
         self.client = None
         self.retry_on_failure = retry_on_failure
