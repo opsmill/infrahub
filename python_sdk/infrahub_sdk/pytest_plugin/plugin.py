@@ -34,7 +34,7 @@ def pytest_addoption(parser: Parser) -> None:
         "--infrahub-key",
         action="store",
         dest="infrahub_key",
-        metavar="INFRAHUB_TESTS_KEY",
+        metavar="INFRAHUB_TESTS_API_KEY",
         help="Key to use when querying the Infrahub instance for live testing",
     )
     group.addoption(
