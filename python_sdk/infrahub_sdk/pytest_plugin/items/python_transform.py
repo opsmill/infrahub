@@ -16,23 +16,36 @@ from .base import InfrahubItem
 if TYPE_CHECKING:
     from pytest import ExceptionInfo
 
+    from infrahub_sdk.pytest_plugin.models import InfrahubTest
+    from infrahub_sdk.schema import InfrahubRepositoryConfigElement
+
 
 class InfrahubPythonTransform(InfrahubItem):
-    def run_transform(self, variables: Dict[str, Any]) -> Any:
-        transform_instance = get_transform_class_instance(
+    def __init__(
+        self,
+        *args: Any,
+        resource_name: str,
+        resource_config: InfrahubRepositoryConfigElement,
+        test: InfrahubTest,
+        **kwargs: Dict[str, Any],
+    ):
+        super().__init__(*args, resource_name=resource_name, resource_config=resource_config, test=test, **kwargs)
+
+        self.transform_instance = get_transform_class_instance(
             transform_config=self.resource_config,  # type: ignore[arg-type]
             search_path=self.session.infrahub_config_path.parent,  # type: ignore[attr-defined]
         )
 
+        for attr in ("query", "transform"):
+            if not hasattr(self.transform_instance, attr):
+                raise PythonTransformDefinitionError(f"Missing attribute or function {attr}")
+
+    def run_transform(self, variables: Dict[str, Any]) -> Any:
         # FIXME: https://github.com/opsmill/infrahub/issues/1994
         if "data" in variables:
             variables = variables["data"]
 
-        for attr in ("query", "transform"):
-            if not hasattr(transform_instance, attr):
-                raise PythonTransformDefinitionError(f"Missing attribute or function {attr}")
-
-        transformer = functools.partial(transform_instance.transform)
+        transformer = functools.partial(self.transform_instance.transform)
 
         if asyncio.iscoroutinefunction(transformer.func):
             computed = asyncio.run(transformer(variables))
@@ -72,8 +85,16 @@ class InfrahubPythonTransformUnitProcessItem(InfrahubPythonTransform):
 
 class InfrahubPythonTransformIntegrationItem(InfrahubPythonTransform):
     def runtest(self) -> None:
+        configured_query = getattr(self.test.spec, "query", self.transform_instance.query)
+        if self.transform_instance.query != configured_query:
+            raise PythonTransformDefinitionError(
+                self.name,
+                f"Python transform {self.name!r} query '{self.transform_instance.query}' property does not match the one defined in the test "
+                f"'{configured_query}'.",
+            )
+
         input_data = self.session.infrahub_client.query_gql_query(  # type: ignore[attr-defined]
-            self.test.spec.query,  # type: ignore[union-attr]
+            self.transform_instance.query,
             variables=self.test.spec.get_variables_data(),  # type: ignore[union-attr]
             branch_name=self.session.config.option.infrahub_branch,  # type: ignore[attr-defined]
             rebase=self.test.spec.rebase,  # type: ignore[union-attr]
