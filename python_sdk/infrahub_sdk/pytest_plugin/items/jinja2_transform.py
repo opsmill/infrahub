@@ -25,6 +25,7 @@ class InfrahubJinja2Item(InfrahubItem):
         template = env.get_template(str(self.resource_config.template_path))  # type: ignore[attr-defined]
 
         try:
+            # FIXME: https://github.com/opsmill/infrahub/issues/1994
             return template.render(data=variables["data"])
         except jinja2.UndefinedError as exc:
             traceback = Traceback(show_locals=False)

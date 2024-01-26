@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import difflib
 import functools
 import json
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
-from deepdiff import DeepDiff, Delta
-from deepdiff.serialization import json_dumps
 from httpx import HTTPStatusError
 
 from infrahub_sdk.transforms import get_transform_class_instance
@@ -26,8 +25,7 @@ class InfrahubPythonTransform(InfrahubItem):
             search_path=self.session.infrahub_config_path.parent,  # type: ignore[attr-defined]
         )
 
-        # FIXME: ugly as hell, should be normalise
-        # https://github.com/opsmill/infrahub/issues/1994
+        # FIXME: https://github.com/opsmill/infrahub/issues/1994
         if "data" in variables:
             variables = variables["data"]
 
@@ -45,9 +43,14 @@ class InfrahubPythonTransform(InfrahubItem):
 
     def get_result_differences(self, computed: Any) -> Any:
         expected = self.test.spec.get_output_data()
-        differences = Delta(DeepDiff(expected, computed), serializer=json_dumps)
-
-        return json.dumps(json.loads(differences.dumps()), indent=4, sort_keys=True)
+        differences = difflib.unified_diff(
+            json.dumps(expected, indent=4, sort_keys=True).split("\n"),
+            json.dumps(computed, indent=4, sort_keys=True).split("\n"),
+            fromfile="expected",
+            tofile="rendered",
+            lineterm="",
+        )
+        return "\n".join(differences)
 
     def repr_failure(self, excinfo: ExceptionInfo, style: Optional[str] = None) -> str:
         if isinstance(excinfo.value, HTTPStatusError):
