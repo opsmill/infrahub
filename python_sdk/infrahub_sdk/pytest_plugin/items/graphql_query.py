@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import difflib
 import json
 from typing import TYPE_CHECKING, Any, Optional
 
@@ -22,17 +21,6 @@ class InfrahubPythonGraphqlQueryItem(InfrahubItem):
             branch_name=self.session.config.option.infrahub_branch,  # type: ignore[attr-defined]
             rebase=self.test.spec.rebase,  # type: ignore[union-attr]
         )
-
-    def get_result_differences(self, computed: Any) -> Optional[str]:
-        expected = self.test.spec.get_output_data()
-        differences = difflib.unified_diff(
-            json.dumps(expected, indent=4, sort_keys=True).split("\n"),
-            json.dumps(computed, indent=4, sort_keys=True).split("\n"),
-            fromfile="expected",
-            tofile="rendered",
-            lineterm="",
-        )
-        return "\n".join(differences)
 
     def repr_failure(self, excinfo: ExceptionInfo, style: Optional[str] = None) -> str:
         if isinstance(excinfo.value, HTTPStatusError):

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import difflib
 import functools
 import json
 from typing import TYPE_CHECKING, Any, Dict, Optional
@@ -40,20 +39,6 @@ class InfrahubPythonTransform(InfrahubItem):
         else:
             computed = transformer(variables)
         return computed
-
-    def get_result_differences(self, computed: Any) -> Optional[str]:
-        if not self.test.spec.output or computed is None:
-            return None
-
-        expected = self.test.spec.get_output_data()
-        differences = difflib.unified_diff(
-            json.dumps(expected, indent=4, sort_keys=True).split("\n"),
-            json.dumps(computed, indent=4, sort_keys=True).split("\n"),
-            fromfile="expected",
-            tofile="rendered",
-            lineterm="",
-        )
-        return "\n".join(differences)
 
     def repr_failure(self, excinfo: ExceptionInfo, style: Optional[str] = None) -> str:
         if isinstance(excinfo.value, HTTPStatusError):
