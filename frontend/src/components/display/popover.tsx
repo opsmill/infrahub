@@ -69,8 +69,8 @@ const PopOverPanel = ({
         "absolute z-10 overflow-scroll rounded-lg border shadow-xl grid grid-cols-1 divide-y divide-gray-200",
         className?.includes("bg-") ? "" : "bg-custom-white",
         // className?.includes("right-") ? "" : "right-0",
-        className?.includes("top-") ? "" : "top-10",
-        className?.includes("mt-") ? "" : "mt-3",
+        // className?.includes("top-") ? "" : "top-10",
+        // className?.includes("mt-") ? "" : "mt-3",
         className ?? "",
         widthClass[width ?? POPOVER_SIZE.NONE],
         heightClass[height ?? POPOVER_SIZE.NONE],
@@ -97,7 +97,7 @@ export const PopOver = (props: PopOverProps) => {
   }
 
   return (
-    <Popover className="flex-1">
+    <Popover className="">
       <Popover.Button as="div" className="h-full" disabled={disabled}>
         {buttonComponent}
       </Popover.Button>

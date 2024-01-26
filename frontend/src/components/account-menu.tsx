@@ -63,7 +63,7 @@ export const AccountMenu = () => {
   }
 
   return auth?.accessToken ? (
-    <Menu as="div">
+    <Menu as="div" className={"absolute right-2"}>
       <Menu.Button
         className="flex max-w-xs items-center rounded-full bg-custom-white text-sm focus:outline-none focus:ring-2 focus:ring-custom-blue-500 focus:ring-offset-2"
         data-cy="current-user-avatar-button"
