@@ -37,7 +37,7 @@ export const SelectButton = (props: any) => {
               leaveFrom="opacity-100"
               leaveTo="opacity-0">
               <Listbox.Options
-                className="absolute right-0 z-20 mt-2 w-72 origin-top-right divide-y divide-gray-200 overflow-hidden bg-custom-white shadow-lg ring-1 ring-custom-black ring-opacity-5 focus:outline-none rounded-md max-h-[500px] overflow-y-auto"
+                className="absolute right-0 mt-2 w-72 origin-top-right divide-y divide-gray-200 overflow-hidden bg-custom-white shadow-lg ring-1 ring-custom-black ring-opacity-5 focus:outline-none rounded-md max-h-[500px] overflow-y-auto"
                 data-cy="branch-list-dropdown"
                 data-testid="branch-list-dropdown">
                 {options.map((option: any) => (

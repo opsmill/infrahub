@@ -1,7 +1,7 @@
 /// <reference types="cypress" />
 
+import { ADMIN_CREDENTIALS, SCREENSHOT_ENV_VARIABLE, screenshotConfig } from "../../constants";
 import { ORGANIZATION_NAME } from "../../mocks/e2e/organizations";
-import { ADMIN_CREDENTIALS, SCREENSHOT_ENV_VARIABLE, screenshotConfig } from "../../utils";
 
 describe("Tutorial - Part 2", () => {
   beforeEach(function () {

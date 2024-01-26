@@ -1,6 +1,6 @@
 /// <reference types="cypress" />
 
-import { ADMIN_CREDENTIALS } from "../utils";
+import { ADMIN_CREDENTIALS } from "../constants";
 
 const ETHERNET_NAME = "Ethernet11";
 const ETHERNET_NEW_NAME = "Ethernet117";
