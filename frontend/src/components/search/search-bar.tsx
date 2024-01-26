@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { NODE_OBJECT } from "../../config/constants";
 import graphqlClient from "../../graphql/graphqlClientApollo";
-import { searchQuery } from "../../graphql/queries/objects/search";
+import { SEARCH } from "../../graphql/queries/objects/search";
 import LoadingScreen from "../../screens/loading-screen/loading-screen";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
@@ -33,7 +33,7 @@ const SearchInput = (props: tSearchInput) => {
   const handleFocus = () => {
     if (!search) return;
 
-    // Will repoen the results for the current search
+    // Will reopen the results for the current search
     onChange(search, true);
   };
 
@@ -75,8 +75,8 @@ export const SearchBar = () => {
 
       setIsLoading(true);
 
-      const { data }: any = await graphqlClient.query({
-        query: searchQuery,
+      const { data } = await graphqlClient.query({
+        query: SEARCH,
         variables: {
           search: newValue,
         },
@@ -123,7 +123,7 @@ export const SearchBar = () => {
   return (
     <div className="relative flex flex-1">
       <Transition show={isOpen}>
-        <Background onClick={handleClick} />
+        <Background onClick={handleClick} className="bg-transparent" />
       </Transition>
 
       <SearchInput loading={isLoading} onChange={handleChange} />

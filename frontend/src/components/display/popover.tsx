@@ -66,7 +66,7 @@ const PopOverPanel = ({
   return (
     <Popover.Panel
       className={classNames(
-        "flex absolute z-10 overflow-scroll rounded-lg border shadow-xl grid grid-cols-1 divide-y divide-gray-200",
+        "absolute z-10 overflow-scroll rounded-lg border shadow-xl grid grid-cols-1 divide-y divide-gray-200",
         className?.includes("bg-") ? "" : "bg-custom-white",
         // className?.includes("right-") ? "" : "right-0",
         className?.includes("top-") ? "" : "top-10",
