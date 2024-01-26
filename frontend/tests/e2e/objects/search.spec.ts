@@ -8,7 +8,7 @@ test.describe("when searching an object", () => {
 
     await page.getByTestId("search-bar").fill("test");
 
-    const results = await page.locator("data-testid=results-container");
+    const results = page.getByTestId("results-container");
 
     await expect(results).toBeVisible();
 
@@ -22,7 +22,7 @@ test.describe("when searching an object", () => {
 
     await page.getByTestId("search-bar").fill(OBJECT_SEARCH);
 
-    const results = await page.getByTestId("results-container");
+    const results = page.getByTestId("results-container");
 
     await expect(results).toBeVisible();
 
