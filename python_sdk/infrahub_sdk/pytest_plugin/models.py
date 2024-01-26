@@ -98,7 +98,6 @@ class InfrahubInputOutputTest(pydantic.BaseModel):
 
 
 class InfrahubIntegrationTest(InfrahubInputOutputTest):
-    query: str = pydantic.Field(description="Name of a pre-defined GraphQL query to execute")
     variables: Union[Path, Dict[str, Any]] = pydantic.Field(
         Path("variables.json"), description="Variables and corresponding values to pass to the GraphQL query"
     )
@@ -126,6 +125,7 @@ class InfrahubIntegrationTest(InfrahubInputOutputTest):
 
 class InfrahubGraphqlQueryIntegrationTest(InfrahubIntegrationTest):
     kind: Literal["graphql-query-integration"]
+    query: str = pydantic.Field(description="Name of a pre-defined GraphQL query to execute")
 
 
 class InfrahubJinja2TransformUnitRenderTest(InfrahubInputOutputTest):

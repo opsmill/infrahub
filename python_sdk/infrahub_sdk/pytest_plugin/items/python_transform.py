@@ -85,14 +85,6 @@ class InfrahubPythonTransformUnitProcessItem(InfrahubPythonTransform):
 
 class InfrahubPythonTransformIntegrationItem(InfrahubPythonTransform):
     def runtest(self) -> None:
-        configured_query = getattr(self.test.spec, "query", self.transform_instance.query)
-        if self.transform_instance.query != configured_query:
-            raise PythonTransformDefinitionError(
-                self.name,
-                f"Python transform {self.name!r} query '{self.transform_instance.query}' property does not match the one defined in the test "
-                f"'{configured_query}'.",
-            )
-
         input_data = self.session.infrahub_client.query_gql_query(  # type: ignore[attr-defined]
             self.transform_instance.query,
             variables=self.test.spec.get_variables_data(),  # type: ignore[union-attr]

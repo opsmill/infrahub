@@ -98,7 +98,7 @@ class InfrahubJinja2TransformUnitRenderItem(InfrahubJinja2Item):
 class InfrahubJinja2TransformIntegrationItem(InfrahubJinja2Item):
     def runtest(self) -> None:
         graphql_result = self.session.infrahub_client.query_gql_query(  # type: ignore[attr-defined]
-            self.test.spec.query,  # type: ignore[union-attr]
+            self.resource_config.query,  # type: ignore[attr-defined]
             variables=self.test.spec.get_variables_data(),  # type: ignore[union-attr]
             rebase=self.test.spec.rebase,  # type: ignore[union-attr]
         )
