@@ -10,17 +10,20 @@ from pytest import Item
 from .items import (
     InfrahubJinja2TransformIntegrationItem,
     InfrahubJinja2TransformUnitRenderItem,
+    InfrahubPythonGraphqlQueryIntegrationItem,
     InfrahubPythonTransformIntegrationItem,
     InfrahubPythonTransformUnitProcessItem,
 )
 from .models import InfrahubTestFileV1, InfrahubTestResource
 
 MARKER_MAPPING = {
+    "GraphqlQuery": pytest.mark.infrahub_graphql_query,
     "Jinja2Transform": pytest.mark.infrahub_jinja2_transform,
     "PythonTransform": pytest.mark.infrahub_python_transform,
 }
 
 ITEMS_MAPPING = {
+    "graphql-query-integration": InfrahubPythonGraphqlQueryIntegrationItem,
     "jinja2-transform-unit-render": InfrahubJinja2TransformUnitRenderItem,
     "jinja2-transform-integration": InfrahubJinja2TransformIntegrationItem,
     "python-transform-unit-process": InfrahubPythonTransformUnitProcessItem,
@@ -38,6 +41,10 @@ class InfrahubYamlFile(pytest.File):
         content = InfrahubTestFileV1(**raw)
 
         for test_group in content.infrahub_tests:
+            if test_group.resource == InfrahubTestResource.GRAPHQL_QUERY.value:
+                marker = MARKER_MAPPING[test_group.resource](name=test_group.resource_name)
+                resource_config = None
+
             if test_group.resource == InfrahubTestResource.JINJA2_TRANSFORM.value:
                 marker = MARKER_MAPPING[test_group.resource](name=test_group.resource_name)
                 try:

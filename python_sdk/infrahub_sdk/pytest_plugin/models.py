@@ -24,7 +24,7 @@ class InfrahubTestExpectedResult(str, Enum):
 class InfrahubTestResource(str, Enum):
     JINJA2_TRANSFORM = "Jinja2Transform"
     PYTHON_TRANSFORM = "PythonTransform"
-    GRAPHQL = "GraphQLQuery"
+    GRAPHQL_QUERY = "GraphqlQuery"
 
 
 class InfrahubInputOutputTest(pydantic.BaseModel):
@@ -124,6 +124,10 @@ class InfrahubIntegrationTest(InfrahubInputOutputTest):
         return self.parse_user_provided_data(self.variables)
 
 
+class InfrahubGraphqlQueryIntegrationTest(InfrahubIntegrationTest):
+    kind: Literal["graphql-query-integration"]
+
+
 class InfrahubJinja2TransformUnitRenderTest(InfrahubInputOutputTest):
     kind: Literal["jinja2-transform-unit-render"]
 
@@ -144,6 +148,7 @@ class InfrahubTest(pydantic.BaseModel):
     name: str = pydantic.Field(..., description="Name of the test, must be unique")
     expect: InfrahubTestExpectedResult
     spec: Union[
+        InfrahubGraphqlQueryIntegrationTest,
         InfrahubJinja2TransformUnitRenderTest,
         InfrahubJinja2TransformIntegrationTest,
         InfrahubPythonTransformUnitProcessTest,
