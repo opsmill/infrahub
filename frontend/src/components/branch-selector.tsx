@@ -29,7 +29,7 @@ export default function BranchSelector() {
   const valueLabel = (
     <>
       <Icon icon={"mdi:layers-triple"} />
-      <p className="ml-2.5 text-sm font-medium">{branch?.name}</p>
+      <p className="ml-2.5 text-sm font-medium truncate">{branch?.name}</p>
     </>
   );
 
@@ -202,10 +202,7 @@ export default function BranchSelector() {
   ];
 
   return (
-    <div
-      className="relative flex items-stretch"
-      data-cy="branch-select-menu"
-      data-testid="branch-select-menu">
+    <div className="flex" data-cy="branch-select-menu" data-testid="branch-select-menu">
       <SelectButton
         value={branch}
         valueLabel={valueLabel}
@@ -216,7 +213,7 @@ export default function BranchSelector() {
       <PopOver
         disabled={!auth?.permissions?.write}
         buttonComponent={PopOverButton}
-        className="right-0"
+        className=""
         title={"Create a new branch"}
         width={POPOVER_SIZE.SMALL}>
         {({ close }: any) => (

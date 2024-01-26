@@ -10,7 +10,7 @@ export const Background = ({ onClick, className = "", ...propsToPass }: tBackgro
   return (
     <div
       className={classNames(
-        "fixed z-20 inset-0 bg-opacity-40 transition-opacity",
+        "fixed z-10 inset-0 bg-opacity-40 transition-opacity",
         className?.includes("bg-") ? "" : "bg-black",
         className
       )}
