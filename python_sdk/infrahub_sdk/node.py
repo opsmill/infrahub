@@ -1044,7 +1044,7 @@ class InfrahubNode(InfrahubNodeBase):
         )
 
     async def save(
-        self, at: Optional[Timestamp] = None, allow_upsert: bool = True, update_group_context: Optional[bool] = None
+        self, at: Optional[Timestamp] = None, allow_upsert: bool = False, update_group_context: Optional[bool] = None
     ) -> None:
         at = Timestamp(at)
         if self._existing is False or allow_upsert is True:
@@ -1397,7 +1397,7 @@ class InfrahubNodeSync(InfrahubNodeBase):
         )
 
     def save(
-        self, at: Optional[Timestamp] = None, allow_upsert: bool = True, update_group_context: Optional[bool] = None
+        self, at: Optional[Timestamp] = None, allow_upsert: bool = False, update_group_context: Optional[bool] = None
     ) -> None:
         at = Timestamp(at)
         if self._existing is False or allow_upsert is True:
