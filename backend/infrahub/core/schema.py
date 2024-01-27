@@ -624,7 +624,7 @@ class BaseNodeSchema(HashableModel):
         return [item for item in self.relationships if not item.inherited]
 
     @property
-    def unique_attributes(self) -> List[str]:
+    def unique_attributes(self) -> List[AttributeSchema]:
         return [item for item in self.attributes if item.unique]
 
     def generate_fields_for_display_label(self) -> Dict:

@@ -194,9 +194,11 @@ class Branch(StandardNode):
         }
 
     def get_branches_and_times_to_query_global(
-        self, at: Optional[Union[Timestamp, str]] = None
+        self,
+        at: Optional[Union[Timestamp, str]] = None,
+        use_cross_branch_time: bool = False,
     ) -> Dict[frozenset, str]:
-        """Return all the names of the branches that are constituing this branch with the associated times."""
+        """Return all the names of the branches that are constituting this branch with the associated times."""
 
         at = Timestamp(at)
 
@@ -210,8 +212,12 @@ class Branch(StandardNode):
         if self.ephemeral_rebase or at < time_default_branch:
             time_default_branch = at
 
+        origin_branch_time = time_default_branch
+        if use_cross_branch_time:
+            origin_branch_time = at
+
         return {
-            frozenset((GLOBAL_BRANCH_NAME, self.origin_branch)): time_default_branch.to_string(),
+            frozenset((GLOBAL_BRANCH_NAME, self.origin_branch)): origin_branch_time.to_string(),
             frozenset((GLOBAL_BRANCH_NAME, self.name)): at.to_string(),
         }
 
@@ -292,7 +298,9 @@ class Branch(StandardNode):
 
         return filters, params
 
-    def get_query_filter_path(self, at: Optional[Union[Timestamp, str]] = None) -> Tuple[str, Dict]:
+    def get_query_filter_path(
+        self, at: Optional[Union[Timestamp, str]] = None, use_cross_branch_time: bool = False
+    ) -> Tuple[str, Dict]:
         """
         Generate a CYPHER Query filter based on a path to query a part of the graph at a specific time and on a specific branch.
 
@@ -301,11 +309,13 @@ class Branch(StandardNode):
             >>> self.params.update(rels_params)
             >>> query += "\n WHERE all(r IN relationships(p) WHERE %s)" % rels_filter
 
-            There is a currently an assuption that the relationship in the path will be named 'r'
+            There is a currently an assumption that the relationship in the path will be named 'r'
         """
 
         at = Timestamp(at)
-        branches_times = self.get_branches_and_times_to_query_global(at=at.to_string())
+        branches_times = self.get_branches_and_times_to_query_global(
+            at=at.to_string(), use_cross_branch_time=use_cross_branch_time
+        )
 
         params = {}
         for idx, (branch_name, time_to_query) in enumerate(branches_times.items()):
