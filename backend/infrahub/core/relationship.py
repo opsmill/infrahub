@@ -453,6 +453,7 @@ class RelationshipValidatorList:
         self._relationships_count: int = len(self._relationships)
 
         # Validate the initial relationships count is within the min and max count if relationships were provided
+        # Allow this class to be instantiated without relationships
         if self._relationships:
             if self.max_count and self._relationships_count > self.max_count:
                 raise ValidationError({relationships[0].node_id: f"Too many relationships, max {self.max_count}"})

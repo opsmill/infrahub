@@ -763,6 +763,7 @@ async def test_schema_branch_validate_count_against_cardinality_valid(organizati
             {"name": "fourth", "peer": "CoreOrganization", "cardinality": "many", "min_count": 0, "max_count": 10},
             {"name": "fifth", "peer": "CoreOrganization", "cardinality": "many", "min_count": 5, "max_count": 0},
             {"name": "sixth", "peer": "CoreOrganization", "cardinality": "many", "min_count": 5, "max_count": 5},
+            {"name": "seventh", "peer": "CoreOrganization", "cardinality": "many", "min_count": 1, "max_count": 0},
         ],
     }
 
@@ -783,7 +784,6 @@ async def test_schema_branch_validate_count_against_cardinality_valid(organizati
     (
         {"name": "first", "peer": "CoreOrganization", "cardinality": "one", "min_count": 2, "max_count": 2},
         {"name": "second", "peer": "CoreOrganization", "cardinality": "many", "min_count": 10, "max_count": 2},
-        {"name": "third", "peer": "CoreOrganization", "cardinality": "many", "min_count": 1, "max_count": 0},
         {"name": "fourth", "peer": "CoreOrganization", "cardinality": "many", "min_count": 0, "max_count": 1},
     ),
 )

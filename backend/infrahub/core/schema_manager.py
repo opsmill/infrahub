@@ -401,10 +401,6 @@ class SchemaBranch:
                         raise ValueError(
                             f"{node.kind}: Relationship {rel.name!r} min_count must be lower than max_count"
                         )
-                    if rel.min_count == 1:
-                        raise ValueError(
-                            f"{node.kind}: Relationship {rel.name!r} min_count must be 0 or greater than 1 when cardinality is MANY"
-                        )
                     if rel.max_count == 1:
                         raise ValueError(
                             f"{node.kind}: Relationship {rel.name!r} max_count must be 0 or greater than 1 when cardinality is MANY"
