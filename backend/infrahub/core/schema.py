@@ -4,9 +4,8 @@ import enum
 import hashlib
 import keyword
 import re
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
-from infrahub_sdk.utils import duplicates, intersection
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from infrahub import config
@@ -26,10 +25,12 @@ from infrahub.core.constants import (
     RelationshipDirection,
     RelationshipKind,
     Severity,
+    UpdateSupport,
     ValidatorConclusion,
     ValidatorState,
 )
 from infrahub.core.enums import generate_python_enum
+from infrahub.core.models import HashableModel
 from infrahub.core.query import QueryNode, QueryRel, QueryRelDirection
 from infrahub.core.query.attribute import default_attribute_query_filter
 from infrahub.core.relationship import Relationship
@@ -92,190 +93,7 @@ class QueryArrows(BaseModel):
     right: QueryArrow
 
 
-class BaseSchemaModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    _exclude_from_hash: List[str] = []
-    _sort_by: List[str] = []
-
-    def __hash__(self):
-        return hash(self.get_hash())
-
-    def get_hash(self, display_values: bool = False) -> str:
-        """Generate a hash for the object.
-
-        Calculating a hash can be very complicated if the data that we are storing is dynamic
-        In order for this function to work, it's recommended to exclude all objects or list of objects with _exclude_from_hash
-        List of hashable elements are fine and they will be converted automatically to Tuple.
-        """
-
-        def prep_for_hash(v) -> bytes:
-            if hasattr(v, "get_hash"):
-                return v.get_hash().encode()
-
-            return str(v).encode()
-
-        values = []
-        md5hash = hashlib.md5()
-        for field_name in sorted(self.model_fields.keys()):
-            if field_name.startswith("_") or field_name in self._exclude_from_hash:
-                continue
-
-            value = getattr(self, field_name)
-            if isinstance(value, list):
-                for item in sorted(value):
-                    values.append(prep_for_hash(item))
-                    md5hash.update(prep_for_hash(item))
-            elif hasattr(value, "get_hash"):
-                values.append(value.get_hash().encode())
-                md5hash.update(value.get_hash().encode())
-            elif isinstance(value, dict):
-                for key, value in frozenset(sorted(value.items())):
-                    values.append(prep_for_hash(key))
-                    values.append(prep_for_hash(value))
-                    md5hash.update(prep_for_hash(key))
-                    md5hash.update(prep_for_hash(value))
-            else:
-                md5hash.update(prep_for_hash(value))
-                values.append(prep_for_hash(value))
-
-        if display_values:
-            from rich import print as rprint  # pylint: disable=import-outside-toplevel
-
-            rprint(tuple(values))
-
-        return md5hash.hexdigest()
-
-    @property
-    def _sorting_id(self) -> Set[Any]:
-        return tuple(getattr(self, key) for key in self._sort_by if hasattr(self, key))
-
-    def _sorting_keys(self, other: BaseSchemaModel) -> Tuple[List[Any], List[Any]]:
-        """Retrieve the values of the attributes listed in the _sort_key list, for both objects."""
-        if not self._sort_by:
-            raise TypeError(f"Sorting not supported for instance of {self.__class__.__name__}")
-
-        if not hasattr(other, "_sort_by") and not other._sort_by:
-            raise TypeError(
-                f"Sorting not supported between instance of {other.__class__.__name__} and {self.__class__.__name__}"
-            )
-
-        self_sort_keys: List[Any] = [getattr(self, key) for key in self._sort_by if hasattr(self, key)]
-        other_sort_keys: List[Any] = [getattr(other, key) for key in other._sort_by if hasattr(other, key)]
-
-        return self_sort_keys, other_sort_keys
-
-    def __lt__(self, other: Self) -> bool:
-        self_sort_keys, other_sort_keys = self._sorting_keys(other)
-        return tuple(self_sort_keys) < tuple(other_sort_keys)
-
-    def __le__(self, other: Self) -> bool:
-        self_sort_keys, other_sort_keys = self._sorting_keys(other)
-        return tuple(self_sort_keys) <= tuple(other_sort_keys)
-
-    def __gt__(self, other: Self) -> bool:
-        self_sort_keys, other_sort_keys = self._sorting_keys(other)
-        return tuple(self_sort_keys) > tuple(other_sort_keys)
-
-    def __ge__(self, other: Self) -> bool:
-        self_sort_keys, other_sort_keys = self._sorting_keys(other)
-        return tuple(self_sort_keys) >= tuple(other_sort_keys)
-
-    def duplicate(self) -> Self:
-        """Duplicate the current object by doing a deep copy of everything and recreating a new object."""
-        # import copy
-        # return self.__class__(**copy.deepcopy(self.model_dump()))
-        return self.model_copy(deep=True)
-
-    @staticmethod
-    def is_list_composed_of_schema_model(items) -> bool:
-        for item in items:
-            if not isinstance(item, BaseSchemaModel):
-                return False
-        return True
-
-    @staticmethod
-    def is_list_composed_of_standard_type(items) -> bool:
-        for item in items:
-            if not isinstance(item, (int, str, bool, float)):
-                return False
-        return True
-
-    @staticmethod
-    def update_list_schema_model(field_name, attr_local, attr_other):
-        # merging the list is not easy, we need to create a unique id based on the
-        # sorting keys and if we have 2 sub items with the same key we can merge them recursively with update()
-        local_sub_items = {item._sorting_id: item for item in attr_local if hasattr(item, "_sorting_id")}
-        other_sub_items = {item._sorting_id: item for item in attr_other if hasattr(item, "_sorting_id")}
-
-        new_list = []
-
-        if len(local_sub_items) != len(attr_local) or len(other_sub_items) != len(attr_other):
-            raise ValueError(f"Unable to merge the list for {field_name}, not all items are supporting _sorting_id")
-
-        if duplicates(list(local_sub_items.keys())) or duplicates(list(other_sub_items.keys())):
-            raise ValueError(f"Unable to merge the list for {field_name}, some items have the same _sorting_id")
-
-        shared_ids = intersection(list(local_sub_items.keys()), list(other_sub_items.keys()))
-        local_only_ids = set(list(local_sub_items.keys())) - set(shared_ids)
-        other_only_ids = set(list(other_sub_items.keys())) - set(shared_ids)
-
-        new_list = [value for key, value in local_sub_items.items() if key in local_only_ids]
-        new_list.extend([value for key, value in other_sub_items.items() if key in other_only_ids])
-
-        for item_id in shared_ids:
-            other_item = other_sub_items[item_id]
-            local_item = local_sub_items[item_id]
-            new_list.append(local_item.update(other_item))
-
-        return new_list
-
-    @staticmethod
-    def update_list_standard(local_list, other_list):
-        pass
-
-    def update(self, other: Self) -> Self:
-        """Update the current object with the new value from the new one if they are defined.
-
-        Currently this method works for the following type of fields
-            int, str, bool, float: If present the value from Other is overwriting the local value
-            list[BaseSchemaModel]: The list will be merge if all elements in the list have a _sorting_id and if it's unique.
-
-        TODO Implement other fields type like dict
-        """
-
-        for field_name, _ in other.model_fields.items():
-            if not hasattr(self, field_name):
-                setattr(self, field_name, getattr(other, field_name))
-                continue
-
-            attr_other = getattr(other, field_name)
-            attr_local = getattr(self, field_name)
-            if attr_other is None or attr_local == attr_other:
-                continue
-
-            if attr_local is None or isinstance(attr_other, (int, str, bool, float)):
-                setattr(self, field_name, getattr(other, field_name))
-                continue
-
-            if isinstance(attr_local, list) and isinstance(attr_other, list):
-                if self.is_list_composed_of_schema_model(attr_local) and self.is_list_composed_of_schema_model(
-                    attr_other
-                ):
-                    new_attr = self.update_list_schema_model(
-                        field_name=field_name, attr_local=attr_local, attr_other=attr_other
-                    )
-                    setattr(self, field_name, new_attr)
-
-                elif self.is_list_composed_of_standard_type(attr_local) and self.is_list_composed_of_standard_type(
-                    attr_other
-                ):
-                    new_attr = list(dict.fromkeys(attr_local + attr_other))
-                    setattr(self, field_name, new_attr)
-
-        return self
-
-
-class FilterSchema(BaseSchemaModel):
+class FilterSchema(HashableModel):
     name: str
     kind: FilterSchemaKind
     enum: Optional[List] = None
@@ -285,7 +103,7 @@ class FilterSchema(BaseSchemaModel):
     _sort_by: List[str] = ["name"]
 
 
-class DropdownChoice(BaseSchemaModel):
+class DropdownChoice(HashableModel):
     name: str
     description: Optional[str] = None
     color: Optional[str] = None
@@ -304,25 +122,34 @@ class DropdownChoice(BaseSchemaModel):
         raise ValueError("Color must be a valid HTML color code")
 
 
-class AttributeSchema(BaseSchemaModel):
-    id: Optional[str] = None
-    name: str = Field(pattern=NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
-    kind: str  # AttributeKind
-    label: Optional[str] = None
-    description: Optional[str] = Field(None, max_length=DEFAULT_DESCRIPTION_LENGTH)
-    default_value: Optional[Any] = None
-    enum: Optional[List] = None
-    regex: Optional[str] = None
-    max_length: Optional[int] = None
-    min_length: Optional[int] = None
-    read_only: bool = False
-    inherited: bool = False
-    unique: bool = False
-    branch: Optional[BranchSupportType] = None
-    optional: bool = False
-    order_weight: Optional[int] = None
+class AttributeSchema(HashableModel):
+    id: Optional[str] = Field(default=None, update=UpdateSupport.NA)
+    name: str = Field(
+        pattern=NAME_REGEX,
+        min_length=DEFAULT_NAME_MIN_LENGTH,
+        max_length=DEFAULT_NAME_MAX_LENGTH,
+        update=UpdateSupport.NOT_SUPPORTED,
+    )
+    kind: str = Field(update=UpdateSupport.MIGRATION_REQUIRED)  # AttributeKind
+    label: Optional[str] = Field(default=None, update=UpdateSupport.ALLOWED)
+    description: Optional[str] = Field(
+        default=None, max_length=DEFAULT_DESCRIPTION_LENGTH, update=UpdateSupport.ALLOWED
+    )
+    default_value: Optional[Any] = Field(default=None, update=UpdateSupport.ALLOWED)
+    enum: Optional[List] = Field(default=None, update=UpdateSupport.CHECK_CONSTRAINTS)
+    regex: Optional[str] = Field(default=None, update=UpdateSupport.CHECK_CONSTRAINTS)
+    max_length: Optional[int] = Field(default=None, update=UpdateSupport.CHECK_CONSTRAINTS)
+    min_length: Optional[int] = Field(default=None, update=UpdateSupport.CHECK_CONSTRAINTS)
+    read_only: bool = Field(default=False, update=UpdateSupport.ALLOWED)
+    inherited: bool = Field(default=False, update=UpdateSupport.NA)
+    unique: bool = Field(default=False, update=UpdateSupport.CHECK_CONSTRAINTS)
+    branch: Optional[BranchSupportType] = Field(default=None, update=UpdateSupport.MIGRATION_REQUIRED)
+    optional: bool = Field(default=False, update=UpdateSupport.CHECK_CONSTRAINTS)
+    order_weight: Optional[int] = Field(default=None, update=UpdateSupport.ALLOWED)
     choices: Optional[List[DropdownChoice]] = Field(
-        default=None, description="The available choices if the kind is Dropdown."
+        default=None,
+        description="The available choices if the kind is Dropdown.",
+        update=UpdateSupport.CHECK_CONSTRAINTS,
     )
 
     _sort_by: List[str] = ["name"]
@@ -398,22 +225,40 @@ class AttributeSchema(BaseSchemaModel):
         )
 
 
-class RelationshipSchema(BaseSchemaModel):
-    id: Optional[str] = None
-    name: str = Field(pattern=NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
-    peer: str = Field(pattern=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH)
-    kind: RelationshipKind = RelationshipKind.GENERIC
-    direction: RelationshipDirection = RelationshipDirection.BIDIR
-    label: Optional[str] = Field(default=None)
-    description: Optional[str] = Field(None, max_length=DEFAULT_DESCRIPTION_LENGTH)
-    identifier: Optional[str] = Field(None, max_length=DEFAULT_REL_IDENTIFIER_LENGTH)
-    inherited: bool = False
-    cardinality: RelationshipCardinality = RelationshipCardinality.MANY
-    branch: Optional[BranchSupportType] = Field(default=None)
-    optional: bool = True
-    hierarchical: Optional[str] = Field(default=None)
-    filters: List[FilterSchema] = Field(default_factory=list)
-    order_weight: Optional[int] = None
+class RelationshipSchema(HashableModel):
+    id: Optional[str] = Field(default=None, update=UpdateSupport.NA)
+    name: str = Field(
+        pattern=NAME_REGEX,
+        min_length=DEFAULT_NAME_MIN_LENGTH,
+        max_length=DEFAULT_NAME_MAX_LENGTH,
+        update=UpdateSupport.NOT_SUPPORTED,
+    )
+    peer: str = Field(
+        pattern=NODE_KIND_REGEX,
+        min_length=DEFAULT_KIND_MIN_LENGTH,
+        max_length=DEFAULT_KIND_MAX_LENGTH,
+        update=UpdateSupport.CHECK_CONSTRAINTS,
+    )
+    kind: RelationshipKind = Field(default=RelationshipKind.GENERIC, update=UpdateSupport.ALLOWED)
+    direction: RelationshipDirection = Field(
+        default=RelationshipDirection.BIDIR, update=UpdateSupport.MIGRATION_REQUIRED
+    )
+    label: Optional[str] = Field(default=None, update=UpdateSupport.ALLOWED)
+    description: Optional[str] = Field(
+        default=None, max_length=DEFAULT_DESCRIPTION_LENGTH, update=UpdateSupport.ALLOWED
+    )
+    identifier: Optional[str] = Field(
+        default=None, max_length=DEFAULT_REL_IDENTIFIER_LENGTH, update=UpdateSupport.MIGRATION_REQUIRED
+    )
+    inherited: bool = Field(default=False, update=UpdateSupport.NA)
+    cardinality: RelationshipCardinality = Field(
+        default=RelationshipCardinality.MANY, update=UpdateSupport.MIGRATION_REQUIRED
+    )
+    branch: Optional[BranchSupportType] = Field(default=None, update=UpdateSupport.MIGRATION_REQUIRED)
+    optional: bool = Field(default=True, update=UpdateSupport.CHECK_CONSTRAINTS)
+    hierarchical: Optional[str] = Field(default=None, update=UpdateSupport.MIGRATION_REQUIRED)
+    filters: List[FilterSchema] = Field(default_factory=list, update=UpdateSupport.NA)
+    order_weight: Optional[int] = Field(default=None, update=UpdateSupport.ALLOWED)
 
     _exclude_from_hash: List[str] = ["filters"]
     _sort_by: List[str] = ["name"]
@@ -568,24 +413,34 @@ class RelationshipSchema(BaseSchemaModel):
 NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
 
 
-class BaseNodeSchema(BaseSchemaModel):
+class BaseNodeSchema(HashableModel):
     id: Optional[str] = None
-    name: str = Field(pattern=NODE_NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
-    namespace: str = Field(
-        pattern=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH
+    name: str = Field(
+        pattern=NODE_NAME_REGEX,
+        min_length=DEFAULT_NAME_MIN_LENGTH,
+        max_length=DEFAULT_NAME_MAX_LENGTH,
+        update=UpdateSupport.NOT_SUPPORTED,
     )
-    description: Optional[str] = Field(None, max_length=DEFAULT_DESCRIPTION_LENGTH)
-    default_filter: Optional[str] = None
-    branch: BranchSupportType = BranchSupportType.AWARE
-    order_by: Optional[List[str]] = None
-    display_labels: Optional[List[str]] = None
-    attributes: List[AttributeSchema] = Field(default_factory=list)
-    relationships: List[RelationshipSchema] = Field(default_factory=list)
-    filters: List[FilterSchema] = Field(default_factory=list)
-    include_in_menu: Optional[bool] = Field(default=None)
-    menu_placement: Optional[str] = Field(default=None)
-    icon: Optional[str] = Field(default=None)
-    label: Optional[str] = None
+    namespace: str = Field(
+        pattern=NODE_KIND_REGEX,
+        min_length=DEFAULT_KIND_MIN_LENGTH,
+        max_length=DEFAULT_KIND_MAX_LENGTH,
+        update=UpdateSupport.NOT_SUPPORTED,
+    )
+    description: Optional[str] = Field(
+        default=None, max_length=DEFAULT_DESCRIPTION_LENGTH, update=UpdateSupport.ALLOWED
+    )
+    default_filter: Optional[str] = Field(default=None, update=UpdateSupport.ALLOWED)
+    branch: BranchSupportType = Field(default=BranchSupportType.AWARE, update=UpdateSupport.MIGRATION_REQUIRED)
+    order_by: Optional[List[str]] = Field(default=None, update=UpdateSupport.ALLOWED)
+    display_labels: Optional[List[str]] = Field(default=None, update=UpdateSupport.ALLOWED)
+    attributes: List[AttributeSchema] = Field(default_factory=list, update=UpdateSupport.NA)
+    relationships: List[RelationshipSchema] = Field(default_factory=list, update=UpdateSupport.NA)
+    filters: List[FilterSchema] = Field(default_factory=list, update=UpdateSupport.NA)
+    include_in_menu: Optional[bool] = Field(default=None, update=UpdateSupport.ALLOWED)
+    menu_placement: Optional[str] = Field(default=None, update=UpdateSupport.ALLOWED)
+    icon: Optional[str] = Field(default=None, update=UpdateSupport.ALLOWED)
+    label: Optional[str] = Field(default=None, update=UpdateSupport.ALLOWED)
 
     _exclude_from_hash: List[str] = ["attributes", "relationships"]
     _sort_by: List[str] = ["name"]
@@ -738,8 +593,8 @@ class BaseNodeSchema(BaseSchemaModel):
 class GenericSchema(BaseNodeSchema):
     """A Generic can be either an Interface or a Union depending if there are some Attributes or Relationships defined."""
 
-    hierarchical: bool = Field(default=False)
-    used_by: List[str] = Field(default_factory=list)
+    hierarchical: bool = Field(default=False, update=UpdateSupport.CHECK_CONSTRAINTS)
+    used_by: List[str] = Field(default_factory=list, update=UpdateSupport.NA)
 
     def get_hierarchy_schema(self, branch: Optional[Union[Branch, str]] = None) -> GenericSchema:  # pylint: disable=unused-argument
         if self.hierarchical:
@@ -749,10 +604,10 @@ class GenericSchema(BaseNodeSchema):
 
 
 class NodeSchema(BaseNodeSchema):
-    inherit_from: List[str] = Field(default_factory=list)
-    hierarchy: Optional[str] = Field(default=None)
-    parent: Optional[str] = Field(default=None)
-    children: Optional[str] = Field(default=None)
+    inherit_from: List[str] = Field(default_factory=list, update=UpdateSupport.NOT_SUPPORTED)
+    hierarchy: Optional[str] = Field(default=None, update=UpdateSupport.CHECK_CONSTRAINTS)
+    parent: Optional[str] = Field(default=None, update=UpdateSupport.CHECK_CONSTRAINTS)
+    children: Optional[str] = Field(default=None, update=UpdateSupport.CHECK_CONSTRAINTS)
 
     def inherit_from_interface(self, interface: GenericSchema) -> NodeSchema:
         existing_inherited_attributes = {item.name: idx for idx, item in enumerate(self.attributes) if item.inherited}
@@ -793,7 +648,7 @@ class NodeSchema(BaseNodeSchema):
 #  For the initial implementation its possible to add attribute and relationships on Node
 #  Later on we'll consider adding support for other Node attributes like inherited_from etc ...
 #  And we'll look into adding support for Generic as well
-class BaseNodeExtensionSchema(BaseSchemaModel):
+class BaseNodeExtensionSchema(HashableModel):
     kind: str
     attributes: List[AttributeSchema] = Field(default_factory=list)
     relationships: List[RelationshipSchema] = Field(default_factory=list)
@@ -803,7 +658,7 @@ class NodeExtensionSchema(BaseNodeExtensionSchema):
     pass
 
 
-class SchemaExtension(BaseSchemaModel):
+class SchemaExtension(HashableModel):
     nodes: List[NodeExtensionSchema] = Field(default_factory=list)
 
 
