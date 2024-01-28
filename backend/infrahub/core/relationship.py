@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 from infrahub_sdk import UUIDT
@@ -42,6 +43,7 @@ if TYPE_CHECKING:
 
 
 PREFIX_PROPERTY = "_relation__"
+INDEX_DEFAULT_STOP = sys.maxsize
 
 
 class RelationshipCreateData(BaseModel):
@@ -510,9 +512,6 @@ class RelationshipValidatorList:
     def clear(self):
         self._relationships.clear()
 
-    def count(self, value: Relationship):
-        return self._relationships.count(value)
-
     def extend(self, iterable):
         # Filter down to only Relationship objects and remove duplicates
         relationships = [rel for rel in iterable if isinstance(rel, Relationship) and rel not in self._relationships]
@@ -527,7 +526,7 @@ class RelationshipValidatorList:
     def get(self, index: int):
         return self._relationships[index]
 
-    def index(self, value: Relationship, start: int = 0, stop: int = 9223372036854775807):
+    def index(self, value: Relationship, start: int = 0, stop: int = INDEX_DEFAULT_STOP):
         return self._relationships.index(value, start, stop)
 
     def insert(self, index: int, value: Relationship):

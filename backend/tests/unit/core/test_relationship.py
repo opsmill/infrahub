@@ -282,7 +282,7 @@ async def test_relationship_validate_one_append_extend_duplicate(
     result.extend([rel_jack])
     assert result._relationships_count == 1
     result.insert(1, rel_jack)
-    assert result.count(rel_jack) == 1
+    assert rel_jack in result
     assert result._relationships_count == 1
     assert result.get(0) == rel_jack
 
