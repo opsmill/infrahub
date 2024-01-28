@@ -104,3 +104,53 @@ async def test_query_uniqueness_cross_branch_conflict(
     assert query_result.results[0].data["node_count"] == 2
     assert query_result.results[0].data["attr_name"] == "name"
     assert query_result.results[0].data["attr_value"] == "Thunderbolt"
+
+
+async def test_query_uniqueness_multiple_attribute_violations(
+    db: InfrahubDatabase,
+    car_accord_main,
+    car_prius_main,
+    car_volt_main,
+    car_camry_main,
+    branch: Branch,
+):
+    for car_id in (car_volt_main.id, car_camry_main.id):
+        car_to_update = await NodeManager.get_one(id=car_id, db=db, branch=branch)
+        car_to_update.color.value = "#ffffff"
+        await car_to_update.save(db=db)
+
+    schema = registry.schema.get(name="TestCar", branch=branch)
+    schema.get_attribute("nbr_seats").unique = True
+    schema.get_attribute("color").unique = True
+    expected_result_dicts = [
+        {
+            "kind": "TestCar",
+            "attr_name": "nbr_seats",
+            "node_ids": {car_accord_main.id, car_prius_main.id, car_camry_main.id},
+            "node_count": 3,
+            "attr_value": 5,
+        },
+        {
+            "kind": "TestCar",
+            "attr_name": "color",
+            "node_ids": {car_volt_main.id, car_camry_main.id},
+            "node_count": 2,
+            "attr_value": "#ffffff",
+        },
+        {
+            "kind": "TestCar",
+            "attr_name": "color",
+            "node_ids": {car_accord_main.id, car_prius_main.id},
+            "node_count": 2,
+            "attr_value": "#444444",
+        },
+    ]
+
+    query = await NodeConstraintsUniquenessQuery.init(db=db, branch=branch, schema=schema)
+    query_result = await query.execute(db=db)
+
+    assert len(query_result.results) == 3
+    for result in query_result.results:
+        serial_result = dict(result.data)
+        serial_result["node_ids"] = set(serial_result["node_ids"])
+        assert serial_result in expected_result_dicts
