@@ -1,25 +1,23 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Union
 
 from infrahub.core.query import Query
 
 if TYPE_CHECKING:
-    from infrahub.core.schema import NodeSchema
+    from infrahub.core.schema import GenericSchema, NodeSchema
     from infrahub.database import InfrahubDatabase
 
 
-class NodeConstraintsUniquenessQuery(Query):
+class NodeUniqueAttributeConstraintQuery(Query):
     name = "node_constraints_uniqueness"
 
-    def __init__(self, schema: NodeSchema, *args: Any, **kwargs: Any):
+    def __init__(self, schema: Union[NodeSchema, GenericSchema], *args: Any, **kwargs: Any):
         self.schema = schema
         super().__init__(*args, **kwargs)
 
     async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Any) -> None:
-        branch_filter, branch_params = self.branch.get_query_filter_path(
-            at=self.at.to_string(), use_cross_branch_time=True
-        )
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string(), is_isolated=False)
         self.params.update(branch_params)
         self.params.update(
             {

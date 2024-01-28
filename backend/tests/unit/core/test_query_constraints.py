@@ -3,7 +3,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.query.constraints import NodeConstraintsUniquenessQuery
+from infrahub.core.query.constraints.node_unique_attributes import NodeUniqueAttributeConstraintQuery
 from infrahub.database import InfrahubDatabase
 
 
@@ -18,7 +18,7 @@ async def test_query_uniqueness_no_violations(
 ):
     schema = registry.schema.get(name="TestCar", branch=branch)
 
-    query = await NodeConstraintsUniquenessQuery.init(db=db, branch=branch, schema=schema)
+    query = await NodeUniqueAttributeConstraintQuery.init(db=db, branch=branch, schema=schema)
     query_result = await query.execute(db=db)
 
     assert not query_result.results
@@ -33,7 +33,7 @@ async def test_query_uniqueness_one_violation(
     schema = registry.schema.get(name="TestCar", branch=branch)
     schema.get_attribute("nbr_seats").unique = True
 
-    query = await NodeConstraintsUniquenessQuery.init(db=db, branch=branch, schema=schema)
+    query = await NodeUniqueAttributeConstraintQuery.init(db=db, branch=branch, schema=schema)
     query_result = await query.execute(db=db)
 
     assert len(query_result.results) == 1
@@ -55,7 +55,7 @@ async def test_query_uniqueness_deleted_node_ignored(
     schema = registry.schema.get(name="TestCar", branch=branch)
     schema.get_attribute("nbr_seats").unique = True
 
-    query = await NodeConstraintsUniquenessQuery.init(db=db, branch=branch, schema=schema)
+    query = await NodeUniqueAttributeConstraintQuery.init(db=db, branch=branch, schema=schema)
     query_result = await query.execute(db=db)
 
     assert not query_result.results
@@ -73,7 +73,7 @@ async def test_query_uniqueness_get_latest_update(
     schema = registry.schema.get(name="TestCar", branch=branch)
     schema.get_attribute("nbr_seats").unique = True
 
-    query = await NodeConstraintsUniquenessQuery.init(db=db, branch=branch, schema=schema)
+    query = await NodeUniqueAttributeConstraintQuery.init(db=db, branch=branch, schema=schema)
     query_result = await query.execute(db=db)
 
     assert not query_result.results
@@ -95,7 +95,7 @@ async def test_query_uniqueness_cross_branch_conflict(
     await new_car_branch.save(db=db)
     schema = registry.schema.get(name="TestCar", branch=default_branch)
 
-    query = await NodeConstraintsUniquenessQuery.init(db=db, branch=branch_2, schema=schema)
+    query = await NodeUniqueAttributeConstraintQuery.init(db=db, branch=branch_2, schema=schema)
     query_result = await query.execute(db=db)
 
     assert len(query_result.results) == 1
@@ -146,7 +146,7 @@ async def test_query_uniqueness_multiple_attribute_violations(
         },
     ]
 
-    query = await NodeConstraintsUniquenessQuery.init(db=db, branch=branch, schema=schema)
+    query = await NodeUniqueAttributeConstraintQuery.init(db=db, branch=branch, schema=schema)
     query_result = await query.execute(db=db)
 
     assert len(query_result.results) == 3

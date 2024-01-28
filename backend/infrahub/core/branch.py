@@ -42,8 +42,6 @@ from infrahub.core.query.node import NodeDeleteQuery, NodeListGetInfoQuery
 from infrahub.core.registry import get_branch, registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import add_relationship, update_relationships_to
-from infrahub.core.validators.uniqueness.checker import UniquenessChecker
-from infrahub.core.validators.uniqueness.model import SchemaUniquenessCheckRequest
 from infrahub.exceptions import (
     BranchNotFound,
     DiffFromRequiredOnDefaultBranchError,
@@ -196,7 +194,7 @@ class Branch(StandardNode):
     def get_branches_and_times_to_query_global(
         self,
         at: Optional[Union[Timestamp, str]] = None,
-        use_cross_branch_time: bool = False,
+        is_isolated: bool = True,
     ) -> Dict[frozenset, str]:
         """Return all the names of the branches that are constituting this branch with the associated times."""
 
@@ -209,15 +207,11 @@ class Branch(StandardNode):
 
         # If we are querying before the beginning of the branch
         # the time for the main branch must be the time of the query
-        if self.ephemeral_rebase or at < time_default_branch:
+        if self.ephemeral_rebase or not is_isolated or at < time_default_branch:
             time_default_branch = at
 
-        origin_branch_time = time_default_branch
-        if use_cross_branch_time:
-            origin_branch_time = at
-
         return {
-            frozenset((GLOBAL_BRANCH_NAME, self.origin_branch)): origin_branch_time.to_string(),
+            frozenset((GLOBAL_BRANCH_NAME, self.origin_branch)): time_default_branch.to_string(),
             frozenset((GLOBAL_BRANCH_NAME, self.name)): at.to_string(),
         }
 
@@ -299,7 +293,7 @@ class Branch(StandardNode):
         return filters, params
 
     def get_query_filter_path(
-        self, at: Optional[Union[Timestamp, str]] = None, use_cross_branch_time: bool = False
+        self, at: Optional[Union[Timestamp, str]] = None, is_isolated: bool = True
     ) -> Tuple[str, Dict]:
         """
         Generate a CYPHER Query filter based on a path to query a part of the graph at a specific time and on a specific branch.
@@ -313,9 +307,7 @@ class Branch(StandardNode):
         """
 
         at = Timestamp(at)
-        branches_times = self.get_branches_and_times_to_query_global(
-            at=at.to_string(), use_cross_branch_time=use_cross_branch_time
-        )
+        branches_times = self.get_branches_and_times_to_query_global(at=at.to_string(), is_isolated=is_isolated)
 
         params = {}
         for idx, (branch_name, time_to_query) in enumerate(branches_times.items()):
@@ -487,67 +479,23 @@ class Branch(StandardNode):
         return object_conflicts
 
     async def validate_constraints(self, db: InfrahubDatabase) -> List[ObjectConflict]:
+        # TODO: REMOVE THIS METHOD
+        from infrahub.core.validators.uniqueness.checker import UniquenessChecker
+
         diff = await Diff.init(branch=self, db=db)
         node_diff_map = await diff.get_nodes(db=db)
 
-        added_node_kinds = set()
-        deleted_node_ids = set()
+        altered_node_kinds = set()
         all_node_diffs = node_diff_map[self.name].values()
         for node_diff in all_node_diffs:
-            if node_diff.action == DiffAction.ADDED:
-                added_node_kinds.add(node_diff.kind)
-            if node_diff.action == DiffAction.REMOVED:
-                deleted_node_ids.add(node_diff.db_id)
-        updated_attrs_by_kind = dict()
-        for node_diff in all_node_diffs:
-            if node_diff.action == DiffAction.UPDATED and node_diff.kind not in added_node_kinds:
-                updated_attrs = [
-                    attribute_name
-                    for attribute_name, attribute_diff in node_diff.attributes.items()
-                    if attribute_diff.action in (DiffAction.ADDED, DiffAction.UPDATED)
-                ]
-                updated_attrs_by_kind[node_diff.kind] = updated_attrs
-
-        schemas_to_validate = []
-        for kind in added_node_kinds:
-            schemas_to_validate.append(
-                SchemaUniquenessCheckRequest(schema=registry.get_schema(name=kind, branch=self.name))
-            )
-        for kind, attributes in updated_attrs_by_kind:
-            schemas_to_validate.append(
-                SchemaUniquenessCheckRequest(
-                    schema=registry.get_schema(name=kind, branch=self.name), attributes=attributes
-                )
-            )
+            if node_diff.action in (DiffAction.ADDED, DiffAction.UPDATED):
+                altered_node_kinds.add(node_diff.kind)
 
         validator = UniquenessChecker(db)
-        non_unique_nodes = await validator.get_conflicts(
-            schemas_to_validate,
+        return await validator.get_conflicts(
+            altered_node_kinds,
             source_branch_name=self.name,
-            dest_branch_name=config.SETTINGS.main.default_branch,
-            ids_to_ignore=deleted_node_ids,
         )
-
-        # TODO: handle relationships?
-
-        conflicts = []
-        conflicts.extend(
-            [
-                ObjectConflict(
-                    name=f"{node.get_kind()}/{non_unique_node.attribute_name}",
-                    type="non-unique",
-                    kind=node.get_kind(),
-                    id=node.id,
-                    conflict_path=f"{node.get_kind()}/{non_unique_node.attribute_name}",
-                    path="path",
-                    path_type=PathType.NODE,
-                    change_type="change_type",
-                )
-                for non_unique_node in non_unique_nodes
-                for node in non_unique_node.nodes
-            ]
-        )
-        return conflicts
 
     async def validate_graph(self, db: InfrahubDatabase) -> List[ObjectConflict]:
         # Check the diff and ensure the branch doesn't have some conflict
