@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import functools
 import json
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
@@ -44,14 +43,7 @@ class InfrahubPythonTransformItem(InfrahubItem):
         # FIXME: https://github.com/opsmill/infrahub/issues/1994
         if "data" in variables:
             variables = variables["data"]
-
-        transformer = functools.partial(self.transform_instance.transform)
-
-        if asyncio.iscoroutinefunction(transformer.func):
-            computed = asyncio.run(transformer(variables))
-        else:
-            computed = transformer(variables)
-        return computed
+        return asyncio.run(self.transform_instance.run(data=variables))
 
     def repr_failure(self, excinfo: ExceptionInfo, style: Optional[str] = None) -> str:
         if isinstance(excinfo.value, HTTPStatusError):
