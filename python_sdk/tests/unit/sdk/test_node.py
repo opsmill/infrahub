@@ -840,10 +840,13 @@ async def test_create_input_data(client, location_schema, client_type):
 
     if client_type == "standard":
         node = InfrahubNode(client=client, schema=location_schema, data=data)
+        node_id = node.id
     else:
         node = InfrahubNodeSync(client=client, schema=location_schema, data=data)
+        node_id = node.id
     assert node._generate_input_data()["data"] == {
         "data": {
+            "id": f"{node_id}",
             "name": {"value": "JFK1"},
             "description": {"value": "JFK Airport"},
             "type": {"value": "SITE"},
@@ -866,8 +869,10 @@ async def test_create_input_data__with_relationships_02(client, location_schema,
     }
     if client_type == "standard":
         node = InfrahubNode(client=client, schema=location_schema, data=data)
+        node_id = node.id
     else:
         node = InfrahubNodeSync(client=client, schema=location_schema, data=data)
+        node_id = node.id
 
     input_data = node._generate_input_data()
     assert len(input_data["variables"].keys()) == 1
@@ -876,6 +881,7 @@ async def test_create_input_data__with_relationships_02(client, location_schema,
 
     expected = {
         "data": {
+            "id": f"{node_id}",
             "name": {"value": "JFK1"},
             "description": {"value": f"${key}"},
             "type": {"value": "SITE"},
@@ -899,10 +905,13 @@ async def test_create_input_data__with_relationships_01(client, location_schema,
     }
     if client_type == "standard":
         node = InfrahubNode(client=client, schema=location_schema, data=data)
+        node_id = node.id
     else:
         node = InfrahubNodeSync(client=client, schema=location_schema, data=data)
+        node_id = node.id
     assert node._generate_input_data()["data"] == {
         "data": {
+            "id": f"{node_id}",
             "name": {"value": "JFK1"},
             "description": {"value": "JFK Airport"},
             "type": {"value": "SITE"},
@@ -929,11 +938,14 @@ async def test_create_input_data_with_relationships_02(clients, rfile_schema, cl
     }
     if client_type == "standard":
         node = InfrahubNode(client=clients.standard, schema=rfile_schema, data=data)
+        node_id = node.id
     else:
         node = InfrahubNodeSync(client=clients.sync, schema=rfile_schema, data=data)
+        node_id = node.id
 
     assert node._generate_input_data()["data"] == {
         "data": {
+            "id": f"{node_id}",
             "name": {
                 "is_protected": True,
                 "owner": "ffffffff",
@@ -978,6 +990,7 @@ async def test_create_input_data_with_relationships_03(clients, rfile_schema, cl
 
     assert node._generate_input_data()["data"] == {
         "data": {
+            "id": "aaaaaaaaaaaaaa",
             "name": {
                 "is_protected": True,
                 "source": "ffffffff",
@@ -1056,6 +1069,7 @@ async def test_create_input_data_with_IPHost_attribute(client, ipaddress_schema,
 
     assert ip_address._generate_input_data()["data"] == {
         "data": {
+            "id": "aaaaaaaaaaaaaa",
             "address": {
                 "value": "1.1.1.1/24",
                 "is_protected": True,
@@ -1080,6 +1094,7 @@ async def test_create_input_data_with_IPNetwork_attribute(client, ipnetwork_sche
 
     assert ip_network._generate_input_data()["data"] == {
         "data": {
+            "id": "aaaaaaaaaaaaaa",
             "network": {
                 "value": "1.1.1.0/24",
                 "is_protected": True,
@@ -1114,6 +1129,7 @@ async def test_update_input_data__with_relationships_01(
 
     assert location._generate_input_data()["data"] == {
         "data": {
+            "id": "llllllll-llll-llll-llll-llllllllllll",
             "name": {"is_protected": True, "is_visible": True, "value": "DFW"},
             "primary_tag": {"id": "gggggggg-gggg-gggg-gggg-gggggggggggg"},
             "tags": [{"id": "gggggggg-gggg-gggg-gggg-gggggggggggg"}],
@@ -1133,6 +1149,7 @@ async def test_update_input_data_with_relationships_02(client, location_schema, 
 
     assert location._generate_input_data()["data"] == {
         "data": {
+            "id": "llllllll-llll-llll-llll-llllllllllll",
             "name": {
                 "is_protected": True,
                 "is_visible": True,
@@ -1181,6 +1198,7 @@ async def test_update_input_data_empty_relationship(
 
     assert location._generate_input_data()["data"] == {
         "data": {
+            "id": "llllllll-llll-llll-llll-llllllllllll",
             "name": {"is_protected": True, "is_visible": True, "value": "DFW"},
             # "primary_tag": None,
             "tags": [],
@@ -1362,6 +1380,7 @@ async def test_read_only_attr(
 
     assert address._generate_input_data()["data"] == {
         "data": {
+            "id": "d5994b18-b25e-4261-9e63-17c2844a0b45",
             "street_number": {"is_protected": False, "is_visible": True, "value": "1234"},
             "street_name": {"is_protected": False, "is_visible": True, "value": "Fake Street"},
             "postal_code": {"is_protected": False, "is_visible": True, "value": "123ABC"},
