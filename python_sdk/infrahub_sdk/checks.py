@@ -1,14 +1,21 @@
 from __future__ import annotations
 
 import asyncio
+import importlib
 import json
 import os
 from abc import abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from git.repo import Repo
 
 from infrahub_sdk import InfrahubClient
+from infrahub_sdk.exceptions import InfrahubCheckNotFoundError
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from infrahub_sdk.schema import InfrahubCheckDefinitionConfig
 
 try:
     from pydantic import v1 as pydantic  # type: ignore[attr-defined]
@@ -40,7 +47,6 @@ class InfrahubCheck:
         initializer: Optional[InfrahubCheckInitializer] = None,
         params: Optional[Dict] = None,
     ):
-        self.data: Dict = {}
         self.git: Optional[Repo] = None
         self.initializer = initializer or InfrahubCheckInitializer()
 
@@ -125,30 +131,27 @@ class InfrahubCheck:
         return self.branch
 
     @abstractmethod
-    def validate(self) -> None:
+    def validate(self, data: dict) -> None:
         """Code to validate the status of this check."""
 
-    async def collect_data(self) -> None:
-        """Query the result of the GraphQL Query defined in self.query and store the result in self.data"""
-        if self.data:
-            return
+    async def collect_data(self) -> Dict:
+        """Query the result of the GraphQL Query defined in self.query and return the result"""
 
-        data = await self.client.query_gql_query(
+        return await self.client.query_gql_query(
             name=self.query, branch_name=self.branch_name, params=self.params, rebase=self.rebase
         )
-        self.data = data
 
-    async def run(self) -> bool:
+    async def run(self, data: Optional[dict] = None) -> bool:
         """Execute the check after collecting the data from the GraphQL query.
         The result of the check is determined based on the presence or not of ERROR log messages."""
 
-        await self.collect_data()
+        if not data:
+            data = await self.collect_data()
 
-        validate_method = getattr(self, "validate")
-        if asyncio.iscoroutinefunction(validate_method):
-            await validate_method()
+        if asyncio.iscoroutinefunction(self.validate):
+            await self.validate(data=data)
         else:
-            validate_method()
+            self.validate(data=data)
 
         nbr_errors = len([log for log in self.logs if log["level"] == "ERROR"])
 
@@ -158,3 +161,27 @@ class InfrahubCheck:
             self.log_info("Check succesfully completed")
 
         return self.passed
+
+
+def get_check_class_instance(
+    check_config: InfrahubCheckDefinitionConfig, search_path: Optional[Path] = None
+) -> InfrahubCheck:
+    if check_config.file_path.is_absolute() or search_path is None:
+        search_location = check_config.file_path
+    else:
+        search_location = search_path / check_config.file_path
+
+    try:
+        spec = importlib.util.spec_from_file_location(check_config.class_name, search_location)
+        module = importlib.util.module_from_spec(spec)  # type: ignore[arg-type]
+        spec.loader.exec_module(module)  # type: ignore[union-attr]
+
+        # Get the specified class from the module
+        check_class = getattr(module, check_config.class_name)
+
+        # Create an instance of the class
+        check_instance = check_class()
+    except (FileNotFoundError, AttributeError) as exc:
+        raise InfrahubCheckNotFoundError(name=check_config.name) from exc
+
+    return check_instance
