@@ -473,29 +473,7 @@ class Branch(StandardNode):
         Need to return a list of violations, must be multiple
         """
 
-        object_conflicts = []
-        object_conflicts.extend(await self.validate_constraints(db=db))
-        object_conflicts.extend(await self.validate_graph(db=db))
-        return object_conflicts
-
-    async def validate_constraints(self, db: InfrahubDatabase) -> List[ObjectConflict]:
-        # TODO: REMOVE THIS METHOD
-        from infrahub.core.validators.uniqueness.checker import UniquenessChecker
-
-        diff = await Diff.init(branch=self, db=db)
-        node_diff_map = await diff.get_nodes(db=db)
-
-        altered_node_kinds = set()
-        all_node_diffs = node_diff_map[self.name].values()
-        for node_diff in all_node_diffs:
-            if node_diff.action in (DiffAction.ADDED, DiffAction.UPDATED):
-                altered_node_kinds.add(node_diff.kind)
-
-        validator = UniquenessChecker(db)
-        return await validator.get_conflicts(
-            altered_node_kinds,
-            source_branch_name=self.name,
-        )
+        return await self.validate_graph(db=db)
 
     async def validate_graph(self, db: InfrahubDatabase) -> List[ObjectConflict]:
         # Check the diff and ensure the branch doesn't have some conflict
@@ -1025,6 +1003,7 @@ class ObjectConflict(BaseModel):
     property_name: Optional[str] = None
     change_type: str
     changes: List[BranchChanges] = Field(default_factory=list)
+    value: Optional[str] = None
 
     def __str__(self) -> str:
         return self.path
