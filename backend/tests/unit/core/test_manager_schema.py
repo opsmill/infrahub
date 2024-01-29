@@ -764,6 +764,7 @@ async def test_schema_branch_validate_count_against_cardinality_valid(organizati
             {"name": "fifth", "peer": "CoreOrganization", "cardinality": "many", "min_count": 5, "max_count": 0},
             {"name": "sixth", "peer": "CoreOrganization", "cardinality": "many", "min_count": 5, "max_count": 5},
             {"name": "seventh", "peer": "CoreOrganization", "cardinality": "many", "min_count": 1, "max_count": 0},
+            {"name": "eighth", "peer": "CoreOrganization", "cardinality": "many", "min_count": 1},
         ],
     }
 
