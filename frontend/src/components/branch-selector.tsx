@@ -213,7 +213,6 @@ export default function BranchSelector() {
       <PopOver
         disabled={!auth?.permissions?.write}
         buttonComponent={PopOverButton}
-        className=""
         title={"Create a new branch"}
         width={POPOVER_SIZE.SMALL}>
         {({ close }: any) => (

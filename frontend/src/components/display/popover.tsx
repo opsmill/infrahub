@@ -97,7 +97,7 @@ export const PopOver = (props: PopOverProps) => {
   }
 
   return (
-    <Popover className="">
+    <Popover>
       <Popover.Button as="div" className="h-full" disabled={disabled}>
         {buttonComponent}
       </Popover.Button>
