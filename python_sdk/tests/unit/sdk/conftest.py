@@ -1631,8 +1631,9 @@ async def mock_query_mutation_location_create_failed(httpx_mock: HTTPXMock) -> H
             }
         ]
     }
-    httpx_mock.add_response(method="GET", url="http://mock/api/schema/?branch=main", json=response1)
-    httpx_mock.add_response(method="GET", url="http://mock/api/schema/?branch=main", json=response2)
+    url_regex = re.compile(r"http://mock/graphql/main\?at=[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{6}Z")
+    httpx_mock.add_response(method="POST", url=url_regex, json=response1)
+    httpx_mock.add_response(method="POST", url=url_regex, json=response2)
     return httpx_mock
 
 @pytest.fixture

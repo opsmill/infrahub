@@ -105,7 +105,7 @@ def validate_graphql(
             raise_for_error=False,
         )
     except GraphQLError as exc:
-        console.print(f"[red]{len(exc.errors)} error(s) occured while executing the query")
+        console.print(f"[red]{len(exc.errors)} error(s) occurred while executing the query")
         for error in exc.errors:
             if isinstance(error, dict) and "message" in error and "locations" in error:
                 console.print(f"[yellow] - Message: {error['message']}")
