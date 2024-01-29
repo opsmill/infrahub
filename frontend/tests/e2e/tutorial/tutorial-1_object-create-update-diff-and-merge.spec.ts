@@ -126,10 +126,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     await test.step("Row my-first-org is not visible when date prior to its creation is selected", async () => {
       const dateAt5MinAgo = format(subMinutes(new Date(), 50), "iiii, MMMM do,");
       await page.getByTestId("date-picker").locator("input").click();
-      await saveScreenshotForDocs(
-        page,
-        "tutorial/tutorial-2-historical.cy.ts/tutorial_2_historical"
-      );
+      await saveScreenshotForDocs(page, "tutorial_2_historical");
       await page.getByLabel(`Choose ${dateAt5MinAgo}`).click();
       await expect(page.locator("tbody")).not.toContainText("my-first-org");
     });
