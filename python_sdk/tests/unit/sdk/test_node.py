@@ -1064,16 +1064,18 @@ async def test_create_input_data_with_IPHost_attribute(client, ipaddress_schema,
     }
     if client_type == "standard":
         ip_address = InfrahubNode(client=client, schema=ipaddress_schema, data=data)
+        node_id = ip_address.id
     else:
         ip_address = InfrahubNodeSync(client=client, schema=ipaddress_schema, data=data)
+        node_id = ip_address.id
 
     assert ip_address._generate_input_data()["data"] == {
         "data": {
-            "id": "aaaaaaaaaaaaaa",
+            "id": f"{node_id}",
             "address": {
                 "value": "1.1.1.1/24",
                 "is_protected": True,
-            }
+            },
         }
     }
 
@@ -1089,16 +1091,18 @@ async def test_create_input_data_with_IPNetwork_attribute(client, ipnetwork_sche
     }
     if client_type == "standard":
         ip_network = InfrahubNode(client=client, schema=ipnetwork_schema, data=data)
+        node_id = ip_network.id
     else:
         ip_network = InfrahubNodeSync(client=client, schema=ipnetwork_schema, data=data)
+        node_id = ip_network.id
 
     assert ip_network._generate_input_data()["data"] == {
         "data": {
-            "id": "aaaaaaaaaaaaaa",
+            "id": f"{node_id}",
             "network": {
                 "value": "1.1.1.0/24",
                 "is_protected": True,
-            }
+            },
         }
     }
 
