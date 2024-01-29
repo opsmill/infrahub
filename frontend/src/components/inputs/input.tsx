@@ -34,6 +34,7 @@ export const Input = forwardRef((props: any, ref: any) => {
 
   const removeButton = (
     <Button
+      disabled={propsToPass?.disabled}
       buttonType={BUTTON_TYPES.INVISIBLE}
       onClick={(event) => onChange(type === "number" ? 0 : "", event)}>
       <Icon icon="mdi:close" className="text-gray-400" />
