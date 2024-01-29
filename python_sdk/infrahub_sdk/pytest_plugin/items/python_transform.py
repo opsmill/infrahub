@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from infrahub_sdk.schema import InfrahubRepositoryConfigElement
 
 
-class InfrahubPythonTransform(InfrahubItem):
+class InfrahubPythonTransformItem(InfrahubItem):
     def __init__(
         self,
         *args: Any,
@@ -73,7 +73,7 @@ class InfrahubPythonTransform(InfrahubItem):
         return super().repr_failure(excinfo, style=style)
 
 
-class InfrahubPythonTransformUnitProcessItem(InfrahubPythonTransform):
+class InfrahubPythonTransformUnitProcessItem(InfrahubPythonTransformItem):
     def runtest(self) -> None:
         input_data = self.test.spec.get_input_data()
         computed = self.run_transform(input_data)
@@ -83,7 +83,7 @@ class InfrahubPythonTransformUnitProcessItem(InfrahubPythonTransform):
             raise OutputMatchException(name=self.name, message=differences)
 
 
-class InfrahubPythonTransformIntegrationItem(InfrahubPythonTransform):
+class InfrahubPythonTransformIntegrationItem(InfrahubPythonTransformItem):
     def runtest(self) -> None:
         input_data = self.session.infrahub_client.query_gql_query(  # type: ignore[attr-defined]
             self.transform_instance.query,
