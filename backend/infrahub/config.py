@@ -3,18 +3,21 @@ from __future__ import annotations
 import os
 import os.path
 import sys
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import toml
 from infrahub_sdk import generate_uuid
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError
+from pydantic import AliasChoices, Field, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from infrahub.database.constants import DatabaseType
-from infrahub.services.adapters.cache import InfrahubCache  # noqa: TCH001
-from infrahub.services.adapters.message_bus import InfrahubMessageBus  # noqa: TCH001
+
+if TYPE_CHECKING:
+    from infrahub.services.adapters.cache import InfrahubCache
+    from infrahub.services.adapters.message_bus import InfrahubMessageBus
 
 SETTINGS: Settings = None
 
@@ -270,8 +273,8 @@ class TraceSettings(BaseSettings):
         return scheme + endpoint
 
 
-class Override(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+@dataclass
+class Override:
     message_bus: Optional[InfrahubMessageBus] = None
     cache: Optional[InfrahubCache] = None
 
