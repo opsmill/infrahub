@@ -20,6 +20,7 @@ from .branch import (
     BranchUpdate,
     BranchValidate,
 )
+from .log import LogCreate
 from .main import InfrahubMutation, InfrahubMutationMixin, InfrahubMutationOptions
 from .proposed_change import (
     InfrahubProposedChangeMutation,
@@ -53,6 +54,7 @@ __all__ = [
     "InfrahubProposedChangeMutation",
     "JSONAttributeInput",
     "ListAttributeInput",
+    "LogCreate",
     "NumberAttributeInput",
     "ProposedChangeRequestRefreshArtifacts",
     "ProposedChangeRequestRunCheck",

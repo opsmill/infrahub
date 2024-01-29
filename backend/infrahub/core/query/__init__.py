@@ -213,6 +213,12 @@ class QueryResult:
 
         return self.data[return_id]
 
+    def get_node(self, label: str) -> Neo4jNode:
+        node = self.get(label=label)
+        if isinstance(node, Neo4jNode):
+            return node
+        raise ValueError(f"{label} is not a Node")
+
     def get_rels(self) -> Generator[Neo4jRelationship, None, None]:
         """Return all relationships."""
 
@@ -383,7 +389,12 @@ class Query(ABC):
 
         return ":params { " + ", ".join(params) + " }"
 
-    async def execute(self, db: InfrahubDatabase) -> Self:
+    def _limit_query(self, enforce_limit: bool) -> bool:
+        if enforce_limit and (self.limit or self.offset):
+            return False
+        return True
+
+    async def execute(self, db: InfrahubDatabase, enforce_limit: bool = True) -> Self:
         # Ensure all mandatory params have been provided
         # Ensure at least 1 return obj has been defined
 
@@ -391,7 +402,7 @@ class Query(ABC):
             self.print(include_var=True)
 
         if self.type == QueryType.READ:
-            if self.limit or self.offset:
+            if self._limit_query(enforce_limit=enforce_limit):
                 results = await db.execute_query(query=self.get_query(), params=self.params, name=self.name)
             else:
                 results = await self.query_with_size_limit(db=db)

@@ -21,7 +21,7 @@ class TaskNodeCreateQuery(StandardNodeQuery):
     async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Any) -> None:
         node_type = self.node.get_type()
         self.params["node_prop"] = self.node.to_db()
-
+        self.params["created_at"] = self.params["node_prop"].pop("created_at")
         relationships = []
 
         if self.node.account_id:
@@ -32,7 +32,7 @@ class TaskNodeCreateQuery(StandardNodeQuery):
             self.params["account_id"] = self.node.account_id
             relationships.append(
                 """
-                CREATE (n)-[:CREATED_BY]->(a)
+                MERGE (n)-[:CREATED_BY]->(a)
                 """
             )
 
@@ -44,17 +44,19 @@ class TaskNodeCreateQuery(StandardNodeQuery):
             self.params["related_id"] = self.node.related_node.get_id()
             relationships.append(
                 """
-                CREATE (n)-[:IMPACTS]->(i)
+                MERGE (n)-[:IMPACTS]->(i)
                 """
             )
 
         query = """
         MATCH (root:Root)
-        CREATE (n:%s $node_prop)-[r:IS_PART_OF]->(root)
-        """ % (node_type)
+        MERGE (n:%(node_type)s {uuid: $node_prop.uuid})
+        ON CREATE SET n.created_at = $created_at, n += $node_prop
+        ON MATCH SET n += $node_prop
+        MERGE (n)-[r:IS_PART_OF]->(root)
+        """ % {"node_type": node_type}
         self.add_to_query(query=query)
 
         for relationship in relationships:
             self.add_to_query(query=relationship)
-
         self.return_labels = ["n"]

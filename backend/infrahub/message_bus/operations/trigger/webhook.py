@@ -15,5 +15,6 @@ async def actions(message: messages.TriggerWebhookActions, service: InfrahubServ
             )
         )
     for event in events:
+        event.assign_task_id()
         event.assign_meta(parent=message)
         await service.send(message=event)

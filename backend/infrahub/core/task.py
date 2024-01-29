@@ -13,10 +13,11 @@ from infrahub.core.timestamp import current_timestamp
 class Task(StandardNode):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    message: str
+    title: str
     conclusion: TaskConclusion
     account_id: Optional[str] = Field(default=None, description="The ID of the account that created this task")
-    created_timestamp: str = Field(default_factory=current_timestamp, description="The time when this task was created")
+    created_at: str = Field(default_factory=current_timestamp, description="The time when this task was created")
+    updated_at: str = Field(default_factory=current_timestamp, description="The time when this task was last updated")
     related_node: Optional[NodeInfo] = Field(default=None, description="The Infrahub node that this object refers to")
 
     _exclude_attrs: List[str] = ["id", "uuid", "account_id", "_query", "related_node"]

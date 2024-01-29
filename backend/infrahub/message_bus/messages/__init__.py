@@ -20,6 +20,7 @@ from .git_repository_add import GitRepositoryAdd
 from .git_repository_merge import GitRepositoryMerge
 from .git_repository_read_only_add import GitRepositoryAddReadOnly
 from .git_repository_read_only_pull import GitRepositoryPullReadOnly
+from .log_task_result import LogTaskResult
 from .refresh_registry_branches import RefreshRegistryBranches
 from .refresh_webhook_configuration import RefreshWebhookConfiguration
 from .request_artifact_generate import RequestArtifactGenerate
@@ -61,6 +62,7 @@ MESSAGE_MAP: Dict[str, Type[InfrahubMessage]] = {
     "git.repository.merge": GitRepositoryMerge,
     "git.repository.add_read_only": GitRepositoryAddReadOnly,
     "git.repository.pull_read_only": GitRepositoryPullReadOnly,
+    "log.task.result": LogTaskResult,
     "refresh.registry.branches": RefreshRegistryBranches,
     "refresh.webhook.configuration": RefreshWebhookConfiguration,
     "request.artifact.generate": RequestArtifactGenerate,
@@ -96,6 +98,7 @@ def message_priority(routing_key: str) -> int:
         "event.schema.update": 5,
         "git.diff.names_only": 4,
         "git.file.get": 4,
+        "log.task.result": 4,
         "request.artifact.generate": 2,
         "request.git.sync": 4,
         "request.proposed_change.repository_checks": 5,

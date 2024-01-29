@@ -149,7 +149,7 @@ class StandardNode(BaseModel):
         return result.get("n")
 
     @classmethod
-    def from_db(cls, node: Neo4jNode) -> Self:
+    def from_db(cls, node: Neo4jNode, extras: Optional[Dict[str, Any]] = None) -> Self:
         """Convert a Neo4j Node to a Infrahub StandardNode
 
         Args:
@@ -161,6 +161,8 @@ class StandardNode(BaseModel):
 
         attrs = {}
         node_data = dict(node)
+        extras = extras or {}
+        node_data.update(extras)
         attrs["id"] = node.element_id
         for key, value in node_data.items():
             if key not in cls.model_fields:
@@ -183,7 +185,7 @@ class StandardNode(BaseModel):
         if not self.uuid:
             data["uuid"] = str(UUIDT())
         else:
-            data["uuid"] = self.uuid
+            data["uuid"] = str(self.uuid)
 
         for attr_name, field in self.model_fields.items():
             if attr_name in self._exclude_attrs:
