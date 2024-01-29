@@ -1036,6 +1036,7 @@ async def test_create_input_data_with_relationships_03_for_update(clients, rfile
     node.template_path.value = "my-changed-template.j2"
     assert node._generate_input_data(exclude_unmodified=True)["data"] == {
         "data": {
+            "id": "aaaaaaaaaaaaaa",
             "query": {
                 "id": "qqqqqqqq",
                 "_relation__is_protected": True,
