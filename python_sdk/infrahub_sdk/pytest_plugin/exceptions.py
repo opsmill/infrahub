@@ -20,6 +20,13 @@ class FileNotValidError(Error):
         super().__init__(self.message)
 
 
+class OutputMatchException(Error):
+    def __init__(self, name: str, message: str = "", differences: str = ""):
+        self.message = message or f"Rendered output does not match expected output for {name!r}."
+        self.differences = differences
+        super().__init__(self.message)
+
+
 class Jinja2TransformException(Error):
     def __init__(self, name: str, message: str = ""):
         self.message = message or f"Unexpected error happened while processing {name!r}."
@@ -34,13 +41,19 @@ class Jinja2TransformUndefinedError(Error):
         super().__init__(self.message)
 
 
-class PythonTransformDefinitionError(Error):
+class CheckDefinitionError(Error):
     def __init__(self, name: str, message: str = ""):
-        self.message = message or f"Python transform {name!r} is not properly defined.."
+        self.message = message or f"Check {name!r} is not properly defined."
         super().__init__(self.message)
 
 
-class PythonTransformException(Error):
+class CheckResultError(Error):
     def __init__(self, name: str, message: str = ""):
-        self.message = message or f"Unexpected error happened while processing Python transform {name!r}."
+        self.message = message or f"Unexpected result for check {name!r}."
+        super().__init__(self.message)
+
+
+class PythonTransformDefinitionError(Error):
+    def __init__(self, name: str, message: str = ""):
+        self.message = message or f"Python transform {name!r} is not properly defined."
         super().__init__(self.message)
