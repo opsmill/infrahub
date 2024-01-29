@@ -141,6 +141,7 @@ def _generate(context: Context):
     _generate_infrahub_cli_documentation(context=context)
     _generate_infrahubctl_documentation(context=context)
     _generate_infrahub_schema_documentation()
+    _generate_infrahub_repository_configuration_documentation()
 
 
 def _generate_infrahubctl_documentation(context: Context):
@@ -187,3 +188,52 @@ def _generate_infrahub_schema_documentation() -> None:
             f.write(rendered_file)
 
         print(f"Docs saved to: {output_label}")
+
+
+def _generate_infrahub_repository_configuration_documentation() -> None:
+    """Generate documentation for the Infrahub repository configuration file"""
+    from copy import deepcopy
+
+    import jinja2
+    from infrahub_sdk.schema import InfrahubRepositoryConfig
+
+    schema = InfrahubRepositoryConfig.schema()
+
+    properties = [
+        {
+            "name": name,
+            "description": property["description"],
+            "title": property["title"],
+            "type": property["type"],
+            "items_type": property["items"]["$ref"].split("/")[-1]
+            if "$ref" in property["items"]
+            else property["items"]["type"],
+            "items_format": property["items"]["format"] if "format" in property["items"] else None,
+        }
+        for name, property in schema["properties"].items()
+    ]
+
+    definitions = deepcopy(schema["definitions"])
+
+    for name, definition in schema["definitions"].items():
+        for property in definition["properties"].keys():
+            definitions[name]["properties"][property]["required"] = (
+                True if property in definition["required"] else False
+            )
+
+    print(" - Generate Infrahub repository configuration documentation")
+
+    template_file = f"{DOCUMENTATION_DIRECTORY}/_templates/dotinfrahub.j2"
+    output_file = f"{DOCUMENTATION_DIRECTORY}/reference/dotinfrahub.md"
+    if not os.path.exists(template_file):
+        print(f"Unable to find the template file at {template_file}")
+        sys.exit(-1)
+
+    template_text = Path(template_file).read_text(encoding="utf-8")
+
+    environment = jinja2.Environment()
+    template = environment.from_string(template_text)
+    rendered_file = template.render(properties=properties, definitions=definitions)
+
+    with open(output_file, "w", encoding="utf-8") as f:
+        f.write(rendered_file)
