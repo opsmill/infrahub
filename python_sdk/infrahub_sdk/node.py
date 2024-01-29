@@ -714,6 +714,10 @@ class InfrahubNodeBase:
         # pylint: disable=too-many-branches
         data = {}
         variables = {}
+
+        if self.id is not None:
+            data["id"] = self.id
+
         for item_name in self._attributes:
             attr: Attribute = getattr(self, item_name)
             if attr._schema.read_only:
@@ -1188,7 +1192,6 @@ class InfrahubNode(InfrahubNodeBase):
 
     async def create(self, at: Timestamp, allow_upsert: bool = False) -> None:
         input_data = self._generate_input_data()
-        input_data["data"]["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
         if allow_upsert:
             mutation_name = f"{self._schema.kind}Upsert"
@@ -1217,7 +1220,6 @@ class InfrahubNode(InfrahubNodeBase):
 
     async def update(self, at: Timestamp, do_full_update: bool = False) -> None:
         input_data = self._generate_input_data(exclude_unmodified=not do_full_update)
-        input_data["data"]["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
         query = Mutation(
             mutation=f"{self._schema.kind}Update",
@@ -1500,7 +1502,6 @@ class InfrahubNodeSync(InfrahubNodeBase):
 
     def create(self, at: Timestamp, allow_upsert: bool = False) -> None:
         input_data = self._generate_input_data()
-        input_data["data"]["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
         if allow_upsert:
             mutation_name = f"{self._schema.kind}Upsert"
@@ -1530,7 +1531,6 @@ class InfrahubNodeSync(InfrahubNodeBase):
 
     def update(self, at: Timestamp, do_full_update: bool = False) -> None:
         input_data = self._generate_input_data(exclude_unmodified=not do_full_update)
-        input_data["data"]["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
         query = Mutation(
             mutation=f"{self._schema.kind}Update",
