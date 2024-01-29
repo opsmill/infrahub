@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { ACCOUNT_STATE_PATH, saveScreenshotForDocs } from "../../utils";
+import { ACCOUNT_STATE_PATH } from "../../constants";
+import { saveScreenshotForDocs } from "../../utils";
 
 test.describe("Getting started with Infrahub - Data lineage and metadata", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.READ_WRITE });
@@ -11,11 +12,7 @@ test.describe("Getting started with Infrahub - Data lineage and metadata", () =>
     });
 
     await test.step("Explore Description attribute metadata", async () => {
-      await page
-        .locator("div")
-        .filter({ hasText: /^Description$/ })
-        .getByTestId("view-metadata-button")
-        .click();
+      await page.getByText("Description-").getByTestId("view-metadata-button").click();
       await expect(page.getByText("Is protected: False")).toBeVisible();
       await saveScreenshotForDocs(page, "tutorial/tutorial-4-data.cy.ts/tutorial_4_metadata");
     });
@@ -30,11 +27,8 @@ test.describe("Getting started with Infrahub - Data lineage and metadata", () =>
       await saveScreenshotForDocs(page, "tutorial/tutorial-4-data.cy.ts/tutorial_4_metadata_edit");
       await page.getByRole("button", { name: "Save" }).click();
 
-      await page
-        .locator("div")
-        .filter({ hasText: /^Description$/ })
-        .getByTestId("view-metadata-button")
-        .click();
+      await page.getByText("Description-").getByTestId("view-metadata-button").click();
+
       await expect(page.getByText("Is protected: True")).toBeVisible();
     });
 

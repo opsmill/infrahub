@@ -1,22 +1,16 @@
-import { Icon } from "@iconify-icon/react";
 import { formatISO, isEqual, isValid } from "date-fns";
 import { useAtom } from "jotai";
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { StringParam, useQueryParam } from "use-query-params";
 import { AccountMenu } from "../../components/account-menu";
 import BranchSelector from "../../components/branch-selector";
 import { DatePicker } from "../../components/inputs/date-picker";
+import { SearchBar } from "../../components/search/search-bar";
 import { QSP } from "../../config/qsp";
 import { datetimeAtom } from "../../state/atoms/time.atom";
 import { debounce } from "../../utils/common";
 
-interface Props {
-  setSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
-}
-
-export default function Header(props: Props) {
-  const { setSidebarOpen } = props;
-
+export default function Header() {
   const [qspDate, setQspDate] = useQueryParam(QSP.DATETIME, StringParam);
   const [date, setDate] = useAtom(datetimeAtom);
 
@@ -52,23 +46,18 @@ export default function Header(props: Props) {
     setQspDate(undefined);
   };
 
+  // Search bar after buttons to fix a z-index issue
   return (
-    <div className="z-10 flex justify-between flex-shrink-0 h-16 bg-custom-white shadow pr-4">
-      <button
-        type="button"
-        className="border-r border-gray-200 p-4 text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-custom-blue-500 md:hidden"
-        onClick={() => setSidebarOpen(true)}>
-        <span className="sr-only">Open sidebar</span>
-        <Icon icon="mdi:menu" height="32" width="32" />
-      </button>
-
-      <div className="flex flex-1 items-center justify-end gap-4 pl-4">
+    <div className="z-10 flex justify-between flex-row-reverse flex-shrink-0 h-16 bg-custom-white shadow pr-4">
+      <div className="flex items-center justify-end gap-4">
         <DatePicker date={date} onChange={debouncedHandleDateChange} onClickNow={handleClickNow} />
 
         <BranchSelector />
 
         <AccountMenu />
       </div>
+
+      <SearchBar />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { ACCOUNT_STATE_PATH, saveScreenshotForDocs } from "../../utils";
+import { ACCOUNT_STATE_PATH } from "../../constants";
+import { saveScreenshotForDocs } from "../../utils";
 
 test.describe("Getting started with Infrahub - Integration with Git", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });

@@ -1,6 +1,6 @@
 /// <reference types="cypress" />
 
-import { ADMIN_CREDENTIALS } from "../utils";
+import { ADMIN_CREDENTIALS } from "../constants";
 
 const GROUP_NAME = "arista_devices";
 const NEW_GROUP_1 = "Arista Devices";

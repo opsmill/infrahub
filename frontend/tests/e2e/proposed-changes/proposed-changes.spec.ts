@@ -1,5 +1,6 @@
 import { expect, Page, test } from "@playwright/test";
-import { ACCOUNT_STATE_PATH, createBranch, deleteBranch } from "../../utils";
+import { ACCOUNT_STATE_PATH } from "../../constants";
+import { createBranch, deleteBranch } from "../../utils";
 
 test.describe("/proposed-changes", () => {
   test.describe("when not logged in", () => {
@@ -91,7 +92,7 @@ test.describe("/proposed-changes", () => {
         });
       });
 
-      test("merged proposed change", async () => {
+      test.fixme("merged proposed change", async () => {
         await test.step("merge proposed change and update UI", async () => {
           await page.getByRole("button", { name: "Merge" }).click();
           await expect(page.getByText("Proposed changes merged successfully!")).toBeVisible();

@@ -119,6 +119,8 @@ nodes:
 | `Attribute` | `many`      | Yes                   | Yes                       | No             |
 | `Component` | `one`       | No                    | Yes                       | No             |
 | `Component` | `many`      | No                    | No                        | Yes            |
+| `Hierarchy` | `one`       | Yes                   | Yes                       | No             |
+| `Hierarchy` | `many`      | No                    | No                        | Yes            |
 | `Parent`    | `one`       | No                    | Yes                       | No             |
 | `Parent`    | `many`      | No                    | Yes                       | No             |
 
