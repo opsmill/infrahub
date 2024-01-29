@@ -64,9 +64,6 @@ class InfrahubBatch:
 
         for completed_task in asyncio.as_completed(tasks):
             node, result = await completed_task
-            if isinstance(result, Exception):  # pylint: disable=broad-exception-caught
-                if self.return_exceptions:
-                    yield node, result
-                else:
-                    raise result
+            if isinstance(result, Exception) and not self.return_exceptions:
+                raise result
             yield node, result

@@ -1601,6 +1601,41 @@ async def mock_query_mutation_schema_enum_remove(httpx_mock: HTTPXMock) -> HTTPX
 
 
 @pytest.fixture
+async def mock_query_mutation_location_create_failed(httpx_mock: HTTPXMock) -> HTTPXMock:
+    response1 = {
+        "data": {
+            "BuiltinLocationCreate": {
+            "ok": True,
+            "object": {
+                "id": "17aec828-9814-ce00-3f20-1a053670f1c8"
+            }
+            }
+        }
+    }
+    response2 = {
+        "data": {
+            "BuiltinLocationCreate": None
+        },
+        "errors": [
+            {
+            "message": "An object already exist with this value: name: JFK1 at name",
+            "locations": [
+                {
+                "line": 2,
+                "column": 5
+                }
+            ],
+            "path": [
+                "BuiltinLocationCreate"
+            ]
+            }
+        ]
+    }
+    httpx_mock.add_response(method="GET", url="http://mock/api/schema/?branch=main", json=response1)
+    httpx_mock.add_response(method="GET", url="http://mock/api/schema/?branch=main", json=response2)
+    return httpx_mock
+
+@pytest.fixture
 def query_01() -> str:
     """Simple query with one document"""
     query = """
