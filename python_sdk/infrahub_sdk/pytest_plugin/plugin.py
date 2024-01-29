@@ -92,6 +92,7 @@ def pytest_collect_file(parent: Union[Collector, Item], file_path: Path) -> Opti
 
 
 def pytest_configure(config: Config) -> None:
+    config.addinivalue_line("markers", "infrahub_check(name: str): Test related to a Check for Infrahub")
     config.addinivalue_line(
         "markers", "infrahub_graphql_query(name: str): Test related to a GraphQL query for Infrahub"
     )

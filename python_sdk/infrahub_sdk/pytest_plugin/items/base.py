@@ -5,6 +5,7 @@ import json
 from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Union
 
 import pytest
+from git.exc import InvalidGitRepositoryError
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -52,6 +53,9 @@ class InfrahubItem(pytest.Item):
         """Run the test logic."""
 
     def repr_failure(self, excinfo: pytest.ExceptionInfo, style: Optional[str] = None) -> str:
+        if isinstance(excinfo.value, InvalidGitRepositoryError):
+            return f"Invalid Git repository at {excinfo.value}"
+
         return str(excinfo.value)
 
     def reportinfo(self) -> Tuple[Union[Path, str], Optional[int], str]:

@@ -8,6 +8,8 @@ import yaml
 from pytest import Item
 
 from .items import (
+    InfrahubCheckIntegrationItem,
+    InfrahubCheckUnitProcessItem,
     InfrahubGraphqlQueryIntegrationItem,
     InfrahubJinja2TransformIntegrationItem,
     InfrahubJinja2TransformUnitRenderItem,
@@ -17,12 +19,15 @@ from .items import (
 from .models import InfrahubTestFileV1, InfrahubTestResource
 
 MARKER_MAPPING = {
+    "Check": pytest.mark.infrahub_check,
     "GraphqlQuery": pytest.mark.infrahub_graphql_query,
     "Jinja2Transform": pytest.mark.infrahub_jinja2_transform,
     "PythonTransform": pytest.mark.infrahub_python_transform,
 }
 
 ITEMS_MAPPING = {
+    "check-unit-process": InfrahubCheckUnitProcessItem,
+    "check-integration": InfrahubCheckIntegrationItem,
     "graphql-query-integration": InfrahubGraphqlQueryIntegrationItem,
     "jinja2-transform-unit-render": InfrahubJinja2TransformUnitRenderItem,
     "jinja2-transform-integration": InfrahubJinja2TransformIntegrationItem,
@@ -41,6 +46,18 @@ class InfrahubYamlFile(pytest.File):
         content = InfrahubTestFileV1(**raw)
 
         for test_group in content.infrahub_tests:
+            if test_group.resource == InfrahubTestResource.CHECK.value:
+                marker = MARKER_MAPPING[test_group.resource](name=test_group.resource_name)
+                try:
+                    resource_config = self.session.infrahub_repo_config.get_check_definition(test_group.resource_name)  # type: ignore[attr-defined]
+                except KeyError:
+                    warnings.warn(
+                        Warning(
+                            f"Unable to find check definition {test_group.resource_name!r} in the repository config file."
+                        )
+                    )
+                    continue
+
             if test_group.resource == InfrahubTestResource.GRAPHQL_QUERY.value:
                 marker = MARKER_MAPPING[test_group.resource](name=test_group.resource_name)
                 resource_config = None
