@@ -49,8 +49,8 @@ class InfrahubJinja2Item(InfrahubItem):
             return None
 
         differences = difflib.unified_diff(
-            self.test.spec.get_output_data().split("\n"),
-            computed.split("\n"),
+            self.test.spec.get_output_data().splitlines(),
+            computed.splitlines(),
             fromfile="expected",
             tofile="rendered",
             lineterm="",

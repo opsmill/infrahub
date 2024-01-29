@@ -40,8 +40,8 @@ class InfrahubItem(pytest.Item):
 
         expected = self.test.spec.get_output_data()
         differences = difflib.unified_diff(
-            json.dumps(expected, indent=4, sort_keys=True).split("\n"),
-            json.dumps(computed, indent=4, sort_keys=True).split("\n"),
+            json.dumps(expected, indent=4, sort_keys=True).splitlines(),
+            json.dumps(computed, indent=4, sort_keys=True).splitlines(),
             fromfile="expected",
             tofile="rendered",
             lineterm="",
