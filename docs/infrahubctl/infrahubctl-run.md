@@ -5,12 +5,13 @@ Execute a script.
 **Usage**:
 
 ```console
-$ infrahubctl run [OPTIONS] SCRIPT
+$ infrahubctl run [OPTIONS] SCRIPT [VARIABLES]...
 ```
 
 **Arguments**:
 
 * `SCRIPT`: [required]
+* `[VARIABLES]...`: Variables to pass along with the query. Format key=value key=value.
 
 **Options**:
 
@@ -20,7 +21,6 @@ $ infrahubctl run [OPTIONS] SCRIPT
 * `--branch TEXT`: Branch on which to run the script.  [default: main]
 * `--concurrent INTEGER`: Maximum number of requests to execute at the same time.  [env var: INFRAHUBCTL_CONCURRENT_EXECUTION; default: 4]
 * `--timeout INTEGER`: Timeout in sec  [env var: INFRAHUBCTL_TIMEOUT; default: 60]
-* `--extra-params TEXT`: Additional parameters to send to the script in the format: 'key1=value1,key2=value2'.
 * `--install-completion`: Install completion for the current shell.
 * `--show-completion`: Show completion for the current shell, to copy it or customize the installation.
 * `--help`: Show this message and exit.
