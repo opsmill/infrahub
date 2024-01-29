@@ -28,7 +28,7 @@ const DEFAULT_CLASS = (className?: string, type?: BUTTON_TYPES) => `
   ${className?.includes("shadow") || type === BUTTON_TYPES.INVISIBLE ? "" : "shadow-sm"}
   ${className?.includes("p-") || className?.includes("px-") ? "" : "px-2.5"}
   ${className?.includes("p-") || className?.includes("py-") ? "" : "py-1.5"}
-  inline-flex items-center gap-x-1.5
+  inline-flex items-center
   text-sm font-semibold
   focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
 `;
