@@ -936,6 +936,21 @@ class InfrahubNodeBase:
             return NotImplemented
         return self.id == other.id
 
+    def _relationship_mutation(self, action: str, relation_to_update: str, related_nodes: List[str]) -> str:
+        related_node_str = ["{ id: " + f'"{node}"' + " }" for node in related_nodes]
+        return f"""
+        mutation {{
+            Relationship{action}(
+                data: {{
+                    id: "{self.id}",
+                    name: "{relation_to_update}",
+                    nodes: [{", ".join(related_node_str)}]
+                }}
+            ) {{
+                ok
+            }}
+        }}
+        """
 
 class InfrahubNode(InfrahubNodeBase):
     """Represents a Infrahub node in an asynchronous context."""
@@ -1194,22 +1209,6 @@ class InfrahubNode(InfrahubNodeBase):
                 data[rel_name]["@alias"] = f"__alias__{self._schema.kind}__{rel_name}"
 
         return data
-
-    async def _relationship_mutation(self, action: str, relation_to_update: str, related_nodes: List[str]) -> str:
-        related_node_str = ["{ id: " + f'"{node}"' + " }" for node in related_nodes]
-        return f"""
-        mutation {{
-            Relationship{action}(
-                data: {{
-                    id: "{self.id}",
-                    name: "{relation_to_update}",
-                    nodes: [{", ".join(related_node_str)}]
-                }}
-            ) {{
-                ok
-            }}
-        }}
-        """
 
     async def add_relationships(self, relation_to_update: str, related_nodes: List[str]) -> None:
         query = await self._relationship_mutation(
@@ -1542,22 +1541,6 @@ class InfrahubNodeSync(InfrahubNodeBase):
                 data[rel_name]["@alias"] = f"__alias__{self._schema.kind}__{rel_name}"
 
         return data
-
-    def _relationship_mutation(self, action: str, relation_to_update: str, related_nodes: List[str]) -> str:
-        related_node_str = ["{ id: " + f'"{node}"' + " }" for node in related_nodes]
-        return f"""
-        mutation {{
-            Relationship{action}(
-                data: {{
-                    id: "{self.id}",
-                    name: "{relation_to_update}",
-                    nodes: [{", ".join(related_node_str)}]
-                }}
-            ) {{
-                ok
-            }}
-        }}
-        """
 
     def add_relationships(
         self,

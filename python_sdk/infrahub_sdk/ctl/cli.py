@@ -55,7 +55,7 @@ async def _run(
     branch: str,
     concurrent: int,
     timeout: int,
-    **kwargs,
+    variables: Optional[dict] = None,
 ) -> None:
     directory_name = os.path.dirname(script)
     filename = os.path.basename(script)
@@ -76,7 +76,7 @@ async def _run(
         timeout=timeout, max_concurrent_execution=concurrent, context_identifier=module_name
     ) as client:
         func = getattr(module, method)
-        await func(client=client, log=log, branch=branch, **kwargs)
+        await func(client=client, log=log, branch=branch, **variables)
 
 
 def identify_faulty_jinja_code(traceback: Traceback, nbr_context_lines: int = 3) -> List[Tuple[Frame, Syntax]]:
@@ -252,9 +252,8 @@ def run(
         envvar="INFRAHUBCTL_CONCURRENT_EXECUTION",
     ),
     timeout: int = typer.Option(60, help="Timeout in sec", envvar="INFRAHUBCTL_TIMEOUT"),
-    extra_params: Optional[str] = typer.Option(
-        None,
-        help="Additional parameters to send to the script in the format: 'key1=value1,key2=value2'.",
+    variables: Optional[List[str]] = typer.Argument(
+        None, help="Variables to pass along with the query. Format key=value key=value."
     ),
 ) -> None:
     """Execute a script."""
@@ -271,11 +270,8 @@ def run(
     logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
     log = logging.getLogger("infrahubctl")
 
-    extra_parameters = {}
-    if extra_params:
-        for param in extra_params.split(","):
-            key, value = param.split("=")
-            extra_parameters[key.strip()] = value.strip()
+    variables_dict = parse_cli_vars(variables)
+    print(f"variables_dict={variables_dict}")
 
     asyncio.run(
         _run(
@@ -285,6 +281,6 @@ def run(
             branch=branch,
             concurrent=concurrent,
             timeout=timeout,
-            **extra_parameters,
+            variables=variables_dict,
         )
     )
