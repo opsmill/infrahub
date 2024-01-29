@@ -952,6 +952,7 @@ class InfrahubNodeBase:
         }}
         """
 
+
 class InfrahubNode(InfrahubNodeBase):
     """Represents a Infrahub node in an asynchronous context."""
 
@@ -1211,14 +1212,14 @@ class InfrahubNode(InfrahubNodeBase):
         return data
 
     async def add_relationships(self, relation_to_update: str, related_nodes: List[str]) -> None:
-        query = await self._relationship_mutation(
+        query = self._relationship_mutation(
             action="Add", relation_to_update=relation_to_update, related_nodes=related_nodes
         )
         tracker = f"mutation-{str(self._schema.kind).lower()}-relationshipadd-{relation_to_update}"
         await self._client.execute_graphql(query=query, branch_name=self._branch, tracker=tracker)
 
     async def remove_relationships(self, relation_to_update: str, related_nodes: List[str]) -> None:
-        query = await self._relationship_mutation(
+        query = self._relationship_mutation(
             action="Remove", relation_to_update=relation_to_update, related_nodes=related_nodes
         )
         tracker = f"mutation-{str(self._schema.kind).lower()}-relationshipremove-{relation_to_update}"
