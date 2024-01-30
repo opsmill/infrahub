@@ -49,18 +49,23 @@ class NodeUniqueAttributeConstraintQuery(Query):
             sub_attr,
             sub_attr_value,
             sub_path,
-            reduce(br_lvl = 0, r in relationships(sub_path) | br_lvl + r.branch_level) AS branch_level
-            , %(from_times)s AS from_times
-        RETURN sub_n AS n, sub_attr AS attr, sub_attr_value AS attr_value, all(r IN relationships(sub_path) WHERE r.status = "active") as is_active
+            reduce(br_lvl = 0, r in relationships(sub_path) | br_lvl + r.branch_level) AS branch_level_sum,
+            %(from_times)s AS from_times
+        RETURN
+            sub_n AS n,
+            sub_attr AS attr,
+            sub_attr_value AS attr_value,
+            sub_path as path,
+            all(r IN relationships(sub_path) WHERE r.status = "active") as is_active
         ORDER BY
-            branch_level DESC
+            branch_level_sum DESC
             , from_times[1] DESC
             , from_times[2] DESC
         LIMIT 1
         }
         // filter by the active path to exclude deleted nodes
         CALL {
-          WITH n, attr, attr_value, is_active
+          WITH n, attr, attr_value, path, is_active
           WHERE is_active = TRUE
           RETURN n as final_n, attr as final_attr, attr_value as final_attr_value
         }

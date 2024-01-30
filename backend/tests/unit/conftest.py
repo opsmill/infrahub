@@ -1614,7 +1614,7 @@ async def car_volt_main(db: InfrahubDatabase, default_branch: Branch, person_joh
 @pytest.fixture
 async def car_prius_main(db: InfrahubDatabase, default_branch: Branch, person_john_main: Node) -> Node:
     car = await Node.init(db=db, schema="TestCar", branch=default_branch)
-    await car.new(db=db, name="pruis", nbr_seats=5, is_electric=True, owner=person_john_main.id)
+    await car.new(db=db, name="prius", nbr_seats=5, is_electric=True, owner=person_john_main.id)
     await car.save(db=db)
 
     return car

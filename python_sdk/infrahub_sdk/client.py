@@ -611,42 +611,6 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
 
         return resp.json()
 
-    async def get_diff(
-        self,
-        branch: str,
-        branch_only: Optional[bool] = None,
-        time_from: Optional[Timestamp] = None,
-        time_to: Optional[Timestamp] = None,
-        timeout: Optional[int] = None,
-        tracker: Optional[str] = None,
-        raise_for_error: bool = True,
-    ) -> Dict:
-        url_params = {"branch": branch}
-        if branch_only is not None:
-            url_params["branch_only"] = branch_only
-        if time_from:
-            url_params["time_from"] = time_from
-        if time_to:
-            url_params["time_to"] = time_to
-        url_params_str = urlencode(url_params)        
-        url = f"{self.address}/api/diff/data?{url_params_str}"
-        headers = copy.copy(self.headers or {})
-
-        if self.insert_tracker and tracker:
-            headers["X-Infrahub-Tracker"] = tracker
-
-        resp = await self._request(
-            url=url,
-            method=HTTPMethod.GET,
-            headers=headers,
-            timeout=timeout or self.default_timeout,
-        )
-
-        if raise_for_error:
-            resp.raise_for_status()
-
-        return resp.json()
-
     async def create_batch(self, return_exceptions: bool = False) -> InfrahubBatch:
         return InfrahubBatch(semaphore=self.concurrent_execution_limit, return_exceptions=return_exceptions)
 
