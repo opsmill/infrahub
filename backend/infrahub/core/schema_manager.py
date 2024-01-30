@@ -49,7 +49,7 @@ log = get_logger()
 if TYPE_CHECKING:
     from graphql import GraphQLSchema
 
-    from infrahub.core.branch import Branch
+    from infrahub.core.branch.branch import Branch
     from infrahub.database import InfrahubDatabase
 
 # pylint: disable=redefined-builtin,too-many-public-methods,too-many-lines

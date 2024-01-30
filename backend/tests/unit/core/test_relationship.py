@@ -1,7 +1,7 @@
 import pytest
 
 from infrahub.core import registry
-from infrahub.core.branch import Branch
+from infrahub.core.branch.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.query.relationship import RelationshipGetPeerQuery

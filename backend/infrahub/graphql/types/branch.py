@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from graphene import Boolean, String
 
-from infrahub.core.branch import Branch
+from infrahub.core.branch.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 
 from .standard_node import InfrahubObjectType

@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from infrahub.core.branch import Branch
+from infrahub.core.branch.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase

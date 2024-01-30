@@ -7,7 +7,7 @@ from infrahub.core.query import Query, QueryResult, QueryType, sort_results_by_t
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
-    from infrahub.core.branch import Branch
+    from infrahub.core.branch.branch import Branch
     from infrahub.database import InfrahubDatabase
 
 

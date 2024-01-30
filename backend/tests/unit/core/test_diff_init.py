@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from infrahub.core.branch import Branch, Diff
+from infrahub.core.branch.branch import Branch, Diff
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import DiffFromRequiredOnDefaultBranchError, DiffRangeValidationError
 

@@ -3,7 +3,7 @@ import inspect
 import graphene
 
 from infrahub.core import registry
-from infrahub.core.branch import Branch
+from infrahub.core.branch.branch import Branch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.generator import (
     generate_filters,

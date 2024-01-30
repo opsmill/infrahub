@@ -1,5 +1,5 @@
 from infrahub.core import registry
-from infrahub.core.branch import Branch
+from infrahub.core.branch.branch import Branch
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
 from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase

@@ -1,5 +1,5 @@
 from infrahub.core import get_branch
-from infrahub.core.branch import Branch
+from infrahub.core.branch.branch import Branch
 from infrahub.core.query.branch import GetAllBranchInternalRelationshipQuery
 from infrahub.database import InfrahubDatabase
 

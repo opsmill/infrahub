@@ -6,7 +6,7 @@ from deepdiff import DeepDiff
 from pydantic.v1 import Field
 
 from infrahub.core import get_branch
-from infrahub.core.branch import BaseDiffElement, Branch, Diff
+from infrahub.core.branch.branch import BaseDiffElement, Branch, Diff
 from infrahub.core.constants import DiffAction, InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager

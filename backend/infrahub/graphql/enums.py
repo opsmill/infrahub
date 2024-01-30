@@ -5,7 +5,7 @@ import graphene
 
 from infrahub.core import registry
 from infrahub.core.attribute import String
-from infrahub.core.branch import Branch
+from infrahub.core.branch.branch import Branch
 from infrahub.core.enums import generate_python_enum
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema
 from infrahub.graphql.mutations.attribute import BaseAttributeInput

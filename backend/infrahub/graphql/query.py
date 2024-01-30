@@ -16,7 +16,7 @@ from .schema import InfrahubBaseQuery
 if TYPE_CHECKING:
     from graphql.execution import ExecutionResult
 
-    from infrahub.core.branch import Branch
+    from infrahub.core.branch.branch import Branch
     from infrahub.database import InfrahubDatabase
 
 

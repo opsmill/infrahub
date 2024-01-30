@@ -8,7 +8,7 @@ from infrahub_sdk.analyzer import GraphQLQueryAnalyzer
 from infrahub_sdk.utils import extract_fields
 
 from infrahub.core import registry
-from infrahub.core.branch import Branch
+from infrahub.core.branch.branch import Branch
 from infrahub.graphql.utils import extract_schema_models
 
 

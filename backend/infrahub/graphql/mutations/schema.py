@@ -5,7 +5,7 @@ from graphql import GraphQLResolveInfo
 
 from infrahub import config, lock
 from infrahub.core import registry
-from infrahub.core.branch import Branch
+from infrahub.core.branch.branch import Branch
 from infrahub.core.constants import RESTRICTED_NAMESPACES
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema import DropdownChoice, GenericSchema, NodeSchema

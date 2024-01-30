@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from neo4j import AsyncSession
 
     from infrahub.core.attribute import BaseAttribute
-    from infrahub.core.branch import Branch
+    from infrahub.core.branch.branch import Branch
     from infrahub.core.definitions import Brancher
     from infrahub.core.manager import NodeManager
     from infrahub.core.schema import GenericSchema, NodeSchema

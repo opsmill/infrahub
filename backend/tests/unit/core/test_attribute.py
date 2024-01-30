@@ -5,7 +5,7 @@ from infrahub_sdk import UUIDT
 
 from infrahub import config
 from infrahub.core.attribute import URL, Dropdown, Integer, IPHost, IPNetwork, String
-from infrahub.core.branch import Branch
+from infrahub.core.branch.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node

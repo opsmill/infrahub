@@ -2,7 +2,7 @@ from typing import Any, Dict, Optional
 
 from pydantic.v1 import BaseModel, root_validator, validator
 
-from infrahub.core.branch import Branch
+from infrahub.core.branch.branch import Branch
 from infrahub.core.timestamp import Timestamp
 
 

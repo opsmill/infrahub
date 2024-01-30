@@ -13,7 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from infrahub import config
 from infrahub.api.dependencies import get_branch_dep, get_current_user, get_db
 from infrahub.core import get_branch, registry
-from infrahub.core.branch import (
+from infrahub.core.branch.branch import (
     Branch,  # noqa: TCH001
     Diff,  # noqa: TCH001
     NodeDiffElement,  # noqa: TCH001

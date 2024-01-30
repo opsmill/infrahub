@@ -74,7 +74,7 @@ if TYPE_CHECKING:
     )
     from starlette.types import Receive, Scope, Send
 
-    from infrahub.core.branch import Branch
+    from infrahub.core.branch.branch import Branch
     from infrahub.database import InfrahubDatabase
 
     from .auth.query_permission_checker.checker import GraphQLQueryPermissionChecker

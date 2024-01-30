@@ -12,7 +12,7 @@ from infrahub_sdk.utils import str_to_bool
 from infrahub import config
 from infrahub.components import ComponentType
 from infrahub.core import registry
-from infrahub.core.branch import Branch
+from infrahub.core.branch.branch import Branch
 from infrahub.core.initialization import (
     create_default_branch,
     create_global_branch,

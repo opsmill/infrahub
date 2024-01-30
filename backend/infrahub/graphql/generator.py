@@ -30,7 +30,7 @@ from .schema import account_resolver, default_paginated_list_resolver
 from .types import InfrahubInterface, InfrahubObject, RelatedNodeInput
 
 if TYPE_CHECKING:
-    from infrahub.core.branch import Branch
+    from infrahub.core.branch.branch import Branch
     from infrahub.database import InfrahubDatabase
 
 # pylint: disable=protected-access,too-many-locals,too-many-lines

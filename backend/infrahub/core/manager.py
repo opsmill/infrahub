@@ -21,7 +21,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import NodeNotFound, SchemaNotFound
 
 if TYPE_CHECKING:
-    from infrahub.core.branch import Branch
+    from infrahub.core.branch.branch import Branch
     from infrahub.core.constants import RelationshipHierarchyDirection
     from infrahub.database import InfrahubDatabase
 

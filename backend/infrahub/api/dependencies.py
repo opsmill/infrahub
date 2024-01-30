@@ -9,7 +9,7 @@ from pydantic.v1 import BaseModel
 from infrahub import config
 from infrahub.auth import AccountSession, authentication_token, validate_jwt_access_token, validate_jwt_refresh_token
 from infrahub.core import get_branch
-from infrahub.core.branch import Branch  # noqa: TCH001
+from infrahub.core.branch.branch import Branch  # noqa: TCH001
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
 from infrahub.exceptions import AuthorizationError, PermissionDeniedError

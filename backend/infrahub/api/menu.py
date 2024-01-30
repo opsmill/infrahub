@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 from infrahub.api.dependencies import get_branch_dep
 from infrahub.core import registry
-from infrahub.core.branch import Branch  # noqa: TCH001
+from infrahub.core.branch.branch import Branch  # noqa: TCH001
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.schema import NodeSchema
 from infrahub.log import get_logger

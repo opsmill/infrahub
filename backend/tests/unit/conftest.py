@@ -12,7 +12,7 @@ from pytest_httpx import HTTPXMock
 
 from infrahub import config
 from infrahub.core import registry
-from infrahub.core.branch import Branch
+from infrahub.core.branch.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, InfrahubKind
 from infrahub.core.initialization import (
     create_branch,

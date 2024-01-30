@@ -3,7 +3,7 @@ import pytest
 from graphql import graphql
 
 from infrahub.auth import AccountSession, AuthType
-from infrahub.core.branch import Branch
+from infrahub.core.branch.branch import Branch
 from infrahub.core.constants import AccountRole
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase

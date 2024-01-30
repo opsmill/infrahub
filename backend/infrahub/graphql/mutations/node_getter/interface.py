@@ -3,7 +3,7 @@ from typing import Optional
 
 from graphene import InputObjectType
 
-from infrahub.core.branch import Branch
+from infrahub.core.branch.branch import Branch
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
 

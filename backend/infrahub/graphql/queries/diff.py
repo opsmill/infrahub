@@ -8,7 +8,7 @@ from graphene import Boolean, Field, List, ObjectType, String
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
-    from infrahub.core.branch import Branch
+    from infrahub.core.branch.branch import Branch
     from infrahub.database import InfrahubDatabase
 
 

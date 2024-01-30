@@ -12,7 +12,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
-    from infrahub.core.branch import Branch
+    from infrahub.core.branch.branch import Branch
     from infrahub.database import InfrahubDatabase
 
 log = get_logger(name="infrahub.graphql")

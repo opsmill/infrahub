@@ -8,7 +8,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.query import Query
 
 if TYPE_CHECKING:
-    from infrahub.core.branch import Branch
+    from infrahub.core.branch.branch import Branch
     from infrahub.database import InfrahubDatabase
 
 # pylint: disable=redefined-builtin

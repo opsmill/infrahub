@@ -17,7 +17,7 @@ from infrahub.exceptions import QueryError
 if TYPE_CHECKING:
     from typing_extensions import Self
 
-    from infrahub.core.branch import Branch
+    from infrahub.core.branch.branch import Branch
     from infrahub.database import InfrahubDatabase
 
 

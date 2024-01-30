@@ -7,7 +7,7 @@ from infrahub.log import get_logger
 from infrahub.worker import WORKER_IDENTITY
 
 if TYPE_CHECKING:
-    from infrahub.core.branch import Branch
+    from infrahub.core.branch.branch import Branch
 
 log = get_logger()
 

@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
     from neo4j.graph import Relationship as Neo4jRelationship
 
-    from infrahub.core.branch import Branch
+    from infrahub.core.branch.branch import Branch
     from infrahub.core.node import Node
     from infrahub.core.relationship import Relationship
     from infrahub.core.schema import RelationshipSchema

@@ -1,6 +1,6 @@
 from graphql import DocumentNode, GraphQLSchema
 
-from infrahub.core.branch import Branch
+from infrahub.core.branch.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql import generate_graphql_schema

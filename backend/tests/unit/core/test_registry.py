@@ -1,5 +1,5 @@
 from infrahub.core import get_branch, get_branch_from_registry, registry
-from infrahub.core.branch import Branch
+from infrahub.core.branch.branch import Branch
 from infrahub.core.schema import SchemaRoot, internal_schema
 from infrahub.core.schema_manager import SchemaManager
 from infrahub.database import InfrahubDatabase

@@ -2,7 +2,7 @@ import pytest
 from pydantic import ValidationError as PydanticValidationError
 
 from infrahub.core import get_branch
-from infrahub.core.branch import Branch
+from infrahub.core.branch.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager

@@ -1,4 +1,4 @@
-from infrahub.core.branch import Branch
+from infrahub.core.branch.branch import Branch
 
 
 async def test_openapi(

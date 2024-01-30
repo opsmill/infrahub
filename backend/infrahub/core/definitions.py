@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Optional, Protocol, runtime_checkable
 if TYPE_CHECKING:
     from neo4j import AsyncSession
 
-    from infrahub.core.branch import Branch
+    from infrahub.core.branch.branch import Branch
     from infrahub.database import InfrahubDatabase
 
 

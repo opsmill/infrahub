@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Dict
 from infrahub.core.manager import NodeManager
 
 if TYPE_CHECKING:
-    from infrahub.core.branch import Branch
+    from infrahub.core.branch.branch import Branch
     from infrahub.database import InfrahubDatabase
 
 

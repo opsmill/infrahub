@@ -14,7 +14,7 @@ from infrahub.exceptions import QueryError
 
 if TYPE_CHECKING:
     from infrahub.core.attribute import AttributeCreateData, BaseAttribute
-    from infrahub.core.branch import Branch
+    from infrahub.core.branch.branch import Branch
     from infrahub.core.node import Node
     from infrahub.core.relationship import RelationshipCreateData, RelationshipManager
     from infrahub.core.schema import GenericSchema, NodeSchema

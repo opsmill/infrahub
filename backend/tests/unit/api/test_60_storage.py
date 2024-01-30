@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from infrahub.core.branch import Branch
+from infrahub.core.branch.branch import Branch
 from infrahub.database import InfrahubDatabase
 from infrahub.message_bus.rpc import InfrahubRpcClientTesting
 

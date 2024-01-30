@@ -9,7 +9,7 @@ from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
     from infrahub.core.attribute import BaseAttribute
-    from infrahub.core.branch import Branch
+    from infrahub.core.branch.branch import Branch
     from infrahub.core.query import QueryElement
     from infrahub.database import InfrahubDatabase
 

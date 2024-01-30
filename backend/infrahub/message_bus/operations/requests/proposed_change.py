@@ -1,6 +1,6 @@
 from typing import List
 
-from infrahub.core.branch import ObjectConflict
+from infrahub.core.branch.branch import ObjectConflict
 from infrahub.core.constants import InfrahubKind, ProposedChangeState
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node

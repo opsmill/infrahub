@@ -14,7 +14,7 @@ from .subscription import InfrahubBaseSubscription
 if TYPE_CHECKING:
     from graphql import GraphQLSchema
 
-    from infrahub.core.branch import Branch
+    from infrahub.core.branch.branch import Branch
     from infrahub.database import InfrahubDatabase
 
 

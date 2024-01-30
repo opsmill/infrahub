@@ -38,7 +38,7 @@ from infrahub.types import ATTRIBUTE_TYPES
 if TYPE_CHECKING:
     from typing_extensions import Self
 
-    from infrahub.core.branch import Branch
+    from infrahub.core.branch.branch import Branch
     from infrahub.core.query import QueryElement
     from infrahub.database import InfrahubDatabase
 

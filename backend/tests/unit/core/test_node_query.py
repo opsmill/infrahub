@@ -2,7 +2,7 @@ import time
 from typing import Dict
 
 from infrahub.core import get_branch, registry
-from infrahub.core.branch import Branch
+from infrahub.core.branch.branch import Branch
 from infrahub.core.constants import InfrahubKind, RelationshipHierarchyDirection
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node

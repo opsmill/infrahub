@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
     from infrahub.auth import AccountSession
-    from infrahub.core.branch import Branch
+    from infrahub.core.branch.branch import Branch
     from infrahub.database import InfrahubDatabase
 
     from .node_getter.interface import MutationNodeGetterInterface

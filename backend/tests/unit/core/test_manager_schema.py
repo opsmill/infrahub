@@ -5,7 +5,7 @@ from deepdiff import DeepDiff
 from infrahub_sdk.utils import compare_lists
 
 from infrahub.core import registry
-from infrahub.core.branch import Branch
+from infrahub.core.branch.branch import Branch
 from infrahub.core.constants import BranchSupportType, FilterSchemaKind, InfrahubKind
 from infrahub.core.schema import (
     GenericSchema,

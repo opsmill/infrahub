@@ -9,7 +9,7 @@ from starlette.responses import JSONResponse
 from infrahub import config, lock
 from infrahub.api.dependencies import get_branch_dep, get_current_user, get_db
 from infrahub.core import registry
-from infrahub.core.branch import Branch  # noqa: TCH001
+from infrahub.core.branch.branch import Branch  # noqa: TCH001
 from infrahub.core.models import SchemaBranchHash  # noqa: TCH001
 from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema_manager import SchemaNamespace  # noqa: TCH001

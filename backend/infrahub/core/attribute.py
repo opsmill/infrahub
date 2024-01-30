@@ -36,7 +36,7 @@ from .constants.relationship_label import RELATIONSHIP_TO_NODE_LABEL, RELATIONSH
 if TYPE_CHECKING:
     from uuid import UUID
 
-    from infrahub.core.branch import Branch
+    from infrahub.core.branch.branch import Branch
     from infrahub.core.node import Node
     from infrahub.core.schema import AttributeSchema
     from infrahub.database import InfrahubDatabase

@@ -1,5 +1,5 @@
 from infrahub.api.menu import InterfaceMenu
-from infrahub.core.branch import Branch
+from infrahub.core.branch.branch import Branch
 from infrahub.core.schema import SchemaRoot
 from infrahub.database import InfrahubDatabase
 

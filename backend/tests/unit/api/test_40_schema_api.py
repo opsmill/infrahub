@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
 from infrahub.core import registry
-from infrahub.core.branch import Branch
+from infrahub.core.branch.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.schema import SchemaRoot, core_models

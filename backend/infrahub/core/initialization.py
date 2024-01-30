@@ -2,7 +2,7 @@ from typing import List, Optional
 
 from infrahub import config, lock
 from infrahub.core import registry
-from infrahub.core.branch import Branch
+from infrahub.core.branch.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.node import Node

@@ -7,7 +7,7 @@ from infrahub_sdk.utils import extract_fields
 
 from infrahub import config, lock
 from infrahub.core import registry
-from infrahub.core.branch import Branch
+from infrahub.core.branch.branch import Branch
 from infrahub.exceptions import BranchNotFound
 from infrahub.log import get_log_data, get_logger
 from infrahub.message_bus import Meta, messages
