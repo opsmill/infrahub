@@ -69,7 +69,7 @@ class BaseClient:
         pagination_size: int = 50,
         max_concurrent_execution: int = 5,
         config: Optional[Union[Config, Dict[str, Any]]] = None,
-        context_identifier: Optional[str] = None,
+        identifier: Optional[str] = None,
     ):
         self.client = None
         self.retry_on_failure = retry_on_failure
@@ -97,7 +97,7 @@ class BaseClient:
         self.max_concurrent_execution = max_concurrent_execution
 
         self.update_group_context = update_group_context
-        self.context_identifier = context_identifier
+        self.identifier = identifier
         self._initialize()
 
     def _initialize(self) -> None:
@@ -106,6 +106,8 @@ class BaseClient:
     def _record(self, response: httpx.Response) -> None:
         self.config.custom_recorder.record(response)
 
+    def set_context_properties(self, identifier: str, params: Optional[Dict[str, str]] = None) -> None:
+        self.group_context.set_properties(identifier=identifier, params=params)
 
 class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
     """GraphQL Client to interact with Infrahub."""

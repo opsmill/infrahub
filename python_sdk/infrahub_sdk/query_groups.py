@@ -15,6 +15,30 @@ class InfrahubGroupContextBase:
     def __init__(self) -> None:
         self.related_nodes_ids: List[str] = []
         self.related_groups_ids: List[str] = []
+        self.identifier = None
+        self.params: Dict[str, str] = {}
+
+    def _generate_group_name(self, suffix: Optional[str] = "saved") -> str:
+        if self.identifier:
+            group_name = f"{self.identifier}-{suffix}"
+        elif self.client.identifier:
+            group_name = f"{self.client.identifier}-{suffix}"
+        else:
+            group_name = "sdk-{suffix}"
+        if self.params:
+            group_name = group_name + f"-{dict_hash(self.params)}"
+
+        return group_name
+
+    def set_properties(self, identifier: str, params: Optional[Dict[str, str]] = None):
+        """Setter method to set the values of identifier and params.
+
+        Args:
+            identifier: The new value for the identifier.
+            params: A dictionary with new values for the params.
+        """
+        self.identifier = identifier
+        self.params = params if params is not None else {}
 
 
 class InfrahubGroupContext(InfrahubGroupContextBase):
@@ -48,12 +72,9 @@ class InfrahubGroupContext(InfrahubGroupContextBase):
         if conbined_bool is True or conbined_bool is None:
             self.related_groups_ids.extend(ids)
 
-    async def update_group(self, params: Optional[Dict[str, str]] = None) -> None:
+    async def update_group(self) -> None:
         """
         Create or update (using upsert) a CoreStandGroup to store all the Nodes and Groups used during an execution.
-
-        Args:
-            params (Optional[Dict[str, str]], optional): Additional parameters for the group name.
         """
         children: List[str] = []
         members: List[str] = []
@@ -64,12 +85,7 @@ class InfrahubGroupContext(InfrahubGroupContextBase):
             members = self.related_nodes_ids
 
         if children or members:
-            if self.client.context_identifier:
-                group_name = f"{self.client.context_identifier}-saved"
-            else:
-                group_name = "sdk-saved"
-            if params:
-                group_name = f"saved-{dict_hash(params)}"
+            group_name = self._generate_group_name()
             group_label = f"SDK Run {group_name}"
 
             group = await self.client.create(
@@ -117,12 +133,9 @@ class InfrahubGroupContextSync(InfrahubGroupContextBase):
         if conbined_bool is True or conbined_bool is None:
             self.related_groups_ids.extend(ids)
 
-    def update_group(self, params: Optional[Dict[str, str]] = None) -> None:
+    def update_group(self) -> None:
         """
         Create or update (using upsert) a CoreStandGroup to store all the Nodes and Groups used during an execution.
-
-        Args:
-            params (Optional[Dict[str, str]], optional): Additional parameters for the group name.
         """
         children: List[str] = []
         members: List[str] = []
@@ -133,12 +146,7 @@ class InfrahubGroupContextSync(InfrahubGroupContextBase):
             members = self.related_nodes_ids
 
         if children or members:
-            if self.client.context_identifier:
-                group_name = f"{self.client.context_identifier}-saved"
-            else:
-                group_name = "sdk-saved"
-            if params:
-                group_name = f"saved-{dict_hash(params)}"
+            group_name = self._generate_group_name()
             group_label = f"SDK Run {group_name}"
 
             group = self.client.create(
