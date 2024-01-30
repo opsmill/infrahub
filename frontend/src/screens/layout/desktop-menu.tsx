@@ -85,22 +85,18 @@ export default function DesktopMenu() {
   return (
     <div className="z-100 hidden w-64 md:visible md:inset-y-0 md:flex md:flex-col">
       <div className="flex flex-grow flex-col overflow-y-auto border-r border-gray-200 bg-custom-white">
-        <Link to="/" className="h-16 px-5 flex items-center border-b">
+        <Link to="/" className="h-16 px-5 flex items-center">
           <InfrahubLogo />
         </Link>
 
-        <div className="flex flex-col items-stretch">
-          <div className="p-2 pb-0">
-            <DatePicker
-              date={date}
-              onChange={debouncedHandleDateChange}
-              onClickNow={handleClickNow}
-            />
-          </div>
+        <div className="flex flex-col items-stretch p-2 gap-2">
+          <BranchSelector />
 
-          <div className="p-2">
-            <BranchSelector />
-          </div>
+          <DatePicker
+            date={date}
+            onChange={debouncedHandleDateChange}
+            onClickNow={handleClickNow}
+          />
         </div>
 
         <div className="flex flex-grow flex-col flex-1 overflow-auto">
