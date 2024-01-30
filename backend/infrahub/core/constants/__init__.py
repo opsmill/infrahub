@@ -7,9 +7,9 @@ from infrahub.core.constants import infrahubkind as InfrahubKind
 from infrahub.exceptions import ValidationError
 from infrahub.utils import InfrahubStringEnum
 
-from .schema import FlagProperty, NodeProperty, UpdateSupport
+from .schema import FlagProperty, NodeProperty, UpdateSupport, UpdateValidationErrorType
 
-__all__ = ["InfrahubKind", "FlagProperty", "NodeProperty", "UpdateSupport"]
+__all__ = ["InfrahubKind", "FlagProperty", "NodeProperty", "UpdateSupport", "UpdateValidationErrorType"]
 
 
 GLOBAL_BRANCH_NAME = "-global-"

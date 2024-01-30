@@ -155,13 +155,18 @@ async def load_schema(
         except ValueError as exc:
             return JSONResponse(status_code=422, content={"error": str(exc)})
 
-        diff = tmp_schema.diff(branch_schema)
+        result = branch_schema.validate_update(other=tmp_schema)
 
-        if diff.all:
-            log.info(f"Schema has diff, will need to be updated {diff.all}", branch=branch.name)
+        if result.errors:
+            return JSONResponse(
+                status_code=422, content={"error": ", ".join([error.to_string() for error in result.errors])}
+            )
+
+        if result.diff.all:
+            log.info(f"Schema has diff, will need to be updated {result.diff.all}", branch=branch.name)
             async with db.start_transaction() as db:
                 await registry.schema.update_schema_branch(
-                    schema=tmp_schema, db=db, branch=branch.name, limit=diff.all, update_db=True
+                    schema=tmp_schema, db=db, branch=branch.name, limit=result.diff.all, update_db=True
                 )
                 branch.update_schema_hash()
                 log.info("Schema has been updated", branch=branch.name, hash=branch.schema_hash.main)

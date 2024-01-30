@@ -259,7 +259,7 @@ class RelationshipSchema(HashableModel):
     )
     inherited: bool = Field(default=False, json_schema_extra={"update": UpdateSupport.NA.value})
     cardinality: RelationshipCardinality = Field(
-        default=RelationshipCardinality.MANY, json_schema_extra={"update": UpdateSupport.MIGRATION_REQUIRED.value}
+        default=RelationshipCardinality.MANY, json_schema_extra={"update": UpdateSupport.CHECK_CONSTRAINTS.value}
     )
     branch: Optional[BranchSupportType] = Field(
         default=None, json_schema_extra={"update": UpdateSupport.MIGRATION_REQUIRED.value}
