@@ -18,12 +18,12 @@ async def test_batch_return_exception(
 
     result_iter = batch.execute()
     # Assert first node success
-    node, result = await anext(result_iter)
+    node, result = await result_iter.__anext__()
     assert node == results[0]
     assert not isinstance(result, Exception)
 
     # Assert second node failure
-    node, result = await anext(result_iter)
+    node, result = await result_iter.__anext__()
     assert node == results[1]
     assert isinstance(result, GraphQLError)
     assert "An error occurred while executing the GraphQL Query" in str(result)
