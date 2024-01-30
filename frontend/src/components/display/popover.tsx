@@ -1,8 +1,8 @@
 // type PopOver = {}
 
-import { Popover, Transition } from "@headlessui/react";
-import { Fragment } from "react";
+import { Popover } from "@headlessui/react";
 import { classNames } from "../../utils/common";
+import Transition from "../utils/transition";
 
 export enum POPOVER_SIZE {
   NONE,
@@ -11,7 +11,7 @@ export enum POPOVER_SIZE {
   LARGE,
 }
 
-type PopoverPros = {
+type PopOverProps = {
   children?: any;
   className?: string;
   buttonComponent?: any;
@@ -19,6 +19,10 @@ type PopoverPros = {
   disabled?: boolean;
   width?: POPOVER_SIZE;
   height?: POPOVER_SIZE;
+  maxWidth?: POPOVER_SIZE;
+  maxHeight?: POPOVER_SIZE;
+  static?: boolean;
+  open?: boolean;
 };
 
 const widthClass = {
@@ -35,48 +39,71 @@ const heightClass = {
   [POPOVER_SIZE.LARGE]: "h-[800px]",
 };
 
-export const PopOver = ({
-  children,
+const maxWidthClass = {
+  [POPOVER_SIZE.NONE]: "",
+  [POPOVER_SIZE.SMALL]: "max-w-[300px]",
+  [POPOVER_SIZE.MEDIUM]: "max-w-[500px]",
+  [POPOVER_SIZE.LARGE]: "max-w-[800px]",
+};
+
+const maxHeightClass = {
+  [POPOVER_SIZE.NONE]: "",
+  [POPOVER_SIZE.SMALL]: "max-h-[300px]",
+  [POPOVER_SIZE.MEDIUM]: "max-h-[500px]",
+  [POPOVER_SIZE.LARGE]: "max-h-[800px]",
+};
+
+const PopOverPanel = ({
   className,
-  buttonComponent,
   title,
-  disabled,
+  children,
+  static: staticProp,
   width,
   height,
-}: PopoverPros) => {
+  maxWidth,
+  maxHeight,
+}: PopOverProps) => {
   return (
-    <Popover className="flex-1">
+    <Popover.Panel
+      className={classNames(
+        "absolute z-10 overflow-scroll rounded-lg border shadow-xl grid grid-cols-1 divide-y divide-gray-200",
+        className?.includes("bg-") ? "" : "bg-custom-white",
+        // className?.includes("right-") ? "" : "right-0",
+        // className?.includes("top-") ? "" : "top-10",
+        // className?.includes("mt-") ? "" : "mt-3",
+        className ?? "",
+        widthClass[width ?? POPOVER_SIZE.NONE],
+        heightClass[height ?? POPOVER_SIZE.NONE],
+        maxWidthClass[maxWidth ?? POPOVER_SIZE.NONE],
+        maxHeightClass[maxHeight ?? POPOVER_SIZE.NONE]
+      )}
+      static={staticProp}>
+      {({ close }) => (
+        <>
+          {title && <div className="font-semibold text-center p-2">{title}</div>}
+
+          <div className="flex-1 p-2">{children({ close })}</div>
+        </>
+      )}
+    </Popover.Panel>
+  );
+};
+
+export const PopOver = (props: PopOverProps) => {
+  const { buttonComponent, disabled, static: staticProp, open, ...propsToPass } = props;
+
+  if (staticProp) {
+    return <Popover className="flex-1">{open && <PopOverPanel {...propsToPass} static />}</Popover>;
+  }
+
+  return (
+    <Popover>
       <Popover.Button as="div" className="h-full" disabled={disabled}>
         {buttonComponent}
       </Popover.Button>
 
-      <Transition
-        as={Fragment}
-        enter="transition ease-out duration-200"
-        enterFrom="opacity-0 translate-y-1"
-        enterTo="opacity-100 translate-y-0"
-        leave="transition ease-in duration-150"
-        leaveFrom="opacity-100 translate-y-0"
-        leaveTo="opacity-0 translate-y-1">
-        <Popover.Panel
-          className={classNames(
-            "absolute z-10 overflow-scroll rounded-lg border shadow-xl grid grid-cols-1 divide-y divide-gray-200",
-            className?.includes("bg-") ? "" : "bg-custom-white",
-            className?.includes("right-") ? "" : "right-0",
-            className?.includes("top-") ? "" : "top-10",
-            className?.includes("mt-") ? "" : "mt-3",
-            className ?? "",
-            widthClass[width ?? POPOVER_SIZE.SMALL],
-            heightClass[height ?? POPOVER_SIZE.SMALL]
-          )}>
-          {({ close }) => (
-            <>
-              {title && <div className="font-semibold text-center p-2">{title}</div>}
-
-              <div className="p-2">{children({ close })}</div>
-            </>
-          )}
-        </Popover.Panel>
+      <Transition>
+        <PopOverPanel {...propsToPass} />
       </Transition>
     </Popover>
   );

@@ -1,6 +1,6 @@
 /// <reference types="cypress" />
 
-import { ADMIN_CREDENTIALS } from "../utils";
+import { ADMIN_CREDENTIALS } from "../constants";
 
 describe.skip("Relationship Page", () => {
   it("should display object relationships without login", () => {

@@ -84,7 +84,6 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         self.exchange = await self.channel.declare_exchange(
             f"{config.SETTINGS.broker.namespace}.events", type="topic", durable=True
         )
-        self.rpc_exchange = self.exchange
         self.dlx = await self.channel.declare_exchange(
             f"{config.SETTINGS.broker.namespace}.dlx", type="topic", durable=True
         )

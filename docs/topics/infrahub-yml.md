@@ -18,6 +18,7 @@ An external repository can be used to link the following Infrahub objects to an 
 
 - See [this guide](/guides/repository) for how to add or update an external repository in Infrahub
 - See [this topic](/topics/repository) for more information on remote repositories in Infrahub
+- See [this reference](/reference/dotinfrahub) for more information on the `.infrahub.yml` file format
 
 !!!
 

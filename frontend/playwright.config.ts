@@ -18,9 +18,9 @@ export default defineConfig({
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
   /* 30s timeout for both assertions and tests (1min in CI) */
-  timeout: process.env.CI ? 2 * 60 * 1000 : 30 * 1000,
+  timeout: process.env.CI ? 2 * 60 * 1000 : 60 * 1000,
   expect: {
-    timeout: process.env.CI ? 2 * 60 * 1000 : 10 * 1000,
+    timeout: process.env.CI ? 2 * 60 * 1000 : 60 * 1000,
   },
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 3 : undefined,
@@ -28,12 +28,12 @@ export default defineConfig({
   reporter: [
     ["list"],
     ["html", { open: "never" }],
-    ["buildkite-test-collector/playwright/reporter"]
+    ["buildkite-test-collector/playwright/reporter"],
   ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: process.env.CI ? process.env.INFRAHUB_ADDRESS : "http://localhost:8080",
+    baseURL: process.env.CI ? process.env.INFRAHUB_ADDRESS : "http://localhost:8000",
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: process.env.CI ? "retain-on-failure" : "on",

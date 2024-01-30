@@ -683,7 +683,7 @@ async def test_update_related_node(db: InfrahubDatabase, default_branch, data_sc
             {
                 "name": "Person",
                 "namespace": "Test",
-                "default_filter": "name__value",
+                "default_filter": "firstname__value",
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "firstname", "kind": "Text"},

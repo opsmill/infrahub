@@ -675,6 +675,7 @@ export const Select = (props: SelectProps) => {
             error={error}
             className={"pr-8"}
             style={getInputStyle()}
+            hideEmpty
           />
           <Combobox.Button
             className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none disabled:cursor-not-allowed"

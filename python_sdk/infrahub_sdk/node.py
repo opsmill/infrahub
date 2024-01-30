@@ -714,6 +714,7 @@ class InfrahubNodeBase:
         # pylint: disable=too-many-branches
         data = {}
         variables = {}
+
         for item_name in self._attributes:
             attr: Attribute = getattr(self, item_name)
             if attr._schema.read_only:
@@ -772,6 +773,9 @@ class InfrahubNodeBase:
 
         mutation_variables = {key: type(value) for key, value in variables.items()}
 
+        if self.id is not None:
+            data["id"] = self.id
+
         return {
             "data": {"data": data},
             "variables": variables,
@@ -780,8 +784,8 @@ class InfrahubNodeBase:
 
     @staticmethod
     def _strip_unmodified_dict(data: dict, original_data: dict, variables: dict, item: str) -> None:
-        for item_key in original_data[item].keys():
-            if isinstance(data[item], dict):
+        if item in original_data and isinstance(original_data[item], dict) and isinstance(data.get(item), dict):
+            for item_key in original_data[item].keys():
                 for property_name in PROPERTIES_OBJECT:
                     if item_key == property_name and isinstance(original_data[item][property_name], dict):
                         if original_data[item][property_name].get("id"):
@@ -791,13 +795,18 @@ class InfrahubNodeBase:
                         # Related nodes typically require an ID. So the ID is only
                         # removed if it's the last key in the current context
                         continue
+
                     variable_key = None
-                    if isinstance(data[item][item_key], str):
+                    if isinstance(data[item].get(item_key), str):
                         variable_key = data[item][item_key][1:]
 
-                    if original_data[item][item_key] == data[item][item_key]:
+                    if original_data[item].get(item_key) == data[item].get(item_key):
                         data[item].pop(item_key)
-                    elif variable_key in variables and original_data[item][item_key] == variables[variable_key]:
+                    elif (
+                        variable_key
+                        and variable_key in variables
+                        and original_data[item].get(item_key) == variables.get(variable_key)
+                    ):
                         data[item].pop(item_key)
                         variables.pop(variable_key)
 
@@ -1227,7 +1236,6 @@ class InfrahubNode(InfrahubNodeBase):
 
     async def create(self, at: Timestamp, allow_upsert: bool = False) -> None:
         input_data = self._generate_input_data()
-        input_data["data"]["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
         if allow_upsert:
             mutation_name = f"{self._schema.kind}Upsert"
@@ -1252,7 +1260,6 @@ class InfrahubNode(InfrahubNodeBase):
 
     async def update(self, at: Timestamp, do_full_update: bool = False) -> None:
         input_data = self._generate_input_data(exclude_unmodified=not do_full_update)
-        input_data["data"]["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
         query = Mutation(
             mutation=f"{self._schema.kind}Update",
@@ -1563,7 +1570,6 @@ class InfrahubNodeSync(InfrahubNodeBase):
 
     def create(self, at: Timestamp, allow_upsert: bool = False) -> None:
         input_data = self._generate_input_data()
-        input_data["data"]["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
         if allow_upsert:
             mutation_name = f"{self._schema.kind}Upsert"
@@ -1589,7 +1595,6 @@ class InfrahubNodeSync(InfrahubNodeBase):
 
     def update(self, at: Timestamp, do_full_update: bool = False) -> None:
         input_data = self._generate_input_data(exclude_unmodified=not do_full_update)
-        input_data["data"]["data"]["id"] = self.id
         mutation_query = {"ok": None, "object": {"id": None}}
         query = Mutation(
             mutation=f"{self._schema.kind}Update",

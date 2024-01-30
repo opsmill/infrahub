@@ -127,7 +127,7 @@ export const attributesKindForListView = [
   "IPNetwork",
 ];
 
-export const attributesKindForDetailsViewExclude = [];
+export const attributesKindForDetailsViewExclude = ["HashedPassword"];
 
 export const relationshipsForListView = {
   one: ["Attribute", "Hierarchy"],
