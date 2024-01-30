@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 from typing import Any, Dict, List, Optional, Tuple
 
-from infrahub_sdk.utils import duplicates, intersection
+from infrahub_sdk.utils import compare_lists, duplicates, intersection
 from pydantic import BaseModel, ConfigDict, Field
 from typing_extensions import Self
 
@@ -44,6 +44,19 @@ class SchemaBranchHash(BaseModel):
         )
 
 
+class HashableModelDiff(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    added: Dict[str, Optional[HashableModelDiff]] = Field(default_factory=dict)
+    changed: Dict[str, Optional[HashableModelDiff]] = Field(default_factory=dict)
+    removed: Dict[str, Optional[HashableModelDiff]] = Field(default_factory=dict)
+
+    @property
+    def has_diff(self) -> bool:
+        if len(self.added) == 0 and len(self.changed) == 0 and len(self.removed) == 0:
+            return False
+        return True
+
+
 class HashableModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
     _exclude_from_hash: List[str] = []
@@ -60,12 +73,6 @@ class HashableModel(BaseModel):
         List of hashable elements are fine and they will be converted automatically to Tuple.
         """
 
-        def prep_for_hash(v: Any) -> bytes:
-            if hasattr(v, "get_hash"):
-                return v.get_hash().encode()
-
-            return str(v).encode()
-
         values = []
         md5hash = hashlib.md5()
         for field_name in sorted(self.model_fields.keys()):
@@ -73,22 +80,10 @@ class HashableModel(BaseModel):
                 continue
 
             value = getattr(self, field_name)
-            if isinstance(value, list):
-                for item in sorted(value):
-                    values.append(prep_for_hash(item))
-                    md5hash.update(prep_for_hash(item))
-            elif hasattr(value, "get_hash"):
-                values.append(value.get_hash().encode())
-                md5hash.update(value.get_hash().encode())
-            elif isinstance(value, dict):
-                for key, value in frozenset(sorted(value.items())):
-                    values.append(prep_for_hash(key))
-                    values.append(prep_for_hash(value))
-                    md5hash.update(prep_for_hash(key))
-                    md5hash.update(prep_for_hash(value))
-            else:
-                md5hash.update(prep_for_hash(value))
-                values.append(prep_for_hash(value))
+            signatures = self._get_signature_field(value)
+            for item in signatures:
+                values.append(item)
+                md5hash.update(item)
 
         if display_values:
             from rich import print as rprint  # pylint: disable=import-outside-toplevel
@@ -96,6 +91,28 @@ class HashableModel(BaseModel):
             rprint(tuple(values))
 
         return md5hash.hexdigest()
+
+    @classmethod
+    def _get_hash_value(cls, value: Any) -> bytes:
+        if hasattr(value, "get_hash"):
+            return value.get_hash().encode()
+
+        return str(value).encode()
+
+    @classmethod
+    def _get_signature_field(cls, value: Any) -> List[bytes]:
+        hashes: List[bytes] = []
+        if isinstance(value, list):
+            for item in sorted(value):
+                hashes.append(cls._get_hash_value(item))
+        elif isinstance(value, dict):
+            for key, content in frozenset(sorted(value.items())):
+                hashes.append(cls._get_hash_value(key))
+                hashes.append(cls._get_hash_value(content))
+        else:
+            hashes.append(cls._get_hash_value(value))
+
+        return hashes
 
     @property
     def _sorting_id(self) -> Tuple[Any]:
@@ -219,3 +236,28 @@ class HashableModel(BaseModel):
                     setattr(self, field_name, new_attr)
 
         return self
+
+    def diff(self, other: Self) -> HashableModelDiff:
+        in_both, local_only, other_only = compare_lists(
+            list1=list(self.model_fields.keys()), list2=list(other.model_fields.keys())
+        )
+        diff_result = HashableModelDiff(
+            added={item: None for item in local_only}, removed={item: None for item in other_only}
+        )
+
+        for field_name in in_both:
+            if field_name.startswith("_") or field_name in self._exclude_from_hash:
+                continue
+
+            local_value = getattr(self, field_name)
+            other_value = getattr(other, field_name)
+            local_signatures = self._get_signature_field(local_value)
+            other_signatures = other._get_signature_field(other_value)
+
+            if local_signatures != other_signatures:
+                if isinstance(local_value, HashableModel) and isinstance(other_value, HashableModel):
+                    diff_result.changed[field_name] = local_value.diff(other=other_value)
+                else:
+                    diff_result.changed[field_name] = None
+
+        return diff_result
