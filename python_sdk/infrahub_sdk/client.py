@@ -109,6 +109,7 @@ class BaseClient:
     def set_context_properties(self, identifier: str, params: Optional[Dict[str, str]] = None) -> None:
         self.group_context.set_properties(identifier=identifier, params=params)
 
+
 class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
     """GraphQL Client to interact with Infrahub."""
 
