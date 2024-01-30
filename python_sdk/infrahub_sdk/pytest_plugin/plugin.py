@@ -70,7 +70,10 @@ def pytest_sessionstart(session: Session) -> None:
     if not is_valid_url(session.config.option.infrahub_address):
         exit_test("Infrahub test instance address is not a valid URL", returncode=1)
 
-    client_config = {"default_branch": session.config.option.infrahub_branch}
+    client_config = {
+        "address": session.config.option.infrahub_address,
+        "default_branch": session.config.option.infrahub_branch,
+    }
     if hasattr(session.config.option, "infrahub_key"):
         client_config = {"api_token": session.config.option.infrahub_key}
     elif hasattr(session.config.option, "infrahub_username") and hasattr(session.config.option, "infrahub_password"):
@@ -79,7 +82,7 @@ def pytest_sessionstart(session: Session) -> None:
             "password": session.config.option.infrahub_password,
         }
 
-    infrahub_client = InfrahubClientSync(address=session.config.option.infrahub_address, config=client_config)
+    infrahub_client = InfrahubClientSync(config=client_config)
     infrahub_client.login()
     session.infrahub_client = infrahub_client  # type: ignore[attr-defined]
 
