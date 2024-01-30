@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema import GenericSchema, NodeSchema
     from infrahub.core.schema_manager import SchemaManager
     from infrahub.database import InfrahubDatabase
-    from infrahub.graphql.mutations import BaseAttributeInput
+    from infrahub.graphql.mutations.attribute import BaseAttributeInput
     from infrahub.graphql.types import InfrahubObject
     from infrahub.storage import InfrahubObjectStorage
     from infrahub.types import InfrahubDataType

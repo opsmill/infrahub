@@ -7,11 +7,7 @@ import { CodeEditor } from "../components/editor/code-editor";
 import { MAX_VALUE_LENGTH_DISPLAY } from "../config/constants";
 import { iSchemaKindNameMap } from "../state/atoms/schemaKindName.atom";
 
-export const getObjectItemDisplayValue = (
-  row: any,
-  attribute: any,
-  schemaKindName?: iSchemaKindNameMap
-) => {
+export const getDisplayValue = (row: any, attribute: any, schemaKindName?: iSchemaKindNameMap) => {
   if (!row) {
     return;
   }
@@ -82,7 +78,6 @@ export const getObjectItemDisplayValue = (
     row[attribute?.name]?.node?.label ??
     row[attribute?.name]?.node?.display_label ??
     row[attribute?.name]?.node?.value ??
-    (typeof row[attribute?.name] === "string" ? row[attribute?.name] : "") ??
     "-";
 
   if (attribute?.kind === "Password") {
@@ -102,4 +97,16 @@ export const getObjectItemDisplayValue = (
   }
 
   return textValue;
+};
+
+export const getObjectItemDisplayValue = (
+  row: any,
+  attribute: any,
+  schemaKindName?: iSchemaKindNameMap
+) => {
+  return (
+    <div className="flex items-center min-w-[28px] min-h-[28px] truncate">
+      {getDisplayValue(row, attribute, schemaKindName)}
+    </div>
+  );
 };

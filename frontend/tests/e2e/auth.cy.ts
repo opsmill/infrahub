@@ -1,6 +1,6 @@
 /// <reference types="cypress" />
 
-import { ADMIN_CREDENTIALS, READ_ONLY_CREDENTIALS, READ_WRITE_CREDENTIALS } from "../utils";
+import { ADMIN_CREDENTIALS, READ_ONLY_CREDENTIALS, READ_WRITE_CREDENTIALS } from "../constants";
 
 describe("Authentication", () => {
   beforeEach(() => {

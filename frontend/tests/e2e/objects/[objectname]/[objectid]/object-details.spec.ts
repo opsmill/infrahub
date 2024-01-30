@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { ACCOUNT_STATE_PATH } from "../../../../utils";
+import { ACCOUNT_STATE_PATH } from "../../../../constants";
 
 test.describe("/objects/:objectname/:objectid", () => {
   test.describe("when not logged in", () => {
