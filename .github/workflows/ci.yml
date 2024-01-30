@@ -134,6 +134,7 @@ jobs:
     if: needs.files-changed.outputs.infrahub_poetry_files == 'true'
     needs:
       - "files-changed"
+    runs-on: "ubuntu-latest"
     steps:
       - name: "Poetry check"
         uses: "./.github/workflows/poetry-check.yml"
@@ -142,6 +143,7 @@ jobs:
     if: needs.files-changed.outputs.python_sdk_poetry_files == 'true'
     needs:
       - "files-changed"
+    runs-on: "ubuntu-latest"
     steps:
       - name: "Poetry check"
         uses: "./.github/workflows/poetry-check.yml"
@@ -152,6 +154,7 @@ jobs:
     if: needs.files-changed.outputs.sync_poetry_files == 'true'
     needs:
       - "files-changed"
+    runs-on: "ubuntu-latest"
     steps:
       - name: "Poetry check"
         uses: "./.github/workflows/poetry-check.yml"
