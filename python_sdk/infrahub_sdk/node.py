@@ -806,8 +806,8 @@ class InfrahubNodeBase:
                         data[item].pop(item_key)
                         variables.pop(variable_key)
 
-            if not data[item]:
-                data.pop(item)
+        if not data[item]:
+            data.pop(item)
 
     def _strip_unmodified(self, data: dict, variables: dict) -> Tuple[dict, dict]:
         original_data = self._data or {}
