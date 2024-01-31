@@ -22,14 +22,14 @@ Leveraging [Codespaces](https://docs.github.com/en/codespaces/overview) from Git
 - The `Default` version does not include a schema or data pre-loaded.
 - The `Demo` version includes a pre-loaded schema and a sample network dataset.
 
+> [!NOTE]
+> The documentation includes how to get setup and start using Infrahub. The documentation is currently protected by password : `cXsivxXAgL7Hae`
+
 |  | Branch `stable` | Branch `develop` |
 |---|---|---|
 | Run Default version of Infrahub in Codespaces | [![Start in Codespaces (stable), without data](https://img.shields.io/badge/Start%20stable%20version-0B6581?style=for-the-badge)]( https://codespaces.new/opsmill/infrahub?devcontainer_path=.devcontainer%2Fdevcontainer.json&ref=stable ) | [![Start in Codespaces (develop), without data](https://img.shields.io/badge/Start%20develop%20version-0B6581?style=for-the-badge)]( https://codespaces.new/opsmill/infrahub?devcontainer_path=.devcontainer%2Fdevcontainer.json&ref=develop ) |
 | Run Demo version of Infrahub in Codespaces | [![Start in Codespaces (stable), with demo data](https://img.shields.io/badge/Start%20stable%20version%20demo%20data-0D3F54?style=for-the-badge)]( https://codespaces.new/opsmill/infrahub?devcontainer_path=.devcontainer%2Fdemo-container%2Fdevcontainer.json&ref=stable ) | [![Start in Codespaces (develop), with demo data](https://img.shields.io/badge/Start%20develop%20version%20demo%20data-0D3F54?style=for-the-badge)]( https://codespaces.new/opsmill/infrahub?devcontainer_path=.devcontainer%2Fdemo-container%2Fdevcontainer.json&ref=develop) |
 | Documentation | [![Documentation](https://img.shields.io/badge/Documentation%20for%20stable-0B97BB?style=for-the-badge)](https://docs.infrahub.app/) | [![Documentation](https://img.shields.io/badge/Documentation%20for%20develop-0B97BB?style=for-the-badge)](https://develop.infrahub.pages.dev/) |
-
-> [!NOTE]
-> The documentation includes how to get setup and start using Infrahub. The documentation is currently protected by password : `cXsivxXAgL7Hae`
 
 > [!TIP]
 > The cost for running an Infrahub instance in Codespaces is covered by OpsMill

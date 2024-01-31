@@ -53,7 +53,7 @@ npm run test:coverage
 npm run cypress:run:component
 ```
 
-### e2e tests
+### E2E tests
 
 ```sh
 npm run test:e2e

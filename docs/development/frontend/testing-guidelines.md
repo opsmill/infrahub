@@ -17,7 +17,7 @@ Infrahub frontend has 3 types of testing:
 - [integration tests (documentation WIP)](#integration-tests)
 - [unit tests (documentation WIP)](#unit-tests)
 
-## end-to-end (e2e) tests
+## E2E tests
 
 Infrahub uses [Playwright](https://playwright.dev/) for e2e testing.
 

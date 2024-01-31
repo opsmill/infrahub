@@ -19,7 +19,7 @@ At its heart, Infrahub is built on 3 fundamental pillars:
 ## Getting started
 
 - Choose your Infrahub deployment method:
-  - [Deploy an instance of Infrahub in the Cloud via Github Codespaces](https://github.com/opsmill/infrahub?tab=readme-ov-file#quick-start)
+  - [Deploy an instance of Infrahub in the Cloud via GitHub Codespaces](https://github.com/opsmill/infrahub?tab=readme-ov-file#quick-start)
   - [Deploy the demo environment on your laptop](/tutorials/getting-started/#prepare-the-demo-environment)
 - Explore the Python SDK to easily interact with Infrahub
 - Explore the capabilities of the schema
