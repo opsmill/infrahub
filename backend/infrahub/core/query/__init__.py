@@ -213,10 +213,7 @@ class QueryResult:
         return self.data[return_id]
 
     def get(self, label: str) -> Union[Neo4jNode, Neo4jRelationship]:
-        entry = self._get(label=label)
-        if isinstance(entry, list):
-            raise ValueError(f"{label} is collection use .get_node_collection()")
-        return entry
+        return self._get(label=label)
 
     def get_node_collection(self, label: str) -> List[Neo4jNode]:
         entry = self._get(label=label)

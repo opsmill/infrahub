@@ -29,7 +29,7 @@ from .mutations import (
     TaskCreate,
     TaskLogCreate,
 )
-from .queries import BranchQueryList, DiffSummary, InfrahubInfo, Task, TaskLog
+from .queries import BranchQueryList, DiffSummary, InfrahubInfo, Task
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo  # pylint: disable=no-name-in-module
@@ -72,7 +72,6 @@ class InfrahubBaseQuery(ObjectType):
     InfrahubInfo = InfrahubInfo
 
     InfrahubTask = Task
-    InfrahubTaskLog = TaskLog
 
 
 class InfrahubBaseMutation(ObjectType):
