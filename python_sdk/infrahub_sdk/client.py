@@ -63,7 +63,7 @@ class BaseClient:
         insert_tracker: bool = False,
         pagination_size: int = 50,
         max_concurrent_execution: int = 5,
-        config: Optional[Config] = None,
+        config: Optional[Union[Config, Dict[str, Any]]] = None,
     ):
         self.client = None
         self.retry_on_failure = retry_on_failure
@@ -76,10 +76,9 @@ class BaseClient:
         self.refresh_token: str = ""
         if isinstance(config, Config):
             self.config = config
-        elif isinstance(config, dict):
-            self.config = Config(**config)
         else:
-            self.config = Config()
+            config = config or {}
+            self.config = Config(**config)
 
         self.default_branch = self.config.default_infrahub_branch
         self.default_timeout = self.config.timeout

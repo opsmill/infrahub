@@ -161,7 +161,7 @@ class SchemaBranch:
 
         return schema_hash
 
-    def get(self, name: str) -> Union[NodeSchema, GenericSchema]:
+    def get(self, name: str, duplicate: bool = True) -> Union[NodeSchema, GenericSchema]:
         """Access a specific NodeSchema or GenericSchema, defined by its kind.
 
         To ensure that no-one will ever change an object in the cache,
@@ -173,8 +173,10 @@ class SchemaBranch:
         elif name in self.generics:
             key = self.generics[name]
 
-        if key:
+        if duplicate and key:
             return self._cache[key].duplicate()
+        if not duplicate and key:
+            return self._cache[key]
 
         raise SchemaNotFound(
             branch_name=self.name, identifier=name, message=f"Unable to find the schema '{name}' in the registry"

@@ -14,10 +14,20 @@ class BatchTask:
 
 
 async def execute_batch_task_in_pool(
-    task: BatchTask, semaphore: asyncio.Semaphore
+    task: BatchTask,
+    semaphore: asyncio.Semaphore,
+    return_exceptions: bool = False,
 ) -> Tuple[Optional[InfrahubNode], Any]:
     async with semaphore:
-        return (task.node, await task.task(*task.args, **task.kwargs))
+        try:
+            result = await task.task(*task.args, **task.kwargs)
+
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            if return_exceptions:
+                return (task.node, exc)
+            raise exc
+
+        return (task.node, result)
 
 
 class InfrahubBatch:
@@ -44,13 +54,16 @@ class InfrahubBatch:
         tasks = []
 
         for batch_task in self._tasks:
-            tasks.append(asyncio.create_task(execute_batch_task_in_pool(task=batch_task, semaphore=self.semaphore)))
+            tasks.append(
+                asyncio.create_task(
+                    execute_batch_task_in_pool(
+                        task=batch_task, semaphore=self.semaphore, return_exceptions=self.return_exceptions
+                    )
+                )
+            )
 
         for completed_task in asyncio.as_completed(tasks):
-            try:
-                yield await completed_task
-            except Exception as exc:  # pylint: disable=broad-exception-caught
-                if self.return_exceptions:
-                    yield exc
-                else:
-                    raise exc
+            node, result = await completed_task
+            if isinstance(result, Exception) and not self.return_exceptions:
+                raise result
+            yield node, result

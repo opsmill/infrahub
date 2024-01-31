@@ -36,7 +36,7 @@ class GraphQLError(Error):
         self.query = query
         self.variables = variables
         self.errors = errors
-        self.message = f"An error occured while executing the GraphQL Query {self.query}, {self.errors}"
+        self.message = f"An error occurred while executing the GraphQL Query {self.query}, {self.errors}"
         super().__init__(self.message)
 
 

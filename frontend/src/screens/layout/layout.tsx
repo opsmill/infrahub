@@ -11,9 +11,9 @@ export default function Layout() {
         <div className="flex flex-1 flex-col bg-gray-100 overflow-y-scroll overflow-x-hidden">
           <Header />
 
-          <div className="flex flex-col flex-1">
+          <main className="flex flex-col flex-1">
             <Outlet />
-          </div>
+          </main>
         </div>
       </div>
     </>
