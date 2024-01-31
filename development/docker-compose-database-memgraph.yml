@@ -3,6 +3,7 @@ version: "3.4"
 services:
   database:
     image: "${DATABASE_DOCKER_IMAGE:-memgraph/memgraph:latest}"
+    init: true
     volumes:
       - database_data:/var/lib/memgraph
       - database_logs:/var/log/memgraph

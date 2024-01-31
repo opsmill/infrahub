@@ -70,6 +70,7 @@ export const AccountMenu = () => {
         data-testid="current-user-avatar-button">
         <Avatar name={profile?.name?.value} data-cy="user-avatar" />
       </Menu.Button>
+
       <Transition
         as={Fragment}
         enter="transition ease-out duration-100"

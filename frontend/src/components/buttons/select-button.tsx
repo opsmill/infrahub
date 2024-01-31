@@ -14,22 +14,22 @@ export const SelectButton = (props: any) => {
       {({ open }) => (
         <>
           <Listbox.Label className="sr-only">{label}</Listbox.Label>
-          <div className="relative">
-            <div className="inline-flex shadow-sm">
-              <div className="inline-flex shadow-sm">
-                <div className="inline-flex items-center border border-transparent bg-custom-blue-700 py-2 pl-3 pr-4 text-custom-white shadow-sm rounded-l-md">
+          <div className="flex flex-1 overflow-hidden">
+            <div className="flex flex-1 shadow-sm overflow-hidden">
+              <Listbox.Button
+                className="flex-1 rounded-l-md border border-transparent overflow-hidden"
+                as={Button}
+                buttonType={BUTTON_TYPES.MAIN}
+                data-cy="branch-list-display-button"
+                data-testid="branch-list-display-button">
+                <div className="flex flex-1 items-center py-2 pr-1 text-custom-white truncate">
                   {valueLabel}
                 </div>
-                <Listbox.Button
-                  className="rounded-none border border-transparent"
-                  as={Button}
-                  buttonType={BUTTON_TYPES.MAIN}
-                  data-cy="branch-list-display-button"
-                  data-testid="branch-list-display-button">
-                  <Icon icon="mdi:chevron-down" className="tetx-custom-white" />
-                </Listbox.Button>
-              </div>
+
+                <Icon icon="mdi:chevron-down" className="tetx-custom-white" />
+              </Listbox.Button>
             </div>
+
             <Transition
               show={open}
               as={Fragment}
@@ -37,7 +37,7 @@ export const SelectButton = (props: any) => {
               leaveFrom="opacity-100"
               leaveTo="opacity-0">
               <Listbox.Options
-                className="absolute right-0 mt-2 w-72 origin-top-right divide-y divide-gray-200 overflow-hidden bg-custom-white shadow-lg ring-1 ring-custom-black ring-opacity-5 focus:outline-none rounded-md max-h-[500px] overflow-y-auto"
+                className="absolute z-10 w-72 divide-y divide-gray-200 bg-custom-white shadow-lg ring-1 ring-custom-black ring-opacity-5 focus:outline-none rounded-md max-h-[300px] overflow-auto"
                 data-cy="branch-list-dropdown"
                 data-testid="branch-list-dropdown">
                 {options.map((option: any) => (

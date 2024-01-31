@@ -38,7 +38,7 @@ const SearchInput = (props: tSearchInput) => {
   };
 
   return (
-    <div className="flex flex-1 items-center justify-center relative px-8 sm:px-4">
+    <div className="flex flex-1 items-center justify-center relative">
       <div className="flex flex-1 items-center justify-center relative max-w-[600px] z-20">
         <Input
           value={search}
@@ -121,7 +121,7 @@ export const SearchBar = () => {
   const isOpen = !!search && !!results?.edges;
 
   return (
-    <div className="relative flex flex-1">
+    <div className="flex flex-1">
       <Transition show={isOpen}>
         <Background onClick={handleClick} className="bg-transparent" />
       </Transition>
@@ -132,10 +132,10 @@ export const SearchBar = () => {
         <PopOver
           static
           open={isOpen}
-          width={POPOVER_SIZE.NONE}
+          width={POPOVER_SIZE.LARGE}
           height={POPOVER_SIZE.NONE}
           maxHeight={POPOVER_SIZE.MEDIUM}
-          className="!left-0 !right-0 !top-14 z-20">
+          className="top-16 mt-4 left-1/2 transform -translate-x-1/2 ">
           {() => <SearchResults results={results} />}
         </PopOver>
       </Transition>

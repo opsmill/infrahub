@@ -1,11 +1,14 @@
 agent
 APIs
+artifact_definitions
+artifact_name
 async
 autoflake
 check_definitions
 class_name
 codespaces
 config
+content_type
 cypher
 datastore
 dev
@@ -20,6 +23,7 @@ env
 eslint
 excalidraw
 fanout
+file_path
 github
 graphene
 graphiql
@@ -50,8 +54,11 @@ rebase
 repo
 REST
 sdk
+template_path
 toml
 uncheck
 validators
 Vitest
+Yaml
 yamllint
+

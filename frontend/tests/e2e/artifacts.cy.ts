@@ -34,9 +34,7 @@ describe("Main application", () => {
     cy.intercept("/api/artifact/generate/*").as("ArtifactsCreation");
 
     // Generate the artifacts
-    cy.get(".flex-col > .border-b").within(() => {
-      cy.contains("Generate").click();
-    });
+    cy.contains("button", "Generate").click();
 
     // Wait for the mutation to succeed
     cy.wait("@ArtifactsCreation");
