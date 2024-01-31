@@ -15,29 +15,17 @@ class InfrahubGroupContextBase:
     def __init__(self) -> None:
         self.related_nodes_ids: List[str] = []
         self.related_groups_ids: List[str] = []
-        self.identifier = None
+        self.identifier: Optional[str] = None
         self.params: Dict[str, str] = {}
 
-    def _generate_group_name(self, suffix: Optional[str] = "saved") -> str:
-        if self.identifier:
-            group_name = f"{self.identifier}-{suffix}"
-        elif self.client.identifier:
-            group_name = f"{self.client.identifier}-{suffix}"
-        else:
-            group_name = "sdk-{suffix}"
-        if self.params:
-            group_name = group_name + f"-{dict_hash(self.params)}"
-
-        return group_name
-
-    def set_properties(self, identifier: str, params: Optional[Dict[str, str]] = None):
+    def set_properties(self, identifier: str, params: Optional[Dict[str, str]] = None) -> None:
         """Setter method to set the values of identifier and params.
 
         Args:
             identifier: The new value for the identifier.
             params: A dictionary with new values for the params.
         """
-        self.identifier = identifier
+        self.identifier = identifier if identifier else None
         self.params = params if params is not None else {}
 
 
@@ -71,6 +59,18 @@ class InfrahubGroupContext(InfrahubGroupContextBase):
         conbined_bool = self.client.update_group_context and update_group_context
         if conbined_bool is True or conbined_bool is None:
             self.related_groups_ids.extend(ids)
+
+    async def _generate_group_name(self, suffix: Optional[str] = "saved") -> str:
+        if self.identifier:
+            group_name = f"{self.identifier}-{suffix}"
+        elif self.client.identifier:
+            group_name = f"{self.client.identifier}-{suffix}"
+        else:
+            group_name = "sdk-{suffix}"
+        if self.params:
+            group_name = group_name + f"-{dict_hash(self.params)}"
+
+        return group_name
 
     async def update_group(self) -> None:
         """
@@ -132,6 +132,18 @@ class InfrahubGroupContextSync(InfrahubGroupContextBase):
         conbined_bool = self.client.update_group_context and update_group_context
         if conbined_bool is True or conbined_bool is None:
             self.related_groups_ids.extend(ids)
+
+    def _generate_group_name(self, suffix: Optional[str] = "saved") -> str:
+        if self.identifier:
+            group_name = f"{self.identifier}-{suffix}"
+        elif self.client.identifier:
+            group_name = f"{self.client.identifier}-{suffix}"
+        else:
+            group_name = "sdk-{suffix}"
+        if self.params:
+            group_name = group_name + f"-{dict_hash(self.params)}"
+
+        return group_name
 
     def update_group(self) -> None:
         """

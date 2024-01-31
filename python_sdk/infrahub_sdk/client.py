@@ -106,8 +106,6 @@ class BaseClient:
     def _record(self, response: httpx.Response) -> None:
         self.config.custom_recorder.record(response)
 
-    def set_context_properties(self, identifier: str, params: Optional[Dict[str, str]] = None) -> None:
-        self.group_context.set_properties(identifier=identifier, params=params)
 
 
 class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
@@ -125,6 +123,9 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
     @classmethod
     async def init(cls, *args: Any, **kwargs: Any) -> InfrahubClient:
         return cls(*args, **kwargs)
+
+    async def set_context_properties(self, identifier: str, params: Optional[Dict[str, str]] = None) -> None:
+        self.group_context.set_properties(identifier=identifier, params=params)
 
     async def create(
         self,
@@ -685,6 +686,9 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
     @classmethod
     def init(cls, *args: Any, **kwargs: Any) -> InfrahubClientSync:
         return cls(*args, **kwargs)
+
+    def set_context_properties(self, identifier: str, params: Optional[Dict[str, str]] = None) -> None:
+        self.group_context.set_properties(identifier=identifier, params=params)
 
     def create(
         self,
