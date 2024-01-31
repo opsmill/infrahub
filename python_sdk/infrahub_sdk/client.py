@@ -107,7 +107,6 @@ class BaseClient:
         self.config.custom_recorder.record(response)
 
 
-
 class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
     """GraphQL Client to interact with Infrahub."""
 
