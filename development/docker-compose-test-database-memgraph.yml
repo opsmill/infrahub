@@ -6,6 +6,7 @@ services:
       mode: replicated
       replicas: "${NBR_WORKERS}"
     image: "${DATABASE_DOCKER_IMAGE:-memgraph/memgraph:latest}"
+    init: true
     volumes:
       - ./memgraph.conf:/etc/memgraph/memgraph.conf
     environment:

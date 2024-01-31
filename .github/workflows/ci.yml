@@ -21,7 +21,7 @@ env:
   INFRAHUB_LOG_LEVEL: CRITICAL
   INFRAHUB_IMAGE_NAME: "opsmill/infrahub"
   INFRAHUB_IMAGE_VER: "testing"
-  PYTEST_XDIST_WORKER_COUNT: 2
+  PYTEST_XDIST_WORKER_COUNT: 3
   INFRAHUB_TEST_IN_DOCKER: 1
   BUILDKITE_ANALYTICS_BRANCH: ${{ github.ref }}
   BUILDKITE_BRANCH: ${{ github.ref }}
@@ -300,7 +300,8 @@ jobs:
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
     needs: ["files-changed", "yaml-lint", "python-lint"]
-    runs-on: "runner-ubuntu-4-16"
+    runs-on:
+      group: huge-runners
     timeout-minutes: 45
     env:
       INFRAHUB_DB_TYPE: memgraph
@@ -309,6 +310,12 @@ jobs:
         uses: "actions/checkout@v4"
       - name: "Setup Python environment"
         run: "pip install toml invoke"
+      - name: "Set environment variables"
+        run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
+      - name: "Set environment variables"
+        run: echo INFRAHUB_IMAGE_VER=${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+      - name: "Clear docker environment"
+        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
       - name: "Build Test Image"
         run: "invoke test.build"
       - name: "Pull External Docker Images"
@@ -332,7 +339,8 @@ jobs:
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
     needs: ["files-changed", "yaml-lint", "python-lint"]
-    runs-on: "runner-ubuntu-4-16"
+    runs-on:
+      group: "huge-runners"
     timeout-minutes: 30
     env:
       INFRAHUB_DB_TYPE: memgraph
@@ -341,6 +349,12 @@ jobs:
         uses: "actions/checkout@v4"
       - name: "Setup Python environment"
         run: "pip install toml invoke"
+      - name: "Set environment variables"
+        run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
+      - name: "Set environment variables"
+        run: echo INFRAHUB_IMAGE_VER=${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+      - name: "Clear docker environment"
+        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
       - name: "Build Test Image"
         run: "invoke test.build"
       - name: "Pull External Docker Images"
@@ -368,7 +382,8 @@ jobs:
       !contains(needs.*.result, 'cancelled') &&
       needs.files-changed.outputs.backend == 'true'
     needs: ["files-changed", "yaml-lint", "python-lint"]
-    runs-on: "runner-ubuntu-4-16"
+    runs-on:
+      group: huge-runners
     timeout-minutes: 45
     env:
       INFRAHUB_DB_TYPE: neo4j
@@ -377,6 +392,12 @@ jobs:
         uses: "actions/checkout@v4"
       - name: "Setup Python environment"
         run: "pip install toml invoke"
+      - name: "Set environment variables"
+        run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
+      - name: "Set environment variables"
+        run: echo INFRAHUB_IMAGE_VER=${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+      - name: "Clear docker environment"
+        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
       - name: "Build Test Image"
         run: "invoke test.build"
       - name: "Pull External Docker Images"
@@ -599,7 +620,8 @@ jobs:
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled')
-    runs-on: "runner-ubuntu-8-32"
+    runs-on:
+      group: huge-runners
     timeout-minutes: 40
     env:
       INFRAHUB_DB_TYPE: memgraph
@@ -618,6 +640,16 @@ jobs:
       - name: Install Invoke
         run: pip install toml invoke
 
+      - name: Select infrahub port
+        run: echo "INFRAHUB_SERVER_PORT=$(shuf -n 1 -i 10000-60000)" >> $GITHUB_ENV
+
+      - name: "Set environment variables"
+        run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
+      - name: "Set environment variables"
+        run: echo INFRAHUB_IMAGE_VER=${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+      - name: "Clear docker environment"
+        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
+
       - name: Build Demo
         run: invoke demo.build
 
@@ -633,6 +665,9 @@ jobs:
 
       - name: Load Data
         run: invoke demo.load-infra-data
+
+      - name: Set infrahub address
+        run: echo "INFRAHUB_ADDRESS=http://localhost:${INFRAHUB_SERVER_PORT}" >> $GITHUB_ENV
 
       - name: Git Repository
         run: invoke demo.infra-git-import demo.infra-git-create
@@ -661,19 +696,19 @@ jobs:
 
       - name: Display server logs
         if: always()
-        run: docker logs infrahub-infrahub-server-1
+        run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-server-1"
 
       - name: Display git 1 logs
         if: always()
-        run: docker logs infrahub-infrahub-git-1
+        run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-git-1"
 
       - name: Display git 2 logs
         if: always()
-        run: docker logs infrahub-infrahub-git-2
+        run: docker logs "${INFRAHUB_BUILD_NAME}-infrahub-git-2"
 
       - name: Display database logs
         if: always()
-        run: docker logs infrahub-database-1
+        run: docker logs "${INFRAHUB_BUILD_NAME}-database-1"
 
       - name: Display server status
         if: always()
