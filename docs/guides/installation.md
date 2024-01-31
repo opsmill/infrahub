@@ -116,7 +116,7 @@ invoke demo.build demo.start demo.load-infra-schema demo.load-infra-data
 [!ref Check the documentation of the demo environment for more information](/topics/local-demo-environment.md)
 
 <!-- vale off -->
-### GitHub Codespaces s
+### GitHub Codespaces
 <!-- vale on -->
 The project is pre-configured to run in GitHub Codespaces. We have two devcontainer configuration:
 
