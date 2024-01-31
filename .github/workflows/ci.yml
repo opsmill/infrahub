@@ -137,10 +137,9 @@ jobs:
       github.ref_name == 'develop'
     needs:
       - "files-changed"
-    runs-on: "ubuntu-latest"
-    steps:
-      - name: "Poetry check"
-        uses: "./.github/workflows/poetry-check.yml"
+    uses: "./.github/workflows/poetry-check.yml"
+    with:
+      directory: "./"
 
   python-sdk-poetry-check:
     if: |
@@ -149,12 +148,9 @@ jobs:
       github.ref_name == 'develop'
     needs:
       - "files-changed"
-    runs-on: "ubuntu-latest"
-    steps:
-      - name: "Poetry check"
-        uses: "./.github/workflows/poetry-check.yml"
-        with:
-          directory: "./python-sdk/"
+    uses: "./.github/workflows/poetry-check.yml"
+    with:
+      directory: "./python-sdk/"
 
   sync-poetry-check:
     if: |
@@ -163,12 +159,9 @@ jobs:
       github.ref_name == 'develop'
     needs:
       - "files-changed"
-    runs-on: "ubuntu-latest"
-    steps:
-      - name: "Poetry check"
-        uses: "./.github/workflows/poetry-check.yml"
-        with:
-          directory: "./sync/"
+    uses: "./.github/workflows/poetry-check.yml"
+    with:
+      directory: "./sync/"
 
   python-sdk-unit-tests:
     strategy:
