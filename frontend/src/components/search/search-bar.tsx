@@ -121,7 +121,7 @@ export const SearchBar = () => {
   const isOpen = !!search && !!results?.edges;
 
   return (
-    <div className="flex flex-1">
+    <div className="relative flex flex-1">
       <Transition show={isOpen}>
         <Background onClick={handleClick} className="bg-transparent" />
       </Transition>
