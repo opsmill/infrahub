@@ -13,7 +13,7 @@ We're expecting to see proper tests for each feature/bugfix you make. If you're 
 
 Infrahub frontend has 3 types of testing:
 
-- [end-to-end (e2e) tests](#end-to-end-e2e-tests)
+- [end-to-end (e2e) tests](#e2e-tests)
 - [integration tests (documentation WIP)](#integration-tests)
 - [unit tests (documentation WIP)](#unit-tests)
 
