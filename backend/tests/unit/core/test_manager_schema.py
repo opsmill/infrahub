@@ -1494,7 +1494,7 @@ async def test_schema_branch_validate_add_node_relationships(
     new_schema.load_schema(schema=SchemaRoot(**SCHEMA2))
 
     result = schema_branch.validate_update(other=new_schema)
-    assert result.model_dump(exclude=["diff"]) == {'checks': [], 'errors': [], 'migrations': []}
+    assert result.model_dump(exclude=["diff"]) == {"checks": [], "errors": [], "migrations": []}
 
 
 # -----------------------------------------------------------------
