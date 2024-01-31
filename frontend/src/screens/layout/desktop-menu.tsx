@@ -43,9 +43,9 @@ export default function DesktopMenu() {
   }, [currentSchemaHash]);
 
   return (
-    <div className="z-100 hidden w-64 md:visible md:inset-y-0 md:flex md:flex-col">
-      <div className="flex flex-grow flex-col overflow-y-auto border-r border-gray-200 bg-custom-white">
-        <Link to="/" className="h-16 px-5 flex items-center">
+    <div className="z-100 hidden w-64 md:flex flex-col border-r">
+      <div className="flex flex-grow flex-col overflow-y-auto min-h-0">
+        <Link to="/" className="h-16 flex-shrink-0 px-5 flex items-center">
           <InfrahubLogo />
         </Link>
 
@@ -53,12 +53,12 @@ export default function DesktopMenu() {
           <BranchSelector />
         </div>
 
-        <div className="flex flex-grow flex-col flex-1 overflow-auto">
+        <div className="flex-grow min-h-0 overflow-auto border-y">
           {isLoading && <LoadingScreen size={32} hideText />}
 
           {!isLoading && (
             <nav
-              className="flex-1 bg-custom-white divide-y"
+              className="flex-grow min-h-0 overflow-auto"
               aria-label="Sidebar"
               data-cy="sidebar-menu"
               data-testid="sidebar-menu">
