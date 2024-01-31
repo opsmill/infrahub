@@ -312,7 +312,7 @@ async def git_repo_jinja(client, git_upstream_repo_02, git_repos_dir, branch01: 
         {
             "name": "template01.tpl.j2",
             "content": """
-{% for item in items %}
+{% for item in data["items"] %}
 {{ item }}
 {% endfor %}
 """,
@@ -320,7 +320,7 @@ async def git_repo_jinja(client, git_upstream_repo_02, git_repos_dir, branch01: 
         {
             "name": "template02.tpl.j2",
             "content": """
-{% for item in items %}
+{% for item in data["items"] %}
 {{ item }}
 {% end %}
 """,
@@ -343,7 +343,7 @@ async def git_repo_jinja(client, git_upstream_repo_02, git_repos_dir, branch01: 
     file_to_add = files_to_add[0]
     file_path = os.path.join(git_upstream_repo_02["path"], file_to_add["name"])
     new_content = """
-{% for item in items %}
+{% for item in data["items"] %}
  - {{ item }} -
 {% endfor %}
 """

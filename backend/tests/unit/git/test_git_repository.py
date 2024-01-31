@@ -402,7 +402,7 @@ async def test_render_jinja2_template_success(git_repo_jinja: InfrahubRepository
     commit_branch = repo.get_commit_value(branch_name="branch01", remote=False)
     assert commit_main != commit_branch
 
-    data = {"items": ["consilium", "potum", "album", "magnum"]}
+    data = {"data": {"items": ["consilium", "potum", "album", "magnum"]}}
     expected_response = """
 consilium
 potum

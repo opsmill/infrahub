@@ -16,7 +16,7 @@ async def test_git_transform_jinja2_success(git_repo_jinja: InfrahubRepository, 
         commit=commit,
         branch="main",
         template_location="template01.tpl.j2",
-        data={"items": ["consilium", "potum", "album", "magnum"]},
+        data={"data": {"items": ["consilium", "potum", "album", "magnum"]}},
         meta=Meta(reply_to="ci-testing", correlation_id=correlation_id),
     )
 
@@ -43,7 +43,7 @@ async def test_git_transform_jinja2_missing(git_repo_jinja: InfrahubRepository, 
         commit=commit,
         branch="main",
         template_location="template03.tpl.j2",
-        data={"items": ["consilium", "potum", "album", "magnum"]},
+        data={"data": {"items": ["consilium", "potum", "album", "magnum"]}},
         meta=Meta(reply_to="ci-testing", correlation_id=correlation_id),
     )
 
@@ -70,7 +70,7 @@ async def test_git_transform_jinja2_invalid(git_repo_jinja: InfrahubRepository, 
         commit=commit,
         branch="main",
         template_location="template02.tpl.j2",
-        data={"items": ["consilium", "potum", "album", "magnum"]},
+        data={"data": {"items": ["consilium", "potum", "album", "magnum"]}},
         meta=Meta(reply_to="ci-testing", correlation_id=correlation_id),
     )
 
