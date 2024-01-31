@@ -1404,7 +1404,7 @@ async def test_schema_branch_validate_check_missing(
     node.attributes[0].unique = False
     new_schema.set(name="BuiltinCriticality", schema=node)
 
-    result = schema_branch.validate(other=new_schema)
+    result = schema_branch.validate_update(other=new_schema)
     assert result.model_dump(exclude=["diff"]) == {
         "checks": [
             {
