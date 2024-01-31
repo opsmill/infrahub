@@ -7,7 +7,7 @@ from graphene.types.uuid import UUID as GrapheneUUID
 from infrahub_sdk.utils import extract_fields_first_node
 
 from infrahub.core.constants import Severity as PySeverity
-from infrahub.core.log import Log
+from infrahub.core.task_log import TaskLog
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -27,7 +27,7 @@ class LogFields(ObjectType):
     id = Field(String)
 
 
-class LogCreate(Mutation):
+class TaskLogCreate(Mutation):
     class Arguments:
         data = LogCreateInput(required=True)
 
@@ -40,13 +40,13 @@ class LogCreate(Mutation):
         root: dict,  # pylint: disable=unused-argument
         info: GraphQLResolveInfo,
         data: LogCreateInput,
-    ) -> LogCreate:
+    ) -> TaskLogCreate:
         db: InfrahubDatabase = info.context.get("infrahub_database")
 
         fields = await extract_fields_first_node(info)
 
         async with db.start_transaction() as db:
-            log = Log(task_id=str(data.task_id), message=str(data.message), severity=data.severity)
+            log = TaskLog(task_id=str(data.task_id), message=str(data.message), severity=data.severity)
             await log.save(db=db)
 
         result: Dict[str, Any] = {"ok": True}

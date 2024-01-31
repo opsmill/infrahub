@@ -20,7 +20,6 @@ from .branch import (
     BranchUpdate,
     BranchValidate,
 )
-from .log import LogCreate
 from .main import InfrahubMutation, InfrahubMutationMixin, InfrahubMutationOptions
 from .proposed_change import (
     InfrahubProposedChangeMutation,
@@ -31,6 +30,7 @@ from .relationship import RelationshipAdd, RelationshipRemove
 from .repository import InfrahubRepositoryMutation
 from .schema import SchemaDropdownAdd, SchemaDropdownRemove, SchemaEnumAdd, SchemaEnumRemove
 from .task import TaskCreate
+from .task_log import TaskLogCreate
 
 __all__ = [
     "AnyAttributeInput",
@@ -54,7 +54,6 @@ __all__ = [
     "InfrahubProposedChangeMutation",
     "JSONAttributeInput",
     "ListAttributeInput",
-    "LogCreate",
     "NumberAttributeInput",
     "ProposedChangeRequestRefreshArtifacts",
     "ProposedChangeRequestRunCheck",
@@ -67,4 +66,5 @@ __all__ = [
     "SchemaEnumAdd",
     "SchemaEnumRemove",
     "TaskCreate",
+    "TaskLogCreate",
 ]

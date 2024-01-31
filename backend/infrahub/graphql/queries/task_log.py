@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict
 
-from graphene import Boolean, Field, Int, List, ObjectType, String
+from graphene import Boolean, Field, Int, ObjectType, String
 
-from infrahub.core.log import Log as LogObj
+from infrahub.core.task_log import TaskLog as TaskLogNode
+from infrahub.graphql.types import TaskLogNodes
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -12,23 +13,10 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class LogEntry(ObjectType):
-    message = String(required=True)
-    related_node = String(required=True)
-    related_node_kind = String(required=True)
-    severity = String(required=True)
-    task_id = String(required=True)
-    timestamp = String(required=True)
-
-
-class LogNode(ObjectType):
-    node = List(LogEntry)
-
-
-class Logs(ObjectType):
+class TaskLogs(ObjectType):
     has_next = Boolean(required=True)
     next_cursor = String(required=True)
-    edges = Field(LogNode)
+    edges = Field(TaskLogNodes)
 
     @staticmethod
     async def resolve(
@@ -37,7 +25,7 @@ class Logs(ObjectType):
         page_size: int = 10,
         cursor: str = "",
     ) -> Dict[str, Any]:
-        return await Logs.query(
+        return await TaskLogs.query(
             info=info,
             page_size=page_size,
             cursor=cursor,
@@ -52,7 +40,7 @@ class Logs(ObjectType):
     ) -> Dict[str, Any]:
         db: InfrahubDatabase = info.context.get("infrahub_database")
 
-        return await LogObj.query(db=db, page_size=page_size, cursor=cursor)
+        return await TaskLogNode.query(db=db, page_size=page_size, cursor=cursor)
 
 
-Log = Field(Logs, resolver=Logs.resolve, page_size=Int(required=False), cursor=String(required=False))
+TaskLog = Field(TaskLogs, resolver=TaskLogs.resolve, page_size=Int(required=False), cursor=String(required=False))

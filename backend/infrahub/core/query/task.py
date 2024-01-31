@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, List
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.query import QueryType
@@ -60,3 +60,62 @@ class TaskNodeCreateQuery(StandardNodeQuery):
         for relationship in relationships:
             self.add_to_query(query=relationship)
         self.return_labels = ["n"]
+
+
+class TaskNodeQuery(StandardNodeQuery):
+    name: str = "task_query"
+
+    type: QueryType = QueryType.READ
+    insert_return: bool = False
+
+    def __init__(
+        self,
+        related_nodes: List[str],
+        *args: Any,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self.related_nodes = related_nodes
+        self.params["related_nodes"] = self.related_nodes
+
+    async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Any) -> None:
+        self.add_to_query(query="MATCH (n:Task)-[:IMPACTS]->(rn:Node)")
+        if self.related_nodes:
+            self.add_to_query(query="WHERE rn.uuid IN $related_nodes")
+
+        if self.limit:
+            # All regular queries will include a limit this is to avoid ordering the count query
+            self.add_to_query(query="RETURN n,rn")
+            self.add_to_query(query="ORDER BY n.created_at DESC")
+
+            self.return_labels = [
+                "n",
+                "rn",
+            ]
+
+
+class TaskNodeQueryWithLogs(TaskNodeQuery):
+    name: str = "task_query_with_logs"
+    insert_return: bool = False
+
+    type: QueryType = QueryType.READ
+
+    async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Any) -> None:
+        self.add_to_query(query="MATCH (n:Task)-[:IMPACTS]->(rn:Node)")
+        if self.related_nodes:
+            self.add_to_query(query="WHERE rn.uuid IN $related_nodes")
+
+        query = """
+        OPTIONAL MATCH (n)<-[r:RELATES_TO]-(l:TaskLog)
+        WITH n, rn, COLLECT(l) as logs
+        ORDER BY n.created_at DESC
+        RETURN n, logs, rn
+        """
+
+        self.add_to_query(query=query)
+
+        self.return_labels = [
+            "n",
+            "logs",
+            "rn",
+        ]

@@ -17,7 +17,7 @@ async def result(message: messages.LogTaskResult, service: InfrahubServices) -> 
         $task_id: UUID!,
         $title: String!
         ) {
-        TaskCreate(
+        InfrahubTaskCreate(
             data: {
                 id: $task_id,
                 title: $title,
@@ -28,7 +28,7 @@ async def result(message: messages.LogTaskResult, service: InfrahubServices) -> 
         ) {
             ok
         }
-        LogCreate(
+        InfrahubTaskLogCreate(
             data: {
                 message: $message,
                 severity: $severity,

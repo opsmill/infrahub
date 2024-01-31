@@ -153,7 +153,7 @@ def cleanup_return_labels(labels):
 
 
 class QueryResult:
-    def __init__(self, data: List[Union[Neo4jNode, Neo4jRelationship]], labels: List[str]):
+    def __init__(self, data: List[Union[Neo4jNode, Neo4jRelationship, List[Neo4jNode]]], labels: List[str]):
         self.data = data
         self.labels = cleanup_return_labels(labels)
         self.branch_score: int = 0
@@ -205,13 +205,24 @@ class QueryResult:
                 self.has_deleted_rels = True
                 return
 
-    def get(self, label: str) -> Union[Neo4jNode, Neo4jRelationship]:
+    def _get(self, label: str) -> Union[Neo4jNode, Neo4jRelationship, List[Neo4jNode]]:
         if label not in self.labels:
             raise ValueError(f"{label} is not a valid value for this query, must be one of {self.labels}")
 
         return_id = self.labels.index(label)
-
         return self.data[return_id]
+
+    def get(self, label: str) -> Union[Neo4jNode, Neo4jRelationship]:
+        entry = self._get(label=label)
+        if isinstance(entry, list):
+            raise ValueError(f"{label} is collection use .get_node_collection()")
+        return entry
+
+    def get_node_collection(self, label: str) -> List[Neo4jNode]:
+        entry = self._get(label=label)
+        if isinstance(entry, list):
+            return entry
+        raise ValueError(f"{label} is not a collection use .get_node() or .get()")
 
     def get_node(self, label: str) -> Neo4jNode:
         node = self.get(label=label)
@@ -389,12 +400,7 @@ class Query(ABC):
 
         return ":params { " + ", ".join(params) + " }"
 
-    def _limit_query(self, enforce_limit: bool) -> bool:
-        if enforce_limit and (self.limit or self.offset):
-            return False
-        return True
-
-    async def execute(self, db: InfrahubDatabase, enforce_limit: bool = True) -> Self:
+    async def execute(self, db: InfrahubDatabase) -> Self:
         # Ensure all mandatory params have been provided
         # Ensure at least 1 return obj has been defined
 
@@ -402,7 +408,7 @@ class Query(ABC):
             self.print(include_var=True)
 
         if self.type == QueryType.READ:
-            if self._limit_query(enforce_limit=enforce_limit):
+            if self.limit or self.offset:
                 results = await db.execute_query(query=self.get_query(), params=self.params, name=self.name)
             else:
                 results = await self.query_with_size_limit(db=db)

@@ -1,4 +1,4 @@
-from typing import List, Optional, Type
+from typing import Any, Dict, List, Optional, Type
 
 from pydantic import ConfigDict, Field
 
@@ -6,8 +6,11 @@ from infrahub.core.constants import TaskConclusion
 from infrahub.core.definitions import NodeInfo
 from infrahub.core.node.standard import StandardNode
 from infrahub.core.query.standard_node import StandardNodeQuery
-from infrahub.core.query.task import TaskNodeCreateQuery
+from infrahub.core.query.task import TaskNodeCreateQuery, TaskNodeQuery, TaskNodeQueryWithLogs
 from infrahub.core.timestamp import current_timestamp
+from infrahub.database import InfrahubDatabase
+
+from .task_log import TaskLog
 
 
 class Task(StandardNode):
@@ -22,3 +25,63 @@ class Task(StandardNode):
 
     _exclude_attrs: List[str] = ["id", "uuid", "account_id", "_query", "related_node"]
     _query: Type[StandardNodeQuery] = TaskNodeCreateQuery
+
+    @classmethod
+    async def query(
+        cls, db: InfrahubDatabase, fields: Dict[str, Any], limit: int, offset: int, related_nodes: List[str]
+    ) -> Dict[str, Any]:
+        log_fields = get_nested_dict(nested_dict=fields, keys=["edges", "node", "log", "edges", "node"])
+        count = None
+        if "count" in fields:
+            query = await TaskNodeQuery.init(db=db, related_nodes=related_nodes)
+            count = await query.count(db=db)
+
+        if log_fields:
+            query = await TaskNodeQueryWithLogs.init(db=db, limit=limit, offset=offset, related_nodes=related_nodes)
+            await query.execute(db=db)
+        else:
+            query = await TaskNodeQuery.init(db=db, limit=limit, offset=offset, related_nodes=related_nodes)
+            await query.execute(db=db)
+
+        nodes = []
+        for result in query.get_results():
+            related_node = result.get("rn")
+            task_result = result.get_node("n")
+            logs = []
+            if log_fields:
+                logs_results = result.get_node_collection("logs")
+                logs = [
+                    {
+                        "node": await TaskLog.from_db(result, extras={"task_id": task_result.get("uuid")}).to_graphql(
+                            fields=log_fields
+                        )
+                    }
+                    for result in logs_results
+                ]
+
+            task = cls.from_db(task_result)
+            nodes.append(
+                {
+                    "title": task.title,
+                    "conclusion": task.conclusion,
+                    "related_node": related_node.get("uuid"),
+                    "related_node_kind": related_node.get("kind"),
+                    "created_at": task.created_at,
+                    "updated_at": task.updated_at,
+                    "id": task_result.get("uuid"),
+                    "log": {"edges": logs},
+                }
+            )
+
+        return {"count": count, "edges": {"node": nodes}}
+
+
+def get_nested_dict(nested_dict: Dict[str, Any], keys: List[str]) -> Dict[str, Any]:
+    current_level = nested_dict
+    for key in keys:
+        # Check if the key exists and leads to a dictionary
+        if isinstance(current_level, dict) and key in current_level:
+            current_level = current_level[key]
+        else:
+            return {}
+    return current_level if isinstance(current_level, dict) else {}

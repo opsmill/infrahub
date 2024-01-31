@@ -18,7 +18,6 @@ from .mutations import (
     BranchValidate,
     CoreAccountSelfUpdate,
     CoreAccountTokenCreate,
-    LogCreate,
     ProposedChangeRequestRefreshArtifacts,
     ProposedChangeRequestRunCheck,
     RelationshipAdd,
@@ -28,8 +27,9 @@ from .mutations import (
     SchemaEnumAdd,
     SchemaEnumRemove,
     TaskCreate,
+    TaskLogCreate,
 )
-from .queries import BranchQueryList, DiffSummary, InfrahubInfo, Log
+from .queries import BranchQueryList, DiffSummary, InfrahubInfo, Task, TaskLog
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo  # pylint: disable=no-name-in-module
@@ -71,7 +71,8 @@ class InfrahubBaseQuery(ObjectType):
 
     InfrahubInfo = InfrahubInfo
 
-    Log = Log
+    InfrahubTask = Task
+    InfrahubTaskLog = TaskLog
 
 
 class InfrahubBaseMutation(ObjectType):
@@ -86,7 +87,7 @@ class InfrahubBaseMutation(ObjectType):
     BranchMerge = BranchMerge.Field()
     BranchUpdate = BranchUpdate.Field()
     BranchValidate = BranchValidate.Field()
-    LogCreate = LogCreate.Field()
+    InfrahubTaskLogCreate = TaskLogCreate.Field()
 
     RelationshipAdd = RelationshipAdd.Field()
     RelationshipRemove = RelationshipRemove.Field()
@@ -94,4 +95,4 @@ class InfrahubBaseMutation(ObjectType):
     SchemaDropdownRemove = SchemaDropdownRemove.Field()
     SchemaEnumAdd = SchemaEnumAdd.Field()
     SchemaEnumRemove = SchemaEnumRemove.Field()
-    TaskCreate = TaskCreate.Field()
+    InfrahubTaskCreate = TaskCreate.Field()
