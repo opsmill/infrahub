@@ -20,7 +20,7 @@ While it's always possible to generate [Transformations](./transformation.md) on
 - **Caching**: Generated artifacts are stored in the internal [object storage](./object-storage.md). For resource intensive transformations, it will significantly reduce the load of the system if an artifact can be serve from the cache instead of regenerating each time.
 - **Traceability**: Past values of an artifact remain available. In a future release, it will be possible to compare the value of an artifact over time.
 - **Peer Review**: Artifacts are automatically part of the [Proposed Change](./proposed-change.md) review process.
-- **Database**: Artifact nodes are stored in the database and other nodes can optionally have a relationship with them, which makes it easy to perform certain artifact related queries.
+- **Database**: Artifact nodes are stored in the database and other nodes can optionally have a relationship with them, which makes it possible to perform certain artifact related queries.
 
 While the content of an artifact can change, its identifier will remain the same over time.
 
