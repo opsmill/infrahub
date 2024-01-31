@@ -5,12 +5,13 @@ Execute a script.
 **Usage**:
 
 ```console
-$ infrahubctl run [OPTIONS] SCRIPT
+$ infrahubctl run [OPTIONS] SCRIPT [VARIABLES]...
 ```
 
 **Arguments**:
 
 * `SCRIPT`: [required]
+* `[VARIABLES]...`: Variables to pass along with the query. Format key=value key=value.
 
 **Options**:
 
