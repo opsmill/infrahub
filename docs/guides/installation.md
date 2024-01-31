@@ -116,14 +116,14 @@ invoke demo.build demo.start demo.load-infra-schema demo.load-infra-data
 [!ref Check the documentation of the demo environment for more information](/topics/local-demo-environment.md)
 
 <!-- vale off -->
-### GitHub Codespace
+### GitHub Codespaces s
 <!-- vale on -->
-The project is pre-configured to run in GitHub Codespace. We have two devcontainer configuration:
+The project is pre-configured to run in GitHub Codespaces. We have two devcontainer configuration:
 
 - Infrahub: bare-bones container with the app running without any [Schema extension](/tutorials/getting-started/schema) or data
 - Infrahub-demo: container running the [demo environment](/topics/local-demo-environment.md)
 
-The default devcontainer `.devcontainer/devcontainer.json` is the bare-bones one. If you want to run the demo, you will need to choose it in your GitHGub Codespace options.
+The default devcontainer `.devcontainer/devcontainer.json` is the bare-bones one. If you want to run the demo, you will need to choose it in your GitHub Codespaces options.
 
 [!ref Infrahub devcontainer file](https://github.com/opsmill/infrahub/tree/stable/.devcontainer/devcontainer.json)
 

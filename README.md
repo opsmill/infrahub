@@ -1,38 +1,42 @@
 
-# Infrahub
+<!-- markdownlint-disable -->
+![](./docs/media/Infrahub-horizontal.svg)
+<!-- markdownlint-restore -->
 
-Infrahub is taking a new approach to Infrastructure Automation by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run.
+# Welcome to Infrahub
 
-At its heart, Infrahub is built on 3 fundamental pillars
+Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run.
 
-- Powerful Schema, easily extensible
-- Unified Version Control for Data and Files
-- Data Synchronization with Traceability and Ownership
+At its heart, Infrahub is built on 3 fundamental pillars:
 
-## Getting Started
+- **Powerful Schema**: that's easily extensible
+- **Unified Version Control**: for data and files
+- **Data Synchronization**: with traceability and ownership
 
-The project in Github is organized around 2 main branches:
+## Quick Start
 
-- The `stable` branch (default) for the latest release, this is the recommended version for most users
-- The `develop` branch where the preparation of the next major release is done.
+Leveraging [Codespaces](https://docs.github.com/en/codespaces/overview) from Github, it's possible to start a fresh instance of Infrahub in the Cloud in minutes. This is the recommended method to try Infrahub as it reduces the effort to setup Infrahub to a couple of clicks. Use the table below to select the right environment for you, based on the branch and the initial data you would like pre-loaded in your instance.
 
-The documentation is available for both branches and include a complete Getting Started Guide with instructions on how to setup Infrahub and multiple Articles and Guides to help you get started.
-
-[![Documentation](https://img.shields.io/badge/Documentation%20for%20stable-0B97BB?style=for-the-badge)](https://docs.infrahub.app/)
-
-[![Documentation](https://img.shields.io/badge/Documentation%20for%20develop-0B97BB?style=for-the-badge)](https://develop.infrahub.pages.dev/)
-
-> The documentation is currently protected by password : `cXsivxXAgL7Hae`
-
-## Start a live instance of Infrahub (in the Cloud)
-
-Leveraging a service name [`Codespace` from Github](https://docs.github.com/en/codespaces/overview), it's possible to start a fresh instance of Infrahub in the Cloud in minutes. This is the recommmended method to try Infrahub as it reduces the effort to setup Infrahub to couple of clicks.
-
-> The cost for running an Infrahub in Codespace is covered by OpsMill
-
-See the table below to select the right environment for you, based on the branch and the initial data you would like in your instance.
+- The `stable` branch is for the latest release; this is the recommended version for most users.
+- The `develop` branch is where the preparation of the next major release is done.
+- The `Default` version does not include a schema or data pre-loaded.
+- The `Demo` version includes a pre-loaded schema and a sample network dataset.
 
 |  | Branch `stable` | Branch `develop` |
 |---|---|---|
-| Run Default version of Infrahub in Codespace | [![Start in Codespace (stable), without data](https://img.shields.io/badge/Start%20stable%20version-0B6581?style=for-the-badge)]( https://codespaces.new/opsmill/infrahub?devcontainer_path=.devcontainer%2Fdevcontainer.json&ref=stable ) | [![Start in Codespace (develop), without data](https://img.shields.io/badge/Start%20develop%20version-0B6581?style=for-the-badge)]( https://codespaces.new/opsmill/infrahub?devcontainer_path=.devcontainer%2Fdevcontainer.json&ref=develop ) |
-| Run Demo version of Infrahub in Codespace | [![Start in Codespace (stable), with demo data](https://img.shields.io/badge/Start%20stable%20version%20demo%20data-0D3F54?style=for-the-badge)]( https://codespaces.new/opsmill/infrahub?devcontainer_path=.devcontainer%2Fdemo-container%2Fdevcontainer.json&ref=stable ) | [![Start in Codespace (develop), with demo data](https://img.shields.io/badge/Start%20develop%20version%20demo%20data-0D3F54?style=for-the-badge)]( https://codespaces.new/opsmill/infrahub?devcontainer_path=.devcontainer%2Fdemo-container%2Fdevcontainer.json&ref=develop) |
+| Run Default version of Infrahub in Codespaces | [![Start in Codespaces (stable), without data](https://img.shields.io/badge/Start%20stable%20version-0B6581?style=for-the-badge)]( https://codespaces.new/opsmill/infrahub?devcontainer_path=.devcontainer%2Fdevcontainer.json&ref=stable ) | [![Start in Codespaces (develop), without data](https://img.shields.io/badge/Start%20develop%20version-0B6581?style=for-the-badge)]( https://codespaces.new/opsmill/infrahub?devcontainer_path=.devcontainer%2Fdevcontainer.json&ref=develop ) |
+| Run Demo version of Infrahub in Codespaces | [![Start in Codespaces (stable), with demo data](https://img.shields.io/badge/Start%20stable%20version%20demo%20data-0D3F54?style=for-the-badge)]( https://codespaces.new/opsmill/infrahub?devcontainer_path=.devcontainer%2Fdemo-container%2Fdevcontainer.json&ref=stable ) | [![Start in Codespaces (develop), with demo data](https://img.shields.io/badge/Start%20develop%20version%20demo%20data-0D3F54?style=for-the-badge)]( https://codespaces.new/opsmill/infrahub?devcontainer_path=.devcontainer%2Fdemo-container%2Fdevcontainer.json&ref=develop) |
+| Documentation | [![Documentation](https://img.shields.io/badge/Documentation%20for%20stable-0B97BB?style=for-the-badge)](https://docs.infrahub.app/) | [![Documentation](https://img.shields.io/badge/Documentation%20for%20develop-0B97BB?style=for-the-badge)](https://develop.infrahub.pages.dev/) |
+
+> [!NOTE]
+> The documentation includes how to get setup and start using Infrahub. The documentation is currently protected by password : `cXsivxXAgL7Hae`
+
+> [!TIP]
+> The cost for running an Infrahub instance in Codespaces is covered by OpsMill
+
+## Documentation
+
+If you'd like to learn more about Infrahub or deploy via alternate means, please check out the documentation:
+
+- [Infrahub Documentation](./docs/readme.md)
+- [Deploy the demo environment on your laptop](./docs/tutorials/getting-started/#prepare-the-demo-environment)

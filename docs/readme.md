@@ -8,18 +8,19 @@ icon: "home"
 
 # Welcome to Infrahub
 
-Infrahub is taking a new approach to Infrastructure Automation by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run.
+Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run.
 
-At its heart, Infrahub is built on 3 fundamental pillars
+At its heart, Infrahub is built on 3 fundamental pillars:
 
-- **Powerful Schema**, easily extensible
-- **Unified Version Control** for Data and Files
-- **Data Synchronization** with Traceability and Ownership
+- **Powerful Schema**: that's easily extensible
+- **Unified Version Control**: for data and files
+- **Data Synchronization**: with traceability and ownership
 
 ## Getting started
 
-- Deploy the demo environment on your laptop
-- Deploy an instance of Infrahub in the Cloud with GitPod
+- Choose your Infrahub deployment method:
+  - [Deploy an instance of Infrahub in the Cloud via Github Codespaces](https://github.com/opsmill/infrahub?tab=readme-ov-file#quick-start)
+  - [Deploy the demo environment on your laptop](/tutorials/getting-started/#prepare-the-demo-environment)
 - Explore the Python SDK to easily interact with Infrahub
 - Explore the capabilities of the schema
 - Check the architecture document to understand how the application is built

@@ -2,7 +2,7 @@ agent
 APIs
 async
 autoflake
-codespace
+codespaces
 config
 cypher
 datastore
