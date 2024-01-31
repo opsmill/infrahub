@@ -392,7 +392,7 @@ class SchemaBranch:
 
             for rel in node.relationships:
                 if rel.cardinality == RelationshipCardinality.ONE:
-                    if rel.min_count != 1 or rel.max_count != 1:
+                    if not rel.optional and (rel.min_count != 1 or rel.max_count != 1):
                         raise ValueError(
                             f"{node.kind}: Relationship {rel.name!r} is defined as cardinality.ONE but min_count or max_count are not 1"
                         ) from None
@@ -608,10 +608,16 @@ class SchemaBranch:
                 if rel.cardinality == RelationshipCardinality.ONE:
                     # Handle default values of RelationshipSchema when cardinality is ONE and set to valid values (1)
                     # RelationshipSchema default values 0 for min_count and max_count
-                    if rel.min_count == 0:
+                    if rel.optional and rel.min_count != 0:
+                        rel.min_count = 0
+                        changed = True
+                    if rel.optional and rel.max_count != 1:
+                        rel.max_count = 1
+                        changed = True
+                    if not rel.optional and rel.min_count == 0:
                         rel.min_count = 1
                         changed = True
-                    if rel.max_count == 0:
+                    if not rel.optional and rel.max_count == 0:
                         rel.max_count = 1
                         changed = True
 
