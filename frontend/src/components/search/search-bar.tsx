@@ -38,7 +38,7 @@ const SearchInput = (props: tSearchInput) => {
   };
 
   return (
-    <div className="flex flex-1 items-center justify-center relative px-8 sm:px-4">
+    <div className="flex flex-1 items-center justify-center relative">
       <div className="flex flex-1 items-center justify-center relative max-w-[600px] z-20">
         <Input
           value={search}
