@@ -12,7 +12,6 @@ import { fetchUrl } from "../../utils/fetch";
 import LoadingScreen from "../loading-screen/loading-screen";
 import DropDownMenuHeader from "./desktop-menu-header";
 import { Footer } from "./footer";
-import { TimeFrameSelector } from "../../components/TimeFrameSelector";
 
 export default function DesktopMenu() {
   const branch = useAtomValue(currentBranchAtom);
@@ -52,8 +51,6 @@ export default function DesktopMenu() {
 
         <div className="flex flex-col items-stretch p-2 gap-2">
           <BranchSelector />
-
-          <TimeFrameSelector />
         </div>
 
         <div className="flex flex-grow flex-col flex-1 overflow-auto">
