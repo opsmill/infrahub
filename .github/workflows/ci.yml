@@ -44,6 +44,9 @@ jobs:
       python: ${{ steps.changes.outputs.python_all }}
       javascript: ${{ steps.changes.outputs.javascript_all }}
       yaml: ${{ steps.changes.outputs.yaml_all }}
+      infrahub_poetry_files: ${{ steps.changes.ouputs.infrahub_poetry_files }}
+      python_sdk_poetry_files: ${{ steps.changes.ouputs.python_sdk_poetry_files }}
+      sync_poetry_files: ${{ steps.changes.ouputs.sync_poetry_files }}
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v4"
@@ -126,6 +129,46 @@ jobs:
         with:
           config: .markdownlint.yaml
           globs: '**/*.md'
+
+  infrahub-poetry-check:
+    if: |
+      needs.files-changed.outputs.infrahub_poetry_files == 'true' ||
+      github.ref_name == 'stable' ||
+      github.ref_name == 'develop'
+    needs:
+      - "files-changed"
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: "Poetry check"
+        uses: "./.github/workflows/poetry-check.yml"
+
+  python-sdk-poetry-check:
+    if: |
+      needs.files-changed.outputs.python_sdk_poetry_files == 'true' ||
+      github.ref_name == 'stable' ||
+      github.ref_name == 'develop'
+    needs:
+      - "files-changed"
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: "Poetry check"
+        uses: "./.github/workflows/poetry-check.yml"
+        with:
+          directory: "./python-sdk/"
+
+  sync-poetry-check:
+    if: |
+      needs.files-changed.outputs.sync_poetry_files == 'true' ||
+      github.ref_name == 'stable' ||
+      github.ref_name == 'develop'
+    needs:
+      - "files-changed"
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: "Poetry check"
+        uses: "./.github/workflows/poetry-check.yml"
+        with:
+          directory: "./sync/"
 
   python-sdk-unit-tests:
     strategy:
