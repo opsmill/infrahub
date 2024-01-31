@@ -2,6 +2,8 @@ agent
 APIs
 async
 autoflake
+check_definitions
+class_name
 codespaces
 config
 cypher
