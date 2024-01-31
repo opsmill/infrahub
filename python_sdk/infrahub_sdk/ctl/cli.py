@@ -2,19 +2,17 @@ import asyncio
 import functools
 import importlib
 import json
-import linecache
 import logging
 import os
 import sys
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional
 
 import jinja2
 import typer
 from rich.console import Console
 from rich.logging import RichHandler
-from rich.syntax import Syntax
-from rich.traceback import Frame, Traceback
+from rich.traceback import Traceback
 
 from infrahub_sdk.ctl import config
 from infrahub_sdk.ctl.branch import app as branch_app
@@ -31,7 +29,7 @@ from infrahub_sdk.ctl.utils import (
 from infrahub_sdk.ctl.validate import app as validate_app
 from infrahub_sdk.exceptions import GraphQLError, InfrahubTransformNotFoundError
 from infrahub_sdk.transforms import get_transform_class_instance
-from infrahub_sdk.utils import get_branch
+from infrahub_sdk.utils import get_branch, identify_faulty_jinja_code
 
 from .exporter import dump
 from .importer import load
