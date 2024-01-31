@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import BranchSelector from "../../components/branch-selector";
+import { SearchInput } from "../../components/search/search-bar";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import { CONFIG } from "../../config/config";
 import { ReactComponent as InfrahubLogo } from "../../images/Infrahub-SVG-hori.svg";
@@ -42,6 +43,10 @@ export default function DesktopMenu() {
     fetchMenu();
   }, [currentSchemaHash]);
 
+  const onFilterChange = (query: string) => {
+    console.log(query);
+  };
+
   return (
     <div className="z-100 hidden w-64 md:flex flex-col border-r">
       <div className="flex flex-grow flex-col overflow-y-auto min-h-0">
@@ -49,11 +54,19 @@ export default function DesktopMenu() {
           <InfrahubLogo />
         </Link>
 
-        <div className="flex flex-col items-stretch p-2 gap-2">
+        <div className="border-b flex flex-col items-stretch p-2 gap-2">
           <BranchSelector />
         </div>
 
-        <div className="flex-grow min-h-0 overflow-auto border-y">
+        <div className="border-b flex-grow min-h-0 overflow-auto flex flex-col">
+          <div className="border-b py-2">
+            <SearchInput
+              onChange={onFilterChange}
+              className="!shadow-none !ring-0"
+              placeholder="Filter..."
+            />
+          </div>
+
           {isLoading && <LoadingScreen size={32} hideText />}
 
           {!isLoading && (

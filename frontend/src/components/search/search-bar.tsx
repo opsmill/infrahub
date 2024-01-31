@@ -8,7 +8,7 @@ import { SEARCH } from "../../graphql/queries/objects/search";
 import LoadingScreen from "../../screens/loading-screen/loading-screen";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
-import { debounce } from "../../utils/common";
+import { classNames, debounce } from "../../utils/common";
 import { Background } from "../display/background";
 import { POPOVER_SIZE, PopOver } from "../display/popover";
 import { Input } from "../inputs/input";
@@ -16,12 +16,14 @@ import Transition from "../utils/transition";
 import { SearchResults } from "./search-results";
 
 type tSearchInput = {
-  loading?: boolean;
   onChange: Function;
+  className?: string;
+  loading?: boolean;
+  placeholder?: string;
 };
 
-const SearchInput = (props: tSearchInput) => {
-  const { loading, onChange } = props;
+export const SearchInput = (props: tSearchInput) => {
+  const { className = "", loading, onChange, placeholder = "Search" } = props;
 
   const [search, setSearch] = useState("");
 
@@ -44,8 +46,8 @@ const SearchInput = (props: tSearchInput) => {
           value={search}
           onChange={handleChange}
           data-testid="search-bar"
-          className="py-2 pl-10 placeholder-gray-500"
-          placeholder="Search"
+          className={classNames("py-2 pl-10 placeholder-gray-500", className)}
+          placeholder={placeholder}
           onFocus={handleFocus}
         />
 
