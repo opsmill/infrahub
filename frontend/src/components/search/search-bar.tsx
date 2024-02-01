@@ -18,12 +18,19 @@ import { SearchResults } from "./search-results";
 type tSearchInput = {
   onChange: Function;
   className?: string;
+  containerClassName?: string;
   loading?: boolean;
   placeholder?: string;
 };
 
 export const SearchInput = (props: tSearchInput) => {
-  const { className = "", loading, onChange, placeholder = "Search" } = props;
+  const {
+    className = "",
+    containerClassName = "",
+    loading,
+    onChange,
+    placeholder = "Search",
+  } = props;
 
   const [search, setSearch] = useState("");
 
@@ -41,7 +48,11 @@ export const SearchInput = (props: tSearchInput) => {
 
   return (
     <div className="flex flex-1 items-center justify-center relative">
-      <div className="flex flex-1 items-center justify-center relative max-w-[600px] z-20">
+      <div
+        className={classNames(
+          "flex flex-1 items-center justify-center relative max-w-[600px] z-20",
+          containerClassName
+        )}>
         <Input
           value={search}
           onChange={handleChange}

@@ -62,6 +62,7 @@ export default function DesktopMenu() {
           <div className="border-b py-2">
             <SearchInput
               onChange={onFilterChange}
+              containerClassName="z-0"
               className="!shadow-none !ring-0"
               placeholder="Filter..."
             />
