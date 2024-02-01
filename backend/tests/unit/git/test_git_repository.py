@@ -562,7 +562,7 @@ async def test_artifact_generate_python_existing_same(
 
     expected_data = ArtifactGenerateResult(
         changed=False,
-        checksum="e889b9fab24aab3b23ea01d5342b514a",
+        checksum="1d03a7fdc5c03106ec0c17efc42df9e7",
         storage_id="13c8914b-0ac0-4c8c-83ec-a79a1f8ad483",
         artifact_id=artifact_node_02.id,
     )
