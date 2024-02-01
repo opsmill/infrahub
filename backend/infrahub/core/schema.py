@@ -184,7 +184,7 @@ class BaseSchemaModel(BaseModel):
         """Duplicate the current object by doing a deep copy of everything and recreating a new object."""
         # import copy
         # return self.__class__(**copy.deepcopy(self.model_dump()))
-        return self.model_copy(deep=True)
+        return self.model_construct(self.model_dump())
 
     @staticmethod
     def is_list_composed_of_schema_model(items) -> bool:
