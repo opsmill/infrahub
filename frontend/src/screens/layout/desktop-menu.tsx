@@ -1,5 +1,5 @@
 import { useAtomValue } from "jotai/index";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import BranchSelector from "../../components/branch-selector";
@@ -35,6 +35,14 @@ export default function Sidebar() {
   );
 }
 
+type MenuItem = {
+  title: string;
+  path: string;
+  icon: string;
+  children: MenuItem[];
+  kind: string;
+};
+
 type MenuProps = {
   className?: string;
 };
@@ -43,7 +51,8 @@ function DesktopMenu({ className = "" }: MenuProps) {
   const currentSchemaHash = useAtomValue(currentSchemaHashAtom);
 
   const [isLoading, setIsLoading] = useState(false);
-  const [menu, setMenu] = useState([]);
+  const [menu, setMenu] = useState<MenuItem[]>([]);
+  const [query, setQuery] = useState<string>("");
 
   const fetchMenu = async () => {
     if (!currentSchemaHash) return;
@@ -51,7 +60,7 @@ function DesktopMenu({ className = "" }: MenuProps) {
     try {
       setIsLoading(true);
 
-      const result = await fetchUrl(CONFIG.MENU_URL(branch?.name));
+      const result: MenuItem[] = await fetchUrl(CONFIG.MENU_URL(branch?.name));
 
       setMenu(result);
 
@@ -67,18 +76,31 @@ function DesktopMenu({ className = "" }: MenuProps) {
     fetchMenu();
   }, [currentSchemaHash]);
 
-  const onFilterChange = (query: string) => {
-    console.log(query);
-  };
+  function filterDataByString(data: MenuItem[], searchString: string): MenuItem[] {
+    const lowercaseSearch = searchString.toLowerCase();
+
+    return data.reduce((acc, item) => {
+      const lowercaseTitle = item.title.toLowerCase();
+      const filteredChildren = filterDataByString(item.children || [], searchString);
+
+      if (filteredChildren.length > 0 || lowercaseTitle.includes(lowercaseSearch)) {
+        acc.push({ ...item, children: filteredChildren });
+      }
+
+      return acc;
+    }, [] as MenuItem[]);
+  }
+
+  const menuFiltered = useMemo(() => filterDataByString(menu, query), [currentSchemaHash, query]);
 
   return (
     <div className={classNames("flex flex-col", className)}>
       <div className="border-b py-2">
         <SearchInput
-          onChange={onFilterChange}
+          onChange={setQuery}
           containerClassName="z-0"
           className="!shadow-none !ring-0"
-          placeholder="Filter..."
+          placeholder="Quick navigation"
         />
       </div>
 
@@ -90,7 +112,7 @@ function DesktopMenu({ className = "" }: MenuProps) {
           aria-label="Sidebar"
           data-cy="sidebar-menu"
           data-testid="sidebar-menu">
-          {menu.map((item: any, index: number) => (
+          {(menuFiltered.length > 0 ? menuFiltered : menu).map((item: any, index: number) => (
             <DropDownMenuHeader
               key={index}
               title={item.title}
