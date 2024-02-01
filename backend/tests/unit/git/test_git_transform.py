@@ -19,6 +19,12 @@ async def test_git_transform_jinja2_success(git_repo_jinja: InfrahubRepository, 
         data={"data": {"items": ["consilium", "potum", "album", "magnum"]}},
         meta=Meta(reply_to="ci-testing", correlation_id=correlation_id),
     )
+    expected_response = """
+consilium
+potum
+album
+magnum
+"""
 
     bus_simulator = helper.get_message_bus_simulator()
     service = InfrahubServices(message_bus=bus_simulator)
@@ -30,7 +36,7 @@ async def test_git_transform_jinja2_success(git_repo_jinja: InfrahubRepository, 
     assert reply.passed
     assert reply.meta.correlation_id == correlation_id
     assert reply.response_class == "template_response"
-    assert reply.response_data["rendered_template"] == "\n"
+    assert reply.response_data["rendered_template"] == expected_response
 
 
 async def test_git_transform_jinja2_missing(git_repo_jinja: InfrahubRepository, helper):
