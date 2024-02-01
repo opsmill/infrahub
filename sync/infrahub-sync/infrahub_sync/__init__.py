@@ -1,7 +1,14 @@
+from dagster import Definitions, load_assets_from_modules
 from typing import Any, Dict, List, Optional
-
 from pydantic import BaseModel
 
+from . import assets
+
+all_assets = load_assets_from_modules([assets])
+
+defs = Definitions(
+    assets=all_assets,
+)
 
 class SchemaMappingField(BaseModel):
     name: str

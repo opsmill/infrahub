@@ -20,10 +20,13 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
 ]
 
+[tool.dagster]
+module_name = "infrahub_sync"
+
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.11"
 infrahub-sdk = {path = "../python_sdk", develop=true}
-dagster = "^1.1.19"
+dagster = "^1.4.17"
 dagit = "^1.1.19"
 structlog = "^22.3.0"
 pynetbox = "^7.0.1"
