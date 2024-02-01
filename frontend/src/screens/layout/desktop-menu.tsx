@@ -113,7 +113,7 @@ function DesktopMenu({ className = "" }: MenuProps) {
           aria-label="Sidebar"
           data-cy="sidebar-menu"
           data-testid="sidebar-menu">
-          {(menuFiltered.length > 0 ? menuFiltered : menu).map((item: any, index: number) => (
+          {(query !== "" ? menuFiltered : menu).map((item: any, index: number) => (
             <DropDownMenuHeader
               key={index}
               title={item.title}
