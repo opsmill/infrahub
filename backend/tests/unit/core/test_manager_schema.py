@@ -6,7 +6,7 @@ from infrahub_sdk.utils import compare_lists
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import BranchSupportType, FilterSchemaKind, InfrahubKind
+from infrahub.core.constants import BranchSupportType, FilterSchemaKind, InfrahubKind, UpdateValidationErrorType
 from infrahub.core.schema import (
     GenericSchema,
     NodeSchema,
@@ -1188,7 +1188,7 @@ async def test_schema_branch_copy(
     assert new_schema.get_hash() != schema_branch.get_hash()
 
 
-async def test_schema_branch_diff(
+async def test_schema_branch_diff_attribute(
     db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
 ):
     FULL_SCHEMA = {
@@ -1243,8 +1243,258 @@ async def test_schema_branch_diff(
     node.attributes[0].unique = False
     new_schema.set(name="BuiltinCriticality", schema=node)
 
-    diff = schema_branch.diff(obj=new_schema)
-    assert diff.model_dump() == {"added": [], "changed": ["BuiltinCriticality"], "removed": []}
+    diff = schema_branch.diff(other=new_schema)
+    assert diff.model_dump() == {
+        "added": {},
+        "changed": {
+            "BuiltinCriticality": {
+                "added": {},
+                "changed": {
+                    "attributes": {
+                        "added": {},
+                        "changed": {
+                            "name": {"added": {}, "changed": {"unique": None}, "removed": {}},
+                        },
+                        "removed": {},
+                    },
+                },
+                "removed": {},
+            },
+        },
+        "removed": {},
+    }
+
+
+async def test_schema_branch_diff_add_node_relationship(
+    db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
+):
+    SCHEMA1 = {
+        "nodes": [
+            {
+                "name": "Criticality",
+                "namespace": "Builtin",
+                "default_filter": "name__value",
+                "label": "Criticality",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                    {"name": "level", "kind": "Number", "label": "Level"},
+                    {"name": "color", "kind": "Text", "label": "Color", "default_value": "#444444"},
+                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
+                ],
+            },
+        ]
+    }
+
+    SCHEMA2 = {
+        "nodes": [
+            {
+                "name": "Tag",
+                "namespace": "Builtin",
+                "label": "Tag",
+                "default_filter": "name__value",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
+                ],
+            },
+        ],
+        "extensions": {
+            "nodes": [
+                {
+                    "kind": "BuiltinCriticality",
+                    "relationships": [
+                        {
+                            "name": "tags",
+                            "peer": InfrahubKind.TAG,
+                            "label": "Tags",
+                            "optional": True,
+                            "cardinality": "many",
+                        },
+                        {
+                            "name": "primary_tag",
+                            "peer": InfrahubKind.TAG,
+                            "label": "Primary Tag",
+                            "identifier": "primary_tag__criticality",
+                            "optional": True,
+                            "cardinality": "one",
+                        },
+                    ],
+                }
+            ]
+        },
+    }
+
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(**SCHEMA1))
+    new_schema = schema_branch.duplicate()
+    new_schema.load_schema(schema=SchemaRoot(**SCHEMA2))
+
+    diff = schema_branch.diff(other=new_schema)
+    assert diff.model_dump() == {
+        "added": {"BuiltinTag": {"added": {}, "changed": {}, "removed": {}}},
+        "changed": {
+            "BuiltinCriticality": {
+                "added": {},
+                "changed": {
+                    "relationships": {
+                        "added": {"primary_tag": None, "tags": None},
+                        "changed": {},
+                        "removed": {},
+                    }
+                },
+                "removed": {},
+            },
+        },
+        "removed": {},
+    }
+
+
+async def test_schema_branch_validate_check_missing(
+    db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
+):
+    FULL_SCHEMA = {
+        "nodes": [
+            {
+                "name": "Criticality",
+                "namespace": "Builtin",
+                "default_filter": "name__value",
+                "label": "Criticality",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                    {"name": "level", "kind": "Number", "label": "Level"},
+                    {"name": "color", "kind": "Text", "label": "Color", "default_value": "#444444"},
+                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "tags",
+                        "peer": InfrahubKind.TAG,
+                        "label": "Tags",
+                        "optional": True,
+                        "cardinality": "many",
+                    },
+                    {
+                        "name": "primary_tag",
+                        "peer": InfrahubKind.TAG,
+                        "label": "Primary Tag",
+                        "identifier": "primary_tag__criticality",
+                        "optional": True,
+                        "cardinality": "one",
+                    },
+                ],
+            },
+            {
+                "name": "Tag",
+                "namespace": "Builtin",
+                "label": "Tag",
+                "default_filter": "name__value",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
+                ],
+            },
+        ]
+    }
+
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(**FULL_SCHEMA))
+    new_schema = schema_branch.duplicate()
+
+    node = new_schema.get(name="BuiltinCriticality")
+    node.attributes[0].unique = False
+    new_schema.set(name="BuiltinCriticality", schema=node)
+
+    result = schema_branch.validate_update(other=new_schema)
+    assert result.model_dump(exclude=["diff"]) == {
+        "checks": [
+            {
+                "check_name": "attribute.unique.update",
+                "field_name": "name",
+                "field_type": "attribute",
+                "prop_name": "unique",
+                "schema_name": "BuiltinCriticality",
+            }
+        ],
+        "errors": [
+            {
+                "error": UpdateValidationErrorType.CHECK_NOT_AVAILABLE,
+                "field_name": "name",
+                "field_type": "attribute",
+                "message": "'attribute.unique.update' is not available yet",
+                "prop_name": "unique",
+                "schema_name": "BuiltinCriticality",
+            },
+        ],
+        "migrations": [],
+    }
+
+
+async def test_schema_branch_validate_add_node_relationships(
+    db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
+):
+    SCHEMA1 = {
+        "nodes": [
+            {
+                "name": "Criticality",
+                "namespace": "Builtin",
+                "default_filter": "name__value",
+                "label": "Criticality",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                    {"name": "level", "kind": "Number", "label": "Level"},
+                    {"name": "color", "kind": "Text", "label": "Color", "default_value": "#444444"},
+                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
+                ],
+            },
+        ]
+    }
+
+    SCHEMA2 = {
+        "nodes": [
+            {
+                "name": "Tag",
+                "namespace": "Builtin",
+                "label": "Tag",
+                "default_filter": "name__value",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
+                ],
+            },
+        ],
+        "extensions": {
+            "nodes": [
+                {
+                    "kind": "BuiltinCriticality",
+                    "relationships": [
+                        {
+                            "name": "tags",
+                            "peer": InfrahubKind.TAG,
+                            "label": "Tags",
+                            "optional": True,
+                            "cardinality": "many",
+                        },
+                        {
+                            "name": "primary_tag",
+                            "peer": InfrahubKind.TAG,
+                            "label": "Primary Tag",
+                            "identifier": "primary_tag__criticality",
+                            "optional": True,
+                            "cardinality": "one",
+                        },
+                    ],
+                }
+            ]
+        },
+    }
+
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(**SCHEMA1))
+    new_schema = schema_branch.duplicate()
+    new_schema.load_schema(schema=SchemaRoot(**SCHEMA2))
+
+    result = schema_branch.validate_update(other=new_schema)
+    assert result.model_dump(exclude=["diff"]) == {"checks": [], "errors": [], "migrations": []}
 
 
 # -----------------------------------------------------------------
