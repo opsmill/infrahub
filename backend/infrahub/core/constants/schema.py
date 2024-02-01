@@ -16,7 +16,7 @@ class UpdateSupport(Enum):
     ALLOWED = "allowed"
     MIGRATION_REQUIRED = "migration_required"
     CHECK_CONSTRAINTS = "check_constraints"
-    NA = "not_applicable"
+    NOT_APPLICABLE = "not_applicable"
 
 
 class UpdateValidationErrorType(Enum):
