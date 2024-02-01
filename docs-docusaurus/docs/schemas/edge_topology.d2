@@ -1,0 +1,55 @@
+
+
+
+
+
+jfk1transit: Transit
+jfk1peering: Peering
+jfk1: New York {
+    edge1: jfk1-edge1
+    edge2: jfk1-edge2
+
+    edge1 -- edge2
+}
+
+atl1: Atlanta {
+    edge1: atl1-edge1
+    edge2: atl1-edge2
+
+    edge1 -- edge2
+}
+atl1transit: Transit
+atl1peering: Peering
+
+ord1transit: Transit
+ord1peering: Peering
+
+ord1.edge1 -> ord1transit
+ord1.edge2 -> ord1transit
+ord1.edge1 -> ord1peering
+ord1.edge2 -> ord1peering
+
+ord1: Chicago {
+    edge1: ord1-edge1
+    edge2: ord1-edge2
+
+    edge1 -- edge2
+}
+
+ord1.edge1 -- jfk1.edge1
+ord1.edge1 -- atl1.edge1
+jfk1.edge1 -- atl1.edge1
+ord1.edge2 -- jfk1.edge2
+ord1.edge2 -- atl1.edge2
+jfk1.edge2 -- atl1.edge2
+
+
+jfk1.edge1 -> jfk1transit
+jfk1.edge2 -> jfk1transit
+jfk1.edge1 -> jfk1peering
+jfk1.edge2 -> jfk1peering
+
+atl1.edge1 -> atl1transit
+atl1.edge2 -> atl1transit
+atl1.edge1 -> atl1peering
+atl1.edge2 -> atl1peering
