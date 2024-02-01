@@ -1,0 +1,312 @@
+---
+icon: file-code
+label: Creating a Python transform
+---
+# Creating a Python transform
+
+Within Infrahub a [Transform](/topics/transformation) is defined in an [external repository](/topics/repository). However, during development and troubleshooting it is easiest to start from your local computer and run the transform using [infrahubctl transform](/infrahubctl/infrahubctl-transform).
+
+The goal of this guide is to develop a Python Transform and add it to Infrahub, we will achieve this by following these steps.
+
+1. Identify the relevant data you want to extract from the database using a [GraphQL query](/topics/graphql), that can take an input parameter to filter the data
+2. Write a Python script that use the GraphQL query to read information from the system and transforms the data into a new format
+3. Create an entry for the transform within an .infrahub.yml file.
+4. Create a Git repository
+5. Test the transform with infrahubctl
+6. Add the repository to Infrahub as an external repository
+7. Validate that the transform works by using the transform API endpoint
+
+In this guide we are going to work with the builtin tag objects in Infrahub. It won't provide a transform that is very useful, the goal is instead to show how the transforms are created. Once you have mastered the basics you will be ready to go on to create more advanced transforms.
+
+## 1. Creating a query to collect the desired data
+
+As the first step we need to have some data in the database to actually query.
+
+Create three tags, called "red", "green", "blue", either using the frontend or by submitting three GraphQL mutations as per below (just swapping out the name of the color each time).
+
+```GraphQL #1-2
+mutation CreateTags {
+  BuiltinTagCreate(
+    data: {name: {value: "red"}, description: {value: "The red tag"}}
+  ) {
+    ok
+    object {
+      id
+    }
+  }
+}
+```
+
+The next step is to create a query that returns the data we just created. The rest of this guide assumes that the following query will return a response similar to the response below the query.
+
+```GraphQL #1-2
+query TagsQuery {
+  BuiltinTag {
+    edges {
+      node {
+        name {
+          value
+        }
+        description {
+          value
+        }
+      }
+    }
+  }
+}
+```
+
+Response to the tags query:
+
+```json
+{
+  "data": {
+    "BuiltinTag": {
+      "edges": [
+        {
+          "node": {
+            "name": {
+              "value": "blue"
+            },
+            "description": {
+              "value": "The blue tag"
+            }
+          }
+        },
+        {
+          "node": {
+            "name": {
+              "value": "green"
+            },
+            "description": {
+              "value": "The green tag"
+            }
+          }
+        },
+        {
+          "node": {
+            "name": {
+              "value": "red"
+            },
+            "description": {
+              "value": "The red tag"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+While it would be possible to create a transform that targets all of these tags, for example if you want to create a report, the goal for us is to be able to focus on one of these objects. For this reason we need to modify the query from above to take an input parameter so that we can filter the result to what we want.
+
+Create a local directory on your computer.
+
+```sh
+mkdir tags_transform
+```
+
+Then save the below query as a text file named tags_query.gql.
+
+```GraphQL #1-2
+query TagsQuery($tag: String!) {
+  BuiltinTag(name__value: $tag) {
+    edges {
+      node {
+        name {
+          value
+        }
+        description {
+          value
+        }
+      }
+    }
+  }
+}
+```
+
+Here the query will require an input parameter called `$name` what will refer to the name of each tag. When we want to query for the red tag the input variables to the query would look like this:
+
+```json
+{
+  "tag": "red"
+}
+```
+
+## 2. Create the Python transform file
+
+The next step is to create the actual Python transform. The transform is a Python class that inherits from InfrahubTransform from the [Python SDK](/python-sdk). Create a file called tags_transform.py
+
+```python
+from infrahub.transforms import InfrahubTransform
+
+
+class TagsTransform(InfrahubTransform):
+
+    query = "tags_query"
+    url = "my-tags"
+
+    async def transform(self, data):
+        tag = data["BuiltinTag"]["edges"][0]["node"]
+        tag_name = tag["name"]["value"]
+        tag_description = tag["description"]["value"]
+
+        return {
+            "tag_title": tag_name.title(),
+            "bold_description": f"*{tag_description}*".upper()
+        }
+```
+
+The example is simplistic in terms of what we do with the data, but all of the important parts of a transform exist here.
+
+1. We import the InfrahubTransform class
+
+```python
+from infrahub.transforms import InfrahubTransform
+```
+
+2. We define our own class based on InfrahubTransform.
+
+```python
+class TagsTransform(InfrahubTransform):
+```
+
+Here we need to note the name of the class as we will need it later, optionally we can just call it `Transform` which is the default name.
+
+3. We define where data comes from and what API endpoint to use
+
+```python
+    query = "tags_query"
+    url = "my-tags"
+```
+
+The query part refers to the file tags_query.gql that we created earlier. The URL parameter controls what the endpoint will be when you run this transform by targeting the API server.
+
+With this configuration the endpoint of our transform will be [http://localhost:8000/api/transform/my-tags](http://localhost:8000/api/transform/my-tags).
+
+4. The transform method
+
+```python
+    async def transform(self, data):
+        tag = data["BuiltinTag"]["edges"][0]["node"]
+        tag_name = tag["name"]["value"]
+        tag_description = tag["description"]["value"]
+
+        return {
+            "tag_title": tag_name.title(),
+            "bold_description": f"*{tag_description}*".upper()
+        }
+```
+
+When running the transform the `data` input variable will consist of the response to the query we created. In this case we return a JSON object consisting of two keys `tags_title` and `bold_description` where we have modified the data in some way. Here you would return data in the format you need.
+
+!!!info
+If you are unsure of the format of the data you can set a debug marker when testing the transform with infrahubctl:
+
+```python
+    async def transform(self, data):
+        breakpoint()
+        tag = data["BuiltinTag"]["edges"][0]["node"]
+        tag_name = tag["name"]["value"]
+        tag_description = tag["description"]["value"]
+```
+
+!!!
+
+## 3. Create a .infrahub.yml file
+
+In the .infrahub.yml file you define what transforms you have in your repository that you want to make available for Infrahub.
+
+Create a .infrahub.yml file in the root of the directory.
+
+```yaml
+---
+python_transforms:
+  - name: tags_transform
+    class_name: TagsTransform
+    file_path: "tags_transform.py"
+```
+
+Two parts here are required, first the `name` of the transform which should be unique across Infrahub and also the `file_path` that should point to the Python file within the repository. In this example we have also defined `class_name`, the reason for this is that we gave our class the name "TagsTransform" instead of the default "Transform".
+
+## 4. Create a Git repository
+
+Within the `tags_transform` folder you should now have tree files:
+
+* tags_query.gql: Contains the GraphQL query
+* tags_transform.py: Contains the Python code for the transform
+* .infrahub.yml: Contains the definition for the transform
+
+Before we can test our transform we must add the files to a local Git repository.
+
+```sh
+git init --initial-branch=main
+git add .
+git commit -m "First commit"
+```
+
+## 5. Test the transform using infrahubctl
+
+Using infrahubctl you can first verify that the `.infrahub.yml` file is formatted correctly by listing available transforms.
+
+```sh
+❯ infrahubctl transform --list
+
+Python transforms defined in repository: 1
+tags_transform (tags_transform.py::TagsTransform)
+```
+
+!!!info
+Trying to run the transform with just the name will produce an error.
+
+```sh
+❯ infrahubctl transform tags_transform
+
+1 error(s) occured while executing the query
+ - Message: Variable '$tag' of required type 'String!' was not provided.
+   Location: [{'line': 1, 'column': 17}]
+Aborted.
+
+```
+
+Here we can see that our query is missing the required input for `$tag` which is needed to filter the data.
+!!!
+
+Run the transform and specify the variable name along with the tag we want to target.
+
+```sh
+❯ infrahubctl transform tags_transform tag=red
+
+{
+  "tag_title": "Red",
+  "bold_description": "*THE RED TAG*"
+}
+```
+
+We have now successfully created a transform. Most of the transforms you will create would be more complex than this, however the main building blocks will always remain the same. It could be that you need the output in OpenConfig format, as Terraform input variables or any other kind of format.
+
+## 6. Adding the repository to Infrahub
+
+In order to avoid having the same instructions over and over please refer to the guide [adding a repository to Infrahub](/guides/repository) in order to sync the repository you created and make it available within Infrahub.
+
+## 7. Accessing the transform from the API
+
+Once the repository is synced to Infrahub you can access the transform from the API:
+
+```sh
+❯ curl http://localhost:8000/api/transform/my-tags?tag=blue
+
+{
+  "tag_title": "Blue",
+  "bold_description": "*THE BLUE TAG*"
+}
+
+❯ curl http://localhost:8000/api/transform/my-tags?tag=red
+
+{
+  "tag_title": "Red",
+  "bold_description": "*THE RED TAG*"
+}
+
+```
