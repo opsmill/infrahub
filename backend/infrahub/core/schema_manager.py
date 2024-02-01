@@ -184,7 +184,7 @@ class SchemaBranch:
 
     def has(self, name: str) -> bool:
         try:
-            self.get(name=name)
+            self.get(name=name, duplicate=False)
             return True
         except SchemaNotFound:
             return False
@@ -226,8 +226,7 @@ class SchemaBranch:
         """
         for item in schema.nodes + schema.generics:
             try:
-                existing_item = self.get(name=item.kind)
-                new_item = existing_item.duplicate()
+                new_item = self.get(name=item.kind)
                 new_item.update(item)
                 self.set(name=item.kind, schema=new_item)
             except SchemaNotFound:
@@ -285,7 +284,7 @@ class SchemaBranch:
         # Organize all the relationships per identifier and node
         rels_per_identifier: Dict[str, Dict[str, List[RelationshipSchema]]] = defaultdict(lambda: defaultdict(list))
         for name in list(self.nodes.keys()) + list(self.generics.keys()):
-            node = self.get(name=name)
+            node = self.get(name=name, duplicate=False)
 
             for rel in node.relationships:
                 rels_per_identifier[rel.identifier][name].append(rel)
@@ -377,7 +376,7 @@ class SchemaBranch:
 
     def validate_display_labels(self) -> None:
         for name in list(self.nodes.keys()) + list(self.generics.keys()):
-            node_schema = self.get(name=name)
+            node_schema = self.get(name=name, duplicate=False)
 
             if not node_schema.display_labels:
                 continue
@@ -387,7 +386,7 @@ class SchemaBranch:
 
     def validate_order_by(self) -> None:
         for name in list(self.nodes.keys()) + list(self.generics.keys()):
-            node_schema = self.get(name=name)
+            node_schema = self.get(name=name, duplicate=False)
 
             if not node_schema.order_by:
                 continue
@@ -399,7 +398,7 @@ class SchemaBranch:
 
     def validate_default_filters(self) -> None:
         for name in list(self.nodes.keys()) + list(self.generics.keys()):
-            node_schema = self.get(name=name)
+            node_schema = self.get(name=name, duplicate=False)
 
             if not node_schema.default_filter:
                 continue
@@ -410,7 +409,7 @@ class SchemaBranch:
 
     def validate_names(self) -> None:
         for name in list(self.nodes.keys()) + list(self.generics.keys()):
-            node = self.get(name=name)
+            node = self.get(name=name, duplicate=False)
 
             if names_dup := duplicates(node.attribute_names + node.relationship_names):
                 raise ValueError(
@@ -433,16 +432,16 @@ class SchemaBranch:
 
     def validate_menu_placements(self) -> None:
         for name in list(self.nodes.keys()) + list(self.generics.keys()):
-            node = self.get(name=name)
+            node = self.get(name=name, duplicate=False)
             if node.menu_placement:
                 try:
-                    self.get(name=node.menu_placement)
+                    self.get(name=node.menu_placement, duplicate=False)
                 except SchemaNotFound:
                     raise ValueError(f"{node.kind}: {node.menu_placement} is not a valid menu placement") from None
 
     def validate_kinds(self) -> None:
         for name in list(self.nodes.keys()):
-            node = self.get(name=name)
+            node = self.get(name=name, duplicate=False)
 
             for generic_kind in node.inherit_from:
                 if self.has(name=generic_kind):
@@ -787,7 +786,7 @@ class SchemaBranch:
             if rel.kind not in ["Attribute", "Parent"]:
                 continue
             filters.append(FilterSchema(name=f"{rel.name}__ids", kind=FilterSchemaKind.LIST, object_kind=rel.peer))
-            peer_schema = self.get(name=rel.peer)
+            peer_schema = self.get(name=rel.peer, duplicate=False)
 
             for attr in peer_schema.attributes:
                 filter_kind = KIND_FILTER_MAP.get(attr.kind, None)
