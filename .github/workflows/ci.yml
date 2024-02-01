@@ -706,6 +706,63 @@ jobs:
       - name: Display server status
         if: always()
         run: invoke demo.status
+  # ------------------------------------------ Benchmarks ------------------------------------------------
+  backend-benchmark:
+    needs:
+      - javascript-lint
+      - files-changed
+      - yaml-lint
+      - python-lint
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled')
+    runs-on:
+      group: huge-runners
+    env:
+      INFRAHUB_DB_TYPE: memgraph
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+      - name: "Setup environment"
+        run: |
+          pipx install poetry
+          poetry config virtualenvs.prefer-active-python true
+          pip install invoke toml
+      - name: Set Version of Pydantic
+        run: poetry add pydantic@^2
+      - name: "Install Package"
+        run: "poetry install"
+
+      - name: Select infrahub db port
+        run: echo "INFRAHUB_DB_PORT=$(shuf -n 1 -i 10000-60000)" >> $GITHUB_ENV
+
+      - name: "Set environment variables"
+        run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
+      - name: "Set environment variables"
+        run: echo INFRAHUB_IMAGE_VER=${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+      - name: "Clear docker environment"
+        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
+
+      - name: Create docker compose override
+        run: mv development/docker-compose.dev-override-benchmark.yml development/docker-compose.dev-override.yml
+
+      - name: Start dependencies
+        run: invoke demo.dev-start
+
+      - name: Update PATH
+        run: "echo ~/.cargo/bin >> $GITHUB_PATH"
+      - name: Run benchmarks
+        uses: CodSpeedHQ/action@v2
+        with:
+          token: ${{ secrets.CODSPEED_TOKEN }}
+          run: "poetry run pytest -v backend/tests/benchmark/ --codspeed"
+        env:
+          INFRAHUB_TEST_IN_DOCKER: "false"
   # ------------------------------------------ Coverall Report  ------------------------------------------
   coverall-report:
     needs:
