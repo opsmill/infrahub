@@ -124,7 +124,7 @@ class DropdownChoice(HashableModel):
 
 
 class AttributeSchema(HashableModel):
-    id: Optional[str] = Field(default=None, json_schema_extra={"update": UpdateSupport.NA.value})
+    id: Optional[str] = Field(default=None, json_schema_extra={"update": UpdateSupport.NOT_APPLICABLE.value})
     name: str = Field(
         pattern=NAME_REGEX,
         min_length=DEFAULT_NAME_MIN_LENGTH,
@@ -142,7 +142,7 @@ class AttributeSchema(HashableModel):
     max_length: Optional[int] = Field(default=None, json_schema_extra={"update": UpdateSupport.CHECK_CONSTRAINTS.value})
     min_length: Optional[int] = Field(default=None, json_schema_extra={"update": UpdateSupport.CHECK_CONSTRAINTS.value})
     read_only: bool = Field(default=False, json_schema_extra={"update": UpdateSupport.ALLOWED.value})
-    inherited: bool = Field(default=False, json_schema_extra={"update": UpdateSupport.NA.value})
+    inherited: bool = Field(default=False, json_schema_extra={"update": UpdateSupport.NOT_APPLICABLE.value})
     unique: bool = Field(default=False, json_schema_extra={"update": UpdateSupport.CHECK_CONSTRAINTS.value})
     branch: Optional[BranchSupportType] = Field(
         default=None, json_schema_extra={"update": UpdateSupport.MIGRATION_REQUIRED.value}
@@ -229,7 +229,7 @@ class AttributeSchema(HashableModel):
 
 
 class RelationshipSchema(HashableModel):
-    id: Optional[str] = Field(default=None, json_schema_extra={"update": UpdateSupport.NA.value})
+    id: Optional[str] = Field(default=None, json_schema_extra={"update": UpdateSupport.NOT_APPLICABLE.value})
     name: str = Field(
         pattern=NAME_REGEX,
         min_length=DEFAULT_NAME_MIN_LENGTH,
@@ -257,7 +257,7 @@ class RelationshipSchema(HashableModel):
         max_length=DEFAULT_REL_IDENTIFIER_LENGTH,
         json_schema_extra={"update": UpdateSupport.MIGRATION_REQUIRED.value},
     )
-    inherited: bool = Field(default=False, json_schema_extra={"update": UpdateSupport.NA.value})
+    inherited: bool = Field(default=False, json_schema_extra={"update": UpdateSupport.NOT_APPLICABLE.value})
     cardinality: RelationshipCardinality = Field(
         default=RelationshipCardinality.MANY, json_schema_extra={"update": UpdateSupport.CHECK_CONSTRAINTS.value}
     )
@@ -268,7 +268,9 @@ class RelationshipSchema(HashableModel):
     hierarchical: Optional[str] = Field(
         default=None, json_schema_extra={"update": UpdateSupport.MIGRATION_REQUIRED.value}
     )
-    filters: List[FilterSchema] = Field(default_factory=list, json_schema_extra={"update": UpdateSupport.NA.value})
+    filters: List[FilterSchema] = Field(
+        default_factory=list, json_schema_extra={"update": UpdateSupport.NOT_APPLICABLE.value}
+    )
     order_weight: Optional[int] = Field(default=None, json_schema_extra={"update": UpdateSupport.ALLOWED.value})
 
     _exclude_from_hash: List[str] = ["filters"]
@@ -448,12 +450,14 @@ class BaseNodeSchema(HashableModel):
     order_by: Optional[List[str]] = Field(default=None, json_schema_extra={"update": UpdateSupport.ALLOWED.value})
     display_labels: Optional[List[str]] = Field(default=None, json_schema_extra={"update": UpdateSupport.ALLOWED.value})
     attributes: List[AttributeSchema] = Field(
-        default_factory=list, json_schema_extra={"update": UpdateSupport.NA.value}
+        default_factory=list, json_schema_extra={"update": UpdateSupport.NOT_APPLICABLE.value}
     )
     relationships: List[RelationshipSchema] = Field(
-        default_factory=list, json_schema_extra={"update": UpdateSupport.NA.value}
+        default_factory=list, json_schema_extra={"update": UpdateSupport.NOT_APPLICABLE.value}
     )
-    filters: List[FilterSchema] = Field(default_factory=list, json_schema_extra={"update": UpdateSupport.NA.value})
+    filters: List[FilterSchema] = Field(
+        default_factory=list, json_schema_extra={"update": UpdateSupport.NOT_APPLICABLE.value}
+    )
     include_in_menu: Optional[bool] = Field(default=None, json_schema_extra={"update": UpdateSupport.ALLOWED.value})
     menu_placement: Optional[str] = Field(default=None, json_schema_extra={"update": UpdateSupport.ALLOWED.value})
     icon: Optional[str] = Field(default=None, json_schema_extra={"update": UpdateSupport.ALLOWED.value})
@@ -652,7 +656,7 @@ class GenericSchema(BaseNodeSchema):
     """A Generic can be either an Interface or a Union depending if there are some Attributes or Relationships defined."""
 
     hierarchical: bool = Field(default=False, json_schema_extra={"update": UpdateSupport.CHECK_CONSTRAINTS.value})
-    used_by: List[str] = Field(default_factory=list, json_schema_extra={"update": UpdateSupport.NA.value})
+    used_by: List[str] = Field(default_factory=list, json_schema_extra={"update": UpdateSupport.NOT_APPLICABLE.value})
 
     def get_hierarchy_schema(self, branch: Optional[Union[Branch, str]] = None) -> GenericSchema:  # pylint: disable=unused-argument
         if self.hierarchical:
