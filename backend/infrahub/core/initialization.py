@@ -106,7 +106,7 @@ async def initialization(db: InfrahubDatabase):
     # ---------------------------------------------------
     # Load all existing Groups into the registry
     # ---------------------------------------------------
-    # group_schema = await registry.get_schema(db=db, name="Group")
+    # group_schema = await registry.schema.get(db=db, name="Group")
     # groups = await NodeManager.query(group_schema, db=db)
     # for group in groups:
     #     registry.node_group[group.name.value] = group
@@ -215,18 +215,7 @@ async def first_time_initialization(db: InfrahubDatabase):
     # --------------------------------------------------
     # Create Default Users and Groups
     # --------------------------------------------------
-    token_schema = registry.get_schema(name=InfrahubKind.ACCOUNTTOKEN)
-    # admin_grp = await Node.init(db=db, schema=group_schema)
-    # await admin_grp.new(db=db, name="admin")
-    # await admin_grp.save(db=db)
-    # ----
-    # group_schema = registry.get_schema(name="Group")
-
-    # admin_grp = await Node.init(db=db, schema=group_schema)
-    # await admin_grp.new(db=db, name="admin")
-    # await admin_grp.save(db=db)
-    # default_grp = obj = Node(group_schema).new(name="default").save()
-    # account_schema = registry.get_schema(name="Account")
+    token_schema = registry.schema.get(name=InfrahubKind.ACCOUNTTOKEN)
     obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
     await obj.new(
         db=db,

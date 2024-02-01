@@ -1475,9 +1475,9 @@ async def car_person_schema_generics(
 
 @pytest.fixture
 async def car_person_generics_data(db: InfrahubDatabase, car_person_schema_generics) -> Dict[str, Node]:
-    ecar = registry.get_schema(name="TestElectricCar")
-    gcar = registry.get_schema(name="TestGazCar")
-    person = registry.get_schema(name="TestPerson")
+    ecar = registry.schema.get(name="TestElectricCar")
+    gcar = registry.schema.get(name="TestGazCar")
+    person = registry.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)

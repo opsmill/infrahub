@@ -1400,7 +1400,7 @@ async def test_load_schema_to_db_core_models(
 
     await registry.schema.load_schema_to_db(schema=new_schema, db=db)
 
-    node_schema = registry.get_schema(name="SchemaGeneric")
+    node_schema = registry.schema.get(name="SchemaGeneric")
     results = await SchemaManager.query(schema=node_schema, db=db)
     assert len(results) > 1
 

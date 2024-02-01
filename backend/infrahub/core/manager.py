@@ -82,7 +82,7 @@ class NodeManager:
         at = Timestamp(at)
 
         if isinstance(schema, str):
-            schema = registry.get_schema(name=schema, branch=branch.name)
+            schema = registry.schema.get(name=schema, branch=branch.name)
         elif not isinstance(schema, (NodeSchema, GenericSchema)):
             raise ValueError(f"Invalid schema provided {schema}")
 
@@ -302,7 +302,7 @@ class NodeManager:
         branch = await get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
-        node_schema = registry.get_node_schema(name=schema_name, branch=branch)
+        node_schema = registry.schema.get(name=schema_name, branch=branch)
         if not node_schema.default_filter:
             raise NodeNotFound(branch_name=branch.name, node_type=schema_name, identifier=id)
 

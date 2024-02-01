@@ -1296,7 +1296,7 @@ class Diff:
                 for _, rel in rels.items():
                     for node_id in rel.nodes:
                         neighbor_id = [neighbor for neighbor in rel.nodes.keys() if neighbor != node_id][0]
-                        schema = registry.get_schema(name=rel.nodes[node_id].kind, branch=branch_name)
+                        schema = registry.schema.get(name=rel.nodes[node_id].kind, branch=branch_name)
                         matching_relationship = [r for r in schema.relationships if r.identifier == rel_name]
                         if (
                             matching_relationship
@@ -1349,7 +1349,7 @@ class Diff:
 
         for branch_name, entries in branch_kind_node.items():
             for kind, ids in entries.items():
-                schema = registry.get_schema(name=kind, branch=branch_name)
+                schema = registry.schema.get(name=kind, branch=branch_name)
                 fields = schema.generate_fields_for_display_label()
                 nodes = await NodeManager.get_many(ids=ids, fields=fields, db=db, branch=branch_name)
                 for node_id, node in nodes.items():
@@ -1942,7 +1942,7 @@ class Diff:
         neighbor_map = {node_ids[0]: node_ids[1], node_ids[1]: node_ids[0]}
         relationship_paths = RelationshipPath()
         for relationship in nodes.values():
-            schema = registry.get_schema(name=relationship.kind, branch=branch_name)
+            schema = registry.schema.get(name=relationship.kind, branch=branch_name)
             matching_relationship = [r for r in schema.relationships if r.identifier == relationship_name]
             relationship_path_name = "-undefined-"
             if matching_relationship:

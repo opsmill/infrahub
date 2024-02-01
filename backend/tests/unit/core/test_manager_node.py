@@ -110,8 +110,8 @@ async def test_get_one_attribute_with_flag_property(
 
 
 async def test_get_one_relationship(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
-    car = registry.get_schema(name="TestCar")
-    person = registry.get_schema(name="TestPerson")
+    car = registry.schema.get(name="TestCar")
+    person = registry.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)
@@ -277,7 +277,7 @@ async def test_query_with_filter_bool_rel(
     car_camry_main,
     branch: Branch,
 ):
-    car = registry.get_schema(name="TestCar")
+    car = registry.schema.get(name="TestCar")
 
     # Check filter with a boolean
     nodes = await NodeManager.query(db=db, schema=car, branch=branch, filters={"is_electric__value": False})
@@ -298,7 +298,7 @@ async def test_query_filter_with_multiple_values_rel(
     car_camry_main,
     branch: Branch,
 ):
-    car = registry.get_schema(name="TestCar")
+    car = registry.schema.get(name="TestCar")
 
     nodes = await NodeManager.query(db=db, schema=car, branch=branch, filters={"owner__name__values": ["John", "Jane"]})
     assert len(nodes) == 4
@@ -314,7 +314,7 @@ async def test_qeury_with_multiple_values_invalid_type(
     car_camry_main,
     branch: Branch,
 ):
-    car = registry.get_schema(name="TestCar")
+    car = registry.schema.get(name="TestCar")
 
     with pytest.raises(TypeError):
         await NodeManager.query(db=db, schema=car, branch=branch, filters={"owner__name__values": [1.0]})

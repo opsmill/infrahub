@@ -309,7 +309,7 @@ class BranchDiffArtifact(BaseModel):
 async def get_display_labels_per_kind(kind: str, ids: List[str], branch_name: str, db: InfrahubDatabase):
     """Return the display_labels of a list of nodes of a specific kind."""
     branch = await get_branch(branch=branch_name, db=db)
-    schema = registry.get_schema(name=kind, branch=branch)
+    schema = registry.schema.get(name=kind, branch=branch)
     fields = schema.generate_fields_for_display_label()
     nodes = await NodeManager.get_many(ids=ids, fields=fields, db=db, branch=branch)
     return {node_id: await node.render_display_label(db=db) for node_id, node in nodes.items()}
@@ -643,7 +643,7 @@ class DiffPayload:
                 self._add_node_to_diff(node_id=item_dict["id"], kind=item_dict["kind"])
                 self._set_display_label(node_id=item_dict["id"], branch=branch_name, display_label=display_label)
                 self._set_node_action(node_id=item_dict["id"], branch=branch_name, action=item_dict["action"])
-                schema = registry.get_schema(name=node_diff.kind, branch=node_diff.branch)
+                schema = registry.schema.get(name=node_diff.kind, branch=node_diff.branch)
 
                 # Extract the value from the list of properties
                 for _, element in node_diff.elements.items():
@@ -708,7 +708,7 @@ class DiffPayload:
                     if self.kinds_to_include and node_kind not in self.kinds_to_include:
                         continue
 
-                    schema = registry.get_schema(name=node_kind, branch=branch_name)
+                    schema = registry.schema.get(name=node_kind, branch=branch_name)
                     rel_schema = schema.get_relationship_by_identifier(id=rel_name, raise_on_error=False)
                     if not rel_schema:
                         continue
@@ -810,7 +810,7 @@ async def generate_diff_payload(  # pylint: disable=too-many-branches,too-many-s
                 **item_dict, elements=item_elements, display_label=branch_display_labels.get(item.id, "")
             )
 
-            schema = registry.get_schema(name=node_diff.kind, branch=node_diff.branch)
+            schema = registry.schema.get(name=node_diff.kind, branch=node_diff.branch)
 
             # Extract the value from the list of properties
             for _, element in node_diff.elements.items():
@@ -868,7 +868,7 @@ async def generate_diff_payload(  # pylint: disable=too-many-branches,too-many-s
                 if kinds_to_include and node_kind not in kinds_to_include:
                     continue
 
-                schema = registry.get_schema(name=node_kind, branch=branch_name)
+                schema = registry.schema.get(name=node_kind, branch=branch_name)
                 rel_schema = schema.get_relationship_by_identifier(id=rel_name, raise_on_error=False)
                 if not rel_schema:
                     continue
