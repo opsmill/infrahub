@@ -42,7 +42,7 @@ test.describe("/signin", () => {
       await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible();
     });
 
-    test.only("should refresh access token and retry failed request", async ({ page }) => {
+    test("should refresh access token and retry failed request", async ({ page }) => {
       let blockRequest = true; // force 401 on first call
 
       await page.route("**/graphql/main**", async (route) => {
