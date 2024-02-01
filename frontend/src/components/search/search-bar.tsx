@@ -21,6 +21,7 @@ type tSearchInput = {
   containerClassName?: string;
   loading?: boolean;
   placeholder?: string;
+  testId?: string;
 };
 
 export const SearchInput = (props: tSearchInput) => {
@@ -30,6 +31,7 @@ export const SearchInput = (props: tSearchInput) => {
     loading,
     onChange,
     placeholder = "Search",
+    testId = "search-bar",
   } = props;
 
   const [search, setSearch] = useState("");
@@ -56,7 +58,7 @@ export const SearchInput = (props: tSearchInput) => {
         <Input
           value={search}
           onChange={handleChange}
-          data-testid="search-bar"
+          data-testid={testId}
           className={classNames("py-2 pl-10 placeholder-gray-500", className)}
           placeholder={placeholder}
           onFocus={handleFocus}

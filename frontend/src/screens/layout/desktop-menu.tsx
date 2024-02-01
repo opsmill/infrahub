@@ -101,6 +101,7 @@ function DesktopMenu({ className = "" }: MenuProps) {
           containerClassName="z-0"
           className="!shadow-none !ring-0"
           placeholder="Quick navigation"
+          testId="search-menu"
         />
       </div>
 

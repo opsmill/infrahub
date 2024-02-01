@@ -12,7 +12,7 @@ test.describe("Sidebar menu", () => {
     });
 
     await test.step("filter with text 'inter'", async () => {
-      await page.getByPlaceholder("Quick navigation").fill("inter");
+      await page.getByTestId("search-menu").fill("inter");
     });
 
     await test.step("only items who includes 'bgp' are visible", async () => {
