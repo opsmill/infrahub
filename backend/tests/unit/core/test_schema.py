@@ -220,7 +220,7 @@ async def test_node_schema_generate_fields_for_display_label():
 
 
 async def test_rel_schema_query_filter(db: InfrahubDatabase, default_branch, car_person_schema):
-    person = registry.get_schema(name="TestPerson")
+    person = registry.schema.get(name="TestPerson")
     rel = person.relationships[0]
 
     # Filter relationships by NAME__VALUE
@@ -255,7 +255,7 @@ async def test_rel_schema_query_filter(db: InfrahubDatabase, default_branch, car
 
 
 async def test_rel_schema_query_filter_no_value(db: InfrahubDatabase, default_branch, car_person_schema):
-    person = registry.get_schema(name="TestPerson")
+    person = registry.schema.get(name="TestPerson")
     rel = person.relationships[0]
 
     # Filter relationships by NAME__VALUE

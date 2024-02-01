@@ -55,7 +55,7 @@ class SchemaDropdownAdd(Mutation):
     ):
         db: InfrahubDatabase = info.context.get("infrahub_database")
         branch: Branch = info.context.get("infrahub_branch")
-        kind = registry.get_schema(name=str(data.kind), branch=branch.name)
+        kind = registry.schema.get(name=str(data.kind), branch=branch.name)
         attribute = str(data.attribute)
         validate_kind_dropdown(kind=kind, attribute=attribute)
         dropdown = str(data.dropdown)
@@ -71,7 +71,7 @@ class SchemaDropdownAdd(Mutation):
 
         await update_registry(kind=kind, branch=branch, db=db)
 
-        kind = registry.get_schema(name=str(data.kind), branch=branch.name)
+        kind = registry.schema.get(name=str(data.kind), branch=branch.name)
         attrib = kind.get_attribute(attribute)
         dropdown_entry = {}
         success = False
@@ -104,7 +104,7 @@ class SchemaDropdownRemove(Mutation):
     ) -> Dict[str, bool]:
         db: InfrahubDatabase = info.context.get("infrahub_database")
         branch: Branch = info.context.get("infrahub_branch")
-        kind = registry.get_schema(name=str(data.kind), branch=branch.name)
+        kind = registry.schema.get(name=str(data.kind), branch=branch.name)
 
         attribute = str(data.attribute)
         validate_kind_dropdown(kind=kind, attribute=attribute)
@@ -145,7 +145,7 @@ class SchemaEnumAdd(Mutation):
     ) -> Dict[str, bool]:
         db: InfrahubDatabase = info.context.get("infrahub_database")
         branch: Branch = info.context.get("infrahub_branch")
-        kind = registry.get_schema(name=str(data.kind), branch=branch.name)
+        kind = registry.schema.get(name=str(data.kind), branch=branch.name)
 
         attribute = str(data.attribute)
         enum = str(data.enum)
@@ -179,7 +179,7 @@ class SchemaEnumRemove(Mutation):
     ) -> Dict[str, bool]:
         db: InfrahubDatabase = info.context.get("infrahub_database")
         branch: Branch = info.context.get("infrahub_branch")
-        kind = registry.get_schema(name=str(data.kind), branch=branch.name)
+        kind = registry.schema.get(name=str(data.kind), branch=branch.name)
 
         attribute = str(data.attribute)
         enum = str(data.enum)

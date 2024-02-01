@@ -29,7 +29,7 @@ class DummyRelationshipQuery(RelationshipQuery):
 async def test_RelationshipQuery_init(
     db: InfrahubDatabase, tag_blue_main: Node, person_jack_main: Node, branch: Branch
 ):
-    person_schema = registry.get_schema(name="TestPerson")
+    person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
     with pytest.raises(ValueError) as exc:
@@ -71,7 +71,7 @@ async def test_RelationshipQuery_init(
 async def test_query_RelationshipCreateQuery(
     db: InfrahubDatabase, tag_blue_main: Node, person_jack_main: Node, branch: Branch
 ):
-    person_schema = registry.get_schema(name="TestPerson")
+    person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
     query = await RelationshipCreateQuery.init(
@@ -96,7 +96,7 @@ async def test_query_RelationshipCreateQuery(
 async def test_query_RelationshipCreateQuery_w_node_property(
     db: InfrahubDatabase, tag_blue_main: Node, person_jack_main: Node, first_account: Node, branch: Branch
 ):
-    person_schema = registry.get_schema(name="TestPerson")
+    person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
     paths = await get_paths_between_nodes(
@@ -129,7 +129,7 @@ async def test_query_RelationshipCreateQuery_w_node_property(
 async def test_query_RelationshipDeleteQuery(
     db: InfrahubDatabase, tag_blue_main: Node, person_jack_tags_main: Node, branch: Branch
 ):
-    person_schema = registry.get_schema(name="TestPerson")
+    person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
     # We should have 2 paths between t1 and p1
@@ -252,7 +252,7 @@ async def test_query_RelationshipDeleteQuery(
 async def test_query_RelationshipGetPeerQuery(
     db: InfrahubDatabase, tag_blue_main: Node, person_jack_tags_main: Node, branch: Branch
 ):
-    person_schema = registry.get_schema(name="TestPerson")
+    person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
     query = await RelationshipGetPeerQuery.init(
@@ -289,7 +289,7 @@ async def test_query_RelationshipGetPeerQuery_with_filter(
     car_yaris_main,
     branch: Branch,
 ):
-    person_schema = registry.get_schema(name="TestPerson")
+    person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("cars")
 
     query = await RelationshipGetPeerQuery.init(
@@ -317,7 +317,7 @@ async def test_query_RelationshipGetPeerQuery_with_id(
     car_yaris_main,
     branch: Branch,
 ):
-    person_schema = registry.get_schema(name="TestPerson")
+    person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("cars")
 
     query = await RelationshipGetPeerQuery.init(
@@ -344,7 +344,7 @@ async def test_query_RelationshipGetPeerQuery_with_ids(
     car_yaris_main,
     branch: Branch,
 ):
-    person_schema = registry.get_schema(name="TestPerson")
+    person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("cars")
 
     query = await RelationshipGetPeerQuery.init(
@@ -405,7 +405,7 @@ async def test_query_RelationshipGetPeerQuery_deleted_node(
     node = await NodeManager.get_one(id=car_volt_main.id, db=db, branch=branch)
     await node.delete(db=db)
 
-    person_schema = registry.get_schema(name="TestPerson")
+    person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("cars")
 
     query = await RelationshipGetPeerQuery.init(
@@ -431,7 +431,7 @@ async def test_query_RelationshipGetPeerQuery_with_multiple_filter(
     car_yaris_main,
     branch: Branch,
 ):
-    person_schema = registry.get_schema(name="TestPerson")
+    person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("cars")
 
     query = await RelationshipGetPeerQuery.init(
@@ -452,7 +452,7 @@ async def test_query_RelationshipGetPeerQuery_with_multiple_filter(
 async def test_query_RelationshipDataDeleteQuery(
     db: InfrahubDatabase, tag_blue_main: Node, person_jack_tags_main: Node, branch: Branch
 ):
-    person_schema = registry.get_schema(name="TestPerson")
+    person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
     # We should have 2 paths between t1 and p1
