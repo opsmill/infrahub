@@ -3,6 +3,7 @@ from __future__ import annotations
 import enum
 import hashlib
 import keyword
+import pickle
 import re
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
@@ -184,7 +185,7 @@ class BaseSchemaModel(BaseModel):
         """Duplicate the current object by doing a deep copy of everything and recreating a new object."""
         # import copy
         # return self.__class__(**copy.deepcopy(self.model_dump()))
-        return self.model_construct(self.model_dump())
+        return self.__class__(**pickle.loads(pickle.dumps(self.model_dump(), pickle.HIGHEST_PROTOCOL)))
 
     @staticmethod
     def is_list_composed_of_schema_model(items) -> bool:
