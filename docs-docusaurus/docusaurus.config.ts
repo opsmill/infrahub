@@ -36,12 +36,12 @@ const config: Config = {
       'classic',
       {
         docs: {
-          sidebarPath: './sidebars.ts',
-          routeBasePath: '/',
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
-          editUrl:
-            'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
+          editUrl: 'https://github.com/opsmill/infrahub/tree/bab-docusaurus-demo/docs/',
+          routeBasePath: '/',
+          sidebarCollapsed: true,
+          sidebarPath: './sidebars.ts',
         },
         blog: false,
         theme: {
@@ -50,7 +50,12 @@ const config: Config = {
       } satisfies Preset.Options,
     ],
   ],
-
+  themes: [["@easyops-cn/docusaurus-search-local", {
+    indexBlog: false,
+    indexDocs: true,
+    docsRouteBasePath: '/', // this needs to be the same as routeBasePath
+    hashed: true
+  }]],
   themeConfig: {
     // announcementBar: {
     //   content: 'Welcome to our brand new docs!',
@@ -67,6 +72,10 @@ const config: Config = {
           sidebarId: 'docsSidebar',
           position: 'left',
           label: 'Documentation',
+        },
+        {
+          type: 'search',
+          position: 'right',
         },
         {
           href: "https://github.com/opsmill/infrahub",
