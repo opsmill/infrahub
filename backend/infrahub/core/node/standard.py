@@ -88,17 +88,6 @@ class StandardNode(BaseModel):
         query: Query = await StandardNodeDeleteQuery.init(db=db, node=self)
         await query.execute(db=db)
 
-    async def refresh(self, db: InfrahubDatabase) -> bool:
-        """Pull the latest state of the object from the database."""
-
-        # Might need ot check how to manage the default value
-        raw_attrs = self._get_item_raw(self.id, db=db)
-        for item in raw_attrs:
-            if item[1] != getattr(self, item[0]):
-                setattr(self, item[0], item[1])
-
-        return True
-
     async def create(self, db: InfrahubDatabase) -> bool:
         """Create a new node in the database."""
 

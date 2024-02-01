@@ -53,6 +53,7 @@ async def _run(
     branch: str,
     concurrent: int,
     timeout: int,
+    variables: Optional[dict] = None,
 ) -> None:
     directory_name = os.path.dirname(script)
     filename = os.path.basename(script)
@@ -69,10 +70,9 @@ async def _run(
     if not hasattr(module, method):
         raise typer.Abort(f"Unable to Load the method {method} in the Python script at {script}")
 
-    client = await initialize_client(timeout=timeout, max_concurrent_execution=concurrent)
-
+    client = await initialize_client(timeout=timeout, max_concurrent_execution=concurrent, identifier=module_name)
     func = getattr(module, method)
-    await func(client=client, log=log, branch=branch)
+    await func(client=client, log=log, branch=branch, **variables)
 
 
 def render_jinja2_template(template_path: Path, variables: Dict[str, str], data: str) -> str:
@@ -218,6 +218,9 @@ def run(
         envvar="INFRAHUBCTL_CONCURRENT_EXECUTION",
     ),
     timeout: int = typer.Option(60, help="Timeout in sec", envvar="INFRAHUBCTL_TIMEOUT"),
+    variables: Optional[List[str]] = typer.Argument(
+        None, help="Variables to pass along with the query. Format key=value key=value."
+    ),
 ) -> None:
     """Execute a script."""
 
@@ -233,6 +236,8 @@ def run(
     logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
     log = logging.getLogger("infrahubctl")
 
+    variables_dict = parse_cli_vars(variables)
+
     asyncio.run(
         _run(
             script=script,
@@ -241,5 +246,6 @@ def run(
             branch=branch,
             concurrent=concurrent,
             timeout=timeout,
+            variables=variables_dict,
         )
     )

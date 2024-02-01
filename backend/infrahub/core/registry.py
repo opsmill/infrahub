@@ -129,15 +129,6 @@ class Registry:
         default_branch = config.SETTINGS.main.default_branch
         return attr[default_branch]
 
-    def set_schema(self, name: str, schema: Union[NodeSchema, GenericSchema], branch: Optional[str] = None) -> int:
-        return self.schema.set(name=name, schema=schema, branch=branch)
-
-    def has_schema(self, name: str, branch: Optional[Union[Branch, str]] = None) -> bool:
-        return self.schema.has(name=name, branch=branch)
-
-    def get_schema(self, name: str, branch: Optional[Union[Branch, str]] = None) -> Union[NodeSchema, GenericSchema]:
-        return self.schema.get(name=name, branch=branch)
-
     def get_node_schema(self, name: str, branch: Optional[Union[Branch, str]] = None) -> NodeSchema:
         return self.schema.get(name=name, branch=branch)
 

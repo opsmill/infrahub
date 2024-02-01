@@ -163,7 +163,7 @@ async def test_generate_object_types(
 async def test_generate_filters(
     db: InfrahubDatabase, default_branch: Branch, data_schema, group_graphql, car_person_schema_generics
 ):
-    person = registry.get_schema(name="TestPerson")
+    person = registry.schema.get(name="TestPerson")
     filters = await generate_filters(db=db, schema=person, top_level=True)
     expected_filters = [
         "offset",

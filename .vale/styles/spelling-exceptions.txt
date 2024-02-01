@@ -6,7 +6,7 @@ async
 autoflake
 check_definitions
 class_name
-codespace
+codespaces
 config
 content_type
 cypher

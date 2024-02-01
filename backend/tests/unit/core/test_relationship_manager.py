@@ -10,7 +10,7 @@ from infrahub.database import InfrahubDatabase
 
 
 async def test_one_init_no_input_no_rel(db: InfrahubDatabase, person_jack_main: Node, branch: Branch):
-    person_schema = registry.get_schema(name="TestPerson")
+    person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("primary_tag")
 
     relm = await RelationshipManager.init(
@@ -27,7 +27,7 @@ async def test_one_init_no_input_no_rel(db: InfrahubDatabase, person_jack_main: 
 async def test_one_init_no_input_existing_rel(
     db: InfrahubDatabase, tag_blue_main: Node, person_jack_primary_tag_main: Node, branch: Branch
 ):
-    person_schema = registry.get_schema(name="TestPerson")
+    person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("primary_tag")
 
     relm = await RelationshipManager.init(
@@ -44,7 +44,7 @@ async def test_one_init_no_input_existing_rel(
 
 
 async def test_many_init_no_input_no_rel(db: InfrahubDatabase, person_jack_main: Node, branch: Branch):
-    person_schema = registry.get_schema(name="TestPerson")
+    person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
     relm = await RelationshipManager.init(
@@ -59,7 +59,7 @@ async def test_many_init_no_input_no_rel(db: InfrahubDatabase, person_jack_main:
 
 
 async def test_many_init_no_input_existing_rel(db: InfrahubDatabase, person_jack_tags_main: Node, branch: Branch):
-    person_schema = registry.get_schema(name="TestPerson")
+    person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
     relm = await RelationshipManager.init(
@@ -70,7 +70,7 @@ async def test_many_init_no_input_existing_rel(db: InfrahubDatabase, person_jack
 
 
 async def test_one_init_input_obj(db: InfrahubDatabase, tag_blue_main: Node, person_jack_main: Node, branch: Branch):
-    person_schema = registry.get_schema(name="TestPerson")
+    person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("primary_tag")
 
     relm = await RelationshipManager.init(
@@ -88,7 +88,7 @@ async def test_one_init_input_obj(db: InfrahubDatabase, tag_blue_main: Node, per
 
 
 async def test_one_save_input_obj(db: InfrahubDatabase, tag_blue_main: Node, person_jack_main: Node, branch: Branch):
-    person_schema = registry.get_schema(name="TestPerson")
+    person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("primary_tag")
 
     # We should have only 1 paths between t1 and p1 via the branch
@@ -119,7 +119,7 @@ async def test_one_save_input_obj(db: InfrahubDatabase, tag_blue_main: Node, per
 async def test_one_udpate(
     db: InfrahubDatabase, tag_blue_main: Node, person_jack_primary_tag_main: Node, branch: Branch
 ):
-    person_schema = registry.get_schema(name="TestPerson")
+    person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("primary_tag")
 
     # We should have only 1 paths between t1 and p1 via the branch
@@ -150,7 +150,7 @@ async def test_one_udpate(
 async def test_many_init_input_obj(
     db: InfrahubDatabase, tag_blue_main: Node, tag_red_main: Node, person_jack_main: Node, branch: Branch
 ):
-    person_schema = registry.get_schema(name="TestPerson")
+    person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
     relm = await RelationshipManager.init(
@@ -169,7 +169,7 @@ async def test_many_init_input_obj(
 async def test_many_save_input_obj(
     db: InfrahubDatabase, tag_blue_main: Node, tag_red_main: Node, person_jack_main: Node, branch: Branch
 ):
-    person_schema = registry.get_schema(name="TestPerson")
+    person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
     # We should have only 1 paths between t1 and p1 via the branch
@@ -208,7 +208,7 @@ async def test_many_save_input_obj(
 async def test_many_update(
     db: InfrahubDatabase, tag_blue_main: Node, tag_red_main: Node, person_jack_main: Node, branch: Branch
 ):
-    person_schema = registry.get_schema(name="TestPerson")
+    person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
     relm = await RelationshipManager.init(
