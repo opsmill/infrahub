@@ -40,8 +40,6 @@ class InfrahubCheckItem(InfrahubItem):
                 raise CheckDefinitionError(f"Missing attribute or function {attr}")
 
     def run_check(self, variables: Dict[str, Any]) -> Any:
-        # FIXME: https://github.com/opsmill/infrahub/issues/1994
-        # Keep the 'data' key
         return asyncio.run(self.check_instance.run(data=variables))
 
     def repr_failure(self, excinfo: ExceptionInfo, style: Optional[str] = None) -> str:

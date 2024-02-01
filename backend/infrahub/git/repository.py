@@ -1849,16 +1849,19 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             rebase=transformation.rebase.value,
             timeout=transformation.timeout.value,
         )
-        data = response.get("data")
 
         if transformation.typename == InfrahubKind.TRANSFORMJINJA2:
             artifact_content = await self.render_jinja2_template(
-                commit=commit, location=transformation.template_path.value, data={"data": data}
+                commit=commit, location=transformation.template_path.value, data=response
             )
         elif transformation.typename == "CoreTransformPython":
             transformation_location = f"{transformation.file_path.value}::{transformation.class_name.value}"
             artifact_content = await self.execute_python_transform(
-                branch_name=branch_name, commit=commit, location=transformation_location, data=data, client=self.client
+                branch_name=branch_name,
+                commit=commit,
+                location=transformation_location,
+                data=response,
+                client=self.client,
             )
 
         if definition.content_type.value == "application/json":
@@ -1896,18 +1899,17 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             rebase=message.rebase,
             timeout=message.timeout,
         )
-        data = response.get("data")
 
         if message.transform_type == InfrahubKind.TRANSFORMJINJA2:
             artifact_content = await self.render_jinja2_template(
-                commit=message.commit, location=message.transform_location, data={"data": data}
+                commit=message.commit, location=message.transform_location, data=response
             )
         elif message.transform_type == "CoreTransformPython":
             artifact_content = await self.execute_python_transform(
                 branch_name=message.branch_name,
                 commit=message.commit,
                 location=message.transform_location,
-                data=data,
+                data=response,
                 client=self.client,
             )
 

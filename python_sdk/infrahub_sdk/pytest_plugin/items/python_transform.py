@@ -40,9 +40,6 @@ class InfrahubPythonTransformItem(InfrahubItem):
                 raise PythonTransformDefinitionError(f"Missing attribute or function {attr}")
 
     def run_transform(self, variables: Dict[str, Any]) -> Any:
-        # FIXME: https://github.com/opsmill/infrahub/issues/1994
-        if "data" in variables:
-            variables = variables["data"]
         return asyncio.run(self.transform_instance.run(data=variables))
 
     def repr_failure(self, excinfo: ExceptionInfo, style: Optional[str] = None) -> str:
