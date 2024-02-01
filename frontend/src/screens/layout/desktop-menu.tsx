@@ -15,7 +15,7 @@ import DropDownMenuHeader from "./desktop-menu-header";
 import { Footer } from "./footer";
 import { classNames } from "../../utils/common";
 
-export default function Sidebar() {
+export function Sidebar() {
   return (
     <div className="z-100 hidden w-64 md:flex flex-col border-r">
       <div className="flex flex-grow flex-col overflow-y-auto min-h-0">
