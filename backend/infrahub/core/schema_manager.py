@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import copy
 import hashlib
+import pickle
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
@@ -142,7 +142,9 @@ class SchemaBranch:
 
     def duplicate(self, name: Optional[str] = None) -> SchemaBranch:
         """Duplicate the current object but conserve the same cache."""
-        return self.__class__(name=name, data=copy.deepcopy(self.to_dict()), cache=self._cache)
+        return self.__class__(
+            name=name, data=pickle.loads(pickle.dumps(self.to_dict(), pickle.HIGHEST_PROTOCOL)), cache=self._cache
+        )
 
     def set(self, name: str, schema: Union[NodeSchema, GenericSchema]) -> str:
         """Store a NodeSchema or GenericSchema associated with a specific name.
