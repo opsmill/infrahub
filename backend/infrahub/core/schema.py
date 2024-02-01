@@ -10,7 +10,6 @@ from infrahub_sdk.utils import compare_lists
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from infrahub import config
-from infrahub.core import registry
 from infrahub.core.constants import (
     RESTRICTED_NAMESPACES,
     AccountRole,
@@ -293,8 +292,8 @@ class RelationshipSchema(HashableModel):
     def get_class(self):
         return Relationship
 
-    async def get_peer_schema(self, branch: Optional[Union[Branch, str]] = None):
-        return registry.schema.get(name=self.peer, branch=branch, duplicate=False)
+    async def get_peer_schema(self, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None):
+        return db.schema.get(name=self.peer, branch=branch, duplicate=False)
 
     @property
     def internal_peer(self) -> bool:
@@ -337,7 +336,7 @@ class RelationshipSchema(HashableModel):
         query_params[f"{prefix}_rel_name"] = self.identifier
 
         rel_type = self.get_class().rel_type
-        peer_schema = await self.get_peer_schema(branch=branch)
+        peer_schema = await self.get_peer_schema(db=db, branch=branch)
 
         if include_match:
             query_filter.append(QueryNode(name="n"))
@@ -691,7 +690,7 @@ class GenericSchema(BaseNodeSchema):
     hierarchical: bool = Field(default=False, json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value})
     used_by: List[str] = Field(default_factory=list, json_schema_extra={"update": UpdateSupport.NOT_APPLICABLE.value})
 
-    def get_hierarchy_schema(self, branch: Optional[Union[Branch, str]] = None) -> GenericSchema:  # pylint: disable=unused-argument
+    def get_hierarchy_schema(self, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None) -> GenericSchema:  # pylint: disable=unused-argument
         if self.hierarchical:
             return self
 
@@ -735,8 +734,8 @@ class NodeSchema(BaseNodeSchema):
                 item_idx = existing_inherited_relationships[item.name]
                 self.relationships[item_idx] = new_item
 
-    def get_hierarchy_schema(self, branch: Optional[Union[Branch, str]] = None) -> GenericSchema:
-        schema = registry.schema.get(name=self.hierarchy, branch=branch)
+    def get_hierarchy_schema(self, db: InfrahubDatabase, branch: Optional[Union[Branch, str]] = None) -> GenericSchema:
+        schema = db.schema.get(name=self.hierarchy, branch=branch)
         if not isinstance(schema, GenericSchema):
             raise TypeError
         return schema

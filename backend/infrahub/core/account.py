@@ -102,7 +102,7 @@ async def get_account(
     if account in registry.account:
         return registry.account[account]
 
-    account_schema = registry.schema.get(name=InfrahubKind.ACCOUNT)
+    account_schema = db.schema.get(name=InfrahubKind.ACCOUNT)
 
     obj = await NodeManager.query(
         schema=account_schema, filters={account_schema.default_filter: account}, branch=branch, at=at, db=db

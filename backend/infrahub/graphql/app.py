@@ -56,6 +56,7 @@ except ImportError:
 from infrahub_sdk.utils import str_to_bool
 
 import infrahub.config as config
+from infrahub.core import registry
 from infrahub.api.dependencies import api_key_scheme, cookie_auth_scheme, jwt_scheme
 from infrahub.auth import AccountSession, authentication_token
 from infrahub.core import get_branch
@@ -152,6 +153,9 @@ class InfrahubGraphQLApp:
                 except BranchNotFound as exc:
                     response = JSONResponse({"errors": [exc.message]}, status_code=404)
 
+            schema_branch = registry.schema.get_schema_branch(name=branch.name)
+
+            async with db.start_session(schemas=[schema_branch]) as db:
                 if request.method == "POST" and not response:
                     response = await self._handle_http_request(
                         request=request, db=db, branch=branch, account_session=account_session

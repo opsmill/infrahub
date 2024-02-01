@@ -138,7 +138,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             attrs["schema"] = schema
         elif isinstance(schema, str):
             # TODO need to raise a proper exception for this, right now it will raise a generic ValueError
-            attrs["schema"] = registry.schema.get(name=schema, branch=branch)
+            attrs["schema"] = db.schema.get(name=schema, branch=branch)
         else:
             raise ValueError(f"Invalid schema provided {type(schema)}, expected NodeSchema")
 

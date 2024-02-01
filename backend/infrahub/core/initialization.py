@@ -216,7 +216,7 @@ async def first_time_initialization(db: InfrahubDatabase):
     # --------------------------------------------------
     # Create Default Users and Groups
     # --------------------------------------------------
-    token_schema = registry.schema.get(name=InfrahubKind.ACCOUNTTOKEN)
+    token_schema = db.schema.get(name=InfrahubKind.ACCOUNTTOKEN)
     obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
     await obj.new(
         db=db,

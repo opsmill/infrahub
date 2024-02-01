@@ -1269,6 +1269,7 @@ class SchemaManager(NodeManager):
             )
 
         self._branches[branch.name] = updated_schema or schema
+        self._branches[branch.name].name = branch.name
 
     def register_schema(self, schema: SchemaRoot, branch: Optional[str] = None) -> SchemaBranch:
         """Register all nodes, generics & groups from a SchemaRoot object into the registry."""

@@ -37,7 +37,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
-    from infrahub.core.schema import NodeSchema, RelationshipSchema
+    from infrahub.core.schema import GenericSchema, NodeSchema, RelationshipSchema
     from infrahub.database import InfrahubDatabase
 
 # pylint: disable=redefined-builtin
@@ -250,8 +250,8 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         self._peer = peer
         self.peer_id = self._peer.id
 
-    async def get_peer_schema(self) -> NodeSchema:
-        return registry.schema.get(name=self.schema.peer, branch=self.branch)
+    async def get_peer_schema(self, db: InfrahubDatabase) -> Union[NodeSchema, GenericSchema]:
+        return db.schema.get(name=self.schema.peer, branch=self.branch)
 
     def compare_properties_with_data(self, data: RelationshipPeerData) -> List[str]:
         different_properties = []
