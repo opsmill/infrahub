@@ -52,9 +52,7 @@ class HashableModelDiff(BaseModel):
 
     @property
     def has_diff(self) -> bool:
-        if len(self.added) == 0 and len(self.changed) == 0 and len(self.removed) == 0:
-            return False
-        return True
+        return bool(len(self.added) + len(self.changed) + len(self.removed))
 
 
 class HashableModel(BaseModel):
