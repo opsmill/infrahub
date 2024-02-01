@@ -13,8 +13,32 @@ import { fetchUrl } from "../../utils/fetch";
 import LoadingScreen from "../loading-screen/loading-screen";
 import DropDownMenuHeader from "./desktop-menu-header";
 import { Footer } from "./footer";
+import { classNames } from "../../utils/common";
 
-export default function DesktopMenu() {
+export default function Sidebar() {
+  return (
+    <div className="z-100 hidden w-64 md:flex flex-col border-r">
+      <div className="flex flex-grow flex-col overflow-y-auto min-h-0">
+        <Link to="/" className="h-16 flex-shrink-0 px-5 flex items-center">
+          <InfrahubLogo />
+        </Link>
+
+        <div className="border-b flex flex-col items-stretch p-2 gap-2">
+          <BranchSelector />
+        </div>
+
+        <DesktopMenu className="border-b flex-grow min-h-0 overflow-auto " />
+      </div>
+
+      <Footer />
+    </div>
+  );
+}
+
+type MenuProps = {
+  className?: string;
+};
+function DesktopMenu({ className = "" }: MenuProps) {
   const branch = useAtomValue(currentBranchAtom);
   const currentSchemaHash = useAtomValue(currentSchemaHashAtom);
 
@@ -48,48 +72,34 @@ export default function DesktopMenu() {
   };
 
   return (
-    <div className="z-100 hidden w-64 md:flex flex-col border-r">
-      <div className="flex flex-grow flex-col overflow-y-auto min-h-0">
-        <Link to="/" className="h-16 flex-shrink-0 px-5 flex items-center">
-          <InfrahubLogo />
-        </Link>
-
-        <div className="border-b flex flex-col items-stretch p-2 gap-2">
-          <BranchSelector />
-        </div>
-
-        <div className="border-b flex-grow min-h-0 overflow-auto flex flex-col">
-          <div className="border-b py-2">
-            <SearchInput
-              onChange={onFilterChange}
-              containerClassName="z-0"
-              className="!shadow-none !ring-0"
-              placeholder="Filter..."
-            />
-          </div>
-
-          {isLoading && <LoadingScreen size={32} hideText />}
-
-          {!isLoading && (
-            <nav
-              className="flex-grow min-h-0 overflow-auto"
-              aria-label="Sidebar"
-              data-cy="sidebar-menu"
-              data-testid="sidebar-menu">
-              {menu.map((item: any, index: number) => (
-                <DropDownMenuHeader
-                  key={index}
-                  title={item.title}
-                  items={item.children}
-                  icon={item.icon}
-                />
-              ))}
-            </nav>
-          )}
-        </div>
+    <div className={classNames("flex flex-col", className)}>
+      <div className="border-b py-2">
+        <SearchInput
+          onChange={onFilterChange}
+          containerClassName="z-0"
+          className="!shadow-none !ring-0"
+          placeholder="Filter..."
+        />
       </div>
 
-      <Footer />
+      {isLoading && <LoadingScreen size={32} hideText />}
+
+      {!isLoading && (
+        <nav
+          className="flex-grow min-h-0 overflow-auto"
+          aria-label="Sidebar"
+          data-cy="sidebar-menu"
+          data-testid="sidebar-menu">
+          {menu.map((item: any, index: number) => (
+            <DropDownMenuHeader
+              key={index}
+              title={item.title}
+              items={item.children}
+              icon={item.icon}
+            />
+          ))}
+        </nav>
+      )}
     </div>
   );
 }
