@@ -48,12 +48,8 @@ test.describe("/signin", () => {
       await page.route("**/graphql/main**", async (route) => {
         const reqData = route.request().postDataJSON();
 
-        await page.pause();
-
         if (reqData.operationName === "BuiltinTag" && blockRequest) {
           blockRequest = false;
-
-          await page.pause();
 
           await route.fulfill({
             status: 401,
@@ -70,17 +66,11 @@ test.describe("/signin", () => {
             },
           });
         } else {
-          await page.pause();
-
           await route.fallback();
         }
       });
 
-      await page.pause();
-
       await page.goto("/objects/BuiltinTag");
-
-      await page.pause();
 
       await page.waitForResponse((response) => {
         const reqData = response.request().postDataJSON();
