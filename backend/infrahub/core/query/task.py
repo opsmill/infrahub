@@ -66,7 +66,6 @@ class TaskNodeQuery(StandardNodeQuery):
     name: str = "task_query"
 
     type: QueryType = QueryType.READ
-    insert_return: bool = False
 
     def __init__(
         self,
@@ -83,20 +82,15 @@ class TaskNodeQuery(StandardNodeQuery):
         if self.related_nodes:
             self.add_to_query(query="WHERE rn.uuid IN $related_nodes")
 
-        if self.limit:
-            # All regular queries will include a limit this is to avoid ordering the count query
-            self.add_to_query(query="RETURN n,rn")
-            self.add_to_query(query="ORDER BY n.created_at DESC")
-
-            self.return_labels = [
-                "n",
-                "rn",
-            ]
+        self.order_by = ["n.created_at DESC"]
+        self.return_labels = [
+            "n",
+            "rn",
+        ]
 
 
 class TaskNodeQueryWithLogs(TaskNodeQuery):
     name: str = "task_query_with_logs"
-    insert_return: bool = False
 
     type: QueryType = QueryType.READ
 
@@ -108,11 +102,10 @@ class TaskNodeQueryWithLogs(TaskNodeQuery):
         query = """
         OPTIONAL MATCH (n)<-[r:RELATES_TO]-(l:TaskLog)
         WITH n, rn, COLLECT(l) as logs
-        ORDER BY n.created_at DESC
-        RETURN n, logs, rn
         """
 
         self.add_to_query(query=query)
+        self.order_by = ["n.created_at DESC"]
 
         self.return_labels = [
             "n",

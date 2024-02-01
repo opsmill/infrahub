@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from typing import Any, Dict, Optional, TypeVar
-from uuid import uuid4
 
 import aio_pika
 from pydantic import BaseModel, Field
@@ -65,7 +64,6 @@ class Meta(BaseModel):
     check_execution_id: Optional[str] = Field(default=None, description="Check execution ID related to this message")
     priority: int = Field(default=3, description="Message Priority")
     expiration: Optional[int] = Field(default=None, description="TTL before this message expires in seconds")
-    task_id: Optional[str] = Field(default=None, description="Assigned task ID if applicable")
 
     @classmethod
     def default(cls) -> Meta:
@@ -89,9 +87,6 @@ class InfrahubMessage(BaseModel):
     def assign_priority(self, priority: int) -> None:
         self.meta.priority = priority
 
-    def assign_task_id(self) -> None:
-        self.meta.task_id = str(uuid4())
-
     def assign_expiration(self, expiration: int) -> None:
         self.meta.expiration = expiration
 
@@ -99,8 +94,6 @@ class InfrahubMessage(BaseModel):
         set_log_data(key="routing_key", value=routing_key)
         if self.meta.request_id:
             set_log_data(key="request_id", value=self.meta.request_id)
-        if self.meta.task_id:
-            set_log_data(key="task_id", value=self.meta.request_id)
 
     @property
     def reply_requested(self) -> bool:

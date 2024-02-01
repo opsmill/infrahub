@@ -9,6 +9,7 @@ from infrahub.core.query.standard_node import StandardNodeQuery
 from infrahub.core.query.task import TaskNodeCreateQuery, TaskNodeQuery, TaskNodeQueryWithLogs
 from infrahub.core.timestamp import current_timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.utils import get_nested_dict
 
 from .task_log import TaskLog
 
@@ -30,7 +31,7 @@ class Task(StandardNode):
     async def query(
         cls, db: InfrahubDatabase, fields: Dict[str, Any], limit: int, offset: int, related_nodes: List[str]
     ) -> Dict[str, Any]:
-        log_fields = get_nested_dict(nested_dict=fields, keys=["edges", "node", "log", "edges", "node"])
+        log_fields = get_nested_dict(nested_dict=fields, keys=["edges", "node", "logs", "edges", "node"])
         count = None
         if "count" in fields:
             query = await TaskNodeQuery.init(db=db, related_nodes=related_nodes)
@@ -69,19 +70,8 @@ class Task(StandardNode):
                     "created_at": task.created_at,
                     "updated_at": task.updated_at,
                     "id": task_result.get("uuid"),
-                    "log": {"edges": logs},
+                    "logs": {"edges": logs},
                 }
             )
 
         return {"count": count, "edges": {"node": nodes}}
-
-
-def get_nested_dict(nested_dict: Dict[str, Any], keys: List[str]) -> Dict[str, Any]:
-    current_level = nested_dict
-    for key in keys:
-        # Check if the key exists and leads to a dictionary
-        if isinstance(current_level, dict) and key in current_level:
-            current_level = current_level[key]
-        else:
-            return {}
-    return current_level if isinstance(current_level, dict) else {}

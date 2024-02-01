@@ -2,9 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from infrahub.core.constants import TaskConclusion
 from infrahub.core.query import QueryType
-from infrahub.core.timestamp import current_timestamp
 
 from .standard_node import StandardNodeQuery
 
@@ -28,10 +26,8 @@ class TaskLogNodeCreateQuery(StandardNodeQuery):
         # we want the relationship to be setup regardless so that it's in place for when the
         # Task gets propperly created.
         query = """
-        CREATE (n:%(node_type)s $node_prop)
-        MERGE (t:Task {uuid: $task_id})
-        ON CREATE SET t.created_at = "%(timestamp)s", t.updated_at = "%(timestamp)s", t.conclusion = "%(conclusion)s"
-        CREATE (n)-[:RELATES_TO]->(t)
-        """ % {"node_type": node_type, "timestamp": current_timestamp(), "conclusion": TaskConclusion.UNKNOWN.value}
+        MATCH (t:Task {uuid: $task_id})
+        CREATE (n:%(node_type)s $node_prop)-[:RELATES_TO]->(t)
+        """ % {"node_type": node_type}
         self.add_to_query(query=query)
         self.return_labels = ["n"]

@@ -16,7 +16,7 @@ class Task(ObjectType):
 class TaskNode(Task):
     related_node = String(required=True)
     related_node_kind = String(required=True)
-    log = Field(TaskLogEdge)
+    logs = Field(TaskLogEdge)
 
 
 class TaskNodes(ObjectType):

@@ -1,7 +1,7 @@
 import hashlib
 import os
 from enum import Enum, EnumMeta
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 KWARGS_TO_DROP = ["session"]
 
@@ -65,3 +65,14 @@ class InfrahubStringEnum(str, BaseEnum):
 
     def get_hash(self) -> str:
         return hashlib.md5(self.value.encode()).hexdigest()
+
+
+def get_nested_dict(nested_dict: Dict[str, Any], keys: List[str]) -> Dict[str, Any]:
+    current_level = nested_dict
+    for key in keys:
+        # Check if the key exists and leads to a dictionary
+        if isinstance(current_level, dict) and key in current_level:
+            current_level = current_level[key]
+        else:
+            return {}
+    return current_level if isinstance(current_level, dict) else {}

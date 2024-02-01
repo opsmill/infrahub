@@ -128,7 +128,7 @@ class StandardNode(BaseModel):
         return True
 
     @classmethod
-    async def get(cls, id: str, db: InfrahubDatabase) -> Self:
+    async def get(cls, id: str, db: InfrahubDatabase) -> Optional[Self]:
         """Get a node from the database identified by its ID."""
 
         node = await cls._get_item_raw(id=id, db=db)

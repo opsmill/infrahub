@@ -29,8 +29,7 @@ from .proposed_change import (
 from .relationship import RelationshipAdd, RelationshipRemove
 from .repository import InfrahubRepositoryMutation
 from .schema import SchemaDropdownAdd, SchemaDropdownRemove, SchemaEnumAdd, SchemaEnumRemove
-from .task import TaskCreate
-from .task_log import TaskLogCreate
+from .task import TaskCreate, TaskUpdate
 
 __all__ = [
     "AnyAttributeInput",
@@ -66,5 +65,5 @@ __all__ = [
     "SchemaEnumAdd",
     "SchemaEnumRemove",
     "TaskCreate",
-    "TaskLogCreate",
+    "TaskUpdate",
 ]

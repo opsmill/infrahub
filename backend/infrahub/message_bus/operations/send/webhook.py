@@ -1,7 +1,8 @@
 import json
 from typing import Dict, Type
 
-from infrahub.core.constants import Severity
+from infrahub_sdk.uuidt import UUIDT
+
 from infrahub.message_bus import messages
 from infrahub.services import InfrahubServices
 from infrahub.webhook import CustomWebhook, StandardWebhook, TransformWebhook, Webhook
@@ -12,7 +13,16 @@ async def event(message: messages.SendWebhookEvent, service: InfrahubServices) -
     if not webhook_definition:
         service.log.warning("Webhook not found", webhook_id=message.webhook_id)
         return
-
+    task_id = str(UUIDT())
+    await service.client.execute_graphql(
+        query=CREATE_TASK,
+        variables={
+            "conclusion": "UNKNOWN",
+            "related_node": message.webhook_id,
+            "task_id": task_id,
+            "title": "Webhook",
+        },
+    )
     webhook_data = json.loads(webhook_definition)
     payload = {"event_type": message.event_type, "data": message.event_data, "service": service}
     webhook_map: Dict[str, Type[Webhook]] = {
@@ -25,25 +35,65 @@ async def event(message: messages.SendWebhookEvent, service: InfrahubServices) -
     webhook = webhook_class(**payload)
     try:
         await webhook.send()
-        if message.meta.task_id:
-            log = messages.LogTaskResult(
-                task_id=message.meta.task_id,
-                title=webhook.webhook_type,
-                message="Successfully sent webhook",
-                related_node=message.webhook_id,
-                success=True,
-                severity=Severity.INFO,
-            )
-            await service.send(log)
+        await service.client.execute_graphql(
+            query=UPDATE_TASK,
+            variables={
+                "conclusion": "SUCCESS",
+                "task_id": task_id,
+                "title": webhook.webhook_type,
+                "logs": {"message": "Successfully sent webhook", "severity": "INFO"},
+            },
+        )
+
     except Exception as exc:
-        if message.meta.task_id:
-            log = messages.LogTaskResult(
-                task_id=message.meta.task_id,
-                title=webhook.webhook_type,
-                message=str(exc),
-                related_node=message.webhook_id,
-                success=False,
-                severity=Severity.ERROR,
-            )
-            await service.send(log)
+        await service.client.execute_graphql(
+            query=UPDATE_TASK,
+            variables={
+                "conclusion": "FAILURE",
+                "task_id": task_id,
+                "title": webhook.webhook_type,
+                "logs": {"message": str(exc), "severity": "ERROR"},
+            },
+        )
         raise exc
+
+
+CREATE_TASK = """
+mutation CreateTask(
+    $conclusion: TaskConclusion!,
+    $title: String!,
+    $task_id: UUID,
+    $logs: [RelatedTaskLogCreateInput]
+    ) {
+    InfrahubTaskCreate(
+        data: {
+            id: $task_id,
+            title: $title,
+            conclusion: $conclusion,
+            logs: $logs
+        }
+    ) {
+        ok
+    }
+}
+"""
+
+UPDATE_TASK = """
+mutation UpdateTask(
+    $conclusion: TaskConclusion,
+    $title: String,
+    $task_id: UUID!,
+    $logs: [RelatedTaskLogCreateInput]
+    ) {
+    InfrahubTaskUpdate(
+        data: {
+            id: $task_id,
+            title: $title,
+            conclusion: $conclusion,
+            logs: $logs
+        }
+    ) {
+        ok
+    }
+}
+"""
