@@ -129,6 +129,7 @@ async def test_query_uniqueness_multiple_attribute_violations(
             "node_ids": {car_accord_main.id, car_prius_main.id, car_camry_main.id},
             "node_count": 3,
             "attr_value": 5,
+            "relationship_identifier": None,
         },
         {
             "kind": "TestCar",
@@ -136,6 +137,7 @@ async def test_query_uniqueness_multiple_attribute_violations(
             "node_ids": {car_volt_main.id, car_camry_main.id},
             "node_count": 2,
             "attr_value": "#ffffff",
+            "relationship_identifier": None,
         },
         {
             "kind": "TestCar",
@@ -143,6 +145,7 @@ async def test_query_uniqueness_multiple_attribute_violations(
             "node_ids": {car_accord_main.id, car_prius_main.id},
             "node_count": 2,
             "attr_value": "#444444",
+            "relationship_identifier": None,
         },
     ]
 
