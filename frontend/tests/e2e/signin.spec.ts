@@ -70,14 +70,15 @@ test.describe("/signin", () => {
         }
       });
 
-      await page.goto("/objects/BuiltinTag");
-
-      await page.waitForResponse((response) => {
+      const waitForResponse = page.waitForResponse((response) => {
         const reqData = response.request().postDataJSON();
         const status = response.status();
 
         return reqData?.operationName === "BuiltinTag" && status === 200;
       });
+      await page.goto("/objects/BuiltinTag");
+
+      await waitForResponse;
 
       await expect(page.getByRole("cell", { name: "blue" })).toBeVisible();
     });
