@@ -1,18 +1,20 @@
 ---
-label: GraphQL mutation
-# icon: file-directory
-tags: [tutorial]
-order: 400
+title: GraphQL mutation
 ---
 
 # Make changes using GraphQL
 
 GraphQL Mutations are available to create, update or delete any objects in the database. In a REST API they are the equivalent of a the methods POST, PUT or DELETE.
 
-!!!
-To execute any mutation you'll need to define a HTTP header in the GraphQL Explorer  
-`{"X-INFRAHUB-KEY":"06438eb2-8019-4776-878c-0941b1f1d1ec"}`
-!!!
+:::info
+
+To execute any mutation you'll need to define a HTTP header in the GraphQL Explorer:
+
+  ```yaml
+  X-INFRAHUB-KEY: 06438eb2-8019-4776-878c-0941b1f1d1ec
+  ```
+
+:::
 
 ```graphql # Create a new organization
 # Endpoint : http://localhost:8000/graphql/main
@@ -63,7 +65,7 @@ mutation {
 }
 ```
 
-> Copy the ID of the newly created interface, we'll need it for the next query
+Copy the ID of the newly created interface, we'll need it for the next query.
 
 Add a new IP address connected to the new interface.
 

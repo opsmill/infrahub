@@ -1,7 +1,8 @@
 ---
-label: Demo environment
-layout: default
+title: Demo environment
 ---
+import ReferenceLink from "../../src/components/Card";
+
 # Local demo environment
 
 A local environment based on Docker Compose is available for demo and testing.
@@ -25,14 +26,14 @@ It's designed to be controlled by `invoke` using a list of predefined commands.
 
 | Container Name      | Image                                                  | Description                                            |
 | ------------------- | ------------------------------------------------------ | ------------------------------------------------------ |
-| **database**        | memgraph/memgraph<br />or<br />neo4j:community | Graph Database                                         |
+| **database**        | memgraph/memgraph <br /> or <br /> neo4j:community     | Graph Database                                         |
 | **message-queue**   | rabbitmq:3.12-management                               | Message bus based on RabbitMQ                          |
 | **cache**           | redis:7.2                                              | Cache based on Redis, mainly used for distributed lock |
 | **infrahub-server** | Dockerfile                                             | Instance of the API server, running GraphQL            |
 | **infrahub-git**    | Dockerfile                                             | Instance of the Git agent, managing the Git Repository |
 | **frontend**        | Dockerfile                                             | Instance of the Frontend                               |
 
-[!ref Check the architecture diagram to have more information about each component](./architecture.mdx)
+<ReferenceLink title="Check the architecture diagram to have more information about each component" url="/topics/architecture" />
 
 ## Getting started
 
@@ -43,7 +44,11 @@ In order to run the demo environment, the following applications must be install
 - [pyinvoke](https://www.pyinvoke.org/)
 - Docker & Docker Compose
 
-> On a Laptop, both Docker & Docker Compose can be installed by installing [Docker Desktop](https://www.docker.com/products/docker-desktop/).
+:::info
+
+On a Laptop, both Docker & Docker Compose can be installed by installing [Docker Desktop](https://www.docker.com/products/docker-desktop/).
+
+:::
 
 ### First utilization
 
@@ -74,11 +79,11 @@ invoke demo.load-infra-data
 - `invoke demo.stop` : Stop All the containers
 - `invoke demo.destroy` : Destroy all containers and volumes.
 
-!!!
+:::info
 
 `invoke demo.debug` can be used as an alternative to `invoke demo.start`, the main difference is that it will stay *attached* to the containers and all the logs will be displayed in real time in the CLI.
 
-!!!
+:::
 
 ## Advanced settings
 

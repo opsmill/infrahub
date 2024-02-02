@@ -1,5 +1,5 @@
 ---
-label: .infrahub.yml file format
+title: .infrahub.yml file format
 ---
 
 # `.infrahub.yml` file {#infrahub-yaml}
@@ -14,13 +14,13 @@ An external repository can be used to link the following Infrahub objects to an 
 - [Python Transformation](/topics/transformation#transformpython-python-plugin)
 - [Artifact Definition](/topics/artifact)
 
-!!!info
+:::info
 
 - See [this guide](/guides/repository) for how to add or update an external repository in Infrahub
 - See [this topic](/topics/repository) for more information on remote repositories in Infrahub
 - See [this reference](/reference/dotinfrahub) for more information on the `.infrahub.yml` file format
 
-!!!
+:::
 
 ## GraphQL Query {#graphql-query}
 
@@ -30,14 +30,15 @@ This is the easiest type of object to link to Infrahub through an external repos
 
 Schemas to be loaded as part of an external repository can be defined in file(s) as described [here](/topics/schema). The schemas must also be explicitly identified in the `.infrahub.yml` file under `schemas`.
 
-==- Example
+<details>
+  <summary>Example</summary>
 
-```YAML
-schemas:
+  ```YAML
+  schemas:
   - schemas/demo_edge_fabric.yml
-```
+  ```
 
-==-
+</details>
 
 Infrahub will attempt to import any schemas defined in `.infrahub.yml` when pulling from the external repository.
 
@@ -50,17 +51,18 @@ Jinja2 Transformations can be defined as described [here](/topics/transformation
 - `template_path`: the path to the Jinja2 template within this repository
 - `description`: (**optional**) a description of the transform
 
-==- Example
+<details>
+  <summary>Example</summary>
 
-```YAML
-jinja2_transforms:
+  ```YAML
+  jinja2_transforms:
   - name: device_startup
-    description: "Template to generate startup configuration for network devices"
-    query: "device_startup_info"
-    template_path: "templates/device_startup_config.tpl.j2"
-```
+  description: "Template to generate startup configuration for network devices"
+  query: "device_startup_info"
+  template_path: "templates/device_startup_config.tpl.j2"
+  ```
 
-==-
+</details>
 
 ## Python Transformation {#transform-python}
 
@@ -70,16 +72,17 @@ Python Transformations can be defined as described [here](/topics/transformation
 - `file_path`: path to the Python transformation within this repository
 - `class_name`: which specific class to use in the Python file designated by `file_path`
 
-==- Example
+<details>
+  <summary>Example</summary>
 
-```YAML
-python_transforms:
+  ```YAML
+  python_transforms:
   - name: OCInterfaces
-    class_name: OCInterfaces
-    file_path: "transforms/openconfig.py"
-```
+  class_name: OCInterfaces
+  file_path: "transforms/openconfig.py"
+  ```
 
-==-
+</details>
 
 ## Artifact Definition {#artifact-definition}
 
@@ -92,17 +95,18 @@ Artifact Definitions can be created as described [here](/topics/artifact). To lo
 - `targets`: the Infrahub `Group` to target when generating the Artifact
 - `transformation`: the name of the Transformation to use when generating the Artifact
 
-==- Example
+<details>
+  <summary>Example</summary>
 
-```YAML
-artifact_definitions:
+  ```yaml
+  artifact_definitions:
   - name: "Openconfig Interface for Arista devices"
-    artifact_name: "openconfig-interfaces"
-    parameters:
-      device: "name__value"
-    content_type: "application/json"
-    targets: "arista_devices"
-    transformation: "OCInterfaces
-```
+  artifact_name: "openconfig-interfaces"
+  parameters:
+  device: "name__value"
+  content_type: "application/json"
+  targets: "arista_devices"
+  transformation: "OCInterfaces
+  ```
 
-==-
+</details>

@@ -38,7 +38,7 @@ const config: Config = {
         docs: {
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
-          editUrl: 'https://github.com/opsmill/infrahub/tree/bab-docusaurus-demo/docs/',
+          editUrl: 'https://github.com/opsmill/infrahub/tree/bab-docusaurus/docs-docusaurus/',
           routeBasePath: '/',
           sidebarCollapsed: true,
           sidebarPath: './sidebars.ts',
@@ -89,8 +89,8 @@ const config: Config = {
       copyright: `Copyright © ${new Date().getFullYear()} Infrahub by OpsMill.`,
     },
     prism: {
-      theme: prismThemes.github,
-      darkTheme: prismThemes.dracula,
+      theme: prismThemes.nightOwl,
+      additionalLanguages: ["python", "markup-templating", "django", "json", "toml"]
     },
   } satisfies Preset.ThemeConfig,
 };
