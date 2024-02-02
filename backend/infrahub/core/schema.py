@@ -1574,14 +1574,6 @@ core_models = {
             ],
             "relationships": [
                 {
-                    "name": "account",
-                    "peer": InfrahubKind.ACCOUNT,
-                    "branch": BranchSupportType.AGNOSTIC.value,
-                    "kind": "Attribute",
-                    "optional": True,
-                    "cardinality": "one",
-                },
-                {
                     "name": "tags",
                     "peer": InfrahubKind.TAG,
                     "kind": "Attribute",
