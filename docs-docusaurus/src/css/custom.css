@@ -131,3 +131,8 @@ body {
   padding: 0 1rem 1rem;
   border-radius: 0.5rem;
 }
+
+.footer {
+  border: 1px solid var(--border-color);
+  background-color: var(--layout-bg-color)
+}
