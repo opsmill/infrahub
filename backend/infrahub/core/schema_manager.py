@@ -56,6 +56,7 @@ if TYPE_CHECKING:
     from graphql import GraphQLSchema
 
     from infrahub.core.branch import Branch
+    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
 # pylint: disable=redefined-builtin,too-many-public-methods,too-many-lines
@@ -1236,6 +1237,7 @@ class SchemaManager(NodeManager):
         return self._branches[name]
 
     def set_schema_branch(self, name: str, schema: SchemaBranch) -> None:
+        schema.name = name
         self._branches[name] = schema
 
     def process_schema_branch(self, name: str):
@@ -1268,7 +1270,7 @@ class SchemaManager(NodeManager):
                 db=db, branch=branch, schema=schema, schema_diff=schema_diff
             )
 
-        self._branches[branch.name] = updated_schema or schema
+        self.set_schema_branch(name=branch.name, schema=updated_schema or schema)
 
     def register_schema(self, schema: SchemaRoot, branch: Optional[str] = None) -> SchemaBranch:
         """Register all nodes, generics & groups from a SchemaRoot object into the registry."""
@@ -1486,7 +1488,9 @@ class SchemaManager(NodeManager):
         current_schema = self.get_schema_branch(name=branch.name)
         current_schema.clear_cache()
         schema_diff = current_schema.get_hash_full().compare(branch.schema_hash)
-        return await self.load_schema_from_db(db=db, branch=branch, schema=current_schema, schema_diff=schema_diff)
+        branch_schema = await self.load_schema_from_db(db=db, branch=branch, schema=current_schema, schema_diff=schema_diff)
+        self.set_schema_branch(name=branch.name, schema=branch_schema)
+        return branch_schema
 
     async def load_schema_from_db(
         self,
@@ -1494,6 +1498,7 @@ class SchemaManager(NodeManager):
         branch: Optional[Union[str, Branch]] = None,
         schema: Optional[SchemaBranch] = None,
         schema_diff: Optional[SchemaBranchDiff] = None,
+        at: Optional[Timestamp] = None,
     ) -> SchemaBranch:
         """Query all the node of type NodeSchema and GenericSchema from the database and convert them to their respective type.
 
@@ -1532,7 +1537,12 @@ class SchemaManager(NodeManager):
         if not has_filters or filters["generics"]:
             generic_schema = self.get(name="SchemaGeneric", branch=branch)
             for schema_node in await self.query(
-                schema=generic_schema, branch=branch, filters=filters["generics"], prefetch_relationships=True, db=db
+                schema=generic_schema,
+                branch=branch,
+                at=at,
+                filters=filters["generics"],
+                prefetch_relationships=True,
+                db=db,
             ):
                 kind = f"{schema_node.namespace.value}{schema_node.name.value}"
                 schema.set(
@@ -1543,7 +1553,7 @@ class SchemaManager(NodeManager):
         if not has_filters or filters["nodes"]:
             node_schema = self.get(name="SchemaNode", branch=branch)
             for schema_node in await self.query(
-                schema=node_schema, branch=branch, filters=filters["nodes"], prefetch_relationships=True, db=db
+                schema=node_schema, branch=branch, at=at, filters=filters["nodes"], prefetch_relationships=True, db=db
             ):
                 kind = f"{schema_node.namespace.value}{schema_node.name.value}"
                 schema.set(
@@ -1552,7 +1562,6 @@ class SchemaManager(NodeManager):
                 )
 
         schema.process()
-        self._branches[branch.name] = schema
 
         return schema
 
