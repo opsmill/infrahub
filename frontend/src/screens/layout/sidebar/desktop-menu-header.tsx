@@ -1,8 +1,8 @@
 import { Disclosure } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
 import React from "react";
-import { Circle } from "../../components/display/circle";
-import { classNames } from "../../utils/common";
+import { Circle } from "../../../components/display/circle";
+import { classNames } from "../../../utils/common";
 import { DropDownMenuItem } from "./desktop-menu-item";
 
 interface Props {
@@ -21,7 +21,7 @@ export default function DropDownMenuHeader(props: Props) {
         <>
           <Disclosure.Button
             className={classNames(
-              "flex flex-1 items-center group p-3 text-gray-900 text-left text-sm font-medium ",
+              "flex flex-1 items-center group p-3 pr-[1.125rem] text-gray-900 text-left text-sm font-medium ",
               subItem ? "bg-gray-50 hover:bg-gray-100" : "bg-gray-200 hover:bg-gray-300"
             )}>
             {icon && (
