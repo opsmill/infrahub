@@ -1,7 +1,7 @@
 ---
-icon: file-code
-label: Creating a Jinja Transform
+title: Creating a Jinja Transform
 ---
+
 # Creating a Jinja rendered File (Transform)
 
 Within Infrahub a [Transform](/topics/transformation) is defined in an [external repository](/topics/repository). However, during development and troubleshooting it is easiest to start from your local computer and run the render using [infrahubctl render](/infrahubctl/infrahubctl-render).
@@ -24,7 +24,7 @@ As the first step we need to have some data in the database to actually query.
 
 Create three tags, called "red", "green", "blue", either using the frontend or by submitting three GraphQL mutations as per below (just swapping out the name of the color each time).
 
-```GraphQL #1-2
+```GraphQL {1-2}
 mutation CreateTags {
   BuiltinTagCreate(
     data: {name: {value: "red"}, description: {value: "The red tag"}}
@@ -39,7 +39,7 @@ mutation CreateTags {
 
 The next step is to create a query that returns the data we just created. The rest of this guide assumes that the following query will return a response similar to the response below the query.
 
-```GraphQL  #1-2
+```GraphQL {1-2}
 query TagsQuery {
   BuiltinTag {
     edges {
@@ -109,7 +109,7 @@ mkdir tags_render
 
 Then save the below query as a text file named tags_query.gql.
 
-```GraphQL #1-2
+```GraphQL {1-2}
 query TagsQuery($tag: String!) {
   BuiltinTag(name__value: $tag) {
     edges {
@@ -138,7 +138,7 @@ Here the query will require an input parameter called `$name` what will refer to
 
 The next step is to create the actual Jinja Template file. Create a file called tags_tpl.j2
 
-```jinja
+```jinja2
 {% if data.BuiltinTag.edges and data.BuiltinTag.edges is iterable %}
 {% for tag in ["BuiltinTag"]["edges"][0]["node"] %}
 {%     set tag_name = tag.name.value %}
@@ -214,9 +214,11 @@ Examples
 infrahubctl render <transform name or ID> my-param=XXXXX my-other-param=YYYYY
 ```
 
-!!!info
+:::note
+
 If `--branch` is not provided it will automatically use the name of the local branch.
-!!!
+
+:::
 
 ## 6. Adding the repository to Infrahub
 
@@ -231,12 +233,14 @@ This endpoint is branch-aware and it accepts the name of the branch and/or the t
 * `https://<host>/api/transform/jinja2/<transform name or ID>?branch=main`
 * `https://<host>/api/transform/jinja2/<transform name or ID>?branch=main&at=<time of your choice>`
 
-!!!info
+:::info
+
 The name of the branch used in the query will be used to retrieve the right Jinja template and to execute the GraphQL query.
-!!!
+
+:::
 
 If the GraphQL query accepts parameters, they can be passed directly as URL parameters:
 
 ```txt
-https://<host>/api/transform/jinja2/<transform name or ID>?branch=main&my-param=XXXXX&my-other-param=YYYYY
+https://:host/api/transform/jinja2/:transform_name_or_id?branch=main&my-param=XXX&my-other-param=YYY
 ```

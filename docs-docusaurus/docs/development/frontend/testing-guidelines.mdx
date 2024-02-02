@@ -1,13 +1,14 @@
 ---
 title: Running & writing tests
-icon: beaker
 ---
 
 # Running & writing tests for frontend
 
-!!!info Before we start
+:::info Before we start
+
 If you have never run Infrahub tests before, we highly suggest following the [frontend guide](getting-set-up).
-!!!
+
+:::
 
 We're expecting to see proper tests for each feature/bugfix you make. If you're not sure how to write these tests, this page is made to help you get started.
 
@@ -31,7 +32,7 @@ For example, a test linked to the route `/objects/:objectname/:objectid` will be
 
 [Playwright](https://playwright.dev/docs/codegen) can automatically generate tests as you perform actions in the browser, making it a quick way to start testing:
 
-```shell
+```sh
 npx playwright codegen
 ```
 
@@ -82,9 +83,9 @@ page.getByRole("button", { name: "Save" });
 
 2. Structure tests with steps for better readability:
 
-```shell
+```sh
 # headless mode
-npm run test:e2e 
+npm run test:e2e
 
 # non-headless mode (headed)
 npm run test:e2e:headed

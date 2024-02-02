@@ -1,13 +1,13 @@
 ---
-label: GraphQL queries
-layout: default
+title: GraphQL queries
 ---
+
 # GraphQL
 
 The GraphQL interface is the main interface to interact with Infrahub. The GraphQL schema is automatically generated based on the core models and the user-defined schema models.
 
-The endpoint to interact with the main branch is accessible at `https://<host>/graphql`.
-To interact with a branch the URL must include the name of the branch, such as `https://<host>/graphql/<branch_name>`.
+The endpoint to interact with the main branch is accessible at `https://:host/graphql`.
+To interact with a branch the URL must include the name of the branch, such as `https://:host/graphql/:branch_name`.
 
 ## Query & mutations
 
@@ -39,9 +39,11 @@ query {
 }
 ```
 
-!!!info
+:::info
+
 All list of objects will be nested under `edges` & `node` to make it possible to control the pagination and access the attribute `count`.
-!!!
+
+:::
 
 #### `ID` and `display_label`
 
@@ -60,7 +62,7 @@ Each attribute is its own object in GraphQL to expose the value and all the meta
 In the query below, to access the attribute **name** of the object the query must be `CoreRepository` > `edges` > `node` > `name` > `value`.
 At the same level all the metadata of the attribute are also available example: `is_protected`, `is_visible`, `source` & `owner`
 
-```graphql #6-14 Example query to access the value and the properties of the attribute 'name'
+```graphql {6-14} title="Example query to access the value and the properties of the attribute 'name'"
 query {
     CoreRepository {
         count
@@ -85,7 +87,7 @@ query {
 
 A relationship to another model with a cardinality of `One` will be represented with a `NestedEdged` object composed of a `node` and a `properties` objects. The `node` gives access to the remote `node` (the peer of the relationship) while `properties` gives access to the properties of the relationship itself.
 
-```graphql #6-19 Example query to access the peer and the properties of the relationship 'account', with a cardinality of one.
+```graphql {6-19} title="Example query to access the peer and the properties of the relationship 'account', with a cardinality of one."
 query {
     CoreRepository {
         count
@@ -115,7 +117,7 @@ query {
 
 A relationship with a cardinality of `Many` will be represented with a `NestedPaginated` object composed. It was the same format as the top level `PaginatedObject` with `count` and `edges` but the child element will expose both `node` and `properties`. The `node` gives access to the remote `node` (the peer of the relationship) while `properties` gives access to the properties of the relationship itself.
 
-```graphql #6-20 Example query to access the relationship 'tags', with a cardinality of Many.
+```graphql {6-20} title="Example query to access the relationship 'tags', with a cardinality of Many."
 query {
     CoreRepository {
         count

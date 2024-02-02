@@ -1,7 +1,7 @@
 ---
-label: Architecture
-layout: default
+title: Architecture
 ---
+
 # Architecture diagram
 
 ![](../media/high_level_architecture.excalidraw.svg)
@@ -15,11 +15,11 @@ Language: Python
 The API server delivers the REST API and the GraphQL endpoints.
 Internally, the API server is built with FastAPI as the web framework and Graphene to generate the GraphQL endpoints.
 
-!!!
+:::note
 
 Multiple instance of the API Server can run at the same time to process more requests.
 
-!!!
+:::
 
 ### Git agent
 
@@ -34,15 +34,15 @@ Some of the tasks that can be executed on the Git agent includes:
 - Executing a check.
 - All Git operations (pull/merge/diff).
 
-!!!
+:::note
 
 Multiple instance of the Git agent can run at the same time to process more requests.
 
-!!!
+:::
 
 ### Frontend
 
-Language: React
+React-based single page application.
 
 ## External systems
 

@@ -1,8 +1,5 @@
 ---
-label: Rendering configuration
-# icon: file-directory
-tags: [tutorial]
-order: 550
+title: Rendering configuration
 ---
 
 # Rendering Jinja templates
@@ -60,9 +57,11 @@ In GitHub:
 
 ![Update the template in GitHub](../../media/tutorial_rfile_update_jinja.gif)
 
-!!!success Validate that everything is correct
+:::success Validate that everything is correct
+
 After making these changes, you should be able to render the transform for the branch `update-ethernet1` and see the changes made to the data AND to the schema at the same time at the address [`/api/transform/jinja2/device_startup?device=atl1-edge1&branch=update-ethernet1`](http://localhost:8000/api/transform/jinja2/device_startup?device=atl1-edge1&branch=update-ethernet1)
-!!!
+
+:::
 
 ### 4. Merge the Branch `update-ethernet1`
 

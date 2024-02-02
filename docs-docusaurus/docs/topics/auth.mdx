@@ -1,6 +1,5 @@
 ---
-label: User management and authentication
-layout: default
+title: User management and authentication
 ---
 
 # User management and authentication
@@ -32,8 +31,11 @@ Infrahub supports two authentication methods
 | infrahubctl        | Soon | Yes   |
 | GraphQL Playground | No   | Yes   |
 
-!!!
+:::info
 
-While using the API, the authentication token must be provided in a header named `X-INFRAHUB-KEY`.
+While using the API, the authentication token must be provided in the header:
 
-!!!
+  ```yaml
+  X-INFRAHUB-KEY: 06438eb2-8019-4776-878c-0941b1f1d1ec
+  ```
+:::
