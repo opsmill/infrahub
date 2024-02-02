@@ -1,19 +1,25 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.query import Query
 
 if TYPE_CHECKING:
-    from infrahub.core.schema import GenericSchema, NodeSchema
     from infrahub.database import InfrahubDatabase
+
+    from .request import NodeUniquenessQueryRequest
 
 
 class NodeUniqueAttributeConstraintQuery(Query):
     name = "node_constraints_uniqueness"
 
-    def __init__(self, schema: Union[NodeSchema, GenericSchema], *args: Any, **kwargs: Any):
-        self.schema = schema
+    def __init__(
+        self,
+        query_request: NodeUniquenessQueryRequest,
+        *args: Any,
+        **kwargs: Any,
+    ):
+        self.query_request = query_request
         super().__init__(*args, **kwargs)
 
     async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Any) -> None:
@@ -21,27 +27,14 @@ class NodeUniqueAttributeConstraintQuery(Query):
         self.params.update(branch_params)
         from_times = db.render_list_comprehension(items="relationships(potential_path)", item_name="from")
 
-        attr_names = {attr_schema.name for attr_schema in self.schema.unique_attributes}
-        relationship_attr_paths = []
-
-        if self.schema.uniqueness_constraints:
-            for uniqueness_constraint in self.schema.uniqueness_constraints:
-                for path in uniqueness_constraint:
-                    if "__" in path:
-                        relationship_name, attribute_name = path.split("__")
-                    else:
-                        relationship_name, attribute_name = None, path
-                    if not relationship_name:
-                        attr_names.add(attribute_name)
-                        continue
-                    relationship = self.schema.get_relationship(relationship_name)
-                    relationship_attr_paths.append((relationship.identifier, attribute_name))
-
         self.params.update(
             {
-                "node_kind": self.schema.kind,
-                "attr_names": list(attr_names),
-                "relationship_attr_paths": relationship_attr_paths,
+                "node_kind": self.query_request.kind,
+                "attr_names": self.query_request.unique_attribute_names,
+                "relationship_attr_paths": [
+                    (rel_path.identifier, rel_path.attribute_name)
+                    for rel_path in self.query_request.relationship_attribute_paths
+                ],
             }
         )
 
@@ -99,7 +92,6 @@ class NodeUniqueAttributeConstraintQuery(Query):
         }
         // only duplicate values
         WITH
-            start_node.kind as kind,
             collect(start_node.uuid) as node_ids,
             count(*) as node_count,
             potential_attr.name as attr_name,
@@ -109,4 +101,4 @@ class NodeUniqueAttributeConstraintQuery(Query):
         """ % {"branch_filter": branch_filter, "from_times": from_times}
 
         self.add_to_query(query)
-        self.return_labels = ["kind", "node_ids", "node_count", "attr_name", "attr_value", "relationship_identifier"]
+        self.return_labels = ["node_ids", "node_count", "attr_name", "attr_value", "relationship_identifier"]
