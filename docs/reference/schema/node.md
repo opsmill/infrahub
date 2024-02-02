@@ -29,6 +29,7 @@ Below is the list of all available options to define a Node in the schema
 | [**namespace**](#namespace) | Attribute | Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions. | True |
 | [**order_by**](#order_by) | Attribute | List of attributes to use to order the results by default | False |
 | [**parent**](#parent) | Attribute | Expected Kind for the parent node in a Hierarchy, default to the main generic defined if not defined. | False |
+| [**uniqueness_constraints**](#uniqueness_constraints) | Attribute | Each element of a constraint must be of the format <attribute_name> or <relationship_name>__<attribute_name> | False |
 | [**attributes**](#attributes) | Relationship | List of supported Attributes for the Node. | False |
 | [**relationships**](#relationships) | Relationship | List of supported Relationships for the Node. | False |
 
@@ -196,6 +197,17 @@ Below is the list of all available options to define a Node in the schema
 | **Name** | parent |
 | **Kind** | `Text` |
 | **Description** | Expected Kind for the parent node in a Hierarchy, default to the main generic defined if not defined. |
+| **Optional**  | True |
+| **Default Value** |  |
+| **Constraints** |  |
+
+### uniqueness_constraints
+
+| Key | Value | { class="compact" }
+| ---- | --------------- |
+| **Name** | uniqueness_constraints |
+| **Kind** | `List` |
+| **Description** | Each element of a constraint must be of the format <attribute_name> or <relationship_name>__<attribute_name> |
 | **Optional**  | True |
 | **Default Value** |  |
 | **Constraints** |  |
