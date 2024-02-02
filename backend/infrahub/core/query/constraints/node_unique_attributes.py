@@ -57,6 +57,7 @@ class NodeUniqueAttributeConstraintQuery(Query):
         }
         CALL {
             WITH potential_path
+            WITH potential_path  // workaround for neo4j not allowing WHERE in a WITH of a subquery
             // only the branches and times we care about
             WHERE all(
                 r IN relationships(potential_path) WHERE (
@@ -87,6 +88,7 @@ class NodeUniqueAttributeConstraintQuery(Query):
         CALL {
             // only active paths
             WITH current_path
+            WITH current_path  // workaround for neo4j not allowing WHERE in a WITH of a subquery
             WHERE all(r IN relationships(current_path) WHERE r.status = "active")
             RETURN current_path as active_path
         }
