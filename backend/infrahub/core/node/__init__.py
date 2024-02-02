@@ -15,7 +15,7 @@ from infrahub.core.query.node import (
 )
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import InitializationError, ValidationError
 from infrahub.types import ATTRIBUTE_TYPES
 
 from ..relationship import RelationshipManager
@@ -59,6 +59,13 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     def get_kind(self) -> str:
         """Return the main Kind of the Object."""
         return self._schema.kind
+
+    def get_id(self) -> str:
+        """Return the ID of the node"""
+        if self.id:
+            return self.id
+
+        raise InitializationError("The node has not been saved yet and doesn't have an id")
 
     def get_labels(self) -> List[str]:
         """Return the labels for this object, composed of the kind

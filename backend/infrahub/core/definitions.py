@@ -20,3 +20,12 @@ class Brancher(Protocol):
     @classmethod
     def isinstance(cls, obj: Any) -> bool:
         return isinstance(obj, cls)
+
+
+@runtime_checkable
+class NodeInfo(Protocol):
+    def get_kind(self) -> str:
+        raise NotImplementedError()
+
+    def get_id(self) -> str:
+        raise NotImplementedError()
