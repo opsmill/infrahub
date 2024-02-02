@@ -1,13 +1,20 @@
 import json
 
-from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubResponse, messages
-from infrahub.message_bus.operations import check, event, finalize, git, refresh, requests, send, transform, trigger
+from infrahub.message_bus.operations import (
+    check,
+    event,
+    finalize,
+    git,
+    refresh,
+    requests,
+    send,
+    transform,
+    trigger,
+)
 from infrahub.message_bus.types import MessageTTL
 from infrahub.services import InfrahubServices
 from infrahub.tasks.check import set_check_status
-
-log = get_logger()
 
 COMMAND_MAP = {
     "check.artifact.create": check.artifact.create,
@@ -64,7 +71,7 @@ async def execute_message(routing_key: str, message_body: bytes, service: Infrah
             await service.reply(message=response, initiator=message)
             return
         if message.reached_max_retries:
-            log.error("Message failed after maximum number of retries", error=str(exc))
+            service.log.error("Message failed after maximum number of retries", error=str(exc))
             await set_check_status(message, conclusion="failure", service=service)
             return
         message.increase_retry_count()

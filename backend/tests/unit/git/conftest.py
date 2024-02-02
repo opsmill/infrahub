@@ -312,7 +312,7 @@ async def git_repo_jinja(client, git_upstream_repo_02, git_repos_dir, branch01: 
         {
             "name": "template01.tpl.j2",
             "content": """
-{% for item in items %}
+{% for item in data["items"] %}
 {{ item }}
 {% endfor %}
 """,
@@ -320,7 +320,7 @@ async def git_repo_jinja(client, git_upstream_repo_02, git_repos_dir, branch01: 
         {
             "name": "template02.tpl.j2",
             "content": """
-{% for item in items %}
+{% for item in data["items"] %}
 {{ item }}
 {% end %}
 """,
@@ -343,7 +343,7 @@ async def git_repo_jinja(client, git_upstream_repo_02, git_repos_dir, branch01: 
     file_to_add = files_to_add[0]
     file_path = os.path.join(git_upstream_repo_02["path"], file_to_add["name"])
     new_content = """
-{% for item in items %}
+{% for item in data["items"] %}
  - {{ item }} -
 {% endfor %}
 """
@@ -871,7 +871,7 @@ async def mock_existing_artifact_same(httpx_mock: HTTPXMock) -> HTTPXMock:
                             "display_label": "openconfig-interfaces",
                             "name": {"value": "openconfig-interfaces", "__typename": "TextAttribute"},
                             "content_type": {"value": "application/json", "__typename": "TextAttribute"},
-                            "checksum": {"value": "e889b9fab24aab3b23ea01d5342b514a", "__typename": "TextAttribute"},
+                            "checksum": {"value": "1d03a7fdc5c03106ec0c17efc42df9e7", "__typename": "TextAttribute"},
                             "storage_id": {
                                 "value": "13c8914b-0ac0-4c8c-83ec-a79a1f8ad483",
                                 "__typename": "TextAttribute",
@@ -1101,7 +1101,7 @@ async def artifact_data_02():
             "__typename": "Text",
             "value": "Pending",
         },
-        "checksum": {"value": "e889b9fab24aab3b23ea01d5342b514a", "__typename": "Text"},
+        "checksum": {"value": "1d03a7fdc5c03106ec0c17efc42df9e7", "__typename": "Text"},
         "storage_id": {"value": "13c8914b-0ac0-4c8c-83ec-a79a1f8ad483", "__typename": "Text"},
         "__typename": InfrahubKind.ARTIFACT,
         "display_label": "artifact01",

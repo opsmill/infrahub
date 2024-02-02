@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 import glob
 import hashlib
 import json
+import linecache
 from itertools import groupby
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 from uuid import UUID, uuid4
 
 import httpx
@@ -14,6 +17,11 @@ from graphql import (  # pylint: disable=no-name-in-module
     InlineFragmentNode,
     SelectionSetNode,
 )
+from rich.syntax import Syntax
+from rich.traceback import Frame, Traceback
+
+if TYPE_CHECKING:
+    from graphql import GraphQLResolveInfo
 
 try:
     from pydantic import v1 as pydantic  # type: ignore[attr-defined]
@@ -278,7 +286,7 @@ def calculate_dict_height(data: dict, cnt: int = 0) -> int:
     return cnt
 
 
-async def extract_fields(selection_set: SelectionSetNode) -> Optional[Dict[str, Dict]]:
+async def extract_fields(selection_set: Optional[SelectionSetNode]) -> Optional[Dict[str, Dict]]:
     """This function extract all the requested fields in a tree of Dict from a SelectionSetNode
 
     The goal of this function is to limit the fields that we need to query from the backend.
@@ -313,3 +321,37 @@ async def extract_fields(selection_set: SelectionSetNode) -> Optional[Dict[str, 
                     fields[sub_node.name.value].update(value)
 
     return fields
+
+
+def identify_faulty_jinja_code(traceback: Traceback, nbr_context_lines: int = 3) -> List[Tuple[Frame, Syntax]]:
+    """This function identifies the faulty Jinja2 code and beautify it to provide meaningful information to the user.
+
+    We use the rich's Traceback to parse the complete stack trace and extract Frames for each expection found in the trace.
+    """
+    response = []
+
+    # Extract only the Jinja related exception
+    for frame in [frame for frame in traceback.trace.stacks[0].frames if frame.filename.endswith(".j2")]:
+        code = "".join(linecache.getlines(frame.filename))
+        lexer_name = Traceback._guess_lexer(frame.filename, code)
+        syntax = Syntax(
+            code,
+            lexer_name,
+            line_numbers=True,
+            line_range=(frame.lineno - nbr_context_lines, frame.lineno + nbr_context_lines),
+            highlight_lines={frame.lineno},
+            code_width=88,
+            theme=traceback.theme,
+            dedent=False,
+        )
+        response.append((frame, syntax))
+
+    return response
+
+
+async def extract_fields_first_node(info: GraphQLResolveInfo) -> Dict[str, Dict]:
+    fields = None
+    if info.field_nodes:
+        fields = await extract_fields(info.field_nodes[0].selection_set)
+
+    return fields or {}

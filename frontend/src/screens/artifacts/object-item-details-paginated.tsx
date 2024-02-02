@@ -30,6 +30,7 @@ import { getObjectItemDisplayValue } from "../../utils/getObjectItemDisplayValue
 import {
   getObjectAttributes,
   getObjectRelationships,
+  getSchemaObjectColumns,
   getTabs,
 } from "../../utils/getSchemaObjectColumns";
 import ErrorScreen from "../error-screen/error-screen";
@@ -71,15 +72,15 @@ export default function ArtifactsDetails() {
   if (schemaData && MENU_EXCLUDELIST.includes(schemaData.kind)) {
     navigate("/");
   }
-
   const attributes = getObjectAttributes(schemaData);
   const relationships = getObjectRelationships(schemaData);
+  const columns = getSchemaObjectColumns(schemaData);
   const relationshipsTabs = getTabs(schemaData);
 
   const queryString = schemaData
     ? getObjectDetailsPaginated({
-        ...schemaData,
-        relationships,
+        kind: schemaData.kind,
+        columns,
         relationshipsTabs,
         objectid,
       })
@@ -173,7 +174,7 @@ export default function ArtifactsDetails() {
             <dl className="sm:divide-y sm:divide-gray-200">
               <div className="p-2 grid grid-cols-3 gap-4 text-xs">
                 <dt className="text-sm font-medium text-gray-500 flex items-center">ID</dt>
-                <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
+                <dd className="text-sm text-gray-900 ">
                   <a
                     href={CONFIG.ARTIFACT_DETAILS_URL(objectDetailsData.id)}
                     target="_blank"
@@ -201,7 +202,7 @@ export default function ArtifactsDetails() {
                     <div className="flex items-center">
                       <dd
                         className={classNames(
-                          "mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0"
+                          "text-sm text-gray-900 "
                           // attribute.kind === "TextArea" ? "whitespace-pre-wrap mr-2" : ""
                         )}>
                         {attribute.name === "storage_id" &&

@@ -15,8 +15,14 @@ async def initialize_client(**kwargs: Any) -> InfrahubClient:
     if timeout:
         client_config["timeout"] = timeout
 
+    identifier = kwargs.pop("identifier", None)
+
     client = await InfrahubClient.init(
-        address=config.SETTINGS.server_address, config=Config(**client_config), insert_tracker=True, **kwargs
+        address=config.SETTINGS.server_address,
+        config=Config(**client_config),
+        insert_tracker=True,
+        identifier=identifier,
+        **kwargs,
     )
 
     return client
@@ -28,8 +34,18 @@ def initialize_client_sync(**kwargs: Any) -> InfrahubClientSync:
     if config.SETTINGS.api_token:
         client_config["api_token"] = config.SETTINGS.api_token
 
+    timeout = kwargs.pop("timeout", None)
+    if timeout:
+        client_config["timeout"] = timeout
+
+    identifier = kwargs.pop("identifier", None)
+
     client = InfrahubClientSync.init(
-        address=config.SETTINGS.server_address, config=Config(**client_config), insert_tracker=True, **kwargs
+        address=config.SETTINGS.server_address,
+        config=Config(**client_config),
+        insert_tracker=True,
+        identifier=identifier,
+        **kwargs,
     )
 
     return client

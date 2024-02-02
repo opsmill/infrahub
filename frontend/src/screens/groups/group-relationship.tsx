@@ -106,9 +106,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
             <dt className="text-sm font-medium text-gray-500 flex items-center">
               {relationshipSchema?.label}
             </dt>
-            <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0 flex items-center">
-              -
-            </dd>
+            <dd className="text-sm text-gray-900  flex items-center">-</dd>
           </div>
         )}
 

@@ -17,6 +17,7 @@ from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, Infra
 from infrahub.core.initialization import (
     create_branch,
     create_default_branch,
+    create_root_node,
     first_time_initialization,
     initialization,
 )
@@ -28,6 +29,7 @@ from infrahub.core.schema import (
     core_models,
 )
 from infrahub.core.schema_manager import SchemaBranch
+from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.git import InfrahubRepository
 from infrahub.graphql.generator import (
@@ -1473,9 +1475,9 @@ async def car_person_schema_generics(
 
 @pytest.fixture
 async def car_person_generics_data(db: InfrahubDatabase, car_person_schema_generics) -> Dict[str, Node]:
-    ecar = registry.get_schema(name="TestElectricCar")
-    gcar = registry.get_schema(name="TestGazCar")
-    person = registry.get_schema(name="TestPerson")
+    ecar = registry.schema.get(name="TestElectricCar")
+    gcar = registry.schema.get(name="TestGazCar")
+    person = registry.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)
@@ -1522,7 +1524,7 @@ async def person_tag_schema(db: InfrahubDatabase, default_branch: Branch, data_s
             {
                 "name": "Person",
                 "namespace": "Test",
-                "default_filter": "name__value",
+                "default_filter": "firstname__value",
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "firstname", "kind": "Text"},
@@ -2280,6 +2282,21 @@ async def prefix_schema(db: InfrahubDatabase, default_branch: Branch) -> SchemaR
     schema = SchemaRoot(**SCHEMA)
     registry.schema.register_schema(schema=schema)
     return schema
+
+
+@pytest.fixture
+async def reset_registry(db: InfrahubDatabase) -> None:
+    registry.delete_all()
+
+
+@pytest.fixture
+async def delete_all_nodes_in_db(db: InfrahubDatabase) -> None:
+    await delete_all_nodes(db=db)
+
+
+@pytest.fixture
+async def empty_database(db: InfrahubDatabase, delete_all_nodes_in_db) -> None:
+    await create_root_node(db=db)
 
 
 @pytest.fixture

@@ -2,19 +2,17 @@ import asyncio
 import functools
 import importlib
 import json
-import linecache
 import logging
 import os
 import sys
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional
 
 import jinja2
 import typer
 from rich.console import Console
 from rich.logging import RichHandler
-from rich.syntax import Syntax
-from rich.traceback import Frame, Traceback
+from rich.traceback import Traceback
 
 from infrahub_sdk.ctl import config
 from infrahub_sdk.ctl.branch import app as branch_app
@@ -31,7 +29,7 @@ from infrahub_sdk.ctl.utils import (
 from infrahub_sdk.ctl.validate import app as validate_app
 from infrahub_sdk.exceptions import GraphQLError, InfrahubTransformNotFoundError
 from infrahub_sdk.transforms import get_transform_class_instance
-from infrahub_sdk.utils import get_branch
+from infrahub_sdk.utils import get_branch, identify_faulty_jinja_code
 
 from .exporter import dump
 from .importer import load
@@ -55,6 +53,7 @@ async def _run(
     branch: str,
     concurrent: int,
     timeout: int,
+    variables: Optional[dict] = None,
 ) -> None:
     directory_name = os.path.dirname(script)
     filename = os.path.basename(script)
@@ -71,40 +70,9 @@ async def _run(
     if not hasattr(module, method):
         raise typer.Abort(f"Unable to Load the method {method} in the Python script at {script}")
 
-    client = await initialize_client(timeout=timeout, max_concurrent_execution=concurrent)
-
+    client = await initialize_client(timeout=timeout, max_concurrent_execution=concurrent, identifier=module_name)
     func = getattr(module, method)
-    await func(client=client, log=log, branch=branch)
-
-
-def identify_faulty_jinja_code(traceback: Traceback, nbr_context_lines: int = 3) -> List[Tuple[Frame, Syntax]]:
-    response = []
-
-    # The Traceback from rich is very helpful to parse the entire stack trace
-    # to will generate a Frame object for each exception in the trace
-
-    # Extract only the Jinja related exceptioin from the stack
-    frames = [frame for frame in traceback.trace.stacks[0].frames if frame.filename.endswith(".j2")]
-
-    for frame in frames:
-        code = "".join(linecache.getlines(frame.filename))
-        lexer_name = Traceback._guess_lexer(frame.filename, code)
-        syntax = Syntax(
-            code,
-            lexer_name,
-            line_numbers=True,
-            line_range=(
-                frame.lineno - nbr_context_lines,
-                frame.lineno + nbr_context_lines,
-            ),
-            highlight_lines={frame.lineno},
-            code_width=88,
-            theme=traceback.theme,
-            dedent=False,
-        )
-        response.append((frame, syntax))
-
-    return response
+    await func(client=client, log=log, branch=branch, **variables)
 
 
 def render_jinja2_template(template_path: Path, variables: Dict[str, str], data: str) -> str:
@@ -146,7 +114,7 @@ def _run_transform(query: str, variables: Dict[str, Any], transformer: Callable,
         console.print(f"[red]Unable to find query : {exc}")
         raise typer.Exit(1) from exc
     except GraphQLError as exc:
-        console.print(f"[red]{len(exc.errors)} error(s) occured while executing the query")
+        console.print(f"[red]{len(exc.errors)} error(s) occurred while executing the query")
         for error in exc.errors:
             if isinstance(error, dict) and "message" in error and "locations" in error:
                 console.print(f"[yellow] - Message: {error['message']}")  # type: ignore[typeddict-item]
@@ -250,6 +218,9 @@ def run(
         envvar="INFRAHUBCTL_CONCURRENT_EXECUTION",
     ),
     timeout: int = typer.Option(60, help="Timeout in sec", envvar="INFRAHUBCTL_TIMEOUT"),
+    variables: Optional[List[str]] = typer.Argument(
+        None, help="Variables to pass along with the query. Format key=value key=value."
+    ),
 ) -> None:
     """Execute a script."""
 
@@ -265,6 +236,8 @@ def run(
     logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
     log = logging.getLogger("infrahubctl")
 
+    variables_dict = parse_cli_vars(variables)
+
     asyncio.run(
         _run(
             script=script,
@@ -273,5 +246,6 @@ def run(
             branch=branch,
             concurrent=concurrent,
             timeout=timeout,
+            variables=variables_dict,
         )
     )

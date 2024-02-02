@@ -1,0 +1,6 @@
+---
+version: "3.4"
+services:
+  database:
+    ports:
+      - "${INFRAHUB_DB_PORT:-7687}:7687"

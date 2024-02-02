@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 from infrahub.core.constants.relationship_label import RELATIONSHIP_TO_NODE_LABEL, RELATIONSHIP_TO_VALUE_LABEL
-from infrahub.core.constants.schema_property import FlagProperty, NodeProperty
+from infrahub.core.constants.schema import FlagProperty, NodeProperty
 from infrahub.core.query import Query, QueryNode, QueryRel, QueryType
 from infrahub.core.timestamp import Timestamp
 
@@ -38,45 +38,6 @@ class AttributeQuery(Query):
         self.branch = branch or self.attr.get_branch_based_on_support_type()
 
         super().__init__(*args, **kwargs)
-
-
-class AttributeGetValueQuery(AttributeQuery):
-    name = "attribute_get_value"
-    type: QueryType = QueryType.READ
-
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
-        self.params["attr_uuid"] = self.attr.id
-        at = self.at or self.attr.at
-        self.params["at"] = at.to_string()
-
-        branch = self.branch or self.attr.branch
-
-        rels_filter, rel_params = branch.get_query_filter_relationships(rel_labels=["r"], at=at.to_string())
-        self.params.update(rel_params)
-
-        query = """
-        MATCH (a { uuid: $attr_uuid })
-        MATCH (a)-[r:HAS_VALUE]-(av)
-        WHERE %s
-        """ % ("\n AND ".join(rels_filter),)
-
-        self.add_to_query(query)
-
-        self.return_labels = ["a", "av", "r"]
-
-    def get_value(self):
-        result = self.get_result()
-        if not result:
-            return None
-
-        return result.get("av").get("value")
-
-    def get_relationship(self):
-        result = self.get_result()
-        if not result:
-            return None
-
-        return result.get("r")
 
 
 class AttributeUpdateValueQuery(AttributeQuery):

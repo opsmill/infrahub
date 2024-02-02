@@ -6,7 +6,7 @@ from infrahub_sdk.utils import compare_lists
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import BranchSupportType, FilterSchemaKind, InfrahubKind
+from infrahub.core.constants import BranchSupportType, FilterSchemaKind, InfrahubKind, UpdateValidationErrorType
 from infrahub.core.schema import (
     GenericSchema,
     NodeSchema,
@@ -162,6 +162,13 @@ def schema_all_in_one():
     }
 
     return FULL_SCHEMA
+
+
+def _get_schema_by_kind(full_schema, kind):
+    for schema_dict in full_schema["nodes"] + full_schema["generics"]:
+        schema_kind = schema_dict["namespace"] + schema_dict["name"]
+        if schema_kind == kind:
+            return schema_dict
 
 
 async def test_schema_branch_set():
@@ -720,6 +727,142 @@ async def test_schema_branch_validate_menu_placement():
     assert str(exc.value) == "TestSubObject: NoSuchObject is not a valid menu placement"
 
 
+@pytest.mark.parametrize(
+    "display_labels",
+    [
+        ["my_generic_name__value", "mybool__value"],
+        ["my_generic_name__value"],
+    ],
+)
+async def test_validate_display_labels_success(schema_all_in_one, display_labels):
+    schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
+    schema_dict["display_labels"] = display_labels
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    schema.validate_display_labels()
+
+
+@pytest.mark.parametrize(
+    "display_labels,expected_error",
+    [
+        (
+            ["mybool__value", "notanattribute__value"],
+            "InfraGenericInterface.display_labels: notanattribute is not an attribute of InfraGenericInterface",
+        ),
+        (["my_generic_name__something"], "InfraGenericInterface.display_labels: attribute property must be one of"),
+        (
+            ["status__value"],
+            "InfraGenericInterface.display_labels: status is not an attribute of InfraGenericInterface",
+        ),
+        (["badges__name__value"], "InfraGenericInterface.display_labels: this property only supports attributes"),
+        (["mybool"], "InfraGenericInterface.display_labels: mybool must be of the format"),
+        (["badges"], "InfraGenericInterface.display_labels: badges must be of the format"),
+        (["primary_tag__name__value"], "InfraGenericInterface.display_labels: this property only supports attributes"),
+        (
+            ["mybool__value", "status__name__value"],
+            "InfraGenericInterface.display_labels: this property only supports attributes",
+        ),
+    ],
+)
+async def test_validate_display_labels_error(schema_all_in_one, display_labels, expected_error):
+    schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
+    schema_dict["display_labels"] = display_labels
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    with pytest.raises(ValueError, match=expected_error):
+        schema.validate_display_labels()
+
+
+@pytest.mark.parametrize(
+    "order_by",
+    [
+        ["my_generic_name__value", "mybool__value"],
+        ["my_generic_name__value"],
+        ["primary_tag__name__value"],
+        ["status__name__value", "mybool__value"],
+    ],
+)
+async def test_validate_order_by_success(schema_all_in_one, order_by):
+    schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
+    schema_dict["order_by"] = order_by
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    schema.validate_order_by()
+
+
+@pytest.mark.parametrize(
+    "order_by,expected_error",
+    [
+        (
+            ["mybool__value", "notanattribute__value"],
+            "InfraGenericInterface.order_by: notanattribute is not an attribute of InfraGenericInterface",
+        ),
+        (["my_generic_name__something"], "InfraGenericInterface.order_by: attribute property must be one of"),
+        (["status__value"], "InfraGenericInterface.order_by: status is not an attribute of InfraGenericInterface"),
+        (["badges__name__value"], "InfraGenericInterface.order_by: cannot use badges relationship"),
+        (["mybool"], "InfraGenericInterface.order_by: mybool must be of the format"),
+        (["badges"], "InfraGenericInterface.order_by: badges must be of the format"),
+        (["status__name__nothing"], "InfraGenericInterface.order_by: attribute property must be one of"),
+    ],
+)
+async def test_validate_order_by_error(schema_all_in_one, order_by, expected_error):
+    schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
+    schema_dict["order_by"] = order_by
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    with pytest.raises(ValueError, match=expected_error):
+        schema.validate_order_by()
+
+
+@pytest.mark.parametrize(
+    "default_filter",
+    ["my_generic_name__value"],
+)
+async def test_validate_default_filter_success(schema_all_in_one, default_filter):
+    schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
+    schema_dict["default_filter"] = default_filter
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    schema.validate_default_filters()
+
+
+@pytest.mark.parametrize(
+    "default_filter,expected_error",
+    [
+        (
+            "notanattribute__value",
+            "InfraGenericInterface.default_filter: notanattribute is not an attribute of InfraGenericInterface",
+        ),
+        ("my_generic_name__something", "InfraGenericInterface.default_filter: attribute property must be one of"),
+        ("badges__name__value", "InfraGenericInterface.default_filter: this property only supports attributes"),
+        ("mybool", "InfraGenericInterface.default_filter: mybool must be of the format"),
+        ("badges", "InfraGenericInterface.default_filter: badges must be of the format"),
+        ("status__name__nothing", "InfraGenericInterface.default_filter: this property only supports attributes"),
+        ("primary_tag__name__value", "InfraGenericInterface.default_filter: this property only supports attributes"),
+        ("status__name__value", "InfraGenericInterface.default_filter: this property only supports attributes"),
+    ],
+)
+async def test_validate_default_filter_error(schema_all_in_one, default_filter, expected_error):
+    schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
+    schema_dict["default_filter"] = default_filter
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    with pytest.raises(ValueError, match=expected_error):
+        schema.validate_default_filters()
+
+
 async def test_schema_branch_load_schema_extension(
     db: InfrahubDatabase, default_branch, organization_schema, builtin_schema, helper
 ):
@@ -1122,7 +1265,7 @@ async def test_schema_branch_copy(
     assert new_schema.get_hash() != schema_branch.get_hash()
 
 
-async def test_schema_branch_diff(
+async def test_schema_branch_diff_attribute(
     db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
 ):
     FULL_SCHEMA = {
@@ -1177,8 +1320,258 @@ async def test_schema_branch_diff(
     node.attributes[0].unique = False
     new_schema.set(name="BuiltinCriticality", schema=node)
 
-    diff = schema_branch.diff(obj=new_schema)
-    assert diff.model_dump() == {"added": [], "changed": ["BuiltinCriticality"], "removed": []}
+    diff = schema_branch.diff(other=new_schema)
+    assert diff.model_dump() == {
+        "added": {},
+        "changed": {
+            "BuiltinCriticality": {
+                "added": {},
+                "changed": {
+                    "attributes": {
+                        "added": {},
+                        "changed": {
+                            "name": {"added": {}, "changed": {"unique": None}, "removed": {}},
+                        },
+                        "removed": {},
+                    },
+                },
+                "removed": {},
+            },
+        },
+        "removed": {},
+    }
+
+
+async def test_schema_branch_diff_add_node_relationship(
+    db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
+):
+    SCHEMA1 = {
+        "nodes": [
+            {
+                "name": "Criticality",
+                "namespace": "Builtin",
+                "default_filter": "name__value",
+                "label": "Criticality",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                    {"name": "level", "kind": "Number", "label": "Level"},
+                    {"name": "color", "kind": "Text", "label": "Color", "default_value": "#444444"},
+                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
+                ],
+            },
+        ]
+    }
+
+    SCHEMA2 = {
+        "nodes": [
+            {
+                "name": "Tag",
+                "namespace": "Builtin",
+                "label": "Tag",
+                "default_filter": "name__value",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
+                ],
+            },
+        ],
+        "extensions": {
+            "nodes": [
+                {
+                    "kind": "BuiltinCriticality",
+                    "relationships": [
+                        {
+                            "name": "tags",
+                            "peer": InfrahubKind.TAG,
+                            "label": "Tags",
+                            "optional": True,
+                            "cardinality": "many",
+                        },
+                        {
+                            "name": "primary_tag",
+                            "peer": InfrahubKind.TAG,
+                            "label": "Primary Tag",
+                            "identifier": "primary_tag__criticality",
+                            "optional": True,
+                            "cardinality": "one",
+                        },
+                    ],
+                }
+            ]
+        },
+    }
+
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(**SCHEMA1))
+    new_schema = schema_branch.duplicate()
+    new_schema.load_schema(schema=SchemaRoot(**SCHEMA2))
+
+    diff = schema_branch.diff(other=new_schema)
+    assert diff.model_dump() == {
+        "added": {"BuiltinTag": {"added": {}, "changed": {}, "removed": {}}},
+        "changed": {
+            "BuiltinCriticality": {
+                "added": {},
+                "changed": {
+                    "relationships": {
+                        "added": {"primary_tag": None, "tags": None},
+                        "changed": {},
+                        "removed": {},
+                    }
+                },
+                "removed": {},
+            },
+        },
+        "removed": {},
+    }
+
+
+async def test_schema_branch_validate_check_missing(
+    db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
+):
+    FULL_SCHEMA = {
+        "nodes": [
+            {
+                "name": "Criticality",
+                "namespace": "Builtin",
+                "default_filter": "name__value",
+                "label": "Criticality",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                    {"name": "level", "kind": "Number", "label": "Level"},
+                    {"name": "color", "kind": "Text", "label": "Color", "default_value": "#444444"},
+                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "tags",
+                        "peer": InfrahubKind.TAG,
+                        "label": "Tags",
+                        "optional": True,
+                        "cardinality": "many",
+                    },
+                    {
+                        "name": "primary_tag",
+                        "peer": InfrahubKind.TAG,
+                        "label": "Primary Tag",
+                        "identifier": "primary_tag__criticality",
+                        "optional": True,
+                        "cardinality": "one",
+                    },
+                ],
+            },
+            {
+                "name": "Tag",
+                "namespace": "Builtin",
+                "label": "Tag",
+                "default_filter": "name__value",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
+                ],
+            },
+        ]
+    }
+
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(**FULL_SCHEMA))
+    new_schema = schema_branch.duplicate()
+
+    node = new_schema.get(name="BuiltinCriticality")
+    node.attributes[0].unique = False
+    new_schema.set(name="BuiltinCriticality", schema=node)
+
+    result = schema_branch.validate_update(other=new_schema)
+    assert result.model_dump(exclude=["diff"]) == {
+        "checks": [
+            {
+                "check_name": "attribute.unique.update",
+                "field_name": "name",
+                "field_type": "attribute",
+                "prop_name": "unique",
+                "schema_name": "BuiltinCriticality",
+            }
+        ],
+        "errors": [
+            {
+                "error": UpdateValidationErrorType.CHECK_NOT_AVAILABLE,
+                "field_name": "name",
+                "field_type": "attribute",
+                "message": "'attribute.unique.update' is not available yet",
+                "prop_name": "unique",
+                "schema_name": "BuiltinCriticality",
+            },
+        ],
+        "migrations": [],
+    }
+
+
+async def test_schema_branch_validate_add_node_relationships(
+    db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
+):
+    SCHEMA1 = {
+        "nodes": [
+            {
+                "name": "Criticality",
+                "namespace": "Builtin",
+                "default_filter": "name__value",
+                "label": "Criticality",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                    {"name": "level", "kind": "Number", "label": "Level"},
+                    {"name": "color", "kind": "Text", "label": "Color", "default_value": "#444444"},
+                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
+                ],
+            },
+        ]
+    }
+
+    SCHEMA2 = {
+        "nodes": [
+            {
+                "name": "Tag",
+                "namespace": "Builtin",
+                "label": "Tag",
+                "default_filter": "name__value",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
+                ],
+            },
+        ],
+        "extensions": {
+            "nodes": [
+                {
+                    "kind": "BuiltinCriticality",
+                    "relationships": [
+                        {
+                            "name": "tags",
+                            "peer": InfrahubKind.TAG,
+                            "label": "Tags",
+                            "optional": True,
+                            "cardinality": "many",
+                        },
+                        {
+                            "name": "primary_tag",
+                            "peer": InfrahubKind.TAG,
+                            "label": "Primary Tag",
+                            "identifier": "primary_tag__criticality",
+                            "optional": True,
+                            "cardinality": "one",
+                        },
+                    ],
+                }
+            ]
+        },
+    }
+
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(**SCHEMA1))
+    new_schema = schema_branch.duplicate()
+    new_schema.load_schema(schema=SchemaRoot(**SCHEMA2))
+
+    result = schema_branch.validate_update(other=new_schema)
+    assert result.model_dump(exclude=["diff"]) == {"checks": [], "errors": [], "migrations": []}
 
 
 # -----------------------------------------------------------------
@@ -1334,7 +1727,7 @@ async def test_load_schema_to_db_core_models(
 
     await registry.schema.load_schema_to_db(schema=new_schema, db=db)
 
-    node_schema = registry.get_schema(name="SchemaGeneric")
+    node_schema = registry.schema.get(name="SchemaGeneric")
     results = await SchemaManager.query(schema=node_schema, db=db)
     assert len(results) > 1
 

@@ -112,7 +112,7 @@ export default function UserProfile() {
         </div>
       </div>
 
-      <div className="sticky top-0 z-10 shadow-sm">
+      <div className="sticky top-0 shadow-sm">
         <Tabs tabs={tabs} />
       </div>
 

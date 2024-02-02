@@ -63,6 +63,7 @@ ruff = "0.1.8"
 buildkite-test-collector = "^0.1.7"
 invoke = "2.2.0"
 pytest-benchmark = "^4.0.0"
+pytest-codspeed = "^2.2.0"
 
 [tool.poetry.group.test-scale.dependencies]
 locust = "^2.20.1"
@@ -302,7 +303,159 @@ module = "infrahub.git_credential.helper"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.graphql.*"
+module = "infrahub.graphql"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.api.endpoints"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.app"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.auth.query_permission_checker.anonymous_checker"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.auth.query_permission_checker.checker"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.auth.query_permission_checker.default_checker"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.auth.query_permission_checker.interface"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.auth.query_permission_checker.read_only_checker"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.auth.query_permission_checker.read_write_checker"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.enums"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.generator"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.mutations.account"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.mutations.artifact_definition"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.mutations.attribute"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.mutations.branch"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.mutations.graphql_query"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.mutations.group"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.mutations.main"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.mutations.proposed_change"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.mutations.relationship"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.mutations.repository"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.mutations.schema"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.mutations.subscription"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.mutations.subscription.graphql_query"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.query"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.queries.branch"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.queries.diff"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.queries.internal"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.resolver"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.schema"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.subscription"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.subscription.graphql_query"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.types.attribute"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.types.mixin"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.types.node"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.types.branch"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.types.interface"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.types.standard_node"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "infrahub.graphql.utils"
 ignore_errors = true
 
 [[tool.mypy.overrides]]

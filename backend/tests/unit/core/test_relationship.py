@@ -14,7 +14,7 @@ from infrahub.database import InfrahubDatabase
 async def test_relationship_init(
     db: InfrahubDatabase, default_branch: Branch, tag_blue_main: Node, person_jack_main: Node, branch: Branch
 ):
-    person_schema = registry.get_schema(name="TestPerson")
+    person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
     rel = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
@@ -46,7 +46,7 @@ async def test_relationship_init_w_node_property(
     person_jack_main: Node,
     branch: Branch,
 ):
-    person_schema = registry.get_schema(name="TestPerson")
+    person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
     rel = Relationship(
@@ -80,7 +80,7 @@ async def car_smart_properties_main(db: InfrahubDatabase, default_branch: Branch
 async def test_relationship_load_existing(
     db: InfrahubDatabase, person_john_main: Node, car_smart_properties_main: Node, branch: Branch
 ):
-    car_schema = registry.get_schema(name="TestCar")
+    car_schema = registry.schema.get(name="TestCar")
     rel_schema = car_schema.get_relationship("owner")
 
     rel = Relationship(schema=rel_schema, branch=branch, node=car_smart_properties_main)
@@ -108,7 +108,7 @@ async def test_relationship_load_existing(
 
 
 async def test_relationship_peer(db: InfrahubDatabase, tag_blue_main: Node, person_jack_main: Node, branch: Branch):
-    person_schema = registry.get_schema(name="TestPerson")
+    person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
     rel = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
@@ -124,7 +124,7 @@ async def test_relationship_peer(db: InfrahubDatabase, tag_blue_main: Node, pers
 
 
 async def test_relationship_save(db: InfrahubDatabase, tag_blue_main: Node, person_jack_main: Node, branch: Branch):
-    person_schema = registry.get_schema(name="TestPerson")
+    person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
     rel = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)
@@ -140,7 +140,7 @@ async def test_relationship_save(db: InfrahubDatabase, tag_blue_main: Node, pers
 async def test_relationship_hash(
     db: InfrahubDatabase, tag_blue_main: Node, person_jack_main: Node, branch: Branch, first_account
 ):
-    person_schema = registry.get_schema(name="TestPerson")
+    person_schema = registry.schema.get(name="TestPerson")
     rel_schema = person_schema.get_relationship("tags")
 
     rel = Relationship(schema=rel_schema, branch=branch, node=person_jack_main)

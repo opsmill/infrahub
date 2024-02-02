@@ -4,6 +4,7 @@ from infrahub import config, lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
+from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.node import Node
 from infrahub.core.root import Root
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
@@ -14,6 +15,23 @@ from infrahub.log import get_logger
 from infrahub.storage import InfrahubObjectStorage
 
 log = get_logger()
+
+
+async def get_root_node(db: InfrahubDatabase, initialize: bool = False) -> Root:
+    roots = await Root.get_list(db=db)
+    if len(roots) == 0 and not initialize:
+        raise DatabaseError(
+            "The Database hasn't been initialized for Infrahub, please run 'infrahub db init' or 'infrahub server start' to initialize the database."
+        )
+
+    if len(roots) == 0:
+        await first_time_initialization(db=db)
+        roots = await Root.get_list(db=db)
+
+    elif len(roots) > 1:
+        raise DatabaseError("The Database is corrupted, more than 1 root node found.")
+
+    return roots[0]
 
 
 async def initialization(db: InfrahubDatabase):
@@ -29,15 +47,8 @@ async def initialization(db: InfrahubDatabase):
     async with lock.registry.initialization():
         log.debug("Checking Root Node")
 
-        roots = await Root.get_list(db=db)
-        if len(roots) == 0:
-            await first_time_initialization(db=db)
-            roots = await Root.get_list(db=db)
-
-        if len(roots) > 1:
-            raise DatabaseError("Database is corrupted, more than 1 root node found.")
-
-        registry.id = roots[0].uuid
+        root = await get_root_node(db=db, initialize=True)
+        registry.id = root.uuid
 
     # ---------------------------------------------------
     # Initialize the Storage Driver
@@ -95,7 +106,7 @@ async def initialization(db: InfrahubDatabase):
     # ---------------------------------------------------
     # Load all existing Groups into the registry
     # ---------------------------------------------------
-    # group_schema = await registry.get_schema(db=db, name="Group")
+    # group_schema = await registry.schema.get(db=db, name="Group")
     # groups = await NodeManager.query(group_schema, db=db)
     # for group in groups:
     #     registry.node_group[group.name.value] = group
@@ -106,9 +117,9 @@ async def initialization(db: InfrahubDatabase):
 
 
 async def create_root_node(db: InfrahubDatabase) -> Root:
-    root = Root()
+    root = Root(graph_version=GRAPH_VERSION)
     await root.save(db=db)
-    log.info(f"Generated instance ID : {root.uuid}")
+    log.info(f"Generated instance ID : {root.uuid} (v{GRAPH_VERSION})")
 
     registry.id = root.id
 
@@ -204,18 +215,7 @@ async def first_time_initialization(db: InfrahubDatabase):
     # --------------------------------------------------
     # Create Default Users and Groups
     # --------------------------------------------------
-    token_schema = registry.get_schema(name=InfrahubKind.ACCOUNTTOKEN)
-    # admin_grp = await Node.init(db=db, schema=group_schema)
-    # await admin_grp.new(db=db, name="admin")
-    # await admin_grp.save(db=db)
-    # ----
-    # group_schema = registry.get_schema(name="Group")
-
-    # admin_grp = await Node.init(db=db, schema=group_schema)
-    # await admin_grp.new(db=db, name="admin")
-    # await admin_grp.save(db=db)
-    # default_grp = obj = Node(group_schema).new(name="default").save()
-    # account_schema = registry.get_schema(name="Account")
+    token_schema = registry.schema.get(name=InfrahubKind.ACCOUNTTOKEN)
     obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
     await obj.new(
         db=db,

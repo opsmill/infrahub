@@ -5,7 +5,7 @@ import copy
 import logging
 from logging import Logger
 from time import sleep
-from typing import Any, Dict, List, MutableMapping, Optional, TypedDict, Union
+from typing import TYPE_CHECKING, Any, Dict, List, MutableMapping, Optional, Type, TypedDict, Union
 
 import httpx
 
@@ -32,11 +32,15 @@ from infrahub_sdk.node import (
 )
 from infrahub_sdk.object_store import ObjectStore, ObjectStoreSync
 from infrahub_sdk.queries import get_commit_update_mutation
+from infrahub_sdk.query_groups import InfrahubGroupContext, InfrahubGroupContextSync
 from infrahub_sdk.schema import InfrahubSchema, InfrahubSchemaSync, NodeSchema
 from infrahub_sdk.store import NodeStore, NodeStoreSync
 from infrahub_sdk.timestamp import Timestamp
 from infrahub_sdk.types import AsyncRequester, HTTPMethod, SyncRequester
 from infrahub_sdk.utils import is_valid_uuid
+
+if TYPE_CHECKING:
+    from types import TracebackType
 
 # pylint: disable=redefined-builtin  disable=too-many-lines
 
@@ -61,9 +65,11 @@ class BaseClient:
         retry_delay: int = 5,
         log: Optional[Logger] = None,
         insert_tracker: bool = False,
+        update_group_context: bool = False,
         pagination_size: int = 50,
         max_concurrent_execution: int = 5,
-        config: Optional[Config] = None,
+        config: Optional[Union[Config, Dict[str, Any]]] = None,
+        identifier: Optional[str] = None,
     ):
         self.client = None
         self.retry_on_failure = retry_on_failure
@@ -76,10 +82,9 @@ class BaseClient:
         self.refresh_token: str = ""
         if isinstance(config, Config):
             self.config = config
-        elif isinstance(config, dict):
-            self.config = Config(**config)
         else:
-            self.config = Config()
+            config = config or {}
+            self.config = Config(**config)
 
         self.default_branch = self.config.default_infrahub_branch
         self.default_timeout = self.config.timeout
@@ -91,6 +96,8 @@ class BaseClient:
 
         self.max_concurrent_execution = max_concurrent_execution
 
+        self.update_group_context = update_group_context
+        self.identifier = identifier
         self._initialize()
 
     def _initialize(self) -> None:
@@ -110,10 +117,14 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         self.store = NodeStore()
         self.concurrent_execution_limit = asyncio.Semaphore(self.max_concurrent_execution)
         self._request_method: AsyncRequester = self.config.requester or self._default_request_method
+        self.group_context = InfrahubGroupContext(self)
 
     @classmethod
     async def init(cls, *args: Any, **kwargs: Any) -> InfrahubClient:
         return cls(*args, **kwargs)
+
+    async def set_context_properties(self, identifier: str, params: Optional[Dict[str, str]] = None) -> None:
+        self.group_context.set_properties(identifier=identifier, params=params)
 
     async def create(
         self,
@@ -364,7 +375,6 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
             rebase (bool, optional): Flag to indicate if the branch should be rebased during the query. Defaults to False.
             timeout (int, optional): Timeout in second for the query. Defaults to None.
             raise_for_error (bool, optional): Flag to indicate that we need to raise an exception if the response has some errors. Defaults to True.
-
         Raises:
             GraphQLError: _description_
 
@@ -654,6 +664,14 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
 
         return True
 
+    async def __aenter__(self) -> InfrahubClient:
+        return self
+
+    async def __aexit__(
+        self, exc_type: Type[BaseException], exc_value: BaseException, traceback: TracebackType
+    ) -> None:  # pylint: disable=unused-argument
+        await self.group_context.update_group()
+
 
 class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
     def _initialize(self) -> None:
@@ -662,10 +680,14 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         self.object_store = ObjectStoreSync(self)
         self.store = NodeStoreSync()
         self._request_method: SyncRequester = self.config.sync_requester or self._default_request_method
+        self.group_context = InfrahubGroupContextSync(self)
 
     @classmethod
     def init(cls, *args: Any, **kwargs: Any) -> InfrahubClientSync:
         return cls(*args, **kwargs)
+
+    def set_context_properties(self, identifier: str, params: Optional[Dict[str, str]] = None) -> None:
+        self.group_context.set_properties(identifier=identifier, params=params)
 
     def create(
         self,
@@ -707,7 +729,6 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             rebase (bool, optional): Flag to indicate if the branch should be rebased during the query. Defaults to False.
             timeout (int, optional): Timeout in second for the query. Defaults to None.
             raise_for_error (bool, optional): Flag to indicate that we need to raise an exception if the response has some errors. Defaults to True.
-
         Raises:
             GraphQLError: _description_
 
@@ -1167,3 +1188,9 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         self.access_token = response.json()["access_token"]
         self.refresh_token = response.json()["refresh_token"]
         self.headers["Authorization"] = f"Bearer {self.access_token}"
+
+    def __enter__(self) -> InfrahubClientSync:
+        return self
+
+    def __exit__(self, exc_type: Type[BaseException], exc_value: BaseException, traceback: TracebackType) -> None:  # pylint: disable=unused-argument
+        self.group_context.update_group()

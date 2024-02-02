@@ -15,6 +15,7 @@ exceptions:
   - Attributes
   - CI
   - Codespaces
+  - CoreArtifactTarget
   - Docker Compose
   - E2E
   - Generics

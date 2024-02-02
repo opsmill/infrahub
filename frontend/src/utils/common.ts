@@ -47,7 +47,7 @@ export const encodeJwt = (data: any): string => {
 
 const DEFAULT_DEBOUNCE = 1000;
 
-export const debounce = (func: any, wait = DEFAULT_DEBOUNCE, immediate?: boolean) => {
+export const debounce = (func: Function, wait = DEFAULT_DEBOUNCE, immediate?: boolean) => {
   let timeout: any;
   return function executedFunction(this: any) {
     const context = this;
