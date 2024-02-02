@@ -47,12 +47,13 @@ async def schema_integrity(
         id=message.proposed_change, schema_name=InfrahubKind.PROPOSEDCHANGE, db=service.database
     )
 
-    # TODO: use GraphQL DiffSummary
-    raw_diff = await service.client.get_diff(branch=proposed_change.source_branch.value)
+    raw_diff = await service.client.get_diff_summary(branch=proposed_change.source_branch.value)
 
     altered_schema_kinds = set()
-    for node_diff in raw_diff["diffs"]:
-        if {DiffAction.ADDED, DiffAction.UPDATED} & set(node_diff["action"].values()):
+    for node_diff in raw_diff:
+        if node_diff["branch"] == proposed_change.source_branch.value and {DiffAction.ADDED, DiffAction.UPDATED} & set(
+            node_diff["actions"]
+        ):
             altered_schema_kinds.add(node_diff["kind"])
 
     uniqueness_checker = UniquenessChecker(db=service.database)

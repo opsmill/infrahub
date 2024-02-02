@@ -880,6 +880,12 @@ internal_schema = {
                     "description": "Expected Kind for the children nodes in a Hierarchy, default to the main generic defined if not defined.",
                     "optional": True,
                 },
+                {
+                    "name": "uniqueness_constraints",
+                    "kind": "List",
+                    "description": "Each element of a constraint must be of the format <attribute_name> or <relationship_name>__<attribute_name>",
+                    "optional": True,
+                },
             ],
             "relationships": [
                 {
@@ -1255,6 +1261,12 @@ internal_schema = {
                     "name": "used_by",
                     "kind": "List",
                     "description": "List of Nodes that are referencing this Generic",
+                    "optional": True,
+                },
+                {
+                    "name": "uniqueness_constraints",
+                    "kind": "List",
+                    "description": "Each element of a constraint must be of the format <attribute_name> or <relationship_name>__<attribute_name>",
                     "optional": True,
                 },
             ],
