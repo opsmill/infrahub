@@ -63,12 +63,14 @@ mutation CreateTask(
     $conclusion: TaskConclusion!,
     $title: String!,
     $task_id: UUID,
+    $related_node: String!
     $logs: [RelatedTaskLogCreateInput]
     ) {
     InfrahubTaskCreate(
         data: {
             id: $task_id,
             title: $title,
+            related_node: $related_node,
             conclusion: $conclusion,
             logs: $logs
         }

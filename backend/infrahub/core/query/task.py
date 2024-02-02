@@ -21,44 +21,26 @@ class TaskNodeCreateQuery(StandardNodeQuery):
     async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Any) -> None:
         node_type = self.node.get_type()
         self.params["node_prop"] = self.node.to_db()
-        self.params["created_at"] = self.params["node_prop"].pop("created_at")
-        relationships = []
+        self.params["related_id"] = self.node.related.get_id()
 
+        created_by = ""
         if self.node.account_id:
             query = """
             MATCH (a:%(account_kind)s {uuid: $account_id})
             """ % {"account_kind": InfrahubKind.ACCOUNT}
             self.add_to_query(query=query)
             self.params["account_id"] = self.node.account_id
-            relationships.append(
-                """
-                MERGE (n)-[:CREATED_BY]->(a)
-                """
-            )
-
-        if self.node.related_node:
-            query = """
-            MATCH (i:%(node_kind)s {uuid: $related_id})
-            """ % {"node_kind": self.node.related_node.get_kind()}
-            self.add_to_query(query=query)
-            self.params["related_id"] = self.node.related_node.get_id()
-            relationships.append(
-                """
-                MERGE (n)-[:IMPACTS]->(i)
-                """
-            )
+            created_by = "CREATE (n)-[:CREATED_BY]->(a)"
 
         query = """
         MATCH (root:Root)
-        MERGE (n:%(node_type)s {uuid: $node_prop.uuid})
-        ON CREATE SET n.created_at = $created_at, n += $node_prop
-        ON MATCH SET n += $node_prop
-        MERGE (n)-[r:IS_PART_OF]->(root)
-        """ % {"node_type": node_type}
+        MATCH (i:%(related_node_kind)s {uuid: $related_id})
+        CREATE (n:%(node_type)s $node_prop)-[r:IS_PART_OF]->(root)
+        CREATE (n)-[:IMPACTS]->(i)
+        %(created_by)s
+        """ % {"created_by": created_by, "node_type": node_type, "related_node_kind": self.node.related.get_kind()}
         self.add_to_query(query=query)
 
-        for relationship in relationships:
-            self.add_to_query(query=relationship)
         self.return_labels = ["n"]
 
 

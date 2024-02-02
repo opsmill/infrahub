@@ -182,12 +182,6 @@ class TaskConclusion(InfrahubStringEnum):
     FAILURE = "failure"
     SUCCESS = "success"
 
-    @classmethod
-    def from_bool(cls, success: bool) -> TaskConclusion:
-        if success:
-            return cls.SUCCESS
-        return cls.FAILURE
-
 
 class ValidatorConclusion(InfrahubStringEnum):
     UNKNOWN = "unknown"

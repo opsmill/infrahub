@@ -27,6 +27,12 @@ class Task(StandardNode):
     _exclude_attrs: List[str] = ["id", "uuid", "account_id", "_query", "related_node"]
     _query: Type[StandardNodeQuery] = TaskNodeCreateQuery
 
+    @property
+    def related(self) -> NodeInfo:
+        if self.related_node:
+            return self.related_node
+        raise ValueError("The related_node field has not been populated")
+
     @classmethod
     async def query(
         cls, db: InfrahubDatabase, fields: Dict[str, Any], limit: int, offset: int, related_nodes: List[str]

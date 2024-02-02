@@ -96,7 +96,6 @@ def message_priority(routing_key: str) -> int:
         "event.schema.update": 5,
         "git.diff.names_only": 4,
         "git.file.get": 4,
-        "log.task.result": 4,
         "request.artifact.generate": 2,
         "request.git.sync": 4,
         "request.proposed_change.repository_checks": 5,

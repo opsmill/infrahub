@@ -64,14 +64,12 @@ class TaskCreate(Mutation):
 
         account_id = str(data.created_by) if data.created_by else None
 
-        related_node = None
-        if data.related_node:
-            if not (related_node := await NodeManager.get_one(db=db, id=str(data.related_node), branch=branch)):
-                raise NodeNotFound(
-                    node_type="related_node",
-                    identifier=str(data.related_node),
-                    message="The indicated related node was not found in the database",
-                )
+        if not (related_node := await NodeManager.get_one(db=db, id=str(data.related_node), branch=branch)):
+            raise NodeNotFound(
+                node_type="related_node",
+                identifier=str(data.related_node),
+                message="The indicated related node was not found in the database",
+            )
         fields = await extract_fields_first_node(info)
         task_id = uuid4()
 
@@ -117,6 +115,7 @@ class TaskUpdate(Mutation):
         db: InfrahubDatabase = info.context.get("infrahub_database")
         task_id = str(data.id)
         task = await Task.get(id=task_id, db=db)
+
         fields = await extract_fields_first_node(info)
 
         if not task:
