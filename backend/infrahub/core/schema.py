@@ -473,7 +473,9 @@ class BaseNodeSchema(HashableModel):
     menu_placement: Optional[str] = Field(default=None, json_schema_extra={"update": UpdateSupport.ALLOWED.value})
     icon: Optional[str] = Field(default=None, json_schema_extra={"update": UpdateSupport.ALLOWED.value})
     label: Optional[str] = Field(default=None, json_schema_extra={"update": UpdateSupport.ALLOWED.value})
-    uniqueness_constraints: Optional[List[List[str]]] = Field(default=None, json_schema_extra={"update": UpdateSupport.CHECK_CONSTRAINTS.value})
+    uniqueness_constraints: Optional[List[List[str]]] = Field(
+        default=None, json_schema_extra={"update": UpdateSupport.CHECK_CONSTRAINTS.value}
+    )
 
     _exclude_from_hash: List[str] = ["attributes", "relationships"]
     _sort_by: List[str] = ["name"]

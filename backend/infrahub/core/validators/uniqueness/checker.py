@@ -84,7 +84,7 @@ class UniquenessChecker:
         schema_objects = [
             schema
             if isinstance(schema, (NodeSchema, GenericSchema))
-            else registry.get_schema(schema, branch=source_branch)
+            else registry.schema.get(schema, branch=source_branch)
             for schema in schemas
         ]
 
