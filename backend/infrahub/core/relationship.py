@@ -504,13 +504,16 @@ class RelationshipValidatorList:
 
         # If the max_count is greater than 0 then validate
         if self.max_count and self._relationships_count + 1 > self.max_count:
-            raise ValidationError({rel.name: f"Too many relationships, max {self.max_count}"})
+            raise ValidationError(
+                {rel.name: f"Too many relationships, max {self.max_count}, count {self._relationships_count}"}
+            )
 
         self._relationships.append(rel)
         self._relationships_count += 1
 
     def clear(self):
         self._relationships.clear()
+        self._relationships_count = len(self._relationships)
 
     def extend(self, iterable):
         # Filter down to only Relationship objects and remove duplicates
@@ -738,7 +741,7 @@ class RelationshipManager:
 
         # Reset the list of relationship and save the previous one to see if we can reuse some
         previous_relationships = {rel.peer_id: rel for rel in await self.get_relationships(db=db)}
-        self._relationships = []
+        self._relationships.clear()
         changed = False
 
         for item in data:
