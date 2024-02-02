@@ -1,39 +1,15 @@
 import { useAtomValue } from "jotai/index";
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
-import BranchSelector from "../../components/branch-selector";
-import { SearchInput } from "../../components/search/search-bar";
-import { ALERT_TYPES, Alert } from "../../components/utils/alert";
-import { CONFIG } from "../../config/config";
-import { ReactComponent as InfrahubLogo } from "../../images/Infrahub-SVG-hori.svg";
-import { currentBranchAtom } from "../../state/atoms/branches.atom";
-import { currentSchemaHashAtom } from "../../state/atoms/schema.atom";
-import { fetchUrl } from "../../utils/fetch";
-import LoadingScreen from "../loading-screen/loading-screen";
+import { SearchInput } from "../../../components/search/search-bar";
+import { ALERT_TYPES, Alert } from "../../../components/utils/alert";
+import { CONFIG } from "../../../config/config";
+import { currentBranchAtom } from "../../../state/atoms/branches.atom";
+import { currentSchemaHashAtom } from "../../../state/atoms/schema.atom";
+import { fetchUrl } from "../../../utils/fetch";
+import LoadingScreen from "../../loading-screen/loading-screen";
 import DropDownMenuHeader from "./desktop-menu-header";
-import { Footer } from "./footer";
-import { classNames } from "../../utils/common";
-
-export function Sidebar() {
-  return (
-    <div className="z-100 hidden w-64 md:flex flex-col border-r">
-      <div className="flex flex-grow flex-col overflow-y-auto min-h-0">
-        <Link to="/" className="h-16 flex-shrink-0 px-5 flex items-center">
-          <InfrahubLogo />
-        </Link>
-
-        <div className="border-b flex flex-col items-stretch p-2 gap-2">
-          <BranchSelector />
-        </div>
-
-        <DesktopMenu className="border-b flex-grow min-h-0 overflow-auto " />
-      </div>
-
-      <Footer />
-    </div>
-  );
-}
+import { classNames } from "../../../utils/common";
 
 type MenuItem = {
   title: string;
@@ -46,7 +22,7 @@ type MenuItem = {
 type MenuProps = {
   className?: string;
 };
-function DesktopMenu({ className = "" }: MenuProps) {
+export function DesktopMenu({ className = "" }: MenuProps) {
   const branch = useAtomValue(currentBranchAtom);
   const currentSchemaHash = useAtomValue(currentSchemaHashAtom);
 
