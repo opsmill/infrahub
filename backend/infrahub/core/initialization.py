@@ -74,7 +74,9 @@ async def initialization(db: InfrahubDatabase):
         # Import the default branch
         default_branch: Branch = registry.get_branch_from_registry(branch=config.SETTINGS.main.default_branch)
         hash_in_db = default_branch.schema_hash.main
-        await registry.schema.load_schema_from_db(db=db, branch=default_branch)
+        schema_default_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
+        registry.schema.set_schema_branch(name=default_branch.name, schema=schema_default_branch)
+
         if default_branch.update_schema_hash():
             log.warning(
                 "New schema detected after pulling the schema from the db",
