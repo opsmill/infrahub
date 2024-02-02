@@ -103,7 +103,7 @@ While it would be possible to create a transform that targets all of these tags,
 
 Create a local directory on your computer.
 
-```sh
+```bash
 mkdir tags_render
 ```
 
@@ -178,7 +178,7 @@ Within the `tags_render` folder you should now have tree files:
 
 Before we can test our transform we must add the files to a local Git repository.
 
-```sh
+```bash
 git init --initial-branch=main
 git add .
 git commit -m "First commit"
@@ -188,7 +188,7 @@ git commit -m "First commit"
 
 Using infrahubctl you can first verify that the `.infrahub.yml` file is formatted correctly by listing available transforms.
 
-```sh
+```bash
 
  Usage: infrahubctl render [OPTIONS] TRANSFORM_NAME [VARIABLES]...
 
@@ -210,7 +210,7 @@ Using infrahubctl you can first verify that the `.infrahub.yml` file is formatte
 
 Examples
 
-```sh
+```bash
 infrahubctl render <transform name or ID> my-param=XXXXX my-other-param=YYYYY
 ```
 
@@ -242,5 +242,5 @@ The name of the branch used in the query will be used to retrieve the right Jinj
 If the GraphQL query accepts parameters, they can be passed directly as URL parameters:
 
 ```txt
-https://:host/api/transform/jinja2/:transform_name_or_id?branch=main&my-param=XXX&my-other-param=YYY
+https://<host>/api/transform/jinja2/<transform name or ID>?branch=main&my-param=XXX&my-other-param=YYY
 ```

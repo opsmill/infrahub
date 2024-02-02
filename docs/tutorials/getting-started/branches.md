@@ -26,7 +26,7 @@ Branch names are fairly permissive, but must conform to [git ref format](https:/
 
 Use the command below to create a new branch named `cr1234`
 
-```sh
+```bash
 infrahubctl branch create cr1234
 ```
 
@@ -101,7 +101,7 @@ To view changes and merge a branch you need to:
 
 Use the command below to create a new branch named `cr1234`.
 
-```sh
+```bash
 infrahubctl branch merge cr1234
 ```
 

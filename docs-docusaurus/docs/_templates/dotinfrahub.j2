@@ -1,17 +1,19 @@
 ---
-label: Repository config file
-icon: tools
-layout: default
+title: Repository config file
 ---
+
 # Repository configuration file
 
 The repository configuration file allows you to define multiple resources that need to be imported into Infrahub.
 
 The file should be formatted as a Yaml file, have the filename `.infrahub.yml` and should be stored at the root of the [repository](/topics/repository).
 
-!!!info
+:::info
+
 See [this topic](/topics/infrahub-yml) for more details on the available repository configuration options
-!!!
+
+:::
+
 {% for property in properties %}
 ## {{property.title}}
 

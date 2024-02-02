@@ -103,7 +103,7 @@ While it would be possible to create a transform that targets all of these tags,
 
 Create a local directory on your computer:
 
-```sh
+```bash
 mkdir tags_transform
 ```
 
@@ -241,7 +241,7 @@ Within the `tags_transform` folder you should now have 3 files:
 
 Before we can test our transform we must add the files to a local Git repository.
 
-```sh
+```bash
 git init --initial-branch=main
 git add .
 git commit -m "First commit"
@@ -251,7 +251,7 @@ git commit -m "First commit"
 
 Using infrahubctl you can first verify that the `.infrahub.yml` file is formatted correctly by listing available transforms.
 
-```sh title="❯ infrahubctl transform --list"
+```bash title="❯ infrahubctl transform --list"
 Python transforms defined in repository: 1
 tags_transform (tags_transform.py::TagsTransform)
 ```
@@ -259,7 +259,7 @@ tags_transform (tags_transform.py::TagsTransform)
 :::info
 Trying to run the transform with just the name will produce an error.
 
-```sh title="❯ infrahubctl transform tags_transform"
+```bash title="❯ infrahubctl transform tags_transform"
 1 error(s) occured while executing the query
  - Message: Variable '$tag' of required type 'String!' was not provided.
    Location: [{'line': 1, 'column': 17}]

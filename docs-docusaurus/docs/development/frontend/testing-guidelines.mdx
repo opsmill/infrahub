@@ -32,7 +32,7 @@ For example, a test linked to the route `/objects/:objectname/:objectid` will be
 
 [Playwright](https://playwright.dev/docs/codegen) can automatically generate tests as you perform actions in the browser, making it a quick way to start testing:
 
-```sh
+```bash
 npx playwright codegen
 ```
 
@@ -83,7 +83,7 @@ page.getByRole("button", { name: "Save" });
 
 2. Structure tests with steps for better readability:
 
-```sh
+```bash
 # headless mode
 npm run test:e2e
 
@@ -99,13 +99,13 @@ npm run test:e2e:ui
 
 ## Integration tests
 
-```sh
+```bash
 npm run cypress:run:component
 ```
 
 ## Unit tests
 
-```sh
+```bash
 npm run test
 
 # same with coverage

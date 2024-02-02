@@ -89,8 +89,8 @@ const config: Config = {
       copyright: `Copyright © ${new Date().getFullYear()} Infrahub by OpsMill.`,
     },
     prism: {
-      theme: prismThemes.nightOwl,
-      additionalLanguages: ["python", "markup-templating", "django", "json", "toml"]
+      theme: prismThemes.jettwaveDark,
+      additionalLanguages: ["bash", "python", "markup-templating", "django", "json", "toml"]
     },
   } satisfies Preset.ThemeConfig,
 };

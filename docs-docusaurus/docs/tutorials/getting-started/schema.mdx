@@ -29,10 +29,6 @@ In order to model a network, we need to extend the current models to capture mor
 
 A "base" schema with these types of models and more is available in the `models/` directory
 
-==- Infrastructure Base Schema
-:::code source="../../../models/infrastructure_base.yml" :::
-==-
-
 <details>
   <summary>Infrastructure Base Schema</summary>
   <CodeBlock language="yaml">{infrastructureBaseYaml}</CodeBlock>
@@ -40,13 +36,13 @@ A "base" schema with these types of models and more is available in the `models/
 
 Use the following command to load these new models into Infrahub
 
-```sh
+```bash
 invoke demo.load-infra-schema
 ```
 
 <details>
   <summary>Expected Results</summary>
-  ```sh
+  ```bash
   > invoke demo.load-infra-schema
   --- abbreviated ---
   schema 'models/infrastructure_base.yml' loaded successfully in 12.352 sec!
@@ -71,13 +67,13 @@ In order to have more meaningful data to explore, we'll use a sample topology of
 
 Use the following command to load these new models into Infrahub:
 
-```sh
+```bash
 invoke demo.load-infra-data
 ```
 
 <details>
   <summary>Expected Results</summary>
-  ```sh
+  ```bash
   > invoke demo.load-infra-data
   --- abbreviated ---
   [13:27:39] INFO     Create a new Branch and Change the IP addresses between edge1 and edge2 on the selected site            infrastructure_edge.py:648
