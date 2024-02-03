@@ -640,7 +640,7 @@ async def generate_filters(
         top_level (bool, optional): Flag to indicate if are at the top level or not. Defaults to False.
 
     Returns:
-        dict: A Dictionnary containing all the filters with their name as the key and their Type as value
+        dict: A Dictionary containing all the filters with their name as the key and their Type as value
     """
 
     filters: Dict[str, Any] = {"offset": graphene.Int(), "limit": graphene.Int()}
@@ -658,6 +658,7 @@ async def generate_filters(
 
     if top_level:
         filters.update(get_attribute_type().get_graphql_filters(name="any"))
+        filters["partial_match"] = graphene.Boolean()
 
     if not top_level:
         return filters

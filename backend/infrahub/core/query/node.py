@@ -553,9 +553,12 @@ class NodeListGetInfoQuery(Query):
 class NodeGetListQuery(Query):
     name = "node_get_list"
 
-    def __init__(self, schema: NodeSchema, filters: Optional[dict] = None, *args, **kwargs):
+    def __init__(
+        self, schema: NodeSchema, filters: Optional[dict] = None, partial_match: bool = False, *args, **kwargs
+    ):
         self.schema = schema
         self.filters = filters
+        self.partial_match = partial_match
 
         super().__init__(*args, **kwargs)
 
@@ -673,6 +676,7 @@ class NodeGetListQuery(Query):
                     branch_filter=branch_filter,
                     branch=self.branch,
                     subquery_idx=filter_cnt,
+                    partial_match=self.partial_match,
                 )
                 filter_params.update(subquery_params)
 

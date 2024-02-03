@@ -215,6 +215,7 @@ class AttributeSchema(HashableModel):
         include_match: bool = True,
         param_prefix: Optional[str] = None,
         db: Optional[InfrahubDatabase] = None,
+        partial_match: bool = False,
     ) -> Tuple[List[QueryElement], Dict[str, Any], List[str]]:
         filter_value = self.convert_to_enum_value(filter_value)
         return await default_attribute_query_filter(
@@ -225,6 +226,7 @@ class AttributeSchema(HashableModel):
             include_match=include_match,
             param_prefix=param_prefix,
             db=db,
+            partial_match=partial_match,
         )
 
 
@@ -305,6 +307,7 @@ class RelationshipSchema(HashableModel):
         branch: Optional[Branch] = None,
         include_match: bool = True,
         param_prefix: Optional[str] = None,
+        partial_match: bool = False,
     ) -> Tuple[List[QueryElement], Dict[str, Any], List[str]]:
         """Generate Query String Snippet to filter the right node."""
 
@@ -414,6 +417,7 @@ class RelationshipSchema(HashableModel):
             branch=branch,
             include_match=False,
             param_prefix=prefix if param_prefix else None,
+            partial_match=partial_match,
         )
 
         query_filter.extend(field_filter)
