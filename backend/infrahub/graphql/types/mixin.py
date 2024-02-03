@@ -41,7 +41,6 @@ class GetListMixin:
 
     @classmethod
     async def get_paginated_list(cls, fields: dict, context: dict, **kwargs):
-        # kwargs are filters
         at = context.get("infrahub_at")
         branch = context.get("infrahub_branch")
         account = context.get("infrahub_account", None)
