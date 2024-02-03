@@ -407,14 +407,6 @@ module = "infrahub.graphql.queries.branch"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.graphql.queries.diff"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.graphql.queries.internal"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.graphql.resolver"
 ignore_errors = true
 
