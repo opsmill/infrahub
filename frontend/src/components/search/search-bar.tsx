@@ -81,19 +81,21 @@ export const SearchBar = () => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
 
-  const handleSearch = async (newValue: string) => {
+  const handleSearch = async (newValue: string = "") => {
+    const cleanedValue = newValue.trim();
+
     try {
       // Set search to set open / close if empty
-      setSearch(newValue);
+      setSearch(cleanedValue);
 
-      if (!newValue) return;
+      if (!cleanedValue) return;
 
       setIsLoading(true);
 
       const { data } = await graphqlClient.query({
         query: SEARCH,
         variables: {
-          search: newValue,
+          search: cleanedValue,
         },
         context: {
           date,
