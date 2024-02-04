@@ -24,7 +24,9 @@ def stage_environment(function: str, amount: int, schema: Path):
     if not callable(stager):
         raise ValueError(f"Invalid staging function provided: {function}")
 
-    staging_client = InfrahubClientSync.init(address=config.url, config=Config(api_token=config.api_token))
+    staging_client = InfrahubClientSync.init(
+        address=config.url, config=Config(api_token=config.api_token, timeout=config.client_timeout)
+    )
     print("--- loading load testing schema")
     common.stagers.load_schema(staging_client, schema)
     print("--- done")

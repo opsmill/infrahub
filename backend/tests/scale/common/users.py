@@ -21,7 +21,7 @@ class InfrahubUIUser(HttpUser):
 
 class InfrahubClientUser(User):
     address = config.url
-    config = Config(api_token=config.api_token)
+    config = Config(api_token=config.api_token, timeout=config.client_timeout)
     delete_this_node = None
     update_this_node = None
 
