@@ -92,15 +92,32 @@ class NodeUniqueAttributeConstraintQuery(Query):
             WHERE all(r IN relationships(current_path) WHERE r.status = "active")
             RETURN current_path as active_path
         }
+        CALL {
+            // get deepest branch name
+            WITH active_path
+            UNWIND extract(r in relationships(active_path) | [r.branch, r.branch_level]) as branch_name_and_level
+            RETURN branch_name_and_level[0] as branch_name
+            ORDER BY branch_name_and_level[1] DESC
+            LIMIT 1
+        }
         // only duplicate values
         WITH
             collect(start_node.uuid) as node_ids,
             count(*) as node_count,
             potential_attr.name as attr_name,
             latest_value as attr_value,
-            rel_identifier as relationship_identifier
+            rel_identifier as relationship_identifier,
+            branch_name as deepest_branch_name
         WHERE node_count > 1
+        UNWIND node_ids as node_id
         """ % {"branch_filter": branch_filter, "from_times": from_times}
 
         self.add_to_query(query)
-        self.return_labels = ["node_ids", "node_count", "attr_name", "attr_value", "relationship_identifier"]
+        self.return_labels = [
+            "node_id",
+            "node_count",
+            "attr_name",
+            "attr_value",
+            "relationship_identifier",
+            "deepest_branch_name",
+        ]

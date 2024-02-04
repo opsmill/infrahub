@@ -129,25 +129,35 @@ async def test_query_uniqueness_multiple_attribute_violations(
     expected_result_dicts = [
         {
             "attr_name": "nbr_seats",
-            "node_ids": {car_accord_main.id, car_prius_main.id, car_camry_main.id},
+            "node_id": node_id,
             "node_count": 3,
             "attr_value": 5,
             "relationship_identifier": None,
-        },
+            "deepest_branch_name": "main",
+        }
+        for node_id in (car_accord_main.id, car_prius_main.id, car_camry_main.id)
+    ]
+    expected_result_dicts += [
         {
             "attr_name": "color",
-            "node_ids": {car_volt_main.id, car_camry_main.id},
+            "node_id": node_id,
             "node_count": 2,
             "attr_value": "#ffffff",
             "relationship_identifier": None,
-        },
+            "deepest_branch_name": branch.name,
+        }
+        for node_id in (car_volt_main.id, car_camry_main.id)
+    ]
+    expected_result_dicts += [
         {
             "attr_name": "color",
-            "node_ids": {car_accord_main.id, car_prius_main.id},
+            "node_id": node_id,
             "node_count": 2,
             "attr_value": "#444444",
             "relationship_identifier": None,
-        },
+            "deepest_branch_name": "main",
+        }
+        for node_id in (car_accord_main.id, car_prius_main.id)
     ]
 
     query = await NodeUniqueAttributeConstraintQuery.init(
@@ -157,10 +167,9 @@ async def test_query_uniqueness_multiple_attribute_violations(
     )
     query_result = await query.execute(db=db)
 
-    assert len(query_result.results) == 3
+    assert len(query_result.results) == 7
     for result in query_result.results:
         serial_result = dict(result.data)
-        serial_result["node_ids"] = set(serial_result["node_ids"])
         assert serial_result in expected_result_dicts
 
 
