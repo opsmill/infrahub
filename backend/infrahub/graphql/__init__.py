@@ -8,10 +8,6 @@ from starlette.background import BackgroundTasks
 from infrahub.core import registry
 from infrahub.core.timestamp import Timestamp
 
-# from .generator import generate_mutation_mixin, generate_object_types
-# from .query import get_gql_query
-# from .schema import InfrahubBaseMutation
-# from .subscription import InfrahubBaseSubscription
 from .manager import GraphQLSchemaManager
 
 if TYPE_CHECKING:
