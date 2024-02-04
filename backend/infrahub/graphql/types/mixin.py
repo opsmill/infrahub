@@ -46,6 +46,7 @@ class GetListMixin:
         account = context.get("infrahub_account", None)
         db: InfrahubDatabase = context.get("infrahub_database")
         related_node_ids: set = context.get("related_node_ids")
+        partial_match = kwargs.pop("partial_match", False)
 
         async with db.start_session() as db:
             response: Dict[str, Any] = {"edges": []}
@@ -59,6 +60,7 @@ class GetListMixin:
                     filters=filters,
                     at=at,
                     branch=branch,
+                    partial_match=partial_match,
                 )
             edges = fields.get("edges", {})
             node_fields = edges.get("node", {})
@@ -75,6 +77,7 @@ class GetListMixin:
                 account=account,
                 include_source=True,
                 include_owner=True,
+                partial_match=partial_match,
             )
 
             if objs:

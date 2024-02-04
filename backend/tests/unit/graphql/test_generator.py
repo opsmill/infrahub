@@ -168,6 +168,7 @@ async def test_generate_filters(
     expected_filters = [
         "offset",
         "limit",
+        "partial_match",
         "ids",
         "any__is_protected",
         "any__is_visible",
