@@ -57,7 +57,7 @@ class InfrahubDataType:
         return getattr(module, cls.graphql_query)
 
     @classmethod
-    def get_graphql_type_name(cls):
+    def get_graphql_type_name(cls) -> str:
         return cls.get_graphql_type().__name__
 
     @classmethod

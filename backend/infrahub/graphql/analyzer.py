@@ -1,4 +1,4 @@
-from typing import Optional, Set
+from typing import Any, Dict, Optional, Set
 
 from graphql import (
     GraphQLSchema,
@@ -7,7 +7,6 @@ from graphql import (
 from infrahub_sdk.analyzer import GraphQLQueryAnalyzer
 from infrahub_sdk.utils import extract_fields
 
-from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.graphql.utils import extract_schema_models
 
@@ -17,7 +16,7 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
         self.branch: Optional[Branch] = branch
         super().__init__(query=query, schema=schema)
 
-    async def get_models_in_use(self) -> Set[str]:
+    async def get_models_in_use(self, types: Dict[str, Any]) -> Set[str]:
         """List of Infrahub models that are referenced in the query."""
         graphql_types = set()
         models = set()
@@ -41,10 +40,10 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
 
         for graphql_type_name in graphql_types:
             try:
-                graphql_type = registry.get_graphql_type(name=graphql_type_name, branch=self.branch)
-                if not hasattr(graphql_type._meta, "schema"):
+                graphql_type = types.get(graphql_type_name)
+                if not hasattr(graphql_type._meta, "schema"):  # type: ignore[union-attr]
                     continue
-                models.add(graphql_type._meta.schema.kind)
+                models.add(graphql_type._meta.schema.kind)  # type: ignore[union-attr]
             except ValueError:
                 continue
 

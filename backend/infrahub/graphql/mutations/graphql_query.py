@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from graphene import InputObjectType, Mutation
 from graphql import GraphQLResolveInfo
@@ -11,6 +11,9 @@ from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.mutations.main import InfrahubMutationMixin
 
 from .main import InfrahubMutationOptions
+
+if TYPE_CHECKING:
+    from infrahub.graphql import GraphqlContext
 
 
 class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
@@ -44,7 +47,7 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
         if not valid:
             raise ValueError(f"Query is not valid, {str(errors)}")
 
-        query_info["models"] = {"value": sorted(list(await analyzer.get_models_in_use()))}
+        query_info["models"] = {"value": sorted(list(await analyzer.get_models_in_use(types=info.context.types)))}
         query_info["depth"] = {"value": await analyzer.calculate_depth()}
         query_info["height"] = {"value": await analyzer.calculate_height()}
         query_info["operations"] = {
@@ -63,9 +66,9 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
         branch: Branch,
         at: str,
     ):
-        branch_obj: Branch = info.context.get("infrahub_branch")
+        context: GraphqlContext = info.context
 
-        data.update(await cls.extract_query_info(info=info, data=data, branch=branch_obj))
+        data.update(await cls.extract_query_info(info=info, data=data, branch=context.branch))
 
         obj, result = await super().mutate_create(root=root, info=info, data=data, branch=branch, at=at)
 
@@ -82,9 +85,9 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
         database: Optional[InfrahubDatabase] = None,
         node: Optional[Node] = None,
     ):
-        branch_obj: Branch = info.context.get("infrahub_branch")
+        context: GraphqlContext = info.context
 
-        data.update(await cls.extract_query_info(info=info, data=data, branch=branch_obj))
+        data.update(await cls.extract_query_info(info=info, data=data, branch=context.branch))
 
         obj, result = await super().mutate_update(root=root, info=info, data=data, branch=branch, at=at)
 

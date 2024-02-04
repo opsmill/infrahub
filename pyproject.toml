@@ -315,14 +315,6 @@ module = "infrahub.graphql.app"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.graphql.enums"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.graphql.generator"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.graphql.mutations.account"
 ignore_errors = true
 

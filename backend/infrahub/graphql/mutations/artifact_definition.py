@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
-    from infrahub.message_bus.rpc import InfrahubRpcClient
+    from infrahub.graphql import GraphqlContext
 
 log = get_logger()
 
@@ -44,7 +44,7 @@ class InfrahubArtifactDefinitionMutation(InfrahubMutationMixin, Mutation):
         branch: Branch,
         at: str,
     ):
-        rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
+        context: GraphqlContext = info.context
 
         artifact_definition, result = await super().mutate_create(root=root, info=info, data=data, branch=branch, at=at)
 
@@ -52,7 +52,7 @@ class InfrahubArtifactDefinitionMutation(InfrahubMutationMixin, Mutation):
             messages.RequestArtifactDefinitionGenerate(artifact_definition=artifact_definition.id, branch=branch.name),
         ]
         for event in events:
-            await rpc_client.send(event)
+            await context.rpc_client.send(event)
 
         return artifact_definition, result
 
@@ -67,7 +67,7 @@ class InfrahubArtifactDefinitionMutation(InfrahubMutationMixin, Mutation):
         database: Optional[InfrahubDatabase] = None,
         node: Optional[Node] = None,
     ):
-        rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
+        context: GraphqlContext = info.context
 
         artifact_definition, result = await super().mutate_update(root=root, info=info, data=data, branch=branch, at=at)
 
@@ -75,6 +75,6 @@ class InfrahubArtifactDefinitionMutation(InfrahubMutationMixin, Mutation):
             messages.RequestArtifactDefinitionGenerate(artifact_definition=artifact_definition.id, branch=branch.name),
         ]
         for event in events:
-            await rpc_client.send(event)
+            await context.rpc_client.send(event)
 
         return artifact_definition, result

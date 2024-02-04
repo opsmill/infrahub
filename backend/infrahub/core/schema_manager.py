@@ -40,7 +40,7 @@ from infrahub.core.schema import (
 )
 from infrahub.core.utils import parse_node_kind
 from infrahub.exceptions import SchemaNotFound
-from infrahub.graphql import generate_graphql_schema
+from infrahub.graphql.manager import GraphQLSchemaManager
 from infrahub.log import get_logger
 from infrahub.utils import format_label
 from infrahub.visuals import select_color
@@ -155,9 +155,9 @@ class SchemaBranch:
         # TODO need to implement a flag to return the real objects if needed
         return {"nodes": self.nodes, "generics": self.generics}
 
-    async def get_graphql_schema(self, db: InfrahubDatabase) -> GraphQLSchema:
+    def get_graphql_schema(self) -> GraphQLSchema:
         if not self._graphql_schema:
-            self._graphql_schema = await generate_graphql_schema(db=db, branch=self.name)
+            self._graphql_schema = GraphQLSchemaManager(schema=self).generate()
 
         return self._graphql_schema
 

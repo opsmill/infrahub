@@ -36,7 +36,6 @@ from graphql import (  # pylint: disable=no-name-in-module
 from graphql.utilities import (  # pylint: disable=no-name-in-module,import-error
     get_operation_ast,
 )
-from starlette.background import BackgroundTasks
 from starlette.datastructures import UploadFile
 from starlette.requests import HTTPConnection, Request
 from starlette.responses import JSONResponse, Response
@@ -59,9 +58,9 @@ from infrahub_sdk.utils import str_to_bool
 import infrahub.config as config
 from infrahub.api.dependencies import api_key_scheme, cookie_auth_scheme, jwt_scheme
 from infrahub.auth import AccountSession, authentication_token
-from infrahub.core import get_branch, registry
-from infrahub.core.timestamp import Timestamp
+from infrahub.core import get_branch
 from infrahub.exceptions import BranchNotFound
+from infrahub.graphql import prepare_graphql_params
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.log import get_logger
 
@@ -182,40 +181,6 @@ class InfrahubGraphQLApp:
 
         return cast(Response, response)
 
-    async def _get_context_value(
-        self, db: InfrahubDatabase, request: HTTPConnection, branch: Branch, account_session: AccountSession
-    ) -> Dict:
-        context_value = {
-            "infrahub_branch": branch,
-            "infrahub_at": Timestamp(request.query_params.get("at", None)),
-            "request": request,
-            "background": BackgroundTasks(),
-            "infrahub_database": db,
-            "infrahub_rpc_client": request.app.state.rpc_client,
-            "account_session": account_session,
-            "related_node_ids": set(),
-        }
-
-        return context_value
-
-    async def _get_context_value_ws(
-        self,
-        db: InfrahubDatabase,
-        branch: Branch,
-        websocket: WebSocket,
-        account_session: Optional[AccountSession] = None,
-    ) -> Dict:
-        context_value = {
-            "infrahub_branch": branch,
-            "infrahub_at": Timestamp(),
-            "background": BackgroundTasks(),
-            "infrahub_database": db,
-            "infrahub_rpc_client": websocket.app.state.rpc_client,
-            "account_session": account_session,
-            "related_node_ids": set(),
-        }
-        return context_value
-
     async def _handle_http_request(
         self, request: Request, db: InfrahubDatabase, branch: Branch, account_session: AccountSession
     ) -> JSONResponse:
@@ -229,21 +194,19 @@ class InfrahubGraphQLApp:
 
         operation = operations
         query = operation["query"]
-        schema_branch = registry.schema.get_schema_branch(name=branch.name)
-        graphql_schema = await schema_branch.get_graphql_schema(db=db)
-        analyzed_query = InfrahubGraphQLQueryAnalyzer(query=query, schema=graphql_schema, branch=branch)
+
+        graphql_params = prepare_graphql_params(db=db, branch=branch, account_session=account_session, request=request)
+
+        analyzed_query = InfrahubGraphQLQueryAnalyzer(query=query, schema=graphql_params.schema, branch=branch)
         await self.permission_checker.check(account_session=account_session, analyzed_query=analyzed_query)
 
         variable_values = operation.get("variables")
         operation_name = operation.get("operationName")
-        context_value = await self._get_context_value(
-            request=request, db=db, branch=branch, account_session=account_session
-        )
 
         result = await graphql(
-            schema=graphql_schema,
+            schema=graphql_params.schema,
             source=query,
-            context_value=context_value,
+            context_value=graphql_params.context,
             root_value=self.root_value,
             middleware=self.middleware,
             variable_values=variable_values,
@@ -264,7 +227,7 @@ class InfrahubGraphQLApp:
         return JSONResponse(
             response,
             status_code=200,
-            background=context_value.get("background"),
+            background=graphql_params.context.background,
         )
 
     async def _run_websocket_server(self, db: InfrahubDatabase, branch: Branch, websocket: WebSocket) -> None:
@@ -324,18 +287,16 @@ class InfrahubGraphQLApp:
         variable_values = data.get("variables")
         operation_name = data.get("operationName")
 
-        context_value = await self._get_context_value_ws(db=db, branch=branch, websocket=websocket)
+        graphql_params = prepare_graphql_params(db=db, branch=branch)
+
         errors: List[GraphQLError] = []
         operation: Optional[OperationDefinitionNode] = None
         document: Optional[DocumentNode] = None
 
-        schema_branch = registry.schema.get_schema_branch(name=branch.name)
-        graphql_schema = await schema_branch.get_graphql_schema(db=db)
-
         try:
             document = parse(query)
             operation = get_operation_ast(document, operation_name)
-            errors = validate(graphql_schema, document)
+            errors = validate(graphql_params.schema, document)
         except GraphQLError as e:
             errors = [e]
 
@@ -343,12 +304,12 @@ class InfrahubGraphQLApp:
             assert document is not None
             if operation and operation.operation == OperationType.SUBSCRIPTION:
                 errors = await self._start_subscription(
-                    graphql_schema=graphql_schema,
+                    graphql_schema=graphql_params.schema,
                     websocket=websocket,
                     operation_id=operation_id,
                     subscriptions=subscriptions,
                     document=document,
-                    context_value=context_value,
+                    context_value=graphql_params.context,
                     variable_values=variable_values,
                     operation_name=operation_name,
                 )
