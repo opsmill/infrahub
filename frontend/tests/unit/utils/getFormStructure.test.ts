@@ -28,7 +28,9 @@ describe("Form structure and object update", () => {
     // For each attribute, check from the mock data
     calculatedAttributes.map((attribute, index) => {
       // Slices last character to remove the closing bracket
-      const mockData = JSON.stringify(accountTokenFormStructure[index]).slice(-1);
+      console.log("attribute: ", attribute);
+      console.log("accountTokenFormStructure[index]: ", accountTokenFormStructure[index]);
+      const mockData = JSON.stringify(accountTokenFormStructure[index]);
 
       expect(JSON.stringify(attribute)).toContain(mockData);
     });

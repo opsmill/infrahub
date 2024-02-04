@@ -197,7 +197,11 @@ export const getRelationshipValue = (row: any, field: any) => {
 
 // Inlcude current value in the options to make it available in the select component
 export const getRelationshipOptions = (row: any, field: any) => {
-  const value = row[field.name].node ?? row[field.name];
+  const value = row[field.name]?.node ?? row[field.name];
+
+  if (!value) {
+    return [];
+  }
 
   if (value.edges) {
     return value.edges.map((edge: any) => ({

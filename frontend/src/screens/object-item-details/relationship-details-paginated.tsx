@@ -111,9 +111,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
       kind: "Text",
       label: relationshipSchema.label,
       name: "id",
-      options: {
-        values: options,
-      },
+      options,
       type: "select2step",
       value: {},
       config: {},

@@ -198,9 +198,7 @@ export const getFormStructureForMetaEdit = (
         .filter((r) => !!r)
         .join(" "),
       value: row?.[f],
-      options: {
-        values: schemaOptions,
-      },
+      options: schemaOptions,
       config: {},
     };
   });
@@ -217,9 +215,7 @@ export const getFormStructureForMetaEdit = (
         .filter((r) => !!r)
         .join(" "),
       value: row?.[f],
-      options: {
-        values: [],
-      },
+      options: [],
       config: {},
     };
   });
@@ -266,9 +262,7 @@ export const getFormStructureForMetaEditPaginated = (
       type: "select2step",
       label: field.split("_").filter(Boolean).join(" "),
       value: row?.[field],
-      options: {
-        values: schemaOptions,
-      },
+      options: schemaOptions,
       config: {},
     };
   });
@@ -282,9 +276,7 @@ export const getFormStructureForMetaEditPaginated = (
       type: "checkbox",
       label: field.split("_").filter(Boolean).join(" "),
       value: row?.[field],
-      options: {
-        values: [],
-      },
+      options: [],
       config: {},
     };
   });

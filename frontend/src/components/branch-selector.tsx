@@ -178,9 +178,7 @@ export default function BranchSelector() {
       label: "Branched from",
       type: "select",
       value: defaultBranch,
-      options: {
-        values: branchesOptions,
-      },
+      options: branchesOptions,
       isProtected: true,
       isOptional: true,
     },
