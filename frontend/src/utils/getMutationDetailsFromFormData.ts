@@ -66,7 +66,7 @@ const getMutationDetailsFromFormData = (
           .map((r: any) => r.node?.id)
           .sort();
 
-        const updatedIds = updatedObject[relationship.name]?.list?.sort();
+        const updatedIds = updatedObject[relationship.name]?.list?.sort() ?? [];
 
         if (
           existingValue &&
