@@ -92,8 +92,7 @@ async def test_create_artifact_definition(
         group1.id,
         transformation1.id,
     )
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
-    gql_params.context.rpc_client = rpc_client
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch, rpc_client=rpc_client)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -140,8 +139,7 @@ async def test_update_artifact_definition(
     }
     """ % (definition1.id)
 
-    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
-    gql_params.context.rpc_client = rpc_client
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch, rpc_client=rpc_client)
     result = await graphql(
         schema=gql_params.schema,
         source=query,

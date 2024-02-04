@@ -4,6 +4,7 @@ import pydantic
 from graphene import Boolean, Field, InputObjectType, List, Mutation, String
 from graphql import GraphQLResolveInfo
 from infrahub_sdk.utils import extract_fields
+from typing_extensions import Self
 
 from infrahub import config, lock
 from infrahub.core import registry
@@ -43,7 +44,9 @@ class BranchCreate(Mutation):
     object = Field(BranchType)
 
     @classmethod
-    async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchCreateInput, background_execution=False):
+    async def mutate(
+        cls, root: dict, info: GraphQLResolveInfo, data: BranchCreateInput, background_execution: bool = False
+    ) -> Self:
         context: GraphqlContext = info.context
 
         # Check if the branch already exist
@@ -82,7 +85,7 @@ class BranchCreate(Mutation):
         if config.SETTINGS.broker.enable and context.background:
             message = messages.EventBranchCreate(
                 branch=obj.name,
-                branch_id=obj.id,
+                branch_id=str(obj.id),
                 data_only=obj.is_data_only,
                 meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
             )
@@ -107,7 +110,7 @@ class BranchDelete(Mutation):
     ok = Boolean()
 
     @classmethod
-    async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput):
+    async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
         context: GraphqlContext = info.context
 
         obj = await Branch.get_by_name(db=context.db, name=data["name"])
@@ -118,7 +121,7 @@ class BranchDelete(Mutation):
             request_id = log_data.get("request_id", "")
             message = messages.EventBranchDelete(
                 branch=obj.name,
-                branch_id=obj.id,
+                branch_id=str(obj.id),
                 data_only=obj.is_data_only,
                 meta=Meta(request_id=request_id),
             )
@@ -134,7 +137,7 @@ class BranchUpdate(Mutation):
     ok = Boolean()
 
     @classmethod
-    async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput):
+    async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
         context: GraphqlContext = info.context
 
         obj = await Branch.get_by_name(db=context.db, name=data["name"])
@@ -154,7 +157,7 @@ class BranchRebase(Mutation):
     object = Field(BranchType)
 
     @classmethod
-    async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput):
+    async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
         context: GraphqlContext = info.context
 
         obj = await Branch.get_by_name(db=context.db, name=data["name"])
@@ -177,7 +180,7 @@ class BranchValidate(Mutation):
     object = Field(BranchType)
 
     @classmethod
-    async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput):
+    async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
         context: GraphqlContext = info.context
 
         obj = await Branch.get_by_name(db=context.db, name=data["name"])
@@ -202,7 +205,7 @@ class BranchMerge(Mutation):
     object = Field(BranchType)
 
     @classmethod
-    async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput):
+    async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
         context: GraphqlContext = info.context
 
         obj = await Branch.get_by_name(db=context.db, name=data["name"])
@@ -212,11 +215,11 @@ class BranchMerge(Mutation):
                 await obj.merge(rpc_client=context.rpc_client, db=db)
 
                 # Copy the schema from the origin branch and set the hash and the schema_changed_at value
-                origin_branch = await obj.get_origin_branch(db=db)
-                updated_schema = await registry.schema.load_schema_from_db(db=db, branch=origin_branch)
-                registry.schema.set_schema_branch(name=origin_branch.name, schema=updated_schema)
-                origin_branch.update_schema_hash()
-                await origin_branch.save(db=db)
+                if origin_branch := await obj.get_origin_branch(db=db):
+                    updated_schema = await registry.schema.load_schema_from_db(db=db, branch=origin_branch)
+                    registry.schema.set_schema_branch(name=origin_branch.name, schema=updated_schema)
+                    origin_branch.update_schema_hash()
+                    await origin_branch.save(db=db)
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
 

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, List, Optional, Tuple
 
 from graphene import InputObjectType, Mutation
 from graphene.types.mutation import MutationOptions
 from infrahub_sdk.utils import extract_fields
+from typing_extensions import Self
 
 from infrahub import config
 from infrahub.auth import (
@@ -114,7 +115,7 @@ class InfrahubMutationMixin:
         data: InputObjectType,
         branch: Branch,
         at: str,
-    ):
+    ) -> Tuple(Node, Self):
         context: GraphqlContext = info.context
 
         node_class = Node

@@ -1,7 +1,8 @@
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
 
 from graphene import InputObjectType, Mutation
 from graphql import GraphQLResolveInfo
+from typing_extensions import Self
 
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
@@ -18,7 +19,12 @@ if TYPE_CHECKING:
 
 class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
     @classmethod
-    def __init_subclass_with_meta__(cls, schema: NodeSchema = None, _meta=None, **options):  # pylint: disable=arguments-differ
+    def __init_subclass_with_meta__(  # pylint: disable=arguments-differ
+        cls,
+        schema: NodeSchema,
+        _meta: Optional[Any] = None,
+        **options: Dict[str, Any],
+    ) -> None:
         # Make sure schema is a valid NodeSchema Node Class
         if not isinstance(schema, NodeSchema):
             raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
@@ -65,7 +71,7 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
         data: InputObjectType,
         branch: Branch,
         at: str,
-    ):
+    ) -> Tuple[Node, Self]:
         context: GraphqlContext = info.context
 
         data.update(await cls.extract_query_info(info=info, data=data, branch=context.branch))
@@ -84,7 +90,7 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
         at: str,
         database: Optional[InfrahubDatabase] = None,
         node: Optional[Node] = None,
-    ):
+    ) -> Tuple[Node, Self]:
         context: GraphqlContext = info.context
 
         data.update(await cls.extract_query_info(info=info, data=data, branch=context.branch))

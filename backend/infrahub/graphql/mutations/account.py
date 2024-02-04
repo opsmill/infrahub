@@ -1,9 +1,10 @@
-from typing import TYPE_CHECKING, Dict
+from typing import TYPE_CHECKING, Any, Dict
 
 from graphene import Boolean, Field, InputField, InputObjectType, Mutation, String
 from graphql import GraphQLResolveInfo
 from infrahub_sdk import UUIDT
 from infrahub_sdk.utils import extract_fields
+from typing_extensions import Self
 
 from infrahub.auth import AuthType
 from infrahub.core.constants import InfrahubKind
@@ -45,8 +46,8 @@ class AccountMixin:
         cls,
         root: dict,
         info: GraphQLResolveInfo,
-        data,
-    ):
+        data: Dict[str, Any],
+    ) -> Self:
         context: GraphqlContext = info.context
 
         if context.account_session.auth_type != AuthType.JWT:
@@ -64,7 +65,9 @@ class AccountMixin:
         return await mutation_map[cls.__name__](db=context.db, account=account, data=data, info=info)
 
     @classmethod
-    async def create_token(cls, db: InfrahubDatabase, account: Node, data: Dict, info: GraphQLResolveInfo):
+    async def create_token(
+        cls, db: InfrahubDatabase, account: Node, data: Dict[str, Any], info: GraphQLResolveInfo
+    ) -> Self:
         obj = await Node.init(db=db, schema=InfrahubKind.ACCOUNTTOKEN)
         token = str(UUIDT())
         await obj.new(
@@ -79,10 +82,12 @@ class AccountMixin:
             await obj.save(db=db)
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
-        return cls(object=await obj.to_graphql(db=db, fields=fields.get("object", {})), ok=True)
+        return cls(object=await obj.to_graphql(db=db, fields=fields.get("object", {})), ok=True)  # type: ignore[call-arg]
 
     @classmethod
-    async def update_self(cls, db: InfrahubDatabase, account: Node, data: Dict, info: GraphQLResolveInfo):
+    async def update_self(
+        cls, db: InfrahubDatabase, account: Node, data: Dict[str, Any], info: GraphQLResolveInfo
+    ) -> Self:
         for field in ("password", "description"):
             if value := data.get(field):
                 getattr(account, field).value = value
@@ -90,7 +95,7 @@ class AccountMixin:
         async with db.start_transaction() as db:
             await account.save(db=db)
 
-        return cls(ok=True)
+        return cls(ok=True)  # type: ignore[call-arg]
 
 
 class CoreAccountTokenCreate(AccountMixin, Mutation):
