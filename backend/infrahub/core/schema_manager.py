@@ -1070,13 +1070,13 @@ class SchemaManager(NodeManager):
 
     def has(self, name: str, branch: Optional[Union[Branch, str]] = None) -> bool:
         try:
-            self.get(name=name, branch=branch)
+            self.get(name=name, branch=branch, duplicate=False)
             return True
         except SchemaNotFound:
             return False
 
     def get(
-        self, name: str, branch: Optional[Union[Branch, str]] = None, duplicate=True
+        self, name: str, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True
     ) -> Union[NodeSchema, GenericSchema]:
         # For now we assume that all branches are present, will see how we need to pull new branches later.
         branch = get_branch_from_registry(branch=branch)
