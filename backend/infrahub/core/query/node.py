@@ -536,11 +536,11 @@ class NodeListGetInfoQuery(Query):
 
         self.return_labels = ["n", "rb"]
 
-    async def get_nodes(self) -> Generator[NodeToProcess, None, None]:
+    async def get_nodes(self, duplicate=True) -> Generator[NodeToProcess, None, None]:
         """Return all the node objects as NodeToProcess."""
 
         for result in self.get_results_group_by(("n", "uuid")):
-            schema = find_node_schema(node=result.get("n"), branch=self.branch)
+            schema = find_node_schema(node=result.get("n"), branch=self.branch, duplicate=duplicate)
             yield NodeToProcess(
                 schema=schema,
                 node_id=result.get("n").element_id,
