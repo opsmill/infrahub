@@ -13,7 +13,7 @@ from locust.env import Environment
 config = ScaleTestConfig()
 
 
-def stage_environment(function: str, amount: int, schema: Path):
+def stage_environment(function: str, amount: int, attrs: int, schema: Path):
     if function == "":
         return
 
@@ -28,12 +28,16 @@ def stage_environment(function: str, amount: int, schema: Path):
         address=config.url, config=Config(api_token=config.api_token, timeout=config.client_timeout)
     )
     print("--- loading load testing schema")
-    common.stagers.load_schema(staging_client, schema)
+    attributes = []
+    for i in range(attrs):
+        attributes.append({"name": f"test{i}", "kind": "Text", "default_value": "", "optional": True})
+
+    common.stagers.load_schema(staging_client, schema, extra_attributes=attributes)
     print("--- done")
 
     time.sleep(5)
     print("--- staging load testing environment")
-    stager(client=staging_client, amount=amount)
+    stager(client=staging_client, amount=amount, attrs=attrs)
 
     print("--- 20s cool down period")
     time.sleep(20)
@@ -51,17 +55,23 @@ def stage_environment(function: str, amount: int, schema: Path):
     "--amount",
     default=0,
     type=click.IntRange(min=0, max=1_000_000_000),
-    help="Amount of objects to be created the `staging function`",
+    help="Amount of objects to be created in the `staging function`",
+)
+@click.option(
+    "--attrs",
+    default=0,
+    type=click.IntRange(min=0, max=1_000_000_000),
+    help="Amount of attributes per object to be created in the `staging function`",
 )
 @click.option("--test", default="InfrahubClientUser", help="The Locust test user class")
-def main(schema: Path, stager: str, amount: int, test: str) -> int:
+def main(schema: Path, stager: str, amount: int, attrs: int, test: str) -> int:
     if not hasattr(common.users, test):
         print(f"Invalid test class provided: {test}")
         return 1
 
     user_class = getattr(common.users, test)
 
-    stage_environment(function=stager, amount=amount, schema=schema)
+    stage_environment(function=stager, amount=amount, attrs=attrs, schema=schema)
 
     print("--- starting test")
     env = Environment(user_classes=[user_class], events=events)

@@ -41,7 +41,8 @@ class InfrahubClientUser(User):
         obj = self.client.create(kind="InfraNode", data={"name": random_ascii_string()})
         obj.save()
 
-        update_this_node.name.value = random_ascii_string()
-        update_this_node.save()
+        if len(objects) >= 2:
+            update_this_node.name.value = random_ascii_string()
+            update_this_node.save()
 
-        delete_this_node.delete()
+            delete_this_node.delete()
