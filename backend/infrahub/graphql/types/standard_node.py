@@ -41,7 +41,7 @@ class InfrahubObjectType(ObjectType):
                     filters=filters,
                     at=context.at,
                     branch=context.branch,
-                    account=context._account_session,
+                    account=context.account_session,
                     include_source=True,
                     db=db,
                 )
@@ -49,7 +49,7 @@ class InfrahubObjectType(ObjectType):
                 objs = await cls._meta.model.get_list(
                     at=context.at,
                     branch=context.branch,
-                    account=context._account_session,
+                    account=context.account_session,
                     include_source=True,
                     db=db,
                 )

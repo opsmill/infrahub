@@ -504,8 +504,8 @@ class Branch(StandardNode):
     async def merge(
         self,
         db: InfrahubDatabase,
-        rpc_client: InfrahubRpcClient,
-        at: Union[str, Timestamp] = None,
+        rpc_client: Optional[InfrahubRpcClient] = None,
+        at: Optional[Union[str, Timestamp]] = None,
         conflict_resolution: Optional[Dict[str, bool]] = None,
     ):
         """Merge the current branch into main."""
@@ -703,7 +703,7 @@ class Branch(StandardNode):
             await self.save(db=db)
             registry.branch[self.name] = self
 
-    async def merge_repositories(self, rpc_client: InfrahubRpcClient, db: InfrahubDatabase):
+    async def merge_repositories(self, db: InfrahubDatabase, rpc_client: Optional[InfrahubRpcClient] = None) -> None:
         # Collect all Repositories in Main because we'll need the commit in Main for each one.
         repos_in_main_list = await NodeManager.query(schema=InfrahubKind.REPOSITORY, db=db)
         repos_in_main = {repo.id: repo for repo in repos_in_main_list}
@@ -729,8 +729,9 @@ class Branch(StandardNode):
                 )
             )
 
-        for event in events:
-            await rpc_client.send(message=event)
+        if rpc_client:
+            for event in events:
+                await rpc_client.send(message=event)
 
     async def rebase_graph(self, db: InfrahubDatabase, at: Optional[Timestamp] = None):
         at = Timestamp(at)

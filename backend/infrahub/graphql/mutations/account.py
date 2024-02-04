@@ -50,6 +50,9 @@ class AccountMixin:
     ) -> Self:
         context: GraphqlContext = info.context
 
+        if not context.account_session:
+            raise ValueError("An account_session is mandatory to execute this mutation")
+
         if context.account_session.auth_type != AuthType.JWT:
             raise PermissionDeniedError("This operation requires authentication with a JWT token")
 

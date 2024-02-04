@@ -11,7 +11,7 @@ from infrahub.graphql.types import TaskNodes
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
-    from infrahub.database import InfrahubDatabase
+    from infrahub.graphql import GraphqlContext
 
 
 class Tasks(ObjectType):
@@ -37,10 +37,12 @@ class Tasks(ObjectType):
         offset: int,
         related_nodes: list[str],
     ) -> Dict[str, Any]:
-        db: InfrahubDatabase = info.context.get("infrahub_database")
+        context: GraphqlContext = info.context
         fields = await extract_fields_first_node(info)
 
-        return await TaskNode.query(db=db, fields=fields, limit=limit, offset=offset, related_nodes=related_nodes)
+        return await TaskNode.query(
+            db=context.db, fields=fields, limit=limit, offset=offset, related_nodes=related_nodes
+        )
 
 
 Task = Field(

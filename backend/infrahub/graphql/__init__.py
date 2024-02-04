@@ -33,22 +33,10 @@ class GraphqlContext:
     types: dict
     at: Optional[Timestamp] = None
     related_node_ids: Optional[set] = None
-    _rpc_client: Optional[InfrahubRpcClient] = None
-    _account_session: Optional[AccountSession] = None
+    rpc_client: Optional[InfrahubRpcClient] = None
+    account_session: Optional[AccountSession] = None
     background: Optional[BackgroundTasks] = None
     request: Optional[HTTPConnection] = None
-
-    @property
-    def account_session(self) -> AccountSession:
-        if self._account_session:
-            return self._account_session
-        raise ValueError("account_session isn't available on GraphqlContext")
-
-    @property
-    def rpc_client(self) -> InfrahubRpcClient:
-        if self._rpc_client:
-            return self._rpc_client
-        raise ValueError("rpc_client isn't available on GraphqlContext")
 
 
 def prepare_graphql_params(
@@ -87,8 +75,8 @@ def prepare_graphql_params(
             related_node_ids=set(),
             background=BackgroundTasks(),
             request=request,
-            _rpc_client=rpc_client,
-            _account_session=account_session,
+            rpc_client=rpc_client,
+            account_session=account_session,
         ),
     )
 

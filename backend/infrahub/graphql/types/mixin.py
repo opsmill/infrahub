@@ -23,7 +23,7 @@ class GetListMixin:
                 fields=fields,
                 at=context.at,
                 branch=context.branch,
-                account=context.account,
+                account=context.account_session,
                 include_source=True,
                 include_owner=True,
             )
@@ -64,7 +64,7 @@ class GetListMixin:
                 branch=context.branch,
                 limit=limit,
                 offset=offset,
-                account=context._account_session,
+                account=context.account_session,
                 include_source=True,
                 include_owner=True,
                 partial_match=partial_match,
