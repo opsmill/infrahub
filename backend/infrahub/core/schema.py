@@ -284,7 +284,7 @@ class RelationshipSchema(HashableModel):
         return Relationship
 
     async def get_peer_schema(self, branch: Optional[Union[Branch, str]] = None):
-        return registry.schema.get(name=self.peer, branch=branch)
+        return registry.schema.get(name=self.peer, branch=branch, duplicate=False)
 
     @property
     def internal_peer(self) -> bool:

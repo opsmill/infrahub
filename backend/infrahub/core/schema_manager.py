@@ -1075,18 +1075,20 @@ class SchemaManager(NodeManager):
         except SchemaNotFound:
             return False
 
-    def get(self, name: str, branch: Optional[Union[Branch, str]] = None) -> Union[NodeSchema, GenericSchema]:
+    def get(
+        self, name: str, branch: Optional[Union[Branch, str]] = None, duplicate=True
+    ) -> Union[NodeSchema, GenericSchema]:
         # For now we assume that all branches are present, will see how we need to pull new branches later.
         branch = get_branch_from_registry(branch=branch)
 
         if branch.name in self._branches:
             try:
-                return self._branches[branch.name].get(name=name)
+                return self._branches[branch.name].get(name=name, duplicate=duplicate)
             except SchemaNotFound:
                 pass
 
         default_branch = config.SETTINGS.main.default_branch
-        return self._branches[default_branch].get(name=name)
+        return self._branches[default_branch].get(name=name, duplicate=duplicate)
 
     def get_full(self, branch: Optional[Union[Branch, str]] = None) -> Dict[str, Union[NodeSchema, GenericSchema]]:
         branch = get_branch_from_registry(branch=branch)
