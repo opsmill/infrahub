@@ -11,3 +11,7 @@ if TYPE_CHECKING:
 class Timestamp(BaseTimestamp):
     async def to_graphql(self, *args: Any, **kwargs: Any) -> DateTime:  # pylint: disable=unused-argument
         return self.obj
+
+
+def current_timestamp() -> str:
+    return Timestamp().to_string()

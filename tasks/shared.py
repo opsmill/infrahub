@@ -60,6 +60,12 @@ TEST_SCALE_COMPOSE_FILES_NEO4J = [
     "development/docker-compose-test-cache.yml",
     TEST_SCALE_COMPOSE_FILE,
 ]
+TEST_SCALE_COMPOSE_FILES_MEMGRAPH = [
+    "development/docker-compose-deps.yml",
+    "development/docker-compose-database-memgraph.yml",
+    "development/docker-compose-test-cache.yml",
+    TEST_SCALE_COMPOSE_FILE,
+]
 TEST_SCALE_OVERRIDE_FILE_NAME = "development/docker-compose-test-scale-override.yml"
 
 IMAGE_NAME = os.getenv("INFRAHUB_IMAGE_NAME", f"opsmill/{BUILD_NAME}-py{PYTHON_VER}")
@@ -234,14 +240,19 @@ def build_test_compose_files_cmd(
 def build_test_scale_compose_files_cmd(
     database: str = DatabaseType.NEO4J.value,
 ) -> str:
-    if database != DatabaseType.NEO4J:
-        exit(f"{database} is not supported for scale tests")
+    if database not in SUPPORTED_DATABASES:
+        exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
+
+    if database == DatabaseType.MEMGRAPH.value:
+        TEST_SCALE_COMPOSE_FILES = TEST_SCALE_COMPOSE_FILES_MEMGRAPH
+    elif database == DatabaseType.NEO4J.value:
+        TEST_SCALE_COMPOSE_FILES = TEST_SCALE_COMPOSE_FILES_NEO4J
 
     if os.path.exists(TEST_SCALE_OVERRIDE_FILE_NAME):
         print("!! Found a test scale override file for docker-compose !!")
-        TEST_SCALE_COMPOSE_FILES_NEO4J.append(TEST_SCALE_OVERRIDE_FILE_NAME)
+        TEST_SCALE_COMPOSE_FILES.append(TEST_SCALE_OVERRIDE_FILE_NAME)
 
-    return f"-f {' -f '.join(TEST_SCALE_COMPOSE_FILES_NEO4J)}"
+    return f"-f {' -f '.join(TEST_SCALE_COMPOSE_FILES)}"
 
 
 def build_test_envs():

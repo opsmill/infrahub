@@ -1,8 +1,8 @@
 import { Icon } from "@iconify-icon/react";
 import { NavLink, useParams } from "react-router-dom";
-import useFilters from "../../hooks/useFilters";
-import { classNames } from "../../utils/common";
-import { constructPath } from "../../utils/fetch";
+import useFilters from "../../../hooks/useFilters";
+import { classNames } from "../../../utils/common";
+import { constructPath } from "../../../utils/fetch";
 
 interface Props {
   path: string;

@@ -44,7 +44,7 @@ export const Footer = () => {
   }, []);
 
   return (
-    <div className="flex items-center border-r border-gray-200">
+    <div className="flex items-center">
       <div className="bg-custom-white p-2 flex">
         {ICONS.map((item: any, index: number) => (
           <a

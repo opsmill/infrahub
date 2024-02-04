@@ -114,7 +114,7 @@ class InfrahubMessage(BaseModel):
     @property
     def reached_max_retries(self) -> bool:
         if self.meta and self.meta.retry_count:
-            return self.meta.retry_count <= config.SETTINGS.broker.maximum_message_retries
+            return self.meta.retry_count >= config.SETTINGS.broker.maximum_message_retries
         return False
 
 
