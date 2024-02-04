@@ -1,6 +1,6 @@
 import Handlebars from "handlebars";
 
-export const getObjectDetailsAndPeers = Handlebars.compile(`
+export const getObjectDetails = Handlebars.compile(`
 query get{{kind}}DetailsAndPeers {
   {{kind}}DetailsAndPeers: {{kind}} (ids: ["{{objectid}}"]) {
     edges {
@@ -51,15 +51,5 @@ query get{{kind}}DetailsAndPeers {
       }
     }
   }
-  {{#each peers}}
-    {{this}} {
-      edges {
-        node {
-          id
-          display_label
-        }
-      }
-    }
-    {{/each}}
 }
 `);

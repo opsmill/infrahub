@@ -6,21 +6,15 @@ import { toast } from "react-toastify";
 import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { createObject } from "../../graphql/mutations/objects/createObject";
-import { getDropdownOptionsForRelatedPeersPaginated } from "../../graphql/queries/objects/dropdownOptionsForRelatedPeers";
-import useQuery from "../../hooks/useQuery";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
 import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
 import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdit";
 import getMutationDetailsFromFormData from "../../utils/getMutationDetailsFromFormData";
-import { getObjectPeers } from "../../utils/getSchemaObjectColumns";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
-import ErrorScreen from "../error-screen/error-screen";
-import LoadingScreen from "../loading-screen/loading-screen";
-import NoDataFound from "../no-data-found/no-data-found";
 
 interface iProps {
   objectname?: string;
@@ -52,55 +46,7 @@ export default function ObjectItemCreate(props: iProps) {
 
   const schema = schemaList.find((s) => s.kind === objectname);
 
-  const peers = getObjectPeers(schema);
-
-  const queryString = peers.length
-    ? getDropdownOptionsForRelatedPeersPaginated({
-        peers,
-      })
-    : // Empty query to make the gql parsing work
-      // TODO: Find another solution for default query
-      "query { ok }";
-
-  const query = gql`
-    ${queryString}
-  `;
-
-  const { loading, error, data } = useQuery(query, { skip: !schema || !peers.length });
-
-  if (error) {
-    return <ErrorScreen message="Something went wrong when fetching dropdown options." />;
-  }
-
-  if (loading || !schema) {
-    return <LoadingScreen />;
-  }
-
-  if (peers.length && !data) {
-    return <NoDataFound message="No dropdown options found." />;
-  }
-
-  const objectDetailsData = data && data[schema.kind];
-
-  const peerDropdownOptions =
-    data &&
-    Object.entries(data).reduce((acc, [k, v]: [string, any]) => {
-      if (peers.includes(k)) {
-        return { ...acc, [k]: v?.edges?.map((edge: any) => edge?.node) };
-      }
-
-      return acc;
-    }, {});
-
-  const fields =
-    formStructure ??
-    getFormStructureForCreateEdit(
-      schema,
-      schemaList,
-      genericsList,
-      peerDropdownOptions,
-      objectDetailsData
-    );
+  const fields = formStructure ?? getFormStructureForCreateEdit(schema, genericsList);
 
   async function onSubmit(data: any) {
     setIsLoading(true);

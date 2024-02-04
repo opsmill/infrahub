@@ -1,17 +1,20 @@
-import { isValid, parseISO } from "date-fns";
+import { isValid } from "date-fns";
 import { SelectOption } from "../components/inputs/select";
-import { iPeerDropdownOptions } from "../graphql/queries/objects/dropdownOptionsForRelatedPeers";
 import {
   DynamicFieldData,
   SchemaAttributeType,
   getInputTypeFromAttribute,
   getInputTypeFromRelationship,
-  getOptionsFromAttribute,
-  getOptionsFromRelationship,
 } from "../screens/edit-form-hook/dynamic-control-types";
 import { iGenericSchema, iNodeSchema } from "../state/atoms/schema.atom";
 import { sortByOrderWeight } from "./common";
-import { getObjectRelationshipsForForm } from "./getSchemaObjectColumns";
+import {
+  getFieldValue,
+  getObjectRelationshipsForForm,
+  getOptionsFromAttribute,
+  getRelationshipOptions,
+  getRelationshipValue,
+} from "./getSchemaObjectColumns";
 
 const getIsDisabled = ({ owner, user, isProtected, isReadOnly }: any) => {
   // Field is read only
@@ -22,24 +25,6 @@ const getIsDisabled = ({ owner, user, isProtected, isReadOnly }: any) => {
 
   // Field is available only if is_protected is set to true and if the owner is the user
   return owner?.id !== user?.data?.sub;
-};
-
-const getFieldValue = (row: any, attribute: any) => {
-  const value = row?.[attribute.name] ? row[attribute.name].value : attribute.default_value;
-
-  if (attribute.kind === "DateTime") {
-    if (isValid(value)) {
-      return value;
-    }
-
-    if (isValid(parseISO(value))) {
-      return parseISO(value);
-    }
-
-    return null;
-  }
-
-  return value;
 };
 
 const validate = (value: any, attribute: any = {}, optional?: boolean) => {
@@ -83,10 +68,8 @@ const validate = (value: any, attribute: any = {}, optional?: boolean) => {
 };
 
 const getFormStructureForCreateEdit = (
-  schema: iNodeSchema,
-  schemas: iNodeSchema[],
+  schema: iNodeSchema | undefined,
   generics: iGenericSchema[],
-  dropdownOptions: iPeerDropdownOptions,
   row?: any,
   user?: any,
   isUpdate?: boolean
@@ -113,34 +96,8 @@ const getFormStructureForCreateEdit = (
           peer: field.peer,
           type: getInputTypeFromRelationship(field, isInherited),
           label: field.label ? field.label : field.name,
-          value: (() => {
-            if (!row || !row[field.name]) {
-              return "";
-            }
-
-            const value = row[field.name].node ?? row[field.name];
-
-            if (field.cardinality === "one" && !isInherited) {
-              return value.id;
-            } else if (field.cardinality === "one" && isInherited) {
-              return value;
-            } else if (value.edges) {
-              return value.edges.map((item: any) => item?.node?.id);
-            } else if (value.node) {
-              return value.node.map((item: any) => item?.node?.id);
-            }
-
-            return "";
-          })(),
-          options: {
-            values: getOptionsFromRelationship(
-              dropdownOptions,
-              field,
-              isInherited,
-              schemas,
-              generics
-            ),
-          },
+          value: getRelationshipValue(row, field),
+          options: getRelationshipOptions(row, field),
           config: {
             validate: (value: any) => validate(value, undefined, field.optional),
           },
@@ -162,6 +119,12 @@ const getFormStructureForCreateEdit = (
       // Quick fix to prevent password in update field,
       // TODO: remove after new mutations are available to better handle accounts
       const isOptional = field.optional || (isUpdate && field.kind === "HashedPassword");
+      const isProtected = getIsDisabled({
+        owner: row && row[field.name]?.owner,
+        user,
+        isProtected: row && row[field.name] && row[field.name].is_protected,
+        isReadOnly: field.read_only,
+      });
 
       return {
         name: field.name + ".value",
@@ -169,22 +132,15 @@ const getFormStructureForCreateEdit = (
         type: getInputTypeFromAttribute(field),
         label: field.label || field.name,
         value: fieldValue,
-        options: {
-          values: getOptionsFromAttribute(field, fieldValue),
-        },
+        options: getOptionsFromAttribute(field, fieldValue),
         config: {
           validate: (value: any) => validate(value, field, isOptional),
         },
         isOptional,
         isReadOnly: field.read_only,
-        isProtected: getIsDisabled({
-          owner: row && row[field.name]?.owner,
-          user,
-          isProtected: row && row[field.name] && row[field.name].is_protected,
-          isReadOnly: field.read_only,
-        }),
+        isProtected,
         isUnique: field.unique,
-        attribute: field,
+        field,
         schema,
       };
     })
