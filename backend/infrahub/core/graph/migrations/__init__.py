@@ -7,14 +7,14 @@ from .m001_add_version_to_graph import Migration001
 if TYPE_CHECKING:
     from infrahub.core.root import Root
 
-    from .base import InfrahubMigration
+    from .shared import InternalMigration
 
 MIGRATIONS = [
     Migration001,
 ]
 
 
-async def get_migrations(root: Root) -> Sequence[InfrahubMigration]:
+async def get_migrations(root: Root) -> Sequence[InternalMigration]:
     applicable_migrations = []
     for migration_class in MIGRATIONS:
         migration = migration_class()

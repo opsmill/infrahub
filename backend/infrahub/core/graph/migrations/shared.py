@@ -1,26 +1,17 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Sequence
+from typing import TYPE_CHECKING, Sequence
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from infrahub.core.migrations.shared import MigrationResult
 
 if TYPE_CHECKING:
     from infrahub.core.query import Query
     from infrahub.database import InfrahubDatabase
 
 
-class MigrationResult(BaseModel):
-    errors: List[str] = Field(default_factory=list)
-
-    @property
-    def success(self) -> bool:
-        if not self.errors:
-            return True
-
-        return False
-
-
-class InfrahubMigration(BaseModel):
+class InternalMigration(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     name: str = Field(..., description="Name of the migration")
     queries: Sequence[type[Query]] = Field(..., description="List of queries to execute for this migration")

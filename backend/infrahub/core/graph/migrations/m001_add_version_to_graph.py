@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, Sequence
 
+from infrahub.core.migrations.shared import MigrationResult
 from infrahub.core.query import Query, QueryType
 from infrahub.core.root import Root
 
-from .base import InfrahubMigration, MigrationResult
+from .shared import InternalMigration
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -24,7 +25,7 @@ class Migration001Query01(Query):
         self.return_labels = ["root"]
 
 
-class Migration001(InfrahubMigration):
+class Migration001(InternalMigration):
     name: str = "001_add_version_to_graph"
     queries: Sequence[type[Query]] = [Migration001Query01]
     minimum_version: int = 0
