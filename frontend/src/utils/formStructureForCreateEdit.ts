@@ -117,8 +117,8 @@ const getFormStructureForCreateEdit = (
       const fieldValue = getFieldValue(row, field);
 
       // Quick fix to prevent password in update field,
-      // TODO: remove after new mutations are available to better handle accounts
-      const isOptional = field.optional || (isUpdate && field.kind === "HashedPassword");
+      // TODO: remove HashedPassword test after new mutations are available to better handle accounts
+      const isOptional = (field.optional || (isUpdate && field.kind === "HashedPassword")) ?? false;
       const isProtected = getIsDisabled({
         owner: row && row[field.name]?.owner,
         user,

@@ -170,7 +170,7 @@ export const getFieldValue = (row: any, attribute: any) => {
     return null;
   }
 
-  return value;
+  return value ?? null;
 };
 
 export const getRelationshipValue = (row: any, field: any) => {

@@ -18,19 +18,15 @@ describe("Form structure and object update", () => {
   it("should return a correct form structure", () => {
     const calculatedAttributes = getFormStructureForCreateEdit(
       accountTokenDetailsMocksSchema[0],
-      accountTokenDetailsMocksSchema,
       genericsMocks,
-      [],
-      accountTokenDetailsMocksDataWithDate.InternalAccountToken.edges[0].node,
-      {}
+      accountTokenDetailsMocksDataWithDate.InternalAccountToken.edges[0].node
     );
 
     // For each attribute, check from the mock data
     calculatedAttributes.map((attribute, index) => {
       // Slices last character to remove the closing bracket
-      console.log("attribute: ", attribute);
-      console.log("accountTokenFormStructure[index]: ", accountTokenFormStructure[index]);
-      const mockData = JSON.stringify(accountTokenFormStructure[index]);
+      const mockString = JSON.stringify(accountTokenFormStructure[index]);
+      const mockData = mockString.substring(0, mockString.length - 1);
 
       expect(JSON.stringify(attribute)).toContain(mockData);
     });
