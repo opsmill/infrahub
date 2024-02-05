@@ -102,6 +102,7 @@ export const Select = (props: SelectProps) => {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasBeenOpened, setHasBeenOpened] = useState(false);
   const [optionToDelete, setOptionToDelete] = useState<null | number | string>(null);
   const [localOptions, setLocalOptions] = useState(options);
   const [selectedOption, setSelectedOption] = useState(
@@ -215,8 +216,9 @@ export const Select = (props: SelectProps) => {
 
   const handleFocus = () => {
     // Do not fetch if there is no peer
-    if (!peer) return;
+    if (!peer || hasBeenOpened) return;
 
+    setHasBeenOpened(true);
     fetchOptions();
   };
 
