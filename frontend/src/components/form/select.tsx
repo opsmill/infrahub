@@ -4,10 +4,10 @@ import { Select, SelectOption } from "../inputs/select";
 
 type SelectProps = {
   label: string;
-  value?: string | number;
+  value?: string | number | null;
   options: Array<SelectOption>;
   disabled: boolean;
-  onChange: (value: SelectOption) => void;
+  onChange: (value: string | number) => void;
   error?: FormFieldError;
   isProtected?: boolean;
   isOptional?: boolean;

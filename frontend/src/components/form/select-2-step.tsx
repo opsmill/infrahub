@@ -1,15 +1,15 @@
-import { gql } from "@apollo/client";
 import { useAtomValue } from "jotai/index";
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import graphqlClient from "../../graphql/graphqlClientApollo";
-import { getDropdownOptionsForRelatedPeersPaginated } from "../../graphql/queries/objects/dropdownOptionsForRelatedPeers";
 import { FormFieldError } from "../../screens/edit-form-hook/form";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
 import { classNames } from "../../utils/common";
 import { SelectOption } from "../inputs/select";
 import { OpsSelect } from "./select";
+import { getDropdownOptions } from "../../graphql/queries/objects/dropdownOptions";
+import graphqlClient from "../../graphql/graphqlClientApollo";
+import { gql } from "@apollo/client";
 
 export interface iTwoStepDropdownData {
   parent: string | number;
@@ -33,39 +33,23 @@ export const OpsSelect2Step = (props: Props) => {
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
 
-  const [optionsRight, setOptionsRight] = useState<SelectOption[]>([]);
+  const [optionsRight, setOptionsRight] = useState([]);
 
-  const [selectedLeft, setSelectedLeft] = useState<SelectOption | null | undefined>(
-    value.parent ? options.find((option: SelectOption) => option.id === value.parent) : null
+  const [selectedLeft, setSelectedLeft] = useState(
+    value.parent ? options.find((option) => option.id === value.parent)?.id : null
   );
 
-  const [selectedRight, setSelectedRight] = useState<SelectOption | null | undefined>(
-    value.child ? optionsRight.find((option) => option.id === value.child) : null
+  const [selectedRight, setSelectedRight] = useState(
+    value.child ? optionsRight.find((option) => option.id === value.child)?.id : null
   );
-
-  useEffect(() => {
-    setSelectedRight(value.child ? optionsRight.find((option) => option.id === value.child) : null);
-  }, [value.child, optionsRight]);
-
-  useEffect(() => {
-    setSelectedLeft(value.parent ? options.find((option) => option.id === value.parent) : null);
-  }, [value.parent]);
-
-  useEffect(() => {
-    if (value) {
-      onChange(value);
-    }
-  }, []);
 
   const setRightDropdownOptions = useCallback(async () => {
-    const objectName = selectedLeft?.id;
-
-    if (!objectName) {
+    if (!selectedLeft) {
       return;
     }
 
-    const queryString = getDropdownOptionsForRelatedPeersPaginated({
-      peers: [objectName],
+    const queryString = getDropdownOptions({
+      kind: selectedLeft,
     });
 
     const query = gql`
@@ -80,7 +64,7 @@ export const OpsSelect2Step = (props: Props) => {
       },
     });
 
-    const newRigthOptions = data[objectName]?.edges.map((edge: any) => edge.node);
+    const newRigthOptions = data[selectedLeft]?.edges.map((edge: any) => edge.node);
 
     setOptionsRight(
       newRigthOptions
@@ -93,13 +77,13 @@ export const OpsSelect2Step = (props: Props) => {
     );
 
     if (value.child) {
-      setSelectedRight(newRigthOptions.find((option: any) => option.id === value.child));
+      setSelectedRight(value.child);
     }
-  }, [selectedLeft?.id]);
+  }, [selectedLeft]);
 
   useEffect(() => {
     setRightDropdownOptions();
-  }, [selectedLeft?.id]);
+  }, [selectedLeft]);
 
   return (
     <div className={classNames("grid grid-cols-6")}>
@@ -112,31 +96,28 @@ export const OpsSelect2Step = (props: Props) => {
         <OpsSelect
           error={error}
           disabled={false}
-          value={selectedLeft?.id}
+          value={selectedLeft}
           options={options}
           label=""
-          onChange={(value) => {
-            setSelectedLeft(options.filter((option) => option.id === value.id)[0]);
-          }}
+          onChange={setSelectedLeft}
           isProtected={isProtected}
           data-cy="select2step-1"
           data-testid="select2step-1"
         />
       </div>
       <div className="sm:col-span-3 ml-2 mt-1">
-        {!!selectedLeft?.id && optionsRight.length > 0 && (
+        {!!selectedLeft && optionsRight.length > 0 && (
           <OpsSelect
             error={error}
             disabled={false}
-            value={selectedRight?.id}
+            value={selectedRight}
             options={optionsRight}
             label=""
             onChange={(value) => {
-              const newOption = optionsRight.find((option) => option.id === value.id);
-              setSelectedRight(newOption);
+              setSelectedRight(value);
               onChange({
-                parent: selectedLeft.id,
-                child: value.id,
+                parent: selectedLeft,
+                child: value,
               });
             }}
             isProtected={isProtected}
