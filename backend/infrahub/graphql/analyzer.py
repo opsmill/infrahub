@@ -41,7 +41,7 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
         for graphql_type_name in graphql_types:
             try:
                 graphql_type = types.get(graphql_type_name)
-                if not hasattr(graphql_type._meta, "schema"):  # type: ignore[union-attr]
+                if not hasattr(graphql_type, "_meta") or not hasattr(graphql_type._meta, "schema"):  # type: ignore[union-attr]
                     continue
                 models.add(graphql_type._meta.schema.kind)  # type: ignore[union-attr]
             except ValueError:
