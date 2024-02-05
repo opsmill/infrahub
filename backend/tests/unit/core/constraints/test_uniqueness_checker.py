@@ -25,6 +25,24 @@ class TestUniquenessChecker:
 
         assert not conflicts
 
+    async def test_no_violations_multiple_schemas(
+        self,
+        db: InfrahubDatabase,
+        car_accord_main,
+        car_camry_main,
+        car_volt_main,
+        car_yaris_main,
+        car_prius_main,
+        branch: Branch,
+    ):
+        car_schema = registry.schema.get("TestCar", branch=branch)
+        person_schema = registry.schema.get("TestPerson", branch=branch)
+        checker = UniquenessChecker(db)
+
+        conflicts = await checker.get_conflicts(schemas=[car_schema, person_schema], source_branch=branch)
+
+        assert not conflicts
+
     async def test_one_violation(
         self,
         db: InfrahubDatabase,
@@ -66,6 +84,86 @@ class TestUniquenessChecker:
                 path_type=PathType.ATTRIBUTE,
                 change_type="attribute_value",
                 value=5,
+                branch=default_branch.name,
+            )
+            in conflicts
+        )
+
+    async def test_violation_multiple_schema(
+        self,
+        db: InfrahubDatabase,
+        car_accord_main,
+        car_prius_main,
+        person_john_main,
+        person_jane_main,
+        branch: Branch,
+        default_branch: Branch,
+    ):
+        car_schema = registry.schema.get("TestCar", branch=branch)
+        car_schema.get_attribute("nbr_seats").unique = True
+        person_schema = registry.schema.get("TestPerson", branch=branch)
+        person_schema.get_attribute("height").unique = True
+        checker = UniquenessChecker(db)
+
+        conflicts = await checker.get_conflicts(schemas=[car_schema, person_schema], source_branch=branch)
+
+        assert len(conflicts) == 4
+        assert (
+            ObjectConflict(
+                name="TestCar/nbr_seats",
+                type="uniqueness-violation",
+                kind="TestCar",
+                id=car_accord_main.id,
+                conflict_path="TestCar/nbr_seats",
+                path="TestCar/nbr_seats",
+                path_type=PathType.ATTRIBUTE,
+                change_type="attribute_value",
+                value=5,
+                branch=default_branch.name,
+            )
+            in conflicts
+        )
+        assert (
+            ObjectConflict(
+                name="TestCar/nbr_seats",
+                type="uniqueness-violation",
+                kind="TestCar",
+                id=car_prius_main.id,
+                conflict_path="TestCar/nbr_seats",
+                path="TestCar/nbr_seats",
+                path_type=PathType.ATTRIBUTE,
+                change_type="attribute_value",
+                value=5,
+                branch=default_branch.name,
+            )
+            in conflicts
+        )
+        assert (
+            ObjectConflict(
+                name="TestPerson/height",
+                type="uniqueness-violation",
+                kind="TestPerson",
+                id=person_john_main.id,
+                conflict_path="TestPerson/height",
+                path="TestPerson/height",
+                path_type=PathType.ATTRIBUTE,
+                change_type="attribute_value",
+                value=180,
+                branch=default_branch.name,
+            )
+            in conflicts
+        )
+        assert (
+            ObjectConflict(
+                name="TestPerson/height",
+                type="uniqueness-violation",
+                kind="TestPerson",
+                id=person_jane_main.id,
+                conflict_path="TestPerson/height",
+                path="TestPerson/height",
+                path_type=PathType.ATTRIBUTE,
+                change_type="attribute_value",
+                value=180,
                 branch=default_branch.name,
             )
             in conflicts

@@ -73,8 +73,9 @@ class NonUniqueNode(BaseModel):
 
 
 class UniquenessChecker:
-    def __init__(self, db: InfrahubDatabase):
+    def __init__(self, db: InfrahubDatabase, max_concurrent_execution: int = 5):
         self.db = db
+        self.semaphore = asyncio.Semaphore(max_concurrent_execution)
 
     async def get_conflicts(
         self,
@@ -135,7 +136,8 @@ class UniquenessChecker:
         relationship_schema_by_identifier = {rel.identifier: rel for rel in schema.relationships}
 
         query = await NodeUniqueAttributeConstraintQuery.init(db=self.db, branch=branch, query_request=query_request)
-        query_results = await query.execute(db=self.db)
+        async with self.semaphore:
+            query_results = await query.execute(db=self.db.start_session(read_only=True))
 
         non_unique_nodes_by_id: Dict[str, NonUniqueNode] = {}
         for result in query_results.results:
