@@ -33,9 +33,9 @@ Schemas to be loaded as part of an external repository can be defined in file(s)
 <details>
   <summary>Example</summary>
 
-  ```YAML
+  ```yaml
   schemas:
-  - schemas/demo_edge_fabric.yml
+    - schemas/demo_edge_fabric.yml
   ```
 
 </details>
@@ -54,12 +54,12 @@ Jinja2 Transformations can be defined as described [here](/topics/transformation
 <details>
   <summary>Example</summary>
 
-  ```YAML
+  ```yaml
   jinja2_transforms:
-  - name: device_startup
-  description: "Template to generate startup configuration for network devices"
-  query: "device_startup_info"
-  template_path: "templates/device_startup_config.tpl.j2"
+    - name: device_startup
+      description: "Template to generate startup configuration for network devices"
+      query: "device_startup_info"
+      template_path: "templates/device_startup_config.tpl.j2"
   ```
 
 </details>
@@ -75,11 +75,11 @@ Python Transformations can be defined as described [here](/topics/transformation
 <details>
   <summary>Example</summary>
 
-  ```YAML
+  ```yaml
   python_transforms:
-  - name: OCInterfaces
-  class_name: OCInterfaces
-  file_path: "transforms/openconfig.py"
+    - name: OCInterfaces
+    class_name: OCInterfaces
+    file_path: "transforms/openconfig.py"
   ```
 
 </details>
@@ -100,13 +100,13 @@ Artifact Definitions can be created as described [here](/topics/artifact). To lo
 
   ```yaml
   artifact_definitions:
-  - name: "Openconfig Interface for Arista devices"
-  artifact_name: "openconfig-interfaces"
-  parameters:
-  device: "name__value"
-  content_type: "application/json"
-  targets: "arista_devices"
-  transformation: "OCInterfaces
+    - name: "Openconfig Interface for Arista devices"
+    artifact_name: "openconfig-interfaces"
+    parameters:
+    device: "name__value"
+    content_type: "application/json"
+    targets: "arista_devices"
+    transformation: "OCInterfaces
   ```
 
 </details>
