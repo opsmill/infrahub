@@ -274,6 +274,8 @@ class RelationshipSchema(HashableModel):
         default_factory=list, json_schema_extra={"update": UpdateSupport.NOT_APPLICABLE.value}
     )
     order_weight: Optional[int] = Field(default=None, json_schema_extra={"update": UpdateSupport.ALLOWED.value})
+    min_count: int = Field(default=0, json_schema_extra={"update": UpdateSupport.CHECK_CONSTRAINTS.value})
+    max_count: int = Field(default=0, json_schema_extra={"update": UpdateSupport.CHECK_CONSTRAINTS.value})
 
     _exclude_from_hash: List[str] = ["filters"]
     _sort_by: List[str] = ["name"]
@@ -1079,6 +1081,20 @@ internal_schema = {
                     "description": "Defines how many objects are expected on the other side of the relationship.",
                     "enum": RelationshipCardinality.available_types(),
                     "default_value": RelationshipCardinality.MANY.value,
+                    "optional": True,
+                },
+                {
+                    "name": "min_count",
+                    "kind": "Number",
+                    "description": "Defines the minimum objects allowed on the other side of the relationship.",
+                    "default_value": 0,
+                    "optional": True,
+                },
+                {
+                    "name": "max_count",
+                    "kind": "Number",
+                    "description": "Defines the maximum objects allowed on the other side of the relationship.",
+                    "default_value": 0,
                     "optional": True,
                 },
                 {
