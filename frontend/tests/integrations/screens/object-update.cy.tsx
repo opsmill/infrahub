@@ -66,39 +66,7 @@ const mocks: any[] = [
       data: deviceDetailsUpdateMocksData,
     },
   },
-  // Details query
-  {
-    request: {
-      query: gql`
-        ${deviceDetailsMocksQuery}
-      `,
-    },
-    result: {
-      data: deviceDetailsMocksData,
-    },
-  },
-  // Update query
-  {
-    request: {
-      query: gql`
-        ${deviceDetailsUpdateMocksQuery}
-      `,
-    },
-    result: {
-      data: deviceDetailsUpdateMocksData,
-    },
-  },
   // After mutation
-  {
-    request: {
-      query: gql`
-        ${deviceDetailsMocksQuery}
-      `,
-    },
-    result: {
-      data: deviceDetailsMocksDataAfterUpdate,
-    },
-  },
   {
     request: {
       query: gql`
