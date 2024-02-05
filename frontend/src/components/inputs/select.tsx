@@ -15,6 +15,8 @@ import {
 import { SchemaContext } from "../../decorators/withSchemaContext";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { basicMutation } from "../../graphql/mutations/objects/basicMutation";
+import { getDropdownOptions } from "../../graphql/queries/objects/dropdownOptions";
+import { useLazyQuery } from "../../hooks/useQuery";
 import { Form, FormFieldError } from "../../screens/edit-form-hook/form";
 import ObjectItemCreate from "../../screens/object-item-create/object-item-create-paginated";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
@@ -28,8 +30,6 @@ import SlideOver from "../display/slide-over";
 import ModalDelete from "../modals/modal-delete";
 import { Input } from "./input";
 import { MultipleInput } from "./multiple-input";
-import { useLazyQuery } from "../../hooks/useQuery";
-import { getDropdownOptions } from "../../graphql/queries/objects/dropdownOptions";
 
 import LoadingScreen from "../../screens/loading-screen/loading-screen";
 import { getOptionsFromRelationship } from "../../utils/getSchemaObjectColumns";
@@ -703,7 +703,7 @@ export const Select = (props: SelectProps) => {
   const comparedOptions = (a: SelectOption, b: SelectOption) => a?.id === b?.id;
 
   return (
-    <div className="relative">
+    <div className="relative" data-testid="select-container">
       <Combobox
         as="div"
         value={selectedOption}
@@ -723,6 +723,7 @@ export const Select = (props: SelectProps) => {
             className={"pr-8"}
             style={getInputStyle()}
             hideEmpty
+            data-testid="select-input"
           />
           <Combobox.Button
             className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none disabled:cursor-not-allowed"
