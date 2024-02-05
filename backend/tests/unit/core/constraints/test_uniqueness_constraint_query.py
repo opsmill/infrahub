@@ -341,3 +341,60 @@ async def test_query_relationship_and_attribute_uniqueness_violations(
     for result in query_result.results:
         serial_result = dict(result.data)
         assert serial_result in expected_result_dicts
+
+
+async def test_query_relationship_violation_no_attribute(
+    db: InfrahubDatabase,
+    car_accord_main,
+    car_prius_main,
+    car_camry_main,
+    person_john_main,
+    branch: Branch,
+    default_branch: Branch,
+):
+    car_to_update = await NodeManager.get_one(id=car_camry_main.id, db=db, branch=branch)
+    await car_to_update.owner.update(data=person_john_main, db=db)
+    await car_to_update.save(db=db)
+    expected_result_dicts = [
+        {
+            "attr_name": "id",
+            "node_id": car_accord_main.id,
+            "node_count": 3,
+            "attr_value": person_john_main.id,
+            "relationship_identifier": "testcar__testperson",
+            "deepest_branch_name": default_branch.name,
+        },
+        {
+            "attr_name": "id",
+            "node_id": car_prius_main.id,
+            "node_count": 3,
+            "attr_value": person_john_main.id,
+            "relationship_identifier": "testcar__testperson",
+            "deepest_branch_name": default_branch.name,
+        },
+        {
+            "attr_name": "id",
+            "node_id": car_camry_main.id,
+            "node_count": 3,
+            "attr_value": person_john_main.id,
+            "relationship_identifier": "testcar__testperson",
+            "deepest_branch_name": branch.name,
+        },
+    ]
+
+    query = await NodeUniqueAttributeConstraintQuery.init(
+        db=db,
+        branch=branch,
+        query_request=NodeUniquenessQueryRequest(
+            kind="TestCar",
+            relationship_attribute_paths=[
+                QueryRelationshipAttributePath(identifier="testcar__testperson", attribute_name=None)
+            ],
+        ),
+    )
+    query_result = await query.execute(db=db)
+
+    assert len(query_result.results) == 3
+    for result in query_result.results:
+        serial_result = dict(result.data)
+        assert serial_result in expected_result_dicts

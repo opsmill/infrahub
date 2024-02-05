@@ -51,12 +51,17 @@ class NodeUniqueAttributeConstraintQuery(Query):
             WITH start_node
             MATCH attr_path = (start_node:Node)-[:HAS_ATTRIBUTE]-(attr:Attribute)-[:HAS_VALUE]-(attr_value:AttributeValue)
             WHERE attr.name in $attr_names
-            RETURN attr_path as potential_path, start_node as potential_node, NULL as rel_identifier, attr as potential_attr, attr_value as potential_attr_value
+            RETURN attr_path as potential_path, NULL as rel_identifier, attr.name as potential_attr, attr_value.value as potential_attr_value
             UNION
             WITH start_node
             MATCH rel_path = (start_node:Node)-[:IS_RELATED]-(relationship_node:Relationship)-[:IS_RELATED]-(related_n:Node)-[:HAS_ATTRIBUTE]-(rel_attr:Attribute)-[:HAS_VALUE]-(rel_attr_value:AttributeValue)
             WHERE [relationship_node.name, rel_attr.name] in $relationship_attr_paths
-            RETURN rel_path as potential_path, start_node as potential_node, relationship_node.name as rel_identifier, rel_attr as potential_attr, rel_attr_value as potential_attr_value
+            RETURN rel_path as potential_path, relationship_node.name as rel_identifier, rel_attr.name as potential_attr, rel_attr_value.value as potential_attr_value
+            UNION
+            WITH start_node
+            MATCH rel_path = (start_node:Node)-[:IS_RELATED]->(relationship_node:Relationship)-[:IS_RELATED]->(related_n:Node)
+            WHERE [relationship_node.name, null] in $relationship_attr_paths
+            RETURN rel_path as potential_path, relationship_node.name as rel_identifier, "id" as potential_attr, related_n.uuid as potential_attr_value
         }
         CALL {
             WITH potential_path
@@ -71,21 +76,24 @@ class NodeUniqueAttributeConstraintQuery(Query):
             RETURN
                 potential_path as matched_path,
                 reduce(br_lvl = 0, r in relationships(potential_path) | br_lvl + r.branch_level) AS branch_level_sum,
-                %(from_times)s AS from_times
+                %(from_times)s AS from_times,
+                // used as tiebreaker for updated relationships that were deleted and added at the same microsecond
+                reduce(active_count = 0, r in relationships(potential_path) | active_count + (CASE r.status WHEN "active" THEN 1 ELSE 0 END)) AS active_relationship_count
         }
         WITH
-            collect([matched_path, branch_level_sum, from_times, potential_attr_value.value]) as enriched_paths,
+            collect([matched_path, branch_level_sum, from_times, active_relationship_count, potential_attr_value]) as enriched_paths,
             start_node,
             rel_identifier,
             potential_attr
         CALL {
             WITH enriched_paths
             UNWIND enriched_paths as path_to_check
-            RETURN path_to_check[0] as current_path, path_to_check[3] as latest_value
+            RETURN path_to_check[0] as current_path, path_to_check[4] as latest_value
             ORDER BY
                 path_to_check[1] DESC,
                 path_to_check[2][-1] DESC,
-                path_to_check[2][-2] DESC
+                path_to_check[2][-2] DESC,
+                path_to_check[3] DESC
             LIMIT 1
         }
         CALL {
@@ -107,7 +115,7 @@ class NodeUniqueAttributeConstraintQuery(Query):
         WITH
             collect([start_node.uuid, branch_name]) as nodes_and_branches,
             count(*) as node_count,
-            potential_attr.name as attr_name,
+            potential_attr as attr_name,
             latest_value as attr_value,
             rel_identifier as relationship_identifier
         WHERE node_count > 1

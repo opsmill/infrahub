@@ -40,10 +40,13 @@ class NonUniqueNode(BaseModel):
     non_unique_related_attributes: List[NonUniqueRelatedAttribute] = Field(default_factory=list)
 
     def get_relationship_violation(
-        self, relationship_name: str, attribute_name: str
+        self, relationship_name: str, attribute_name: Optional[str]
     ) -> Optional[NonUniqueRelatedAttribute]:
+        attribute_names = {attribute_name}
+        if attribute_name is None:
+            attribute_names.add("id")
         for nura in self.non_unique_related_attributes:
-            if nura.relationship.name == relationship_name and nura.attribute_name == attribute_name:
+            if nura.relationship.name == relationship_name and nura.attribute_name in attribute_names:
                 return nura
         return None
 
@@ -54,22 +57,35 @@ class NonUniqueNode(BaseModel):
         return None
 
     def get_constraint_violation(
-        self, constraint_specifications: List[Tuple[Optional[str], str]]
+        self, constraint_specifications: List[Tuple[Union[AttributeSchema, RelationshipSchema], Optional[str]]]
     ) -> Optional[List[Union[NonUniqueAttribute, NonUniqueRelatedAttribute]]]:
         violations: List[Union[NonUniqueAttribute, NonUniqueRelatedAttribute]] = []
-        for constraint_spec in constraint_specifications:
-            relationship_name, attribute_name = constraint_spec
-            if not relationship_name:
-                attribute_violation = self.get_attribute_violation(attribute_name)
+        for sub_schema, property_name in constraint_specifications:
+            if isinstance(sub_schema, AttributeSchema):
+                attribute_violation = self.get_attribute_violation(sub_schema.name)
                 if not attribute_violation:
                     return None
                 violations.append(attribute_violation)
-            else:
-                relationship_violation = self.get_relationship_violation(relationship_name, attribute_name)
+            elif isinstance(sub_schema, RelationshipSchema):
+                relationship_violation = self.get_relationship_violation(sub_schema.name, property_name)
                 if not relationship_violation:
                     return None
                 violations.append(relationship_violation)
         return violations
+
+
+def get_attribute_path_from_string(
+    path: str, schema: Union[NodeSchema, GenericSchema]
+) -> Tuple[Union[AttributeSchema, RelationshipSchema], Optional[str]]:
+    if "__" in path:
+        name, property_name = path.split("__")
+    else:
+        name, property_name = path, None
+    attribute_schema = schema.get_attribute(name, raise_on_error=False)
+    relationship_schema = schema.get_relationship(name, raise_on_error=False)
+    if not (attribute_schema or relationship_schema):
+        raise ValueError(f"{path} is not valid on {schema.kind}")
+    return attribute_schema or relationship_schema, property_name
 
 
 class UniquenessChecker:
@@ -104,20 +120,22 @@ class UniquenessChecker:
         unique_attr_names = {attr_schema.name for attr_schema in schema.unique_attributes}
         relationship_attr_paths = []
 
-        if schema.uniqueness_constraints:
-            for uniqueness_constraint in schema.uniqueness_constraints:
-                for path in uniqueness_constraint:
-                    if "__" in path:
-                        relationship_name, attribute_name = path.split("__")
-                    else:
-                        relationship_name, attribute_name = None, path
-                    if not relationship_name:
-                        unique_attr_names.add(attribute_name)
-                        continue
-                    relationship = schema.get_relationship(relationship_name)
+        if not schema.uniqueness_constraints:
+            return NodeUniquenessQueryRequest(
+                kind=schema.kind,
+                unique_attribute_names=list(unique_attr_names),
+                relationship_attribute_paths=[],
+            )
+
+        for uniqueness_constraint in schema.uniqueness_constraints:
+            for path in uniqueness_constraint:
+                sub_schema, property_name = get_attribute_path_from_string(path, schema)
+                if isinstance(sub_schema, AttributeSchema):
+                    unique_attr_names.add(sub_schema.name)
+                elif isinstance(sub_schema, RelationshipSchema):
                     relationship_attr_paths.append(
                         QueryRelationshipAttributePath(
-                            identifier=relationship.get_identifier(), attribute_name=attribute_name
+                            identifier=sub_schema.get_identifier(), attribute_name=property_name
                         )
                     )
         return NodeUniquenessQueryRequest(
@@ -181,11 +199,8 @@ class UniquenessChecker:
         for uniqueness_constraint in non_unique_node.node_schema.uniqueness_constraints or []:
             constraint_spec: List[Tuple[Optional[str], str]] = []
             for element in uniqueness_constraint:
-                if "__" in element:
-                    relationship_name, attribute_name = element.split("__")
-                    constraint_spec.append((relationship_name, attribute_name))
-                else:
-                    constraint_spec.append((None, element))
+                sub_schema, property_name = get_attribute_path_from_string(element, non_unique_node.node_schema)
+                constraint_spec.append((sub_schema, property_name))
             violations = non_unique_node.get_constraint_violation(constraint_spec)
             if violations:
                 constraint_violations |= set(violations)

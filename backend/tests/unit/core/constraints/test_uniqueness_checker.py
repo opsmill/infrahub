@@ -466,3 +466,70 @@ class TestUniquenessChecker:
             )
             in conflicts
         )
+
+    async def test_relationship_violation_wo_attribute(
+        self,
+        db: InfrahubDatabase,
+        car_accord_main,
+        car_prius_main,
+        car_camry_main,
+        person_john_main,
+        branch: Branch,
+        default_branch: Branch,
+    ):
+        car_to_update = await NodeManager.get_one(id=car_camry_main.id, db=db, branch=branch)
+        await car_to_update.owner.update(data=person_john_main, db=db)
+        await car_to_update.save(db=db)
+
+        schema = registry.schema.get("TestCar", branch=branch)
+        schema.uniqueness_constraints = [["owner"]]
+        checker = UniquenessChecker(db)
+
+        conflicts = await checker.get_conflicts(schemas=[schema], source_branch=branch)
+
+        assert len(conflicts) == 3
+        assert (
+            ObjectConflict(
+                name="TestCar/owner/id",
+                type="uniqueness-violation",
+                kind="TestCar",
+                id=car_accord_main.id,
+                conflict_path="TestCar/owner/id",
+                path="TestCar/owner/id",
+                path_type=PathType.ATTRIBUTE,
+                change_type="attribute_value",
+                value=person_john_main.id,
+                branch=default_branch.name,
+            )
+            in conflicts
+        )
+        assert (
+            ObjectConflict(
+                name="TestCar/owner/id",
+                type="uniqueness-violation",
+                kind="TestCar",
+                id=car_prius_main.id,
+                conflict_path="TestCar/owner/id",
+                path="TestCar/owner/id",
+                path_type=PathType.ATTRIBUTE,
+                change_type="attribute_value",
+                value=person_john_main.id,
+                branch=default_branch.name,
+            )
+            in conflicts
+        )
+        assert (
+            ObjectConflict(
+                name="TestCar/owner/id",
+                type="uniqueness-violation",
+                kind="TestCar",
+                id=car_camry_main.id,
+                conflict_path="TestCar/owner/id",
+                path="TestCar/owner/id",
+                path_type=PathType.ATTRIBUTE,
+                change_type="attribute_value",
+                value=person_john_main.id,
+                branch=branch.name,
+            )
+            in conflicts
+        )
