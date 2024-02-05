@@ -20,6 +20,8 @@ import {
   accountTokenEditMocksQueryBis,
   accountTokenId,
   accountTokenNewDate,
+  accountsDropdownOptionsData,
+  accountsDropdownOptionsQuery,
 } from "../../mocks/data/accountToken";
 import { configMocks } from "../../mocks/data/config";
 import {
@@ -95,11 +97,33 @@ const mocksToken = [
   {
     request: {
       query: gql`
+        ${accountTokenDetailsMocksQueryBis}
+      `,
+    },
+    result: {
+      data: accountTokenDetailsMocksDataBis,
+    },
+  },
+  // Account token details for edit panel
+  {
+    request: {
+      query: gql`
         ${accountTokenEditMocksQueryBis}
       `,
     },
     result: {
       data: accountTokenEditMocksDataBis,
+    },
+  },
+  // Accounts options query for eedit panel
+  {
+    request: {
+      query: gql`
+        ${accountsDropdownOptionsQuery}
+      `,
+    },
+    result: {
+      data: accountsDropdownOptionsData,
     },
   },
   // Account token details after update

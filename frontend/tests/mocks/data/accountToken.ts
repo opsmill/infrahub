@@ -1130,120 +1130,6 @@ export const accountTokenEditMocksData = {
     ],
     __typename: "PaginatedInternalAccountToken",
   },
-  CoreAccount: {
-    edges: [
-      {
-        node: {
-          id: "c75a43b4-1df8-4d8b-894e-9fb684b62f8e",
-          display_label: "Architecture Team",
-          __typename: "CoreAccount",
-        },
-        __typename: "EdgedCoreAccount",
-      },
-      {
-        node: {
-          id: "4e4ac1bf-3e5c-4c42-808e-c2fdfd684512",
-          display_label: "Crm Synchronization",
-          __typename: "CoreAccount",
-        },
-        __typename: "EdgedCoreAccount",
-      },
-      {
-        node: {
-          id: "8540d34a-a525-4765-b62e-6ca746e15077",
-          display_label: "Chloe O'Brian",
-          __typename: "CoreAccount",
-        },
-        __typename: "EdgedCoreAccount",
-      },
-      {
-        node: {
-          id: "68246241-9162-4156-beee-7ba4ed4563e3",
-          display_label: "David Palmer",
-          __typename: "CoreAccount",
-        },
-        __typename: "EdgedCoreAccount",
-      },
-      {
-        node: {
-          id: "86cdbffb-6bb5-4fcd-808b-fd9ea020fce7",
-          display_label: "Engineering Team",
-          __typename: "CoreAccount",
-        },
-        __typename: "EdgedCoreAccount",
-      },
-      {
-        node: {
-          id: "65e55704-ba5b-4876-9707-afc5d049424d",
-          display_label: "Jack Bauer",
-          __typename: "CoreAccount",
-        },
-        __typename: "EdgedCoreAccount",
-      },
-      {
-        node: {
-          id: "f858c0ee-84aa-4f66-a003-2481ca1fd106",
-          display_label: "Operation Team",
-          __typename: "CoreAccount",
-        },
-        __typename: "EdgedCoreAccount",
-      },
-      {
-        node: {
-          id: "d7f866a8-6b26-4c37-bd79-9082450ca16c",
-          display_label: "Administrator",
-          __typename: "CoreAccount",
-        },
-        __typename: "EdgedCoreAccount",
-      },
-      {
-        node: {
-          id: "c3412415-707e-4f38-b12a-3a9814483c9f",
-          display_label: "Pop-Builder",
-          __typename: "CoreAccount",
-        },
-        __typename: "EdgedCoreAccount",
-      },
-    ],
-    __typename: "PaginatedCoreAccount",
-  },
-  CoreGroup: {
-    edges: [
-      {
-        node: {
-          id: "4edfa0f5-717e-4bb5-8fa6-443aafc9eb15",
-          display_label: "None",
-          __typename: "CoreStandardGroup",
-        },
-        __typename: "EdgedCoreGroup",
-      },
-      {
-        node: {
-          id: "13d13ab6-799b-4251-924c-2a6369a2ce10",
-          display_label: "None",
-          __typename: "CoreStandardGroup",
-        },
-        __typename: "EdgedCoreGroup",
-      },
-      {
-        node: {
-          id: "41d9477a-af12-4e5a-93a6-17967376c7b4",
-          display_label: "None",
-          __typename: "CoreStandardGroup",
-        },
-        __typename: "EdgedCoreGroup",
-      },
-      {
-        node: {
-          id: "e328060c-bab9-4611-8b1e-fe3f9937fc74",
-          display_label: "None",
-          __typename: "CoreStandardGroup",
-        },
-        __typename: "EdgedCoreGroup",
-      },
-    ],
-    __typename: "PaginatedCoreGroup",
-  },
 };
 
 export const accountTokenEditMocksDataBis = {
@@ -1287,6 +1173,24 @@ export const accountTokenEditMocksDataBis = {
     ],
     __typename: "PaginatedInternalAccountToken",
   },
+};
+
+export const accountsDropdownOptionsQuery = `
+query DropdownOptions {
+  CoreAccount {
+    count
+    edges {
+      node {
+        id
+        display_label
+        __typename
+      }
+    }
+  }
+}
+`;
+
+export const accountsDropdownOptionsData = {
   CoreAccount: {
     edges: [
       {
@@ -1363,42 +1267,5 @@ export const accountTokenEditMocksDataBis = {
       },
     ],
     __typename: "PaginatedCoreAccount",
-  },
-  CoreGroup: {
-    edges: [
-      {
-        node: {
-          id: "4edfa0f5-717e-4bb5-8fa6-443aafc9eb15",
-          display_label: "None",
-          __typename: "CoreStandardGroup",
-        },
-        __typename: "EdgedCoreGroup",
-      },
-      {
-        node: {
-          id: "13d13ab6-799b-4251-924c-2a6369a2ce10",
-          display_label: "None",
-          __typename: "CoreStandardGroup",
-        },
-        __typename: "EdgedCoreGroup",
-      },
-      {
-        node: {
-          id: "41d9477a-af12-4e5a-93a6-17967376c7b4",
-          display_label: "None",
-          __typename: "CoreStandardGroup",
-        },
-        __typename: "EdgedCoreGroup",
-      },
-      {
-        node: {
-          id: "e328060c-bab9-4611-8b1e-fe3f9937fc74",
-          display_label: "None",
-          __typename: "CoreStandardGroup",
-        },
-        __typename: "EdgedCoreGroup",
-      },
-    ],
-    __typename: "PaginatedCoreGroup",
   },
 };
