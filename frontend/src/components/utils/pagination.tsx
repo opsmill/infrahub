@@ -26,7 +26,6 @@ export const Pagination = (props: tPaginationType) => {
 
   const [pagination, setPagination] = usePagination();
 
-  console.log("pagination: ", pagination);
   const { offset, limit } = pagination;
 
   // Set the number of page to 1 if there is no other pages
