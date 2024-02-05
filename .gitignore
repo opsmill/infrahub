@@ -28,3 +28,6 @@ storage/*
 .coverage.*
 python_sdk/dist/*
 .benchmarks/*
+
+# Test reports
+**/*.csv

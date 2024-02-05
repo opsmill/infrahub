@@ -5,10 +5,12 @@ import click
 import common.events
 import common.stagers
 import common.users
+import gevent
 from common.config import Config as ScaleTestConfig
 from infrahub_sdk import Config, InfrahubClientSync
 from locust import events
 from locust.env import Environment
+from locust.stats import PERCENTILES_TO_REPORT, StatsCSVFileWriter
 
 config = ScaleTestConfig()
 
@@ -97,6 +99,10 @@ def main(schema: Path, stager: str, amount: int, attrs: int, rels: int, test: st
     print("--- starting test")
     env = Environment(user_classes=[user_class], events=events)
     runner = env.create_local_runner()
+
+    stats_csv_writer = StatsCSVFileWriter(env, PERCENTILES_TO_REPORT, str(time.time()), True)
+    gevent.spawn(stats_csv_writer.stats_writer)
+
     runner.start(1, spawn_rate=1)
     runner.greenlet.join()
 
