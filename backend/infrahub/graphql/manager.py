@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Set, Type, Union
 
 import graphene
+from prometheus_client import Histogram
 
 import infrahub.config as config
 from infrahub.core.attribute import String
@@ -48,6 +49,16 @@ GraphQLTypes = Union[
 ]
 
 
+METRIC_PREFIX = "infrahub_schema"
+
+SCHEMA_GENERATE_GRAPHQL_METRICS = Histogram(
+    f"{METRIC_PREFIX}_generate_graphql",
+    "Time to generate the GraphQL Schema",
+    labelnames=["branch"],
+    buckets=[0.0005, 0.25, 0.5, 1, 5],
+)
+
+
 @dataclass
 class GraphqlMutations:
     create: Type[InfrahubMutation]
@@ -80,22 +91,23 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         include_subscription: bool = True,
         include_types: bool = True,
     ) -> GraphQLSchema:
-        if include_types:
-            self.generate_object_types()
-            types_dict = self.get_all()
-            types = list(types_dict.values())
-        else:
-            types = []
+        with SCHEMA_GENERATE_GRAPHQL_METRICS.labels(self.schema.name).time():
+            if include_types:
+                self.generate_object_types()
+                types_dict = self.get_all()
+                types = list(types_dict.values())
+            else:
+                types = []
 
-        query = self.get_gql_query() if include_query else None
-        mutation = self.get_gql_mutation() if include_mutation else None
-        subscription = self.get_gql_subscription() if include_subscription else None
+            query = self.get_gql_query() if include_query else None
+            mutation = self.get_gql_mutation() if include_mutation else None
+            subscription = self.get_gql_subscription() if include_subscription else None
 
-        graphene_schema = graphene.Schema(
-            query=query, mutation=mutation, subscription=subscription, types=types, auto_camelcase=False
-        )
+            graphene_schema = graphene.Schema(
+                query=query, mutation=mutation, subscription=subscription, types=types, auto_camelcase=False
+            )
 
-        return graphene_schema.graphql_schema
+            return graphene_schema.graphql_schema
 
     def get_gql_query(self) -> type[InfrahubBaseQuery]:
         QueryMixin = self.generate_query_mixin()

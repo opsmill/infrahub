@@ -130,7 +130,8 @@ class SchemaBranch:
         self.name: Optional[str] = name
         self.nodes: Dict[str, str] = {}
         self.generics: Dict[str, str] = {}
-        self._graphql_schema = None
+        self._graphql_schema: Optional[GraphQLSchema] = None
+        self._graphql_manager: Optional[GraphQLSchemaManager] = None
 
         if data:
             self.nodes = data.get("nodes", {})
@@ -155,10 +156,25 @@ class SchemaBranch:
         # TODO need to implement a flag to return the real objects if needed
         return {"nodes": self.nodes, "generics": self.generics}
 
-    def get_graphql_schema(self) -> GraphQLSchema:
-        if not self._graphql_schema:
-            self._graphql_schema = GraphQLSchemaManager(schema=self).generate()
+    def get_graphql_manager(self) -> GraphQLSchemaManager:
+        if not self._graphql_manager:
+            self._graphql_manager = GraphQLSchemaManager(schema=self)
+        return self._graphql_manager
 
+    def get_graphql_schema(
+        self,
+        include_query: bool = True,
+        include_mutation: bool = True,
+        include_subscription: bool = True,
+        include_types: bool = True,
+    ) -> GraphQLSchema:
+        if not self._graphql_schema:
+            self._graphql_schema = self.get_graphql_manager().generate(
+                include_query=include_query,
+                include_mutation=include_mutation,
+                include_subscription=include_subscription,
+                include_types=include_types,
+            )
         return self._graphql_schema
 
     def diff(self, other: SchemaBranch) -> SchemaDiff:

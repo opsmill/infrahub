@@ -196,7 +196,6 @@ class InfrahubGraphQLApp:
         query = operation["query"]
 
         graphql_params = prepare_graphql_params(db=db, branch=branch, account_session=account_session, request=request)
-
         analyzed_query = InfrahubGraphQLQueryAnalyzer(query=query, schema=graphql_params.schema, branch=branch)
         await self.permission_checker.check(account_session=account_session, analyzed_query=analyzed_query)
 
