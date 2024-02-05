@@ -33,6 +33,7 @@ from .request_proposedchange_dataintegrity import RequestProposedChangeDataInteg
 from .request_proposedchange_pipeline import RequestProposedChangePipeline
 from .request_proposedchange_refreshartifacts import RequestProposedChangeRefreshArtifacts
 from .request_proposedchange_repositorychecks import RequestProposedChangeRepositoryChecks
+from .request_proposedchange_runtests import RequestProposedChangeRunTests
 from .request_proposedchange_schemaintegrity import RequestProposedChangeSchemaIntegrity
 from .request_repository_checks import RequestRepositoryChecks
 from .request_repository_userchecks import RequestRepositoryUserChecks
@@ -76,6 +77,7 @@ MESSAGE_MAP: Dict[str, Type[InfrahubMessage]] = {
     "request.proposed_change.refresh_artifacts": RequestProposedChangeRefreshArtifacts,
     "request.proposed_change.repository_checks": RequestProposedChangeRepositoryChecks,
     "request.proposed_change.schema_integrity": RequestProposedChangeSchemaIntegrity,
+    "request.proposed_change.run_tests": RequestProposedChangeRunTests,
     "request.repository.checks": RequestRepositoryChecks,
     "request.repository.user_checks": RequestRepositoryUserChecks,
     "send.webhook.event": SendWebhookEvent,

@@ -1,5 +1,6 @@
 from typing import List
 
+import pytest
 from pydantic import BaseModel
 
 from infrahub import lock
@@ -8,7 +9,7 @@ from infrahub.core.diff import BranchDiffer
 from infrahub.core.integrity.object_conflict.conflict_recorder import ObjectConflictValidatorRecorder
 from infrahub.core.registry import registry
 from infrahub.core.validators.uniqueness.checker import UniquenessChecker
-from infrahub.git.repository import InfrahubRepository
+from infrahub.git.repository import InfrahubRepository, get_initialized_repo
 from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubMessage, messages
 from infrahub.message_bus.types import (
@@ -17,6 +18,7 @@ from infrahub.message_bus.types import (
     ProposedChangeRepository,
     ProposedChangeSubscriber,
 )
+from infrahub.pytest_plugin import InfrahubBackendPlugin
 from infrahub.services import InfrahubServices
 
 log = get_logger()
@@ -160,7 +162,6 @@ async def schema_integrity(
 
 async def repository_checks(message: messages.RequestProposedChangeRepositoryChecks, service: InfrahubServices) -> None:
     log.info(f"Got a request to process checks defined in proposed_change: {message.proposed_change}")
-
     events: List[InfrahubMessage] = []
     for repository in message.branch_diff.repositories:
         if not message.source_branch_data_only and not repository.read_only:
@@ -291,6 +292,31 @@ query GatherGraphQLQuerySubscribers($members: [ID!]) {
   }
 }
 """
+
+
+async def run_tests(message: messages.RequestProposedChangeRunTests, service: InfrahubServices) -> None:
+    log.info(f"Running tests for proposed_change={message.proposed_change}")
+    proposed_change = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=message.proposed_change)
+    repositories = await service.client.all(
+        kind=InfrahubKind.GENERICREPOSITORY, branch=proposed_change.source_branch.value
+    )
+    for repository in repositories:
+        repo = await get_initialized_repo(
+            repository_id=repository.id,
+            name=repository.name.value,
+            service=service,
+            repository_kind=repository.get_kind(),
+        )
+        commit = repo.get_commit_value(proposed_change.source_branch.value)
+        worktree_directory = repo.get_commit_worktree(commit=commit).directory
+
+        # Run tests by marker expressions by using "-m $marker", e.g. "-m infrahub_unit" for running unit tests
+        return_code = pytest.main(
+            [worktree_directory, "-qqqq", "-k", "infrahub"],
+            plugins=[InfrahubBackendPlugin(directory=worktree_directory, client=service.client)],
+        )
+
+    log.info(f"Tests for proposed_change={message.proposed_change} ended with return code {return_code}")
 
 
 DESTINATION_ALLREPOSITORIES = """
