@@ -86,7 +86,7 @@ const config: Config = {
       ],
     },
     footer: {
-      copyright: `Copyright © ${new Date().getFullYear()} Infrahub by OpsMill.`,
+      copyright: `Copyright © ${new Date().getFullYear()} - <b>Infrahub</b> by OpsMill.`,
     },
     prism: {
       theme: prismThemes.jettwaveDark,
