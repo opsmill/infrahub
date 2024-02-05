@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 
 class NodeUniqueAttributeConstraintQuery(Query):
     name = "node_constraints_uniqueness"
+    insert_return = False
 
     def __init__(
         self,
@@ -102,22 +103,28 @@ class NodeUniqueAttributeConstraintQuery(Query):
         }
         // only duplicate values
         WITH
-            collect(start_node.uuid) as node_ids,
+            collect([start_node.uuid, branch_name]) as nodes_and_branches,
             count(*) as node_count,
             potential_attr.name as attr_name,
             latest_value as attr_value,
-            rel_identifier as relationship_identifier,
-            branch_name as deepest_branch_name
+            rel_identifier as relationship_identifier
         WHERE node_count > 1
-        UNWIND node_ids as node_id
+        UNWIND nodes_and_branches as node_and_branch
+        RETURN
+            node_and_branch[0] as node_id,
+            node_and_branch[1] as deepest_branch_name,
+            node_count,
+            attr_name,
+            attr_value,
+            relationship_identifier
         """ % {"branch_filter": branch_filter, "from_times": from_times}
 
         self.add_to_query(query)
         self.return_labels = [
             "node_id",
+            "deepest_branch_name",
             "node_count",
             "attr_name",
             "attr_value",
             "relationship_identifier",
-            "deepest_branch_name",
         ]

@@ -31,6 +31,7 @@ class TestUniquenessChecker:
         car_accord_main,
         car_prius_main,
         branch: Branch,
+        default_branch: Branch,
     ):
         schema = registry.schema.get("TestCar", branch=branch)
         schema.get_attribute("nbr_seats").unique = True
@@ -50,6 +51,7 @@ class TestUniquenessChecker:
                 path_type=PathType.ATTRIBUTE,
                 change_type="attribute_value",
                 value=5,
+                branch=default_branch.name,
             )
             in conflicts
         )
@@ -64,6 +66,7 @@ class TestUniquenessChecker:
                 path_type=PathType.ATTRIBUTE,
                 change_type="attribute_value",
                 value=5,
+                branch=default_branch.name,
             )
             in conflicts
         )
@@ -112,7 +115,7 @@ class TestUniquenessChecker:
         branch: Branch,
     ):
         cars_to_update = await NodeManager.get_many(
-            db=db, ids=[car_accord_main.id, car_prius_main.id, car_volt_main.id, car_yaris_main.id]
+            db=db, ids=[car_accord_main.id, car_prius_main.id, car_volt_main.id, car_yaris_main.id], branch=branch
         )
         color = 111111
         for car in cars_to_update.values():
@@ -135,22 +138,21 @@ class TestUniquenessChecker:
         car_volt_main,
         car_yaris_main,
         person_jane_main,
-        person_john_main,
         branch: Branch,
+        default_branch: Branch,
     ):
-        cars_to_update = await NodeManager.get_many(db=db, ids=[car_volt_main.id, car_yaris_main.id])
+        cars_to_update = await NodeManager.get_many(db=db, ids=[car_volt_main.id, car_yaris_main.id], branch=branch)
         color = 111111
         for car in cars_to_update.values():
             color += 1
             car.color.value = f"#{color}"
             await car.save(db=db)
-        car_to_update = await NodeManager.get_one(db=db, id=car_accord_main.id)
-        car_to_update.color.value = "#444444"
+        car_to_update = await NodeManager.get_one(db=db, id=car_accord_main.id, branch=branch)
+        car_to_update.color.value = "#444445"
         await car_to_update.owner.update(data=person_jane_main, db=db)
         await car_to_update.save(db=db)
-        car_to_update = await NodeManager.get_one(db=db, id=car_prius_main.id)
-        car_to_update.color.value = "#444444"
-        await car_to_update.owner.update(data=person_john_main, db=db)
+        car_to_update = await NodeManager.get_one(db=db, id=car_prius_main.id, branch=branch)
+        car_to_update.color.value = "#444445"
         await car_to_update.save(db=db)
 
         schema = registry.schema.get("TestCar", branch=branch)
@@ -170,7 +172,8 @@ class TestUniquenessChecker:
                 path="TestCar/color",
                 path_type=PathType.ATTRIBUTE,
                 change_type="attribute_value",
-                value="#444444",
+                value="#444445",
+                branch=branch.name,
             )
             in conflicts
         )
@@ -184,7 +187,8 @@ class TestUniquenessChecker:
                 path="TestCar/color",
                 path_type=PathType.ATTRIBUTE,
                 change_type="attribute_value",
-                value="#444444",
+                value="#444445",
+                branch=branch.name,
             )
             in conflicts
         )
@@ -199,6 +203,7 @@ class TestUniquenessChecker:
                 path_type=PathType.ATTRIBUTE,
                 change_type="attribute_value",
                 value="180",
+                branch=branch.name,
             )
             in conflicts
         )
@@ -213,6 +218,7 @@ class TestUniquenessChecker:
                 path_type=PathType.ATTRIBUTE,
                 change_type="attribute_value",
                 value="180",
+                branch=default_branch.name,
             )
             in conflicts
         )
@@ -222,6 +228,7 @@ class TestUniquenessChecker:
         db: InfrahubDatabase,
         car_person_generics_data_simple,
         branch: Branch,
+        default_branch: Branch,
     ):
         nolt_car = await NodeManager.get_one_by_id_or_default_filter(
             db=db, schema_name="TestGazCar", id="nolt", branch=branch
@@ -249,6 +256,7 @@ class TestUniquenessChecker:
                 path_type=PathType.ATTRIBUTE,
                 change_type="attribute_value",
                 value="nolt",
+                branch=branch.name,
             )
             in conflicts
         )
@@ -263,6 +271,7 @@ class TestUniquenessChecker:
                 path_type=PathType.ATTRIBUTE,
                 change_type="attribute_value",
                 value="nolt",
+                branch=default_branch.name,
             )
             in conflicts
         )
@@ -272,6 +281,7 @@ class TestUniquenessChecker:
         db: InfrahubDatabase,
         car_person_generics_data_simple,
         branch: Branch,
+        default_branch: Branch,
     ):
         person = registry.schema.get(name="TestPerson")
         nolt_owner = await Node.init(db=db, schema=person)
@@ -309,6 +319,7 @@ class TestUniquenessChecker:
                 path_type=PathType.ATTRIBUTE,
                 change_type="attribute_value",
                 value="180",
+                branch=default_branch.name,
             )
             in conflicts
         )
@@ -323,6 +334,7 @@ class TestUniquenessChecker:
                 path_type=PathType.ATTRIBUTE,
                 change_type="attribute_value",
                 value="180",
+                branch=branch.name,
             )
             in conflicts
         )
@@ -337,6 +349,7 @@ class TestUniquenessChecker:
                 path_type=PathType.ATTRIBUTE,
                 change_type="attribute_value",
                 value="180",
+                branch=branch.name,
             )
             in conflicts
         )
@@ -351,6 +364,7 @@ class TestUniquenessChecker:
                 path_type=PathType.ATTRIBUTE,
                 change_type="attribute_value",
                 value="180",
+                branch=branch.name,
             )
             in conflicts
         )

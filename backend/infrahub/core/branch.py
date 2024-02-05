@@ -1004,6 +1004,7 @@ class ObjectConflict(BaseModel):
     change_type: str
     changes: List[BranchChanges] = Field(default_factory=list)
     value: Optional[str] = None
+    branch: Optional[str] = None
 
     def __str__(self) -> str:
         return self.path

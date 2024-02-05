@@ -25,10 +25,7 @@ async def test_query_uniqueness_no_violations(
 
 
 async def test_query_uniqueness_one_violation(
-    db: InfrahubDatabase,
-    car_accord_main,
-    car_prius_main,
-    branch: Branch,
+    db: InfrahubDatabase, car_accord_main, car_prius_main, branch: Branch, default_branch: Branch
 ):
     query = await NodeUniqueAttributeConstraintQuery.init(
         db=db,
@@ -37,11 +34,13 @@ async def test_query_uniqueness_one_violation(
     )
     query_result = await query.execute(db=db)
 
-    assert len(query_result.results) == 1
-    assert set(query_result.results[0].data["node_ids"]) == {car_accord_main.id, car_prius_main.id}
-    assert query_result.results[0].data["node_count"] == 2
-    assert query_result.results[0].data["attr_name"] == "nbr_seats"
-    assert query_result.results[0].data["attr_value"] == 5
+    assert len(query_result.results) == 2
+    assert {result.get("node_id") for result in query_result.results} == {car_accord_main.id, car_prius_main.id}
+    assert {result.get("node_count") for result in query_result.results} == {2}
+    assert {result.get("attr_name") for result in query_result.results} == {"nbr_seats"}
+    assert {result.get("attr_value") for result in query_result.results} == {5}
+    assert {result.get("relationship_identifier") for result in query_result.results} == {None}
+    assert {result.get("deepest_branch_name") for result in query_result.results} == {default_branch.name}
 
 
 async def test_query_uniqueness_deleted_node_ignored(
@@ -105,12 +104,28 @@ async def test_query_uniqueness_cross_branch_conflict(
     )
     query_result = await query.execute(db=db)
 
-    assert len(query_result.results) == 1
-    assert set(query_result.results[0].get("node_ids")) == {new_car_main.id, new_car_branch.id}
-    assert query_result.results[0].get("node_count") == 2
-    assert query_result.results[0].get("attr_name") == "name"
-    assert query_result.results[0].get("attr_value") == "Thunderbolt"
-    assert query_result.results[0].get("relationship_identifier") is None
+    assert len(query_result.results) == 2
+    expected_result_dicts = [
+        {
+            "attr_name": "name",
+            "node_id": new_car_main.id,
+            "node_count": 2,
+            "attr_value": "Thunderbolt",
+            "relationship_identifier": None,
+            "deepest_branch_name": default_branch.name,
+        },
+        {
+            "attr_name": "name",
+            "node_id": new_car_branch.id,
+            "node_count": 2,
+            "attr_value": "Thunderbolt",
+            "relationship_identifier": None,
+            "deepest_branch_name": "branch2",
+        },
+    ]
+    for result in query_result.results:
+        serial_result = dict(result.data)
+        assert serial_result in expected_result_dicts
 
 
 async def test_query_uniqueness_multiple_attribute_violations(
@@ -120,6 +135,7 @@ async def test_query_uniqueness_multiple_attribute_violations(
     car_volt_main,
     car_camry_main,
     branch: Branch,
+    default_branch: Branch,
 ):
     for car_id in (car_volt_main.id, car_camry_main.id):
         car_to_update = await NodeManager.get_one(id=car_id, db=db, branch=branch)
@@ -133,7 +149,7 @@ async def test_query_uniqueness_multiple_attribute_violations(
             "node_count": 3,
             "attr_value": 5,
             "relationship_identifier": None,
-            "deepest_branch_name": "main",
+            "deepest_branch_name": default_branch.name,
         }
         for node_id in (car_accord_main.id, car_prius_main.id, car_camry_main.id)
     ]
@@ -155,7 +171,7 @@ async def test_query_uniqueness_multiple_attribute_violations(
             "node_count": 2,
             "attr_value": "#444444",
             "relationship_identifier": None,
-            "deepest_branch_name": "main",
+            "deepest_branch_name": default_branch.name,
         }
         for node_id in (car_accord_main.id, car_prius_main.id)
     ]
@@ -212,9 +228,10 @@ async def test_query_relationship_uniqueness_one_violation(
     person_jane_main,
     person_john_main,
     branch: Branch,
+    default_branch: Branch,
 ):
     car_to_update = await NodeManager.get_one(id=car_accord_main.id, db=db, branch=branch)
-    car_to_update.owner.value = person_jane_main
+    await car_to_update.owner.update(data=person_jane_main, db=db)
     await car_to_update.save(db=db)
     person_to_update = await NodeManager.get_one(id=person_jane_main.id, db=db, branch=branch)
     person_to_update.height.value = person_john_main.height.value
@@ -233,11 +250,28 @@ async def test_query_relationship_uniqueness_one_violation(
     )
     query_result = await query.execute(db=db)
 
-    assert len(query_result.results) == 1
-    assert set(query_result.results[0].get("node_ids")) == {car_accord_main.id, car_prius_main.id}
-    assert query_result.results[0].get("node_count") == 2
-    assert query_result.results[0].get("attr_name") == "height"
-    assert query_result.results[0].get("relationship_identifier") == "testcar__testperson"
+    assert len(query_result.results) == 2
+    expected_result_dicts = [
+        {
+            "attr_name": "height",
+            "node_id": car_accord_main.id,
+            "node_count": 2,
+            "attr_value": 180,
+            "relationship_identifier": "testcar__testperson",
+            "deepest_branch_name": branch.name,
+        },
+        {
+            "attr_name": "height",
+            "node_id": car_prius_main.id,
+            "node_count": 2,
+            "attr_value": 180,
+            "relationship_identifier": "testcar__testperson",
+            "deepest_branch_name": default_branch.name,
+        },
+    ]
+    for result in query_result.results:
+        serial_result = dict(result.data)
+        assert serial_result in expected_result_dicts
 
 
 async def test_query_relationship_and_attribute_uniqueness_violations(
@@ -247,9 +281,10 @@ async def test_query_relationship_and_attribute_uniqueness_violations(
     person_jane_main,
     person_john_main,
     branch: Branch,
+    default_branch: Branch,
 ):
     car_to_update = await NodeManager.get_one(id=car_accord_main.id, db=db, branch=branch)
-    car_to_update.owner.value = person_jane_main
+    await car_to_update.owner.update(data=person_jane_main, db=db)
     await car_to_update.save(db=db)
     person_to_update = await NodeManager.get_one(id=person_jane_main.id, db=db, branch=branch)
     person_to_update.height.value = person_john_main.height.value
@@ -257,17 +292,35 @@ async def test_query_relationship_and_attribute_uniqueness_violations(
     expected_result_dicts = [
         {
             "attr_name": "nbr_seats",
-            "node_ids": {car_accord_main.id, car_prius_main.id},
+            "node_id": car_accord_main.id,
             "node_count": 2,
             "attr_value": 5,
             "relationship_identifier": None,
+            "deepest_branch_name": default_branch.name,
+        },
+        {
+            "attr_name": "nbr_seats",
+            "node_id": car_prius_main.id,
+            "node_count": 2,
+            "attr_value": 5,
+            "relationship_identifier": None,
+            "deepest_branch_name": default_branch.name,
         },
         {
             "attr_name": "height",
-            "node_ids": {car_accord_main.id, car_prius_main.id},
+            "node_id": car_accord_main.id,
             "node_count": 2,
             "attr_value": 180,
             "relationship_identifier": "testcar__testperson",
+            "deepest_branch_name": branch.name,
+        },
+        {
+            "attr_name": "height",
+            "node_id": car_prius_main.id,
+            "node_count": 2,
+            "attr_value": 180,
+            "relationship_identifier": "testcar__testperson",
+            "deepest_branch_name": default_branch.name,
         },
     ]
 
@@ -284,8 +337,7 @@ async def test_query_relationship_and_attribute_uniqueness_violations(
     )
     query_result = await query.execute(db=db)
 
-    assert len(query_result.results) == 2
+    assert len(query_result.results) == 4
     for result in query_result.results:
         serial_result = dict(result.data)
-        serial_result["node_ids"] = set(serial_result["node_ids"])
         assert serial_result in expected_result_dicts

@@ -17,6 +17,7 @@ class NonUniqueRelatedAttribute(BaseModel):
     relationship: RelationshipSchema
     attribute_name: str
     attribute_value: str
+    deepest_branch_name: str
 
     def __hash__(self) -> int:
         return hash(self.relationship.name + self.attribute_name + self.attribute_value)
@@ -26,6 +27,7 @@ class NonUniqueAttribute(BaseModel):
     attribute: AttributeSchema
     attribute_name: str
     attribute_value: str
+    deepest_branch_name: str
 
     def __hash__(self) -> int:
         return hash(self.attribute.name + self.attribute_name + self.attribute_value)
@@ -137,30 +139,33 @@ class UniquenessChecker:
 
         non_unique_nodes_by_id: Dict[str, NonUniqueNode] = {}
         for result in query_results.results:
-            for node_id in result.get("node_ids"):
-                if node_id not in non_unique_nodes_by_id:
-                    non_unique_nodes_by_id[node_id] = NonUniqueNode(node_schema=schema, node_id=node_id)
-                non_unique_node = non_unique_nodes_by_id[node_id]
-                relationship_identifier = result.get("relationship_identifier")
-                attribute_name = str(result.get("attr_name"))
-                attribute_value = str(result.get("attr_value"))
-                if relationship_identifier:
-                    relationship_schema = relationship_schema_by_identifier[str(relationship_identifier)]
-                    non_unique_node.non_unique_related_attributes.append(
-                        NonUniqueRelatedAttribute(
-                            relationship=relationship_schema,
-                            attribute_name=attribute_name,
-                            attribute_value=attribute_value,
-                        )
+            node_id = str(result.get("node_id"))
+            if node_id not in non_unique_nodes_by_id:
+                non_unique_nodes_by_id[node_id] = NonUniqueNode(node_schema=schema, node_id=node_id)
+            non_unique_node = non_unique_nodes_by_id[node_id]
+            relationship_identifier = result.get("relationship_identifier")
+            attribute_name = str(result.get("attr_name"))
+            attribute_value = str(result.get("attr_value"))
+            deepest_branch_name = str(result.get("deepest_branch_name"))
+            if relationship_identifier:
+                relationship_schema = relationship_schema_by_identifier[str(relationship_identifier)]
+                non_unique_node.non_unique_related_attributes.append(
+                    NonUniqueRelatedAttribute(
+                        relationship=relationship_schema,
+                        attribute_name=attribute_name,
+                        attribute_value=attribute_value,
+                        deepest_branch_name=deepest_branch_name,
                     )
-                else:
-                    non_unique_node.non_unique_attributes.append(
-                        NonUniqueAttribute(
-                            attribute=schema.get_attribute(attribute_name),
-                            attribute_name=attribute_name,
-                            attribute_value=attribute_value,
-                        )
+                )
+            else:
+                non_unique_node.non_unique_attributes.append(
+                    NonUniqueAttribute(
+                        attribute=schema.get_attribute(attribute_name),
+                        attribute_name=attribute_name,
+                        attribute_value=attribute_value,
+                        deepest_branch_name=deepest_branch_name,
                     )
+                )
         return list(non_unique_nodes_by_id.values())
 
     def get_uniqueness_violations(
@@ -203,6 +208,7 @@ class UniquenessChecker:
                     path_type=PathType.ATTRIBUTE,
                     change_type="attribute_value",
                     value=violation.attribute_value,
+                    branch=violation.deepest_branch_name,
                 )
             )
         return conflicts
