@@ -10,5 +10,5 @@ class GraphQLQueryPermissionCheckerInterface(ABC):
         ...
 
     @abstractmethod
-    async def check(self, analyzed_query: InfrahubGraphQLQueryAnalyzer):
+    async def check(self, analyzed_query: InfrahubGraphQLQueryAnalyzer) -> None:
         ...

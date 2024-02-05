@@ -315,30 +315,6 @@ module = "infrahub.graphql.app"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.graphql.auth.query_permission_checker.anonymous_checker"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.graphql.auth.query_permission_checker.checker"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.graphql.auth.query_permission_checker.default_checker"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.graphql.auth.query_permission_checker.interface"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.graphql.auth.query_permission_checker.read_only_checker"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.graphql.auth.query_permission_checker.read_write_checker"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.graphql.enums"
 ignore_errors = true
 

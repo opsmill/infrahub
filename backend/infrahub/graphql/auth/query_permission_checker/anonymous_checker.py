@@ -14,7 +14,7 @@ class AnonymousGraphQLPermissionChecker(GraphQLQueryPermissionCheckerInterface):
     async def supports(self, account_session: AccountSession) -> bool:
         return not account_session.authenticated
 
-    async def check(self, analyzed_query: InfrahubGraphQLQueryAnalyzer):
+    async def check(self, analyzed_query: InfrahubGraphQLQueryAnalyzer) -> None:
         if self.anonymous_access_allowed_func() and not analyzed_query.contains_mutation:
             return
         raise AuthorizationError("Authentication is required to perform this operation")

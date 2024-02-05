@@ -9,5 +9,5 @@ class DefaultGraphQLPermissionChecker(GraphQLQueryPermissionCheckerInterface):
     async def supports(self, account_session: AccountSession) -> bool:
         return True
 
-    async def check(self, analyzed_query: InfrahubGraphQLQueryAnalyzer):
+    async def check(self, analyzed_query: InfrahubGraphQLQueryAnalyzer) -> None:
         raise AuthorizationError("Authentication is required to perform this operation")
