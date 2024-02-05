@@ -196,7 +196,7 @@ export const getRelationshipValue = (row: any, field: any) => {
 };
 
 // Inlcude current value in the options to make it available in the select component
-export const getRelationshipOptions = (row: any, field: any) => {
+export const getRelationshipOptions = (row: any, field: any, schemas: any[], generics: any[]) => {
   const value = row[field.name]?.node ?? row[field.name];
 
   if (!value) {
@@ -208,6 +208,23 @@ export const getRelationshipOptions = (row: any, field: any) => {
       name: edge.node.display_label,
       id: edge.node.id,
     }));
+  }
+
+  const generic = generics.find((generic: any) => generic.kind === field.peer);
+
+  if (generic) {
+    const options = (generic.used_by || []).map((name: string) => {
+      const relatedSchema = schemas.find((s: any) => s.kind === name);
+
+      if (relatedSchema) {
+        return {
+          id: name,
+          name: relatedSchema.name,
+        };
+      }
+    });
+
+    return options;
   }
 
   const option = {

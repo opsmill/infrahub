@@ -69,6 +69,7 @@ const validate = (value: any, attribute: any = {}, optional?: boolean) => {
 
 const getFormStructureForCreateEdit = (
   schema: iNodeSchema | undefined,
+  schemas: iNodeSchema[] | undefined,
   generics: iGenericSchema[],
   row?: any,
   user?: any,
@@ -97,7 +98,7 @@ const getFormStructureForCreateEdit = (
           type: getInputTypeFromRelationship(field, isInherited),
           label: field.label ? field.label : field.name,
           value: getRelationshipValue(row, field),
-          options: getRelationshipOptions(row, field),
+          options: getRelationshipOptions(row, field, schemas, generics),
           config: {
             validate: (value: any) => validate(value, undefined, field.optional),
           },
@@ -108,6 +109,7 @@ const getFormStructureForCreateEdit = (
             isProtected: row && row[field.name] && row[field.name]?.properties?.is_protected,
             isReadOnly: field.read_only,
           }),
+          isInherited,
           field,
           schema,
         };

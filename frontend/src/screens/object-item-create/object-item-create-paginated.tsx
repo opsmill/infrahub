@@ -46,7 +46,7 @@ export default function ObjectItemCreate(props: iProps) {
 
   const schema = schemaList.find((s) => s.kind === objectname);
 
-  const fields = formStructure ?? getFormStructureForCreateEdit(schema, genericsList);
+  const fields = formStructure ?? getFormStructureForCreateEdit(schema, schemaList, genericsList);
 
   async function onSubmit(data: any) {
     setIsLoading(true);

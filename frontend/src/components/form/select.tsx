@@ -6,7 +6,6 @@ type SelectProps = {
   label: string;
   value?: string | number | null;
   options: Array<SelectOption>;
-  disabled: boolean;
   onChange: (value: string | number) => void;
   error?: FormFieldError;
   isProtected?: boolean;
@@ -31,8 +30,16 @@ export const OpsSelect = (props: SelectProps) => {
   return (
     <>
       <div className="flex items-center">
-        <label className="block text-sm font-medium leading-6 text-gray-900">{getLabel()}</label>
-        <div className="ml-2"> {isProtected ? <LockClosedIcon className="w-4 h-4" /> : null} </div>
+        {label && (
+          <>
+            <label className="block text-sm font-medium leading-6 text-gray-900">
+              {getLabel()}
+            </label>
+            <div className="ml-2">
+              {isProtected ? <LockClosedIcon className="w-4 h-4" /> : null}{" "}
+            </div>
+          </>
+        )}
       </div>
       <Select {...propsToPass} disabled={isProtected} />
     </>

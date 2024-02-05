@@ -18,6 +18,7 @@ describe("Form structure and object update", () => {
   it("should return a correct form structure", () => {
     const calculatedAttributes = getFormStructureForCreateEdit(
       accountTokenDetailsMocksSchema[0],
+      accountTokenDetailsMocksSchema,
       genericsMocks,
       accountTokenDetailsMocksDataWithDate.InternalAccountToken.edges[0].node
     );

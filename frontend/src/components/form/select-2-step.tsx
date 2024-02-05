@@ -4,12 +4,12 @@ import { useParams } from "react-router-dom";
 import { FormFieldError } from "../../screens/edit-form-hook/form";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
-import { classNames } from "../../utils/common";
 import { SelectOption } from "../inputs/select";
 import { OpsSelect } from "./select";
 import { getDropdownOptions } from "../../graphql/queries/objects/dropdownOptions";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { gql } from "@apollo/client";
+import { LockClosedIcon } from "@heroicons/react/24/outline";
 
 export interface iTwoStepDropdownData {
   parent: string | number;
@@ -24,10 +24,14 @@ interface Props {
   error?: FormFieldError;
   isProtected?: boolean;
   isOptional?: boolean;
+  isInherited?: boolean;
+  peer?: string;
 }
 
 export const OpsSelect2Step = (props: Props) => {
-  const { label, options, value, error, onChange, isProtected, isOptional } = props;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars, react/prop-types, no-unused-vars
+  const { label, options, value, onChange, isOptional, peer, ...propsToPass } = props;
+  const { isProtected } = props;
 
   const { objectid } = useParams();
   const branch = useAtomValue(currentBranchAtom);
@@ -86,45 +90,44 @@ export const OpsSelect2Step = (props: Props) => {
   }, [selectedLeft]);
 
   return (
-    <div className={classNames("grid grid-cols-6")}>
-      <div className="sm:col-span-6">
-        <label className="block text-sm font-medium leading-6 text-gray-900 capitalize">
-          {label} {isOptional ? "" : "*"}
+    <div className="flex flex-col">
+      <div className="flex items-center gap-1.5">
+        <label htmlFor={label} className="text-sm font-medium leading-6 text-gray-900">
+          {label} {!isOptional && "*"}
         </label>
+        {isProtected && <LockClosedIcon className="w-4 h-4" />}
       </div>
-      <div className="sm:col-span-3 mr-2 mt-1">
-        <OpsSelect
-          error={error}
-          disabled={false}
-          value={selectedLeft}
-          options={options}
-          label=""
-          onChange={setSelectedLeft}
-          isProtected={isProtected}
-          data-cy="select2step-1"
-          data-testid="select2step-1"
-        />
-      </div>
-      <div className="sm:col-span-3 ml-2 mt-1">
-        {!!selectedLeft && optionsRight.length > 0 && (
+      <div className="flex">
+        <div className="sm:col-span-3 mr-2 mt-1">
           <OpsSelect
-            error={error}
-            disabled={false}
-            value={selectedRight}
-            options={optionsRight}
+            {...propsToPass}
+            value={selectedLeft}
+            options={options}
             label=""
-            onChange={(value) => {
-              setSelectedRight(value);
-              onChange({
-                parent: selectedLeft,
-                child: value,
-              });
-            }}
-            isProtected={isProtected}
-            data-cy="select2step-2"
-            data-testid="select2step-2"
+            onChange={setSelectedLeft}
+            data-cy="select2step-1"
+            data-testid="select2step-1"
           />
-        )}
+        </div>
+        <div className="sm:col-span-3 ml-2 mt-1">
+          {!!selectedLeft && optionsRight.length > 0 && (
+            <OpsSelect
+              {...propsToPass}
+              value={selectedRight}
+              options={optionsRight}
+              label=""
+              onChange={(value) => {
+                setSelectedRight(value);
+                onChange({
+                  parent: selectedLeft,
+                  child: value,
+                });
+              }}
+              data-cy="select2step-2"
+              data-testid="select2step-2"
+            />
+          )}
+        </div>
       </div>
     </div>
   );

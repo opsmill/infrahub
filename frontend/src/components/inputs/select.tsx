@@ -65,6 +65,7 @@ type SelectProps = {
   preventEmpty?: boolean;
   isOptional?: boolean;
   isUnique?: boolean;
+  isInherited?: boolean;
 };
 
 export const Select = (props: SelectProps) => {
