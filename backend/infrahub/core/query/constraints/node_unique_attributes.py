@@ -27,7 +27,9 @@ class NodeUniqueAttributeConstraintQuery(Query):
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string(), is_isolated=False)
         self.params.update(branch_params)
         from_times = db.render_list_comprehension(items="relationships(potential_path)", item_name="from")
-
+        branch_name_and_level = db.render_list_comprehension_with_list(
+            items="relationships(active_path)", item_names=["branch", "branch_level"]
+        )
         self.params.update(
             {
                 "node_kind": self.query_request.kind,
@@ -96,7 +98,7 @@ class NodeUniqueAttributeConstraintQuery(Query):
         CALL {
             // get deepest branch name
             WITH active_path
-            UNWIND extract(r in relationships(active_path) | [r.branch, r.branch_level]) as branch_name_and_level
+            UNWIND %(branch_name_and_level)s as branch_name_and_level
             RETURN branch_name_and_level[0] as branch_name
             ORDER BY branch_name_and_level[1] DESC
             LIMIT 1
@@ -117,7 +119,7 @@ class NodeUniqueAttributeConstraintQuery(Query):
             attr_name,
             attr_value,
             relationship_identifier
-        """ % {"branch_filter": branch_filter, "from_times": from_times}
+        """ % {"branch_filter": branch_filter, "from_times": from_times, "branch_name_and_level": branch_name_and_level}
 
         self.add_to_query(query)
         self.return_labels = [
