@@ -102,6 +102,7 @@ export const Select = (props: SelectProps) => {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  // TODO: after refactor, find a way to verify the options to trigger or not the request
   const [hasBeenOpened, setHasBeenOpened] = useState(false);
   const [optionToDelete, setOptionToDelete] = useState<null | number | string>(null);
   const [localOptions, setLocalOptions] = useState(options);
