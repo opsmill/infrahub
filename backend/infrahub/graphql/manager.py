@@ -654,6 +654,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
         if top_level:
             filters.update(get_attribute_type().get_graphql_filters(name="any"))
+            filters["partial_match"] = graphene.Boolean()
 
         if not top_level:
             return filters
