@@ -101,7 +101,6 @@ export default function ObjectItemEditComponent(props: Props) {
           }),
         });
 
-        console.log("mutationString: ", mutationString);
         const mutation = gql`
           ${mutationString}
         `;
