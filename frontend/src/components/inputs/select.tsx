@@ -699,7 +699,7 @@ export const Select = (props: SelectProps) => {
   }, [options?.length]);
 
   // Needed for async options to avoid duplicates issues
-  const comparedOptions = (a: SelectOption, b: SelectOption) => a.id === b.id;
+  const comparedOptions = (a: SelectOption, b: SelectOption) => a?.id === b?.id;
 
   return (
     <div className="relative">
