@@ -1,6 +1,9 @@
-from typing import List
+import asyncio
+from pathlib import Path
+from typing import List, Tuple, Union
 
 import pytest
+from infrahub_sdk.client import InfrahubClient
 from pydantic import BaseModel
 
 from infrahub import lock
@@ -300,6 +303,13 @@ async def run_tests(message: messages.RequestProposedChangeRunTests, service: In
     repositories = await service.client.all(
         kind=InfrahubKind.GENERICREPOSITORY, branch=proposed_change.source_branch.value
     )
+
+    def _execute(directory: Path, client: InfrahubClient) -> Tuple[Union[int, pytest.ExitCode], str]:
+        plugin = InfrahubBackendPlugin(directory=directory, client=client)
+        # Run tests by marker expressions by using "-m $marker", e.g. "-m infrahub_unit" for running unit tests
+        return_code = pytest.main([str(directory), "-qqqq", "-k", "infrahub"], plugins=[plugin])
+        return return_code, plugin.report
+
     for repository in repositories:
         repo = await get_initialized_repo(
             repository_id=repository.id,
@@ -308,15 +318,12 @@ async def run_tests(message: messages.RequestProposedChangeRunTests, service: In
             repository_kind=repository.get_kind(),
         )
         commit = repo.get_commit_value(proposed_change.source_branch.value)
-        worktree_directory = repo.get_commit_worktree(commit=commit).directory
+        worktree_directory = Path(repo.get_commit_worktree(commit=commit).directory)
 
-        # Run tests by marker expressions by using "-m $marker", e.g. "-m infrahub_unit" for running unit tests
-        return_code = pytest.main(
-            [worktree_directory, "-qqqq", "-k", "infrahub"],
-            plugins=[InfrahubBackendPlugin(directory=worktree_directory, client=service.client)],
-        )
-
-    log.info(f"Tests for proposed_change={message.proposed_change} ended with return code {return_code}")
+        return_code, report = await asyncio.to_thread(_execute, worktree_directory, service.client)
+        log.info(f"Tests for proposed_change={message.proposed_change} ended with return code {return_code}")
+        # TODO: Save report in the database
+        log.info(report)
 
 
 DESTINATION_ALLREPOSITORIES = """
