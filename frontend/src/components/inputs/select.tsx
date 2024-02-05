@@ -46,7 +46,7 @@ export enum SelectDirection {
 }
 
 type SelectProps = {
-  value?: string | string[];
+  value?: string | string[] | number | number[];
   kind?: string;
   name?: string;
   peer?: string;

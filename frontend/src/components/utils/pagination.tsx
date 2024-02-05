@@ -26,6 +26,7 @@ export const Pagination = (props: tPaginationType) => {
 
   const [pagination, setPagination] = usePagination();
 
+  console.log("pagination: ", pagination);
   const { offset, limit } = pagination;
 
   // Set the number of page to 1 if there is no other pages
@@ -54,13 +55,13 @@ export const Pagination = (props: tPaginationType) => {
     setPagination(newPagination);
   };
 
-  const handleLimitChange = (option: SelectOption) => {
-    if (option.id === limit) {
+  const handleLimitChange = (newLimit: Number) => {
+    if (newLimit === limit) {
       return;
     }
 
     const newPagination = {
-      limit: option.id,
+      limit: newLimit,
       offset,
     };
 
