@@ -1,5 +1,4 @@
-from infrahub.core.constants import InfrahubKind
-from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
+from infrahub.git.repository import get_initialized_repo
 from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubResponse, messages
 from infrahub.services import InfrahubServices
@@ -15,10 +14,12 @@ async def data(message: messages.TransformPythonData, service: InfrahubServices)
         branch=message.branch,
     )
 
-    if message.repository_kind == InfrahubKind.READONLYREPOSITORY:
-        repo = await InfrahubReadOnlyRepository.init(id=message.repository_id, name=message.repository_name)
-    else:
-        repo = await InfrahubRepository.init(id=message.repository_id, name=message.repository_name)
+    repo = await get_initialized_repo(
+        repository_id=message.repository_id,
+        name=message.repository_name,
+        service=service,
+        repository_kind=message.repository_kind,
+    )
 
     transformed_data = await repo.execute_python_transform(
         branch_name=message.branch,

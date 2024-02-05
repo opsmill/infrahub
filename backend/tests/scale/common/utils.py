@@ -76,8 +76,16 @@ def get_graphdb_stats() -> DbStats:
             auth=(config.db_username, config.db_password),
             connection_timeout=5,
         ) as driver:
-            resp = driver.execute_query("CALL apoc.meta.stats() YIELD nodeCount, relCount")
-            node_count, rel_count = resp.records[0].values()
+            resp = driver.execute_query(
+                """MATCH (n)
+WITH count(n) as count
+RETURN 'nodes' as label, count
+UNION ALL MATCH ()-[r]->()
+WITH count(r) as count
+RETURN 'relations' as label , count
+"""
+            )
+            node_count, rel_count = resp.records[0].values()[1], resp.records[1].values()[1]
     except (Neo4jError, DriverError):
         node_count, rel_count = 0
 

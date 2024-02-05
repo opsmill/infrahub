@@ -150,10 +150,10 @@ def test_integration(context: Context, database: str = INFRAHUB_DATABASE):
 
 
 @task
-def test_scale_env_start(context: Context, database: str = INFRAHUB_DATABASE):
+def test_scale_env_start(context: Context, database: str = INFRAHUB_DATABASE, gunicorn_workers: int = 4):
     with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_test_scale_compose_files_cmd(database=database)
-        command = f"{get_env_vars(context)} docker compose {compose_files_cmd} -p {BUILD_NAME} up -d"
+        command = f"{get_env_vars(context)} GUNICORN_WORKERS={gunicorn_workers} docker compose {compose_files_cmd} -p {BUILD_NAME} up -d"
         return execute_command(context=context, command=command)
 
 

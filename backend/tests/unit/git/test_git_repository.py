@@ -402,7 +402,7 @@ async def test_render_jinja2_template_success(git_repo_jinja: InfrahubRepository
     commit_branch = repo.get_commit_value(branch_name="branch01", remote=False)
     assert commit_main != commit_branch
 
-    data = {"items": ["consilium", "potum", "album", "magnum"]}
+    data = {"data": {"items": ["consilium", "potum", "album", "magnum"]}}
     expected_response = """
 consilium
 potum
@@ -530,7 +530,7 @@ async def test_artifact_generate_python_new(
 
     expected_data = ArtifactGenerateResult(
         changed=True,
-        checksum="e889b9fab24aab3b23ea01d5342b514a",
+        checksum="1d03a7fdc5c03106ec0c17efc42df9e7",
         storage_id="ee04f134-a68c-4158-a3c8-3ba5e9cc0c9a",
         artifact_id=result.artifact_id,
     )
@@ -562,7 +562,7 @@ async def test_artifact_generate_python_existing_same(
 
     expected_data = ArtifactGenerateResult(
         changed=False,
-        checksum="e889b9fab24aab3b23ea01d5342b514a",
+        checksum="1d03a7fdc5c03106ec0c17efc42df9e7",
         storage_id="13c8914b-0ac0-4c8c-83ec-a79a1f8ad483",
         artifact_id=artifact_node_02.id,
     )
@@ -596,7 +596,7 @@ async def test_artifact_generate_python_existing_different(
 
     expected_data = ArtifactGenerateResult(
         changed=True,
-        checksum="e889b9fab24aab3b23ea01d5342b514a",
+        checksum="1d03a7fdc5c03106ec0c17efc42df9e7",
         storage_id="ee04f134-a68c-4158-a3c8-3ba5e9cc0c9a",
         artifact_id=artifact_node_01.id,
     )
@@ -630,7 +630,7 @@ async def test_artifact_generate_jinja2_new(
 
     expected_data = ArtifactGenerateResult(
         changed=True,
-        checksum="68b329da9893e34099c7d8ad5cb9c940",
+        checksum="5032217684d0e0b61d93c8611bffcd8a",
         storage_id="ee04f134-a68c-4158-a3c8-3ba5e9cc0c9a",
         artifact_id=artifact_node_01.id,
     )

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, Optional, Union
-from typing import List as TypingList
+from typing import TYPE_CHECKING, Dict, Optional, Union
 
 from graphene import Boolean, Field, List, ObjectType, String
 
@@ -25,9 +24,9 @@ class DiffSummaryEntry(ObjectType):
         branch_only: bool,
         time_from: Optional[str] = None,
         time_to: Optional[str] = None,
-    ):
+    ) -> list[Dict[str, Union[str, list[str]]]]:
         return await DiffSummaryEntry.get_summary(
-            context=info.context,
+            info=info,
             branch_only=branch_only,
             time_from=time_from or None,
             time_to=time_to or None,
@@ -36,13 +35,13 @@ class DiffSummaryEntry(ObjectType):
     @classmethod
     async def get_summary(
         cls,
-        context: Dict[str, Any],
+        info: GraphQLResolveInfo,
         branch_only: bool,
         time_from: Optional[str] = None,
         time_to: Optional[str] = None,
-    ) -> TypingList[Dict[str, Union[str, TypingList[str]]]]:
-        db: InfrahubDatabase = context.get("infrahub_database")
-        branch: Branch = context.get("infrahub_branch")
+    ) -> list[Dict[str, Union[str, list[str]]]]:
+        db: InfrahubDatabase = info.context.get("infrahub_database")
+        branch: Branch = info.context.get("infrahub_branch")
         diff = await branch.diff(db=db, diff_from=time_from, diff_to=time_to, branch_only=branch_only)
         summary = await diff.get_summary(db=db)
         return [entry.to_graphql() for entry in summary]

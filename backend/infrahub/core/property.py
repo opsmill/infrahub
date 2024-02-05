@@ -5,7 +5,7 @@ from uuid import UUID
 
 from pydantic.v1 import BaseModel
 
-from infrahub.core.constants.schema_property import FlagProperty, NodeProperty
+from infrahub.core.constants.schema import FlagProperty, NodeProperty
 from infrahub.core.registry import registry
 
 if TYPE_CHECKING:

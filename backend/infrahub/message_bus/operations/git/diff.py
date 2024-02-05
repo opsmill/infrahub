@@ -1,5 +1,4 @@
-from infrahub.core.constants import InfrahubKind
-from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
+from infrahub.git.repository import get_initialized_repo
 from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubResponse, messages
 from infrahub.services import InfrahubServices
@@ -17,14 +16,12 @@ async def names_only(message: messages.GitDiffNamesOnly, service: InfrahubServic
         second_commit=message.second_commit,
     )
 
-    if message.repository_kind == InfrahubKind.READONLYREPOSITORY:
-        repo = await InfrahubReadOnlyRepository.init(
-            id=message.repository_id, name=message.repository_name, client=service.client
-        )
-    else:
-        repo = await InfrahubRepository.init(
-            id=message.repository_id, name=message.repository_name, client=service.client
-        )
+    repo = await get_initialized_repo(
+        repository_id=message.repository_id,
+        name=message.repository_name,
+        service=service,
+        repository_kind=message.repository_kind,
+    )
 
     files_changed, files_added, files_removed = await repo.calculate_diff_between_commits(
         first_commit=message.first_commit, second_commit=message.second_commit

@@ -30,6 +30,10 @@ class Webhook(BaseModel):
     def _assign_headers(self) -> None:
         self._headers = {}
 
+    @property
+    def webhook_type(self) -> str:
+        return self.__class__.__name__
+
     async def send(self) -> None:
         await self._prepare_payload()
         self._assign_headers()

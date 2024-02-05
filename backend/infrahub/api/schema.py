@@ -145,23 +145,28 @@ async def load_schema(
         branch_schema = registry.schema.get_schema_branch(name=branch.name)
 
         # We create a copy of the existing branch schema to do some validation before loading it.
-        tmp_schema = branch_schema.duplicate()
+        candidate_schema = branch_schema.duplicate()
         try:
             for schema in schemas.schemas:
-                tmp_schema.load_schema(schema=schema)
-            tmp_schema.process()
+                candidate_schema.load_schema(schema=schema)
+            candidate_schema.process()
         except SchemaNotFound as exc:
             return JSONResponse(status_code=422, content={"error": exc.message})
         except ValueError as exc:
             return JSONResponse(status_code=422, content={"error": str(exc)})
 
-        diff = tmp_schema.diff(branch_schema)
+        result = branch_schema.validate_update(other=candidate_schema)
 
-        if diff.all:
-            log.info(f"Schema has diff, will need to be updated {diff.all}", branch=branch.name)
+        if result.errors:
+            return JSONResponse(
+                status_code=422, content={"error": ", ".join([error.to_string() for error in result.errors])}
+            )
+
+        if result.diff.all:
+            log.info("Schema has diff, will need to be updated", diff=result.diff.all, branch=branch.name)
             async with db.start_transaction() as db:
                 await registry.schema.update_schema_branch(
-                    schema=tmp_schema, db=db, branch=branch.name, limit=diff.all, update_db=True
+                    schema=candidate_schema, db=db, branch=branch.name, limit=result.diff.all, update_db=True
                 )
                 branch.update_schema_hash()
                 log.info("Schema has been updated", branch=branch.name, hash=branch.schema_hash.main)
