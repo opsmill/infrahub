@@ -65,6 +65,7 @@ const config: Config = {
       logo: {
         alt: 'Infrahub',
         src: 'img/infrahub-hori.svg',
+        srcDark: 'img/infrahub-hori-dark.svg',
       },
       items: [
         {
