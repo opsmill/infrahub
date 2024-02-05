@@ -49,7 +49,7 @@ test.describe("/signin", () => {
         const reqData = route.request().postDataJSON();
 
         if (reqData.operationName === "BuiltinTag" && blockRequest) {
-          blockRequest = false;
+          blockRequest = false; // block on 1st call only
 
           await route.fulfill({
             status: 401,
@@ -70,15 +70,7 @@ test.describe("/signin", () => {
         }
       });
 
-      const waitForResponse = page.waitForResponse((response) => {
-        const reqData = response.request().postDataJSON();
-        const status = response.status();
-
-        return reqData?.operationName === "BuiltinTag" && status === 200;
-      });
       await page.goto("/objects/BuiltinTag");
-
-      await waitForResponse;
 
       await expect(page.getByRole("cell", { name: "blue" })).toBeVisible();
     });
