@@ -40,7 +40,7 @@ class GraphqlContext:
 
 
 def prepare_graphql_params(
-    db: InfrahubDatabase,  # pylint: disable=unused-argument
+    db: InfrahubDatabase,
     branch: Union[Branch, str],
     at: Optional[Union[Timestamp, str]] = None,
     account_session: Optional[AccountSession] = None,

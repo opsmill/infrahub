@@ -43,6 +43,11 @@ class DeleteInput(graphene.InputObjectType):
     id = graphene.String(required=True)
 
 
+GraphQLTypes = Union[
+    Type[InfrahubMutation], Type[BaseAttributeType], Type[graphene.Interface], Type[graphene.ObjectType]
+]
+
+
 @dataclass
 class GraphqlMutations:
     create: Type[InfrahubMutation]
@@ -61,10 +66,7 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
     def __init__(self, schema: SchemaBranch):
         self.schema = schema
 
-        self._graphql_types: Dict[
-            str,
-            Union[Type[InfrahubMutation], Type[BaseAttributeType], Type[graphene.Interface], Type[graphene.ObjectType]],
-        ] = {}
+        self._graphql_types: Dict[str, GraphQLTypes] = {}
 
         self._load_attribute_types()
         if config.SETTINGS.experimental_features.graphql_enums:
@@ -129,21 +131,10 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
             return self._graphql_types[name]
         raise ValueError(f"Unable to find {name!r}")
 
-    def get_all(
-        self,
-    ) -> Dict[
-        str,
-        Union[Type[InfrahubMutation], Type[BaseAttributeType], Type[graphene.Interface], Type[graphene.ObjectType]],
-    ]:
+    def get_all(self) -> Dict[str, GraphQLTypes]:
         return self._graphql_types
 
-    def set_type(
-        self,
-        name: str,
-        graphql_type: Union[
-            Type[InfrahubMutation], Type[BaseAttributeType], Type[graphene.Interface], Type[graphene.ObjectType]
-        ],
-    ) -> None:
+    def set_type(self, name: str, graphql_type: GraphQLTypes) -> None:
         self._graphql_types[name] = graphql_type
 
     def _load_attribute_types(self) -> None:
@@ -263,9 +254,6 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
         # Extend all types and related types with Relationships
         for node_name, node_schema in full_schema.items():
-            if not isinstance(node_schema, (NodeSchema, GenericSchema)):
-                continue
-
             node_type = self.get_type(name=node_name)
 
             for rel in node_schema.relationships:
@@ -312,9 +300,6 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
         self.generate_object_types()
 
         for node_name, node_schema in full_schema.items():
-            if not isinstance(node_schema, (NodeSchema, GenericSchema)):
-                continue
-
             if node_schema.namespace == "Internal":
                 continue
 
@@ -661,9 +646,6 @@ class GraphQLSchemaManager:  # pylint: disable=too-many-public-methods
 
         for rel in schema.relationships:
             peer_schema = self.schema.get(name=rel.peer)
-
-            if not isinstance(peer_schema, (NodeSchema, GenericSchema)):
-                continue
 
             if peer_schema.namespace == "Internal":
                 continue
