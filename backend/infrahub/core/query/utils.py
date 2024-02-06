@@ -11,10 +11,10 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
 
 
-def find_node_schema(node: Neo4jNode, branch: Union[Branch, str]) -> NodeSchema:
+def find_node_schema(node: Neo4jNode, branch: Union[Branch, str], duplicate: bool) -> NodeSchema:
     for label in node.labels:
         if registry.schema.has(name=label, branch=branch):
-            schema = registry.schema.get(name=label, branch=branch)
+            schema = registry.schema.get(name=label, branch=branch, duplicate=duplicate)
             if isinstance(schema, NodeSchema):
                 return schema
 

@@ -451,7 +451,9 @@ class NodeManager:
         # Query all nodes
         query = await NodeListGetInfoQuery.init(db=db, ids=ids, branch=branch, account=account, at=at)
         await query.execute(db=db)
-        nodes_info_by_id: Dict[str, NodeToProcess] = {node.node_uuid: node async for node in query.get_nodes()}
+        nodes_info_by_id: Dict[str, NodeToProcess] = {
+            node.node_uuid: node async for node in query.get_nodes(duplicate=False)
+        }
 
         # Query list of all Attributes
         query = await NodeListGetAttributeQuery.init(
