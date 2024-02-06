@@ -290,6 +290,11 @@ class RelationshipSchema(HashableModel):
     def internal_peer(self) -> bool:
         return self.peer.startswith("Internal")
 
+    def get_identifier(self) -> str:
+        if not self.identifier:
+            raise ValueError("RelationshipSchema is not initialized")
+        return self.identifier
+
     def get_query_arrows(self) -> QueryArrows:
         """Return (in 4 parts) the 2 arrows for the relationship R1 and R2 based on the direction of the relationship."""
 
@@ -468,6 +473,9 @@ class BaseNodeSchema(HashableModel):
     menu_placement: Optional[str] = Field(default=None, json_schema_extra={"update": UpdateSupport.ALLOWED.value})
     icon: Optional[str] = Field(default=None, json_schema_extra={"update": UpdateSupport.ALLOWED.value})
     label: Optional[str] = Field(default=None, json_schema_extra={"update": UpdateSupport.ALLOWED.value})
+    uniqueness_constraints: Optional[List[List[str]]] = Field(
+        default=None, json_schema_extra={"update": UpdateSupport.CHECK_CONSTRAINTS.value}
+    )
 
     _exclude_from_hash: List[str] = ["attributes", "relationships"]
     _sort_by: List[str] = ["name"]
@@ -624,7 +632,7 @@ class BaseNodeSchema(HashableModel):
         return [item for item in self.relationships if not item.inherited]
 
     @property
-    def unique_attributes(self) -> List[str]:
+    def unique_attributes(self) -> List[AttributeSchema]:
         return [item for item in self.attributes if item.unique]
 
     def generate_fields_for_display_label(self) -> Dict:
@@ -870,6 +878,12 @@ internal_schema = {
                     "name": "children",
                     "kind": "Text",
                     "description": "Expected Kind for the children nodes in a Hierarchy, default to the main generic defined if not defined.",
+                    "optional": True,
+                },
+                {
+                    "name": "uniqueness_constraints",
+                    "kind": "List",
+                    "description": "List of multi-element uniqueness constraints that can combine relationships and attributes",
                     "optional": True,
                 },
             ],
@@ -1247,6 +1261,12 @@ internal_schema = {
                     "name": "used_by",
                     "kind": "List",
                     "description": "List of Nodes that are referencing this Generic",
+                    "optional": True,
+                },
+                {
+                    "name": "uniqueness_constraints",
+                    "kind": "List",
+                    "description": "List of multi-element uniqueness constraints that can combine relationships and attributes",
                     "optional": True,
                 },
             ],
