@@ -80,7 +80,7 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
 
   const parentSchema = schemaList.find((s) => s.kind === objectname);
   const generic = generics.find((g) => g.kind === relationshipSchemaData?.kind);
-  const columns = getSchemaObjectColumns(relationshipSchemaData);
+  const columns = getSchemaObjectColumns(relationshipSchemaData, mode === "TABLE");
 
   let options: SelectOption[] = [];
 
