@@ -76,6 +76,7 @@ test.describe("/signin", () => {
 
         return reqData?.operationName === "BuiltinTag" && status === 200;
       });
+
       await page.goto("/objects/BuiltinTag");
 
       await waitForResponse;
