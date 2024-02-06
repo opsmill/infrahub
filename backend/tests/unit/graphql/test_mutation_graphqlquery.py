@@ -1,16 +1,10 @@
-import pytest
 from graphql import graphql
 
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql import generate_graphql_schema
-
-
-@pytest.fixture(autouse=True)
-def load_graphql_requirements(group_graphql):
-    pass
+from infrahub.graphql import prepare_graphql_params
 
 
 async def test_create_query_no_vars(db: InfrahubDatabase, default_branch, register_core_models_schema):
@@ -50,10 +44,11 @@ async def test_create_query_no_vars(db: InfrahubDatabase, default_branch, regist
     }
     """ % query_value.replace("\n", " ").replace('"', '\\"')
 
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
-        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -115,10 +110,11 @@ async def test_create_query_with_vars(db: InfrahubDatabase, default_branch, regi
     }
     """ % query_value.replace("\n", " ").replace('"', '\\"')
 
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
-        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -210,10 +206,11 @@ async def test_update_query(db: InfrahubDatabase, default_branch, register_core_
         query_update.replace("\n", " ").replace('"', '\\"'),
     )
 
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
-        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -271,10 +268,11 @@ async def test_update_query_no_update(db: InfrahubDatabase, default_branch, regi
     }
     """ % (obj.id)
 
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
-        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )

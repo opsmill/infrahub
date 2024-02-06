@@ -192,9 +192,11 @@ class Branch(StandardNode):
         }
 
     def get_branches_and_times_to_query_global(
-        self, at: Optional[Union[Timestamp, str]] = None
+        self,
+        at: Optional[Union[Timestamp, str]] = None,
+        is_isolated: bool = True,
     ) -> Dict[frozenset, str]:
-        """Return all the names of the branches that are constituing this branch with the associated times."""
+        """Return all the names of the branches that are constituting this branch with the associated times."""
 
         at = Timestamp(at)
 
@@ -205,7 +207,7 @@ class Branch(StandardNode):
 
         # If we are querying before the beginning of the branch
         # the time for the main branch must be the time of the query
-        if self.ephemeral_rebase or at < time_default_branch:
+        if self.ephemeral_rebase or not is_isolated or at < time_default_branch:
             time_default_branch = at
 
         return {
@@ -290,7 +292,9 @@ class Branch(StandardNode):
 
         return filters, params
 
-    def get_query_filter_path(self, at: Optional[Union[Timestamp, str]] = None) -> Tuple[str, Dict]:
+    def get_query_filter_path(
+        self, at: Optional[Union[Timestamp, str]] = None, is_isolated: bool = True
+    ) -> Tuple[str, Dict]:
         """
         Generate a CYPHER Query filter based on a path to query a part of the graph at a specific time and on a specific branch.
 
@@ -299,11 +303,11 @@ class Branch(StandardNode):
             >>> self.params.update(rels_params)
             >>> query += "\n WHERE all(r IN relationships(p) WHERE %s)" % rels_filter
 
-            There is a currently an assuption that the relationship in the path will be named 'r'
+            There is a currently an assumption that the relationship in the path will be named 'r'
         """
 
         at = Timestamp(at)
-        branches_times = self.get_branches_and_times_to_query_global(at=at.to_string())
+        branches_times = self.get_branches_and_times_to_query_global(at=at.to_string(), is_isolated=is_isolated)
 
         params = {}
         for idx, (branch_name, time_to_query) in enumerate(branches_times.items()):
@@ -457,7 +461,7 @@ class Branch(StandardNode):
         # Update the branch in the registry after the rebase
         registry.branch[self.name] = self
 
-    async def validate_branch(self, db: InfrahubDatabase) -> List[ObjectConflict]:
+    async def validate_branch(self, db: InfrahubDatabase) -> List[DataConflict]:
         """
         Validate if a branch is eligible to be merged.
         - Must be conflict free both for data and repository
@@ -471,7 +475,7 @@ class Branch(StandardNode):
 
         return await self.validate_graph(db=db)
 
-    async def validate_graph(self, db: InfrahubDatabase) -> List[ObjectConflict]:
+    async def validate_graph(self, db: InfrahubDatabase) -> List[DataConflict]:
         # Check the diff and ensure the branch doesn't have some conflict
         diff = await self.diff(db=db)
         return await diff.get_conflicts(db=db)
@@ -504,8 +508,8 @@ class Branch(StandardNode):
     async def merge(
         self,
         db: InfrahubDatabase,
-        rpc_client: InfrahubRpcClient,
-        at: Union[str, Timestamp] = None,
+        rpc_client: Optional[InfrahubRpcClient] = None,
+        at: Optional[Union[str, Timestamp]] = None,
         conflict_resolution: Optional[Dict[str, bool]] = None,
     ):
         """Merge the current branch into main."""
@@ -703,7 +707,7 @@ class Branch(StandardNode):
             await self.save(db=db)
             registry.branch[self.name] = self
 
-    async def merge_repositories(self, rpc_client: InfrahubRpcClient, db: InfrahubDatabase):
+    async def merge_repositories(self, db: InfrahubDatabase, rpc_client: Optional[InfrahubRpcClient] = None) -> None:
         # Collect all Repositories in Main because we'll need the commit in Main for each one.
         repos_in_main_list = await NodeManager.query(schema=InfrahubKind.REPOSITORY, db=db)
         repos_in_main = {repo.id: repo for repo in repos_in_main_list}
@@ -729,8 +733,9 @@ class Branch(StandardNode):
                 )
             )
 
-        for event in events:
-            await rpc_client.send(message=event)
+        if rpc_client:
+            for event in events:
+                await rpc_client.send(message=event)
 
     async def rebase_graph(self, db: InfrahubDatabase, at: Optional[Timestamp] = None):
         at = Timestamp(at)
@@ -993,6 +998,12 @@ class ObjectConflict(BaseModel):
     type: str
     kind: str
     id: str
+
+    def to_conflict_dict(self) -> Dict[str, Any]:
+        return self.dict()
+
+
+class DataConflict(ObjectConflict):
     conflict_path: str
     path: str
     path_type: PathType
@@ -1000,8 +1011,19 @@ class ObjectConflict(BaseModel):
     change_type: str
     changes: List[BranchChanges] = Field(default_factory=list)
 
+    def to_conflict_dict(self) -> Dict[str, Any]:
+        conflict_dict = self.dict(exclude={"path_type"})
+        conflict_dict["path_type"] = self.path_type.value
+        return conflict_dict
+
     def __str__(self) -> str:
         return self.path
+
+
+class SchemaConflict(ObjectConflict):
+    path: str
+    branch: str
+    value: str
 
 
 class Diff:
@@ -1182,14 +1204,14 @@ class Diff:
 
         return summary
 
-    async def get_conflicts(self, db: InfrahubDatabase) -> List[ObjectConflict]:
+    async def get_conflicts(self, db: InfrahubDatabase) -> List[DataConflict]:
         """Return the list of conflicts identified by the diff as Path (tuple).
 
         For now we are not able to identify clearly enough the conflicts for the git repositories so this part is ignored.
         """
         return await self.get_conflicts_graph(db=db)
 
-    async def get_conflicts_graph(self, db: InfrahubDatabase) -> List[ObjectConflict]:
+    async def get_conflicts_graph(self, db: InfrahubDatabase) -> List[DataConflict]:
         if self.branch_only:
             return []
 
@@ -1210,7 +1232,7 @@ class Diff:
         changes = {branches[0]: branch0, branches[1]: branch1}
         responses = []
         for conflict in conflicts:
-            response = ObjectConflict(
+            response = DataConflict(
                 name=conflict.element_name or "",
                 type=conflict.type,
                 id=conflict.node_id,

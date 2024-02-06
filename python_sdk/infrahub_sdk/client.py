@@ -611,6 +611,28 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
 
         return resp.json()
 
+    async def get_diff_summary(
+        self,
+        branch: str,
+        timeout: Optional[int] = None,
+        tracker: Optional[str] = None,
+        raise_for_error: bool = True,
+    ) -> Dict:
+        query = """
+            query {
+                DiffSummary {
+                    kind
+                    node
+                    branch
+                    actions
+                }
+            }
+        """
+        response = await self.execute_graphql(
+            query=query, branch_name=branch, timeout=timeout, tracker=tracker, raise_for_error=raise_for_error
+        )
+        return response["DiffSummary"]
+
     async def create_batch(self, return_exceptions: bool = False) -> InfrahubBatch:
         return InfrahubBatch(semaphore=self.concurrent_execution_limit, return_exceptions=return_exceptions)
 
@@ -1074,6 +1096,28 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             resp.raise_for_status()
 
         return resp.json()
+
+    def get_diff_summary(
+        self,
+        branch: str,
+        timeout: Optional[int] = None,
+        tracker: Optional[str] = None,
+        raise_for_error: bool = True,
+    ) -> Dict:
+        query = """
+            query {
+                DiffSummary {
+                    kind
+                    node
+                    branch
+                    actions
+                }
+            }
+        """
+        response = self.execute_graphql(
+            query=query, branch_name=branch, timeout=timeout, tracker=tracker, raise_for_error=raise_for_error
+        )
+        return response["DiffSummary"]
 
     def repository_update_commit(
         self, branch_name: str, repository_id: str, commit: str, is_read_only: bool = False

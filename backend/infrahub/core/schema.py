@@ -274,6 +274,8 @@ class RelationshipSchema(HashableModel):
         default_factory=list, json_schema_extra={"update": UpdateSupport.NOT_APPLICABLE.value}
     )
     order_weight: Optional[int] = Field(default=None, json_schema_extra={"update": UpdateSupport.ALLOWED.value})
+    min_count: int = Field(default=0, json_schema_extra={"update": UpdateSupport.CHECK_CONSTRAINTS.value})
+    max_count: int = Field(default=0, json_schema_extra={"update": UpdateSupport.CHECK_CONSTRAINTS.value})
 
     _exclude_from_hash: List[str] = ["filters"]
     _sort_by: List[str] = ["name"]
@@ -287,6 +289,11 @@ class RelationshipSchema(HashableModel):
     @property
     def internal_peer(self) -> bool:
         return self.peer.startswith("Internal")
+
+    def get_identifier(self) -> str:
+        if not self.identifier:
+            raise ValueError("RelationshipSchema is not initialized")
+        return self.identifier
 
     def get_query_arrows(self) -> QueryArrows:
         """Return (in 4 parts) the 2 arrows for the relationship R1 and R2 based on the direction of the relationship."""
@@ -466,6 +473,9 @@ class BaseNodeSchema(HashableModel):
     menu_placement: Optional[str] = Field(default=None, json_schema_extra={"update": UpdateSupport.ALLOWED.value})
     icon: Optional[str] = Field(default=None, json_schema_extra={"update": UpdateSupport.ALLOWED.value})
     label: Optional[str] = Field(default=None, json_schema_extra={"update": UpdateSupport.ALLOWED.value})
+    uniqueness_constraints: Optional[List[List[str]]] = Field(
+        default=None, json_schema_extra={"update": UpdateSupport.CHECK_CONSTRAINTS.value}
+    )
 
     _exclude_from_hash: List[str] = ["attributes", "relationships"]
     _sort_by: List[str] = ["name"]
@@ -622,7 +632,7 @@ class BaseNodeSchema(HashableModel):
         return [item for item in self.relationships if not item.inherited]
 
     @property
-    def unique_attributes(self) -> List[str]:
+    def unique_attributes(self) -> List[AttributeSchema]:
         return [item for item in self.attributes if item.unique]
 
     def generate_fields_for_display_label(self) -> Dict:
@@ -870,6 +880,12 @@ internal_schema = {
                     "description": "Expected Kind for the children nodes in a Hierarchy, default to the main generic defined if not defined.",
                     "optional": True,
                 },
+                {
+                    "name": "uniqueness_constraints",
+                    "kind": "List",
+                    "description": "List of multi-element uniqueness constraints that can combine relationships and attributes",
+                    "optional": True,
+                },
             ],
             "relationships": [
                 {
@@ -1082,6 +1098,20 @@ internal_schema = {
                     "optional": True,
                 },
                 {
+                    "name": "min_count",
+                    "kind": "Number",
+                    "description": "Defines the minimum objects allowed on the other side of the relationship.",
+                    "default_value": 0,
+                    "optional": True,
+                },
+                {
+                    "name": "max_count",
+                    "kind": "Number",
+                    "description": "Defines the maximum objects allowed on the other side of the relationship.",
+                    "default_value": 0,
+                    "optional": True,
+                },
+                {
                     "name": "order_weight",
                     "kind": "Number",
                     "description": "Number used to order the relationship in the frontend (table and view).",
@@ -1231,6 +1261,12 @@ internal_schema = {
                     "name": "used_by",
                     "kind": "List",
                     "description": "List of Nodes that are referencing this Generic",
+                    "optional": True,
+                },
+                {
+                    "name": "uniqueness_constraints",
+                    "kind": "List",
+                    "description": "List of multi-element uniqueness constraints that can combine relationships and attributes",
                     "optional": True,
                 },
             ],
@@ -1469,7 +1505,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "validator",
-                    "peer": "CoreValidator",
+                    "peer": InfrahubKind.VALIDATOR,
                     "identifier": "validator__check",
                     "kind": "Parent",
                     "optional": False,
@@ -1538,6 +1574,13 @@ core_models = {
             ],
         },
         {
+            "name": "TaskTarget",
+            "include_in_menu": False,
+            "namespace": "Core",
+            "description": "Extend a node to be associated with tasks",
+            "label": "Task Target",
+        },
+        {
             "name": "Webhook",
             "namespace": "Core",
             "description": "A webhook that connects to an external integration",
@@ -1586,7 +1629,7 @@ core_models = {
                 },
                 {
                     "name": "transformations",
-                    "peer": "CoreTransformation",
+                    "peer": InfrahubKind.TRANSFORM,
                     "identifier": "repository__transformation",
                     "optional": True,
                     "cardinality": "many",
@@ -1749,6 +1792,7 @@ core_models = {
             "default_filter": "name__value",
             "display_labels": ["name__value"],
             "branch": BranchSupportType.AGNOSTIC.value,
+            "inherit_from": [InfrahubKind.TASKTARGET],
             "attributes": [
                 {"name": "name", "kind": "Text", "optional": False},
                 {"name": "source_branch", "kind": "Text", "optional": False},
@@ -1805,7 +1849,7 @@ core_models = {
                 },
                 {
                     "name": "validations",
-                    "peer": "CoreValidator",
+                    "peer": InfrahubKind.VALIDATOR,
                     "kind": "Component",
                     "identifier": "proposed_change__validator",
                     "optional": True,
@@ -1927,7 +1971,7 @@ core_models = {
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "branch": BranchSupportType.AGNOSTIC.value,
-            "inherit_from": ["LineageOwner", "LineageSource", InfrahubKind.GENERICREPOSITORY],
+            "inherit_from": ["LineageOwner", "LineageSource", InfrahubKind.GENERICREPOSITORY, InfrahubKind.TASKTARGET],
             "attributes": [
                 {"name": "default_branch", "kind": "Text", "default_value": "main"},
                 {"name": "commit", "kind": "Text", "optional": True, "branch": BranchSupportType.LOCAL.value},
@@ -1943,7 +1987,7 @@ core_models = {
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "branch": BranchSupportType.AGNOSTIC.value,
-            "inherit_from": ["LineageOwner", "LineageSource", InfrahubKind.GENERICREPOSITORY],
+            "inherit_from": ["LineageOwner", "LineageSource", InfrahubKind.GENERICREPOSITORY, InfrahubKind.TASKTARGET],
             "attributes": [
                 {"name": "ref", "kind": "Text", "default_value": "main", "branch": BranchSupportType.AWARE.value},
                 {"name": "commit", "kind": "Text", "optional": True, "branch": BranchSupportType.AWARE.value},
@@ -1958,7 +2002,7 @@ core_models = {
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
-            "inherit_from": ["CoreTransformation"],
+            "inherit_from": [InfrahubKind.TRANSFORM],
             "branch": BranchSupportType.AWARE.value,
             "attributes": [
                 {"name": "template_path", "kind": "Text"},
@@ -2039,7 +2083,7 @@ core_models = {
             "include_in_menu": False,
             "label": "Data Validator",
             "display_labels": ["label__value"],
-            "inherit_from": ["CoreValidator"],
+            "inherit_from": [InfrahubKind.VALIDATOR],
             "branch": BranchSupportType.AGNOSTIC.value,
         },
         {
@@ -2049,7 +2093,7 @@ core_models = {
             "include_in_menu": False,
             "label": "Repository Validator",
             "display_labels": ["label__value"],
-            "inherit_from": ["CoreValidator"],
+            "inherit_from": [InfrahubKind.VALIDATOR],
             "branch": BranchSupportType.AGNOSTIC.value,
             "relationships": [
                 {
@@ -2069,7 +2113,7 @@ core_models = {
             "include_in_menu": False,
             "label": "User Validator",
             "display_labels": ["label__value"],
-            "inherit_from": ["CoreValidator"],
+            "inherit_from": [InfrahubKind.VALIDATOR],
             "branch": BranchSupportType.AGNOSTIC.value,
             "relationships": [
                 {
@@ -2097,7 +2141,7 @@ core_models = {
             "include_in_menu": False,
             "label": "Schema Validator",
             "display_labels": ["label__value"],
-            "inherit_from": ["CoreValidator"],
+            "inherit_from": [InfrahubKind.VALIDATOR],
             "branch": BranchSupportType.AGNOSTIC.value,
         },
         {
@@ -2107,7 +2151,7 @@ core_models = {
             "include_in_menu": False,
             "label": "Artifact Validator",
             "display_labels": ["label__value"],
-            "inherit_from": ["CoreValidator"],
+            "inherit_from": [InfrahubKind.VALIDATOR],
             "branch": BranchSupportType.AGNOSTIC.value,
             "relationships": [
                 {
@@ -2129,6 +2173,7 @@ core_models = {
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "branch": BranchSupportType.AWARE.value,
+            "inherit_from": [InfrahubKind.TASKTARGET],
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "description", "kind": "Text", "optional": True},
@@ -2181,7 +2226,7 @@ core_models = {
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
-            "inherit_from": ["CoreTransformation"],
+            "inherit_from": [InfrahubKind.TRANSFORM],
             "branch": BranchSupportType.AWARE.value,
             "attributes": [
                 {"name": "file_path", "kind": "Text"},
@@ -2259,6 +2304,7 @@ core_models = {
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "branch": BranchSupportType.LOCAL.value,
+            "inherit_from": [InfrahubKind.TASKTARGET],
             "attributes": [
                 {"name": "name", "kind": "Text"},
                 {
@@ -2312,6 +2358,7 @@ core_models = {
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "branch": BranchSupportType.AWARE.value,
+            "inherit_from": [InfrahubKind.TASKTARGET],
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "artifact_name", "kind": "Text"},
@@ -2334,7 +2381,7 @@ core_models = {
                 },
                 {
                     "name": "transformation",
-                    "peer": "CoreTransformation",
+                    "peer": InfrahubKind.TRANSFORM,
                     "kind": "Attribute",
                     "identifier": "artifact_definition___transformation",
                     "cardinality": "one",
@@ -2352,7 +2399,7 @@ core_models = {
             "display_labels": ["name__value"],
             "include_in_menu": False,
             "branch": BranchSupportType.AGNOSTIC.value,
-            "inherit_from": [InfrahubKind.WEBHOOK],
+            "inherit_from": [InfrahubKind.WEBHOOK, InfrahubKind.TASKTARGET],
             "attributes": [
                 {"name": "shared_key", "kind": "Password", "unique": False, "order_weight": 4000},
             ],
@@ -2367,7 +2414,7 @@ core_models = {
             "display_labels": ["name__value"],
             "include_in_menu": False,
             "branch": BranchSupportType.AGNOSTIC.value,
-            "inherit_from": [InfrahubKind.WEBHOOK],
+            "inherit_from": [InfrahubKind.WEBHOOK, InfrahubKind.TASKTARGET],
             "attributes": [],
             "relationships": [
                 {

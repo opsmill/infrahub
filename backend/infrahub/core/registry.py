@@ -15,7 +15,6 @@ from infrahub.exceptions import (
 )
 
 if TYPE_CHECKING:
-    import graphene
     from neo4j import AsyncSession
 
     from infrahub.core.attribute import BaseAttribute
@@ -146,20 +145,6 @@ class Registry:
         """Return all the nodes in the schema for a given branch."""
         return self.schema.get_full(branch=branch)
 
-    def set_graphql_type(
-        self,
-        name: str,
-        graphql_type: Union[Type[InfrahubObject], Type[graphene.Interface], Type[graphene.ObjectType]],
-        branch: Optional[str] = None,
-    ) -> bool:
-        return self.set_item(kind="graphql_type", name=name, item=graphql_type, branch=branch)
-
-    def has_graphql_type(self, name: str, branch: Optional[Union[Branch, str]] = None) -> bool:
-        return self.has_item(kind="graphql_type", name=name, branch=branch)
-
-    def get_graphql_type(self, name: str, branch: Optional[Union[Branch, str]] = None) -> InfrahubObject:
-        return self.get_item(kind="graphql_type", name=name, branch=branch)
-
     def get_all_graphql_type(self, branch: Optional[Union[Branch, str]] = None) -> Dict[str, InfrahubObject]:
         """Return all the graphql_type for a given branch."""
         return self.get_all_item(kind="graphql_type", branch=branch)
@@ -168,7 +153,6 @@ class Registry:
         self.branch = {}
         self.node = {}
         self.schema = None
-        self.graphql_type = defaultdict(dict)
         self.account = {}
         self.account_id = {}
         self.node_group = {}

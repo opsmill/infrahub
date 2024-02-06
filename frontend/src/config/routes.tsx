@@ -8,6 +8,7 @@ import { ProposedChangesDetails } from "../screens/proposed-changes/proposed-cha
 import { ProposedChanges } from "../screens/proposed-changes/proposed-changes-items";
 import UserProfile from "../screens/user-profile/user-profile";
 import { ARTIFACT_OBJECT } from "./constants";
+import { Homepage } from "../screens/homepage";
 
 export const MAIN_ROUTES = [
   {
@@ -57,5 +58,9 @@ export const MAIN_ROUTES = [
   {
     path: "/schema",
     element: <OpsObjects />,
+  },
+  {
+    path: "/",
+    element: <Homepage />,
   },
 ];

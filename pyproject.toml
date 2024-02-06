@@ -315,35 +315,7 @@ module = "infrahub.graphql.app"
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = "infrahub.graphql.enums"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.graphql.generator"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.graphql.mutations.account"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.graphql.mutations.artifact_definition"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "infrahub.graphql.mutations.attribute"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.graphql.mutations.branch"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.graphql.mutations.graphql_query"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.graphql.mutations.group"
 ignore_errors = true
 
 [[tool.mypy.overrides]]

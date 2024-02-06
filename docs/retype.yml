@@ -1,6 +1,6 @@
 ---
 input: .
-output: .retype
+output: build
 url: docs.infrahub.app
 branding:
   title: Infrahub

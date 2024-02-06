@@ -7,7 +7,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import AccountRole
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql import generate_graphql_schema
+from infrahub.graphql import prepare_graphql_params
 
 
 @pytest.mark.parametrize("role", [e.value for e in AccountRole])
@@ -21,15 +21,20 @@ async def test_everyone_can_update_password(db: InfrahubDatabase, default_branch
         }
     }
     """ % (new_password, new_description)
+
+    gql_params = prepare_graphql_params(
+        db=db,
+        include_subscription=False,
+        branch=default_branch,
+        account_session=AccountSession(
+            authenticated=True, account_id=first_account.id, role=role, auth_type=AuthType.JWT
+        ),
+    )
+
     result = await graphql(
-        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
+        schema=gql_params.schema,
         source=query,
-        context_value={
-            "infrahub_database": db,
-            "account_session": AccountSession(
-                authenticated=True, account_id=first_account.id, role=role, auth_type=AuthType.JWT
-            ),
-        },
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
