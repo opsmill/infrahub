@@ -25,7 +25,7 @@ export const getDisplayValue = (row: any, attribute: any, schemaKindName?: iSche
   }
 
   if (attribute?.kind === "JSON") {
-    return <CodeEditor value={JSON.stringify(row[attribute?.name]?.value)} disabled />;
+    return <CodeEditor value={JSON.stringify(row[attribute?.name]?.value ?? "")} disabled />;
   }
 
   if (attribute?.kind === "List") {
