@@ -238,7 +238,7 @@ class Checkbox(InfrahubDataType):
     graphql_query = "CheckboxAttributeType"
     graphql_input = "CheckboxAttributeInput"
     graphql_filter = graphene.Boolean
-    infrahub = "String"
+    infrahub = "Boolean"
 
 
 class List(InfrahubDataType):
