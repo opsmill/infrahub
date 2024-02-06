@@ -1,5 +1,5 @@
 ---
-sidebar_position: 100000
+title: Release 0.6.0
 ---
 
 # Release 0.6.0
@@ -95,12 +95,13 @@ Previously the name was mainly used to generate the top level graphql query.
 As a result of this change, the format of the GraphQL top level query are now using the Kind in CamelCase.
 
 <table>
-  <tr>
-    <td>Before</td>
-    <td>After</td>
-  </tr>
-  <tr>
-    <td>
+  <tbody>
+    <tr>
+      <td>Before</td>
+      <td>After</td>
+    </tr>
+    <tr>
+      <td>
 ```graphql
 query {
     device {
@@ -112,8 +113,8 @@ query {
     }
 }
 ```
-    </td>
-    <td>
+      </td>
+      <td>
 ```graphql
 query {
     InfraDevice {
@@ -125,8 +126,9 @@ query {
     }
 }
 ```
-</td>
-  </tr>
+      </td>
+    </tr>
+  </tbody>
 </table>
 
 
