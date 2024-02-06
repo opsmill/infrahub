@@ -11,7 +11,11 @@ categories:
 change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
 exclude-labels:
   - 'ci/skip-changelog'
-  - 'group/python-sdk'
+include-labels:
+  - 'group/backend'
+  - 'group/ci'
+  - 'group/frontend'
+  - 'type/documentation'
 change-title-escapes: '\<*_&'  # You can add # and @ to disable mentions, and add ` to disable code blocks.
 tag-prefix: infrahub-v
 tag-template: infrahub-v
