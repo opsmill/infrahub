@@ -80,8 +80,9 @@ test.describe("Object update", () => {
     // Submit form
     await page.getByRole("button", { name: "Save" }).click();
 
-    // Verify the alert
+    // Verify the alert and the closed panel
     await expect(page.getByText("Device updated")).toBeVisible();
+    await expect(page.getByTestId("side-panel-background")).not.toBeVisible();
 
     // Verify updates in view
     await expect(

@@ -34,6 +34,7 @@ export default function SlideOver(props: Props) {
           <div
             className="fixed inset-0 bg-black bg-opacity-40 transition-opacity"
             data-cy="side-panel-background"
+            data-testid="side-panel-background"
           />
         </Transition.Child>
 
