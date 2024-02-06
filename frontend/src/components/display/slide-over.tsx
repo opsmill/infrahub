@@ -50,7 +50,8 @@ export default function SlideOver(props: Props) {
                 leaveFrom={`${offestWidth[offset]}`}
                 leaveTo="translate-x-full">
                 <Dialog.Panel
-                  className={`bg-custom-white pointer-events-auto ${panelWidth} shadow-xl flex flex-col`}>
+                  className={`bg-custom-white pointer-events-auto ${panelWidth} shadow-xl flex flex-col`}
+                  data-testid="side-panel-container">
                   <div className="px-4 py-4 sm:px-4 bg-gray-50 border-b">
                     <div className="w-full">
                       <Dialog.Title className="text-base leading-6">{title}</Dialog.Title>
