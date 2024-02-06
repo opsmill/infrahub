@@ -13,7 +13,7 @@ test.describe("Getting started with Infrahub - Data lineage and metadata", () =>
 
     await test.step("Explore Description attribute metadata", async () => {
       await page.getByText("Description-").getByTestId("view-metadata-button").click();
-      await expect(page.getByText("Is protected: True")).toBeVisible();
+      await expect(page.getByText("Is protected: False")).toBeVisible();
       await saveScreenshotForDocs(page, "tutorial_4_metadata");
     });
 
