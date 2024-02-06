@@ -51,10 +51,10 @@ describe("Object update", () => {
       cy.get("[id^=headlessui-combobox-input-]").first();
 
       // Open the select
-      cy.get("[id^=headlessui-combobox-button-]").click();
+      cy.get("[id^=headlessui-combobox-button-]").first().click();
 
       // Check if the options have a length of 4
-      cy.get("[id^=headlessui-combobox-options-]").find("li").should("have.length", 4);
+      cy.get("[id^=headlessui-combobox-options-]").first().find("li").should("have.length", 4);
 
       // Choose the account
       cy.contains(ACCOUNT).click();

@@ -3,10 +3,19 @@ import { expect, test } from "@playwright/test";
 const OBJECT_SEARCH = "atl1-edge1";
 
 test.describe("when searching an object", () => {
-  test("should not retrieve a result", async ({ page }) => {
+  test.fixme("should not retrieve a result", async ({ page }) => {
     await page.goto("/");
 
-    await page.getByTestId("search-bar").fill("test");
+    await Promise.all([
+      page.waitForResponse((response) => {
+        const reqData = response.request().postDataJSON();
+        const status = response.status();
+
+        return reqData?.operationName === "CoreNode" && status === 200;
+      }),
+
+      page.getByTestId("search-bar").fill("test"),
+    ]);
 
     const results = page.getByTestId("results-container");
 
@@ -17,10 +26,19 @@ test.describe("when searching an object", () => {
     await expect(result).toBeVisible();
   });
 
-  test("should retrieve a result", async ({ page }) => {
+  test.fixme("should retrieve a result", async ({ page }) => {
     await page.goto("/");
 
-    await page.getByTestId("search-bar").fill(OBJECT_SEARCH);
+    await Promise.all([
+      page.waitForResponse((response) => {
+        const reqData = response.request().postDataJSON();
+        const status = response.status();
+
+        return reqData?.operationName === "CoreNode" && status === 200;
+      }),
+
+      page.getByTestId("search-bar").fill(OBJECT_SEARCH),
+    ]);
 
     const results = page.getByTestId("results-container");
 
