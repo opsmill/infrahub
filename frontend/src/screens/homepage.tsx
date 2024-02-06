@@ -58,8 +58,8 @@ export const Homepage = () => {
       <div className="bg-white flex flex-col pt-8">
         <h1 className="text-xl font-semibold">Explore our other integrations</h1>
         <h2 className="text-l">
-          Infrahub provides all the you need for your infrastructure automation. You can use
-          everything, or just the features you need.
+          Infrahub provides all you need for your infrastructure automation. You can use everything,
+          or just the features you need.
         </h2>
       </div>
 
@@ -67,7 +67,7 @@ export const Homepage = () => {
         <HelperCard
           icon="mdi:toy-brick-marker-outline"
           title="Nornir"
-          description="Infrahub can be used as an inventory source for Nornir"
+          description="Infrahub can be used as an inventory source for Nornir."
           docLabel="About Nornir"
           docTo="https://nornir.readthedocs.io/en/latest/"
         />
@@ -75,7 +75,7 @@ export const Homepage = () => {
         <HelperCard
           icon="mdi:developer-board"
           title="Python SDK"
-          description="Learn to create, update, connect, heritance and more!"
+          description="Learn to create, update, connect, inheritance and more!"
           docLabel="About SDK"
           docTo="https://docs.infrahub.app/python-sdk/"
         />
@@ -83,7 +83,7 @@ export const Homepage = () => {
         <HelperCard
           icon="mdi:ansible"
           title="Infrahub Ansible"
-          description="Infrahub modules for Ansible using Ansible Collections"
+          description="Infrahub Collections for Ansible Galaxy."
           docLabel="About Ansible"
           docTo="https://infrahub-ansible.readthedocs.io/en/latest/"
         />
@@ -111,11 +111,11 @@ const HelperCard = ({
   docLabel,
 }: HelperCardProps) => {
   return (
-    <div className="max-w-xs rounded p-4 border">
+    <div className="max-w-xs rounded p-4 border flex flex-col">
       <h3 className="font-semibold flex items-center gap-1">
         <Icon icon={icon} /> {title}
       </h3>
-      <p className="mb-6 text-gray-500 text-sm">{description}</p>
+      <p className="mb-6 text-gray-500 text-sm flex-grow">{description}</p>
 
       <div className="flex gap-2">
         {docTo && (
