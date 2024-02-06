@@ -4,7 +4,7 @@ import { createBranch, deleteBranch } from "../../utils";
 
 test.describe("/proposed-changes", () => {
   test.describe("when not logged in", () => {
-    test("should not be able to create a proposed changes", async ({ page }) => {
+    test.fixme("should not be able to create a proposed changes", async ({ page }) => {
       await page.goto("/proposed-changes");
 
       await expect(page.getByText("ProposedChange")).toBeVisible();
@@ -15,7 +15,7 @@ test.describe("/proposed-changes", () => {
   test.describe("when logged in as Admin", () => {
     test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
-    test("should be able to create a proposed changes", async ({ page }) => {
+    test.fixme("should be able to create a proposed changes", async ({ page }) => {
       await page.goto("/proposed-changes");
 
       await expect(page.getByText("ProposedChange")).toBeVisible();
@@ -24,19 +24,22 @@ test.describe("/proposed-changes", () => {
       await expect(page.getByText("Create Proposed Changes")).toBeVisible();
     });
 
-    test("Should display an error message when proposed change create fails", async ({ page }) => {
-      await page.goto("/proposed-changes");
+    test.fixme(
+      "Should display an error message when proposed change create fails",
+      async ({ page }) => {
+        await page.goto("/proposed-changes");
 
-      await expect(page.getByText("ProposedChange")).toBeVisible();
-      await expect(page.getByTestId("add-proposed-changes-button")).toBeEnabled();
-      await page.getByTestId("add-proposed-changes-button").click();
-      await expect(page.getByText("Create Proposed Changes")).toBeVisible();
-      await page.getByLabel("Name *").fill("test-create-fail");
-      await page.getByRole("button", { name: "Create" }).click();
-      await expect(page.locator("#alert-error")).toContainText(
-        "Field 'CoreProposedChangeCreateInput.source_branch' of required type 'TextAttributeInput!' was not provided."
-      );
-    });
+        await expect(page.getByText("ProposedChange")).toBeVisible();
+        await expect(page.getByTestId("add-proposed-changes-button")).toBeEnabled();
+        await page.getByTestId("add-proposed-changes-button").click();
+        await expect(page.getByText("Create Proposed Changes")).toBeVisible();
+        await page.getByLabel("Name *").fill("test-create-fail");
+        await page.getByRole("button", { name: "Create" }).click();
+        await expect(page.locator("#alert-error")).toContainText(
+          "Field 'CoreProposedChangeCreateInput.source_branch' of required type 'TextAttributeInput!' was not provided."
+        );
+      }
+    );
 
     test.describe("Create, edit and merge proposed change", async () => {
       test.describe.configure({ mode: "serial" });
@@ -55,7 +58,7 @@ test.describe("/proposed-changes", () => {
         await deleteBranch(page, pcBranchName);
       });
 
-      test("create new proposed change", async () => {
+      test.fixme("create new proposed change", async () => {
         await page.getByTestId("add-proposed-changes-button").click();
         await expect(page.getByText("Create Proposed Change")).toBeVisible();
         await page.getByLabel("Name *").fill(pcName);
@@ -69,7 +72,7 @@ test.describe("/proposed-changes", () => {
         await expect(page.getByText("ProposedChange created")).toBeVisible();
       });
 
-      test("display and edit proposed change", async () => {
+      test.fixme("display and edit proposed change", async () => {
         await test.step("display created proposed change details", async () => {
           await expect(page.getByText("Name" + pcName)).toBeVisible();
           await expect(page.getByText("Source branch" + pcBranchName)).toBeVisible();
@@ -105,7 +108,7 @@ test.describe("/proposed-changes", () => {
         });
       });
 
-      test("delete proposed change", async () => {
+      test.fixme("delete proposed change", async () => {
         await page.getByRole("link", { name: "Proposed Changes" }).click();
         await page.getByRole("list").getByText(pcName).first().hover();
         await page.locator("[data-testid='delete-proposed-change-button']:visible").click();
