@@ -19,8 +19,9 @@ DOCUMENTATION_DIRECTORY = os.path.join(CURRENT_DIRECTORY, "../docs")
 @task
 def build(context: Context):
     """Build documentation website."""
-    exec_cmd = "npx retypeapp build docs"
-    with context.cd(ESCAPED_REPO_PATH):
+    exec_cmd = "npm run build"
+
+    with context.cd(DOCUMENTATION_DIRECTORY):
         output = context.run(exec_cmd)
 
     successful_build_checks = 0
@@ -63,9 +64,9 @@ def validate(context: Context, docker: bool = False):
 def serve(context: Context):
     """Run documentation server in development mode."""
 
-    exec_cmd = "npx retypeapp start docs"
+    exec_cmd = "npm run serve"
 
-    with context.cd(ESCAPED_REPO_PATH):
+    with context.cd(DOCUMENTATION_DIRECTORY):
         context.run(exec_cmd)
 
 
