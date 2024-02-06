@@ -227,7 +227,6 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   ];
 
   const newColumns = columns?.length ? columns : defaultColumns;
-  console.log("newColumns: ", newColumns);
 
   return (
     <>
