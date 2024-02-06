@@ -72,13 +72,13 @@ async def initialization(db: InfrahubDatabase):
         registry.schema.register_schema(schema=schema)
 
         # Import the default branch
-        default_branch: Branch = registry.branch[config.SETTINGS.main.default_branch]
+        default_branch: Branch = registry.get_branch_from_registry(branch=config.SETTINGS.main.default_branch)
         hash_in_db = default_branch.schema_hash.main
         await registry.schema.load_schema_from_db(db=db, branch=default_branch)
         if default_branch.update_schema_hash():
             log.warning(
-                f"New schema detected after pulling the schema from the db :"
-                f" {hash_in_db!r} >> {default_branch.schema_hash.main!r}",
+                f"New schema detected after pulling the schema from the db",
+                hash_current=hash_in_db, hash_new=default_branch.schema_hash.main,
                 branch=default_branch.name,
             )
 
@@ -207,10 +207,10 @@ async def first_time_initialization(db: InfrahubDatabase):
     schema_branch.load_schema(schema=SchemaRoot(**core_models))
     schema_branch.process()
     await registry.schema.load_schema_to_db(schema=schema_branch, branch=default_branch, db=db)
+    registry.schema.set_schema_branch(name=default_branch.name, schema=schema_branch)
     default_branch.update_schema_hash()
     await default_branch.save(db=db)
-
-    log.info("Created the Schema in the database")
+    log.info("Created the Schema in the database", hash=default_branch.schema_hash.main)
 
     # --------------------------------------------------
     # Create Default Users and Groups
