@@ -12,7 +12,6 @@ from .utils import load_repository_config
 
 
 def pytest_addoption(parser: Parser) -> None:
-    """Add options to control ansible."""
     group = parser.getgroup("pytest-infrahub")
     group.addoption(
         "--infrahub-repo-config",

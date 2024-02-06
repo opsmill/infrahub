@@ -44,9 +44,9 @@ numpy = [
     { version = "^1.26.2", python = ">=3.12" }
 ]
 graphql-core = "^3.2.3"
+pytest = "*"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "*"
 pytest-clarity = "^1.0.1"
 pytest-cov = "^4.0.0"
 pytest-httpx = "*"
