@@ -1,6 +1,5 @@
 from infrahub.core import registry
-from infrahub.core.branch import Branch, ObjectConflict
-from infrahub.core.constants import PathType
+from infrahub.core.branch import Branch, SchemaConflict
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.validators.uniqueness.checker import UniquenessChecker
@@ -59,30 +58,24 @@ class TestUniquenessChecker:
 
         assert len(conflicts) == 2
         assert (
-            ObjectConflict(
+            SchemaConflict(
                 name="TestCar/nbr_seats",
                 type="uniqueness-violation",
                 kind="TestCar",
                 id=car_accord_main.id,
-                conflict_path="TestCar/nbr_seats",
                 path="TestCar/nbr_seats",
-                path_type=PathType.ATTRIBUTE,
-                change_type="attribute_value",
                 value=5,
                 branch=default_branch.name,
             )
             in conflicts
         )
         assert (
-            ObjectConflict(
+            SchemaConflict(
                 name="TestCar/nbr_seats",
                 type="uniqueness-violation",
                 kind="TestCar",
                 id=car_prius_main.id,
-                conflict_path="TestCar/nbr_seats",
                 path="TestCar/nbr_seats",
-                path_type=PathType.ATTRIBUTE,
-                change_type="attribute_value",
                 value=5,
                 branch=default_branch.name,
             )
@@ -109,60 +102,48 @@ class TestUniquenessChecker:
 
         assert len(conflicts) == 4
         assert (
-            ObjectConflict(
+            SchemaConflict(
                 name="TestCar/nbr_seats",
                 type="uniqueness-violation",
                 kind="TestCar",
                 id=car_accord_main.id,
-                conflict_path="TestCar/nbr_seats",
                 path="TestCar/nbr_seats",
-                path_type=PathType.ATTRIBUTE,
-                change_type="attribute_value",
                 value=5,
                 branch=default_branch.name,
             )
             in conflicts
         )
         assert (
-            ObjectConflict(
+            SchemaConflict(
                 name="TestCar/nbr_seats",
                 type="uniqueness-violation",
                 kind="TestCar",
                 id=car_prius_main.id,
-                conflict_path="TestCar/nbr_seats",
                 path="TestCar/nbr_seats",
-                path_type=PathType.ATTRIBUTE,
-                change_type="attribute_value",
                 value=5,
                 branch=default_branch.name,
             )
             in conflicts
         )
         assert (
-            ObjectConflict(
+            SchemaConflict(
                 name="TestPerson/height",
                 type="uniqueness-violation",
                 kind="TestPerson",
                 id=person_john_main.id,
-                conflict_path="TestPerson/height",
                 path="TestPerson/height",
-                path_type=PathType.ATTRIBUTE,
-                change_type="attribute_value",
                 value=180,
                 branch=default_branch.name,
             )
             in conflicts
         )
         assert (
-            ObjectConflict(
+            SchemaConflict(
                 name="TestPerson/height",
                 type="uniqueness-violation",
                 kind="TestPerson",
                 id=person_jane_main.id,
-                conflict_path="TestPerson/height",
                 path="TestPerson/height",
-                path_type=PathType.ATTRIBUTE,
-                change_type="attribute_value",
                 value=180,
                 branch=default_branch.name,
             )
@@ -261,60 +242,48 @@ class TestUniquenessChecker:
 
         assert len(conflicts) == 4
         assert (
-            ObjectConflict(
+            SchemaConflict(
                 name="TestCar/color",
                 type="uniqueness-violation",
                 kind="TestCar",
                 id=car_accord_main.id,
-                conflict_path="TestCar/color",
                 path="TestCar/color",
-                path_type=PathType.ATTRIBUTE,
-                change_type="attribute_value",
                 value="#444445",
                 branch=branch.name,
             )
             in conflicts
         )
         assert (
-            ObjectConflict(
+            SchemaConflict(
                 name="TestCar/color",
                 type="uniqueness-violation",
                 kind="TestCar",
                 id=car_prius_main.id,
-                conflict_path="TestCar/color",
                 path="TestCar/color",
-                path_type=PathType.ATTRIBUTE,
-                change_type="attribute_value",
                 value="#444445",
                 branch=branch.name,
             )
             in conflicts
         )
         assert (
-            ObjectConflict(
+            SchemaConflict(
                 name="TestCar/owner/height",
                 type="uniqueness-violation",
                 kind="TestCar",
                 id=car_accord_main.id,
-                conflict_path="TestCar/owner/height",
                 path="TestCar/owner/height",
-                path_type=PathType.ATTRIBUTE,
-                change_type="attribute_value",
                 value="180",
                 branch=branch.name,
             )
             in conflicts
         )
         assert (
-            ObjectConflict(
+            SchemaConflict(
                 name="TestCar/owner/height",
                 type="uniqueness-violation",
                 kind="TestCar",
                 id=car_prius_main.id,
-                conflict_path="TestCar/owner/height",
                 path="TestCar/owner/height",
-                path_type=PathType.ATTRIBUTE,
-                change_type="attribute_value",
                 value="180",
                 branch=default_branch.name,
             )
@@ -344,30 +313,24 @@ class TestUniquenessChecker:
 
         assert len(conflicts) == 2
         assert (
-            ObjectConflict(
+            SchemaConflict(
                 name="TestCar/name",
                 type="uniqueness-violation",
                 kind="TestCar",
                 id=volt_car.id,
-                conflict_path="TestCar/name",
                 path="TestCar/name",
-                path_type=PathType.ATTRIBUTE,
-                change_type="attribute_value",
                 value="nolt",
                 branch=branch.name,
             )
             in conflicts
         )
         assert (
-            ObjectConflict(
+            SchemaConflict(
                 name="TestCar/name",
                 type="uniqueness-violation",
                 kind="TestCar",
                 id=nolt_car.id,
-                conflict_path="TestCar/name",
                 path="TestCar/name",
-                path_type=PathType.ATTRIBUTE,
-                change_type="attribute_value",
                 value="nolt",
                 branch=default_branch.name,
             )
@@ -407,60 +370,48 @@ class TestUniquenessChecker:
 
         assert len(conflicts) == 4
         assert (
-            ObjectConflict(
+            SchemaConflict(
                 name="TestCar/owner/height",
                 type="uniqueness-violation",
                 kind="TestCar",
                 id=volt_car.id,
-                conflict_path="TestCar/owner/height",
                 path="TestCar/owner/height",
-                path_type=PathType.ATTRIBUTE,
-                change_type="attribute_value",
                 value="180",
                 branch=default_branch.name,
             )
             in conflicts
         )
         assert (
-            ObjectConflict(
+            SchemaConflict(
                 name="TestCar/owner/height",
                 type="uniqueness-violation",
                 kind="TestCar",
                 id=nolt_car.id,
-                conflict_path="TestCar/owner/height",
                 path="TestCar/owner/height",
-                path_type=PathType.ATTRIBUTE,
-                change_type="attribute_value",
                 value="180",
                 branch=branch.name,
             )
             in conflicts
         )
         assert (
-            ObjectConflict(
+            SchemaConflict(
                 name="TestCar/previous_owner/height",
                 type="uniqueness-violation",
                 kind="TestCar",
                 id=volt_car.id,
-                conflict_path="TestCar/previous_owner/height",
                 path="TestCar/previous_owner/height",
-                path_type=PathType.ATTRIBUTE,
-                change_type="attribute_value",
                 value="180",
                 branch=branch.name,
             )
             in conflicts
         )
         assert (
-            ObjectConflict(
+            SchemaConflict(
                 name="TestCar/previous_owner/height",
                 type="uniqueness-violation",
                 kind="TestCar",
                 id=nolt_car.id,
-                conflict_path="TestCar/previous_owner/height",
                 path="TestCar/previous_owner/height",
-                path_type=PathType.ATTRIBUTE,
-                change_type="attribute_value",
                 value="180",
                 branch=branch.name,
             )
@@ -489,45 +440,36 @@ class TestUniquenessChecker:
 
         assert len(conflicts) == 3
         assert (
-            ObjectConflict(
+            SchemaConflict(
                 name="TestCar/owner/id",
                 type="uniqueness-violation",
                 kind="TestCar",
                 id=car_accord_main.id,
-                conflict_path="TestCar/owner/id",
                 path="TestCar/owner/id",
-                path_type=PathType.ATTRIBUTE,
-                change_type="attribute_value",
                 value=person_john_main.id,
                 branch=default_branch.name,
             )
             in conflicts
         )
         assert (
-            ObjectConflict(
+            SchemaConflict(
                 name="TestCar/owner/id",
                 type="uniqueness-violation",
                 kind="TestCar",
                 id=car_prius_main.id,
-                conflict_path="TestCar/owner/id",
                 path="TestCar/owner/id",
-                path_type=PathType.ATTRIBUTE,
-                change_type="attribute_value",
                 value=person_john_main.id,
                 branch=default_branch.name,
             )
             in conflicts
         )
         assert (
-            ObjectConflict(
+            SchemaConflict(
                 name="TestCar/owner/id",
                 type="uniqueness-violation",
                 kind="TestCar",
                 id=car_camry_main.id,
-                conflict_path="TestCar/owner/id",
                 path="TestCar/owner/id",
-                path_type=PathType.ATTRIBUTE,
-                change_type="attribute_value",
                 value=person_john_main.id,
                 branch=branch.name,
             )

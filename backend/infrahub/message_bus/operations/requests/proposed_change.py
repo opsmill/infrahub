@@ -33,7 +33,10 @@ async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, s
 
     async with service.database.start_transaction() as db:
         object_conflict_validator_recorder = ObjectConflictValidatorRecorder(
-            db=db, validator_kind=InfrahubKind.DATAVALIDATOR, validator_label="Data Integrity"
+            db=db,
+            validator_kind=InfrahubKind.DATAVALIDATOR,
+            validator_label="Data Integrity",
+            check_schema_kind=InfrahubKind.DATACHECK,
         )
         await object_conflict_validator_recorder.record_conflicts(message.proposed_change, conflicts)
 
@@ -64,7 +67,10 @@ async def schema_integrity(
 
     async with service.database.start_transaction() as db:
         object_conflict_validator_recorder = ObjectConflictValidatorRecorder(
-            db=db, validator_kind=InfrahubKind.SCHEMAVALIDATOR, validator_label="Schema Integrity"
+            db=db,
+            validator_kind=InfrahubKind.SCHEMAVALIDATOR,
+            validator_label="Schema Integrity",
+            check_schema_kind=InfrahubKind.SCHEMACHECK,
         )
         await object_conflict_validator_recorder.record_conflicts(message.proposed_change, uniqueness_conflicts)
 

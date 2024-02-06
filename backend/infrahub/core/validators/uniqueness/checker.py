@@ -5,8 +5,7 @@ from typing import Dict, Iterable, List, Optional, Set, Tuple, Union
 from pydantic import BaseModel, Field
 
 from infrahub.core import registry
-from infrahub.core.branch import Branch, ObjectConflict
-from infrahub.core.constants import PathType
+from infrahub.core.branch import Branch, SchemaConflict
 from infrahub.core.query.constraints.node_unique_attributes import NodeUniqueAttributeConstraintQuery
 from infrahub.core.query.constraints.request import (
     NodeUniquenessQueryRequest,
@@ -101,7 +100,7 @@ class UniquenessChecker:
         self,
         schemas: Iterable[Union[NodeSchema, GenericSchema, str]],
         source_branch: Union[str, Branch],
-    ) -> List[ObjectConflict]:
+    ) -> List[SchemaConflict]:
         if isinstance(source_branch, str):
             source_branch = await registry.get_branch(db=self.db, branch=source_branch)
         schema_objects = [
@@ -207,7 +206,7 @@ class UniquenessChecker:
             if violation:
                 constraint_violations.add(violation)
         for uniqueness_constraint in non_unique_node.node_schema.uniqueness_constraints or []:
-            constraint_spec: List[Tuple[Optional[str], str]] = []
+            constraint_spec: List[Tuple[Union[AttributeSchema, RelationshipSchema], Optional[str]]] = []
             for element in uniqueness_constraint:
                 sub_schema, property_name = get_attribute_path_from_string(element, non_unique_node.node_schema)
                 constraint_spec.append((sub_schema, property_name))
@@ -216,7 +215,7 @@ class UniquenessChecker:
                 constraint_violations |= set(violations)
         return constraint_violations
 
-    def generate_object_conflicts(self, non_unique_node: NonUniqueNode) -> List[ObjectConflict]:
+    def generate_object_conflicts(self, non_unique_node: NonUniqueNode) -> List[SchemaConflict]:
         constraint_violations = self.get_uniqueness_violations(non_unique_node)
         conflicts = []
         for violation in constraint_violations:
@@ -225,15 +224,12 @@ class UniquenessChecker:
             else:
                 path = f"{non_unique_node.node_schema.kind}/{violation.attribute_name}"
             conflicts.append(
-                ObjectConflict(
+                SchemaConflict(
                     name=path,
                     type="uniqueness-violation",
                     kind=non_unique_node.node_schema.kind,
                     id=non_unique_node.node_id,
-                    conflict_path=path,
                     path=path,
-                    path_type=PathType.ATTRIBUTE,
-                    change_type="attribute_value",
                     value=violation.attribute_value,
                     branch=violation.deepest_branch_name,
                 )

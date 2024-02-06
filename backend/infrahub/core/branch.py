@@ -461,7 +461,7 @@ class Branch(StandardNode):
         # Update the branch in the registry after the rebase
         registry.branch[self.name] = self
 
-    async def validate_branch(self, db: InfrahubDatabase) -> List[ObjectConflict]:
+    async def validate_branch(self, db: InfrahubDatabase) -> List[DataConflict]:
         """
         Validate if a branch is eligible to be merged.
         - Must be conflict free both for data and repository
@@ -475,7 +475,7 @@ class Branch(StandardNode):
 
         return await self.validate_graph(db=db)
 
-    async def validate_graph(self, db: InfrahubDatabase) -> List[ObjectConflict]:
+    async def validate_graph(self, db: InfrahubDatabase) -> List[DataConflict]:
         # Check the diff and ensure the branch doesn't have some conflict
         diff = await self.diff(db=db)
         return await diff.get_conflicts(db=db)
@@ -997,17 +997,32 @@ class ObjectConflict(BaseModel):
     type: str
     kind: str
     id: str
+
+    def to_conflict_dict(self) -> Dict[str, Any]:
+        return self.dict()
+
+
+class DataConflict(ObjectConflict):
     conflict_path: str
     path: str
     path_type: PathType
     property_name: Optional[str] = None
     change_type: str
     changes: List[BranchChanges] = Field(default_factory=list)
-    value: Optional[str] = None
-    branch: Optional[str] = None
+
+    def to_conflict_dict(self) -> Dict[str, Any]:
+        conflict_dict = self.dict(exclude={"path_type"})
+        conflict_dict["path_type"] = self.path_type.value
+        return conflict_dict
 
     def __str__(self) -> str:
         return self.path
+
+
+class SchemaConflict(ObjectConflict):
+    path: str
+    branch: str
+    value: str
 
 
 class Diff:
@@ -1188,14 +1203,14 @@ class Diff:
 
         return summary
 
-    async def get_conflicts(self, db: InfrahubDatabase) -> List[ObjectConflict]:
+    async def get_conflicts(self, db: InfrahubDatabase) -> List[DataConflict]:
         """Return the list of conflicts identified by the diff as Path (tuple).
 
         For now we are not able to identify clearly enough the conflicts for the git repositories so this part is ignored.
         """
         return await self.get_conflicts_graph(db=db)
 
-    async def get_conflicts_graph(self, db: InfrahubDatabase) -> List[ObjectConflict]:
+    async def get_conflicts_graph(self, db: InfrahubDatabase) -> List[DataConflict]:
         if self.branch_only:
             return []
 
@@ -1216,7 +1231,7 @@ class Diff:
         changes = {branches[0]: branch0, branches[1]: branch1}
         responses = []
         for conflict in conflicts:
-            response = ObjectConflict(
+            response = DataConflict(
                 name=conflict.element_name or "",
                 type=conflict.type,
                 id=conflict.node_id,

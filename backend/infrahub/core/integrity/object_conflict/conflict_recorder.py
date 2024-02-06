@@ -10,10 +10,11 @@ from infrahub.database import InfrahubDatabase
 
 
 class ObjectConflictValidatorRecorder:
-    def __init__(self, db: InfrahubDatabase, validator_kind: str, validator_label: str) -> None:
+    def __init__(self, db: InfrahubDatabase, validator_kind: str, validator_label: str, check_schema_kind: str) -> None:
         self.db = db
         self.validator_kind = validator_kind
         self.validator_label = validator_label
+        self.check_schema_kind = check_schema_kind
 
     async def record_conflicts(self, proposed_change_id: str, conflicts: List[ObjectConflict]) -> None:
         proposed_change = await NodeManager.get_one_by_id_or_default_filter(
@@ -36,7 +37,7 @@ class ObjectConflictValidatorRecorder:
                     keep_check.append(check.id)
 
             if not check:
-                check = await Node.init(db=self.db, schema=InfrahubKind.DATACHECK)
+                check = await Node.init(db=self.db, schema=self.check_schema_kind)
                 await check.new(
                     db=self.db,
                     label="Data Conflict",
@@ -51,19 +52,7 @@ class ObjectConflictValidatorRecorder:
             check_ids.append(check.id)
 
         for conflict in conflicts:
-            conflicts_data = [
-                {
-                    "name": conflict.name,
-                    "node_id": conflict.id,
-                    "kind": conflict.kind,
-                    "path_type": conflict.path_type.value,
-                    "path": conflict.conflict_path,
-                    "property_name": conflict.property_name,
-                    "change_type": conflict.change_type,
-                    "changes": [change.dict() for change in conflict.changes],
-                    "value": conflict.value,
-                }
-            ]
+            conflicts_data = [conflict.to_conflict_dict()]
             conflict_obj = None
             for previous_check in previous_checks.values():
                 if previous_check.conflicts.value == conflicts_data:
@@ -71,7 +60,7 @@ class ObjectConflictValidatorRecorder:
                     keep_check.append(conflict_obj.id)
 
             if not conflict_obj:
-                conflict_obj = await Node.init(db=self.db, schema=InfrahubKind.DATACHECK)
+                conflict_obj = await Node.init(db=self.db, schema=self.check_schema_kind)
 
                 await conflict_obj.new(
                     db=self.db,

@@ -10,7 +10,7 @@ class QueryRelationshipAttributePath(BaseModel):
 
 class QueryAttributePath(BaseModel):
     attribute_name: str
-    property_name: str
+    property_name: Optional[str]
 
 
 class NodeUniquenessQueryRequest(BaseModel):

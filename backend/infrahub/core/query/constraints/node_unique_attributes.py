@@ -36,9 +36,11 @@ class NodeUniqueAttributeConstraintQuery(Query):
         attr_paths_param = []
         for attr_path in self.query_request.unique_attribute_paths:
             try:
-                property_rel_name = self.attribute_property_map[attr_path.property_name]
+                property_rel_name = self.attribute_property_map[attr_path.property_name or "value"]
             except KeyError as exc:
-                raise ValueError(f"{attr_path.property_name} is not a valid property for a uniqueness constraint") from exc
+                raise ValueError(
+                    f"{attr_path.property_name} is not a valid property for a uniqueness constraint"
+                ) from exc
             attr_paths_param.append((attr_path.attribute_name, property_rel_name))
 
         self.params.update(
