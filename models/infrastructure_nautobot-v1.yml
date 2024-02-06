@@ -4,7 +4,7 @@ version: '1.0'
 generics:
   - name: Interface
     namespace: Infra
-    description: "Generic Network Interface."
+    description: "Generic Network Interface"
     label: "Interface"
     icon: "mdi:ethernet"
     menu_placement: "InfraDevice"
@@ -63,7 +63,7 @@ generics:
         kind: Attribute
   - name: Endpoint
     namespace: Infra
-    description: "Generic Endpoint to connect two objects together."
+    description: "Generic Endpoint to connect two objects together"
     include_in_menu: false
     label: "Endpoint"
     relationships:
@@ -100,7 +100,7 @@ generics:
         kind: Attribute
   - name: PanelPort
     namespace: Infra
-    description: "Generic Patch Panel Port."
+    description: "Generic Patch Panel Port"
     label: "Panel Port (Front & Rear)"
     icon: "mdi:ethernet"
     menu_placement: "InfraDevice"
@@ -352,7 +352,7 @@ nodes:
         peer: InfraCircuit
   - name: Device
     namespace: Infra
-    description: "Generic Device object."
+    description: "Generic Device object"
     label: "Device"
     icon: "mdi:router-network"
     default_filter: name__value
@@ -604,7 +604,7 @@ nodes:
         peer: BuiltinLocation
   - name: Platform
     namespace: Infra
-    description: "A Platform represent the type of software running on a device."
+    description: "A Platform represent the type of software running on a device"
     label: "Platform"
     icon: "mdi:application-cog-outline"
     menu_placement: "InfraDevice"
@@ -639,7 +639,7 @@ nodes:
         cardinality: one
   - name: ProviderNetwork
     namespace: Infra
-    description: "Represent the boundary of a provider network, the details of which are unknown or unimportant."
+    description: "Represent the boundary of a provider network, the details of which are unknown or unimportant"
     label: "Provider Network"
     icon: "mdi:cloud"
     menu_placement: "InfraCircuit"
@@ -737,7 +737,7 @@ nodes:
         kind: Component
   - name: Rack
     namespace: Infra
-    description: "A Rack represents a physical two- or four-post equipment rack in which devices can be installed."
+    description: "A Rack represents a physical two- or four-post equipment rack in which devices can be installed"
     label: "Rack"
     icon: "mdi:server"
     menu_placement: "BuiltinLocation"
