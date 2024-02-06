@@ -128,7 +128,7 @@ def execute_before_any_test(worker_id, tmpdir_factory):
         config.SETTINGS.storage.local = config.FileSystemStorageSettings(path="/opt/infrahub/storage")
     else:
         storage_dir = tmpdir_factory.mktemp("storage")
-        config.SETTINGS.storage.local = config.FileSystemStorageSettings(path=str(storage_dir))
+        config.SETTINGS.storage.local._path = str(storage_dir)
 
     config.SETTINGS.broker.enable = False
     config.SETTINGS.cache.enable = True
