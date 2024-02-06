@@ -1139,15 +1139,16 @@ class SchemaManager(NodeManager):
             await self.load_schema_to_db(schema=schema, db=db, branch=branch, limit=limit)
             # After updating the schema into the db
             # we need to pull a fresh version because some default value are managed/generated within the node object
-            # REVERTED 1891
-            # schema_diff = None
-            # if limit:
-            #     schema_diff = SchemaBranchDiff(
-            #         nodes=[name for name in list(schema.nodes.keys()) if name in limit],
-            #         generics=[name for name in list(schema.generics.keys()) if name in limit],
-            #     )
+            schema_diff = None
+            if limit:
+                schema_diff = SchemaBranchDiff(
+                    nodes=[name for name in list(schema.nodes.keys()) if name in limit],
+                    generics=[name for name in list(schema.generics.keys()) if name in limit],
+                )
 
-            updated_schema = await self.load_schema_from_db(db=db, branch=branch, schema=schema)
+            updated_schema = await self.load_schema_from_db(
+                db=db, branch=branch, schema=schema, schema_diff=schema_diff
+            )
 
         self._branches[branch.name] = updated_schema or schema
 
@@ -1366,8 +1367,8 @@ class SchemaManager(NodeManager):
 
         current_schema = self.get_schema_branch(name=branch.name)
         current_schema.clear_cache()
-        # REVERT 1891 schema_diff = current_schema.get_hash_full().compare(branch.schema_hash)
-        return await self.load_schema_from_db(db=db, branch=branch, schema=current_schema)
+        schema_diff = current_schema.get_hash_full().compare(branch.schema_hash)
+        return await self.load_schema_from_db(db=db, branch=branch, schema=current_schema, schema_diff=schema_diff)
 
     async def load_schema_from_db(
         self,
@@ -1393,7 +1394,7 @@ class SchemaManager(NodeManager):
 
         # If schema_diff has been provided, we need to build the proper filters for the queries based on the namespace and the name of the object.
         # the namespace and the name will be extracted from the kind with the function `parse_node_kind`
-        filters = {"generics": {}, "groups": {}, "nodes": {}}
+        filters = {"generics": {}, "nodes": {}}
         has_filters = False
         if schema_diff:
             log.info("Loading schema from DB", schema_to_update=schema_diff.to_list())

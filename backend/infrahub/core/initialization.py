@@ -77,8 +77,9 @@ async def initialization(db: InfrahubDatabase):
         await registry.schema.load_schema_from_db(db=db, branch=default_branch)
         if default_branch.update_schema_hash():
             log.warning(
-                f"New schema detected after pulling the schema from the db",
-                hash_current=hash_in_db, hash_new=default_branch.schema_hash.main,
+                "New schema detected after pulling the schema from the db",
+                hash_current=hash_in_db,
+                hash_new=default_branch.schema_hash.main,
                 branch=default_branch.name,
             )
 
