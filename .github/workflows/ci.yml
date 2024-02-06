@@ -449,6 +449,9 @@ jobs:
           file: frontend/coverage/lcov.info
 
   documentation:
+    defaults:
+      run:
+        working-directory: ./docs
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
