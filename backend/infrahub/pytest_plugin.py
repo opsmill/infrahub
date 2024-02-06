@@ -8,7 +8,7 @@ from typing import Dict, List, Optional, Union
 from infrahub_sdk.client import InfrahubClient
 from infrahub_sdk.pytest_plugin.loader import InfrahubYamlFile
 from infrahub_sdk.pytest_plugin.utils import load_repository_config
-from pytest import Collector, Config, Item, Session, TestReport
+from pytest import Collector, Item, Session, TestReport
 
 TEST_FILE_PREFIX = "test_"
 TEST_FILE_SUFFIXES = [".yml", ".yaml"]
@@ -92,24 +92,6 @@ class InfrahubBackendPlugin:
                     results += "\n"
 
         return results
-
-    def pytest_configure(self, config: Config) -> None:
-        config.addinivalue_line("markers", "infrahub_check(name: str): Test related to a Check for Infrahub")
-        config.addinivalue_line(
-            "markers", "infrahub_graphql_query(name: str): Test related to a GraphQL query for Infrahub"
-        )
-        config.addinivalue_line(
-            "markers", "infrahub_jinja2_transform(name: str): Test related to a Jinja2 Transform for Infrahub"
-        )
-        config.addinivalue_line(
-            "markers", "infrahub_python_transform(name: str): Test related to a Python Transform for Infrahub"
-        )
-        config.addinivalue_line(
-            "markers", "infrahub_unit: Unit test for Infrahub, should work without any dependencies"
-        )
-        config.addinivalue_line(
-            "markers", "infrahub_integraton: Integation test with Infrahub, must be run against an instance"
-        )
 
     def pytest_sessionstart(self, session: Session) -> None:
         self.session_start = time.time()
