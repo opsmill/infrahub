@@ -1,7 +1,13 @@
 from __future__ import annotations
 
+import re
 from enum import Enum
 from typing import List
+
+from infrahub_sdk.client import NodeDiff  # noqa: TCH002
+from pydantic import BaseModel, Field
+
+SCHEMA_CHANGE = re.compile("^Schema[A-Z]")
 
 
 class MessageTTL(int, Enum):
@@ -15,3 +21,21 @@ class MessageTTL(int, Enum):
     def variations(cls) -> List[MessageTTL]:
         """Return available variations of message time to live."""
         return [cls(cls.__members__[member].value) for member in list(cls.__members__)]
+
+
+class ProposedChangeBranchDiff(BaseModel):
+    diff_summary: list[NodeDiff] = Field(default_factory=list, description="The DiffSummary between two branches")
+
+    def has_data_changes(self, branch: str) -> bool:
+        return bool(
+            [
+                entry
+                for entry in self.diff_summary
+                if entry["branch"] == branch and not SCHEMA_CHANGE.match(entry["kind"])
+            ]
+        )
+
+    def has_schema_changes(self, branch: str) -> bool:
+        return bool(
+            [entry for entry in self.diff_summary if entry["branch"] == branch and SCHEMA_CHANGE.match(entry["kind"])]
+        )

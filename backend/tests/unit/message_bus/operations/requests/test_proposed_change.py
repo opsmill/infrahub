@@ -5,6 +5,7 @@ from infrahub_sdk.playback import JSONPlayback
 
 from infrahub.message_bus import Meta, messages
 from infrahub.message_bus.operations.requests.proposed_change import repository_checks
+from infrahub.message_bus.types import ProposedChangeBranchDiff
 from infrahub.services import InfrahubServices
 
 CURRENT_DIRECTORY = os.path.abspath(os.path.dirname(__file__))
@@ -25,7 +26,13 @@ async def test_repository_checks(helper):
 
     bus_recorder = helper.get_message_bus_recorder()
     service = InfrahubServices(client=client, message_bus=bus_recorder)
-    message = messages.RequestProposedChangeRepositoryChecks(proposed_change=proposed_change_id)
+    message = messages.RequestProposedChangeRepositoryChecks(
+        proposed_change=proposed_change_id,
+        source_branch="test-pc-1",
+        source_branch_data_only=False,
+        destination_branch="main",
+        branch_diff=ProposedChangeBranchDiff(),
+    )
     await repository_checks(message=message, service=service)
     assert len(bus_recorder.messages) == 4
     assert ["request.repository.checks", "request.repository.user_checks"] == bus_recorder.seen_routing_keys

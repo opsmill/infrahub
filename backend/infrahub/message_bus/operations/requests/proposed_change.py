@@ -1,12 +1,13 @@
 from typing import List
 
-from infrahub.core.constants import DiffAction, InfrahubKind, ProposedChangeState
+from infrahub.core.constants import CheckType, DiffAction, InfrahubKind, ProposedChangeState
 from infrahub.core.integrity.object_conflict.conflict_recorder import ObjectConflictValidatorRecorder
 from infrahub.core.manager import NodeManager
 from infrahub.core.registry import registry
 from infrahub.core.validators.uniqueness.checker import UniquenessChecker
 from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubMessage, messages
+from infrahub.message_bus.types import ProposedChangeBranchDiff
 from infrahub.services import InfrahubServices
 
 log = get_logger()
@@ -41,6 +42,67 @@ async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, s
         await object_conflict_validator_recorder.record_conflicts(message.proposed_change, conflicts)
 
 
+async def pipeline(message: messages.RequestProposedChangePipeline, service: InfrahubServices) -> None:
+    service.log.info("Starting pipeline", propoced_change=message.proposed_change)
+
+    diff_summary = await service.client.get_diff_summary(branch=message.source_branch)
+    branch_diff = ProposedChangeBranchDiff(diff_summary=diff_summary)
+
+    events: list[InfrahubMessage] = []
+
+    if message.check_type in [CheckType.ALL, CheckType.ARTIFACT]:
+        events.append(
+            messages.RequestProposedChangeRefreshArtifacts(
+                proposed_change=message.proposed_change,
+                source_branch=message.source_branch,
+                source_branch_data_only=message.source_branch_data_only,
+                destination_branch=message.destination_branch,
+                branch_diff=branch_diff,
+            )
+        )
+
+    if message.check_type in [CheckType.ALL, CheckType.DATA] and branch_diff.has_data_changes(
+        branch=message.source_branch
+    ):
+        events.append(
+            messages.RequestProposedChangeDataIntegrity(
+                proposed_change=message.proposed_change,
+                source_branch=message.source_branch,
+                source_branch_data_only=message.source_branch_data_only,
+                destination_branch=message.destination_branch,
+                branch_diff=branch_diff,
+            )
+        )
+
+    if message.check_type in [CheckType.ALL, CheckType.REPOSITORY, CheckType.USER]:
+        events.append(
+            messages.RequestProposedChangeRepositoryChecks(
+                proposed_change=message.proposed_change,
+                source_branch=message.source_branch,
+                source_branch_data_only=message.source_branch_data_only,
+                destination_branch=message.destination_branch,
+                branch_diff=branch_diff,
+            )
+        )
+
+    if message.check_type in [CheckType.ALL, CheckType.SCHEMA] and branch_diff.has_schema_changes(
+        branch=message.source_branch
+    ):
+        events.append(
+            messages.RequestProposedChangeSchemaIntegrity(
+                proposed_change=message.proposed_change,
+                source_branch=message.source_branch,
+                source_branch_data_only=message.source_branch_data_only,
+                destination_branch=message.destination_branch,
+                branch_diff=branch_diff,
+            )
+        )
+
+    for event in events:
+        event.assign_meta(parent=message)
+        await service.send(message=event)
+
+
 async def schema_integrity(
     message: messages.RequestProposedChangeSchemaIntegrity,
     service: InfrahubServices,  # pylint: disable=unused-argument
@@ -50,10 +112,8 @@ async def schema_integrity(
         id=message.proposed_change, schema_name=InfrahubKind.PROPOSEDCHANGE, db=service.database
     )
 
-    raw_diff = await service.client.get_diff_summary(branch=proposed_change.source_branch.value)
-
     altered_schema_kinds = set()
-    for node_diff in raw_diff:
+    for node_diff in message.branch_diff.diff_summary:
         if node_diff["branch"] == proposed_change.source_branch.value and {DiffAction.ADDED, DiffAction.UPDATED} & set(
             node_diff["actions"]
         ):
@@ -84,14 +144,15 @@ async def repository_checks(message: messages.RequestProposedChangeRepositoryChe
     )
     events: List[InfrahubMessage] = []
     for repository in repositories:
-        events.append(
-            messages.RequestRepositoryChecks(
-                proposed_change=message.proposed_change,
-                repository=repository.id,
-                source_branch=change_proposal.source_branch.value,
-                target_branch=change_proposal.destination_branch.value,
+        if not message.source_branch_data_only:
+            events.append(
+                messages.RequestRepositoryChecks(
+                    proposed_change=message.proposed_change,
+                    repository=repository.id,
+                    source_branch=change_proposal.source_branch.value,
+                    target_branch=change_proposal.destination_branch.value,
+                )
             )
-        )
         events.append(
             messages.RequestRepositoryUserChecks(
                 proposed_change=message.proposed_change,

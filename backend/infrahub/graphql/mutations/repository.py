@@ -45,6 +45,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         data: InputObjectType,
         branch: Branch,
         at: str,
+        database: Optional[InfrahubDatabase] = None,
     ):
         obj, result = await super().mutate_create(root, info, data, branch, at)
         context: GraphqlContext = info.context
