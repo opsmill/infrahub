@@ -65,6 +65,7 @@ from infrahub.exceptions import BranchNotFound
 from infrahub.graphql import prepare_graphql_params
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.log import get_logger
+from infrahub.core.timestamp import Timestamp
 
 from .metrics import (
     GRAPHQL_DURATION_METRICS,
@@ -153,9 +154,6 @@ class InfrahubGraphQLApp:
                 except BranchNotFound as exc:
                     response = JSONResponse({"errors": [exc.message]}, status_code=404)
 
-            schema_branch = registry.schema.get_schema_branch(name=branch.name)
-
-            async with db.start_session(schemas=[schema_branch]) as db:
                 if request.method == "POST" and not response:
                     response = await self._handle_http_request(
                         request=request, db=db, branch=branch, account_session=account_session

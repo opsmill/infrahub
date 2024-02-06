@@ -1401,7 +1401,7 @@ async def person_tag_schema(db: InfrahubDatabase, default_branch: Branch, data_s
     }
 
     schema = SchemaRoot(**SCHEMA)
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    return registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
 
 @pytest.fixture

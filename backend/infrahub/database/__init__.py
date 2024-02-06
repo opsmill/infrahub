@@ -99,19 +99,19 @@ class DatabaseSchemaManager:
         branch_name = get_branch_name(branch=branch)
         if branch_name not in self._db._schemas:
             return registry.schema.get(name=name, branch=branch)
-        return self._db._schemas[branch_name].get(name=name, branch=branch)
+        return self._db._schemas[branch_name].get(name=name)
 
     def set(self, name: str, schema: Union[NodeSchema, GenericSchema], branch: Optional[str] = None) -> int:
         branch_name = get_branch_name(branch=branch)
         if branch_name not in self._db._schemas:
             return registry.schema.set(name=name, schema=schema, branch=branch)
-        return self._db._schemas[branch_name].set(name=name, schema=schema, branch=branch)
+        return self._db._schemas[branch_name].set(name=name, schema=schema)
 
     def has(self, name: str, branch: Optional[Union[Branch, str]] = None) -> bool:
         branch_name = get_branch_name(branch=branch)
         if branch_name not in self._db._schemas:
             return registry.schema.has(name=name, branch=branch)
-        return self._db._schemas[branch_name].has(name=name, branch=branch)
+        return self._db._schemas[branch_name].has(name=name)
 
     def get_full(self, branch: Optional[Union[Branch, str]] = None) -> Dict[str, Union[NodeSchema, GenericSchema]]:
         branch_name = get_branch_name(branch=branch)
@@ -176,6 +176,9 @@ class InfrahubDatabase:
         if self._mode == InfrahubDatabaseMode.TRANSACTION:
             return True
         return False
+
+    def add_schema(self, schema: SchemaBranch, name: Optional[str] = None) -> None:
+        self._schemas[name or schema.name] = schema
 
     def start_session(self, read_only: bool = False, schemas: Optional[List[SchemaBranch]] = None) -> InfrahubDatabase:
         """Create a new InfrahubDatabase object in Session mode."""
