@@ -7,6 +7,22 @@ import { CodeEditor } from "../components/editor/code-editor";
 import { MAX_VALUE_LENGTH_DISPLAY } from "../config/constants";
 import { iSchemaKindNameMap } from "../state/atoms/schemaKindName.atom";
 
+const getTextValue = (data: any) => {
+  if (typeof data === "string" || typeof data === "number") {
+    return data;
+  }
+
+  return (
+    data?.label ??
+    data?.display_label ??
+    data?.value ??
+    data?.node?.label ??
+    data?.node?.display_label ??
+    data?.node?.value ??
+    "-"
+  );
+};
+
 export const getDisplayValue = (row: any, attribute: any, schemaKindName?: iSchemaKindNameMap) => {
   if (!row) {
     return;
@@ -71,15 +87,7 @@ export const getDisplayValue = (row: any, attribute: any, schemaKindName?: iSche
     return schemaKindName[row[attribute?.name]] ?? "-";
   }
 
-  const textValue =
-    row[attribute?.name]?.label ??
-    row[attribute?.name]?.display_label ??
-    row[attribute?.name]?.value ??
-    row[attribute?.name]?.node?.label ??
-    row[attribute?.name]?.node?.display_label ??
-    row[attribute?.name]?.node?.value ??
-    row[attribute?.name] ??
-    "-";
+  const textValue = getTextValue(row[attribute?.name]);
 
   if (attribute?.kind === "Password") {
     return <PasswordDisplay value={textValue} />;
