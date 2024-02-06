@@ -156,6 +156,10 @@ class SchemaBranch:
         # TODO need to implement a flag to return the real objects if needed
         return {"nodes": self.nodes, "generics": self.generics}
 
+    def clear_cache(self):
+        self._graphql_manager = None
+        self._graphql_schema = None
+
     def get_graphql_manager(self) -> GraphQLSchemaManager:
         if not self._graphql_manager:
             self._graphql_manager = GraphQLSchemaManager(schema=self)
@@ -1361,6 +1365,7 @@ class SchemaManager(NodeManager):
                 return new_branch_schema
 
         current_schema = self.get_schema_branch(name=branch.name)
+        current_schema.clear_cache()
         # REVERT 1891 schema_diff = current_schema.get_hash_full().compare(branch.schema_hash)
         return await self.load_schema_from_db(db=db, branch=branch, schema=current_schema)
 
