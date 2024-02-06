@@ -5,7 +5,7 @@ export const Homepage = () => {
   return (
     <main className="bg-custom-white h-full p-8">
       <div className="bg-white flex flex-col">
-        <h1 className="text-2xl font-semibold">Welcome to Infrahub !</h1>
+        <h1 className="text-2xl font-semibold">Welcome to Infrahub!</h1>
         <h2 className="text-2xl">
           Browse our{" "}
           <Link
@@ -56,10 +56,9 @@ export const Homepage = () => {
       </div>
 
       <div className="bg-white flex flex-col pt-8">
-        <h1 className="text-xl font-semibold">Explore our other integrations</h1>
+        <h1 className="text-xl font-semibold">Infrahub Integrations</h1>
         <h2 className="text-l">
-          Infrahub provides all you need for your infrastructure automation. You can use everything,
-          or just the features you need.
+          Integrate Infrahub with other tools and solutions. Below is a list of OpsMill-maintained packages.
         </h2>
       </div>
 
@@ -74,16 +73,16 @@ export const Homepage = () => {
 
         <HelperCard
           icon="mdi:developer-board"
-          title="Python SDK"
-          description="Learn to create, update, connect, inheritance and more!"
+          title="Infrahub Python SDK"
+          description="The Infrahub Python SDK greatly simplifies how you can interact with Infrahub programmatically."
           docLabel="About SDK"
           docTo="https://docs.infrahub.app/python-sdk/"
         />
 
         <HelperCard
           icon="mdi:ansible"
-          title="Infrahub Ansible"
-          description="Infrahub Collections for Ansible Galaxy."
+          title="Infrahub Ansible Collection"
+          description="Infrahub Collection for Ansible Galaxy"
           docLabel="About Ansible"
           docTo="https://infrahub-ansible.readthedocs.io/en/latest/"
         />

@@ -4,7 +4,7 @@ version: '1.0'
 generics:
   - name: Power
     namespace: Infra
-    description: "Generic Power."
+    description: "Generic Power"
     label: "Power"
     display_labels:
       - name__value
@@ -74,7 +74,7 @@ generics:
 nodes:
   - name: Device
     namespace: Infra
-    description: "Generic Device object."
+    description: "Generic Device object"
     label: "Device"
     default_filter: name__value
     inherit_from:
