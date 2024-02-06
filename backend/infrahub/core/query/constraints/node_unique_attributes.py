@@ -43,14 +43,18 @@ class NodeUniqueAttributeConstraintQuery(Query):
                 ) from exc
             attr_paths_param.append((attr_path.attribute_name, property_rel_name))
 
+        relationship_attr_paths, relationship_only_attr_paths = [], []
+        for rel_path in self.query_request.relationship_attribute_paths:
+            if rel_path.attribute_name:
+                relationship_attr_paths.append((rel_path.identifier, rel_path.attribute_name))
+            else:
+                relationship_only_attr_paths.append(rel_path.identifier)
         self.params.update(
             {
                 "node_kind": self.query_request.kind,
                 "attr_paths": attr_paths_param,
-                "relationship_attr_paths": [
-                    (rel_path.identifier, rel_path.attribute_name)
-                    for rel_path in self.query_request.relationship_attribute_paths
-                ],
+                "relationship_attr_paths": relationship_attr_paths,
+                "relationship_only_attr_paths": relationship_only_attr_paths,
             }
         )
 
@@ -73,7 +77,7 @@ class NodeUniqueAttributeConstraintQuery(Query):
             UNION
             WITH start_node
             MATCH rel_path = (start_node:Node)-[:IS_RELATED]-(relationship_node:Relationship)-[:IS_RELATED]-(related_n:Node)
-            WHERE [relationship_node.name, null] in $relationship_attr_paths
+            WHERE relationship_node.name in $relationship_only_attr_paths
             RETURN rel_path as potential_path, relationship_node.name as rel_identifier, "id" as potential_attr, related_n.uuid as potential_attr_value
         }
         CALL {

@@ -418,6 +418,81 @@ class TestUniquenessChecker:
             in conflicts
         )
 
+    async def test_generic_unique_constraint_relationship_with_and_without_attr(
+        self,
+        db: InfrahubDatabase,
+        car_person_generics_data_simple,
+        branch: Branch,
+        default_branch: Branch,
+    ):
+        owner = car_person_generics_data_simple["p1"]
+        volt_car = await NodeManager.get_one_by_id_or_default_filter(
+            db=db, schema_name="TestElectricCar", id="volt", branch=branch
+        )
+        await volt_car.previous_owner.update(data=owner, db=db)
+        await volt_car.save(db=db)
+        bolt_car = await NodeManager.get_one_by_id_or_default_filter(
+            db=db, schema_name="TestElectricCar", id="bolt", branch=branch
+        )
+        await bolt_car.previous_owner.update(data=owner, db=db)
+        await bolt_car.save(db=db)
+
+        schema = registry.schema.get("TestCar", branch=branch)
+        schema.uniqueness_constraints = [["owner", "previous_owner__height"]]
+        checker = UniquenessChecker(db)
+
+        conflicts = await checker.get_conflicts(schemas=[schema], source_branch=branch)
+
+        assert len(conflicts) == 4
+        assert (
+            SchemaConflict(
+                name="TestCar/owner/id",
+                type="uniqueness-violation",
+                kind="TestCar",
+                id=volt_car.id,
+                path="TestCar/owner/id",
+                value=owner.id,
+                branch=default_branch.name,
+            )
+            in conflicts
+        )
+        assert (
+            SchemaConflict(
+                name="TestCar/owner/id",
+                type="uniqueness-violation",
+                kind="TestCar",
+                id=bolt_car.id,
+                path="TestCar/owner/id",
+                value=owner.id,
+                branch=default_branch.name,
+            )
+            in conflicts
+        )
+        assert (
+            SchemaConflict(
+                name="TestCar/previous_owner/height",
+                type="uniqueness-violation",
+                kind="TestCar",
+                id=volt_car.id,
+                path="TestCar/previous_owner/height",
+                value="180",
+                branch=branch.name,
+            )
+            in conflicts
+        )
+        assert (
+            SchemaConflict(
+                name="TestCar/previous_owner/height",
+                type="uniqueness-violation",
+                kind="TestCar",
+                id=bolt_car.id,
+                path="TestCar/previous_owner/height",
+                value="180",
+                branch=branch.name,
+            )
+            in conflicts
+        )
+
     async def test_relationship_violation_wo_attribute(
         self,
         db: InfrahubDatabase,
