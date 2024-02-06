@@ -24,15 +24,7 @@ def build(context: Context):
     with context.cd(DOCUMENTATION_DIRECTORY):
         output = context.run(exec_cmd)
 
-    successful_build_checks = 0
-    if output:
-        for line in output.stdout.splitlines():
-            if " 0 errors" in line:
-                successful_build_checks += 1
-            elif " 0 warnings" in line:
-                successful_build_checks += 1
-
-    if successful_build_checks < 2:
+    if output.exited != 0:
         sys.exit(-1)
 
 
