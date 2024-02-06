@@ -21,6 +21,7 @@ development/docker-compose.dev-override.yml
 # Retype App
 .retype/*
 docs/.retype
+docs/build
 retype.manifest
 
 storage/*
