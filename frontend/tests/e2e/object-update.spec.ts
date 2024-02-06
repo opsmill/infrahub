@@ -109,6 +109,7 @@ test.describe("Object update", () => {
     await expect(
       page.locator("form div").filter({ hasText: "Asn" }).nth(3).getByTestId("select-input")
     ).toHaveValue("AS701 701");
+    await page.getByText("greenred").scrollIntoViewIfNeeded(); // Scroll down to display tags
     await expect(page.getByText("greenred")).toBeVisible();
   });
 });
