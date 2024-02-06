@@ -107,12 +107,18 @@ export const DynamicControl = (props: DynamicFieldData) => {
         name: o.name,
         id: o.id,
       }));
+
       const regex = /^Related/; // starts with Related
 
-      const selectValue = {
-        parent: value?.__typename?.replace(regex, ""),
-        child: value?.id,
-      };
+      const parent = value?.__typename?.replace(regex, "");
+      const child = value?.id;
+
+      const selectValue = parent
+        ? {
+            parent,
+            child,
+          }
+        : ""; // Initial value msut be empty if not defined
 
       return (
         <OpsSelect2StepRegister

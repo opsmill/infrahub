@@ -1,15 +1,15 @@
+import { gql } from "@apollo/client";
+import { LockClosedIcon } from "@heroicons/react/24/outline";
 import { useAtomValue } from "jotai/index";
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import graphqlClient from "../../graphql/graphqlClientApollo";
+import { getDropdownOptions } from "../../graphql/queries/objects/dropdownOptions";
 import { FormFieldError } from "../../screens/edit-form-hook/form";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
 import { SelectOption } from "../inputs/select";
 import { OpsSelect } from "./select";
-import { getDropdownOptions } from "../../graphql/queries/objects/dropdownOptions";
-import graphqlClient from "../../graphql/graphqlClientApollo";
-import { gql } from "@apollo/client";
-import { LockClosedIcon } from "@heroicons/react/24/outline";
 
 export interface iTwoStepDropdownData {
   parent: string | number;
@@ -19,7 +19,7 @@ export interface iTwoStepDropdownData {
 interface Props {
   label: string;
   options: SelectOption[];
-  value: iTwoStepDropdownData;
+  value: string | iTwoStepDropdownData;
   onChange: (value: iTwoStepDropdownData) => void;
   error?: FormFieldError;
   isProtected?: boolean;
@@ -40,11 +40,11 @@ export const OpsSelect2Step = (props: Props) => {
   const [optionsRight, setOptionsRight] = useState([]);
 
   const [selectedLeft, setSelectedLeft] = useState(
-    value.parent ? options.find((option) => option.id === value.parent)?.id : null
+    value && value?.parent ? options.find((option) => option.id === value?.parent)?.id : null
   );
 
   const [selectedRight, setSelectedRight] = useState(
-    value.child ? optionsRight.find((option) => option.id === value.child)?.id : null
+    value && value?.child ? optionsRight.find((option) => option.id === value?.child)?.id : null
   );
 
   const setRightDropdownOptions = useCallback(async () => {
