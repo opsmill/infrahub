@@ -21,7 +21,7 @@ from infrahub.worker import WORKER_IDENTITY
 from .main import InfrahubMutationOptions
 
 if TYPE_CHECKING:
-    from infrahub.message_bus.rpc import InfrahubRpcClient
+    from .. import GraphqlContext
 
 
 class CheckType(Enum):
@@ -55,7 +55,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         branch: Branch,
         at: str,
     ):
-        rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
+        context: GraphqlContext = info.context
 
         proposed_change, result = await super().mutate_create(root=root, info=info, data=data, branch=branch, at=at)
 
@@ -66,7 +66,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
             messages.RequestProposedChangeSchemaIntegrity(proposed_change=proposed_change.id),
         ]
         for event in events:
-            await rpc_client.send(event)
+            await context.rpc_client.send(event)
 
         return proposed_change, result
 
@@ -81,11 +81,10 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         database: Optional[InfrahubDatabase] = None,
         node: Optional[Node] = None,
     ):
-        db: InfrahubDatabase = info.context.get("infrahub_database")
-        rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
+        context: GraphqlContext = info.context
 
         obj = await NodeManager.get_one_by_id_or_default_filter(
-            db=db,
+            db=context.db,
             schema_name=cls._meta.schema.kind,
             id=data.get("id"),
             branch=branch,
@@ -99,7 +98,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
             updated_state = ProposedChangeState(state_update)
             state.validate_state_transition(updated_state)
 
-        async with db.start_transaction() as dbt:
+        async with context.db.start_transaction() as dbt:
             proposed_change, result = await super().mutate_update(
                 root=root, info=info, data=data, branch=branch, at=at, database=dbt, node=obj
             )
@@ -128,7 +127,9 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
                                 conflict_resolution[check.conflicts.value[0]["path"]] = keep_source_value
 
                 async with lock.registry.global_graph_lock():
-                    await source_branch.merge(rpc_client=rpc_client, db=dbt, conflict_resolution=conflict_resolution)
+                    await source_branch.merge(
+                        rpc_client=context.rpc_client, db=dbt, conflict_resolution=conflict_resolution
+                    )
 
                     # Copy the schema from the origin branch and set the hash and the schema_changed_at value
                     origin_branch = await source_branch.get_origin_branch(db=dbt)
@@ -138,7 +139,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
 
                     await origin_branch.save(db=dbt)
 
-                if config.SETTINGS.broker.enable and info.context.get("background"):
+                if config.SETTINGS.broker.enable and context.background:
                     log_data = get_log_data()
                     request_id = log_data.get("request_id", "")
                     message = messages.EventBranchMerge(
@@ -146,7 +147,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
                         target_branch=config.SETTINGS.main.default_branch,
                         meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
                     )
-                    info.context.get("background").add_task(services.send, message)
+                    context.background.add_task(services.send, message)
 
         return proposed_change, result
 
@@ -173,17 +174,18 @@ class ProposedChangeRequestRefreshArtifacts(Mutation):
         info: GraphQLResolveInfo,
         data: Dict[str, Any],
     ) -> Dict[str, bool]:
-        db: InfrahubDatabase = info.context.get("infrahub_database")
-        rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
+        context: GraphqlContext = info.context
 
         identifier = data.get("id", "")
         proposed_change = await NodeManager.get_one_by_id_or_default_filter(
-            id=identifier, schema_name=InfrahubKind.PROPOSEDCHANGE, db=db
+            id=identifier, schema_name=InfrahubKind.PROPOSEDCHANGE, db=context.db
         )
         state = ProposedChangeState(proposed_change.state.value)
         state.validate_state_check_run()
 
-        await rpc_client.send(messages.RequestProposedChangeRefreshArtifacts(proposed_change=proposed_change.id))
+        await context.rpc_client.send(
+            messages.RequestProposedChangeRefreshArtifacts(proposed_change=proposed_change.id)
+        )
         return {"ok": True}
 
 
@@ -200,26 +202,32 @@ class ProposedChangeRequestRunCheck(Mutation):
         info: GraphQLResolveInfo,
         data: Dict[str, Any],
     ) -> Dict[str, bool]:
-        db: InfrahubDatabase = info.context.get("infrahub_database")
-        rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
+        context: GraphqlContext = info.context
 
         check_type = data.get("check_type")
-
         identifier = data.get("id", "")
         proposed_change = await NodeManager.get_one_by_id_or_default_filter(
-            id=identifier, schema_name=InfrahubKind.PROPOSEDCHANGE, db=db
+            id=identifier, schema_name=InfrahubKind.PROPOSEDCHANGE, db=context.db
         )
         state = ProposedChangeState(proposed_change.state.value)
         state.validate_state_check_run()
 
         if check_type == CheckType.ARTIFACT:
-            await rpc_client.send(messages.RequestProposedChangeRefreshArtifacts(proposed_change=proposed_change.id))
+            await context.rpc_client.send(
+                messages.RequestProposedChangeRefreshArtifacts(proposed_change=proposed_change.id)
+            )
         elif check_type == CheckType.DATA:
-            await rpc_client.send(messages.RequestProposedChangeDataIntegrity(proposed_change=proposed_change.id))
+            await context.rpc_client.send(
+                messages.RequestProposedChangeDataIntegrity(proposed_change=proposed_change.id)
+            )
         elif check_type in [CheckType.REPOSITORY, CheckType.USER]:
-            await rpc_client.send(messages.RequestProposedChangeRepositoryChecks(proposed_change=proposed_change.id))
+            await context.rpc_client.send(
+                messages.RequestProposedChangeRepositoryChecks(proposed_change=proposed_change.id)
+            )
         elif check_type == CheckType.SCHEMA:
-            await rpc_client.send(messages.RequestProposedChangeSchemaIntegrity(proposed_change=proposed_change.id))
+            await context.rpc_client.send(
+                messages.RequestProposedChangeSchemaIntegrity(proposed_change=proposed_change.id)
+            )
         else:
             events = [
                 messages.RequestProposedChangeDataIntegrity(proposed_change=proposed_change.id),
@@ -228,6 +236,6 @@ class ProposedChangeRequestRunCheck(Mutation):
                 messages.RequestProposedChangeRefreshArtifacts(proposed_change=proposed_change.id),
             ]
             for event in events:
-                await rpc_client.send(event)
+                await context.rpc_client.send(event)
 
         return {"ok": True}

@@ -4,6 +4,7 @@ import pydantic
 from graphene import Boolean, Field, InputObjectType, List, Mutation, String
 from graphql import GraphQLResolveInfo
 from infrahub_sdk.utils import extract_fields
+from typing_extensions import Self
 
 from infrahub import config, lock
 from infrahub.core import registry
@@ -17,8 +18,7 @@ from infrahub.worker import WORKER_IDENTITY
 from ..types import BranchType
 
 if TYPE_CHECKING:
-    from infrahub.database import InfrahubDatabase
-    from infrahub.message_bus.rpc import InfrahubRpcClient
+    from .. import GraphqlContext
 
 
 # pylint: disable=unused-argument
@@ -44,12 +44,14 @@ class BranchCreate(Mutation):
     object = Field(BranchType)
 
     @classmethod
-    async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchCreateInput, background_execution=False):
-        db: InfrahubDatabase = info.context.get("infrahub_database")
+    async def mutate(
+        cls, root: dict, info: GraphQLResolveInfo, data: BranchCreateInput, background_execution: bool = False
+    ) -> Self:
+        context: GraphqlContext = info.context
 
         # Check if the branch already exist
         try:
-            await Branch.get_by_name(db=db, name=data["name"])
+            await Branch.get_by_name(db=context.db, name=data["name"])
             raise ValueError(f"The branch {data['name']}, already exist")
         except BranchNotFound:
             pass
@@ -66,7 +68,7 @@ class BranchCreate(Mutation):
             new_schema = origin_schema.duplicate(name=obj.name)
             registry.schema.set_schema_branch(name=obj.name, schema=new_schema)
             obj.update_schema_hash()
-            await obj.save(db=db)
+            await obj.save(db=context.db)
 
             # Add Branch to registry
             registry.branch[obj.name] = obj
@@ -80,14 +82,14 @@ class BranchCreate(Mutation):
         fields = await extract_fields(info.field_nodes[0].selection_set)
 
         # Generate Event in message bus
-        if config.SETTINGS.broker.enable and info.context.get("background"):
+        if config.SETTINGS.broker.enable and context.background:
             message = messages.EventBranchCreate(
                 branch=obj.name,
-                branch_id=obj.id,
+                branch_id=str(obj.id),
                 data_only=obj.is_data_only,
                 meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
             )
-            info.context.get("background").add_task(services.send, message)
+            context.background.add_task(services.send, message)
 
         return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok)
 
@@ -108,22 +110,22 @@ class BranchDelete(Mutation):
     ok = Boolean()
 
     @classmethod
-    async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput):
-        db: InfrahubDatabase = info.context.get("infrahub_database")
+    async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
+        context: GraphqlContext = info.context
 
-        obj = await Branch.get_by_name(db=db, name=data["name"])
-        await obj.delete(db=db)
+        obj = await Branch.get_by_name(db=context.db, name=data["name"])
+        await obj.delete(db=context.db)
 
-        if config.SETTINGS.broker.enable and info.context.get("background"):
+        if config.SETTINGS.broker.enable and context.background:
             log_data = get_log_data()
             request_id = log_data.get("request_id", "")
             message = messages.EventBranchDelete(
                 branch=obj.name,
-                branch_id=obj.id,
+                branch_id=str(obj.id),
                 data_only=obj.is_data_only,
                 meta=Meta(request_id=request_id),
             )
-            info.context.get("background").add_task(services.send, message)
+            context.background.add_task(services.send, message)
 
         return cls(ok=True)
 
@@ -135,13 +137,13 @@ class BranchUpdate(Mutation):
     ok = Boolean()
 
     @classmethod
-    async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput):
-        db: InfrahubDatabase = info.context.get("infrahub_database")
+    async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
+        context: GraphqlContext = info.context
 
-        obj = await Branch.get_by_name(db=db, name=data["name"])
+        obj = await Branch.get_by_name(db=context.db, name=data["name"])
         obj.description = data["description"]
 
-        async with db.start_transaction() as db:
+        async with context.db.start_transaction() as db:
             await obj.save(db=db)
 
         return cls(ok=True)
@@ -155,11 +157,11 @@ class BranchRebase(Mutation):
     object = Field(BranchType)
 
     @classmethod
-    async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput):
-        db: InfrahubDatabase = info.context.get("infrahub_database")
+    async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
+        context: GraphqlContext = info.context
 
-        obj = await Branch.get_by_name(db=db, name=data["name"])
-        async with db.start_transaction() as db:
+        obj = await Branch.get_by_name(db=context.db, name=data["name"])
+        async with context.db.start_transaction() as db:
             await obj.rebase(db=db)
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
@@ -178,13 +180,13 @@ class BranchValidate(Mutation):
     object = Field(BranchType)
 
     @classmethod
-    async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput):
-        db: InfrahubDatabase = info.context.get("infrahub_database")
+    async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
+        context: GraphqlContext = info.context
 
-        obj = await Branch.get_by_name(db=db, name=data["name"])
+        obj = await Branch.get_by_name(db=context.db, name=data["name"])
         ok = True
         validation_messages = ""
-        conflicts = await obj.validate_branch(db=db)
+        conflicts = await obj.validate_branch(db=context.db)
         if conflicts:
             ok = False
             errors = [str(conflict) for conflict in conflicts]
@@ -203,28 +205,27 @@ class BranchMerge(Mutation):
     object = Field(BranchType)
 
     @classmethod
-    async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput):
-        db: InfrahubDatabase = info.context.get("infrahub_database")
-        rpc_client: InfrahubRpcClient = info.context.get("infrahub_rpc_client")
+    async def mutate(cls, root: dict, info: GraphQLResolveInfo, data: BranchNameInput) -> Self:
+        context: GraphqlContext = info.context
 
-        obj = await Branch.get_by_name(db=db, name=data["name"])
+        obj = await Branch.get_by_name(db=context.db, name=data["name"])
 
         async with lock.registry.global_graph_lock():
-            async with db.start_transaction() as db:
-                await obj.merge(rpc_client=rpc_client, db=db)
+            async with context.db.start_transaction() as db:
+                await obj.merge(rpc_client=context.rpc_client, db=db)
 
                 # Copy the schema from the origin branch and set the hash and the schema_changed_at value
-                origin_branch = await obj.get_origin_branch(db=db)
-                updated_schema = await registry.schema.load_schema_from_db(db=db, branch=origin_branch)
-                registry.schema.set_schema_branch(name=origin_branch.name, schema=updated_schema)
-                origin_branch.update_schema_hash()
-                await origin_branch.save(db=db)
+                if origin_branch := await obj.get_origin_branch(db=db):
+                    updated_schema = await registry.schema.load_schema_from_db(db=db, branch=origin_branch)
+                    registry.schema.set_schema_branch(name=origin_branch.name, schema=updated_schema)
+                    origin_branch.update_schema_hash()
+                    await origin_branch.save(db=db)
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
 
         ok = True
 
-        if config.SETTINGS.broker.enable and info.context.get("background"):
+        if config.SETTINGS.broker.enable and context.background:
             log_data = get_log_data()
             request_id = log_data.get("request_id", "")
             message = messages.EventBranchMerge(
@@ -232,6 +233,6 @@ class BranchMerge(Mutation):
                 target_branch=config.SETTINGS.main.default_branch,
                 meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
             )
-            info.context.get("background").add_task(services.send, message)
+            context.background.add_task(services.send, message)
 
         return cls(object=await obj.to_graphql(fields=fields.get("object", {})), ok=ok)

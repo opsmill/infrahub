@@ -7,8 +7,7 @@ from graphene import Boolean, Field, List, ObjectType, String
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
-    from infrahub.core.branch import Branch
-    from infrahub.database import InfrahubDatabase
+    from infrahub.graphql import GraphqlContext
 
 
 class DiffSummaryEntry(ObjectType):
@@ -40,10 +39,9 @@ class DiffSummaryEntry(ObjectType):
         time_from: Optional[str] = None,
         time_to: Optional[str] = None,
     ) -> list[Dict[str, Union[str, list[str]]]]:
-        db: InfrahubDatabase = info.context.get("infrahub_database")
-        branch: Branch = info.context.get("infrahub_branch")
-        diff = await branch.diff(db=db, diff_from=time_from, diff_to=time_to, branch_only=branch_only)
-        summary = await diff.get_summary(db=db)
+        context: GraphqlContext = info.context
+        diff = await context.branch.diff(db=context.db, diff_from=time_from, diff_to=time_to, branch_only=branch_only)
+        summary = await diff.get_summary(db=context.db)
         return [entry.to_graphql() for entry in summary]
 
 

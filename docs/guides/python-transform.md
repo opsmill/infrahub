@@ -139,7 +139,7 @@ Here the query will require an input parameter called `$name` what will refer to
 The next step is to create the actual Python transform. The transform is a Python class that inherits from InfrahubTransform from the [Python SDK](/python-sdk). Create a file called tags_transform.py
 
 ```python
-from infrahub.transforms import InfrahubTransform
+from infrahub_sdk.transforms import InfrahubTransform
 
 
 class TagsTransform(InfrahubTransform):
@@ -163,7 +163,7 @@ The example is simplistic in terms of what we do with the data, but all of the i
 1. We import the InfrahubTransform class
 
 ```python
-from infrahub.transforms import InfrahubTransform
+from infrahub_sdk.transforms import InfrahubTransform
 ```
 
 2. We define our own class based on InfrahubTransform.

@@ -394,7 +394,7 @@ class NodeManager:
         id: str,
         db: InfrahubDatabase,
         fields: Optional[dict] = None,
-        at: Union[Timestamp, str] = None,
+        at: Optional[Union[Timestamp, str]] = None,
         branch: Union[Branch, str] = None,
         include_source: bool = False,
         include_owner: bool = False,

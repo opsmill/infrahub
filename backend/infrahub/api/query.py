@@ -15,6 +15,7 @@ from infrahub.api.dependencies import (
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
+from infrahub.graphql import prepare_graphql_params
 from infrahub.graphql.utils import extract_data
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
@@ -43,25 +44,20 @@ async def execute_query(
         db=db, id=query_id, schema_name=InfrahubKind.GRAPHQLQUERY, branch=branch_params.branch, at=branch_params.at
     )
 
-    schema_branch = registry.schema.get_schema_branch(name=branch_params.branch.name)
-    gql_schema = await schema_branch.get_graphql_schema(db=db)
+    gql_params = prepare_graphql_params(db=db, branch=branch_params.branch, at=branch_params.at)
 
-    related_node_ids: set[str] = set()
     result = await graphql(
-        gql_schema,
+        schema=gql_params.schema,
         source=gql_query.query.value,  # type: ignore[attr-defined]
-        context_value={
-            "infrahub_branch": branch_params.branch,
-            "infrahub_at": branch_params.at,
-            "infrahub_database": db,
-            "related_node_ids": related_node_ids,
-        },
+        context_value=gql_params.context,
         root_value=None,
         variable_values=params,
     )
     data = extract_data(query_name=gql_query.name.value, result=result)  # type: ignore[attr-defined]
 
     response_payload: Dict[str, Any] = {"data": data}
+
+    related_node_ids = gql_params.context.related_node_ids or set()
 
     if update_group:
         rpc_client: InfrahubRpcClient = request.app.state.rpc_client

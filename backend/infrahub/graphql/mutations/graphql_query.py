@@ -1,7 +1,8 @@
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
 
 from graphene import InputObjectType, Mutation
 from graphql import GraphQLResolveInfo
+from typing_extensions import Self
 
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
@@ -12,10 +13,18 @@ from infrahub.graphql.mutations.main import InfrahubMutationMixin
 
 from .main import InfrahubMutationOptions
 
+if TYPE_CHECKING:
+    from infrahub.graphql import GraphqlContext
+
 
 class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
     @classmethod
-    def __init_subclass_with_meta__(cls, schema: NodeSchema = None, _meta=None, **options):  # pylint: disable=arguments-differ
+    def __init_subclass_with_meta__(  # pylint: disable=arguments-differ
+        cls,
+        schema: NodeSchema,
+        _meta: Optional[Any] = None,
+        **options: Dict[str, Any],
+    ) -> None:
         # Make sure schema is a valid NodeSchema Node Class
         if not isinstance(schema, NodeSchema):
             raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
@@ -44,7 +53,7 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
         if not valid:
             raise ValueError(f"Query is not valid, {str(errors)}")
 
-        query_info["models"] = {"value": sorted(list(await analyzer.get_models_in_use()))}
+        query_info["models"] = {"value": sorted(list(await analyzer.get_models_in_use(types=info.context.types)))}
         query_info["depth"] = {"value": await analyzer.calculate_depth()}
         query_info["height"] = {"value": await analyzer.calculate_height()}
         query_info["operations"] = {
@@ -62,10 +71,10 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
         data: InputObjectType,
         branch: Branch,
         at: str,
-    ):
-        branch_obj: Branch = info.context.get("infrahub_branch")
+    ) -> Tuple[Node, Self]:
+        context: GraphqlContext = info.context
 
-        data.update(await cls.extract_query_info(info=info, data=data, branch=branch_obj))
+        data.update(await cls.extract_query_info(info=info, data=data, branch=context.branch))
 
         obj, result = await super().mutate_create(root=root, info=info, data=data, branch=branch, at=at)
 
@@ -81,10 +90,10 @@ class InfrahubGraphQLQueryMutation(InfrahubMutationMixin, Mutation):
         at: str,
         database: Optional[InfrahubDatabase] = None,
         node: Optional[Node] = None,
-    ):
-        branch_obj: Branch = info.context.get("infrahub_branch")
+    ) -> Tuple[Node, Self]:
+        context: GraphqlContext = info.context
 
-        data.update(await cls.extract_query_info(info=info, data=data, branch=branch_obj))
+        data.update(await cls.extract_query_info(info=info, data=data, branch=context.branch))
 
         obj, result = await super().mutate_update(root=root, info=info, data=data, branch=branch, at=at)
 

@@ -5,11 +5,7 @@ from graphql import graphql
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql import generate_graphql_schema
-
-# @pytest.fixture(autouse=True)
-# def load_graphql_requirements(group_graphql):
-#     pass
+from infrahub.graphql import prepare_graphql_params
 
 
 @pytest.mark.parametrize("filter_value", ["l", "o", "w", "low"])
@@ -39,10 +35,13 @@ async def test_query_filter_local_attrs_partial_match(
     """
         % filter_value
     )
+    gql_params = prepare_graphql_params(
+        branch=default_branch, db=db, include_mutation=False, include_subscription=False
+    )
     result = await graphql(
-        await generate_graphql_schema(branch=default_branch, db=db, include_mutation=False, include_subscription=False),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -78,10 +77,13 @@ async def test_query_filter_relationships_with_generic_filter_partial_match(
         }
     }
     """
+    gql_params = prepare_graphql_params(
+        db=db, branch=default_branch, include_mutation=False, include_subscription=False
+    )
     result = await graphql(
-        await generate_graphql_schema(db=db, branch=default_branch, include_mutation=False, include_subscription=False),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -123,10 +125,13 @@ async def test_query_filter_relationships_with_generic_filter_mutliple_partial_m
         }
     }
     """
+    gql_params = prepare_graphql_params(
+        db=db, branch=default_branch, include_mutation=False, include_subscription=False
+    )
     result = await graphql(
-        await generate_graphql_schema(db=db, branch=default_branch, include_mutation=False, include_subscription=False),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )

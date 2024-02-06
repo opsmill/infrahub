@@ -10,7 +10,7 @@ from infrahub.graphql.analyzer import extract_schema_models
 
 async def test_schema_models(db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics, query_01: str):
     document = parse(query_01)
-    schema = await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch)
+    schema = generate_graphql_schema(db=db, include_subscription=False, branch=default_branch)
     fields = await extract_fields(document.definitions[0].selection_set)
 
     expected_response = {
@@ -30,7 +30,7 @@ async def test_schema_models_generics(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema_generics, query_02: str
 ):
     document = parse(query_02)
-    schema = await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch)
+    schema = generate_graphql_schema(db=db, include_subscription=False, branch=default_branch)
     fields = await extract_fields(document.definitions[0].selection_set)
 
     expected_response = {
