@@ -28,18 +28,22 @@ By default, the Python client will automatically gather the active schema from I
 
 <Tabs>
   <TabItem value="Async" default>
-    ```python
-    from infrahub_sdk import InfrahubClient
 
-    client = await InfrahubClient.init(address="http://localhost:8000")
-    ```
+  ```python
+  from infrahub_sdk import InfrahubClient
+
+  client = await InfrahubClient.init(address="http://localhost:8000")
+  ```
+
   </TabItem>
   <TabItem value="Sync">
-    ```python
-    from infrahub_sdk import InfrahubClientSync
 
-    client = InfrahubClientSync.init(address="http://localhost:8000")
-    ```
+  ```python
+  from infrahub_sdk import InfrahubClientSync
+
+  client = InfrahubClientSync.init(address="http://localhost:8000")
+  ```
+
   </TabItem>
 </Tabs>
 
@@ -52,6 +56,7 @@ The token can either be provided with `config=Config(api_token="TOKEN")` at init
 :::info
 
 In the demo environment, the default token for the Admin account is
+
 ```yaml
 X-INFRAHUB-KEY: 06438eb2-8019-4776-878c-0941b1f1d1ec
 ```
@@ -60,17 +65,21 @@ X-INFRAHUB-KEY: 06438eb2-8019-4776-878c-0941b1f1d1ec
 
 <Tabs>
   <TabItem value="Async" default>
-    ```python
-    from infrahub_sdk import InfrahubClient, Config
 
-    client = await InfrahubClient.init(config=Config(api_token="TOKEN"))
-    ```
+  ```python
+  from infrahub_sdk import InfrahubClient, Config
+
+  client = await InfrahubClient.init(config=Config(api_token="TOKEN"))
+  ```
+
   </TabItem>
   <TabItem value="Sync">
-    ```python
-    from infrahub_sdk import InfrahubClientSync, Config
 
-    client = InfrahubClientSync.init(config=Config(api_token="TOKEN"))
-    ```
+  ```python
+  from infrahub_sdk import InfrahubClientSync, Config
+
+  client = InfrahubClientSync.init(config=Config(api_token="TOKEN"))
+  ```
+
   </TabItem>
 </Tabs>
