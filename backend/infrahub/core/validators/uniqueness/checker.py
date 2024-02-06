@@ -8,7 +8,11 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch, ObjectConflict
 from infrahub.core.constants import PathType
 from infrahub.core.query.constraints.node_unique_attributes import NodeUniqueAttributeConstraintQuery
-from infrahub.core.query.constraints.request import NodeUniquenessQueryRequest, QueryRelationshipAttributePath
+from infrahub.core.query.constraints.request import (
+    NodeUniquenessQueryRequest,
+    QueryAttributePath,
+    QueryRelationshipAttributePath,
+)
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema
 from infrahub.database import InfrahubDatabase
 
@@ -117,13 +121,16 @@ class UniquenessChecker:
         return conflicts
 
     async def build_query_request(self, schema: Union[NodeSchema, GenericSchema]) -> NodeUniquenessQueryRequest:
-        unique_attr_names = {attr_schema.name for attr_schema in schema.unique_attributes}
+        unique_attr_paths = [
+            QueryAttributePath(attribute_name=attr_schema.name, property_name="value")
+            for attr_schema in schema.unique_attributes
+        ]
         relationship_attr_paths = []
 
         if not schema.uniqueness_constraints:
             return NodeUniquenessQueryRequest(
                 kind=schema.kind,
-                unique_attribute_names=list(unique_attr_names),
+                unique_attribute_paths=unique_attr_paths,
                 relationship_attribute_paths=[],
             )
 
@@ -131,16 +138,19 @@ class UniquenessChecker:
             for path in uniqueness_constraint:
                 sub_schema, property_name = get_attribute_path_from_string(path, schema)
                 if isinstance(sub_schema, AttributeSchema):
-                    unique_attr_names.add(sub_schema.name)
+                    unique_attr_paths.append(
+                        QueryAttributePath(attribute_name=sub_schema.name, property_name=property_name)
+                    )
                 elif isinstance(sub_schema, RelationshipSchema):
                     relationship_attr_paths.append(
                         QueryRelationshipAttributePath(
                             identifier=sub_schema.get_identifier(), attribute_name=property_name
                         )
                     )
+
         return NodeUniquenessQueryRequest(
             kind=schema.kind,
-            unique_attribute_names=list(unique_attr_names),
+            unique_attribute_paths=unique_attr_paths,
             relationship_attribute_paths=relationship_attr_paths,
         )
 

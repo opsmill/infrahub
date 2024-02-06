@@ -221,7 +221,7 @@ class TestUniquenessChecker:
             car.color.value = f"#{color}"
             await car.save(db=db)
         schema = registry.schema.get("TestCar", branch=branch)
-        schema.uniqueness_constraints = [["color", "owner__name"]]
+        schema.uniqueness_constraints = [["color__value", "owner__name"]]
         checker = UniquenessChecker(db)
 
         conflicts = await checker.get_conflicts(schemas=[schema], source_branch=branch)
@@ -254,7 +254,7 @@ class TestUniquenessChecker:
         await car_to_update.save(db=db)
 
         schema = registry.schema.get("TestCar", branch=branch)
-        schema.uniqueness_constraints = [["color", "owner__height"]]
+        schema.uniqueness_constraints = [["color__value", "owner__height"]]
         checker = UniquenessChecker(db)
 
         conflicts = await checker.get_conflicts(schemas=[schema], source_branch=branch)

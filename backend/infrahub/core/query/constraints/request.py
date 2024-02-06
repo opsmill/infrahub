@@ -8,7 +8,12 @@ class QueryRelationshipAttributePath(BaseModel):
     attribute_name: Optional[str]
 
 
+class QueryAttributePath(BaseModel):
+    attribute_name: str
+    property_name: str
+
+
 class NodeUniquenessQueryRequest(BaseModel):
     kind: str
-    unique_attribute_names: List[str] = Field(default_factory=list)
+    unique_attribute_paths: List[QueryAttributePath] = Field(default_factory=list)
     relationship_attribute_paths: List[QueryRelationshipAttributePath] = Field(default_factory=list)

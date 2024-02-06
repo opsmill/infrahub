@@ -26,7 +26,7 @@ Below is the list of all available options to define a Generic in the schema
 | [**name**](#name) | Attribute | Generic name, must be unique within a namespace and must start with an uppercase letter. | True |
 | [**namespace**](#namespace) | Attribute | Generic Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions. | True |
 | [**order_by**](#order_by) | Attribute | List of attributes to use to order the results by default | False |
-| [**uniqueness_constraints**](#uniqueness_constraints) | Attribute | Each element of a constraint must be of the format <attribute_name> or <relationship_name>__<attribute_name> | False |
+| [**uniqueness_constraints**](#uniqueness_constraints) | Attribute | List of multi-element uniqueness constraints that can combine relationships and attributes | False |
 | [**used_by**](#used_by) | Attribute | List of Nodes that are referencing this Generic | False |
 | [**attributes**](#attributes) | Relationship |  | False |
 | [**relationships**](#relationships) | Relationship |  | False |
@@ -172,7 +172,7 @@ Below is the list of all available options to define a Generic in the schema
 | ---- | --------------- |
 | **Name** | uniqueness_constraints |
 | **Kind** | `List` |
-| **Description** | Each element of a constraint must be of the format <attribute_name> or <relationship_name>__<attribute_name> |
+| **Description** | List of multi-element uniqueness constraints that can combine relationships and attributes |
 | **Optional** | True |
 | **Default Value** |  |
 | **Constraints** |  |

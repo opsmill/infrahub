@@ -883,7 +883,7 @@ internal_schema = {
                 {
                     "name": "uniqueness_constraints",
                     "kind": "List",
-                    "description": "Each element of a constraint must be of the format <attribute_name> or <relationship_name>__<attribute_name>",
+                    "description": "List of multi-element uniqueness constraints that can combine relationships and attributes",
                     "optional": True,
                 },
             ],
@@ -1266,7 +1266,7 @@ internal_schema = {
                 {
                     "name": "uniqueness_constraints",
                     "kind": "List",
-                    "description": "Each element of a constraint must be of the format <attribute_name> or <relationship_name>__<attribute_name>",
+                    "description": "List of multi-element uniqueness constraints that can combine relationships and attributes",
                     "optional": True,
                 },
             ],

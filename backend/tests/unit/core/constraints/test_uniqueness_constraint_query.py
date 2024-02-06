@@ -3,7 +3,7 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.query.constraints.node_unique_attributes import NodeUniqueAttributeConstraintQuery
-from infrahub.core.query.constraints.request import NodeUniquenessQueryRequest, QueryRelationshipAttributePath
+from infrahub.core.query.constraints.request import NodeUniquenessQueryRequest
 from infrahub.database import InfrahubDatabase
 
 
@@ -17,7 +17,11 @@ async def test_query_uniqueness_no_violations(
     branch: Branch,
 ):
     query = await NodeUniqueAttributeConstraintQuery.init(
-        db=db, branch=branch, query_request=NodeUniquenessQueryRequest(kind="TestCar", unique_attribute_names=["name"])
+        db=db,
+        branch=branch,
+        query_request=NodeUniquenessQueryRequest(
+            **{"kind": "TestCar", "unique_attribute_paths": [{"attribute_name": "name", "property_name": "value"}]}
+        ),
     )
     query_result = await query.execute(db=db)
 
@@ -30,7 +34,15 @@ async def test_query_uniqueness_one_violation(
     query = await NodeUniqueAttributeConstraintQuery.init(
         db=db,
         branch=branch,
-        query_request=NodeUniquenessQueryRequest(kind="TestCar", unique_attribute_names=["name", "nbr_seats"]),
+        query_request=NodeUniquenessQueryRequest(
+            **{
+                "kind": "TestCar",
+                "unique_attribute_paths": [
+                    {"attribute_name": "name", "property_name": "value"},
+                    {"attribute_name": "nbr_seats", "property_name": "value"},
+                ],
+            }
+        ),
     )
     query_result = await query.execute(db=db)
 
@@ -55,7 +67,15 @@ async def test_query_uniqueness_deleted_node_ignored(
     query = await NodeUniqueAttributeConstraintQuery.init(
         db=db,
         branch=branch,
-        query_request=NodeUniquenessQueryRequest(kind="TestCar", unique_attribute_names=["name", "nbr_seats"]),
+        query_request=NodeUniquenessQueryRequest(
+            **{
+                "kind": "TestCar",
+                "unique_attribute_paths": [
+                    {"attribute_name": "name", "property_name": "value"},
+                    {"attribute_name": "nbr_seats", "property_name": "value"},
+                ],
+            }
+        ),
     )
     query_result = await query.execute(db=db)
 
@@ -75,7 +95,15 @@ async def test_query_uniqueness_get_latest_update(
     query = await NodeUniqueAttributeConstraintQuery.init(
         db=db,
         branch=branch,
-        query_request=NodeUniquenessQueryRequest(kind="TestCar", unique_attribute_names=["name", "nbr_seats"]),
+        query_request=NodeUniquenessQueryRequest(
+            **{
+                "kind": "TestCar",
+                "unique_attribute_paths": [
+                    {"attribute_name": "name", "property_name": "value"},
+                    {"attribute_name": "nbr_seats", "property_name": "value"},
+                ],
+            }
+        ),
     )
     query_result = await query.execute(db=db)
 
@@ -100,7 +128,9 @@ async def test_query_uniqueness_cross_branch_conflict(
     query = await NodeUniqueAttributeConstraintQuery.init(
         db=db,
         branch=branch_2,
-        query_request=NodeUniquenessQueryRequest(kind="TestCar", unique_attribute_names=["name"]),
+        query_request=NodeUniquenessQueryRequest(
+            **{"kind": "TestCar", "unique_attribute_paths": [{"attribute_name": "name", "property_name": "value"}]}
+        ),
     )
     query_result = await query.execute(db=db)
 
@@ -179,7 +209,16 @@ async def test_query_uniqueness_multiple_attribute_violations(
     query = await NodeUniqueAttributeConstraintQuery.init(
         db=db,
         branch=branch,
-        query_request=NodeUniquenessQueryRequest(kind="TestCar", unique_attribute_names=["name", "color", "nbr_seats"]),
+        query_request=NodeUniquenessQueryRequest(
+            **{
+                "kind": "TestCar",
+                "unique_attribute_paths": [
+                    {"attribute_name": "name", "property_name": "value"},
+                    {"attribute_name": "color", "property_name": "value"},
+                    {"attribute_name": "nbr_seats", "property_name": "value"},
+                ],
+            }
+        ),
     )
     query_result = await query.execute(db=db)
 
@@ -209,11 +248,11 @@ async def test_query_relationship_uniqueness_no_violations(
         db=db,
         branch=branch,
         query_request=NodeUniquenessQueryRequest(
-            kind="TestCar",
-            unique_attribute_names=["name"],
-            relationship_attribute_paths=[
-                QueryRelationshipAttributePath(identifier="testcar__testperson", attribute_name="height")
-            ],
+            **{
+                "kind": "TestCar",
+                "unique_attribute_paths": [{"attribute_name": "name", "property_name": "value"}],
+                "relationship_attribute_paths": [{"identifier": "testcar__testperson", "attribute_name": "height"}],
+            }
         ),
     )
     query_result = await query.execute(db=db)
@@ -241,11 +280,11 @@ async def test_query_relationship_uniqueness_one_violation(
         db=db,
         branch=branch,
         query_request=NodeUniquenessQueryRequest(
-            kind="TestCar",
-            unique_attribute_names=["name"],
-            relationship_attribute_paths=[
-                QueryRelationshipAttributePath(identifier="testcar__testperson", attribute_name="height")
-            ],
+            **{
+                "kind": "TestCar",
+                "unique_attribute_paths": [{"attribute_name": "name", "property_name": "value"}],
+                "relationship_attribute_paths": [{"identifier": "testcar__testperson", "attribute_name": "height"}],
+            }
         ),
     )
     query_result = await query.execute(db=db)
@@ -328,11 +367,14 @@ async def test_query_relationship_and_attribute_uniqueness_violations(
         db=db,
         branch=branch,
         query_request=NodeUniquenessQueryRequest(
-            kind="TestCar",
-            unique_attribute_names=["name", "nbr_seats"],
-            relationship_attribute_paths=[
-                QueryRelationshipAttributePath(identifier="testcar__testperson", attribute_name="height")
-            ],
+            **{
+                "kind": "TestCar",
+                "unique_attribute_paths": [
+                    {"attribute_name": "name", "property_name": "value"},
+                    {"attribute_name": "nbr_seats", "property_name": "value"},
+                ],
+                "relationship_attribute_paths": [{"identifier": "testcar__testperson", "attribute_name": "height"}],
+            }
         ),
     )
     query_result = await query.execute(db=db)
@@ -386,10 +428,10 @@ async def test_query_relationship_violation_no_attribute(
         db=db,
         branch=branch,
         query_request=NodeUniquenessQueryRequest(
-            kind="TestCar",
-            relationship_attribute_paths=[
-                QueryRelationshipAttributePath(identifier="testcar__testperson", attribute_name=None)
-            ],
+            **{
+                "kind": "TestCar",
+                "relationship_attribute_paths": [{"identifier": "testcar__testperson", "attribute_name": None}],
+            }
         ),
     )
     query_result = await query.execute(db=db)

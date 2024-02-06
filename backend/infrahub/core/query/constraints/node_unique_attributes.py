@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from infrahub.core.constants.relationship_label import RELATIONSHIP_TO_VALUE_LABEL
 from infrahub.core.query import Query
 
 if TYPE_CHECKING:
@@ -13,6 +14,7 @@ if TYPE_CHECKING:
 class NodeUniqueAttributeConstraintQuery(Query):
     name = "node_constraints_uniqueness"
     insert_return = False
+    attribute_property_map = {"value": RELATIONSHIP_TO_VALUE_LABEL}
 
     def __init__(
         self,
@@ -30,10 +32,19 @@ class NodeUniqueAttributeConstraintQuery(Query):
         branch_name_and_level = db.render_list_comprehension_with_list(
             items="relationships(active_path)", item_names=["branch", "branch_level"]
         )
+
+        attr_paths_param = []
+        for attr_path in self.query_request.unique_attribute_paths:
+            try:
+                property_rel_name = self.attribute_property_map[attr_path.property_name]
+            except KeyError as exc:
+                raise ValueError(f"{attr_path.property_name} is not a valid property for a uniqueness constraint") from exc
+            attr_paths_param.append((attr_path.attribute_name, property_rel_name))
+
         self.params.update(
             {
                 "node_kind": self.query_request.kind,
-                "attr_names": self.query_request.unique_attribute_names,
+                "attr_paths": attr_paths_param,
                 "relationship_attr_paths": [
                     (rel_path.identifier, rel_path.attribute_name)
                     for rel_path in self.query_request.relationship_attribute_paths
@@ -49,17 +60,17 @@ class NodeUniqueAttributeConstraintQuery(Query):
         // get attributes for node and its relationships
         CALL {
             WITH start_node
-            MATCH attr_path = (start_node:Node)-[:HAS_ATTRIBUTE]-(attr:Attribute)-[:HAS_VALUE]-(attr_value:AttributeValue)
-            WHERE attr.name in $attr_names
+            MATCH attr_path = (start_node:Node)-[:HAS_ATTRIBUTE]->(attr:Attribute)-[r:HAS_VALUE]->(attr_value:AttributeValue)
+            WHERE [attr.name, type(r)] in $attr_paths
             RETURN attr_path as potential_path, NULL as rel_identifier, attr.name as potential_attr, attr_value.value as potential_attr_value
             UNION
             WITH start_node
-            MATCH rel_path = (start_node:Node)-[:IS_RELATED]-(relationship_node:Relationship)-[:IS_RELATED]-(related_n:Node)-[:HAS_ATTRIBUTE]-(rel_attr:Attribute)-[:HAS_VALUE]-(rel_attr_value:AttributeValue)
+            MATCH rel_path = (start_node:Node)-[:IS_RELATED]-(relationship_node:Relationship)-[:IS_RELATED]-(related_n:Node)-[:HAS_ATTRIBUTE]->(rel_attr:Attribute)-[:HAS_VALUE]->(rel_attr_value:AttributeValue)
             WHERE [relationship_node.name, rel_attr.name] in $relationship_attr_paths
             RETURN rel_path as potential_path, relationship_node.name as rel_identifier, rel_attr.name as potential_attr, rel_attr_value.value as potential_attr_value
             UNION
             WITH start_node
-            MATCH rel_path = (start_node:Node)-[:IS_RELATED]->(relationship_node:Relationship)-[:IS_RELATED]->(related_n:Node)
+            MATCH rel_path = (start_node:Node)-[:IS_RELATED]-(relationship_node:Relationship)-[:IS_RELATED]-(related_n:Node)
             WHERE [relationship_node.name, null] in $relationship_attr_paths
             RETURN rel_path as potential_path, relationship_node.name as rel_identifier, "id" as potential_attr, related_n.uuid as potential_attr_value
         }
