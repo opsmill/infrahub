@@ -3,6 +3,6 @@
 if [ -f docs/docusaurus.config.ts ]; then
     (cd docs && npm run build)
 else
-    retype build docs
+    npx retypeapp build docs
 fi
 
