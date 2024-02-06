@@ -1,8 +1,8 @@
 ---
-label: Relationship
-layout: default
-order: 700
+title: Generic
+description: All options to define a Generic in the schema
 ---
+
 <!-- vale off -->
 <!-- markdownlint-disable MD012 -->
 {% macro attribute_constraints(attr) -%}
@@ -16,17 +16,15 @@ order: 700
 {%- endmacro -%}
 {% set ns = namespace(node=none) -%}
 {% for node in schema.nodes -%}
-{%   if node.name == "Relationship" -%}
+{%   if node.name == "Generic" -%}
 {%     set ns.node = node -%}
 {%   endif -%}
 {% endfor -%}
-# Relationship
-
-In a schema file, a relationship can be defined inside a `node`, a `generic` or a `node extension`.
+# Generic
 
 ## Summary
 
-Below is the list of all available options to define a Relationship in the schema
+Below is the list of all available options to define a Generic in the schema
 
 | Name | Type | Description | Mandatory |
 | ---- | ---- | ---- | --------- |
@@ -34,6 +32,9 @@ Below is the list of all available options to define a Relationship in the schem
 {%-  if attr.name not in ["inherited"] %}
 | [**{{ attr.name }}**](#{{ attr.name }}) | Attribute | {{ attr.description }} | {{ reverse_bool_to_str(attr.optional) }} |
 {%- endif %}
+{%- endfor %}
+{%- for rel in ns.node.relationships %}
+| [**{{ rel.name }}**](#{{ rel.name }}) | Relationship | {{ rel.description }} | {{ reverse_bool_to_str(rel.optional) }} |
 {%- endfor %}
 
 ## Reference Guide

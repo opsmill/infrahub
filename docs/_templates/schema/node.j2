@@ -1,8 +1,8 @@
 ---
-label: Generic
-layout: default
-order: 600
+title: Node
+description: Node schema reference
 ---
+
 <!-- vale off -->
 <!-- markdownlint-disable MD012 -->
 {% macro attribute_constraints(attr) -%}
@@ -16,24 +16,24 @@ order: 600
 {%- endmacro -%}
 {% set ns = namespace(node=none) -%}
 {% for node in schema.nodes -%}
-{%   if node.name == "Generic" -%}
+{%   if node.name == "Node" -%}
 {%     set ns.node = node -%}
 {%   endif -%}
 {% endfor -%}
-# Generic
+# Node
 
 ## Summary
 
-Below is the list of all available options to define a Generic in the schema
+Below is the list of all available options to define a Node in the schema
 
 | Name | Type | Description | Mandatory |
-| ---- | ---- | ---- | --------- |
+| ---- | ---- | ----------- | --------- |
 {%- for attr in ns.node.attributes | sort(attribute='name') %}
 {%-  if attr.name not in ["inherited"] %}
 | [**{{ attr.name }}**](#{{ attr.name }}) | Attribute | {{ attr.description }} | {{ reverse_bool_to_str(attr.optional) }} |
 {%- endif %}
 {%- endfor %}
-{%- for rel in ns.node.relationships %}
+{%- for rel in ns.node.relationships | sort(attribute='name') %}
 | [**{{ rel.name }}**](#{{ rel.name }}) | Relationship | {{ rel.description }} | {{ reverse_bool_to_str(rel.optional) }} |
 {%- endfor %}
 
@@ -47,7 +47,7 @@ Below is the list of all available options to define a Generic in the schema
 | **Name** | {{ attr.name }} |
 | **Kind** | `{{ attr.kind }}` |
 | **Description** | {{ attr.description }} |
-| **Optional** | {{ bool_to_str(attr.optional) }} |
+| **Optional**  | {{ bool_to_str(attr.optional) }} |
 | **Default Value** | {{ attr.default_value }} |
 | **Constraints** | {{attribute_constraints(attr)}} |
 {% if attr.enum -%}

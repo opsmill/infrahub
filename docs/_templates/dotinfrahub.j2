@@ -13,15 +13,14 @@ The file should be formatted as a Yaml file, have the filename `.infrahub.yml` a
 See [this topic](/topics/infrahub-yml) for more details on the available repository configuration options
 
 :::
-
 {% for property in properties %}
 ## {{property.title}}
 
-**Description**: {{ property.description }}
-**Key**: {{ property.name }}
-**Type**: {{ property.type }}
-**Item type**: {{ property.items_type }}
-{% if property.items_format -%}**Item format**: {{ property.items_format }}{% endif %}
+**Description**: {{ property.description }}<br/>
+**Key**: {{ property.name }}<br/>
+**Type**: {{ property.type }}<br/>
+**Item type**: {{ property.items_type }}<br/>
+{% if property.items_format -%}**Item format**: {{ property.items_format }}<br/>{% endif %}
 {% if property.items_type in definitions -%}
 
 | Property | Type | Description | Mandatory |
