@@ -5,18 +5,7 @@ import graphene
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql.generator import (
-    generate_filters,
-    generate_graphql_mutation_create,
-    generate_graphql_mutation_create_input,
-    generate_graphql_mutation_update,
-    generate_graphql_mutation_update_input,
-    generate_graphql_object,
-    generate_interface_object,
-    generate_object_types,
-    load_attribute_types_in_registry,
-    load_node_interface,
-)
+from infrahub.graphql.manager import GraphQLSchemaManager
 from infrahub.graphql.types import InfrahubObject
 
 
@@ -25,18 +14,21 @@ async def test_input_type_registration():
 
 
 async def test_generate_interface_object(db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema):
-    load_attribute_types_in_registry(branch=default_branch)
-    load_node_interface(branch=default_branch)
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    gqlm = GraphQLSchemaManager(schema=schema)
 
-    result = generate_interface_object(schema=generic_vehicule_schema, branch=default_branch)
+    result = gqlm.generate_interface_object(schema=generic_vehicule_schema)
     assert inspect.isclass(result)
     assert issubclass(result, graphene.Interface)
     assert result._meta.name == "TestVehicule"
     assert sorted(list(result._meta.fields.keys())) == ["description", "display_label", "id", "name"]
 
 
-async def test_generate_graphql_object(db: InfrahubDatabase, default_branch: Branch, group_graphql, criticality_schema):
-    result = generate_graphql_object(schema=criticality_schema, branch=default_branch)
+async def test_generate_graphql_object(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    gqlm = GraphQLSchemaManager(schema=schema)
+
+    result = gqlm.generate_graphql_object(schema=criticality_schema)
     assert inspect.isclass(result)
     assert issubclass(result, InfrahubObject)
     assert result._meta.name == "TestCriticality"
@@ -59,12 +51,13 @@ async def test_generate_graphql_object(db: InfrahubDatabase, default_branch: Bra
 
 
 async def test_generate_graphql_object_with_interface(
-    db: InfrahubDatabase, default_branch: Branch, data_schema, group_graphql, generic_vehicule_schema, car_schema
+    db: InfrahubDatabase, default_branch: Branch, data_schema, generic_vehicule_schema, car_schema
 ):
-    node_type = generate_interface_object(generic_vehicule_schema, branch=default_branch)
-    registry.set_graphql_type(name=node_type._meta.name, graphql_type=node_type, branch=default_branch.name)
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    gqlm = GraphQLSchemaManager(schema=schema)
+    gqlm.generate_interface_object(schema=generic_vehicule_schema, populate_cache=True)
 
-    result = generate_graphql_object(schema=car_schema, branch=default_branch)
+    result = gqlm.generate_graphql_object(schema=car_schema)
     assert inspect.isclass(result)
     assert issubclass(result, InfrahubObject)
     assert result._meta.name == "TestCar"
@@ -78,36 +71,39 @@ async def test_generate_graphql_object_with_interface(
     ]
 
 
-async def test_generate_graphql_mutation_create(
-    db: InfrahubDatabase, default_branch: Branch, group_graphql, criticality_schema
-):
-    input_type = generate_graphql_mutation_create_input(criticality_schema)
-    result = generate_graphql_mutation_create(schema=criticality_schema, branch=default_branch, input_type=input_type)
+async def test_generate_graphql_mutation_create(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    gqlm = GraphQLSchemaManager(schema=schema)
+
+    input_type = gqlm.generate_graphql_mutation_create_input(schema=criticality_schema)
+    result = gqlm.generate_graphql_mutation_create(schema=criticality_schema, input_type=input_type)
     assert result._meta.name == "TestCriticalityCreate"
     assert sorted(list(result._meta.fields.keys())) == ["object", "ok"]
 
 
-async def test_generate_graphql_mutation_update(
-    db: InfrahubDatabase, default_branch: Branch, group_graphql, criticality_schema
-):
-    input_type = generate_graphql_mutation_update_input(schema=criticality_schema)
-    result = generate_graphql_mutation_update(schema=criticality_schema, branch=default_branch, input_type=input_type)
+async def test_generate_graphql_mutation_update(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    gqlm = GraphQLSchemaManager(schema=schema)
+
+    input_type = gqlm.generate_graphql_mutation_update_input(schema=criticality_schema)
+    result = gqlm.generate_graphql_mutation_update(schema=criticality_schema, input_type=input_type)
     assert result._meta.name == "TestCriticalityUpdate"
     assert sorted(list(result._meta.fields.keys())) == ["object", "ok"]
 
 
-async def test_generate_object_types(
-    db: InfrahubDatabase, default_branch: Branch, data_schema, group_graphql, car_person_schema
-):
-    await generate_object_types(db=db, branch=default_branch)
+async def test_generate_object_types(db: InfrahubDatabase, default_branch: Branch, data_schema, car_person_schema):
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    gqlm = GraphQLSchemaManager(schema=schema)
 
-    car = registry.get_graphql_type(name="TestCar", branch=default_branch)
-    edged_car = registry.get_graphql_type(name="EdgedTestCar", branch=default_branch)
-    nested_edged_car = registry.get_graphql_type(name="NestedEdgedTestCar", branch=default_branch)
-    person = registry.get_graphql_type(name="TestPerson", branch=default_branch)
-    edged_person = registry.get_graphql_type(name="EdgedTestPerson", branch=default_branch)
-    nested_edged_person = registry.get_graphql_type(name="NestedEdgedTestPerson", branch=default_branch)
-    relationship_property = registry.get_graphql_type(name="RelationshipProperty", branch=default_branch)
+    gqlm.generate_object_types()
+
+    car = gqlm.get_type(name="TestCar")
+    edged_car = gqlm.get_type(name="EdgedTestCar")
+    nested_edged_car = gqlm.get_type(name="NestedEdgedTestCar")
+    person = gqlm.get_type(name="TestPerson")
+    edged_person = gqlm.get_type(name="EdgedTestPerson")
+    nested_edged_person = gqlm.get_type(name="NestedEdgedTestPerson")
+    relationship_property = gqlm.get_type(name="RelationshipProperty")
 
     assert issubclass(car, InfrahubObject)
     assert issubclass(edged_car, InfrahubObject)
@@ -115,6 +111,7 @@ async def test_generate_object_types(
     assert issubclass(person, InfrahubObject)
     assert issubclass(edged_person, InfrahubObject)
     assert issubclass(nested_edged_person, InfrahubObject)
+    assert issubclass(relationship_property, graphene.ObjectType)
 
     assert sorted(list(car._meta.fields.keys())) == [
         "_updated_at",
@@ -160,11 +157,12 @@ async def test_generate_object_types(
     ]
 
 
-async def test_generate_filters(
-    db: InfrahubDatabase, default_branch: Branch, data_schema, group_graphql, car_person_schema_generics
-):
-    person = registry.schema.get(name="TestPerson")
-    filters = await generate_filters(db=db, schema=person, top_level=True)
+async def test_generate_filters(db: InfrahubDatabase, default_branch: Branch, data_schema, car_person_schema_generics):
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    gqlm = GraphQLSchemaManager(schema=schema)
+
+    person = schema.get(name="TestPerson")
+    filters = gqlm.generate_filters(schema=person, top_level=True)
     expected_filters = [
         "offset",
         "limit",

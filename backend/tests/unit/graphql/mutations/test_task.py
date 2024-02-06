@@ -2,7 +2,7 @@ from graphql import graphql
 
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql import generate_graphql_schema
+from infrahub.graphql import prepare_graphql_params
 
 CREATE_TASK = """
 mutation CreateTask(
@@ -57,10 +57,11 @@ async def test_task_create(db: InfrahubDatabase, default_branch, car_person_sche
     await person.new(db=db, name="John", height=180)
     await person.save(db=db)
 
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
-        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
+        schema=gql_params.schema,
         source=CREATE_TASK,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={"conclusion": "SUCCESS", "title": "Test Task", "related_node": person.get_id()},
     )
@@ -73,10 +74,11 @@ async def test_task_create_and_update(db: InfrahubDatabase, default_branch, car_
     await person.new(db=db, name="John", height=180)
     await person.save(db=db)
 
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
-        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
+        schema=gql_params.schema,
         source=CREATE_TASK,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={
             "conclusion": "UNKNOWN",
@@ -90,10 +92,11 @@ async def test_task_create_and_update(db: InfrahubDatabase, default_branch, car_
     assert result.data
     task_id = result.data["InfrahubTaskCreate"]["object"]["id"]
 
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
-        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
+        schema=gql_params.schema,
         source=UPDATE_TASK,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={
             "conclusion": "SUCCESS",

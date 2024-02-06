@@ -40,7 +40,7 @@ from infrahub.core.schema import (
 )
 from infrahub.core.utils import parse_node_kind
 from infrahub.exceptions import SchemaNotFound
-from infrahub.graphql import generate_graphql_schema
+from infrahub.graphql.manager import GraphQLSchemaManager
 from infrahub.log import get_logger
 from infrahub.utils import format_label
 from infrahub.visuals import select_color
@@ -130,7 +130,8 @@ class SchemaBranch:
         self.name: Optional[str] = name
         self.nodes: Dict[str, str] = {}
         self.generics: Dict[str, str] = {}
-        self._graphql_schema = None
+        self._graphql_schema: Optional[GraphQLSchema] = None
+        self._graphql_manager: Optional[GraphQLSchemaManager] = None
 
         if data:
             self.nodes = data.get("nodes", {})
@@ -155,10 +156,25 @@ class SchemaBranch:
         # TODO need to implement a flag to return the real objects if needed
         return {"nodes": self.nodes, "generics": self.generics}
 
-    async def get_graphql_schema(self, db: InfrahubDatabase) -> GraphQLSchema:
-        if not self._graphql_schema:
-            self._graphql_schema = await generate_graphql_schema(db=db, branch=self.name)
+    def get_graphql_manager(self) -> GraphQLSchemaManager:
+        if not self._graphql_manager:
+            self._graphql_manager = GraphQLSchemaManager(schema=self)
+        return self._graphql_manager
 
+    def get_graphql_schema(
+        self,
+        include_query: bool = True,
+        include_mutation: bool = True,
+        include_subscription: bool = True,
+        include_types: bool = True,
+    ) -> GraphQLSchema:
+        if not self._graphql_schema:
+            self._graphql_schema = self.get_graphql_manager().generate(
+                include_query=include_query,
+                include_mutation=include_mutation,
+                include_subscription=include_subscription,
+                include_types=include_types,
+            )
         return self._graphql_schema
 
     def diff(self, other: SchemaBranch) -> SchemaDiff:
