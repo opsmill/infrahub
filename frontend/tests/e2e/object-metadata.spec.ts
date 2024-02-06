@@ -35,12 +35,16 @@ test.describe("Object metadata", () => {
 
     // Select account in first select
     await page
+      .locator(".col-span-7 > div > div:nth-child(2)")
+      .first()
       .getByTestId("select-container")
       .nth(0)
       .getByTestId("select-open-option-button")
       .click();
 
     await page
+      .locator(".col-span-7 > div > div:nth-child(2)")
+      .first()
       .getByTestId("select-container")
       .nth(0)
       .getByRole("option", { name: "Account" })
@@ -48,12 +52,16 @@ test.describe("Object metadata", () => {
 
     // Select Architecture team in 2nd select
     await page
+      .locator(".col-span-7 > div > div:nth-child(2)")
+      .first()
       .getByTestId("select-container")
       .nth(1)
       .getByTestId("select-open-option-button")
       .click();
 
     await page
+      .locator(".col-span-7 > div > div:nth-child(2)")
+      .first()
       .getByTestId("select-container")
       .nth(1)
       .getByRole("option", { name: "Architecture Team" })
