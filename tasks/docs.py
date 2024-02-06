@@ -84,7 +84,7 @@ def markdownlint(context: Context):
     if not has_markdownlint:
         print("Warning, markdownlint-cli2 is not installed")
         return
-    exec_cmd = "markdownlint-cli2 **/*.md"
+    exec_cmd = "markdownlint-cli2 **/*.{md,mdx}"
     print(" - [docs] Lint docs with markdownlint-cli2")
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
@@ -92,10 +92,10 @@ def markdownlint(context: Context):
 
 @task
 def format_markdownlint(context: Context):
-    """Run markdownlint-cli2 to format all .md files."""
+    """Run markdownlint-cli2 to format all .md/mdx files."""
 
     print(" - [docs] Format code with markdownlint-cli2")
-    exec_cmd = "markdownlint-cli2 **/*.md --fix"
+    exec_cmd = "markdownlint-cli2 **/*.{md,mdx} --fix"
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
@@ -125,7 +125,7 @@ def _generate_infrahub_cli_documentation(context: Context):
     print(" - Generate Infrahub CLI documentation")
     with context.cd(ESCAPED_REPO_PATH):
         for command in CLI_COMMANDS:
-            exec_cmd = f'poetry run typer {command[0]} utils docs --name "{command[1]}" --output docs/reference/infrahub-cli/{command[2]}.md'
+            exec_cmd = f'poetry run typer {command[0]} utils docs --name "{command[1]}" --output docs/reference/infrahub-cli/{command[2]}.mdx'
             context.run(exec_cmd)
 
 
@@ -144,13 +144,13 @@ def _generate_infrahubctl_documentation(context: Context):
     print(" - Generate infrahubctl CLI documentation")
     for cmd in app.registered_commands:
         exec_cmd = f'poetry run typer --func {cmd.name} infrahub_sdk.ctl.cli utils docs --name "infrahubctl {cmd.name}"'
-        exec_cmd += f" --output docs/infrahubctl/infrahubctl-{cmd.name}.md"
+        exec_cmd += f" --output docs/infrahubctl/infrahubctl-{cmd.name}.mdx"
         with context.cd(ESCAPED_REPO_PATH):
             context.run(exec_cmd)
 
     for cmd in app.registered_groups:
         exec_cmd = f"poetry run typer infrahub_sdk.ctl.{cmd.name} utils docs"
-        exec_cmd += f' --name "infrahubctl {cmd.name}" --output docs/infrahubctl/infrahubctl-{cmd.name}.md'
+        exec_cmd += f' --name "infrahubctl {cmd.name}" --output docs/infrahubctl/infrahubctl-{cmd.name}.mdx'
         with context.cd(ESCAPED_REPO_PATH):
             context.run(exec_cmd)
 
@@ -165,8 +165,8 @@ def _generate_infrahub_schema_documentation() -> None:
     print(" - Generate Infrahub schema documentation")
     for schema_name in schemas_to_generate:
         template_file = f"{DOCUMENTATION_DIRECTORY}/_templates/schema/{schema_name}.j2"
-        output_file = f"{DOCUMENTATION_DIRECTORY}/reference/schema/{schema_name}.md"
-        output_label = f"docs/reference/schema/{schema_name}.md"
+        output_file = f"{DOCUMENTATION_DIRECTORY}/reference/schema/{schema_name}.mdx"
+        output_label = f"docs/reference/schema/{schema_name}.mdx"
         if not os.path.exists(template_file):
             print(f"Unable to find the template file at {template_file}")
             sys.exit(-1)
@@ -217,7 +217,7 @@ def _generate_infrahub_repository_configuration_documentation() -> None:
     print(" - Generate Infrahub repository configuration documentation")
 
     template_file = f"{DOCUMENTATION_DIRECTORY}/_templates/dotinfrahub.j2"
-    output_file = f"{DOCUMENTATION_DIRECTORY}/reference/dotinfrahub.md"
+    output_file = f"{DOCUMENTATION_DIRECTORY}/reference/dotinfrahub.mdx"
     if not os.path.exists(template_file):
         print(f"Unable to find the template file at {template_file}")
         sys.exit(-1)
