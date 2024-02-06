@@ -893,7 +893,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     account_cloe = store.get("Chloe O'Brian")
 
     # ------------------------------------------
-    # Create Autonommous Systems
+    # Create Autonomous Systems
     # ------------------------------------------
     log.info(f"Creating Autonommous Systems")
     batch = await client.create_batch()
@@ -1106,7 +1106,7 @@ async def run(client: InfrahubClient, log: logging.Logger, branch: str):
     #  Scenario 1 - Add a Peering
     #  Scenario 2 - Change the IP Address between 2 edges
     #  Scenario 3 - Delete a Circuit + Peering
-    #  Scenario 4 - Create some Relatioinship One and Attribute conflicts on a device
+    #  Scenario 4 - Create some Relationship One and Attribute conflicts on a device
     #  Scenario 5 - Create some Node ADD and DELETE conflicts on some platform objects
     # --------------------------------------------------
     if branch == "main":
