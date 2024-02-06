@@ -19,7 +19,7 @@ from ..types import RelatedNodeInput
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
-    from infrahub.database import InfrahubDatabase
+    from .. import GraphqlContext
 
 
 # pylint: disable=unused-argument,too-many-branches
@@ -43,16 +43,19 @@ class RelationshipMixin:
         info: GraphQLResolveInfo,
         data,
     ):
-        db: InfrahubDatabase = info.context.get("infrahub_database")
-        at = info.context.get("infrahub_at")
-        branch = info.context.get("infrahub_branch")
+        context: GraphqlContext = info.context
 
         if not (
             source := await NodeManager.get_one(
-                db=db, id=data.get("id"), branch=branch, at=at, include_owner=True, include_source=True
+                db=context.db,
+                id=data.get("id"),
+                branch=context.branch,
+                at=context.at,
+                include_owner=True,
+                include_source=True,
             )
         ):
-            raise NodeNotFound(branch, None, data.get("id"))
+            raise NodeNotFound(context.branch, None, data.get("id"))
 
         # Check if the name of the relationship provided exist for this node and is of cardinality Many
         if data.get("name") not in source._schema.relationship_names:
@@ -66,7 +69,9 @@ class RelationshipMixin:
 
         # Query the node in the database and validate that all of them exist and are if the correct kind
         node_ids: List[str] = [node_data.get("id") for node_data in data.get("nodes")]
-        nodes = await NodeManager.get_many(db=db, ids=node_ids, fields={"display_label": None}, branch=branch, at=at)
+        nodes = await NodeManager.get_many(
+            db=context.db, ids=node_ids, fields={"display_label": None}, branch=context.branch, at=context.at
+        )
 
         _, _, in_list2 = compare_lists(list1=list(nodes.keys()), list2=node_ids)
         if in_list2:
@@ -81,19 +86,19 @@ class RelationshipMixin:
 
         # The nodes that are already present in the db
         query = await RelationshipGetPeerQuery.init(
-            db=db,
+            db=context.db,
             source=source,
-            at=at,
-            rel=Relationship(schema=rel_schema, branch=branch, node=source),
+            at=context.at,
+            rel=Relationship(schema=rel_schema, branch=context.branch, node=source),
         )
-        await query.execute(db=db)
+        await query.execute(db=context.db)
         existing_peers: Dict[str, RelationshipPeerData] = {peer.peer_id: peer for peer in query.get_peers()}
 
-        async with db.start_transaction() as db:
+        async with context.db.start_transaction() as db:
             if cls.__name__ == "RelationshipAdd":
                 for node_data in data.get("nodes"):
                     if node_data.get("id") not in existing_peers.keys():
-                        rel = Relationship(schema=rel_schema, branch=branch, at=at, node=source)
+                        rel = Relationship(schema=rel_schema, branch=context.branch, at=context.at, node=source)
                         await rel.new(db=db, data=node_data)
                         await rel.save(db=db)
 
@@ -103,7 +108,7 @@ class RelationshipMixin:
                         # TODO once https://github.com/opsmill/infrahub/issues/792 has been fixed
                         # we should use RelationshipDataDeleteQuery to delete the relationship
                         # it would be more query efficient
-                        rel = Relationship(schema=rel_schema, branch=branch, at=at, node=source)
+                        rel = Relationship(schema=rel_schema, branch=context.branch, at=context.at, node=source)
                         await rel.load(db=db, data=existing_peers[node_data.get("id")])
                         await rel.delete(db=db)
 

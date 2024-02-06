@@ -1,4 +1,4 @@
-from typing import Dict, Union
+from typing import TYPE_CHECKING, Dict, Union
 
 from graphene import Boolean, Field, InputObjectType, Mutation, String
 from graphql import GraphQLResolveInfo
@@ -17,6 +17,9 @@ from infrahub.services import services
 from infrahub.worker import WORKER_IDENTITY
 
 from ..types import DropdownFields
+
+if TYPE_CHECKING:
+    from .. import GraphqlContext
 
 log = get_logger()
 
@@ -53,9 +56,9 @@ class SchemaDropdownAdd(Mutation):
         info: GraphQLResolveInfo,
         data: SchemaDropdownAddInput,
     ):
-        db: InfrahubDatabase = info.context.get("infrahub_database")
-        branch: Branch = info.context.get("infrahub_branch")
-        kind = registry.schema.get(name=str(data.kind), branch=branch.name)
+        context: GraphqlContext = info.context
+
+        kind = registry.schema.get(name=str(data.kind), branch=context.branch.name)
         attribute = str(data.attribute)
         validate_kind_dropdown(kind=kind, attribute=attribute)
         dropdown = str(data.dropdown)
@@ -69,9 +72,9 @@ class SchemaDropdownAdd(Mutation):
                 )
             attrib.choices.append(choice)
 
-        await update_registry(kind=kind, branch=branch, db=db)
+        await update_registry(kind=kind, branch=context.branch, db=context.db)
 
-        kind = registry.schema.get(name=str(data.kind), branch=branch.name)
+        kind = registry.schema.get(name=str(data.kind), branch=context.branch.name)
         attrib = kind.get_attribute(attribute)
         dropdown_entry = {}
         success = False
@@ -102,15 +105,15 @@ class SchemaDropdownRemove(Mutation):
         info: GraphQLResolveInfo,
         data: SchemaDropdownRemoveInput,
     ) -> Dict[str, bool]:
-        db: InfrahubDatabase = info.context.get("infrahub_database")
-        branch: Branch = info.context.get("infrahub_branch")
-        kind = registry.schema.get(name=str(data.kind), branch=branch.name)
+        context: GraphqlContext = info.context
+
+        kind = registry.schema.get(name=str(data.kind), branch=context.branch.name)
 
         attribute = str(data.attribute)
         validate_kind_dropdown(kind=kind, attribute=attribute)
         dropdown = str(data.dropdown)
         nodes_with_dropdown = await NodeManager.query(
-            db=db, schema=kind.kind, filters={f"{attribute}__value": dropdown}
+            db=context.db, schema=kind.kind, filters={f"{attribute}__value": dropdown}
         )
         if nodes_with_dropdown:
             raise ValidationError(f"There are still {kind.kind} objects using this dropdown")
@@ -125,7 +128,7 @@ class SchemaDropdownRemove(Mutation):
                 raise ValidationError(f"Unable to remove the last dropdown on {kind.kind} in attribute {attribute}")
             attrib.choices = [entry for entry in attrib.choices if dropdown != entry.name]
 
-        await update_registry(kind=kind, branch=branch, db=db)
+        await update_registry(kind=kind, branch=context.branch, db=context.db)
 
         return {"ok": True}
 
@@ -143,9 +146,9 @@ class SchemaEnumAdd(Mutation):
         info: GraphQLResolveInfo,
         data: SchemaEnumInput,
     ) -> Dict[str, bool]:
-        db: InfrahubDatabase = info.context.get("infrahub_database")
-        branch: Branch = info.context.get("infrahub_branch")
-        kind = registry.schema.get(name=str(data.kind), branch=branch.name)
+        context: GraphqlContext = info.context
+
+        kind = registry.schema.get(name=str(data.kind), branch=context.branch.name)
 
         attribute = str(data.attribute)
         enum = str(data.enum)
@@ -159,7 +162,7 @@ class SchemaEnumAdd(Mutation):
                     )
                 attrib.enum.append(enum)
 
-        await update_registry(kind=kind, branch=branch, db=db)
+        await update_registry(kind=kind, branch=context.branch, db=context.db)
 
         return {"ok": True}
 
@@ -177,8 +180,9 @@ class SchemaEnumRemove(Mutation):
         info: GraphQLResolveInfo,
         data: SchemaEnumInput,
     ) -> Dict[str, bool]:
-        db: InfrahubDatabase = info.context.get("infrahub_database")
-        branch: Branch = info.context.get("infrahub_branch")
+        context: GraphqlContext = info.context
+        db = context.db
+        branch = context.branch
         kind = registry.schema.get(name=str(data.kind), branch=branch.name)
 
         attribute = str(data.attribute)

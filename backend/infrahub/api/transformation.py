@@ -12,10 +12,10 @@ from infrahub.api.dependencies import (
     get_current_user,
     get_db,
 )
-from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
+from infrahub.graphql import prepare_graphql_params
 from infrahub.graphql.utils import extract_data
 from infrahub.message_bus import messages
 from infrahub.message_bus.responses import TemplateResponse, TransformResponse
@@ -47,17 +47,12 @@ async def transform_python(
     query = await transform.query.get_peer(db=db)  # type: ignore[attr-defined]
     repository = await transform.repository.get_peer(db=db)  # type: ignore[attr-defined]
 
-    schema = registry.schema.get_schema_branch(name=branch_params.branch.name)
-    gql_schema = await schema.get_graphql_schema(db=db)
+    gql_params = prepare_graphql_params(db=request.app.state.db, branch=branch_params.branch, at=branch_params.at)
 
     result = await graphql(
-        gql_schema,
+        schema=gql_params.schema,
         source=query.query.value,
-        context_value={
-            "infrahub_branch": branch_params.branch,
-            "infrahub_at": branch_params.at,
-            "infrahub_database": request.app.state.db,
-        },
+        context_value=gql_params.context,
         root_value=None,
         variable_values=params,
     )
@@ -103,17 +98,12 @@ async def transform_jinja2(
     query = await transform.query.get_peer(db=db)  # type: ignore[attr-defined]
     repository = await transform.repository.get_peer(db=db)  # type: ignore[attr-defined]
 
-    schema = registry.schema.get_schema_branch(name=branch_params.branch.name)
-    gql_schema = await schema.get_graphql_schema(db=db)
+    gql_params = prepare_graphql_params(db=request.app.state.db, branch=branch_params.branch, at=branch_params.at)
 
     result = await graphql(
-        gql_schema,
+        schema=gql_params.schema,
         source=query.query.value,
-        context_value={
-            "infrahub_branch": branch_params.branch,
-            "infrahub_at": branch_params.at,
-            "infrahub_database": request.app.state.db,
-        },
+        context_value=gql_params.context,
         root_value=None,
         variable_values=params,
     )

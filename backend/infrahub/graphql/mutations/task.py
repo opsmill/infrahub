@@ -18,7 +18,7 @@ from infrahub.graphql.types.task_log import RelatedTaskLogCreateInput
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
-    from infrahub.database import InfrahubDatabase
+    from infrahub.graphql import GraphqlContext
 
 TaskConclusion = Enum.from_enum(PyTaskConclusion)
 
@@ -59,12 +59,13 @@ class TaskCreate(Mutation):
         info: GraphQLResolveInfo,
         data: TaskCreateInput,
     ) -> TaskCreate:
-        branch = info.context.get("infrahub_branch")
-        db: InfrahubDatabase = info.context.get("infrahub_database")
+        context: GraphqlContext = info.context
 
         account_id = str(data.created_by) if data.created_by else None
 
-        if not (related_node := await NodeManager.get_one(db=db, id=str(data.related_node), branch=branch)):
+        if not (
+            related_node := await NodeManager.get_one(db=context.db, id=str(data.related_node), branch=context.branch)
+        ):
             raise NodeNotFound(
                 node_type="related_node",
                 identifier=str(data.related_node),
@@ -76,7 +77,7 @@ class TaskCreate(Mutation):
         if data.id:
             task_id = UUID(str(data.id))
 
-        async with db.start_transaction() as db:
+        async with context.db.start_transaction() as db:
             task = Task(
                 uuid=task_id,
                 title=str(data.title),
@@ -112,9 +113,9 @@ class TaskUpdate(Mutation):
         info: GraphQLResolveInfo,
         data: TaskUpdateInput,
     ) -> TaskUpdate:
-        db: InfrahubDatabase = info.context.get("infrahub_database")
+        context: GraphqlContext = info.context
         task_id = str(data.id)
-        task = await Task.get(id=task_id, db=db)
+        task = await Task.get(id=task_id, db=context.db)
 
         fields = await extract_fields_first_node(info)
 
@@ -128,7 +129,7 @@ class TaskUpdate(Mutation):
             task.conclusion = data.conclusion
 
         task.updated_at = current_timestamp()
-        async with db.start_transaction() as db:
+        async with context.db.start_transaction() as db:
             await task.save(db=db)
 
             if data.logs:

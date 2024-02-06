@@ -63,6 +63,7 @@ class NodeManager:
         include_owner: bool = False,
         prefetch_relationships: bool = False,
         account=None,
+        partial_match: bool = False,
     ) -> List[Node]:  # pylint: disable=unused-argument
         """Query one or multiple nodes of a given type based on filter arguments.
 
@@ -88,7 +89,14 @@ class NodeManager:
 
         # Query the list of nodes matching this Query
         query = await NodeGetListQuery.init(
-            db=db, schema=schema, branch=branch, offset=offset, limit=limit, filters=filters, at=at
+            db=db,
+            schema=schema,
+            branch=branch,
+            offset=offset,
+            limit=limit,
+            filters=filters,
+            at=at,
+            partial_match=partial_match,
         )
         await query.execute(db=db)
         node_ids = query.get_node_ids()
@@ -121,6 +129,7 @@ class NodeManager:
         at: Optional[Union[Timestamp, str]] = None,
         branch: Optional[Union[Branch, str]] = None,
         account=None,  # pylint: disable=unused-argument
+        partial_match: bool = False,
     ) -> int:
         """Return the total number of nodes using a given filter
 
@@ -137,7 +146,9 @@ class NodeManager:
         branch = await get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
-        query = await NodeGetListQuery.init(db=db, schema=schema, branch=branch, filters=filters, at=at)
+        query = await NodeGetListQuery.init(
+            db=db, schema=schema, branch=branch, filters=filters, at=at, partial_match=partial_match
+        )
         return await query.count(db=db)
 
     @classmethod
@@ -383,7 +394,7 @@ class NodeManager:
         id: str,
         db: InfrahubDatabase,
         fields: Optional[dict] = None,
-        at: Union[Timestamp, str] = None,
+        at: Optional[Union[Timestamp, str]] = None,
         branch: Union[Branch, str] = None,
         include_source: bool = False,
         include_owner: bool = False,

@@ -890,6 +890,83 @@ async def test_schema_branch_load_schema_extension(
     assert schema_branch.get(name="InfraDevice")
 
 
+async def test_schema_branch_validate_count_against_cardinality_valid(organization_schema):
+    SCHEMA1 = {
+        "name": "Criticality",
+        "namespace": "Test",
+        "default_filter": "name__value",
+        "branch": BranchSupportType.AWARE.value,
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True},
+        ],
+        "relationships": [
+            {"name": "first", "peer": "CoreOrganization", "cardinality": "one"},
+            {"name": "second", "peer": "CoreOrganization", "cardinality": "many"},
+            {"name": "third", "peer": "CoreOrganization", "cardinality": "many", "min_count": 2, "max_count": 10},
+            {"name": "fourth", "peer": "CoreOrganization", "cardinality": "many", "min_count": 0, "max_count": 10},
+            {"name": "fifth", "peer": "CoreOrganization", "cardinality": "many", "min_count": 5, "max_count": 0},
+            {"name": "sixth", "peer": "CoreOrganization", "cardinality": "many", "min_count": 5, "max_count": 5},
+            {"name": "seventh", "peer": "CoreOrganization", "cardinality": "many", "min_count": 1, "max_count": 0},
+            {"name": "eighth", "peer": "CoreOrganization", "cardinality": "many", "min_count": 1},
+            {"name": "nineth", "peer": "CoreOrganization", "cardinality": "one", "optional": True},
+            {
+                "name": "tenth",
+                "peer": "CoreOrganization",
+                "cardinality": "one",
+                "optional": True,
+                "min_count": 0,
+                "max_count": 0,
+            },
+            {"name": "eleventh", "peer": "CoreOrganization", "cardinality": "one", "min_count": 2, "max_count": 2},
+        ],
+    }
+
+    copy_core_models = copy.deepcopy(core_models)
+    copy_core_models["nodes"].append(SCHEMA1)
+    schema = SchemaRoot(**copy_core_models)
+
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=schema)
+    schema_branch.load_schema(schema=organization_schema)
+
+    schema_branch.process_pre_validation()
+    assert schema_branch.validate_count_against_cardinality() is None
+
+
+@pytest.mark.parametrize(
+    "relationship",
+    (
+        {"name": "second", "peer": "CoreOrganization", "cardinality": "many", "min_count": 10, "max_count": 2},
+        {"name": "third", "peer": "CoreOrganization", "cardinality": "many", "min_count": 0, "max_count": 1},
+    ),
+)
+async def test_schema_branch_validate_count_against_cardinality_invalid(relationship, organization_schema):
+    SCHEMA1 = {
+        "name": "Criticality",
+        "namespace": "Test",
+        "default_filter": "name__value",
+        "branch": BranchSupportType.AWARE.value,
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True},
+        ],
+        "relationships": [
+            relationship,
+        ],
+    }
+
+    copy_core_models = copy.deepcopy(core_models)
+    copy_core_models["nodes"].append(SCHEMA1)
+    schema = SchemaRoot(**copy_core_models)
+
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=schema)
+    schema_branch.load_schema(schema=organization_schema)
+
+    schema_branch.process_pre_validation()
+    with pytest.raises(ValueError):
+        schema_branch.validate_count_against_cardinality()
+
+
 async def test_schema_branch_process_filters(
     db: InfrahubDatabase, reset_registry, default_branch: Branch, register_internal_models_schema
 ):

@@ -19,7 +19,7 @@ class Info(ObjectType):
     async def resolve(
         root: dict,  # pylint: disable=unused-argument
         info: GraphQLResolveInfo,  # pylint: disable=unused-argument
-    ):
+    ) -> dict[str, str]:
         return {"deployment_id": str(registry.id), "version": __version__}
 
 

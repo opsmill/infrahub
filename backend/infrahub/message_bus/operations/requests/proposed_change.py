@@ -1,43 +1,15 @@
 from typing import List
 
-from infrahub.core.branch import ObjectConflict
-from infrahub.core.constants import InfrahubKind, ProposedChangeState
+from infrahub.core.constants import DiffAction, InfrahubKind, ProposedChangeState
+from infrahub.core.integrity.object_conflict.conflict_recorder import ObjectConflictValidatorRecorder
 from infrahub.core.manager import NodeManager
-from infrahub.core.node import Node
 from infrahub.core.registry import registry
-from infrahub.core.schema import ValidatorConclusion, ValidatorState
-from infrahub.core.timestamp import Timestamp
-from infrahub.database import InfrahubDatabase
+from infrahub.core.validators.uniqueness.checker import UniquenessChecker
 from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubMessage, messages
 from infrahub.services import InfrahubServices
 
 log = get_logger()
-
-
-async def _create_data_check(db: InfrahubDatabase, proposed_change: Node) -> Node:
-    validations = await proposed_change.validations.get_peers(db=db)
-
-    for validation in validations.values():
-        if validation._schema.kind == InfrahubKind.DATAVALIDATOR:
-            return validation
-
-    validator_obj = await Node.init(db=db, schema=InfrahubKind.DATAVALIDATOR)
-    await validator_obj.new(
-        db=db,
-        label="Data Integrity",
-        state=ValidatorState.QUEUED.value,
-        conclusion=ValidatorConclusion.UNKNOWN.value,
-        proposed_change=proposed_change.id,
-    )
-    await validator_obj.save(db=db)
-    return validator_obj
-
-
-async def _get_conflicts(db: InfrahubDatabase, proposed_change: Node) -> List[ObjectConflict]:
-    source_branch = await registry.get_branch(db=db, branch=proposed_change.source_branch.value)
-    diff = await source_branch.diff(db=db, branch_only=False)
-    return await diff.get_conflicts_graph(db=db)
 
 
 async def cancel(message: messages.RequestProposedChangeCancel, service: InfrahubServices) -> None:
@@ -51,95 +23,22 @@ async def cancel(message: messages.RequestProposedChangeCancel, service: Infrahu
 async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, service: InfrahubServices) -> None:
     """Triggers a data integrity validation check on the provided proposed change to start."""
     log.info(f"Got a request to process data integrity defined in proposed_change: {message.proposed_change}")
+
+    proposed_change = await NodeManager.get_one_by_id_or_default_filter(
+        id=message.proposed_change, schema_name=InfrahubKind.PROPOSEDCHANGE, db=service.database
+    )
+    source_branch = await registry.get_branch(db=service.database, branch=proposed_change.source_branch.value)
+    diff = await source_branch.diff(db=service.database, branch_only=False)
+    conflicts = await diff.get_conflicts_graph(db=service.database)
+
     async with service.database.start_transaction() as db:
-        proposed_change = await NodeManager.get_one_by_id_or_default_filter(
-            id=message.proposed_change, schema_name=InfrahubKind.PROPOSEDCHANGE, db=db
+        object_conflict_validator_recorder = ObjectConflictValidatorRecorder(
+            db=db,
+            validator_kind=InfrahubKind.DATAVALIDATOR,
+            validator_label="Data Integrity",
+            check_schema_kind=InfrahubKind.DATACHECK,
         )
-
-        data_check = await _create_data_check(db=db, proposed_change=proposed_change)
-
-        data_check.state.value = ValidatorState.IN_PROGRESS.value
-        data_check.conclusion.value = ValidatorConclusion.UNKNOWN.value
-        data_check.started_at.value = Timestamp().to_string()
-        data_check.completed_at.value = ""
-        await data_check.save(db=db)
-
-        previous_checks = await data_check.checks.get_peers(db=db)
-
-        conflicts = await _get_conflicts(db=db, proposed_change=proposed_change)
-
-        conclusion = ValidatorConclusion.FAILURE
-
-        check_objects = []
-        keep_check = []
-        if not conflicts:
-            conclusion = ValidatorConclusion.SUCCESS
-            check = None
-            for previous_check in previous_checks.values():
-                if previous_check.conflicts.value == []:
-                    check = previous_check
-                    keep_check.append(check.id)
-
-            if not check:
-                check = await Node.init(db=db, schema=InfrahubKind.DATACHECK)
-                await check.new(
-                    db=db,
-                    label="Data Conflict",
-                    origin="internal",
-                    kind="DataIntegrity",
-                    validator=data_check.id,
-                    conclusion="success",
-                    severity="info",
-                    conflicts=[],
-                )
-                await check.save(db=db)
-            check_objects.append(check.id)
-
-        for conflict in conflicts:
-            conflicts_data = [
-                {
-                    "name": conflict.name,
-                    "node_id": conflict.id,
-                    "kind": conflict.kind,
-                    "path_type": conflict.path_type.value,
-                    "path": conflict.conflict_path,
-                    "property_name": conflict.property_name,
-                    "change_type": conflict.change_type,
-                    "changes": [change.dict() for change in conflict.changes],
-                }
-            ]
-            conflict_obj = None
-            for previous_check in previous_checks.values():
-                if previous_check.conflicts.value == conflicts_data:
-                    conflict_obj = previous_check
-                    keep_check.append(conflict_obj.id)
-
-            if not conflict_obj:
-                conflict_obj = await Node.init(db=db, schema=InfrahubKind.DATACHECK)
-
-                await conflict_obj.new(
-                    db=db,
-                    label="Data Conflict",
-                    origin="internal",
-                    kind="DataIntegrity",
-                    validator=data_check.id,
-                    conclusion="failure",
-                    severity="critical",
-                    conflicts=conflicts_data,
-                )
-
-                await conflict_obj.save(db=db)
-            check_objects.append(conflict_obj.id)
-
-        for check_id, previous_check in previous_checks.items():
-            if check_id not in keep_check:
-                await previous_check.delete(db=db)
-
-        data_check.state.value = ValidatorState.COMPLETED.value
-        data_check.conclusion.value = conclusion.value
-        data_check.checks.update = check_objects
-        data_check.completed_at.value = Timestamp().to_string()
-        await data_check.save(db=db)
+        await object_conflict_validator_recorder.record_conflicts(message.proposed_change, conflicts)
 
 
 async def schema_integrity(
@@ -147,6 +46,33 @@ async def schema_integrity(
     service: InfrahubServices,  # pylint: disable=unused-argument
 ) -> None:
     log.info(f"Got a request to process schema integrity defined in proposed_change: {message.proposed_change}")
+    proposed_change = await NodeManager.get_one_by_id_or_default_filter(
+        id=message.proposed_change, schema_name=InfrahubKind.PROPOSEDCHANGE, db=service.database
+    )
+
+    raw_diff = await service.client.get_diff_summary(branch=proposed_change.source_branch.value)
+
+    altered_schema_kinds = set()
+    for node_diff in raw_diff:
+        if node_diff["branch"] == proposed_change.source_branch.value and {DiffAction.ADDED, DiffAction.UPDATED} & set(
+            node_diff["actions"]
+        ):
+            altered_schema_kinds.add(node_diff["kind"])
+
+    uniqueness_checker = UniquenessChecker(db=service.database)
+    uniqueness_conflicts = await uniqueness_checker.get_conflicts(
+        schemas=altered_schema_kinds,
+        source_branch=proposed_change.source_branch.value,
+    )
+
+    async with service.database.start_transaction() as db:
+        object_conflict_validator_recorder = ObjectConflictValidatorRecorder(
+            db=db,
+            validator_kind=InfrahubKind.SCHEMAVALIDATOR,
+            validator_label="Schema Integrity",
+            check_schema_kind=InfrahubKind.SCHEMACHECK,
+        )
+        await object_conflict_validator_recorder.record_conflicts(message.proposed_change, uniqueness_conflicts)
 
 
 async def repository_checks(message: messages.RequestProposedChangeRepositoryChecks, service: InfrahubServices) -> None:
