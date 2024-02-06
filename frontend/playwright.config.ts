@@ -36,7 +36,8 @@ export default defineConfig({
     baseURL: process.env.CI ? process.env.INFRAHUB_ADDRESS : "http://localhost:8080",
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: process.env.CI ? "retain-on-failure" : "on",
+    // trace: process.env.CI ? "retain-on-failure" : "on",
+    trace: "off",
     screenshot: {
       mode: process.env.CI ? "only-on-failure" : "on",
     },
