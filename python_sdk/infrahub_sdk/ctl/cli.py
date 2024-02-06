@@ -109,7 +109,7 @@ def _run_transform(query: str, variables: Dict[str, Any], transformer: Callable,
     branch = get_branch(branch)
 
     try:
-        response = execute_graphql_query(query, variables, branch, debug)
+        response = {"data": execute_graphql_query(query, variables, branch, debug)}
     except QueryNotFoundError as exc:
         console.print(f"[red]Unable to find query : {exc}")
         raise typer.Exit(1) from exc
