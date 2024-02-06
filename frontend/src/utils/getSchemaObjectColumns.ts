@@ -1,3 +1,4 @@
+import { isValid, parseISO } from "date-fns";
 import * as R from "ramda";
 import {
   attributesKindForDetailsViewExclude,
@@ -9,7 +10,6 @@ import {
 } from "../config/constants";
 import { iGenericSchema, iNodeSchema } from "../state/atoms/schema.atom";
 import { sortByOrderWeight } from "./common";
-import { isValid, parseISO } from "date-fns";
 
 export const getObjectAttributes = (
   schema: iNodeSchema | iGenericSchema | undefined,
@@ -197,7 +197,7 @@ export const getRelationshipValue = (row: any, field: any) => {
 
 // Inlcude current value in the options to make it available in the select component
 export const getRelationshipOptions = (row: any, field: any, schemas: any[], generics: any[]) => {
-  const value = row[field.name]?.node ?? row[field.name];
+  const value = row && (row[field.name]?.node ?? row[field.name]);
 
   if (!value) {
     return [];
