@@ -49,7 +49,7 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
   const generic = generics.find((s) => s.kind === relationshipSchemaData?.peer);
   const schemaData = schema || generic;
 
-  // TODO: doesn't work with generics (like members of group), columns are empty
+  // TODO: doesn't work with generics (like members of group), columns are empty, default ones will be used
   const columns = getSchemaObjectColumns(schemaData, true);
 
   const filtersString = [
