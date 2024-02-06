@@ -202,6 +202,10 @@ class InfrahubGraphQLApp:
         variable_values = operation.get("variables")
         operation_name = operation.get("operationName")
 
+        if operation_name == "IntrospectionQuery":
+            nbr_object_in_schema = len(graphql_params.schema.type_map)
+            self.logger.debug("Processing IntrospectionQuery .. ", branch=branch.name, nbr_object_in_schema=nbr_object_in_schema)
+
         result = await graphql(
             schema=graphql_params.schema,
             source=query,
