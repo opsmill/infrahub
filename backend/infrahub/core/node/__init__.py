@@ -304,7 +304,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         db: InfrahubDatabase,
         id: Optional[str] = None,
         db_id: Optional[str] = None,
-        updated_at: Union[Timestamp, str] = None,
+        updated_at: Optional[Union[Timestamp, str]] = None,
         **kwargs,
     ) -> Self:
         self.id = id
@@ -410,14 +410,18 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         await query.execute(db=db)
         result = query.get_result()
 
-        if result.get("rb.branch") == branch.name:
+        if result and result.get("rb.branch") == branch.name:
             await update_relationships_to([result.get("rb_id")], to=delete_at, db=db)
 
         query = await NodeDeleteQuery.init(db=db, node=self, at=delete_at)
         await query.execute(db=db)
 
     async def to_graphql(
-        self, db: InfrahubDatabase, fields: Optional[dict] = None, related_node_ids: Optional[set] = None
+        self,
+        db: InfrahubDatabase,
+        fields: Optional[dict] = None,
+        related_node_ids: Optional[set] = None,
+        filter_sensitive: bool = False,
     ) -> dict:
         """Generate GraphQL Payload for all attributes
 
@@ -425,7 +429,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             (dict): Return GraphQL Payload
         """
 
-        response = {"id": self.id, "type": self.get_kind()}
+        response: dict[str, Any] = {"id": self.id, "type": self.get_kind()}
 
         if related_node_ids is not None:
             related_node_ids.add(self.id)
@@ -453,7 +457,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                     response[field_name] = None
                 continue
 
-            field = getattr(self, field_name, None)
+            field: Optional[BaseAttribute] = getattr(self, field_name, None)
 
             if not field:
                 response[field_name] = None
@@ -461,10 +465,16 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
             if fields and isinstance(fields, dict):
                 response[field_name] = await field.to_graphql(
-                    db=db, fields=fields.get(field_name), related_node_ids=related_node_ids
+                    db=db,
+                    fields=fields.get(field_name),
+                    related_node_ids=related_node_ids,
+                    filter_sensitive=filter_sensitive,
                 )
             else:
-                response[field_name] = await field.to_graphql(db=db)
+                response[field_name] = await field.to_graphql(
+                    db=db,
+                    filter_sensitive=filter_sensitive,
+                )
 
         return response
 
