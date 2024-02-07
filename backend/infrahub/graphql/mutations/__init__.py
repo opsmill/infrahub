@@ -23,7 +23,6 @@ from .branch import (
 from .main import InfrahubMutation, InfrahubMutationMixin, InfrahubMutationOptions
 from .proposed_change import (
     InfrahubProposedChangeMutation,
-    ProposedChangeRequestRefreshArtifacts,
     ProposedChangeRequestRunCheck,
 )
 from .relationship import RelationshipAdd, RelationshipRemove
@@ -54,7 +53,6 @@ __all__ = [
     "JSONAttributeInput",
     "ListAttributeInput",
     "NumberAttributeInput",
-    "ProposedChangeRequestRefreshArtifacts",
     "ProposedChangeRequestRunCheck",
     "RelationshipAdd",
     "RelationshipRemove",

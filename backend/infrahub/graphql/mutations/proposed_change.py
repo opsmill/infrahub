@@ -161,47 +161,6 @@ class ProposedChangeRequestRunCheckInput(InputObjectType):
     check_type = GraphQLCheckType(required=False)
 
 
-class ProposedChangeRequestRefreshArtifactsInput(InputObjectType):
-    id = String(required=True)
-
-
-class ProposedChangeRequestRefreshArtifacts(Mutation):
-    class Arguments:
-        data = ProposedChangeRequestRefreshArtifactsInput(required=True)
-
-    ok = Boolean()
-
-    @classmethod
-    async def mutate(
-        cls,
-        root: dict,  # pylint: disable=unused-argument
-        info: GraphQLResolveInfo,
-        data: Dict[str, Any],
-    ) -> Dict[str, bool]:
-        context: GraphqlContext = info.context
-
-        identifier = data.get("id", "")
-        proposed_change = await NodeManager.get_one_by_id_or_default_filter(
-            id=identifier, schema_name=InfrahubKind.PROPOSEDCHANGE, db=context.db
-        )
-        state = ProposedChangeState(proposed_change.state.value)
-        state.validate_state_check_run()
-
-        destination_branch = proposed_change.destination_branch.value
-        source_branch = await _get_source_branch(db=context.db, name=proposed_change.source_branch.value)
-
-        message = messages.RequestProposedChangePipeline(
-            proposed_change=proposed_change.id,
-            source_branch=source_branch.name,
-            source_branch_data_only=source_branch.is_data_only,
-            destination_branch=destination_branch,
-            check_type=CheckType.ARTIFACT,
-        )
-        await context.rpc_client.send(message)
-
-        return {"ok": True}
-
-
 class ProposedChangeRequestRunCheck(Mutation):
     class Arguments:
         data = ProposedChangeRequestRunCheckInput(required=True)
