@@ -18,7 +18,6 @@ from .mutations import (
     BranchValidate,
     CoreAccountSelfUpdate,
     CoreAccountTokenCreate,
-    ProposedChangeRequestRefreshArtifacts,
     ProposedChangeRequestRunCheck,
     RelationshipAdd,
     RelationshipRemove,
@@ -77,7 +76,6 @@ class InfrahubBaseMutation(ObjectType):
     CoreAccountTokenCreate = CoreAccountTokenCreate.Field()
     CoreAccountSelfUpdate = CoreAccountSelfUpdate.Field()
     CoreProposedChangeRunCheck = ProposedChangeRequestRunCheck.Field()
-    CoreProposedChangeRefreshArtifacts = ProposedChangeRequestRefreshArtifacts.Field()
 
     BranchCreate = BranchCreate.Field()
     BranchDelete = BranchDelete.Field()
