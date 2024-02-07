@@ -41,6 +41,7 @@ import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
+import { ObjectAttributeRow } from "./object-attribute-row";
 
 type iRelationDetailsProps = {
   parentNode: any;
@@ -228,98 +229,92 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
 
   return (
     <Fragment key={relationshipSchema?.name}>
-      {!relationshipsData && (
-        <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-4 sm:px-6">
-          <dt className="font-medium text-gray-500 flex items-center h-8">
-            {relationshipSchema?.label}
-          </dt>
-          <dd className="text-gray-900 flex items-center">-</dd>
-        </div>
-      )}
+      {!relationshipsData && <ObjectAttributeRow name={relationshipSchema?.label} value="-" />}
+
       {relationshipsData && (
         <>
           {relationshipSchema?.cardinality === "one" && (
-            <div className="p-2 grid grid-cols-3 gap-4 text-xs">
-              <dt className="font-medium text-gray-500 flex items-center h-8">
-                {relationshipSchema?.label}
-              </dt>
-              <dd className="text-gray-900 underline flex items-center">
-                <Link
-                  to={constructPath(
-                    getObjectDetailsUrl(
-                      relationshipsData.node?.id,
-                      relationshipsData.node?.__typename
-                    )
-                  )}>
-                  {relationshipsData.node?.display_label}
-                </Link>
+            <ObjectAttributeRow
+              name={relationshipSchema?.label}
+              value={
+                <>
+                  <Link
+                    to={constructPath(
+                      getObjectDetailsUrl(
+                        relationshipsData.node?.id,
+                        relationshipsData.node?.__typename
+                      )
+                    )}>
+                    {relationshipsData.node?.display_label}
+                  </Link>
 
-                {relationshipsData.properties && (
-                  <div className="px-2">
-                    <MetaDetailsTooltip
-                      items={[
-                        {
-                          label: "Updated at",
-                          value: relationshipsData.properties.updated_at,
-                          type: "date",
-                        },
-                        {
-                          label: "Update time",
-                          value: `${new Date(
-                            relationshipsData.properties.updated_at
-                          ).toLocaleDateString()} ${new Date(
-                            relationshipsData.properties.updated_at
-                          ).toLocaleTimeString()}`,
-                          type: "text",
-                        },
-                        {
-                          label: "Source",
-                          value: relationshipsData.properties.source,
-                          type: "link",
-                        },
-                        {
-                          label: "Owner",
-                          value: relationshipsData.properties.owner,
-                          type: "link",
-                        },
-                        {
-                          label: "Is protected",
-                          value: relationshipsData.properties.is_protected ? "True" : "False",
-                          type: "text",
-                        },
-                      ]}
-                      header={
-                        <div className="flex justify-between items-center w-full p-4">
-                          <div className="font-semibold">{relationshipSchema.label}</div>
-                          <Button
-                            buttonType={BUTTON_TYPES.INVISIBLE}
-                            disabled={!auth?.permissions?.write}
-                            onClick={() => {
-                              setMetaEditFieldDetails({
-                                type: "relationship",
-                                attributeOrRelationshipName: relationshipSchema.name,
-                                label: relationshipSchema.label || relationshipSchema.name,
-                              });
-                              setShowMetaEditModal(true);
-                            }}
-                            data-cy="metadata-edit-button">
-                            <PencilSquareIcon className="w-4 h-4 text-custom-blue-500" />
-                          </Button>
-                        </div>
-                      }
-                    />
-                  </div>
-                )}
+                  {relationshipsData.properties && (
+                    <div className="px-2">
+                      <MetaDetailsTooltip
+                        items={[
+                          {
+                            label: "Updated at",
+                            value: relationshipsData.properties.updated_at,
+                            type: "date",
+                          },
+                          {
+                            label: "Update time",
+                            value: `${new Date(
+                              relationshipsData.properties.updated_at
+                            ).toLocaleDateString()} ${new Date(
+                              relationshipsData.properties.updated_at
+                            ).toLocaleTimeString()}`,
+                            type: "text",
+                          },
+                          {
+                            label: "Source",
+                            value: relationshipsData.properties.source,
+                            type: "link",
+                          },
+                          {
+                            label: "Owner",
+                            value: relationshipsData.properties.owner,
+                            type: "link",
+                          },
+                          {
+                            label: "Is protected",
+                            value: relationshipsData.properties.is_protected ? "True" : "False",
+                            type: "text",
+                          },
+                        ]}
+                        header={
+                          <div className="flex justify-between items-center w-full p-4">
+                            <div className="font-semibold">{relationshipSchema.label}</div>
+                            <Button
+                              buttonType={BUTTON_TYPES.INVISIBLE}
+                              disabled={!auth?.permissions?.write}
+                              onClick={() => {
+                                setMetaEditFieldDetails({
+                                  type: "relationship",
+                                  attributeOrRelationshipName: relationshipSchema.name,
+                                  label: relationshipSchema.label || relationshipSchema.name,
+                                });
+                                setShowMetaEditModal(true);
+                              }}
+                              data-cy="metadata-edit-button">
+                              <PencilSquareIcon className="w-4 h-4 text-custom-blue-500" />
+                            </Button>
+                          </div>
+                        }
+                      />
+                    </div>
+                  )}
 
-                {relationshipsData.properties?.is_protected && (
-                  <LockClosedIcon className="w-4 h-4" />
-                )}
+                  {relationshipsData.properties?.is_protected && (
+                    <LockClosedIcon className="w-4 h-4" />
+                  )}
 
-                {relationshipsData.properties?.is_visible === false && (
-                  <EyeSlashIcon className="w-4 h-4" />
-                )}
-              </dd>
-            </div>
+                  {relationshipsData.properties?.is_visible === false && (
+                    <EyeSlashIcon className="w-4 h-4" />
+                  )}
+                </>
+              }
+            />
           )}
 
           {relationshipSchema?.cardinality === "many" && mode === "TABLE" && (
@@ -446,63 +441,63 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
           )}
 
           {relationshipSchema?.cardinality === "many" && mode === "DESCRIPTION-LIST" && (
-            <div className="p-2 grid grid-cols-3 gap-4 text-xs">
-              <dt className="font-medium text-gray-500 flex items-center h-8">
-                {relationshipSchema?.label}
-              </dt>
-              <dl className="flex flex-col">
-                {relationshipsData?.length === 0 && "-"}
-                {relationshipsData?.map(({ node, properties }: any) => (
-                  <dd className="text-gray-900 underline flex items-center" key={node.id}>
-                    <Link to={constructPath(getObjectDetailsUrl(node.id, node.__typename))}>
-                      {node.display_label}
-                    </Link>
+            <ObjectAttributeRow
+              name={relationshipSchema?.label}
+              value={
+                <dl className="flex flex-col">
+                  {relationshipsData?.length === 0 && "-"}
+                  {relationshipsData?.map(({ node, properties }: any) => (
+                    <dd className="text-gray-900 underline flex items-center" key={node.id}>
+                      <Link to={constructPath(getObjectDetailsUrl(node.id, node.__typename))}>
+                        {node.display_label}
+                      </Link>
 
-                    {node && (
-                      <div className="p-2">
-                        <MetaDetailsTooltip
-                          items={[
-                            {
-                              label: "Updated at",
-                              value: properties.updated_at,
-                              type: "date",
-                            },
-                            {
-                              label: "Update time",
-                              value: `${new Date(
-                                properties.updated_at
-                              ).toLocaleDateString()} ${new Date(
-                                properties.updated_at
-                              ).toLocaleTimeString()}`,
-                              type: "text",
-                            },
-                            {
-                              label: "Source",
-                              value: properties._relation__source,
-                              type: "link",
-                            },
-                            {
-                              label: "Owner",
-                              value: properties.owner?.display_label,
-                              type: "link",
-                            },
-                            {
-                              label: "Is protected",
-                              value: properties.is_protected ? "True" : "False",
-                              type: "text",
-                            },
-                          ]}
-                        />
-                      </div>
-                    )}
+                      {node && (
+                        <div className="p-2">
+                          <MetaDetailsTooltip
+                            items={[
+                              {
+                                label: "Updated at",
+                                value: properties.updated_at,
+                                type: "date",
+                              },
+                              {
+                                label: "Update time",
+                                value: `${new Date(
+                                  properties.updated_at
+                                ).toLocaleDateString()} ${new Date(
+                                  properties.updated_at
+                                ).toLocaleTimeString()}`,
+                                type: "text",
+                              },
+                              {
+                                label: "Source",
+                                value: properties._relation__source,
+                                type: "link",
+                              },
+                              {
+                                label: "Owner",
+                                value: properties.owner?.display_label,
+                                type: "link",
+                              },
+                              {
+                                label: "Is protected",
+                                value: properties.is_protected ? "True" : "False",
+                                type: "text",
+                              },
+                            ]}
+                          />
+                        </div>
+                      )}
 
-                    {properties.is_protected && <LockClosedIcon className="w-4 h-4" />}
+                      {properties.is_protected && <LockClosedIcon className="w-4 h-4" />}
 
-                    {properties.is_visible === false && <EyeSlashIcon className="w-4 h-4" />}
-                  </dd>
-                ))}
-              </dl>
-            </div>
+                      {properties.is_visible === false && <EyeSlashIcon className="w-4 h-4" />}
+                    </dd>
+                  ))}
+                </dl>
+              }
+            />
           )}
         </>
       )}
