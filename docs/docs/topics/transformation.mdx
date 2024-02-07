@@ -20,7 +20,7 @@ The output of a transformation can be either in JSON format or in plain text.
 
 A transformation is composed of 2 main components:
 
-- A **GraphQL query** that will define what the input data.
+- A **GraphQL query** that will define what the input data is.
 - A **Transformation logic** that will process the data and transform it.
 
 ![](../media/transformation.excalidraw.svg)
@@ -67,7 +67,7 @@ A Jinja2 Transform can be rendered with 3 different methods:
 
 ### TransformPython (Python plugin)
 
-A `TransformaPython` is a transformation plugin written in Python. It can generate any dataset in JSON format and must be composed of 1 main Python Class and 1 GraphQL Query.
+A `TransformPython` is a transformation plugin written in Python. It can generate any dataset in JSON format and must be composed of 1 main Python Class and 1 GraphQL Query.
 
 #### Create a Python transform
 
@@ -81,7 +81,7 @@ An TransformPython can be rendered with 2 different methods:
 
 - On demand via the REST API
 - As part of an [Artifact](./artifact.mdx)
-- In CLI for development and troubleshooting [infrahubctl transform](/infrahubctl/infrahubctl-transform)
+- In CLI for development and troubleshooting: [infrahubctl transform](/infrahubctl/infrahubctl-transform)
 
 ## Unit testing for transformation
 
