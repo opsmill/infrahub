@@ -26,7 +26,8 @@ class MessageTTL(int, Enum):
 class ProposedChangeBranchDiff(BaseModel):
     diff_summary: list[NodeDiff] = Field(default_factory=list, description="The DiffSummary between two branches")
 
-    def has_data_changes(self, branch: str) -> bool:
+    def has_node_changes(self, branch: str) -> bool:
+        """Indicates if there is at least one node object that has been modified in the branch"""
         return bool(
             [
                 entry
@@ -35,7 +36,6 @@ class ProposedChangeBranchDiff(BaseModel):
             ]
         )
 
-    def has_schema_changes(self, branch: str) -> bool:
-        return bool(
-            [entry for entry in self.diff_summary if entry["branch"] == branch and SCHEMA_CHANGE.match(entry["kind"])]
-        )
+    def has_data_changes(self, branch: str) -> bool:
+        """Indicates if there are node or schema changes within the branch."""
+        return bool([entry for entry in self.diff_summary if entry["branch"] == branch])

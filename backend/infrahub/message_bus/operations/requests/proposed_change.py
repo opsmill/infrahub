@@ -61,7 +61,7 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
             )
         )
 
-    if message.check_type in [CheckType.ALL, CheckType.DATA] and branch_diff.has_data_changes(
+    if message.check_type in [CheckType.ALL, CheckType.DATA] and branch_diff.has_node_changes(
         branch=message.source_branch
     ):
         events.append(
@@ -85,7 +85,7 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
             )
         )
 
-    if message.check_type in [CheckType.ALL, CheckType.SCHEMA] and branch_diff.has_schema_changes(
+    if message.check_type in [CheckType.ALL, CheckType.SCHEMA] and branch_diff.has_data_changes(
         branch=message.source_branch
     ):
         events.append(
