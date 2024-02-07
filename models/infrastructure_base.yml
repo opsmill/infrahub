@@ -311,11 +311,12 @@ nodes:
             color: "#e6e6fa"
     relationships:
       - name: site
-        label: Site (Location)
-        peer: BuiltinLocation
+        label: Site
+        peer: InfraSite
         optional: false
         cardinality: one
         kind: Attribute
+        identifier: "site__devices"
       - name: interfaces
         peer: InfraInterface
         identifier: "device__interface"
@@ -475,11 +476,12 @@ nodes:
             color: "#a0b78d"
     relationships:
       - name: site
-        label: Site (Location)
-        peer: BuiltinLocation
+        label: "Site"
+        peer: "InfraSite"
         optional: true
         cardinality: one
         kind: Attribute
+        identifier: "site__vlans"
       - name: gateway
         label: L3 Gateway
         peer: InfraInterfaceL3
@@ -566,11 +568,12 @@ nodes:
       - "InfraEndpoint"
     relationships:
       - name: site
-        label: Site (Location)
-        peer: BuiltinLocation
+        label: "Site"
+        peer: "InfraSite"
         optional: false
         cardinality: one
         kind: Attribute
+        identifier: "site__circuit_endpoints"
       - name: circuit
         peer: InfraCircuit
         optional: false
@@ -802,28 +805,3 @@ nodes:
       - kind: Text
         name: description
         optional: true
-
-  - name: Location
-    namespace: Builtin
-    label: Location
-    description: "A location represent a physical element: a building, a site, a city"
-    default_filter: name__value
-    display_labels: [name__value]
-    order_by: [name__value]
-    icon: mdi:map-marker-radius-outline
-    include_in_menu: true
-    attributes:
-      - kind: Text
-        name: name
-        unique: true
-      - kind: Text
-        name: description
-        optional: true
-      - kind: Text
-        name: type
-    relationships:
-      - cardinality: many
-        kind: Attribute
-        name: tags
-        optional: true
-        peer: BuiltinTag
