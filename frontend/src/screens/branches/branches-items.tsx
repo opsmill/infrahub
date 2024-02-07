@@ -8,6 +8,7 @@ import { Tooltip } from "../../components/utils/tooltip";
 import { useTitle } from "../../hooks/useTitle";
 import { branchesState } from "../../state/atoms/branches.atom";
 import { constructPath } from "../../utils/fetch";
+import { DocumentationButton } from "../../components/buttons/documentation-button";
 
 export const BranchesItems = () => {
   const [storedBranches] = useAtom(branchesState);
@@ -25,6 +26,10 @@ export const BranchesItems = () => {
       className="grid gap-6 grid-cols-1 p-6"
       data-cy="branches-items"
       data-testid="branches-items">
+      <div className="flex justify-end">
+        <DocumentationButton topic="branches" />
+      </div>
+
       {branches.map((branch) => (
         <li
           className="col-span-1 rounded-lg bg-custom-white shadow cursor-pointer hover:bg-gray-50"

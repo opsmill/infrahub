@@ -4,6 +4,7 @@ import { useTitle } from "../../hooks/useTitle";
 import { iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
 import { classNames } from "../../utils/common";
 import ObjectRows from "./object-rows";
+import { DocumentationButton } from "../../components/buttons/documentation-button";
 
 export default function OpsObjects() {
   const [schema] = useAtom(schemaState);
@@ -13,28 +14,28 @@ export default function OpsObjects() {
 
   return (
     <div className="flex overflow-auto">
-      <div className="flex-1 overflow-auto">
-        <div className="p-4 space-y-4 bg-gray-50">
-          {schema.map((schema) => {
-            return (
-              <div
-                key={schema?.name}
-                className={classNames(
-                  "p-4 shadow-lg border border-gray-200 bg-custom-white rounded-md hover:bg-gray-100 cursor-pointer",
-                  selectedSchema?.name === schema.name ? "border-custom-blue-500" : ""
-                )}
-                onClick={() => {
-                  setSelectedSchema(schema);
-                }}>
-                {schema.label}
-                <div className="text-sm text-gray-600">
-                  {schema?.attributes?.length} attribute(s), {schema?.relationships?.length}{" "}
-                  relationships(s)
-                </div>
+      <div className="flex flex-1 flex-col overflow-auto p-4 space-y-4 bg-gray-50">
+        <DocumentationButton topic="schema" className="self-end" />
+
+        {schema.map((schema) => {
+          return (
+            <div
+              key={schema?.name}
+              className={classNames(
+                "p-4 shadow-lg border border-gray-200 bg-custom-white rounded-md hover:bg-gray-100 cursor-pointer",
+                selectedSchema?.name === schema.name ? "border-custom-blue-500" : ""
+              )}
+              onClick={() => {
+                setSelectedSchema(schema);
+              }}>
+              {schema.label}
+              <div className="text-sm text-gray-600">
+                {schema?.attributes?.length} attribute(s), {schema?.relationships?.length}{" "}
+                relationships(s)
               </div>
-            );
-          })}
-        </div>
+            </div>
+          );
+        })}
       </div>
       <div className="flex-1 overflow-auto">
         {selectedSchema && <ObjectRows schema={selectedSchema} />}

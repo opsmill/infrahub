@@ -40,6 +40,7 @@ import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
+import { DocumentationButton } from "../../components/buttons/documentation-button";
 
 export default function ObjectItems(props: any) {
   const { objectname: objectnameFromParams } = useParams();
@@ -177,7 +178,16 @@ export default function ObjectItems(props: any) {
 
   return (
     <div className="bg-custom-white flex-1 flex flex-col">
-      <div className="flex items-center p-4 w-full">
+      <div className="flex items-center p-4 w-full gap-2">
+        {schema && (
+          <RoundedButton
+            data-cy="create"
+            data-testid="create-object-button"
+            disabled={!auth?.permissions?.write}
+            onClick={() => setShowCreateDrawer(true)}>
+            <PlusIcon className="w-4 h-4" aria-hidden="true" />
+          </RoundedButton>
+        )}
         {schemaData && (
           <div className="sm:flex-auto flex items-center">
             <h1 className="text-md font-semibold text-gray-900 mr-2">
@@ -188,15 +198,7 @@ export default function ObjectItems(props: any) {
           </div>
         )}
 
-        {schema && (
-          <RoundedButton
-            data-cy="create"
-            data-testid="create-object-button"
-            disabled={!auth?.permissions?.write}
-            onClick={() => setShowCreateDrawer(true)}>
-            <PlusIcon className="w-4 h-4" aria-hidden="true" />
-          </RoundedButton>
-        )}
+        {schemaData?.kind && <DocumentationButton topic={schemaData.kind as any} />}
       </div>
 
       {schemaData?.filters && <DeviceFilterBar objectname={objectname} />}

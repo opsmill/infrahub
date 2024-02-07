@@ -25,6 +25,7 @@ import LoadingScreen from "../loading-screen/loading-screen";
 import ObjectItemCreate from "../object-item-create/object-item-create-paginated";
 import { getFormStructure } from "./conversations";
 import { ProposedChange } from "./proposed-changes-item";
+import { DocumentationButton } from "../../components/buttons/documentation-button";
 
 export const ProposedChanges = () => {
   const [schemaList] = useAtom(schemaState);
@@ -93,15 +94,7 @@ export const ProposedChanges = () => {
 
   return (
     <div>
-      <div className="bg-white flex items-center p-4 w-full">
-        {schemaData && (
-          <div className="sm:flex-auto flex items-center">
-            <h1 className="text-md font-semibold text-gray-900">
-              {schemaData.name} ({count})
-            </h1>
-          </div>
-        )}
-
+      <div className="bg-white flex items-center gap-2 p-4 w-full">
         <RoundedButton
           disabled={!auth?.permissions?.write}
           onClick={() => setShowCreateDrawer(true)}
@@ -109,6 +102,18 @@ export const ProposedChanges = () => {
           data-testid="add-proposed-changes-button">
           <PlusIcon className="w-4 h-4" aria-hidden="true" />
         </RoundedButton>
+
+        {schemaData && (
+          <>
+            <div className="sm:flex-auto flex items-center">
+              <h1 className="text-md font-semibold text-gray-900">
+                {schemaData.name} ({count})
+              </h1>
+            </div>
+
+            <DocumentationButton topic="CoreProposedChange" />
+          </>
+        )}
       </div>
 
       <ul className="grid gap-6 grid-cols-1 p-6">
