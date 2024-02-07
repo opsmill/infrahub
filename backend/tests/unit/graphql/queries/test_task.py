@@ -186,8 +186,7 @@ async def test_task_query(db: InfrahubDatabase, default_branch: Branch, register
         variables={},
     )
     assert all_tasks.data
-    # FIXME https://github.com/opsmill/infrahub/issues/410
-    # assert all_tasks.data["InfrahubTask"]["count"] == 5
+    assert all_tasks.data["InfrahubTask"]["count"] == 5
 
     blue_tasks = await run_query(
         db=db,
@@ -196,8 +195,7 @@ async def test_task_query(db: InfrahubDatabase, default_branch: Branch, register
         variables={"related_nodes": blue.get_id()},
     )
     assert blue_tasks.data
-    # FIXME https://github.com/opsmill/infrahub/issues/410
-    # assert blue_tasks.data["InfrahubTask"]["count"] == 3
+    assert blue_tasks.data["InfrahubTask"]["count"] == 3
 
     red_blue_tasks = await run_query(
         db=db,
@@ -206,8 +204,7 @@ async def test_task_query(db: InfrahubDatabase, default_branch: Branch, register
         variables={"related_nodes": [red.get_id(), blue.get_id()]},
     )
     assert red_blue_tasks.data
-    # FIXME https://github.com/opsmill/infrahub/issues/410
-    # assert red_blue_tasks.data["InfrahubTask"]["count"] == 4
+    assert red_blue_tasks.data["InfrahubTask"]["count"] == 4
 
     all_logs = await run_query(
         db=db,
@@ -216,12 +213,11 @@ async def test_task_query(db: InfrahubDatabase, default_branch: Branch, register
         variables={},
     )
     assert all_logs.data
-    # FIXME https://github.com/opsmill/infrahub/issues/410
-    # logs = []
-    # for task in all_logs.data["InfrahubTask"]["edges"]["node"]:
-    #     [logs.append(log) for log in task["logs"]["edges"]]
+    logs = []
+    for task in all_logs.data["InfrahubTask"]["edges"]["node"]:
+        [logs.append(log) for log in task["logs"]["edges"]]
 
-    # assert len(logs) == 6
+    assert len(logs) == 6
 
 
 async def run_query(db: InfrahubDatabase, branch: Branch, query: str, variables: Dict[str, Any]) -> ExecutionResult:

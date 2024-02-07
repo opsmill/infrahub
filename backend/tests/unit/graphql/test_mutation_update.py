@@ -355,8 +355,7 @@ async def test_update_single_relationship(
 
     assert result.errors is None
     assert result.data["TestCarUpdate"]["ok"] is True
-    # FIXME https://github.com/opsmill/infrahub/issues/410
-    # assert result.data["TestCarUpdate"]["object"]["owner"]["node"]["name"]["value"] == "Jim"
+    assert result.data["TestCarUpdate"]["object"]["owner"]["node"]["name"]["value"] == "Jim"
 
     car = await NodeManager.get_one(db=db, id=car_accord_main.id, branch=branch)
     car_peer = await car.owner.get_peer(db=db)
@@ -397,8 +396,7 @@ async def test_update_new_single_relationship_flag_property(
 
     assert result.errors is None
     assert result.data["TestCarUpdate"]["ok"] is True
-    # FIXME https://github.com/opsmill/infrahub/issues/410
-    # assert result.data["TestCarUpdate"]["object"]["owner"]["node"]["name"]["value"] == "Jim"
+    assert result.data["TestCarUpdate"]["object"]["owner"]["node"]["name"]["value"] == "Jim"
 
     car = await NodeManager.get_one(db=db, id=car_accord_main.id, branch=branch)
     car_peer = await car.owner.get_peer(db=db)
@@ -441,8 +439,7 @@ async def test_update_delete_optional_relationship_cardinality_one(
 
     assert result.errors is None
     assert result.data["TestCarUpdate"]["ok"] is True
-    # FIXME https://github.com/opsmill/infrahub/issues/410
-    # assert result.data["TestCarUpdate"]["object"]["owner"]["node"]["name"]["value"] == "Jim"
+    assert result.data["TestCarUpdate"]["object"]["owner"]["node"]["name"]["value"] == "Jim"
 
     car = await NodeManager.get_one(db=db, id=car_accord_main.id, branch=branch)
     car_peer = await car.owner.get_peer(db=db)
@@ -475,8 +472,7 @@ async def test_update_delete_optional_relationship_cardinality_one(
 
     assert result.errors is None
     assert result.data["TestCarUpdate"]["ok"] is True
-    # FIXME https://github.com/opsmill/infrahub/issues/410
-    # assert result.data["TestCarUpdate"]["object"]["owner"]["node"] is None
+    assert result.data["TestCarUpdate"]["object"]["owner"]["node"] is None
     car = await NodeManager.get_one(db=db, id=car_accord_main.id, branch=branch)
     car_peer = await car.owner.get_peer(db=db)
     assert car_peer is None
@@ -516,8 +512,7 @@ async def test_update_existing_single_relationship_flag_property(
 
     assert result.errors is None
     assert result.data["TestCarUpdate"]["ok"] is True
-    # FIXME https://github.com/opsmill/infrahub/issues/410
-    # assert result.data["TestCarUpdate"]["object"]["owner"]["node"]["name"]["value"] == "John"
+    assert result.data["TestCarUpdate"]["object"]["owner"]["node"]["name"]["value"] == "John"
 
     car = await NodeManager.get_one(db=db, id=car_accord_main.id, branch=branch)
     car_peer = await car.owner.get_peer(db=db)
@@ -583,8 +578,7 @@ async def test_update_existing_single_relationship_node_property(
 
     assert result.errors is None
     assert result.data["TestCarUpdate"]["ok"] is True
-    # FIXME https://github.com/opsmill/infrahub/issues/410
-    # assert result.data["TestCarUpdate"]["object"]["owner"]["node"]["name"]["value"] == "John"
+    assert result.data["TestCarUpdate"]["object"]["owner"]["node"]["name"]["value"] == "John"
 
     car = await NodeManager.get_one(db=db, id=car_accord_with_source_main.id, branch=branch)
     car_peer = await car.owner.get_peer(db=db)
@@ -636,8 +630,7 @@ async def test_update_relationship_many(
 
     assert result.errors is None
     assert result.data["TestPersonUpdate"]["ok"] is True
-    # FIXME https://github.com/opsmill/infrahub/issues/410
-    # assert len(result.data["TestPersonUpdate"]["object"]["tags"]["edges"]) == 1
+    assert len(result.data["TestPersonUpdate"]["object"]["tags"]["edges"]) == 1
 
     p11 = await NodeManager.get_one(db=db, id=person_jack_main.id, branch=branch)
     assert len(list(await p11.tags.get(db=db))) == 1
@@ -677,8 +670,7 @@ async def test_update_relationship_many(
 
     assert result.errors is None
     assert result.data["TestPersonUpdate"]["ok"] is True
-    # FIXME https://github.com/opsmill/infrahub/issues/410
-    # assert len(result.data["TestPersonUpdate"]["object"]["tags"]["edges"]) == 2
+    assert len(result.data["TestPersonUpdate"]["object"]["tags"]["edges"]) == 2
 
     p12 = await NodeManager.get_one(db=db, id=person_jack_main.id, branch=branch)
     tags = await p12.tags.get(db=db)
@@ -720,8 +712,7 @@ async def test_update_relationship_many(
 
     assert result.errors is None
     assert result.data["TestPersonUpdate"]["ok"] is True
-    # FIXME https://github.com/opsmill/infrahub/issues/410
-    # assert len(result.data["TestPersonUpdate"]["object"]["tags"]["edges"]) == 2
+    assert len(result.data["TestPersonUpdate"]["object"]["tags"]["edges"]) == 2
 
     p13 = await NodeManager.get_one(db=db, id=person_jack_main.id, branch=branch)
     tags = await p13.tags.get(db=db)
@@ -770,8 +761,7 @@ async def test_update_relationship_many2(
 
     assert result.errors is None
     assert result.data["TestPersonUpdate"]["ok"] is True
-    # FIXME https://github.com/opsmill/infrahub/issues/410
-    # assert len(result.data["TestPersonUpdate"]["object"]["tags"]["edges"]) == 1
+    assert len(result.data["TestPersonUpdate"]["object"]["tags"]["edges"]) == 1
 
     p11 = await NodeManager.get_one(db=db, id=person_jack_main.id, branch=branch)
     assert len(list(await p11.tags.get(db=db))) == 1
@@ -811,8 +801,7 @@ async def test_update_relationship_many2(
 
     assert result.errors is None
     assert result.data["TestPersonUpdate"]["ok"] is True
-    # FIXME https://github.com/opsmill/infrahub/issues/410
-    # assert len(result.data["TestPersonUpdate"]["object"]["tags"]["edges"]) == 2
+    assert len(result.data["TestPersonUpdate"]["object"]["tags"]["edges"]) == 2
 
     p12 = await NodeManager.get_one(db=db, id=person_jack_main.id, branch=branch)
     tags = await p12.tags.get(db=db)
@@ -858,8 +847,7 @@ async def test_update_relationship_previously_deleted(
 
     assert result.errors is None
     assert result.data["TestPersonUpdate"]["ok"] is True
-    # FIXME https://github.com/opsmill/infrahub/issues/410
-    # assert len(result.data["TestPersonUpdate"]["object"]["tags"]) == 1
+    assert len(result.data["TestPersonUpdate"]["object"]["tags"]) == 1
 
     p11 = await NodeManager.get_one(db=db, id=person_jack_main.id, branch=branch)
     assert len(list(await p11.tags.get(db=db))) == 1
