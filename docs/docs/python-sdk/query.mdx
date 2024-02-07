@@ -1,0 +1,148 @@
+---
+title: Query data from Infrahub
+---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Query data from Infrahub
+
+The Python SDK has 3 main methods to query data from Infrahub
+
+- `client.get()`: Query a single object based on some filters
+- `client.all()`: Query all objects of a given kind.
+- `client.filters()`: Query a list of objects from a given kind based on some filters.
+
+:::note
+
+It's also possible to execute a GraphQL query directly with `client.execute_graphql()`
+
+:::
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+    ```python
+    from infrahub_sdk import InfrahubClient
+
+    client = await InfrahubClient.init(address="http://localhost:8000")
+    accounts = await client.all(kind="CoreAccount")
+    ```
+
+    ```python
+    from infrahub_sdk import InfrahubClient
+
+    client = await InfrahubClient.init(address="http://localhost:8000")
+    accounts = await client.get(kind="CoreAccount", id="XXX")
+    ```
+
+    ```python
+    from infrahub_sdk import InfrahubClient
+
+    client = await InfrahubClient.init(address="http://localhost:8000")
+    accounts = await client.filters(kind="CoreAccount", name__value="admin")
+    ```
+  </TabItem>
+  <TabItem value="Sync">
+    ```python
+    from infrahub_sdk import InfrahubClientSync
+
+    client = InfrahubClientSync.init(address="http://localhost:8000")
+    accounts = client.all(kind="CoreAccount")
+    ```
+
+    ```python
+    from infrahub_sdk import InfrahubClientSync
+
+    client = InfrahubClientSync.init(address="http://localhost:8000")
+    accounts = client.get(kind="CoreAccount", id="XXX")
+    ```
+
+    ```python
+    from infrahub_sdk import InfrahubClientSync
+
+    client = InfrahubClientSync.init(address="http://localhost:8000")
+    accounts = client.filters(kind="CoreAccount", name__value="admin")
+    ```
+  </TabItem>
+</Tabs>
+
+All 3 methods will return an `InfrahubNode` object or a list of `InfrahubNode` objects.
+All Attributes and Relationships defined in the schema will be automatically built into the object when it's being initialized.
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+    ```python
+    from infrahub_sdk import InfrahubClient
+
+    client = await InfrahubClient.init(address="http://localhost:8000")
+    account = await client.get(kind="CoreRepository", id="XXX")
+    print(account.name.value)
+    ```
+  </TabItem>
+  <TabItem value="Sync">
+    ```python
+    from infrahub_sdk import InfrahubClientSync
+
+    client = InfrahubClientSync.init(address="http://localhost:8000")
+    account = client.get(kind="CoreRepository", id="XXX")
+    print(account.name.value)
+    ```
+  </TabItem>
+</Tabs>
+
+## Control what will be queried
+
+For all 3 methods you must provide the `kind` of the objects you want to query and based on the schema the SDK will automatically generate the right GraphQL query.
+
+By default, the query will include, the attributes, the relationships of cardinality one and the relationships of kind `Attribute`.
+
+it's possible to add or remove some attributes and/or relationships from the query with `include` and `exclude`
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+    ```python
+    from infrahub_sdk import InfrahubClient
+
+    client = await InfrahubClient.init(address="http://localhost:8000")
+    accounts = await client.all(kind="CoreRepository", exclude=["tags"], include=["queries"])
+    ```
+  </TabItem>
+  <TabItem value="Sync">
+    ```python
+    from infrahub_sdk import InfrahubClientSync
+
+    client = InfrahubClientSync.init(address="http://localhost:8000")
+    accounts = client.all(kind="CoreRepository", exclude=["tags"], include=["queries"])
+    ```
+  </TabItem>
+</Tabs>
+
+## Managing relationships
+
+There are situations to consider while managing relationships via the SDK, depending if the relationship was included in the query or not.
+
+Relationships that are included in a query will be automatically `initialized` which means the ID, type and display name of the peers will be included in the query.
+
+In both cases, you can `fetch()` all the peers of a relationship
+
+<Tabs groupId="async-sync">
+  <TabItem value="Async" default>
+    ```python
+    from infrahub_sdk import InfrahubClient, InfrahubNode
+
+    client = await InfrahubClient.init(address="http://localhost:8000")
+    account: InfrahubNode = await client.get(kind="CoreRepository", id="XXXX")
+    await account.tags.fetch()
+    tags: List[InfrahubNode]  = [ tag.peer for tag in account.tags ]
+    ```
+  </TabItem>
+  <TabItem value="Sync">
+    ```python
+    from infrahub_sdk import InfrahubClientSync, InfrahubNodeSync
+
+    client = InfrahubClientSync.init(address="http://localhost:8000")
+    account: InfrahubNodeSync = client.get(kind="CoreRepository", id="XXXX")
+    account.tags.fetch()
+    tags: List[InfrahubNodeSync] = [ tag.peer for tag in account.tags ]
+    ```
+  </TabItem>
+</Tabs>

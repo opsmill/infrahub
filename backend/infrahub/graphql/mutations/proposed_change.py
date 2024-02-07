@@ -1,18 +1,19 @@
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
-from graphene import Boolean, Enum, InputObjectType, Mutation, String
+from graphene import Boolean, InputObjectType, Mutation, String
 from graphql import GraphQLResolveInfo
 
 from infrahub import config, lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind, ProposedChangeState, ValidatorConclusion
+from infrahub.core.constants import CheckType, InfrahubKind, ProposedChangeState, ValidatorConclusion
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import BranchNotFound, ValidationError
 from infrahub.graphql.mutations.main import InfrahubMutationMixin
+from infrahub.graphql.types.enums import CheckType as GraphQLCheckType
 from infrahub.log import get_log_data
 from infrahub.message_bus import Meta, messages
 from infrahub.services import services
@@ -22,15 +23,6 @@ from .main import InfrahubMutationOptions
 
 if TYPE_CHECKING:
     from .. import GraphqlContext
-
-
-class CheckType(Enum):
-    ARTIFACT = "artifact"
-    DATA = "data"
-    REPOSITORY = "repository"
-    SCHEMA = "schema"
-    USER = "user"
-    ALL = "all"
 
 
 class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
@@ -54,19 +46,31 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         data: InputObjectType,
         branch: Branch,
         at: str,
+        database: Optional[InfrahubDatabase] = None,
     ):
         context: GraphqlContext = info.context
+        db: InfrahubDatabase = info.context.db
 
-        proposed_change, result = await super().mutate_create(root=root, info=info, data=data, branch=branch, at=at)
+        async with db.start_transaction() as dbt:
+            proposed_change, result = await super().mutate_create(
+                root=root, info=info, data=data, branch=branch, at=at, database=dbt
+            )
+            destination_branch = proposed_change.destination_branch.value
+            source_branch = await _get_source_branch(db=dbt, name=proposed_change.source_branch.value)
+            if destination_branch == source_branch.name:
+                raise ValidationError(input_value="The source and destination branch can't be the same")
+            if destination_branch != "main":
+                raise ValidationError(
+                    input_value="Currently only the 'main' branch is supported as a destination for a proposed change"
+                )
 
-        events = [
-            messages.RequestProposedChangeRefreshArtifacts(proposed_change=proposed_change.id),
-            messages.RequestProposedChangeDataIntegrity(proposed_change=proposed_change.id),
-            messages.RequestProposedChangeRepositoryChecks(proposed_change=proposed_change.id),
-            messages.RequestProposedChangeSchemaIntegrity(proposed_change=proposed_change.id),
-        ]
-        for event in events:
-            await context.rpc_client.send(event)
+        message = messages.RequestProposedChangePipeline(
+            proposed_change=proposed_change.id,
+            source_branch=source_branch.name,
+            source_branch_data_only=source_branch.is_data_only,
+            destination_branch=destination_branch,
+        )
+        await context.rpc_client.send(message)
 
         return proposed_change, result
 
@@ -154,7 +158,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
 
 class ProposedChangeRequestRunCheckInput(InputObjectType):
     id = String(required=True)
-    check_type = CheckType(required=True)
+    check_type = GraphQLCheckType(required=False)
 
 
 class ProposedChangeRequestRefreshArtifactsInput(InputObjectType):
@@ -183,9 +187,18 @@ class ProposedChangeRequestRefreshArtifacts(Mutation):
         state = ProposedChangeState(proposed_change.state.value)
         state.validate_state_check_run()
 
-        await context.rpc_client.send(
-            messages.RequestProposedChangeRefreshArtifacts(proposed_change=proposed_change.id)
+        destination_branch = proposed_change.destination_branch.value
+        source_branch = await _get_source_branch(db=context.db, name=proposed_change.source_branch.value)
+
+        message = messages.RequestProposedChangePipeline(
+            proposed_change=proposed_change.id,
+            source_branch=source_branch.name,
+            source_branch_data_only=source_branch.is_data_only,
+            destination_branch=destination_branch,
+            check_type=CheckType.ARTIFACT,
         )
+        await context.rpc_client.send(message)
+
         return {"ok": True}
 
 
@@ -204,7 +217,8 @@ class ProposedChangeRequestRunCheck(Mutation):
     ) -> Dict[str, bool]:
         context: GraphqlContext = info.context
 
-        check_type = data.get("check_type")
+        check_type = data.get("check_type") or CheckType.ALL
+
         identifier = data.get("id", "")
         proposed_change = await NodeManager.get_one_by_id_or_default_filter(
             id=identifier, schema_name=InfrahubKind.PROPOSEDCHANGE, db=context.db
@@ -212,30 +226,25 @@ class ProposedChangeRequestRunCheck(Mutation):
         state = ProposedChangeState(proposed_change.state.value)
         state.validate_state_check_run()
 
-        if check_type == CheckType.ARTIFACT:
-            await context.rpc_client.send(
-                messages.RequestProposedChangeRefreshArtifacts(proposed_change=proposed_change.id)
-            )
-        elif check_type == CheckType.DATA:
-            await context.rpc_client.send(
-                messages.RequestProposedChangeDataIntegrity(proposed_change=proposed_change.id)
-            )
-        elif check_type in [CheckType.REPOSITORY, CheckType.USER]:
-            await context.rpc_client.send(
-                messages.RequestProposedChangeRepositoryChecks(proposed_change=proposed_change.id)
-            )
-        elif check_type == CheckType.SCHEMA:
-            await context.rpc_client.send(
-                messages.RequestProposedChangeSchemaIntegrity(proposed_change=proposed_change.id)
-            )
-        else:
-            events = [
-                messages.RequestProposedChangeDataIntegrity(proposed_change=proposed_change.id),
-                messages.RequestProposedChangeRepositoryChecks(proposed_change=proposed_change.id),
-                messages.RequestProposedChangeSchemaIntegrity(proposed_change=proposed_change.id),
-                messages.RequestProposedChangeRefreshArtifacts(proposed_change=proposed_change.id),
-            ]
-            for event in events:
-                await context.rpc_client.send(event)
+        destination_branch = proposed_change.destination_branch.value
+        source_branch = await _get_source_branch(db=context.db, name=proposed_change.source_branch.value)
+
+        message = messages.RequestProposedChangePipeline(
+            proposed_change=proposed_change.id,
+            source_branch=source_branch.name,
+            source_branch_data_only=source_branch.is_data_only,
+            destination_branch=destination_branch,
+            check_type=check_type,
+        )
+        await context.rpc_client.send(message)
 
         return {"ok": True}
+
+
+async def _get_source_branch(db: InfrahubDatabase, name: str) -> Branch:
+    try:
+        return await Branch.get_by_name(name=name, db=db)
+    except BranchNotFound:
+        raise ValidationError(
+            input_value="The specified source branch for this proposed change was not found."
+        ) from None

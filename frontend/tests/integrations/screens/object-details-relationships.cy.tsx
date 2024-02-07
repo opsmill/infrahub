@@ -100,8 +100,6 @@ describe("List screen", () => {
   it("should fetch items and render list", () => {
     cy.viewport(1920, 1080);
 
-    cy.log("deviceDetailsMocksSchema: ", deviceDetailsMocksSchema);
-
     // Mount the view with the default route and the mocked data
     cy.mount(
       <MockedProvider mocks={mocks} addTypename={false}>

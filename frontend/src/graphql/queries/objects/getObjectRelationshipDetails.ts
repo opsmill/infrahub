@@ -14,29 +14,37 @@ query GetObjectRelationships_{{kind}} {
               display_label
               __typename
 
-              {{#each attributes}}
-                {{this.name}} {
-                    value
-                    {{#if (eq this.kind "Dropdown")}}
-                    color
-                    description
-                    label
-                    {{/if}}
-                }
-              {{/each}}
+              {{#each columns}}
 
-              {{#each relationships}}
-                {{this.name}} {
-                  {{#if this.paginated}}
-                    edges {
-                  {{/if}}
-                    node {
-                      display_label
-                    }
-                  {{#if this.paginated}}
-                    }
-                  {{/if}}
-                }
+              {{#if this.isAttribute}}
+
+              {{this.name}} {
+                value
+                {{#if (eq this.kind "Dropdown")}}
+                color
+                description
+                label
+                {{/if}}
+              }
+
+              {{/if}}
+
+              {{#if this.isRelationship}}
+
+              {{this.name}} {
+                {{#if this.paginated}}
+                  edges {
+                {{/if}}
+                  node {
+                    display_label
+                  }
+                {{#if this.paginated}}
+                  }
+                {{/if}}
+              }
+
+              {{/if}}
+
               {{/each}}
             }
           }

@@ -75,6 +75,15 @@ class ContentType(InfrahubStringEnum):
     TEXT_PLAIN = "text/plain"
 
 
+class CheckType(InfrahubStringEnum):
+    ARTIFACT = "artifact"
+    DATA = "data"
+    REPOSITORY = "repository"
+    SCHEMA = "schema"
+    USER = "user"
+    ALL = "all"
+
+
 class DiffAction(InfrahubStringEnum):
     ADDED = "added"
     REMOVED = "removed"

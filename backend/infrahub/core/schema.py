@@ -284,7 +284,7 @@ class RelationshipSchema(HashableModel):
         return Relationship
 
     async def get_peer_schema(self, branch: Optional[Union[Branch, str]] = None):
-        return registry.schema.get(name=self.peer, branch=branch)
+        return registry.schema.get(name=self.peer, branch=branch, duplicate=False)
 
     @property
     def internal_peer(self) -> bool:
@@ -776,6 +776,7 @@ internal_schema = {
             "name": "Node",
             "namespace": "Schema",
             "branch": BranchSupportType.AWARE.value,
+            "include_in_menu": False,
             "default_filter": "name__value",
             "display_labels": ["label__value"],
             "attributes": [
@@ -914,6 +915,7 @@ internal_schema = {
             "name": "Attribute",
             "namespace": "Schema",
             "branch": BranchSupportType.AWARE.value,
+            "include_in_menu": False,
             "default_filter": None,
             "display_labels": ["name__value"],
             "attributes": [
@@ -1040,6 +1042,7 @@ internal_schema = {
             "name": "Relationship",
             "namespace": "Schema",
             "branch": BranchSupportType.AWARE.value,
+            "include_in_menu": False,
             "default_filter": None,
             "display_labels": ["name__value"],
             "attributes": [
@@ -1170,6 +1173,7 @@ internal_schema = {
             "name": "Generic",
             "namespace": "Schema",
             "branch": BranchSupportType.AWARE.value,
+            "include_in_menu": False,
             "default_filter": "name__value",
             "display_labels": ["label__value"],
             "attributes": [

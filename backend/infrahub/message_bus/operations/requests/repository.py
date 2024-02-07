@@ -15,10 +15,6 @@ async def checks(message: messages.RequestRepositoryChecks, service: InfrahubSer
     """Request to start validation checks on a specific repository."""
     log.info("Running repository checks", repository_id=message.repository, proposed_change_id=message.proposed_change)
 
-    source_branch = await service.client.branch.get(branch_name=message.source_branch)
-    if source_branch.is_data_only:
-        return
-
     events: List[InfrahubMessage] = []
 
     repository = await service.client.get(

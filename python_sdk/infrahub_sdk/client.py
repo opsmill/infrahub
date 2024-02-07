@@ -8,6 +8,7 @@ from time import sleep
 from typing import TYPE_CHECKING, Any, Dict, List, MutableMapping, Optional, Type, TypedDict, Union
 
 import httpx
+from typing_extensions import TypedDict as ExtensionTypedDict
 
 from infrahub_sdk.batch import InfrahubBatch
 from infrahub_sdk.branch import (
@@ -43,6 +44,13 @@ if TYPE_CHECKING:
     from types import TracebackType
 
 # pylint: disable=redefined-builtin  disable=too-many-lines
+
+
+class NodeDiff(ExtensionTypedDict):
+    branch: str
+    actions: List[str]
+    kind: str
+    node: str
 
 
 class ProcessRelationsNode(TypedDict):
@@ -617,7 +625,7 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         timeout: Optional[int] = None,
         tracker: Optional[str] = None,
         raise_for_error: bool = True,
-    ) -> Dict:
+    ) -> List[NodeDiff]:
         query = """
             query {
                 DiffSummary {
@@ -1103,7 +1111,7 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         timeout: Optional[int] = None,
         tracker: Optional[str] = None,
         raise_for_error: bool = True,
-    ) -> Dict:
+    ) -> List[NodeDiff]:
         query = """
             query {
                 DiffSummary {

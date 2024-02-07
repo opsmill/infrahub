@@ -81,15 +81,15 @@ export const getTabs = (schema: iNodeSchema | iGenericSchema) => {
 // Get attributes and relationships from a schema, optional limit to trim the array
 export const getSchemaObjectColumns = (
   schema?: iNodeSchema | iGenericSchema,
-  fromListView?: boolean,
+  forListView?: boolean,
   limit?: number
 ) => {
   if (!schema) {
     return [];
   }
 
-  const attributes = getObjectAttributes(schema, fromListView);
-  const relationships = getObjectRelationships(schema, fromListView);
+  const attributes = getObjectAttributes(schema, forListView);
+  const relationships = getObjectRelationships(schema, forListView);
 
   const columns = sortByOrderWeight(R.concat(attributes, relationships));
 

@@ -128,7 +128,7 @@ jobs:
         uses: DavidAnson/markdownlint-cli2-action@v15
         with:
           config: .markdownlint.yaml
-          globs: '**/*.md'
+          globs: '**/*.{md,mdx}'
 
   infrahub-poetry-check:
     if: |
@@ -449,6 +449,9 @@ jobs:
           file: frontend/coverage/lcov.info
 
   documentation:
+    defaults:
+      run:
+        working-directory: ./docs
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&

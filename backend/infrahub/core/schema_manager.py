@@ -156,6 +156,10 @@ class SchemaBranch:
         # TODO need to implement a flag to return the real objects if needed
         return {"nodes": self.nodes, "generics": self.generics}
 
+    def clear_cache(self):
+        self._graphql_manager = None
+        self._graphql_schema = None
+
     def get_graphql_manager(self) -> GraphQLSchemaManager:
         if not self._graphql_manager:
             self._graphql_manager = GraphQLSchemaManager(schema=self)
@@ -1070,23 +1074,25 @@ class SchemaManager(NodeManager):
 
     def has(self, name: str, branch: Optional[Union[Branch, str]] = None) -> bool:
         try:
-            self.get(name=name, branch=branch)
+            self.get(name=name, branch=branch, duplicate=False)
             return True
         except SchemaNotFound:
             return False
 
-    def get(self, name: str, branch: Optional[Union[Branch, str]] = None) -> Union[NodeSchema, GenericSchema]:
+    def get(
+        self, name: str, branch: Optional[Union[Branch, str]] = None, duplicate: bool = True
+    ) -> Union[NodeSchema, GenericSchema]:
         # For now we assume that all branches are present, will see how we need to pull new branches later.
         branch = get_branch_from_registry(branch=branch)
 
         if branch.name in self._branches:
             try:
-                return self._branches[branch.name].get(name=name)
+                return self._branches[branch.name].get(name=name, duplicate=duplicate)
             except SchemaNotFound:
                 pass
 
         default_branch = config.SETTINGS.main.default_branch
-        return self._branches[default_branch].get(name=name)
+        return self._branches[default_branch].get(name=name, duplicate=duplicate)
 
     def get_full(self, branch: Optional[Union[Branch, str]] = None) -> Dict[str, Union[NodeSchema, GenericSchema]]:
         branch = get_branch_from_registry(branch=branch)
@@ -1135,15 +1141,16 @@ class SchemaManager(NodeManager):
             await self.load_schema_to_db(schema=schema, db=db, branch=branch, limit=limit)
             # After updating the schema into the db
             # we need to pull a fresh version because some default value are managed/generated within the node object
-            # REVERTED 1891
-            # schema_diff = None
-            # if limit:
-            #     schema_diff = SchemaBranchDiff(
-            #         nodes=[name for name in list(schema.nodes.keys()) if name in limit],
-            #         generics=[name for name in list(schema.generics.keys()) if name in limit],
-            #     )
+            schema_diff = None
+            if limit:
+                schema_diff = SchemaBranchDiff(
+                    nodes=[name for name in list(schema.nodes.keys()) if name in limit],
+                    generics=[name for name in list(schema.generics.keys()) if name in limit],
+                )
 
-            updated_schema = await self.load_schema_from_db(db=db, branch=branch, schema=schema)
+            updated_schema = await self.load_schema_from_db(
+                db=db, branch=branch, schema=schema, schema_diff=schema_diff
+            )
 
         self._branches[branch.name] = updated_schema or schema
 
@@ -1361,8 +1368,9 @@ class SchemaManager(NodeManager):
                 return new_branch_schema
 
         current_schema = self.get_schema_branch(name=branch.name)
-        # REVERT 1891 schema_diff = current_schema.get_hash_full().compare(branch.schema_hash)
-        return await self.load_schema_from_db(db=db, branch=branch, schema=current_schema)
+        current_schema.clear_cache()
+        schema_diff = current_schema.get_hash_full().compare(branch.schema_hash)
+        return await self.load_schema_from_db(db=db, branch=branch, schema=current_schema, schema_diff=schema_diff)
 
     async def load_schema_from_db(
         self,
@@ -1388,7 +1396,7 @@ class SchemaManager(NodeManager):
 
         # If schema_diff has been provided, we need to build the proper filters for the queries based on the namespace and the name of the object.
         # the namespace and the name will be extracted from the kind with the function `parse_node_kind`
-        filters = {"generics": {}, "groups": {}, "nodes": {}}
+        filters = {"generics": {}, "nodes": {}}
         has_filters = False
         if schema_diff:
             log.info("Loading schema from DB", schema_to_update=schema_diff.to_list())
