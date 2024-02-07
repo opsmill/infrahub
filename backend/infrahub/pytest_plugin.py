@@ -46,10 +46,10 @@ class InfrahubBackendPlugin:
 
         self.validator.save()
 
-    def pytest_sessionstart(self, session: Session) -> None:
+    def pytest_sessionstart(self, session: Session) -> None:  # pylint: disable=unused-argument
         """Function running at the very start of the test session"""
 
-    def pytest_sessionfinish(self, session: Session) -> None:
+    def pytest_sessionfinish(self, session: Session) -> None:  # pylint: disable=unused-argument
         conclusion = "success"
 
         for check in self.checks.values():
@@ -62,12 +62,12 @@ class InfrahubBackendPlugin:
         self.validator.conclusion.value = conclusion
         self.validator.save()
 
-    def pytest_collection_modifyitems(self, session: Session, config: Config, items: List[Item]) -> None:
+    def pytest_collection_modifyitems(self, session: Session, config: Config, items: List[Item]) -> None:  # pylint: disable=unused-argument
         self.set_repository_validator()
         # TODO: Filter tests according to what's been requested
         # TODO: Re-order tests: sanity -> unit -> integration
 
-    def pytest_runtestloop(self, session: Session) -> Optional[object]:
+    def pytest_runtestloop(self, session: Session) -> Optional[object]:  # pylint: disable=unused-argument
         self.validator.conclusion.value = "unknown"
         self.validator.state.value = "in_progress"
         self.validator.started_at.value = Timestamp().to_string()
