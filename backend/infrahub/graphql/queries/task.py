@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 
 class Tasks(ObjectType):
-    edges = Field(TaskNodes)
+    edges = List(TaskNodes)
     count = Int()
 
     @staticmethod

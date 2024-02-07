@@ -50,7 +50,7 @@ class Task(StandardNode):
             query = await TaskNodeQuery.init(db=db, limit=limit, offset=offset, related_nodes=related_nodes)
             await query.execute(db=db)
 
-        nodes = []
+        nodes: list[dict] = []
         for result in query.get_results():
             related_node = result.get("rn")
             task_result = result.get_node("n")
@@ -69,15 +69,17 @@ class Task(StandardNode):
             task = cls.from_db(task_result)
             nodes.append(
                 {
-                    "title": task.title,
-                    "conclusion": task.conclusion,
-                    "related_node": related_node.get("uuid"),
-                    "related_node_kind": related_node.get("kind"),
-                    "created_at": task.created_at,
-                    "updated_at": task.updated_at,
-                    "id": task_result.get("uuid"),
-                    "logs": {"edges": logs},
+                    "node": {
+                        "title": task.title,
+                        "conclusion": task.conclusion,
+                        "related_node": related_node.get("uuid"),
+                        "related_node_kind": related_node.get("kind"),
+                        "created_at": task.created_at,
+                        "updated_at": task.updated_at,
+                        "id": task_result.get("uuid"),
+                        "logs": {"edges": logs},
+                    }
                 }
             )
 
-        return {"count": count, "edges": {"node": nodes}}
+        return {"count": count, "edges": nodes}

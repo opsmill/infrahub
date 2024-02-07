@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from graphene import Field, List, ObjectType, String
+from graphene import Field, ObjectType, String
 
 from .task_log import TaskLogEdge
 
@@ -20,4 +20,4 @@ class TaskNode(Task):
 
 
 class TaskNodes(ObjectType):
-    node = List(TaskNode)
+    node = Field(TaskNode)
