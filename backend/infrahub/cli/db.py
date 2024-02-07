@@ -1,14 +1,10 @@
 import importlib
 import logging
-import os
-import subprocess
-import sys
 from asyncio import run as aiorun
 from datetime import datetime, timezone
 from pathlib import Path
 
 import typer
-from rich.console import Console
 from rich.logging import RichHandler
 
 from infrahub import config
@@ -19,6 +15,8 @@ from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase, get_db
 from infrahub.database.constants import DatabaseType
 from infrahub.log import get_logger
+
+from .transfer.neo4j.backup_runner import Neo4jBackupRunner
 
 app = typer.Typer()
 
@@ -154,76 +152,6 @@ def migrate(
     aiorun(_migrate(check=check))
 
 
-def _neo4j_export(export_dir: Path) -> None:
-    # pylint: disable=import-outside-toplevel,too-many-statements
-    import docker
-
-    neo4j_docker_image = os.getenv("NEO4J_DOCKER_IMAGE", "neo4j:5.16.0-community")
-    exporter_container_name = "neo4j-export-helper"
-    container_export_dir = "/tmp/neo4jdump"
-    console = Console()
-
-    client = docker.from_env()
-    console.print("Getting database container")
-    database_container = client.containers.list(all=True, filters={"label": "infrahub_role=database"})[0]
-    if database_container.status == "running":
-        console.print("Stopping database container")
-        database_container.stop()
-    try:
-        existing_exporter_container = client.containers.get(exporter_container_name)
-        console.print("Existing export container found, removing")
-        existing_exporter_container.stop()
-        existing_exporter_container.remove()
-    except docker.errors.NotFound:
-        pass
-    console.print("Starting new export container")
-    exporter_container = client.containers.run(
-        volumes_from=database_container.name,
-        name=exporter_container_name,
-        image=neo4j_docker_image,
-        tty=True,
-        detach=True,
-        command="/bin/bash",
-    )
-    exporter_container.exec_run(["mkdir", container_export_dir])
-    console.print("Starting neo4j database export")
-    export_command = ["neo4j-admin", "database", "dump", "*", f"--to-path={container_export_dir}"]
-    exit_code, response = exporter_container.exec_run(export_command, stdout=True, stderr=True)
-
-    if exit_code != 0:
-        console.print("[red]neo4j export command failed")
-        console.print(f"    export command: {' '.join(export_command)}")
-        console.print("    response:")
-        console.print(response.decode())
-        console.print("[green]Restarting Infrahub database container")
-        database_container.start()
-        sys.exit(exit_code)
-
-    console.print("Neo4j database export complete")
-    console.print("Transferring files from export container")
-    export_dir.mkdir()
-    try:
-        subprocess.run(
-            ["docker", "cps", f"{exporter_container_name}:{container_export_dir}/.", f"{export_dir}"], check=True
-        )
-    except subprocess.CalledProcessError as exc:
-        export_dir.rmdir()
-        console.print("[red] failed to copy export files from docker container")
-        console.print(f"    failed command: {exc.cmd}")
-        if exc.stderr or exc.output:
-            console.print(f"    failure details: {exc.stderr or exc.output}")
-        console.print("[green]Restarting Infrahub database container")
-        database_container.start()
-        sys.exit(exc.returncode)
-
-    console.print("Removing export container")
-    exporter_container.stop()
-    exporter_container.remove()
-    console.print("Restarting database container")
-    database_container.start()
-    console.print(f"Database dump files are in {export_dir.absolute()}")
-
-
 def _default_export_dir() -> str:
     right_now = datetime.now(timezone.utc).astimezone()
     timestamp = right_now.strftime("%Y%m%d-%H%M%S")
@@ -244,4 +172,5 @@ def export(
     if config.SETTINGS.database.db_type == DatabaseType.MEMGRAPH:
         ...
     else:
-        _neo4j_export(export_path)
+        backup_runner = Neo4jBackupRunner()
+        backup_runner.export(export_path)
