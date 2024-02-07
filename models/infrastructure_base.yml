@@ -4,7 +4,7 @@ version: '1.0'
 generics:
   - name: Interface
     namespace: Infra
-    description: "Generic Network Interface."
+    description: "Generic Network Interface"
     label: "Interface"
     include_in_menu: false
     display_labels:
@@ -32,19 +32,19 @@ generics:
         choices:
           - name: active
             label: Active
-            description: "Fully operational and currently in service."
+            description: "Fully operational and currently in service"
             color: "#7fbf7f"
           - name: provisioning
             label: Provisioning
-            description: "In the process of being set up and configured."
+            description: "In the process of being set up and configured"
             color: "#ffff7f"
           - name: maintenance
             label: Maintenance
-            description: "Undergoing routine maintenance or repairs."
+            description: "Undergoing routine maintenance or repairs"
             color: "#ffd27f"
           - name: drained
             label: Drained
-            description: "Temporarily taken out of service."
+            description: "Temporarily taken out of service"
             color: "#bfbfbf"
       - name: role
         kind: Dropdown
@@ -52,43 +52,43 @@ generics:
         choices:
           - name: backbone
             label: Backbone
-            description: "Provide main data routes."
+            description: "Provide main data routes"
             color: "#6a5acd"
           - name: transit
             label: Transit
-            description: "Connect to Internet service provider."
+            description: "Connect to Internet service provider"
             color: "#9090de"
           - name: peering
             label: Peering
-            description: "Connect with other networks via IX."
+            description: "Connect with other networks via IX"
             color: "#ffa07a"
           - name: peer
             label: Peer
-            description: "Equal-status connections for direct interchange."
+            description: "Equal-status connections for direct interchange"
             color: "#faa446"
           - name: server
             label: Server
-            description: "Dedicated to interfaces connected to servers."
+            description: "Dedicated to interfaces connected to servers"
             color: "#98b2d1"
           - name: loopback
             label: Loopback
-            description: "Internal interface."
+            description: "Internal interface"
             color: "#93e9be"
           - name: management
             label: Management
-            description: "Dedicated network for control and monitoring."
+            description: "Dedicated network for control and monitoring"
             color: "#ccc28a"
           - name: uplink
             label: Uplink
-            description: "Connect to higher device."
+            description: "Connect to higher device"
             color: "#ff6b6b"
           - name: leaf
             label: Leaf
-            description: "Connect to leaf device."
+            description: "Connect to leaf device"
             color: "#e6e6fa"
           - name: spare
             label: Spare
-            description: "Reserve resources for future use."
+            description: "Reserve resources for future use"
             color: "#d3d3d3"
     relationships:
       - name: device
@@ -104,7 +104,7 @@ generics:
         kind: Attribute
   - name: Endpoint
     namespace: Infra
-    description: "Generic Endpoint to connect two objects together."
+    description: "Generic Endpoint to connect two objects together"
     include_in_menu: false
     label: "Endpoint"
     relationships:
@@ -118,7 +118,7 @@ generics:
 nodes:
   - name: Platform
     namespace: Infra
-    description: "A Platform represent the type of software running on a device."
+    description: "A Platform represents the type of software running on a device"
     label: "Platform"
     icon: "mdi:application-cog-outline"
     menu_placement: "InfraDevice"
@@ -153,7 +153,7 @@ nodes:
         cardinality: many
   - name: Device
     namespace: Infra
-    description: "Generic Device object."
+    description: "Generic Device object"
     label: "Device"
     icon: "mdi:server"
     default_filter: name__value
@@ -178,19 +178,19 @@ nodes:
         choices:
           - name: active
             label: Active
-            description: "Fully operational and currently in service."
+            description: "Fully operational and currently in service"
             color: "#7fbf7f"
           - name: provisioning
             label: Provisioning
-            description: "In the process of being set up and configured."
+            description: "In the process of being set up and configured"
             color: "#ffff7f"
           - name: maintenance
             label: Maintenance
-            description: "Undergoing routine maintenance or repairs."
+            description: "Undergoing routine maintenance or repairs"
             color: "#ffd27f"
           - name: drained
             label: Drained
-            description: "Temporarily taken out of service."
+            description: "Temporarily taken out of service"
             color: "#bfbfbf"
       - name: role
         kind: Dropdown
@@ -198,27 +198,27 @@ nodes:
         choices:
           - name: core
             label: Core Router
-            description: Central part of the network.
+            description: "Central part of the network"
             color: "#7f7fff"
           - name: edge
             label: Edge Router
-            description: "Network boundary with external networks."
+            description: "Network boundary with external networks"
             color: "#bf7fbf"
           - name: cpe
             label: Customer Premise Equipment
-            description: "Devices located at the customer's premises."
+            description: "Devices located at the customer's premises"
             color: "#bf7f7f"
           - name: firewall
             label: Firewall
-            description: "Ensures network security."
+            description: "Ensures network security"
             color: "#ffa07a"
           - name: spine
             label: Spine Router
-            description: "Aggregation router part of a Fabric."
+            description: "Aggregation router part of a Fabric"
             color: "#aeeeee"
           - name: leaf
             label: Leaf Switch
-            description: "Top of Rack part of a Fabric."
+            description: "Top of Rack part of a Fabric"
             color: "#e6e6fa"
     relationships:
       - name: site
@@ -334,7 +334,7 @@ nodes:
         kind: Parent
   - name: VLAN
     namespace: Infra
-    description: "A VLAN is isolated layer two domain"
+    description: "A VLAN is a logical grouping of devices in the same broadcast domain"
     label: "VLAN"
     icon: "mdi:lan-pending"   # mdi:lan
     default_filter: name__value
@@ -355,34 +355,34 @@ nodes:
         choices:
           - name: active
             label: Active
-            description: "Fully operational and currently in service."
+            description: "Fully operational and currently in service"
             color: "#7fbf7f"
           - name: provisioning
             label: Provisioning
-            description: "In the process of being set up and configured."
+            description: "In the process of being set up and configured"
             color: "#ffff7f"
           - name: maintenance
             label: Maintenance
-            description: "Undergoing routine maintenance or repairs."
+            description: "Undergoing routine maintenance or repairs"
             color: "#ffd27f"
           - name: drained
             label: Drained
-            description: "Temporarily taken out of service."
+            description: "Temporarily taken out of service"
             color: "#bfbfbf"
       - name: role
         kind: Dropdown
         choices:
           - name: server
             label: Server
-            description: "Dedicated systems for managing networked resources."
+            description: "Dedicated systems for managing networked resources"
             color: "#c4bed7"
           - name: management
             label: Management
-            description: "Network segments for administrative and control tasks."
+            description: "Network segments for administrative and control tasks"
             color: "#9af1e1"
           - name: user
             label: User
-            description: Segments designed for end-user access and activities.
+            description: "Segments designed for end-user access and activities"
             color: "#a0b78d"
     relationships:
       - name: site
@@ -422,34 +422,34 @@ nodes:
         choices:
           - name: active
             label: Active
-            description: "Fully operational and currently in service."
+            description: "Fully operational and currently in service"
             color: "#7fbf7f"
           - name: provisioning
             label: Provisioning
-            description: "In the process of being set up and configured."
+            description: "In the process of being set up and configured"
             color: "#ffff7f"
           - name: maintenance
             label: Maintenance
-            description: "Undergoing routine maintenance or repairs."
+            description: "Undergoing routine maintenance or repairs"
             color: "#ffd27f"
           - name: drained
             label: Drained
-            description: "Temporarily taken out of service."
+            description: "Temporarily taken out of service"
             color: "#bfbfbf"
       - name: role
         kind: Dropdown
         choices:
           - name: backbone
             label: Backbone
-            description: "Provide main data routes."
+            description: "Provide main data routes"
             color: "#6a5acd"
           - name: transit
             label: Transit
-            description: "Connect to Internet service provider."
+            description: "Connect to Internet service provider"
             color: "#9090de"
           - name: peering
             label: Peering
-            description: "Connect with other networks via IX."
+            description: "Connect with other networks via an IX"
             color: "#85db9b"
     relationships:
       - name: provider
@@ -578,34 +578,34 @@ nodes:
         choices:
           - name: active
             label: Active
-            description: "Fully operational and currently in service."
+            description: "Fully operational and currently in service"
             color: "#7fbf7f"
           - name: provisioning
             label: Provisioning
-            description: "In the process of being set up and configured."
+            description: "In the process of being set up and configured"
             color: "#ffff7f"
           - name: maintenance
             label: Maintenance
-            description: "Undergoing routine maintenance or repairs."
+            description: "Undergoing routine maintenance or repairs"
             color: "#ffd27f"
           - name: drained
             label: Drained
-            description: "Temporarily taken out of service."
+            description: "Temporarily taken out of service"
             color: "#bfbfbf"
       - name: role
         kind: Dropdown
         choices:
           - name: backbone
             label: Backbone
-            description: "Provide main data routes."
+            description: "Provide main data routes"
             color: "#6a5acd"
           - name: transit
             label: Transit
-            description: "Connect to Internet service provider."
+            description: "Connect to Internet service provider"
             color: "#9090de"
           - name: peering
             label: Peering
-            description: "Connect with other networks via IX."
+            description: "Connect with other networks via an IX"
             color: "#85db9b"
     relationships:
       - name: local_as
@@ -650,7 +650,7 @@ nodes:
   - name: Organization
     namespace: Core
     label: Organization
-    description: An organization represent a legal entity, a company.
+    description: "An organization represent a legal entity, a company"
     default_filter: name__value
     display_labels: [label__value]
     order_by: [name__value]
@@ -678,7 +678,7 @@ nodes:
   - name: Status
     namespace: Builtin
     label: Status
-    description: 'Represent the status of an object: active, maintenance'
+    description: "Status represents the current state of an object: active, maintenance"
     default_filter: name__value
     display_labels: [label__value]
     icon: mdi:list-status
@@ -697,7 +697,7 @@ nodes:
   - name: Role
     namespace: Builtin
     label: Role
-    description: Represent the role of an object
+    description: "Represents the role of an object"
     default_filter: name__value
     display_labels: [label__value]
     order_by: [name__value]
@@ -717,7 +717,7 @@ nodes:
   - name: Location
     namespace: Builtin
     label: Location
-    description: 'A location represent a physical element: a building, a site, a city'
+    description: "A location represent a physical element: a building, a site, a city"
     default_filter: name__value
     display_labels: [name__value]
     order_by: [name__value]
