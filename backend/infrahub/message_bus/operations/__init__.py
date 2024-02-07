@@ -45,6 +45,7 @@ COMMAND_MAP = {
     "request.artifact_definition.generate": requests.artifact_definition.generate,
     "request.proposed_change.cancel": requests.proposed_change.cancel,
     "request.proposed_change.data_integrity": requests.proposed_change.data_integrity,
+    "request.proposed_change.pipeline": requests.proposed_change.pipeline,
     "request.proposed_change.refresh_artifacts": requests.proposed_change.refresh_artifacts,
     "request.proposed_change.repository_checks": requests.proposed_change.repository_checks,
     "request.proposed_change.schema_integrity": requests.proposed_change.schema_integrity,

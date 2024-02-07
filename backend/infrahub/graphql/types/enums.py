@@ -1,5 +1,7 @@
 from graphene import Enum
 
-from infrahub.core.constants import Severity as PySeverity
+from infrahub.core import constants
 
-Severity = Enum.from_enum(PySeverity)
+CheckType = Enum.from_enum(constants.CheckType)
+
+Severity = Enum.from_enum(constants.Severity)

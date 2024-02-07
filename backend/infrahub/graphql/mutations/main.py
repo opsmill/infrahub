@@ -115,20 +115,25 @@ class InfrahubMutationMixin:
         data: InputObjectType,
         branch: Branch,
         at: str,
-    ) -> Tuple(Node, Self):
+        database: Optional[InfrahubDatabase] = None,
+    ) -> Tuple[Node, Self]:
         context: GraphqlContext = info.context
+        db = database or context.db
 
         node_class = Node
         if cls._meta.schema.kind in registry.node:
             node_class = registry.node[cls._meta.schema.kind]
 
         try:
-            obj = await node_class.init(db=context.db, schema=cls._meta.schema, branch=branch, at=at)
-            await obj.new(db=context.db, **data)
-            await cls.validate_constraints(db=context.db, node=obj, branch=branch)
+            obj = await node_class.init(db=db, schema=cls._meta.schema, branch=branch, at=at)
+            await obj.new(db=db, **data)
+            await cls.validate_constraints(db=db, node=obj, branch=branch)
 
-            async with context.db.start_transaction() as db:
+            if db.is_transaction:
                 await obj.save(db=db)
+            else:
+                async with db.start_transaction() as db:
+                    await obj.save(db=db)
 
         except ValidationError as exc:
             raise ValueError(str(exc)) from exc

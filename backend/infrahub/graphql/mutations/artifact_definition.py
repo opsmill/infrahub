@@ -49,6 +49,7 @@ class InfrahubArtifactDefinitionMutation(InfrahubMutationMixin, Mutation):
         data: InputObjectType,
         branch: Branch,
         at: str,
+        database: Optional[InfrahubDatabase] = None,
     ) -> Tuple[Node, Self]:
         context: GraphqlContext = info.context
 
