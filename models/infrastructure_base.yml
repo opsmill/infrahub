@@ -449,7 +449,7 @@ nodes:
             color: "#9090de"
           - name: peering
             label: Peering
-            description: "Connect with other networks via a IX"
+            description: "Connect with other networks via an IX"
             color: "#85db9b"
     relationships:
       - name: provider
@@ -605,7 +605,7 @@ nodes:
             color: "#9090de"
           - name: peering
             label: Peering
-            description: "Connect with other networks via IX"
+            description: "Connect with other networks via an IX"
             color: "#85db9b"
     relationships:
       - name: local_as
