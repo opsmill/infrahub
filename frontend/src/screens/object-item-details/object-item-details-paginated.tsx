@@ -195,11 +195,11 @@ export default function ObjectItemDetails(props: any) {
       )}
 
       {!qspTab && (
-        <div className="px-4 py-5 sm:p-0 flex-1 overflow-auto">
-          <dl className="sm:divide-y sm:divide-gray-200">
+        <div className="p-0 flex-1 overflow-auto">
+          <dl className="divide-y divide-gray-200">
             <div className="p-2 grid grid-cols-3 gap-4 text-xs">
-              <dt className=" font-medium text-gray-500 flex items-center">ID</dt>
-              <dd className="mt-1 text-gray-900">{objectDetailsData.id}</dd>
+              <dt className="font-medium text-gray-500 flex items-center h-8">ID</dt>
+              <dd className="flex items-center gap-2">{objectDetailsData.id}</dd>
             </div>
             {attributes?.map((attribute) => {
               if (
@@ -211,86 +211,82 @@ export default function ObjectItemDetails(props: any) {
 
               return (
                 <div className="p-2 grid grid-cols-3 gap-4 text-xs" key={attribute.name}>
-                  <dt className=" font-medium text-gray-500 flex items-center">
+                  <dt className=" font-medium text-gray-500 flex items-center h-8">
                     {attribute.label}
                   </dt>
 
-                  <div className="flex items-center">
-                    <dd className={"mt-1 text-gray-900"}>
-                      {getObjectItemDisplayValue(objectDetailsData, attribute, schemaKindName)}
-                    </dd>
+                  <dd className="flex items-center gap-2">
+                    {getObjectItemDisplayValue(objectDetailsData, attribute, schemaKindName)}
 
                     {objectDetailsData[attribute.name] && (
-                      <div className="px-2">
-                        <MetaDetailsTooltip
-                          items={[
-                            {
-                              label: "Updated at",
-                              value: objectDetailsData[attribute.name].updated_at,
-                              type: "date",
-                            },
-                            {
-                              label: "Update time",
-                              value: `${new Date(
-                                objectDetailsData[attribute.name].updated_at
-                              ).toLocaleDateString()} ${new Date(
-                                objectDetailsData[attribute.name].updated_at
-                              ).toLocaleTimeString()}`,
-                              type: "text",
-                            },
-                            {
-                              label: "Source",
-                              value: objectDetailsData[attribute.name].source,
-                              type: "link",
-                            },
-                            {
-                              label: "Owner",
-                              value: objectDetailsData[attribute.name].owner,
-                              type: "link",
-                            },
-                            {
-                              label: "Is protected",
-                              value: objectDetailsData[attribute.name].is_protected
-                                ? "True"
-                                : "False",
-                              type: "text",
-                            },
-                            {
-                              label: "Is inherited",
-                              value: objectDetailsData[attribute.name].is_inherited
-                                ? "True"
-                                : "False",
-                              type: "text",
-                            },
-                          ]}
-                          header={
-                            <div className="flex justify-between items-center w-full p-4">
-                              <div className="font-semibold">{attribute.label}</div>
-                              <Button
-                                buttonType={BUTTON_TYPES.INVISIBLE}
-                                disabled={!auth?.permissions?.write}
-                                onClick={() => {
-                                  setMetaEditFieldDetails({
-                                    type: "attribute",
-                                    attributeOrRelationshipName: attribute.name,
-                                    label: attribute.label || attribute.name,
-                                  });
-                                  setShowMetaEditModal(true);
-                                }}
-                                data-testid="edit-metadata-button"
-                                data-cy="metadata-edit-button">
-                                <PencilSquareIcon className="w-4 h-4 text-custom-blue-500" />
-                              </Button>
-                            </div>
-                          }
-                        />
-                      </div>
+                      <MetaDetailsTooltip
+                        items={[
+                          {
+                            label: "Updated at",
+                            value: objectDetailsData[attribute.name].updated_at,
+                            type: "date",
+                          },
+                          {
+                            label: "Update time",
+                            value: `${new Date(
+                              objectDetailsData[attribute.name].updated_at
+                            ).toLocaleDateString()} ${new Date(
+                              objectDetailsData[attribute.name].updated_at
+                            ).toLocaleTimeString()}`,
+                            type: "text",
+                          },
+                          {
+                            label: "Source",
+                            value: objectDetailsData[attribute.name].source,
+                            type: "link",
+                          },
+                          {
+                            label: "Owner",
+                            value: objectDetailsData[attribute.name].owner,
+                            type: "link",
+                          },
+                          {
+                            label: "Is protected",
+                            value: objectDetailsData[attribute.name].is_protected
+                              ? "True"
+                              : "False",
+                            type: "text",
+                          },
+                          {
+                            label: "Is inherited",
+                            value: objectDetailsData[attribute.name].is_inherited
+                              ? "True"
+                              : "False",
+                            type: "text",
+                          },
+                        ]}
+                        header={
+                          <div className="flex justify-between items-center w-full p-4">
+                            <div className="font-semibold">{attribute.label}</div>
+                            <Button
+                              buttonType={BUTTON_TYPES.INVISIBLE}
+                              disabled={!auth?.permissions?.write}
+                              onClick={() => {
+                                setMetaEditFieldDetails({
+                                  type: "attribute",
+                                  attributeOrRelationshipName: attribute.name,
+                                  label: attribute.label || attribute.name,
+                                });
+                                setShowMetaEditModal(true);
+                              }}
+                              data-testid="edit-metadata-button"
+                              data-cy="metadata-edit-button">
+                              <PencilSquareIcon className="w-4 h-4 text-custom-blue-500" />
+                            </Button>
+                          </div>
+                        }
+                      />
                     )}
 
                     {objectDetailsData[attribute.name].is_protected && (
                       <LockClosedIcon className="w-4 h-4" />
                     )}
-                  </div>
+                  </dd>
                 </div>
               );
             })}
