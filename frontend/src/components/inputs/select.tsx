@@ -158,6 +158,11 @@ export const Select = (props: SelectProps) => {
     namespaceData?.user_editable && (dropdown || enumBoolean) && id !== emptyOption.id;
 
   const handleChange = (newValue: any) => {
+    // Fetch if we are changing the option without opening the select
+    // (for ex: when removing an item in the multiple input)
+
+    handleFocus();
+
     if (newValue.id === addOption.id) {
       setOpen(true);
       return;
