@@ -12,6 +12,9 @@ packages = [
 [tool.poetry.group.test-scale]
 optional = true
 
+[tool.poetry.group.admin]
+optional = true
+
 [tool.poetry.dependencies]
 python = "^3.8, < 3.12"
 infrahub-sdk = {path = "python_sdk", develop=true}
@@ -67,6 +70,9 @@ pytest-codspeed = "^2.2.0"
 
 [tool.poetry.group.test-scale.dependencies]
 locust = "^2.20.1"
+docker = "^7.0.0"
+
+[tool.poetry.group.admin.dependencies]
 docker = "^7.0.0"
 
 [tool.poetry.scripts]
