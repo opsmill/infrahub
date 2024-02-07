@@ -114,8 +114,97 @@ generics:
         cardinality: one
         kind: Attribute
         identifier: connected__endpoint
-
+  - name: Location
+    namespace: Infra
+    description: "Generic hierarchical location"
+    label: "Location"
+    hierarchical: true
+    icon: "mingcute:location-line"
+    include_in_menu: true
+    attributes:
+      - name: "name"
+        kind: "Text"
+        unique: true
+      - name: description
+        kind: Text
+        optional: true
 nodes:
+  - name: Continent
+    namespace: Infra
+    description: "A continent on planet earth."
+    menu_placement: "InfraLocation"
+    icon: "jam:world"
+    inherit_from:
+      - "InfraLocation"
+    default_filter: "name__value"
+    order_by:
+      - "name__value"
+    display_labels:
+      - "name__value"
+    children: "InfraCountry"
+    parent: ""
+  - name: Country
+    namespace: Infra
+    description: "A country within a continent."
+    menu_placement: "InfraLocation"
+    icon: "gis:search-country"
+    inherit_from:
+      - "InfraLocation"
+    default_filter: "name__value"
+    order_by:
+      - "name__value"
+    display_labels:
+      - "name__value"
+    children: "InfraSite"
+    parent: "InfraContinent"
+  - name: Site
+    namespace: Infra
+    description: "A site within a country."
+    menu_placement: "InfraLocation"
+    icon: "ri:building-line"
+    inherit_from:
+      - "InfraLocation"
+    default_filter: "name__value"
+    order_by:
+      - "name__value"
+    display_labels:
+      - "name__value"
+    children: ""
+    parent: "InfraCountry"
+    attributes:
+      - name: "city"
+        kind: "Text"
+        label: "City"
+        optional: true
+      - name: "address"
+        kind: "Text"
+        label: "Address"
+        optional: true
+      - name: "contact"
+        kind: "Text"
+        label: "Contact"
+        optional: true
+    relationships:
+      - name: "devices"
+        cardinality: "many"
+        peer: "InfraDevice"
+        kind: "Component"
+        identifier: "site__devices"
+      - name: "vlans"
+        cardinality: "many"
+        kind: "Component"
+        peer: "InfraVLAN"
+        identifier: "site__vlans"
+      - name: "circuit_endpoints"
+        cardinality: "many"
+        kind: "Component"
+        peer: "InfraCircuitEndpoint"
+        identifier: "site__circuit_endpoints"
+      - cardinality: "many"
+        kind: "Attribute"
+        name: "tags"
+        optional: true
+        peer: "BuiltinTag"
   - name: Platform
     namespace: Infra
     description: "A Platform represents the type of software running on a device"
