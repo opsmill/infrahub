@@ -1,12 +1,12 @@
 import asyncio
 from pathlib import Path
-from typing import List, Tuple, Union
+from typing import List, Union
 
 import pytest
-from infrahub_sdk.client import InfrahubClient
+from infrahub_sdk.node import InfrahubNode
 from pydantic import BaseModel
 
-from infrahub import lock
+from infrahub import config, lock
 from infrahub.core.constants import CheckType, DiffAction, InfrahubKind, ProposedChangeState
 from infrahub.core.diff import BranchDiffer
 from infrahub.core.integrity.object_conflict.conflict_recorder import ObjectConflictValidatorRecorder
@@ -304,12 +304,22 @@ async def run_tests(message: messages.RequestProposedChangeRunTests, service: In
         kind=InfrahubKind.GENERICREPOSITORY, branch=proposed_change.source_branch.value
     )
 
-    def _execute(directory: Path, client: InfrahubClient) -> Tuple[Union[int, pytest.ExitCode], str]:
-        plugin = InfrahubBackendPlugin(directory=directory, client=client)
-        # Run tests by marker expressions by using "-m $marker", e.g. "-m infrahub_unit" for running unit tests
-        return_code = pytest.main([str(directory), "-qqqq", "-k", "infrahub"], plugins=[plugin])
-        return return_code, plugin.report
+    def _execute(
+        directory: Path, repository: InfrahubNode, proposed_change: InfrahubNode
+    ) -> Union[int, pytest.ExitCode]:
+        config_file = str(directory / ".infrahub.yml")
+        return pytest.main(
+            [
+                str(directory),
+                f"--infrahub-repo-config={config_file}",
+                f"--infrahub-address={config.SETTINGS.main.internal_address}",
+                "-k",
+                "infrahub",
+            ],
+            plugins=[InfrahubBackendPlugin(service.client.config, repository.id, proposed_change.id)],
+        )
 
+    # FIXME: Check if data only
     for repository in repositories:
         repo = await get_initialized_repo(
             repository_id=repository.id,
@@ -320,10 +330,10 @@ async def run_tests(message: messages.RequestProposedChangeRunTests, service: In
         commit = repo.get_commit_value(proposed_change.source_branch.value)
         worktree_directory = Path(repo.get_commit_worktree(commit=commit).directory)
 
-        return_code, report = await asyncio.to_thread(_execute, worktree_directory, service.client)
-        log.info(f"Tests for proposed_change={message.proposed_change} ended with return code {return_code}")
-        # TODO: Save report in the database
-        log.info(report)
+        return_code = await asyncio.to_thread(_execute, worktree_directory, repository, proposed_change)
+        log.info(
+            f"Tests for proposed_change={message.proposed_change} and repository={repository.name.value} ended with return code {return_code}"
+        )
 
 
 DESTINATION_ALLREPOSITORIES = """
