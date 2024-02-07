@@ -15,7 +15,7 @@ import useQuery from "../../hooks/useQuery";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { genericsState, iNodeSchema, schemaState } from "../../state/atoms/schema.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
-import { getObjectAttributes, getObjectRelationships } from "../../utils/getSchemaObjectColumns";
+import { getSchemaObjectColumns } from "../../utils/getSchemaObjectColumns";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
@@ -49,8 +49,8 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
   const generic = generics.find((s) => s.kind === relationshipSchemaData?.peer);
   const schemaData = schema || generic;
 
-  const attributes = getObjectAttributes(schemaData, true);
-  const relationships = getObjectRelationships(schemaData, true);
+  // TODO: doesn't work with generics (like members of group), columns are empty, default ones will be used
+  const columns = getSchemaObjectColumns(schemaData, true);
 
   const filtersString = [
     { name: "offset", value: pagination?.offset },
@@ -59,24 +59,12 @@ export default function RelationshipsDetails(props: RelationshipsDetailsProps) {
     .map((row: any) => `${row.name}: ${row.value}`)
     .join(",");
 
-  // const queryString = schemaData
-  //   ? getObjectItemsPaginated({
-  //       kind: schemaData.kind,
-  //       attributes,
-  //       relationships,
-  //       filters: filtersString,
-  //     })
-  //   : // Empty query to make the gql parsing work
-  //     // TODO: Find another solution for queries while loading schemaData
-  //     "query { ok }";
-
   const queryString = schemaData
     ? getObjectRelationshipsDetailsPaginated({
         kind: objectname,
         objectid: parentNode.id,
         relationship: relationshipTab,
-        attributes,
-        relationships,
+        columns,
         filters: filtersString,
       })
     : // Empty query to make the gql parsing work

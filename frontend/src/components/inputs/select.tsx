@@ -280,7 +280,6 @@ export const Select = (props: SelectProps) => {
           color,
         };
 
-        console.log("newOption: ", newOption);
         setLocalOptions([...localOptions, newOption]);
 
         handleChange(newOption);
