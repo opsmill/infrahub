@@ -59,6 +59,7 @@ import infrahub.config as config
 from infrahub.api.dependencies import api_key_scheme, cookie_auth_scheme, jwt_scheme
 from infrahub.auth import AccountSession, authentication_token
 from infrahub.core import get_branch
+from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFound
 from infrahub.graphql import prepare_graphql_params
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
@@ -195,12 +196,19 @@ class InfrahubGraphQLApp:
         operation = operations
         query = operation["query"]
 
-        graphql_params = prepare_graphql_params(db=db, branch=branch, account_session=account_session, request=request)
+        at = request.query_params.get("at", None)
+        graphql_params = prepare_graphql_params(
+            db=db, branch=branch, at=at, account_session=account_session, request=request
+        )
         analyzed_query = InfrahubGraphQLQueryAnalyzer(query=query, schema=graphql_params.schema, branch=branch)
         await self.permission_checker.check(account_session=account_session, analyzed_query=analyzed_query)
 
         variable_values = operation.get("variables")
         operation_name = operation.get("operationName")
+
+        # if the query contains some mutation, it's not currently supported to set AT manually
+        if analyzed_query.contains_mutation:
+            graphql_params.context.at = Timestamp()
 
         if operation_name == "IntrospectionQuery":
             nbr_object_in_schema = len(graphql_params.schema.type_map)
