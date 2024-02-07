@@ -51,16 +51,21 @@ class TaskNodeQuery(StandardNodeQuery):
 
     def __init__(
         self,
+        ids: List[str],
         related_nodes: List[str],
         *args: Any,
         **kwargs: Any,
     ) -> None:
         super().__init__(*args, **kwargs)
+        self.ids = ids
         self.related_nodes = related_nodes
         self.params["related_nodes"] = self.related_nodes
+        self.params["ids"] = self.ids
 
     async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Any) -> None:
         self.add_to_query(query="MATCH (n:Task)-[:IMPACTS]->(rn:Node)")
+        if self.ids:
+            self.add_to_query(query="WHERE n.uuid in $ids")
         if self.related_nodes:
             self.add_to_query(query="WHERE rn.uuid IN $related_nodes")
 
@@ -78,6 +83,8 @@ class TaskNodeQueryWithLogs(TaskNodeQuery):
 
     async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Any) -> None:
         self.add_to_query(query="MATCH (n:Task)-[:IMPACTS]->(rn:Node)")
+        if self.ids:
+            self.add_to_query(query="WHERE n.uuid in $ids")
         if self.related_nodes:
             self.add_to_query(query="WHERE rn.uuid IN $related_nodes")
 

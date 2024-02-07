@@ -24,24 +24,22 @@ class Tasks(ObjectType):
         info: GraphQLResolveInfo,
         limit: int = 10,
         offset: int = 0,
+        ids: Optional[list] = None,
         related_node__ids: Optional[list] = None,
     ) -> Dict[str, Any]:
         related_nodes = related_node__ids or []
-        return await Tasks.query(info=info, limit=limit, offset=offset, related_nodes=related_nodes)
+        ids = ids or []
+        return await Tasks.query(info=info, limit=limit, offset=offset, ids=ids, related_nodes=related_nodes)
 
     @classmethod
     async def query(
-        cls,
-        info: GraphQLResolveInfo,
-        limit: int,
-        offset: int,
-        related_nodes: list[str],
+        cls, info: GraphQLResolveInfo, limit: int, offset: int, related_nodes: list[str], ids: list[str]
     ) -> Dict[str, Any]:
         context: GraphqlContext = info.context
         fields = await extract_fields_first_node(info)
 
         return await TaskNode.query(
-            db=context.db, fields=fields, limit=limit, offset=offset, related_nodes=related_nodes
+            db=context.db, fields=fields, limit=limit, offset=offset, ids=ids, related_nodes=related_nodes
         )
 
 
@@ -51,4 +49,5 @@ Task = Field(
     limit=Int(required=False),
     offset=Int(required=False),
     related_node__ids=List(String),
+    ids=List(String),
 )
