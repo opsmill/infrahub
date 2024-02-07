@@ -1,3 +1,4 @@
+import { isValid, parseISO } from "date-fns";
 import * as R from "ramda";
 import {
   attributesKindForDetailsViewExclude,
@@ -11,7 +12,7 @@ import { iGenericSchema, iNodeSchema } from "../state/atoms/schema.atom";
 import { sortByOrderWeight } from "./common";
 
 export const getObjectAttributes = (
-  schema: iNodeSchema | iGenericSchema,
+  schema: iNodeSchema | iGenericSchema | undefined,
   forListView?: boolean
 ) => {
   if (!schema) {
@@ -43,7 +44,11 @@ export const getObjectRelationships = (
   const kinds = forListView ? relationshipsForListView : relationshipsForDetailsView;
 
   const relationships = (schema.relationships || [])
-    .filter((relationship) => kinds[relationship.cardinality].includes(relationship.kind ?? ""))
+    .filter(
+      (relationship) =>
+        relationship.cardinality &&
+        kinds[relationship.cardinality].includes(relationship.kind ?? "")
+    )
     .map((relationship) => ({
       isRelationship: true,
       paginated: relationship.cardinality === "many",
@@ -60,8 +65,10 @@ export const getTabs = (schema: iNodeSchema | iGenericSchema) => {
 
   // Relationship kind to show in LIST VIEW - Attribute, Parent
   const relationships = (schema.relationships || [])
-    .filter((relationship) =>
-      relationshipsForTabs[relationship.cardinality].includes(relationship.kind)
+    .filter(
+      (relationship) =>
+        relationship.cardinality &&
+        relationshipsForTabs[relationship.cardinality].includes(relationship.kind)
     )
     .map((relationship) => ({
       label: relationship.label,
@@ -146,4 +153,135 @@ export const getObjectPeers = (schema?: iNodeSchema | iGenericSchema) => {
     .filter(Boolean);
 
   return peers;
+};
+
+export const getFieldValue = (row: any, attribute: any) => {
+  const value = row?.[attribute.name] ? row[attribute.name].value : attribute.default_value;
+
+  if (attribute.kind === "DateTime") {
+    if (isValid(value)) {
+      return value;
+    }
+
+    if (isValid(parseISO(value))) {
+      return parseISO(value);
+    }
+
+    return null;
+  }
+
+  return value ?? null;
+};
+
+export const getRelationshipValue = (row: any, field: any) => {
+  if (!row || !row[field.name]) {
+    return "";
+  }
+
+  const value = row[field.name].node ?? row[field.name];
+
+  if (!value) {
+    return "";
+  }
+
+  if (value.id) {
+    return value.id;
+  }
+
+  if (value.edges) {
+    return value.edges.map((edge: any) => edge.node.id);
+  }
+
+  return "";
+};
+
+// Inlcude current value in the options to make it available in the select component
+export const getRelationshipOptions = (row: any, field: any, schemas: any[], generics: any[]) => {
+  const value = row && (row[field.name]?.node ?? row[field.name]);
+
+  if (!value) {
+    return [];
+  }
+
+  if (value.edges) {
+    return value.edges.map((edge: any) => ({
+      name: edge.node.display_label,
+      id: edge.node.id,
+    }));
+  }
+
+  const generic = generics.find((generic: any) => generic.kind === field.peer);
+
+  if (generic) {
+    const options = (generic.used_by || []).map((name: string) => {
+      const relatedSchema = schemas.find((s: any) => s.kind === name);
+
+      if (relatedSchema) {
+        return {
+          id: name,
+          name: relatedSchema.name,
+        };
+      }
+    });
+
+    return options;
+  }
+
+  const option = {
+    name: value.display_label,
+    id: value.id,
+  };
+
+  // Initial option for relationships to make the current value available
+  return [option];
+};
+
+export const getOptionsFromAttribute = (attribute: any, value: any) => {
+  if (attribute.kind === "List") {
+    return value?.map((option: any) => ({
+      name: option,
+      id: option,
+    }));
+  }
+
+  if (attribute.enum) {
+    return attribute.enum?.map((option: any) => ({
+      name: option,
+      id: option,
+    }));
+  }
+
+  if (attribute.choices) {
+    return attribute.choices?.map((option: any) => ({
+      ...option,
+      name: option.label,
+      id: option.name,
+    }));
+  }
+
+  return [];
+};
+
+export const getOptionsFromRelationship = (options: any[] = [], schemas?: any, generic?: any) => {
+  if (!generic) {
+    return options.map((option: any) => ({
+      name: option.display_label,
+      id: option.id,
+    }));
+  }
+
+  if (generic) {
+    return (generic.used_by || []).map((name: string) => {
+      const relatedSchema = schemas.find((s: any) => s.kind === name);
+
+      if (relatedSchema) {
+        return {
+          name: relatedSchema.name,
+          id: name,
+        };
+      }
+    });
+  }
+
+  return [];
 };

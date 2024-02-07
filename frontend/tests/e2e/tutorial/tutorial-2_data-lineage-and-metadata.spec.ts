@@ -8,7 +8,7 @@ test.describe("Getting started with Infrahub - Data lineage and metadata", () =>
   test("1. Explore and update object metadata", async ({ page }) => {
     await test.step("Go to the detailed page of any device", async () => {
       await page.goto("/objects/InfraDevice");
-      await page.getByRole("link", { name: "atl1-core1" }).click();
+      await page.getByRole("link", { name: "atl1-core2" }).click();
     });
 
     await test.step("Explore Description attribute metadata", async () => {

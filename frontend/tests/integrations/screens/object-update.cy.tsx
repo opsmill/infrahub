@@ -20,6 +20,8 @@ import {
   accountTokenEditMocksQueryBis,
   accountTokenId,
   accountTokenNewDate,
+  accountsDropdownOptionsData,
+  accountsDropdownOptionsQuery,
 } from "../../mocks/data/accountToken";
 import { configMocks } from "../../mocks/data/config";
 import {
@@ -66,39 +68,7 @@ const mocks: any[] = [
       data: deviceDetailsUpdateMocksData,
     },
   },
-  // Details query
-  {
-    request: {
-      query: gql`
-        ${deviceDetailsMocksQuery}
-      `,
-    },
-    result: {
-      data: deviceDetailsMocksData,
-    },
-  },
-  // Update query
-  {
-    request: {
-      query: gql`
-        ${deviceDetailsUpdateMocksQuery}
-      `,
-    },
-    result: {
-      data: deviceDetailsUpdateMocksData,
-    },
-  },
   // After mutation
-  {
-    request: {
-      query: gql`
-        ${deviceDetailsMocksQuery}
-      `,
-    },
-    result: {
-      data: deviceDetailsMocksDataAfterUpdate,
-    },
-  },
   {
     request: {
       query: gql`
@@ -127,11 +97,33 @@ const mocksToken = [
   {
     request: {
       query: gql`
+        ${accountTokenDetailsMocksQueryBis}
+      `,
+    },
+    result: {
+      data: accountTokenDetailsMocksDataBis,
+    },
+  },
+  // Account token details for edit panel
+  {
+    request: {
+      query: gql`
         ${accountTokenEditMocksQueryBis}
       `,
     },
     result: {
       data: accountTokenEditMocksDataBis,
+    },
+  },
+  // Accounts options query for eedit panel
+  {
+    request: {
+      query: gql`
+        ${accountsDropdownOptionsQuery}
+      `,
+    },
+    result: {
+      data: accountsDropdownOptionsData,
     },
   },
   // Account token details after update

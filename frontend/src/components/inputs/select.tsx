@@ -3,9 +3,8 @@ import { Combobox } from "@headlessui/react";
 import { CheckIcon } from "@heroicons/react/20/solid";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { Icon } from "@iconify-icon/react";
-import { useAtom } from "jotai";
 import { useAtomValue } from "jotai/index";
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import {
   DEFAULT_BRANCH_NAME,
   SCHEMA_DROPDOWN_ADD,
@@ -16,6 +15,8 @@ import {
 import { SchemaContext } from "../../decorators/withSchemaContext";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { basicMutation } from "../../graphql/mutations/objects/basicMutation";
+import { getDropdownOptions } from "../../graphql/queries/objects/dropdownOptions";
+import { useLazyQuery } from "../../hooks/useQuery";
 import { Form, FormFieldError } from "../../screens/edit-form-hook/form";
 import ObjectItemCreate from "../../screens/object-item-create/object-item-create-paginated";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
@@ -30,6 +31,9 @@ import ModalDelete from "../modals/modal-delete";
 import { Input } from "./input";
 import { MultipleInput } from "./multiple-input";
 
+import LoadingScreen from "../../screens/loading-screen/loading-screen";
+import { getOptionsFromRelationship } from "../../utils/getSchemaObjectColumns";
+
 export type SelectOption = {
   id: string | number;
   name: string;
@@ -42,7 +46,7 @@ export enum SelectDirection {
 }
 
 type SelectProps = {
-  value?: string | number | SelectOption[];
+  value?: string | string[] | number | number[];
   kind?: string;
   name?: string;
   peer?: string;
@@ -55,11 +59,13 @@ type SelectProps = {
   multiple?: boolean;
   dropdown?: boolean;
   enum?: boolean;
-  attribute?: any;
+  field?: any;
   relationship?: any;
   schema?: any;
   preventEmpty?: boolean;
   isOptional?: boolean;
+  isUnique?: boolean;
+  isInherited?: boolean;
 };
 
 export const Select = (props: SelectProps) => {
@@ -75,11 +81,13 @@ export const Select = (props: SelectProps) => {
     multiple,
     dropdown,
     enum: enumBoolean,
-    attribute,
+    field,
     schema,
     preventEmpty,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
     isOptional, // Avoid proving useless props
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
+    isUnique, // Avoid proving useless props
     ...otherProps
   } = props;
 
@@ -87,21 +95,40 @@ export const Select = (props: SelectProps) => {
 
   const { checkSchemaUpdate } = useContext(SchemaContext);
 
-  const [schemaList] = useAtom(schemaState);
-  const [schemaKindName] = useAtom(schemaKindNameState);
+  const schemaList = useAtomValue(schemaState);
+  const schemaKindName = useAtomValue(schemaKindNameState);
   const branch = useAtomValue(currentBranchAtom);
   const date = useAtomValue(datetimeAtom);
-  const [namespaces] = useAtom(namespacesState);
+  const namespaces = useAtomValue(namespacesState);
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  // TODO: after refactor, find a way to verify the options to trigger or not the request
+  const [hasBeenOpened, setHasBeenOpened] = useState(false);
   const [optionToDelete, setOptionToDelete] = useState<null | number | string>(null);
   const [localOptions, setLocalOptions] = useState(options);
   const [selectedOption, setSelectedOption] = useState(
-    multiple ? value : options?.find((option) => option?.id === value || option.name === value)
+    multiple
+      ? options.filter((option) => value.includes(option.id))
+      : options?.find((option) => option?.id === value || option.name === value)
   );
 
+  // Query to fetch options only if a peer is defined
+  // TODO: Find another solution for queries while loading schema
+  const optionsQueryString = peer ? getDropdownOptions({ kind: peer }) : "query { ok }";
+
+  const optionsQuery = gql`
+    ${optionsQueryString}
+  `;
+
+  const [fetchOptions, { loading, data }] = useLazyQuery(optionsQuery);
+
+  const optionsResult = peer && data ? data[peer].edges.map((edge: any) => edge.node) : [];
+
+  const optionsData = getOptionsFromRelationship(optionsResult, schemaList);
+
   const schemaData = schemaList.find((s) => s.kind === peer);
+
   const namespaceData = namespaces.find((n) => n.name === schema?.namespace);
 
   const addOption: SelectOption = {
@@ -130,36 +157,40 @@ export const Select = (props: SelectProps) => {
   const canRemoveOption = (id: string | number) =>
     namespaceData?.user_editable && (dropdown || enumBoolean) && id !== emptyOption.id;
 
-  const handleChange = (item: any) => {
-    if (item.id === addOption.id) {
+  const handleChange = (newValue: any) => {
+    // Fetch if we are changing the option without opening the select
+    // (for ex: when removing an item in the multiple input)
+
+    handleFocus();
+
+    if (newValue.id === addOption.id) {
       setOpen(true);
       return;
     }
 
-    if (item.id === emptyOption.id) {
+    if (newValue.id === emptyOption.id) {
       setSelectedOption(emptyOption);
-      onChange({});
+      onChange("");
       return;
     }
 
     if (multiple) {
-      const includesNewItemCreation = item.find((i: any) => i.id === addOption.id);
+      const includesNewItemCreation = newValue.find((i: any) => i.id === addOption.id);
 
-      if (!includesNewItemCreation) {
-        setSelectedOption(item);
-        setOpen(false);
-        onChange(item);
+      if (includesNewItemCreation) {
+        setOpen(true);
         return;
       }
-
-      setOpen(true);
+      setSelectedOption(newValue);
+      setOpen(false);
+      onChange(newValue.map((item) => item.id));
       return;
     }
 
-    setSelectedOption(item);
+    setSelectedOption(newValue);
     setQuery("");
     setOpen(false);
-    onChange(item);
+    onChange(newValue.id);
   };
 
   const handleCreate = (response: any) => {
@@ -188,6 +219,14 @@ export const Select = (props: SelectProps) => {
     // Remove the selected option and update query (allow empty query)
     setSelectedOption(undefined);
     setQuery(newValue);
+  };
+
+  const handleFocus = () => {
+    // Do not fetch if there is no peer
+    if (!peer || hasBeenOpened) return;
+
+    setHasBeenOpened(true);
+    fetchOptions();
   };
 
   const getOptionStyle = (option: any) => {
@@ -249,7 +288,7 @@ export const Select = (props: SelectProps) => {
 
         const update = {
           kind: schema.kind,
-          attribute: attribute.name,
+          attribute: field.name,
           dropdown: value,
           color,
           description,
@@ -318,7 +357,7 @@ export const Select = (props: SelectProps) => {
       try {
         const update = {
           kind: schema.kind,
-          attribute: attribute.name,
+          attribute: field.name,
           enum: value,
         };
 
@@ -369,7 +408,7 @@ export const Select = (props: SelectProps) => {
     try {
       const update = {
         kind: schema.kind,
-        attribute: attribute.name,
+        attribute: field.name,
         dropdown: optionToDelete,
       };
 
@@ -408,7 +447,7 @@ export const Select = (props: SelectProps) => {
     try {
       const update = {
         kind: schema.kind,
-        attribute: attribute.name,
+        attribute: field.name,
         enum: typeof optionToDelete === "string" ? optionToDelete : JSON.stringify(optionToDelete),
       };
 
@@ -543,7 +582,7 @@ export const Select = (props: SelectProps) => {
                   </div>
                 </div>
 
-                <div className="text-sm">{attribute?.description ?? attribute?.label}</div>
+                <div className="text-sm">{field?.description ?? field?.label}</div>
 
                 <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 mr-2">
                   <svg
@@ -590,7 +629,7 @@ export const Select = (props: SelectProps) => {
                   </div>
                 </div>
 
-                <div className="text-sm">{attribute?.description ?? attribute?.label}</div>
+                <div className="text-sm">{field?.description ?? field?.label}</div>
 
                 <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 mr-2">
                   <svg
@@ -656,33 +695,52 @@ export const Select = (props: SelectProps) => {
     return {};
   };
 
+  useEffect(() => {
+    setLocalOptions(optionsData);
+  }, [optionsData?.length]);
+
+  useEffect(() => {
+    setLocalOptions(options);
+  }, [options?.length]);
+
+  // Needed for async options to avoid duplicates issues
+  const comparedOptions = (a: SelectOption, b: SelectOption) => a?.id === b?.id;
+
   return (
-    <div className="relative">
+    <div className="relative" data-testid="select-container">
       <Combobox
         as="div"
         value={selectedOption}
         onChange={handleChange}
         disabled={disabled}
         multiple={multiple}
+        by={comparedOptions}
         {...otherProps}>
         <div className="relative mt-1">
           <Combobox.Input
             as={multiple ? MultipleInput : Input}
             value={getInputValue()}
             onChange={handleInputChange}
+            onFocus={handleFocus}
             disabled={disabled}
             error={error}
             className={"pr-8"}
             style={getInputStyle()}
             hideEmpty
+            data-testid="select-input"
           />
           <Combobox.Button
             className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none disabled:cursor-not-allowed"
-            data-testid="select-open-option-button">
-            <ChevronDownIcon className={"w-4 h-4"} aria-hidden="true" style={getInputStyle()} />
+            data-testid="select-open-option-button"
+            onClick={handleFocus}>
+            {loading && <LoadingScreen hideText size={24} />}
+
+            {!loading && (
+              <ChevronDownIcon className={"w-4 h-4"} aria-hidden="true" style={getInputStyle()} />
+            )}
           </Combobox.Button>
 
-          {finalOptions && finalOptions.length > 0 && (
+          {!loading && finalOptions && finalOptions.length > 0 && (
             <Combobox.Options
               className={classNames(
                 "absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-custom-white text-base shadow-lg ring-1 ring-custom-black ring-opacity-5 focus:outline-none sm:text-sm",
