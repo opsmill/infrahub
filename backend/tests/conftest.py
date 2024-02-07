@@ -90,7 +90,7 @@ def local_storage_dir(tmp_path) -> str:
     os.mkdir(storage_dir)
 
     config.SETTINGS.storage.driver = config.StorageDriver.FileSystemStorage
-    config.SETTINGS.storage.local = config.FileSystemStorageSettings(path=storage_dir)
+    config.SETTINGS.storage.local.path_ = storage_dir
 
     return storage_dir
 

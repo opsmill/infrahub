@@ -35,22 +35,30 @@ class Task(StandardNode):
 
     @classmethod
     async def query(
-        cls, db: InfrahubDatabase, fields: Dict[str, Any], limit: int, offset: int, related_nodes: List[str]
+        cls,
+        db: InfrahubDatabase,
+        fields: Dict[str, Any],
+        limit: int,
+        offset: int,
+        ids: List[str],
+        related_nodes: List[str],
     ) -> Dict[str, Any]:
         log_fields = get_nested_dict(nested_dict=fields, keys=["edges", "node", "logs", "edges", "node"])
         count = None
         if "count" in fields:
-            query = await TaskNodeQuery.init(db=db, related_nodes=related_nodes)
+            query = await TaskNodeQuery.init(db=db, ids=ids, related_nodes=related_nodes)
             count = await query.count(db=db)
 
         if log_fields:
-            query = await TaskNodeQueryWithLogs.init(db=db, limit=limit, offset=offset, related_nodes=related_nodes)
+            query = await TaskNodeQueryWithLogs.init(
+                db=db, limit=limit, offset=offset, ids=ids, related_nodes=related_nodes
+            )
             await query.execute(db=db)
         else:
-            query = await TaskNodeQuery.init(db=db, limit=limit, offset=offset, related_nodes=related_nodes)
+            query = await TaskNodeQuery.init(db=db, limit=limit, offset=offset, ids=ids, related_nodes=related_nodes)
             await query.execute(db=db)
 
-        nodes = []
+        nodes: list[dict] = []
         for result in query.get_results():
             related_node = result.get("rn")
             task_result = result.get_node("n")
@@ -69,15 +77,17 @@ class Task(StandardNode):
             task = cls.from_db(task_result)
             nodes.append(
                 {
-                    "title": task.title,
-                    "conclusion": task.conclusion,
-                    "related_node": related_node.get("uuid"),
-                    "related_node_kind": related_node.get("kind"),
-                    "created_at": task.created_at,
-                    "updated_at": task.updated_at,
-                    "id": task_result.get("uuid"),
-                    "logs": {"edges": logs},
+                    "node": {
+                        "title": task.title,
+                        "conclusion": task.conclusion,
+                        "related_node": related_node.get("uuid"),
+                        "related_node_kind": related_node.get("kind"),
+                        "created_at": task.created_at,
+                        "updated_at": task.updated_at,
+                        "id": task_result.get("uuid"),
+                        "logs": {"edges": logs},
+                    }
                 }
             )
 
-        return {"count": count, "edges": {"node": nodes}}
+        return {"count": count, "edges": nodes}
