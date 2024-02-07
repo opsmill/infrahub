@@ -166,8 +166,6 @@ def export(
     """Export the entire database"""
     config.load_and_exit(config_file_name=config_file)
     export_path = Path(export_directory)
-    if export_path.exists():
-        raise ValueError(f"Export directory {export_path} already exists")
 
     if config.SETTINGS.database.db_type == DatabaseType.MEMGRAPH:
         ...
