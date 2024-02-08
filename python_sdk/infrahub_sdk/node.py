@@ -606,6 +606,7 @@ class RelationshipManagerSync(RelationshipManagerBase):
             node = self.client.get(
                 kind=self.node._schema.kind,
                 id=self.node.id,
+                branch=self.branch,
                 include=[self.schema.name],
                 exclude=exclude,
             )
