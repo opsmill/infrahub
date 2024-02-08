@@ -3,7 +3,6 @@ from infrahub_sdk import UUIDT, InfrahubClient
 from infrahub.core.constants import InfrahubKind
 from infrahub.git import InfrahubRepository
 from infrahub.message_bus import Meta, messages
-from infrahub.message_bus.responses import ContentResponse
 from infrahub.services import InfrahubServices
 
 
@@ -26,8 +25,7 @@ async def test_file_get(git_fixture_repo: InfrahubRepository, helper):
 
     await service.send(message=message)
     assert len(bus_simulator.replies) == 1
-    reply = bus_simulator.replies[0]
+    reply: messages.GitFileGetResponse = bus_simulator.replies[0]
     assert reply.passed
     assert reply.meta.correlation_id == correlation_id
-    content_response = reply.parse(ContentResponse)
-    assert content_response.content == "Someone will read this from Git."
+    assert reply.data.content == "Someone will read this from Git."

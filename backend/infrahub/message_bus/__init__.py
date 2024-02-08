@@ -1,16 +1,13 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, TypeVar
+from typing import Any, Dict, Optional, Union
 
 import aio_pika
 from pydantic import BaseModel, Field
 
 from infrahub import config
-from infrahub.exceptions import Error, RPCError
+from infrahub.exceptions import RPCError
 from infrahub.log import set_log_data
-from infrahub.message_bus.responses import RESPONSE_MAP
-
-ResponseClass = TypeVar("ResponseClass")
 
 
 class Broker:
@@ -118,26 +115,29 @@ class InfrahubMessage(BaseModel):
         return False
 
 
+class InfrahubResponseData(BaseModel):
+    pass
+
+
 class InfrahubResponse(InfrahubMessage):
     """A response to an RPC request"""
 
     passed: bool = True
-    response_class: str
-    response_data: dict
+    routing_key: str
+    data: Union[dict, InfrahubResponseData]
 
     def raise_for_status(self) -> None:
         if self.passed:
             return
 
-        # Later we would load information about the error based on the response_class and response_data
-        raise RPCError(message=self.response_data.get("error", "Unknown Error"))
+        raise RPCError(message=self.data.get("error", "Unknown Error"))
 
-    def parse(self, response_class: type[ResponseClass]) -> ResponseClass:
-        self.raise_for_status()
-        if self.response_class not in RESPONSE_MAP:
-            raise Error(f"Unable to find response_class: {self.response_class}")
 
-        if not isinstance(response_class, type(RESPONSE_MAP[self.response_class])):
-            raise Error(f"Invalid response class for response message: {self.response_class}")
+class RPCErrorResponseData(InfrahubResponseData):
+    error: str
 
-        return RESPONSE_MAP[self.response_class](**self.response_data)
+
+class RPCErrorResponse(InfrahubResponse):
+    passed: bool = False
+    routing_key: str = "rpc_error"
+    data: RPCErrorResponseData

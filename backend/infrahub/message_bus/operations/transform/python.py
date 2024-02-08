@@ -1,6 +1,10 @@
 from infrahub.git.repository import get_initialized_repo
 from infrahub.log import get_logger
-from infrahub.message_bus import InfrahubResponse, messages
+from infrahub.message_bus import messages
+from infrahub.message_bus.messages.transform_python_data import (
+    TransformPythonDataResponse,
+    TransformPythonDataResponseData,
+)
 from infrahub.services import InfrahubServices
 
 log = get_logger()
@@ -30,7 +34,5 @@ async def data(message: messages.TransformPythonData, service: InfrahubServices)
     )
 
     if message.reply_requested:
-        response = InfrahubResponse(
-            response_class="transform_response", response_data={"transformed_data": transformed_data}
-        )
+        response = TransformPythonDataResponse(data=TransformPythonDataResponseData(transformed_data=transformed_data))
         await service.reply(message=response, initiator=message)

@@ -3,7 +3,7 @@ import importlib
 import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TypeVar
 
 import pytest
 import ujson
@@ -36,6 +36,7 @@ from infrahub.services.adapters.message_bus import InfrahubMessageBus
 
 BUILD_NAME = os.environ.get("INFRAHUB_BUILD_NAME", "infrahub")
 TEST_IN_DOCKER = str_to_bool(os.environ.get("INFRAHUB_TEST_IN_DOCKER", "false"))
+ResponseClass = TypeVar("ResponseClass")
 
 
 def pytest_addoption(parser):
@@ -315,7 +316,7 @@ class BusRPCMock(InfrahubMessageBus):
     def add_mock_reply(self, response: InfrahubResponse):
         self.response.append(response)
 
-    async def rpc(self, message: InfrahubMessage) -> InfrahubResponse:
+    async def rpc(self, message: InfrahubMessage, response_class: type[ResponseClass]) -> ResponseClass:
         self.messages.append(message)
         return self.response.pop()
 
@@ -341,7 +342,7 @@ class BusSimulator(InfrahubMessageBus):
         self.messages: List[InfrahubMessage] = []
         self.messages_per_routing_key: Dict[str, List[InfrahubMessage]] = {}
         self.service: InfrahubServices = InfrahubServices()
-        self.replies: List[InfrahubMessage] = []
+        self.replies: List[InfrahubResponse] = []
 
     async def publish(self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None) -> None:
         self.messages.append(message)

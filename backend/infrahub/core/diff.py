@@ -31,8 +31,7 @@ from infrahub.exceptions import (
     DiffFromRequiredOnDefaultBranchError,
     DiffRangeValidationError,
 )
-from infrahub.message_bus import messages
-from infrahub.message_bus.responses import DiffNamesResponse
+from infrahub.message_bus.messages import GitDiffNamesOnly, GitDiffNamesOnlyResponse
 from infrahub.services import services
 
 if TYPE_CHECKING:
@@ -1159,7 +1158,7 @@ class BranchDiffer:
 
         files = []
 
-        message = messages.GitDiffNamesOnly(
+        message = GitDiffNamesOnly(
             repository_id=repository.id,
             repository_name=repository.name.value,  # type: ignore[attr-defined]
             repository_kind=repository.get_kind(),
@@ -1167,8 +1166,8 @@ class BranchDiffer:
             second_commit=commit_to,
         )
 
-        reply = await services.service.message_bus.rpc(message=message)
-        diff = reply.parse(response_class=DiffNamesResponse)
+        reply = await services.service.message_bus.rpc(message=message, response_class=GitDiffNamesOnlyResponse)
+        diff = reply.data
 
         actions = {
             "files_changed": DiffAction.UPDATED,
