@@ -23,8 +23,30 @@ class MessageTTL(int, Enum):
         return [cls(cls.__members__[member].value) for member in list(cls.__members__)]
 
 
+class ProposedChangeRepository(BaseModel):
+    repository_id: str
+    repository_name: str
+    read_only: bool
+    source_branch: str
+    destination_branch: str
+    source_commit: str = Field(default="")
+    destination_commit: str = Field(default="")
+    conflicts: List[str] = Field(default_factory=list, description="List of files with merge conflicts")
+    files_added: List[str] = Field(default_factory=list)
+    files_changed: List[str] = Field(default_factory=list)
+    files_removed: List[str] = Field(default_factory=list)
+
+    @property
+    def has_diff(self) -> bool:
+        """Indicates if a diff exists for managed repositories."""
+        if not self.read_only and self.source_commit and self.source_commit != self.destination_commit:
+            return True
+        return False
+
+
 class ProposedChangeBranchDiff(BaseModel):
     diff_summary: list[NodeDiff] = Field(default_factory=list, description="The DiffSummary between two branches")
+    repositories: list[ProposedChangeRepository] = Field(default_factory=list)
 
     def has_node_changes(self, branch: str) -> bool:
         """Indicates if there is at least one node object that has been modified in the branch"""
