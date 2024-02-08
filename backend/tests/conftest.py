@@ -316,7 +316,7 @@ class BusRPCMock(InfrahubMessageBus):
     def add_mock_reply(self, response: InfrahubResponse):
         self.response.append(response)
 
-    async def rpc(self, message: InfrahubMessage, resource_class: type[ResponseClass]) -> ResponseClass:
+    async def rpc(self, message: InfrahubMessage, response_class: type[ResponseClass]) -> ResponseClass:
         self.messages.append(message)
         return self.response.pop()
 
