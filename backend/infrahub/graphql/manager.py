@@ -48,11 +48,9 @@ GraphQLTypes = Union[
     Type[InfrahubMutation], Type[BaseAttributeType], Type[graphene.Interface], Type[graphene.ObjectType]
 ]
 
-
-METRIC_PREFIX = "infrahub_schema"
-
+METRIC_PREFIX = "infrahub_graphql"
 SCHEMA_GENERATE_GRAPHQL_METRICS = Histogram(
-    f"{METRIC_PREFIX}_generate_graphql",
+    f"{METRIC_PREFIX}_generate_schema",
     "Time to generate the GraphQL Schema",
     labelnames=["branch"],
     buckets=[0.0005, 0.25, 0.5, 1, 5],
