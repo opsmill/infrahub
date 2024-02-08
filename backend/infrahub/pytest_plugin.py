@@ -9,6 +9,7 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.timestamp import Timestamp
 
 OUTCOME_TO_CONCLUSION_MAP = {"passed": "success", "failed": "failure", "skipped": "unknown"}
+OUTCOME_TO_SEVERITY_MAP = {"passed": "info", "failed": "critical", "skipped": "warning"}
 
 
 class InfrahubBackendPlugin:
@@ -47,6 +48,7 @@ class InfrahubBackendPlugin:
         return validator
 
     def pytest_collection_modifyitems(self, session: Session, config: Config, items: List[Item]) -> None:  # pylint: disable=unused-argument
+        """This function is called after item collection and gives the opportunity to work on the collection before sending the items for testing."""
         # FIXME: Does this really belongs here?
         # FIXME: Fetch checks if the validator already has some
         self.validator = self.get_repository_validator()
@@ -54,6 +56,7 @@ class InfrahubBackendPlugin:
         # TODO: Re-order tests: sanity -> unit -> integration
 
     def pytest_runtestloop(self, session: Session) -> Optional[object]:  # pylint: disable=unused-argument
+        """This function is called when the test loop is being run."""
         self.validator.conclusion.value = "unknown"
         self.validator.state.value = "in_progress"
         self.validator.started_at.value = Timestamp().to_string()
@@ -94,6 +97,7 @@ class InfrahubBackendPlugin:
 
         check = self.checks[report.nodeid]
         check.message.value = report.longreprtext
+        check.severity.value = OUTCOME_TO_SEVERITY_MAP[report.outcome]
         check.conclusion.value = OUTCOME_TO_CONCLUSION_MAP[report.outcome]
         check.save()
 
