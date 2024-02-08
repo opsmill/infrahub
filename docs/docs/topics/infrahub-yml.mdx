@@ -22,7 +22,7 @@ An external repository can be used to link the following Infrahub objects to an 
 
 :::
 
-## GraphQL Query {#graphql-query}
+## GraphQL query {#graphql-query}
 
 This is the easiest type of object to link to Infrahub through an external repository because they do not need to be specified in the `.infrahub.yml` file. When Infrahub creates a Repository or pulls changes from the associated external repository, it will scan all the files in the repository and save any that have a `.gql` extension as GraphQLQuery objects in Infrahub.
 
@@ -42,7 +42,7 @@ Schemas to be loaded as part of an external repository can be defined in file(s)
 
 Infrahub will attempt to import any schemas defined in `.infrahub.yml` when pulling from the external repository.
 
-## Jinja2 Transformation {#transform-jinja-2}
+## Jinja2 transformation {#transform-jinja-2}
 
 Jinja2 Transformations can be defined as described [here](/topics/transformation#rendered-file-jinja2-plugin). To load Jinja2 Transformations into Infrahub from an external repository, you must explicitly define them in the `.infrahub.yml` file. Each Jinja2 Transformations in the `.infrahub.yml` configuration file is defined by the following
 
@@ -64,7 +64,7 @@ Jinja2 Transformations can be defined as described [here](/topics/transformation
 
 </details>
 
-## Python Transformation {#transform-python}
+## Python transformation {#transform-python}
 
 Python Transformations can be defined as described [here](/topics/transformation#transformpython-python-plugin). To load Python Transformations from an external repository, you must explicitly define them in the `.infrahub.yml` configuration file. The definition in `.infrahub.yml` includes the following
 
@@ -84,7 +84,7 @@ Python Transformations can be defined as described [here](/topics/transformation
 
 </details>
 
-## Artifact Definition {#artifact-definition}
+## Artifact definition {#artifact-definition}
 
 Artifact Definitions can be created as described [here](/topics/artifact). To load Artifact Definitions from an external repository, you must explicitly define them in the `.infrahub.yml` configuration file. Each Artifact Definition in `.infrahub.yml` must include the following:
 

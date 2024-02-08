@@ -20,6 +20,7 @@ It's also possible to execute a GraphQL query directly with `client.execute_grap
 
 <Tabs groupId="async-sync">
   <TabItem value="Async" default>
+
     ```python
     from infrahub_sdk import InfrahubClient
 
@@ -40,8 +41,10 @@ It's also possible to execute a GraphQL query directly with `client.execute_grap
     client = await InfrahubClient.init(address="http://localhost:8000")
     accounts = await client.filters(kind="CoreAccount", name__value="admin")
     ```
+
   </TabItem>
   <TabItem value="Sync">
+
     ```python
     from infrahub_sdk import InfrahubClientSync
 
@@ -62,6 +65,7 @@ It's also possible to execute a GraphQL query directly with `client.execute_grap
     client = InfrahubClientSync.init(address="http://localhost:8000")
     accounts = client.filters(kind="CoreAccount", name__value="admin")
     ```
+
   </TabItem>
 </Tabs>
 
@@ -70,6 +74,7 @@ All Attributes and Relationships defined in the schema will be automatically bui
 
 <Tabs groupId="async-sync">
   <TabItem value="Async" default>
+
     ```python
     from infrahub_sdk import InfrahubClient
 
@@ -77,8 +82,10 @@ All Attributes and Relationships defined in the schema will be automatically bui
     account = await client.get(kind="CoreRepository", id="XXX")
     print(account.name.value)
     ```
+
   </TabItem>
   <TabItem value="Sync">
+
     ```python
     from infrahub_sdk import InfrahubClientSync
 
@@ -86,6 +93,7 @@ All Attributes and Relationships defined in the schema will be automatically bui
     account = client.get(kind="CoreRepository", id="XXX")
     print(account.name.value)
     ```
+
   </TabItem>
 </Tabs>
 
@@ -99,20 +107,24 @@ it's possible to add or remove some attributes and/or relationships from the que
 
 <Tabs groupId="async-sync">
   <TabItem value="Async" default>
+
     ```python
     from infrahub_sdk import InfrahubClient
 
     client = await InfrahubClient.init(address="http://localhost:8000")
     accounts = await client.all(kind="CoreRepository", exclude=["tags"], include=["queries"])
     ```
+
   </TabItem>
   <TabItem value="Sync">
+
     ```python
     from infrahub_sdk import InfrahubClientSync
 
     client = InfrahubClientSync.init(address="http://localhost:8000")
     accounts = client.all(kind="CoreRepository", exclude=["tags"], include=["queries"])
     ```
+
   </TabItem>
 </Tabs>
 
@@ -126,6 +138,7 @@ In both cases, you can `fetch()` all the peers of a relationship
 
 <Tabs groupId="async-sync">
   <TabItem value="Async" default>
+
     ```python
     from infrahub_sdk import InfrahubClient, InfrahubNode
 
@@ -134,8 +147,10 @@ In both cases, you can `fetch()` all the peers of a relationship
     await account.tags.fetch()
     tags: List[InfrahubNode]  = [ tag.peer for tag in account.tags ]
     ```
+
   </TabItem>
   <TabItem value="Sync">
+
     ```python
     from infrahub_sdk import InfrahubClientSync, InfrahubNodeSync
 
@@ -144,5 +159,6 @@ In both cases, you can `fetch()` all the peers of a relationship
     account.tags.fetch()
     tags: List[InfrahubNodeSync] = [ tag.peer for tag in account.tags ]
     ```
+
   </TabItem>
 </Tabs>
