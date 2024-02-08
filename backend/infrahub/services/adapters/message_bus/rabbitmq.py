@@ -54,6 +54,8 @@ class RabbitMQMessageBus(InfrahubMessageBus):
 
     async def initialize(self, service: InfrahubServices) -> None:
         self.service = service
+        self.connection = await get_broker()
+        self.channel = await self.connection.channel()
         if self.service.component_type == ComponentType.API_SERVER:
             await self._initialize_api_server()
         elif self.service.component_type == ComponentType.GIT_AGENT:
@@ -74,8 +76,6 @@ class RabbitMQMessageBus(InfrahubMessageBus):
             self.service.log.error("Invalid message received", message=f"{message!r}")
 
     async def _initialize_api_server(self) -> None:
-        self.connection = await get_broker()
-        self.channel = await self.connection.channel()
         self.callback_queue = await self.channel.declare_queue(name=f"api-callback-{WORKER_IDENTITY}", exclusive=True)
         self.events_queue = await self.channel.declare_queue(name=f"api-events-{WORKER_IDENTITY}", exclusive=True)
 
@@ -132,9 +132,6 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         self.message_enrichers.append(_add_request_id)
 
     async def _initialize_git_worker(self) -> None:
-        connection = await get_broker()
-        # Create a channel and subscribe to the incoming RPC queue
-        self.channel = await connection.channel()
         await self.channel.set_qos(prefetch_count=1)
         events_queue = await self.channel.declare_queue(name=f"worker-events-{WORKER_IDENTITY}", exclusive=True)
 
