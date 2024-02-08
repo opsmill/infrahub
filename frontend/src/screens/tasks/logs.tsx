@@ -1,4 +1,5 @@
 import { BADGE_TYPES, Badge } from "../../components/display/badge";
+import { DateDisplay } from "../../components/display/date-display";
 import { Table } from "../../components/table/table";
 
 export type tLog = {
@@ -25,10 +26,6 @@ export const Logs = (props: tLogsProps) => {
 
   const columns = [
     {
-      name: "id",
-      label: "ID",
-    },
-    {
       name: "message",
       label: "Message",
     },
@@ -46,6 +43,7 @@ export const Logs = (props: tLogsProps) => {
     values: {
       ...log,
       severity: getSeverityBadge[log.severity],
+      timestamp: <DateDisplay date={log.timestamp} />,
     },
   }));
 
