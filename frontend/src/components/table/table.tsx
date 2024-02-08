@@ -58,7 +58,7 @@ export const Table = (props: tTableProps) => {
                   <Link
                     className="whitespace-wrap px-2 py-1 text-xs text-gray-900 min-h-7 flex items-center"
                     to={row.link}>
-                    <div className="flex-grow">{row.values[column.name]}</div>
+                    <div>{row.values[column.name]}</div>
                   </Link>
                 )}
 
