@@ -84,7 +84,7 @@ def markdownlint(context: Context):
     if not has_markdownlint:
         print("Warning, markdownlint-cli2 is not installed")
         return
-    exec_cmd = "markdownlint-cli2 **/*.{md,mdx}"
+    exec_cmd = "markdownlint-cli2 **/*.{md,mdx} '#**/node_modules/**'"
     print(" - [docs] Lint docs with markdownlint-cli2")
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
