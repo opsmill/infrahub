@@ -28,4 +28,4 @@ async def test_file_get(git_fixture_repo: InfrahubRepository, helper):
     reply: messages.GitFileGetResponse = bus_simulator.replies[0]
     assert reply.passed
     assert reply.meta.correlation_id == correlation_id
-    assert reply.response_data.content == "Someone will read this from Git."
+    assert reply.data.content == "Someone will read this from Git."

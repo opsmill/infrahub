@@ -24,7 +24,7 @@ async def test_get_file(
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         mock_response = messages.GitFileGetResponse(
-            response_data={"content": "file content"},
+            data={"content": "file content"},
         )
         # No commit yet
         response = client.get(

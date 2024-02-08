@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import TYPE_CHECKING, Awaitable, Callable, List, MutableMapping, Optional
+from typing import TYPE_CHECKING, Awaitable, Callable, List, MutableMapping, Optional, TypeVar
 
 import aio_pika
 from infrahub_sdk import UUIDT
@@ -10,7 +10,7 @@ from infrahub_sdk import UUIDT
 from infrahub import config
 from infrahub.components import ComponentType
 from infrahub.log import clear_log_context, get_log_data
-from infrahub.message_bus import InfrahubMessage, InfrahubResponse, Meta, get_broker, messages
+from infrahub.message_bus import InfrahubMessage, Meta, get_broker, messages
 from infrahub.message_bus.operations import execute_message
 from infrahub.message_bus.types import MessageTTL
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from infrahub.services import InfrahubServices
 
 MessageFunction = Callable[[InfrahubMessage], Awaitable[None]]
+ResponseClass = TypeVar("ResponseClass")
 
 
 async def _add_request_id(message: InfrahubMessage) -> None:
@@ -159,7 +160,7 @@ class RabbitMQMessageBus(InfrahubMessageBus):
     async def reply(self, message: InfrahubMessage, routing_key: str) -> None:
         await self.channel.default_exchange.publish(self.format_message(message=message), routing_key=routing_key)
 
-    async def rpc(self, message: InfrahubMessage) -> InfrahubResponse:
+    async def rpc(self, message: InfrahubMessage, response_class: ResponseClass) -> ResponseClass:  # type: ignore[override]
         correlation_id = str(UUIDT())
 
         future = self.loop.create_future()
@@ -172,11 +173,8 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         await self.service.send(message=message)
 
         response: AbstractIncomingMessage = await future
-        response_class = InfrahubResponse
-        if response.routing_key:
-            response_class = messages.RESPONSE_MAP.get(response.routing_key, InfrahubResponse)
         data = json.loads(response.body)
-        return response_class(**data)
+        return response_class(**data)  # type: ignore[operator]
 
     async def subscribe(self) -> None:
         queue = await self.channel.get_queue(f"{config.SETTINGS.broker.namespace}.rpcs")

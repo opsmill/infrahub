@@ -23,4 +23,4 @@ class TransformPythonDataResponseData(InfrahubResponseData):
 
 class TransformPythonDataResponse(InfrahubResponse):
     routing_key: str = ROUTING_KEY
-    response_data: TransformPythonDataResponseData
+    data: TransformPythonDataResponseData

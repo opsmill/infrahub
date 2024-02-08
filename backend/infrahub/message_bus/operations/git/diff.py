@@ -30,7 +30,7 @@ async def names_only(message: messages.GitDiffNamesOnly, service: InfrahubServic
 
     if message.reply_requested:
         response = GitDiffNamesOnlyResponse(
-            response_data=GitDiffNamesOnlyResponseData(
+            data=GitDiffNamesOnlyResponseData(
                 files_added=files_added, files_changed=files_changed, files_removed=files_removed
             ),
         )

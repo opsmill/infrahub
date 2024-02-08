@@ -17,7 +17,12 @@ from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
 from infrahub.graphql import prepare_graphql_params
 from infrahub.graphql.utils import extract_data
-from infrahub.message_bus import messages
+from infrahub.message_bus.messages import (
+    TransformJinjaTemplate,
+    TransformJinjaTemplateResponse,
+    TransformPythonData,
+    TransformPythonDataResponse,
+)
 
 if TYPE_CHECKING:
     from infrahub.services import InfrahubServices
@@ -60,7 +65,7 @@ async def transform_python(
 
     service: InfrahubServices = request.app.state.service
 
-    message = messages.TransformPythonData(
+    message = TransformPythonData(
         repository_id=repository.id,  # type: ignore[attr-defined]
         repository_name=repository.name.value,  # type: ignore[attr-defined]
         repository_kind=repository.get_kind(),
@@ -70,8 +75,8 @@ async def transform_python(
         data=data,
     )
 
-    response: messages.TransformPythonDataResponse = await service.message_bus.rpc(message=message)  # type: ignore[assignment]
-    return JSONResponse(content=response.response_data.transformed_data)
+    response = await service.message_bus.rpc(message=message, response_class=TransformPythonDataResponse)
+    return JSONResponse(content=response.data.transformed_data)
 
 
 @router.get("/transform/jinja2/{transform_id}", response_class=PlainTextResponse)
@@ -109,7 +114,7 @@ async def transform_jinja2(
 
     service: InfrahubServices = request.app.state.service
 
-    message = messages.TransformJinjaTemplate(
+    message = TransformJinjaTemplate(
         repository_id=repository.id,  # type: ignore[attr-defined]
         repository_name=repository.name.value,  # type: ignore[attr-defined]
         repository_kind=repository.get_kind(),
@@ -119,5 +124,5 @@ async def transform_jinja2(
         data=data,
     )
 
-    response: messages.TransformJinjaTemplateResponse = await service.message_bus.rpc(message=message)  # type: ignore[assignment]
-    return PlainTextResponse(content=response.response_data.rendered_template)
+    response = await service.message_bus.rpc(message=message, response_class=TransformJinjaTemplateResponse)
+    return PlainTextResponse(content=response.data.rendered_template)

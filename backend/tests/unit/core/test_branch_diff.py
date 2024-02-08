@@ -125,7 +125,7 @@ async def test_diff_get_files_repository(
     db: InfrahubDatabase, rpc_client, repos_in_main, base_dataset_02, patch_services
 ):
     mock_response = messages.GitDiffNamesOnlyResponse(
-        response_data={
+        data={
             "files_changed": ["readme.md", "mydir/myfile.py"],
             "files_removed": ["notthere.md"],
             "files_added": ["newandshiny.md"],
@@ -163,7 +163,7 @@ async def test_diff_get_files_repositories_for_branch_case01(
     but only one has a different commit value between 2 and from so we expect only 2 files"""
 
     mock_response = messages.GitDiffNamesOnlyResponse(
-        response_data={
+        data={
             "files_changed": ["readme.md", "mydir/myfile.py"],
             "files_removed": [],
             "files_added": [],
@@ -197,7 +197,7 @@ async def test_diff_get_files_repositories_for_branch_case02(
     both repositories have a new commit value so we expect both to return something"""
 
     mock_response = messages.GitDiffNamesOnlyResponse(
-        response_data={
+        data={
             "files_changed": ["readme.md", "mydir/myfile.py"],
             "files_removed": [],
             "files_added": [],
@@ -206,7 +206,7 @@ async def test_diff_get_files_repositories_for_branch_case02(
     patch_services.add_mock_reply(response=mock_response)
 
     mock_response = messages.GitDiffNamesOnlyResponse(
-        response_data={
+        data={
             "files_changed": ["anotherfile.rb"],
             "files_removed": [],
             "files_added": [],
@@ -243,7 +243,7 @@ async def test_diff_get_files(
     both repositories have a new commit value so we expect both to return something"""
 
     mock_response = messages.GitDiffNamesOnlyResponse(
-        response_data={
+        data={
             "files_changed": ["readme.md", "mydir/myfile.py"],
             "files_removed": [],
             "files_added": [],
@@ -252,7 +252,7 @@ async def test_diff_get_files(
     patch_services.add_mock_reply(response=mock_response)
 
     mock_response = messages.GitDiffNamesOnlyResponse(
-        response_data={
+        data={
             "files_changed": ["anotherfile.rb"],
             "files_removed": [],
             "files_added": [],

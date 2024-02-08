@@ -34,7 +34,5 @@ async def data(message: messages.TransformPythonData, service: InfrahubServices)
     )
 
     if message.reply_requested:
-        response = TransformPythonDataResponse(
-            response_data=TransformPythonDataResponseData(transformed_data=transformed_data)
-        )
+        response = TransformPythonDataResponse(data=TransformPythonDataResponseData(transformed_data=transformed_data))
         await service.reply(message=response, initiator=message)

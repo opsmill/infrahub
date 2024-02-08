@@ -25,4 +25,4 @@ class GitDiffNamesOnlyResponseData(InfrahubResponseData):
 
 class GitDiffNamesOnlyResponse(InfrahubResponse):
     routing_key: str = ROUTING_KEY
-    response_data: GitDiffNamesOnlyResponseData
+    data: GitDiffNamesOnlyResponseData

@@ -20,5 +20,5 @@ async def get(message: messages.GitFileGet, service: InfrahubServices) -> None:
     content = await repo.get_file(commit=message.commit, location=message.file)
 
     if message.reply_requested:
-        response = GitFileGetResponse(response_data=GitFileGetResponseData(content=content))
+        response = GitFileGetResponse(data=GitFileGetResponseData(content=content))
         await service.reply(message=response, initiator=message)

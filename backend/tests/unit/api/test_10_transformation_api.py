@@ -42,7 +42,7 @@ async def test_transform_endpoint(
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         mock_response = TransformPythonDataResponse(
-            response_data={"transformed_data": {"KEY1": "value1", "KEY2": "value2"}},
+            data={"transformed_data": {"KEY1": "value1", "KEY2": "value2"}},
         )
         rpc_bus.add_mock_reply(response=mock_response)
 
@@ -81,7 +81,7 @@ async def test_rfile_endpoint(
     # Must execute in a with block to execute the startup/shutdown events
     with client:
         mock_response = TransformJinjaTemplateResponse(
-            response_data={"rendered_template": "Rendered by a mocked agent"},
+            data={"rendered_template": "Rendered by a mocked agent"},
         )
         rpc_bus.add_mock_reply(response=mock_response)
 

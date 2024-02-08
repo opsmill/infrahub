@@ -35,7 +35,7 @@ magnum
     reply: messages.TransformJinjaTemplateResponse = bus_simulator.replies[0]
     assert reply.passed
     assert reply.meta.correlation_id == correlation_id
-    assert reply.response_data.rendered_template == expected_response
+    assert reply.data.rendered_template == expected_response
 
 
 async def test_git_transform_jinja2_missing(git_repo_jinja: InfrahubRepository, helper):
@@ -61,7 +61,7 @@ async def test_git_transform_jinja2_missing(git_repo_jinja: InfrahubRepository, 
     reply: RPCErrorResponse = bus_simulator.replies[0]
     assert not reply.passed
     assert reply.meta.correlation_id == correlation_id
-    assert "Unable to find the file" in reply.response_data.error
+    assert "Unable to find the file" in reply.data.error
 
 
 async def test_git_transform_jinja2_invalid(git_repo_jinja: InfrahubRepository, helper):
@@ -88,4 +88,4 @@ async def test_git_transform_jinja2_invalid(git_repo_jinja: InfrahubRepository, 
     assert not reply.passed
     assert reply.meta.correlation_id == correlation_id
     assert reply.routing_key == "rpc_error"
-    assert "Encountered unknown tag 'end'." in reply.response_data.error
+    assert "Encountered unknown tag 'end'." in reply.data.error

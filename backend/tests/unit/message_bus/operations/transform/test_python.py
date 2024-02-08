@@ -30,4 +30,4 @@ async def test_transform_python_success(git_fixture_repo: InfrahubRepository, he
     reply: messages.TransformPythonDataResponse = bus_simulator.replies[0]
     assert reply.passed
     assert reply.meta.correlation_id == correlation_id
-    assert reply.response_data.transformed_data == {"key": "abcabc", "answer": 42}
+    assert reply.data.transformed_data == {"key": "abcabc", "answer": 42}

@@ -131,7 +131,7 @@ async def test_git_rpc_diff(
 
     assert len(bus_simulator.replies) == 1
     result: messages.GitDiffNamesOnlyResponse = bus_simulator.replies[0]
-    assert result.response_data.files_changed == ["README.md", "test_files/sports.yml"]
+    assert result.data.files_changed == ["README.md", "test_files/sports.yml"]
 
     message = messages.GitDiffNamesOnly(
         repository_id=str(UUIDT()),
@@ -145,7 +145,7 @@ async def test_git_rpc_diff(
 
     assert len(bus_simulator.replies) == 2
     result: messages.GitDiffNamesOnlyResponse = bus_simulator.replies[1]
-    assert result.response_data.files_changed == ["test_files/sports.yml"]
+    assert result.data.files_changed == ["test_files/sports.yml"]
 
 
 class TestAddReadOnly:

@@ -21,4 +21,4 @@ class GitFileGetResponseData(InfrahubResponseData):
 
 class GitFileGetResponse(InfrahubResponse):
     routing_key: str = ROUTING_KEY
-    response_data: GitFileGetResponseData
+    data: GitFileGetResponseData

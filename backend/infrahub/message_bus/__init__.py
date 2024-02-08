@@ -124,14 +124,13 @@ class InfrahubResponse(InfrahubMessage):
 
     passed: bool = True
     routing_key: str
-    response_data: Union[dict, InfrahubResponseData]
+    data: Union[dict, InfrahubResponseData]
 
     def raise_for_status(self) -> None:
         if self.passed:
             return
 
-        # Later we would load information about the error based on the response_class and response_data
-        raise RPCError(message=self.response_data.get("error", "Unknown Error"))
+        raise RPCError(message=self.data.get("error", "Unknown Error"))
 
 
 class RPCErrorResponseData(InfrahubResponseData):
@@ -141,4 +140,4 @@ class RPCErrorResponseData(InfrahubResponseData):
 class RPCErrorResponse(InfrahubResponse):
     passed: bool = False
     routing_key: str = "rpc_error"
-    response_data: RPCErrorResponseData
+    data: RPCErrorResponseData

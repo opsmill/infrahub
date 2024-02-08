@@ -68,7 +68,7 @@ async def execute_message(routing_key: str, message_body: bytes, service: Infrah
         await COMMAND_MAP[routing_key](message=message, service=service)
     except Exception as exc:  # pylint: disable=broad-except
         if message.reply_requested:
-            response = RPCErrorResponse(response_data={"error": str(exc)})
+            response = RPCErrorResponse(data={"error": str(exc)})
             await service.reply(message=response, initiator=message)
             return
         if message.reached_max_retries:

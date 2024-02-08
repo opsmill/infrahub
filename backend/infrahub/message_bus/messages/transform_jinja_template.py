@@ -23,4 +23,4 @@ class TransformJinjaTemplateResponseData(InfrahubResponseData):
 
 class TransformJinjaTemplateResponse(InfrahubResponse):
     routing_key: str = ROUTING_KEY
-    response_data: TransformJinjaTemplateResponseData
+    data: TransformJinjaTemplateResponseData
