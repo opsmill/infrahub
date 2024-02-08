@@ -214,8 +214,8 @@ async def test_task_query(db: InfrahubDatabase, default_branch: Branch, register
     )
     assert all_logs.data
     logs = []
-    for task in all_logs.data["InfrahubTask"]["edges"]["node"]:
-        [logs.append(log) for log in task["logs"]["edges"]]
+    for task in all_logs.data["InfrahubTask"]["edges"]:
+        [logs.append(log) for log in task["node"]["logs"]["edges"]]
 
     assert len(logs) == 6
 
