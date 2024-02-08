@@ -29,8 +29,8 @@ export const Table = (props: tTableProps) => {
   const auth = useContext(AuthContext);
 
   return (
-    <table className="table-auto border-spacing-0 w-full border border-gray-300">
-      <thead className="bg-gray-50 text-left border-b border-gray-300">
+    <table className="table-auto border-spacing-0 w-full border border-gray-300 rounded-md">
+      <thead className="bg-gray-50 text-left border-b border-gray-300 rounded-md">
         <tr>
           {columns?.map((column) => (
             <th key={column.name} scope="col" className="p-2 text-xs font-semibold text-gray-900">

@@ -7,6 +7,7 @@ import { ChevronRightIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { BADGE_TYPES, Badge } from "../../components/display/badge";
+import { DateDisplay } from "../../components/display/date-display";
 import { SearchInput } from "../../components/search/search-bar";
 import { List } from "../../components/table/list";
 import { Id } from "../../components/utils/id";
@@ -71,8 +72,8 @@ export const TaskItemDetails = () => {
       label: "Related node",
     },
     {
-      name: "created_at",
-      label: "Created at",
+      name: "duration",
+      label: "Duration",
     },
     {
       name: "updated_at",
@@ -89,8 +90,8 @@ export const TaskItemDetails = () => {
       conclusion: getConclusionBadge[object.conclusion],
       related_node: <Id id={object.related_node} kind={object.related_node_kind} preventCopy />,
       related_node_kind: object.related_node_kind,
-      created_at: object.created_at,
-      updated_at: object.updated_at,
+      duration: <DateDisplay date={object.created_at} endDate={object.updated_at} />,
+      updated_at: <DateDisplay date={object.updated_at} />,
     },
   };
 

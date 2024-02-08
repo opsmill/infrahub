@@ -5,6 +5,7 @@ import { TASK_OBJECT } from "../../config/constants";
 import useQuery from "../../hooks/useQuery";
 import { useTitle } from "../../hooks/useTitle";
 
+import { DateDisplay } from "../../components/display/date-display";
 import { Id } from "../../components/utils/id";
 import { getTasksItems } from "../../graphql/queries/tasks/getTasksItems";
 import { constructPath } from "../../utils/fetch";
@@ -37,19 +38,6 @@ export const TaskItems = () => {
 
   const { count, edges = [] } = result;
 
-  const rows = edges.map((edge: any) => ({
-    link: constructPath(`/tasks/${edge.node.id}`),
-    values: {
-      title: edge.node.title,
-      conclusion: getConclusionBadge[edge.node.conclusion],
-      related_node: (
-        <Id id={edge.node.related_node} kind={edge.node.related_node_kind} preventCopy />
-      ),
-      created_at: edge.node.created_at,
-      updated_at: edge.node.updated_at,
-    },
-  }));
-
   const columns = [
     {
       name: "title",
@@ -64,14 +52,27 @@ export const TaskItems = () => {
       label: "Related node",
     },
     {
-      name: "created_at",
-      label: "Created at",
+      name: "duration",
+      label: "Duration",
     },
     {
       name: "updated_at",
       label: "Updated at",
     },
   ];
+
+  const rows = edges.map((edge: any) => ({
+    link: constructPath(`/tasks/${edge.node.id}`),
+    values: {
+      title: edge.node.title,
+      conclusion: getConclusionBadge[edge.node.conclusion],
+      related_node: (
+        <Id id={edge.node.related_node} kind={edge.node.related_node_kind} preventCopy />
+      ),
+      duration: <DateDisplay date={edge.node.created_at} endDate={edge.node.updated_at} />,
+      updated_at: <DateDisplay date={edge.node.updated_at} />,
+    },
+  }));
 
   return (
     <div className="bg-custom-white flex-1 flex flex-col">
