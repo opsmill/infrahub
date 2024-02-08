@@ -1,5 +1,5 @@
 ---
-title: Repository config file
+title: Repository configuration file
 ---
 
 # Repository configuration file
@@ -14,7 +14,9 @@ See [this topic](/topics/infrahub-yml) for more details on the available reposit
 
 :::
 {% for property in properties %}
+<!-- vale off -->
 ## {{property.title}}
+<!-- vale on -->
 
 **Description**: {{ property.description }}<br/>
 **Key**: {{ property.name }}<br/>

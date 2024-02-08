@@ -1,5 +1,5 @@
 ---
-title: Repository config file
+title: Repository configuration file
 ---
 
 # Repository configuration file
@@ -14,7 +14,9 @@ See [this topic](/topics/infrahub-yml) for more details on the available reposit
 
 :::
 
+<!-- vale off -->
 ## Check Definitions
+<!-- vale on -->
 
 **Description**: User defined checks<br/>
 **Key**: check_definitions<br/>
@@ -29,7 +31,9 @@ See [this topic](/topics/infrahub-yml) for more details on the available reposit
 | targets | string | The group to target when running this check, leave blank for global checks | False |
 | class_name | string | The name of the check class to run. | False |
 
+<!-- vale off -->
 ## Schemas
+<!-- vale on -->
 
 **Description**: Schema files<br/>
 **Key**: schemas<br/>
@@ -37,7 +41,9 @@ See [this topic](/topics/infrahub-yml) for more details on the available reposit
 **Item type**: string<br/>
 **Item format**: path<br/>
 
+<!-- vale off -->
 ## Jinja2 Transforms
+<!-- vale on -->
 
 **Description**: Jinja2 data transformations<br/>
 **Key**: jinja2_transforms<br/>
@@ -51,7 +57,9 @@ See [this topic](/topics/infrahub-yml) for more details on the available reposit
 | template_path | string | The path within the repository of the template file | True |
 | description | string | Description for this transform | False |
 
+<!-- vale off -->
 ## Artifact Definitions
+<!-- vale on -->
 
 **Description**: Artifact definitions<br/>
 **Key**: artifact_definitions<br/>
@@ -67,7 +75,9 @@ See [this topic](/topics/infrahub-yml) for more details on the available reposit
 | targets | string | The group to target when creating artifacts | True |
 | transformation | string | The transformation to use. | True |
 
+<!-- vale off -->
 ## Python Transforms
+<!-- vale on -->
 
 **Description**: Python data transformations<br/>
 **Key**: python_transforms<br/>
