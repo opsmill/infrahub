@@ -10,6 +10,7 @@ from infrahub.auth import AuthType
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import NodeNotFound, PermissionDeniedError
 
@@ -65,7 +66,12 @@ class AccountMixin:
         account = results[0]
 
         mutation_map = {"CoreAccountTokenCreate": cls.create_token, "CoreAccountSelfUpdate": cls.update_self}
-        return await mutation_map[cls.__name__](db=context.db, account=account, data=data, info=info)
+        response = await mutation_map[cls.__name__](db=context.db, account=account, data=data, info=info)
+
+        # Reset the time of the query to garantee that all resolvers executed after this point will account for the changes
+        context.at = Timestamp()
+
+        return response
 
     @classmethod
     async def create_token(

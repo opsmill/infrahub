@@ -17,6 +17,7 @@ from infrahub.core.constants import MutationAction
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
+from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import NodeNotFound, ValidationError
 from infrahub.log import get_log_data, get_logger
 from infrahub.message_bus import Meta, messages
@@ -89,6 +90,9 @@ class InfrahubMutationMixin:
             raise ValueError(
                 f"Unexpected class Name: {cls.__name__}, should end with Create, Update, Upsert, or Delete"
             )
+
+        # Reset the time of the query to garantee that all resolvers executed after this point will account for the changes
+        context.at = Timestamp()
 
         if config.SETTINGS.broker.enable and context.background:
             log_data = get_log_data()
@@ -219,9 +223,11 @@ class InfrahubMutationMixin:
                 break
 
         if node:
-            updated_obj, mutation = await cls.mutate_update(root, info, data, branch, at, database, node)
+            updated_obj, mutation = await cls.mutate_update(
+                root=root, info=info, data=data, branch=branch, at=at, database=database, node=node
+            )
             return updated_obj, mutation, False
-        created_obj, mutation = await cls.mutate_create(root, info, data, branch, at)
+        created_obj, mutation = await cls.mutate_create(root=root, info=info, data=data, branch=branch, at=at)
         return created_obj, mutation, True
 
     @classmethod

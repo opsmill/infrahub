@@ -883,9 +883,7 @@ class RelationshipManager:
             await rel.delete(at=delete_at, db=db)
 
     async def to_graphql(
-        self,
-        db: InfrahubDatabase,
-        fields: Optional[dict] = None,
+        self, db: InfrahubDatabase, fields: Optional[dict] = None, related_node_ids: Optional[set] = None
     ) -> Union[dict, None]:
         # NOTE Need to investigate when and why we are passing the peer directly here, how do we account for many relationship
         if self.schema.cardinality == "many":
@@ -895,4 +893,4 @@ class RelationshipManager:
         if not relationships:
             return None
 
-        return await relationships[0].to_graphql(fields=fields, db=db)
+        return await relationships[0].to_graphql(fields=fields, db=db, related_node_ids=related_node_ids)
