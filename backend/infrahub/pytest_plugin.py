@@ -1,15 +1,12 @@
-from typing import TYPE_CHECKING, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from infrahub_sdk.client import Config as InfrahubClientConfig
 from infrahub_sdk.client import InfrahubClientSync
+from infrahub_sdk.node import InfrahubNodeSync
 from pytest import Config, Item, Session, TestReport
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.timestamp import Timestamp
-
-if TYPE_CHECKING:
-    from infrahub_sdk.node import InfrahubNodeSync
-
 
 OUTCOME_TO_CONCLUSION_MAP = {"passed": "success", "failed": "failure", "skipped": "unknown"}
 
@@ -21,12 +18,14 @@ class InfrahubBackendPlugin:
         self.repository = self.client.get(kind=InfrahubKind.GENERICREPOSITORY, id=repository_id)
         self.proposed_change = self.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=proposed_change_id)
 
-        self.validator: InfrahubNodeSync
+        self.validator: InfrahubNodeSync = None
         self.checks: Dict[str, InfrahubNodeSync] = {}
 
-    def set_repository_validator(self) -> None:
+    def get_repository_validator(self) -> InfrahubNodeSync:
+        """Return the existing RepositoryValidator for the ProposedChange or create a new one."""
         self.proposed_change.validations.fetch()
 
+        validator = None
         validator_name = f"Repository Tests Validator: {self.repository.name.value}"
         for relationship in self.proposed_change.validations.peers:
             existing_validator = relationship.peer
@@ -36,34 +35,21 @@ class InfrahubBackendPlugin:
                 and existing_validator.repository.id == self.repository.id
                 and existing_validator.label.value == validator_name
             ):
-                self.validator = existing_validator
+                validator = existing_validator
 
-        if not self.validator:
-            self.validator = self.client.create(
+        if not validator:
+            validator = self.client.create(
                 kind=InfrahubKind.REPOSITORYVALIDATOR,
                 data={"label": validator_name, "proposed_change": self.proposed_change, "repository": self.repository},
             )
+            validator.save()
 
-        self.validator.save()
-
-    def pytest_sessionstart(self, session: Session) -> None:  # pylint: disable=unused-argument
-        """Function running at the very start of the test session"""
-
-    def pytest_sessionfinish(self, session: Session) -> None:  # pylint: disable=unused-argument
-        conclusion = "success"
-
-        for check in self.checks.values():
-            if check.conclusion.value != "success":
-                conclusion = check.conclusion.value
-                break
-
-        self.validator.state.value = "completed"
-        self.validator.completed_at.value = Timestamp().to_string()
-        self.validator.conclusion.value = conclusion
-        self.validator.save()
+        return validator
 
     def pytest_collection_modifyitems(self, session: Session, config: Config, items: List[Item]) -> None:  # pylint: disable=unused-argument
-        self.set_repository_validator()
+        # FIXME: Does this really belongs here?
+        # FIXME: Fetch checks if the validator already has some
+        self.validator = self.get_repository_validator()
         # TODO: Filter tests according to what's been requested
         # TODO: Re-order tests: sanity -> unit -> integration
 
@@ -75,26 +61,52 @@ class InfrahubBackendPlugin:
 
         return None
 
-    def pytest_runtest_logreport(self, report: TestReport) -> None:
-        """This function is called 3 times per test: setup, call, teardown."""
-        # TODO: Override checks if they already exist
-        if report.when == "setup":
+    def pytest_runtest_setup(self, item: Item) -> None:
+        """Create a StandardCheck for each test item to later record its details.
+
+        If a check already exists, reset it to its default values.
+        """
+        check = self.checks.get(item.nodeid, None)
+        if check:
+            check.message.value = ""
+            check.conclusion.value = ""
+            check.created_at.value = Timestamp().to_string()
+        else:
             check = self.client.create(
                 kind=InfrahubKind.STANDARDCHECK,
                 data={
-                    "name": report.head_line,
+                    "name": item.name,
                     "origin": self.repository.id,
                     "kind": "TestReport",
                     "validator": self.validator.id,
                     "created_at": Timestamp().to_string(),
                     "severity": "info",
-                    "conclusion": OUTCOME_TO_CONCLUSION_MAP[report.outcome],
                 },
             )
-            check.save()
-            self.checks[report.nodeid] = check
-        else:
-            check = self.checks[report.nodeid]
-            if check.conclusion.value == "success" and report.outcome != "passed":
-                check.conclusion.value = OUTCOME_TO_CONCLUSION_MAP[report.outcome]
-            check.save()
+            self.checks[item.nodeid] = check
+
+        check.save()
+
+    def pytest_runtest_logreport(self, report: TestReport) -> None:
+        """This function is called 3 times per test: setup, call, teardown."""
+        if report.when != "call":
+            return
+
+        check = self.checks[report.nodeid]
+        check.message.value = report.longreprtext
+        check.conclusion.value = OUTCOME_TO_CONCLUSION_MAP[report.outcome]
+        check.save()
+
+    def pytest_sessionfinish(self, session: Session) -> None:  # pylint: disable=unused-argument
+        """Set the final RepositoryValidator details after completing the test session."""
+        conclusion = "success"
+
+        for check in self.checks.values():
+            if check.conclusion.value == "failure":
+                conclusion = check.conclusion.value
+                break
+
+        self.validator.state.value = "completed"
+        self.validator.completed_at.value = Timestamp().to_string()
+        self.validator.conclusion.value = conclusion
+        self.validator.save()
