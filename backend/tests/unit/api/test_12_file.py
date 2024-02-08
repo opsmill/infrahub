@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
-from infrahub.message_bus import InfrahubResponse
+from infrahub.message_bus import messages
 
 
 async def test_get_file(
@@ -23,8 +23,7 @@ async def test_get_file(
 
     # Must execute in a with block to execute the startup/shutdown events
     with client:
-        mock_response = InfrahubResponse(
-            response_class="content_response",
+        mock_response = messages.GitFileGetResponse(
             response_data={"content": "file content"},
         )
         # No commit yet

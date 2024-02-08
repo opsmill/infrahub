@@ -2,7 +2,7 @@ from infrahub_sdk import UUIDT
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.git import InfrahubRepository
-from infrahub.message_bus import Meta, messages
+from infrahub.message_bus import Meta, RPCErrorResponse, messages
 from infrahub.services import InfrahubServices
 
 
@@ -32,11 +32,10 @@ magnum
 
     await service.send(message=message)
     assert len(bus_simulator.replies) == 1
-    reply = bus_simulator.replies[0]
+    reply: messages.TransformJinjaTemplateResponse = bus_simulator.replies[0]
     assert reply.passed
     assert reply.meta.correlation_id == correlation_id
-    assert reply.response_class == "template_response"
-    assert reply.response_data["rendered_template"] == expected_response
+    assert reply.response_data.rendered_template == expected_response
 
 
 async def test_git_transform_jinja2_missing(git_repo_jinja: InfrahubRepository, helper):
@@ -59,11 +58,10 @@ async def test_git_transform_jinja2_missing(git_repo_jinja: InfrahubRepository, 
 
     await service.send(message=message)
     assert len(bus_simulator.replies) == 1
-    reply = bus_simulator.replies[0]
+    reply: RPCErrorResponse = bus_simulator.replies[0]
     assert not reply.passed
     assert reply.meta.correlation_id == correlation_id
-    assert reply.response_class == "rpc_error"
-    assert "Unable to find the file" in reply.response_data["error"]
+    assert "Unable to find the file" in reply.response_data.error
 
 
 async def test_git_transform_jinja2_invalid(git_repo_jinja: InfrahubRepository, helper):
@@ -86,8 +84,8 @@ async def test_git_transform_jinja2_invalid(git_repo_jinja: InfrahubRepository, 
 
     await service.send(message=message)
     assert len(bus_simulator.replies) == 1
-    reply = bus_simulator.replies[0]
+    reply: RPCErrorResponse = bus_simulator.replies[0]
     assert not reply.passed
     assert reply.meta.correlation_id == correlation_id
-    assert reply.response_class == "rpc_error"
-    assert "Encountered unknown tag 'end'." in reply.response_data["error"]
+    assert reply.routing_key == "rpc_error"
+    assert "Encountered unknown tag 'end'." in reply.response_data.error

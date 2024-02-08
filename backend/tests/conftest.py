@@ -341,7 +341,7 @@ class BusSimulator(InfrahubMessageBus):
         self.messages: List[InfrahubMessage] = []
         self.messages_per_routing_key: Dict[str, List[InfrahubMessage]] = {}
         self.service: InfrahubServices = InfrahubServices()
-        self.replies: List[InfrahubMessage] = []
+        self.replies: List[InfrahubResponse] = []
 
     async def publish(self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None) -> None:
         self.messages.append(message)

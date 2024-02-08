@@ -171,9 +171,12 @@ class RabbitMQMessageBus(InfrahubMessageBus):
 
         await self.service.send(message=message)
 
-        response = await future
+        response: AbstractIncomingMessage = await future
+        response_class = InfrahubResponse
+        if response.routing_key:
+            response_class = messages.RESPONSE_MAP.get(response.routing_key, InfrahubResponse)
         data = json.loads(response.body)
-        return InfrahubResponse(**data)
+        return response_class(**data)
 
     async def subscribe(self) -> None:
         queue = await self.channel.get_queue(f"{config.SETTINGS.broker.namespace}.rpcs")

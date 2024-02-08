@@ -1,6 +1,8 @@
 from pydantic import Field
 
-from infrahub.message_bus import InfrahubMessage
+from infrahub.message_bus import InfrahubMessage, InfrahubResponse, InfrahubResponseData
+
+ROUTING_KEY = "git.file.get"
 
 
 class GitFileGet(InfrahubMessage):
@@ -11,3 +13,12 @@ class GitFileGet(InfrahubMessage):
     repository_id: str = Field(..., description="The unique ID of the Repository")
     repository_name: str = Field(..., description="The name of the repository")
     repository_kind: str = Field(..., description="The kind of the repository")
+
+
+class GitFileGetResponseData(InfrahubResponseData):
+    content: str = Field(..., description="The returned content")
+
+
+class GitFileGetResponse(InfrahubResponse):
+    routing_key: str = ROUTING_KEY
+    response_data: GitFileGetResponseData

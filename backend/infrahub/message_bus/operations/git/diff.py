@@ -1,6 +1,7 @@
 from infrahub.git.repository import get_initialized_repo
 from infrahub.log import get_logger
-from infrahub.message_bus import InfrahubResponse, messages
+from infrahub.message_bus import messages
+from infrahub.message_bus.messages.git_diff_namesonly import GitDiffNamesOnlyResponse, GitDiffNamesOnlyResponseData
 from infrahub.services import InfrahubServices
 
 log = get_logger()
@@ -28,8 +29,9 @@ async def names_only(message: messages.GitDiffNamesOnly, service: InfrahubServic
     )
 
     if message.reply_requested:
-        response = InfrahubResponse(
-            response_class="diffnames_response",
-            response_data={"files_added": files_added, "files_changed": files_changed, "files_removed": files_removed},
+        response = GitDiffNamesOnlyResponse(
+            response_data=GitDiffNamesOnlyResponseData(
+                files_added=files_added, files_changed=files_changed, files_removed=files_removed
+            ),
         )
         await service.reply(message=response, initiator=message)

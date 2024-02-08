@@ -1,6 +1,7 @@
 from infrahub.git.repository import get_initialized_repo
 from infrahub.log import get_logger
-from infrahub.message_bus import InfrahubResponse, messages
+from infrahub.message_bus import messages
+from infrahub.message_bus.messages.git_file_get import GitFileGetResponse, GitFileGetResponseData
 from infrahub.services import InfrahubServices
 
 log = get_logger()
@@ -19,5 +20,5 @@ async def get(message: messages.GitFileGet, service: InfrahubServices) -> None:
     content = await repo.get_file(commit=message.commit, location=message.file)
 
     if message.reply_requested:
-        response = InfrahubResponse(response_class="content_response", response_data={"content": content})
+        response = GitFileGetResponse(response_data=GitFileGetResponseData(content=content))
         await service.reply(message=response, initiator=message)
