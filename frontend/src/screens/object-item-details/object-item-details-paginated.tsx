@@ -16,6 +16,7 @@ import { BUTTON_TYPES, Button } from "../../components/buttons/button";
 import MetaDetailsTooltip from "../../components/display/meta-details-tooltips";
 import SlideOver from "../../components/display/slide-over";
 import { Tabs } from "../../components/tabs";
+import { Link } from "../../components/utils/link";
 import {
   ARTIFACT_DEFINITION_OBJECT,
   DEFAULT_BRANCH_NAME,
@@ -150,16 +151,16 @@ export default function ObjectItemDetails(props: any) {
       {!hideHeaders && (
         <>
           <div className="px-4 py-5 flex items-center">
-            <div
-              onClick={() => navigate(constructPath(`/objects/${objectname}`))}
-              className="text-base font-semibold leading-6 text-gray-900 cursor-pointer hover:underline">
-              {schemaData.name}
-            </div>
+            <Link to={constructPath(`/objects/${objectname}`)}>
+              <h1 className="text-md font-semibold text-gray-900 mr-2">{schemaData.name}</h1>
+            </Link>
+
             <ChevronRightIcon
               className="w-4 h-4 mt-1 mx-2 flex-shrink-0 text-gray-400"
               aria-hidden="true"
             />
-            <p className="mt-1 max-w-2xl  text-gray-500">{objectDetailsData.display_label}</p>
+
+            <p className="max-w-2xl  text-gray-500">{objectDetailsData.display_label}</p>
           </div>
 
           <div className="px-4 ">{schemaData?.description}</div>
@@ -338,7 +339,7 @@ export default function ObjectItemDetails(props: any) {
                   className="w-4 h-4 mt-1 mx-2 flex-shrink-0 text-gray-400"
                   aria-hidden="true"
                 />
-                <p className="mt-1 max-w-2xl  text-gray-500">{objectDetailsData.display_label}</p>
+                <p className="max-w-2xl  text-gray-500">{objectDetailsData.display_label}</p>
               </div>
 
               <div className="flex-1"></div>
@@ -393,7 +394,7 @@ export default function ObjectItemDetails(props: any) {
                   className="w-4 h-4 mt-1 mx-2 flex-shrink-0 text-gray-400"
                   aria-hidden="true"
                 />
-                <p className="mt-1 max-w-2xl  text-gray-500">{objectDetailsData.display_label}</p>
+                <p className="max-w-2xl  text-gray-500">{objectDetailsData.display_label}</p>
               </div>
 
               <div className="flex-1"></div>
