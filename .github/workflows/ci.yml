@@ -26,7 +26,7 @@ env:
   BUILDKITE_ANALYTICS_BRANCH: ${{ github.ref }}
   BUILDKITE_BRANCH: ${{ github.ref }}
   BUILDKITE_COMMIT: ${{ github.sha }}
-  VALE_VERSION: "2.29.7"
+  VALE_VERSION: "3.0.7"
 
 jobs:
    # ------------------------------------------ Check Files Changes  ------------------------------------------
