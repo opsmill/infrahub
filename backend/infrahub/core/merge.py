@@ -262,7 +262,7 @@ class BranchMerger:
             # provided that an update is needed
             self.branch.branched_from = Timestamp().to_string()
             await self.branch.save(db=db)
-            registry.branch[self.branch.name] = self
+            registry.branch[self.branch.name] = self.branch
 
     async def merge_repositories(self, db: InfrahubDatabase, rpc_client: Optional[InfrahubRpcClient] = None) -> None:
         # Collect all Repositories in Main because we'll need the commit in Main for each one.

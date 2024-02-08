@@ -3,12 +3,46 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.merge import BranchMerger
 from infrahub.database import InfrahubDatabase
+
+
+async def test_validate_graph(db: InfrahubDatabase, base_dataset_02, register_core_models_schema):
+    branch1 = await Branch.get_by_name(name="branch1", db=db)
+
+    merger = BranchMerger(branch=branch1)
+    conflicts = await merger.validate_graph(db=db)
+
+    assert not conflicts
+    assert conflicts == []
+
+    # Change the name of C1 in Branch1 to create a conflict
+    c1 = await NodeManager.get_one(id="c1", branch=branch1, db=db)
+    c1.name.value = "new name"
+    await c1.save(db=db)
+
+    merger = BranchMerger(branch=branch1)
+    conflicts = await merger.validate_graph(db=db)
+
+    assert conflicts
+    assert conflicts[0].path == "data/c1/name/value"
+
+
+async def test_validate_empty_branch(db: InfrahubDatabase, base_dataset_02, register_core_models_schema):
+    branch2 = await create_branch(branch_name="branch2", db=db)
+
+    merger = BranchMerger(branch=branch2)
+    conflicts = await merger.validate_graph(db=db)
+
+    assert not conflicts
+    assert conflicts == []
 
 
 async def test_merge_graph(db: InfrahubDatabase, base_dataset_02, register_core_models_schema):
     branch1 = await Branch.get_by_name(name="branch1", db=db)
-    await branch1.merge_graph(db=db)
+
+    merger = BranchMerger(branch=branch1)
+    await merger.merge_graph(db=db)
 
     # Query all cars in MAIN, AFTER the merge
     cars = sorted(await NodeManager.query(schema="TestCar", db=db), key=lambda c: c.id)
@@ -42,7 +76,8 @@ async def test_merge_graph(db: InfrahubDatabase, base_dataset_02, register_core_
     assert cars[0].nbr_seats.value == 4
 
     # It should be possible to merge a graph even without changes
-    await branch1.merge_graph(db=db)
+    merger = BranchMerger(branch=branch1)
+    await merger.merge_graph(db=db)
 
 
 async def test_merge_graph_delete(db: InfrahubDatabase, base_dataset_02, register_core_models_schema):
@@ -54,7 +89,8 @@ async def test_merge_graph_delete(db: InfrahubDatabase, base_dataset_02, registe
     p3 = await NodeManager.get_one(id="p3", branch=branch1, db=db)
     await p3.delete(db=db)
 
-    await branch1.merge_graph(db=db)
+    merger = BranchMerger(branch=branch1)
+    await merger.merge_graph(db=db)
 
     # Query all cars in MAIN, AFTER the merge
     persons = sorted(await NodeManager.query(schema="TestPerson", db=db), key=lambda p: p.id)
@@ -90,7 +126,8 @@ async def test_merge_relationship_many(
     await org1_branch.tags.update(data=[blue, red], db=db)
     await org1_branch.save(db=db)
 
-    await branch1.merge_graph(db=db)
+    merger = BranchMerger(branch=branch1)
+    await merger.merge_graph(db=db)
 
     org1_main = await NodeManager.get_one(id=org1.id, db=db)
     assert len(await org1_main.tags.get(db=db)) == 3
