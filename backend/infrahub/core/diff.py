@@ -31,7 +31,6 @@ from infrahub.exceptions import (
     DiffFromRequiredOnDefaultBranchError,
     DiffRangeValidationError,
 )
-from infrahub.message_bus import messages
 from infrahub.message_bus.messages import GitDiffNamesOnly, GitDiffNamesOnlyResponse
 from infrahub.services import services
 
