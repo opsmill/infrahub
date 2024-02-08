@@ -16,7 +16,7 @@ class InfrahubBackendPlugin:
     def __init__(self, config: InfrahubClientConfig, repository_id: str, proposed_change_id: str) -> None:
         self.client = InfrahubClientSync(config=config)
 
-        self.repository = self.client.get(kind=InfrahubKind.GENERICREPOSITORY, id=repository_id)
+        self.repository_id = repository_id
         self.proposed_change = self.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=proposed_change_id)
 
         self.validator: InfrahubNodeSync = None
@@ -27,13 +27,13 @@ class InfrahubBackendPlugin:
         self.proposed_change.validations.fetch()
 
         validator = None
-        validator_name = f"Repository Tests Validator: {self.repository.name.value}"
+        validator_name = "Repository Tests Validator"
         for relationship in self.proposed_change.validations.peers:
             existing_validator = relationship.peer
 
             if (
                 existing_validator.typename == InfrahubKind.REPOSITORYVALIDATOR
-                and existing_validator.repository.id == self.repository.id
+                and existing_validator.repository.id == self.repository_id
                 and existing_validator.label.value == validator_name
             ):
                 validator = existing_validator
@@ -41,7 +41,11 @@ class InfrahubBackendPlugin:
         if not validator:
             validator = self.client.create(
                 kind=InfrahubKind.REPOSITORYVALIDATOR,
-                data={"label": validator_name, "proposed_change": self.proposed_change, "repository": self.repository},
+                data={
+                    "label": validator_name,
+                    "proposed_change": self.proposed_change,
+                    "repository": self.repository_id,
+                },
             )
             validator.save()
 
