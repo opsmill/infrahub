@@ -5,6 +5,7 @@ import { TASK_OBJECT } from "../../config/constants";
 import useQuery from "../../hooks/useQuery";
 import { useTitle } from "../../hooks/useTitle";
 
+import { Id } from "../../components/utils/id";
 import { getTasksItems } from "../../graphql/queries/tasks/getTasksItems";
 import { constructPath } from "../../utils/fetch";
 import ErrorScreen from "../error-screen/error-screen";
@@ -35,15 +36,15 @@ export const TaskItems = () => {
   const result = data ? data[TASK_OBJECT] ?? {} : {};
 
   const { count, edges = [] } = result;
-  console.log("edges: ", edges);
 
   const rows = edges.map((edge: any) => ({
     link: constructPath(`/tasks/${edge.node.id}`),
     values: {
       title: edge.node.title,
       conclusion: getConclusionBadge[edge.node.conclusion],
-      related_node: edge.node.related_node,
-      related_node_kind: edge.node.related_node_kind,
+      related_node: (
+        <Id id={edge.node.related_node} kind={edge.node.related_node_kind} preventCopy />
+      ),
       created_at: edge.node.created_at,
       updated_at: edge.node.updated_at,
     },
@@ -61,10 +62,6 @@ export const TaskItems = () => {
     {
       name: "related_node",
       label: "Related node",
-    },
-    {
-      name: "related_node_kind",
-      label: "Related node kind",
     },
     {
       name: "created_at",

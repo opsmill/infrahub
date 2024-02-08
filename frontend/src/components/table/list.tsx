@@ -18,10 +18,6 @@ export const List = (props: tDetailsProps) => {
   return (
     <div className="flex-1 overflow-auto">
       <dl className="divide-y divide-gray-200 border-y border-gray-200">
-        <div className="p-2 grid grid-cols-3 gap-4 text-xs">
-          <dt className="font-medium text-gray-500 flex items-center">ID</dt>
-          <dd className="mt-1 text-gray-900">{row.values.id}</dd>
-        </div>
         {columns?.map((column, index) => {
           if (!row.values[column.name]) {
             return null;

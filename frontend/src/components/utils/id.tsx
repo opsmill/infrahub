@@ -9,10 +9,11 @@ import { BadgeCircle, CIRCLE_BADGE_TYPES } from "../display/badge-circle";
 type tId = {
   id: string;
   kind?: string;
+  preventCopy?: boolean;
 };
 
 export const Id = (props: tId) => {
-  const { id, kind = NODE_OBJECT } = props;
+  const { id, kind = NODE_OBJECT, preventCopy } = props;
 
   const queryString = getObjectDisplayLabel({
     id,
@@ -39,12 +40,14 @@ export const Id = (props: tId) => {
     <BadgeCircle type={CIRCLE_BADGE_TYPES.LIGHT}>
       {object?.display_label}
 
-      <Clipboard
-        value={id}
-        alert="ID copied!"
-        tooltip="Copy ID"
-        className="ml-2 p-1 rounded-full"
-      />
+      {!preventCopy && (
+        <Clipboard
+          value={id}
+          alert="ID copied!"
+          tooltip="Copy ID"
+          className="ml-2 p-1 rounded-full"
+        />
+      )}
     </BadgeCircle>
   );
 };

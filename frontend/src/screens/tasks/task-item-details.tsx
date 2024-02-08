@@ -9,6 +9,7 @@ import { useParams } from "react-router-dom";
 import { BADGE_TYPES, Badge } from "../../components/display/badge";
 import { SearchInput } from "../../components/search/search-bar";
 import { List } from "../../components/table/list";
+import { Id } from "../../components/utils/id";
 import { Link } from "../../components/utils/link";
 import { getTaskItemDetails } from "../../graphql/queries/tasks/getTasksItemDetails";
 import { constructPath } from "../../utils/fetch";
@@ -54,6 +55,10 @@ export const TaskItemDetails = () => {
 
   const columns = [
     {
+      name: "id",
+      label: "ID",
+    },
+    {
       name: "title",
       label: "Title",
     },
@@ -64,10 +69,6 @@ export const TaskItemDetails = () => {
     {
       name: "related_node",
       label: "Related node",
-    },
-    {
-      name: "related_node_kind",
-      label: "Related node kind",
     },
     {
       name: "created_at",
@@ -83,9 +84,10 @@ export const TaskItemDetails = () => {
 
   const row = {
     values: {
+      id: object.id,
       title: object.title,
       conclusion: getConclusionBadge[object.conclusion],
-      related_node: object.related_node,
+      related_node: <Id id={object.related_node} kind={object.related_node_kind} preventCopy />,
       related_node_kind: object.related_node_kind,
       created_at: object.created_at,
       updated_at: object.updated_at,
