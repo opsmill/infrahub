@@ -7,6 +7,7 @@ services:
       - "NEO4J_AUTH=neo4j/admin"
       - "NEO4J_dbms_security_procedures_unrestricted=apoc.*"
       - "NEO4J_dbms_security_auth__minimum__password__length=4"
+      - "NEO4J_ACCEPT_LICENSE_AGREEMENT=yes"
     volumes:
       - "./plugins:/plugins"
       - "database_data:/data"
