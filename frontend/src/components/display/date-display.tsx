@@ -1,3 +1,4 @@
+import { Icon } from "@iconify-icon/react";
 import { format, formatDistanceStrict, formatDistanceToNow } from "date-fns";
 import { Tooltip } from "../utils/tooltip";
 
@@ -19,7 +20,15 @@ export const DateDisplay = (props: DateDisplayProps) => {
 
   // Display duration
   if (endDate) {
-    const tooltip = `${getDateDisplay(date)} -> ${getDateDisplay(endDate)}`;
+    const tooltip = (
+      <div className="flex items-center">
+        {getDateDisplay(date)}
+
+        <Icon icon="mdi:chevron-right" className="mx-2" />
+
+        {getDateDisplay(endDate)}
+      </div>
+    );
 
     return (
       <span className="flex items-center flex-wrap">
