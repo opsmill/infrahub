@@ -1,6 +1,7 @@
 from typing import List
 
 from infrahub.core.constants import CheckType, DiffAction, InfrahubKind, ProposedChangeState
+from infrahub.core.diff import BranchDiffer
 from infrahub.core.integrity.object_conflict.conflict_recorder import ObjectConflictValidatorRecorder
 from infrahub.core.manager import NodeManager
 from infrahub.core.registry import registry
@@ -29,7 +30,7 @@ async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, s
         id=message.proposed_change, schema_name=InfrahubKind.PROPOSEDCHANGE, db=service.database
     )
     source_branch = await registry.get_branch(db=service.database, branch=proposed_change.source_branch.value)
-    diff = await source_branch.diff(db=service.database, branch_only=False)
+    diff = await BranchDiffer.init(db=service.database, branch=source_branch, branch_only=False)
     conflicts = await diff.get_conflicts_graph(db=service.database)
 
     async with service.database.start_transaction() as db:

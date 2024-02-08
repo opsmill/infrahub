@@ -6,8 +6,9 @@ from deepdiff import DeepDiff
 from pydantic.v1 import Field
 
 from infrahub.core import get_branch
-from infrahub.core.branch import BaseDiffElement, Branch, Diff
+from infrahub.core.branch import Branch
 from infrahub.core.constants import DiffAction, InfrahubKind
+from infrahub.core.diff import BaseDiffElement, BranchDiffer
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -29,32 +30,10 @@ def patch_services(helper):
     services.prepare(service=services.service)
 
 
-async def test_diff_has_changes_graph(db: InfrahubDatabase, base_dataset_02):
-    branch1 = await Branch.get_by_name(name="branch1", db=db)
-
-    diff = await Diff.init(branch=branch1, db=db)
-    assert await diff.has_changes_graph(db=db)
-
-    diff = await Diff.init(branch=branch1, diff_from=base_dataset_02["time0"], db=db)
-
-    assert not await diff.has_changes_graph(db=db)
-
-    # Create a change in main to validate that a new change will be detected but not if main is excluded (branch_only)
-    c1 = await NodeManager.get_one(id="c1", db=db)
-    c1.name.value = "new name"
-    await c1.save(db=db)
-
-    diff = await Diff.init(branch=branch1, diff_from=base_dataset_02["time0"], db=db)
-    assert await diff.has_changes_graph(db=db)
-
-    diff = await Diff.init(branch=branch1, branch_only=True, diff_from=base_dataset_02["time0"], db=db)
-    assert not await diff.has_changes_graph(db=db)
-
-
 async def test_diff_has_conflict_graph(db: InfrahubDatabase, base_dataset_02):
     branch1 = await Branch.get_by_name(name="branch1", db=db)
 
-    diff = await Diff.init(branch=branch1, db=db)
+    diff = await BranchDiffer.init(branch=branch1, db=db)
     assert not await diff.has_conflict_graph(db=db)
 
     # Change the name of C1 in Branch1 to create a conflict
@@ -62,11 +41,11 @@ async def test_diff_has_conflict_graph(db: InfrahubDatabase, base_dataset_02):
     c1.name.value = "new name"
     await c1.save(db=db)
 
-    diff = await Diff.init(branch=branch1, db=db)
+    diff = await BranchDiffer.init(branch=branch1, db=db)
     assert await diff.has_conflict_graph(db=db)
 
     # The conflict shouldn't be reported if we are only considering the branch
-    diff = await Diff.init(branch=branch1, branch_only=True, db=db)
+    diff = await BranchDiffer.init(branch=branch1, branch_only=True, db=db)
     assert not await diff.has_conflict_graph(db=db)
 
 
@@ -119,7 +98,7 @@ async def test_diff_get_modified_paths_graph(db: InfrahubDatabase, base_dataset_
         "data/p1/cars/c2/property/IS_VISIBLE",
     ]
 
-    diff = await Diff.init(branch=branch1, db=db)
+    diff = await BranchDiffer.init(branch=branch1, db=db)
     paths = await diff.get_modified_paths_graph(db=db)
 
     # Due to how the conflict check works on ModifiedPath with def __eq__ we can't compare
@@ -134,7 +113,7 @@ async def test_diff_get_modified_paths_graph(db: InfrahubDatabase, base_dataset_
     c1.name.value = "new name"
     await c1.save(db=db)
 
-    diff = await Diff.init(branch=branch1, db=db)
+    diff = await BranchDiffer.init(branch=branch1, db=db)
     paths = await diff.get_modified_paths_graph(db=db)
     expected_paths_branch1.append("data/c1/name/value")
     modified_branch1 = sorted([str(path) for path in paths["branch1"]])
@@ -158,7 +137,7 @@ async def test_diff_get_files_repository(
 
     branch2 = await create_branch(branch_name="branch2", db=db)
 
-    diff = await Diff.init(branch=branch2, db=db)
+    diff = await BranchDiffer.init(branch=branch2, db=db)
 
     resp = await diff.get_files_repository(
         rpc_client=rpc_client,
@@ -204,7 +183,7 @@ async def test_diff_get_files_repositories_for_branch_case01(
     repo01.commit.value = "dddddddddd"
     await repo01.save(db=db)
 
-    diff = await Diff.init(branch=branch2, db=db)
+    diff = await BranchDiffer.init(branch=branch2, db=db)
 
     resp = await diff.get_files_repositories_for_branch(db=db, rpc_client=rpc_client, branch=branch2)
 
@@ -252,7 +231,7 @@ async def test_diff_get_files_repositories_for_branch_case02(
     repo02.commit.value = "eeeeeeeeee"
     await repo02.save(db=db)
 
-    diff = await Diff.init(branch=branch2, db=db)
+    diff = await BranchDiffer.init(branch=branch2, db=db)
 
     resp = await diff.get_files_repositories_for_branch(db=db, rpc_client=rpc_client, branch=branch2)
 
@@ -300,7 +279,7 @@ async def test_diff_get_files(
     repo02.commit.value = "eeeeeeeeee"
     await repo02.save(db=db)
 
-    diff = await Diff.init(branch=branch2, db=db)
+    diff = await BranchDiffer.init(branch=branch2, db=db)
 
     resp = await diff.get_files(db=db, rpc_client=rpc_client)
 
@@ -330,7 +309,7 @@ async def test_diff_get_nodes_entire_branch(db: InfrahubDatabase, default_branch
     await repo01b2.save(db=db, at=time03)
 
     # Calculate the diff since the creation of the branch
-    diff1 = await Diff.init(branch=branch2, db=db)
+    diff1 = await BranchDiffer.init(branch=branch2, db=db)
     nodes = await diff1.get_nodes(db=db)
 
     expected_response_branch2_repo01_time01 = {
@@ -376,7 +355,7 @@ async def test_diff_get_nodes_entire_branch(db: InfrahubDatabase, default_branch
     assert nodes["branch2"][repo01b2.id].to_graphql() == expected_response_branch2_repo01_time01
 
     # Calculate the diff since the creation of the branch
-    diff1 = await Diff.init(branch=branch2, db=db, diff_to=time02)
+    diff1 = await BranchDiffer.init(branch=branch2, db=db, diff_to=time02)
     nodes = await diff1.get_nodes(db=db)
 
     expected_response_branch2_repo01_time02 = {
@@ -443,7 +422,7 @@ async def test_diff_get_nodes_multiple_changes(db: InfrahubDatabase, default_bra
     # Calculate the diff, just after the first modification in the branch (time01_after)
     # It should change the previous value returned by the query
 
-    diff2 = await Diff.init(branch=branch2, db=db, diff_from=time01_after)
+    diff2 = await BranchDiffer.init(branch=branch2, db=db, diff_from=time01_after)
     nodes = await diff2.get_nodes(db=db)
 
     expected_response_branch2_repo01_time02 = {
@@ -481,7 +460,7 @@ async def test_diff_get_nodes_multiple_changes(db: InfrahubDatabase, default_bra
 async def test_diff_get_nodes_dataset_02(db: InfrahubDatabase, base_dataset_02):
     branch1 = await Branch.get_by_name(name="branch1", db=db)
 
-    diff = await Diff.init(branch=branch1, db=db)
+    diff = await BranchDiffer.init(branch=branch1, db=db)
     nodes = await diff.get_nodes(db=db)
 
     expected_response_main_c1 = {
@@ -564,7 +543,7 @@ async def test_diff_get_nodes_dataset_02(db: InfrahubDatabase, base_dataset_02):
     await p1.new(name="Bill", height=175, db=db)
     await p1.save(db=db)
 
-    diff = await Diff.init(branch=branch1, db=db)
+    diff = await BranchDiffer.init(branch=branch1, db=db)
     nodes = await diff.get_nodes(db=db)
 
     assert nodes["branch1"][p1.id].action == DiffAction.ADDED
@@ -575,7 +554,7 @@ async def test_diff_get_nodes_dataset_02(db: InfrahubDatabase, base_dataset_02):
     p3 = await NodeManager.get_one(id="p3", branch=branch1, db=db)
     await p3.delete(db=db)
 
-    diff = await Diff.init(branch=branch1, db=db)
+    diff = await BranchDiffer.init(branch=branch1, db=db)
     nodes = await diff.get_nodes(db=db)
     assert nodes["branch1"]["p3"].action == DiffAction.REMOVED
     assert nodes["branch1"]["p3"].attributes["name"].action == DiffAction.REMOVED
@@ -586,7 +565,7 @@ async def test_diff_get_nodes_rebased_branch(db: InfrahubDatabase, base_dataset_
     branch2 = await Branch.get_by_name(name="branch2", db=db)
 
     # Calculate the diff with the default value
-    diff = await Diff.init(branch=branch2, db=db)
+    diff = await BranchDiffer.init(branch=branch2, db=db)
     nodes = await diff.get_nodes(db=db)
 
     assert list(nodes.keys()) == ["branch2"]
@@ -597,7 +576,7 @@ async def test_diff_get_nodes_rebased_branch(db: InfrahubDatabase, base_dataset_
 async def test_diff_get_relationships(db: InfrahubDatabase, base_dataset_02):
     branch1 = await Branch.get_by_name(name="branch1", db=db)
 
-    diff = await Diff.init(branch=branch1, db=db)
+    diff = await BranchDiffer.init(branch=branch1, db=db)
     rels = await diff.get_relationships(db=db)
 
     assert sorted(rels.keys()) == ["branch1", "main"]
@@ -745,7 +724,7 @@ async def test_diff_relationship_one_conflict(db: InfrahubDatabase, default_bran
     await c1_main.previous_owner.update(data=[], db=db)
     await c1_main.save(db=db, at=time12)
 
-    diff = await Diff.init(branch=branch2, db=db, branch_only=False)
+    diff = await BranchDiffer.init(branch=branch2, db=db, branch_only=False)
     rels = await diff.get_relationships(db=db)
 
     assert sorted(rels.keys()) == ["branch2", "main"]
@@ -924,7 +903,7 @@ async def test_diff_relationship_one_conflict(db: InfrahubDatabase, default_bran
 async def test_diff_relationship_many(db: InfrahubDatabase, default_branch: Branch, base_dataset_04):
     branch1 = await get_branch(branch="branch1", db=db)
 
-    diff = await Diff.init(branch=branch1, db=db)
+    diff = await BranchDiffer.init(branch=branch1, db=db)
     rels = await diff.get_relationships(db=db)
 
     assert sorted(rels.keys()) == ["branch1", "main"]

@@ -9,6 +9,8 @@ from typing_extensions import Self
 from infrahub import config, lock
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.diff import BranchDiffer
+from infrahub.core.merge import BranchMerger
 from infrahub.exceptions import BranchNotFound
 from infrahub.log import get_log_data, get_logger
 from infrahub.message_bus import Meta, messages
@@ -186,7 +188,10 @@ class BranchValidate(Mutation):
         obj = await Branch.get_by_name(db=context.db, name=data["name"])
         ok = True
         validation_messages = ""
-        conflicts = await obj.validate_branch(db=context.db)
+
+        diff = await BranchDiffer.init(db=context.db, branch=obj)
+        conflicts = await diff.get_conflicts(db=context.db)
+
         if conflicts:
             ok = False
             errors = [str(conflict) for conflict in conflicts]
@@ -212,7 +217,8 @@ class BranchMerge(Mutation):
 
         async with lock.registry.global_graph_lock():
             async with context.db.start_transaction() as db:
-                await obj.merge(rpc_client=context.rpc_client, db=db)
+                merger = BranchMerger(branch=obj)
+                await merger.merge(rpc_client=context.rpc_client, db=db)
 
                 # Copy the schema from the origin branch and set the hash and the schema_changed_at value
                 if origin_branch := await obj.get_origin_branch(db=db):

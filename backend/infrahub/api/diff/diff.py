@@ -13,13 +13,9 @@ from pydantic import BaseModel, ConfigDict, Field
 from infrahub import config
 from infrahub.api.dependencies import get_branch_dep, get_current_user, get_db
 from infrahub.core import get_branch, registry
-from infrahub.core.branch import (
-    Branch,  # noqa: TCH001
-    Diff,  # noqa: TCH001
-    NodeDiffElement,  # noqa: TCH001
-    RelationshipDiffElement,  # noqa: TCH001
-)
+from infrahub.core.branch import Branch  # noqa: TCH001
 from infrahub.core.constants import BranchSupportType, DiffAction, InfrahubKind, RelationshipCardinality
+from infrahub.core.diff import BranchDiffer, NodeDiffElement, RelationshipDiffElement  # noqa: TCH001
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema_manager import INTERNAL_SCHEMA_NODE_KINDS
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
@@ -442,7 +438,7 @@ def extract_diff_relationship_many(
 
 
 class DiffPayload:
-    def __init__(self, db: InfrahubDatabase, diff: Diff, kinds_to_include: Optional[List[str]] = None):
+    def __init__(self, db: InfrahubDatabase, diff: BranchDiffer, kinds_to_include: Optional[List[str]] = None):
         self.db = db
         self.diff = diff
         self.kinds_to_include = kinds_to_include
@@ -779,7 +775,7 @@ class DiffPayload:
 
 
 async def generate_diff_payload(  # pylint: disable=too-many-branches,too-many-statements
-    db: InfrahubDatabase, diff: Diff, kinds_to_include: Optional[List[str]] = None
+    db: InfrahubDatabase, diff: BranchDiffer, kinds_to_include: Optional[List[str]] = None
 ) -> Dict[str, List[BranchDiffNode]]:
     response = defaultdict(list)
     nodes_in_diff = []
@@ -922,8 +918,10 @@ async def get_diff_data(
     _: str = Depends(get_current_user),
 ) -> BranchDiff:
     query = DiffQueryValidated(branch=branch, time_from=time_from, time_to=time_to, branch_only=branch_only)
-    diff = await branch.diff(
+
+    diff = await BranchDiffer.init(
         db=db,
+        branch=branch,
         diff_from=query.time_from,
         diff_to=query.time_to,
         branch_only=query.branch_only,
@@ -944,8 +942,9 @@ async def get_diff_schema(
     _: str = Depends(get_current_user),
 ) -> BranchDiff:
     query = DiffQueryValidated(branch=branch, time_from=time_from, time_to=time_to, branch_only=branch_only)
-    diff = await branch.diff(
+    diff = await BranchDiffer.init(
         db=db,
+        branch=branch,
         diff_from=query.time_from,
         diff_to=query.time_to,
         branch_only=query.branch_only,
@@ -969,7 +968,7 @@ async def get_diff_files(
     rpc_client: InfrahubRpcClient = request.app.state.rpc_client
 
     # Query the Diff for all files and repository from the database
-    diff = await branch.diff(db=db, diff_from=time_from, diff_to=time_to, branch_only=branch_only)
+    diff = await BranchDiffer.init(db=db, branch=branch, diff_from=time_from, diff_to=time_to, branch_only=branch_only)
     diff_files = await diff.get_files(db=db, rpc_client=rpc_client)
 
     for branch_name, items in diff_files.items():
@@ -1001,8 +1000,9 @@ async def get_diff_artifacts(
 
     default_branch_name = config.SETTINGS.main.default_branch
     # Query the Diff for all artifacts
-    diff = await branch.diff(
+    diff = await BranchDiffer.init(
         db=db,
+        branch=branch,
         diff_from=time_from,
         diff_to=time_to,
         branch_only=branch_only,

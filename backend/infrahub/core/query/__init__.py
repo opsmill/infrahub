@@ -227,6 +227,12 @@ class QueryResult:
             return node
         raise ValueError(f"{label} is not a Node")
 
+    def get_rel(self, label: str) -> Neo4jRelationship:
+        rel = self.get(label=label)
+        if isinstance(rel, Neo4jRelationship):
+            return rel
+        raise ValueError(f"{label} is not a Relationship")
+
     def get_rels(self) -> Generator[Neo4jRelationship, None, None]:
         """Return all relationships."""
 
