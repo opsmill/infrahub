@@ -129,6 +129,17 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
             )
         )
 
+    if message.check_type in [CheckType.ALL, CheckType.TEST]:
+        events.append(
+            messages.RequestProposedChangeRunTests(
+                proposed_change=message.proposed_change,
+                source_branch=message.source_branch,
+                source_branch_data_only=message.source_branch_data_only,
+                destination_branch=message.destination_branch,
+                branch_diff=branch_diff,
+            )
+        )
+
     for event in events:
         event.assign_meta(parent=message)
         await service.send(message=event)
@@ -319,16 +330,16 @@ async def run_tests(message: messages.RequestProposedChangeRunTests, service: In
             plugins=[InfrahubBackendPlugin(service.client.config, repository.id, proposed_change.id)],
         )
 
-    # FIXME: Check if data only
     for repository in repositories:
-        repo = await get_initialized_repo(
-            repository_id=repository.id,
-            name=repository.name.value,
-            service=service,
-            repository_kind=repository.get_kind(),
-        )
-        commit = repo.get_commit_value(proposed_change.source_branch.value)
-        worktree_directory = Path(repo.get_commit_worktree(commit=commit).directory)
+        if not message.source_branch_data_only:
+            repo = await get_initialized_repo(
+                repository_id=repository.id,
+                name=repository.name.value,
+                service=service,
+                repository_kind=repository.get_kind(),
+            )
+            commit = repo.get_commit_value(proposed_change.source_branch.value)
+            worktree_directory = Path(repo.get_commit_worktree(commit=commit).directory)
 
         return_code = await asyncio.to_thread(_execute, worktree_directory, repository, proposed_change)
         log.info(
