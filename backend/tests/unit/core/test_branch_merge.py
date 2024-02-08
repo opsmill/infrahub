@@ -2,8 +2,8 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.node import Node
 from infrahub.core.merge import BranchMerger
+from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 
 
