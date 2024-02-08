@@ -3,7 +3,7 @@ import { ACCOUNT_STATE_PATH } from "../../../constants";
 
 test.describe("/objects/:objectname", () => {
   test.describe("when not logged in", () => {
-    test("should not be able to create a proposed changes", async ({ page }) => {
+    test("should not be able to create a new object", async ({ page }) => {
       await page.goto("/objects/BuiltinTag");
 
       await expect(page.getByRole("heading", { name: "Tag" })).toBeVisible();
@@ -62,7 +62,7 @@ test.describe("/objects/:objectname", () => {
   test.describe("when logged in as Admin", () => {
     test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
-    test("should be able to create a proposed changes", async ({ page }) => {
+    test("should be able to create a new object", async ({ page }) => {
       await page.goto("/objects/BuiltinTag");
 
       await expect(page.getByRole("heading", { name: "Tag" })).toBeVisible();
