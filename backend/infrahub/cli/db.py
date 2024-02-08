@@ -1,7 +1,6 @@
 import importlib
 import logging
 from asyncio import run as aiorun
-from datetime import datetime, timezone
 from pathlib import Path
 
 import typer
@@ -152,23 +151,39 @@ def migrate(
     aiorun(_migrate(check=check))
 
 
-def _default_export_dir() -> str:
-    right_now = datetime.now(timezone.utc).astimezone()
-    timestamp = right_now.strftime("%Y%m%d-%H%M%S")
-    return f"full-infrahub-export-{timestamp}"
-
-
 @app.command()
-def export(
-    export_directory: str = typer.Argument(default=_default_export_dir, help="Where to save export files"),
+def backup(
+    backup_directory: str = typer.Argument(default="infrahub-backups", help="Where to save the backup files"),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
     """Export the entire database"""
     config.load_and_exit(config_file_name=config_file)
-    export_path = Path(export_directory)
+    backup_path = Path(backup_directory)
 
     if config.SETTINGS.database.db_type == DatabaseType.MEMGRAPH:
         ...
     else:
-        backup_runner = Neo4jBackupRunner()
-        backup_runner.export(export_path)
+        driver = aiorun(get_db(retry=1))
+        db = InfrahubDatabase(driver=driver)
+        backup_runner = Neo4jBackupRunner(db=db)
+        aiorun(backup_runner.backup(backup_path))
+
+
+@app.command()
+def restore(
+    backup_directory: str = typer.Argument(
+        default="infrahub-backups", help="Directory where the backup files are saved"
+    ),
+    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+) -> None:
+    """Restore the database"""
+    config.load_and_exit(config_file_name=config_file)
+    backup_path = Path(backup_directory)
+
+    if config.SETTINGS.database.db_type == DatabaseType.MEMGRAPH:
+        ...
+    else:
+        driver = aiorun(get_db(retry=1))
+        db = InfrahubDatabase(driver=driver)
+        backup_runner = Neo4jBackupRunner(db=db)
+        aiorun(backup_runner.restore(backup_path))

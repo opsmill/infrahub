@@ -1,18 +1,22 @@
 import sys
+from contextlib import asynccontextmanager
 from io import BytesIO
 from pathlib import Path
 from tarfile import TarFile, TarInfo, data_filter
-from typing import List, Optional
+from typing import AsyncGenerator, Dict, Optional
 
 import docker
 from docker.models.containers import Container
 from rich.console import Console
 
+from infrahub.database import InfrahubDatabase
+
 
 class Neo4jBackupRunner:
     container_backup_dir = "/tmp/neo4jbackup"
 
-    def __init__(self) -> None:
+    def __init__(self, db: InfrahubDatabase) -> None:
+        self.db = db
         self.docker_client = docker.from_env()
         self.console = Console()
         self.database_container = None
@@ -29,9 +33,6 @@ class Neo4jBackupRunner:
             self.database_container = containers[0]
         return self.database_container
 
-    def _get_existing_local_backups(self, local_backup_directory: Path) -> List[Path]:
-        return [backup_file for backup_file in local_backup_directory.iterdir() if backup_file.suffix == ".backup"]
-
     def _prepare_container_backup_dir(self) -> None:
         database_container = self._get_database_container()
         database_container.exec_run(["rm", "-rf", f"{self.container_backup_dir}"])
@@ -40,7 +41,7 @@ class Neo4jBackupRunner:
     def _push_backups_to_container(self, container: Container, local_backup_directory: Path) -> bool:
         if not local_backup_directory.exists():
             return False
-        existing_backup_paths = self._get_existing_local_backups(local_backup_directory)
+        existing_backup_paths = self._map_backups_to_database_name(local_backup_directory).values()
         if not existing_backup_paths:
             return False
 
@@ -82,8 +83,8 @@ class Neo4jBackupRunner:
         exit_code, response = database_container.exec_run(aggregate_command, stdout=True, stderr=True)
 
         if exit_code != 0:
-            self.console.print("[red]neo4j export command failed")
-            self.console.print(f"    export command: {' '.join(aggregate_command)}")
+            self.console.print("[red]neo4j aggregate backups command failed")
+            self.console.print(f"    aggregate backups command: {' '.join(aggregate_command)}")
             self.console.print("    response:")
             self.console.print(response.decode())
             sys.exit(exit_code)
@@ -102,7 +103,7 @@ class Neo4jBackupRunner:
 
     def _update_local_backups_from_container(self, local_backup_directory: Path) -> None:
         database_container = self._get_database_container()
-        current_backups = self._get_existing_local_backups(local_backup_directory)
+        current_backups = self._map_backups_to_database_name(local_backup_directory).values()
 
         archive_stream, _ = database_container.get_archive(self.container_backup_dir)
         full_archive = BytesIO()
@@ -119,10 +120,71 @@ class Neo4jBackupRunner:
         for local_backup in current_backups:
             local_backup.rename(previous_dir / local_backup.name)
 
-    def export(self, backup_directory: Path) -> None:
+    def _map_backups_to_database_name(self, local_backup_directory: Path) -> Dict[str, Path]:
+        # expects name format of <database_name>-2024-02-07T22-12-16.backup
+        backup_map = {}
+        for backup_path in local_backup_directory.iterdir():
+            if not backup_path.suffix == ".backup":
+                continue
+            split_name = backup_path.name.split("-")
+            database_name = "-".join(split_name[:-5])
+            backup_map[database_name] = backup_path
+        return backup_map
+
+    @asynccontextmanager
+    async def _stopped_database(self, database_name: str) -> AsyncGenerator[None, None]:
+        if database_name != "system":
+            self.console.print(f"Stopping {database_name} database")
+            query = f"STOP DATABASE {database_name}"
+            await self.db.execute_query(query)
+
+        yield
+
+        if database_name != "system":
+            self.console.print(f"Starting {database_name} database")
+            query = f"START DATABASE {database_name}"
+            await self.db.execute_query(query)
+
+    async def _run_restore(self, database_container: Container, backup_path_map: Dict[str, Path]) -> None:
+        for database_name, local_path in backup_path_map.items():
+            async with self._stopped_database(database_name):
+                self.console.print(f"Beginning restore for {database_name} database")
+
+                remote_path = Path(self.container_backup_dir) / local_path.name
+                restore_command = [
+                    "neo4j-admin",
+                    "database",
+                    "restore",
+                    f"--from-path={remote_path}",
+                    "--overwrite-destination=true",
+                    database_name,
+                ]
+                exit_code, response = database_container.exec_run(restore_command, stdout=True, stderr=True)
+
+                if exit_code != 0:
+                    self.console.print(f"[red]neo4j restore command failed for {database_name} database")
+                    self.console.print(f"    restore command: {' '.join(restore_command)}")
+                    self.console.print("    response:")
+                    self.console.print(response.decode())
+                    sys.exit(exit_code)
+
+                query = f"CREATE DATABASE {database_name} IF NOT EXISTS"
+                await self.db.execute_query(query)
+
+    async def backup(self, backup_directory: Path) -> None:
         database_container = self._get_database_container()
         self._prepare_container_backup_dir()
         sent_files_to_container = self._push_backups_to_container(database_container, backup_directory)
         self._run_backup(do_aggregate_backup=sent_files_to_container)
         self._update_local_backups_from_container(backup_directory)
         self.console.print(f"Updated backup files are in {backup_directory.absolute()}")
+
+    async def restore(self, backup_directory: Path) -> None:
+        backup_paths_by_database_name = self._map_backups_to_database_name(backup_directory)
+        if not backup_paths_by_database_name:
+            self.console.print(f"[red]No .backup files in {backup_directory} to use for restore")
+            sys.exit(1)
+        database_container = self._get_database_container()
+        self._prepare_container_backup_dir()
+        self._push_backups_to_container(database_container, backup_directory)
+        await self._run_restore(database_container, backup_paths_by_database_name)
