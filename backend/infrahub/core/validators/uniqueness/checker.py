@@ -5,7 +5,8 @@ from typing import Dict, Iterable, List, Optional, Set, Tuple, Union
 from pydantic import BaseModel, Field
 
 from infrahub.core import registry
-from infrahub.core.branch import Branch, SchemaConflict
+from infrahub.core.branch import Branch
+from infrahub.core.diff import SchemaConflict
 from infrahub.core.query.constraints.node_unique_attributes import NodeUniqueAttributeConstraintQuery
 from infrahub.core.query.constraints.request import (
     NodeUniquenessQueryRequest,

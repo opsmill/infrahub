@@ -8,6 +8,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import CheckType, InfrahubKind, ProposedChangeState, ValidatorConclusion
 from infrahub.core.manager import NodeManager
+from infrahub.core.merge import BranchMerger
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
 from infrahub.database import InfrahubDatabase
@@ -131,9 +132,8 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
                                 conflict_resolution[check.conflicts.value[0]["path"]] = keep_source_value
 
                 async with lock.registry.global_graph_lock():
-                    await source_branch.merge(
-                        rpc_client=context.rpc_client, db=dbt, conflict_resolution=conflict_resolution
-                    )
+                    merger = BranchMerger(branch=source_branch)
+                    await merger.merge(rpc_client=context.rpc_client, db=dbt, conflict_resolution=conflict_resolution)
 
                     # Copy the schema from the origin branch and set the hash and the schema_changed_at value
                     origin_branch = await source_branch.get_origin_branch(db=dbt)

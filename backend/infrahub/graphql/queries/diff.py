@@ -4,6 +4,8 @@ from typing import TYPE_CHECKING, Dict, Optional, Union
 
 from graphene import Boolean, Field, List, ObjectType, String
 
+from infrahub.core.diff import BranchDiffer
+
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
@@ -40,7 +42,9 @@ class DiffSummaryEntry(ObjectType):
         time_to: Optional[str] = None,
     ) -> list[Dict[str, Union[str, list[str]]]]:
         context: GraphqlContext = info.context
-        diff = await context.branch.diff(db=context.db, diff_from=time_from, diff_to=time_to, branch_only=branch_only)
+        diff = await BranchDiffer.init(
+            db=context.db, branch=context.branch, diff_from=time_from, diff_to=time_to, branch_only=branch_only
+        )
         summary = await diff.get_summary(db=context.db)
         return [entry.to_graphql() for entry in summary]
 

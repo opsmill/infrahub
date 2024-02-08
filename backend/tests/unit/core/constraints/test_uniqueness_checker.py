@@ -1,5 +1,6 @@
 from infrahub.core import registry
-from infrahub.core.branch import Branch, SchemaConflict
+from infrahub.core.branch import Branch
+from infrahub.core.diff import SchemaConflict
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.validators.uniqueness.checker import UniquenessChecker
