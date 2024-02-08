@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Set, Type, Union
 
 import graphene
-from prometheus_client import Histogram
 
 import infrahub.config as config
 from infrahub.core.attribute import String
@@ -15,6 +14,7 @@ from infrahub.graphql.mutations.graphql_query import InfrahubGraphQLQueryMutatio
 from infrahub.types import ATTRIBUTE_TYPES, InfrahubDataType, get_attribute_type
 
 from .enums import generate_graphql_enum, get_enum_attribute_type_name
+from .metrics import SCHEMA_GENERATE_GRAPHQL_METRICS
 from .mutations import (
     InfrahubArtifactDefinitionMutation,
     InfrahubMutation,
@@ -47,14 +47,6 @@ class DeleteInput(graphene.InputObjectType):
 GraphQLTypes = Union[
     Type[InfrahubMutation], Type[BaseAttributeType], Type[graphene.Interface], Type[graphene.ObjectType]
 ]
-
-METRIC_PREFIX = "infrahub_graphql"
-SCHEMA_GENERATE_GRAPHQL_METRICS = Histogram(
-    f"{METRIC_PREFIX}_generate_schema",
-    "Time to generate the GraphQL Schema",
-    labelnames=["branch"],
-    buckets=[0.0005, 0.25, 0.5, 1, 5],
-)
 
 
 @dataclass
