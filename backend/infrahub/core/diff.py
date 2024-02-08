@@ -404,34 +404,6 @@ class BranchDiffer:
 
         return False
 
-    # async def has_changes(self, db: InfrahubDatabase, rpc_client: InfrahubRpcClient) -> bool:
-    #     """Return True if the diff has identified some changes, False otherwise."""
-
-    #     has_changes_graph = await self.has_changes_graph(db=db)
-    #     has_changes_repositories = await self.has_changes_repositories(db=db, rpc_client=rpc_client)
-
-    #     return has_changes_graph | has_changes_repositories
-
-    # async def has_changes_graph(self, db: InfrahubDatabase) -> bool:
-    #     """Return True if the diff has identified some changes in the Graph, False otherwise."""
-
-    #     mpaths = await self.get_modified_paths_graph(db=db)
-    #     for _, paths in mpaths.items():
-    #         if paths:
-    #             return True
-
-    #     return False
-
-    # async def has_changes_repositories(self, db: InfrahubDatabase, rpc_client: InfrahubRpcClient) -> bool:
-    #     """Return True if the diff has identified some changes in the repositories, False otherwise."""
-
-    #     mpaths = await self.get_modified_paths_repositories(db=db, rpc_client=rpc_client)
-    #     for _, paths in mpaths.items():
-    #         if paths:
-    #             return True
-
-    #     return False
-
     async def get_summary(self, db: InfrahubDatabase) -> List[DiffSummaryElement]:
         """Return a list of changed nodes and associated actions
 
@@ -664,94 +636,6 @@ class BranchDiffer:
                     paths[branch_name].add(relationship)
 
         return paths
-
-    # async def get_modified_paths_repositories(
-    #     self, db: InfrahubDatabase, rpc_client: InfrahubRpcClient
-    # ) -> Dict[str, Set[Tuple[str, str, str]]]:
-    #     """Return a list of all the modified paths in the repositories.
-
-    #     We need the commit values for each repository in the graph to calculate the difference.
-
-    #     For now we are still assuming that a Branch always start from main
-    #     """
-
-    #     paths: Dict[str, Set[Tuple[str, str, str]]] = defaultdict(set)
-
-    #     for item in await self.get_files_repositories_for_branch(db=db, rpc_client=rpc_client, branch=self.branch):
-    #         paths[self.branch.name].add(("file", item.repository, item.location))
-
-    #     if not self.branch_only:
-    #         for items in await self.get_modified_paths_repositories_for_branch(
-    #             db=db, rpc_client=rpc_client, branch=self.origin_branch
-    #         ):
-    #             for item in items:
-    #                 paths[self.origin_branch.name].add(("file", item.repository, item.location))
-
-    #     return paths
-
-    # async def get_modified_paths_repositories_for_branch(
-    #     self, db: InfrahubDatabase, rpc_client: InfrahubRpcClient, branch: Optional[Branch] = None
-    # ) -> Set[Tuple[str, str, str]]:
-    #     tasks = []
-    #     paths: Set[Tuple[str, str, str]] = set()
-
-    #     repos_to = {
-    #         repo.id: repo
-    #         for repo in await NodeManager.query(schema="Repository", db=db, branch=branch, at=self.diff_to)
-    #     }
-    #     repos_from = {
-    #         repo.id: repo
-    #         for repo in await NodeManager.query(schema="Repository", db=db, branch=branch, at=self.diff_from)
-    #     }
-
-    #     # For now we are ignoring the repos that are either not present at to time or at from time.
-    #     # These repos will be identified in the graph already
-    #     repo_ids_common = set(repos_to.keys()) & set(repos_from.keys())
-
-    #     for repo_id in repo_ids_common:
-    #         if repos_to[repo_id].commit.value == repos_from[repo_id].commit.value:  # type: ignore[attr-defined]
-    #             continue
-
-    #         tasks.append(
-    #             self.get_modified_paths_repository(
-    #                 rpc_client=rpc_client,
-    #                 repository=repos_to[repo_id],
-    #                 commit_from=repos_from[repo_id].commit.value,  # type: ignore[attr-defined]
-    #                 commit_to=repos_to[repo_id].commit.value,  # type: ignore[attr-defined]
-    #             )
-    #         )
-
-    #     responses = await asyncio.gather(*tasks)
-
-    #     for response in responses:
-    #         paths.update(response)
-
-    #     return paths
-
-    # async def get_modified_paths_repository(
-    #     self,
-    #     rpc_client: InfrahubRpcClient,  # pylint: disable=unused-argument
-    #     repository: Node,
-    #     commit_from: str,
-    #     commit_to: str,
-    # ) -> Set[Tuple[str, str, str]]:
-    #     """Return the path of all the files that have changed for a given repository between 2 commits.
-
-    #     Path format: ("file", repository.id, filename )
-    #     """
-
-    #     message = messages.GitDiffNamesOnly(
-    #         repository_id=repository.id,
-    #         repository_name=repository.name.value,  # type: ignore[attr-defined]
-    #         repository_kind=repository.get_kind(),
-    #         first_commit=commit_from,
-    #         second_commit=commit_to,
-    #     )
-
-    #     reply = await services.service.message_bus.rpc(message=message)
-    #     diff = reply.parse(response_class=DiffNamesResponse)
-
-    #     return {("file", repository.id, filename) for filename in diff.files_changed}
 
     async def get_nodes(self, db: InfrahubDatabase) -> Dict[str, Dict[str, NodeDiffElement]]:
         """Return all the nodes calculated by the diff, organized by branch."""

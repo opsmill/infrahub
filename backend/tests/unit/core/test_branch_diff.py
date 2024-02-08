@@ -30,29 +30,6 @@ def patch_services(helper):
     services.prepare(service=services.service)
 
 
-@pytest.mark.xfail(reason="Need to investigate, looks like dead code")
-async def test_diff_has_changes_graph(db: InfrahubDatabase, base_dataset_02):
-    branch1 = await Branch.get_by_name(name="branch1", db=db)
-
-    diff = await BranchDiffer.init(branch=branch1, db=db)
-    assert await diff.has_changes_graph(db=db)
-
-    diff = await BranchDiffer.init(branch=branch1, diff_from=base_dataset_02["time0"], db=db)
-
-    assert not await diff.has_changes_graph(db=db)
-
-    # Create a change in main to validate that a new change will be detected but not if main is excluded (branch_only)
-    c1 = await NodeManager.get_one(id="c1", db=db)
-    c1.name.value = "new name"
-    await c1.save(db=db)
-
-    diff = await BranchDiffer.init(branch=branch1, diff_from=base_dataset_02["time0"], db=db)
-    assert await diff.has_changes_graph(db=db)
-
-    diff = await BranchDiffer.init(branch=branch1, branch_only=True, diff_from=base_dataset_02["time0"], db=db)
-    assert not await diff.has_changes_graph(db=db)
-
-
 async def test_diff_has_conflict_graph(db: InfrahubDatabase, base_dataset_02):
     branch1 = await Branch.get_by_name(name="branch1", db=db)
 
