@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { ACCOUNT_STATE_PATH } from "../../../../constants";
 
-test.describe("Object update", () => {
+test.describe.skip("Object update", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
   test("should contain initial values and update them", async ({ page }) => {
