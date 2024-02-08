@@ -188,7 +188,7 @@ skip-magic-trailing-comma = false
 line-ending = "auto"
 
 [tool.ruff.lint.isort]
-known-first-party = ["infrahub_sync", "potenda"]
+known-first-party = ["diffsync", "infrahub_sync", "potenda"]
 
 [tool.ruff.lint.pycodestyle]
 max-line-length = 150

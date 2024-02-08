@@ -1,7 +1,6 @@
 import copy
 from typing import Any, Dict, Mapping
 
-from diffsync import DiffSync, DiffSyncModel
 from infrahub_sdk import (
     Config,
     InfrahubClientSync,
@@ -12,6 +11,7 @@ from infrahub_sdk import (
 )
 from infrahub_sdk.utils import compare_lists
 
+from diffsync import DiffSync, DiffSyncModel
 from infrahub_sync import DiffSyncMixin, DiffSyncModelMixin, SyncAdapter, SyncConfig
 from infrahub_sync.generator import has_field
 
