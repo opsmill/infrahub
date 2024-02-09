@@ -113,17 +113,15 @@ export const TaskItemDetails = () => {
     <div className=" flex-1 flex flex-col">
       <div className="bg-custom-white">
         <div className="flex items-center p-4 w-full">
-          <div className="sm:flex-auto flex items-center">
-            <Link to={constructPath("/tasks")}>
-              <h1 className="text-md font-semibold text-gray-900 mr-2">Task Details</h1>
-            </Link>
+          <Link to={constructPath("/tasks")}>
+            <h1 className="text-md font-semibold text-gray-900 mr-2">Task Details</h1>
+          </Link>
 
-            <ChevronRightIcon
-              className="w-4 h-4 mt-1 mx-2 flex-shrink-0 text-gray-400"
-              aria-hidden="true"
-            />
-            <p className="max-w-2xl  text-gray-500">{object.title}</p>
-          </div>
+          <ChevronRightIcon
+            className="w-4 h-4 mt-1 mx-2 flex-shrink-0 text-gray-400"
+            aria-hidden="true"
+          />
+          <p className="max-w-2xl  text-gray-500">{object.title}</p>
         </div>
 
         <List columns={columns} row={row} />
