@@ -4,12 +4,14 @@ import useQuery from "../../hooks/useQuery";
 
 import { useState } from "react";
 import { useParams } from "react-router-dom";
+import { StringParam, useQueryParam } from "use-query-params";
 import { BADGE_TYPES, Badge } from "../../components/display/badge";
 import { DateDisplay } from "../../components/display/date-display";
 import { DurationDisplay } from "../../components/display/duration-display";
 import { SearchInput } from "../../components/search/search-bar";
 import { List } from "../../components/table/list";
 import { Id } from "../../components/utils/id";
+import { QSP } from "../../config/qsp";
 import { getTaskItemDetails } from "../../graphql/queries/tasks/getTasksItemDetails";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
@@ -22,13 +24,14 @@ export const getConclusionBadge: { [key: string]: any } = {
 };
 
 export const TaskItemDetails = () => {
+  const [taskId] = useQueryParam(QSP.TASK_ID, StringParam);
   const [search, setSearch] = useState("");
 
   const { task } = useParams();
 
   const queryString = getTaskItemDetails({
     kind: TASK_OBJECT,
-    id: task,
+    id: taskId || task,
   });
 
   const query = gql`

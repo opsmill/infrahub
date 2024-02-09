@@ -2,7 +2,7 @@ import Handlebars from "handlebars";
 
 export const getTasksItems = Handlebars.compile(`
 query GetTasks {
-  {{kind}} {
+  {{kind}}{{#if relatedNode}}(related_node__ids: ["{{relatedNode}}"]){{/if}} {
     count
     edges {
       node {
