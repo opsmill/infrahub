@@ -127,6 +127,7 @@ export const attributesKindForListView = [
   "Bandwidth",
   "IPHost",
   "IPNetwork",
+  "DateTime",
 ];
 
 export const attributesKindForDetailsViewExclude = ["HashedPassword"];
