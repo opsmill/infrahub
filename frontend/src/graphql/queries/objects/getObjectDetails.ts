@@ -2,7 +2,7 @@ import Handlebars from "handlebars";
 import "../../../utils/handlebars"; // Import handlebars utils
 
 export const getObjectDetailsPaginated = Handlebars.compile(`
-query ObjectDetailsAndTasks {
+query {{kind}} {
   {{kind}} (ids: ["{{objectid}}"]) {
     edges {
       node {
@@ -84,8 +84,12 @@ query ObjectDetailsAndTasks {
     }
   }
 
+  {{#if taskKind}}
+
   {{taskKind}}(related_node__ids: ["{{objectid}}"]) {
     count
   }
+
+  {{/if}}
 }
 `);
