@@ -20,7 +20,7 @@ import { Logs, tLog } from "./logs";
 
 export const getConclusionBadge: { [key: string]: any } = {
   success: <Badge type={BADGE_TYPES.VALIDATE}>success</Badge>,
-  unknown: <Badge type={BADGE_TYPES.LIGHT}>unkown</Badge>,
+  unknown: <Badge type={BADGE_TYPES.LIGHT}>unknown</Badge>,
   failure: <Badge type={BADGE_TYPES.CANCEL}>failure</Badge>,
 };
 
