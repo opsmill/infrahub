@@ -4986,7 +4986,7 @@
                     "description": null
                 }
             ],
-            "kind": "BuiltinLocation"
+            "kind": "InfraSite"
         },
         {
             "name": "Repository",

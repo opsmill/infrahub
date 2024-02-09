@@ -114,8 +114,97 @@ generics:
         cardinality: one
         kind: Attribute
         identifier: connected__endpoint
-
+  - name: Location
+    namespace: Infra
+    description: "Generic hierarchical location"
+    label: "Location"
+    hierarchical: true
+    icon: "mingcute:location-line"
+    include_in_menu: true
+    attributes:
+      - name: "name"
+        kind: "Text"
+        unique: true
+      - name: description
+        kind: Text
+        optional: true
 nodes:
+  - name: Continent
+    namespace: Infra
+    description: "A continent on planet earth."
+    menu_placement: "InfraLocation"
+    icon: "jam:world"
+    inherit_from:
+      - "InfraLocation"
+    default_filter: "name__value"
+    order_by:
+      - "name__value"
+    display_labels:
+      - "name__value"
+    children: "InfraCountry"
+    parent: ""
+  - name: Country
+    namespace: Infra
+    description: "A country within a continent."
+    menu_placement: "InfraLocation"
+    icon: "gis:search-country"
+    inherit_from:
+      - "InfraLocation"
+    default_filter: "name__value"
+    order_by:
+      - "name__value"
+    display_labels:
+      - "name__value"
+    children: "InfraSite"
+    parent: "InfraContinent"
+  - name: Site
+    namespace: Infra
+    description: "A site within a country."
+    menu_placement: "InfraLocation"
+    icon: "ri:building-line"
+    inherit_from:
+      - "InfraLocation"
+    default_filter: "name__value"
+    order_by:
+      - "name__value"
+    display_labels:
+      - "name__value"
+    children: ""
+    parent: "InfraCountry"
+    attributes:
+      - name: "city"
+        kind: "Text"
+        label: "City"
+        optional: true
+      - name: "address"
+        kind: "Text"
+        label: "Address"
+        optional: true
+      - name: "contact"
+        kind: "Text"
+        label: "Contact"
+        optional: true
+    relationships:
+      - name: "devices"
+        cardinality: "many"
+        peer: "InfraDevice"
+        kind: "Component"
+        identifier: "site__devices"
+      - name: "vlans"
+        cardinality: "many"
+        kind: "Component"
+        peer: "InfraVLAN"
+        identifier: "site__vlans"
+      - name: "circuit_endpoints"
+        cardinality: "many"
+        kind: "Component"
+        peer: "InfraCircuitEndpoint"
+        identifier: "site__circuit_endpoints"
+      - cardinality: "many"
+        kind: "Attribute"
+        name: "tags"
+        optional: true
+        peer: "BuiltinTag"
   - name: Platform
     namespace: Infra
     description: "A Platform represents the type of software running on a device"
@@ -222,11 +311,12 @@ nodes:
             color: "#e6e6fa"
     relationships:
       - name: site
-        label: Site (Location)
-        peer: BuiltinLocation
+        label: Site
+        peer: InfraSite
         optional: false
         cardinality: one
         kind: Attribute
+        identifier: "site__devices"
       - name: interfaces
         peer: InfraInterface
         identifier: "device__interface"
@@ -386,11 +476,12 @@ nodes:
             color: "#a0b78d"
     relationships:
       - name: site
-        label: Site (Location)
-        peer: BuiltinLocation
+        label: "Site"
+        peer: "InfraSite"
         optional: true
         cardinality: one
         kind: Attribute
+        identifier: "site__vlans"
       - name: gateway
         label: L3 Gateway
         peer: InfraInterfaceL3
@@ -477,11 +568,12 @@ nodes:
       - "InfraEndpoint"
     relationships:
       - name: site
-        label: Site (Location)
-        peer: BuiltinLocation
+        label: "Site"
+        peer: "InfraSite"
         optional: false
         cardinality: one
         kind: Attribute
+        identifier: "site__circuit_endpoints"
       - name: circuit
         peer: InfraCircuit
         optional: false
@@ -713,28 +805,3 @@ nodes:
       - kind: Text
         name: description
         optional: true
-
-  - name: Location
-    namespace: Builtin
-    label: Location
-    description: "A location represent a physical element: a building, a site, a city"
-    default_filter: name__value
-    display_labels: [name__value]
-    order_by: [name__value]
-    icon: mdi:map-marker-radius-outline
-    include_in_menu: true
-    attributes:
-      - kind: Text
-        name: name
-        unique: true
-      - kind: Text
-        name: description
-        optional: true
-      - kind: Text
-        name: type
-    relationships:
-      - cardinality: many
-        kind: Attribute
-        name: tags
-        optional: true
-        peer: BuiltinTag
