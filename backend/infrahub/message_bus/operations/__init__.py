@@ -12,6 +12,7 @@ from infrahub.message_bus.operations import (
     send,
     transform,
     trigger,
+    validator,
 )
 from infrahub.message_bus.types import MessageTTL
 from infrahub.services import InfrahubServices
@@ -60,6 +61,7 @@ COMMAND_MAP = {
     "trigger.artifact_definition.generate": trigger.artifact_definition.generate,
     "trigger.proposed_change.cancel": trigger.proposed_change.cancel,
     "trigger.webhook.actions": trigger.webhook.actions,
+    "validator.attribute.regex_update": validator.attribute.regex_update,
 }
 
 

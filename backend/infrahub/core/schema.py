@@ -182,6 +182,12 @@ class AttributeSchema(HashableModel):
     def uses_enum_class(self) -> bool:
         return bool(self.enum) and config.SETTINGS.experimental_features.graphql_enums
 
+    @property
+    def _branch(self) -> BranchSupportType:
+        if not self.branch:
+            raise ValueError("branch hasn't been defined yet")
+        return self.branch
+
     def get_attribute_enum_class(self) -> Optional[enum.EnumType]:
         if not self.uses_enum_class:
             return None

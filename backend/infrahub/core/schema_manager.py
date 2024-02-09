@@ -25,6 +25,7 @@ from infrahub.core.constants import (
     UpdateValidationErrorType,
 )
 from infrahub.core.manager import NodeManager
+from infrahub.core.migrations import MIGRATION_MAP
 from infrahub.core.models import HashableModelDiff, SchemaBranchDiff, SchemaBranchHash
 from infrahub.core.node import Node
 from infrahub.core.property import FlagPropertyMixin, NodePropertyMixin
@@ -39,6 +40,7 @@ from infrahub.core.schema import (
     internal_schema,
 )
 from infrahub.core.utils import parse_node_kind
+from infrahub.core.validators import VALIDATOR_MAP
 from infrahub.exceptions import SchemaNotFound
 from infrahub.graphql.manager import GraphQLSchemaManager
 from infrahub.log import get_logger
@@ -97,11 +99,16 @@ class SchemaUpdateValidationError(BaseModel):
 
 
 class SchemaUpdateMigrationInfo(BaseModel):
-    node_schema: Union[NodeSchema, GenericSchema]
-    field: Union[AttributeSchema, RelationshipSchema]
+    schema_name: str
+    field_name: str
     field_type: Optional[str] = None
     prop_name: Optional[str] = None
     migration_name: str
+
+    @property
+    def routing_key(self):
+        migration_parts = self.migration_name.split(".")
+        return f"migration.{migration_parts[0]}.{migration_parts[1]}_{migration_parts[2]}"
 
 
 class SchemaUpdateCheckInfo(BaseModel):
@@ -110,6 +117,10 @@ class SchemaUpdateCheckInfo(BaseModel):
     field_type: Optional[str] = None
     prop_name: Optional[str] = None
     check_name: str
+
+    @property
+    def routing_key(self):
+        return f"validator.{self.field_type}.{self.prop_name}_update"
 
 
 class SchemaUpdateValidationResult(BaseModel):
@@ -226,8 +237,8 @@ class SchemaBranch:
                             schema = other.get(name=schema_name, duplicate=False)
                             result.migrations.append(
                                 SchemaUpdateMigrationInfo(
-                                    node_schema=schema,
-                                    field=schema.get_field(name=field_name),
+                                    schema_name=schema.kind,
+                                    field_name=field_name,
                                     migration_name="node.attribute.add",
                                 )
                             )
@@ -236,8 +247,8 @@ class SchemaBranch:
                         schema = self.get(name=schema_name, duplicate=False)
                         result.migrations.append(
                             SchemaUpdateMigrationInfo(
-                                node_schema=schema,
-                                field=schema.get_field(name=field_name),
+                                schema_name=schema.kind,
+                                field_name=field_name,
                                 migration_name=f"node.{field_type}.remove",
                             )
                         )
@@ -302,16 +313,17 @@ class SchemaBranch:
                     migration_name=migration_name,
                 )
             )
-            result.errors.append(
-                SchemaUpdateValidationError(
-                    schema_name=schema_name,
-                    field_name=field_name,
-                    field_type=field_type,
-                    prop_name=prop_name,
-                    error=UpdateValidationErrorType.MIGRATION_NOT_AVAILABLE,
-                    message=f"'{migration_name}' is not available yet",
+            if migration_name not in MIGRATION_MAP:
+                result.errors.append(
+                    SchemaUpdateValidationError(
+                        schema_name=schema_name,
+                        field_name=field_name,
+                        field_type=field_type,
+                        prop_name=prop_name,
+                        error=UpdateValidationErrorType.MIGRATION_NOT_AVAILABLE,
+                        message=f"'{migration_name}' is not available yet",
+                    )
                 )
-            )
         elif field_update == UpdateSupport.CHECK_CONSTRAINTS.value:
             check_name = f"{field_type}.{prop_name}.update"
             result.checks.append(
@@ -323,16 +335,17 @@ class SchemaBranch:
                     check_name=check_name,
                 )
             )
-            result.errors.append(
-                SchemaUpdateValidationError(
-                    schema_name=schema_name,
-                    field_name=field_name,
-                    field_type=field_type,
-                    prop_name=prop_name,
-                    error=UpdateValidationErrorType.CHECK_NOT_AVAILABLE,
-                    message=f"'{check_name}' is not available yet",
+            if check_name not in VALIDATOR_MAP:
+                result.errors.append(
+                    SchemaUpdateValidationError(
+                        schema_name=schema_name,
+                        field_name=field_name,
+                        field_type=field_type,
+                        prop_name=prop_name,
+                        error=UpdateValidationErrorType.CHECK_NOT_AVAILABLE,
+                        message=f"'{check_name}' is not available yet",
+                    )
                 )
-            )
 
     def duplicate(self, name: Optional[str] = None) -> SchemaBranch:
         """Duplicate the current object but conserve the same cache."""

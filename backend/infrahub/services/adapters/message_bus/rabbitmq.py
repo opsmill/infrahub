@@ -109,11 +109,13 @@ class RabbitMQMessageBus(InfrahubMessageBus):
             "event.*.*",
             "finalize.*.*",
             "git.*.*",
+            "migration.*.*",
             "refresh.webhook.*",
             "request.*.*",
             "send.*.*",
             "transform.*.*",
             "trigger.*.*",
+            "validator.*.*",
         ]
         self.delayed_exchange = await self.channel.declare_exchange(
             f"{config.SETTINGS.broker.namespace}.delayed", type="headers", durable=True

@@ -4,12 +4,11 @@ from typing import TYPE_CHECKING, Any, Dict, Sequence, Union
 
 from infrahub.core.constants import BranchSupportType
 from infrahub.core.query import Query, QueryType
-from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema
+from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema  # noqa: TCH001
 
 from .shared import UserMigration
 
 if TYPE_CHECKING:
-    from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema
     from infrahub.database import InfrahubDatabase
 
 
@@ -19,9 +18,9 @@ class NodeAttributeAddMigrationQuery01(Query):
 
     def __init__(
         self,
+        *args: Any,
         migration: NodeAttributeAddMigration,
-        *args,
-        **kwargs,
+        **kwargs: Any,
     ):
         self.migration = migration
 
@@ -41,7 +40,7 @@ class NodeAttributeAddMigrationQuery01(Query):
             self.params["attr_value"] = "NULL"
 
         if self.branch.is_default:
-            self.params["branch_support"] = self.migration.attribute_schema.branch.value
+            self.params["branch_support"] = self.migration.attribute_schema._branch.value
         else:
             self.params["branch_support"] = BranchSupportType.LOCAL.value
 
@@ -68,7 +67,7 @@ class NodeAttributeAddMigrationQuery01(Query):
         }
         WITH n1 as n, r1 as rb
         WHERE rb.status = "active"
-        MERGE (av:AttributeValue { type: $attr_type, value: $attr_type })
+        MERGE (av:AttributeValue { type: $attr_type, value: $attr_value })
         MERGE (is_protected_value:Boolean { value: $is_protected_default })
         MERGE (is_visible_value:Boolean { value: $is_visible_default })
         WITH n, av, is_protected_value, is_visible_value

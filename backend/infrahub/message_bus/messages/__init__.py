@@ -44,6 +44,7 @@ from .transform_python_data import TransformPythonData, TransformPythonDataRespo
 from .trigger_artifact_definition_generate import TriggerArtifactDefinitionGenerate
 from .trigger_proposed_change_cancel import TriggerProposedChangeCancel
 from .trigger_webhook_actions import TriggerWebhookActions
+from .validator_attribute_regex_update import ValidatorAttributeRegexUpdate, ValidatorAttributeRegexUpdateResponse
 
 MESSAGE_MAP: Dict[str, Type[InfrahubMessage]] = {
     "check.artifact.create": CheckArtifactCreate,
@@ -88,6 +89,7 @@ MESSAGE_MAP: Dict[str, Type[InfrahubMessage]] = {
     "trigger.artifact_definition.generate": TriggerArtifactDefinitionGenerate,
     "trigger.proposed_change.cancel": TriggerProposedChangeCancel,
     "trigger.webhook.actions": TriggerWebhookActions,
+    "validator.attribute.regex_update": ValidatorAttributeRegexUpdate,
 }
 
 RESPONSE_MAP: Dict[str, Type[InfrahubResponse]] = {
@@ -96,6 +98,7 @@ RESPONSE_MAP: Dict[str, Type[InfrahubResponse]] = {
     "git.diff.names_only": GitDiffNamesOnlyResponse,
     "git.file.get": GitFileGetResponse,
     "migration.node.attribute_add": MigrationNodeAttributeAddResponse,
+    "validator.attribute.regex_update": ValidatorAttributeRegexUpdateResponse,
 }
 
 

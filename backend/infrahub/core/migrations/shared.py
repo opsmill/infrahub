@@ -4,12 +4,11 @@ from typing import TYPE_CHECKING, List, Optional, Sequence, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from infrahub.core.query import Query
-from infrahub.core.timestamp import Timestamp
-from infrahub.database import InfrahubDatabase
-
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.query import Query
+    from infrahub.core.timestamp import Timestamp
+    from infrahub.database import InfrahubDatabase
 
 
 class MigrationResult(BaseModel):

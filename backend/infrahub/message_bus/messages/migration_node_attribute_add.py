@@ -4,8 +4,8 @@ from typing import List, Union
 
 from pydantic import Field
 
-from infrahub.core.branch import Branch
-from infrahub.core.schema import GenericSchema, NodeSchema
+from infrahub.core.branch import Branch  # noqa: TCH001
+from infrahub.core.schema import GenericSchema, NodeSchema  # noqa: TCH001
 from infrahub.message_bus import InfrahubMessage, InfrahubResponse, InfrahubResponseData
 
 ROUTING_KEY = "migration.node.attribute_add"

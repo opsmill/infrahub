@@ -106,9 +106,15 @@ async def test_rpc(db: InfrahubDatabase, default_branch, init_database, schema_a
     service = InfrahubServices(message_bus=bus_simulator, client=InfrahubClient(), database=db)
     bus_simulator.service = service
 
+    assert await count_nodes(db=db, label="TestCar") == 5
+    assert await count_nodes(db=db, label="Attribute") == 0
+
     await service.send(message=message)
     assert len(bus_simulator.replies) == 1
     response: MigrationNodeAttributeAddResponse = bus_simulator.replies[0]
     assert response.passed
     assert response.meta.correlation_id == correlation_id
     assert not response.data.errors
+
+    assert await count_nodes(db=db, label="TestCar") == 5
+    assert await count_nodes(db=db, label="Attribute") == 5

@@ -99,6 +99,11 @@ class MutationAction(InfrahubStringEnum):
     UNDEFINED = "undefined"
 
 
+class PathResourceType(InfrahubStringEnum):
+    DATA = "data"
+    FILE = "file"
+
+
 class PathType(InfrahubStringEnum):
     NODE = "node"
     ATTRIBUTE = "attribute"

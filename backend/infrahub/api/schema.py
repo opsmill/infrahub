@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+import asyncio
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
 from pydantic import BaseModel, Field, model_validator
 from starlette.responses import JSONResponse
 
@@ -22,6 +23,9 @@ from infrahub.worker import WORKER_IDENTITY
 
 if TYPE_CHECKING:
     from typing_extensions import Self
+
+    from infrahub.message_bus import InfrahubResponse
+    from infrahub.services import InfrahubServices
 
 
 log = get_logger()
@@ -125,13 +129,15 @@ async def get_schema_by_kind(
 
 
 @router.post("/load")
-async def load_schema(
+async def load_schema(  # pylint: disable=too-many-return-statements,too-many-branches,too-many-statements
+    request: Request,
     schemas: SchemasLoadAPI,
     background_tasks: BackgroundTasks,
     db: InfrahubDatabase = Depends(get_db),
     branch: Branch = Depends(get_branch_dep),
     _: str = Depends(get_current_user),
 ) -> JSONResponse:
+    service: InfrahubServices = request.app.state.service
     log.info("schema_load_request", branch=branch.name)
 
     errors: List[str] = []
@@ -165,9 +171,39 @@ async def load_schema(
         if not result.diff.all:
             return JSONResponse(status_code=202, content={})
 
-        # Check Constraints
-        # Reject change if
+        # ----------------------------------------------------------
+        # Validate if the new schema is valid with the content of the database
+        # ----------------------------------------------------------
+        tasks = []
+        for check in result.checks:
+            log.info(f"preparing check for {check.check_name!r} ({check.routing_key})", branch=branch.name)
+            message_class = messages.MESSAGE_MAP.get(check.routing_key, None)
+            response_class = messages.RESPONSE_MAP.get(check.routing_key, None)
 
+            if not message_class:
+                raise ValueError(f"Unable to find the message for {check.check_name!r} ({check.routing_key})")
+            if not response_class:
+                raise ValueError(f"Unable to find the response for {check.check_name!r} ({check.routing_key})")
+
+            message = message_class(
+                branch=branch, node_schema=candidate_schema.get(name=check.schema_name), attribute_name=check.field_name
+            )
+            tasks.append(service.message_bus.rpc(message=message, response_class=response_class))
+
+        responses: List[Type[InfrahubResponse]] = await asyncio.gather(*tasks)
+
+        error_messages = []
+        for response in responses:
+            for violation in response.data.violations:
+                error_messages.append(
+                    f"Node {violation.display_label} is not compatible with ADD NODE NAME ({violation.node_kind}: {violation.node_id})"
+                )
+        if error_messages:
+            return JSONResponse(status_code=422, content={"error": ",\n".join(error_messages)})
+
+        # ----------------------------------------------------------
+        # Update the schema
+        # ----------------------------------------------------------
         log.info("Schema has diff, will need to be updated", diff=result.diff.all, branch=branch.name)
         async with db.start_transaction() as dbt:
             await registry.schema.update_schema_branch(
@@ -176,6 +212,41 @@ async def load_schema(
             branch.update_schema_hash()
             log.info("Schema has been updated", branch=branch.name, hash=branch.schema_hash.main)
             await branch.save(db=dbt)
+
+        # ----------------------------------------------------------
+        # Run the migrations
+        # ----------------------------------------------------------
+        tasks = []
+        for migration in result.migrations:
+            log.info(
+                f"Preparing migration for {migration.migration_name!r} ({migration.routing_key})", branch=branch.name
+            )
+            message_class = messages.MESSAGE_MAP.get(migration.routing_key, None)
+            response_class = messages.RESPONSE_MAP.get(migration.routing_key, None)
+
+            if not message_class:
+                raise ValueError(
+                    f"Unable to find the message for {migration.migration_name!r} ({migration.routing_key})"
+                )
+            if not response_class:
+                raise ValueError(
+                    f"Unable to find the response for {migration.migration_name!r} ({migration.routing_key})"
+                )
+
+            message = message_class(
+                branch=branch,
+                node_schema=candidate_schema.get(name=migration.schema_name),
+                attribute_name=migration.field_name,
+            )
+            tasks.append(service.message_bus.rpc(message=message, response_class=response_class))
+
+            responses: List[Type[InfrahubResponse]] = await asyncio.gather(*tasks)
+
+        error_messages = []
+        for response in responses:
+            error_messages.extend(response.data.errors)
+        if error_messages:
+            return JSONResponse(status_code=500, content={"error": ",\n".join(error_messages)})
 
         if config.SETTINGS.broker.enable:
             message = messages.EventSchemaUpdate(
