@@ -638,6 +638,9 @@ query InternalAccountTokenBis {
       }
     }
   }
+  InfrahubTask(related_node__ids: ["${accountTokenId}"]) {
+    count
+  }
 }
 `;
 
@@ -1004,10 +1007,8 @@ query InternalAccountToken {
 `;
 
 export const accountTokenEditMocksQueryBis = `
-query getInternalAccountTokenBisDetailsAndPeers {
-  InternalAccountTokenBisDetailsAndPeers: InternalAccountTokenBis(
-    ids: ["${accountTokenId}"]
-  ) {
+query InternalAccountTokenBis {
+  InternalAccountTokenBis(ids: ["${accountTokenId}"]) {
     edges {
       node {
         id
@@ -1067,22 +1068,22 @@ query getInternalAccountTokenBisDetailsAndPeers {
             __typename
           }
           properties {
+            updated_at
             is_protected
+            is_visible
+            source {
+              id
+              display_label
+              __typename
+            }
             owner {
               id
               display_label
               __typename
             }
+            __typename
           }
         }
-      }
-    }
-  }
-  CoreAccount {
-    edges {
-      node {
-        id
-        display_label
       }
     }
   }
