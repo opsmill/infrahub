@@ -65,6 +65,17 @@ from infrahub.graphql import prepare_graphql_params
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.log import get_logger
 
+from .metrics import (
+    GRAPHQL_DURATION_METRICS,
+    GRAPHQL_QUERY_DEPTH_METRICS,
+    GRAPHQL_QUERY_ERRORS_METRICS,
+    GRAPHQL_QUERY_HEIGHT_METRICS,
+    GRAPHQL_QUERY_OBJECTS_METRICS,
+    GRAPHQL_QUERY_VARS_METRICS,
+    GRAPHQL_RESPONSE_SIZE_METRICS,
+    GRAPHQL_TOP_LEVEL_QUERIES_METRICS,
+)
+
 if TYPE_CHECKING:
     import graphene
     from graphql import GraphQLSchema
@@ -216,16 +227,25 @@ class InfrahubGraphQLApp:
                 "Processing IntrospectionQuery .. ", branch=branch.name, nbr_object_in_schema=nbr_object_in_schema
             )
 
-        result = await graphql(
-            schema=graphql_params.schema,
-            source=query,
-            context_value=graphql_params.context,
-            root_value=self.root_value,
-            middleware=self.middleware,
-            variable_values=variable_values,
-            operation_name=operation_name,
-            execution_context_class=self.execution_context_class,
-        )
+        labels = {
+            "type": "mutation" if analyzed_query.contains_mutation else "query",
+            "branch": branch.name,
+            "operation": operation_name if operation_name is not None else "",
+            "name": analyzed_query.operations[0].name,
+            "query_id": "",
+        }
+
+        with GRAPHQL_DURATION_METRICS.labels(**labels).time():
+            result = await graphql(
+                schema=graphql_params.schema,
+                source=query,
+                context_value=graphql_params.context,
+                root_value=self.root_value,
+                middleware=self.middleware,
+                variable_values=variable_values,
+                operation_name=operation_name,
+                execution_context_class=self.execution_context_class,
+            )
 
         response: Dict[str, Any] = {"data": result.data}
         if result.errors:
@@ -237,11 +257,26 @@ class InfrahubGraphQLApp:
                     )
             response["errors"] = [self.error_formatter(error) for error in result.errors]
 
-        return JSONResponse(
+        json_response = JSONResponse(
             response,
             status_code=200,
             background=graphql_params.context.background,
         )
+
+        GRAPHQL_RESPONSE_SIZE_METRICS.labels(**labels).observe(len(json_response.render(response)))
+        GRAPHQL_QUERY_DEPTH_METRICS.labels(**labels).observe(await analyzed_query.calculate_depth())
+        GRAPHQL_QUERY_HEIGHT_METRICS.labels(**labels).observe(await analyzed_query.calculate_height())
+        GRAPHQL_QUERY_VARS_METRICS.labels(**labels).observe(len(analyzed_query.variables))
+        GRAPHQL_TOP_LEVEL_QUERIES_METRICS.labels(**labels).observe(analyzed_query.nbr_queries)
+        GRAPHQL_QUERY_OBJECTS_METRICS.labels(**labels).observe(
+            len(await analyzed_query.get_models_in_use(types=graphql_params.context.types))
+        )
+
+        valid, errors = analyzed_query.is_valid
+        if not valid:
+            GRAPHQL_QUERY_ERRORS_METRICS.labels(**labels).observe(len(errors))
+
+        return json_response
 
     async def _run_websocket_server(self, db: InfrahubDatabase, branch: Branch, websocket: WebSocket) -> None:
         subscriptions: Dict[str, AsyncGenerator[Any, None]] = {}
