@@ -26,7 +26,6 @@ from infrahub.exceptions import Error
 from infrahub.graphql.api.endpoints import router as graphql_router
 from infrahub.lock import initialize_lock
 from infrahub.log import clear_log_context, get_logger, set_log_data
-from infrahub.message_bus import close_broker_connection
 from infrahub.message_bus.rpc import InfrahubRpcClient
 from infrahub.middleware import InfrahubCORSMiddleware
 from infrahub.services import InfrahubServices, services
@@ -74,7 +73,7 @@ async def app_initialization(application: FastAPI) -> None:
 
 
 async def shutdown(application: FastAPI) -> None:
-    await close_broker_connection()
+    await services.service.shutdown()
     await application.state.db.close()
 
 
