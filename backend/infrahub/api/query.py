@@ -56,14 +56,17 @@ async def execute_query(
 
     gql_params = prepare_graphql_params(db=db, branch=branch_params.branch, at=branch_params.at)
     analyzed_query = InfrahubGraphQLQueryAnalyzer(
-        query=gql_query.query.value, schema=gql_params.schema, branch=branch_params.branch
+        query=gql_query.query.value,  # type: ignore[attr-defined]
+        schema=gql_params.schema,
+        branch=branch_params.branch,
     )
 
     labels = {
         "type": "mutation" if analyzed_query.contains_mutation else "query",
         "branch": branch_params.branch.name,
         "operation": "",
-        "name": gql_query.name.value,
+        "name": gql_query.name.value,  # type: ignore[attr-defined]
+        "query_id": query_id,
     }
 
     with GRAPHQL_DURATION_METRICS.labels(**labels).time():

@@ -231,7 +231,8 @@ class InfrahubGraphQLApp:
             "type": "mutation" if analyzed_query.contains_mutation else "query",
             "branch": branch.name,
             "operation": operation_name if operation_name is not None else "",
-            "name": "",
+            "name": analyzed_query.operations[0].name,
+            "query_id": "",
         }
 
         with GRAPHQL_DURATION_METRICS.labels(**labels).time():
