@@ -47,7 +47,6 @@ export const Logs = (props: tLogsProps) => {
     },
   }));
 
-  console.log("rows: ", rows);
   return (
     <div className="">
       <Table columns={columns} rows={rows} />
