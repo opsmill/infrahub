@@ -20,6 +20,7 @@ from .git_repository_add import GitRepositoryAdd
 from .git_repository_merge import GitRepositoryMerge
 from .git_repository_read_only_add import GitRepositoryAddReadOnly
 from .git_repository_read_only_pull import GitRepositoryPullReadOnly
+from .migration_node_attribute_add import MigrationNodeAttributeAdd, MigrationNodeAttributeAddResponse
 from .refresh_registry_branches import RefreshRegistryBranches
 from .refresh_webhook_configuration import RefreshWebhookConfiguration
 from .request_artifact_generate import RequestArtifactGenerate
@@ -63,6 +64,7 @@ MESSAGE_MAP: Dict[str, Type[InfrahubMessage]] = {
     "git.repository.merge": GitRepositoryMerge,
     "git.repository.add_read_only": GitRepositoryAddReadOnly,
     "git.repository.pull_read_only": GitRepositoryPullReadOnly,
+    "migration.node.attribute_add": MigrationNodeAttributeAdd,
     "refresh.registry.branches": RefreshRegistryBranches,
     "refresh.webhook.configuration": RefreshWebhookConfiguration,
     "request.artifact.generate": RequestArtifactGenerate,
@@ -93,6 +95,7 @@ RESPONSE_MAP: Dict[str, Type[InfrahubResponse]] = {
     "transform.python.data": TransformPythonDataResponse,
     "git.diff.names_only": GitDiffNamesOnlyResponse,
     "git.file.get": GitFileGetResponse,
+    "migration.node.attribute_add": MigrationNodeAttributeAddResponse,
 }
 
 

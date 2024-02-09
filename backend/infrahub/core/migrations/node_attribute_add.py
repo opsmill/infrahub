@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, Sequence
+from typing import TYPE_CHECKING, Any, Dict, Sequence, Union
 
-from infrahub.core.constants import UUID_PLACEHOLDER, BranchSupportType
+from infrahub.core.constants import BranchSupportType
 from infrahub.core.query import Query, QueryType
+from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema
 
 from .shared import UserMigration
 
 if TYPE_CHECKING:
-    from infrahub.core.schema import AttributeSchema, NodeSchema
+    from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema
     from infrahub.database import InfrahubDatabase
 
 
@@ -23,8 +24,6 @@ class NodeAttributeAddMigrationQuery01(Query):
         **kwargs,
     ):
         self.migration = migration
-        self.node_schema = migration.node
-        self.attr_schema = migration.attribute
 
         super().__init__(*args, **kwargs)
 
@@ -32,18 +31,17 @@ class NodeAttributeAddMigrationQuery01(Query):
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
 
-        self.params["node_kind"] = self.node_schema.kind
-        self.params["attr_uuid"] = UUID_PLACEHOLDER
-        self.params["attr_name"] = self.attr_schema.name
-        self.params["attr_type"] = self.attr_schema.kind
+        self.params["node_kind"] = self.migration.node_schema.kind
+        self.params["attr_name"] = self.migration.attribute_schema.name
+        self.params["attr_type"] = self.migration.attribute_schema.kind
 
-        if self.attr_schema.default_value:
-            self.params["attr_value"] = self.attr_schema.default_value
+        if self.migration.attribute_schema.default_value:
+            self.params["attr_value"] = self.migration.attribute_schema.default_value
         else:
             self.params["attr_value"] = "NULL"
 
         if self.branch.is_default:
-            self.params["branch_support"] = self.attr_schema.branch.value
+            self.params["branch_support"] = self.migration.attribute_schema.branch.value
         else:
             self.params["branch_support"] = BranchSupportType.LOCAL.value
 
@@ -88,5 +86,9 @@ class NodeAttributeAddMigration(UserMigration):
     name: str = "name.attribute.add"
     queries: Sequence[type[Query]] = [NodeAttributeAddMigrationQuery01]
 
-    node: NodeSchema
-    attribute: AttributeSchema
+    node_schema: Union[NodeSchema, GenericSchema]
+    attribute_name: str
+
+    @property
+    def attribute_schema(self) -> AttributeSchema:
+        return self.node_schema.get_attribute(name=self.attribute_name)

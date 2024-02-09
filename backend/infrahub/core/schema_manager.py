@@ -97,8 +97,8 @@ class SchemaUpdateValidationError(BaseModel):
 
 
 class SchemaUpdateMigrationInfo(BaseModel):
-    schema_name: str
-    field_name: str
+    node_schema: Union[NodeSchema, GenericSchema]
+    field: Union[AttributeSchema, RelationshipSchema]
     field_type: Optional[str] = None
     prop_name: Optional[str] = None
     migration_name: str
@@ -223,17 +223,21 @@ class SchemaBranch:
 
                     for field_name, _ in node_field_diff.added.items():
                         if field_type == "attribute":
+                            schema = other.get(name=schema_name, duplicate=False)
                             result.migrations.append(
                                 SchemaUpdateMigrationInfo(
-                                    schema_name=schema_name, field_name=field_name, migration_name="node.attribute.add"
+                                    node_schema=schema,
+                                    field=schema.get_field(name=field_name),
+                                    migration_name="node.attribute.add",
                                 )
                             )
 
                     for field_name, _ in node_field_diff.removed.items():
+                        schema = self.get(name=schema_name, duplicate=False)
                         result.migrations.append(
                             SchemaUpdateMigrationInfo(
-                                schema_name=schema_name,
-                                field_name=field_name,
+                                node_schema=schema,
+                                field=schema.get_field(name=field_name),
                                 migration_name=f"node.{field_type}.remove",
                             )
                         )
@@ -288,10 +292,11 @@ class SchemaBranch:
             )
         elif field_update == UpdateSupport.MIGRATION_REQUIRED.value:
             migration_name = f"{field_type}.{prop_name}.update"
+            schema = self.get(name=schema_name, duplicate=False)
             result.migrations.append(
                 SchemaUpdateMigrationInfo(
-                    schema_name=schema_name,
-                    field_name=field_name,
+                    node_schema=schema,
+                    field=schema.get_field(name=field_name),
                     field_type=field_type,
                     prop_name=prop_name,
                     migration_name=migration_name,

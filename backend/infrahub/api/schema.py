@@ -162,21 +162,26 @@ async def load_schema(
                 status_code=422, content={"error": ", ".join([error.to_string() for error in result.errors])}
             )
 
-        if result.diff.all:
-            log.info("Schema has diff, will need to be updated", diff=result.diff.all, branch=branch.name)
-            async with db.start_transaction() as db:
-                await registry.schema.update_schema_branch(
-                    schema=candidate_schema, db=db, branch=branch.name, limit=result.diff.all, update_db=True
-                )
-                branch.update_schema_hash()
-                log.info("Schema has been updated", branch=branch.name, hash=branch.schema_hash.main)
-                await branch.save(db=db)
+        if not result.diff.all:
+            return JSONResponse(status_code=202, content={})
 
-            if config.SETTINGS.broker.enable:
-                message = messages.EventSchemaUpdate(
-                    branch=branch.name,
-                    meta=Meta(initiator_id=WORKER_IDENTITY),
-                )
-                background_tasks.add_task(services.send, message)
+        # Check Constraints
+        # Reject change if
+
+        log.info("Schema has diff, will need to be updated", diff=result.diff.all, branch=branch.name)
+        async with db.start_transaction() as dbt:
+            await registry.schema.update_schema_branch(
+                schema=candidate_schema, db=dbt, branch=branch.name, limit=result.diff.all, update_db=True
+            )
+            branch.update_schema_hash()
+            log.info("Schema has been updated", branch=branch.name, hash=branch.schema_hash.main)
+            await branch.save(db=dbt)
+
+        if config.SETTINGS.broker.enable:
+            message = messages.EventSchemaUpdate(
+                branch=branch.name,
+                meta=Meta(initiator_id=WORKER_IDENTITY),
+            )
+            background_tasks.add_task(services.send, message)
 
     return JSONResponse(status_code=202, content={})
