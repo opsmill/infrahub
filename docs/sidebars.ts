@@ -57,6 +57,7 @@ const sidebars: SidebarsConfig = {
         'topics/architecture',
         'topics/artifact',
         'topics/check',
+	'topics/hardware-requirements',
         'topics/local-demo-environment',
         'topics/graphql',
         'topics/object-storage',
