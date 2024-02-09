@@ -8,8 +8,8 @@ from pytest import Config, Item, Session, TestReport
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.timestamp import Timestamp
 
-OUTCOME_TO_CONCLUSION_MAP = {"passed": "success", "failed": "failure", "skipped": "unknown"}
-OUTCOME_TO_SEVERITY_MAP = {"passed": "info", "failed": "critical", "skipped": "warning"}
+OUTCOME_TO_CONCLUSION_MAP = {"passed": "success", "failed": "failure", "skipped": "failure"}
+OUTCOME_TO_SEVERITY_MAP = {"passed": "success", "failed": "error", "skipped": "warning"}
 
 
 class InfrahubBackendPlugin:
@@ -80,6 +80,7 @@ class InfrahubBackendPlugin:
         if check:
             check.message.value = ""
             check.conclusion.value = "unknown"
+            check.severity.value = "info"
             check.created_at.value = Timestamp().to_string()
         else:
             check = self.client.create(
