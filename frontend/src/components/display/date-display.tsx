@@ -7,7 +7,7 @@ type DateDisplayProps = {
 };
 
 export const getDateDisplay = (date?: number | string | Date) =>
-  format(date ? new Date(date) : new Date(), "yyyy-MM-dd HH:mm (O)");
+  format(date ? new Date(date) : new Date(), "yyyy-MM-dd HH:mm:ss (O)");
 
 export const DateDisplay = (props: DateDisplayProps) => {
   const { date, hideDefault } = props;

@@ -58,7 +58,8 @@ export const Homepage = () => {
       <div className="bg-white flex flex-col pt-8">
         <h1 className="text-xl font-semibold">Infrahub Integrations</h1>
         <h2 className="text-l">
-          Integrate Infrahub with other tools and solutions. Below is a list of OpsMill-maintained packages.
+          Integrate Infrahub with other tools and solutions. Below is a list of OpsMill-maintained
+          packages.
         </h2>
       </div>
 

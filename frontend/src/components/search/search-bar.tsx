@@ -49,25 +49,23 @@ export const SearchInput = (props: tSearchInput) => {
   };
 
   return (
-    <div className="flex flex-1 items-center justify-center relative">
-      <div
-        className={classNames(
-          "flex flex-1 items-center justify-center relative max-w-[600px] z-20",
-          containerClassName
-        )}>
-        <Input
-          value={search}
-          onChange={handleChange}
-          data-testid={testId}
-          className={classNames("py-2 pl-10 placeholder-gray-500", className)}
-          placeholder={placeholder}
-          onFocus={handleFocus}
-        />
+    <div
+      className={classNames(
+        "flex flex-1 items-center relative max-w-[600px] z-20",
+        containerClassName
+      )}>
+      <Input
+        value={search}
+        onChange={handleChange}
+        data-testid={testId}
+        className={classNames("py-2 pl-10 placeholder-gray-500", className)}
+        placeholder={placeholder}
+        onFocus={handleFocus}
+      />
 
-        {loading && <LoadingScreen hideText size={20} className="absolute left-4" />}
+      {loading && <LoadingScreen hideText size={20} className="absolute left-4" />}
 
-        {!loading && <Icon icon={"mdi:magnify"} className="absolute left-4 text-custom-blue-10" />}
-      </div>
+      {!loading && <Icon icon={"mdi:magnify"} className="absolute left-4 text-custom-blue-10" />}
     </div>
   );
 };
@@ -143,7 +141,9 @@ export const SearchBar = () => {
         <Background onClick={handleClick} className="bg-transparent" />
       </Transition>
 
-      <SearchInput loading={isLoading} onChange={handleChange} />
+      <div className="flex flex-1 justify-center">
+        <SearchInput loading={isLoading} onChange={handleChange} />
+      </div>
 
       <Transition show={isOpen}>
         <PopOver

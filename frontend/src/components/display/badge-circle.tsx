@@ -99,6 +99,9 @@ export const BadgeCircle = (props: tBadgeCircleProps) => {
   const customCircleClassName = getCircleClasseName(type, onClick || onDelete);
 
   const handleClick = (event: any) => {
+    // Do not block click if there is no onClick
+    if (!onClick) return;
+
     event.stopPropagation();
     event.preventDefault();
 

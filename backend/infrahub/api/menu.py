@@ -112,6 +112,7 @@ async def get_menu(
             InterfaceMenu(
                 title="Check Definition", path=f"/objects/{InfrahubKind.CHECKDEFINITION}", icon="mdi:check-all"
             ),
+            InterfaceMenu(title="Tasks", path="/tasks", icon="mdi:shield-check"),
         ],
     )
     deployment = InterfaceMenu(

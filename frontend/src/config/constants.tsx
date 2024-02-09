@@ -46,6 +46,8 @@ export const SCHEMA_ENUM_REMOVE = "SchemaEnumRemove";
 
 export const GROUP_OBJECT = "CoreGroup";
 
+export const TASK_OBJECT = "InfrahubTask";
+
 export const WRITE_ROLES = ["admin", "read-write"];
 
 export const ADMIN_ROLES = ["admin"];
@@ -125,6 +127,7 @@ export const attributesKindForListView = [
   "Bandwidth",
   "IPHost",
   "IPNetwork",
+  "DateTime",
 ];
 
 export const attributesKindForDetailsViewExclude = ["HashedPassword"];
