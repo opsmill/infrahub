@@ -10,6 +10,9 @@ export const getCheckDetails = Handlebars.compile(`
         name {
           value
         }
+        message {
+          value
+        }
         severity {
           value
         }
