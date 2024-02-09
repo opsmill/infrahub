@@ -106,7 +106,6 @@ export const TaskItemDetails = () => {
       );
     });
 
-  // const count = object.logs.count;
   const count = logs.length;
 
   return (
