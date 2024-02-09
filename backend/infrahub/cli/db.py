@@ -15,7 +15,7 @@ from infrahub.database import InfrahubDatabase, get_db
 from infrahub.database.constants import DatabaseType
 from infrahub.log import get_logger
 
-from .transfer.neo4j.backup_runner import Neo4jBackupRunner
+from .transfer.neo4j.backup_runner import Neo4jBackupRunner, Neo4jRestoreRunner
 
 app = typer.Typer()
 
@@ -154,6 +154,13 @@ def migrate(
 @app.command()
 def backup(
     backup_directory: str = typer.Argument(default="infrahub-backups", help="Where to save the backup files"),
+    database_url: str = typer.Option(default=None, help="URL of database, null implies a local database container"),
+    database_backup_port: int = typer.Option(
+        default=6362, help="Port that the database is listening on for backup commands"
+    ),
+    aggregate_incremental_backups: bool = typer.Option(
+        default=True, help="Combine any existing incremental backups into one full backup per database"
+    ),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
     """Export the entire database"""
@@ -163,10 +170,16 @@ def backup(
     if config.SETTINGS.database.db_type == DatabaseType.MEMGRAPH:
         ...
     else:
-        driver = aiorun(get_db(retry=1))
-        db = InfrahubDatabase(driver=driver)
-        backup_runner = Neo4jBackupRunner(db=db)
-        aiorun(backup_runner.backup(backup_path))
+        aiorun(neo4j_backup_async(backup_path, database_url, database_backup_port, aggregate_incremental_backups))
+
+
+async def neo4j_backup_async(
+    backup_path: Path, database_ip_address: str, database_backup_port: int, aggregate_incremental_backups: bool
+) -> None:
+    backup_runner = Neo4jBackupRunner()
+    await backup_runner.backup(
+        backup_path, database_ip_address, database_backup_port, do_aggregate_backups=aggregate_incremental_backups
+    )
 
 
 @app.command()
@@ -183,7 +196,14 @@ def restore(
     if config.SETTINGS.database.db_type == DatabaseType.MEMGRAPH:
         ...
     else:
-        driver = aiorun(get_db(retry=1))
-        db = InfrahubDatabase(driver=driver)
-        backup_runner = Neo4jBackupRunner(db=db)
-        aiorun(backup_runner.restore(backup_path))
+        aiorun(neo4j_restore_async(backup_path))
+
+
+async def neo4j_restore_async(
+    backup_path: Path,
+) -> None:
+    driver = await get_db(retry=1)
+    db = InfrahubDatabase(driver=driver)
+    backup_runner = Neo4jRestoreRunner(db=db)
+    await backup_runner.restore(backup_path)
+    await driver.close()
