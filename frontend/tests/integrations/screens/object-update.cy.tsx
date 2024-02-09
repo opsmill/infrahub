@@ -207,7 +207,7 @@ describe("Object details", () => {
     cy.wait("@mutate");
 
     // Verify that the data is refetched
-    cy.get(":nth-child(2) > div.flex > .mt-1").should("have.text", deviceDetailsNewName);
+    cy.contains("Name" + deviceDetailsNewName).should("be.visible");
   });
 
   it("should fetch the object details, open the edit form and update the account token date", function () {
