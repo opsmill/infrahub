@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from infrahub_sdk.client import Config as InfrahubClientConfig
 from infrahub_sdk.client import InfrahubClientSync
@@ -23,10 +23,10 @@ class InfrahubBackendPlugin:
         self.validator: InfrahubNodeSync
         self.checks: Dict[str, InfrahubNodeSync] = {}
 
-    def get_repository_validator(self) -> InfrahubNodeSync:
+    def get_repository_validator(self) -> Tuple[InfrahubNodeSync, bool]:
         """Return the existing RepositoryValidator for the ProposedChange or create a new one."""
-        validator = None
         validator_name = "Repository Tests Validator"
+
         for relationship in self.proposed_change.validations.peers:
             existing_validator = relationship.peer
 
@@ -35,20 +35,15 @@ class InfrahubBackendPlugin:
                 and existing_validator.repository.id == self.repository_id
                 and existing_validator.label.value == validator_name
             ):
-                validator = existing_validator
+                return existing_validator, False
 
-        if not validator:
-            validator = self.client.create(
-                kind=InfrahubKind.REPOSITORYVALIDATOR,
-                data={
-                    "label": validator_name,
-                    "proposed_change": self.proposed_change,
-                    "repository": self.repository_id,
-                },
-            )
-            validator.save()
+        validator = self.client.create(
+            kind=InfrahubKind.REPOSITORYVALIDATOR,
+            data={"label": validator_name, "proposed_change": self.proposed_change, "repository": self.repository_id},
+        )
+        validator.save()
 
-        return validator
+        return validator, True
 
     def pytest_collection_modifyitems(self, session: Session, config: Config, items: List[Item]) -> None:  # pylint: disable=unused-argument
         """This function is called after item collection and gives the opportunity to work on the collection before sending the items for testing."""
@@ -60,12 +55,12 @@ class InfrahubBackendPlugin:
         self.proposed_change = self.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=self.proposed_change_id)
         self.proposed_change.validations.fetch()
 
-        self.validator = self.get_repository_validator()
-        # FIXME: https://github.com/opsmill/infrahub/issues/2184
-        # self.validator.checks.fetch()
-        # for peer in self.validator.checks.peers:
-        #     check = peer.peer
-        #     self.checks[check.origin.value] = check
+        self.validator, is_new_validator = self.get_repository_validator()
+        # Workaround for https://github.com/opsmill/infrahub/issues/2184
+        if not is_new_validator:
+            self.validator.checks.fetch()
+            for check in self.validator.checks.peers:
+                self.checks[check.peer.origin.value] = check.peer
 
     def pytest_runtestloop(self, session: Session) -> Optional[object]:  # pylint: disable=unused-argument,useless-return
         """This function is called when the test loop is being run."""
