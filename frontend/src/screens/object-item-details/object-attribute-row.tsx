@@ -1,10 +1,10 @@
 import { ReactElement } from "react";
 
-type AttributeRowProps = {
+type ObjectAttributeRowProps = {
   name: string;
   value: string | ReactElement;
 };
-export const ObjectAttributeRow = ({ name, value }: AttributeRowProps) => {
+export const ObjectAttributeRow = ({ name, value }: ObjectAttributeRowProps) => {
   return (
     <div className="p-2 grid grid-cols-3 gap-4 text-xs">
       <dt className="font-medium text-gray-500 flex items-center h-8">{name}</dt>
