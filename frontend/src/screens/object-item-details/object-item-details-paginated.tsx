@@ -21,6 +21,7 @@ import {
   ARTIFACT_DEFINITION_OBJECT,
   DEFAULT_BRANCH_NAME,
   MENU_EXCLUDELIST,
+  TASK_OBJECT,
 } from "../../config/constants";
 import { QSP } from "../../config/qsp";
 import { AuthContext } from "../../decorators/withAuth";
@@ -95,6 +96,7 @@ export default function ObjectItemDetails(props: any) {
   const queryString = schemaData
     ? getObjectDetailsPaginated({
         kind: schemaData.kind,
+        taskKind: TASK_OBJECT,
         columns,
         relationshipsTabs,
         objectid,
@@ -140,6 +142,11 @@ export default function ObjectItemDetails(props: any) {
       name: schemaData?.label,
     },
     ...getObjectTabs(relationshipsTabs, objectDetailsData),
+    {
+      label: "Tasks",
+      name: "tasks",
+      count: data[TASK_OBJECT]?.count ?? 0,
+    },
   ];
 
   if (!objectDetailsData) {
@@ -319,13 +326,15 @@ export default function ObjectItemDetails(props: any) {
         </div>
       )}
 
-      {qspTab && (
+      {qspTab && qspTab !== "tasks" && (
         <RelationshipsDetails
           parentNode={objectDetailsData}
           parentSchema={schemaData}
           refetchObjectDetails={refetch}
         />
       )}
+
+      {qspTab && qspTab === "tasks" && <div>ok</div>}
 
       <SlideOver
         title={

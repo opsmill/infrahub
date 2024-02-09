@@ -1,9 +1,7 @@
 import { gql } from "@apollo/client";
 import { TASK_OBJECT } from "../../config/constants";
 import useQuery from "../../hooks/useQuery";
-import { useTitle } from "../../hooks/useTitle";
 
-import { ChevronRightIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { BADGE_TYPES, Badge } from "../../components/display/badge";
@@ -12,9 +10,7 @@ import { DurationDisplay } from "../../components/display/duration-display";
 import { SearchInput } from "../../components/search/search-bar";
 import { List } from "../../components/table/list";
 import { Id } from "../../components/utils/id";
-import { Link } from "../../components/utils/link";
 import { getTaskItemDetails } from "../../graphql/queries/tasks/getTasksItemDetails";
-import { constructPath } from "../../utils/fetch";
 import ErrorScreen from "../error-screen/error-screen";
 import LoadingScreen from "../loading-screen/loading-screen";
 import { Logs, tLog } from "./logs";
@@ -26,8 +22,6 @@ export const getConclusionBadge: { [key: string]: any } = {
 };
 
 export const TaskItemDetails = () => {
-  useTitle("Task details");
-
   const [search, setSearch] = useState("");
 
   const { task } = useParams();
@@ -111,18 +105,6 @@ export const TaskItemDetails = () => {
   return (
     <div className=" flex-1 flex flex-col">
       <div className="bg-custom-white">
-        <div className="flex items-center p-4 w-full">
-          <Link to={constructPath("/tasks")}>
-            <h1 className="text-md font-semibold text-gray-900 mr-2">Task Details</h1>
-          </Link>
-
-          <ChevronRightIcon
-            className="w-4 h-4 mt-1 mx-2 flex-shrink-0 text-gray-400"
-            aria-hidden="true"
-          />
-          <p className="max-w-2xl  text-gray-500">{object.title}</p>
-        </div>
-
         <List columns={columns} row={row} />
       </div>
 
@@ -131,7 +113,7 @@ export const TaskItemDetails = () => {
           <h2 className="flex-1 font-semibold text-gray-900 m-2 ml-0">Task Logs ({count})</h2>
 
           <div className="flex flex-1 justify-end">
-            <SearchInput onChange={setSearch} placeholder="Search logs from title or message" />
+            <SearchInput onChange={setSearch} placeholder="Search logs from message or severity" />
           </div>
         </div>
 

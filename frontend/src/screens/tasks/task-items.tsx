@@ -3,7 +3,6 @@ import { Table } from "../../components/table/table";
 import { Pagination } from "../../components/utils/pagination";
 import { TASK_OBJECT } from "../../config/constants";
 import useQuery from "../../hooks/useQuery";
-import { useTitle } from "../../hooks/useTitle";
 
 import { DateDisplay } from "../../components/display/date-display";
 import { DurationDisplay } from "../../components/display/duration-display";
@@ -15,8 +14,6 @@ import LoadingScreen from "../loading-screen/loading-screen";
 import { getConclusionBadge } from "./task-item-details";
 
 export const TaskItems = () => {
-  useTitle("Task Overview");
-
   const queryString = getTasksItems({
     kind: TASK_OBJECT,
   });
@@ -77,14 +74,6 @@ export const TaskItems = () => {
 
   return (
     <div className="bg-custom-white flex-1 flex flex-col">
-      <div className="flex items-center p-4 w-full">
-        <div className="sm:flex-auto flex items-center">
-          <h1 className="text-md font-semibold text-gray-900 mr-2">Task Overview ({count})</h1>
-
-          <div className="text-sm"></div>
-        </div>
-      </div>
-
       {loading && !rows && <LoadingScreen />}
 
       {rows && (
