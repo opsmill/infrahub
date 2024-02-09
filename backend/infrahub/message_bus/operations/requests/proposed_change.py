@@ -309,7 +309,7 @@ query GatherGraphQLQuerySubscribers($members: [ID!]) {
 
 
 async def run_tests(message: messages.RequestProposedChangeRunTests, service: InfrahubServices) -> None:
-    log.info(f"Running tests for proposed_change={message.proposed_change}")
+    log.info("running_repository_tests", proposed_change=message.proposed_change)
     proposed_change = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=message.proposed_change)
     repositories = await service.client.all(
         kind=InfrahubKind.GENERICREPOSITORY, branch=proposed_change.source_branch.value
@@ -343,7 +343,10 @@ async def run_tests(message: messages.RequestProposedChangeRunTests, service: In
 
         return_code = await asyncio.to_thread(_execute, worktree_directory, repository, proposed_change)
         log.info(
-            f"Tests for proposed_change={message.proposed_change} and repository={repository.name.value} ended with return code {return_code}"
+            "repository_tests_completed",
+            proposed_change=message.proposed_change,
+            repository=repository.name.value,
+            return_code=return_code,
         )
 
 

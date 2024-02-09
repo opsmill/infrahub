@@ -17,15 +17,14 @@ class InfrahubBackendPlugin:
         self.client = InfrahubClientSync(config=config)
 
         self.repository_id = repository_id
-        self.proposed_change = self.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=proposed_change_id)
+        self.proposed_change_id = proposed_change_id
 
-        self.validator: InfrahubNodeSync = None
+        self.proposed_change: InfrahubNodeSync
+        self.validator: InfrahubNodeSync
         self.checks: Dict[str, InfrahubNodeSync] = {}
 
     def get_repository_validator(self) -> InfrahubNodeSync:
         """Return the existing RepositoryValidator for the ProposedChange or create a new one."""
-        self.proposed_change.validations.fetch()
-
         validator = None
         validator_name = "Repository Tests Validator"
         for relationship in self.proposed_change.validations.peers:
@@ -53,13 +52,22 @@ class InfrahubBackendPlugin:
 
     def pytest_collection_modifyitems(self, session: Session, config: Config, items: List[Item]) -> None:  # pylint: disable=unused-argument
         """This function is called after item collection and gives the opportunity to work on the collection before sending the items for testing."""
-        # FIXME: Does this really belongs here?
-        # FIXME: Fetch checks if the validator already has some
-        self.validator = self.get_repository_validator()
         # TODO: Filter tests according to what's been requested
         # TODO: Re-order tests: sanity -> unit -> integration
 
-    def pytest_runtestloop(self, session: Session) -> Optional[object]:  # pylint: disable=unused-argument
+    def pytest_collection_finish(self, session: Session) -> None:  # pylint: disable=unused-argument
+        """This function is called when tests have been collected and modified, meaning they are ready to be run."""
+        self.proposed_change = self.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=self.proposed_change_id)
+        self.proposed_change.validations.fetch()
+
+        self.validator = self.get_repository_validator()
+        # FIXME: https://github.com/opsmill/infrahub/issues/2184
+        # self.validator.checks.fetch()
+        # for peer in self.validator.checks.peers:
+        #     check = peer.peer
+        #     self.checks[check.origin.value] = check
+
+    def pytest_runtestloop(self, session: Session) -> Optional[object]:  # pylint: disable=unused-argument,useless-return
         """This function is called when the test loop is being run."""
         self.validator.conclusion.value = "unknown"
         self.validator.state.value = "in_progress"
@@ -76,14 +84,14 @@ class InfrahubBackendPlugin:
         check = self.checks.get(item.nodeid, None)
         if check:
             check.message.value = ""
-            check.conclusion.value = ""
+            check.conclusion.value = "unknown"
             check.created_at.value = Timestamp().to_string()
         else:
             check = self.client.create(
                 kind=InfrahubKind.STANDARDCHECK,
                 data={
                     "name": item.name,
-                    "origin": self.repository.id,
+                    "origin": item.nodeid,
                     "kind": "TestReport",
                     "validator": self.validator.id,
                     "created_at": Timestamp().to_string(),
