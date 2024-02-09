@@ -33,7 +33,7 @@ export const Table = (props: tTableProps) => {
       <table className="table-auto border-spacing-0 w-full border border-gray-300 rounded-md">
         <thead className="bg-gray-50 text-left border-b border-gray-300 rounded-md">
           <tr>
-            {columns?.map((column) => (
+            {columns.map((column) => (
               <th key={column.name} scope="col" className="p-2 text-xs font-semibold text-gray-900">
                 {column.label}
               </th>
@@ -43,7 +43,7 @@ export const Table = (props: tTableProps) => {
         </thead>
 
         <tbody className="bg-custom-white text-left">
-          {rows?.map((row: any, index: number) => (
+          {rows.map((row, index: number) => (
             <tr
               key={index}
               className={classNames(
@@ -51,7 +51,7 @@ export const Table = (props: tTableProps) => {
                 row.link ? "hover:bg-gray-50 cursor-pointer" : ""
               )}
               data-cy="object-table-row">
-              {columns?.map((column, index) => (
+              {columns.map((column, index) => (
                 <td key={index} className="p-0">
                   {row.link && (
                     <Link
