@@ -6,6 +6,7 @@ import useQuery from "../../hooks/useQuery";
 import { useTitle } from "../../hooks/useTitle";
 
 import { DateDisplay } from "../../components/display/date-display";
+import { DurationDisplay } from "../../components/display/duration-display";
 import { Id } from "../../components/utils/id";
 import { getTasksItems } from "../../graphql/queries/tasks/getTasksItems";
 import { constructPath } from "../../utils/fetch";
@@ -69,7 +70,7 @@ export const TaskItems = () => {
       related_node: (
         <Id id={edge.node.related_node} kind={edge.node.related_node_kind} preventCopy />
       ),
-      duration: <DateDisplay date={edge.node.created_at} endDate={edge.node.updated_at} />,
+      duration: <DurationDisplay date={edge.node.created_at} endDate={edge.node.updated_at} />,
       updated_at: <DateDisplay date={edge.node.updated_at} />,
     },
   }));

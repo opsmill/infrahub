@@ -8,6 +8,7 @@ import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { BADGE_TYPES, Badge } from "../../components/display/badge";
 import { DateDisplay } from "../../components/display/date-display";
+import { DurationDisplay } from "../../components/display/duration-display";
 import { SearchInput } from "../../components/search/search-bar";
 import { List } from "../../components/table/list";
 import { Id } from "../../components/utils/id";
@@ -90,7 +91,7 @@ export const TaskItemDetails = () => {
       conclusion: getConclusionBadge[object.conclusion],
       related_node: <Id id={object.related_node} kind={object.related_node_kind} preventCopy />,
       related_node_kind: object.related_node_kind,
-      duration: <DateDisplay date={object.created_at} endDate={object.updated_at} />,
+      duration: <DurationDisplay date={object.created_at} endDate={object.updated_at} />,
       updated_at: <DateDisplay date={object.updated_at} />,
     },
   };
