@@ -126,8 +126,6 @@ export const TaskItemDetails = () => {
           </div>
         </div>
 
-        {loading && !result && <LoadingScreen />}
-
         <List columns={columns} row={row} />
       </div>
 
