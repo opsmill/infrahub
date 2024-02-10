@@ -150,28 +150,20 @@ task-tags = [
 preview = true
 
 select = [
-    # mccabe complexity
-    "C90",
-    # pycodestyle errors
-    "E",
-    # pycodestyle warnings
-    "W",
-    # pyflakes
-    "F",
-    # isort-like checks
-    "I",
-    # flake8-datetimez
-    "DTZ",
-    # flake8-import-conventions
-    "ICN",
-    # flake8-type-checking
-    "TCH",
-    # flake8-debugger
-    "T10",
-    # flake8-quotes
-    "Q",
-    # flake8-2020
-    "YTT",
+    "C90",  # mccabe complexity
+    "DJ",   # flake8-django
+    "DTZ",  # flake8-datetimez
+    "E",    # pycodestyle errors
+    "EXE",  # flake8-executable
+    "F",    # pyflakes
+    "I",    # isort-like checks
+    "ICN",  # flake8-import-conventions
+    "TCH",  # flake8-type-checking
+    "Q",    # flake8-quotes
+    "TRIO", # flake8-trio
+    "T10",  # flake8-debugger
+    "W",    # pycodestyle warnings
+    "YTT",  # flake8-2020
 ]
 
 #https://docs.astral.sh/ruff/formatter/black/
@@ -189,7 +181,7 @@ max-line-length = 150
 
 [tool.ruff.mccabe]
 # Target max-complexity=10
-max-complexity = 31
+max-complexity = 17
 
 [tool.ruff.per-file-ignores]
 
