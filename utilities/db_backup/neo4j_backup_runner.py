@@ -279,7 +279,6 @@ class Neo4jRestoreRunner(Neo4jBackupRestoreBase):
         finally:
             with self._print_task_status(f"Restarting '{database_name}' database...", "started"):
                 database_command = f"START DATABASE {database_name}"
-                breakpoint()
                 self._execute_cypher_command(helper_container, database_container, local_scripts_dir, database_command)
 
     def _restore_one_database(
