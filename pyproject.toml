@@ -73,7 +73,6 @@ docker = "^7.0.0"
 infrahub = "infrahub.cli:app"
 infrahub-git-credential = "infrahub.git_credential.helper:app"
 infrahub-git-askpass = "infrahub.git_credential.askpass:app"
-docker = "^7.0.0"
 
 [tool.coverage.run]
 branch = true
