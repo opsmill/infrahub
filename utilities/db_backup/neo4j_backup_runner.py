@@ -219,6 +219,7 @@ class Neo4jRestoreRunner(Neo4jBackupRestoreBase):
         database_container: Container,
         local_scripts_dir: Path,
         command: str,
+        against_database: str = "system",
     ) -> None:
         environment = {"NEO4J_USERNAME": self.database_username, "NEO4J_PASSWORD": self.database_password}
         with NamedTemporaryFile(dir=local_scripts_dir) as script_file:
@@ -226,7 +227,7 @@ class Neo4jRestoreRunner(Neo4jBackupRestoreBase):
             script_file.seek(0)
             script_path = Path(script_file.name)
             cypher_command = f"cat {self.container_scripts_dir}/{script_path.name} | bin/cypher-shell"
-            cypher_command += f" -a {database_container.name}:{self.database_cypher_port}"
+            cypher_command += f" -a {database_container.name}:{self.database_cypher_port} -d {against_database}"
             full_command = ["sh", "-c", cypher_command]
             self._execute_docker_container_command(
                 execution_container, full_command, environment=environment, display_error=False, continue_on_error=True
@@ -278,6 +279,7 @@ class Neo4jRestoreRunner(Neo4jBackupRestoreBase):
         finally:
             with self._print_task_status(f"Restarting '{database_name}' database...", "started"):
                 database_command = f"START DATABASE {database_name}"
+                breakpoint()
                 self._execute_cypher_command(helper_container, database_container, local_scripts_dir, database_command)
 
     def _restore_one_database(

@@ -1,7 +1,6 @@
 import importlib
 import logging
 from asyncio import run as aiorun
-from pathlib import Path
 
 import typer
 from rich.logging import RichHandler
@@ -12,10 +11,7 @@ from infrahub.core.graph.migrations import get_migrations
 from infrahub.core.initialization import first_time_initialization, get_root_node, initialization
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase, get_db
-from infrahub.database.constants import DatabaseType
 from infrahub.log import get_logger
-
-from .transfer.neo4j.backup_runner import Neo4jBackupRunner, Neo4jRestoreRunner
 
 app = typer.Typer()
 
@@ -149,54 +145,3 @@ def migrate(
     config.load_and_exit(config_file_name=config_file)
 
     aiorun(_migrate(check=check))
-
-
-@app.command()
-def backup(
-    backup_directory: str = typer.Argument(default="infrahub-backups", help="Where to save the backup files"),
-    database_url: str = typer.Option(default=None, help="URL of database, null implies a local database container"),
-    database_backup_port: int = typer.Option(
-        default=6362, help="Port that the database is listening on for backup commands"
-    ),
-    aggregate_incremental_backups: bool = typer.Option(
-        default=True, help="Combine any existing incremental backups into one full backup per database"
-    ),
-    quiet: bool = typer.Option(default=False, help="Whether to output status messages to terminal"),
-    keep_helper_container: bool = typer.Option(default=False, help="Keep docker container used to run backup"),
-    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
-) -> None:
-    """Export the entire database"""
-    config.load_and_exit(config_file_name=config_file)
-    backup_path = Path(backup_directory)
-    log = logging.getLogger("infrahub")
-
-    if config.SETTINGS.database.db_type == DatabaseType.MEMGRAPH:
-        log.error("Database backup is not yet supported for memgraph")
-        return
-    backup_runner = Neo4jBackupRunner(be_quiet=quiet, keep_helper_container=keep_helper_container)
-    backup_runner.backup(backup_path, database_url, database_backup_port, aggregate_incremental_backups)
-
-
-@app.command()
-def restore(
-    backup_directory: str = typer.Argument(
-        default="infrahub-backups", help="Directory where the backup files are saved"
-    ),
-    database_cypher_port: int = typer.Option(
-        default=7687, help="Port that the Infrahub database container uses for cypher connections"
-    ),
-    keep_helper_container: bool = typer.Option(default=False, help="Keep docker container used to run backup"),
-    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
-) -> None:
-    """Restore the database"""
-    config.load_and_exit(config_file_name=config_file)
-    backup_path = Path(backup_directory)
-    log = logging.getLogger("infrahub")
-
-    if config.SETTINGS.database.db_type == DatabaseType.MEMGRAPH:
-        log.error("Database restore is not yet supported for memgraph")
-        return
-    backup_runner = Neo4jRestoreRunner(
-        keep_helper_container=keep_helper_container, database_cypher_port=database_cypher_port
-    )
-    backup_runner.restore(backup_path)
