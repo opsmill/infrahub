@@ -11,4 +11,5 @@ export const QSP = {
   PAGINATION: "pagination",
   PROPOSED_CHANGES_TAB: "pr_tab",
   TAB: "tab",
+  TASK_ID: "task_id",
 };

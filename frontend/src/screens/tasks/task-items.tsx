@@ -3,11 +3,12 @@ import { Table } from "../../components/table/table";
 import { Pagination } from "../../components/utils/pagination";
 import { TASK_OBJECT } from "../../config/constants";
 import useQuery from "../../hooks/useQuery";
-import { useTitle } from "../../hooks/useTitle";
 
+import { useLocation, useParams } from "react-router-dom";
 import { DateDisplay } from "../../components/display/date-display";
 import { DurationDisplay } from "../../components/display/duration-display";
 import { Id } from "../../components/utils/id";
+import { QSP } from "../../config/qsp";
 import { getTasksItems } from "../../graphql/queries/tasks/getTasksItems";
 import { constructPath } from "../../utils/fetch";
 import ErrorScreen from "../error-screen/error-screen";
@@ -15,10 +16,14 @@ import LoadingScreen from "../loading-screen/loading-screen";
 import { getConclusionBadge } from "./task-item-details";
 
 export const TaskItems = () => {
-  useTitle("Task Overview");
+  const { objectid } = useParams();
+  const location = useLocation();
+
+  const { pathname } = location;
 
   const queryString = getTasksItems({
     kind: TASK_OBJECT,
+    relatedNode: objectid,
   });
 
   const query = gql`
@@ -62,8 +67,19 @@ export const TaskItems = () => {
     },
   ];
 
+  const getUrl = (id: string) => {
+    if (!objectid) {
+      return constructPath(`/tasks/${id}`);
+    }
+
+    return constructPath(pathname, [
+      { name: QSP.TAB, value: "tasks" },
+      { name: QSP.TASK_ID, value: id },
+    ]);
+  };
+
   const rows = edges.map((edge: any) => ({
-    link: constructPath(`/tasks/${edge.node.id}`),
+    link: getUrl(edge.node.id),
     values: {
       title: edge.node.title,
       conclusion: getConclusionBadge[edge.node.conclusion],
@@ -77,14 +93,6 @@ export const TaskItems = () => {
 
   return (
     <div className="bg-custom-white flex-1 flex flex-col">
-      <div className="flex items-center p-4 w-full">
-        <div className="sm:flex-auto flex items-center">
-          <h1 className="text-md font-semibold text-gray-900 mr-2">Task Overview ({count})</h1>
-
-          <div className="text-sm"></div>
-        </div>
-      </div>
-
       {loading && !rows && <LoadingScreen />}
 
       {rows && (

@@ -83,5 +83,13 @@ query {{kind}} {
       }
     }
   }
+
+  {{#if taskKind}}
+
+  {{taskKind}}(related_node__ids: ["{{objectid}}"]) {
+    count
+  }
+
+  {{/if}}
 }
 `);
