@@ -56,7 +56,7 @@ class NodeAttributeAddMigrationQuery01(Query):
 
         query = """
         MATCH p = (n:Node)
-        WHERE $node_kind IN LABELS(n) AND NOT (n)-[:HAS_ATTRIBUTE]-(:Attribute {name: $attr_name})
+        WHERE $node_kind IN LABELS(n) AND NOT exists((n)-[:HAS_ATTRIBUTE]-(:Attribute {name: $attr_name}))
         CALL {
             WITH n
             MATCH (root:Root)<-[r:IS_PART_OF]-(n)
@@ -71,7 +71,7 @@ class NodeAttributeAddMigrationQuery01(Query):
         MERGE (is_protected_value:Boolean { value: $is_protected_default })
         MERGE (is_visible_value:Boolean { value: $is_visible_default })
         WITH n, av, is_protected_value, is_visible_value
-        CREATE (a:Attribute:AttributeLocal { uuid: randomUUID(), name: $attr_name, type: $attr_type, branch_support: $branch_support })
+        CREATE (a:Attribute:AttributeLocal { name: $attr_name, type: $attr_type, branch_support: $branch_support })
         CREATE (n)-[:HAS_ATTRIBUTE $rel_props ]->(a)
         CREATE (a)-[:HAS_VALUE $rel_props ]->(av)
         CREATE (a)-[:IS_PROTECTED $rel_props]->(is_protected_value)
@@ -79,6 +79,8 @@ class NodeAttributeAddMigrationQuery01(Query):
         """ % {"branch_filter": branch_filter}
         self.add_to_query(query)
         self.return_labels = ["n.uuid", "a.uuid"]
+
+        self.add_to_query(db.render_uuid_generation(node_label="a", node_attr="uuid"))
 
 
 class NodeAttributeAddMigration(AttributeSchemaMigration):
