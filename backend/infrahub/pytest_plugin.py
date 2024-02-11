@@ -63,7 +63,7 @@ class InfrahubBackendPlugin:
         TODO: this function should also filter items that do not need to run
         """
 
-        def sort_key(item: Item):
+        def sort_key(item: Item) -> Tuple[int, int]:
             type_cost = 99
             for marker_name, priority in ORDER_TYPE_MAP.items():
                 if item.get_closest_marker(marker_name):
