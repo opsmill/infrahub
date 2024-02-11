@@ -65,15 +65,15 @@ class InfrahubBackendPlugin:
 
         def sort_key(item: Item):
             type_cost = 99
-            for marker_name in ORDER_TYPE_MAP:
+            for marker_name, priority in ORDER_TYPE_MAP.items():
                 if item.get_closest_marker(marker_name):
-                    type_cost = ORDER_TYPE_MAP[marker_name]
+                    type_cost = priority
                     break
 
             item_cost = 99
-            for marker_name in ORDER_ITEM_MAP:
+            for marker_name, priority in ORDER_ITEM_MAP.items():
                 if item.get_closest_marker(marker_name):
-                    type_cost = ORDER_ITEM_MAP[marker_name]
+                    type_cost = priority
                     break
 
             return type_cost, item_cost
