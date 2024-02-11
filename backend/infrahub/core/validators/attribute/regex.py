@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Union
 
 from infrahub.core import registry
 from infrahub.core.constants import PathResourceType, PathType
-from infrahub.core.path import InfrahubPath
+from infrahub.core.path import DataPath
 from infrahub.core.query import Query, QueryType
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema  # noqa: TCH001
 
@@ -57,11 +57,11 @@ class AttributeRegexUpdateValidatorQuery(Query):
         self.add_to_query(query)
         self.return_labels = ["n.uuid", "av.value"]
 
-    def get_paths(self) -> List[InfrahubPath]:
+    def get_paths(self) -> List[DataPath]:
         paths = []
         for result in self.results:
             paths.append(
-                InfrahubPath(  # type: ignore[call-arg]
+                DataPath(  # type: ignore[call-arg]
                     resource_type=PathResourceType.DATA,
                     path_type=PathType.ATTRIBUTE,
                     node_id=str(result.get("n.uuid")),

@@ -6,7 +6,14 @@ from infrahub_sdk.utils import compare_lists
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import BranchSupportType, FilterSchemaKind, InfrahubKind, UpdateValidationErrorType
+from infrahub.core.constants import (
+    BranchSupportType,
+    FilterSchemaKind,
+    InfrahubKind,
+    PathResourceType,
+    SchemaPathType,
+    UpdateValidationErrorType,
+)
 from infrahub.core.schema import (
     GenericSchema,
     NodeSchema,
@@ -1483,23 +1490,31 @@ async def test_schema_branch_validate_check_missing(
 
     result = schema_branch.validate_update(other=new_schema)
     assert result.model_dump(exclude=["diff"]) == {
-        "checks": [
+        "constraints": [
             {
-                "check_name": "attribute.unique.update",
-                "field_name": "name",
-                "field_type": "attribute",
-                "prop_name": "unique",
-                "schema_name": "BuiltinCriticality",
-            }
+                "constraint_name": "attribute.unique.update",
+                "path": {
+                    "field_name": "name",
+                    "path_type": SchemaPathType.ATTRIBUTE,
+                    "property_name": "unique",
+                    "resource_type": PathResourceType.SCHEMA,
+                    "schema_id": None,
+                    "schema_kind": "BuiltinCriticality",
+                },
+            },
         ],
         "errors": [
             {
-                "error": UpdateValidationErrorType.CHECK_NOT_AVAILABLE,
-                "field_name": "name",
-                "field_type": "attribute",
-                "message": "'attribute.unique.update' is not available yet",
-                "prop_name": "unique",
-                "schema_name": "BuiltinCriticality",
+                "path": {
+                    "field_name": "name",
+                    "path_type": SchemaPathType.ATTRIBUTE,
+                    "property_name": "unique",
+                    "resource_type": PathResourceType.SCHEMA,
+                    "schema_id": None,
+                    "schema_kind": "BuiltinCriticality",
+                },
+                "error": UpdateValidationErrorType.VALIDATOR_NOT_AVAILABLE,
+                "message": "Validator 'attribute.unique.update' is not available yet",
             },
         ],
         "migrations": [],

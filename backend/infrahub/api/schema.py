@@ -175,18 +175,29 @@ async def load_schema(  # pylint: disable=too-many-return-statements,too-many-br
         # Validate if the new schema is valid with the content of the database
         # ----------------------------------------------------------
         tasks = []
-        for check in result.checks:
-            log.info(f"preparing check for {check.check_name!r} ({check.routing_key})", branch=branch.name)
-            message_class = messages.MESSAGE_MAP.get(check.routing_key, None)
-            response_class = messages.RESPONSE_MAP.get(check.routing_key, None)
+        for constraint in result.constraints:
+            log.info(
+                f"Preparing validator for constraint {constraint.constraint_name!r} ({constraint.routing_key})",
+                branch=branch.name,
+                constraint_name=constraint.constraint_name,
+                routing_key=constraint.routing_key,
+            )
+            message_class = messages.MESSAGE_MAP.get(constraint.routing_key, None)
+            response_class = messages.RESPONSE_MAP.get(constraint.routing_key, None)
 
             if not message_class:
-                raise ValueError(f"Unable to find the message for {check.check_name!r} ({check.routing_key})")
+                raise ValueError(
+                    f"Unable to find the message for {constraint.constraint_name!r} ({constraint.routing_key})"
+                )
             if not response_class:
-                raise ValueError(f"Unable to find the response for {check.check_name!r} ({check.routing_key})")
+                raise ValueError(
+                    f"Unable to find the response for {constraint.constraint_name!r} ({constraint.routing_key})"
+                )
 
             message = message_class(
-                branch=branch, node_schema=candidate_schema.get(name=check.schema_name), attribute_name=check.field_name
+                branch=branch,
+                node_schema=candidate_schema.get(name=constraint.path.schema_kind),
+                attribute_name=constraint.path.field_name,
             )
             tasks.append(service.message_bus.rpc(message=message, response_class=response_class))
 
@@ -235,8 +246,9 @@ async def load_schema(  # pylint: disable=too-many-return-statements,too-many-br
 
             message = message_class(
                 branch=branch,
-                node_schema=candidate_schema.get(name=migration.schema_name),
-                attribute_name=migration.field_name,
+                migration_name=migration.migration_name,
+                node_schema=candidate_schema.get(name=migration.path.schema_kind),
+                attribute_name=migration.path.field_name,
             )
             tasks.append(service.message_bus.rpc(message=message, response_class=response_class))
 

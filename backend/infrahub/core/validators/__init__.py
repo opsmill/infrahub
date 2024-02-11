@@ -3,7 +3,7 @@ from typing import Dict, Optional, Type
 from .attribute.regex import AttributeRegexUpdateValidator
 from .shared import SchemaValidator
 
-VALIDATOR_MAP: Dict[str, Optional[Type[SchemaValidator]]] = {
+CONSTRAINT_VALIDATOR_MAP: Dict[str, Optional[Type[SchemaValidator]]] = {
     "attribute.regex.update": AttributeRegexUpdateValidator,
     "attribute.enum.update": None,
     "attribute.min_lenght.update": None,

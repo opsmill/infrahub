@@ -315,6 +315,7 @@ async def test_schema_load_endpoint_valid_with_extensions(
     db: InfrahubDatabase,
     client: TestClient,
     admin_headers,
+    rpc_bus_simulator,
     default_branch: Branch,
     authentication_base,
     helper,
@@ -330,6 +331,7 @@ async def test_schema_load_endpoint_valid_with_extensions(
             json={"schemas": [helper.schema_file("infra_w_extensions_01.json")]},
         )
 
+    assert response.json() == {}
     assert response.status_code == 202
 
     org_schema = registry.schema.get(name="CoreOrganization", branch=default_branch.name)

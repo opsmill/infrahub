@@ -1,4 +1,4 @@
-from infrahub.core.validators import VALIDATOR_MAP
+from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
 from infrahub.services import InfrahubServices
@@ -14,7 +14,7 @@ async def attribute(message: messages.SchemaValidatorAttribute, service: Infrahu
             node_kind=message.node_schema.kind,
             attribute_name=message.attribute_name,
         )
-        validator_class = VALIDATOR_MAP.get(message.constraint_name)
+        validator_class = CONSTRAINT_VALIDATOR_MAP.get(message.constraint_name)
         validator = validator_class(node_schema=message.node_schema, attribute_name=message.attribute_name)
         violations = await validator.run_validate(db=db, branch=message.branch)
 
