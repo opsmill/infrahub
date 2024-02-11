@@ -37,9 +37,8 @@ from .request_proposedchange_runtests import RequestProposedChangeRunTests
 from .request_proposedchange_schemaintegrity import RequestProposedChangeSchemaIntegrity
 from .request_repository_checks import RequestRepositoryChecks
 from .request_repository_userchecks import RequestRepositoryUserChecks
-from .schema_migration_attribute import SchemaMigrationAttribute, SchemaMigrationAttributeResponse
-from .schema_migration_relationship import SchemaMigrationRelationship, SchemaMigrationRelationshipResponse
-from .schema_validator_attribute import SchemaValidatorAttribute, SchemaValidatorAttributeResponse
+from .schema_migration_path import SchemaMigrationPath, SchemaMigrationPathResponse
+from .schema_validator_path import SchemaValidatorPath, SchemaValidatorPathResponse
 from .send_webhook_event import SendWebhookEvent
 from .transform_jinja_template import TransformJinjaTemplate, TransformJinjaTemplateResponse
 from .transform_python_data import TransformPythonData, TransformPythonDataResponse
@@ -66,12 +65,8 @@ MESSAGE_MAP: Dict[str, Type[InfrahubMessage]] = {
     "git.repository.merge": GitRepositoryMerge,
     "git.repository.add_read_only": GitRepositoryAddReadOnly,
     "git.repository.pull_read_only": GitRepositoryPullReadOnly,
-    # "schema.migration.node": None,
-    "schema.migration.attribute": SchemaMigrationAttribute,
-    "schema.migration.relationship": SchemaMigrationRelationship,
-    # "schema.validator.node": None,
-    "schema.validator.attribute": SchemaValidatorAttribute,
-    # "schema.validator.relationship": None,
+    "schema.migration.path": SchemaMigrationPath,
+    "schema.validator.path": SchemaValidatorPath,
     "refresh.registry.branches": RefreshRegistryBranches,
     "refresh.webhook.configuration": RefreshWebhookConfiguration,
     "request.artifact.generate": RequestArtifactGenerate,
@@ -102,12 +97,8 @@ RESPONSE_MAP: Dict[str, Type[InfrahubResponse]] = {
     "transform.python.data": TransformPythonDataResponse,
     "git.diff.names_only": GitDiffNamesOnlyResponse,
     "git.file.get": GitFileGetResponse,
-    # "schema.migration.node": None,
-    "schema.migration.attribute": SchemaMigrationAttributeResponse,
-    "schema.migration.relationship": SchemaMigrationRelationshipResponse,
-    # "schema.validator.node": None,
-    "schema.validator.attribute": SchemaValidatorAttributeResponse,
-    # "schema.validator.relationship": None,
+    "schema.migration.path": SchemaMigrationPathResponse,
+    "schema.validator.path": SchemaValidatorPathResponse,
 }
 
 

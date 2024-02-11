@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, Any, Dict, Sequence
 
 from infrahub.core.constants import BranchSupportType
 from infrahub.core.query import Query, QueryType
-from infrahub.core.schema import AttributeSchema  # noqa: TCH001
 
 from ..shared import AttributeSchemaMigration
 
@@ -86,7 +85,3 @@ class NodeAttributeAddMigrationQuery01(Query):
 class NodeAttributeAddMigration(AttributeSchemaMigration):
     name: str = "node.attribute.add"
     queries: Sequence[type[Query]] = [NodeAttributeAddMigrationQuery01]
-
-    @property
-    def attribute_schema(self) -> AttributeSchema:
-        return self.node_schema.get_attribute(name=self.attribute_name)

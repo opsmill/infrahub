@@ -1,23 +1,18 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Sequence
 
-from infrahub.core import registry
-from infrahub.core.constants import PathResourceType, PathType
+from infrahub.core.constants import PathType
 from infrahub.core.path import DataPath
-from infrahub.core.query import Query, QueryType
-from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema  # noqa: TCH001
 
-from ..shared import SchemaValidator, SchemaViolation
+from ..shared import AttributeSchemaValidator, SchemaValidatorQuery
 
 if TYPE_CHECKING:
-    from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 
 
-class AttributeRegexUpdateValidatorQuery(Query):
-    name = "attribute_constraints_regex_validator"
-    type: QueryType = QueryType.WRITE
+class AttributeRegexUpdateValidatorQuery(SchemaValidatorQuery):
+    name: str = "attribute_constraints_regex_validator"
 
     def __init__(
         self,
@@ -57,12 +52,11 @@ class AttributeRegexUpdateValidatorQuery(Query):
         self.add_to_query(query)
         self.return_labels = ["n.uuid", "av.value"]
 
-    def get_paths(self) -> List[DataPath]:
+    async def get_paths(self) -> List[DataPath]:
         paths = []
         for result in self.results:
             paths.append(
                 DataPath(  # type: ignore[call-arg]
-                    resource_type=PathResourceType.DATA,
                     path_type=PathType.ATTRIBUTE,
                     node_id=str(result.get("n.uuid")),
                     field_name=self.validator.attribute_schema.name,
@@ -74,26 +68,6 @@ class AttributeRegexUpdateValidatorQuery(Query):
         return paths
 
 
-class AttributeRegexUpdateValidator(SchemaValidator):
+class AttributeRegexUpdateValidator(AttributeSchemaValidator):
     name: str = "attribute.regex.update"
-
-    node_schema: Union[NodeSchema, GenericSchema]
-    attribute_name: str
-
-    @property
-    def attribute_schema(self) -> AttributeSchema:
-        return self.node_schema.get_attribute(name=self.attribute_name)
-
-    async def run_validate(self, db: InfrahubDatabase, branch: Branch) -> List[SchemaViolation]:
-        query = await AttributeRegexUpdateValidatorQuery.init(db=db, branch=branch, validator=self)
-        await query.execute(db=db)
-        paths = query.get_paths()
-
-        ids = [path.node_id for path in paths]
-        fields = {"display_label": None, self.attribute_name: None}
-        nodes = await registry.manager.get_many(db=db, ids=ids, branch=branch, fields=fields)
-
-        return [
-            SchemaViolation(node_id=node.id, node_kind=node.get_kind(), display_label=await node.render_display_label())
-            for node in nodes.values()
-        ]
+    queries: Sequence[type[SchemaValidatorQuery]] = [AttributeRegexUpdateValidatorQuery]

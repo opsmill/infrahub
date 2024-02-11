@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field
 
@@ -89,20 +89,20 @@ class InfrahubResponse(InfrahubMessage):
 
     passed: bool = True
     routing_key: str
-    data: Union[dict, InfrahubResponseData]
+    data: Union[dict, InfrahubResponseData] = Field(default_factory=dict)
+    errors: List[str] = Field(default_factory=list)
+    initial_message: Optional[dict] = Field(
+        None,
+        description="Initial message in dict format, the primary goal of this field is to provide additional context when there is an error",
+    )
 
     def raise_for_status(self) -> None:
         if self.passed:
             return
 
-        raise RPCError(message=self.data.get("error", "Unknown Error"))
-
-
-class RPCErrorResponseData(InfrahubResponseData):
-    error: str
+        raise RPCError(message=", ".join(self.errors or ["Unknown Error"]))
 
 
 class RPCErrorResponse(InfrahubResponse):
     passed: bool = False
     routing_key: str = "rpc_error"
-    data: RPCErrorResponseData

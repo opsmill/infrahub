@@ -1,6 +1,7 @@
 from typing import Dict, Optional, Type
 
 from .attribute.regex import AttributeRegexUpdateValidator
+from .relationship.optional import RelationshipOptionalUpdateValidator
 from .shared import SchemaValidator
 
 CONSTRAINT_VALIDATOR_MAP: Dict[str, Optional[Type[SchemaValidator]]] = {
@@ -13,7 +14,7 @@ CONSTRAINT_VALIDATOR_MAP: Dict[str, Optional[Type[SchemaValidator]]] = {
     "attribute.choices.update": None,
     "relationship.peer.update": None,
     "relationship.cardinality.update": None,
-    "relationship.optional.update": None,
+    "relationship.optional.update": RelationshipOptionalUpdateValidator,
     "relationship.min_count.update": None,
     "relationship.max_count.update": None,
     "node.uniqueness_constraints.update": None,

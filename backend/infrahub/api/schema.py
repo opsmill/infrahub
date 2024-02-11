@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import asyncio
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
 from pydantic import BaseModel, Field, model_validator
@@ -11,9 +10,11 @@ from infrahub import config, lock
 from infrahub.api.dependencies import get_branch_dep, get_current_user, get_db
 from infrahub.core import registry
 from infrahub.core.branch import Branch  # noqa: TCH001
+from infrahub.core.migrations.schema.runner import schema_migrations_runner
 from infrahub.core.models import SchemaBranchHash  # noqa: TCH001
 from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema_manager import SchemaNamespace  # noqa: TCH001
+from infrahub.core.validators.checker import schema_validators_checker
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
 from infrahub.exceptions import PermissionDeniedError, SchemaNotFound
 from infrahub.log import get_logger
@@ -24,7 +25,6 @@ from infrahub.worker import WORKER_IDENTITY
 if TYPE_CHECKING:
     from typing_extensions import Self
 
-    from infrahub.message_bus import InfrahubResponse
     from infrahub.services import InfrahubServices
 
 
@@ -150,6 +150,9 @@ async def load_schema(  # noqa: PLR0911 pylint: disable=R0911,too-many-branches,
     async with lock.registry.global_schema_lock():
         branch_schema = registry.schema.get_schema_branch(name=branch.name)
 
+        # ----------------------------------------------------------
+        # Validate if the format of the new schema is valid
+        # ----------------------------------------------------------
         # We create a copy of the existing branch schema to do some validation before loading it.
         candidate_schema = branch_schema.duplicate()
         try:
@@ -174,41 +177,9 @@ async def load_schema(  # noqa: PLR0911 pylint: disable=R0911,too-many-branches,
         # ----------------------------------------------------------
         # Validate if the new schema is valid with the content of the database
         # ----------------------------------------------------------
-        tasks = []
-        for constraint in result.constraints:
-            log.info(
-                f"Preparing validator for constraint {constraint.constraint_name!r} ({constraint.routing_key})",
-                branch=branch.name,
-                constraint_name=constraint.constraint_name,
-                routing_key=constraint.routing_key,
-            )
-            message_class = messages.MESSAGE_MAP.get(constraint.routing_key, None)
-            response_class = messages.RESPONSE_MAP.get(constraint.routing_key, None)
-
-            if not message_class:
-                raise ValueError(
-                    f"Unable to find the message for {constraint.constraint_name!r} ({constraint.routing_key})"
-                )
-            if not response_class:
-                raise ValueError(
-                    f"Unable to find the response for {constraint.constraint_name!r} ({constraint.routing_key})"
-                )
-
-            message = message_class(
-                branch=branch,
-                node_schema=candidate_schema.get(name=constraint.path.schema_kind),
-                attribute_name=constraint.path.field_name,
-            )
-            tasks.append(service.message_bus.rpc(message=message, response_class=response_class))
-
-        responses: List[Type[InfrahubResponse]] = await asyncio.gather(*tasks)
-
-        error_messages = []
-        for response in responses:
-            for violation in response.data.violations:
-                error_messages.append(
-                    f"Node {violation.display_label} is not compatible with ADD NODE NAME ({violation.node_kind}: {violation.node_id})"
-                )
+        error_messages = await schema_validators_checker(
+            branch=branch, schema=candidate_schema, constraints=result.constraints, service=service
+        )
         if error_messages:
             return JSONResponse(status_code=422, content={"error": ",\n".join(error_messages)})
 
@@ -227,36 +198,9 @@ async def load_schema(  # noqa: PLR0911 pylint: disable=R0911,too-many-branches,
         # ----------------------------------------------------------
         # Run the migrations
         # ----------------------------------------------------------
-        tasks = []
-        for migration in result.migrations:
-            log.info(
-                f"Preparing migration for {migration.migration_name!r} ({migration.routing_key})", branch=branch.name
-            )
-            message_class = messages.MESSAGE_MAP.get(migration.routing_key, None)
-            response_class = messages.RESPONSE_MAP.get(migration.routing_key, None)
-
-            if not message_class:
-                raise ValueError(
-                    f"Unable to find the message for {migration.migration_name!r} ({migration.routing_key})"
-                )
-            if not response_class:
-                raise ValueError(
-                    f"Unable to find the response for {migration.migration_name!r} ({migration.routing_key})"
-                )
-
-            message = message_class(
-                branch=branch,
-                migration_name=migration.migration_name,
-                node_schema=candidate_schema.get(name=migration.path.schema_kind),
-                attribute_name=migration.path.field_name,
-            )
-            tasks.append(service.message_bus.rpc(message=message, response_class=response_class))
-
-            responses: List[Type[InfrahubResponse]] = await asyncio.gather(*tasks)
-
-        error_messages = []
-        for response in responses:
-            error_messages.extend(response.data.errors)
+        error_messages = await schema_migrations_runner(
+            branch=branch, schema=candidate_schema, migrations=result.migrations, service=service
+        )
         if error_messages:
             return JSONResponse(status_code=500, content={"error": ",\n".join(error_messages)})
 

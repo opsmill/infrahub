@@ -4,9 +4,12 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
+from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot, core_models
 from infrahub.core.utils import count_relationships
 from infrahub.database import InfrahubDatabase
+from infrahub.message_bus.messages.schema_migration_path import SchemaMigrationPathResponse
+from infrahub.message_bus.messages.schema_validator_path import SchemaValidatorPathResponse
 
 
 async def test_schema_read_endpoint_default_branch(
@@ -315,13 +318,15 @@ async def test_schema_load_endpoint_valid_with_extensions(
     db: InfrahubDatabase,
     client: TestClient,
     admin_headers,
-    rpc_bus_simulator,
+    rpc_bus,
     default_branch: Branch,
     authentication_base,
     helper,
 ):
     org_schema = registry.schema.get(name="CoreOrganization", branch=default_branch.name)
     initial_nbr_relationships = len(org_schema.relationships)
+
+    rpc_bus.response.append(SchemaMigrationPathResponse(data={"errors": []}))
 
     # Must execute in a with block to execute the startup/shutdown events
     with client:
@@ -434,3 +439,48 @@ async def test_schema_load_endpoint_not_valid_with_generics_02(
         )
 
     assert response.status_code == 422
+
+
+async def test_schema_load_endpoint_not_valid_constraints(
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers,
+    rpc_bus,
+    default_branch: Branch,
+    authentication_base,
+    car_person_schema,
+    car_accord_main,
+    car_volt_main,
+    person_john_main,
+    helper,
+):
+    person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person.new(db=db, name="ALFRED", height=160, cars=[car_accord_main.id])
+    await person.save(db=db)
+
+    rpc_bus.response.append(SchemaValidatorPathResponse(data={"violations": []}))
+
+    person_schema = {
+        "name": "Person",
+        "namespace": "Test",
+        "default_filter": "name__value",
+        "display_labels": ["name__value"],
+        "branch": "aware",
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True, "regex": "^[A-Z]+$"},
+            {"name": "height", "kind": "Number", "optional": True},
+        ],
+        "relationships": [{"name": "cars", "peer": "TestCar", "cardinality": "many", "direction": "inbound"}],
+    }
+
+    # Must execute in a with block to execute the startup/shutdown events
+    # async with AsyncClient(app=app, base_url="http://test") as ac:
+    with client:
+        response = client.post(
+            "/api/schema/load",
+            headers=admin_headers,
+            json={"schemas": [{"version": "1.0", "nodes": [person_schema]}]},
+        )
+
+    assert response.json() == {}
+    assert response.status_code == 202

@@ -106,7 +106,7 @@ class SchemaUpdateMigrationInfo(BaseModel):
 
     @property
     def routing_key(self):
-        return f"schema.migration.{self.path.path_type.value}"
+        return "schema.migration.path"
 
 
 class SchemaUpdateConstraintInfo(BaseModel):
@@ -116,7 +116,7 @@ class SchemaUpdateConstraintInfo(BaseModel):
 
     @property
     def routing_key(self):
-        return f"schema.validator.{self.path.path_type.value}"
+        return "schema.validator.path"
 
 
 class SchemaUpdateValidationResult(BaseModel):

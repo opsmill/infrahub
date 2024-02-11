@@ -5,24 +5,27 @@ from typing import List, Union
 from pydantic import Field
 
 from infrahub.core.branch import Branch  # noqa: TCH001
+from infrahub.core.path import SchemaPath  # noqa: TCH001
 from infrahub.core.schema import GenericSchema, NodeSchema  # noqa: TCH001
 from infrahub.core.validators.shared import SchemaViolation  # noqa: TCH001
 from infrahub.message_bus import InfrahubMessage, InfrahubResponse, InfrahubResponseData
 
-ROUTING_KEY = "schema.validator.attribute"
+ROUTING_KEY = "schema.validator.path"
 
 
-class SchemaValidatorAttribute(InfrahubMessage):
+class SchemaValidatorPath(InfrahubMessage):
     branch: Branch = Field(..., description="The name of the branch to target")
     constraint_name: str = Field(..., description="The name of the constraint to validate")
     node_schema: Union[NodeSchema, GenericSchema] = Field(..., description="Schema of Node or Generic to validate")
-    attribute_name: str = Field(..., description="Name of the attribute to validate in the schema")
+    schema_path: SchemaPath = Field(..., description="SchemaPath to the element of the schema to validate")
 
 
-class SchemaValidatorAttributeResponseData(InfrahubResponseData):
+class SchemaValidatorPathResponseData(InfrahubResponseData):
     violations: List[SchemaViolation] = Field(default_factory=list)
+    constraint_name: str
+    schema_path: SchemaPath
 
 
-class SchemaValidatorAttributeResponse(InfrahubResponse):
+class SchemaValidatorPathResponse(InfrahubResponse):
     routing_key: str = ROUTING_KEY
-    data: SchemaValidatorAttributeResponseData
+    data: SchemaValidatorPathResponseData

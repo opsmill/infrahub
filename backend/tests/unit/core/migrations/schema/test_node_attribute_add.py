@@ -3,16 +3,18 @@ import uuid
 import pytest
 from infrahub_sdk import UUIDT, InfrahubClient
 
+from infrahub.core.constants import SchemaPathType
 from infrahub.core.migrations.schema.node_attribute_add import (
     NodeAttributeAddMigration,
     NodeAttributeAddMigrationQuery01,
 )
+from infrahub.core.path import SchemaPath
 from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.message_bus import Meta
-from infrahub.message_bus.messages import SchemaMigrationAttribute, SchemaMigrationAttributeResponse
+from infrahub.message_bus.messages import SchemaMigrationPath, SchemaMigrationPathResponse
 from infrahub.services import InfrahubServices
 
 
@@ -58,14 +60,16 @@ async def init_database(db: InfrahubDatabase):
     await db.execute_query(query=query_init_root, params=params)
 
 
-# @pytest.mark.neo4j
 async def test_query01(db: InfrahubDatabase, default_branch, init_database, schema_aware):
     node = schema_aware
 
     assert await count_nodes(db=db, label="TestCar") == 5
     assert await count_nodes(db=db, label="Attribute") == 0
 
-    migration = NodeAttributeAddMigration(node_schema=node, attribute_name="nbr_doors")
+    migration = NodeAttributeAddMigration(
+        node_schema=node,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="nbr_doors"),
+    )
     query = await NodeAttributeAddMigrationQuery01.init(db=db, branch=default_branch, migration=migration)
     await query.execute(db=db)
 
@@ -80,10 +84,12 @@ async def test_query01(db: InfrahubDatabase, default_branch, init_database, sche
     assert await count_nodes(db=db, label="Attribute") == 5
 
 
-# @pytest.mark.neo4j
 async def test_migration(db: InfrahubDatabase, default_branch, init_database, schema_aware):
     node = schema_aware
-    migration = NodeAttributeAddMigration(node_schema=node, attribute_name="nbr_doors")
+    migration = NodeAttributeAddMigration(
+        node_schema=node,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="nbr_doors"),
+    )
 
     assert await count_nodes(db=db, label="TestCar") == 5
     assert await count_nodes(db=db, label="Attribute") == 0
@@ -98,10 +104,10 @@ async def test_migration(db: InfrahubDatabase, default_branch, init_database, sc
 async def test_rpc(db: InfrahubDatabase, default_branch, init_database, schema_aware, helper):
     node = schema_aware
     correlation_id = str(UUIDT())
-    message = SchemaMigrationAttribute(
+    message = SchemaMigrationPath(
         migration_name="node.attribute.add",
         node_schema=node,
-        attribute_name="nbr_doors",
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="nbr_doors"),
         branch=default_branch,
         meta=Meta(reply_to="ci-testing", correlation_id=correlation_id),
     )
@@ -115,7 +121,7 @@ async def test_rpc(db: InfrahubDatabase, default_branch, init_database, schema_a
 
     await service.send(message=message)
     assert len(bus_simulator.replies) == 1
-    response: SchemaMigrationAttributeResponse = bus_simulator.replies[0]
+    response: SchemaMigrationPathResponse = bus_simulator.replies[0]
     assert response.passed
     assert response.meta.correlation_id == correlation_id
     assert not response.data.errors

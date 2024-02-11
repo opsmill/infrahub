@@ -1,33 +1,18 @@
-import pytest
 from infrahub_sdk import UUIDT, InfrahubClient
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.constants import SchemaPathType
 from infrahub.core.node import Node
-from infrahub.core.schema import NodeSchema
+from infrahub.core.path import SchemaPath
 from infrahub.core.validators.attribute.regex import AttributeRegexUpdateValidator, AttributeRegexUpdateValidatorQuery
 from infrahub.database import InfrahubDatabase
 from infrahub.message_bus import Meta
 from infrahub.message_bus.messages import (
-    SchemaValidatorAttribute,
-    SchemaValidatorAttributeResponse,
+    SchemaValidatorPath,
+    SchemaValidatorPathResponse,
 )
 from infrahub.services import InfrahubServices
-
-
-@pytest.fixture
-async def schema_aware():
-    SCHEMA = {
-        "name": "Car",
-        "namespace": "Test",
-        "branch": "aware",
-        "attributes": [
-            {"name": "nbr_doors", "kind": "Number", "branch": "aware"},
-        ],
-    }
-
-    node = NodeSchema(**SCHEMA)
-    return node
 
 
 async def test_query(
@@ -41,12 +26,15 @@ async def test_query(
     name_attr = person_schema.get_attribute(name="name")
     name_attr.regex = r"^[A-Z]+$"
 
-    validator = AttributeRegexUpdateValidator(node_schema=person_schema, attribute_name="name")
+    validator = AttributeRegexUpdateValidator(
+        node_schema=person_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name"),
+    )
     query = await AttributeRegexUpdateValidatorQuery.init(db=db, branch=default_branch, validator=validator)
 
     await query.execute(db=db)
 
-    paths = query.get_paths()
+    paths = await query.get_paths()
     assert len(paths) == 1
     assert paths[0].value == "John"
 
@@ -62,7 +50,10 @@ async def test_validator(
     name_attr = person_schema.get_attribute(name="name")
     name_attr.regex = r"^[A-Z]+$"
 
-    validator = AttributeRegexUpdateValidator(node_schema=person_schema, attribute_name="name")
+    validator = AttributeRegexUpdateValidator(
+        node_schema=person_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name"),
+    )
     results = await validator.run_validate(db=db, branch=default_branch)
 
     assert len(results) == 1
@@ -77,10 +68,10 @@ async def test_rpc(
     name_attr.regex = r"^[A-Z]+$"
 
     correlation_id = str(UUIDT())
-    message = SchemaValidatorAttribute(
+    message = SchemaValidatorPath(
         constraint_name="attribute.regex.update",
         node_schema=person_schema,
-        attribute_name="name",
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="name"),
         branch=default_branch,
         meta=Meta(reply_to="ci-testing", correlation_id=correlation_id),
     )
@@ -91,7 +82,7 @@ async def test_rpc(
 
     await service.send(message=message)
     assert len(bus_simulator.replies) == 1
-    response: SchemaValidatorAttributeResponse = bus_simulator.replies[0]
+    response: SchemaValidatorPathResponse = bus_simulator.replies[0]
     assert response.passed
     assert response.meta.correlation_id == correlation_id
     assert len(response.data.violations) == 1
