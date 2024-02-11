@@ -129,7 +129,7 @@ async def get_schema_by_kind(
 
 
 @router.post("/load")
-async def load_schema(  # pylint: disable=too-many-return-statements,too-many-branches,too-many-statements
+async def load_schema(  # noqa: PLR0911 pylint: disable=R0911,too-many-branches,too-many-statements
     request: Request,
     schemas: SchemasLoadAPI,
     background_tasks: BackgroundTasks,
