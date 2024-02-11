@@ -18,13 +18,13 @@ def parse() -> argparse.Namespace:
         "backup_directory", default="infrahub-backups", help="Where to save backup files"
     )
     neo4j_backup_subparser.add_argument(
-        "--database_url", default=None, required=False, help="URL of database, null implies a local database container"
+        "--database-url", default=None, required=False, help="URL of database, null implies a local database container"
     )
     neo4j_backup_subparser.add_argument(
-        "--database_backup_port", default=6362, help="Port that the database is listening on for backup commands"
+        "--database-backup-port", default=6362, help="Port that the database is listening on for backup commands"
     )
     neo4j_backup_subparser.add_argument(
-        "--no_aggregate",
+        "--no-aggregate",
         default=False,
         action="store_true",
         help="Skip backup aggregation, potentially leaving multiple incremental backup files per database",
@@ -33,7 +33,7 @@ def parse() -> argparse.Namespace:
         "--quiet", default=False, action="store_true", help="Whether to output status messages to terminal"
     )
     neo4j_backup_subparser.add_argument(
-        "--keep_helper_container", default=False, action="store_true", help="Keep docker container used to run backup"
+        "--keep-helper-container", default=False, action="store_true", help="Keep docker container used to run backup"
     )
 
     neo4j_restore_subparser = neo4j_subparsers.add_parser("restore", help="Backup Neo4J database")
@@ -41,12 +41,12 @@ def parse() -> argparse.Namespace:
         "backup_directory", default="infrahub-backups", help="Directory where the backup files are saved"
     )
     neo4j_restore_subparser.add_argument(
-        "--database_cypher_port",
+        "--database-cypher-port",
         default=7687,
         help="Port that the Infrahub database container uses for cypher connections",
     )
     neo4j_restore_subparser.add_argument(
-        "--keep_helper_container", default=False, action="store_true", help="Keep docker container used to run restore"
+        "--keep-helper-container", default=False, action="store_true", help="Keep docker container used to run restore"
     )
     return parser.parse_args()
 
@@ -70,11 +70,11 @@ def run_utility(parsed_args: argparse.Namespace) -> None:
         )
 
     elif parsed_args.database_action == "restore":
-        backup_runner = Neo4jRestoreRunner(
+        restore_runner = Neo4jRestoreRunner(
             keep_helper_container=parsed_args.keep_helper_container,
             database_cypher_port=parsed_args.database_cypher_port,
         )
-        backup_runner.restore(backup_path)
+        restore_runner.restore(backup_path)
 
 
 if __name__ == "__main__":

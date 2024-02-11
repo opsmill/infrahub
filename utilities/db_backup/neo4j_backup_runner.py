@@ -1,9 +1,9 @@
+from datetime import datetime, timezone
 import os
 import sys
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from tempfile import NamedTemporaryFile, TemporaryDirectory
 from typing import Dict, Generator, List, Optional
 
 import docker
@@ -41,20 +41,31 @@ class Neo4jBackupRestoreBase:
         self.be_quiet = be_quiet
         self.keep_helper_container = keep_helper_container
         self.docker_client = docker.from_env()
-        self.neo4j_docker_image = os.getenv("NEO4J_DOCKER_IMAGE", "neo4j:5.16.0-enterprise")
+        self.neo4j_docker_image = os.getenv("NEO4J_BACKUP_DOCKER_IMAGE", "neo4j/neo4j-admin:5.16.0-enterprise")
 
-    def _print_message(self, message: str, is_error: bool = False) -> None:
-        if self.be_quiet and not is_error:
+    def _print_message(self, message: str, force_print: bool = False, with_timestamp: bool = True) -> None:
+        if self.be_quiet and not force_print:
             return
-        print(message)
+        if not with_timestamp:
+            print(message)
+        right_now = datetime.now(timezone.utc).astimezone()
+        right_now_str = right_now.strftime("%H:%M:%S")
+        print(f"{right_now_str} - {message}")
 
     @contextmanager
-    def _print_task_status(self, start: str, completion_message: Optional[str] = None) -> Generator[None, None, None]:
+    def _print_task_status(
+        self, start: str, completion_message: Optional[str] = None, with_timestamp: bool = True
+    ) -> Generator[None, None, None]:
         end = "" if completion_message else "\n"
-        print(start, end=end)
+        to_print = start
+        if with_timestamp:
+            right_now = datetime.now(timezone.utc).astimezone()
+            right_now_str = right_now.strftime("%H:%M:%S")
+            to_print = f"{right_now_str} - {start}"
+        print(to_print, end=end, flush=True)
         yield
         if completion_message:
-            print(completion_message)
+            print(completion_message, flush=True)
 
     def _execute_docker_container_command(
         self,
@@ -70,10 +81,10 @@ class Neo4jBackupRestoreBase:
             return True
         if display_error:
             if failure_message:
-                self._print_message(failure_message, is_error=True)
-            self._print_message(f"    command: {command}", is_error=True)
-            self._print_message("    response:", is_error=True)
-            self._print_message(response.decode(), is_error=True)
+                self._print_message(failure_message, force_print=True)
+            self._print_message(f"    command: {command}", force_print=True, with_timestamp=False)
+            self._print_message("    response:", force_print=True, with_timestamp=False)
+            self._print_message(response.decode(), force_print=True, with_timestamp=False)
         if not continue_on_error:
             sys.exit(exit_code)
         return False
@@ -100,7 +111,7 @@ class Neo4jBackupRestoreBase:
         self,
         local_backup_directory: Path,
         local_docker_networks: Optional[List[Network]],
-        extra_volumes: Optional[Dict[Path, str]] = None,
+        volumes_from_container_names: Optional[List[str]] = None,
     ) -> Container:
         try:
             existing_exporter_container = self.docker_client.containers.get(self.backup_helper_container_name)
@@ -110,11 +121,18 @@ class Neo4jBackupRestoreBase:
         except docker.errors.NotFound:
             pass
 
-        volumes = {local_backup_directory.absolute(): {"bind": self.container_backup_dir, "mode": "rw"}}
-        if extra_volumes:
-            for local_path, container_path in extra_volumes.items():
-                volumes[local_path.absolute()] = {"bind": container_path, "mode": "rw"}
-        with self._print_task_status("Starting new helper container...", "[green]Done"):
+        volumes = {
+            local_backup_directory.absolute(): {"bind": self.container_backup_dir, "mode": "rw"},
+        }
+        if volumes_from_container_names:
+            for c in self.docker_client.containers.list(filters={"status": "running"}):
+                if c.name not in volumes_from_container_names:
+                    continue
+                for v in c.attrs["Mounts"]:
+                    if "Name" in v and "Destination" in v:
+                        volumes[v["Name"]] = {"bind": v["Destination"], "mode": "rw"}
+
+        with self._print_task_status("Starting new helper container...", "done"):
             backup_helper_container = self.docker_client.containers.run(
                 volumes=volumes,
                 name=self.backup_helper_container_name,
@@ -122,6 +140,7 @@ class Neo4jBackupRestoreBase:
                 tty=True,
                 detach=True,
                 command="/bin/bash",
+                user="neo4j",
             )
 
         if local_docker_networks:
@@ -140,7 +159,7 @@ class Neo4jBackupRunner(Neo4jBackupRestoreBase):
         database_backup_port: int,
         do_aggregate_backup: bool = False,
     ) -> None:
-        with self._print_task_status("Starting neo4j database backup...", "[green]Done!"):
+        with self._print_task_status("Starting neo4j database backup...", "done"):
             backup_command = [
                 "neo4j-admin",
                 "database",
@@ -158,7 +177,7 @@ class Neo4jBackupRunner(Neo4jBackupRestoreBase):
         if not do_aggregate_backup:
             return
 
-        with self._print_task_status("Aggregating neo4j database backups...", "[green]Done!"):
+        with self._print_task_status("Aggregating neo4j database backups...", "done"):
             aggregate_command = [
                 "neo4j-admin",
                 "database",
@@ -202,7 +221,6 @@ class Neo4jBackupRunner(Neo4jBackupRestoreBase):
 
 
 class Neo4jRestoreRunner(Neo4jBackupRestoreBase):
-    container_scripts_dir = "/neo4jscripts"
     backup_helper_container_name = "neo4j-restore-helper"
 
     def __init__(self, *args, database_cypher_port: int = 7687, **kwargs) -> None:
@@ -217,21 +235,16 @@ class Neo4jRestoreRunner(Neo4jBackupRestoreBase):
         self,
         execution_container: Container,
         database_container: Container,
-        local_scripts_dir: Path,
         command: str,
         against_database: str = "system",
     ) -> None:
         environment = {"NEO4J_USERNAME": self.database_username, "NEO4J_PASSWORD": self.database_password}
-        with NamedTemporaryFile(dir=local_scripts_dir) as script_file:
-            script_file.write(command.encode())
-            script_file.seek(0)
-            script_path = Path(script_file.name)
-            cypher_command = f"cat {self.container_scripts_dir}/{script_path.name} | bin/cypher-shell"
-            cypher_command += f" -a {database_container.name}:{self.database_cypher_port} -d {against_database}"
-            full_command = ["sh", "-c", cypher_command]
-            self._execute_docker_container_command(
-                execution_container, full_command, environment=environment, display_error=False, continue_on_error=True
-            )
+        cypher_command = f'echo "{command}" | bin/cypher-shell'
+        cypher_command += f" -a {database_container.name}:{self.database_cypher_port} -d {against_database}"
+        full_command = ["sh", "-c", cypher_command]
+        self._execute_docker_container_command(
+            execution_container, full_command, environment=environment, display_error=False, continue_on_error=True
+        )
 
     def _execute_restore_metadata_command(
         self,
@@ -239,7 +252,7 @@ class Neo4jRestoreRunner(Neo4jBackupRestoreBase):
         database_container: Container,
         database_name: str,
     ) -> None:
-        with self._print_task_status(f"Restoring '{database_name}' database metadata...", "Done!"):
+        with self._print_task_status(f"Restoring '{database_name}' database metadata...", "done"):
             environment = {"NEO4J_USERNAME": self.database_username, "NEO4J_PASSWORD": self.database_password}
             metadata_file_path = f"/var/lib/neo4j/data/scripts/{database_name}/restore_metadata.cypher"
 
@@ -268,18 +281,16 @@ class Neo4jRestoreRunner(Neo4jBackupRestoreBase):
         return backup_map
 
     @contextmanager
-    def _stopped_database(
-        self, helper_container: Container, database_container: Container, database_name: str, local_scripts_dir: Path
-    ) -> Generator[None, None, None]:
+    def _stopped_database(self, database_container: Container, database_name: str) -> Generator[None, None, None]:
         with self._print_task_status(f"Stopping '{database_name}' database...", "stopped"):
             database_command = f"STOP DATABASE {database_name}"
-            self._execute_cypher_command(helper_container, database_container, local_scripts_dir, database_command)
+            self._execute_cypher_command(database_container, database_container, database_command)
         try:
             yield
         finally:
             with self._print_task_status(f"Restarting '{database_name}' database...", "started"):
                 database_command = f"START DATABASE {database_name}"
-                self._execute_cypher_command(helper_container, database_container, local_scripts_dir, database_command)
+                self._execute_cypher_command(database_container, database_container, database_command)
 
     def _restore_one_database(
         self,
@@ -287,10 +298,9 @@ class Neo4jRestoreRunner(Neo4jBackupRestoreBase):
         database_container: Container,
         backup_path: Path,
         helper_container: Container,
-        local_scripts_dir: Path,
     ) -> None:
-        with self._stopped_database(helper_container, database_container, database_name, local_scripts_dir):
-            with self._print_task_status(f"Beginning restore for '{database_name}' database...", "[green]Complete!"):
+        with self._stopped_database(database_container, database_name):
+            with self._print_task_status(f"Beginning restore for '{database_name}' database...", "done"):
                 remote_path = Path(self.container_backup_dir) / backup_path.name
                 restore_command = [
                     "neo4j-admin",
@@ -305,13 +315,13 @@ class Neo4jRestoreRunner(Neo4jBackupRestoreBase):
                     restore_command,
                     failure_message="neo4j restore command failed for '{database_name}' database",
                     display_error=True,
-                    continue_on_error=True,
+                    continue_on_error=False,
                 )
                 if not success:
                     raise DatabaseRestoreError(f"Failed to restore database '{database_name}'")
 
                 database_command = f"CREATE DATABASE {database_name} IF NOT EXISTS"
-                self._execute_cypher_command(helper_container, database_container, local_scripts_dir, database_command)
+                self._execute_cypher_command(helper_container, database_container, database_command)
 
         self._execute_restore_metadata_command(helper_container, database_container, database_name)
 
@@ -320,41 +330,18 @@ class Neo4jRestoreRunner(Neo4jBackupRestoreBase):
         database_container: Container,
         helper_container: Container,
         backup_path_map: Dict[str, Path],
-        local_scripts_dir: Path,
     ) -> None:
-        system_backup_path = None
         for database_name, local_path in backup_path_map.items():
             if database_name == "system":
-                system_backup_path = local_path
                 continue
-            self._restore_one_database(
-                database_name, database_container, local_path, helper_container, local_scripts_dir
-            )
-        if not system_backup_path:
-            return
-
-        with self._print_task_status("Beginning restore for 'system' database...", "[green]Complete!"):
-            remote_path = Path(self.container_backup_dir) / system_backup_path.name
-            restore_command = [
-                "neo4j-admin",
-                "database",
-                "restore",
-                f"--from-path={remote_path}",
-                "--overwrite-destination=true",
-                "system",
-            ]
-            self._execute_docker_container_command(
-                helper_container,
-                restore_command,
-                failure_message="neo4j restore command failed for 'system' database",
-                display_error=True,
-                continue_on_error=False,
-            )
+            self._restore_one_database(database_name, database_container, local_path, helper_container)
 
     def restore(self, local_backup_directory: Path) -> None:
         backup_paths_by_database_name = self._map_backups_to_database_name(local_backup_directory)
         if not backup_paths_by_database_name:
-            self._print_message(f"[red]No .backup files in {local_backup_directory} to use for restore", is_error=True)
+            self._print_message(
+                f"[red]No .backup files in {local_backup_directory} to use for restore", force_print=True
+            )
             sys.exit(1)
         database_container_details = self._get_database_container_details()
         if not database_container_details:
@@ -363,17 +350,13 @@ class Neo4jRestoreRunner(Neo4jBackupRestoreBase):
             raise DatabaseContainerNotFound(
                 f"Database container {database_container_details.name} must be connected to at least one docker network"
             )
-        with TemporaryDirectory() as scripts_dir:
-            scripts_path = Path(scripts_dir)
-            helper_container = self._create_helper_container(
-                local_backup_directory,
-                local_docker_networks=database_container_details.networks,
-                extra_volumes={scripts_path: self.container_scripts_dir},
-            )
-            self._run_restore(
-                database_container_details.container, helper_container, backup_paths_by_database_name, scripts_path
-            )
-        self._print_message("[green]Restore completed successfully", is_error=True)
+        helper_container = self._create_helper_container(
+            local_backup_directory,
+            local_docker_networks=database_container_details.networks,
+            volumes_from_container_names=[database_container_details.name],
+        )
+        self._run_restore(database_container_details.container, helper_container, backup_paths_by_database_name)
+        self._print_message("Restore completed successfully", force_print=True)
 
         if not self.keep_helper_container:
             helper_container.stop()
