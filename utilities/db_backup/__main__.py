@@ -211,11 +211,14 @@ class Neo4jBackupRestoreBase:
                 volumes=volumes,
                 name=self.backup_helper_container_name,
                 image=self.neo4j_docker_image,
+                environment={"NEO4J_ACCEPT_LICENSE_AGREEMENT": "yes"},
                 tty=True,
                 detach=True,
                 command="/bin/bash",
                 user="neo4j",
             )
+            for v in volumes.values():
+                backup_helper_container.exec_run(["chown", "neo4j", v["bind"]], user="root")
 
         if local_docker_networks:
             for network in local_docker_networks:
@@ -241,6 +244,7 @@ class Neo4jBackupRunner(Neo4jBackupRestoreBase):
                 "*",
                 f"--to-path={self.container_backup_dir}",
                 f"--from={database_url}:{database_backup_port}",
+                "--verbose"
             ]
             self._execute_docker_container_command(
                 helper_container,
@@ -290,8 +294,9 @@ class Neo4jBackupRunner(Neo4jBackupRestoreBase):
         )
         self._print_message(f"Updated backup files are in {local_backup_directory.absolute()}")
         if not self.keep_helper_container:
-            backup_helper_container.stop()
-            backup_helper_container.remove()
+            with self._print_task_status("Removing helper container...", "done"):
+                backup_helper_container.stop()
+                backup_helper_container.remove()
 
 
 class Neo4jRestoreRunner(Neo4jBackupRestoreBase):
