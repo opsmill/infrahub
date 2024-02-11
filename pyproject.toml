@@ -125,6 +125,7 @@ disable = """,
     unsubscriptable-object,
     unsupported-assignment-operation,
     not-an-iterable,
+    too-many-return-statements,
     """
 
 [tool.pylint.miscellaneous]
