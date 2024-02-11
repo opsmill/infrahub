@@ -97,5 +97,11 @@ class InfrahubYamlFile(pytest.File):
                     resource_config=resource_config,
                     test=test,
                 )
+
                 item.add_marker(marker)
+                if "unit" in test.spec.kind:
+                    item.add_marker(pytest.mark.infrahub_unit)
+                if "integration" in test.spec.kind:
+                    item.add_marker(pytest.mark.infrahub_integraton)
+
                 yield item

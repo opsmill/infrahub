@@ -10,6 +10,13 @@ from infrahub.core.timestamp import Timestamp
 
 OUTCOME_TO_CONCLUSION_MAP = {"passed": "success", "failed": "failure", "skipped": "failure"}
 OUTCOME_TO_SEVERITY_MAP = {"passed": "success", "failed": "error", "skipped": "warning"}
+ORDER_TYPE_MAP = {"infrahub_sanity": 0, "infrahub_unit": 1, "infrahub_integration": 2}
+ORDER_ITEM_MAP = {
+    "infrahub_check": 0,
+    "infrahub_graphql_query": 1,
+    "infrahub_jinja2_transform": 2,
+    "infrahub_python_transform": 3,
+}
 
 
 class InfrahubBackendPlugin:
@@ -46,9 +53,32 @@ class InfrahubBackendPlugin:
         return validator, True
 
     def pytest_collection_modifyitems(self, session: Session, config: Config, items: List[Item]) -> None:  # pylint: disable=unused-argument
-        """This function is called after item collection and gives the opportunity to work on the collection before sending the items for testing."""
-        # TODO: Filter tests according to what's been requested
-        # TODO: Re-order tests: sanity -> unit -> integration
+        """This function is called after item collection and gives the opportunity to work on the collection before sending the items for testing.
+
+        Items will be re-ordered to be run in a specific order:
+        1. Sanity tests
+        2. Unit tests
+        3. Integration tests
+
+        TODO: this function should also filter items that do not need to run
+        """
+
+        def sort_key(item: Item):
+            type_cost = 99
+            for marker_name in ORDER_TYPE_MAP:
+                if item.get_closest_marker(marker_name):
+                    type_cost = ORDER_TYPE_MAP[marker_name]
+                    break
+
+            item_cost = 99
+            for marker_name in ORDER_ITEM_MAP:
+                if item.get_closest_marker(marker_name):
+                    type_cost = ORDER_ITEM_MAP[marker_name]
+                    break
+
+            return type_cost, item_cost
+
+        items.sort(key=sort_key)
 
     def pytest_collection_finish(self, session: Session) -> None:  # pylint: disable=unused-argument
         """This function is called when tests have been collected and modified, meaning they are ready to be run."""

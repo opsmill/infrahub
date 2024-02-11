@@ -321,6 +321,7 @@ async def run_tests(message: messages.RequestProposedChangeRunTests, service: In
                 str(directory),
                 f"--infrahub-repo-config={config_file}",
                 f"--infrahub-address={config.SETTINGS.main.internal_address}",
+                "-qqqq",
                 "-k",
                 "infrahub",
             ],
