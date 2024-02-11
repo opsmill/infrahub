@@ -2292,7 +2292,7 @@ async def register_account_schema(db: InfrahubDatabase) -> None:
 
 
 @pytest.fixture
-async def create_test_admin(db: InfrahubDatabase, register_core_schema_db, data_schema) -> Node:
+async def create_test_admin(db: InfrahubDatabase, register_core_models_schema, data_schema) -> Node:
     account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
     await account.new(
         db=db,
