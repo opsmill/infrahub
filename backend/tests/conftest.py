@@ -340,10 +340,10 @@ class BusRecorder(InfrahubMessageBus):
 
 
 class BusSimulator(InfrahubMessageBus):
-    def __init__(self):
+    def __init__(self, database: Optional[InfrahubDatabase] = None):
         self.messages: List[InfrahubMessage] = []
         self.messages_per_routing_key: Dict[str, List[InfrahubMessage]] = {}
-        self.service: InfrahubServices = InfrahubServices(message_bus=self)
+        self.service: InfrahubServices = InfrahubServices(database=database, message_bus=self)
         self.replies: List[InfrahubResponse] = []
 
     async def publish(self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None) -> None:
@@ -404,8 +404,8 @@ class TestHelper:
         return BusRecorder()
 
     @staticmethod
-    def get_message_bus_simulator() -> BusSimulator:
-        return BusSimulator()
+    def get_message_bus_simulator(db: Optional[InfrahubDatabase] = None) -> BusSimulator:
+        return BusSimulator(database=db)
 
     @staticmethod
     def get_message_bus_rpc() -> BusRPCMock:
