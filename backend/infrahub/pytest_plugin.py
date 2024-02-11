@@ -59,8 +59,9 @@ class InfrahubBackendPlugin:
         # Workaround for https://github.com/opsmill/infrahub/issues/2184
         if not is_new_validator:
             self.validator.checks.fetch()
-            for check in self.validator.checks.peers:
-                self.checks[check.peer.origin.value] = check.peer
+            for relationship in self.validator.checks.peers:
+                check = relationship.peer
+                self.checks[check.origin.value] = check
 
     def pytest_runtestloop(self, session: Session) -> Optional[object]:  # pylint: disable=unused-argument,useless-return
         """This function is called when the test loop is being run."""
