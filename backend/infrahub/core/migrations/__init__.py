@@ -1,9 +1,9 @@
 from typing import Dict, Optional, Type
 
-from .node_attribute_add import NodeAttributeAddMigration
-from .shared import UserMigration
+from .schema.node_attribute_add import NodeAttributeAddMigration
+from .shared import SchemaMigration
 
-MIGRATION_MAP: Dict[str, Optional[Type[UserMigration]]] = {
+MIGRATION_MAP: Dict[str, Optional[Type[SchemaMigration]]] = {
     "node.branch.update": None,
     "node.attribute.add": NodeAttributeAddMigration,
     "node.attribute.remove": None,

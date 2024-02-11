@@ -20,7 +20,6 @@ from .git_repository_add import GitRepositoryAdd
 from .git_repository_merge import GitRepositoryMerge
 from .git_repository_read_only_add import GitRepositoryAddReadOnly
 from .git_repository_read_only_pull import GitRepositoryPullReadOnly
-from .migration_node_attribute_add import MigrationNodeAttributeAdd, MigrationNodeAttributeAddResponse
 from .refresh_registry_branches import RefreshRegistryBranches
 from .refresh_webhook_configuration import RefreshWebhookConfiguration
 from .request_artifact_generate import RequestArtifactGenerate
@@ -38,13 +37,15 @@ from .request_proposedchange_runtests import RequestProposedChangeRunTests
 from .request_proposedchange_schemaintegrity import RequestProposedChangeSchemaIntegrity
 from .request_repository_checks import RequestRepositoryChecks
 from .request_repository_userchecks import RequestRepositoryUserChecks
+from .schema_migration_attribute import SchemaMigrationAttribute, SchemaMigrationAttributeResponse
+from .schema_migration_relationship import SchemaMigrationRelationship, SchemaMigrationRelationshipResponse
+from .schema_validator_attribute import SchemaValidatorAttribute, SchemaValidatorAttributeResponse
 from .send_webhook_event import SendWebhookEvent
 from .transform_jinja_template import TransformJinjaTemplate, TransformJinjaTemplateResponse
 from .transform_python_data import TransformPythonData, TransformPythonDataResponse
 from .trigger_artifact_definition_generate import TriggerArtifactDefinitionGenerate
 from .trigger_proposed_change_cancel import TriggerProposedChangeCancel
 from .trigger_webhook_actions import TriggerWebhookActions
-from .validator_attribute_regex_update import ValidatorAttributeRegexUpdate, ValidatorAttributeRegexUpdateResponse
 
 MESSAGE_MAP: Dict[str, Type[InfrahubMessage]] = {
     "check.artifact.create": CheckArtifactCreate,
@@ -65,7 +66,12 @@ MESSAGE_MAP: Dict[str, Type[InfrahubMessage]] = {
     "git.repository.merge": GitRepositoryMerge,
     "git.repository.add_read_only": GitRepositoryAddReadOnly,
     "git.repository.pull_read_only": GitRepositoryPullReadOnly,
-    "migration.node.attribute_add": MigrationNodeAttributeAdd,
+    # "schema.migration.node": None,
+    "schema.migration.attribute": SchemaMigrationAttribute,
+    "schema.migration.relationship": SchemaMigrationRelationship,
+    # "schema.validator.node": None,
+    "schema.validator.attribute": SchemaValidatorAttribute,
+    # "schema.validator.relationship": None,
     "refresh.registry.branches": RefreshRegistryBranches,
     "refresh.webhook.configuration": RefreshWebhookConfiguration,
     "request.artifact.generate": RequestArtifactGenerate,
@@ -89,7 +95,6 @@ MESSAGE_MAP: Dict[str, Type[InfrahubMessage]] = {
     "trigger.artifact_definition.generate": TriggerArtifactDefinitionGenerate,
     "trigger.proposed_change.cancel": TriggerProposedChangeCancel,
     "trigger.webhook.actions": TriggerWebhookActions,
-    "validator.attribute.regex_update": ValidatorAttributeRegexUpdate,
 }
 
 RESPONSE_MAP: Dict[str, Type[InfrahubResponse]] = {
@@ -97,8 +102,12 @@ RESPONSE_MAP: Dict[str, Type[InfrahubResponse]] = {
     "transform.python.data": TransformPythonDataResponse,
     "git.diff.names_only": GitDiffNamesOnlyResponse,
     "git.file.get": GitFileGetResponse,
-    "migration.node.attribute_add": MigrationNodeAttributeAddResponse,
-    "validator.attribute.regex_update": ValidatorAttributeRegexUpdateResponse,
+    # "schema.migration.node": None,
+    "schema.migration.attribute": SchemaMigrationAttributeResponse,
+    "schema.migration.relationship": SchemaMigrationRelationshipResponse,
+    # "schema.validator.node": None,
+    "schema.validator.attribute": SchemaValidatorAttributeResponse,
+    # "schema.validator.relationship": None,
 }
 
 

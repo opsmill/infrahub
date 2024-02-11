@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, Sequence, Union
+from typing import TYPE_CHECKING, Any, Dict, Sequence
 
 from infrahub.core.constants import BranchSupportType
 from infrahub.core.query import Query, QueryType
-from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema  # noqa: TCH001
+from infrahub.core.schema import AttributeSchema  # noqa: TCH001
 
-from .shared import UserMigration
+from ..shared import AttributeSchemaMigration
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -81,12 +81,9 @@ class NodeAttributeAddMigrationQuery01(Query):
         self.return_labels = ["n.uuid", "a.uuid"]
 
 
-class NodeAttributeAddMigration(UserMigration):
-    name: str = "name.attribute.add"
+class NodeAttributeAddMigration(AttributeSchemaMigration):
+    name: str = "node.attribute.add"
     queries: Sequence[type[Query]] = [NodeAttributeAddMigrationQuery01]
-
-    node_schema: Union[NodeSchema, GenericSchema]
-    attribute_name: str
 
     @property
     def attribute_schema(self) -> AttributeSchema:

@@ -6,13 +6,12 @@ from infrahub.message_bus.operations import (
     event,
     finalize,
     git,
-    migration,
     refresh,
     requests,
+    schema,
     send,
     transform,
     trigger,
-    validator,
 )
 from infrahub.message_bus.types import MessageTTL
 from infrahub.services import InfrahubServices
@@ -37,7 +36,6 @@ COMMAND_MAP = {
     "git.repository.add_read_only": git.repository.add_read_only,
     "git.repository.pull_read_only": git.repository.pull_read_only,
     "git.repository.merge": git.repository.merge,
-    "migration.node.attribute_add": migration.node.attribute_add,
     "refresh.registry.branches": refresh.registry.branches,
     "refresh.webhook.configuration": refresh.webhook.configuration,
     "request.git.create_branch": requests.git.create_branch,
@@ -56,12 +54,17 @@ COMMAND_MAP = {
     "request.repository.checks": requests.repository.checks,
     "request.repository.user_checks": requests.repository.user_checks,
     "send.webhook.event": send.webhook.event,
+    # "schema.migration.node": schema.migration.node,
+    "schema.migration.attribute": schema.migration.attribute,
+    # "schema.migration.relationship": schema.migration.relationship,
+    # "schema.validator.node": schema.validator.node,
+    "schema.validator.attribute": schema.validator.attribute,
+    # "schema.validator.relationship": schema.validator.relationship,
     "transform.jinja.template": transform.jinja.template,
     "transform.python.data": transform.python.data,
     "trigger.artifact_definition.generate": trigger.artifact_definition.generate,
     "trigger.proposed_change.cancel": trigger.proposed_change.cancel,
     "trigger.webhook.actions": trigger.webhook.actions,
-    "validator.attribute.regex_update": validator.attribute.regex_update,
 }
 
 

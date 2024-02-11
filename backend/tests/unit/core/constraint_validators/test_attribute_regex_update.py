@@ -8,9 +8,9 @@ from infrahub.core.schema import NodeSchema
 from infrahub.core.validators.attribute.regex import AttributeRegexUpdateValidator, AttributeRegexUpdateValidatorQuery
 from infrahub.database import InfrahubDatabase
 from infrahub.message_bus import Meta
-from infrahub.message_bus.messages.validator_attribute_regex_update import (
-    ValidatorAttributeRegexUpdate,
-    ValidatorAttributeRegexUpdateResponse,
+from infrahub.message_bus.messages import (
+    SchemaValidatorAttribute,
+    SchemaValidatorAttributeResponse,
 )
 from infrahub.services import InfrahubServices
 
@@ -77,7 +77,8 @@ async def test_rpc(
     name_attr.regex = r"^[A-Z]+$"
 
     correlation_id = str(UUIDT())
-    message = ValidatorAttributeRegexUpdate(
+    message = SchemaValidatorAttribute(
+        constraint_name="attribute.regex.update",
         node_schema=person_schema,
         attribute_name="name",
         branch=default_branch,
@@ -90,7 +91,7 @@ async def test_rpc(
 
     await service.send(message=message)
     assert len(bus_simulator.replies) == 1
-    response: ValidatorAttributeRegexUpdateResponse = bus_simulator.replies[0]
+    response: SchemaValidatorAttributeResponse = bus_simulator.replies[0]
     assert response.passed
     assert response.meta.correlation_id == correlation_id
     assert len(response.data.violations) == 1

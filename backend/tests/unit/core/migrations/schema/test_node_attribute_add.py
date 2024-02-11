@@ -3,13 +3,16 @@ import uuid
 import pytest
 from infrahub_sdk import UUIDT, InfrahubClient
 
-from infrahub.core.migrations.node_attribute_add import NodeAttributeAddMigration, NodeAttributeAddMigrationQuery01
+from infrahub.core.migrations.schema.node_attribute_add import (
+    NodeAttributeAddMigration,
+    NodeAttributeAddMigrationQuery01,
+)
 from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.message_bus import Meta
-from infrahub.message_bus.messages import MigrationNodeAttributeAdd, MigrationNodeAttributeAddResponse
+from infrahub.message_bus.messages import SchemaMigrationAttribute, SchemaMigrationAttributeResponse
 from infrahub.services import InfrahubServices
 
 
@@ -95,7 +98,8 @@ async def test_migration(db: InfrahubDatabase, default_branch, init_database, sc
 async def test_rpc(db: InfrahubDatabase, default_branch, init_database, schema_aware, helper):
     node = schema_aware
     correlation_id = str(UUIDT())
-    message = MigrationNodeAttributeAdd(
+    message = SchemaMigrationAttribute(
+        migration_name="node.attribute.add",
         node_schema=node,
         attribute_name="nbr_doors",
         branch=default_branch,
@@ -111,7 +115,7 @@ async def test_rpc(db: InfrahubDatabase, default_branch, init_database, schema_a
 
     await service.send(message=message)
     assert len(bus_simulator.replies) == 1
-    response: MigrationNodeAttributeAddResponse = bus_simulator.replies[0]
+    response: SchemaMigrationAttributeResponse = bus_simulator.replies[0]
     assert response.passed
     assert response.meta.correlation_id == correlation_id
     assert not response.data.errors
