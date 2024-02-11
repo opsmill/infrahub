@@ -1,4 +1,6 @@
+import tempfile
 import uuid
+from pathlib import Path
 
 import pytest
 from graphql import parse
@@ -18,6 +20,7 @@ from infrahub_sdk.utils import (
     is_valid_url,
     is_valid_uuid,
     str_to_bool,
+    write_to_file,
 )
 
 
@@ -175,3 +178,20 @@ async def test_extract_fields_fragment(query_02):
     }
 
     assert await extract_fields(document.definitions[0].selection_set) == expected_response
+
+
+def test_write_to_file():
+    tmp_dir = tempfile.TemporaryDirectory()
+    directory = Path(tmp_dir.name)
+
+    with pytest.raises(FileExistsError):
+        write_to_file(directory, "placeholder")
+
+    assert write_to_file(directory / "file.txt", "placeholder") is True
+    assert write_to_file(directory / "file.txt", "placeholder") is True
+    assert write_to_file(directory / "file.txt", "") is True
+    assert write_to_file(directory / "file.txt", None) is True
+    assert write_to_file(directory / "file.txt", 1234) is True
+    assert write_to_file(directory / "file.txt", {"key": "value"}) is True
+
+    tmp_dir.cleanup()
