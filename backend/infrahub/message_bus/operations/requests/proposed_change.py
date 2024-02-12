@@ -321,6 +321,7 @@ async def run_tests(message: messages.RequestProposedChangeRunTests, service: In
                 str(directory),
                 f"--infrahub-repo-config={config_file}",
                 f"--infrahub-address={config.SETTINGS.main.internal_address}",
+                "--continue-on-collection-errors",  # FIXME: Non-Infrahub tests should be ignored
                 "-qqqq",
                 "-s",
             ],
@@ -333,7 +334,7 @@ async def run_tests(message: messages.RequestProposedChangeRunTests, service: In
                 repository_id=repository.repository_id,
                 name=repository.repository_name,
                 service=service,
-                repository_kind=InfrahubKind.READONLYREPOSITORY if repository.read_only else InfrahubKind.REPOSITORY,
+                repository_kind=repository.kind,
             )
             commit = repo.get_commit_value(proposed_change.source_branch.value)
             worktree_directory = Path(repo.get_commit_worktree(commit=commit).directory)
