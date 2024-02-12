@@ -87,7 +87,7 @@ class InfrahubYamlFile(pytest.File):
                     continue
 
             for test in test_group.tests:
-                name = f"{test_group.resource.value.lower()}__{test_group.resource_name}__{test.name}"
+                name = f"infrahub__{test_group.resource.value.lower()}__{test_group.resource_name}__{test.name}"
 
                 item_class: type[pytest.Item] = ITEMS_MAPPING[test.spec.kind]  # type: ignore[assignment]
                 item: pytest.Item = item_class.from_parent(
