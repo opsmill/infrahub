@@ -118,6 +118,9 @@ class SchemaUpdateConstraintInfo(BaseModel):
     def routing_key(self):
         return "schema.validator.path"
 
+    def __hash__(self) -> int:
+        return hash((type(self),) + tuple([self.constraint_name + self.path.get_path()]))
+
 
 class SchemaUpdateValidationResult(BaseModel):
     errors: List[SchemaUpdateValidationError] = Field(default_factory=list)
@@ -1062,6 +1065,76 @@ class SchemaBranch:
                     )
 
         return filters
+
+    async def get_constraints_per_model(self, name: str) -> List[SchemaUpdateConstraintInfo]:  # pylint: disable=too-many-branches
+        schema = self.get(name=name, duplicate=False)
+        constraints: List[SchemaUpdateConstraintInfo] = []
+
+        for prop_name, prop_field_info in schema.model_fields.items():
+            if prop_name in ["attributes", "relationships"] or not prop_field_info.json_schema_extra:
+                continue
+            prop_field_update = prop_field_info.json_schema_extra.get("update")
+            if prop_field_update != UpdateSupport.VALIDATE_CONSTRAINT.value:
+                continue
+
+            if getattr(schema, prop_name) is None:
+                continue
+
+            schema_path = SchemaPath(
+                schema_kind=schema.kind,
+                path_type=SchemaPathType.NODE,
+                field_name=prop_name,
+                property_name=prop_name,
+            )
+            constraint_name = f"node.{prop_name}.update"
+
+            constraints.append(SchemaUpdateConstraintInfo(constraint_name=constraint_name, path=schema_path))
+
+        for field_name in schema.attribute_names + schema.relationship_names:
+            field: Union[AttributeSchema, RelationshipSchema]
+            if field_name in schema.attribute_names:
+                field = schema.get_attribute(name=field_name)
+            else:
+                field = schema.get_relationship(name=field_name)
+
+            for prop_name, prop_field_info in field.model_fields.items():
+                if not prop_field_info.json_schema_extra:
+                    continue
+
+                prop_field_update = prop_field_info.json_schema_extra.get("update")
+                if prop_field_update != UpdateSupport.VALIDATE_CONSTRAINT.value:
+                    continue
+
+                if getattr(field, prop_name) is None:
+                    continue
+
+                path_type = SchemaPathType.ATTRIBUTE
+                constraint_name = f"attribute.{prop_name}.update"
+                if isinstance(field, RelationshipSchema):
+                    path_type = SchemaPathType.RELATIONSHIP
+                    constraint_name = f"relationship.{prop_name}.update"
+
+                schema_path = SchemaPath(
+                    schema_kind=schema.kind,
+                    path_type=path_type,
+                    field_name=field_name,
+                    property_name=prop_name,
+                )
+
+                constraints.append(SchemaUpdateConstraintInfo(constraint_name=constraint_name, path=schema_path))
+
+        validated_constraints: List[SchemaUpdateConstraintInfo] = []
+        for constraint in constraints:
+            if CONSTRAINT_VALIDATOR_MAP.get(constraint.constraint_name, None):
+                validated_constraints.append(constraint)
+            else:
+                log.warning(
+                    f"Unable to validate: {constraint.constraint_name!r} for {constraint.path.get_path()!r}, validator not available",
+                    constraint_name=constraint.constraint_name,
+                    path=constraint.path.get_path(),
+                )
+
+        return validated_constraints
 
 
 # pylint: disable=too-many-public-methods

@@ -1,24 +1,25 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Tuple
 
-from infrahub.message_bus.messages import MESSAGE_MAP, RESPONSE_MAP, InfrahubResponse
+from infrahub.message_bus.messages import MESSAGE_MAP, RESPONSE_MAP
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.schema_manager import SchemaBranch, SchemaUpdateConstraintInfo
+    from infrahub.message_bus.messages.schema_validator_path import SchemaValidatorPathResponse
     from infrahub.services import InfrahubServices
 
 
 async def schema_validators_checker(
     branch: Branch, schema: SchemaBranch, constraints: List[SchemaUpdateConstraintInfo], service: InfrahubServices
-) -> List[str]:
+) -> Tuple[List[str], List[SchemaValidatorPathResponse]]:
     tasks = []
     error_messages: List[str] = []
 
     if not constraints:
-        return error_messages
+        return error_messages, []
 
     for constraint in constraints:
         service.log.info(
@@ -48,9 +49,9 @@ async def schema_validators_checker(
         tasks.append(service.message_bus.rpc(message=message, response_class=response_class))
 
     if not tasks:
-        return error_messages
+        return error_messages, []
 
-    responses: list[InfrahubResponse] = await asyncio.gather(*tasks)
+    responses: list[SchemaValidatorPathResponse] = await asyncio.gather(*tasks)  # type: ignore[assignment]
 
     for response in responses:
         if not response.passed:
@@ -66,4 +67,4 @@ async def schema_validators_checker(
         for violation in response.data.violations:  # type: ignore[union-attr]
             error_messages.append(violation.message)
 
-    return error_messages
+    return error_messages, responses

@@ -1589,6 +1589,82 @@ async def test_schema_branch_validate_add_node_relationships(
     assert result.model_dump(exclude=["diff"]) == {"checks": [], "errors": [], "migrations": []}
 
 
+async def test_get_constraints_per_model():
+    FULL_SCHEMA = {
+        "nodes": [
+            {
+                "name": "Criticality",
+                "namespace": "Builtin",
+                "default_filter": "name__value",
+                "label": "Criticality",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                    {"name": "level", "kind": "Number", "label": "Level"},
+                    {"name": "color", "kind": "Text", "label": "Color", "default_value": "#444444"},
+                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
+                ],
+                "relationships": [
+                    {
+                        "name": "tags",
+                        "peer": InfrahubKind.TAG,
+                        "label": "Tags",
+                        "optional": True,
+                        "cardinality": "many",
+                    },
+                    {
+                        "name": "primary_tag",
+                        "peer": InfrahubKind.TAG,
+                        "label": "Primary Tag",
+                        "identifier": "primary_tag__criticality",
+                        "optional": True,
+                        "cardinality": "one",
+                    },
+                ],
+            },
+            {
+                "name": "Tag",
+                "namespace": "Builtin",
+                "label": "Tag",
+                "default_filter": "name__value",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
+                ],
+            },
+        ]
+    }
+
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(**FULL_SCHEMA))
+    schema_branch.process()
+    constraints = await schema_branch.get_constraints_per_model(name="BuiltinCriticality")
+
+    assert [constraint.model_dump() for constraint in constraints] == [
+        {
+            "constraint_name": "relationship.optional.update",
+            "path": {
+                "field_name": "tags",
+                "path_type": SchemaPathType.RELATIONSHIP,
+                "property_name": "optional",
+                "resource_type": PathResourceType.SCHEMA,
+                "schema_id": None,
+                "schema_kind": "BuiltinCriticality",
+            },
+        },
+        {
+            "constraint_name": "relationship.optional.update",
+            "path": {
+                "field_name": "primary_tag",
+                "path_type": SchemaPathType.RELATIONSHIP,
+                "property_name": "optional",
+                "resource_type": PathResourceType.SCHEMA,
+                "schema_id": None,
+                "schema_kind": "BuiltinCriticality",
+            },
+        },
+    ]
+
+
 # -----------------------------------------------------------------
 # SchemaManager
 # -----------------------------------------------------------------

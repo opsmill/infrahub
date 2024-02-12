@@ -7,10 +7,17 @@ from infrahub_sdk.node import InfrahubNode
 from pydantic import BaseModel
 
 from infrahub import config, lock
-from infrahub.core.constants import CheckType, DiffAction, InfrahubKind, ProposedChangeState
-from infrahub.core.diff import BranchDiffer
+from infrahub.core.constants import (
+    CheckType,
+    DiffAction,
+    InfrahubKind,
+    ProposedChangeState,
+)
+from infrahub.core.diff import BranchDiffer, SchemaConflict
 from infrahub.core.integrity.object_conflict.conflict_recorder import ObjectConflictValidatorRecorder
 from infrahub.core.registry import registry
+from infrahub.core.schema_manager import SchemaBranch, SchemaUpdateConstraintInfo
+from infrahub.core.validators.checker import schema_validators_checker
 from infrahub.core.validators.uniqueness.checker import UniquenessChecker
 from infrahub.git.repository import InfrahubRepository, get_initialized_repo
 from infrahub.log import get_logger
@@ -151,6 +158,51 @@ async def schema_integrity(
 ) -> None:
     log.info(f"Got a request to process schema integrity defined in proposed_change: {message.proposed_change}")
 
+    # For now, we retrieve the latest schema for each branch from the registry
+    # In the future it would be good to generate the object SchemaUpdateValidationResult from message.branch_diff
+    source_schema = registry.schema.get_schema_branch(name=message.source_branch).duplicate()
+    dest_schema = registry.schema.get_schema_branch(name=message.destination_branch).duplicate()
+
+    candidate_schema = dest_schema.duplicate()
+    candidate_schema.load_schema(schema=source_schema)
+    validation_result = dest_schema.validate_update(other=candidate_schema)
+
+    constraints_from_data_diff = _get_proposed_change_schema_integrity_constraints(
+        message=message, schema=candidate_schema
+    )
+    constraints_from_schema_diff = validation_result.constraints
+    constraints = set(constraints_from_data_diff + constraints_from_schema_diff)
+
+    if not constraints:
+        return
+
+    # ----------------------------------------------------------
+    # Validate if the new schema is valid with the content of the database
+    # ----------------------------------------------------------
+    source_branch = registry.get_branch_from_registry(branch=message.source_branch)
+    source_branch.ephemeral_rebase = True
+    _, responses = await schema_validators_checker(
+        branch=source_branch, schema=candidate_schema, constraints=constraints, service=service
+    )
+
+    conflicts: List[SchemaConflict] = []
+    for response in responses:
+        for violation in response.data.violations:
+            conflicts.append(
+                SchemaConflict(
+                    name=response.data.schema_path.get_path(),
+                    type=response.data.constraint_name,
+                    kind=violation.node_kind,
+                    id=violation.node_id,
+                    path=response.data.schema_path.get_path(),
+                    value="NA",
+                    branch="placeholder",
+                )
+            )
+
+    # ------------------------------------------------------------------------
+    # Node Uniqueness Validation, need to re-integrate into the new framework
+    # ------------------------------------------------------------------------
     altered_schema_kinds = set()
     for node_diff in message.branch_diff.diff_summary:
         if node_diff["branch"] == message.source_branch and {DiffAction.ADDED, DiffAction.UPDATED} & set(
@@ -159,9 +211,11 @@ async def schema_integrity(
             altered_schema_kinds.add(node_diff["kind"])
 
     uniqueness_checker = UniquenessChecker(db=service.database)
-    uniqueness_conflicts = await uniqueness_checker.get_conflicts(
-        schemas=altered_schema_kinds,
-        source_branch=message.source_branch,
+    conflicts.extend(
+        await uniqueness_checker.get_conflicts(
+            schemas=altered_schema_kinds,
+            source_branch=message.source_branch,
+        )
     )
 
     async with service.database.start_transaction() as db:
@@ -171,7 +225,9 @@ async def schema_integrity(
             validator_label="Schema Integrity",
             check_schema_kind=InfrahubKind.SCHEMACHECK,
         )
-        await object_conflict_validator_recorder.record_conflicts(message.proposed_change, uniqueness_conflicts)
+        await object_conflict_validator_recorder.record_conflicts(
+            proposed_change_id=message.proposed_change, conflicts=conflicts
+        )
 
 
 async def repository_checks(message: messages.RequestProposedChangeRepositoryChecks, service: InfrahubServices) -> None:
@@ -571,3 +627,17 @@ async def _populate_subscribers(branch_diff: ProposedChangeBranchDiff, service: 
             branch_diff.subscribers.append(
                 ProposedChangeSubscriber(subscriber_id=subscriber["node"]["id"], kind=subscriber["node"]["__typename"])
             )
+
+
+async def _get_proposed_change_schema_integrity_constraints(
+    message: messages.RequestProposedChangeSchemaIntegrity, schema: SchemaBranch
+) -> List[SchemaUpdateConstraintInfo]:
+    # For now we run the constraints for all models that have changed in the source branch or the destination branch
+    # We need to revisit that to properly calculate which constraints we should validate
+    modified_kinds = {node_diff["kind"] for node_diff in message.branch_diff.diff_summary}
+
+    constraints: List[SchemaUpdateConstraintInfo] = []
+    for kind in modified_kinds:
+        constraints.extend(await schema.get_constraints_per_model(name=kind))
+
+    return constraints

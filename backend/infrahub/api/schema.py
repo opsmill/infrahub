@@ -177,7 +177,7 @@ async def load_schema(  # noqa: PLR0911 pylint: disable=R0911,too-many-branches,
         # ----------------------------------------------------------
         # Validate if the new schema is valid with the content of the database
         # ----------------------------------------------------------
-        error_messages = await schema_validators_checker(
+        error_messages, _ = await schema_validators_checker(
             branch=branch, schema=candidate_schema, constraints=result.constraints, service=service
         )
         if error_messages:

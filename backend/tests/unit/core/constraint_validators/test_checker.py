@@ -31,7 +31,7 @@ async def test_schema_validators_checker(
     service = InfrahubServices(message_bus=bus_simulator, client=InfrahubClient(), database=db)
     bus_simulator.service = service
 
-    errors = await schema_validators_checker(
+    errors, _ = await schema_validators_checker(
         branch=default_branch, schema=schema, constraints=constraints, service=service
     )
 
