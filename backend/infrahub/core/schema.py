@@ -437,7 +437,7 @@ class RelationshipSchema(HashableModel):
 NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
 
 
-class BaseNodeSchema(HashableModel):
+class BaseNodeSchema(HashableModel):  # pylint: disable=too-many-public-methods
     id: Optional[str] = None
     name: str = Field(
         pattern=NODE_NAME_REGEX,
@@ -589,7 +589,7 @@ class BaseNodeSchema(HashableModel):
 
         raise ValueError(f"Unable to find the relationship {name}")
 
-    def get_relationship_by_identifier(self, id, raise_on_error=True) -> RelationshipSchema:
+    def get_relationship_by_identifier(self, id: str, raise_on_error=True) -> RelationshipSchema:
         for item in self.relationships:
             if item.identifier == id:
                 return item
@@ -598,6 +598,15 @@ class BaseNodeSchema(HashableModel):
             return None
 
         raise ValueError(f"Unable to find the relationship {id}")
+
+    def get_relationships_by_identifier(self, id: str) -> List[RelationshipSchema]:
+        """Return a list of relationship instead of a single one"""
+        rels: List[RelationshipSchema] = []
+        for item in self.relationships:
+            if item.identifier == id:
+                rels.append(item)
+
+        return rels
 
     @property
     def valid_input_names(self) -> List[str]:

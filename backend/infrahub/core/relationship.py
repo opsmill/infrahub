@@ -8,7 +8,7 @@ from infrahub_sdk.utils import intersection
 from pydantic.v1 import BaseModel, Field
 
 from infrahub.core import registry
-from infrahub.core.constants import BranchSupportType, RelationshipCardinality
+from infrahub.core.constants import BranchSupportType, RelationshipCardinality, RelationshipDirection
 from infrahub.core.property import (
     FlagPropertyMixin,
     NodePropertyData,
@@ -869,7 +869,7 @@ class RelationshipManager:
 
         return self
 
-    async def validate_constraints(
+    async def validate_constraints(  # pylint: disable=too-many-branches
         self, db: InfrahubDatabase, branch: Branch, return_cardinality_one_to_update: bool = False
     ) -> List[str]:
         (
@@ -893,25 +893,37 @@ class RelationshipManager:
         #    relationship to be deleted, need to check if the schema on the other side has a min_count defined
         # TODO see how to manage Generic node
         peer_schema = registry.schema.get(name=self.schema.peer, branch=branch)
-        peer_rel = peer_schema.get_relationship_by_identifier(id=self.schema.identifier, raise_on_error=False)
-        if not peer_rel:
+        peer_rels = peer_schema.get_relationships_by_identifier(id=self.schema.identifier)
+        if not peer_rels:
             return
 
-        for peer_id in peer_ids_present_local_only + peer_ids_present_database_only:
-            if peer_rel.max_count and peer_id in peer_ids_present_local_only:
-                nodes_to_validate.append(
-                    NodeToValidate(uuid=peer_id, max_count=peer_rel.max_count, cardinality=peer_rel.cardinality)
-                )
+        for peer_rel in peer_rels:
+            # If a relationship is directional and both have the same direction they can't work together
+            if self.schema.direction == peer_rel.direction and peer_rel.direction != RelationshipDirection.BIDIR:
+                continue
 
-            if peer_rel.min_count and peer_id in peer_ids_present_database_only:
-                nodes_to_validate.append(
-                    NodeToValidate(uuid=peer_id, min_count=peer_rel.min_count, cardinality=peer_rel.cardinality)
-                )
+            for peer_id in peer_ids_present_local_only + peer_ids_present_database_only:
+                if peer_rel.max_count and peer_id in peer_ids_present_local_only:
+                    nodes_to_validate.append(
+                        NodeToValidate(uuid=peer_id, max_count=peer_rel.max_count, cardinality=peer_rel.cardinality)
+                    )
+
+                if peer_rel.min_count and peer_id in peer_ids_present_database_only:
+                    nodes_to_validate.append(
+                        NodeToValidate(uuid=peer_id, min_count=peer_rel.min_count, cardinality=peer_rel.cardinality)
+                    )
+
+        direction = RelationshipDirection.BIDIR
+        if self.schema.direction == RelationshipDirection.INBOUND:
+            direction = RelationshipDirection.OUTBOUND
+        elif self.schema.direction == RelationshipDirection.OUTBOUND:
+            direction = RelationshipDirection.INBOUND
 
         query = await RelationshipCountPerNodeQuery.init(
             db=db,
             node_ids=[node.uuid for node in nodes_to_validate],
             identifier=self.schema.identifier,
+            direction=direction,
             branch=branch,
         )
         await query.execute(db=db)

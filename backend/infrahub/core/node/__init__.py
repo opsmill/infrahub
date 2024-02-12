@@ -452,7 +452,6 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             )
 
             other_nodes = [n for n in nodes if n.id != self.id]
-
             if other_nodes:
                 raise ValidationError(
                     {unique_attr.name: f"An object already exist with this value: {unique_attr.name}: {attr.value}"}

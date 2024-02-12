@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Dict, Generator, List, Optional, Type, Union
 
 from infrahub_sdk import UUIDT
 
+from infrahub.core.constants import RelationshipDirection
 from infrahub.core.query import Query, QueryType
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
 from infrahub.core.timestamp import Timestamp
@@ -66,7 +67,7 @@ class RelationshipPeerData:
     peer_id: UUID
     """UUID of the Peer Node."""
 
-    peer_kind: UUID
+    peer_kind: str
     """Kind of the Peer Node."""
 
     properties: Dict[str, Union[FlagPropertyData, NodePropertyData]]
@@ -724,11 +725,14 @@ class RelationshipCountPerNodeQuery(Query):
         self,
         node_ids: List[str],
         identifier: str,
+        direction: RelationshipDirection,
         *args,
         **kwargs,
     ):
         self.node_ids = node_ids
         self.identifier = identifier
+        self.direction = direction
+
         super().__init__(*args, **kwargs)
 
     async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
@@ -738,11 +742,17 @@ class RelationshipCountPerNodeQuery(Query):
         self.params["peer_ids"] = self.node_ids
         self.params["rel_identifier"] = self.identifier
 
+        path = "-[r:IS_RELATED]-"
+        if self.direction == RelationshipDirection.INBOUND:
+            path = "-[r:IS_RELATED]->"
+        elif self.direction == RelationshipDirection.OUTBOUND:
+            path = "<-[r:IS_RELATED]-"
+
         query = """
         MATCH (rl:Relationship { name: $rel_identifier })
         CALL {
             WITH rl
-            MATCH path = (peer_node:Node)-[r:IS_RELATED]-(rl)
+            MATCH path = (peer_node:Node)%(path)s(rl)
             WHERE peer_node.uuid IN $peer_ids AND %(branch_filter)s
             RETURN peer_node as peer, r as r1
             ORDER BY r.branch_level DESC, r.from DESC
@@ -750,7 +760,7 @@ class RelationshipCountPerNodeQuery(Query):
         }
         WITH peer as peer_node, r1 as r
         WHERE r.status = "active"
-        """ % {"branch_filter": branch_filter}
+        """ % {"branch_filter": branch_filter, "path": path}
 
         self.add_to_query(query)
         self.return_labels = ["peer_node.uuid", "COUNT(peer_node.uuid) as nbr_peers"]

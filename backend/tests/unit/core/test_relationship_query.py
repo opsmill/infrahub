@@ -4,6 +4,7 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.constants import RelationshipDirection
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.query.relationship import (
@@ -528,6 +529,7 @@ async def test_query_RelationshipCountPerNodeQuery(
         db=db,
         node_ids=peer_ids,
         identifier=rel_schema.identifier,
+        direction=RelationshipDirection.OUTBOUND,
         branch=branch,
         at=Timestamp(),
     )
@@ -536,5 +538,22 @@ async def test_query_RelationshipCountPerNodeQuery(
     assert count_per_peer == {
         person_john_main.id: 3,
         person_jane_main.id: 2,
+        albert.id: 0,
+    }
+
+    # Revert the direction to ensure this is working as expected
+    query = await RelationshipCountPerNodeQuery.init(
+        db=db,
+        node_ids=peer_ids,
+        identifier=rel_schema.identifier,
+        direction=RelationshipDirection.INBOUND,
+        branch=branch,
+        at=Timestamp(),
+    )
+    await query.execute(db=db)
+    count_per_peer = await query.get_count_per_peer()
+    assert count_per_peer == {
+        person_john_main.id: 0,
+        person_jane_main.id: 0,
         albert.id: 0,
     }
