@@ -66,6 +66,9 @@ class RelationshipPeerData:
     peer_id: UUID
     """UUID of the Peer Node."""
 
+    peer_kind: UUID
+    """Kind of the Peer Node."""
+
     properties: Dict[str, Union[FlagPropertyData, NodePropertyData]]
     """UUID of the Relationship Node."""
 
@@ -641,8 +644,9 @@ class RelationshipGetPeerQuery(Query):
         for result in self.get_results_group_by(("peer", "uuid")):
             rels = result.get("rels")
             data = RelationshipPeerData(
-                source_id=result.get("source_node").get("uuid"),
-                peer_id=result.get("peer").get("uuid"),
+                source_id=result.get_node("source_node").get("uuid"),
+                peer_id=result.get_node("peer").get("uuid"),
+                peer_kind=result.get_node("peer").get("kind"),
                 rel_node_db_id=result.get("rl").element_id,
                 rel_node_id=result.get("rl").get("uuid"),
                 updated_at=rels[0]["from"],
@@ -710,3 +714,54 @@ class RelationshipGetQuery(RelationshipQuery):
 
         self.add_to_query(query)
         self.return_labels = ["s", "d", "rl", "r1", "r2"]
+
+
+class RelationshipCountPerNodeQuery(Query):
+    name = "relationship_count_per_node"
+    type: QueryType = QueryType.READ
+
+    def __init__(
+        self,
+        node_ids: List[str],
+        identifier: str,
+        *args,
+        **kwargs,
+    ):
+        self.node_ids = node_ids
+        self.identifier = identifier
+        super().__init__(*args, **kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        self.params.update(branch_params)
+
+        self.params["peer_ids"] = self.node_ids
+        self.params["rel_identifier"] = self.identifier
+
+        query = """
+        MATCH (rl:Relationship { name: $rel_identifier })
+        CALL {
+            WITH rl
+            MATCH path = (peer_node:Node)-[r:IS_RELATED]-(rl)
+            WHERE peer_node.uuid IN $peer_ids AND %(branch_filter)s
+            RETURN peer_node as peer, r as r1
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH peer as peer_node, r1 as r
+        WHERE r.status = "active"
+        """ % {"branch_filter": branch_filter}
+
+        self.add_to_query(query)
+        self.return_labels = ["peer_node.uuid", "COUNT(peer_node.uuid) as nbr_peers"]
+
+    async def get_count_per_peer(self) -> Dict[str, int]:
+        data: Dict[str, int] = {}
+        for result in self.results:
+            data[result.get("peer_node.uuid")] = result.get("nbr_peers")
+
+        for node_id in self.node_ids:
+            if node_id not in data:
+                data[node_id] = 0
+
+        return data
