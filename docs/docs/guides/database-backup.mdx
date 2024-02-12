@@ -10,7 +10,7 @@ This guide assumes that you cloned the Infrahub repository to your machine, but 
 
 ## Backup a remote Infrahub database
 
-```
+```python
 python -m utilities.db_backup neo4j backup --database-url=172.28.64.1 /infrahub_backups
 ```
 
@@ -18,7 +18,7 @@ In this example, the "remote" Infrahub database is accessible at `172.28.64.1` a
 
 ## Backup a local Infrahub database with a non-default backup port
 
-```
+```python
 python -m utilities.db_backup neo4j backup --database-backup-port=12345 /infrahub_backups
 ```
 
@@ -26,7 +26,7 @@ In this example, I am running the backup command on the same machine that is run
 
 ## Restore a backup on a non-default cypher port
 
-```
+```python
 python local_backup_copy.py neo4j restore /infrahub_backups --database-cypher-port=9876
 ```
 

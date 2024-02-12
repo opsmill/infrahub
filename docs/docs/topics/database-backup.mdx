@@ -11,34 +11,41 @@ Please see [this guide](/guides/database-backup) for concrete examples of runnin
 ## Requirements {#backup-requirements}
 
 ### Machine running the CLI command
+
 - [Docker](https://www.docker.com/) installed
 - [Python](https://www.python.org/) 3.8 or later
 - [Python docker SDK](https://docker-py.readthedocs.io/en/stable/index.html)
 
 #### Backup only
+
 - Can connect to Infrahub database container (over port 6362 by default)
 
 #### Restore only
+
 - Can connect to the Docker daemon running the Infrahub database container.
 - Database credentials specified in the `NEO4J_AUTH` environment variable in the format (username/password)
 
 ### Infrahub database container
+
 - Must be running a Neo4j Enterprise image
-- Must have the following environment variables set 
-```
+- Must have the following environment variables set
+
+```text
 - "NEO4J_ACCEPT_LICENSE_AGREEMENT=yes"
 - "NEO4J_server_backup_enabled=true"
 # Can use a port other than 6362, but this is the default
-- "NEO4J_server_backup_listen__address=0.0.0.0:6362" 
+- "NEO4J_server_backup_listen__address=0.0.0.0:6362"
 ```
 
 ## Command-line tool
 
 The command-line tool lives [here](https://github.com/opsmill/infrahub/tree/stable/utilities/db_backup/__main__.py). To use the tool locally, you can either clone the [Infrahub repository](https://github.com/opsmill/infrahub) or copy the content of the linked file into a local `.py` file. If you choose the clone the repository, you can run the tool with either of the following commands
-```
+
+```text
 python -m utilities.db_backup neo4j [backup|restore] ...
 python utilities/db_backup/__main__.py ...
 ```
+
 If you copied the content of the file locally, only the second method will work.
 
 ## Backups
@@ -76,7 +83,7 @@ We pretty closely follow the [guidance from Neo4j](https://neo4j.com/docs/operat
 
 The `db_backup neo4j restore` command is disruptive. It will stop and start all Neo4j databases (except for `system`) on your Infrahub database container.
 
-Unlike the `backup` command, the `restore` command requires a connection to the Docker daemon running the Infrahub database container, because it needs to execute commands directly on that container. This means that you either need to execute the `restore` command 
+Unlike the `backup` command, the `restore` command requires a connection to the Docker daemon running the Infrahub database container, because it needs to execute commands directly on that container. This means that you either need to execute the `restore` command
 
 1. on the same machine that is running your Infrahub database container
 2. on a machine that can connect to the Docker daemon running the Infrahub database container

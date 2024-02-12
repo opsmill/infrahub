@@ -244,7 +244,7 @@ class Neo4jBackupRunner(Neo4jBackupRestoreBase):
                 "*",
                 f"--to-path={self.container_backup_dir}",
                 f"--from={database_url}:{database_backup_port}",
-                "--verbose"
+                "--verbose",
             ]
             self._execute_docker_container_command(
                 helper_container,
