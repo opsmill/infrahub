@@ -529,7 +529,7 @@ async def test_query_RelationshipCountPerNodeQuery(
         db=db,
         node_ids=peer_ids,
         identifier=rel_schema.identifier,
-        direction=RelationshipDirection.OUTBOUND,
+        direction=RelationshipDirection.INBOUND,
         branch=branch,
         at=Timestamp(),
     )
@@ -546,7 +546,7 @@ async def test_query_RelationshipCountPerNodeQuery(
         db=db,
         node_ids=peer_ids,
         identifier=rel_schema.identifier,
-        direction=RelationshipDirection.INBOUND,
+        direction=RelationshipDirection.OUTBOUND,
         branch=branch,
         at=Timestamp(),
     )

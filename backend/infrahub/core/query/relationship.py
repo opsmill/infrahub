@@ -743,9 +743,9 @@ class RelationshipCountPerNodeQuery(Query):
         self.params["rel_identifier"] = self.identifier
 
         path = "-[r:IS_RELATED]-"
-        if self.direction == RelationshipDirection.INBOUND:
+        if self.direction == RelationshipDirection.OUTBOUND:
             path = "-[r:IS_RELATED]->"
-        elif self.direction == RelationshipDirection.OUTBOUND:
+        elif self.direction == RelationshipDirection.INBOUND:
             path = "<-[r:IS_RELATED]-"
 
         query = """
