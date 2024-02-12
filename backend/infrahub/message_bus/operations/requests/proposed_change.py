@@ -6,13 +6,17 @@ from infrahub import lock
 from infrahub.core.constants import CheckType, DiffAction, InfrahubKind, ProposedChangeState
 from infrahub.core.diff import BranchDiffer
 from infrahub.core.integrity.object_conflict.conflict_recorder import ObjectConflictValidatorRecorder
-from infrahub.core.manager import NodeManager
 from infrahub.core.registry import registry
 from infrahub.core.validators.uniqueness.checker import UniquenessChecker
 from infrahub.git.repository import InfrahubRepository
 from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubMessage, messages
-from infrahub.message_bus.types import ProposedChangeBranchDiff, ProposedChangeRepository
+from infrahub.message_bus.types import (
+    ProposedChangeArtifactDefinition,
+    ProposedChangeBranchDiff,
+    ProposedChangeRepository,
+    ProposedChangeSubscriber,
+)
 from infrahub.services import InfrahubServices
 
 log = get_logger()
@@ -30,10 +34,7 @@ async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, s
     """Triggers a data integrity validation check on the provided proposed change to start."""
     log.info(f"Got a request to process data integrity defined in proposed_change: {message.proposed_change}")
 
-    proposed_change = await NodeManager.get_one_by_id_or_default_filter(
-        id=message.proposed_change, schema_name=InfrahubKind.PROPOSEDCHANGE, db=service.database
-    )
-    source_branch = await registry.get_branch(db=service.database, branch=proposed_change.source_branch.value)
+    source_branch = await registry.get_branch(db=service.database, branch=message.source_branch)
     diff = await BranchDiffer.init(db=service.database, branch=source_branch, branch_only=False)
     conflicts = await diff.get_conflicts_graph(db=service.database)
 
@@ -73,6 +74,7 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
 
     diff_summary = await service.client.get_diff_summary(branch=message.source_branch)
     branch_diff = ProposedChangeBranchDiff(diff_summary=diff_summary, repositories=repositories)
+    await _populate_subscribers(branch_diff=branch_diff, service=service, branch=message.source_branch)
 
     if message.check_type in [CheckType.ALL, CheckType.ARTIFACT]:
         events.append(
@@ -132,13 +134,10 @@ async def schema_integrity(
     service: InfrahubServices,  # pylint: disable=unused-argument
 ) -> None:
     log.info(f"Got a request to process schema integrity defined in proposed_change: {message.proposed_change}")
-    proposed_change = await NodeManager.get_one_by_id_or_default_filter(
-        id=message.proposed_change, schema_name=InfrahubKind.PROPOSEDCHANGE, db=service.database
-    )
 
     altered_schema_kinds = set()
     for node_diff in message.branch_diff.diff_summary:
-        if node_diff["branch"] == proposed_change.source_branch.value and {DiffAction.ADDED, DiffAction.UPDATED} & set(
+        if node_diff["branch"] == message.source_branch and {DiffAction.ADDED, DiffAction.UPDATED} & set(
             node_diff["actions"]
         ):
             altered_schema_kinds.add(node_diff["kind"])
@@ -146,7 +145,7 @@ async def schema_integrity(
     uniqueness_checker = UniquenessChecker(db=service.database)
     uniqueness_conflicts = await uniqueness_checker.get_conflicts(
         schemas=altered_schema_kinds,
-        source_branch=proposed_change.source_branch.value,
+        source_branch=message.source_branch,
     )
 
     async with service.database.start_transaction() as db:
@@ -188,20 +187,110 @@ async def repository_checks(message: messages.RequestProposedChangeRepositoryChe
 
 async def refresh_artifacts(message: messages.RequestProposedChangeRefreshArtifacts, service: InfrahubServices) -> None:
     log.info(f"Refreshing artifacts for change_proposal={message.proposed_change}")
-    proposed_change = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=message.proposed_change)
-    artifact_definitions = await service.client.all(
-        kind=InfrahubKind.ARTIFACTDEFINITION, branch=proposed_change.source_branch.value
+    definition_information = await service.client.execute_graphql(
+        query=GATHER_ARTIFACT_DEFINITIONS,
+        branch_name=message.source_branch,
     )
-    for artifact_definition in artifact_definitions:
-        msg = messages.RequestArtifactDefinitionCheck(
-            artifact_definition=artifact_definition.id,
-            proposed_change=message.proposed_change,
-            source_branch=proposed_change.source_branch.value,
-            target_branch=proposed_change.destination_branch.value,
-        )
+    artifact_definitions = _parse_artifact_definitions(
+        definitions=definition_information["CoreArtifactDefinition"]["edges"]
+    )
 
-        msg.assign_meta(parent=message)
-        await service.send(message=msg)
+    for artifact_definition in artifact_definitions:
+        # Request artifact definition checks if the source branch is managed so it could contain
+        # changes to the transforms in code, alternatively if the queries used touches models
+        # that have been modified in the path
+        requires_validation = not message.source_branch_data_only
+        for changed_model in message.branch_diff.modified_kinds(branch=message.source_branch):
+            requires_validation |= changed_model in artifact_definition.query_models
+        if requires_validation:
+            msg = messages.RequestArtifactDefinitionCheck(
+                artifact_definition=artifact_definition,
+                branch_diff=message.branch_diff,
+                proposed_change=message.proposed_change,
+                source_branch=message.source_branch,
+                source_branch_data_only=message.source_branch_data_only,
+                destination_branch=message.destination_branch,
+            )
+
+            msg.assign_meta(parent=message)
+            await service.send(message=msg)
+
+
+GATHER_ARTIFACT_DEFINITIONS = """
+query GatherArtifactDefinitions {
+  CoreArtifactDefinition {
+    edges {
+      node {
+        id
+        name {
+          value
+        }
+        content_type {
+            value
+        }
+        transformation {
+          node {
+            __typename
+            timeout {
+                value
+            }
+            rebase {
+                value
+            }
+            query {
+              node {
+                models {
+                  value
+                }
+                name {
+                  value
+                }
+              }
+            }
+            ... on CoreTransformJinja2 {
+              template_path {
+                value
+              }
+            }
+            ... on CoreTransformPython {
+              class_name {
+                value
+              }
+              file_path {
+                value
+              }
+            }
+            repository {
+              node {
+                id
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+"""
+
+GATHER_GRAPHQL_QUERY_SUBSCRIBERS = """
+query GatherGraphQLQuerySubscribers($members: [ID!]) {
+  CoreGraphQLQueryGroup(members__ids: $members) {
+    edges {
+      node {
+        subscribers {
+          edges {
+            node {
+              id
+              __typename
+            }
+          }
+        }
+      }
+    }
+  }
+}
+"""
 
 
 DESTINATION_ALLREPOSITORIES = """
@@ -337,6 +426,37 @@ def _parse_repositories(repositories: list[dict]) -> list[Repository]:
     return parsed
 
 
+def _parse_artifact_definitions(definitions: list[dict]) -> list[ProposedChangeArtifactDefinition]:
+    """This function assumes that definitions is a list of the edges
+
+    The edge should be of type CoreArtifactDefinition from the query
+    * GATHER_ARTIFACT_DEFINITIONS
+    """
+
+    parsed = []
+    for definition in definitions:
+        artifact_definition = ProposedChangeArtifactDefinition(
+            definition_id=definition["node"]["id"],
+            definition_name=definition["node"]["name"]["value"],
+            content_type=definition["node"]["content_type"]["value"],
+            timeout=definition["node"]["transformation"]["node"]["timeout"]["value"],
+            rebase=definition["node"]["transformation"]["node"]["rebase"]["value"],
+            query_name=definition["node"]["transformation"]["node"]["query"]["node"]["name"]["value"],
+            query_models=definition["node"]["transformation"]["node"]["query"]["node"]["models"]["value"] or [],
+            repository_id=definition["node"]["transformation"]["node"]["repository"]["node"]["id"],
+            transform_kind=definition["node"]["transformation"]["node"]["__typename"],
+        )
+        if artifact_definition.transform_kind == InfrahubKind.TRANSFORMJINJA2:
+            artifact_definition.template_path = definition["node"]["transformation"]["node"]["template_path"]["value"]
+        elif artifact_definition.transform_kind == InfrahubKind.TRANSFORMPYTHON:
+            artifact_definition.class_name = definition["node"]["transformation"]["node"]["class_name"]["value"]
+            artifact_definition.file_path = definition["node"]["transformation"]["node"]["file_path"]["value"]
+
+        parsed.append(artifact_definition)
+
+    return parsed
+
+
 async def _get_proposed_change_repositories(
     message: messages.RequestProposedChangePipeline, service: InfrahubServices
 ) -> list[ProposedChangeRepository]:
@@ -382,3 +502,17 @@ async def _gather_repository_repository_diffs(repositories: List[ProposedChangeR
             repo.files_removed = files_removed
             repo.files_added = files_added
             repo.files_changed = files_changed
+
+
+async def _populate_subscribers(branch_diff: ProposedChangeBranchDiff, service: InfrahubServices, branch: str) -> None:
+    result = await service.client.execute_graphql(
+        query=GATHER_GRAPHQL_QUERY_SUBSCRIBERS,
+        branch_name=branch,
+        variables={"members": branch_diff.modified_nodes(branch=branch)},
+    )
+
+    for group in result["CoreGraphQLQueryGroup"]["edges"]:
+        for subscriber in group["node"]["subscribers"]["edges"]:
+            branch_diff.subscribers.append(
+                ProposedChangeSubscriber(subscriber_id=subscriber["node"]["id"], kind=subscriber["node"]["__typename"])
+            )
