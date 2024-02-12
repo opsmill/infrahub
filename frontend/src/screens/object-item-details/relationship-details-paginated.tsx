@@ -6,7 +6,7 @@ import {
   PlusIcon,
 } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
-import { useContext, useState } from "react";
+import { Fragment, useContext, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { BUTTON_TYPES, Button } from "../../components/buttons/button";
@@ -41,6 +41,7 @@ import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
 import NoDataFound from "../no-data-found/no-data-found";
 import ObjectItemEditComponent from "../object-item-edit/object-item-edit-paginated";
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
+import { ObjectAttributeRow } from "./object-attribute-row";
 
 type iRelationDetailsProps = {
   parentNode: any;
@@ -227,24 +228,16 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
   const newColumns = columns?.length ? columns : defaultColumns;
 
   return (
-    <>
-      <div key={relationshipSchema?.name}>
-        {!relationshipsData && (
-          <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:py-4 sm:px-6">
-            <dt className="font-medium text-gray-500 flex items-center">
-              {relationshipSchema?.label}
-            </dt>
-            <dd className="text-gray-900 flex items-center">-</dd>
-          </div>
-        )}
-        {relationshipsData && (
-          <>
-            {relationshipSchema?.cardinality === "one" && (
-              <div className="p-2 grid grid-cols-3 gap-4 text-xs">
-                <dt className="font-medium text-gray-500 flex items-center">
-                  {relationshipSchema?.label}
-                </dt>
-                <dd className="text-gray-900 underline flex items-center">
+    <Fragment key={relationshipSchema?.name}>
+      {!relationshipsData && <ObjectAttributeRow name={relationshipSchema?.label} value="-" />}
+
+      {relationshipsData && (
+        <>
+          {relationshipSchema?.cardinality === "one" && (
+            <ObjectAttributeRow
+              name={relationshipSchema?.label}
+              value={
+                <>
                   <Link
                     to={constructPath(
                       getObjectDetailsUrl(
@@ -319,140 +312,138 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                   {relationshipsData.properties?.is_visible === false && (
                     <EyeSlashIcon className="w-4 h-4" />
                   )}
-                </dd>
-              </div>
-            )}
+                </>
+              }
+            />
+          )}
 
-            {relationshipSchema?.cardinality === "many" && mode === "TABLE" && (
-              <div className="flex-1 shadow-sm ring-1 ring-custom-black ring-opacity-5 overflow-x-auto">
-                <table className="min-w-full border-separate" style={{ borderSpacing: 0 }}>
-                  <thead className="bg-gray-50">
-                    <tr>
-                      {newColumns?.map((column) => (
-                        <th
-                          key={column.name}
-                          scope="col"
-                          className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 p-2 text-left text-xs font-semibold text-gray-900">
-                          {column.label}
-                        </th>
-                      ))}
-
+          {relationshipSchema?.cardinality === "many" && mode === "TABLE" && (
+            <div className="flex-1 shadow-sm ring-1 ring-custom-black ring-opacity-5 overflow-x-auto">
+              <table className="min-w-full border-separate" style={{ borderSpacing: 0 }}>
+                <thead className="bg-gray-50">
+                  <tr>
+                    {newColumns?.map((column) => (
                       <th
+                        key={column.name}
                         scope="col"
                         className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 p-2 text-left text-xs font-semibold text-gray-900">
-                        <span className="sr-only">Meta</span>
+                        {column.label}
                       </th>
-                    </tr>
-                  </thead>
+                    ))}
 
-                  <tbody className="bg-custom-white">
-                    {relationshipsData?.map(({ node, properties }: any, index: number) => (
-                      <tr
-                        key={index}
-                        className="hover:bg-gray-50 cursor-pointer"
-                        data-cy="relationship-row">
-                        {newColumns?.map((column) => (
-                          <td
-                            key={node.id + "-" + column.name}
-                            className={classNames(
-                              index !== relationshipsData.length - 1
-                                ? "border-b border-gray-200"
-                                : "",
-                              "whitespace-nowrap px-2 py-1 text-xs font-medium text-gray-900"
-                            )}>
-                            <Link
-                              className="whitespace-wrap px-2 py-1 text-xs text-gray-900 min-h-7 flex items-center"
-                              to={constructPath(getObjectDetailsUrl(node.id, node.__typename))}>
-                              {getObjectItemDisplayValue(node, column)}
-                            </Link>
-                          </td>
-                        ))}
+                    <th
+                      scope="col"
+                      className="sticky top-0 border-b border-gray-300 bg-gray-50 bg-opacity-75 p-2 text-left text-xs font-semibold text-gray-900">
+                      <span className="sr-only">Meta</span>
+                    </th>
+                  </tr>
+                </thead>
 
+                <tbody className="bg-custom-white">
+                  {relationshipsData?.map(({ node, properties }: any, index: number) => (
+                    <tr
+                      key={index}
+                      className="hover:bg-gray-50 cursor-pointer"
+                      data-cy="relationship-row">
+                      {newColumns?.map((column) => (
                         <td
+                          key={node.id + "-" + column.name}
                           className={classNames(
                             index !== relationshipsData.length - 1
                               ? "border-b border-gray-200"
                               : "",
-                            "whitespace-nowrap px-2 py-1 text-xs font-medium text-gray-900 flex justify-end"
+                            "whitespace-nowrap px-2 py-1 text-xs font-medium text-gray-900"
                           )}>
-                          <div
-                            className="flex px-2"
-                            onClick={() => {
-                              setRowForMetaEdit(node);
-                              setShowRelationMetaEditModal(true);
-                            }}>
-                            <MetaDetailsTooltip
-                              position="LEFT"
-                              items={[
-                                {
-                                  label: "Updated at",
-                                  value: properties?.updated_at,
-                                  type: "date",
-                                },
-                                {
-                                  label: "Update time",
-                                  value: `${new Date(
-                                    properties?.updated_at
-                                  ).toLocaleDateString()} ${new Date(
-                                    properties?.updated_at
-                                  ).toLocaleTimeString()}`,
-                                  type: "text",
-                                },
-                                {
-                                  label: "Source",
-                                  value: properties?.source?.display_label,
-                                  type: "link",
-                                },
-                                {
-                                  label: "Owner",
-                                  value: properties?.owner?.display_label,
-                                  type: "link",
-                                },
-                                {
-                                  label: "Is protected",
-                                  value: properties?.is_protected ? "True" : "False",
-                                  type: "text",
-                                },
-                              ]}
-                            />
-                          </div>
-
-                          <Button
-                            disabled={!auth?.permissions?.write}
-                            buttonType={BUTTON_TYPES.INVISIBLE}
-                            onClick={() => {
-                              setRelatedObjectToEdit(node);
-                            }}
-                            data-cy="metadata-edit-button">
-                            <PencilSquareIcon className="w-4 h-4 text-gray-500" />
-                          </Button>
-
-                          <Button
-                            disabled={!auth?.permissions?.write}
-                            buttonType={BUTTON_TYPES.INVISIBLE}
-                            onClick={() => {
-                              setRelatedRowToDelete(node);
-                            }}
-                            data-cy="relationship-delete-button">
-                            <img src={UnlinkIcon} className="w-4 h-4" />
-                          </Button>
+                          <Link
+                            className="whitespace-wrap px-2 py-1 text-xs text-gray-900 min-h-7 flex items-center"
+                            to={constructPath(getObjectDetailsUrl(node.id, node.__typename))}>
+                            {getObjectItemDisplayValue(node, column)}
+                          </Link>
                         </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                      ))}
 
-                {relationshipsData && !relationshipsData.length && (
-                  <NoDataFound message="No relationship found." />
-                )}
-              </div>
-            )}
+                      <td
+                        className={classNames(
+                          index !== relationshipsData.length - 1 ? "border-b border-gray-200" : "",
+                          "whitespace-nowrap px-2 py-1 text-xs font-medium text-gray-900 flex justify-end"
+                        )}>
+                        <div
+                          className="flex px-2"
+                          onClick={() => {
+                            setRowForMetaEdit(node);
+                            setShowRelationMetaEditModal(true);
+                          }}>
+                          <MetaDetailsTooltip
+                            position="LEFT"
+                            items={[
+                              {
+                                label: "Updated at",
+                                value: properties?.updated_at,
+                                type: "date",
+                              },
+                              {
+                                label: "Update time",
+                                value: `${new Date(
+                                  properties?.updated_at
+                                ).toLocaleDateString()} ${new Date(
+                                  properties?.updated_at
+                                ).toLocaleTimeString()}`,
+                                type: "text",
+                              },
+                              {
+                                label: "Source",
+                                value: properties?.source?.display_label,
+                                type: "link",
+                              },
+                              {
+                                label: "Owner",
+                                value: properties?.owner?.display_label,
+                                type: "link",
+                              },
+                              {
+                                label: "Is protected",
+                                value: properties?.is_protected ? "True" : "False",
+                                type: "text",
+                              },
+                            ]}
+                          />
+                        </div>
 
-            {relationshipSchema?.cardinality === "many" && mode === "DESCRIPTION-LIST" && (
-              <div className="px-2 grid grid-cols-3 gap-4 text-xs">
-                <dt className="font-medium text-gray-500 flex items-center">
-                  {relationshipSchema?.label}
-                </dt>
+                        <Button
+                          disabled={!auth?.permissions?.write}
+                          buttonType={BUTTON_TYPES.INVISIBLE}
+                          onClick={() => {
+                            setRelatedObjectToEdit(node);
+                          }}
+                          data-cy="metadata-edit-button">
+                          <PencilSquareIcon className="w-4 h-4 text-gray-500" />
+                        </Button>
+
+                        <Button
+                          disabled={!auth?.permissions?.write}
+                          buttonType={BUTTON_TYPES.INVISIBLE}
+                          onClick={() => {
+                            setRelatedRowToDelete(node);
+                          }}
+                          data-cy="relationship-delete-button">
+                          <img src={UnlinkIcon} className="w-4 h-4" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {relationshipsData && !relationshipsData.length && (
+                <NoDataFound message="No relationship found." />
+              )}
+            </div>
+          )}
+
+          {relationshipSchema?.cardinality === "many" && mode === "DESCRIPTION-LIST" && (
+            <ObjectAttributeRow
+              name={relationshipSchema?.label}
+              value={
                 <dl className="flex flex-col">
                   {relationshipsData?.length === 0 && "-"}
                   {relationshipsData?.map(({ node, properties }: any) => (
@@ -505,67 +496,130 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                     </dd>
                   ))}
                 </dl>
+              }
+            />
+          )}
+        </>
+      )}
+
+      {mode === "TABLE" && (
+        <div className="absolute bottom-4 right-4 z-10">
+          <RoundedButton
+            disabled={!auth?.permissions?.write}
+            onClick={() => setShowAddDrawer(true)}
+            className="p-3 ml-2 bg-custom-blue-500 hover:bg-custom-blue-500 focus:ring-custom-blue-500 focus:ring-offset-gray-50 focus:ring-offset-2"
+            data-cy="open-relationship-form-button">
+            <PlusIcon className="h-7 w-7 text-custom-white" aria-hidden="true" />
+          </RoundedButton>
+        </div>
+      )}
+
+      <SlideOver
+        title={
+          <div className="space-y-2">
+            <div className="flex items-center w-full">
+              <span className="text-lg font-semibold mr-3">
+                Add associated {relationshipSchema.label}
+              </span>
+              <div className="flex-1"></div>
+              <div className="flex items-center">
+                <Icon icon={"mdi:layers-triple"} />
+                <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
+              </div>
+            </div>
+            <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 mr-2">
+              <svg
+                className="h-1.5 w-1.5 mr-1 fill-yellow-500"
+                viewBox="0 0 6 6"
+                aria-hidden="true">
+                <circle cx={3} cy={3} r={3} />
+              </svg>
+              {relationshipSchema.peer}
+            </span>
+          </div>
+        }
+        open={showAddDrawer}
+        setOpen={setShowAddDrawer}>
+        <EditFormHookComponent
+          onCancel={() => {
+            setShowAddDrawer(false);
+          }}
+          onSubmit={handleSubmit}
+          fields={formFields}
+          isLoading={isLoading}
+        />
+      </SlideOver>
+
+      <SlideOver
+        title={
+          <>
+            {rowForMetaEdit && (
+              <div className="space-y-2">
+                <div className="flex items-center w-full">
+                  <span className="text-lg font-semibold mr-3">
+                    {props.parentNode?.display_label} - {rowForMetaEdit.display_label}
+                  </span>
+                  <div className="flex-1"></div>
+                  <div className="flex items-center">
+                    <Icon icon={"mdi:layers-triple"} />
+                    <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
+                  </div>
+                </div>
+                <div className="text-gray-500">Association metadata</div>
               </div>
             )}
           </>
-        )}
+        }
+        open={showRelationMetaEditModal}
+        setOpen={setShowRelationMetaEditModal}>
+        <ObjectItemMetaEdit
+          closeDrawer={() => {
+            setShowRelationMetaEditModal(false);
+          }}
+          onUpdateComplete={() => setShowRelationMetaEditModal(false)}
+          attributeOrRelationshipToEdit={relationshipsData?.properties}
+          schema={parentSchema}
+          attributeOrRelationshipName={relationshipSchema.name}
+          type="relationship"
+          row={{
+            ...props.parentNode,
+            [relationshipSchema.name]: relationshipsData,
+          }}
+        />
+      </SlideOver>
 
-        {mode === "TABLE" && (
-          <div className="absolute bottom-4 right-4 z-10">
-            <RoundedButton
-              disabled={!auth?.permissions?.write}
-              onClick={() => setShowAddDrawer(true)}
-              className="p-3 ml-2 bg-custom-blue-500 hover:bg-custom-blue-500 focus:ring-custom-blue-500 focus:ring-offset-gray-50 focus:ring-offset-2"
-              data-cy="open-relationship-form-button">
-              <PlusIcon className="h-7 w-7 text-custom-white" aria-hidden="true" />
-            </RoundedButton>
-          </div>
-        )}
-
-        <SlideOver
-          title={
-            <div className="space-y-2">
-              <div className="flex items-center w-full">
-                <span className="text-lg font-semibold mr-3">
-                  Add associated {relationshipSchema.label}
-                </span>
-                <div className="flex-1"></div>
-                <div className="flex items-center">
-                  <Icon icon={"mdi:layers-triple"} />
-                  <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
-                </div>
-              </div>
-              <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 mr-2">
-                <svg
-                  className="h-1.5 w-1.5 mr-1 fill-yellow-500"
-                  viewBox="0 0 6 6"
-                  aria-hidden="true">
-                  <circle cx={3} cy={3} r={3} />
-                </svg>
-                {relationshipSchema.peer}
-              </span>
-            </div>
+      {relatedRowToDelete && (
+        <ModalDelete
+          title="Delete"
+          description={
+            <>
+              Are you sure you want to remove the association between{" "}
+              <b>`{props.parentNode.display_label}`</b> and{" "}
+              <b>`{relatedRowToDelete.display_label}`</b>? The{" "}
+              <b>`{relatedRowToDelete.__typename.replace(regex, "")}`</b>{" "}
+              <b>`{relatedRowToDelete.display_label}`</b> won&apos;t be deleted in the process.
+            </>
           }
-          open={showAddDrawer}
-          setOpen={setShowAddDrawer}>
-          <EditFormHookComponent
-            onCancel={() => {
-              setShowAddDrawer(false);
-            }}
-            onSubmit={handleSubmit}
-            fields={formFields}
-            isLoading={isLoading}
-          />
-        </SlideOver>
+          onCancel={() => setRelatedRowToDelete(undefined)}
+          onDelete={() => {
+            if (relatedRowToDelete?.id) {
+              handleDeleteRelationship(relatedRowToDelete.id);
+            }
+          }}
+          open={!!relatedRowToDelete}
+          setOpen={() => setRelatedRowToDelete(undefined)}
+        />
+      )}
 
+      {relatedObjectToEdit && (
         <SlideOver
           title={
             <>
-              {rowForMetaEdit && (
+              {
                 <div className="space-y-2">
                   <div className="flex items-center w-full">
                     <span className="text-lg font-semibold mr-3">
-                      {props.parentNode?.display_label} - {rowForMetaEdit.display_label}
+                      {relatedObjectToEdit?.display_label}
                     </span>
                     <div className="flex-1"></div>
                     <div className="flex items-center">
@@ -573,99 +627,36 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                       <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
                     </div>
                   </div>
-                  <div className="text-gray-500">Association metadata</div>
+                  <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 mr-2">
+                    <svg
+                      className="h-1.5 w-1.5 mr-1 fill-yellow-500"
+                      viewBox="0 0 6 6"
+                      aria-hidden="true">
+                      <circle cx={3} cy={3} r={3} />
+                    </svg>
+                    {relatedObjectToEdit?.__typename.replace(regex, "")}
+                  </span>
                 </div>
-              )}
+              }
             </>
           }
-          open={showRelationMetaEditModal}
-          setOpen={setShowRelationMetaEditModal}>
-          <ObjectItemMetaEdit
+          open={!!relatedObjectToEdit}
+          setOpen={() => setRelatedObjectToEdit(undefined)}>
+          <ObjectItemEditComponent
             closeDrawer={() => {
-              setShowRelationMetaEditModal(false);
+              setRelatedObjectToEdit(undefined);
             }}
-            onUpdateComplete={() => setShowRelationMetaEditModal(false)}
-            attributeOrRelationshipToEdit={relationshipsData?.properties}
-            schema={parentSchema}
-            attributeOrRelationshipName={relationshipSchema.name}
-            type="relationship"
-            row={{
-              ...props.parentNode,
-              [relationshipSchema.name]: relationshipsData,
-            }}
-          />
-        </SlideOver>
-
-        {relatedRowToDelete && (
-          <ModalDelete
-            title="Delete"
-            description={
-              <>
-                Are you sure you want to remove the association between{" "}
-                <b>`{props.parentNode.display_label}`</b> and{" "}
-                <b>`{relatedRowToDelete.display_label}`</b>? The{" "}
-                <b>`{relatedRowToDelete.__typename.replace(regex, "")}`</b>{" "}
-                <b>`{relatedRowToDelete.display_label}`</b> won&apos;t be deleted in the process.
-              </>
-            }
-            onCancel={() => setRelatedRowToDelete(undefined)}
-            onDelete={() => {
-              if (relatedRowToDelete?.id) {
-                handleDeleteRelationship(relatedRowToDelete.id);
+            onUpdateComplete={async () => {
+              setRelatedObjectToEdit(undefined);
+              if (refetch) {
+                refetch();
               }
             }}
-            open={!!relatedRowToDelete}
-            setOpen={() => setRelatedRowToDelete(undefined)}
+            objectid={relatedObjectToEdit.id}
+            objectname={relatedObjectToEdit.__typename}
           />
-        )}
-
-        {relatedObjectToEdit && (
-          <SlideOver
-            title={
-              <>
-                {
-                  <div className="space-y-2">
-                    <div className="flex items-center w-full">
-                      <span className="text-lg font-semibold mr-3">
-                        {relatedObjectToEdit?.display_label}
-                      </span>
-                      <div className="flex-1"></div>
-                      <div className="flex items-center">
-                        <Icon icon={"mdi:layers-triple"} />
-                        <div className="ml-1.5 pb-1">{branch?.name ?? DEFAULT_BRANCH_NAME}</div>
-                      </div>
-                    </div>
-                    <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20 mr-2">
-                      <svg
-                        className="h-1.5 w-1.5 mr-1 fill-yellow-500"
-                        viewBox="0 0 6 6"
-                        aria-hidden="true">
-                        <circle cx={3} cy={3} r={3} />
-                      </svg>
-                      {relatedObjectToEdit?.__typename.replace(regex, "")}
-                    </span>
-                  </div>
-                }
-              </>
-            }
-            open={!!relatedObjectToEdit}
-            setOpen={() => setRelatedObjectToEdit(undefined)}>
-            <ObjectItemEditComponent
-              closeDrawer={() => {
-                setRelatedObjectToEdit(undefined);
-              }}
-              onUpdateComplete={async () => {
-                setRelatedObjectToEdit(undefined);
-                if (refetch) {
-                  refetch();
-                }
-              }}
-              objectid={relatedObjectToEdit.id}
-              objectname={relatedObjectToEdit.__typename}
-            />
-          </SlideOver>
-        )}
-      </div>
-    </>
+        </SlideOver>
+      )}
+    </Fragment>
   );
 }

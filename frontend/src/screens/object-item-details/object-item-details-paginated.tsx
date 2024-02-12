@@ -53,6 +53,7 @@ import { TaskItemDetails } from "../tasks/task-item-details";
 import { TaskItems } from "../tasks/task-items";
 import RelationshipDetails from "./relationship-details-paginated";
 import RelationshipsDetails from "./relationships-details-paginated";
+import { ObjectAttributeRow } from "./object-attribute-row";
 
 export default function ObjectItemDetails(props: any) {
   const { objectname: objectnameFromProps, objectid: objectidFromProps, hideHeaders } = props;
@@ -213,10 +214,7 @@ export default function ObjectItemDetails(props: any) {
         {!qspTab && (
           <div className="px-4 py-5 sm:p-0 flex-1 overflow-auto">
             <dl className="sm:divide-y sm:divide-gray-200">
-              <div className="p-2 grid grid-cols-3 gap-4 text-xs">
-                <dt className=" font-medium text-gray-500 flex items-center">ID</dt>
-                <dd className="mt-1 text-gray-900">{objectDetailsData.id}</dd>
-              </div>
+              <ObjectAttributeRow name="ID" value={objectDetailsData.id} />
               {attributes?.map((attribute) => {
                 if (
                   !objectDetailsData[attribute.name] ||
@@ -226,18 +224,14 @@ export default function ObjectItemDetails(props: any) {
                 }
 
                 return (
-                  <div className="p-2 grid grid-cols-3 gap-4 text-xs" key={attribute.name}>
-                    <dt className=" font-medium text-gray-500 flex items-center">
-                      {attribute.label}
-                    </dt>
-
-                    <div className="flex items-center">
-                      <dd className={"mt-1 text-gray-900"}>
+                  <ObjectAttributeRow
+                    key={attribute.name}
+                    name={attribute.label as string}
+                    value={
+                      <>
                         {getObjectItemDisplayValue(objectDetailsData, attribute, schemaKindName)}
-                      </dd>
 
-                      {objectDetailsData[attribute.name] && (
-                        <div className="px-2">
+                        {objectDetailsData[attribute.name] && (
                           <MetaDetailsTooltip
                             items={[
                               {
@@ -300,14 +294,14 @@ export default function ObjectItemDetails(props: any) {
                               </div>
                             }
                           />
-                        </div>
-                      )}
+                        )}
 
-                      {objectDetailsData[attribute.name].is_protected && (
-                        <LockClosedIcon className="w-4 h-4" />
-                      )}
-                    </div>
-                  </div>
+                        {objectDetailsData[attribute.name].is_protected && (
+                          <LockClosedIcon className="w-4 h-4" />
+                        )}
+                      </>
+                    }
+                  />
                 );
               })}
 
