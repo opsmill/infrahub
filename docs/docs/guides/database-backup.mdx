@@ -6,7 +6,7 @@ title: Database backup and restore
 
 This is a guide on how to backup and restore your database using an Infrahub command line tool. Please [see this topic](/topics/database-backup) for the requirements for using the tool and an explanation of how it works.
 
-This guide assumes that you cloned the Infrahub repository to your machine, but you can also copy the content of this tool's Python file into a local Python file and run it that way.
+This guide assumes that you cloned the Infrahub repository to your machine, but you can also copy the content of [this tool's Python file](https://github.com/opsmill/infrahub/tree/stable/utilities/db_backup/__main__.py) into a local Python file and run it that way.
 
 ## Backup a remote Infrahub database
 
@@ -30,4 +30,4 @@ In this example, I am running the backup command on the same machine that is run
 python local_backup_copy.py neo4j restore /infrahub_backups --database-cypher-port=9876
 ```
 
-In this example, I am restoring `.backup` files that exist in the `/infrahub_backups` directory and my Infrahub database container uses a non-standard port for cypher access: 9876 instead of 7687.
+In this example, I am restoring `.backup` files that exist in the `/infrahub_backups` directory and my Infrahub database container uses a non-standard port for cypher access: `9876` instead of `7687`.
