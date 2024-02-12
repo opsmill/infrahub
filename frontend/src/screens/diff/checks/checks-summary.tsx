@@ -68,7 +68,7 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
     <div className="flex p-4 pb-0 gap-2">
       <div className="flex items-center justify-between p-2 rounded-md bg-custom-white">
         Retry all:{" "}
-        <Retry onClick={() => handleRetry("all")} isInProgress={!!validatorsInProgress.length} />
+        <Retry onClick={() => handleRetry("all")} isLoading={!!validatorsInProgress.length} />
       </div>
 
       <div className="flex-1 flex flex-wrap gap-2">
@@ -95,7 +95,7 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
                 </span>
               </div>
 
-              <Retry onClick={() => handleRetry(kind)} isInProgress={!!stats.inProgress} />
+              <Retry onClick={() => handleRetry(kind)} isLoading={!!stats.inProgress} />
             </div>
           </div>
         ))}
