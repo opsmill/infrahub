@@ -1,14 +1,18 @@
-from typing import List
+import asyncio
+from pathlib import Path
+from typing import List, Union
 
+import pytest
+from infrahub_sdk.node import InfrahubNode
 from pydantic import BaseModel
 
-from infrahub import lock
+from infrahub import config, lock
 from infrahub.core.constants import CheckType, DiffAction, InfrahubKind, ProposedChangeState
 from infrahub.core.diff import BranchDiffer
 from infrahub.core.integrity.object_conflict.conflict_recorder import ObjectConflictValidatorRecorder
 from infrahub.core.registry import registry
 from infrahub.core.validators.uniqueness.checker import UniquenessChecker
-from infrahub.git.repository import InfrahubRepository
+from infrahub.git.repository import InfrahubRepository, get_initialized_repo
 from infrahub.log import get_logger
 from infrahub.message_bus import InfrahubMessage, messages
 from infrahub.message_bus.types import (
@@ -17,6 +21,7 @@ from infrahub.message_bus.types import (
     ProposedChangeRepository,
     ProposedChangeSubscriber,
 )
+from infrahub.pytest_plugin import InfrahubBackendPlugin
 from infrahub.services import InfrahubServices
 
 log = get_logger()
@@ -49,7 +54,7 @@ async def data_integrity(message: messages.RequestProposedChangeDataIntegrity, s
 
 
 async def pipeline(message: messages.RequestProposedChangePipeline, service: InfrahubServices) -> None:
-    service.log.info("Starting pipeline", propoced_change=message.proposed_change)
+    service.log.info("Starting pipeline", proposed_change=message.proposed_change)
     events: list[InfrahubMessage] = []
 
     repositories = await _get_proposed_change_repositories(message=message, service=service)
@@ -67,7 +72,7 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
         for event in events:
             event.assign_meta(parent=message)
             await service.send(message=event)
-        service.log.info("Pipeline aborted due to merge conflicts", propoced_change=message.proposed_change)
+        service.log.info("Pipeline aborted due to merge conflicts", proposed_change=message.proposed_change)
         return
 
     await _gather_repository_repository_diffs(repositories=repositories)
@@ -124,6 +129,17 @@ async def pipeline(message: messages.RequestProposedChangePipeline, service: Inf
             )
         )
 
+    if message.check_type in [CheckType.ALL, CheckType.TEST]:
+        events.append(
+            messages.RequestProposedChangeRunTests(
+                proposed_change=message.proposed_change,
+                source_branch=message.source_branch,
+                source_branch_data_only=message.source_branch_data_only,
+                destination_branch=message.destination_branch,
+                branch_diff=branch_diff,
+            )
+        )
+
     for event in events:
         event.assign_meta(parent=message)
         await service.send(message=event)
@@ -160,7 +176,6 @@ async def schema_integrity(
 
 async def repository_checks(message: messages.RequestProposedChangeRepositoryChecks, service: InfrahubServices) -> None:
     log.info(f"Got a request to process checks defined in proposed_change: {message.proposed_change}")
-
     events: List[InfrahubMessage] = []
     for repository in message.branch_diff.repositories:
         if not message.source_branch_data_only and not repository.read_only:
@@ -291,6 +306,46 @@ query GatherGraphQLQuerySubscribers($members: [ID!]) {
   }
 }
 """
+
+
+async def run_tests(message: messages.RequestProposedChangeRunTests, service: InfrahubServices) -> None:
+    log.info("running_repository_tests", proposed_change=message.proposed_change)
+    proposed_change = await service.client.get(kind=InfrahubKind.PROPOSEDCHANGE, id=message.proposed_change)
+
+    def _execute(
+        directory: Path, repository: ProposedChangeRepository, proposed_change: InfrahubNode
+    ) -> Union[int, pytest.ExitCode]:
+        config_file = str(directory / ".infrahub.yml")
+        return pytest.main(
+            [
+                str(directory),
+                f"--infrahub-repo-config={config_file}",
+                f"--infrahub-address={config.SETTINGS.main.internal_address}",
+                "--continue-on-collection-errors",  # FIXME: Non-Infrahub tests should be ignored
+                "-qqqq",
+                "-s",
+            ],
+            plugins=[InfrahubBackendPlugin(service.client.config, repository.repository_id, proposed_change.id)],
+        )
+
+    for repository in message.branch_diff.repositories:
+        if not message.source_branch_data_only:
+            repo = await get_initialized_repo(
+                repository_id=repository.repository_id,
+                name=repository.repository_name,
+                service=service,
+                repository_kind=repository.kind,
+            )
+            commit = repo.get_commit_value(proposed_change.source_branch.value)
+            worktree_directory = Path(repo.get_commit_worktree(commit=commit).directory)
+
+        return_code = await asyncio.to_thread(_execute, worktree_directory, repository, proposed_change)
+        log.info(
+            "repository_tests_completed",
+            proposed_change=message.proposed_change,
+            repository=repository.repository_name,
+            return_code=return_code,
+        )
 
 
 DESTINATION_ALLREPOSITORIES = """

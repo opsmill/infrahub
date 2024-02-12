@@ -80,6 +80,7 @@ class CheckType(InfrahubStringEnum):
     DATA = "data"
     REPOSITORY = "repository"
     SCHEMA = "schema"
+    TEST = "test"
     USER = "user"
     ALL = "all"
 

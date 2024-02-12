@@ -12,7 +12,6 @@ from .utils import load_repository_config
 
 
 def pytest_addoption(parser: Parser) -> None:
-    """Add options to control ansible."""
     group = parser.getgroup("pytest-infrahub")
     group.addoption(
         "--infrahub-repo-config",
@@ -94,6 +93,11 @@ def pytest_collect_file(parent: Union[Collector, Item], file_path: Path) -> Opti
 
 
 def pytest_configure(config: Config) -> None:
+    config.addinivalue_line("markers", "infrahub(name: str): Infrahub test")
+    config.addinivalue_line("markers", "infrahub_unit: Unit test for Infrahub, should work without any dependencies")
+    config.addinivalue_line(
+        "markers", "infrahub_integraton: Integation test with Infrahub, must be run against an instance"
+    )
     config.addinivalue_line("markers", "infrahub_check(name: str): Test related to a Check for Infrahub")
     config.addinivalue_line(
         "markers", "infrahub_graphql_query(name: str): Test related to a GraphQL query for Infrahub"
@@ -103,8 +107,4 @@ def pytest_configure(config: Config) -> None:
     )
     config.addinivalue_line(
         "markers", "infrahub_python_transform(name: str): Test related to a Python Transform for Infrahub"
-    )
-    config.addinivalue_line("markers", "infrahub_unit: Unit test for Infrahub, should work without any dependencies")
-    config.addinivalue_line(
-        "markers", "infrahub_integraton: Integation test with Infrahub, must be run against an instance"
     )

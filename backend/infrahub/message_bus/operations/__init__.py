@@ -48,6 +48,7 @@ COMMAND_MAP = {
     "request.proposed_change.pipeline": requests.proposed_change.pipeline,
     "request.proposed_change.refresh_artifacts": requests.proposed_change.refresh_artifacts,
     "request.proposed_change.repository_checks": requests.proposed_change.repository_checks,
+    "request.proposed_change.run_tests": requests.proposed_change.run_tests,
     "request.proposed_change.schema_integrity": requests.proposed_change.schema_integrity,
     "request.repository.checks": requests.repository.checks,
     "request.repository.user_checks": requests.repository.user_checks,
