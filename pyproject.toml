@@ -74,7 +74,6 @@ infrahub = "infrahub.cli:app"
 infrahub-git-credential = "infrahub.git_credential.helper:app"
 infrahub-git-askpass = "infrahub.git_credential.askpass:app"
 
-
 [tool.coverage.run]
 branch = true
 
