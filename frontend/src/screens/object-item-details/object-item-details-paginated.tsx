@@ -13,6 +13,7 @@ import { useContext, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { BUTTON_TYPES, Button } from "../../components/buttons/button";
+import { Retry } from "../../components/buttons/retry";
 import MetaDetailsTooltip from "../../components/display/meta-details-tooltips";
 import SlideOver from "../../components/display/slide-over";
 import { Tabs } from "../../components/tabs";
@@ -114,7 +115,12 @@ export default function ObjectItemDetails(props: any) {
   `;
 
   // TODO: Find a way to avoid querying object details if we are on a tab
-  const { loading, error, data, refetch } = useQuery(query, { skip: !schemaData });
+  const { loading, error, data, refetch } = useQuery(query, {
+    skip: !schemaData,
+    notifyOnNetworkStatusChange: true,
+  });
+
+  const handleRefetch = () => refetch();
 
   const objectDetailsData = schemaData && data && data[schemaData?.kind]?.edges[0]?.node;
 
@@ -128,11 +134,11 @@ export default function ObjectItemDetails(props: any) {
     return <ErrorScreen message="Something went wrong when fetching the object details." />;
   }
 
-  if (loading || !schemaData) {
+  if (!objectDetailsData && (loading || !schemaData)) {
     return <LoadingScreen />;
   }
 
-  if (!data || (data && !data[schemaData.kind]?.edges?.length)) {
+  if (!objectDetailsData) {
     return (
       <div className="flex column justify-center">
         <NoDataFound message="No item found for that id." />
@@ -177,6 +183,10 @@ export default function ObjectItemDetails(props: any) {
               />
 
               <p className="max-w-2xl  text-gray-500">{objectDetailsData.display_label}</p>
+
+              <div className="ml-2">
+                <Retry isLoading={loading} onClick={handleRefetch} />
+              </div>
             </div>
 
             <div className="px-4 ">{schemaData?.description}</div>
