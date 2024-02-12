@@ -132,7 +132,8 @@ class InfrahubMutationMixin:
         try:
             obj = await node_class.init(db=db, schema=cls._meta.schema, branch=branch, at=at)
             await obj.new(db=db, **data)
-            await cls.validate_constraints(db=db, node=obj, branch=branch)
+            fields_to_validate = list(data)
+            await obj.validate_constraints(db=db, branch=branch, filters=fields_to_validate)
 
             if db.is_transaction:
                 await obj.save(db=db)
@@ -179,8 +180,8 @@ class InfrahubMutationMixin:
         result = {"ok": True}
         try:
             await obj.from_graphql(db=db, data=data)
-
-            await cls.validate_constraints(db=db, node=obj, branch=branch, at=at, ignore_existing_node=True)
+            fields_to_validate = list(data)
+            await obj.validate_constraints(db=db, branch=branch, at=at, filters=fields_to_validate)
             node_id = data.pop("id", obj.id)
             fields = list(data.keys())
             validate_mutation_permissions_update_node(
@@ -251,43 +252,6 @@ class InfrahubMutationMixin:
         ok = True
 
         return obj, cls(ok=ok)
-
-    @classmethod
-    async def validate_constraints(
-        cls,
-        db: InfrahubDatabase,
-        node: Node,
-        branch: Optional[str] = None,
-        at: Optional[str] = None,
-        ignore_existing_node: bool = False,
-    ) -> None:
-        """Check if the new object violates the uniqueness constraints."""
-        for unique_attr in cls._meta.schema.unique_attributes:
-            comparison_schema = cls._meta.schema
-            attr = getattr(node, unique_attr.name)
-            if unique_attr.inherited:
-                for generic_parent_schema_name in cls._meta.schema.inherit_from:
-                    generic_parent_schema = registry.schema.get(generic_parent_schema_name, branch=branch)
-                    parent_attr = generic_parent_schema.get_attribute(unique_attr.name, raise_on_error=False)
-                    if parent_attr is None:
-                        continue
-                    if parent_attr.unique is True:
-                        comparison_schema = generic_parent_schema
-                        break
-            nodes = await NodeManager.query(
-                schema=comparison_schema,
-                filters={f"{unique_attr.name}__value": attr.value},
-                fields={},
-                db=db,
-                branch=branch,
-                at=at,
-            )
-            if ignore_existing_node:
-                nodes = [n for n in nodes if n.id != node.id]
-            if nodes:
-                raise ValidationError(
-                    {unique_attr.name: f"An object already exist with this value: {unique_attr.name}: {attr.value}"}
-                )
 
 
 class InfrahubMutation(InfrahubMutationMixin, Mutation):
