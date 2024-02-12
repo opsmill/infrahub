@@ -7,8 +7,8 @@ import ObjectItemsPaginated from "../screens/object-items/object-items-paginated
 import OpsObjects from "../screens/ops-objects/ops-objects";
 import { ProposedChangesDetails } from "../screens/proposed-changes/proposed-changes-details";
 import { ProposedChanges } from "../screens/proposed-changes/proposed-changes-items";
-import { TaskItemDetails } from "../screens/tasks/task-item-details";
-import { TaskItems } from "../screens/tasks/task-items";
+import { TaskItemDetailsScreen } from "../screens/tasks/task-item-details-screen";
+import { TaskItemsScreen } from "../screens/tasks/task-items-screen";
 import UserProfile from "../screens/user-profile/user-profile";
 import { ARTIFACT_OBJECT } from "./constants";
 
@@ -59,11 +59,11 @@ export const MAIN_ROUTES = [
   },
   {
     path: "/tasks/:task",
-    element: <TaskItemDetails />,
+    element: <TaskItemDetailsScreen />,
   },
   {
     path: "/tasks",
-    element: <TaskItems />,
+    element: <TaskItemsScreen />,
   },
   {
     path: "/schema",

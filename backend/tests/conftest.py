@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional, TypeVar
 
 import pytest
 import ujson
+from infrahub_sdk import UUIDT
 from infrahub_sdk.utils import str_to_bool
 
 from infrahub import config
@@ -28,7 +29,8 @@ from infrahub.core.schema_manager import SchemaBranch, SchemaManager
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase, get_db
 from infrahub.lock import initialize_lock
-from infrahub.message_bus import InfrahubMessage, InfrahubResponse
+from infrahub.message_bus import InfrahubMessage, InfrahubResponse, Meta
+from infrahub.message_bus.messages import ROUTING_KEY_MAP
 from infrahub.message_bus.operations import execute_message
 from infrahub.message_bus.types import MessageTTL
 from infrahub.services import InfrahubServices
@@ -341,7 +343,7 @@ class BusSimulator(InfrahubMessageBus):
     def __init__(self):
         self.messages: List[InfrahubMessage] = []
         self.messages_per_routing_key: Dict[str, List[InfrahubMessage]] = {}
-        self.service: InfrahubServices = InfrahubServices()
+        self.service: InfrahubServices = InfrahubServices(message_bus=self)
         self.replies: List[InfrahubResponse] = []
 
     async def publish(self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None) -> None:
@@ -353,6 +355,18 @@ class BusSimulator(InfrahubMessageBus):
 
     async def reply(self, message: InfrahubMessage, routing_key: str) -> None:
         self.replies.append(message)
+
+    async def rpc(self, message: InfrahubMessage, response_class: ResponseClass) -> ResponseClass:  # type: ignore[override]
+        routing_key = ROUTING_KEY_MAP.get(type(message))
+
+        correlation_id = str(UUIDT())
+        message.meta = Meta(correlation_id=correlation_id, reply_to="ci-testing")
+
+        await self.publish(message=message, routing_key=routing_key)
+        assert len(self.replies) == 1
+        response = self.replies[0]
+        data = ujson.loads(response.body)
+        return response_class(**data)  # type: ignore[operator]
 
     @property
     def seen_routing_keys(self) -> List[str]:

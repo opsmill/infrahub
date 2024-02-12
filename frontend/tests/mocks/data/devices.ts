@@ -1293,6 +1293,9 @@ query InfraDevice {
       }
     }
   }
+  InfrahubTask(related_node__ids: ["${deviceDetailsMocksId}"]) {
+    count
+  }
 }
 `;
 

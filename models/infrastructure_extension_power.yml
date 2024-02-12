@@ -100,7 +100,7 @@ nodes:
         unique: true
     relationships:
       - name: site
-        peer: BuiltinLocation
+        peer: InfraSite
         optional: false
         cardinality: one
         kind: Attribute

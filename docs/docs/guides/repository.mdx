@@ -6,7 +6,7 @@ import TabItem from '@theme/TabItem';
 
 # Summary
 
-Infrahub supports two different types of connections to external Git repositories
+Infrahub supports two different types of connections to external Git repositories:
 
 - [**CoreRepository**](/topics/repository#core-repository) fully integrates with Git version control, including branch tracking and two-way branch synchronization.
 - [**Read-only Repository**](/topics/repository#read-only-repository) links a particular branch in Infrahub to a particular ref in the Git repository. It will only read from the Git repository. It will never make any changes to the external repository.
@@ -30,6 +30,9 @@ Infrahub supports two different types of connections to external Git repositorie
 
 You will need to submit an access token with your request to create a repository in Infrahub. Infrahub uses your username and this token to connect to the external Git repository.
 
+- [Via the web interface](#via-the-web-interface)
+- [Via the GraphQL interface](#via-the-graphql-interface)
+
 ### Via the web interface
 
 ![Add a Git Repository ](../media/create_repository.png)
@@ -37,11 +40,22 @@ You will need to submit an access token with your request to create a repository
 1. Log in to the Infrahub UI
 2. Go to `Unified Storage` > `Repository` or `Read-only Repository`
 3. Click on the `+` plus sign
-4. Complete the required information
+4. Complete the required information:
 
 <Tabs>
+  <TabItem value="Default branch">
+    **CoreRepository only:** First branch to import during initialization. All other branches on the repository will be imported in a background task after this one.
+  </TabItem>
+  <TabItem value="Commit">
+    (Optional): This field will be populated with the hash of the commit that the Infrahub Repository is currently using once it has pulled the data from the external repository.
+    - **CoreRepository**: Ignored during creation and will be overwritten.
+    - **Read-only Repository**: Can be used to point at a specific commit within the given `ref`. For example, if you want to extract data from a specific commit on the `main` branch of the external repository other than the latest commit.
+  </TabItem>
   <TabItem value="Name" default>
-    The name you want to give the repository in Infrahub.
+    The name you want to give the repository in Infrahub for identification purposes.
+  </TabItem>
+  <TabItem value="Description">
+    (Optional): A description or comment about the repository used for informational purposes.
   </TabItem>
   <TabItem value="Location">
     The URL of the external repository, e.g. `https://github.com/opsmill/infrahub.git`.
@@ -52,22 +66,14 @@ You will need to submit an access token with your request to create a repository
   <TabItem value="Password">
     The password or Fine-grained personal access token with access to the Git repository specified in `Location`.
   </TabItem>
-  <TabItem value="Commit">
-    Not necessary during creation. This field will be populated with the hash of the commit that the Infrahub Repository is currently using once it has pulled the data from the external repository.
-    - **CoreRepository**: ignored during creation and will be overwritten.
-    - **Read-only Repository**: can be used to point at a specific commit within the given `ref`. For example, if you want to extract data from a specific commit on the `main` branch of the external repository other than the latest commit.
-  </TabItem>
-  <TabItem value="Default branch">
-    **CoreRepository only** First branch to import during initialization. All other branches on the repository will be imported in a background task after this one.
-  </TabItem>
-  <TabItem value="Ref">
-    **Read-only Repository only** The name of the branch, tag, or commit to import
+  <TabItem value="Tags">
+    (Optional): Assign any tags to be associated with the repository.
   </TabItem>
 </Tabs>
 
 :::success Validate that everything is correct
 
-In the UI, you should see your new repository. If the repository you added doesn't have the commit property populated it means that the initial sync didn't work. Verify the location and credentials.
+In the UI, you should see your new repository. Click on the row for the repository to see more detailed information. If the repository you added doesn't have the `Commit` property populated it means that the initial sync didn't work. Verify the location and credentials.
 
 :::
 
@@ -140,7 +146,7 @@ The repository should be visible under [Unified Storage / Repository](http://loc
 
 :::
 
-## Updates from the external repository {#update-from-external}
+## Updates from the external repository
 
 Read-only repositories and CoreRepositories work in different ways when it comes to tracking changes on the remote repository.
 
@@ -174,7 +180,7 @@ Infrahub does not automatically update Read-only Repositories with changes on th
     ```
 </details>
 
-## Updates to the external repository {#update-to-external}
+## Updates to the external repository
 
 ### CoreRepository
 

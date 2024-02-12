@@ -16,6 +16,16 @@ from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
 from infrahub.graphql import prepare_graphql_params
+from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
+from infrahub.graphql.metrics import (
+    GRAPHQL_DURATION_METRICS,
+    GRAPHQL_QUERY_DEPTH_METRICS,
+    GRAPHQL_QUERY_HEIGHT_METRICS,
+    GRAPHQL_QUERY_OBJECTS_METRICS,
+    GRAPHQL_QUERY_VARS_METRICS,
+    GRAPHQL_RESPONSE_SIZE_METRICS,
+    GRAPHQL_TOP_LEVEL_QUERIES_METRICS,
+)
 from infrahub.graphql.utils import extract_data
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
@@ -45,15 +55,39 @@ async def execute_query(
     )
 
     gql_params = prepare_graphql_params(db=db, branch=branch_params.branch, at=branch_params.at)
-
-    result = await graphql(
+    analyzed_query = InfrahubGraphQLQueryAnalyzer(
+        query=gql_query.query.value,  # type: ignore[attr-defined]
         schema=gql_params.schema,
-        source=gql_query.query.value,  # type: ignore[attr-defined]
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values=params,
+        branch=branch_params.branch,
     )
+
+    labels = {
+        "type": "mutation" if analyzed_query.contains_mutation else "query",
+        "branch": branch_params.branch.name,
+        "operation": "",
+        "name": gql_query.name.value,  # type: ignore[attr-defined]
+        "query_id": query_id,
+    }
+
+    with GRAPHQL_DURATION_METRICS.labels(**labels).time():
+        result = await graphql(
+            schema=gql_params.schema,
+            source=gql_query.query.value,  # type: ignore[attr-defined]
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values=params,
+        )
+
     data = extract_data(query_name=gql_query.name.value, result=result)  # type: ignore[attr-defined]
+
+    GRAPHQL_RESPONSE_SIZE_METRICS.labels(**labels).observe(len(data))
+    GRAPHQL_QUERY_DEPTH_METRICS.labels(**labels).observe(await analyzed_query.calculate_depth())
+    GRAPHQL_QUERY_HEIGHT_METRICS.labels(**labels).observe(await analyzed_query.calculate_height())
+    GRAPHQL_QUERY_VARS_METRICS.labels(**labels).observe(len(analyzed_query.variables))
+    GRAPHQL_TOP_LEVEL_QUERIES_METRICS.labels(**labels).observe(analyzed_query.nbr_queries)
+    GRAPHQL_QUERY_OBJECTS_METRICS.labels(**labels).observe(
+        len(await analyzed_query.get_models_in_use(types=gql_params.context.types))
+    )
 
     response_payload: Dict[str, Any] = {"data": data}
 

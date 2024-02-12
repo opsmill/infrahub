@@ -2210,12 +2210,12 @@ async def builtin_schema() -> SchemaRoot:
                 ],
             },
             {
-                "name": "Location",
-                "namespace": "Builtin",
-                "description": "A location represent a physical element: a building, a site, a city",
+                "name": "Site",
+                "namespace": "Infra",
+                "description": "A location represent a physical element site",
                 "include_in_menu": True,
                 "icon": "mdi:map-marker-radius-outline",
-                "label": "Location",
+                "label": "Site",
                 "default_filter": "name__value",
                 "order_by": ["name__value"],
                 "display_labels": ["name__value"],
@@ -2292,7 +2292,7 @@ async def register_account_schema(db: InfrahubDatabase) -> None:
 
 
 @pytest.fixture
-async def create_test_admin(db: InfrahubDatabase, register_core_schema_db, data_schema) -> Node:
+async def create_test_admin(db: InfrahubDatabase, register_core_models_schema, data_schema) -> Node:
     account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
     await account.new(
         db=db,

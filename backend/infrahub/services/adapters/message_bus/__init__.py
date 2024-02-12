@@ -14,6 +14,9 @@ class InfrahubMessageBus:
     async def initialize(self, service: InfrahubServices) -> None:
         """Initialize the Message bus"""
 
+    async def shutdown(self) -> None:
+        """Shutdown the Message bus"""
+
     async def publish(self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None) -> None:
         raise NotImplementedError()
 

@@ -82,17 +82,6 @@ const mocks: any[] = [
 ];
 
 const mocksToken = [
-  // Account token details
-  {
-    request: {
-      query: gql`
-        ${accountTokenDetailsMocksQueryBis}
-      `,
-    },
-    result: {
-      data: accountTokenDetailsMocksDataBis,
-    },
-  },
   // Account token details for edit panel
   {
     request: {
@@ -182,7 +171,7 @@ describe("Object details", () => {
     );
 
     // Click on the edit button
-    cy.get(".flex-col > .bg-custom-white > :nth-child(2) > :nth-child(1)").click();
+    cy.contains("Edit").click();
 
     // Check if the field has the correct initial value
     cy.get(".grid > :nth-child(1) > .relative > .block").should("have.value", deviceDetailsName);
@@ -231,7 +220,7 @@ describe("Object details", () => {
     );
 
     // Open edit panel
-    cy.get(".flex-col > .bg-custom-white > :nth-child(2) > :nth-child(1)").click();
+    cy.contains("Edit").click();
 
     // Date input should be empty
     cy.get(".react-datepicker__input-container > .relative > .block").should("have.text", "");
