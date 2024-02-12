@@ -98,6 +98,7 @@ class InfrahubYamlFile(pytest.File):
                     test=test,
                 )
 
+                item.add_marker(pytest.mark.infrahub)
                 item.add_marker(marker)
                 if "unit" in test.spec.kind:
                     item.add_marker(pytest.mark.infrahub_unit)

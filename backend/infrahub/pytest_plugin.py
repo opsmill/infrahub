@@ -55,13 +55,14 @@ class InfrahubBackendPlugin:
     def pytest_collection_modifyitems(self, session: Session, config: Config, items: List[Item]) -> None:  # pylint: disable=unused-argument
         """This function is called after item collection and gives the opportunity to work on the collection before sending the items for testing.
 
-        Items will be re-ordered to be run in a specific order:
+        All items without an "infrahub" marker will be discarded. Items will also be re-ordered to be run in a specific order:
         1. Sanity tests
         2. Unit tests
         3. Integration tests
 
         TODO: this function should also filter items that do not need to run
         """
+        filtered_items = [i for i in items if i.get_closest_marker("infrahub")]
 
         def sort_key(item: Item) -> Tuple[int, int]:
             type_cost = 99
@@ -78,7 +79,8 @@ class InfrahubBackendPlugin:
 
             return type_cost, item_cost
 
-        items.sort(key=sort_key)
+        filtered_items.sort(key=sort_key)
+        items[:] = filtered_items
 
     def pytest_collection_finish(self, session: Session) -> None:  # pylint: disable=unused-argument
         """This function is called when tests have been collected and modified, meaning they are ready to be run."""

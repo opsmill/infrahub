@@ -322,8 +322,7 @@ async def run_tests(message: messages.RequestProposedChangeRunTests, service: In
                 f"--infrahub-repo-config={config_file}",
                 f"--infrahub-address={config.SETTINGS.main.internal_address}",
                 "-qqqq",
-                "-k",
-                "infrahub",
+                "-s",
             ],
             plugins=[InfrahubBackendPlugin(service.client.config, repository.repository_id, proposed_change.id)],
         )
