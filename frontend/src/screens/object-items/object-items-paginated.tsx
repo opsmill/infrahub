@@ -128,7 +128,7 @@ export default function ObjectItems(props: any) {
 
   const result = data && schemaData?.kind ? data[schemaData?.kind] ?? {} : {};
 
-  const { count, edges } = result;
+  const { count = "...", edges } = result;
 
   useTitle(`${schemaKindName[objectname]} list`);
 
