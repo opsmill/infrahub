@@ -162,9 +162,10 @@ class InfrahubMutationMixin:
         node: Optional[Node] = None,
     ):
         context: GraphqlContext = info.context
+        db = database or context.db
 
         obj = node or await NodeManager.get_one_by_id_or_default_filter(
-            db=context.db,
+            db=db,
             schema_name=cls._meta.schema.kind,
             id=data.get("id"),
             branch=branch,
@@ -177,22 +178,22 @@ class InfrahubMutationMixin:
         fields_object = fields_object.get("object", {})
         result = {"ok": True}
         try:
-            await obj.from_graphql(db=context.db, data=data)
+            await obj.from_graphql(db=db, data=data)
 
-            await cls.validate_constraints(db=context.db, node=obj, branch=branch, at=at, ignore_existing_node=True)
+            await cls.validate_constraints(db=db, node=obj, branch=branch, at=at, ignore_existing_node=True)
             node_id = data.pop("id", obj.id)
             fields = list(data.keys())
             validate_mutation_permissions_update_node(
                 operation=cls.__name__, node_id=node_id, account_session=context.account_session, fields=fields
             )
 
-            if context.db.is_transaction:
-                await obj.save(db=context.db)
+            if db.is_transaction:
+                await obj.save(db=db)
                 if fields_object:
-                    result["object"] = await obj.to_graphql(db=context.db, fields=fields_object)
+                    result["object"] = await obj.to_graphql(db=db, fields=fields_object)
 
             else:
-                async with context.db.start_transaction() as dbt:
+                async with db.start_transaction() as dbt:
                     await obj.save(db=dbt)
                     if fields_object:
                         result["object"] = await obj.to_graphql(db=dbt, fields=fields_object)
