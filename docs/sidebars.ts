@@ -46,6 +46,7 @@ const sidebars: SidebarsConfig = {
         'guides/jinja2-transform',
         'guides/python-transform',
         'guides/artifact',
+        'guides/database-backup',
       ],
     },
     {
@@ -66,6 +67,7 @@ const sidebars: SidebarsConfig = {
         'topics/schema',
         'topics/transformation',
         'topics/auth',
+        'topics/database-backup',
       ],
     },
     {
