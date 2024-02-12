@@ -355,3 +355,19 @@ async def extract_fields_first_node(info: GraphQLResolveInfo) -> Dict[str, Dict]
         fields = await extract_fields(info.field_nodes[0].selection_set)
 
     return fields or {}
+
+
+def write_to_file(path: Path, value: Any) -> bool:
+    """Write a given value into a file and return if the operation was successful.
+
+    If the file does not exist, the function will attempt to create it."""
+    if not path.exists():
+        path.touch()
+
+    if path.is_dir():
+        raise FileExistsError(f"{path} is a directory")
+
+    to_write = str(value)
+    written = path.write_text(to_write)
+
+    return written is not None
