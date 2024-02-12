@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "infrahub"
-version = "0.10.1"
+version = "0.11.0"
 description = ""
 authors = ["OpsMill <info@opsmill.com>"]
 
@@ -224,10 +224,6 @@ ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = "infrahub.core.query.attribute"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = "infrahub.core.query.branch"
 ignore_errors = true
 
 [[tool.mypy.overrides]]

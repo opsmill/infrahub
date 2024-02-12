@@ -17,13 +17,11 @@ describe("Protected fields", () => {
     cy.contains("atl1-edge1").click();
 
     // Open the metadata tooltip
-    cy.get(".sm\\:p-0").within(() => {
-      cy.contains("Role")
-        .parent()
-        .within(() => {
-          cy.get("[data-cy='metadata-button']").click();
-        });
-    });
+    cy.contains("Role")
+      .parent()
+      .within(() => {
+        cy.get("[data-cy='metadata-button']").click();
+      });
 
     // The owner should be the eng team
     cy.get(":nth-child(5) > .underline").should("have.text", ENG_TEAM_ONLY_CREDENTIALS.username);
@@ -53,13 +51,11 @@ describe("Protected fields", () => {
     cy.contains("atl1-edge1").click();
 
     // Open the metadata tooltip
-    cy.get(".sm\\:p-0").within(() => {
-      cy.contains("Role")
-        .parent()
-        .within(() => {
-          cy.get("[data-cy='metadata-button']").click();
-        });
-    });
+    cy.contains("Role")
+      .parent()
+      .within(() => {
+        cy.get("[data-cy='metadata-button']").click();
+      });
 
     // The owner should be the eng team
     cy.get(":nth-child(5) > .underline").should("have.text", ENG_TEAM_ONLY_CREDENTIALS.username);
@@ -89,13 +85,11 @@ describe("Protected fields", () => {
     cy.contains("atl1-edge1").click();
 
     // Open the metadata tooltip
-    cy.get(".sm\\:p-0").within(() => {
-      cy.contains("Role")
-        .parent()
-        .within(() => {
-          cy.get("[data-cy='metadata-button']").click();
-        });
-    });
+    cy.contains("Role")
+      .parent()
+      .within(() => {
+        cy.get("[data-cy='metadata-button']").click();
+      });
 
     // The owner should be the eng team
     cy.get(":nth-child(5) > .underline").should("have.text", ENG_TEAM_ONLY_CREDENTIALS.username);
