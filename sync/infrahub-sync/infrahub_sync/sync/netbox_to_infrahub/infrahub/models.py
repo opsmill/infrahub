@@ -64,14 +64,14 @@ class TemplateCircuitType(InfrahubModel):
 
 class InfraDevice(InfrahubModel):
     _modelname = "InfraDevice"
-    _identifiers = ("name", "site", "rack", "organization")
+    _identifiers = ("name", "location", "rack", "organization")
     _attributes = ("model", "role", "tags", "description", "serial_number", "asset_tag")
 
     name: Optional[str]
     description: Optional[str]
     serial_number: Optional[str]
     asset_tag: Optional[str]
-    site: str
+    location: str
     model: str
     rack: Optional[str]
     role: Optional[str]
@@ -130,12 +130,11 @@ class InfraProviderNetwork(InfrahubModel):
 class InfraPrefix(InfrahubModel):
     _modelname = "InfraPrefix"
     _identifiers = ("prefix", "vrf")
-    _attributes = ("organization", "site", "role", "description")
+    _attributes = ("organization", "role", "description")
 
     prefix: str
     description: Optional[str]
     organization: Optional[str]
-    site: Optional[str]
     role: Optional[str]
     vrf: Optional[str]
 
@@ -176,14 +175,14 @@ class InfraRouteTarget(InfrahubModel):
 
 class InfraVLAN(InfrahubModel):
     _modelname = "InfraVLAN"
-    _identifiers = ("name", "vlan_id", "site", "vlan_group")
+    _identifiers = ("name", "vlan_id", "location", "vlan_group")
     _attributes = ("organization", "description")
 
     name: str
     description: Optional[str]
     vlan_id: int
     organization: Optional[str]
-    site: Optional[str]
+    location: Optional[str]
     vlan_group: Optional[str]
 
     local_id: Optional[str]

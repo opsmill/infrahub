@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "infrahub-sync"
-version = "0.1.0"
+version = "0.2.0"
 description = ""
 authors = ["OpsMill <contact@opsmill.com>"]
 readme = "README.md"
@@ -20,18 +20,13 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
 ]
 
-[tool.dagster]
-module_name = "infrahub_sync"
-
 [tool.poetry.dependencies]
 python = "^3.11"
-infrahub-sdk = {path = "../python_sdk", develop=true}
-dagster = "^1.4.17"
-dagit = "^1.1.19"
+infrahub-sdk = "^0.6.0"
 structlog = "^22.3.0"
 pynetbox = "^7.0.1"
 pynautobot = "^1.5.0"
-diffsync = "^1.8.0"
+diffsync = "^1.10.0"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -51,7 +46,7 @@ types-toml = "*"
 types-ujson = "*"
 types-pyyaml = "*"
 typer-cli = "*"
-ruff = "^0.1.5"
+ruff = "^0.1.8"
 pytest-xdist = "^3.3.1"
 buildkite-test-collector = "^0.1.7"
 types-python-slugify = "^8.0.0.3"

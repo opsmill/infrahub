@@ -1,14 +1,7 @@
-from dagster import Definitions, load_assets_from_modules
 from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel
 
-from . import assets
-
-all_assets = load_assets_from_modules([assets])
-
-defs = Definitions(
-    assets=all_assets,
-)
 
 class SchemaMappingField(BaseModel):
     name: str
@@ -28,9 +21,13 @@ class SyncAdapter(BaseModel):
     name: str
     settings: Optional[Dict[str, Any]]
 
+class SyncStore(BaseModel):
+    type: str
+    settings: Optional[Dict[str, Any]]
 
 class SyncConfig(BaseModel):
     name: str
+    store: Optional[SyncStore]
     source: SyncAdapter
     destination: SyncAdapter
     order: List[str]

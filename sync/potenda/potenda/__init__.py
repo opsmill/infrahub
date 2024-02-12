@@ -48,12 +48,24 @@ class Potenda:
                 self.progress_bar.close()
                 self.progress_bar = None
 
-    def load(self):
+    def source_load(self):
         try:
             print(f"Load: Importing data from {self.source}")
             self.source.load()
+        except Exception as e:
+            raise Exception(f"An error occurred while loading {self.source}: {e}")
+
+    def destination_load(self):
+        try:
             print(f"Load: Importing data from {self.destination}")
             self.destination.load()
+        except Exception as e:
+            raise Exception(f"An error occurred while loading {self.destination}: {e}")
+
+    def load(self):
+        try:
+            self.source_load()
+            self.destination_load()
         except Exception as e:
             raise Exception(f"An error occurred while loading the sync: {e}")
 

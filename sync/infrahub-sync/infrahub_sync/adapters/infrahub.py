@@ -50,18 +50,15 @@ class InfrahubAdapter(DiffSyncMixin, DiffSync):
         super().__init__(*args, **kwargs)
         self.target = target
         self.config = config
-        self.branch = branch
-        sdk_config = Config(timeout=60)
+        if branch:
+            sdk_config = Config(timeout=60, default_branch=branch)
+        else:
+            sdk_config = Config(timeout=60)
 
         if not isinstance(adapter.settings, dict) or "url" not in adapter.settings:
             raise ValueError("url must be specified!")
 
-        if self.branch:
-            self.client = InfrahubClientSync(
-                address=adapter.settings["url"], default_branch=self.branch, config=sdk_config
-            )
-        else:
-            self.client = InfrahubClientSync(address=adapter.settings["url"], config=sdk_config)
+        self.client = InfrahubClientSync(address=adapter.settings["url"], config=sdk_config)
 
         # We need to identify with an account until we have some auth in place
         remote_account = config.source.name
@@ -161,7 +158,7 @@ class InfrahubModel(DiffSyncModelMixin, DiffSyncModel):
             schema=schema, data=data, source=source.id, is_protected=True
         )
         node = diffsync.client.create(kind=cls.__name__, data=create_data)
-        node.save()
+        node.save(allow_upsert=True)
         diffsync.client.store.set(key=unique_id, node=node)
         return super().create(diffsync, ids=ids, attrs=attrs)
 
@@ -169,6 +166,6 @@ class InfrahubModel(DiffSyncModelMixin, DiffSyncModel):
         node = self.diffsync.client.get(id=self.local_id, kind=self.__class__.__name__)
 
         node = update_node(node=node, attrs=attrs)
-        node.save()
+        node.save(allow_upsert=True)
 
         return super().update(attrs)
