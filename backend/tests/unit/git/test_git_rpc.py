@@ -127,10 +127,7 @@ async def test_git_rpc_diff(
     bus_simulator = helper.get_message_bus_simulator()
     service = InfrahubServices(client=InfrahubClient(), message_bus=bus_simulator)
     bus_simulator.service = service
-    await service.send(message=message)
-
-    assert len(bus_simulator.replies) == 1
-    result: messages.GitDiffNamesOnlyResponse = bus_simulator.replies[0]
+    result = await service.message_bus.rpc(message=message, response_class=messages.GitDiffNamesOnlyResponse)
     assert result.data.files_changed == ["README.md", "test_files/sports.yml"]
 
     message = messages.GitDiffNamesOnly(
@@ -141,10 +138,7 @@ async def test_git_rpc_diff(
         second_commit=commit_main,
         meta=Meta(reply_to="ci-testing", correlation_id=correlation_id),
     )
-    await service.send(message=message)
-
-    assert len(bus_simulator.replies) == 2
-    result: messages.GitDiffNamesOnlyResponse = bus_simulator.replies[1]
+    result = await service.message_bus.rpc(message=message, response_class=messages.GitDiffNamesOnlyResponse)
     assert result.data.files_changed == ["test_files/sports.yml"]
 
 

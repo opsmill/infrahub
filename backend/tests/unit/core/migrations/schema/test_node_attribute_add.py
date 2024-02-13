@@ -119,9 +119,7 @@ async def test_rpc(db: InfrahubDatabase, default_branch, init_database, schema_a
     assert await count_nodes(db=db, label="TestCar") == 5
     assert await count_nodes(db=db, label="Attribute") == 0
 
-    await service.send(message=message)
-    assert len(bus_simulator.replies) == 1
-    response: SchemaMigrationPathResponse = bus_simulator.replies[0]
+    response = await service.message_bus.rpc(message=message, response_class=SchemaMigrationPathResponse)
     assert response.passed
     assert response.meta.correlation_id == correlation_id
     assert not response.data.errors
