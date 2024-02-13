@@ -1,24 +1,21 @@
-import { ArrowPathIcon } from "@heroicons/react/24/outline";
-import { useContext } from "react";
-import { AuthContext } from "../../decorators/withAuth";
+import { Icon } from "@iconify-icon/react";
 import { classNames } from "../../utils/common";
 
 type tRetryProps = {
-  isInProgress?: boolean;
+  isLoading?: boolean;
   onClick?: Function;
+  isDisabled?: boolean;
 };
 
 export const Retry = (props: tRetryProps) => {
-  const { isInProgress, onClick } = props;
-
-  const auth = useContext(AuthContext);
+  const { isLoading, onClick, isDisabled } = props;
 
   const handleClick = (event: any) => {
-    if (!auth?.permissions?.write) {
+    if (isDisabled) {
       return;
     }
 
-    if (isInProgress) {
+    if (isLoading) {
       return;
     }
 
@@ -30,12 +27,15 @@ export const Retry = (props: tRetryProps) => {
   return (
     <div
       className={classNames(
-        "p-1 rounded-full",
-        isInProgress ? "cursor-not-allowed " : "",
-        auth?.permissions?.write ? "cursor-pointer hover:bg-gray-200" : "cursor-not-allowed"
+        "flex items-center p-1 rounded-full",
+        isLoading ? "cursor-not-allowed animate-spin" : "",
+        !isLoading && isDisabled ? "cursor-pointer hover:bg-gray-200" : "cursor-not-allowed"
       )}
       onClick={handleClick}>
-      <ArrowPathIcon className={classNames("h-4 w-4", isInProgress ? "text-gray-400" : "")} />
+      <Icon
+        icon={"mdi:circle-arrows"}
+        className={classNames("h-4 w-4", isLoading ? "text-gray-300" : "text-gray-400")}
+      />
     </div>
   );
 };

@@ -1,3 +1,18 @@
+export const branchesQuery = `
+query GetBranches {
+  Branch {
+    id
+    name
+    description
+    origin_branch
+    branched_from
+    created_at
+    is_data_only
+    is_default
+  }
+}
+`;
+
 export const branchesMocks = [
   {
     id: "eb870135-a2fd-4825-a0eb-66026c970e8d",
