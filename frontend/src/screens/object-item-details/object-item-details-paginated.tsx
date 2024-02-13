@@ -13,7 +13,6 @@ import { useContext, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { StringParam, useQueryParam } from "use-query-params";
 import { BUTTON_TYPES, Button } from "../../components/buttons/button";
-import { Retry } from "../../components/buttons/retry";
 import MetaDetailsTooltip from "../../components/display/meta-details-tooltips";
 import SlideOver from "../../components/display/slide-over";
 import { Tabs } from "../../components/tabs";
@@ -52,9 +51,9 @@ import ObjectItemEditComponent from "../object-item-edit/object-item-edit-pagina
 import ObjectItemMetaEdit from "../object-item-meta-edit/object-item-meta-edit";
 import { TaskItemDetails } from "../tasks/task-item-details";
 import { TaskItems } from "../tasks/task-items";
+import { ObjectAttributeRow } from "./object-attribute-row";
 import RelationshipDetails from "./relationship-details-paginated";
 import RelationshipsDetails from "./relationships-details-paginated";
-import { ObjectAttributeRow } from "./object-attribute-row";
 
 export default function ObjectItemDetails(props: any) {
   const { objectname: objectnameFromProps, objectid: objectidFromProps, hideHeaders } = props;
@@ -121,7 +120,7 @@ export default function ObjectItemDetails(props: any) {
     notifyOnNetworkStatusChange: true,
   });
 
-  const handleRefetch = () => refetch();
+  // const handleRefetch = () => refetch();
 
   const objectDetailsData = schemaData && data && data[schemaData?.kind]?.edges[0]?.node;
 
@@ -186,7 +185,7 @@ export default function ObjectItemDetails(props: any) {
               <p className="max-w-2xl  text-gray-500">{objectDetailsData.display_label}</p>
 
               <div className="ml-2">
-                <Retry isLoading={loading} onClick={handleRefetch} />
+                {/* <Retry isLoading={loading} onClick={handleRefetch} /> */}
               </div>
             </div>
 
