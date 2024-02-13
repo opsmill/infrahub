@@ -1,6 +1,7 @@
 import { gql } from "@apollo/client";
 import { ArrowPathIcon, CheckCircleIcon, ExclamationCircleIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
+import { useContext } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { Retry } from "../../../components/buttons/retry";
@@ -11,6 +12,7 @@ import {
   VALIDATIONS_ENUM_MAP,
   VALIDATION_STATES,
 } from "../../../config/constants";
+import { AuthContext } from "../../../decorators/withAuth";
 import graphqlClient from "../../../graphql/graphqlClientApollo";
 import { runCheck } from "../../../graphql/mutations/diff/runCheck";
 import { genericsState } from "../../../state/atoms/schema.atom";
@@ -28,6 +30,7 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
   const { proposedchange } = useParams();
   const [schemaKindName] = useAtom(schemaKindNameState);
   const [schemaList] = useAtom(genericsState);
+  const auth = useContext(AuthContext);
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_VALIDATOR_OBJECT);
 
@@ -68,7 +71,11 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
     <div className="flex p-4 pb-0 gap-2">
       <div className="flex items-center justify-between p-2 rounded-md bg-custom-white">
         Retry all:{" "}
-        <Retry onClick={() => handleRetry("all")} isLoading={!!validatorsInProgress.length} />
+        <Retry
+          onClick={() => handleRetry("all")}
+          isLoading={!!validatorsInProgress.length}
+          isDisabled={!auth?.permissions?.write}
+        />
       </div>
 
       <div className="flex-1 flex flex-wrap gap-2">
@@ -95,7 +102,11 @@ export const ChecksSummary = (props: tChecksSummaryProps) => {
                 </span>
               </div>
 
-              <Retry onClick={() => handleRetry(kind)} isLoading={!!stats.inProgress} />
+              <Retry
+                onClick={() => handleRetry(kind)}
+                isLoading={!!stats.inProgress}
+                isDisabled={auth?.permissions?.write}
+              />
             </div>
           </div>
         ))}

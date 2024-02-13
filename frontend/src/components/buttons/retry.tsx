@@ -1,20 +1,17 @@
 import { Icon } from "@iconify-icon/react";
-import { useContext } from "react";
-import { AuthContext } from "../../decorators/withAuth";
 import { classNames } from "../../utils/common";
 
 type tRetryProps = {
   isLoading?: boolean;
   onClick?: Function;
+  isDisabled?: boolean;
 };
 
 export const Retry = (props: tRetryProps) => {
-  const { isLoading, onClick } = props;
-
-  const auth = useContext(AuthContext);
+  const { isLoading, onClick, isDisabled } = props;
 
   const handleClick = (event: any) => {
-    if (!auth?.permissions?.write) {
+    if (isDisabled) {
       return;
     }
 
@@ -32,9 +29,7 @@ export const Retry = (props: tRetryProps) => {
       className={classNames(
         "flex items-center p-1 rounded-full",
         isLoading ? "cursor-not-allowed animate-spin" : "",
-        !isLoading && auth?.permissions?.write
-          ? "cursor-pointer hover:bg-gray-200"
-          : "cursor-not-allowed"
+        !isLoading && isDisabled ? "cursor-pointer hover:bg-gray-200" : "cursor-not-allowed"
       )}
       onClick={handleClick}>
       <Icon
