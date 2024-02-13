@@ -97,7 +97,7 @@ export const ProposedChanges = () => {
 
   return (
     <div>
-      <div className="bg-white flex items-center p-4 w-full">
+      <div className="bg-white flex items-center justify-between p-4 w-full">
         <div className="flex items-center">
           <h1 className="text-base font-semibold">Proposed changes ({count})</h1>
 
