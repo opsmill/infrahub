@@ -79,24 +79,3 @@ RUN poetry install --no-interaction --no-ansi
 RUN apt-get autoremove -y && \
     apt-get clean all && \
     rm -rf /var/lib/apt/lists/*
-
-# ****************************************************************
-# STAGE : Gitpod
-# ****************************************************************
-
-FROM backend AS gitpod
-
-# --------------------------------------------
-# Create new user and assign the right permissions
-# --------------------------------------------
-ARG USER_ID=33333
-ARG GROUP_ID=33333
-
-RUN addgroup --gid ${GROUP_ID} user
-RUN adduser --disabled-password --gecos '' --uid ${USER_ID} --gid ${GROUP_ID} user
-
-RUN chown -R ${USER_ID}:${GROUP_ID} /prom_shared
-RUN chown -R ${USER_ID}:${GROUP_ID} /opt
-RUN chown -R ${USER_ID}:${GROUP_ID} /remote
-
-USER user
