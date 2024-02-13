@@ -124,12 +124,12 @@ def has_children(node: NodeSchema, config: SyncConfig) -> bool:
     return False
 
 
-def render_template(template_dir: str, template_file: str, output_dir: str, output_file: str, context):
-    template_path = os.path.join(template_dir, template_file)
-    output_filename = Path(os.path.join(output_dir, output_file))
-
-    templateLoader = jinja2.FileSystemLoader(searchpath=".")
-    templateEnv = jinja2.Environment(loader=templateLoader, trim_blocks=True, lstrip_blocks=True)
+def render_template(template_file: str, output_dir: str, output_file: str, context):
+    templateLoader = jinja2.PackageLoader("infrahub_sync", "generator/templates")
+    templateEnv = jinja2.Environment(
+        loader=templateLoader,
+        autoescape=jinja2.select_autoescape(["html", "xml", "j2"])
+    )
     templateEnv.filters["get_identifiers"] = get_identifiers
     templateEnv.filters["get_attributes"] = get_attributes
     templateEnv.filters["get_children"] = get_children
@@ -140,7 +140,8 @@ def render_template(template_dir: str, template_file: str, output_dir: str, outp
     templateEnv.filters["has_children"] = has_children
     templateEnv.filters["get_kind"] = get_kind
 
-    template = templateEnv.get_template(str(template_path))
+    template = templateEnv.get_template(template_file)
 
     rendered_tpl = template.render(**context)  # type: ignore[arg-type]
+    output_filename = Path(os.path.join(output_dir, output_file))
     output_filename.write_text(rendered_tpl, encoding="utf-8")
