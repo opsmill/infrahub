@@ -207,7 +207,8 @@ jobs:
       - name: "Mypy Tests"
         run: "poetry run mypy --show-error-codes infrahub_sdk/"
       - name: "Unit Tests"
-        run: "poetry run pytest -v --cov=infrahub_sdk tests/unit/"
+        run: "poetry --directory python_sdk run pytest -v --cov=infrahub_sdk python_sdk/tests/unit/"
+        working-directory: ./
         env:
           BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_SDK_UNIT }}
       - name: "Coveralls : Unit Tests"
