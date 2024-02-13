@@ -352,10 +352,10 @@ export default function RelationshipDetails(props: iRelationDetailsProps) {
                             index !== relationshipsData.length - 1
                               ? "border-b border-gray-200"
                               : "",
-                            "whitespace-nowrap px-2 py-1 text-xs font-medium text-gray-900"
+                            "whitespace-nowrap text-xs font-medium h-[36px]"
                           )}>
                           <Link
-                            className="whitespace-wrap px-2 py-1 text-xs text-gray-900 min-h-7 flex items-center"
+                            className="whitespace-wrap px-2 py-1 text-xs flex items-center text-gray-900"
                             to={constructPath(getObjectDetailsUrl(node.id, node.__typename))}>
                             {getObjectItemDisplayValue(node, column)}
                           </Link>

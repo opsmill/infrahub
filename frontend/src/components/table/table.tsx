@@ -47,7 +47,7 @@ export const Table = (props: tTableProps) => {
             <tr
               key={index}
               className={classNames(
-                "border-b border-gray-200",
+                "border-b border-gray-200 h-[36px]",
                 row.link ? "hover:bg-gray-50 cursor-pointer" : ""
               )}
               data-cy="object-table-row">
@@ -55,14 +55,14 @@ export const Table = (props: tTableProps) => {
                 <td key={index} className="p-0">
                   {row.link && (
                     <Link
-                      className="whitespace-wrap px-2 py-1 text-xs text-gray-900 min-h-7 flex items-center"
+                      className="whitespace-wrap px-2 py-1 text-xs text-gray-900 flex items-center"
                       to={row.link}>
                       <div>{row.values[column.name]}</div>
                     </Link>
                   )}
 
                   {!row.link && (
-                    <div className="whitespace-wrap px-2 py-1 text-xs text-gray-900 min-h-7 flex items-center whitespace-pre">
+                    <div className="whitespace-wrap px-2 py-1 text-xs text-gray-900 flex items-center whitespace-pre">
                       {row.values[column.name]}
                     </div>
                   )}
