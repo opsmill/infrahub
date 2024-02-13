@@ -57,12 +57,13 @@ class NodeManager:
         fields: Optional[dict] = None,
         offset: Optional[int] = None,
         limit: Optional[int] = None,
-        at: Union[Timestamp, str] = None,
-        branch: Union[Branch, str] = None,
+        at: Optional[Union[Timestamp, str]] = None,
+        branch: Optional[Union[Branch, str]] = None,
         include_source: bool = False,
         include_owner: bool = False,
         prefetch_relationships: bool = False,
         account=None,
+        partial_match: bool = False,
     ) -> List[Node]:  # pylint: disable=unused-argument
         """Query one or multiple nodes of a given type based on filter arguments.
 
@@ -82,13 +83,20 @@ class NodeManager:
         at = Timestamp(at)
 
         if isinstance(schema, str):
-            schema = registry.get_schema(name=schema, branch=branch.name)
+            schema = registry.schema.get(name=schema, branch=branch.name)
         elif not isinstance(schema, (NodeSchema, GenericSchema)):
             raise ValueError(f"Invalid schema provided {schema}")
 
         # Query the list of nodes matching this Query
         query = await NodeGetListQuery.init(
-            db=db, schema=schema, branch=branch, offset=offset, limit=limit, filters=filters, at=at
+            db=db,
+            schema=schema,
+            branch=branch,
+            offset=offset,
+            limit=limit,
+            filters=filters,
+            at=at,
+            partial_match=partial_match,
         )
         await query.execute(db=db)
         node_ids = query.get_node_ids()
@@ -121,6 +129,7 @@ class NodeManager:
         at: Optional[Union[Timestamp, str]] = None,
         branch: Optional[Union[Branch, str]] = None,
         account=None,  # pylint: disable=unused-argument
+        partial_match: bool = False,
     ) -> int:
         """Return the total number of nodes using a given filter
 
@@ -137,7 +146,9 @@ class NodeManager:
         branch = await get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
-        query = await NodeGetListQuery.init(db=db, schema=schema, branch=branch, filters=filters, at=at)
+        query = await NodeGetListQuery.init(
+            db=db, schema=schema, branch=branch, filters=filters, at=at, partial_match=partial_match
+        )
         return await query.count(db=db)
 
     @classmethod
@@ -302,7 +313,7 @@ class NodeManager:
         branch = await get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
-        node_schema = registry.get_node_schema(name=schema_name, branch=branch)
+        node_schema = registry.schema.get(name=schema_name, branch=branch)
         if not node_schema.default_filter:
             raise NodeNotFound(branch_name=branch.name, node_type=schema_name, identifier=id)
 
@@ -383,7 +394,7 @@ class NodeManager:
         id: str,
         db: InfrahubDatabase,
         fields: Optional[dict] = None,
-        at: Union[Timestamp, str] = None,
+        at: Optional[Union[Timestamp, str]] = None,
         branch: Union[Branch, str] = None,
         include_source: bool = False,
         include_owner: bool = False,
@@ -440,7 +451,9 @@ class NodeManager:
         # Query all nodes
         query = await NodeListGetInfoQuery.init(db=db, ids=ids, branch=branch, account=account, at=at)
         await query.execute(db=db)
-        nodes_info_by_id: Dict[str, NodeToProcess] = {node.node_uuid: node async for node in query.get_nodes()}
+        nodes_info_by_id: Dict[str, NodeToProcess] = {
+            node.node_uuid: node async for node in query.get_nodes(duplicate=False)
+        }
 
         # Query list of all Attributes
         query = await NodeListGetAttributeQuery.init(

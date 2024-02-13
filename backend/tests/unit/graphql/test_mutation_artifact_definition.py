@@ -8,14 +8,9 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql import generate_graphql_schema
+from infrahub.graphql import prepare_graphql_params
 from infrahub.message_bus import messages
 from infrahub.message_bus.rpc import InfrahubRpcClientTesting
-
-
-@pytest.fixture(autouse=True)
-def load_graphql_requirements(group_graphql):
-    pass
 
 
 @pytest.fixture
@@ -35,7 +30,6 @@ async def transformation1(
         db=db,
         name="transform01",
         query=str(car_person_data_generic["q1"].id),
-        url="mytransform",
         repository=str(car_person_data_generic["r1"].id),
         file_path="transform01.py",
         class_name="Transform01",
@@ -98,11 +92,11 @@ async def test_create_artifact_definition(
         group1.id,
         transformation1.id,
     )
-
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch, rpc_client=rpc_client)
     result = await graphql(
-        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=branch),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": branch, "infrahub_rpc_client": rpc_client},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -145,10 +139,11 @@ async def test_update_artifact_definition(
     }
     """ % (definition1.id)
 
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch, rpc_client=rpc_client)
     result = await graphql(
-        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=branch),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": branch, "infrahub_rpc_client": rpc_client},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )

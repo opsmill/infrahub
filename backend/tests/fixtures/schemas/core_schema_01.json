@@ -1,4 +1,51 @@
 {
+    "generics":
+    [
+        {
+            "name": "GenericRepository",
+            "namespace": "Core",
+            "description": null,
+            "label": null,
+            "branch": "aware",
+            "default_filter": "name__value",
+            "attributes": [
+                {
+                    "name": "name",
+                    "kind": "String",
+                    "label": null,
+                    "description": null,
+                    "default_value": null,
+                    "inherited": false,
+                    "unique": true,
+                    "branch": "aware",
+                    "optional": false
+                },
+                {
+                    "name": "location",
+                    "kind": "String",
+                    "label": null,
+                    "description": null,
+                    "default_value": null,
+                    "inherited": false,
+                    "unique": true,
+                    "branch": "aware",
+                    "optional": false
+                }
+            ],
+            "filters": [
+                {
+                    "name": "name__value",
+                    "kind": "String",
+                    "description": null
+                },
+                {
+                    "name": "location__value",
+                    "kind": "String",
+                    "description": null
+                }
+            ]
+        }
+    ],
     "nodes": [
         {
             "name": "GraphQLQuery",
@@ -71,7 +118,6 @@
             ],
             "label": null,
             "inherit_from": [],
-            "groups": [],
             "branch": "aware",
             "default_filter": "name__value",
             "filters": [
@@ -257,9 +303,9 @@
             "label": null,
             "inherit_from": [
                 "LineageOwner",
-                "LineageSource"
+                "LineageSource",
+                "CoreGenericRepository"
             ],
-            "groups": [],
             "branch": "aware",
             "default_filter": "name__value",
             "filters": [
@@ -341,7 +387,6 @@
             "relationships": [],
             "label": null,
             "inherit_from": [],
-            "groups": [],
             "branch": "aware",
             "default_filter": "name__value",
             "filters": [

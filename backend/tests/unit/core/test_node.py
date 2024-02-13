@@ -59,7 +59,7 @@ async def test_node_init(
 
 
 async def test_node_init_schema_name(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
-    registry.set_schema(name="TestCriticality", schema=criticality_schema)
+    registry.schema.set(name="TestCriticality", schema=criticality_schema)
     obj = await Node.init(db=db, schema="TestCriticality")
     await obj.new(db=db, name="low", level=4)
 
@@ -70,7 +70,7 @@ async def test_node_init_schema_name(db: InfrahubDatabase, default_branch: Branc
 
 
 async def test_node_init_id(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
-    registry.set_schema(name="TestCriticality", schema=criticality_schema)
+    registry.schema.set(name="TestCriticality", schema=criticality_schema)
 
     uuid1 = str(UUIDT())
     obj = await Node.init(db=db, schema="TestCriticality")
@@ -81,7 +81,7 @@ async def test_node_init_id(db: InfrahubDatabase, default_branch: Branch, critic
 
 
 async def test_node_init_id_conflict(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
-    registry.set_schema(name="TestCriticality", schema=criticality_schema)
+    registry.schema.set(name="TestCriticality", schema=criticality_schema)
 
     uuid1 = str(UUIDT())
     obj1 = await Node.init(db=db, schema="TestCriticality")
@@ -96,7 +96,7 @@ async def test_node_init_id_conflict(db: InfrahubDatabase, default_branch: Branc
 
 
 async def test_node_init_invalid_id(db: InfrahubDatabase, default_branch: Branch, criticality_schema):
-    registry.set_schema(name="TestCriticality", schema=criticality_schema)
+    registry.schema.set(name="TestCriticality", schema=criticality_schema)
 
     obj = await Node.init(db=db, schema="TestCriticality")
     with pytest.raises(ValidationError) as exc:
@@ -169,7 +169,7 @@ async def test_node_default_value(db: InfrahubDatabase, default_branch: Branch):
     }
 
     node_schema = NodeSchema(**SCHEMA)
-    registry.set_schema(name=node_schema.kind, schema=node_schema)
+    registry.schema.set(name=node_schema.kind, schema=node_schema)
 
     obj = await Node.init(db=db, schema=node_schema)
     await obj.new(db=db, name="test01", myint=100, mybool=False, mystr="test02")
@@ -223,8 +223,8 @@ async def test_render_display_label(db: InfrahubDatabase, default_branch: Branch
 
 
 async def test_node_init_with_single_relationship(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
-    car = registry.get_schema(name="TestCar")
-    person = registry.get_schema(name="TestPerson")
+    car = registry.schema.get(name="TestCar")
+    person = registry.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)
@@ -254,8 +254,8 @@ async def test_node_init_with_single_relationship(db: InfrahubDatabase, default_
 
 
 async def test_to_graphql(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
-    car = registry.get_schema(name="TestCar")
-    person = registry.get_schema(name="TestPerson")
+    car = registry.schema.get(name="TestCar")
+    person = registry.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)
@@ -289,8 +289,8 @@ async def test_to_graphql(db: InfrahubDatabase, default_branch: Branch, car_pers
 
 
 async def test_to_graphql_no_fields(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
-    car = registry.get_schema(name="TestCar")
-    person = registry.get_schema(name="TestPerson")
+    car = registry.schema.get(name="TestCar")
+    person = registry.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)
@@ -339,6 +339,14 @@ async def test_to_graphql_no_fields(db: InfrahubDatabase, default_branch: Branch
             "owner": None,
             "source": None,
             "value": 4,
+        },
+        "transmission": {
+            "__typename": "Text",
+            "id": c1.transmission.id,
+            "is_protected": False,
+            "is_visible": True,
+            "owner": None,
+            "source": None,
         },
         "type": "TestCar",
     }
@@ -485,8 +493,8 @@ async def test_node_create_attribute_with_different_owner(
 
 
 async def test_node_create_with_single_relationship(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
-    car = registry.get_schema(name="TestCar")
-    person = registry.get_schema(name="TestPerson")
+    car = registry.schema.get(name="TestCar")
+    person = registry.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)
@@ -555,8 +563,8 @@ async def test_node_create_with_single_relationship(db: InfrahubDatabase, defaul
 
 
 async def test_node_create_with_multiple_relationship(db: InfrahubDatabase, default_branch: Branch, fruit_tag_schema):
-    fruit = registry.get_schema(name="GardenFruit")
-    tag = registry.get_schema(name=InfrahubKind.TAG)
+    fruit = registry.schema.get(name="GardenFruit")
+    tag = registry.schema.get(name=InfrahubKind.TAG)
 
     t1 = await Node.init(db=db, schema=tag)
     await t1.new(db=db, name="tag1")
@@ -584,6 +592,30 @@ async def test_node_create_with_multiple_relationship(db: InfrahubDatabase, defa
     assert len(paths) == 2
     paths = await get_paths_between_nodes(db=db, source_id=f1.db_id, destination_id=t3.db_id, max_length=2)
     assert len(paths) == 2
+
+
+async def test_node_validate_constraint_relationship_count(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_volt_main: Node, person_john_main
+):
+    person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person.new(db=db, name="Alfred", height=160, cars=[car_accord_main.id])
+    with pytest.raises(ValidationError) as exc:
+        await person.validate_constraint_relationship_count(db=db, branch=default_branch)
+    assert "has 2 peers for testcar__testperson, only 1 allowed" in exc.value.message
+
+
+async def test_node_validate_constraint_node_uniqueness(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_volt_main: Node, person_john_main
+):
+    alfred = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await alfred.new(db=db, name="Alfred", height=160)
+    await alfred.validate_constraint_node_uniqueness(db=db, branch=default_branch)
+
+    new_john = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await new_john.new(db=db, name="John", height=160)
+    with pytest.raises(ValidationError) as exc:
+        await new_john.validate_constraint_node_uniqueness(db=db, branch=default_branch)
+    assert "An object already exist with this value" in exc.value.message
 
 
 # --------------------------------------------------------------------------
@@ -675,7 +707,7 @@ async def test_update_related_node(db: InfrahubDatabase, default_branch, data_sc
             {
                 "name": "Person",
                 "namespace": "Test",
-                "default_filter": "name__value",
+                "default_filter": "firstname__value",
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "firstname", "kind": "Text"},
@@ -1056,61 +1088,12 @@ async def test_node_relationship_interface(db: InfrahubDatabase, default_branch:
 
 
 # --------------------------------------------------------------------------
-# With Union
-# --------------------------------------------------------------------------
-
-
-async def test_union(
-    db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema, car_schema, truck_schema, motorcycle_schema
-):
-    SCHEMA = {
-        "name": "Person",
-        "namespace": "Test",
-        "default_filter": "name__value",
-        "branch": BranchSupportType.AWARE.value,
-        "attributes": [
-            {"name": "name", "kind": "Text", "unique": True},
-        ],
-        "relationships": [
-            {"name": "road_vehicules", "peer": "OnRoad", "cardinality": "many", "identifier": "person__vehicule"}
-        ],
-    }
-
-    node = NodeSchema(**SCHEMA)
-    registry.schema.set(name=node.kind, schema=node, branch=default_branch.name)
-    registry.schema.process_schema_branch(name=default_branch.name)
-
-    d1 = await Node.init(db=db, schema="TestCar")
-    await d1.new(db=db, name="Porsche 911", nbr_doors=2)
-    await d1.save(db=db)
-
-    t1 = await Node.init(db=db, schema="TestTruck")
-    await t1.new(db=db, name="Silverado", nbr_axles=4)
-    await t1.save(db=db)
-
-    m1 = await Node.init(db=db, schema="TestMotorcycle")
-    await m1.new(db=db, name="Monster", nbr_seats=1)
-    await m1.save(db=db)
-
-    p1 = await Node.init(db=db, schema="TestPerson")
-    await p1.new(db=db, name="John Doe", road_vehicules=[d1, t1, m1])
-    await p1.save(db=db)
-
-    obj1 = await NodeManager.get_one(id=p1.id, branch=default_branch, db=db)
-    peers = [await peer_rel.get_peer(db=db) for peer_rel in await obj1.road_vehicules.get(db=db)]
-    assert len(peers) == 3
-
-    kinds = sorted([peer.get_kind() for peer in peers])
-    assert kinds == ["TestCar", "TestMotorcycle", "TestTruck"]
-
-
-# --------------------------------------------------------------------------
 # Serialize
 # --------------------------------------------------------------------------
 
 
 async def test_node_serialize_prefix(db: InfrahubDatabase, default_branch: Branch, prefix_schema):
-    prefix = registry.get_schema(name="TestPrefix")
+    prefix = registry.schema.get(name="TestPrefix")
 
     p1 = await Node.init(db=db, schema=prefix)
     await p1.new(db=db, prefix="192.0.2.1", name="prefix1")
@@ -1135,7 +1118,7 @@ async def test_node_serialize_prefix(db: InfrahubDatabase, default_branch: Branc
 
 
 async def test_node_serialize_address(db: InfrahubDatabase, default_branch: Branch, prefix_schema):
-    ip = registry.get_schema(name="TestIp")
+    ip = registry.schema.get(name="TestIp")
 
     i1 = await Node.init(db=db, schema=ip)
     await i1.new(db=db, address="192.0.2.1", name="ip1")

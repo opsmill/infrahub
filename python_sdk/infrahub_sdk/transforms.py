@@ -23,12 +23,10 @@ INFRAHUB_TRANSFORM_VARIABLE_TO_IMPORT = "INFRAHUB_TRANSFORMS"
 class InfrahubTransform:
     name: Optional[str] = None
     query: str
-    url: str
     timeout: int = 10
     rebase: bool = True
 
     def __init__(self, branch: str = "", root_directory: str = "", server_url: str = ""):
-        self.data = None
         self.git: Repo
 
         self.branch = branch
@@ -43,8 +41,6 @@ class InfrahubTransform:
 
         if not self.query:
             raise ValueError("A query must be provided")
-        if not self.url:
-            raise ValueError("A url must be provided")
 
     @classmethod
     async def init(cls, client: Optional[InfrahubClient] = None, *args: Any, **kwargs: Any) -> InfrahubTransform:
@@ -68,7 +64,8 @@ class InfrahubTransform:
 
         if not self.git:
             self.git = Repo(self.root_directory)
-            self.branch = str(self.git.active_branch)
+
+        self.branch = str(self.git.active_branch)
 
         return self.branch
 
@@ -95,8 +92,7 @@ class InfrahubTransform:
 
 
 def get_transform_class_instance(
-    transform_config: InfrahubPythonTransformConfig,
-    search_path: Optional[Path] = None,
+    transform_config: InfrahubPythonTransformConfig, search_path: Optional[Path] = None
 ) -> InfrahubTransform:
     if transform_config.file_path.is_absolute() or search_path is None:
         search_location = transform_config.file_path

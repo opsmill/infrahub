@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, List, Optional, Tuple
 
 from graphene import InputObjectType, Mutation
 from graphene.types.mutation import MutationOptions
 from infrahub_sdk.utils import extract_fields
+from typing_extensions import Self
 
 from infrahub import config
 from infrahub.auth import (
@@ -16,6 +17,7 @@ from infrahub.core.constants import MutationAction
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
+from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import NodeNotFound, ValidationError
 from infrahub.log import get_log_data, get_logger
 from infrahub.message_bus import Meta, messages
@@ -28,10 +30,10 @@ from .node_getter.by_id import MutationNodeGetterById
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
-    from infrahub.auth import AccountSession
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 
+    from .. import GraphqlContext
     from .node_getter.interface import MutationNodeGetterInterface
 
 # pylint: disable=unused-argument
@@ -49,57 +51,64 @@ class InfrahubMutationOptions(MutationOptions):
 class InfrahubMutationMixin:
     @classmethod
     async def mutate(cls, root: dict, info: GraphQLResolveInfo, *args, **kwargs):
-        at = info.context.get("infrahub_at")
-        branch = info.context.get("infrahub_branch")
-        account_session: AccountSession = info.context.get("account_session", None)
-        db: InfrahubDatabase = info.context.get("infrahub_database")
+        context: GraphqlContext = info.context
 
         obj = None
         mutation = None
         action = MutationAction.UNDEFINED
-        validate_mutation_permissions(operation=cls.__name__, account_session=account_session)
+        validate_mutation_permissions(operation=cls.__name__, account_session=context.account_session)
 
         if "Create" in cls.__name__:
-            obj, mutation = await cls.mutate_create(root=root, info=info, branch=branch, at=at, *args, **kwargs)
+            obj, mutation = await cls.mutate_create(
+                root=root, info=info, branch=context.branch, at=context.at, *args, **kwargs
+            )
             action = MutationAction.ADDED
         elif "Update" in cls.__name__:
-            obj, mutation = await cls.mutate_update(root=root, info=info, branch=branch, at=at, *args, **kwargs)
+            obj, mutation = await cls.mutate_update(
+                root=root, info=info, branch=context.branch, at=context.at, *args, **kwargs
+            )
             action = MutationAction.UPDATED
         elif "Upsert" in cls.__name__:
             node_manager = NodeManager()
             node_getters = [
-                MutationNodeGetterById(db, node_manager),
-                MutationNodeGetterByDefaultFilter(db, node_manager),
+                MutationNodeGetterById(context.db, node_manager),
+                MutationNodeGetterByDefaultFilter(context.db, node_manager),
             ]
             obj, mutation, created = await cls.mutate_upsert(
-                root=root, info=info, branch=branch, at=at, node_getters=node_getters, *args, **kwargs
+                root=root, info=info, branch=context.branch, at=context.at, node_getters=node_getters, *args, **kwargs
             )
             if created:
                 action = MutationAction.ADDED
             else:
                 action = MutationAction.UPDATED
         elif "Delete" in cls.__name__:
-            obj, mutation = await cls.mutate_delete(root=root, info=info, branch=branch, at=at, *args, **kwargs)
+            obj, mutation = await cls.mutate_delete(
+                root=root, info=info, branch=context.branch, at=context.at, *args, **kwargs
+            )
             action = MutationAction.REMOVED
         else:
             raise ValueError(
                 f"Unexpected class Name: {cls.__name__}, should end with Create, Update, Upsert, or Delete"
             )
 
-        if config.SETTINGS.broker.enable and info.context.get("background"):
+        # Reset the time of the query to garantee that all resolvers executed after this point will account for the changes
+        context.at = Timestamp()
+
+        if config.SETTINGS.broker.enable and context.background:
             log_data = get_log_data()
             request_id = log_data.get("request_id", "")
 
-            data = await obj.to_graphql(db=db)
+            data = await obj.to_graphql(db=context.db, filter_sensitive=True)
+
             message = messages.EventNodeMutated(
-                branch=branch.name,
+                branch=context.branch.name,
                 kind=obj._schema.kind,
                 node_id=obj.id,
                 data=data,
                 action=action.value,
                 meta=Meta(initiator_id=WORKER_IDENTITY, request_id=request_id),
             )
-            info.context.get("background").add_task(services.send, message)
+            context.background.add_task(services.send, message)
 
         return mutation
 
@@ -111,8 +120,10 @@ class InfrahubMutationMixin:
         data: InputObjectType,
         branch: Branch,
         at: str,
-    ):
-        db: InfrahubDatabase = info.context.get("infrahub_database")
+        database: Optional[InfrahubDatabase] = None,
+    ) -> Tuple[Node, Self]:
+        context: GraphqlContext = info.context
+        db = database or context.db
 
         node_class = Node
         if cls._meta.schema.kind in registry.node:
@@ -121,18 +132,24 @@ class InfrahubMutationMixin:
         try:
             obj = await node_class.init(db=db, schema=cls._meta.schema, branch=branch, at=at)
             await obj.new(db=db, **data)
-            await cls.validate_constraints(db=db, node=obj, branch=branch)
+            fields_to_validate = list(data)
+            await obj.validate_constraints(db=db, branch=branch, filters=fields_to_validate)
 
-            async with db.start_transaction() as db:
+            if db.is_transaction:
                 await obj.save(db=db)
+            else:
+                async with db.start_transaction() as db:
+                    await obj.save(db=db)
 
         except ValidationError as exc:
             raise ValueError(str(exc)) from exc
 
         fields = await extract_fields(info.field_nodes[0].selection_set)
-        ok = True
+        result = {"ok": True}
+        if "object" in fields:
+            result["object"] = await obj.to_graphql(db=context.db, fields=fields.get("object", {}))
 
-        return obj, cls(object=await obj.to_graphql(db=db, fields=fields.get("object", {})), ok=ok)
+        return obj, cls(**result)
 
     @classmethod
     async def mutate_update(
@@ -145,8 +162,8 @@ class InfrahubMutationMixin:
         database: Optional[InfrahubDatabase] = None,
         node: Optional[Node] = None,
     ):
-        db: InfrahubDatabase = database or info.context.get("infrahub_database")
-        account_session: AccountSession = info.context.get("account_session", None)
+        context: GraphqlContext = info.context
+        db = database or context.db
 
         obj = node or await NodeManager.get_one_by_id_or_default_filter(
             db=db,
@@ -158,30 +175,34 @@ class InfrahubMutationMixin:
             include_source=True,
         )
 
+        fields_object = await extract_fields(info.field_nodes[0].selection_set)
+        fields_object = fields_object.get("object", {})
+        result = {"ok": True}
         try:
             await obj.from_graphql(db=db, data=data)
-
-            await cls.validate_constraints(db=db, node=obj, branch=branch, at=at, ignore_existing_node=True)
+            fields_to_validate = list(data)
+            await obj.validate_constraints(db=db, branch=branch, at=at, filters=fields_to_validate)
             node_id = data.pop("id", obj.id)
             fields = list(data.keys())
             validate_mutation_permissions_update_node(
-                operation=cls.__name__, node_id=node_id, account_session=account_session, fields=fields
+                operation=cls.__name__, node_id=node_id, account_session=context.account_session, fields=fields
             )
 
             if db.is_transaction:
                 await obj.save(db=db)
+                if fields_object:
+                    result["object"] = await obj.to_graphql(db=db, fields=fields_object)
+
             else:
                 async with db.start_transaction() as dbt:
                     await obj.save(db=dbt)
+                    if fields_object:
+                        result["object"] = await obj.to_graphql(db=dbt, fields=fields_object)
 
         except ValidationError as exc:
             raise ValueError(str(exc)) from exc
 
-        ok = True
-
-        fields = await extract_fields(info.field_nodes[0].selection_set)
-
-        return obj, cls(object=await obj.to_graphql(db=db, fields=fields.get("object", {})), ok=ok)
+        return obj, cls(**result)
 
     @classmethod
     async def mutate_upsert(
@@ -204,9 +225,11 @@ class InfrahubMutationMixin:
                 break
 
         if node:
-            updated_obj, mutation = await cls.mutate_update(root, info, data, branch, at, database, node)
+            updated_obj, mutation = await cls.mutate_update(
+                root=root, info=info, data=data, branch=branch, at=at, database=database, node=node
+            )
             return updated_obj, mutation, False
-        created_obj, mutation = await cls.mutate_create(root, info, data, branch, at)
+        created_obj, mutation = await cls.mutate_create(root=root, info=info, data=data, branch=branch, at=at)
         return created_obj, mutation, True
 
     @classmethod
@@ -218,54 +241,17 @@ class InfrahubMutationMixin:
         branch: Branch,
         at: str,
     ):
-        db: InfrahubDatabase = info.context.get("infrahub_database")
+        context: GraphqlContext = info.context
 
-        if not (obj := await NodeManager.get_one(db=db, id=data.get("id"), branch=branch, at=at)):
+        if not (obj := await NodeManager.get_one(db=context.db, id=data.get("id"), branch=branch, at=at)):
             raise NodeNotFound(branch, cls._meta.schema.kind, data.get("id"))
 
-        async with db.start_transaction() as db:
+        async with context.db.start_transaction() as db:
             await obj.delete(db=db, at=at)
 
         ok = True
 
         return obj, cls(ok=ok)
-
-    @classmethod
-    async def validate_constraints(
-        cls,
-        db: InfrahubDatabase,
-        node: Node,
-        branch: Optional[str] = None,
-        at: Optional[str] = None,
-        ignore_existing_node: bool = False,
-    ) -> None:
-        """Check if the new object violates the uniqueness constraints."""
-        for unique_attr in cls._meta.schema.unique_attributes:
-            comparison_schema = cls._meta.schema
-            attr = getattr(node, unique_attr.name)
-            if unique_attr.inherited:
-                for generic_parent_schema_name in cls._meta.schema.inherit_from:
-                    generic_parent_schema = registry.get_schema(generic_parent_schema_name, branch=branch)
-                    parent_attr = generic_parent_schema.get_attribute(unique_attr.name, raise_on_error=False)
-                    if parent_attr is None:
-                        continue
-                    if parent_attr.unique is True:
-                        comparison_schema = generic_parent_schema
-                        break
-            nodes = await NodeManager.query(
-                schema=comparison_schema,
-                filters={f"{unique_attr.name}__value": attr.value},
-                fields={},
-                db=db,
-                branch=branch,
-                at=at,
-            )
-            if ignore_existing_node:
-                nodes = [n for n in nodes if n.id != node.id]
-            if nodes:
-                raise ValidationError(
-                    {unique_attr.name: f"An object already exist with this value: {unique_attr.name}: {attr.value}"}
-                )
 
 
 class InfrahubMutation(InfrahubMutationMixin, Mutation):

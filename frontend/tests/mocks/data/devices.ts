@@ -3,7 +3,7 @@ export const deviceSiteMocksId = "06c3ab9e-535e-41af-bf4b-ec9134cc4353";
 export const deviceSiteOwnerMocksId = "1790adb9-7030-259c-35c7-d8e28044d715";
 export const deviceSiteSourceMocksId = "1790adb9-7030-259c-35c7-d8e28044d715";
 export const deviceDetailsName = "atl1-edge1";
-export const deviceDetailsNewName = "awsome new device name";
+export const deviceDetailsNewName = "awesome new device name";
 export const deviceDetailsMocksASNName = "AS64496 64496";
 export const deviceDetailsMocksOwnerName = "Engineering Team";
 export const deviceDetailsMocksTagName = "green";
@@ -1293,6 +1293,9 @@ query InfraDevice {
       }
     }
   }
+  InfrahubTask(related_node__ids: ["${deviceDetailsMocksId}"]) {
+    count
+  }
 }
 `;
 
@@ -1302,9 +1305,9 @@ export const deviceDetailsMocksData = {
       {
         node: {
           id: deviceDetailsMocksId,
-          display_label: "atl1-edge1",
+          display_label: deviceDetailsName,
           name: {
-            value: "atl1-edge1",
+            value: deviceDetailsName,
             updated_at: "2023-07-10T15:01:29.806543+00:00",
             is_protected: true,
             is_visible: true,
@@ -1740,9 +1743,9 @@ export const deviceDetailsUpdateMocksData = {
       {
         node: {
           id: "ba4d171e-7359-4137-b022-531b9abffdb2",
-          display_label: "atl1-edge1",
+          display_label: deviceDetailsNewName,
           name: {
-            value: "atl1-edge1",
+            value: deviceDetailsNewName,
             updated_at: "2023-07-01T15:27:56.205541+00:00",
             is_protected: true,
             is_visible: true,

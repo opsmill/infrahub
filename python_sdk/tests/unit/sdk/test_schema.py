@@ -6,10 +6,10 @@ from infrahub_sdk import InfrahubClient, InfrahubClientSync, ValidationError
 from infrahub_sdk.exceptions import SchemaNotFound
 from infrahub_sdk.schema import (
     InfrahubCheckDefinitionConfig,
+    InfrahubJinja2TransformConfig,
     InfrahubPythonTransformConfig,
     InfrahubRepositoryArtifactDefinitionConfig,
     InfrahubRepositoryConfig,
-    InfrahubRepositoryRFileConfig,
     InfrahubSchema,
     InfrahubSchemaSync,
     NodeSchema,
@@ -73,7 +73,7 @@ async def test_schema_data_validation(rfile_schema, client_type):
             schema=rfile_schema, data={"name": "some-name", "invalid_field": "yes"}
         )
 
-    assert "invalid_field is not a valid value for CoreRFile" == excinfo.value.message
+    assert "invalid_field is not a valid value for CoreTransformJinja2" == excinfo.value.message
 
 
 @pytest.mark.parametrize("client_type", client_types)
@@ -168,9 +168,9 @@ async def test_remove_enum_option_raises(clients, client_type, mock_schema_query
 
 async def test_infrahub_repository_config_getters():
     repo_config = InfrahubRepositoryConfig(
-        rfiles=[
-            InfrahubRepositoryRFileConfig(name="rfile01", query="query01", template_path="."),
-            InfrahubRepositoryRFileConfig(name="rfile02", query="query01", template_path="."),
+        jinja2_transforms=[
+            InfrahubJinja2TransformConfig(name="rfile01", query="query01", template_path="."),
+            InfrahubJinja2TransformConfig(name="rfile02", query="query01", template_path="."),
         ],
         artifact_definitions=[
             InfrahubRepositoryArtifactDefinitionConfig(
@@ -198,9 +198,9 @@ async def test_infrahub_repository_config_getters():
         ],
     )
 
-    assert repo_config.has_rfile(name="rfile01") is True
-    assert repo_config.has_rfile(name="rfile99") is False
-    assert isinstance(repo_config.get_rfile(name="rfile01"), InfrahubRepositoryRFileConfig)
+    assert repo_config.has_jinja2_transform(name="rfile01") is True
+    assert repo_config.has_jinja2_transform(name="rfile99") is False
+    assert isinstance(repo_config.get_jinja2_transform(name="rfile01"), InfrahubJinja2TransformConfig)
 
     assert repo_config.has_artifact_definition(name="artifact01") is True
     assert repo_config.has_artifact_definition(name="artifact99") is False
@@ -220,10 +220,10 @@ async def test_infrahub_repository_config_getters():
 async def test_infrahub_repository_config_dups():
     with pytest.raises(ValueError) as exc:
         InfrahubRepositoryConfig(
-            rfiles=[
-                InfrahubRepositoryRFileConfig(name="rfile01", query="query01", template_path="."),
-                InfrahubRepositoryRFileConfig(name="rfile02", query="query01", template_path="."),
-                InfrahubRepositoryRFileConfig(name="rfile02", query="query01", template_path="."),
+            jinja2_transforms=[
+                InfrahubJinja2TransformConfig(name="rfile01", query="query01", template_path="."),
+                InfrahubJinja2TransformConfig(name="rfile02", query="query01", template_path="."),
+                InfrahubJinja2TransformConfig(name="rfile02", query="query01", template_path="."),
             ],
         )
 

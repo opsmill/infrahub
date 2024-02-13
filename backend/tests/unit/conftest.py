@@ -1,4 +1,3 @@
-import asyncio
 import os
 import shutil
 from itertools import islice
@@ -18,7 +17,6 @@ from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, Infra
 from infrahub.core.initialization import (
     create_branch,
     create_default_branch,
-    create_global_branch,
     create_root_node,
     first_time_initialization,
     initialization,
@@ -26,40 +24,16 @@ from infrahub.core.initialization import (
 from infrahub.core.node import Node
 from infrahub.core.schema import (
     GenericSchema,
-    GroupSchema,
     NodeSchema,
     SchemaRoot,
     core_models,
-    internal_schema,
 )
-from infrahub.core.schema_manager import SchemaBranch, SchemaManager
+from infrahub.core.schema_manager import SchemaBranch
 from infrahub.core.utils import delete_all_nodes
-from infrahub.database import InfrahubDatabase, get_db
+from infrahub.database import InfrahubDatabase
 from infrahub.git import InfrahubRepository
-from infrahub.graphql.generator import (
-    load_attribute_types_in_registry,
-    load_node_interface,
-)
 from infrahub.message_bus.rpc import InfrahubRpcClientTesting
 from infrahub.test_data import dataset01 as ds01
-
-
-@pytest.fixture(scope="session")
-def event_loop():
-    """Overrides pytest default function scoped event loop"""
-    policy = asyncio.get_event_loop_policy()
-    loop = policy.new_event_loop()
-    yield loop
-    loop.close()
-
-
-@pytest.fixture(scope="module")
-async def db() -> InfrahubDatabase:
-    driver = InfrahubDatabase(driver=await get_db(retry=1))
-
-    yield driver
-
-    await driver.close()
 
 
 @pytest.fixture
@@ -127,17 +101,6 @@ async def git_fixture_repo(git_sources_dir, git_repos_dir, helper) -> InfrahubRe
     await repo.create_branch_in_git(branch_name="main", branch_id="8808dcea-f7b4-4f5a-b5e9-a0605d4c11ba")
 
     return repo
-
-
-@pytest.fixture
-def local_storage_dir(tmp_path) -> str:
-    storage_dir = os.path.join(str(tmp_path), "storage")
-    os.mkdir(storage_dir)
-
-    config.SETTINGS.storage.driver = config.StorageDriver.FileSystemStorage
-    config.SETTINGS.storage.local = config.FileSystemStorageSettings(path=storage_dir)
-
-    return storage_dir
 
 
 @pytest.fixture
@@ -262,6 +225,8 @@ async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_pers
     )
     await branch1.save(db=db)
     registry.branch[branch1.name] = branch1
+    schema_branch1 = registry.schema.get_schema_branch(name=default_branch.name).duplicate(name=branch1.name)
+    registry.schema.set_schema_branch(name=branch1.name, schema=schema_branch1)
 
     query = """
     MATCH (root:Root)
@@ -1041,295 +1006,6 @@ async def base_dataset_04(
 
 
 @pytest.fixture
-async def group_schema(db: InfrahubDatabase, default_branch: Branch, data_schema) -> None:
-    SCHEMA = {
-        "generics": [
-            {
-                "name": "Group",
-                "namespace": "Core",
-                "description": "Generic Group Object.",
-                "label": "Group",
-                "default_filter": "name__value",
-                "order_by": ["name__value"],
-                "display_labels": ["label__value"],
-                "branch": BranchSupportType.AWARE.value,
-                "attributes": [
-                    {"name": "name", "kind": "Text", "unique": True},
-                    {"name": "label", "kind": "Text", "optional": True},
-                    {"name": "description", "kind": "Text", "optional": True},
-                ],
-            },
-        ],
-        "nodes": [
-            {
-                "name": "StandardGroup",
-                "namespace": "Core",
-                "default_filter": "name__value",
-                "order_by": ["name__value"],
-                "display_labels": ["name__value"],
-                "branch": BranchSupportType.AWARE.value,
-                "inherit_from": [InfrahubKind.GENERICGROUP],
-            },
-        ],
-    }
-
-    schema = SchemaRoot(**SCHEMA)
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
-
-
-@pytest.fixture
-async def node_group_schema(db: InfrahubDatabase, default_branch: Branch, data_schema) -> None:
-    SCHEMA = {
-        "generics": [
-            {
-                "name": "Node",
-                "namespace": "Core",
-                "description": "Base Node in Infrahub.",
-                "label": "Node",
-            },
-            {
-                "name": "Group",
-                "namespace": "Core",
-                "description": "Generic Group Object.",
-                "label": "Group",
-                "default_filter": "name__value",
-                "order_by": ["name__value"],
-                "display_labels": ["label__value"],
-                "branch": BranchSupportType.AWARE.value,
-                "attributes": [
-                    {"name": "name", "kind": "Text", "unique": True},
-                    {"name": "label", "kind": "Text", "optional": True},
-                    {"name": "description", "kind": "Text", "optional": True},
-                ],
-                "relationships": [
-                    {
-                        "name": "members",
-                        "peer": "CoreNode",
-                        "optional": True,
-                        "identifier": "group_member",
-                        "cardinality": "many",
-                    },
-                    {
-                        "name": "subscribers",
-                        "peer": "CoreNode",
-                        "optional": True,
-                        "identifier": "group_subscriber",
-                        "cardinality": "many",
-                    },
-                ],
-            },
-        ],
-    }
-
-    schema = SchemaRoot(**SCHEMA)
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
-
-
-@pytest.fixture
-async def group_graphql(db: InfrahubDatabase, default_branch: Branch, group_schema) -> None:
-    load_node_interface(branch=default_branch)
-    load_attribute_types_in_registry(branch=default_branch)
-
-
-@pytest.fixture
-async def car_person_schema(db: InfrahubDatabase, default_branch: Branch, node_group_schema, data_schema) -> None:
-    SCHEMA = {
-        "nodes": [
-            {
-                "name": "Car",
-                "namespace": "Test",
-                "default_filter": "name__value",
-                "display_labels": ["name__value", "color__value"],
-                "branch": BranchSupportType.AWARE.value,
-                "attributes": [
-                    {"name": "name", "kind": "Text", "unique": True},
-                    {"name": "nbr_seats", "kind": "Number"},
-                    {"name": "color", "kind": "Text", "default_value": "#444444", "max_length": 7},
-                    {"name": "is_electric", "kind": "Boolean"},
-                ],
-                "relationships": [
-                    {
-                        "name": "owner",
-                        "peer": "TestPerson",
-                        "optional": False,
-                        "cardinality": "one",
-                        "direction": "outbound",
-                    },
-                ],
-            },
-            {
-                "name": "Person",
-                "namespace": "Test",
-                "default_filter": "name__value",
-                "display_labels": ["name__value"],
-                "branch": BranchSupportType.AWARE.value,
-                "attributes": [
-                    {"name": "name", "kind": "Text", "unique": True},
-                    {"name": "height", "kind": "Number", "optional": True},
-                ],
-                "relationships": [{"name": "cars", "peer": "TestCar", "cardinality": "many", "direction": "inbound"}],
-            },
-            {
-                "name": "Cylon",
-                "namespace": "Test",
-                "default_filter": "name__value",
-                "display_labels": ["name__value"],
-                "branch": BranchSupportType.AWARE.value,
-                "attributes": [
-                    {"name": "name", "kind": "Text", "unique": True},
-                    {"name": "height", "kind": "Number", "optional": True},
-                    {"name": "model_number", "kind": "Number"},
-                ],
-                "relationships": [{"name": "cars", "peer": "TestCar", "cardinality": "many", "direction": "inbound"}],
-            },
-        ],
-    }
-
-    schema = SchemaRoot(**SCHEMA)
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
-
-
-@pytest.fixture
-async def car_person_schema_with_generic(
-    db: InfrahubDatabase, default_branch: Branch, node_group_schema, data_schema
-) -> None:
-    SCHEMA = {
-        "generics": [
-            {
-                "name": "Humanoid",
-                "namespace": "Test",
-                "default_filter": "name__value",
-                "display_labels": ["name__value"],
-                "branch": BranchSupportType.AWARE.value,
-                "attributes": [
-                    {"name": "name", "kind": "Text", "unique": True},
-                    {"name": "height", "kind": "Number", "optional": True},
-                ],
-                "relationships": [{"name": "cars", "peer": "TestCar", "cardinality": "many", "direction": "inbound"}],
-            },
-        ],
-        "nodes": [
-            {
-                "name": "Car",
-                "namespace": "Test",
-                "default_filter": "name__value",
-                "display_labels": ["name__value", "color__value"],
-                "branch": BranchSupportType.AWARE.value,
-                "attributes": [
-                    {"name": "name", "kind": "Text", "unique": True},
-                    {"name": "nbr_seats", "kind": "Number"},
-                    {"name": "color", "kind": "Text", "default_value": "#444444", "max_length": 7},
-                    {"name": "is_electric", "kind": "Boolean"},
-                ],
-                "relationships": [
-                    {
-                        "name": "owner",
-                        "peer": "TestPerson",
-                        "optional": False,
-                        "cardinality": "one",
-                        "direction": "outbound",
-                    },
-                ],
-            },
-            {
-                "name": "Person",
-                "namespace": "Test",
-                "default_filter": "name__value",
-                "display_labels": ["name__value"],
-                "branch": BranchSupportType.AWARE.value,
-                "inherit_from": ["TestHumanoid"],
-            },
-            {
-                "name": "Cylon",
-                "namespace": "Test",
-                "default_filter": "name__value",
-                "display_labels": ["name__value"],
-                "branch": BranchSupportType.AWARE.value,
-                "inherit_from": ["TestHumanoid"],
-                "attributes": [
-                    {"name": "model_number", "kind": "Number"},
-                ],
-            },
-        ],
-    }
-
-    schema = SchemaRoot(**SCHEMA)
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
-
-
-@pytest.fixture
-async def car_person_schema_generic_with_unique_override(
-    db: InfrahubDatabase, default_branch: Branch, node_group_schema, data_schema
-) -> None:
-    SCHEMA = {
-        "generics": [
-            {
-                "name": "Humanoid",
-                "namespace": "Test",
-                "default_filter": "name__value",
-                "display_labels": ["name__value"],
-                "branch": BranchSupportType.AWARE.value,
-                "attributes": [
-                    {"name": "name", "kind": "Text"},
-                    {"name": "height", "kind": "Number", "optional": True},
-                ],
-                "relationships": [{"name": "cars", "peer": "TestCar", "cardinality": "many", "direction": "inbound"}],
-            },
-        ],
-        "nodes": [
-            {
-                "name": "Car",
-                "namespace": "Test",
-                "default_filter": "name__value",
-                "display_labels": ["name__value", "color__value"],
-                "branch": BranchSupportType.AWARE.value,
-                "attributes": [
-                    {"name": "name", "kind": "Text", "unique": True},
-                    {"name": "nbr_seats", "kind": "Number"},
-                    {"name": "color", "kind": "Text", "default_value": "#444444", "max_length": 7},
-                    {"name": "is_electric", "kind": "Boolean"},
-                ],
-                "relationships": [
-                    {
-                        "name": "owner",
-                        "peer": "TestPerson",
-                        "optional": False,
-                        "cardinality": "one",
-                        "direction": "outbound",
-                    },
-                ],
-            },
-            {
-                "name": "Person",
-                "namespace": "Test",
-                "default_filter": "name__value",
-                "display_labels": ["name__value"],
-                "branch": BranchSupportType.AWARE.value,
-                "inherit_from": ["TestHumanoid"],
-                "attributes": [
-                    {"name": "name", "kind": "Text", "unique": True},
-                ],
-            },
-            {
-                "name": "Cylon",
-                "namespace": "Test",
-                "default_filter": "name__value",
-                "display_labels": ["name__value"],
-                "branch": BranchSupportType.AWARE.value,
-                "inherit_from": ["TestHumanoid"],
-                "attributes": [
-                    {"name": "name", "kind": "Text", "unique": True},
-                    {"name": "model_number", "kind": "Number"},
-                ],
-            },
-        ],
-    }
-
-    schema = SchemaRoot(**SCHEMA)
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
-
-
-@pytest.fixture
 async def choices_schema(db: InfrahubDatabase, default_branch: Branch, node_group_schema) -> None:
     SCHEMA = {
         "generics": [
@@ -1655,9 +1331,9 @@ async def car_person_schema_generics(
 
 @pytest.fixture
 async def car_person_generics_data(db: InfrahubDatabase, car_person_schema_generics) -> Dict[str, Node]:
-    ecar = registry.get_schema(name="TestElectricCar")
-    gcar = registry.get_schema(name="TestGazCar")
-    person = registry.get_schema(name="TestPerson")
+    ecar = registry.schema.get(name="TestElectricCar")
+    gcar = registry.schema.get(name="TestGazCar")
+    person = registry.schema.get(name="TestPerson")
 
     p1 = await Node.init(db=db, schema=person)
     await p1.new(db=db, name="John", height=180)
@@ -1704,7 +1380,7 @@ async def person_tag_schema(db: InfrahubDatabase, default_branch: Branch, data_s
             {
                 "name": "Person",
                 "namespace": "Test",
-                "default_filter": "name__value",
+                "default_filter": "firstname__value",
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "firstname", "kind": "Text"},
@@ -1794,7 +1470,7 @@ async def car_volt_main(db: InfrahubDatabase, default_branch: Branch, person_joh
 @pytest.fixture
 async def car_prius_main(db: InfrahubDatabase, default_branch: Branch, person_john_main: Node) -> Node:
     car = await Node.init(db=db, schema="TestCar", branch=default_branch)
-    await car.new(db=db, name="pruis", nbr_seats=5, is_electric=True, owner=person_john_main.id)
+    await car.new(db=db, name="prius", nbr_seats=5, is_electric=True, owner=person_john_main.id)
     await car.save(db=db)
 
     return car
@@ -2051,22 +1727,7 @@ async def generic_vehicule_schema(db: InfrahubDatabase, default_branch: Branch) 
 
 
 @pytest.fixture
-async def group_on_road_vehicule_schema(db: InfrahubDatabase, default_branch: Branch) -> GroupSchema:
-    SCHEMA = {
-        "name": "on_road",
-        "kind": "OnRoad",
-    }
-
-    node = GroupSchema(**SCHEMA)
-    registry.schema.set(name=node.kind, schema=node, branch=default_branch.name)
-
-    return node
-
-
-@pytest.fixture
-async def car_schema(
-    db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema, group_on_road_vehicule_schema, data_schema
-) -> NodeSchema:
+async def car_schema(db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema, data_schema) -> NodeSchema:
     SCHEMA = {
         "name": "Car",
         "namespace": "Test",
@@ -2074,7 +1735,6 @@ async def car_schema(
         "attributes": [
             {"name": "nbr_doors", "kind": "Number"},
         ],
-        "groups": ["OnRoad"],
     }
 
     node = NodeSchema(**SCHEMA)
@@ -2085,9 +1745,7 @@ async def car_schema(
 
 
 @pytest.fixture
-async def motorcycle_schema(
-    db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema, group_on_road_vehicule_schema
-) -> NodeSchema:
+async def motorcycle_schema(db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema) -> NodeSchema:
     SCHEMA = {
         "name": "Motorcycle",
         "namespace": "Test",
@@ -2096,7 +1754,6 @@ async def motorcycle_schema(
             {"name": "description", "kind": "Text", "optional": True},
             {"name": "nbr_seats", "kind": "Number"},
         ],
-        "groups": ["OnRoad"],
     }
 
     node = NodeSchema(**SCHEMA)
@@ -2106,9 +1763,7 @@ async def motorcycle_schema(
 
 
 @pytest.fixture
-async def truck_schema(
-    db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema, group_on_road_vehicule_schema
-) -> NodeSchema:
+async def truck_schema(db: InfrahubDatabase, default_branch: Branch, generic_vehicule_schema) -> NodeSchema:
     SCHEMA = {
         "name": "Truck",
         "namespace": "Test",
@@ -2117,7 +1772,6 @@ async def truck_schema(
             {"name": "description", "kind": "Text", "optional": True},
             {"name": "nbr_axles", "kind": "Number"},
         ],
-        "groups": ["OnRoad"],
     }
 
     node = NodeSchema(**SCHEMA)
@@ -2263,35 +1917,9 @@ async def fruit_tag_schema_global(db: InfrahubDatabase, group_schema, data_schem
 
 
 @pytest.fixture
-async def data_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
-    SCHEMA = {
-        "generics": [
-            {
-                "name": "Owner",
-                "namespace": "Lineage",
-                "attributes": [
-                    {"name": "name", "kind": "Text", "unique": True},
-                    {"name": "description", "kind": "Text", "optional": True},
-                ],
-            },
-            {
-                "name": "Source",
-                "description": "Any Entities that stores or produces data.",
-                "namespace": "Lineage",
-                "attributes": [
-                    {"name": "name", "kind": "Text", "unique": True},
-                    {"name": "description", "kind": "Text", "optional": True},
-                ],
-            },
-        ]
-    }
-
-    schema = SchemaRoot(**SCHEMA)
-    registry.schema.register_schema(schema=schema, branch=default_branch.name)
-
-
-@pytest.fixture
-async def hierarchical_location_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
+async def hierarchical_location_schema(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema
+) -> None:
     SCHEMA = {
         "generics": [
             {
@@ -2492,8 +2120,12 @@ async def reset_registry(db: InfrahubDatabase) -> None:
 
 
 @pytest.fixture
-async def empty_database(db: InfrahubDatabase) -> None:
+async def delete_all_nodes_in_db(db: InfrahubDatabase) -> None:
     await delete_all_nodes(db=db)
+
+
+@pytest.fixture
+async def empty_database(db: InfrahubDatabase, delete_all_nodes_in_db) -> None:
     await create_root_node(db=db)
 
 
@@ -2501,30 +2133,6 @@ async def empty_database(db: InfrahubDatabase) -> None:
 async def init_db(empty_database, db: InfrahubDatabase) -> None:
     await first_time_initialization(db=db)
     await initialization(db=db)
-
-
-@pytest.fixture
-async def default_branch(reset_registry, local_storage_dir, empty_database, db: InfrahubDatabase) -> Branch:
-    branch = await create_default_branch(db=db)
-    await create_global_branch(db=db)
-    registry.schema = SchemaManager()
-    return branch
-
-
-@pytest.fixture
-async def register_internal_models_schema(default_branch: Branch) -> SchemaBranch:
-    schema = SchemaRoot(**internal_schema)
-    schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
-    default_branch.update_schema_hash()
-    return schema_branch
-
-
-@pytest.fixture
-async def register_core_models_schema(default_branch: Branch, register_internal_models_schema) -> SchemaBranch:
-    schema = SchemaRoot(**core_models)
-    schema_branch = registry.schema.register_schema(schema=schema, branch=default_branch.name)
-    default_branch.update_schema_hash()
-    return schema_branch
 
 
 @pytest.fixture
@@ -2602,12 +2210,12 @@ async def builtin_schema() -> SchemaRoot:
                 ],
             },
             {
-                "name": "Location",
-                "namespace": "Builtin",
-                "description": "A location represent a physical element: a building, a site, a city",
+                "name": "Site",
+                "namespace": "Infra",
+                "description": "A location represent a physical element site",
                 "include_in_menu": True,
                 "icon": "mdi:map-marker-radius-outline",
-                "label": "Location",
+                "label": "Site",
                 "default_filter": "name__value",
                 "order_by": ["name__value"],
                 "display_labels": ["name__value"],
@@ -2684,7 +2292,7 @@ async def register_account_schema(db: InfrahubDatabase) -> None:
 
 
 @pytest.fixture
-async def create_test_admin(db: InfrahubDatabase, register_core_schema_db, data_schema) -> Node:
+async def create_test_admin(db: InfrahubDatabase, register_core_models_schema, data_schema) -> Node:
     account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
     await account.new(
         db=db,
@@ -2752,6 +2360,33 @@ async def repos_in_main(db: InfrahubDatabase, register_core_models_schema):
         description="Repo 02 initial value",
         location="git@github.com:user/repo02.git",
         commit="bbbbbbbbbbb",
+    )
+    await repo02.save(db=db)
+
+    return {"repo01": repo01, "repo02": repo02}
+
+
+@pytest.fixture
+async def read_only_repos_in_main(db: InfrahubDatabase, register_core_models_schema):
+    repo01 = await Node.init(db=db, schema=InfrahubKind.READONLYREPOSITORY)
+    await repo01.new(
+        db=db,
+        name="repo01",
+        description="Repo 01 initial value",
+        location="git@github.com:user/repo01.git",
+        commit="aaaaaaaaaaa",
+        ref="branch-1",
+    )
+    await repo01.save(db=db)
+
+    repo02 = await Node.init(db=db, schema=InfrahubKind.READONLYREPOSITORY)
+    await repo02.new(
+        db=db,
+        name="repo02",
+        description="Repo 02 initial value",
+        location="git@github.com:user/repo02.git",
+        commit="bbbbbbbbbbb",
+        ref="v1.2.3",
     )
     await repo02.save(db=db)
 

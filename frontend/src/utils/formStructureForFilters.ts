@@ -34,12 +34,10 @@ const getFormStructureForFilters = (
           name: filter.name,
           type: "select",
           value: currentValue ?? "",
-          options: {
-            values: filter.enum?.map((row: any) => ({
-              name: row,
-              id: row,
-            })),
-          },
+          options: filter.enum?.map((row: any) => ({
+            name: row,
+            id: row,
+          })),
         };
       }
 
@@ -57,9 +55,7 @@ const getFormStructureForFilters = (
             name: filter.name,
             type: "select",
             value: currentValue ? currentValue.value : "",
-            options: {
-              values: options,
-            },
+            options,
           };
         }
       }

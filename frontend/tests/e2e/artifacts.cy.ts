@@ -1,7 +1,7 @@
 /// <reference types="cypress" />
 
+import { ADMIN_CREDENTIALS, SCREENSHOT_ENV_VARIABLE, screenshotConfig } from "../constants";
 import { ARTIFACT_DEFINITION_FULL_NAME, ARTIFACT_DEFINITION_NAME } from "../mocks/e2e/artifacts";
-import { ADMIN_CREDENTIALS, SCREENSHOT_ENV_VARIABLE, screenshotConfig } from "../utils";
 
 describe("Main application", () => {
   beforeEach(function () {
@@ -34,9 +34,7 @@ describe("Main application", () => {
     cy.intercept("/api/artifact/generate/*").as("ArtifactsCreation");
 
     // Generate the artifacts
-    cy.get(".flex-col > .border-b").within(() => {
-      cy.contains("Generate").click();
-    });
+    cy.contains("button", "Generate").click();
 
     // Wait for the mutation to succeed
     cy.wait("@ArtifactsCreation");

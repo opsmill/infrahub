@@ -227,7 +227,7 @@ def validate_mutation_permissions(operation: str, account_session: AccountSessio
         "AccountDelete": _validate_is_admin,
     }
     if validator := validation_map.get(operation):
-        validator(account_session)
+        validator(account_session=account_session)
 
 
 def validate_mutation_permissions_update_node(
@@ -238,7 +238,7 @@ def validate_mutation_permissions_update_node(
     }
 
     if validator := validation_map.get(operation):
-        validator(account_session, node_id, fields)
+        validator(account_session=account_session, node_id=node_id, fields=fields)
 
 
 async def invalidate_refresh_token(db: InfrahubDatabase, token_id: str) -> None:

@@ -40,6 +40,15 @@ def rpc_bus(helper):
 
 
 @pytest.fixture
+def rpc_bus_simulator(helper):
+    original = config.OVERRIDE.message_bus
+    bus = helper.get_message_bus_simulator()
+    config.OVERRIDE.message_bus = bus
+    yield bus
+    config.OVERRIDE.message_bus = original
+
+
+@pytest.fixture
 async def car_person_data(
     db: InfrahubDatabase, register_core_models_schema, car_person_schema, first_account
 ) -> Dict[str, Node]:
@@ -306,7 +315,6 @@ async def car_person_data_artifact_diff(db: InfrahubDatabase, default_branch, ca
         db=db,
         name="transform01",
         query=str(q1.id),
-        url="mytransform",
         repository=str(r1.id),
         file_path="transform01.py",
         class_name="Transform01",

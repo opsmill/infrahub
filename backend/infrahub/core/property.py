@@ -5,6 +5,7 @@ from uuid import UUID
 
 from pydantic.v1 import BaseModel
 
+from infrahub.core.constants.schema import FlagProperty, NodeProperty
 from infrahub.core.registry import registry
 
 if TYPE_CHECKING:
@@ -24,7 +25,7 @@ class NodePropertyData(BaseModel):
 
 
 class FlagPropertyMixin:
-    _flag_properties: List[str] = ["is_visible", "is_protected"]
+    _flag_properties: List[str] = [v.value for v in FlagProperty]
 
     is_visible = True
     is_protected = False
@@ -39,7 +40,7 @@ class FlagPropertyMixin:
 
 
 class NodePropertyMixin:
-    _node_properties: List[str] = ["source", "owner"]
+    _node_properties: List[str] = [v.value for v in NodeProperty]
 
     def _init_node_property_mixin(self, kwargs: dict = None) -> None:
         for node in self._node_properties:

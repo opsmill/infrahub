@@ -2,19 +2,17 @@ import asyncio
 import functools
 import importlib
 import json
-import linecache
 import logging
 import os
 import sys
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional
 
 import jinja2
 import typer
 from rich.console import Console
 from rich.logging import RichHandler
-from rich.syntax import Syntax
-from rich.traceback import Frame, Traceback
+from rich.traceback import Traceback
 
 from infrahub_sdk.ctl import config
 from infrahub_sdk.ctl.branch import app as branch_app
@@ -31,7 +29,7 @@ from infrahub_sdk.ctl.utils import (
 from infrahub_sdk.ctl.validate import app as validate_app
 from infrahub_sdk.exceptions import GraphQLError, InfrahubTransformNotFoundError
 from infrahub_sdk.transforms import get_transform_class_instance
-from infrahub_sdk.utils import get_branch
+from infrahub_sdk.utils import get_branch, identify_faulty_jinja_code, write_to_file
 
 from .exporter import dump
 from .importer import load
@@ -55,6 +53,7 @@ async def _run(
     branch: str,
     concurrent: int,
     timeout: int,
+    variables: Optional[dict] = None,
 ) -> None:
     directory_name = os.path.dirname(script)
     filename = os.path.basename(script)
@@ -71,40 +70,9 @@ async def _run(
     if not hasattr(module, method):
         raise typer.Abort(f"Unable to Load the method {method} in the Python script at {script}")
 
-    client = await initialize_client(timeout=timeout, max_concurrent_execution=concurrent)
-
+    client = await initialize_client(timeout=timeout, max_concurrent_execution=concurrent, identifier=module_name)
     func = getattr(module, method)
-    await func(client=client, log=log, branch=branch)
-
-
-def identify_faulty_jinja_code(traceback: Traceback, nbr_context_lines: int = 3) -> List[Tuple[Frame, Syntax]]:
-    response = []
-
-    # The Traceback from rich is very helpful to parse the entire stack trace
-    # to will generate a Frame object for each exception in the trace
-
-    # Extract only the Jinja related exceptioin from the stack
-    frames = [frame for frame in traceback.trace.stacks[0].frames if frame.filename.endswith(".j2")]
-
-    for frame in frames:
-        code = "".join(linecache.getlines(frame.filename))
-        lexer_name = Traceback._guess_lexer(frame.filename, code)
-        syntax = Syntax(
-            code,
-            lexer_name,
-            line_numbers=True,
-            line_range=(
-                frame.lineno - nbr_context_lines,
-                frame.lineno + nbr_context_lines,
-            ),
-            highlight_lines={frame.lineno},
-            code_width=88,
-            theme=traceback.theme,
-            dedent=False,
-        )
-        response.append((frame, syntax))
-
-    return response
+    await func(client=client, log=log, branch=branch, **variables)
 
 
 def render_jinja2_template(template_path: Path, variables: Dict[str, str], data: str) -> str:
@@ -141,12 +109,12 @@ def _run_transform(query: str, variables: Dict[str, Any], transformer: Callable,
     branch = get_branch(branch)
 
     try:
-        response = execute_graphql_query(query, variables, branch, debug)
+        response = {"data": execute_graphql_query(query, variables, branch, debug)}
     except QueryNotFoundError as exc:
         console.print(f"[red]Unable to find query : {exc}")
         raise typer.Exit(1) from exc
     except GraphQLError as exc:
-        console.print(f"[red]{len(exc.errors)} error(s) occured while executing the query")
+        console.print(f"[red]{len(exc.errors)} error(s) occurred while executing the query")
         for error in exc.errors:
             if isinstance(error, dict) and "message" in error and "locations" in error:
                 console.print(f"[yellow] - Message: {error['message']}")  # type: ignore[typeddict-item]
@@ -165,15 +133,16 @@ def _run_transform(query: str, variables: Dict[str, Any], transformer: Callable,
 
 @app.command(name="render")
 def render(
-    rfile_name: str,
+    transform_name: str,
     variables: Optional[List[str]] = typer.Argument(
         None, help="Variables to pass along with the query. Format key=value key=value."
     ),
-    branch: str = typer.Option(None, help="Branch on which to render the RFile."),
+    branch: str = typer.Option(None, help="Branch on which to render the transform."),
     debug: bool = False,
     config_file: str = typer.Option(config.DEFAULT_CONFIG_FILE, envvar=config.ENVVAR_CONFIG_FILE),
+    out: str = typer.Option(None, help="Path to a file to save the result."),
 ) -> None:
-    """Render a local Jinja Template (RFile) for debugging purpose."""
+    """Render a local Jinja2 Transform for debugging purpose."""
 
     if not config.SETTINGS:
         config.load_and_exit(config_file=config_file)
@@ -182,14 +151,18 @@ def render(
     repository_config = get_repository_config(Path(config.INFRAHUB_REPO_CONFIG_FILE))
 
     try:
-        rfile = repository_config.get_rfile(name=rfile_name)
+        transform_config = repository_config.get_jinja2_transform(name=transform_name)
     except KeyError as exc:
-        console.print(f"[red]Unable to find {rfile_name} in {config.INFRAHUB_REPO_CONFIG_FILE}")
+        console.print(f"[red]Unable to find {transform_name} in {config.INFRAHUB_REPO_CONFIG_FILE}")
         raise typer.Exit(1) from exc
 
-    transformer = functools.partial(render_jinja2_template, rfile.template_path, variables_dict)
-    result = _run_transform(rfile.query, variables_dict, transformer, branch, debug)
-    console.print(result)
+    transformer = functools.partial(render_jinja2_template, transform_config.template_path, variables_dict)
+    result = _run_transform(transform_config.query, variables_dict, transformer, branch, debug)
+
+    if out:
+        write_to_file(Path(out), result)
+    else:
+        console.print(result)
 
 
 @app.command(name="transform")
@@ -202,6 +175,7 @@ def transform(
     debug: bool = False,
     config_file: str = typer.Option(config.DEFAULT_CONFIG_FILE, envvar=config.ENVVAR_CONFIG_FILE),
     list_available: bool = typer.Option(False, "--list", help="Show available transforms"),
+    out: str = typer.Option(None, help="Path to a file to save the result."),
 ) -> None:
     """Render a local transform (TransformPython) for debugging purpose."""
 
@@ -234,7 +208,12 @@ def transform(
     result = _run_transform(
         query=transform_instance.query, variables=variables_dict, transformer=transformer, branch=branch, debug=debug
     )
-    console.print(json.dumps(result, indent=2))
+
+    json_string = json.dumps(result, indent=2, sort_keys=True)
+    if out:
+        write_to_file(Path(out), json_string)
+    else:
+        console.print(json_string)
 
 
 @app.command(name="run")
@@ -250,6 +229,9 @@ def run(
         envvar="INFRAHUBCTL_CONCURRENT_EXECUTION",
     ),
     timeout: int = typer.Option(60, help="Timeout in sec", envvar="INFRAHUBCTL_TIMEOUT"),
+    variables: Optional[List[str]] = typer.Argument(
+        None, help="Variables to pass along with the query. Format key=value key=value."
+    ),
 ) -> None:
     """Execute a script."""
 
@@ -265,6 +247,8 @@ def run(
     logging.basicConfig(level=log_level, format=FORMAT, datefmt="[%X]", handlers=[RichHandler()])
     log = logging.getLogger("infrahubctl")
 
+    variables_dict = parse_cli_vars(variables)
+
     asyncio.run(
         _run(
             script=script,
@@ -273,5 +257,6 @@ def run(
             branch=branch,
             concurrent=concurrent,
             timeout=timeout,
+            variables=variables_dict,
         )
     )

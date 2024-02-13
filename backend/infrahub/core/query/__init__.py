@@ -153,7 +153,7 @@ def cleanup_return_labels(labels):
 
 
 class QueryResult:
-    def __init__(self, data: List[Union[Neo4jNode, Neo4jRelationship]], labels: List[str]):
+    def __init__(self, data: List[Union[Neo4jNode, Neo4jRelationship, List[Neo4jNode]]], labels: List[str]):
         self.data = data
         self.labels = cleanup_return_labels(labels)
         self.branch_score: int = 0
@@ -205,13 +205,33 @@ class QueryResult:
                 self.has_deleted_rels = True
                 return
 
-    def get(self, label: str) -> Union[Neo4jNode, Neo4jRelationship]:
+    def _get(self, label: str) -> Union[Neo4jNode, Neo4jRelationship, List[Neo4jNode]]:
         if label not in self.labels:
             raise ValueError(f"{label} is not a valid value for this query, must be one of {self.labels}")
 
         return_id = self.labels.index(label)
-
         return self.data[return_id]
+
+    def get(self, label: str) -> Union[Neo4jNode, Neo4jRelationship]:
+        return self._get(label=label)
+
+    def get_node_collection(self, label: str) -> List[Neo4jNode]:
+        entry = self._get(label=label)
+        if isinstance(entry, list):
+            return entry
+        raise ValueError(f"{label} is not a collection use .get_node() or .get()")
+
+    def get_node(self, label: str) -> Neo4jNode:
+        node = self.get(label=label)
+        if isinstance(node, Neo4jNode):
+            return node
+        raise ValueError(f"{label} is not a Node")
+
+    def get_rel(self, label: str) -> Neo4jRelationship:
+        rel = self.get(label=label)
+        if isinstance(rel, Neo4jRelationship):
+            return rel
+        raise ValueError(f"{label} is not a Relationship")
 
     def get_rels(self) -> Generator[Neo4jRelationship, None, None]:
         """Return all relationships."""

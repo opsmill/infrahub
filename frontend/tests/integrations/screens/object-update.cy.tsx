@@ -20,6 +20,8 @@ import {
   accountTokenEditMocksQueryBis,
   accountTokenId,
   accountTokenNewDate,
+  accountsDropdownOptionsData,
+  accountsDropdownOptionsQuery,
 } from "../../mocks/data/accountToken";
 import { configMocks } from "../../mocks/data/config";
 import {
@@ -66,39 +68,7 @@ const mocks: any[] = [
       data: deviceDetailsUpdateMocksData,
     },
   },
-  // Details query
-  {
-    request: {
-      query: gql`
-        ${deviceDetailsMocksQuery}
-      `,
-    },
-    result: {
-      data: deviceDetailsMocksData,
-    },
-  },
-  // Update query
-  {
-    request: {
-      query: gql`
-        ${deviceDetailsUpdateMocksQuery}
-      `,
-    },
-    result: {
-      data: deviceDetailsUpdateMocksData,
-    },
-  },
   // After mutation
-  {
-    request: {
-      query: gql`
-        ${deviceDetailsMocksQuery}
-      `,
-    },
-    result: {
-      data: deviceDetailsMocksDataAfterUpdate,
-    },
-  },
   {
     request: {
       query: gql`
@@ -112,7 +82,7 @@ const mocks: any[] = [
 ];
 
 const mocksToken = [
-  // Account token details
+  // Account token details for edit panel
   {
     request: {
       query: gql`
@@ -132,6 +102,17 @@ const mocksToken = [
     },
     result: {
       data: accountTokenEditMocksDataBis,
+    },
+  },
+  // Accounts options query for eedit panel
+  {
+    request: {
+      query: gql`
+        ${accountsDropdownOptionsQuery}
+      `,
+    },
+    result: {
+      data: accountsDropdownOptionsData,
     },
   },
   // Account token details after update
@@ -190,7 +171,7 @@ describe("Object details", () => {
     );
 
     // Click on the edit button
-    cy.get(".flex-col > .bg-custom-white > :nth-child(2) > :nth-child(1)").click();
+    cy.contains("Edit").click();
 
     // Check if the field has the correct initial value
     cy.get(".grid > :nth-child(1) > .relative > .block").should("have.value", deviceDetailsName);
@@ -215,7 +196,7 @@ describe("Object details", () => {
     cy.wait("@mutate");
 
     // Verify that the data is refetched
-    cy.get(":nth-child(2) > div.flex > .mt-1").should("have.text", deviceDetailsNewName);
+    cy.contains("Name" + deviceDetailsNewName).should("be.visible");
   });
 
   it("should fetch the object details, open the edit form and update the account token date", function () {
@@ -239,7 +220,7 @@ describe("Object details", () => {
     );
 
     // Open edit panel
-    cy.get(".flex-col > .bg-custom-white > :nth-child(2) > :nth-child(1)").click();
+    cy.contains("Edit").click();
 
     // Date input should be empty
     cy.get(".react-datepicker__input-container > .relative > .block").should("have.text", "");

@@ -1,3 +1,4 @@
+import json
 import sys
 from asyncio import run as aiorun
 from pathlib import Path
@@ -19,7 +20,7 @@ from infrahub_sdk.ctl.client import initialize_client, initialize_client_sync
 from infrahub_sdk.ctl.exceptions import QueryNotFoundError
 from infrahub_sdk.ctl.utils import find_graphql_query, parse_cli_vars
 from infrahub_sdk.exceptions import GraphQLError
-from infrahub_sdk.utils import get_branch
+from infrahub_sdk.utils import get_branch, write_to_file
 
 app = typer.Typer()
 
@@ -76,6 +77,7 @@ def validate_graphql(
     debug: bool = typer.Option(False, help="Display more troubleshooting information."),
     branch: str = typer.Option(None, help="Branch on which to validate the GraphQL Query."),
     config_file: Path = typer.Option(config.DEFAULT_CONFIG_FILE, envvar=config.ENVVAR_CONFIG_FILE),
+    out: str = typer.Option(None, help="Path to a file to save the result."),
 ) -> None:
     """Validate the format of a GraphQL Query stored locally by executing it on a remote GraphQL endpoint"""
 
@@ -105,7 +107,7 @@ def validate_graphql(
             raise_for_error=False,
         )
     except GraphQLError as exc:
-        console.print(f"[red]{len(exc.errors)} error(s) occured while executing the query")
+        console.print(f"[red]{len(exc.errors)} error(s) occurred while executing the query")
         for error in exc.errors:
             if isinstance(error, dict) and "message" in error and "locations" in error:
                 console.print(f"[yellow] - Message: {error['message']}")
@@ -122,3 +124,7 @@ def validate_graphql(
         console.print(f"Response for GraphQL Query {query}")
         console.print(response)
         console.print("-" * 40)
+
+    if out:
+        json_string = json.dumps(response, indent=2, sort_keys=True)
+        write_to_file(Path(out), json_string)

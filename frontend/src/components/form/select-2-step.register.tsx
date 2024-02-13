@@ -6,7 +6,7 @@ import { OpsSelect2Step, iTwoStepDropdownData } from "./select-2-step";
 interface Props {
   label: string;
   options: SelectOption[];
-  value: iTwoStepDropdownData;
+  value: string | iTwoStepDropdownData;
   name: string;
   register: UseFormRegister<FieldValues>;
   config?: RegisterOptions<FieldValues, string> | undefined;

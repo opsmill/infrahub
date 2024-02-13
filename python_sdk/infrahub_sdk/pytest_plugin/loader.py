@@ -7,14 +7,32 @@ import pytest
 import yaml
 from pytest import Item
 
-from .items import InfrahubPythonTransformUnitProcessItem, InfrahubRFileUnitRenderItem
+from .items import (
+    InfrahubCheckIntegrationItem,
+    InfrahubCheckUnitProcessItem,
+    InfrahubGraphqlQueryIntegrationItem,
+    InfrahubJinja2TransformIntegrationItem,
+    InfrahubJinja2TransformUnitRenderItem,
+    InfrahubPythonTransformIntegrationItem,
+    InfrahubPythonTransformUnitProcessItem,
+)
 from .models import InfrahubTestFileV1, InfrahubTestResource
 
-MARKER_MAPPING = {"RFile": pytest.mark.infrahub_rfile, "PythonTransform": pytest.mark.infrahub_python_transform}
+MARKER_MAPPING = {
+    "Check": pytest.mark.infrahub_check,
+    "GraphqlQuery": pytest.mark.infrahub_graphql_query,
+    "Jinja2Transform": pytest.mark.infrahub_jinja2_transform,
+    "PythonTransform": pytest.mark.infrahub_python_transform,
+}
 
 ITEMS_MAPPING = {
-    "rfile-unit-render": InfrahubRFileUnitRenderItem,
+    "check-unit-process": InfrahubCheckUnitProcessItem,
+    "check-integration": InfrahubCheckIntegrationItem,
+    "graphql-query-integration": InfrahubGraphqlQueryIntegrationItem,
+    "jinja2-transform-unit-render": InfrahubJinja2TransformUnitRenderItem,
+    "jinja2-transform-integration": InfrahubJinja2TransformIntegrationItem,
     "python-transform-unit-process": InfrahubPythonTransformUnitProcessItem,
+    "python-transform-integration": InfrahubPythonTransformIntegrationItem,
 }
 
 
@@ -28,30 +46,48 @@ class InfrahubYamlFile(pytest.File):
         content = InfrahubTestFileV1(**raw)
 
         for test_group in content.infrahub_tests:
-            if test_group.resource == InfrahubTestResource.RFILE.value:
-                marker = pytest.mark.infrahub_rfile(name=test_group.resource_name)
+            if test_group.resource == InfrahubTestResource.CHECK.value:
+                marker = MARKER_MAPPING[test_group.resource](name=test_group.resource_name)
                 try:
-                    resource_config = self.session.infrahub_repo_config.get_rfile(test_group.resource_name)  # type: ignore[attr-defined]
+                    resource_config = self.session.infrahub_repo_config.get_check_definition(test_group.resource_name)  # type: ignore[attr-defined]
                 except KeyError:
                     warnings.warn(
-                        Warning(f"Unable to find the rfile {test_group.resource_name!r} in the repository config file.")
+                        Warning(
+                            f"Unable to find check definition {test_group.resource_name!r} in the repository config file."
+                        )
+                    )
+                    continue
+
+            if test_group.resource == InfrahubTestResource.GRAPHQL_QUERY.value:
+                marker = MARKER_MAPPING[test_group.resource](name=test_group.resource_name)
+                resource_config = None
+
+            if test_group.resource == InfrahubTestResource.JINJA2_TRANSFORM.value:
+                marker = MARKER_MAPPING[test_group.resource](name=test_group.resource_name)
+                try:
+                    resource_config = self.session.infrahub_repo_config.get_jinja2_transform(test_group.resource_name)  # type: ignore[attr-defined]
+                except KeyError:
+                    warnings.warn(
+                        Warning(
+                            f"Unable to find jinja2 transform {test_group.resource_name!r} in the repository config file."
+                        )
                     )
                     continue
 
             if test_group.resource == InfrahubTestResource.PYTHON_TRANSFORM.value:
-                marker = pytest.mark.infrahub_python_transform(name=test_group.resource_name)
+                marker = MARKER_MAPPING[test_group.resource](name=test_group.resource_name)
                 try:
                     resource_config = self.session.infrahub_repo_config.get_python_transform(test_group.resource_name)  # type: ignore[attr-defined]
                 except KeyError:
                     warnings.warn(
                         Warning(
-                            f"Unable to find the python transform {test_group.resource_name!r} in the repository config file."
+                            f"Unable to find python transform {test_group.resource_name!r} in the repository config file."
                         )
                     )
                     continue
 
             for test in test_group.tests:
-                name = f"{test_group.resource.value.lower()}__{test_group.resource_name}__{test.name}"
+                name = f"infrahub__{test_group.resource.value.lower()}__{test_group.resource_name}__{test.name}"
 
                 item_class: type[pytest.Item] = ITEMS_MAPPING[test.spec.kind]  # type: ignore[assignment]
                 item: pytest.Item = item_class.from_parent(
@@ -61,5 +97,12 @@ class InfrahubYamlFile(pytest.File):
                     resource_config=resource_config,
                     test=test,
                 )
+
+                item.add_marker(pytest.mark.infrahub)
                 item.add_marker(marker)
+                if "unit" in test.spec.kind:
+                    item.add_marker(pytest.mark.infrahub_unit)
+                if "integration" in test.spec.kind:
+                    item.add_marker(pytest.mark.infrahub_integraton)
+
                 yield item

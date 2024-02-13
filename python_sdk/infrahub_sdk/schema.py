@@ -54,11 +54,11 @@ class InfrahubRepositoryArtifactDefinitionConfig(InfrahubRepositoryConfigElement
     transformation: str = pydantic.Field(..., description="The transformation to use.")
 
 
-class InfrahubRepositoryRFileConfig(InfrahubRepositoryConfigElement):
-    name: str = pydantic.Field(..., description="The name of the RFile")
+class InfrahubJinja2TransformConfig(InfrahubRepositoryConfigElement):
+    name: str = pydantic.Field(..., description="The name of the transform")
     query: str = pydantic.Field(..., description="The name of the GraphQL Query")
     template_path: Path = pydantic.Field(..., description="The path within the repository of the template file")
-    description: Optional[str] = pydantic.Field(default=None, description="Description for this rfile")
+    description: Optional[str] = pydantic.Field(default=None, description="Description for this transform")
 
     @property
     def template_path_value(self) -> str:
@@ -73,7 +73,7 @@ class InfrahubRepositoryRFileConfig(InfrahubRepositoryConfigElement):
 
 class InfrahubCheckDefinitionConfig(InfrahubRepositoryConfigElement):
     name: str = pydantic.Field(..., description="The name of the Check Definition")
-    file_path: Path = pydantic.Field(..., description="The file within the repo with the check code.")
+    file_path: Path = pydantic.Field(..., description="The file within the repository with the check code.")
     parameters: Dict[str, Any] = pydantic.Field(
         default_factory=dict, description="The input parameters required to run this check"
     )
@@ -85,12 +85,12 @@ class InfrahubCheckDefinitionConfig(InfrahubRepositoryConfigElement):
 
 class InfrahubPythonTransformConfig(InfrahubRepositoryConfigElement):
     name: str = pydantic.Field(..., description="The name of the Transform")
-    file_path: Path = pydantic.Field(..., description="The file within the repo with the transform code.")
+    file_path: Path = pydantic.Field(..., description="The file within the repository with the transform code.")
     class_name: str = pydantic.Field(default="Transform", description="The name of the transform class to run.")
 
 
 RESOURCE_MAP: Dict[Any, str] = {
-    InfrahubRepositoryRFileConfig: "rfiles",
+    InfrahubJinja2TransformConfig: "jinja2_transforms",
     InfrahubCheckDefinitionConfig: "check_definitions",
     InfrahubRepositoryArtifactDefinitionConfig: "artifact_definitions",
     InfrahubPythonTransformConfig: "python_transforms",
@@ -98,13 +98,21 @@ RESOURCE_MAP: Dict[Any, str] = {
 
 
 class InfrahubRepositoryConfig(pydantic.BaseModel):
-    check_definitions: List[InfrahubCheckDefinitionConfig] = pydantic.Field(default_factory=list)
-    schemas: List[Path] = pydantic.Field(default_factory=list)
-    rfiles: List[InfrahubRepositoryRFileConfig] = pydantic.Field(default_factory=list)
-    artifact_definitions: List[InfrahubRepositoryArtifactDefinitionConfig] = pydantic.Field(default_factory=list)
-    python_transforms: List[InfrahubPythonTransformConfig] = pydantic.Field(default_factory=list)
+    check_definitions: List[InfrahubCheckDefinitionConfig] = pydantic.Field(
+        default_factory=list, description="User defined checks"
+    )
+    schemas: List[Path] = pydantic.Field(default_factory=list, description="Schema files")
+    jinja2_transforms: List[InfrahubJinja2TransformConfig] = pydantic.Field(
+        default_factory=list, description="Jinja2 data transformations"
+    )
+    artifact_definitions: List[InfrahubRepositoryArtifactDefinitionConfig] = pydantic.Field(
+        default_factory=list, description="Artifact definitions"
+    )
+    python_transforms: List[InfrahubPythonTransformConfig] = pydantic.Field(
+        default_factory=list, description="Python data transformations"
+    )
 
-    @pydantic.validator("rfiles", "check_definitions", "artifact_definitions", "python_transforms")
+    @pydantic.validator("jinja2_transforms", "check_definitions", "artifact_definitions", "python_transforms")
     @classmethod
     def unique_items(cls, v: Any, **kwargs: Dict[str, Any]) -> Any:  # pylint: disable=unused-argument
         names = [item.name for item in v]
@@ -126,11 +134,11 @@ class InfrahubRepositoryConfig(pydantic.BaseModel):
                 return item
         raise KeyError(f"Unable to find {resource_id!r} in {RESOURCE_MAP[resource_type]!r}")
 
-    def has_rfile(self, name: str) -> bool:
-        return self._has_resource(resource_id=name, resource_type=InfrahubRepositoryRFileConfig)
+    def has_jinja2_transform(self, name: str) -> bool:
+        return self._has_resource(resource_id=name, resource_type=InfrahubJinja2TransformConfig)
 
-    def get_rfile(self, name: str) -> InfrahubRepositoryRFileConfig:
-        return self._get_resource(resource_id=name, resource_type=InfrahubRepositoryRFileConfig)
+    def get_jinja2_transform(self, name: str) -> InfrahubJinja2TransformConfig:
+        return self._get_resource(resource_id=name, resource_type=InfrahubJinja2TransformConfig)
 
     def has_check_definition(self, name: str) -> bool:
         return self._has_resource(resource_id=name, resource_type=InfrahubCheckDefinitionConfig)
@@ -315,7 +323,6 @@ class GenericSchema(BaseNodeSchema):
 
 class NodeSchema(BaseNodeSchema):
     inherit_from: List[str] = pydantic.Field(default_factory=list)
-    groups: List[str] = pydantic.Field(default_factory=list)
     branch: Optional[BranchSupportType] = None
     default_filter: Optional[str] = None
 
@@ -326,24 +333,16 @@ class NodeExtensionSchema(pydantic.BaseModel):
     description: Optional[str] = None
     label: Optional[str] = None
     inherit_from: List[str] = pydantic.Field(default_factory=list)
-    groups: List[str] = pydantic.Field(default_factory=list)
     branch: Optional[BranchSupportType] = None
     default_filter: Optional[str] = None
     attributes: List[AttributeSchema] = pydantic.Field(default_factory=list)
     relationships: List[RelationshipSchema] = pydantic.Field(default_factory=list)
 
 
-class GroupSchema(pydantic.BaseModel):
-    name: str
-    kind: str
-    description: Optional[str] = None
-
-
 class SchemaRoot(pydantic.BaseModel):
     version: str
     generics: List[GenericSchema] = pydantic.Field(default_factory=list)
     nodes: List[NodeSchema] = pydantic.Field(default_factory=list)
-    groups: List[GroupSchema] = pydantic.Field(default_factory=list)
     # node_extensions: List[NodeExtensionSchema] = pydantic.Field(default_factory=list)
 
 

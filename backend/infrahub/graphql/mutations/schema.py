@@ -1,4 +1,4 @@
-from typing import Dict, Union
+from typing import TYPE_CHECKING, Dict, Union
 
 from graphene import Boolean, Field, InputObjectType, Mutation, String
 from graphql import GraphQLResolveInfo
@@ -8,7 +8,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import RESTRICTED_NAMESPACES
 from infrahub.core.manager import NodeManager
-from infrahub.core.schema import DropdownChoice, GenericSchema, GroupSchema, NodeSchema
+from infrahub.core.schema import DropdownChoice, GenericSchema, NodeSchema
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
 from infrahub.log import get_logger
@@ -17,6 +17,9 @@ from infrahub.services import services
 from infrahub.worker import WORKER_IDENTITY
 
 from ..types import DropdownFields
+
+if TYPE_CHECKING:
+    from .. import GraphqlContext
 
 log = get_logger()
 
@@ -53,17 +56,13 @@ class SchemaDropdownAdd(Mutation):
         info: GraphQLResolveInfo,
         data: SchemaDropdownAddInput,
     ):
-        db: InfrahubDatabase = info.context.get("infrahub_database")
-        branch: Branch = info.context.get("infrahub_branch")
-        kind = registry.get_schema(name=str(data.kind), branch=branch.name)
+        context: GraphqlContext = info.context
 
+        kind = registry.schema.get(name=str(data.kind), branch=context.branch.name)
         attribute = str(data.attribute)
         validate_kind_dropdown(kind=kind, attribute=attribute)
         dropdown = str(data.dropdown)
-        color = str(data.color) if data.color else ""
-        description = str(data.description) if data.description else ""
-        label = str(data.label) if data.label else ""
-        choice = DropdownChoice(name=dropdown, color=color, label=label, description=description)
+        choice = DropdownChoice(name=dropdown, color=data.color, label=data.label, description=data.description)
 
         if found_attribute := [attrib for attrib in kind.attributes if attrib.name == attribute]:
             attrib = found_attribute[0]
@@ -73,9 +72,9 @@ class SchemaDropdownAdd(Mutation):
                 )
             attrib.choices.append(choice)
 
-        await update_registry(kind=kind, branch=branch, db=db)
+        await update_registry(kind=kind, branch=context.branch, db=context.db)
 
-        kind = registry.get_schema(name=str(data.kind), branch=branch.name)
+        kind = registry.schema.get(name=str(data.kind), branch=context.branch.name)
         attrib = kind.get_attribute(attribute)
         dropdown_entry = {}
         success = False
@@ -86,7 +85,7 @@ class SchemaDropdownAdd(Mutation):
                     "value": dropdown,
                     "color": entry.color,
                     "label": entry.label,
-                    "description": description,
+                    "description": entry.description,
                 }
                 success = True
 
@@ -106,15 +105,15 @@ class SchemaDropdownRemove(Mutation):
         info: GraphQLResolveInfo,
         data: SchemaDropdownRemoveInput,
     ) -> Dict[str, bool]:
-        db: InfrahubDatabase = info.context.get("infrahub_database")
-        branch: Branch = info.context.get("infrahub_branch")
-        kind = registry.get_schema(name=str(data.kind), branch=branch.name)
+        context: GraphqlContext = info.context
+
+        kind = registry.schema.get(name=str(data.kind), branch=context.branch.name)
 
         attribute = str(data.attribute)
         validate_kind_dropdown(kind=kind, attribute=attribute)
         dropdown = str(data.dropdown)
         nodes_with_dropdown = await NodeManager.query(
-            db=db, schema=kind.kind, filters={f"{attribute}__value": dropdown}
+            db=context.db, schema=kind.kind, filters={f"{attribute}__value": dropdown}
         )
         if nodes_with_dropdown:
             raise ValidationError(f"There are still {kind.kind} objects using this dropdown")
@@ -129,7 +128,7 @@ class SchemaDropdownRemove(Mutation):
                 raise ValidationError(f"Unable to remove the last dropdown on {kind.kind} in attribute {attribute}")
             attrib.choices = [entry for entry in attrib.choices if dropdown != entry.name]
 
-        await update_registry(kind=kind, branch=branch, db=db)
+        await update_registry(kind=kind, branch=context.branch, db=context.db)
 
         return {"ok": True}
 
@@ -147,9 +146,9 @@ class SchemaEnumAdd(Mutation):
         info: GraphQLResolveInfo,
         data: SchemaEnumInput,
     ) -> Dict[str, bool]:
-        db: InfrahubDatabase = info.context.get("infrahub_database")
-        branch: Branch = info.context.get("infrahub_branch")
-        kind = registry.get_schema(name=str(data.kind), branch=branch.name)
+        context: GraphqlContext = info.context
+
+        kind = registry.schema.get(name=str(data.kind), branch=context.branch.name)
 
         attribute = str(data.attribute)
         enum = str(data.enum)
@@ -163,7 +162,7 @@ class SchemaEnumAdd(Mutation):
                     )
                 attrib.enum.append(enum)
 
-        await update_registry(kind=kind, branch=branch, db=db)
+        await update_registry(kind=kind, branch=context.branch, db=context.db)
 
         return {"ok": True}
 
@@ -181,9 +180,10 @@ class SchemaEnumRemove(Mutation):
         info: GraphQLResolveInfo,
         data: SchemaEnumInput,
     ) -> Dict[str, bool]:
-        db: InfrahubDatabase = info.context.get("infrahub_database")
-        branch: Branch = info.context.get("infrahub_branch")
-        kind = registry.get_schema(name=str(data.kind), branch=branch.name)
+        context: GraphqlContext = info.context
+        db = context.db
+        branch = context.branch
+        kind = registry.schema.get(name=str(data.kind), branch=branch.name)
 
         attribute = str(data.attribute)
         enum = str(data.enum)
@@ -207,23 +207,21 @@ class SchemaEnumRemove(Mutation):
         return {"ok": True}
 
 
-def validate_kind_dropdown(kind: Union[GenericSchema, GroupSchema, NodeSchema], attribute: str) -> None:
+def validate_kind_dropdown(kind: Union[GenericSchema, NodeSchema], attribute: str) -> None:
     validate_kind(kind=kind, attribute=attribute)
     matching_attribute = [attrib for attrib in kind.attributes if attrib.name == attribute]
     if matching_attribute and matching_attribute[0].kind != "Dropdown":
         raise ValidationError(f"Attribute {attribute} on {kind.kind} is not a Dropdown")
 
 
-def validate_kind_enum(kind: Union[GenericSchema, GroupSchema, NodeSchema], attribute: str) -> None:
+def validate_kind_enum(kind: Union[GenericSchema, NodeSchema], attribute: str) -> None:
     validate_kind(kind=kind, attribute=attribute)
     matching_attribute = [attrib for attrib in kind.attributes if attrib.name == attribute]
     if not matching_attribute[0].enum:
         raise ValidationError(f"Attribute {attribute} on {kind.kind} is not an enum")
 
 
-def validate_kind(kind: Union[GenericSchema, GroupSchema, NodeSchema], attribute: str) -> None:
-    if isinstance(kind, GroupSchema):
-        raise ValidationError(f"{kind.kind} is not a valid node")
+def validate_kind(kind: Union[GenericSchema, NodeSchema], attribute: str) -> None:
     if kind.namespace in RESTRICTED_NAMESPACES:
         raise ValidationError(f"Operation not allowed for {kind.kind} in restricted namespace {kind.namespace}")
     if attribute not in kind.attribute_names:

@@ -2,7 +2,7 @@
 schemas:
   - schemas/demo_edge_fabric.yml
 
-rfiles:
+jinja2_transforms:
   - name: device_startup
     description: "Template to generate startup configuration for network devices"
     query: "device_startup_info"

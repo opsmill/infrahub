@@ -37,23 +37,28 @@ class InfrahubDataType:
 
     @classmethod
     def get_infrahub_class(cls) -> Type[BaseAttribute]:
+        if not isinstance(cls.infrahub, str):
+            return cls.infrahub
         module = importlib.import_module(DEFAULT_MODULE_ATTRIBUTE)
         return getattr(module, cls.infrahub)
 
     @classmethod
     def get_graphql_input(cls) -> Type[BaseAttributeInput]:
+        if not isinstance(cls.graphql_input, str):
+            return cls.graphql_input
         module = importlib.import_module(DEFAULT_MODULE_GRAPHQL_INPUT)
         return getattr(module, cls.graphql_input)
 
     @classmethod
     def get_graphql_type(cls) -> Type[BaseAttributeType]:
+        if not isinstance(cls.graphql_query, str):
+            return cls.graphql_query
         module = importlib.import_module(DEFAULT_MODULE_GRAPHQL_QUERY)
         return getattr(module, cls.graphql_query)
 
     @classmethod
-    def get_graphql_type_name(cls):
-        module = importlib.import_module(DEFAULT_MODULE_GRAPHQL_QUERY)
-        return getattr(module, cls.graphql_query).__name__
+    def get_graphql_type_name(cls) -> str:
+        return cls.get_graphql_type().__name__
 
     @classmethod
     def get_graphql_filters(cls, name: str, include_properties: bool = True) -> Dict[str, typing.Any]:
@@ -233,7 +238,7 @@ class Checkbox(InfrahubDataType):
     graphql_query = "CheckboxAttributeType"
     graphql_input = "CheckboxAttributeInput"
     graphql_filter = graphene.Boolean
-    infrahub = "String"
+    infrahub = "Boolean"
 
 
 class List(InfrahubDataType):

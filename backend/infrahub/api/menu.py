@@ -9,7 +9,7 @@ from infrahub.api.dependencies import get_branch_dep
 from infrahub.core import registry
 from infrahub.core.branch import Branch  # noqa: TCH001
 from infrahub.core.constants import InfrahubKind
-from infrahub.core.schema import GroupSchema, NodeSchema
+from infrahub.core.schema import NodeSchema
 from infrahub.log import get_logger
 
 log = get_logger()
@@ -64,7 +64,7 @@ async def get_menu(
     for key in full_schema.keys():
         model = full_schema[key]
 
-        if isinstance(model, GroupSchema) or not model.include_in_menu:
+        if not model.include_in_menu:
             continue
 
         if isinstance(model, NodeSchema) and InfrahubKind.GENERICGROUP in model.inherit_from:
@@ -95,6 +95,11 @@ async def get_menu(
         children=[
             InterfaceMenu(title="Schema", path="/schema", icon="mdi:file-code"),
             InterfaceMenu(title="Repository", path=f"/objects/{InfrahubKind.REPOSITORY}", icon="mdi:source-repository"),
+            InterfaceMenu(
+                title="Read-only Repository",
+                path=f"/objects/{InfrahubKind.READONLYREPOSITORY}",
+                icon="mdi:source-repository",
+            ),
             InterfaceMenu(title="GraphQL Query", path=f"/objects/{InfrahubKind.GRAPHQLQUERY}", icon="mdi:graphql"),
         ],
     )
@@ -107,6 +112,7 @@ async def get_menu(
             InterfaceMenu(
                 title="Check Definition", path=f"/objects/{InfrahubKind.CHECKDEFINITION}", icon="mdi:check-all"
             ),
+            InterfaceMenu(title="Tasks", path="/tasks", icon="mdi:shield-check"),
         ],
     )
     deployment = InterfaceMenu(

@@ -35,9 +35,6 @@ from .models import (
 class NautobotSync(NautobotAdapter):
     CoreStandardGroup = CoreStandardGroup
     BuiltinTag = BuiltinTag
-    CoreOrganization = CoreOrganization
-    BuiltinRole = BuiltinRole
-    BuiltinLocation = BuiltinLocation
     InfraAutonomousSystem = InfraAutonomousSystem
     InfraCircuit = InfraCircuit
     TemplateCircuitType = TemplateCircuitType
@@ -56,3 +53,6 @@ class NautobotSync(NautobotAdapter):
     InfraRouteTarget = InfraRouteTarget
     InfraVLAN = InfraVLAN
     InfraVRF = InfraVRF
+    CoreOrganization = CoreOrganization
+    BuiltinRole = BuiltinRole
+    BuiltinLocation = BuiltinLocation

@@ -19,19 +19,12 @@ DOCUMENTATION_DIRECTORY = os.path.join(CURRENT_DIRECTORY, "../docs")
 @task
 def build(context: Context):
     """Build documentation website."""
-    exec_cmd = "npx retypeapp build docs"
-    with context.cd(ESCAPED_REPO_PATH):
+    exec_cmd = "npm run build"
+
+    with context.cd(DOCUMENTATION_DIRECTORY):
         output = context.run(exec_cmd)
 
-    successful_build_checks = 0
-    if output:
-        for line in output.stdout.splitlines():
-            if " 0 errors" in line:
-                successful_build_checks += 1
-            elif " 0 warnings" in line:
-                successful_build_checks += 1
-
-    if successful_build_checks < 2:
+    if output.exited != 0:
         sys.exit(-1)
 
 
@@ -63,9 +56,9 @@ def validate(context: Context, docker: bool = False):
 def serve(context: Context):
     """Run documentation server in development mode."""
 
-    exec_cmd = "npx retypeapp start docs"
+    exec_cmd = "npm run serve"
 
-    with context.cd(ESCAPED_REPO_PATH):
+    with context.cd(DOCUMENTATION_DIRECTORY):
         context.run(exec_cmd)
 
 
@@ -91,7 +84,7 @@ def markdownlint(context: Context):
     if not has_markdownlint:
         print("Warning, markdownlint-cli2 is not installed")
         return
-    exec_cmd = "markdownlint-cli2 **/*.md"
+    exec_cmd = "markdownlint-cli2 **/*.{md,mdx} '#**/node_modules/**'"
     print(" - [docs] Lint docs with markdownlint-cli2")
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
@@ -99,10 +92,10 @@ def markdownlint(context: Context):
 
 @task
 def format_markdownlint(context: Context):
-    """Run markdownlint-cli2 to format all .md files."""
+    """Run markdownlint-cli2 to format all .md/mdx files."""
 
     print(" - [docs] Format code with markdownlint-cli2")
-    exec_cmd = "markdownlint-cli2 **/*.md --fix"
+    exec_cmd = "markdownlint-cli2 **/*.{md,mdx} --fix"
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
@@ -132,7 +125,7 @@ def _generate_infrahub_cli_documentation(context: Context):
     print(" - Generate Infrahub CLI documentation")
     with context.cd(ESCAPED_REPO_PATH):
         for command in CLI_COMMANDS:
-            exec_cmd = f'poetry run typer {command[0]} utils docs --name "{command[1]}" --output docs/reference/infrahub-cli/{command[2]}.md'
+            exec_cmd = f'poetry run typer {command[0]} utils docs --name "{command[1]}" --output docs/docs/reference/infrahub-cli/{command[2]}.mdx'
             context.run(exec_cmd)
 
 
@@ -141,6 +134,7 @@ def _generate(context: Context):
     _generate_infrahub_cli_documentation(context=context)
     _generate_infrahubctl_documentation(context=context)
     _generate_infrahub_schema_documentation()
+    _generate_infrahub_repository_configuration_documentation()
 
 
 def _generate_infrahubctl_documentation(context: Context):
@@ -150,13 +144,13 @@ def _generate_infrahubctl_documentation(context: Context):
     print(" - Generate infrahubctl CLI documentation")
     for cmd in app.registered_commands:
         exec_cmd = f'poetry run typer --func {cmd.name} infrahub_sdk.ctl.cli utils docs --name "infrahubctl {cmd.name}"'
-        exec_cmd += f" --output docs/infrahubctl/infrahubctl-{cmd.name}.md"
+        exec_cmd += f" --output docs/docs/infrahubctl/infrahubctl-{cmd.name}.mdx"
         with context.cd(ESCAPED_REPO_PATH):
             context.run(exec_cmd)
 
     for cmd in app.registered_groups:
         exec_cmd = f"poetry run typer infrahub_sdk.ctl.{cmd.name} utils docs"
-        exec_cmd += f' --name "infrahubctl {cmd.name}" --output docs/infrahubctl/infrahubctl-{cmd.name}.md'
+        exec_cmd += f' --name "infrahubctl {cmd.name}" --output docs/docs/infrahubctl/infrahubctl-{cmd.name}.mdx'
         with context.cd(ESCAPED_REPO_PATH):
             context.run(exec_cmd)
 
@@ -171,8 +165,8 @@ def _generate_infrahub_schema_documentation() -> None:
     print(" - Generate Infrahub schema documentation")
     for schema_name in schemas_to_generate:
         template_file = f"{DOCUMENTATION_DIRECTORY}/_templates/schema/{schema_name}.j2"
-        output_file = f"{DOCUMENTATION_DIRECTORY}/reference/schema/{schema_name}.md"
-        output_label = f"docs/reference/schema/{schema_name}.md"
+        output_file = f"{DOCUMENTATION_DIRECTORY}/docs/reference/schema/{schema_name}.mdx"
+        output_label = f"docs/docs/reference/schema/{schema_name}.mdx"
         if not os.path.exists(template_file):
             print(f"Unable to find the template file at {template_file}")
             sys.exit(-1)
@@ -187,3 +181,52 @@ def _generate_infrahub_schema_documentation() -> None:
             f.write(rendered_file)
 
         print(f"Docs saved to: {output_label}")
+
+
+def _generate_infrahub_repository_configuration_documentation() -> None:
+    """Generate documentation for the Infrahub repository configuration file"""
+    from copy import deepcopy
+
+    import jinja2
+    from infrahub_sdk.schema import InfrahubRepositoryConfig
+
+    schema = InfrahubRepositoryConfig.schema()
+
+    properties = [
+        {
+            "name": name,
+            "description": property["description"],
+            "title": property["title"],
+            "type": property["type"],
+            "items_type": property["items"]["$ref"].split("/")[-1]
+            if "$ref" in property["items"]
+            else property["items"]["type"],
+            "items_format": property["items"]["format"] if "format" in property["items"] else None,
+        }
+        for name, property in schema["properties"].items()
+    ]
+
+    definitions = deepcopy(schema["definitions"])
+
+    for name, definition in schema["definitions"].items():
+        for property in definition["properties"].keys():
+            definitions[name]["properties"][property]["required"] = (
+                True if property in definition["required"] else False
+            )
+
+    print(" - Generate Infrahub repository configuration documentation")
+
+    template_file = f"{DOCUMENTATION_DIRECTORY}/_templates/dotinfrahub.j2"
+    output_file = f"{DOCUMENTATION_DIRECTORY}/docs/reference/dotinfrahub.mdx"
+    if not os.path.exists(template_file):
+        print(f"Unable to find the template file at {template_file}")
+        sys.exit(-1)
+
+    template_text = Path(template_file).read_text(encoding="utf-8")
+
+    environment = jinja2.Environment()
+    template = environment.from_string(template_text)
+    rendered_file = template.render(properties=properties, definitions=definitions)
+
+    with open(output_file, "w", encoding="utf-8") as f:
+        f.write(rendered_file)

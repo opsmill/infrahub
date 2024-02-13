@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, Any, List
 
 import infrahub.config as config
 from infrahub.core.constants import RelationshipStatus
@@ -17,11 +17,11 @@ class AddNodeToBranch(Query):
 
     type: QueryType = QueryType.WRITE
 
-    def __init__(self, node_id: int, *args, **kwargs):
+    def __init__(self, node_id: int, *args: Any, **kwargs: Any):
         self.node_id = node_id
         super().__init__(*args, **kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Any) -> None:
         query = """
         MATCH (root:Root)
         MATCH (d) WHERE ID(d) = $node_id
@@ -45,11 +45,11 @@ class DeleteBranchRelationshipsQuery(Query):
 
     type: QueryType = QueryType.WRITE
 
-    def __init__(self, branch_name: str, *args, **kwargs):
+    def __init__(self, branch_name: str, *args: Any, **kwargs: Any):
         self.branch_name = branch_name
         super().__init__(*args, **kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Any) -> None:
         if config.SETTINGS.database.db_type == config.DatabaseType.MEMGRAPH:
             query = """
             MATCH p = (s)-[r]-(d)
@@ -77,7 +77,7 @@ class GetAllBranchInternalRelationshipQuery(Query):
     type: QueryType = QueryType.READ
     insert_return: bool = False
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Any) -> None:
         query = """
         MATCH p = ()-[r]-()
         WHERE r.branch = $branch_name
@@ -93,11 +93,11 @@ class RebaseBranchUpdateRelationshipQuery(Query):
 
     type: QueryType = QueryType.WRITE
 
-    def __init__(self, ids: List[str], *args, **kwargs):
+    def __init__(self, ids: List[str], *args: Any, **kwargs: Any) -> None:
         self.ids = ids
         super().__init__(*args, **kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Any) -> None:
         query = """
         MATCH ()-[r]->()
         WHERE ID(r) IN $ids
@@ -118,11 +118,11 @@ class RebaseBranchDeleteRelationshipQuery(Query):
     type: QueryType = QueryType.WRITE
     insert_return: bool = False
 
-    def __init__(self, ids: List[str], *args, **kwargs):
+    def __init__(self, ids: List[str], *args: Any, **kwargs: Any) -> None:
         self.ids = ids
         super().__init__(*args, **kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
+    async def query_init(self, db: InfrahubDatabase, *args: Any, **kwargs: Any) -> None:
         if config.SETTINGS.database.db_type == config.DatabaseType.MEMGRAPH:
             query = """
             MATCH p = (s)-[r]-(d)

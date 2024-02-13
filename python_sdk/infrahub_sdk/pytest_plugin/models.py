@@ -4,7 +4,7 @@ import glob
 import json
 from enum import Enum
 from pathlib import Path
-from typing import Any, List, Literal, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 
 import yaml
 
@@ -22,9 +22,10 @@ class InfrahubTestExpectedResult(str, Enum):
 
 
 class InfrahubTestResource(str, Enum):
-    RFILE = "RFile"
+    CHECK = "Check"
+    JINJA2_TRANSFORM = "Jinja2Transform"
     PYTHON_TRANSFORM = "PythonTransform"
-    GRAPHQL = "GraphQLQuery"
+    GRAPHQL_QUERY = "GraphqlQuery"
 
 
 class InfrahubInputOutputTest(pydantic.BaseModel):
@@ -75,7 +76,7 @@ class InfrahubInputOutputTest(pydantic.BaseModel):
                 raise FileNotFoundError(self.input)
             if len(results) != 1:
                 raise FileNotFoundError(
-                    f"Too many files are matching: {self.input}, please adjust the value to match only one file."
+                    f"Too many files are matching: {self.input}, please set the 'input' test key to the file to use."
                 )
             self.input = Path(results[0])
 
@@ -85,7 +86,7 @@ class InfrahubInputOutputTest(pydantic.BaseModel):
             results = glob.glob(str(self.directory / search_input))
             if results and len(results) != 1:
                 raise FileNotFoundError(
-                    f"Too many files are matching: {self.output}, please adjust the value to match only one file."
+                    f"Too many files are matching: {self.output}, please set the 'output' test key to the file to use."
                 )
             if results:
                 self.output = Path(results[0])
@@ -97,20 +98,73 @@ class InfrahubInputOutputTest(pydantic.BaseModel):
         return self.parse_user_provided_data(self.output)
 
 
-class InfrahubRFileUnitRenderTest(InfrahubInputOutputTest):
-    kind: Literal["rfile-unit-render"]
+class InfrahubIntegrationTest(InfrahubInputOutputTest):
+    variables: Union[Path, Dict[str, Any]] = pydantic.Field(
+        Path("variables.json"), description="Variables and corresponding values to pass to the GraphQL query"
+    )
+    rebase: bool = pydantic.Field(True, description="Rebase the branch before executing the GraphQL query")
+
+    def update_paths(self, base_dir: Path) -> None:
+        super().update_paths(base_dir)
+
+        if self.variables and not isinstance(self.variables, dict) and not self.variables.is_file():
+            search_variables = self.variables or "variables.*"
+            results = glob.glob(str(self.directory / search_variables))  # type: ignore[operator]
+            if not results:
+                raise FileNotFoundError(self.variables)
+            if len(results) != 1:
+                raise FileNotFoundError(
+                    f"Too many files are matching: {self.variables}, please set the 'variables' test key to the file to use."
+                )
+            self.variables = Path(results[0])
+
+    def get_variables_data(self) -> Dict[str, Any]:
+        if isinstance(self.variables, dict):
+            return self.variables
+        return self.parse_user_provided_data(self.variables)
+
+
+class InfrahubCheckUnitProcessTest(InfrahubInputOutputTest):
+    kind: Literal["check-unit-process"]
+
+
+class InfrahubCheckIntegrationTest(InfrahubIntegrationTest):
+    kind: Literal["check-integration"]
+
+
+class InfrahubGraphqlQueryIntegrationTest(InfrahubIntegrationTest):
+    kind: Literal["graphql-query-integration"]
+    query: str = pydantic.Field(description="Name of a pre-defined GraphQL query to execute")
+
+
+class InfrahubJinja2TransformUnitRenderTest(InfrahubInputOutputTest):
+    kind: Literal["jinja2-transform-unit-render"]
+
+
+class InfrahubJinja2TransformIntegrationTest(InfrahubIntegrationTest):
+    kind: Literal["jinja2-transform-integration"]
 
 
 class InfrahubPythonTransformUnitProcessTest(InfrahubInputOutputTest):
     kind: Literal["python-transform-unit-process"]
 
 
+class InfrahubPythonTransformIntegrationTest(InfrahubIntegrationTest):
+    kind: Literal["python-transform-integration"]
+
+
 class InfrahubTest(pydantic.BaseModel):
     name: str = pydantic.Field(..., description="Name of the test, must be unique")
     expect: InfrahubTestExpectedResult
-    spec: Union[InfrahubRFileUnitRenderTest, InfrahubPythonTransformUnitProcessTest] = pydantic.Field(
-        ..., discriminator="kind"
-    )
+    spec: Union[
+        InfrahubCheckUnitProcessTest,
+        InfrahubCheckIntegrationTest,
+        InfrahubGraphqlQueryIntegrationTest,
+        InfrahubJinja2TransformUnitRenderTest,
+        InfrahubJinja2TransformIntegrationTest,
+        InfrahubPythonTransformUnitProcessTest,
+        InfrahubPythonTransformIntegrationTest,
+    ] = pydantic.Field(..., discriminator="kind")
 
 
 class InfrahubTestGroup(pydantic.BaseModel):

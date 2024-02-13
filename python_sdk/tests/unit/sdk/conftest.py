@@ -1,7 +1,5 @@
-import os
 import re
 from dataclasses import dataclass
-from pathlib import Path
 
 import pytest
 import ujson
@@ -527,7 +525,7 @@ async def tag_green_data():
 @pytest.fixture
 async def rfile_schema() -> NodeSchema:
     data = {
-        "name": "RFile",
+        "name": "TransformJinja2",
         "namespace": "Core",
         "default_filter": "name__value",
         "display_label": ["label__value"],
@@ -542,7 +540,7 @@ async def rfile_schema() -> NodeSchema:
                 "name": "repository",
                 "peer": "CoreRepository",
                 "kind": "Attribute",
-                "identifier": "rfile__repository",
+                "identifier": "jinja2__repository",
                 "cardinality": "one",
                 "optional": False,
             },
@@ -1033,8 +1031,8 @@ async def mock_query_repository_all_01_no_pagination(
 async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
     response1 = {
         "data": {
-            "CoreRepository": {
-                "count": 1,
+            "CoreGenericRepository": {
+                "count": 2,
                 "edges": [
                     {
                         "node": {
@@ -1044,14 +1042,23 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                             "location": {"value": "git@github.com:dgarros/infrahub-demo-edge.git"},
                             "commit": {"value": "aaaaaaaaaaaaaaaaaaaa"},
                         }
-                    }
+                    },
+                    {
+                        "node": {
+                            "__typename": "CoreReadOnlyRepository",
+                            "id": "aeff0feb-6a49-406e-b395-de7b7856026d",
+                            "name": {"value": "infrahub-demo-edge-read-only"},
+                            "location": {"value": "git@github.com:dgarros/infrahub-demo-edge-read-only.git"},
+                            "commit": {"value": "cccccccccccccccccccc"},
+                        }
+                    },
                 ],
             }
         }
     }
     response2 = {
         "data": {
-            "CoreRepository": {
+            "CoreGenericRepository": {
                 "count": 1,
                 "edges": [
                     {
@@ -1062,7 +1069,16 @@ async def mock_repositories_query(httpx_mock: HTTPXMock) -> HTTPXMock:
                             "location": {"value": "git@github.com:dgarros/infrahub-demo-edge.git"},
                             "commit": {"value": "bbbbbbbbbbbbbbbbbbbb"},
                         }
-                    }
+                    },
+                    {
+                        "node": {
+                            "__typename": "CoreReadOnlyRepository",
+                            "id": "aeff0feb-6a49-406e-b395-de7b7856026d",
+                            "name": {"value": "infrahub-demo-edge-read-only"},
+                            "location": {"value": "git@github.com:dgarros/infrahub-demo-edge-read-only.git"},
+                            "commit": {"value": "dddddddddddddddddddd"},
+                        }
+                    },
                 ],
             }
         }
@@ -1252,7 +1268,7 @@ async def mock_query_repository_page2_2(
 
 @pytest.fixture
 async def mock_schema_query_01(httpx_mock: HTTPXMock) -> HTTPXMock:
-    response_text = Path(os.path.join(get_fixtures_dir(), "schema_01.json")).read_text(encoding="UTF-8")
+    response_text = (get_fixtures_dir() / "schema_01.json").read_text(encoding="UTF-8")
 
     httpx_mock.add_response(
         method="GET",
@@ -1264,7 +1280,7 @@ async def mock_schema_query_01(httpx_mock: HTTPXMock) -> HTTPXMock:
 
 @pytest.fixture
 async def mock_schema_query_02(httpx_mock: HTTPXMock) -> HTTPXMock:
-    response_text = Path(os.path.join(get_fixtures_dir(), "schema_02.json")).read_text(encoding="UTF-8")
+    response_text = (get_fixtures_dir() / "schema_02.json").read_text(encoding="UTF-8")
 
     httpx_mock.add_response(
         method="GET",
@@ -1282,7 +1298,7 @@ async def mock_rest_api_artifact_definition_generate(httpx_mock: HTTPXMock) -> H
 
 @pytest.fixture
 async def mock_rest_api_artifact_fetch(httpx_mock: HTTPXMock) -> HTTPXMock:
-    schema_response = Path(os.path.join(get_fixtures_dir(), "schema_03.json")).read_text(encoding="UTF-8")
+    schema_response = (get_fixtures_dir() / "schema_03.json").read_text(encoding="UTF-8")
 
     httpx_mock.add_response(
         method="GET",
@@ -1374,7 +1390,7 @@ ip name-server 1.1.1.1
 
 @pytest.fixture
 async def mock_rest_api_artifact_generate(httpx_mock: HTTPXMock) -> HTTPXMock:
-    schema_response = Path(os.path.join(get_fixtures_dir(), "schema_04.json")).read_text(encoding="UTF-8")
+    schema_response = (get_fixtures_dir() / "schema_04.json").read_text(encoding="UTF-8")
 
     httpx_mock.add_response(
         method="GET",
@@ -1582,6 +1598,29 @@ async def mock_query_mutation_schema_enum_add(httpx_mock: HTTPXMock) -> HTTPXMoc
 async def mock_query_mutation_schema_enum_remove(httpx_mock: HTTPXMock) -> HTTPXMock:
     response = {"data": {"SchemaEnumRemove": {"ok": True}}}
     httpx_mock.add_response(method="POST", url="http://mock/graphql", json=response)
+
+
+@pytest.fixture
+async def mock_query_mutation_location_create_failed(httpx_mock: HTTPXMock) -> HTTPXMock:
+    response1 = {
+        "data": {"BuiltinLocationCreate": {"ok": True, "object": {"id": "17aec828-9814-ce00-3f20-1a053670f1c8"}}}
+    }
+    response2 = {
+        "data": {"BuiltinLocationCreate": None},
+        "errors": [
+            {
+                "message": "An object already exist with this value: name: JFK1 at name",
+                "locations": [{"line": 2, "column": 5}],
+                "path": ["BuiltinLocationCreate"],
+            }
+        ],
+    }
+    url_regex = re.compile(
+        r"http://mock/graphql/main\?at=[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{6}Z"
+    )
+    httpx_mock.add_response(method="POST", url=url_regex, json=response1)
+    httpx_mock.add_response(method="POST", url=url_regex, json=response2)
+    return httpx_mock
 
 
 @pytest.fixture

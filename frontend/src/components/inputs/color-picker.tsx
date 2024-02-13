@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { ColorResult, Colorful, HsvaColor } from "@uiw/react-color";
+import { ColorResult, Colorful, HsvaColor } from "@uiw/react-color/src/index";
 import { useState } from "react";
 import { getTextColor } from "../../utils/common";
 import { POPOVER_SIZE, PopOver } from "../display/popover";

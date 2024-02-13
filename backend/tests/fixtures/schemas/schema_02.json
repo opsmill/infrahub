@@ -115,7 +115,6 @@
             "inherit_from": [
                 "CoreGroup"
             ],
-            "groups": [],
             "branch": "aware",
             "filters": [
                 {
@@ -302,7 +301,6 @@
             "inherit_from": [
                 "CoreGroup"
             ],
-            "groups": [],
             "branch": "local",
             "filters": [
                 {
@@ -541,7 +539,6 @@
             "inherit_from": [
                 "TestCar"
             ],
-            "groups": [],
             "branch": "aware",
             "filters": [
                 {
@@ -787,7 +784,6 @@
             "inherit_from": [
                 "TestCar"
             ],
-            "groups": [],
             "branch": "aware",
             "filters": [
                 {
@@ -1006,7 +1002,6 @@
             ],
             "label": null,
             "inherit_from": [],
-            "groups": [],
             "branch": "aware",
             "filters": [
                 {
@@ -1198,7 +1193,6 @@
             ],
             "label": "Criticality",
             "inherit_from": [],
-            "groups": [],
             "branch": "aware",
             "filters": [
                 {
@@ -1380,7 +1374,6 @@
             ],
             "label": "Tag",
             "inherit_from": [],
-            "groups": [],
             "branch": "aware",
             "filters": [
                 {
@@ -1597,7 +1590,6 @@
             ],
             "label": "Organization",
             "inherit_from": [],
-            "groups": [],
             "branch": "aware",
             "filters": [
                 {
@@ -1891,7 +1883,6 @@
                 "LineageOwner",
                 "LineageSource"
             ],
-            "groups": [],
             "branch": "aware",
             "filters": [
                 {
@@ -2166,7 +2157,6 @@
             ],
             "label": "Account Token",
             "inherit_from": [],
-            "groups": [],
             "branch": "aware",
             "filters": [
                 {
@@ -2375,7 +2365,6 @@
             ],
             "label": "Refresh Token",
             "inherit_from": [],
-            "groups": [],
             "branch": "aware",
             "filters": [
                 {
@@ -2789,7 +2778,6 @@
             ],
             "label": "Proposed Change",
             "inherit_from": [],
-            "groups": [],
             "branch": "aware",
             "filters": [
                 {
@@ -3103,7 +3091,6 @@
             "inherit_from": [
                 "CoreThread"
             ],
-            "groups": [],
             "branch": "aware",
             "filters": [
                 {
@@ -3518,7 +3505,6 @@
             "inherit_from": [
                 "CoreThread"
             ],
-            "groups": [],
             "branch": "aware",
             "filters": [
                 {
@@ -3849,7 +3835,6 @@
             "inherit_from": [
                 "CoreThread"
             ],
-            "groups": [],
             "branch": "aware",
             "filters": [
                 {
@@ -4129,7 +4114,6 @@
             "inherit_from": [
                 "CoreComment"
             ],
-            "groups": [],
             "branch": "aware",
             "filters": [
                 {
@@ -4381,7 +4365,6 @@
             "inherit_from": [
                 "CoreComment"
             ],
-            "groups": [],
             "branch": "aware",
             "filters": [
                 {
@@ -4555,7 +4538,6 @@
             ],
             "label": "Status",
             "inherit_from": [],
-            "groups": [],
             "branch": "aware",
             "filters": [
                 {
@@ -4743,7 +4725,6 @@
             ],
             "label": "Role",
             "inherit_from": [],
-            "groups": [],
             "branch": "aware",
             "filters": [
                 {
@@ -4967,7 +4948,6 @@
             ],
             "label": "Location",
             "inherit_from": [],
-            "groups": [],
             "branch": "aware",
             "filters": [
                 {
@@ -5006,7 +4986,7 @@
                     "description": null
                 }
             ],
-            "kind": "BuiltinLocation"
+            "kind": "InfraSite"
         },
         {
             "name": "Repository",
@@ -5244,12 +5224,12 @@
                     "order_weight": 9000
                 },
                 {
-                    "name": "rfiles",
-                    "peer": "CoreRFile",
+                    "name": "jinja2_transforms",
+                    "peer": "CoreTransformJinja2",
                     "kind": "Generic",
                     "label": null,
                     "description": null,
-                    "identifier": "repository__rfile",
+                    "identifier": "repository__jinja2",
                     "inherited": false,
                     "cardinality": "many",
                     "branch": "aware",
@@ -5577,7 +5557,6 @@
                 "LineageOwner",
                 "LineageSource"
             ],
-            "groups": [],
             "branch": "aware",
             "filters": [
                 {
@@ -5654,7 +5633,7 @@
             "kind": "CoreRepository"
         },
         {
-            "name": "RFile",
+            "name": "TransformJinja2",
             "namespace": "Core",
             "description": "A file rendered from a Jinja2 template",
             "default_filter": "name__value",
@@ -5999,11 +5978,10 @@
                     "order_weight": 11000
                 }
             ],
-            "label": "RFile",
+            "label": "Transform Jinja2",
             "inherit_from": [
                 "CoreTransformation"
             ],
-            "groups": [],
             "branch": "aware",
             "filters": [
                 {
@@ -6077,7 +6055,7 @@
                     "description": null
                 }
             ],
-            "kind": "CoreRFile"
+            "kind": "CoreTransformJinja2"
         },
         {
             "name": "CheckDefinition",
@@ -6432,7 +6410,6 @@
             ],
             "label": "Check Definition",
             "inherit_from": [],
-            "groups": [],
             "branch": "aware",
             "filters": [
                 {
@@ -6892,7 +6869,6 @@
             "inherit_from": [
                 "CoreTransformation"
             ],
-            "groups": [],
             "branch": "aware",
             "filters": [
                 {
@@ -7243,7 +7219,6 @@
             ],
             "label": "GraphQL Query",
             "inherit_from": [],
-            "groups": [],
             "branch": "aware",
             "filters": [
                 {
@@ -7603,7 +7578,6 @@
             ],
             "label": "Artifact",
             "inherit_from": [],
-            "groups": [],
             "branch": "aware",
             "filters": [
                 {
@@ -7952,7 +7926,6 @@
             ],
             "label": "Artifact Definition",
             "inherit_from": [],
-            "groups": [],
             "branch": "aware",
             "filters": [
                 {
@@ -8825,7 +8798,7 @@
             "branch": "aware",
             "label": "Transformation",
             "used_by": [
-                "CoreRFile",
+                "CoreTransformJinja2",
                 "CoreTransformPython"
             ],
             "kind": "CoreTransformation"

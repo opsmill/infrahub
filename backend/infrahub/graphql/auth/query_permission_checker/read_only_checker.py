@@ -13,7 +13,7 @@ class ReadOnlyGraphQLPermissionChecker(GraphQLQueryPermissionCheckerInterface):
     async def supports(self, account_session: AccountSession) -> bool:
         return account_session.authenticated and account_session.read_only
 
-    async def check(self, analyzed_query: InfrahubGraphQLQueryAnalyzer):
+    async def check(self, analyzed_query: InfrahubGraphQLQueryAnalyzer) -> None:
         for operation in analyzed_query.operations:
             if (
                 operation.operation_type == OperationType.MUTATION

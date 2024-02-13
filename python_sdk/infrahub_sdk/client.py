@@ -5,9 +5,10 @@ import copy
 import logging
 from logging import Logger
 from time import sleep
-from typing import Any, Dict, List, MutableMapping, Optional, TypedDict, Union
+from typing import TYPE_CHECKING, Any, Dict, List, MutableMapping, Optional, Type, TypedDict, Union
 
 import httpx
+from typing_extensions import TypedDict as ExtensionTypedDict
 
 from infrahub_sdk.batch import InfrahubBatch
 from infrahub_sdk.branch import (
@@ -31,14 +32,25 @@ from infrahub_sdk.node import (
     InfrahubNodeSync,
 )
 from infrahub_sdk.object_store import ObjectStore, ObjectStoreSync
-from infrahub_sdk.queries import MUTATION_COMMIT_UPDATE, QUERY_ALL_REPOSITORIES
+from infrahub_sdk.queries import get_commit_update_mutation
+from infrahub_sdk.query_groups import InfrahubGroupContext, InfrahubGroupContextSync
 from infrahub_sdk.schema import InfrahubSchema, InfrahubSchemaSync, NodeSchema
 from infrahub_sdk.store import NodeStore, NodeStoreSync
 from infrahub_sdk.timestamp import Timestamp
 from infrahub_sdk.types import AsyncRequester, HTTPMethod, SyncRequester
 from infrahub_sdk.utils import is_valid_uuid
 
+if TYPE_CHECKING:
+    from types import TracebackType
+
 # pylint: disable=redefined-builtin  disable=too-many-lines
+
+
+class NodeDiff(ExtensionTypedDict):
+    branch: str
+    actions: List[str]
+    kind: str
+    node: str
 
 
 class ProcessRelationsNode(TypedDict):
@@ -61,9 +73,11 @@ class BaseClient:
         retry_delay: int = 5,
         log: Optional[Logger] = None,
         insert_tracker: bool = False,
+        update_group_context: bool = False,
         pagination_size: int = 50,
         max_concurrent_execution: int = 5,
-        config: Optional[Config] = None,
+        config: Optional[Union[Config, Dict[str, Any]]] = None,
+        identifier: Optional[str] = None,
     ):
         self.client = None
         self.retry_on_failure = retry_on_failure
@@ -76,10 +90,9 @@ class BaseClient:
         self.refresh_token: str = ""
         if isinstance(config, Config):
             self.config = config
-        elif isinstance(config, dict):
-            self.config = Config(**config)
         else:
-            self.config = Config()
+            config = config or {}
+            self.config = Config(**config)
 
         self.default_branch = self.config.default_infrahub_branch
         self.default_timeout = self.config.timeout
@@ -91,6 +104,8 @@ class BaseClient:
 
         self.max_concurrent_execution = max_concurrent_execution
 
+        self.update_group_context = update_group_context
+        self.identifier = identifier
         self._initialize()
 
     def _initialize(self) -> None:
@@ -110,10 +125,14 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
         self.store = NodeStore()
         self.concurrent_execution_limit = asyncio.Semaphore(self.max_concurrent_execution)
         self._request_method: AsyncRequester = self.config.requester or self._default_request_method
+        self.group_context = InfrahubGroupContext(self)
 
     @classmethod
     async def init(cls, *args: Any, **kwargs: Any) -> InfrahubClient:
         return cls(*args, **kwargs)
+
+    async def set_context_properties(self, identifier: str, params: Optional[Dict[str, str]] = None) -> None:
+        self.group_context.set_properties(identifier=identifier, params=params)
 
     async def create(
         self,
@@ -295,12 +314,16 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
 
         nodes: List[InfrahubNode] = []
         related_nodes: List[InfrahubNode] = []
-        # If Offset or Limit was provided we just query as it
-        # If not, we'll query all nodes based on the size of the batch
-        if offset or limit:
+
+        has_remaining_items = True
+        page_number = 1
+
+        while has_remaining_items:
+            page_offset = (page_number - 1) * self.pagination_size
+
             query_data = await InfrahubNode(client=self, schema=schema, branch=branch).generate_query_data(
-                offset=offset,
-                limit=limit,
+                offset=offset or page_offset,
+                limit=limit or self.pagination_size,
                 filters=filters,
                 include=include,
                 exclude=exclude,
@@ -312,51 +335,20 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
                 query=query.render(),
                 branch_name=branch,
                 at=at,
-                tracker=f"query-{str(schema.kind).lower()}-page1",
+                tracker=f"query-{str(schema.kind).lower()}-page{page_number}",
             )
 
             process_result: ProcessRelationsNode = await self._process_nodes_and_relationships(
                 response=response, schema_kind=schema.kind, branch=branch, prefetch_relationships=prefetch_relationships
             )
-            nodes = process_result["nodes"]
-            related_nodes = process_result["related_nodes"]
+            nodes.extend(process_result["nodes"])
+            related_nodes.extend(process_result["related_nodes"])
 
-        else:
-            has_remaining_items = True
-            page_number = 1
-            while has_remaining_items:
-                page_offset = (page_number - 1) * self.pagination_size
+            remaining_items = response[schema.kind].get("count", 0) - (page_offset + self.pagination_size)
+            if remaining_items < 0 or offset is not None or limit is not None:
+                has_remaining_items = False
 
-                query_data = await InfrahubNode(client=self, schema=schema, branch=branch).generate_query_data(
-                    offset=page_offset,
-                    limit=self.pagination_size,
-                    filters=filters,
-                    include=include,
-                    exclude=exclude,
-                    fragment=fragment,
-                    prefetch_relationships=prefetch_relationships,
-                )
-                query = Query(query=query_data)
-                response = await self.execute_graphql(
-                    query=query.render(),
-                    branch_name=branch,
-                    at=at,
-                    tracker=f"query-{str(schema.kind).lower()}-page{page_number}",
-                )
-                _process_result: ProcessRelationsNode = await self._process_nodes_and_relationships(
-                    response=response,
-                    schema_kind=schema.kind,
-                    branch=branch,
-                    prefetch_relationships=prefetch_relationships,
-                )
-                nodes.extend(_process_result["nodes"])
-                related_nodes.extend(_process_result["related_nodes"])
-
-                remaining_items = response[schema.kind].get("count", 0) - (page_offset + self.pagination_size)
-                if remaining_items < 0:
-                    has_remaining_items = False
-
-                page_number += 1
+            page_number += 1
 
         if populate_store:
             for node in nodes:
@@ -391,7 +383,6 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
             rebase (bool, optional): Flag to indicate if the branch should be rebased during the query. Defaults to False.
             timeout (int, optional): Timeout in second for the query. Defaults to None.
             raise_for_error (bool, optional): Flag to indicate that we need to raise an exception if the response has some errors. Defaults to True.
-
         Raises:
             GraphQLError: _description_
 
@@ -628,58 +619,88 @@ class InfrahubClient(BaseClient):  # pylint: disable=too-many-public-methods
 
         return resp.json()
 
+    async def get_diff_summary(
+        self,
+        branch: str,
+        timeout: Optional[int] = None,
+        tracker: Optional[str] = None,
+        raise_for_error: bool = True,
+    ) -> List[NodeDiff]:
+        query = """
+            query {
+                DiffSummary {
+                    kind
+                    node
+                    branch
+                    actions
+                }
+            }
+        """
+        response = await self.execute_graphql(
+            query=query, branch_name=branch, timeout=timeout, tracker=tracker, raise_for_error=raise_for_error
+        )
+        return response["DiffSummary"]
+
     async def create_batch(self, return_exceptions: bool = False) -> InfrahubBatch:
         return InfrahubBatch(semaphore=self.concurrent_execution_limit, return_exceptions=return_exceptions)
 
     async def get_list_repositories(
-        self, branches: Optional[Dict[str, BranchData]] = None
+        self, branches: Optional[Dict[str, BranchData]] = None, kind: str = "CoreGenericRepository"
     ) -> Dict[str, RepositoryData]:
         if not branches:
             branches = await self.branch.all()  # type: ignore
 
         branch_names = sorted(branches.keys())  # type: ignore
 
-        tasks = []
+        batch = await self.create_batch()
         for branch_name in branch_names:
-            tasks.append(
-                self.execute_graphql(
-                    query=QUERY_ALL_REPOSITORIES,
-                    branch_name=branch_name,
-                    tracker="query-repository-all",
-                )
+            batch.add(
+                task=self.all,
+                kind=kind,
+                branch=branch_name,
+                fragment=True,
+                include=["id", "name", "location", "commit", "ref"],
             )
-            # TODO need to rate limit how many requests we are sending at once to avoid doing a DOS on the API
 
-        responses = await asyncio.gather(*tasks)
+        responses = []
+        async for _, response in batch.execute():
+            responses.append(response)
 
         repositories = {}
 
         for branch_name, response in zip(branch_names, responses):
-            repos = response["CoreRepository"]["edges"]
-            for repository in repos:
-                repo_name = repository["node"]["name"]["value"]
+            for repository in response:
+                repo_name = repository.name.value
                 if repo_name not in repositories:
                     repositories[repo_name] = RepositoryData(
-                        id=repository["node"]["id"],
-                        name=repo_name,
-                        location=repository["node"]["location"]["value"],
+                        repository=repository,
                         branches={},
                     )
 
-                repositories[repo_name].branches[branch_name] = repository["node"]["commit"]["value"]
+                repositories[repo_name].branches[branch_name] = repository.commit.value
 
         return repositories
 
-    async def repository_update_commit(self, branch_name: str, repository_id: str, commit: str) -> bool:
+    async def repository_update_commit(
+        self, branch_name: str, repository_id: str, commit: str, is_read_only: bool = False
+    ) -> bool:
         variables = {"repository_id": str(repository_id), "commit": str(commit)}
         await self.execute_graphql(
-            query=MUTATION_COMMIT_UPDATE,
+            query=get_commit_update_mutation(is_read_only=is_read_only),
             variables=variables,
             branch_name=branch_name,
             tracker="mutation-repository-update-commit",
         )
 
         return True
+
+    async def __aenter__(self) -> InfrahubClient:
+        return self
+
+    async def __aexit__(
+        self, exc_type: Type[BaseException], exc_value: BaseException, traceback: TracebackType
+    ) -> None:  # pylint: disable=unused-argument
+        await self.group_context.update_group()
 
 
 class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
@@ -689,10 +710,14 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         self.object_store = ObjectStoreSync(self)
         self.store = NodeStoreSync()
         self._request_method: SyncRequester = self.config.sync_requester or self._default_request_method
+        self.group_context = InfrahubGroupContextSync(self)
 
     @classmethod
     def init(cls, *args: Any, **kwargs: Any) -> InfrahubClientSync:
         return cls(*args, **kwargs)
+
+    def set_context_properties(self, identifier: str, params: Optional[Dict[str, str]] = None) -> None:
+        self.group_context.set_properties(identifier=identifier, params=params)
 
     def create(
         self,
@@ -734,7 +759,6 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
             rebase (bool, optional): Flag to indicate if the branch should be rebased during the query. Defaults to False.
             timeout (int, optional): Timeout in second for the query. Defaults to None.
             raise_for_error (bool, optional): Flag to indicate that we need to raise an exception if the response has some errors. Defaults to True.
-
         Raises:
             GraphQLError: _description_
 
@@ -921,12 +945,16 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
 
         nodes: List[InfrahubNodeSync] = []
         related_nodes: List[InfrahubNodeSync] = []
-        # If Offset or Limit was provided we just query as it
-        # If not, we'll query all nodes based on the size of the batch
-        if offset or limit:
+
+        has_remaining_items = True
+        page_number = 1
+
+        while has_remaining_items:
+            page_offset = (page_number - 1) * self.pagination_size
+
             query_data = InfrahubNodeSync(client=self, schema=schema, branch=branch).generate_query_data(
-                offset=offset,
-                limit=limit,
+                offset=offset or page_offset,
+                limit=limit or self.pagination_size,
                 filters=filters,
                 include=include,
                 exclude=exclude,
@@ -938,51 +966,20 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
                 query=query.render(),
                 branch_name=branch,
                 at=at,
-                tracker=f"query-{str(schema.kind).lower()}-page1",
+                tracker=f"query-{str(schema.kind).lower()}-page{page_number}",
             )
+
             process_result: ProcessRelationsNodeSync = self._process_nodes_and_relationships(
                 response=response, schema_kind=schema.kind, branch=branch, prefetch_relationships=prefetch_relationships
             )
-            nodes = process_result["nodes"]
-            related_nodes = process_result["related_nodes"]
+            nodes.extend(process_result["nodes"])
+            related_nodes.extend(process_result["related_nodes"])
 
-        else:
-            has_remaining_items = True
-            page_number = 1
-            while has_remaining_items:
-                page_offset = (page_number - 1) * self.pagination_size
+            remaining_items = response[schema.kind].get("count", 0) - (page_offset + self.pagination_size)
+            if remaining_items < 0 or offset is not None or limit is not None:
+                has_remaining_items = False
 
-                query_data = InfrahubNodeSync(client=self, schema=schema, branch=branch).generate_query_data(
-                    offset=page_offset,
-                    limit=self.pagination_size,
-                    filters=filters,
-                    include=include,
-                    exclude=exclude,
-                    fragment=fragment,
-                    prefetch_relationships=prefetch_relationships,
-                )
-                query = Query(query=query_data)
-                response = self.execute_graphql(
-                    query=query.render(),
-                    branch_name=branch,
-                    at=at,
-                    tracker=f"query-{str(schema.kind).lower()}-page{page_number}",
-                )
-
-                _process_result: ProcessRelationsNodeSync = self._process_nodes_and_relationships(
-                    response=response,
-                    schema_kind=schema.kind,
-                    branch=branch,
-                    prefetch_relationships=prefetch_relationships,
-                )
-                nodes.extend(_process_result["nodes"])
-                related_nodes.extend(_process_result["related_nodes"])
-
-                remaining_items = response[schema.kind].get("count", 0) - (page_offset + self.pagination_size)
-                if remaining_items < 0:
-                    has_remaining_items = False
-
-                page_number += 1
+            page_number += 1
 
         if populate_store:
             for node in nodes:
@@ -1042,7 +1039,9 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
 
         return results[0]
 
-    def get_list_repositories(self, branches: Optional[Dict[str, BranchData]] = None) -> Dict[str, RepositoryData]:
+    def get_list_repositories(
+        self, branches: Optional[Dict[str, BranchData]] = None, kind: str = "CoreGenericRepository"
+    ) -> Dict[str, RepositoryData]:
         raise NotImplementedError(
             "This method is deprecated in the async client and won't be implemented in the sync client."
         )
@@ -1106,7 +1105,31 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
 
         return resp.json()
 
-    def repository_update_commit(self, branch_name: str, repository_id: str, commit: str) -> bool:
+    def get_diff_summary(
+        self,
+        branch: str,
+        timeout: Optional[int] = None,
+        tracker: Optional[str] = None,
+        raise_for_error: bool = True,
+    ) -> List[NodeDiff]:
+        query = """
+            query {
+                DiffSummary {
+                    kind
+                    node
+                    branch
+                    actions
+                }
+            }
+        """
+        response = self.execute_graphql(
+            query=query, branch_name=branch, timeout=timeout, tracker=tracker, raise_for_error=raise_for_error
+        )
+        return response["DiffSummary"]
+
+    def repository_update_commit(
+        self, branch_name: str, repository_id: str, commit: str, is_read_only: bool = False
+    ) -> bool:
         raise NotImplementedError(
             "This method is deprecated in the async client and won't be implemented in the sync client."
         )
@@ -1217,3 +1240,9 @@ class InfrahubClientSync(BaseClient):  # pylint: disable=too-many-public-methods
         self.access_token = response.json()["access_token"]
         self.refresh_token = response.json()["refresh_token"]
         self.headers["Authorization"] = f"Bearer {self.access_token}"
+
+    def __enter__(self) -> InfrahubClientSync:
+        return self
+
+    def __exit__(self, exc_type: Type[BaseException], exc_value: BaseException, traceback: TracebackType) -> None:  # pylint: disable=unused-argument
+        self.group_context.update_group()

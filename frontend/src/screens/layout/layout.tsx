@@ -1,24 +1,19 @@
-import { useState } from "react";
 import { Outlet } from "react-router-dom";
-import DesktopMenu from "./desktop-menu";
 import Header from "./header";
+import { Sidebar } from "./sidebar";
 
 export default function Layout() {
-  const [, setSidebarOpen] = useState(false);
-
   return (
-    <>
-      <div className="h-screen flex overflow-x-hidden">
-        <DesktopMenu />
+    <div className="h-screen flex overflow-x-hidden">
+      <Sidebar />
 
-        <div className="flex flex-1 flex-col bg-gray-100 overflow-y-scroll overflow-x-hidden">
-          <Header setSidebarOpen={setSidebarOpen} />
+      <div className="flex flex-1 flex-col bg-gray-100 overflow-y-scroll overflow-x-hidden">
+        <Header />
 
-          <div className="flex flex-col flex-1">
-            <Outlet />
-          </div>
-        </div>
+        <main className="flex flex-col flex-1">
+          <Outlet />
+        </main>
       </div>
-    </>
+    </div>
   );
 }

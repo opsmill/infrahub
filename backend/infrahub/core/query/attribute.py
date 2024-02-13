@@ -1,16 +1,17 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
-from infrahub.core.query import Query, QueryType
+from infrahub.core.constants.relationship_label import RELATIONSHIP_TO_NODE_LABEL, RELATIONSHIP_TO_VALUE_LABEL
+from infrahub.core.constants.schema import FlagProperty, NodeProperty
+from infrahub.core.query import Query, QueryNode, QueryRel, QueryType
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
     from infrahub.core.attribute import BaseAttribute
     from infrahub.core.branch import Branch
+    from infrahub.core.query import QueryElement
     from infrahub.database import InfrahubDatabase
-
-# flake8: noqa: F723
 
 
 class AttributeQuery(Query):
@@ -37,45 +38,6 @@ class AttributeQuery(Query):
         self.branch = branch or self.attr.get_branch_based_on_support_type()
 
         super().__init__(*args, **kwargs)
-
-
-class AttributeGetValueQuery(AttributeQuery):
-    name = "attribute_get_value"
-    type: QueryType = QueryType.READ
-
-    async def query_init(self, db: InfrahubDatabase, *args, **kwargs):
-        self.params["attr_uuid"] = self.attr.id
-        at = self.at or self.attr.at
-        self.params["at"] = at.to_string()
-
-        branch = self.branch or self.attr.branch
-
-        rels_filter, rel_params = branch.get_query_filter_relationships(rel_labels=["r"], at=at.to_string())
-        self.params.update(rel_params)
-
-        query = """
-        MATCH (a { uuid: $attr_uuid })
-        MATCH (a)-[r:HAS_VALUE]-(av)
-        WHERE %s
-        """ % ("\n AND ".join(rels_filter),)
-
-        self.add_to_query(query)
-
-        self.return_labels = ["a", "av", "r"]
-
-    def get_value(self):
-        result = self.get_result()
-        if not result:
-            return None
-
-        return result.get("av").get("value")
-
-    def get_relationship(self):
-        result = self.get_result()
-        if not result:
-            return None
-
-        return result.get("r")
 
 
 class AttributeUpdateValueQuery(AttributeQuery):
@@ -217,3 +179,91 @@ class AttributeGetQuery(AttributeQuery):
         self.add_to_query(query)
 
         self.return_labels = ["a", "ap", "r2"]
+
+
+async def default_attribute_query_filter(  # pylint: disable=unused-argument,disable=too-many-branches
+    name: str,
+    filter_name: str,
+    branch: Optional[Branch] = None,
+    filter_value: Optional[Union[str, int, bool, list]] = None,
+    include_match: bool = True,
+    param_prefix: Optional[str] = None,
+    db: Optional[InfrahubDatabase] = None,
+    partial_match: bool = False,
+) -> Tuple[List[QueryElement], Dict[str, Any], List[str]]:
+    """Generate Query String Snippet to filter the right node."""
+
+    query_filter: List[QueryElement] = []
+    query_params: Dict[str, Any] = {}
+    query_where: List[str] = []
+
+    if filter_value and not isinstance(filter_value, (str, bool, int, list)):
+        raise TypeError(f"filter {filter_name}: {filter_value} ({type(filter_value)}) is not supported.")
+
+    if isinstance(filter_value, list) and not all(isinstance(value, (str, bool, int)) for value in filter_value):
+        raise TypeError(f"filter {filter_name}: {filter_value} (list) contains unsupported item")
+
+    param_prefix = param_prefix or f"attr_{name}"
+
+    if include_match:
+        query_filter.append(QueryNode(name="n"))
+
+    query_filter.append(QueryRel(labels=[RELATIONSHIP_TO_NODE_LABEL]))
+
+    if name in ["any", "attribute"]:
+        query_filter.append(QueryNode(name="i", labels=["Attribute"]))
+    else:
+        query_filter.append(QueryNode(name="i", labels=["Attribute"], params={"name": f"${param_prefix}_name"}))
+        query_params[f"{param_prefix}_name"] = name
+
+    if filter_name == "value":
+        query_filter.append(QueryRel(labels=[RELATIONSHIP_TO_VALUE_LABEL]))
+
+        if filter_value is None:
+            query_filter.append(QueryNode(name="av", labels=["AttributeValue"]))
+        else:
+            if partial_match:
+                query_filter.append(QueryNode(name="av", labels=["AttributeValue"]))
+                query_where.append(f"av.value CONTAINS ${param_prefix}_value")
+            else:
+                query_filter.append(
+                    QueryNode(name="av", labels=["AttributeValue"], params={"value": f"${param_prefix}_value"})
+                )
+            query_params[f"{param_prefix}_value"] = filter_value
+
+    elif filter_name == "values" and isinstance(filter_value, list):
+        query_filter.extend(
+            (QueryRel(labels=[RELATIONSHIP_TO_VALUE_LABEL]), QueryNode(name="av", labels=["AttributeValue"]))
+        )
+        query_where.append(f"av.value IN ${param_prefix}_value")
+        query_params[f"{param_prefix}_value"] = filter_value
+
+    elif filter_name in [v.value for v in FlagProperty] and filter_value is not None:
+        query_filter.append(QueryRel(labels=[filter_name.upper()]))
+        query_filter.append(
+            QueryNode(name="ap", labels=["Boolean"], params={"value": f"${param_prefix}_{filter_name}"})
+        )
+        query_params[f"{param_prefix}_{filter_name}"] = filter_value
+
+    elif "__" in filter_name and filter_value is not None:
+        filter_name_split = filter_name.split(sep="__", maxsplit=1)
+        property_name: str = filter_name_split[0]
+        property_attr: str = filter_name_split[1]
+
+        if property_name not in [v.value for v in NodeProperty]:
+            raise ValueError(f"filter {filter_name}: {filter_value}, {property_name} is not a valid property")
+
+        if property_attr not in ["id"]:
+            raise ValueError(f"filter {filter_name}: {filter_value}, {property_attr} is supported")
+
+        clean_filter_name = f"{property_name}_{property_attr}"
+
+        query_filter.extend(
+            [
+                QueryRel(labels=[f"HAS_{property_name.upper()}"]),
+                QueryNode(name="ap", labels=["CoreNode"], params={"uuid": f"${param_prefix}_{clean_filter_name}"}),
+            ]
+        )
+        query_params[f"{param_prefix}_{clean_filter_name}"] = filter_value
+
+    return query_filter, query_params, query_where

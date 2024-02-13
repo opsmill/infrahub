@@ -17,12 +17,15 @@ class DatabaseType(str, Enum):
 INVOKE_SUDO = os.getenv("INVOKE_SUDO", None)
 INVOKE_PTY = os.getenv("INVOKE_PTY", None)
 INFRAHUB_DATABASE = os.getenv("INFRAHUB_DB_TYPE", DatabaseType.NEO4J.value)
+INFRAHUB_ADDRESS = os.getenv("INFRAHUB_ADDRESS", "http://localhost:8000")
 
 DATABASE_DOCKER_IMAGE = os.getenv("DATABASE_DOCKER_IMAGE", None)
-MEMGRAPH_DOCKER_IMAGE = os.getenv("MEMGRAPH_DOCKER_IMAGE", "memgraph/memgraph:2.13.0")
-NEO4J_DOCKER_IMAGE = os.getenv("NEO4J_DOCKER_IMAGE", "neo4j:5.14-community")
-MESSAGE_QUEUE_DOCKER_IMAGE = os.getenv("MESSAGE_QUEUE_DOCKER_IMAGE", "rabbitmq:3.12-management")
-CACHE_DOCKER_IMAGE = os.getenv("CACHE_DOCKER_IMAGE", "redis:7.2")
+MEMGRAPH_DOCKER_IMAGE = os.getenv(
+    "MEMGRAPH_DOCKER_IMAGE", "memgraph/memgraph-platform:2.14.0-memgraph2.14.0-lab2.11.1-mage1.14"
+)
+NEO4J_DOCKER_IMAGE = os.getenv("NEO4J_DOCKER_IMAGE", "neo4j:5.16.0-enterprise")
+MESSAGE_QUEUE_DOCKER_IMAGE = os.getenv("MESSAGE_QUEUE_DOCKER_IMAGE", "rabbitmq:3.12.12-management")
+CACHE_DOCKER_IMAGE = os.getenv("CACHE_DOCKER_IMAGE", "redis:7.2.4")
 
 here = os.path.abspath(os.path.dirname(__file__))
 TOP_DIRECTORY_NAME = os.path.basename(os.path.abspath(os.path.join(here, "..")))
@@ -56,6 +59,12 @@ TEST_SCALE_COMPOSE_FILE = "development/docker-compose-test-scale.yml"
 TEST_SCALE_COMPOSE_FILES_NEO4J = [
     "development/docker-compose-deps.yml",
     "development/docker-compose-database-neo4j.yml",
+    "development/docker-compose-test-cache.yml",
+    TEST_SCALE_COMPOSE_FILE,
+]
+TEST_SCALE_COMPOSE_FILES_MEMGRAPH = [
+    "development/docker-compose-deps.yml",
+    "development/docker-compose-database-memgraph.yml",
     "development/docker-compose-test-cache.yml",
     TEST_SCALE_COMPOSE_FILE,
 ]
@@ -233,14 +242,19 @@ def build_test_compose_files_cmd(
 def build_test_scale_compose_files_cmd(
     database: str = DatabaseType.NEO4J.value,
 ) -> str:
-    if database != DatabaseType.NEO4J:
-        exit(f"{database} is not supported for scale tests")
+    if database not in SUPPORTED_DATABASES:
+        exit(f"{database} is not a valid database ({SUPPORTED_DATABASES})")
+
+    if database == DatabaseType.MEMGRAPH.value:
+        TEST_SCALE_COMPOSE_FILES = TEST_SCALE_COMPOSE_FILES_MEMGRAPH
+    elif database == DatabaseType.NEO4J.value:
+        TEST_SCALE_COMPOSE_FILES = TEST_SCALE_COMPOSE_FILES_NEO4J
 
     if os.path.exists(TEST_SCALE_OVERRIDE_FILE_NAME):
         print("!! Found a test scale override file for docker-compose !!")
-        TEST_SCALE_COMPOSE_FILES_NEO4J.append(TEST_SCALE_OVERRIDE_FILE_NAME)
+        TEST_SCALE_COMPOSE_FILES.append(TEST_SCALE_OVERRIDE_FILE_NAME)
 
-    return f"-f {' -f '.join(TEST_SCALE_COMPOSE_FILES_NEO4J)}"
+    return f"-f {' -f '.join(TEST_SCALE_COMPOSE_FILES)}"
 
 
 def build_test_envs():

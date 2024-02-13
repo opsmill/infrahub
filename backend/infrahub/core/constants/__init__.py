@@ -7,7 +7,9 @@ from infrahub.core.constants import infrahubkind as InfrahubKind
 from infrahub.exceptions import ValidationError
 from infrahub.utils import InfrahubStringEnum
 
-__all__ = ["InfrahubKind"]
+from .schema import FlagProperty, NodeProperty, UpdateSupport, UpdateValidationErrorType
+
+__all__ = ["InfrahubKind", "FlagProperty", "NodeProperty", "UpdateSupport", "UpdateValidationErrorType"]
 
 
 GLOBAL_BRANCH_NAME = "-global-"
@@ -71,6 +73,16 @@ class BranchConflictKeep(InfrahubStringEnum):
 class ContentType(InfrahubStringEnum):
     APPLICATION_JSON = "application/json"
     TEXT_PLAIN = "text/plain"
+
+
+class CheckType(InfrahubStringEnum):
+    ARTIFACT = "artifact"
+    DATA = "data"
+    REPOSITORY = "repository"
+    SCHEMA = "schema"
+    TEST = "test"
+    USER = "user"
+    ALL = "all"
 
 
 class DiffAction(InfrahubStringEnum):
@@ -175,6 +187,12 @@ class Severity(InfrahubStringEnum):
     WARNING = "warning"
     ERROR = "error"
     CRITICAL = "critical"
+
+
+class TaskConclusion(InfrahubStringEnum):
+    UNKNOWN = "unknown"
+    FAILURE = "failure"
+    SUCCESS = "success"
 
 
 class ValidatorConclusion(InfrahubStringEnum):

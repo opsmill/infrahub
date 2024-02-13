@@ -1,6 +1,5 @@
 import { RegisterOptions } from "react-hook-form";
 import { SelectOption } from "../../components/inputs/select";
-import { iPeerDropdownOptions } from "../../graphql/queries/objects/dropdownOptionsForRelatedPeers";
 import { FormFieldError } from "./form";
 
 // Interface for every field in a create/edit form
@@ -12,9 +11,7 @@ export interface DynamicFieldData {
   kind?: SchemaAttributeType;
   placeholder?: string;
   value: any;
-  options?: {
-    values: SelectOption[];
-  };
+  options?: SelectOption[];
   config?: RegisterOptions;
   error?: FormFieldError;
   isProtected?: boolean;
@@ -35,6 +32,7 @@ export type SchemaAttributeType =
   | "Email"
   | "Password"
   | "HashedPassword"
+  | "Hierarchy"
   | "URL"
   | "File"
   | "MacAddress"
@@ -128,62 +126,4 @@ export const getInputTypeFromRelationship = (
   }
 
   return "select";
-};
-
-export const getOptionsFromAttribute = (attribute: any, value: any) => {
-  if (attribute.kind === "List") {
-    return value?.map((option: any) => ({
-      name: option,
-      id: option,
-    }));
-  }
-
-  if (attribute.enum) {
-    return attribute.enum?.map((option: any) => ({
-      name: option,
-      id: option,
-    }));
-  }
-
-  if (attribute.choices) {
-    return attribute.choices?.map((option: any) => ({
-      ...option,
-      id: option.name,
-      name: option.label,
-    }));
-  }
-
-  return [];
-};
-
-export const getOptionsFromRelationship = (
-  dropdownOptions: iPeerDropdownOptions,
-  relationship: any,
-  isInherited: any,
-  schemas: any,
-  generics: any
-) => {
-  if (!isInherited && dropdownOptions[relationship.peer]) {
-    return dropdownOptions[relationship.peer].map((row: any) => ({
-      name: row.display_label,
-      id: row.id,
-    }));
-  }
-
-  const generic = generics.find((generic: any) => generic.kind === relationship.peer);
-
-  if (generic) {
-    return (generic.used_by || []).map((name: string) => {
-      const relatedSchema = schemas.find((s: any) => s.kind === name);
-
-      if (relatedSchema) {
-        return {
-          id: name,
-          name: relatedSchema.name,
-        };
-      }
-    });
-  }
-
-  return [];
 };

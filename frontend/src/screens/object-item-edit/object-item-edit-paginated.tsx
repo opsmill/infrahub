@@ -7,7 +7,7 @@ import { ALERT_TYPES, Alert } from "../../components/utils/alert";
 import { AuthContext } from "../../decorators/withAuth";
 import graphqlClient from "../../graphql/graphqlClientApollo";
 import { updateObjectWithId } from "../../graphql/mutations/objects/updateObjectWithId";
-import { getObjectDetailsAndPeers } from "../../graphql/queries/objects/getObjectDetailsAndPeers";
+import { getObjectDetailsPaginated } from "../../graphql/queries/objects/getObjectDetails";
 import useQuery from "../../hooks/useQuery";
 import { currentBranchAtom } from "../../state/atoms/branches.atom";
 import { genericsState, schemaState } from "../../state/atoms/schema.atom";
@@ -15,11 +15,7 @@ import { schemaKindNameState } from "../../state/atoms/schemaKindName.atom";
 import { datetimeAtom } from "../../state/atoms/time.atom";
 import getFormStructureForCreateEdit from "../../utils/formStructureForCreateEdit";
 import getMutationDetailsFromFormData from "../../utils/getMutationDetailsFromFormData";
-import {
-  getObjectAttributes,
-  getObjectPeers,
-  getObjectRelationships,
-} from "../../utils/getSchemaObjectColumns";
+import { getSchemaObjectColumns } from "../../utils/getSchemaObjectColumns";
 import { stringifyWithoutQuotes } from "../../utils/string";
 import { DynamicFieldData } from "../edit-form-hook/dynamic-control-types";
 import EditFormHookComponent from "../edit-form-hook/edit-form-hook-component";
@@ -54,18 +50,13 @@ export default function ObjectItemEditComponent(props: Props) {
   const [isLoading, setIsLoading] = useState(false);
 
   const schema = schemaList.find((s) => s.kind === objectname);
-  const attributes = getObjectAttributes(schema);
-  const relationships = getObjectRelationships(schema);
-
-  const peers = getObjectPeers(schema);
+  const columns = getSchemaObjectColumns(schema);
 
   const queryString = schema
-    ? getObjectDetailsAndPeers({
+    ? getObjectDetailsPaginated({
         ...schema,
-        attributes,
-        relationships,
+        columns,
         objectid,
-        peers,
       })
     : // Empty query to make the gql parsing work
       // TODO: Find another solution for queries while loading schema
@@ -85,33 +76,15 @@ export default function ObjectItemEditComponent(props: Props) {
     return <LoadingScreen />;
   }
 
-  if (!data || (data && !data[`${schema.kind}DetailsAndPeers`])) {
+  if (!data) {
     return <NoDataFound message="No details found." />;
   }
 
-  const objectDetailsData = data[`${schema.kind}DetailsAndPeers`]?.edges[0]?.node;
-
-  const peerDropdownOptions = Object.entries(data).reduce((acc, [k, v]: [string, any]) => {
-    if (peers.includes(k)) {
-      return {
-        ...acc,
-        [k]: v.edges?.map((edge: any) => edge.node),
-      };
-    }
-    return acc;
-  }, {});
+  const objectDetailsData = data[schema.kind]?.edges[0]?.node;
 
   const formStructure =
     formStructureFromProps ??
-    getFormStructureForCreateEdit(
-      schema,
-      schemaList,
-      genericsList,
-      peerDropdownOptions,
-      objectDetailsData,
-      user,
-      true
-    );
+    getFormStructureForCreateEdit(schema, schemaList, genericsList, objectDetailsData, user, true);
 
   async function onSubmit(data: any) {
     const updatedObject = getMutationDetailsFromFormData(schema, data, "update", objectDetailsData);

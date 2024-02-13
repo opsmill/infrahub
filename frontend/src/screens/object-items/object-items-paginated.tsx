@@ -100,7 +100,7 @@ export default function ObjectItems(props: any) {
 
   // Get all the needed columns (attributes + relationships)
   const columns = getSchemaObjectColumns(schemaData, true);
-  const attributes = getObjectAttributes(schemaData);
+  const attributes = getObjectAttributes(schemaData, true);
   const relationships = getObjectRelationships(schemaData, true);
 
   const queryString = schemaData
@@ -224,14 +224,14 @@ export default function ObjectItems(props: any) {
               {rows?.map((row: any, index: number) => (
                 <tr
                   key={index}
-                  className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer"
+                  className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer h-[36px]"
                   data-cy="object-table-row">
                   {columns?.map((attribute) => (
                     <td key={row.id + "-" + attribute.name} className="p-0">
                       <Link
-                        className="whitespace-wrap px-2 py-1 text-xs text-gray-900 min-h-7 flex items-center"
+                        className="whitespace-wrap px-2 py-1 text-xs text-gray-900 flex items-center"
                         to={constructPath(getObjectDetailsUrl(row.id, row.__typename))}>
-                        <div className="flex-grow">{getObjectItemDisplayValue(row, attribute)}</div>
+                        <div>{getObjectItemDisplayValue(row, attribute)}</div>
                       </Link>
                     </td>
                   ))}

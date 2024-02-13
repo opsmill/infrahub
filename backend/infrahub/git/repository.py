@@ -7,6 +7,7 @@ import os
 import shutil
 import sys
 import types
+from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 from uuid import UUID
@@ -16,7 +17,7 @@ import jinja2
 import ujson
 import yaml
 from git import Repo
-from git.exc import GitCommandError, InvalidGitRepositoryError
+from git.exc import BadName, GitCommandError, InvalidGitRepositoryError
 from infrahub_sdk import (
     GraphQLError,
     InfrahubClient,
@@ -26,12 +27,12 @@ from infrahub_sdk import (
 )
 from infrahub_sdk.schema import (
     InfrahubCheckDefinitionConfig,
+    InfrahubJinja2TransformConfig,
     InfrahubPythonTransformConfig,
-    InfrahubRepositoryRFileConfig,
 )
 from infrahub_sdk.utils import YamlFile, compare_lists
 from pydantic import ValidationError as PydanticValidationError
-from pydantic.v1 import BaseModel, Field, validator
+from pydantic.v1 import BaseModel, Field
 
 import infrahub.config as config
 from infrahub.core.constants import InfrahubKind
@@ -131,7 +132,7 @@ class CheckDefinitionInformation(BaseModel):
     targets: Optional[str] = Field(default=None, description="Targets if not a global check")
 
 
-class InfrahubRepositoryRFile(InfrahubRepositoryRFileConfig):
+class InfrahubRepositoryJinja2(InfrahubJinja2TransformConfig):
     repository: str
 
 
@@ -147,9 +148,6 @@ class TransformPythonInformation(BaseModel):
 
     query: str
     """ID or name of the GraphQLQuery this Transform is assocated with"""
-
-    url: str
-    """External URL for the Transform function"""
 
     class_name: str
     """Name of the Python Class of the Transform Function"""
@@ -303,7 +301,7 @@ class BranchInLocal(BaseModel):
     has_worktree: bool = False
 
 
-class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
+class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public-methods
     """
     Local version of a Git repository organized to work with Infrahub.
     The idea is that all commits that are being tracked in the graph will be checkout out
@@ -316,25 +314,28 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         <repo_name>/commit     Directory for worktrees of individual commits
     """
 
-    id: UUID
-    name: str
-    default_branch_name: Optional[str] = None
+    id: UUID = Field(..., description="Internal UUID of the repository")
+    name: str = Field(..., description="Primary name of the repository")
+    default_branch_name: Optional[str] = Field(None, description="Default branch to use when pulling the repository")
     type: Optional[str] = None
-    location: Optional[str] = None
-    has_origin: bool = False
+    location: Optional[str] = Field(None, description="Location of the remote repository")
+    has_origin: bool = Field(
+        False, description="Flag to indicate if a remote repository (named origin) is present in the config."
+    )
 
-    client: Optional[InfrahubClient] = None
+    client: Optional[InfrahubClient] = Field(
+        None,
+        description="Infrahub Client, used to query the Repository and Branch information in the graph and to update the commit.",
+    )
 
-    cache_repo: Optional[Repo] = None
-    service: InfrahubServices
+    cache_repo: Optional[Repo] = Field(None, description="Internal cache of the GitPython Repo object")
+    service: InfrahubServices = Field(
+        ..., description="Service object with access to the message queue, the database etc.."
+    )
+    is_read_only: bool = Field(False, description="If true, changes will not be synced to remote")
 
     class Config:
         arbitrary_types_allowed = True
-
-    @validator("default_branch_name", pre=True, always=True)
-    @classmethod
-    def set_default_branch_name(cls, value):
-        return value or config.SETTINGS.main.default_branch
 
     @property
     def default_branch(self) -> str:
@@ -445,14 +446,15 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         return True
 
-    async def create_locally(self) -> bool:
+    async def create_locally(
+        self, checkout_ref: Optional[str] = None, infrahub_branch_name: Optional[str] = None
+    ) -> bool:
         """Ensure the required directory already exist in the filesystem or create them if needed.
 
         Returns
             True if the directory has been created,
             False if the directory was already present.
         """
-
         initialize_repositories_directory()
 
         if not self.location:
@@ -477,7 +479,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         try:
             repo = Repo.clone_from(self.location, self.directory_default)
-            repo.git.checkout(self.default_branch_name)
+            repo.git.checkout(checkout_ref or self.default_branch)
         except GitCommandError as exc:
             if "Repository not found" in exc.stderr or "does not appear to be a git" in exc.stderr:
                 raise RepositoryError(
@@ -488,7 +490,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             if "error: pathspec" in exc.stderr:
                 raise RepositoryError(
                     identifier=self.name,
-                    message=f"The branch {self.default_branch_name} isn't a valid branch for the repository {self.name} at {self.location}.",
+                    message=f"The branch {self.default_branch} isn't a valid branch for the repository {self.name} at {self.location}.",
                 ) from exc
 
             raise RepositoryError(identifier=self.name) from exc
@@ -499,7 +501,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         # TODO Need to handle the potential exceptions coming from repo.git.worktree
         commit = str(repo.head.commit)
         self.create_commit_worktree(commit=commit)
-        await self.update_commit_value(branch_name=self.default_branch_name, commit=commit)
+        await self.update_commit_value(branch_name=infrahub_branch_name or self.default_branch, commit=commit)
 
         return True
 
@@ -571,7 +573,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         branches = await self.client.branch.all()
 
         # TODO Need to optimize this query, right now we are querying everything unnecessarily
-        repositories = await self.client.get_list_repositories(branches=branches)
+        repositories = await self.client.get_list_repositories(branches=branches, kind="CoreRepository")
         repository = repositories[self.name]
 
         for branch_name, branch in branches.items():
@@ -632,17 +634,9 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         return branches
 
-    def get_commit_value(self, branch_name, remote: bool = False) -> str:
-        branches = None
-        if remote:
-            branches = self.get_branches_from_remote()
-        else:
-            branches = self.get_branches_from_local(include_worktree=False)
-
-        if branch_name not in branches:
-            raise ValueError(f"Branch {branch_name} not found.")
-
-        return str(branches[branch_name].commit)
+    @abstractmethod
+    def get_commit_value(self, branch_name: str, remote: bool = False) -> str:
+        raise NotImplementedError()
 
     async def update_commit_value(self, branch_name: str, commit: str) -> bool:
         """Compare the value of the commit in the graph with the current commit on the filesystem.
@@ -663,54 +657,9 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         log.debug(
             f"Updating commit value to {commit} for branch {branch_name}", repository=self.name, branch=branch_name
         )
-        await self.client.repository_update_commit(branch_name=branch_name, repository_id=self.id, commit=commit)
-
-        return True
-
-    async def create_branch_in_git(
-        self, branch_name: str, branch_id: Optional[str] = None, push_origin: bool = True
-    ) -> bool:
-        """Create new branch in the repository, assuming the branch has been created in the graph already."""
-
-        repo = self.get_git_repo_main()
-
-        # Check if the branch already exist locally, if it does do nothing
-        local_branches = self.get_branches_from_local(include_worktree=False)
-        if branch_name in local_branches:
-            return False
-
-        # TODO Catch potential exceptions coming from repo.git.branch & repo.git.worktree
-        repo.git.branch(branch_name)
-        self.create_branch_worktree(branch_name=branch_name, branch_id=branch_id or branch_name)
-
-        # If there is not remote configured, we are done
-        #  Since the branch is a match for the main branch we don't need to create a commit worktree
-        # If there is a remote, Check if there is an existing remote branch with the same name and if so track it.
-        if not self.has_origin:
-            log.debug(
-                f"Branch {branch_name} created in Git without tracking a remote branch.",
-                repository=self.name,
-                branch=branch_name,
-            )
-            return True
-
-        remote_branch = [br for br in repo.remotes.origin.refs if br.name == f"origin/{branch_name}"]
-
-        if remote_branch:
-            br_repo = self.get_git_repo_worktree(identifier=branch_name)
-            br_repo.head.reference.set_tracking_branch(remote_branch[0])
-            br_repo.remotes.origin.pull(branch_name)
-            self.create_commit_worktree(str(br_repo.head.reference.commit))
-            log.debug(
-                f"Branch {branch_name} created in Git, tracking remote branch {remote_branch[0]}.",
-                repository=self.name,
-                branch=branch_name,
-            )
-        else:
-            log.debug(f"Branch {branch_name} created in Git without tracking a remote branch.", repository=self.name)
-
-        if push_origin:
-            await self.push(branch_name)
+        await self.client.repository_update_commit(
+            branch_name=branch_name, repository_id=self.id, commit=commit, is_read_only=self.is_read_only
+        )
 
         return True
 
@@ -794,22 +743,6 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         return changed_files, added_files, removed_files
 
-    async def push(self, branch_name: str) -> bool:
-        """Push a given branch to the remote Origin repository"""
-
-        if not self.has_origin:
-            return False
-
-        log.debug(
-            f"Pushing the latest update to the remote origin for the branch '{branch_name}'", repository=self.name
-        )
-
-        # TODO Catch potential exceptions coming from origin.push
-        repo = self.get_git_repo_worktree(identifier=branch_name)
-        repo.remotes.origin.push(branch_name)
-
-        return True
-
     async def fetch(self) -> bool:
         """Fetch the latest update from the remote repository and bring a copy locally."""
         if not self.has_origin:
@@ -819,61 +752,6 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         repo = self.get_git_repo_main()
         repo.remotes.origin.fetch()
-
-        return True
-
-    async def sync(self):
-        """Synchronize the repository with its remote origin and with the database.
-
-        By default the sync will focus only on the branches pulled from origin that have some differences with the local one.
-        """
-
-        log.info("Starting the synchronization.", repository=self.name)
-
-        await self.fetch()
-
-        new_branches, updated_branches = await self.compare_local_remote()
-
-        if not new_branches and not updated_branches:
-            return True
-
-        log.debug(f"New Branches {new_branches}, Updated Branches {updated_branches}", repository=self.name)
-
-        # TODO need to handle properly the situation when a branch is not valid.
-        for branch_name in new_branches:
-            is_valid = await self.validate_remote_branch(branch_name=branch_name)
-            if not is_valid:
-                continue
-
-            try:
-                branch = await self.create_branch_in_graph(branch_name=branch_name)
-            except GraphQLError as exc:
-                if "already exist" not in exc.errors[0]["message"]:
-                    raise
-                branch = await self.client.branch.get(branch_name=branch_name)
-
-            await self.create_branch_in_git(branch_name=branch.name, branch_id=branch.id)
-
-            commit = self.get_commit_value(branch_name=branch_name, remote=False)
-            self.create_commit_worktree(commit=commit)
-            await self.update_commit_value(branch_name=branch_name, commit=commit)
-
-            await self.import_objects_from_files(branch_name=branch_name, commit=commit)
-
-        for branch_name in updated_branches:
-            is_valid = await self.validate_remote_branch(branch_name=branch_name)
-            if not is_valid:
-                continue
-
-            commit_after = await self.pull(branch_name=branch_name)
-            await self.import_objects_from_files(branch_name=branch_name, commit=commit_after)
-
-            if commit_after is True:
-                log.warning(
-                    f"An update was detected but the commit remained the same after pull() ({commit_after}).",
-                    repository=self.name,
-                    branch=branch_name,
-                )
 
         return True
 
@@ -972,52 +850,6 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         return conflict_files
 
-    async def merge(self, source_branch: str, dest_branch: str, push_remote: bool = True) -> bool:
-        """Merge the source branch into the destination branch.
-
-        After the rebase we need to resync the data
-        """
-        repo = self.get_git_repo_worktree(identifier=dest_branch)
-        if not repo:
-            raise ValueError(f"Unable to identify the worktree for the branch : {dest_branch}")
-
-        commit_before = str(repo.head.commit)
-        commit = self.get_commit_value(branch_name=source_branch, remote=False)
-
-        try:
-            repo.git.merge(commit)
-        except GitCommandError as exc:
-            repo.git.merge("--abort")
-            raise RepositoryError(identifier=self.name, message=exc.stderr) from exc
-
-        commit_after = str(repo.head.commit)
-
-        if commit_after == commit_before:
-            return False
-
-        self.create_commit_worktree(commit_after)
-        await self.update_commit_value(branch_name=dest_branch, commit=commit_after)
-
-        if self.has_origin and push_remote:
-            await self.push(branch_name=dest_branch)
-
-        return str(commit_after)
-
-    async def rebase(self, branch_name: str, source_branch: str = "main", push_remote: bool = True) -> bool:
-        """Rebase the current branch with main.
-
-        Technically we are not doing a Git rebase because it will change the git history
-        We'll merge the content of the source_branch into branch_name instead to keep the history clear.
-
-        TODO need to see how we manage conflict
-
-        After the rebase we need to resync the data
-        """
-
-        response = await self.merge(dest_branch=branch_name, source_branch=source_branch, push_remote=push_remote)
-
-        return response
-
     async def import_objects_from_files(self, branch_name: str, commit: Optional[str] = None):
         if not self.client:
             log.warning(
@@ -1029,6 +861,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         if not commit:
             commit = self.get_commit_value(branch_name=branch_name)
 
+        self.create_commit_worktree(commit)
         config_file = await self.get_repository_config(branch_name=branch_name, commit=commit)
 
         if config_file:
@@ -1038,28 +871,28 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         if config_file:
             await self.import_all_python_files(branch_name=branch_name, commit=commit, config_file=config_file)
-            await self.import_rfiles(branch_name=branch_name, commit=commit, config_file=config_file)
+            await self.import_jinja2_transforms(branch_name=branch_name, commit=commit, config_file=config_file)
             await self.import_artifact_definitions(branch_name=branch_name, commit=commit, config_file=config_file)
 
-    async def import_rfiles(self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig):
-        log.debug("Importing all RFiles", repository=self.name, branch=branch_name, commit=commit)
+    async def import_jinja2_transforms(self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig):
+        log.debug("Importing all Jinja2 transforms", repository=self.name, branch=branch_name, commit=commit)
 
-        schema = await self.client.schema.get(kind=InfrahubKind.RFILE, branch=branch_name)
+        schema = await self.client.schema.get(kind=InfrahubKind.TRANSFORMJINJA2, branch=branch_name)
 
-        rfiles_in_graph = {
-            rfile.name.value: rfile
-            for rfile in await self.client.filters(
-                kind=InfrahubKind.RFILE, branch=branch_name, repository__ids=[str(self.id)]
+        transforms_in_graph = {
+            transform.name.value: transform
+            for transform in await self.client.filters(
+                kind=InfrahubKind.TRANSFORMJINJA2, branch=branch_name, repository__ids=[str(self.id)]
             )
         }
 
-        local_rfiles: Dict[str, InfrahubRepositoryRFile] = {}
+        local_transforms: Dict[str, InfrahubRepositoryJinja2] = {}
 
-        # Process the list of local RFile to organize them by name
-        for config_rfile in config_file.rfiles:
+        # Process the list of local Jinja2 Transforms to organize them by name
+        for config_transform in config_file.jinja2_transforms:
             try:
                 self.client.schema.validate_data_against_schema(
-                    schema=schema, data=config_rfile.dict(exclude_none=True)
+                    schema=schema, data=config_transform.dict(exclude_none=True)
                 )
             except PydanticValidationError as exc:
                 for error in exc.errors():
@@ -1069,76 +902,85 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                 log.error(exc.message)
                 continue
 
-            rfile = InfrahubRepositoryRFile(repository=str(self.id), **config_rfile.dict())
+            transform = InfrahubRepositoryJinja2(repository=str(self.id), **config_transform.dict())
 
             # Query the GraphQL query and (eventually) replace the name with the ID
             graphql_query = await self.client.get(
-                kind=InfrahubKind.GRAPHQLQUERY, branch=branch_name, id=str(rfile.query), populate_store=True
+                kind=InfrahubKind.GRAPHQLQUERY, branch=branch_name, id=str(transform.query), populate_store=True
             )
-            rfile.query = graphql_query.id
+            transform.query = graphql_query.id
 
-            local_rfiles[rfile.name] = rfile
+            local_transforms[transform.name] = transform
 
         present_in_both, only_graph, only_local = compare_lists(
-            list1=list(rfiles_in_graph.keys()), list2=list(local_rfiles.keys())
+            list1=list(transforms_in_graph.keys()), list2=list(local_transforms.keys())
         )
 
-        for rfile_name in only_local:
-            log.info(f"New RFile {rfile_name!r} found, creating", repository=self.name, branch=branch_name)
-            await self.create_rfile(branch_name=branch_name, data=local_rfiles[rfile_name])
+        for transform_name in only_local:
+            log.info(
+                f"New Jinja2 Transform {transform_name!r} found, creating", repository=self.name, branch=branch_name
+            )
+            await self.create_jinja2_transform(branch_name=branch_name, data=local_transforms[transform_name])
 
-        for rfile_name in present_in_both:
-            if not await self.compare_rfile(
-                existing_rfile=rfiles_in_graph[rfile_name], local_rfile=local_rfiles[rfile_name]
+        for transform_name in present_in_both:
+            if not await self.compare_jinja2_transform(
+                existing_transform=transforms_in_graph[transform_name], local_transform=local_transforms[transform_name]
             ):
                 log.info(
-                    f"New version of the RFile '{rfile_name}' found, updating", repository=self.name, branch=branch_name
+                    f"New version of the Jinja2 Transform '{transform_name}' found, updating",
+                    repository=self.name,
+                    branch=branch_name,
                 )
-                await self.update_rfile(
-                    existing_rfile=rfiles_in_graph[rfile_name], local_rfile=local_rfiles[rfile_name]
+                await self.update_jinja2_transform(
+                    existing_transform=transforms_in_graph[transform_name],
+                    local_transform=local_transforms[transform_name],
                 )
 
-        for rfile_name in only_graph:
+        for transform_name in only_graph:
             log.info(
-                f"RFile '{rfile_name}' not found locally in branch {branch_name}, deleting",
+                f"Jinja2 Transform '{transform_name}' not found locally in branch {branch_name}, deleting",
                 repository=self.name,
                 branch=branch_name,
             )
-            await rfiles_in_graph[rfile_name].delete()
+            await transforms_in_graph[transform_name].delete()
 
-    async def create_rfile(self, branch_name: str, data: InfrahubRepositoryRFile) -> InfrahubNode:
-        schema = await self.client.schema.get(kind=InfrahubKind.RFILE, branch=branch_name)
+    async def create_jinja2_transform(self, branch_name: str, data: InfrahubRepositoryJinja2) -> InfrahubNode:
+        schema = await self.client.schema.get(kind=InfrahubKind.TRANSFORMJINJA2, branch=branch_name)
         create_payload = self.client.schema.generate_payload_create(
             schema=schema, data=data.payload, source=self.id, is_protected=True
         )
-        obj = await self.client.create(kind=InfrahubKind.RFILE, branch=branch_name, **create_payload)
+        obj = await self.client.create(kind=InfrahubKind.TRANSFORMJINJA2, branch=branch_name, **create_payload)
         await obj.save()
         return obj
 
     @classmethod
-    async def compare_rfile(cls, existing_rfile: InfrahubNode, local_rfile: InfrahubRepositoryRFile) -> bool:
+    async def compare_jinja2_transform(
+        cls, existing_transform: InfrahubNode, local_transform: InfrahubRepositoryJinja2
+    ) -> bool:
         # pylint: disable=no-member
         if (
-            existing_rfile.description.value != local_rfile.description
-            or existing_rfile.template_path.value != local_rfile.template_path
-            or existing_rfile.query.id != local_rfile.query
+            existing_transform.description.value != local_transform.description
+            or existing_transform.template_path.value != local_transform.template_path
+            or existing_transform.query.id != local_transform.query
         ):
             return False
 
         return True
 
-    async def update_rfile(self, existing_rfile: InfrahubNode, local_rfile: InfrahubRepositoryRFile) -> None:
+    async def update_jinja2_transform(
+        self, existing_transform: InfrahubNode, local_transform: InfrahubRepositoryJinja2
+    ) -> None:
         # pylint: disable=no-member
-        if existing_rfile.description.value != local_rfile.description:
-            existing_rfile.description.value = local_rfile.description
+        if existing_transform.description.value != local_transform.description:
+            existing_transform.description.value = local_transform.description
 
-        if existing_rfile.query.id != local_rfile.query:
-            existing_rfile.query = {"id": local_rfile.query, "source": str(self.id), "is_protected": True}
+        if existing_transform.query.id != local_transform.query:
+            existing_transform.query = {"id": local_transform.query, "source": str(self.id), "is_protected": True}
 
-        if existing_rfile.template_path.value != local_rfile.template_path_value:
-            existing_rfile.template_path.value = local_rfile.template_path_value
+        if existing_transform.template_path.value != local_transform.template_path_value:
+            existing_transform.template_path.value = local_transform.template_path_value
 
-        await existing_rfile.save()
+        await existing_transform.save()
 
     async def import_artifact_definitions(self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig):
         log.debug("Importing all Artifact Definitions", repository=self.name, branch=branch_name, commit=commit)
@@ -1152,7 +994,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
 
         local_artifact_defs: Dict[str, InfrahubRepositoryArtifactDefinitionConfig] = {}
 
-        # Process the list of local RFile to organize them by name
+        # Process the list of local Artifact Definitions to organize them by name
         for artdef in config_file.artifact_definitions:
             try:
                 self.client.schema.validate_data_against_schema(schema=schema, data=artdef.dict(exclude_none=True))
@@ -1358,7 +1200,7 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
     async def import_all_graphql_query(self, branch_name: str, commit: str) -> None:
         """Search for all .gql file and import them as GraphQL query."""
 
-        log.debug("Importing all GraphQL Queriess", repository=self.name, branch=branch_name, commit=commit)
+        log.debug("Importing all GraphQL Queries", repository=self.name, branch=branch_name, commit=commit)
 
         local_queries = {query.name: query for query in await self.find_graphql_queries(commit=commit)}
         if not local_queries:
@@ -1649,7 +1491,6 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
                     query=str(graphql_query.id),
                     timeout=transform_class.timeout,
                     rebase=transform_class.rebase,
-                    url=transform_class.url,
                 )
             )
 
@@ -1737,7 +1578,6 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             "repository": transform.repository,
             "query": transform.query,
             "file_path": transform.file_path,
-            "url": transform.url,
             "class_name": transform.class_name,
             "rebase": transform.rebase,
             "timeout": transform.timeout,
@@ -1764,9 +1604,6 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
         if existing_transform.timeout.value != local_transform.timeout:
             existing_transform.timeout.value = local_transform.timeout
 
-        if existing_transform.url.value != local_transform.url:
-            existing_transform.url.value = local_transform.url
-
         if existing_transform.rebase.value != local_transform.rebase:
             existing_transform.rebase.value = local_transform.rebase
 
@@ -1780,7 +1617,6 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             existing_transform.query.id != local_transform.query
             or existing_transform.file_path.value != local_transform.file_path
             or existing_transform.timeout.value != local_transform.timeout
-            or existing_transform.url.value != local_transform.url
             or existing_transform.rebase.value != local_transform.rebase
         ):
             return False
@@ -2013,16 +1849,19 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             rebase=transformation.rebase.value,
             timeout=transformation.timeout.value,
         )
-        data = response.get("data")
 
-        if transformation.typename == InfrahubKind.RFILE:
+        if transformation.typename == InfrahubKind.TRANSFORMJINJA2:
             artifact_content = await self.render_jinja2_template(
-                commit=commit, location=transformation.template_path.value, data={"data": data}
+                commit=commit, location=transformation.template_path.value, data=response
             )
         elif transformation.typename == "CoreTransformPython":
             transformation_location = f"{transformation.file_path.value}::{transformation.class_name.value}"
             artifact_content = await self.execute_python_transform(
-                branch_name=branch_name, commit=commit, location=transformation_location, data=data, client=self.client
+                branch_name=branch_name,
+                commit=commit,
+                location=transformation_location,
+                data=response,
+                client=self.client,
             )
 
         if definition.content_type.value == "application/json":
@@ -2060,18 +1899,17 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
             rebase=message.rebase,
             timeout=message.timeout,
         )
-        data = response.get("data")
 
-        if message.transform_type == InfrahubKind.RFILE:
+        if message.transform_type == InfrahubKind.TRANSFORMJINJA2:
             artifact_content = await self.render_jinja2_template(
-                commit=message.commit, location=message.transform_location, data={"data": data}
+                commit=message.commit, location=message.transform_location, data=response
             )
         elif message.transform_type == "CoreTransformPython":
             artifact_content = await self.execute_python_transform(
                 branch_name=message.branch_name,
                 commit=message.commit,
                 location=message.transform_location,
-                data=data,
+                data=response,
                 client=self.client,
             )
 
@@ -2099,3 +1937,254 @@ class InfrahubRepository(BaseModel):  # pylint: disable=too-many-public-methods
     def validate_location(self, commit: str, worktree_directory: str, file_path: str) -> None:
         if not os.path.exists(os.path.join(worktree_directory, file_path)):
             raise FileNotFound(repository_name=self.name, commit=commit, location=file_path)
+
+
+class InfrahubRepository(InfrahubRepositoryBase):
+    """
+    Primary type of Git repository, with deep integration within Infrahub.
+
+    Eventually we should rename this class InfrahubIntegratedRepository
+    """
+
+    def get_commit_value(self, branch_name: str, remote: bool = False) -> str:
+        branches = None
+        if remote:
+            branches = self.get_branches_from_remote()
+        else:
+            branches = self.get_branches_from_local(include_worktree=False)
+
+        if branch_name not in branches:
+            raise ValueError(f"Branch {branch_name} not found.")
+
+        return str(branches[branch_name].commit)
+
+    async def create_branch_in_git(
+        self, branch_name: str, branch_id: Optional[str] = None, push_origin: bool = True
+    ) -> bool:
+        """Create new branch in the repository, assuming the branch has been created in the graph already."""
+
+        repo = self.get_git_repo_main()
+
+        # Check if the branch already exists locally, if it does do nothing
+        local_branches = self.get_branches_from_local(include_worktree=False)
+        if branch_name in local_branches:
+            return False
+
+        # TODO Catch potential exceptions coming from repo.git.branch & repo.git.worktree
+        repo.git.branch(branch_name)
+        self.create_branch_worktree(branch_name=branch_name, branch_id=branch_id or branch_name)
+
+        # If there is not remote configured, we are done
+        #  Since the branch is a match for the main branch we don't need to create a commit worktree
+        # If there is a remote, Check if there is an existing remote branch with the same name and if so track it.
+        if not self.has_origin:
+            log.debug(
+                f"Branch {branch_name} created in Git without tracking a remote branch.",
+                repository=self.name,
+                branch=branch_name,
+            )
+            return True
+
+        remote_branch = [br for br in repo.remotes.origin.refs if br.name == f"origin/{branch_name}"]
+
+        if remote_branch:
+            br_repo = self.get_git_repo_worktree(identifier=branch_name)
+            br_repo.head.reference.set_tracking_branch(remote_branch[0])
+            br_repo.remotes.origin.pull(branch_name)
+            self.create_commit_worktree(str(br_repo.head.reference.commit))
+            log.debug(
+                f"Branch {branch_name} created in Git, tracking remote branch {remote_branch[0]}.",
+                repository=self.name,
+                branch=branch_name,
+            )
+        else:
+            log.debug(f"Branch {branch_name} created in Git without tracking a remote branch.", repository=self.name)
+
+        if push_origin:
+            await self.push(branch_name)
+
+        return True
+
+    async def sync(self) -> None:
+        """Synchronize the repository with its remote origin and with the database.
+
+        By default the sync will focus only on the branches pulled from origin that have some differences with the local one.
+        """
+
+        log.info("Starting the synchronization.", repository=self.name)
+
+        await self.fetch()
+
+        new_branches, updated_branches = await self.compare_local_remote()
+
+        if not new_branches and not updated_branches:
+            return
+
+        log.debug(f"New Branches {new_branches}, Updated Branches {updated_branches}", repository=self.name)
+
+        # TODO need to handle properly the situation when a branch is not valid.
+        for branch_name in new_branches:
+            is_valid = await self.validate_remote_branch(branch_name=branch_name)
+            if not is_valid:
+                continue
+
+            try:
+                branch = await self.create_branch_in_graph(branch_name=branch_name)
+            except GraphQLError as exc:
+                if "already exist" not in exc.errors[0]["message"]:
+                    raise
+                branch = await self.client.branch.get(branch_name=branch_name)
+
+            await self.create_branch_in_git(branch_name=branch.name, branch_id=branch.id)
+
+            commit = self.get_commit_value(branch_name=branch_name, remote=False)
+            self.create_commit_worktree(commit=commit)
+            await self.update_commit_value(branch_name=branch_name, commit=commit)
+
+            await self.import_objects_from_files(branch_name=branch_name, commit=commit)
+
+        for branch_name in updated_branches:
+            is_valid = await self.validate_remote_branch(branch_name=branch_name)
+            if not is_valid:
+                continue
+
+            commit_after = await self.pull(branch_name=branch_name)
+            await self.import_objects_from_files(branch_name=branch_name, commit=commit_after)
+
+            if commit_after is True:
+                log.warning(
+                    f"An update was detected but the commit remained the same after pull() ({commit_after}).",
+                    repository=self.name,
+                    branch=branch_name,
+                )
+
+        return
+
+    async def push(self, branch_name: str) -> bool:
+        """Push a given branch to the remote Origin repository"""
+
+        if not self.has_origin:
+            return False
+
+        log.debug(
+            f"Pushing the latest update to the remote origin for the branch '{branch_name}'", repository=self.name
+        )
+
+        # TODO Catch potential exceptions coming from origin.push
+        repo = self.get_git_repo_worktree(identifier=branch_name)
+        repo.remotes.origin.push(branch_name)
+
+        return True
+
+    async def merge(self, source_branch: str, dest_branch: str, push_remote: bool = True) -> bool:
+        """Merge the source branch into the destination branch.
+
+        After the rebase we need to resync the data
+        """
+        repo = self.get_git_repo_worktree(identifier=dest_branch)
+        if not repo:
+            raise ValueError(f"Unable to identify the worktree for the branch : {dest_branch}")
+
+        commit_before = str(repo.head.commit)
+        commit = self.get_commit_value(branch_name=source_branch, remote=False)
+
+        try:
+            repo.git.merge(commit)
+        except GitCommandError as exc:
+            repo.git.merge("--abort")
+            raise RepositoryError(identifier=self.name, message=exc.stderr) from exc
+
+        commit_after = str(repo.head.commit)
+
+        if commit_after == commit_before:
+            return False
+
+        self.create_commit_worktree(commit_after)
+        await self.update_commit_value(branch_name=dest_branch, commit=commit_after)
+
+        if self.has_origin and push_remote:
+            await self.push(branch_name=dest_branch)
+
+        return str(commit_after)
+
+    async def rebase(self, branch_name: str, source_branch: str = "main", push_remote: bool = True) -> bool:
+        """Rebase the current branch with main.
+
+        Technically we are not doing a Git rebase because it will change the git history
+        We'll merge the content of the source_branch into branch_name instead to keep the history clear.
+
+        TODO need to see how we manage conflict
+
+        After the rebase we need to resync the data
+        """
+
+        response = await self.merge(dest_branch=branch_name, source_branch=source_branch, push_remote=push_remote)
+
+        return response
+
+
+class InfrahubReadOnlyRepository(InfrahubRepositoryBase):
+    """
+    Repository with only read-only access to the remote repo
+    """
+
+    is_read_only: bool = True
+    ref: Optional[str] = Field(None, description="Ref to track on the external repository")
+    infrahub_branch_name: Optional[str] = Field(
+        None, description="Infrahub branch on which to sync the remote repository"
+    )
+
+    @classmethod
+    async def new(cls, service: Optional[InfrahubServices] = None, **kwargs):
+        service = service or InfrahubServices()
+
+        if "ref" not in kwargs or "infrahub_branch_name" not in kwargs:
+            raise ValueError("ref and infrahub_branch_name are mandatory to initialize a new Read-Only repository")
+
+        self = cls(service=service, **kwargs)
+        await self.create_locally(checkout_ref=self.ref, infrahub_branch_name=self.infrahub_branch_name)
+        log.info("Created the new project locally.", repository=self.name)
+        return self
+
+    def get_commit_value(self, branch_name: str, remote: bool = False) -> str:
+        """Always get the latest commit for this repository's ref on the remote"""
+        git_repo = self.get_git_repo_main()
+        git_repo.remotes.origin.fetch()
+
+        refs = (f"origin/{self.ref}", self.ref)
+        commit = None
+        for possible_ref in refs:
+            try:
+                commit = git_repo.commit(possible_ref)
+                break
+            except BadName:
+                ...
+        if not commit:
+            log.error(f"No object found for refs {refs} on repository {self.name}")
+            raise ValueError(f"Ref {self.ref} not found.")
+
+        return str(commit)
+
+    async def sync_from_remote(self, commit: Optional[str] = None) -> None:
+        if not commit:
+            commit = self.get_commit_value(branch_name=self.ref, remote=True)
+        local_branches = self.get_branches_from_local()
+        if self.ref in local_branches and commit == local_branches[self.ref].commit:
+            return
+        self.create_commit_worktree(commit=commit)
+        await self.import_objects_from_files(branch_name=self.infrahub_branch_name, commit=commit)
+        await self.update_commit_value(branch_name=self.infrahub_branch_name, commit=commit)
+
+
+async def get_initialized_repo(
+    repository_id: str, name: str, service: InfrahubServices, repository_kind: str
+) -> Union[InfrahubReadOnlyRepository, InfrahubRepository]:
+    if repository_kind == InfrahubKind.REPOSITORY:
+        return await InfrahubRepository.init(id=repository_id, name=name, client=service._client, service=service)
+
+    if repository_kind == InfrahubKind.READONLYREPOSITORY:
+        return await InfrahubReadOnlyRepository.init(
+            id=repository_id, name=name, client=service._client, service=service
+        )
+
+    raise NotImplementedError(f"The repository kind {repository_kind} has not been implemented")

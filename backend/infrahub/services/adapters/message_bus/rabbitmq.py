@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import TYPE_CHECKING, Awaitable, Callable, List, MutableMapping, Optional
+from typing import TYPE_CHECKING, Awaitable, Callable, List, MutableMapping, Optional, TypeVar
 
 import aio_pika
 from infrahub_sdk import UUIDT
@@ -10,7 +10,7 @@ from infrahub_sdk import UUIDT
 from infrahub import config
 from infrahub.components import ComponentType
 from infrahub.log import clear_log_context, get_log_data
-from infrahub.message_bus import InfrahubMessage, InfrahubResponse, Meta, get_broker, messages
+from infrahub.message_bus import InfrahubMessage, Meta, messages
 from infrahub.message_bus.operations import execute_message
 from infrahub.message_bus.types import MessageTTL
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
@@ -25,9 +25,11 @@ if TYPE_CHECKING:
         AbstractRobustConnection,
     )
 
+    from infrahub.config import BrokerSettings
     from infrahub.services import InfrahubServices
 
 MessageFunction = Callable[[InfrahubMessage], Awaitable[None]]
+ResponseClass = TypeVar("ResponseClass")
 
 
 async def _add_request_id(message: InfrahubMessage) -> None:
@@ -36,9 +38,8 @@ async def _add_request_id(message: InfrahubMessage) -> None:
 
 
 class RabbitMQMessageBus(InfrahubMessageBus):
-    def __init__(
-        self,
-    ) -> None:
+    def __init__(self, settings: Optional[BrokerSettings] = None) -> None:
+        self.settings = settings or config.SETTINGS.broker
         self.channel: AbstractChannel
         self.exchange: AbstractExchange
         self.delayed_exchange: AbstractExchange
@@ -54,10 +55,21 @@ class RabbitMQMessageBus(InfrahubMessageBus):
 
     async def initialize(self, service: InfrahubServices) -> None:
         self.service = service
+        self.connection = await aio_pika.connect_robust(
+            host=self.settings.address,
+            login=self.settings.username,
+            password=self.settings.password,
+            port=self.settings.service_port,
+        )
+
+        self.channel = await self.connection.channel()
         if self.service.component_type == ComponentType.API_SERVER:
             await self._initialize_api_server()
         elif self.service.component_type == ComponentType.GIT_AGENT:
             await self._initialize_git_worker()
+
+    async def shutdown(self) -> None:
+        await self.connection.close()
 
     async def on_callback(self, message: AbstractIncomingMessage) -> None:
         if message.correlation_id:
@@ -74,8 +86,6 @@ class RabbitMQMessageBus(InfrahubMessageBus):
             self.service.log.error("Invalid message received", message=f"{message!r}")
 
     async def _initialize_api_server(self) -> None:
-        self.connection = await get_broker()
-        self.channel = await self.connection.channel()
         self.callback_queue = await self.channel.declare_queue(name=f"api-callback-{WORKER_IDENTITY}", exclusive=True)
         self.events_queue = await self.channel.declare_queue(name=f"api-events-{WORKER_IDENTITY}", exclusive=True)
 
@@ -84,7 +94,6 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         self.exchange = await self.channel.declare_exchange(
             f"{config.SETTINGS.broker.namespace}.events", type="topic", durable=True
         )
-        self.rpc_exchange = self.exchange
         self.dlx = await self.channel.declare_exchange(
             f"{config.SETTINGS.broker.namespace}.dlx", type="topic", durable=True
         )
@@ -133,9 +142,6 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         self.message_enrichers.append(_add_request_id)
 
     async def _initialize_git_worker(self) -> None:
-        connection = await get_broker()
-        # Create a channel and subscribe to the incoming RPC queue
-        self.channel = await connection.channel()
         await self.channel.set_qos(prefetch_count=1)
         events_queue = await self.channel.declare_queue(name=f"worker-events-{WORKER_IDENTITY}", exclusive=True)
 
@@ -160,7 +166,7 @@ class RabbitMQMessageBus(InfrahubMessageBus):
     async def reply(self, message: InfrahubMessage, routing_key: str) -> None:
         await self.channel.default_exchange.publish(self.format_message(message=message), routing_key=routing_key)
 
-    async def rpc(self, message: InfrahubMessage) -> InfrahubResponse:
+    async def rpc(self, message: InfrahubMessage, response_class: ResponseClass) -> ResponseClass:  # type: ignore[override]
         correlation_id = str(UUIDT())
 
         future = self.loop.create_future()
@@ -172,9 +178,9 @@ class RabbitMQMessageBus(InfrahubMessageBus):
 
         await self.service.send(message=message)
 
-        response = await future
+        response: AbstractIncomingMessage = await future
         data = json.loads(response.body)
-        return InfrahubResponse(**data)
+        return response_class(**data)  # type: ignore[operator]
 
     async def subscribe(self) -> None:
         queue = await self.channel.get_queue(f"{config.SETTINGS.broker.namespace}.rpcs")
@@ -208,5 +214,6 @@ class RabbitMQMessageBus(InfrahubMessageBus):
             reply_to=message.meta.reply_to,
             priority=message.meta.priority,
             headers=message.meta.headers,
+            expiration=message.meta.expiration,
         )
         return pika_message

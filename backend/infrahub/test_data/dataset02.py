@@ -133,7 +133,7 @@ def load_data():
         roles_dict[role] = obj
         log.info(f"Created Role: {role}")
 
-    STATUSES = ["active", "provisionning", "maintenance", "drained"]
+    STATUSES = ["active", "provisioning", "maintenance", "drained"]
     for status in STATUSES:
         obj = Status.init(label=status.title(), slug=status)
         obj.save()

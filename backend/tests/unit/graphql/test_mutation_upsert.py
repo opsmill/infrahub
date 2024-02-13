@@ -1,18 +1,12 @@
 from uuid import uuid4
 
-import pytest
 from graphql import graphql
 
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql import generate_graphql_schema
-
-
-@pytest.fixture(autouse=True)
-def load_graphql_requirements(group_graphql):
-    pass
+from infrahub.graphql import prepare_graphql_params
 
 
 async def test_upsert_existing_simple_object_by_id(db: InfrahubDatabase, person_john_main: Node, branch: Branch):
@@ -26,10 +20,11 @@ async def test_upsert_existing_simple_object_by_id(db: InfrahubDatabase, person_
     """
         % person_john_main.id
     )
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
     result = await graphql(
-        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=branch),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": branch},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -52,10 +47,11 @@ async def test_upsert_existing_simple_object_by_default_filter(
         }
     }
     """
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
     result = await graphql(
-        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=branch),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": branch},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -80,10 +76,11 @@ async def test_upsert_create_simple_object_no_id(db: InfrahubDatabase, person_jo
     }
     """ % ("Ellen Ripley", 179)
 
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
     result = await graphql(
-        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=branch),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": branch},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -110,10 +107,11 @@ async def test_upsert_create_simple_object_with_id(db: InfrahubDatabase, person_
     }
     """ % (fresh_id, "Dwayne Hicks", 168)
 
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
     result = await graphql(
-        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=branch),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": branch},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -140,11 +138,11 @@ async def test_cannot_upsert_new_object_without_required_fields(db: InfrahubData
     """
         % fresh_id
     )
-
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
     result = await graphql(
-        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=branch),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": branch},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -168,11 +166,11 @@ async def test_id_for_other_schema_raises_error(
     """
         % car_accord_main.id
     )
-
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
     result = await graphql(
-        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=branch),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": branch},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -194,11 +192,11 @@ async def test_update_by_id_to_nonunique_value_raises_error(
     """
         % person_john_main.id
     )
-
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch)
     result = await graphql(
-        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=branch),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": branch},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )

@@ -1,17 +1,13 @@
 import pytest
 from graphql import graphql
 
+from infrahub import config
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql import generate_graphql_schema
-
-
-@pytest.fixture(autouse=True)
-def load_graphql_requirements(group_graphql):
-    pass
+from infrahub.graphql import prepare_graphql_params
 
 
 async def test_create_simple_object(db: InfrahubDatabase, default_branch, car_person_schema):
@@ -25,10 +21,11 @@ async def test_create_simple_object(db: InfrahubDatabase, default_branch, car_pe
         }
     }
     """
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
-        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -36,6 +33,157 @@ async def test_create_simple_object(db: InfrahubDatabase, default_branch, car_pe
     assert result.errors is None
     assert result.data["TestPersonCreate"]["ok"] is True
     assert len(result.data["TestPersonCreate"]["object"]["id"]) == 36  # lenght of an UUID
+
+
+async def test_create_simple_object_with_ok_return(db: InfrahubDatabase, default_branch, car_person_schema):
+    query = """
+    mutation {
+        TestPersonCreate(data: {name: { value: "John"}, height: {value: 182}}) {
+            ok
+        }
+    }
+    """
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+    assert result.errors is None
+    assert result.data["TestPersonCreate"]["ok"] is True
+
+
+@pytest.mark.parametrize(
+    "graphql_enums_on,enum_value,response_value", [(True, "MANUAL", "MANUAL"), (False, '"manual"', "manual")]
+)
+async def test_create_simple_object_with_enum(
+    db: InfrahubDatabase,
+    default_branch,
+    person_john_main,
+    car_person_schema,
+    graphql_enums_on,
+    enum_value,
+    response_value,
+):
+    config.SETTINGS.experimental_features.graphql_enums = graphql_enums_on
+    query = """
+    mutation {
+        TestCarCreate(data: {
+                name: { value: "JetTricycle"},
+                nbr_seats: { value: 1 },
+                is_electric: { value: false },
+                transmission: { value: %s },
+                owner: { id: "John" }
+            }) {
+            ok
+            object {
+                id
+                transmission {
+                    value
+                }
+            }
+        }
+    }
+    """ % (enum_value)
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data["TestCarCreate"]["ok"] is True
+    assert result.data["TestCarCreate"]["object"]["transmission"]["value"] == response_value
+
+    car_id = result.data["TestCarCreate"]["object"]["id"]
+    database_car = await NodeManager.get_one(db=db, id=car_id)
+    if graphql_enums_on:
+        assert database_car.transmission.value.value == "manual"
+    else:
+        assert database_car.transmission.value == "manual"
+
+
+async def test_create_enum_when_enums_off_fails(
+    db: InfrahubDatabase,
+    default_branch,
+    person_john_main,
+    car_person_schema,
+):
+    config.SETTINGS.experimental_features.graphql_enums = False
+    query = """
+    mutation {
+        TestCarCreate(data: {
+                name: { value: "JetTricycle"},
+                nbr_seats: { value: 1 },
+                is_electric: { value: false },
+                transmission: { value: MANUAL },
+                owner: { id: "John" }
+            }) {
+            ok
+            object {
+                id
+                transmission {
+                    value
+                }
+            }
+        }
+    }
+    """
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert len(result.errors) == 1
+    assert "String cannot represent a non string value" in result.errors[0].message
+
+
+async def test_create_string_when_enums_on_fails(
+    db: InfrahubDatabase,
+    default_branch,
+    person_john_main,
+    car_person_schema,
+):
+    config.SETTINGS.experimental_features.graphql_enums = True
+    query = """
+    mutation {
+        TestCarCreate(data: {
+                name: { value: "JetTricycle"},
+                nbr_seats: { value: 1 },
+                is_electric: { value: false },
+                transmission: { value: "manual" },
+                owner: { id: "John" }
+            }) {
+            ok
+            object {
+                id
+                transmission {
+                    value
+                }
+            }
+        }
+    }
+    """
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert len(result.errors) == 1
+    assert "'TestCarTransmissionValue' cannot represent non-enum value" in result.errors[0].message
 
 
 async def test_create_with_id(db: InfrahubDatabase, default_branch, car_person_schema):
@@ -53,10 +201,11 @@ async def test_create_with_id(db: InfrahubDatabase, default_branch, car_person_s
     """
         % uuid1
     )
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
-        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -75,10 +224,11 @@ async def test_create_with_id(db: InfrahubDatabase, default_branch, car_person_s
         }
     }
     """
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
-        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -103,10 +253,11 @@ async def test_create_check_unique(db: InfrahubDatabase, default_branch, car_per
         }
     }
     """
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
-        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -134,10 +285,11 @@ async def test_create_check_unique_across_branch(db: InfrahubDatabase, default_b
 
     branch1 = await create_branch(branch_name="branch1", db=db)
 
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch1)
     result = await graphql(
-        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=branch1),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": branch1},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -164,10 +316,11 @@ async def test_create_check_unique_in_branch(db: InfrahubDatabase, default_branc
         }
     }
     """
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch1)
     result = await graphql(
-        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=branch1),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": branch1},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -175,96 +328,6 @@ async def test_create_check_unique_in_branch(db: InfrahubDatabase, default_branc
     assert result.errors
     assert len(result.errors) == 1
     assert "An object already exist" in result.errors[0].message
-
-
-async def test_create_check_unique_in_generic(db: InfrahubDatabase, default_branch, car_person_schema_with_generic):
-    p1 = await Node.init(db=db, schema="TestPerson")
-    await p1.new(db=db, name="John", height=180)
-    await p1.save(db=db)
-
-    query = """
-    mutation {
-        TestCylonCreate(data: {name: { value: "John"}, height: {value: 182}, model_number: { value: 6 }}) {
-            ok
-            object {
-                id
-            }
-        }
-    }
-    """
-    result = await graphql(
-        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
-        source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
-        root_value=None,
-        variable_values={},
-    )
-
-    assert result.errors
-    assert len(result.errors) == 1
-    assert "An object already exist" in result.errors[0].message
-
-
-async def test_create_check_uniques_allowed_within_generic(db: InfrahubDatabase, default_branch, car_person_schema):
-    p1 = await Node.init(db=db, schema="TestPerson")
-    await p1.new(db=db, name="John", height=180)
-    await p1.save(db=db)
-
-    gql_schema = await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch)
-    mutation = """
-    mutation {
-        TestCylonCreate(data: {name: { value: "John"}, height: {value: 182}, model_number: { value: 6 }}) {
-            ok
-            object {
-                id
-                name { value }
-            }
-        }
-    }
-    """
-    result = await graphql(
-        schema=gql_schema,
-        source=mutation,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
-        root_value=None,
-        variable_values={},
-    )
-
-    assert result.errors is None
-    assert result.data["TestCylonCreate"]["ok"] is True
-    assert result.data["TestCylonCreate"]["object"]["name"]["value"] == "John"
-
-
-async def test_create_check_uniques_allowed_within_overridden_generic(
-    db: InfrahubDatabase, default_branch, car_person_schema_generic_with_unique_override
-):
-    p1 = await Node.init(db=db, schema="TestPerson")
-    await p1.new(db=db, name="John", height=180)
-    await p1.save(db=db)
-
-    gql_schema = await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch)
-    mutation = """
-    mutation {
-        TestCylonCreate(data: {name: { value: "John"}, height: {value: 182}, model_number: { value: 6 }}) {
-            ok
-            object {
-                id
-                name { value }
-            }
-        }
-    }
-    """
-    result = await graphql(
-        schema=gql_schema,
-        source=mutation,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch},
-        root_value=None,
-        variable_values={},
-    )
-
-    assert result.errors is None
-    assert result.data["TestCylonCreate"]["ok"] is True
-    assert result.data["TestCylonCreate"]["object"]["name"]["value"] == "John"
 
 
 async def test_all_attributes(db: InfrahubDatabase, default_branch, all_attribute_types_schema):
@@ -286,11 +349,11 @@ async def test_all_attributes(db: InfrahubDatabase, default_branch, all_attribut
         }
     }
     """
-
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
-        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -324,10 +387,11 @@ async def test_create_object_with_flag_property(db: InfrahubDatabase, default_br
         }
     }
     """
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
-        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -355,10 +419,11 @@ async def test_create_object_with_flag_property(db: InfrahubDatabase, default_br
             }
         }
     """
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result1 = await graphql(
-        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -371,8 +436,6 @@ async def test_create_object_with_flag_property(db: InfrahubDatabase, default_br
 async def test_create_object_with_node_property(
     db: InfrahubDatabase, default_branch, car_person_schema, first_account, second_account
 ):
-    graphql_schema = await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch)
-
     query = """
     mutation {
         TestPersonCreate(
@@ -392,10 +455,11 @@ async def test_create_object_with_node_property(
         second_account.id,
     )
 
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
-        graphql_schema,
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -432,10 +496,11 @@ async def test_create_object_with_node_property(
             }
         }
     """
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result1 = await graphql(
-        graphql_schema,
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -467,11 +532,11 @@ async def test_create_object_with_single_relationship(db: InfrahubDatabase, defa
         }
     }
     """
-
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
-        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -503,11 +568,11 @@ async def test_create_object_with_single_relationship_flag_property(
         }
     }
     """
-
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
-        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -548,11 +613,11 @@ async def test_create_object_with_single_relationship_node_property(
     """
         % first_account.id
     )
-
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
-        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -594,11 +659,11 @@ async def test_create_object_with_multiple_relationships(db: InfrahubDatabase, d
         }
     }
     """
-
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
-        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -648,11 +713,11 @@ async def test_create_object_with_multiple_relationships_with_node_property(
         first_account.id,
         second_account.id,
     )
-
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
-        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -718,11 +783,11 @@ async def test_create_object_with_multiple_relationships_flag_property(
         }
     }
     """
-
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
-        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -753,10 +818,11 @@ async def test_create_person_not_valid(db: InfrahubDatabase, default_branch, car
         }
     }
     """
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
-        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -786,10 +852,11 @@ async def test_create_with_attribute_not_valid(db: InfrahubDatabase, default_bra
         }
     }
     """
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
-        schema=await generate_graphql_schema(db=db, include_subscription=False, branch=default_branch),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db, "infrahub_branch": default_branch, "related_node_ids": set()},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )

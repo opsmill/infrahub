@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, get_args, get_origin
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union, get_args, get_origin
 from uuid import UUID  # noqa: TCH003
 
 import ujson
@@ -13,6 +13,7 @@ from infrahub.core.query.standard_node import (
     StandardNodeDeleteQuery,
     StandardNodeGetItemQuery,
     StandardNodeGetListQuery,
+    StandardNodeQuery,
     StandardNodeUpdateQuery,
 )
 from infrahub.exceptions import Error
@@ -32,9 +33,8 @@ class StandardNode(BaseModel):
     id: Optional[str] = None
     uuid: Optional[UUID] = None
 
-    # owner: Optional[str]
-
-    _exclude_attrs: List[str] = ["id", "uuid", "owner"]
+    _query: Type[StandardNodeQuery] = StandardNodeCreateQuery
+    _exclude_attrs: List[str] = ["id", "uuid", "_query"]
 
     @classmethod
     def get_type(cls) -> str:
@@ -88,21 +88,10 @@ class StandardNode(BaseModel):
         query: Query = await StandardNodeDeleteQuery.init(db=db, node=self)
         await query.execute(db=db)
 
-    async def refresh(self, db: InfrahubDatabase) -> bool:
-        """Pull the latest state of the object from the database."""
-
-        # Might need ot check how to manage the default value
-        raw_attrs = self._get_item_raw(self.id, db=db)
-        for item in raw_attrs:
-            if item[1] != getattr(self, item[0]):
-                setattr(self, item[0], item[1])
-
-        return True
-
     async def create(self, db: InfrahubDatabase) -> bool:
         """Create a new node in the database."""
 
-        query: Query = await StandardNodeCreateQuery.init(db=db, node=self)
+        query: Query = await self._query.init(db=db, node=self)
         await query.execute(db=db)
 
         result = query.get_result()
@@ -128,7 +117,7 @@ class StandardNode(BaseModel):
         return True
 
     @classmethod
-    async def get(cls, id: str, db: InfrahubDatabase) -> Self:
+    async def get(cls, id: str, db: InfrahubDatabase) -> Optional[Self]:
         """Get a node from the database identified by its ID."""
 
         node = await cls._get_item_raw(id=id, db=db)
@@ -149,7 +138,7 @@ class StandardNode(BaseModel):
         return result.get("n")
 
     @classmethod
-    def from_db(cls, node: Neo4jNode) -> Self:
+    def from_db(cls, node: Neo4jNode, extras: Optional[Dict[str, Any]] = None) -> Self:
         """Convert a Neo4j Node to a Infrahub StandardNode
 
         Args:
@@ -161,6 +150,8 @@ class StandardNode(BaseModel):
 
         attrs = {}
         node_data = dict(node)
+        extras = extras or {}
+        node_data.update(extras)
         attrs["id"] = node.element_id
         for key, value in node_data.items():
             if key not in cls.model_fields:
@@ -183,7 +174,7 @@ class StandardNode(BaseModel):
         if not self.uuid:
             data["uuid"] = str(UUIDT())
         else:
-            data["uuid"] = self.uuid
+            data["uuid"] = str(self.uuid)
 
         for attr_name, field in self.model_fields.items():
             if attr_name in self._exclude_attrs:

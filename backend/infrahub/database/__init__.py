@@ -211,6 +211,12 @@ class InfrahubDatabase:
             return f"extract(i in {items} | i.{item_name})"
         return f"[i IN {items} | i.{item_name}]"
 
+    def render_list_comprehension_with_list(self, items: str, item_names: List[str]) -> str:
+        item_names_str = ",".join([f"i.{name}" for name in item_names])
+        if self.db_type == DatabaseType.MEMGRAPH:
+            return f"extract(i in {items} | [{item_names_str}])"
+        return f"[i IN {items} | [{item_names_str}]]"
+
 
 async def create_database(driver: AsyncDriver, database_name: str) -> None:
     default_db = driver.session()

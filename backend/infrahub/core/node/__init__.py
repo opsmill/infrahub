@@ -15,7 +15,7 @@ from infrahub.core.query.node import (
 )
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import InitializationError, ValidationError
 from infrahub.types import ATTRIBUTE_TYPES
 
 from ..relationship import RelationshipManager
@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------------------
 # Type of Nodes
 #  - Core node, wo/ branch : Branch, MergeRequest, Comment
-#  - Core node, w/ branch : Repository, RFile, GQLQuery, Permission, Account, Groups, Schema
+#  - Core node, w/ branch : Repository, GQLQuery, Permission, Account, Groups, Schema
 #  - Location Node : Location,
 #  - Select Node : Status, Role, Manufacturer etc ..
 #  -
@@ -59,6 +59,13 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
     def get_kind(self) -> str:
         """Return the main Kind of the Object."""
         return self._schema.kind
+
+    def get_id(self) -> str:
+        """Return the ID of the node"""
+        if self.id:
+            return self.id
+
+        raise InitializationError("The node has not been saved yet and doesn't have an id")
 
     def get_labels(self) -> List[str]:
         """Return the labels for this object, composed of the kind
@@ -297,7 +304,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         db: InfrahubDatabase,
         id: Optional[str] = None,
         db_id: Optional[str] = None,
-        updated_at: Union[Timestamp, str] = None,
+        updated_at: Optional[Union[Timestamp, str]] = None,
         **kwargs,
     ) -> Self:
         self.id = id
@@ -403,14 +410,70 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
         await query.execute(db=db)
         result = query.get_result()
 
-        if result.get("rb.branch") == branch.name:
+        if result and result.get("rb.branch") == branch.name:
             await update_relationships_to([result.get("rb_id")], to=delete_at, db=db)
 
         query = await NodeDeleteQuery.init(db=db, node=self, at=delete_at)
         await query.execute(db=db)
 
+    async def validate_constraints(
+        self, db: InfrahubDatabase, branch: Branch, at: Optional[Timestamp] = None, filters: Optional[List[str]] = None
+    ):
+        at = Timestamp(at)
+        await self.validate_constraint_node_uniqueness(db=db, branch=branch, at=at, filters=filters)
+        await self.validate_constraint_relationship_count(db=db, branch=branch, at=at, filters=filters)
+
+    async def validate_constraint_node_uniqueness(
+        self, db: InfrahubDatabase, branch: Branch, at: Optional[Timestamp] = None, filters: Optional[List[str]] = None
+    ):
+        at = Timestamp(at)
+        for unique_attr in self._schema.unique_attributes:
+            if filters and unique_attr.name not in filters:
+                continue
+
+            comparison_schema = self._schema
+            attr = getattr(self, unique_attr.name)
+            if unique_attr.inherited:
+                for generic_parent_schema_name in self._schema.inherit_from:
+                    generic_parent_schema = registry.schema.get(generic_parent_schema_name, branch=branch)
+                    parent_attr = generic_parent_schema.get_attribute(unique_attr.name, raise_on_error=False)
+                    if parent_attr is None:
+                        continue
+                    if parent_attr.unique is True:
+                        comparison_schema = generic_parent_schema
+                        break
+            nodes = await registry.manager.query(
+                schema=comparison_schema,
+                filters={f"{unique_attr.name}__value": attr.value},
+                fields={},
+                db=db,
+                branch=branch,
+                at=at,
+            )
+
+            other_nodes = [n for n in nodes if n.id != self.id]
+            if other_nodes:
+                raise ValidationError(
+                    {unique_attr.name: f"An object already exist with this value: {unique_attr.name}: {attr.value}"}
+                )
+
+    async def validate_constraint_relationship_count(
+        self, db: InfrahubDatabase, branch: Branch, at: Optional[Timestamp] = None, filters: Optional[List[str]] = None
+    ):
+        at = Timestamp(at)
+
+        for rel_name in self._schema.relationship_names:
+            if filters and rel_name not in filters:
+                continue
+            relm: RelationshipManager = getattr(self, rel_name)
+            await relm.validate_constraints(db=db, branch=branch)
+
     async def to_graphql(
-        self, db: InfrahubDatabase, fields: Optional[dict] = None, related_node_ids: Optional[set] = None
+        self,
+        db: InfrahubDatabase,
+        fields: Optional[dict] = None,
+        related_node_ids: Optional[set] = None,
+        filter_sensitive: bool = False,
     ) -> dict:
         """Generate GraphQL Payload for all attributes
 
@@ -418,7 +481,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
             (dict): Return GraphQL Payload
         """
 
-        response = {"id": self.id, "type": self.get_kind()}
+        response: dict[str, Any] = {"id": self.id, "type": self.get_kind()}
 
         if related_node_ids is not None:
             related_node_ids.add(self.id)
@@ -446,7 +509,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
                     response[field_name] = None
                 continue
 
-            field = getattr(self, field_name, None)
+            field: Optional[BaseAttribute] = getattr(self, field_name, None)
 
             if not field:
                 response[field_name] = None
@@ -454,10 +517,16 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
             if fields and isinstance(fields, dict):
                 response[field_name] = await field.to_graphql(
-                    db=db, fields=fields.get(field_name), related_node_ids=related_node_ids
+                    db=db,
+                    fields=fields.get(field_name),
+                    related_node_ids=related_node_ids,
+                    filter_sensitive=filter_sensitive,
                 )
             else:
-                response[field_name] = await field.to_graphql(db=db)
+                response[field_name] = await field.to_graphql(
+                    db=db,
+                    filter_sensitive=filter_sensitive,
+                )
 
         return response
 
@@ -466,25 +535,10 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         changed = False
 
-        STANDARD_FIELDS = ["value", "is_protected", "is_visible"]
-        NODE_FIELDS = ["source", "owner"]
-
         for key, value in data.items():
             if key in self._attributes and isinstance(value, dict):
-                for field_name in value.keys():
-                    if field_name in STANDARD_FIELDS:
-                        attr = getattr(self, key)
-                        if getattr(attr, field_name) != value.get(field_name):
-                            setattr(attr, field_name, value.get(field_name))
-                            changed = True
-
-                    elif field_name in NODE_FIELDS:
-                        attr = getattr(self, key)
-                        # Right now we assume that the UUID is provided from GraphQL
-                        # so we compare the value with <node>_id
-                        if getattr(attr, f"{field_name}_id") != value.get(field_name):
-                            setattr(attr, field_name, value.get(field_name))
-                            changed = True
+                attribute = getattr(self, key)
+                changed |= await attribute.from_graphql(value)
 
             if key in self._relationships:
                 rel: RelationshipManager = getattr(self, key)

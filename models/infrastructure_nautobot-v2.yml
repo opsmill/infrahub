@@ -4,7 +4,7 @@ version: '1.0'
 generics:
   - name: Interface
     namespace: Infra
-    description: "Generic Network Interface."
+    description: "Generic Network Interface"
     label: "Interface"
     icon: "mdi:ethernet"
     menu_placement: "InfraDevice"
@@ -64,7 +64,7 @@ generics:
         kind: Attribute
   - name: Endpoint
     namespace: Infra
-    description: "Generic Endpoint to connect two objects together."
+    description: "Generic Endpoint to connect two objects together"
     include_in_menu: false
     label: "Endpoint"
     relationships:
@@ -101,7 +101,7 @@ generics:
         kind: Attribute
   - name: PanelPort
     namespace: Infra
-    description: "Generic Patch Panel Port."
+    description: "Generic Patch Panel Port"
     label: "Panel Port (Front & Rear)"
     icon: "mdi:ethernet"
     menu_placement: "InfraDevice"
@@ -359,7 +359,7 @@ nodes:
         peer: InfraCircuit
   - name: Device
     namespace: Infra
-    description: "Generic Device object."
+    description: "Generic Device object"
     label: "Device"
     icon: "mdi:router-network"
     default_filter: name__value
@@ -537,8 +537,8 @@ nodes:
         label: "Tagged VLAN(s)"
         peer: InfraVLAN
         optional: true
-        cardinality: one
-        kind: Component
+        cardinality: many
+        kind: Attribute
         identifier: interface_l2__tagged_vlan
   - name: IPAddress
     namespace: Infra
@@ -628,7 +628,7 @@ nodes:
         optional: true
   - name: Platform
     namespace: Infra
-    description: "A Platform represent the type of software running on a device."
+    description: "A Platform represent the type of software running on a device"
     label: "Platform"
     icon: "mdi:application-cog-outline"
     menu_placement: "InfraDevice"
@@ -663,7 +663,7 @@ nodes:
         cardinality: one
   - name: ProviderNetwork
     namespace: Infra
-    description: "Represent the boundary of a provider network, the details of which are unknown or unimportant."
+    description: "Represent the boundary of a provider network, the details of which are unknown or unimportant"
     label: "Provider Network"
     icon: "mdi:cloud"
     menu_placement: "InfraCircuit"
@@ -767,7 +767,7 @@ nodes:
         kind: Component
   - name: Rack
     namespace: Infra
-    description: "A Rack represents a physical two- or four-post equipment rack in which devices can be installed."
+    description: "A Rack represents a physical two- or four-post equipment rack in which devices can be installed"
     label: "Rack"
     icon: "mdi:server"
     menu_placement: "BuiltinLocation"
@@ -978,50 +978,123 @@ nodes:
         optional: true
         cardinality: many
         kind: Attribute
-
-extensions:
-  nodes:
-    - kind: BuiltinLocation
-      relationships:
-        - name: racks
-          peer: InfraRack
-          optional: true
-          cardinality: many
-          kind: Generic
-        - name: organization
-          peer: CoreOrganization
-          optional: true
-          cardinality: one
-          kind: Attribute
-        - name: tags
-          peer: BuiltinTag
-          optional: true
-          cardinality: many
-          kind: Attribute
-        - name: group
-          identifier: "location__group"
-          peer: CoreStandardGroup
-          optional: true
-          cardinality: one
-          kind: Generic
-        - name: location_type
-          peer: TemplateLocationType
-          optional: true
-          cardinality: one
-        - name: status
-          identifier: "location__status"
-          peer: BuiltinStatus
-          optional: true
-          cardinality: one
-    - kind: CoreOrganization
-      attributes:
-        - name: type
-          kind: Text
-          optional: true
-      relationships:
-        - name: group
-          identifier: "organization__group"
-          peer: CoreStandardGroup
-          optional: true
-          cardinality: one
-          kind: Generic
+  - name: Organization
+    namespace: Core
+    label: Organization
+    description: An organization represent a legal entity, a company.
+    default_filter: name__value
+    display_labels: [label__value]
+    order_by: [name__value]
+    icon: mdi:domain
+    include_in_menu: true
+    attributes:
+      - kind: Text
+        name: name
+        unique: true
+      - kind: Text
+        name: label
+        optional: true
+      - kind: Text
+        name: description
+        optional: true
+      - name: type
+        kind: Text
+        optional: true
+    relationships:
+      - cardinality: many
+        kind: Attribute
+        name: tags
+        optional: true
+        peer: BuiltinTag
+      - name: group
+        identifier: "organization__group"
+        peer: CoreStandardGroup
+        optional: true
+        cardinality: one
+        kind: Generic
+  - name: Status
+    namespace: Builtin
+    label: Status
+    description: 'Represent the status of an object: active, maintenance'
+    default_filter: name__value
+    display_labels: [label__value]
+    icon: mdi:list-status
+    include_in_menu: false
+    attributes:
+      - kind: Text
+        name: name
+        unique: true
+      - kind: Text
+        name: label
+        optional: true
+      - kind: Text
+        name: description
+        optional: true
+  - name: Role
+    namespace: Builtin
+    label: Role
+    description: Represent the role of an object
+    default_filter: name__value
+    display_labels: [label__value]
+    order_by: [name__value]
+    icon: mdi:ballot
+    include_in_menu: false
+    attributes:
+      - kind: Text
+        name: name
+        unique: true
+      - kind: Text
+        name: label
+        optional: true
+      - kind: Text
+        name: description
+        optional: true
+  - name: Location
+    namespace: Builtin
+    label: Location
+    description: 'A location represent a physical element: a building, a site, a city'
+    default_filter: name__value
+    display_labels: [name__value]
+    order_by: [name__value]
+    icon: mdi:map-marker-radius-outline
+    include_in_menu: true
+    attributes:
+      - kind: Text
+        name: name
+        unique: true
+      - kind: Text
+        name: description
+        optional: true
+      - kind: Text
+        name: type
+    relationships:
+      - name: racks
+        peer: InfraRack
+        optional: true
+        cardinality: many
+        kind: Generic
+      - name: organization
+        peer: CoreOrganization
+        optional: true
+        cardinality: one
+        kind: Attribute
+      - name: tags
+        peer: BuiltinTag
+        optional: true
+        cardinality: many
+        kind: Attribute
+      - name: group
+        identifier: "location__group"
+        peer: CoreStandardGroup
+        optional: true
+        cardinality: one
+        kind: Generic
+      - name: location_type
+        peer: TemplateLocationType
+        optional: true
+        cardinality: one
+      - name: status
+        identifier: "location__status"
+        peer: BuiltinStatus
+        optional: true
+        cardinality: one

@@ -15,17 +15,16 @@ from infrahub.exceptions import (
 )
 
 if TYPE_CHECKING:
-    import graphene
     from neo4j import AsyncSession
 
     from infrahub.core.attribute import BaseAttribute
     from infrahub.core.branch import Branch
     from infrahub.core.definitions import Brancher
     from infrahub.core.manager import NodeManager
-    from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema
+    from infrahub.core.schema import GenericSchema, NodeSchema
     from infrahub.core.schema_manager import SchemaManager
     from infrahub.database import InfrahubDatabase
-    from infrahub.graphql.mutations import BaseAttributeInput
+    from infrahub.graphql.mutations.attribute import BaseAttributeInput
     from infrahub.graphql.types import InfrahubObject
     from infrahub.storage import InfrahubObjectStorage
     from infrahub.types import InfrahubDataType
@@ -129,19 +128,6 @@ class Registry:
         default_branch = config.SETTINGS.main.default_branch
         return attr[default_branch]
 
-    def set_schema(
-        self, name: str, schema: Union[NodeSchema, GenericSchema, GroupSchema], branch: Optional[str] = None
-    ) -> int:
-        return self.schema.set(name=name, schema=schema, branch=branch)
-
-    def has_schema(self, name: str, branch: Optional[Union[Branch, str]] = None) -> bool:
-        return self.schema.has(name=name, branch=branch)
-
-    def get_schema(
-        self, name: str, branch: Optional[Union[Branch, str]] = None
-    ) -> Union[NodeSchema, GenericSchema, GroupSchema]:
-        return self.schema.get(name=name, branch=branch)
-
     def get_node_schema(self, name: str, branch: Optional[Union[Branch, str]] = None) -> NodeSchema:
         return self.schema.get(name=name, branch=branch)
 
@@ -155,23 +141,9 @@ class Registry:
 
     def get_full_schema(
         self, branch: Optional[Union[Branch, str]] = None
-    ) -> Dict[str, Union[NodeSchema, GenericSchema, GroupSchema]]:
+    ) -> Dict[str, Union[NodeSchema, GenericSchema]]:
         """Return all the nodes in the schema for a given branch."""
         return self.schema.get_full(branch=branch)
-
-    def set_graphql_type(
-        self,
-        name: str,
-        graphql_type: Union[Type[InfrahubObject], Type[graphene.Interface], Type[graphene.ObjectType]],
-        branch: Optional[str] = None,
-    ) -> bool:
-        return self.set_item(kind="graphql_type", name=name, item=graphql_type, branch=branch)
-
-    def has_graphql_type(self, name: str, branch: Optional[Union[Branch, str]] = None) -> bool:
-        return self.has_item(kind="graphql_type", name=name, branch=branch)
-
-    def get_graphql_type(self, name: str, branch: Optional[Union[Branch, str]] = None) -> InfrahubObject:
-        return self.get_item(kind="graphql_type", name=name, branch=branch)
 
     def get_all_graphql_type(self, branch: Optional[Union[Branch, str]] = None) -> Dict[str, InfrahubObject]:
         """Return all the graphql_type for a given branch."""
@@ -181,7 +153,6 @@ class Registry:
         self.branch = {}
         self.node = {}
         self.schema = None
-        self.graphql_type = defaultdict(dict)
         self.account = {}
         self.account_id = {}
         self.node_group = {}

@@ -7,7 +7,7 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
-from infrahub.graphql import generate_graphql_schema
+from infrahub.graphql import prepare_graphql_params
 
 
 @pytest.fixture
@@ -52,8 +52,6 @@ async def repos_and_checks_in_main(db: InfrahubDatabase, register_core_models_sc
 async def test_branch_create(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema, register_core_models_schema
 ):
-    schema = await generate_graphql_schema(branch=default_branch, db=db, include_subscription=False)
-
     query = """
     mutation {
         BranchCreate(data: { name: "branch2", is_data_only: true }) {
@@ -69,10 +67,11 @@ async def test_branch_create(
         }
     }
     """
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
-        schema,
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -95,10 +94,11 @@ async def test_branch_create(
     assert branch2.schema_hash == branch2_schema.get_hash_full()
 
     # Validate that we can't create a branch with a name that already exist
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
-        schema,
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -119,10 +119,11 @@ async def test_branch_create(
         }
     }
     """
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
-        schema,
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -138,8 +139,6 @@ async def test_branch_create(
 async def test_branch_create_registry(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema, register_core_models_schema
 ):
-    schema = await generate_graphql_schema(branch=default_branch, db=db, include_subscription=False)
-
     query = """
     mutation {
         BranchCreate(data: { name: "branch2", is_data_only: true }) {
@@ -155,10 +154,11 @@ async def test_branch_create_registry(
         }
     }
     """
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
-        schema,
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -173,8 +173,6 @@ async def test_branch_create_registry(
 async def test_branch_query(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema, register_core_models_schema
 ):
-    schema = await generate_graphql_schema(branch=default_branch, db=db, include_subscription=False)
-
     create_branch = """
     mutation {
         BranchCreate(data: { name: "branch3", description: "my description" }) {
@@ -186,10 +184,11 @@ async def test_branch_query(
         }
     }
     """
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     branch3_result = await graphql(
-        schema,
+        schema=gql_params.schema,
         source=create_branch,
-        context_value={"infrahub_database": db},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -202,10 +201,11 @@ async def test_branch_query(
         }
     }
     """
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     all_branches = await graphql(
-        schema,
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -217,10 +217,11 @@ async def test_branch_query(
         }
     }
     """ % branch3["name"]
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     name_response = await graphql(
-        schema,
+        schema=gql_params.schema,
         source=name_query,
-        context_value={"infrahub_database": db},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -234,10 +235,11 @@ async def test_branch_query(
     """ % [branch3["id"]]
     id_query = id_query.replace("'", '"')
 
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     id_response = await graphql(
-        schema,
+        schema=gql_params.schema,
         source=id_query,
-        context_value={"infrahub_database": db},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -252,8 +254,6 @@ async def test_branch_query(
 async def test_branch_create_invalid_names(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema, register_core_models_schema
 ):
-    schema = await generate_graphql_schema(branch=default_branch, db=db, include_subscription=False)
-
     query = """
     mutation($branch_name: String!) {
         BranchCreate(data: { name: $branch_name, is_data_only: true }) {
@@ -265,10 +265,11 @@ async def test_branch_create_invalid_names(
         }
     }
     """
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
-        schema,
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={"branch_name": "not valid"},
     )
@@ -299,10 +300,11 @@ async def test_branch_create_with_repositories(
         }
     }
     """
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch, rpc_client=rpc_client)
     result = await graphql(
-        await generate_graphql_schema(branch=default_branch, db=db, include_subscription=False),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db, "infrahub_rpc_client": rpc_client},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -314,7 +316,7 @@ async def test_branch_create_with_repositories(
     assert await Branch.get_by_name(db=db, name="branch2")
 
 
-async def test_branch_rebase(db: InfrahubDatabase, default_branch: Branch, group_graphql, car_person_schema):
+async def test_branch_rebase(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
     branch2 = await create_branch(db=db, branch_name="branch2")
 
     query = """
@@ -327,10 +329,11 @@ async def test_branch_rebase(db: InfrahubDatabase, default_branch: Branch, group
         }
     }
     """
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
-        await generate_graphql_schema(branch=default_branch, db=db, include_subscription=False),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -343,9 +346,7 @@ async def test_branch_rebase(db: InfrahubDatabase, default_branch: Branch, group
     assert new_branch2.branched_from != branch2.branched_from
 
 
-async def test_branch_rebase_wrong_branch(
-    db: InfrahubDatabase, default_branch: Branch, group_graphql, car_person_schema
-):
+async def test_branch_rebase_wrong_branch(db: InfrahubDatabase, default_branch: Branch, car_person_schema):
     query = """
     mutation {
         BranchRebase(data: { name: "branch2" }) {
@@ -356,10 +357,11 @@ async def test_branch_rebase_wrong_branch(
         }
     }
     """
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=default_branch)
     result = await graphql(
-        await generate_graphql_schema(branch=default_branch, db=db, include_subscription=False),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -381,10 +383,11 @@ async def test_branch_validate(db: InfrahubDatabase, base_dataset_02, register_c
         }
     }
     """
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch1)
     result = await graphql(
-        await generate_graphql_schema(branch=branch1, db=db, include_subscription=False),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -409,11 +412,11 @@ async def test_branch_update(db: InfrahubDatabase, base_dataset_02):
     }
     }
     """
-
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch4)
     result = await graphql(
-        await generate_graphql_schema(branch=branch4, db=db, include_subscription=False),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )
@@ -439,10 +442,11 @@ async def test_branch_merge(db: InfrahubDatabase, base_dataset_02, register_core
         }
     }
     """
+    gql_params = prepare_graphql_params(db=db, include_subscription=False, branch=branch1)
     result = await graphql(
-        await generate_graphql_schema(branch=branch1, db=db, include_subscription=False),
+        schema=gql_params.schema,
         source=query,
-        context_value={"infrahub_database": db},
+        context_value=gql_params.context,
         root_value=None,
         variable_values={},
     )

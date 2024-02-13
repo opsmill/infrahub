@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 from infrahub_sdk import UUIDT
@@ -7,7 +8,7 @@ from infrahub_sdk.utils import intersection
 from pydantic.v1 import BaseModel, Field
 
 from infrahub.core import registry
-from infrahub.core.constants import BranchSupportType
+from infrahub.core.constants import BranchSupportType, RelationshipCardinality, RelationshipDirection
 from infrahub.core.property import (
     FlagPropertyMixin,
     NodePropertyData,
@@ -15,6 +16,7 @@ from infrahub.core.property import (
     ValuePropertyData,
 )
 from infrahub.core.query.relationship import (
+    RelationshipCountPerNodeQuery,
     RelationshipCreateQuery,
     RelationshipDataDeleteQuery,
     RelationshipDeleteQuery,
@@ -42,6 +44,7 @@ if TYPE_CHECKING:
 
 
 PREFIX_PROPERTY = "_relation__"
+INDEX_DEFAULT_STOP = sys.maxsize
 
 
 class RelationshipCreateData(BaseModel):
@@ -209,18 +212,6 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
 
     async def set_peer(self, value: Union[Node, str]) -> bool:
         if hasattr(value, "_schema"):
-            if (
-                self.schema.peer not in [value.get_kind(), "CoreNode"]
-                and self.schema.peer not in value._schema.inherit_from
-            ):
-                peer_schema = registry.get_schema(name=value.get_kind(), branch=self.branch)
-
-                if self.schema.peer not in peer_schema.groups:
-                    if not (value.get_kind() == "SchemaGeneric" and self.schema.peer == "SchemaNode"):
-                        raise ValidationError(
-                            {self.name: f"Got an object of type {value.get_kind()} instead of {self.schema.peer}"}
-                        )
-
             self._peer = value
             self.peer_id = value.id
             return True
@@ -260,7 +251,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         self.peer_id = self._peer.id
 
     async def get_peer_schema(self) -> NodeSchema:
-        return registry.get_schema(name=self.schema.peer, branch=self.branch)
+        return registry.schema.get(name=self.schema.peer, branch=self.branch)
 
     def compare_properties_with_data(self, data: RelationshipPeerData) -> List[str]:
         different_properties = []
@@ -434,6 +425,145 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin):
         return data
 
 
+class RelationshipValidatorList:
+    """Provides a list/set like interface to the RelationshipManager's _relationships but with validation against min/max count and no duplicates.
+
+    Raises:
+        ValidationError: If the number of relationships is not within the min and max count.
+    """
+
+    def __init__(
+        self,
+        *relationships: Relationship,
+        min_count: int = 0,
+        max_count: int = 0,
+    ):
+        """Initialize list for Relationship but with validation against min/max count.
+
+        Args:
+            min_count (int, optional): Min count of relationships required. Defaults to 0.
+            max_count (int, optional): Max count of relationships allowed. Defaults to 0. 0 provides no limit.
+
+        Raises:
+            ValidationError: The number of relationships is not within the min and max count.
+        """
+        if max_count < min_count:
+            raise ValidationError({"msg": "max_count must be greater than min_count"})
+        self.min_count: int = min_count
+        self.max_count: int = max_count
+
+        self._relationships: List[Relationship] = [rel for rel in relationships if isinstance(rel, Relationship)]
+        self._relationships_count: int = len(self._relationships)
+
+        # Validate the initial relationships count is within the min and max count if relationships were provided
+        # Allow this class to be instantiated without relationships
+        if self._relationships:
+            if self.max_count and self._relationships_count > self.max_count:
+                raise ValidationError({relationships[0].node_id: f"Too many relationships, max {self.max_count}"})
+            if self.min_count and self._relationships_count < self.min_count:
+                raise ValidationError({relationships[0].node_id: f"Too few relationships, min {self.min_count}"})
+
+    def __contains__(self, item: Relationship):
+        return item in self._relationships
+
+    def __hash__(self):
+        return hash(self._relationships)
+
+    def __iter__(self):
+        return iter(self._relationships)
+
+    def __getitem__(self, index: int):
+        return self._relationships[index]
+
+    def __setitem__(self, index: int, value: Relationship):
+        if value in self._relationships:
+            raise ValidationError({value.name: "Relationship already exists in the list"})
+        if not isinstance(value, Relationship):
+            raise ValidationError("RelationshipValidatorList only accepts Relationship objects")
+        self._relationships[index] = value
+
+    def __delitem__(self, index: int):
+        if self._relationships_count - 1 < self.min_count:
+            raise ValidationError({self._relationships[0].name: f"Too few relationships, min {self.min_count}"})
+        del self._relationships[index]
+
+    def __len__(self):
+        length = len(self._relationships)
+        if length != self._relationships_count:
+            self._relationships_count = length
+        return length
+
+    def __repr__(self):
+        return repr(self._relationships)
+
+    def append(self, rel: Relationship):
+        # Do not do anything if the relationship is already present
+        if rel in self._relationships:
+            return
+        if not isinstance(rel, Relationship):
+            raise ValidationError("RelationshipValidatorList only accepts Relationship objects")
+
+        # If the max_count is greater than 0 then validate
+        if self.max_count and self._relationships_count + 1 > self.max_count:
+            raise ValidationError(
+                {rel.name: f"Too many relationships, max {self.max_count}, count {self._relationships_count}"}
+            )
+
+        self._relationships.append(rel)
+        self._relationships_count += 1
+
+    def clear(self):
+        self._relationships.clear()
+        self._relationships_count = len(self._relationships)
+
+    def extend(self, iterable):
+        # Filter down to only Relationship objects and remove duplicates
+        relationships = [rel for rel in iterable if isinstance(rel, Relationship) and rel not in self._relationships]
+        rel_len = len(relationships)
+        # If the max_count is greater than 0 then validate
+        if self.max_count and self._relationships_count + rel_len > self.max_count:
+            raise ValidationError({self._relationships[0].name: f"Too many relationships, max {self.max_count}"})
+
+        self._relationships.extend(relationships)
+        self._relationships_count += rel_len
+
+    def get(self, index: int):
+        return self._relationships[index]
+
+    def index(self, value: Relationship, start: int = 0, stop: int = INDEX_DEFAULT_STOP):
+        return self._relationships.index(value, start, stop)
+
+    def insert(self, index: int, value: Relationship):
+        if value in self._relationships:
+            return
+        if not isinstance(value, Relationship):
+            raise ValidationError("RelationshipValidatorList only accepts Relationship objects")
+        if self.max_count and self._relationships_count + 1 > self.max_count:
+            raise ValidationError({value.name: f"Too many relationships, max {self.max_count}"})
+        self._relationships.insert(index, value)
+        self._relationships_count += 1
+
+    def pop(self, idx: int = -1):
+        if self.min_count and self._relationships_count - 1 < self.min_count:
+            raise ValidationError({self._relationships[0].name: f"Too few relationships, min {self.min_count}"})
+
+        result = self._relationships.pop(idx)
+        self._relationships_count -= 1
+        return result
+
+    def remove(self, value: Relationship):
+        if self.min_count and self._relationships_count - 1 < self.min_count:
+            raise ValidationError({self._relationships[0].name: f"Too few relationships, min {self.min_count}"})
+        self._relationships.remove(value)
+        self._relationships_count -= 1
+
+    def reverse(self):
+        raise NotImplementedError("reverse is not implemented due to RelationshipManager not requiring it")
+
+    def sort(self, key=None, reverse=False):
+        raise NotImplementedError("sort is not implemented due to RelationshipManager not requiring it")
+
+
 class RelationshipManager:
     def __init__(  # pylint: disable=unused-argument
         self,
@@ -453,7 +583,10 @@ class RelationshipManager:
         # TODO Ideally this information should come from the Schema
         self.rel_class = Relationship
 
-        self._relationships: List[Relationship] = []
+        self._relationships: RelationshipValidatorList = RelationshipValidatorList(
+            min_count=self.schema.min_count,
+            max_count=self.schema.max_count,
+        )
         self.has_fetched_relationships: bool = False
 
     @classmethod
@@ -609,7 +742,7 @@ class RelationshipManager:
 
         # Reset the list of relationship and save the previous one to see if we can reuse some
         previous_relationships = {rel.peer_id: rel for rel in await self.get_relationships(db=db)}
-        self._relationships = []
+        self._relationships.clear()
         changed = False
 
         for item in data:
@@ -736,6 +869,91 @@ class RelationshipManager:
 
         return self
 
+    async def validate_constraints(  # pylint: disable=too-many-branches
+        self, db: InfrahubDatabase, branch: Branch, return_cardinality_one_to_update: bool = False
+    ) -> List[str]:
+        (
+            _,
+            peer_ids_present_local_only,
+            peer_ids_present_database_only,
+            _,
+        ) = await self._fetch_relationship_ids(db=db)
+
+        class NodeToValidate(BaseModel):
+            uuid: str
+            min_count: Optional[int] = None
+            max_count: Optional[int] = None
+            cardinality: RelationshipCardinality
+
+        nodes_to_validate: List[NodeToValidate] = []
+
+        # peer_ids_present_local_only:
+        #    new relationship, need to check if the schema on the other side has a max_count defined
+        # peer_ids_present_database_only:
+        #    relationship to be deleted, need to check if the schema on the other side has a min_count defined
+        # TODO see how to manage Generic node
+        peer_schema = registry.schema.get(name=self.schema.peer, branch=branch)
+        peer_rels = peer_schema.get_relationships_by_identifier(id=self.schema.identifier)
+        if not peer_rels:
+            return
+
+        for peer_rel in peer_rels:
+            # If a relationship is directional and both have the same direction they can't work together
+            if self.schema.direction == peer_rel.direction and peer_rel.direction != RelationshipDirection.BIDIR:
+                continue
+
+            for peer_id in peer_ids_present_local_only + peer_ids_present_database_only:
+                if peer_rel.max_count and peer_id in peer_ids_present_local_only:
+                    nodes_to_validate.append(
+                        NodeToValidate(uuid=peer_id, max_count=peer_rel.max_count, cardinality=peer_rel.cardinality)
+                    )
+
+                if peer_rel.min_count and peer_id in peer_ids_present_database_only:
+                    nodes_to_validate.append(
+                        NodeToValidate(uuid=peer_id, min_count=peer_rel.min_count, cardinality=peer_rel.cardinality)
+                    )
+
+        direction = RelationshipDirection.BIDIR
+        if self.schema.direction == RelationshipDirection.INBOUND:
+            direction = RelationshipDirection.OUTBOUND
+        elif self.schema.direction == RelationshipDirection.OUTBOUND:
+            direction = RelationshipDirection.INBOUND
+
+        query = await RelationshipCountPerNodeQuery.init(
+            db=db,
+            node_ids=[node.uuid for node in nodes_to_validate],
+            identifier=self.schema.identifier,
+            direction=direction,
+            branch=branch,
+        )
+        await query.execute(db=db)
+        count_per_peer = await query.get_count_per_peer()
+
+        # Need to adjust the number based on what we will add / remove
+        #  +1 for max_count
+        #  -1 for min_count
+        peer_to_update = []
+        for node in nodes_to_validate:
+            if node.max_count and count_per_peer[node.uuid] + 1 > node.max_count:
+                if node.cardinality == RelationshipCardinality.ONE and return_cardinality_one_to_update:
+                    peer_to_update.append(node.uuid)
+                else:
+                    raise ValidationError(
+                        {
+                            self.schema.name: f"Node {node.uuid} has {count_per_peer[node.uuid] + 1} peers "
+                            f"for {self.schema.identifier}, only {node.max_count} allowed"
+                        }
+                    )
+            if node.min_count and count_per_peer[node.uuid] - 1 < node.min_count:
+                raise ValidationError(
+                    {
+                        self.schema.name: f"Node {node.uuid} has {count_per_peer[node.uuid] - 1} peers "
+                        f"for {self.schema.identifier}, no more than {node.min_count} allowed"
+                    }
+                )
+
+        return peer_to_update
+
     async def delete(
         self,
         db: InfrahubDatabase,
@@ -751,9 +969,7 @@ class RelationshipManager:
             await rel.delete(at=delete_at, db=db)
 
     async def to_graphql(
-        self,
-        db: InfrahubDatabase,
-        fields: Optional[dict] = None,
+        self, db: InfrahubDatabase, fields: Optional[dict] = None, related_node_ids: Optional[set] = None
     ) -> Union[dict, None]:
         # NOTE Need to investigate when and why we are passing the peer directly here, how do we account for many relationship
         if self.schema.cardinality == "many":
@@ -763,4 +979,4 @@ class RelationshipManager:
         if not relationships:
             return None
 
-        return await relationships[0].to_graphql(fields=fields, db=db)
+        return await relationships[0].to_graphql(fields=fields, db=db, related_node_ids=related_node_ids)

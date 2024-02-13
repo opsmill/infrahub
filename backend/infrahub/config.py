@@ -3,18 +3,21 @@ from __future__ import annotations
 import os
 import os.path
 import sys
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import toml
 from infrahub_sdk import generate_uuid
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError
+from pydantic import AliasChoices, Field, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from infrahub.database.constants import DatabaseType
-from infrahub.services.adapters.cache import InfrahubCache  # noqa: TCH001
-from infrahub.services.adapters.message_bus import InfrahubMessageBus  # noqa: TCH001
+
+if TYPE_CHECKING:
+    from infrahub.services.adapters.cache import InfrahubCache
+    from infrahub.services.adapters.message_bus import InfrahubMessageBus
 
 SETTINGS: Settings = None
 
@@ -53,7 +56,7 @@ class MainSettings(BaseSettings):
 
 
 class FileSystemStorageSettings(BaseSettings):
-    # Make variable lookup case-sensitive to avoid fetch $PATH value
+    # Make variable lookup case-sensitive to avoid fetching $PATH value
     model_config = SettingsConfigDict(case_sensitive=True)
     path_: str = Field(
         default="/opt/infrahub/storage",
@@ -103,32 +106,26 @@ class StorageSettings(BaseSettings):
 
 
 class DatabaseSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_DB_")
     db_type: DatabaseType = Field(
-        default=DatabaseType.MEMGRAPH, validation_alias=AliasChoices("db_type", "INFRAHUB_DB_TYPE")
+        default=DatabaseType.MEMGRAPH, validation_alias=AliasChoices("INFRAHUB_DB_TYPE", "db_type")
     )
-    protocol: str = Field(default="bolt", validation_alias=AliasChoices("protocol", "NEO4J_PROTOCOL"))
-    username: str = Field(default="neo4j", validation_alias=AliasChoices("username", "NEO4J_USERNAME"))
-    password: str = Field(default="admin", validation_alias=AliasChoices("password", "NEO4J_PASSWORD"))
-    address: str = Field(default="localhost", validation_alias=AliasChoices("address", "NEO4J_ADDRESS"))
-    port: int = Field(default=7687, validation_alias=AliasChoices("port", "NEO4J_PORT"))
-    database: Optional[str] = Field(
-        default=None,
-        pattern=VALID_DATABASE_NAME_REGEX,
-        description="Name of the database",
-        validation_alias=AliasChoices("database", "NEO4J_DATABASE"),
-    )
+    protocol: str = "bolt"
+    username: str = "neo4j"
+    password: str = "admin"
+    address: str = "localhost"
+    port: int = 7687
+    database: Optional[str] = Field(default=None, pattern=VALID_DATABASE_NAME_REGEX, description="Name of the database")
     query_size_limit: int = Field(
         default=5000,
         ge=1,
         le=20000,
         description="The max number of records to fetch in a single query before performing internal pagination.",
-        validation_alias=AliasChoices("query_size_limit", "INFRAHUB_DB_QUERY_SIZE_LIMIT"),
     )
     max_depth_search_hierarchy: int = Field(
         default=5,
         le=20,
         description="Maximum number of level to search in a hierarchy.",
-        validation_alias=AliasChoices("max_depth_search_hierarchy", "INFRAHUB_DB_MAX_DEPTH_SEARCH_HIERARCHY"),
     )
 
     @property
@@ -179,6 +176,9 @@ class ApiSettings(BaseSettings):
 
 class GitSettings(BaseSettings):
     repositories_directory: str = "repositories"
+    sync_interval: int = Field(
+        default=10, ge=0, description="Time (in seconds) between git repositories synchronizations"
+    )
 
 
 class MiscellaneousSettings(BaseSettings):
@@ -211,6 +211,7 @@ class AnalyticsSettings(BaseSettings):
 class ExperimentalFeaturesSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_EXPERIMENTAL_")
     pull_request: bool = False
+    graphql_enums: bool = False
 
 
 class SecuritySettings(BaseSettings):
@@ -272,8 +273,8 @@ class TraceSettings(BaseSettings):
         return scheme + endpoint
 
 
-class Override(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+@dataclass
+class Override:
     message_bus: Optional[InfrahubMessageBus] = None
     cache: Optional[InfrahubCache] = None
 

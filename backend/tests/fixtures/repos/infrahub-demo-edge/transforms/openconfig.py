@@ -3,13 +3,12 @@ from infrahub_sdk.transforms import InfrahubTransform
 
 class OCInterfaces(InfrahubTransform):
     query = "oc_interfaces"
-    url = "openconfig/interfaces"
 
     async def transform(self, data):
         response_payload = {}
         response_payload["openconfig-interfaces:interface"] = []
 
-        for intf in data["InfraDevice"]["edges"][0]["node"]["interfaces"]["edges"]:
+        for intf in data["data"]["InfraDevice"]["edges"][0]["node"]["interfaces"]["edges"]:
             intf_name = intf["node"]["name"]["value"]
 
             intf_config = {
@@ -59,7 +58,7 @@ class OCBGPNeighbors(InfrahubTransform):
 
         response_payload["openconfig-bgp:neighbors"] = {"neighbor": []}
 
-        for session in data["InfraBGPSession"]["edges"]:
+        for session in data["data"]["InfraBGPSession"]["edges"]:
             neighbor_address = session["node"]["remote_ip"]["node"]["address"]["value"].split("/")[0]
             session_data = {
                 "neighbor-address": neighbor_address,

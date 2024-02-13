@@ -2,7 +2,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from infrahub.core.branch import Branch, Diff
+from infrahub.core.branch import Branch
+from infrahub.core.diff import BranchDiffer
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import DiffFromRequiredOnDefaultBranchError, DiffRangeValidationError
 
@@ -20,7 +21,7 @@ class TestDiffInit:
         self.branch.get_origin_branch.return_value = self.origin_branch
 
     async def __call_system_under_test(self, branch, **kwargs):
-        return await Diff.init(self.db, branch, **kwargs)
+        return await BranchDiffer.init(self.db, branch, **kwargs)
 
     async def test_diff_from_required_for_default_branch(self):
         self.branch.is_default = True

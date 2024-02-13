@@ -2,7 +2,9 @@
 version: "3.4"
 services:
   database:
-    image: "${DATABASE_DOCKER_IMAGE:-memgraph/memgraph:latest}"
+    image: "${DATABASE_DOCKER_IMAGE:-memgraph/memgraph-platform:latest}"
+    entrypoint: ["/usr/bin/supervisord"]
+    init: true
     volumes:
       - database_data:/var/lib/memgraph
       - database_logs:/var/log/memgraph
@@ -10,12 +12,17 @@ services:
     environment:
       - MGCONSOLE="--username neo4j --password admin"
       - APP_CYPHER_QUERY_MAX_LEN=10000
+
     healthcheck:
       test: ["CMD", "bash", "-c", 'mgconsole < <(echo "SHOW TRANSACTIONS;")']
       interval: 5s
       timeout: 10s
       retries: 20
       start_period: 3s
+    labels:
+      infrahub_role: "database"
+
+
 volumes:
   database_data:
   database_logs:

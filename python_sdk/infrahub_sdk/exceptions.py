@@ -36,7 +36,7 @@ class GraphQLError(Error):
         self.query = query
         self.variables = variables
         self.errors = errors
-        self.message = f"An error occured while executing the GraphQL Query {self.query}, {self.errors}"
+        self.message = f"An error occurred while executing the GraphQL Query {self.query}, {self.errors}"
         super().__init__(self.message)
 
 
@@ -88,6 +88,12 @@ class FilterNotFound(Error):
         self.kind = kind
         self.filters = filters or []
         self.message = message or f"{identifier!r} is not a valid filter for {self.kind!r} ({', '.join(self.filters)})."
+        super().__init__(self.message)
+
+
+class InfrahubCheckNotFoundError(Error):
+    def __init__(self, name: str, message: Optional[str] = None):
+        self.message = message or f"The requested InfrahubCheck '{name}' was not found."
         super().__init__(self.message)
 
 

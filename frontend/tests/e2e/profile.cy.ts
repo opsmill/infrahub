@@ -1,6 +1,6 @@
 /// <reference types="cypress" />
 
-import { ADMIN_CREDENTIALS } from "../utils";
+import { ADMIN_CREDENTIALS } from "../constants";
 
 describe("Profile page", () => {
   it("should access and display all information's about user", () => {

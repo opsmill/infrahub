@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import copy
 import enum
 import hashlib
 import keyword
 import re
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
-from infrahub_sdk.utils import duplicates, intersection
+from infrahub_sdk.utils import compare_lists
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from infrahub import config
@@ -27,10 +26,14 @@ from infrahub.core.constants import (
     RelationshipDirection,
     RelationshipKind,
     Severity,
+    UpdateSupport,
     ValidatorConclusion,
     ValidatorState,
 )
+from infrahub.core.enums import generate_python_enum
+from infrahub.core.models import HashableModel, HashableModelDiff
 from infrahub.core.query import QueryNode, QueryRel, QueryRelDirection
+from infrahub.core.query.attribute import default_attribute_query_filter
 from infrahub.core.relationship import Relationship
 from infrahub.types import ATTRIBUTE_TYPES
 
@@ -52,6 +55,7 @@ AttributeKind = enum.Enum("AttributeKind", dict(attribute_dict))
 RELATIONSHIPS_MAPPING = {"Relationship": Relationship}
 
 NODE_KIND_REGEX = r"^[A-Z][a-zA-Z0-9]+$"
+NAMESPACE_REGEX = r"^[A-Z][a-z0-9]+$"
 NODE_NAME_REGEX = r"^[A-Z][a-zA-Z0-9]+$"
 NAME_REGEX = r"^[a-z0-9\_]+$"
 
@@ -90,188 +94,7 @@ class QueryArrows(BaseModel):
     right: QueryArrow
 
 
-class BaseSchemaModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    _exclude_from_hash: List[str] = []
-    _sort_by: List[str] = []
-
-    def __hash__(self):
-        return hash(self.get_hash())
-
-    def get_hash(self, display_values: bool = False) -> str:
-        """Generate a hash for the object.
-
-        Calculating a hash can be very complicated if the data that we are storing is dynamic
-        In order for this function to work, it's recommended to exclude all objects or list of objects with _exclude_from_hash
-        List of hashable elements are fine and they will be converted automatically to Tuple.
-        """
-
-        def prep_for_hash(v) -> bytes:
-            if hasattr(v, "get_hash"):
-                return v.get_hash().encode()
-
-            return str(v).encode()
-
-        values = []
-        md5hash = hashlib.md5()
-        for field_name in sorted(self.model_fields.keys()):
-            if field_name.startswith("_") or field_name in self._exclude_from_hash:
-                continue
-
-            value = getattr(self, field_name)
-            if isinstance(value, list):
-                for item in sorted(value):
-                    values.append(prep_for_hash(item))
-                    md5hash.update(prep_for_hash(item))
-            elif hasattr(value, "get_hash"):
-                values.append(value.get_hash().encode())
-                md5hash.update(value.get_hash().encode())
-            elif isinstance(value, dict):
-                for key, value in frozenset(sorted(value.items())):
-                    values.append(prep_for_hash(key))
-                    values.append(prep_for_hash(value))
-                    md5hash.update(prep_for_hash(key))
-                    md5hash.update(prep_for_hash(value))
-            else:
-                md5hash.update(prep_for_hash(value))
-                values.append(prep_for_hash(value))
-
-        if display_values:
-            from rich import print as rprint  # pylint: disable=import-outside-toplevel
-
-            rprint(tuple(values))
-
-        return md5hash.hexdigest()
-
-    @property
-    def _sorting_id(self) -> Set[Any]:
-        return tuple(getattr(self, key) for key in self._sort_by if hasattr(self, key))
-
-    def _sorting_keys(self, other: BaseSchemaModel) -> Tuple[List[Any], List[Any]]:
-        """Retrieve the values of the attributes listed in the _sort_key list, for both objects."""
-        if not self._sort_by:
-            raise TypeError(f"Sorting not supported for instance of {self.__class__.__name__}")
-
-        if not hasattr(other, "_sort_by") and not other._sort_by:
-            raise TypeError(
-                f"Sorting not supported between instance of {other.__class__.__name__} and {self.__class__.__name__}"
-            )
-
-        self_sort_keys: List[Any] = [getattr(self, key) for key in self._sort_by if hasattr(self, key)]
-        other_sort_keys: List[Any] = [getattr(other, key) for key in other._sort_by if hasattr(other, key)]
-
-        return self_sort_keys, other_sort_keys
-
-    def __lt__(self, other: Self) -> bool:
-        self_sort_keys, other_sort_keys = self._sorting_keys(other)
-        return tuple(self_sort_keys) < tuple(other_sort_keys)
-
-    def __le__(self, other: Self) -> bool:
-        self_sort_keys, other_sort_keys = self._sorting_keys(other)
-        return tuple(self_sort_keys) <= tuple(other_sort_keys)
-
-    def __gt__(self, other: Self) -> bool:
-        self_sort_keys, other_sort_keys = self._sorting_keys(other)
-        return tuple(self_sort_keys) > tuple(other_sort_keys)
-
-    def __ge__(self, other: Self) -> bool:
-        self_sort_keys, other_sort_keys = self._sorting_keys(other)
-        return tuple(self_sort_keys) >= tuple(other_sort_keys)
-
-    def duplicate(self) -> Self:
-        """Duplicate the current object by doing a deep copy of everything and recreating a new object."""
-        return self.__class__(**copy.deepcopy(self.model_dump()))
-
-    @staticmethod
-    def is_list_composed_of_schema_model(items) -> bool:
-        for item in items:
-            if not isinstance(item, BaseSchemaModel):
-                return False
-        return True
-
-    @staticmethod
-    def is_list_composed_of_standard_type(items) -> bool:
-        for item in items:
-            if not isinstance(item, (int, str, bool, float)):
-                return False
-        return True
-
-    @staticmethod
-    def update_list_schema_model(field_name, attr_local, attr_other):
-        # merging the list is not easy, we need to create a unique id based on the
-        # sorting keys and if we have 2 sub items with the same key we can merge them recursively with update()
-        local_sub_items = {item._sorting_id: item for item in attr_local if hasattr(item, "_sorting_id")}
-        other_sub_items = {item._sorting_id: item for item in attr_other if hasattr(item, "_sorting_id")}
-
-        new_list = []
-
-        if len(local_sub_items) != len(attr_local) or len(other_sub_items) != len(attr_other):
-            raise ValueError(f"Unable to merge the list for {field_name}, not all items are supporting _sorting_id")
-
-        if duplicates(list(local_sub_items.keys())) or duplicates(list(other_sub_items.keys())):
-            raise ValueError(f"Unable to merge the list for {field_name}, some items have the same _sorting_id")
-
-        shared_ids = intersection(list(local_sub_items.keys()), list(other_sub_items.keys()))
-        local_only_ids = set(list(local_sub_items.keys())) - set(shared_ids)
-        other_only_ids = set(list(other_sub_items.keys())) - set(shared_ids)
-
-        new_list = [value for key, value in local_sub_items.items() if key in local_only_ids]
-        new_list.extend([value for key, value in other_sub_items.items() if key in other_only_ids])
-
-        for item_id in shared_ids:
-            other_item = other_sub_items[item_id]
-            local_item = local_sub_items[item_id]
-            new_list.append(local_item.update(other_item))
-
-        return new_list
-
-    @staticmethod
-    def update_list_standard(local_list, other_list):
-        pass
-
-    def update(self, other: Self) -> Self:
-        """Update the current object with the new value from the new one if they are defined.
-
-        Currently this method works for the following type of fields
-            int, str, bool, float: If present the value from Other is overwriting the local value
-            list[BaseSchemaModel]: The list will be merge if all elements in the list have a _sorting_id and if it's unique.
-
-        TODO Implement other fields type like dict
-        """
-
-        for field_name, _ in other.model_fields.items():
-            if not hasattr(self, field_name):
-                setattr(self, field_name, getattr(other, field_name))
-                continue
-
-            attr_other = getattr(other, field_name)
-            attr_local = getattr(self, field_name)
-            if attr_other is None or attr_local == attr_other:
-                continue
-
-            if attr_local is None or isinstance(attr_other, (int, str, bool, float)):
-                setattr(self, field_name, getattr(other, field_name))
-                continue
-
-            if isinstance(attr_local, list) and isinstance(attr_other, list):
-                if self.is_list_composed_of_schema_model(attr_local) and self.is_list_composed_of_schema_model(
-                    attr_other
-                ):
-                    new_attr = self.update_list_schema_model(
-                        field_name=field_name, attr_local=attr_local, attr_other=attr_other
-                    )
-                    setattr(self, field_name, new_attr)
-
-                elif self.is_list_composed_of_standard_type(attr_local) and self.is_list_composed_of_standard_type(
-                    attr_other
-                ):
-                    new_attr = list(dict.fromkeys(attr_local + attr_other))
-                    setattr(self, field_name, new_attr)
-
-        return self
-
-
-class FilterSchema(BaseSchemaModel):
+class FilterSchema(HashableModel):
     name: str
     kind: FilterSchemaKind
     enum: Optional[List] = None
@@ -281,7 +104,7 @@ class FilterSchema(BaseSchemaModel):
     _sort_by: List[str] = ["name"]
 
 
-class DropdownChoice(BaseSchemaModel):
+class DropdownChoice(HashableModel):
     name: str
     description: Optional[str] = None
     color: Optional[str] = None
@@ -300,25 +123,36 @@ class DropdownChoice(BaseSchemaModel):
         raise ValueError("Color must be a valid HTML color code")
 
 
-class AttributeSchema(BaseSchemaModel):
-    id: Optional[str] = None
-    name: str = Field(pattern=NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
-    kind: str  # AttributeKind
-    label: Optional[str] = None
-    description: Optional[str] = Field(None, max_length=DEFAULT_DESCRIPTION_LENGTH)
-    default_value: Optional[Any] = None
-    enum: Optional[List] = None
-    regex: Optional[str] = None
-    max_length: Optional[int] = None
-    min_length: Optional[int] = None
-    read_only: bool = False
-    inherited: bool = False
-    unique: bool = False
-    branch: Optional[BranchSupportType] = None
-    optional: bool = False
-    order_weight: Optional[int] = None
+class AttributeSchema(HashableModel):
+    id: Optional[str] = Field(default=None, json_schema_extra={"update": UpdateSupport.NOT_APPLICABLE.value})
+    name: str = Field(
+        pattern=NAME_REGEX,
+        min_length=DEFAULT_NAME_MIN_LENGTH,
+        max_length=DEFAULT_NAME_MAX_LENGTH,
+        json_schema_extra={"update": UpdateSupport.NOT_SUPPORTED.value},
+    )
+    kind: str = Field(json_schema_extra={"update": UpdateSupport.MIGRATION_REQUIRED.value})  # AttributeKind
+    label: Optional[str] = Field(default=None, json_schema_extra={"update": UpdateSupport.ALLOWED.value})
+    description: Optional[str] = Field(
+        default=None, max_length=DEFAULT_DESCRIPTION_LENGTH, json_schema_extra={"update": UpdateSupport.ALLOWED.value}
+    )
+    default_value: Optional[Any] = Field(default=None, json_schema_extra={"update": UpdateSupport.ALLOWED.value})
+    enum: Optional[List] = Field(default=None, json_schema_extra={"update": UpdateSupport.CHECK_CONSTRAINTS.value})
+    regex: Optional[str] = Field(default=None, json_schema_extra={"update": UpdateSupport.CHECK_CONSTRAINTS.value})
+    max_length: Optional[int] = Field(default=None, json_schema_extra={"update": UpdateSupport.CHECK_CONSTRAINTS.value})
+    min_length: Optional[int] = Field(default=None, json_schema_extra={"update": UpdateSupport.CHECK_CONSTRAINTS.value})
+    read_only: bool = Field(default=False, json_schema_extra={"update": UpdateSupport.ALLOWED.value})
+    inherited: bool = Field(default=False, json_schema_extra={"update": UpdateSupport.NOT_APPLICABLE.value})
+    unique: bool = Field(default=False, json_schema_extra={"update": UpdateSupport.CHECK_CONSTRAINTS.value})
+    branch: Optional[BranchSupportType] = Field(
+        default=None, json_schema_extra={"update": UpdateSupport.MIGRATION_REQUIRED.value}
+    )
+    optional: bool = Field(default=False, json_schema_extra={"update": UpdateSupport.CHECK_CONSTRAINTS.value})
+    order_weight: Optional[int] = Field(default=None, json_schema_extra={"update": UpdateSupport.ALLOWED.value})
     choices: Optional[List[DropdownChoice]] = Field(
-        default=None, description="The available choices if the kind is Dropdown."
+        default=None,
+        description="The available choices if the kind is Dropdown.",
+        json_schema_extra={"update": UpdateSupport.CHECK_CONSTRAINTS.value},
     )
 
     _sort_by: List[str] = ["name"]
@@ -344,31 +178,104 @@ class AttributeSchema(BaseSchemaModel):
     def get_class(self):
         return ATTRIBUTE_TYPES[self.kind].get_infrahub_class()
 
+    @property
+    def uses_enum_class(self) -> bool:
+        return bool(self.enum) and config.SETTINGS.experimental_features.graphql_enums
+
+    def get_attribute_enum_class(self) -> Optional[enum.EnumType]:
+        if not self.uses_enum_class:
+            return None
+        return generate_python_enum(f"{self.name.title()}Enum", {v: v for v in self.enum})
+
+    def convert_to_attribute_enum(self, value: Any) -> Any:
+        if not self.uses_enum_class or not value:
+            return value
+        attribute_enum_class = self.get_attribute_enum_class()
+        if isinstance(value, attribute_enum_class):
+            return value
+        if isinstance(value, enum.Enum):
+            value = value.value
+        return attribute_enum_class(value)
+
+    def convert_to_enum_value(self, value: Any) -> Any:
+        if not self.uses_enum_class:
+            return value
+        if isinstance(value, list):
+            value = [self.convert_to_attribute_enum(element) for element in value]
+            return [element.value if isinstance(element, enum.Enum) else element for element in value]
+        value = self.convert_to_attribute_enum(value)
+        return value.value if isinstance(value, enum.Enum) else value
+
     async def get_query_filter(
         self,
-        db: InfrahubDatabase,
-        *args,
-        **kwargs,  # pylint: disable=unused-argument
+        name: str,
+        filter_name: str,
+        branch: Optional[Branch] = None,
+        filter_value: Optional[Union[str, int, bool, list, enum.Enum]] = None,
+        include_match: bool = True,
+        param_prefix: Optional[str] = None,
+        db: Optional[InfrahubDatabase] = None,
+        partial_match: bool = False,
     ) -> Tuple[List[QueryElement], Dict[str, Any], List[str]]:
-        return await self.get_class().get_query_filter(*args, **kwargs)
+        filter_value = self.convert_to_enum_value(filter_value)
+        return await default_attribute_query_filter(
+            name=name,
+            filter_name=filter_name,
+            branch=branch,
+            filter_value=filter_value,
+            include_match=include_match,
+            param_prefix=param_prefix,
+            db=db,
+            partial_match=partial_match,
+        )
 
 
-class RelationshipSchema(BaseSchemaModel):
-    id: Optional[str] = None
-    name: str = Field(pattern=NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
-    peer: str = Field(pattern=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH)
-    kind: RelationshipKind = RelationshipKind.GENERIC
-    direction: RelationshipDirection = RelationshipDirection.BIDIR
-    label: Optional[str] = Field(default=None)
-    description: Optional[str] = Field(None, max_length=DEFAULT_DESCRIPTION_LENGTH)
-    identifier: Optional[str] = Field(None, max_length=DEFAULT_REL_IDENTIFIER_LENGTH)
-    inherited: bool = False
-    cardinality: RelationshipCardinality = RelationshipCardinality.MANY
-    branch: Optional[BranchSupportType] = Field(default=None)
-    optional: bool = True
-    hierarchical: Optional[str] = Field(default=None)
-    filters: List[FilterSchema] = Field(default_factory=list)
-    order_weight: Optional[int] = None
+class RelationshipSchema(HashableModel):
+    id: Optional[str] = Field(default=None, json_schema_extra={"update": UpdateSupport.NOT_APPLICABLE.value})
+    name: str = Field(
+        pattern=NAME_REGEX,
+        min_length=DEFAULT_NAME_MIN_LENGTH,
+        max_length=DEFAULT_NAME_MAX_LENGTH,
+        json_schema_extra={"update": UpdateSupport.NOT_SUPPORTED.value},
+    )
+    peer: str = Field(
+        pattern=NODE_KIND_REGEX,
+        min_length=DEFAULT_KIND_MIN_LENGTH,
+        max_length=DEFAULT_KIND_MAX_LENGTH,
+        json_schema_extra={"update": UpdateSupport.CHECK_CONSTRAINTS.value},
+    )
+    kind: RelationshipKind = Field(
+        default=RelationshipKind.GENERIC, json_schema_extra={"update": UpdateSupport.ALLOWED.value}
+    )
+    direction: RelationshipDirection = Field(
+        default=RelationshipDirection.BIDIR, json_schema_extra={"update": UpdateSupport.MIGRATION_REQUIRED.value}
+    )
+    label: Optional[str] = Field(default=None, json_schema_extra={"update": UpdateSupport.ALLOWED.value})
+    description: Optional[str] = Field(
+        default=None, max_length=DEFAULT_DESCRIPTION_LENGTH, json_schema_extra={"update": UpdateSupport.ALLOWED.value}
+    )
+    identifier: Optional[str] = Field(
+        default=None,
+        max_length=DEFAULT_REL_IDENTIFIER_LENGTH,
+        json_schema_extra={"update": UpdateSupport.MIGRATION_REQUIRED.value},
+    )
+    inherited: bool = Field(default=False, json_schema_extra={"update": UpdateSupport.NOT_APPLICABLE.value})
+    cardinality: RelationshipCardinality = Field(
+        default=RelationshipCardinality.MANY, json_schema_extra={"update": UpdateSupport.CHECK_CONSTRAINTS.value}
+    )
+    branch: Optional[BranchSupportType] = Field(
+        default=None, json_schema_extra={"update": UpdateSupport.MIGRATION_REQUIRED.value}
+    )
+    optional: bool = Field(default=True, json_schema_extra={"update": UpdateSupport.CHECK_CONSTRAINTS.value})
+    hierarchical: Optional[str] = Field(
+        default=None, json_schema_extra={"update": UpdateSupport.MIGRATION_REQUIRED.value}
+    )
+    filters: List[FilterSchema] = Field(
+        default_factory=list, json_schema_extra={"update": UpdateSupport.NOT_APPLICABLE.value}
+    )
+    order_weight: Optional[int] = Field(default=None, json_schema_extra={"update": UpdateSupport.ALLOWED.value})
+    min_count: int = Field(default=0, json_schema_extra={"update": UpdateSupport.CHECK_CONSTRAINTS.value})
+    max_count: int = Field(default=0, json_schema_extra={"update": UpdateSupport.CHECK_CONSTRAINTS.value})
 
     _exclude_from_hash: List[str] = ["filters"]
     _sort_by: List[str] = ["name"]
@@ -377,7 +284,16 @@ class RelationshipSchema(BaseSchemaModel):
         return Relationship
 
     async def get_peer_schema(self, branch: Optional[Union[Branch, str]] = None):
-        return registry.schema.get(name=self.peer, branch=branch)
+        return registry.schema.get(name=self.peer, branch=branch, duplicate=False)
+
+    @property
+    def internal_peer(self) -> bool:
+        return self.peer.startswith("Internal")
+
+    def get_identifier(self) -> str:
+        if not self.identifier:
+            raise ValueError("RelationshipSchema is not initialized")
+        return self.identifier
 
     def get_query_arrows(self) -> QueryArrows:
         """Return (in 4 parts) the 2 arrows for the relationship R1 and R2 based on the direction of the relationship."""
@@ -398,6 +314,7 @@ class RelationshipSchema(BaseSchemaModel):
         branch: Optional[Branch] = None,
         include_match: bool = True,
         param_prefix: Optional[str] = None,
+        partial_match: bool = False,
     ) -> Tuple[List[QueryElement], Dict[str, Any], List[str]]:
         """Generate Query String Snippet to filter the right node."""
 
@@ -507,6 +424,7 @@ class RelationshipSchema(BaseSchemaModel):
             branch=branch,
             include_match=False,
             param_prefix=prefix if param_prefix else None,
+            partial_match=partial_match,
         )
 
         query_filter.extend(field_filter)
@@ -519,24 +437,45 @@ class RelationshipSchema(BaseSchemaModel):
 NODE_METADATA_ATTRIBUTES = ["_source", "_owner"]
 
 
-class BaseNodeSchema(BaseSchemaModel):
+class BaseNodeSchema(HashableModel):  # pylint: disable=too-many-public-methods
     id: Optional[str] = None
-    name: str = Field(pattern=NODE_NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
-    namespace: str = Field(
-        pattern=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH
+    name: str = Field(
+        pattern=NODE_NAME_REGEX,
+        min_length=DEFAULT_NAME_MIN_LENGTH,
+        max_length=DEFAULT_NAME_MAX_LENGTH,
+        json_schema_extra={"update": UpdateSupport.NOT_SUPPORTED.value},
     )
-    description: Optional[str] = Field(None, max_length=DEFAULT_DESCRIPTION_LENGTH)
-    default_filter: Optional[str] = None
-    branch: BranchSupportType = BranchSupportType.AWARE
-    order_by: Optional[List[str]] = None
-    display_labels: Optional[List[str]] = None
-    attributes: List[AttributeSchema] = Field(default_factory=list)
-    relationships: List[RelationshipSchema] = Field(default_factory=list)
-    filters: List[FilterSchema] = Field(default_factory=list)
-    include_in_menu: Optional[bool] = Field(default=None)
-    menu_placement: Optional[str] = Field(default=None)
-    icon: Optional[str] = Field(default=None)
-    label: Optional[str] = None
+    namespace: str = Field(
+        pattern=NODE_KIND_REGEX,
+        min_length=DEFAULT_KIND_MIN_LENGTH,
+        max_length=DEFAULT_KIND_MAX_LENGTH,
+        json_schema_extra={"update": UpdateSupport.NOT_SUPPORTED.value},
+    )
+    description: Optional[str] = Field(
+        default=None, max_length=DEFAULT_DESCRIPTION_LENGTH, json_schema_extra={"update": UpdateSupport.ALLOWED.value}
+    )
+    default_filter: Optional[str] = Field(default=None, json_schema_extra={"update": UpdateSupport.ALLOWED.value})
+    branch: BranchSupportType = Field(
+        default=BranchSupportType.AWARE, json_schema_extra={"update": UpdateSupport.MIGRATION_REQUIRED.value}
+    )
+    order_by: Optional[List[str]] = Field(default=None, json_schema_extra={"update": UpdateSupport.ALLOWED.value})
+    display_labels: Optional[List[str]] = Field(default=None, json_schema_extra={"update": UpdateSupport.ALLOWED.value})
+    attributes: List[AttributeSchema] = Field(
+        default_factory=list, json_schema_extra={"update": UpdateSupport.NOT_APPLICABLE.value}
+    )
+    relationships: List[RelationshipSchema] = Field(
+        default_factory=list, json_schema_extra={"update": UpdateSupport.NOT_APPLICABLE.value}
+    )
+    filters: List[FilterSchema] = Field(
+        default_factory=list, json_schema_extra={"update": UpdateSupport.NOT_APPLICABLE.value}
+    )
+    include_in_menu: Optional[bool] = Field(default=None, json_schema_extra={"update": UpdateSupport.ALLOWED.value})
+    menu_placement: Optional[str] = Field(default=None, json_schema_extra={"update": UpdateSupport.ALLOWED.value})
+    icon: Optional[str] = Field(default=None, json_schema_extra={"update": UpdateSupport.ALLOWED.value})
+    label: Optional[str] = Field(default=None, json_schema_extra={"update": UpdateSupport.ALLOWED.value})
+    uniqueness_constraints: Optional[List[List[str]]] = Field(
+        default=None, json_schema_extra={"update": UpdateSupport.CHECK_CONSTRAINTS.value}
+    )
 
     _exclude_from_hash: List[str] = ["attributes", "relationships"]
     _sort_by: List[str] = ["name"]
@@ -570,7 +509,55 @@ class BaseNodeSchema(BaseSchemaModel):
 
         return md5hash.hexdigest()
 
-    def get_field(self, name, raise_on_error=True) -> Union[AttributeSchema, RelationshipSchema]:
+    def diff(self, other: Self) -> HashableModelDiff:
+        """Extend the Diff Calculation to account for attributes and relationships."""
+
+        node_diff = super().diff(other=other)
+
+        attrs_both, attrs_local, attrs_other = compare_lists(list1=self.attribute_names, list2=other.attribute_names)
+
+        attrs_diff = HashableModelDiff()
+        if attrs_local:
+            attrs_diff.added = {attr_name: None for attr_name in attrs_local}
+        if attrs_other:
+            attrs_diff.removed = {attr_name: None for attr_name in attrs_other}
+        if attrs_both:
+            for attr_name in sorted(attrs_both):
+                local_attr = self.get_attribute(name=attr_name)
+                other_attr = other.get_attribute(name=attr_name)
+                attr_diff = local_attr.diff(other_attr)
+                if attr_diff.has_diff:
+                    attrs_diff.changed[attr_name] = attr_diff
+
+        rels_diff = HashableModelDiff()
+        rels_both, rels_local, rels_other = compare_lists(list1=self.relationship_names, list2=other.relationship_names)
+        if rels_local:
+            rels_diff.added = {rel_name: None for rel_name in rels_local}
+        if rels_other:
+            rels_diff.removed = {rel_name: None for rel_name in rels_other}
+        if rels_both:
+            for rel_name in sorted(rels_both):
+                local_rel = self.get_relationship(name=rel_name)
+                other_rel = other.get_relationship(name=rel_name)
+                rel_diff = local_rel.diff(other_rel)
+                if rel_diff.has_diff:
+                    rels_diff.added[rel_name] = rel_diff
+
+        if attrs_diff.has_diff:
+            node_diff.changed["attributes"] = attrs_diff
+        if rels_diff.has_diff:
+            node_diff.changed["relationships"] = rels_diff
+
+        return node_diff
+
+    def with_public_relationships(self) -> Self:
+        duplicate = self.duplicate()
+        duplicate.relationships = [
+            relationship for relationship in self.relationships if not relationship.internal_peer
+        ]
+        return duplicate
+
+    def get_field(self, name, raise_on_error=True) -> Optional[Union[AttributeSchema, RelationshipSchema]]:
         if field := self.get_attribute(name, raise_on_error=False):
             return field
 
@@ -602,7 +589,7 @@ class BaseNodeSchema(BaseSchemaModel):
 
         raise ValueError(f"Unable to find the relationship {name}")
 
-    def get_relationship_by_identifier(self, id, raise_on_error=True) -> RelationshipSchema:
+    def get_relationship_by_identifier(self, id: str, raise_on_error=True) -> RelationshipSchema:
         for item in self.relationships:
             if item.identifier == id:
                 return item
@@ -611,6 +598,15 @@ class BaseNodeSchema(BaseSchemaModel):
             return None
 
         raise ValueError(f"Unable to find the relationship {id}")
+
+    def get_relationships_by_identifier(self, id: str) -> List[RelationshipSchema]:
+        """Return a list of relationship instead of a single one"""
+        rels: List[RelationshipSchema] = []
+        for item in self.relationships:
+            if item.identifier == id:
+                rels.append(item)
+
+        return rels
 
     @property
     def valid_input_names(self) -> List[str]:
@@ -645,7 +641,7 @@ class BaseNodeSchema(BaseSchemaModel):
         return [item for item in self.relationships if not item.inherited]
 
     @property
-    def unique_attributes(self) -> List[str]:
+    def unique_attributes(self) -> List[AttributeSchema]:
         return [item for item in self.attributes if item.unique]
 
     def generate_fields_for_display_label(self) -> Dict:
@@ -682,8 +678,8 @@ class BaseNodeSchema(BaseSchemaModel):
 class GenericSchema(BaseNodeSchema):
     """A Generic can be either an Interface or a Union depending if there are some Attributes or Relationships defined."""
 
-    hierarchical: bool = Field(default=False)
-    used_by: List[str] = Field(default_factory=list)
+    hierarchical: bool = Field(default=False, json_schema_extra={"update": UpdateSupport.CHECK_CONSTRAINTS.value})
+    used_by: List[str] = Field(default_factory=list, json_schema_extra={"update": UpdateSupport.NOT_APPLICABLE.value})
 
     def get_hierarchy_schema(self, branch: Optional[Union[Branch, str]] = None) -> GenericSchema:  # pylint: disable=unused-argument
         if self.hierarchical:
@@ -693,11 +689,12 @@ class GenericSchema(BaseNodeSchema):
 
 
 class NodeSchema(BaseNodeSchema):
-    inherit_from: List[str] = Field(default_factory=list)
-    groups: Optional[List[str]] = Field(default_factory=list)
-    hierarchy: Optional[str] = Field(default=None)
-    parent: Optional[str] = Field(default=None)
-    children: Optional[str] = Field(default=None)
+    inherit_from: List[str] = Field(
+        default_factory=list, json_schema_extra={"update": UpdateSupport.NOT_SUPPORTED.value}
+    )
+    hierarchy: Optional[str] = Field(default=None, json_schema_extra={"update": UpdateSupport.CHECK_CONSTRAINTS.value})
+    parent: Optional[str] = Field(default=None, json_schema_extra={"update": UpdateSupport.CHECK_CONSTRAINTS.value})
+    children: Optional[str] = Field(default=None, json_schema_extra={"update": UpdateSupport.CHECK_CONSTRAINTS.value})
 
     def inherit_from_interface(self, interface: GenericSchema) -> NodeSchema:
         existing_inherited_attributes = {item.name: idx for idx, item in enumerate(self.attributes) if item.inherited}
@@ -733,19 +730,12 @@ class NodeSchema(BaseNodeSchema):
         return schema
 
 
-class GroupSchema(BaseSchemaModel):
-    id: Optional[str] = None
-    name: str = Field(pattern=NAME_REGEX, min_length=DEFAULT_NAME_MIN_LENGTH, max_length=DEFAULT_NAME_MAX_LENGTH)
-    kind: str = Field(pattern=NODE_KIND_REGEX, min_length=DEFAULT_KIND_MIN_LENGTH, max_length=DEFAULT_KIND_MAX_LENGTH)
-    description: Optional[str] = Field(None, max_length=DEFAULT_DESCRIPTION_LENGTH)
-
-
 # -----------------------------------------------------
 # Extensions
 #  For the initial implementation its possible to add attribute and relationships on Node
 #  Later on we'll consider adding support for other Node attributes like inherited_from etc ...
 #  And we'll look into adding support for Generic as well
-class BaseNodeExtensionSchema(BaseSchemaModel):
+class BaseNodeExtensionSchema(HashableModel):
     kind: str
     attributes: List[AttributeSchema] = Field(default_factory=list)
     relationships: List[RelationshipSchema] = Field(default_factory=list)
@@ -755,7 +745,7 @@ class NodeExtensionSchema(BaseNodeExtensionSchema):
     pass
 
 
-class SchemaExtension(BaseSchemaModel):
+class SchemaExtension(HashableModel):
     nodes: List[NodeExtensionSchema] = Field(default_factory=list)
 
 
@@ -764,7 +754,6 @@ class SchemaRoot(BaseModel):
     version: Optional[str] = Field(default=None)
     generics: List[GenericSchema] = Field(default_factory=list)
     nodes: List[NodeSchema] = Field(default_factory=list)
-    groups: List[GroupSchema] = Field(default_factory=list)
     extensions: SchemaExtension = SchemaExtension()
 
     @classmethod
@@ -796,6 +785,7 @@ internal_schema = {
             "name": "Node",
             "namespace": "Schema",
             "branch": BranchSupportType.AWARE.value,
+            "include_in_menu": False,
             "default_filter": "name__value",
             "display_labels": ["label__value"],
             "attributes": [
@@ -812,7 +802,7 @@ internal_schema = {
                     "name": "namespace",
                     "kind": "Text",
                     "description": "Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.",
-                    "regex": str(NODE_KIND_REGEX),
+                    "regex": str(NAMESPACE_REGEX),
                     "min_length": DEFAULT_KIND_MIN_LENGTH,
                     "max_length": DEFAULT_KIND_MAX_LENGTH,
                 },
@@ -883,12 +873,6 @@ internal_schema = {
                     "optional": True,
                 },
                 {
-                    "name": "groups",
-                    "kind": "List",
-                    "description": "List of Group that this Node is part of.",
-                    "optional": True,
-                },
-                {
                     "name": "hierarchy",
                     "kind": "Text",
                     "description": "Internal value to track the name of the Hierarchy, must match the name of a Generic supporting hierarchical mode",
@@ -904,6 +888,12 @@ internal_schema = {
                     "name": "children",
                     "kind": "Text",
                     "description": "Expected Kind for the children nodes in a Hierarchy, default to the main generic defined if not defined.",
+                    "optional": True,
+                },
+                {
+                    "name": "uniqueness_constraints",
+                    "kind": "List",
+                    "description": "List of multi-element uniqueness constraints that can combine relationships and attributes",
                     "optional": True,
                 },
             ],
@@ -934,6 +924,7 @@ internal_schema = {
             "name": "Attribute",
             "namespace": "Schema",
             "branch": BranchSupportType.AWARE.value,
+            "include_in_menu": False,
             "default_filter": None,
             "display_labels": ["name__value"],
             "attributes": [
@@ -950,8 +941,6 @@ internal_schema = {
                     "kind": "Text",
                     "description": "Defines the type of the attribute.",
                     "enum": ATTRIBUTE_KIND_LABELS,
-                    "min_length": DEFAULT_KIND_MIN_LENGTH,
-                    "max_length": DEFAULT_KIND_MAX_LENGTH,
                 },
                 {
                     "name": "enum",
@@ -1062,6 +1051,7 @@ internal_schema = {
             "name": "Relationship",
             "namespace": "Schema",
             "branch": BranchSupportType.AWARE.value,
+            "include_in_menu": False,
             "default_filter": None,
             "display_labels": ["name__value"],
             "attributes": [
@@ -1117,6 +1107,20 @@ internal_schema = {
                     "description": "Defines how many objects are expected on the other side of the relationship.",
                     "enum": RelationshipCardinality.available_types(),
                     "default_value": RelationshipCardinality.MANY.value,
+                    "optional": True,
+                },
+                {
+                    "name": "min_count",
+                    "kind": "Number",
+                    "description": "Defines the minimum objects allowed on the other side of the relationship.",
+                    "default_value": 0,
+                    "optional": True,
+                },
+                {
+                    "name": "max_count",
+                    "kind": "Number",
+                    "description": "Defines the maximum objects allowed on the other side of the relationship.",
+                    "default_value": 0,
                     "optional": True,
                 },
                 {
@@ -1178,6 +1182,7 @@ internal_schema = {
             "name": "Generic",
             "namespace": "Schema",
             "branch": BranchSupportType.AWARE.value,
+            "include_in_menu": False,
             "default_filter": "name__value",
             "display_labels": ["label__value"],
             "attributes": [
@@ -1194,7 +1199,7 @@ internal_schema = {
                     "name": "namespace",
                     "kind": "Text",
                     "description": "Generic Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions.",
-                    "regex": str(NODE_KIND_REGEX),
+                    "regex": str(NAMESPACE_REGEX),
                     "min_length": DEFAULT_KIND_MIN_LENGTH,
                     "max_length": DEFAULT_KIND_MAX_LENGTH,
                 },
@@ -1271,6 +1276,12 @@ internal_schema = {
                     "description": "List of Nodes that are referencing this Generic",
                     "optional": True,
                 },
+                {
+                    "name": "uniqueness_constraints",
+                    "kind": "List",
+                    "description": "List of multi-element uniqueness constraints that can combine relationships and attributes",
+                    "optional": True,
+                },
             ],
             "relationships": [
                 {
@@ -1291,41 +1302,10 @@ internal_schema = {
                 },
             ],
         },
-        {
-            "name": "Group",
-            "namespace": "Schema",
-            "branch": BranchSupportType.AWARE.value,
-            "default_filter": "name__value",
-            "display_labels": ["name__value"],
-            "attributes": [
-                {
-                    "name": "name",
-                    "kind": "Text",
-                    "unique": True,
-                    "min_length": DEFAULT_NAME_MIN_LENGTH,
-                    "max_length": DEFAULT_NAME_MAX_LENGTH,
-                },
-                {
-                    "name": "kind",
-                    "kind": "Text",
-                    "regex": str(NODE_KIND_REGEX),
-                    "min_length": DEFAULT_KIND_MIN_LENGTH,
-                    "max_length": DEFAULT_KIND_MAX_LENGTH,
-                },
-                {
-                    "name": "description",
-                    "kind": "Text",
-                    "description": "Short description of the Group.",
-                    "optional": True,
-                    "max_length": DEFAULT_DESCRIPTION_LENGTH,
-                },
-            ],
-        },
     ],
 }
 
 core_models = {
-    "groups": [],
     "generics": [
         {
             "name": "Node",
@@ -1538,7 +1518,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "validator",
-                    "peer": "CoreValidator",
+                    "peer": InfrahubKind.VALIDATOR,
                     "identifier": "validator__check",
                     "kind": "Parent",
                     "optional": False,
@@ -1574,7 +1554,7 @@ core_models = {
                 },
                 {
                     "name": "repository",
-                    "peer": InfrahubKind.REPOSITORY,
+                    "peer": InfrahubKind.GENERICREPOSITORY,
                     "kind": "Attribute",
                     "cardinality": "one",
                     "identifier": "repository__transformation",
@@ -1607,6 +1587,13 @@ core_models = {
             ],
         },
         {
+            "name": "TaskTarget",
+            "include_in_menu": False,
+            "namespace": "Core",
+            "description": "Extend a node to be associated with tasks",
+            "label": "Task Target",
+        },
+        {
             "name": "Webhook",
             "namespace": "Core",
             "description": "A webhook that connects to an external integration",
@@ -1626,6 +1613,53 @@ core_models = {
                     "default_value": True,
                     "optional": True,
                     "order_weight": 5000,
+                },
+            ],
+        },
+        {
+            "name": "GenericRepository",
+            "namespace": "Core",
+            "description": "A Git Repository integrated with Infrahub",
+            "include_in_menu": False,
+            "default_filter": "name__value",
+            "order_by": ["name__value"],
+            "display_labels": ["name__value"],
+            "branch": BranchSupportType.AGNOSTIC.value,
+            "attributes": [
+                {"name": "name", "kind": "Text", "unique": True, "branch": BranchSupportType.AGNOSTIC.value},
+                {"name": "description", "kind": "Text", "optional": True, "branch": BranchSupportType.AGNOSTIC.value},
+                {"name": "location", "kind": "Text", "unique": True, "branch": BranchSupportType.AGNOSTIC.value},
+                {"name": "username", "kind": "Text", "optional": True, "branch": BranchSupportType.AGNOSTIC.value},
+                {"name": "password", "kind": "Password", "optional": True, "branch": BranchSupportType.AGNOSTIC.value},
+            ],
+            "relationships": [
+                {
+                    "name": "tags",
+                    "peer": InfrahubKind.TAG,
+                    "kind": "Attribute",
+                    "optional": True,
+                    "cardinality": "many",
+                },
+                {
+                    "name": "transformations",
+                    "peer": InfrahubKind.TRANSFORM,
+                    "identifier": "repository__transformation",
+                    "optional": True,
+                    "cardinality": "many",
+                },
+                {
+                    "name": "queries",
+                    "peer": InfrahubKind.GRAPHQLQUERY,
+                    "identifier": "graphql_query__repository",
+                    "optional": True,
+                    "cardinality": "many",
+                },
+                {
+                    "name": "checks",
+                    "peer": InfrahubKind.CHECKDEFINITION,
+                    "identifier": "check_definition__repository",
+                    "optional": True,
+                    "cardinality": "many",
                 },
             ],
         },
@@ -1771,6 +1805,7 @@ core_models = {
             "default_filter": "name__value",
             "display_labels": ["name__value"],
             "branch": BranchSupportType.AGNOSTIC.value,
+            "inherit_from": [InfrahubKind.TASKTARGET],
             "attributes": [
                 {"name": "name", "kind": "Text", "optional": False},
                 {"name": "source_branch", "kind": "Text", "optional": False},
@@ -1827,7 +1862,7 @@ core_models = {
                 },
                 {
                     "name": "validations",
-                    "peer": "CoreValidator",
+                    "peer": InfrahubKind.VALIDATOR,
                     "kind": "Component",
                     "identifier": "proposed_change__validator",
                     "optional": True,
@@ -1948,66 +1983,39 @@ core_models = {
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
-            "branch": BranchSupportType.AWARE.value,
-            "inherit_from": ["LineageOwner", "LineageSource"],
+            "branch": BranchSupportType.AGNOSTIC.value,
+            "inherit_from": ["LineageOwner", "LineageSource", InfrahubKind.GENERICREPOSITORY, InfrahubKind.TASKTARGET],
             "attributes": [
-                {"name": "name", "kind": "Text", "unique": True},
-                {"name": "description", "kind": "Text", "optional": True},
-                {"name": "location", "kind": "Text", "unique": True},
                 {"name": "default_branch", "kind": "Text", "default_value": "main"},
                 {"name": "commit", "kind": "Text", "optional": True, "branch": BranchSupportType.LOCAL.value},
-                {"name": "username", "kind": "Text", "optional": True},
-                {"name": "password", "kind": "Password", "optional": True},
-            ],
-            "relationships": [
-                {
-                    "name": "account",
-                    "peer": InfrahubKind.ACCOUNT,
-                    "branch": BranchSupportType.AGNOSTIC.value,
-                    "kind": "Attribute",
-                    "optional": True,
-                    "cardinality": "one",
-                },
-                {
-                    "name": "tags",
-                    "peer": InfrahubKind.TAG,
-                    "kind": "Attribute",
-                    "optional": True,
-                    "cardinality": "many",
-                },
-                {
-                    "name": "transformations",
-                    "peer": "CoreTransformation",
-                    "identifier": "repository__transformation",
-                    "optional": True,
-                    "cardinality": "many",
-                },
-                {
-                    "name": "queries",
-                    "peer": InfrahubKind.GRAPHQLQUERY,
-                    "identifier": "graphql_query__repository",
-                    "optional": True,
-                    "cardinality": "many",
-                },
-                {
-                    "name": "checks",
-                    "peer": InfrahubKind.CHECKDEFINITION,
-                    "identifier": "check_definition__repository",
-                    "optional": True,
-                    "cardinality": "many",
-                },
             ],
         },
         {
-            "name": "RFile",
+            "name": "ReadOnlyRepository",
             "namespace": "Core",
-            "description": "A file rendered from a Jinja2 template",
+            "description": "A Git Repository integrated with Infrahub, Git-side will not be updated",
             "include_in_menu": False,
-            "label": "RFile",
+            "label": "Read-Only Repository",
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
-            "inherit_from": ["CoreTransformation"],
+            "branch": BranchSupportType.AGNOSTIC.value,
+            "inherit_from": ["LineageOwner", "LineageSource", InfrahubKind.GENERICREPOSITORY, InfrahubKind.TASKTARGET],
+            "attributes": [
+                {"name": "ref", "kind": "Text", "default_value": "main", "branch": BranchSupportType.AWARE.value},
+                {"name": "commit", "kind": "Text", "optional": True, "branch": BranchSupportType.AWARE.value},
+            ],
+        },
+        {
+            "name": "TransformJinja2",
+            "namespace": "Core",
+            "description": "A file rendered from a Jinja2 template",
+            "include_in_menu": False,
+            "label": "Transform Jinja2",
+            "default_filter": "name__value",
+            "order_by": ["name__value"],
+            "display_labels": ["name__value"],
+            "inherit_from": [InfrahubKind.TRANSFORM],
             "branch": BranchSupportType.AWARE.value,
             "attributes": [
                 {"name": "template_path", "kind": "Text"},
@@ -2088,7 +2096,7 @@ core_models = {
             "include_in_menu": False,
             "label": "Data Validator",
             "display_labels": ["label__value"],
-            "inherit_from": ["CoreValidator"],
+            "inherit_from": [InfrahubKind.VALIDATOR],
             "branch": BranchSupportType.AGNOSTIC.value,
         },
         {
@@ -2098,12 +2106,12 @@ core_models = {
             "include_in_menu": False,
             "label": "Repository Validator",
             "display_labels": ["label__value"],
-            "inherit_from": ["CoreValidator"],
+            "inherit_from": [InfrahubKind.VALIDATOR],
             "branch": BranchSupportType.AGNOSTIC.value,
             "relationships": [
                 {
                     "name": "repository",
-                    "peer": InfrahubKind.REPOSITORY,
+                    "peer": InfrahubKind.GENERICREPOSITORY,
                     "kind": "Attribute",
                     "optional": False,
                     "cardinality": "one",
@@ -2118,7 +2126,7 @@ core_models = {
             "include_in_menu": False,
             "label": "User Validator",
             "display_labels": ["label__value"],
-            "inherit_from": ["CoreValidator"],
+            "inherit_from": [InfrahubKind.VALIDATOR],
             "branch": BranchSupportType.AGNOSTIC.value,
             "relationships": [
                 {
@@ -2131,7 +2139,7 @@ core_models = {
                 },
                 {
                     "name": "repository",
-                    "peer": InfrahubKind.REPOSITORY,
+                    "peer": InfrahubKind.GENERICREPOSITORY,
                     "kind": "Attribute",
                     "optional": False,
                     "cardinality": "one",
@@ -2146,7 +2154,7 @@ core_models = {
             "include_in_menu": False,
             "label": "Schema Validator",
             "display_labels": ["label__value"],
-            "inherit_from": ["CoreValidator"],
+            "inherit_from": [InfrahubKind.VALIDATOR],
             "branch": BranchSupportType.AGNOSTIC.value,
         },
         {
@@ -2156,7 +2164,7 @@ core_models = {
             "include_in_menu": False,
             "label": "Artifact Validator",
             "display_labels": ["label__value"],
-            "inherit_from": ["CoreValidator"],
+            "inherit_from": [InfrahubKind.VALIDATOR],
             "branch": BranchSupportType.AGNOSTIC.value,
             "relationships": [
                 {
@@ -2178,6 +2186,7 @@ core_models = {
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "branch": BranchSupportType.AWARE.value,
+            "inherit_from": [InfrahubKind.TASKTARGET],
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "description", "kind": "Text", "optional": True},
@@ -2190,7 +2199,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "repository",
-                    "peer": InfrahubKind.REPOSITORY,
+                    "peer": InfrahubKind.GENERICREPOSITORY,
                     "kind": "Attribute",
                     "cardinality": "one",
                     "identifier": "check_definition__repository",
@@ -2230,12 +2239,11 @@ core_models = {
             "default_filter": "name__value",
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
-            "inherit_from": ["CoreTransformation"],
+            "inherit_from": [InfrahubKind.TRANSFORM],
             "branch": BranchSupportType.AWARE.value,
             "attributes": [
                 {"name": "file_path", "kind": "Text"},
                 {"name": "class_name", "kind": "Text"},
-                {"name": "url", "kind": "Text", "unique": True},
             ],
         },
         {
@@ -2285,7 +2293,7 @@ core_models = {
             "relationships": [
                 {
                     "name": "repository",
-                    "peer": InfrahubKind.REPOSITORY,
+                    "peer": InfrahubKind.GENERICREPOSITORY,
                     "kind": "Attribute",
                     "identifier": "graphql_query__repository",
                     "cardinality": "one",
@@ -2309,6 +2317,7 @@ core_models = {
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "branch": BranchSupportType.LOCAL.value,
+            "inherit_from": [InfrahubKind.TASKTARGET],
             "attributes": [
                 {"name": "name", "kind": "Text"},
                 {
@@ -2362,6 +2371,7 @@ core_models = {
             "order_by": ["name__value"],
             "display_labels": ["name__value"],
             "branch": BranchSupportType.AWARE.value,
+            "inherit_from": [InfrahubKind.TASKTARGET],
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": True},
                 {"name": "artifact_name", "kind": "Text"},
@@ -2384,7 +2394,7 @@ core_models = {
                 },
                 {
                     "name": "transformation",
-                    "peer": "CoreTransformation",
+                    "peer": InfrahubKind.TRANSFORM,
                     "kind": "Attribute",
                     "identifier": "artifact_definition___transformation",
                     "cardinality": "one",
@@ -2402,7 +2412,7 @@ core_models = {
             "display_labels": ["name__value"],
             "include_in_menu": False,
             "branch": BranchSupportType.AGNOSTIC.value,
-            "inherit_from": [InfrahubKind.WEBHOOK],
+            "inherit_from": [InfrahubKind.WEBHOOK, InfrahubKind.TASKTARGET],
             "attributes": [
                 {"name": "shared_key", "kind": "Password", "unique": False, "order_weight": 4000},
             ],
@@ -2417,7 +2427,7 @@ core_models = {
             "display_labels": ["name__value"],
             "include_in_menu": False,
             "branch": BranchSupportType.AGNOSTIC.value,
-            "inherit_from": [InfrahubKind.WEBHOOK],
+            "inherit_from": [InfrahubKind.WEBHOOK, InfrahubKind.TASKTARGET],
             "attributes": [],
             "relationships": [
                 {

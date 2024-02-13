@@ -1,0 +1,34 @@
+---
+title: Repository configuration file
+---
+
+# Repository configuration file
+
+The repository configuration file allows you to define multiple resources that need to be imported into Infrahub.
+
+The file should be formatted as a Yaml file, have the filename `.infrahub.yml` and should be stored at the root of the [repository](/topics/repository).
+
+:::info
+
+See [this topic](/topics/infrahub-yml) for more details on the available repository configuration options
+
+:::
+{% for property in properties %}
+<!-- vale off -->
+## {{property.title}}
+<!-- vale on -->
+
+**Description**: {{ property.description }}<br/>
+**Key**: {{ property.name }}<br/>
+**Type**: {{ property.type }}<br/>
+**Item type**: {{ property.items_type }}<br/>
+{% if property.items_format -%}**Item format**: {{ property.items_format }}<br/>{% endif %}
+{% if property.items_type in definitions -%}
+
+| Property | Type | Description | Mandatory |
+| -------- | ---- | ----------- | --------- |
+{% for item_name, item_property in definitions[property.items_type]["properties"].items() -%}
+| {{ item_name }} | {{ item_property.type }} | {{item_property.description }} | {{ item_property.required }} |
+{% endfor -%}
+{% endif -%}
+{% endfor -%}

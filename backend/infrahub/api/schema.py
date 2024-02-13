@@ -11,7 +11,7 @@ from infrahub.api.dependencies import get_branch_dep, get_current_user, get_db
 from infrahub.core import registry
 from infrahub.core.branch import Branch  # noqa: TCH001
 from infrahub.core.models import SchemaBranchHash  # noqa: TCH001
-from infrahub.core.schema import GenericSchema, GroupSchema, NodeSchema, SchemaRoot
+from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema_manager import SchemaNamespace  # noqa: TCH001
 from infrahub.database import InfrahubDatabase  # noqa: TCH001
 from infrahub.exceptions import PermissionDeniedError, SchemaNotFound
@@ -30,8 +30,9 @@ router = APIRouter(prefix="/schema")
 
 class APISchemaMixin:
     @classmethod
-    def from_schema(cls, schema: NodeSchema) -> Self:
-        data = schema.model_dump()
+    def from_schema(cls, schema: Union[NodeSchema, GenericSchema]) -> Self:
+        schema_instance = schema.with_public_relationships()
+        data = schema_instance.model_dump()
         data["hash"] = schema.get_hash()
         return cls(**data)
 
@@ -85,8 +86,16 @@ async def get_schema(
 
     return SchemaReadAPI(
         main=registry.schema.get_schema_branch(name=branch.name).get_hash(),
-        nodes=[APINodeSchema.from_schema(value) for value in all_schemas if isinstance(value, NodeSchema)],
-        generics=[APIGenericSchema.from_schema(value) for value in all_schemas if isinstance(value, GenericSchema)],
+        nodes=[
+            APINodeSchema.from_schema(value)
+            for value in all_schemas
+            if isinstance(value, NodeSchema) and value.namespace != "Internal"
+        ],
+        generics=[
+            APIGenericSchema.from_schema(value)
+            for value in all_schemas
+            if isinstance(value, GenericSchema) and value.namespace != "Internal"
+        ],
         namespaces=schema_branch.get_namespaces(),
     )
 
@@ -109,8 +118,6 @@ async def get_schema_by_kind(
 
     schema = registry.schema.get(name=schema_kind, branch=branch)
 
-    if isinstance(schema, GroupSchema):
-        return JSONResponse(status_code=422, content={"error": "GroupSchema aren't supported via this endpoint"})
     if isinstance(schema, NodeSchema):
         return APINodeSchema.from_schema(schema=schema)
     if isinstance(schema, GenericSchema):
@@ -138,23 +145,28 @@ async def load_schema(
         branch_schema = registry.schema.get_schema_branch(name=branch.name)
 
         # We create a copy of the existing branch schema to do some validation before loading it.
-        tmp_schema = branch_schema.duplicate()
+        candidate_schema = branch_schema.duplicate()
         try:
             for schema in schemas.schemas:
-                tmp_schema.load_schema(schema=schema)
-            tmp_schema.process()
+                candidate_schema.load_schema(schema=schema)
+            candidate_schema.process()
         except SchemaNotFound as exc:
             return JSONResponse(status_code=422, content={"error": exc.message})
         except ValueError as exc:
             return JSONResponse(status_code=422, content={"error": str(exc)})
 
-        diff = tmp_schema.diff(branch_schema)
+        result = branch_schema.validate_update(other=candidate_schema)
 
-        if diff.all:
-            log.info(f"Schema has diff, will need to be updated {diff.all}", branch=branch.name)
+        if result.errors:
+            return JSONResponse(
+                status_code=422, content={"error": ", ".join([error.to_string() for error in result.errors])}
+            )
+
+        if result.diff.all:
+            log.info("Schema has diff, will need to be updated", diff=result.diff.all, branch=branch.name)
             async with db.start_transaction() as db:
                 await registry.schema.update_schema_branch(
-                    schema=tmp_schema, db=db, branch=branch.name, limit=diff.all, update_db=True
+                    schema=candidate_schema, db=db, branch=branch.name, limit=result.diff.all, update_db=True
                 )
                 branch.update_schema_hash()
                 log.info("Schema has been updated", branch=branch.name, hash=branch.schema_hash.main)
