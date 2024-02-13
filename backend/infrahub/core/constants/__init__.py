@@ -99,6 +99,18 @@ class MutationAction(InfrahubStringEnum):
     UNDEFINED = "undefined"
 
 
+class PathResourceType(InfrahubStringEnum):
+    SCHEMA = "schema"
+    DATA = "data"
+    FILE = "file"
+
+
+class SchemaPathType(InfrahubStringEnum):
+    NODE = "node"
+    ATTRIBUTE = "attribute"
+    RELATIONSHIP = "relationship"
+
+
 class PathType(InfrahubStringEnum):
     NODE = "node"
     ATTRIBUTE = "attribute"

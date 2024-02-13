@@ -112,6 +112,7 @@ class RabbitMQMessageBus(InfrahubMessageBus):
             "refresh.webhook.*",
             "request.*.*",
             "send.*.*",
+            "schema.*.*",
             "transform.*.*",
             "trigger.*.*",
         ]

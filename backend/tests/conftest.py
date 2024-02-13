@@ -2,6 +2,7 @@ import asyncio
 import importlib
 import os
 import sys
+from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, TypeVar
 
@@ -340,11 +341,11 @@ class BusRecorder(InfrahubMessageBus):
 
 
 class BusSimulator(InfrahubMessageBus):
-    def __init__(self):
+    def __init__(self, database: Optional[InfrahubDatabase] = None):
         self.messages: List[InfrahubMessage] = []
         self.messages_per_routing_key: Dict[str, List[InfrahubMessage]] = {}
-        self.service: InfrahubServices = InfrahubServices(message_bus=self)
-        self.replies: List[InfrahubResponse] = []
+        self.service: InfrahubServices = InfrahubServices(database=database, message_bus=self)
+        self.replies: Dict[str, List[InfrahubResponse]] = defaultdict(list)
 
     async def publish(self, message: InfrahubMessage, routing_key: str, delay: Optional[MessageTTL] = None) -> None:
         self.messages.append(message)
@@ -354,7 +355,8 @@ class BusSimulator(InfrahubMessageBus):
         await execute_message(routing_key=routing_key, message_body=message.body, service=self.service)
 
     async def reply(self, message: InfrahubMessage, routing_key: str) -> None:
-        self.replies.append(message)
+        correlation_id = message.meta.correlation_id or "default"
+        self.replies[correlation_id].append(message)
 
     async def rpc(self, message: InfrahubMessage, response_class: ResponseClass) -> ResponseClass:  # type: ignore[override]
         routing_key = ROUTING_KEY_MAP.get(type(message))
@@ -363,8 +365,9 @@ class BusSimulator(InfrahubMessageBus):
         message.meta = Meta(correlation_id=correlation_id, reply_to="ci-testing")
 
         await self.publish(message=message, routing_key=routing_key)
-        assert len(self.replies) == 1
-        response = self.replies[0]
+        reply_id = correlation_id or "default"
+        assert len(self.replies[reply_id]) == 1
+        response = self.replies[reply_id][0]
         data = ujson.loads(response.body)
         return response_class(**data)  # type: ignore[operator]
 
@@ -404,8 +407,8 @@ class TestHelper:
         return BusRecorder()
 
     @staticmethod
-    def get_message_bus_simulator() -> BusSimulator:
-        return BusSimulator()
+    def get_message_bus_simulator(db: Optional[InfrahubDatabase] = None) -> BusSimulator:
+        return BusSimulator(database=db)
 
     @staticmethod
     def get_message_bus_rpc() -> BusRPCMock:

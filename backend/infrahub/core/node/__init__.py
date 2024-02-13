@@ -546,7 +546,7 @@ class Node(BaseNode, metaclass=BaseNodeMeta):
 
         return changed
 
-    async def render_display_label(self, db: InfrahubDatabase):  # pylint: disable=unused-argument
+    async def render_display_label(self, db: Optional[InfrahubDatabase] = None):  # pylint: disable=unused-argument
         if not self._schema.display_labels:
             return repr(self)
 

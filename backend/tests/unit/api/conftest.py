@@ -40,9 +40,9 @@ def rpc_bus(helper):
 
 
 @pytest.fixture
-def rpc_bus_simulator(helper):
+def rpc_bus_simulator(helper, db):
     original = config.OVERRIDE.message_bus
-    bus = helper.get_message_bus_simulator()
+    bus = helper.get_message_bus_simulator(db=db)
     config.OVERRIDE.message_bus = bus
     yield bus
     config.OVERRIDE.message_bus = original

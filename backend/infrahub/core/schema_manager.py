@@ -6,7 +6,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from infrahub_sdk.utils import compare_lists, duplicates
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 import infrahub.config as config
 from infrahub import lock
@@ -21,12 +21,15 @@ from infrahub.core.constants import (
     RelationshipCardinality,
     RelationshipDirection,
     RelationshipKind,
+    SchemaPathType,
     UpdateSupport,
     UpdateValidationErrorType,
 )
 from infrahub.core.manager import NodeManager
+from infrahub.core.migrations import MIGRATION_MAP
 from infrahub.core.models import HashableModelDiff, SchemaBranchDiff, SchemaBranchHash
 from infrahub.core.node import Node
+from infrahub.core.path import SchemaPath
 from infrahub.core.property import FlagPropertyMixin, NodePropertyMixin
 from infrahub.core.schema import (
     AttributeSchema,
@@ -39,6 +42,7 @@ from infrahub.core.schema import (
     internal_schema,
 )
 from infrahub.core.utils import parse_node_kind
+from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
 from infrahub.exceptions import SchemaNotFound
 from infrahub.graphql.manager import GraphQLSchemaManager
 from infrahub.log import get_logger
@@ -75,6 +79,7 @@ KIND_FILTER_MAP = {
 
 
 class SchemaDiff(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     added: Dict[str, HashableModelDiff] = Field(default_factory=dict)
     changed: Dict[str, HashableModelDiff] = Field(default_factory=dict)
     removed: Dict[str, HashableModelDiff] = Field(default_factory=dict)
@@ -85,36 +90,41 @@ class SchemaDiff(BaseModel):
 
 
 class SchemaUpdateValidationError(BaseModel):
-    schema_name: str
-    field_name: str
-    field_type: Optional[str] = None
-    prop_name: Optional[str] = None
+    model_config = ConfigDict(extra="forbid")
+    path: SchemaPath
     error: UpdateValidationErrorType
     message: Optional[str] = None
 
     def to_string(self) -> str:
-        return f"{self.error.value!r}: {self.schema_name} {self.field_name} {self.message}"
+        return f"{self.error.value!r}: {self.path.schema_kind} {self.path.field_name} {self.message}"
 
 
 class SchemaUpdateMigrationInfo(BaseModel):
-    schema_name: str
-    field_name: str
-    field_type: Optional[str] = None
-    prop_name: Optional[str] = None
+    model_config = ConfigDict(extra="forbid")
+    path: SchemaPath
     migration_name: str
 
+    @property
+    def routing_key(self):
+        return "schema.migration.path"
 
-class SchemaUpdateCheckInfo(BaseModel):
-    schema_name: str
-    field_name: str
-    field_type: Optional[str] = None
-    prop_name: Optional[str] = None
-    check_name: str
+
+class SchemaUpdateConstraintInfo(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    path: SchemaPath
+    constraint_name: str
+
+    @property
+    def routing_key(self):
+        return "schema.validator.path"
+
+    def __hash__(self) -> int:
+        return hash((type(self),) + tuple([self.constraint_name + self.path.get_path()]))
 
 
 class SchemaUpdateValidationResult(BaseModel):
     errors: List[SchemaUpdateValidationError] = Field(default_factory=list)
-    checks: List[SchemaUpdateCheckInfo] = Field(default_factory=list)
+    constraints: List[SchemaUpdateConstraintInfo] = Field(default_factory=list)
     migrations: List[SchemaUpdateMigrationInfo] = Field(default_factory=list)
     diff: SchemaDiff
 
@@ -201,6 +211,30 @@ class SchemaBranch:
 
         return schema_diff
 
+    def update(self, schema: SchemaBranch) -> None:
+        """Update another SchemaBranch into this one."""
+
+        local_kinds = list(self.nodes.keys()) + list(self.generics.keys())
+        other_kinds = list(schema.nodes.keys()) + list(schema.generics.keys())
+
+        in_both, _, other_only = compare_lists(list1=local_kinds, list2=other_kinds)
+
+        for item_kind in in_both:
+            other_item = schema.get(name=item_kind)
+            new_item = self.get(name=item_kind)
+            new_item.update(other_item)
+            self.set(name=item_kind, schema=new_item)
+
+        for item_kind in other_only:
+            other_item = schema.get(name=item_kind)
+            self.set(name=item_kind, schema=other_item)
+
+        # for item_kind in local_only:
+        #     if item_kind in self.nodes:
+        #         del self.nodes[item_kind]
+        #     else:
+        #         del self.generics[item_kind]
+
     def validate_update(self, other: SchemaBranch) -> SchemaUpdateValidationResult:
         diff = self.diff(other=other)
 
@@ -220,20 +254,22 @@ class SchemaBranch:
             for node_field_name, node_field_diff in schema_diff.changed.items():
                 if node_field_diff and node_field_name in ["attributes", "relationships"]:
                     field_type = node_field_name[:-1]  # Remove the trailing 's's
-
+                    path_type = SchemaPathType.ATTRIBUTE if field_type == "attribute" else SchemaPathType.RELATIONSHIP
                     for field_name, _ in node_field_diff.added.items():
                         if field_type == "attribute":
                             result.migrations.append(
                                 SchemaUpdateMigrationInfo(
-                                    schema_name=schema_name, field_name=field_name, migration_name="node.attribute.add"
+                                    path=SchemaPath(
+                                        schema_kind=schema_name, path_type=path_type, field_name=field_name
+                                    ),
+                                    migration_name="node.attribute.add",
                                 )
                             )
 
                     for field_name, _ in node_field_diff.removed.items():
                         result.migrations.append(
                             SchemaUpdateMigrationInfo(
-                                schema_name=schema_name,
-                                field_name=field_name,
+                                path=SchemaPath(schema_kind=schema_name, path_type=path_type, field_name=field_name),
                                 migration_name=f"node.{field_type}.remove",
                             )
                         )
@@ -244,11 +280,16 @@ class SchemaBranch:
                         for prop_name, _ in sub_field_diff.changed.items():
                             field_info = field.model_fields[prop_name]
                             field_update = field_info.json_schema_extra.get("update")
-                            self._validate_field(
-                                schema_name=schema_name,
+
+                            schema_path = SchemaPath(
+                                schema_kind=schema_name,
+                                path_type=path_type,
                                 field_name=field_name,
-                                field_type=field_type,
-                                prop_name=prop_name,
+                                property_name=prop_name,
+                            )
+
+                            self._validate_field(
+                                schema_path=schema_path,
                                 field_update=field_update,
                                 result=result,
                             )
@@ -256,11 +297,15 @@ class SchemaBranch:
                 else:
                     field_info = schema.model_fields[node_field_name]
                     field_update = field_info.json_schema_extra.get("update")
-                    self._validate_field(
-                        schema_name=schema_name,
+
+                    schema_path = SchemaPath(
+                        schema_kind=schema_name,
+                        path_type=SchemaPathType.NODE,
                         field_name=node_field_name,
-                        prop_name=node_field_name,
-                        field_type="node",
+                        property_name=node_field_name,
+                    )
+                    self._validate_field(
+                        schema_path=schema_path,
                         field_update=field_update,
                         result=result,
                     )
@@ -269,65 +314,49 @@ class SchemaBranch:
 
     def _validate_field(
         self,
-        schema_name: str,
-        field_name: str,
-        field_type: str,
-        prop_name: str,
+        schema_path: SchemaPath,
         field_update: str,
         result: SchemaUpdateValidationResult,
     ) -> None:
         if field_update == UpdateSupport.NOT_SUPPORTED.value:
             result.errors.append(
                 SchemaUpdateValidationError(
-                    schema_name=schema_name,
-                    field_name=field_name,
-                    field_type=field_type,
-                    prop_name=prop_name,
+                    path=schema_path,
                     error=UpdateValidationErrorType.NOT_SUPPORTED,
                 )
             )
         elif field_update == UpdateSupport.MIGRATION_REQUIRED.value:
-            migration_name = f"{field_type}.{prop_name}.update"
+            migration_name = f"{schema_path.path_type.value}.{schema_path.field_name}.update"
             result.migrations.append(
                 SchemaUpdateMigrationInfo(
-                    schema_name=schema_name,
-                    field_name=field_name,
-                    field_type=field_type,
-                    prop_name=prop_name,
+                    path=schema_path,
                     migration_name=migration_name,
                 )
             )
-            result.errors.append(
-                SchemaUpdateValidationError(
-                    schema_name=schema_name,
-                    field_name=field_name,
-                    field_type=field_type,
-                    prop_name=prop_name,
-                    error=UpdateValidationErrorType.MIGRATION_NOT_AVAILABLE,
-                    message=f"'{migration_name}' is not available yet",
+            if MIGRATION_MAP.get(migration_name, None) is None:
+                result.errors.append(
+                    SchemaUpdateValidationError(
+                        path=schema_path,
+                        error=UpdateValidationErrorType.MIGRATION_NOT_AVAILABLE,
+                        message=f"Migration {migration_name!r} is not available yet",
+                    )
+                )
+        elif field_update == UpdateSupport.VALIDATE_CONSTRAINT.value:
+            constraint_name = f"{schema_path.path_type.value}.{schema_path.property_name}.update"
+            result.constraints.append(
+                SchemaUpdateConstraintInfo(
+                    path=schema_path,
+                    constraint_name=constraint_name,
                 )
             )
-        elif field_update == UpdateSupport.CHECK_CONSTRAINTS.value:
-            check_name = f"{field_type}.{prop_name}.update"
-            result.checks.append(
-                SchemaUpdateCheckInfo(
-                    schema_name=schema_name,
-                    field_name=field_name,
-                    prop_name=prop_name,
-                    field_type=field_type,
-                    check_name=check_name,
+            if CONSTRAINT_VALIDATOR_MAP.get(constraint_name, None) is None:
+                result.errors.append(
+                    SchemaUpdateValidationError(
+                        path=schema_path,
+                        error=UpdateValidationErrorType.VALIDATOR_NOT_AVAILABLE,
+                        message=f"Validator {constraint_name!r} is not available yet",
+                    )
                 )
-            )
-            result.errors.append(
-                SchemaUpdateValidationError(
-                    schema_name=schema_name,
-                    field_name=field_name,
-                    field_type=field_type,
-                    prop_name=prop_name,
-                    error=UpdateValidationErrorType.CHECK_NOT_AVAILABLE,
-                    message=f"'{check_name}' is not available yet",
-                )
-            )
 
     def duplicate(self, name: Optional[str] = None) -> SchemaBranch:
         """Duplicate the current object but conserve the same cache."""
@@ -1060,6 +1089,84 @@ class SchemaBranch:
                     )
 
         return filters
+
+    async def get_constraints_per_model(  # pylint: disable=too-many-branches
+        self, name: str, filter_invalid: bool = True
+    ) -> List[SchemaUpdateConstraintInfo]:
+        schema = self.get(name=name, duplicate=False)
+        constraints: List[SchemaUpdateConstraintInfo] = []
+
+        for prop_name, prop_field_info in schema.model_fields.items():
+            if prop_name in ["attributes", "relationships"] or not prop_field_info.json_schema_extra:
+                continue
+
+            prop_field_update = prop_field_info.json_schema_extra.get("update")
+            if prop_field_update != UpdateSupport.VALIDATE_CONSTRAINT.value:
+                continue
+
+            if getattr(schema, prop_name) is None:
+                continue
+
+            schema_path = SchemaPath(
+                schema_kind=schema.kind,
+                path_type=SchemaPathType.NODE,
+                field_name=prop_name,
+                property_name=prop_name,
+            )
+            constraint_name = f"node.{prop_name}.update"
+
+            constraints.append(SchemaUpdateConstraintInfo(constraint_name=constraint_name, path=schema_path))
+
+        for field_name in schema.attribute_names + schema.relationship_names:
+            field: Union[AttributeSchema, RelationshipSchema]
+            if field_name in schema.attribute_names:
+                field = schema.get_attribute(name=field_name)
+            else:
+                field = schema.get_relationship(name=field_name)
+
+            for prop_name, prop_field_info in field.model_fields.items():
+                if not prop_field_info.json_schema_extra:
+                    continue
+
+                prop_field_update = prop_field_info.json_schema_extra.get("update")
+                if prop_field_update != UpdateSupport.VALIDATE_CONSTRAINT.value:
+                    continue
+
+                if getattr(field, prop_name) is None:
+                    continue
+
+                path_type = SchemaPathType.ATTRIBUTE
+                constraint_name = f"attribute.{prop_name}.update"
+                if isinstance(field, RelationshipSchema):
+                    if field.kind == RelationshipKind.GROUP:
+                        continue
+                    path_type = SchemaPathType.RELATIONSHIP
+                    constraint_name = f"relationship.{prop_name}.update"
+
+                schema_path = SchemaPath(
+                    schema_kind=schema.kind,
+                    path_type=path_type,
+                    field_name=field_name,
+                    property_name=prop_name,
+                )
+
+                constraints.append(SchemaUpdateConstraintInfo(constraint_name=constraint_name, path=schema_path))
+
+        if not filter_invalid:
+            return constraints
+
+        validated_constraints: List[SchemaUpdateConstraintInfo] = []
+        for constraint in constraints:
+            if CONSTRAINT_VALIDATOR_MAP.get(constraint.constraint_name, None):
+                validated_constraints.append(constraint)
+            else:
+                log.warning(
+                    f"Unable to validate: {constraint.constraint_name!r} for {constraint.path.get_path()!r}, validator not available",
+                    constraint_name=constraint.constraint_name,
+                    path=constraint.path.get_path(),
+                )
+
+        return validated_constraints
 
 
 # pylint: disable=too-many-public-methods

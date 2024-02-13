@@ -8,6 +8,7 @@ from infrahub.message_bus.operations import (
     git,
     refresh,
     requests,
+    schema,
     send,
     transform,
     trigger,
@@ -53,6 +54,8 @@ COMMAND_MAP = {
     "request.repository.checks": requests.repository.checks,
     "request.repository.user_checks": requests.repository.user_checks,
     "send.webhook.event": send.webhook.event,
+    "schema.migration.path": schema.migration.path,
+    "schema.validator.path": schema.validator.path,
     "transform.jinja.template": transform.jinja.template,
     "transform.python.data": transform.python.data,
     "trigger.artifact_definition.generate": trigger.artifact_definition.generate,
@@ -69,7 +72,7 @@ async def execute_message(routing_key: str, message_body: bytes, service: Infrah
         await COMMAND_MAP[routing_key](message=message, service=service)
     except Exception as exc:  # pylint: disable=broad-except
         if message.reply_requested:
-            response = RPCErrorResponse(data={"error": str(exc)})
+            response = RPCErrorResponse(errors=[str(exc)], initial_message=message.model_dump())
             await service.reply(message=response, initiator=message)
             return
         if message.reached_max_retries:

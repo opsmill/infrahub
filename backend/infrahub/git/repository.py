@@ -1694,7 +1694,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):  # pylint: disable=too-many-public
             template = templateEnv.get_template(location)
             return template.render(**data)
         except Exception as exc:
-            log.critical(exc, exc_info=True, repository=self.name, commit=commit, location=location)
+            log.error(exc, exc_info=True, repository=self.name, commit=commit, location=location)
             raise TransformError(repository_name=self.name, commit=commit, location=location, message=str(exc)) from exc
 
     async def execute_python_check(
