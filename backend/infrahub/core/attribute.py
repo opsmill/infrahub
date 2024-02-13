@@ -190,7 +190,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin):
                 ) from exc
 
             if not is_valid:
-                raise ValidationError({name: f"{value} be conform with the regex: {schema.regex!r}"})
+                raise ValidationError({name: f"{value} must be conform with the regex: {schema.regex!r}"})
 
         if schema.min_length:
             if len(value) < schema.min_length:
