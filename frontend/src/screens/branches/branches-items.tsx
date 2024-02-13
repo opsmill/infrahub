@@ -1,7 +1,6 @@
 import { ChevronLeftIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
 import { useAtom } from "jotai";
 import * as R from "ramda";
-import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Retry } from "../../components/buttons/retry";
 import { Badge } from "../../components/display/badge";
@@ -19,7 +18,7 @@ export const BranchesItems = () => {
   useTitle("Branches list");
 
   // TODO: refactor with index query
-  const [fetchBranches, { loading, data }] = useLazyQuery(GET_BRANCHES);
+  const [fetchBranches, { loading }] = useLazyQuery(GET_BRANCHES);
 
   const sortByName = R.sortBy(R.compose(R.toLower, R.prop("name")));
 
@@ -28,14 +27,9 @@ export const BranchesItems = () => {
   const branches = [...storedBranches.filter((b) => b.name === "main"), ...sortedBranches];
 
   const handleRefresh = async () => {
-    await fetchBranches();
+    const { data } = await fetchBranches();
+    setBranches(data?.Branch ?? []);
   };
-
-  useEffect(() => {
-    if (data?.Branch && data?.Branch?.length) {
-      setBranches(data?.Branch);
-    }
-  }, [data?.Branch]);
 
   return (
     <div>
