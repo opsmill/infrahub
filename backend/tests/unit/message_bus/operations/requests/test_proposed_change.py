@@ -73,7 +73,9 @@ async def branch2(db: InfrahubDatabase):
 
 
 @pytest.fixture
-async def schema_integrity_01(db: InfrahubDatabase, default_branch, branch_diff_01: ProposedChangeBranchDiff):
+async def schema_integrity_01(
+    db: InfrahubDatabase, default_branch, register_core_models_schema, branch_diff_01: ProposedChangeBranchDiff
+):
     obj = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE, branch=default_branch)
     await obj.new(db=db, name="pc1", source_branch=SOURCE_BRANCH_A, destination_branch="main")
     await obj.save(db=db)
